@@ -115,14 +115,17 @@ pub const Group = struct { // MARK: Group
 	// - A new Group1 is created
 	// - When User1 reconnects, they are incorrectly treated as a member of the new Group1
 	id: u32,
+	updated: bool = false,
 
 	pub fn init(allocator: NeverFailingAllocator) *Group {
 		sync.threadContext.assertCorrectContext(.server);
 		currentId += 1;
+		updatedMetadata = true;
 		const self = allocator.create(Group);
 		self.* = .{
 			.permissions = .init(allocator),
 			.id = currentId,
+			.updated = true,
 		};
 		return self;
 	}
@@ -149,6 +152,19 @@ pub const Group = struct { // MARK: Group
 		allocator.destroy(self);
 	}
 
+	pub fn addPermission(self: *Group, listType: Permissions.ListType, permissionPath: []const u8) void {
+		sync.threadContext.assertCorrectContext(.server);
+		self.permissions.addPermission(listType, permissionPath);
+		self.updated = true;
+	}
+
+	pub fn removePermission(self: *Group, listType: Permissions.ListType, permissionPath: []const u8) bool {
+		sync.threadContext.assertCorrectContext(.server);
+		const result = self.permissions.removePermission(listType, permissionPath);
+		if (result) self.updated = true;
+		return result;
+	}
+
 	pub fn hasPermission(self: *Group, permissionPath: []const u8) Permissions.PermissionResult {
 		sync.threadContext.assertCorrectContext(.server);
 		return self.permissions.hasPermission(permissionPath);
@@ -156,12 +172,16 @@ pub const Group = struct { // MARK: Group
 };
 
 var groups: std.StringHashMapUnmanaged(*Group) = .{};
+var groupDeinitList: main.utils.ConcurrentQueue(u32) = undefined;
+
 var groupsArena: NeverFailingArenaAllocator = undefined;
 var currentId: u32 = 0; // Needed to identify groups even after deletion, so that players who join a server after deletion of a group don't automatically join another group witht the same name.
+var updatedMetadata: bool = true;
 
 pub fn init(allocator: NeverFailingAllocator, _currentId: u32) void {
 	sync.threadContext.assertCorrectContext(.server);
 	groupsArena = .init(allocator);
+	groupDeinitList = .init(groupsArena.allocator(), 16);
 	currentId = _currentId;
 }
 
@@ -209,15 +229,23 @@ pub fn loadGroups(dir: main.files.Dir) !void {
 pub fn saveGroups(allocator: NeverFailingAllocator, groupsPath: []const u8) !void {
 	sync.threadContext.assertCorrectContext(.server);
 
-	const metadatPath = std.fmt.allocPrint(allocator.allocator, "{s}/metadata.zon", .{groupsPath}) catch unreachable;
-	defer allocator.free(metadatPath);
-	var metadataZon: ZonElement = .initObject(main.stackAllocator);
-	defer metadataZon.deinit(main.stackAllocator);
-	metadataZon.put("currentId", currentId);
-	try main.files.cubyzDir().writeZon(metadatPath, metadataZon);
+	try saveMetaData(allocator, groupsPath);
+
+	while (groupDeinitList.popFront()) |id| {
+		const path = std.fmt.allocPrint(allocator.allocator, "{s}/{d}.zon", .{groupsPath, id}) catch unreachable;
+		defer allocator.free(path);
+		if (main.files.cubyzDir().hasFile(path)) {
+			try main.files.cubyzDir().deleteFile(path);
+		}
+	}
 
 	var it = groups.iterator();
 	while (it.next()) |group| {
+		if (!group.value_ptr.*.updated) continue;
+		group.value_ptr.*.updated = false;
+
+		std.debug.print("Needed to save {s}\n", .{group.key_ptr.*});
+
 		const path = std.fmt.allocPrint(allocator.allocator, "{s}/{d}.zon", .{groupsPath, group.value_ptr.*.id}) catch unreachable;
 		defer allocator.free(path);
 		var groupZon: ZonElement = .initObject(allocator);
@@ -226,6 +254,18 @@ pub fn saveGroups(allocator: NeverFailingAllocator, groupsPath: []const u8) !voi
 		group.value_ptr.*.toZon(allocator, &groupZon);
 		try main.files.cubyzDir().writeZon(path, groupZon);
 	}
+}
+
+fn saveMetaData(allocator: NeverFailingAllocator, groupsPath: []const u8) !void {
+	if (!updatedMetadata) return;
+	updatedMetadata = false;
+
+	const metadatPath = std.fmt.allocPrint(allocator.allocator, "{s}/metadata.zon", .{groupsPath}) catch unreachable;
+	defer allocator.free(metadatPath);
+	var metadataZon: ZonElement = .initObject(main.stackAllocator);
+	defer metadataZon.deinit(main.stackAllocator);
+	metadataZon.put("currentId", currentId);
+	try main.files.cubyzDir().writeZon(metadatPath, metadataZon);
 }
 
 pub fn createGroup(name: []const u8) error{AlreadyExists}!void {
@@ -244,22 +284,23 @@ pub fn getGroup(name: []const u8) error{GroupNotFound}!*Group {
 
 pub fn deleteGroup(name: []const u8) bool {
 	sync.threadContext.assertCorrectContext(.server);
+	const group = groups.fetchRemove(name) orelse return false;
+
 	const users = server.getUserListAndIncreaseRefCount(main.globalAllocator);
 	for (users) |user| {
-		const key = user.permissionGroups.getKeyPtr(name) orelse continue;
-		const slice = key.*;
-		_ = user.permissionGroups.remove(name);
-		main.globalAllocator.free(slice);
+		const kv = user.permissionGroups.fetchRemove(name) orelse continue;
+		main.globalAllocator.free(kv.key);
 	}
 	server.freeUserListAndDecreaseRefCount(main.globalAllocator, users);
-	return groups.remove(name);
+	groupDeinitList.pushBack(group.value.id);
+	return true;
 }
 
 // ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 // MARK: Testing
 // ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 
-test "WhitePermission" {
+test "whitePermission" {
 	var permissions: Permissions = .init(main.heap.testingAllocator);
 	defer permissions.deinit();
 
@@ -269,7 +310,7 @@ test "WhitePermission" {
 	try std.testing.expectEqual(.neutral, permissions.hasPermission("/"));
 }
 
-test "Blacklist" {
+test "blacklist" {
 	var permissions: Permissions = .init(main.heap.testingAllocator);
 	defer permissions.deinit();
 
@@ -281,7 +322,7 @@ test "Blacklist" {
 	try std.testing.expectEqual(.neutral, permissions.hasPermission("/"));
 }
 
-test "DeepPermission" {
+test "deepPermission" {
 	var permissions: Permissions = .init(main.heap.testingAllocator);
 	defer permissions.deinit();
 
@@ -295,7 +336,7 @@ test "DeepPermission" {
 	try std.testing.expectEqual(.neutral, permissions.hasPermission("/server/command/testing/test2"));
 }
 
-test "RootPermission" {
+test "rootPermission" {
 	var permissions: Permissions = .init(main.heap.testingAllocator);
 	defer permissions.deinit();
 
@@ -304,7 +345,7 @@ test "RootPermission" {
 	try std.testing.expectEqual(.yes, permissions.hasPermission("/command/test"));
 }
 
-test "RootBlackPermission" {
+test "rootBlackPermission" {
 	var permissions: Permissions = .init(main.heap.testingAllocator);
 	defer permissions.deinit();
 
@@ -324,7 +365,7 @@ test "addRemovePermission" {
 	try std.testing.expectEqual(true, permissions.removePermission(.white, "/command/test"));
 }
 
-test "RemoveNonExistentPermission" {
+test "removeNonExistentPermission" {
 	var permissions: Permissions = .init(main.heap.testingAllocator);
 	defer permissions.deinit();
 
@@ -333,7 +374,35 @@ test "RemoveNonExistentPermission" {
 	try std.testing.expectEqual(false, permissions.removePermission(.white, "/command/test2"));
 }
 
-test "invalidGroupPermission" {
+test "groupCreation" {
+	init(main.heap.testingAllocator, 0);
+	defer deinit();
+
+	try createGroup("test");
+	_ = try getGroup("test");
+}
+
+test "groupPermissions" {
+	init(main.heap.testingAllocator, 0);
+	defer deinit();
+
+	try createGroup("test");
+	const group = try getGroup("test");
+	group.addPermission(.white, "/command/test");
+	try std.testing.expectEqual(Permissions.PermissionResult.yes, group.hasPermission("/command/test"));
+}
+
+test "groupRemovePermissions" {
+	init(main.heap.testingAllocator, 0);
+	defer deinit();
+
+	try createGroup("test");
+	const group = try getGroup("test");
+	group.addPermission(.white, "/command/test");
+	try std.testing.expectEqual(true, group.removePermission(.white, "/command/test"));
+}
+
+test "invalidGroup" {
 	init(main.heap.testingAllocator, 0);
 	defer deinit();
 
@@ -341,7 +410,7 @@ test "invalidGroupPermission" {
 	try std.testing.expectError(error.GroupNotFound, getGroup("root"));
 }
 
-test "invalidGroupPermissionEmptyGroups" {
+test "invalidGroupEmptyGroups" {
 	init(main.heap.testingAllocator, 0);
 	defer deinit();
 
@@ -356,7 +425,7 @@ test "invalidGroupCreation" {
 	try std.testing.expectError(error.AlreadyExists, createGroup("test"));
 }
 
-test "PermissionListToFromZon" {
+test "permissionListToFromZon" {
 	var permissions: Permissions = .init(main.heap.testingAllocator);
 	defer permissions.deinit();
 

@@ -144,11 +144,11 @@ fn handleGroupPermissionChanges(op: Operation, groupName: []const u8, split: *st
 	if (pathOp) |_op| {
 		switch (_op) {
 			.add => {
-				group.permissions.addPermission(listType, path);
+				group.addPermission(listType, path);
 				source.sendMessage("#00ff00Permission path {s} added to group {s}§#00ff00's permission {s}list", .{path, groupName, @tagName(listType)});
 			},
 			.remove => {
-				if (!group.permissions.removePermission(listType, path)) {
+				if (!group.removePermission(listType, path)) {
 					source.sendMessage("#ff0000Permission path {s} is not present inside group {s}§#ff0000 permission {s}list", .{path, groupName, @tagName(listType)});
 					return;
 				}
