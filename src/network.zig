@@ -48,10 +48,8 @@ pub const Address = struct {
 	}
 
 	pub fn resolveAddress(name: []const u8, port: u16) !Address {
-		const lookupResultbuff = main.stackAllocator.alloc(std.Io.net.HostName.LookupResult, 17);
-		defer main.stackAllocator.free(lookupResultbuff);
-
-		var dnsLookUpQueue: std.Io.Queue(std.Io.net.HostName.LookupResult) = .init(lookupResultbuff);
+		var lookupResultbuff: [8]std.Io.net.HostName.LookupResult = undefined; // sadly a magic number, from this example: https://codeberg.org/FObersteiner/ntp_client/src/branch/zig-0.16/src/main.zig
+		var dnsLookUpQueue: std.Io.Queue(std.Io.net.HostName.LookupResult) = .init(lookupResultbuff[0..]);
 		const hostname = try std.Io.net.HostName.init(name);
 		try hostname.lookup(main.io, &dnsLookUpQueue, .{.port = port});
 		const lookupResult = try dnsLookUpQueue.getOne(main.io);
@@ -329,7 +327,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		result.packetSendRequests = .initContext({});
 
 		result.localPort = localPort;
-		var address: net.IpAddress = try .parse("0.0.0.0", localPort);
+		var address: net.IpAddress = .{.ip4 = .unspecified(localPort)};
 		result.socket = address.bind(main.io, .{.protocol = .udp, .mode = .dgram}) catch |err| blk: {
 			if (err == error.AddressInUse) {
 				address.setPort(0);
