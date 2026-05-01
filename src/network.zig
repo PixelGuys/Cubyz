@@ -183,14 +183,12 @@ const stun = struct { // MARK: stun
 		for (0..16) |_| {
 			// Choose a somewhat random server, so we faster notice if any one of them stopped working.
 			const server = ipServerList[random.random().intRangeAtMost(usize, 0, ipServerList.len - 1)];
-			const _data = [_]u8{
+			var data = [_]u8{
 				0x00, 0x01, // message type
 				0x00, 0x00, // message length
 				MAGIC_COOKIE[0], MAGIC_COOKIE[1], MAGIC_COOKIE[2], MAGIC_COOKIE[3], // "Magic cookie"
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // transaction ID
 			};
-			var data = main.stackAllocator.dupe(u8, &_data);
-			defer main.stackAllocator.free(data);
 			random.fill(data[8..]); // Fill the transaction ID.
 
 			var splitter = std.mem.splitScalar(u8, server, ':');
@@ -200,7 +198,7 @@ const stun = struct { // MARK: stun
 				continue;
 			};
 
-			if (connection.sendRequest(main.globalAllocator, data, serverAddress, .fromMilliseconds(500))) |answer| {
+			if (connection.sendRequest(main.globalAllocator, &data, serverAddress, .fromMilliseconds(500))) |answer| {
 				defer main.globalAllocator.free(answer);
 				verifyHeader(answer, data[8..20]) catch |err| {
 					std.log.err("Header verification failed with {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
@@ -211,10 +209,10 @@ const stun = struct { // MARK: stun
 					continue;
 				}};
 				if (oldAddress) |other| {
-					std.log.info("{f}", .{result});
 					if (other.address.eql(&result.address)) {
 						return result;
 					} else {
+						std.log.warn("Detected symmetric NAT. UDP-holepunching may not work reliably", .{});
 						result.isSymmetricNAT = true;
 						return result;
 					}
