@@ -404,6 +404,22 @@ pub fn exitToMenu() void {
 	shouldExitToMenu.store(true, .monotonic);
 }
 
+fn shutdownSignalHandler(_: std.posix.SIG) callconv(.c) void {
+	server.stop();
+}
+
+fn installSignalHandlers() void {
+	if (builtin.os.tag == .windows) return;
+	if (!@hasDecl(std.posix, "Sigaction")) return;
+	var act: std.posix.Sigaction = .{
+		.handler = .{.handler = shutdownSignalHandler},
+		.mask = std.posix.sigemptyset(),
+		.flags = 0,
+	};
+	std.posix.sigaction(.TERM, &act, null);
+	std.posix.sigaction(.INT, &act, null);
+}
+
 fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
 	var iter = std.fs.path.componentIterator(path) catch |err| {
 		std.log.err("Cannot iterate on path {s}: {s}!", .{path, @errorName(err)});
@@ -441,6 +457,7 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	settings.launchConfig.init();
 
 	const headless = settings.launchConfig.headlessServer;
+	if (headless) installSignalHandlers();
 
 	if (!headless) gui.initWindowList();
 	defer if (!headless) gui.deinitWindowList();
@@ -522,11 +539,40 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	server.terrain.globalInit();
 	defer server.terrain.globalDeinit();
 
+	if (headless and settings.launchConfig.createIfMissing) {
+		bootstrapWorldIfMissing() catch |err| {
+			std.log.err("Failed to bootstrap world {s}: {s}", .{settings.launchConfig.autoEnterWorld, @errorName(err)});
+			@panic("World bootstrap failed");
+		};
+	}
+
 	if (headless) {
 		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null);
 	} else {
 		clientMain();
 	}
+}
+
+fn bootstrapWorldIfMissing() !void {
+	const worldName = settings.launchConfig.autoEnterWorld;
+	if (worldName.len == 0) {
+		std.log.err("createIfMissing is true but autoEnterWorld is empty.", .{});
+		return error.NoWorldName;
+	}
+	const savePath = std.fmt.allocPrint(stackAllocator.allocator, "saves/{s}", .{worldName}) catch unreachable;
+	defer stackAllocator.free(savePath);
+	if (files.cubyzDir().hasDir(savePath)) return;
+
+	const presetName = settings.launchConfig.worldPreset;
+	const preset = assets.worldPresets().get(presetName) orelse {
+		std.log.err("Unknown world preset: {s}", .{presetName});
+		return error.UnknownWorldPreset;
+	};
+
+	var worldSettings: server.world_zig.Settings = .defaults;
+	worldSettings.seed = settings.launchConfig.worldSeed orelse random.nextInt(u64, &seed);
+	try server.world_zig.tryCreateWorld(worldName, worldSettings, preset);
+	std.log.info("Created world {s} (preset {s}, seed {d}).", .{worldName, presetName, worldSettings.seed});
 }
 
 pub fn clientMain() void { // MARK: clientMain()
