@@ -6,5 +6,5 @@
 	.defaultTexture = "cubyz:cubert",
 	.height = 2,
 	.isPlayerModel = true,
-	.coordinateSystem = .right_handed_z_up,
+	.coordinateSystem = .left_handed_y_up,
 }
