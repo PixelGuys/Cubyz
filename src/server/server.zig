@@ -801,7 +801,7 @@ pub fn connectInternal(user: *User) void {
 	main.stackAllocator.free(initialList);
 	sendMessage("{s}§#ffff00 joined", .{user.name});
 	user.permissions.addPermission(.white, "/command/avatar");
-	
+
 	userMutex.lock();
 	users.append(user);
 	userMutex.unlock();
