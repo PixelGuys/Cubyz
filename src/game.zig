@@ -298,13 +298,15 @@ pub const World = struct { // MARK: World
 		errdefer self.itemDrops.deinit();
 
 		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
+		self.conn.mutex.lock();
 
 		main.Window.setMouseGrabbed(true);
-
 		main.blocks.meshes.generateTextureArray();
 		main.particles.ParticleManager.generateTextureArray();
 		main.models.uploadModels();
 		main.entityModel.loadModelsAndTexture();
+
+		self.conn.mutex.unlock();
 	}
 
 	pub fn deinit(self: *World) void {

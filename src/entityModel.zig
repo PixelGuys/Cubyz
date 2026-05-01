@@ -27,10 +27,40 @@ pub const EntityModel = struct {
 	texturePath: []const u8,
 	modelId: ?[]const u8,
 
+	nodeReverse: std.StringHashMap(u16) = undefined,
+	nodes: NodeList = undefined,
+	nodeCount: u8,
+
 	vao: ?graphics.VertexArray = null,
 	indexCount: c_int,
 	defaultTexture: ?main.graphics.Texture,
 	coordinateSystem: CoordinateSystem,
+
+	pub const maxNodesCount = 20;
+	pub const NodeList = [maxNodesCount]Node;
+	pub const MatrixList = [maxNodesCount]Mat4f;
+
+	pub const Node = struct {
+		pos: Vec3f = @splat(0),
+		rot: Vec4f = Vec4f{0, 0, 0, 1},
+		scale: Vec3f = @splat(1),
+
+		originMat: Mat4f,
+
+		parent: ?u16 = null,
+
+		pub fn getHierarchyMatrix(self: Node, nodes: NodeList) Mat4f {
+			var mat = self.originMat.mul(Mat4f.translation(self.pos));
+			mat = mat.mul(Mat4f.rotationQuat(self.rot));
+			mat = mat.mul(Mat4f.scale(self.scale));
+
+			if (self.parent == null) {
+				return mat;
+			}
+
+			return nodes[self.parent.?].getHierarchyMatrix(nodes).mul(mat);
+		}
+	};
 
 	pub const CoordinateSystem = enum {
 		right_handed_z_up,
@@ -43,6 +73,7 @@ pub const EntityModel = struct {
 		pos: [3]f32,
 		normal: [3]f32,
 		uv: [2]f32,
+		nodeID: c_uint,
 
 		pub const attributeDescriptions: []const c.VkVertexInputAttributeDescription = &.{
 			.{
@@ -60,6 +91,11 @@ pub const EntityModel = struct {
 				.format = c.VK_FORMAT_R32G32_SFLOAT,
 				.offset = @offsetOf(@This(), "uv"),
 			},
+			.{
+				.location = 3,
+				.format = c.VK_FORMAT_R32_UINT,
+				.offset = @offsetOf(@This(), "nodeID"),
+			},
 		};
 	};
 
@@ -75,6 +111,16 @@ pub const EntityModel = struct {
 		self.vao = null;
 		self.indexCount = 0;
 		self.coordinateSystem = zon.get(CoordinateSystem, "coordinateSystem", .right_handed_z_up);
+
+		self.nodeReverse = .init(main.worldArena.allocator);
+		self.nodes = std.mem.zeroes([20]Node);
+		self.nodeCount = 0;
+
+		if (zon.getChildOrNull("isPlayerModel")) |isPlayerModel| {
+			if (isPlayerModel.as(bool, false)) {
+				playerEntityModels.append(main.worldArena, index);
+			}
+		}
 
 		var isPlayerModel = false;
 		const tags = main.Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags"));
@@ -124,6 +170,9 @@ pub const EntityModel = struct {
 			.indexCount = 0,
 			.defaultTexture = null,
 			.coordinateSystem = self.coordinateSystem,
+			.nodeReverse = self.nodeReverse.clone() catch unreachable,
+			.nodes = self.nodes,
+			.nodeCount = self.nodeCount,
 		};
 	}
 
@@ -164,63 +213,96 @@ pub const EntityModel = struct {
 		defer indices.deinit();
 		var baseVertex: u32 = 0;
 
+		var nodeIdx: u8 = 0;
+
+		for (data.nodes, 0..data.nodes_count) |node, _| {
+			if (node.children_count == 0) continue;
+			const nameC = std.mem.span(node.name);
+
+			const name = main.globalArena.alloc(u8, nameC.len);
+			@memcpy(name, nameC);
+			self.nodeReverse.put(name, @intCast(nodeIdx)) catch unreachable;
+
+			var originMat = Mat4f.translation(convertCoordinateSystemVec(node.translation, self.coordinateSystem));
+			originMat = originMat.mul(Mat4f.rotationQuat(convertCoordinateSystemQuat(node.rotation, self.coordinateSystem)));
+			originMat = originMat.mul(Mat4f.scale(convertCoordinateSystemScale(node.scale, self.coordinateSystem)));
+			self.nodes[nodeIdx] = Node{
+				.originMat = originMat,
+			};
+			nodeIdx += 1;
+		}
+
+		for (data.nodes, 0..data.nodes_count) |node, _| {
+			if (node.children_count == 0 or node.parent == null) continue;
+
+			const curNode = self.nodeReverse.get(std.mem.span(node.name)).?;
+			self.nodes[curNode].parent = self.nodeReverse.get(std.mem.span(node.parent.*.name)).?;
+		}
+
 		for (data.nodes[0..data.nodes_count]) |node| {
-			if (node.mesh != null) {
-				const finalMat = getHierarchyMatrix(node, self.coordinateSystem);
+			if (node.mesh == null) continue;
 
-				const primitives = node.mesh.*.primitives;
-				for (primitives[0..node.mesh.*.primitives_count]) |primitive| {
-					if (primitive.type != gltf.cgltf_primitive_type_triangles) {
-						std.log.warn("Unsupported primitive type: {d}", .{primitive.type});
-						continue;
+			var finalMat = Mat4f.translation(convertCoordinateSystemVec(node.translation, self.coordinateSystem));
+			finalMat = finalMat.mul(Mat4f.rotationQuat(convertCoordinateSystemQuat(node.rotation, self.coordinateSystem)));
+			finalMat = finalMat.mul(Mat4f.scale(convertCoordinateSystemScale(node.scale, self.coordinateSystem)));
+
+			const parentNodeID = if (node.parent) |p| self.nodeReverse.get(std.mem.span(p.*.name)).? else 0;
+
+			const primitives = node.mesh.*.primitives;
+			for (primitives[0..node.mesh.*.primitives_count]) |primitive| {
+				if (primitive.type != gltf.cgltf_primitive_type_triangles) {
+					std.log.warn("Unsupported primitive type: {d}", .{primitive.type});
+					continue;
+				}
+
+				const indicesAccessor = primitive.indices.*;
+				const vertCount = primitive.attributes[0].data.*.count;
+				var indicesSlice = indices.addMany(indicesAccessor.count);
+				baseVertex = @intCast(vertices.items.len);
+				const vertSlice: []Vertex = vertices.addMany(vertCount);
+
+				for (0..indicesAccessor.count) |i| {
+					const idx = indicesAccessor.read_index(i);
+					indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
+				}
+
+				var positionAttr: gltf.cgltf_accessor = undefined;
+				var normalAttr: gltf.cgltf_accessor = undefined;
+				var uvAttr: gltf.cgltf_accessor = undefined;
+				for (primitive.attributes, 0..primitive.attributes_count) |attrib, _| {
+					const attribAccessor = attrib.data.*;
+
+					switch (attrib.type) {
+						gltf.cgltf_attribute_type_position => positionAttr = attribAccessor,
+						gltf.cgltf_attribute_type_normal => normalAttr = attribAccessor,
+						gltf.cgltf_attribute_type_texcoord => uvAttr = attribAccessor,
+						else => continue,
 					}
+				}
 
-					const indicesAccessor = primitive.indices.*;
-					const vertCount = primitive.attributes[0].data.*.count;
-					var indicesSlice = indices.addMany(indicesAccessor.count);
-					baseVertex = @intCast(vertices.items.len);
-					const vertSlice: []Vertex = vertices.addMany(vertCount);
+				for (0..positionAttr.count) |v| {
+					var p: [3]f32 = undefined;
+					_ = positionAttr.read_float(v, @ptrCast(&p), 3);
+					const p2 = convertCoordinateSystemVec(p, self.coordinateSystem);
+					const pos: vec.Vec4f = finalMat.mulVec(.{p2[0], p2[1], p2[2], 1});
+					vertSlice[v].pos = vec.xyz(pos);
 
-					for (0..indicesAccessor.count) |i| {
-						const idx = indicesAccessor.read_index(i);
-						indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
-					}
+					var normal: [3]f32 = undefined;
+					_ = normalAttr.read_float(v, @ptrCast(&normal), 3);
+					vertSlice[v].normal = convertCoordinateSystemVec(normal, self.coordinateSystem);
 
-					var positionAttr: gltf.cgltf_accessor = undefined;
-					var normalAttr: gltf.cgltf_accessor = undefined;
-					var uvAttr: gltf.cgltf_accessor = undefined;
-					for (primitive.attributes, 0..primitive.attributes_count) |attrib, _| {
-						const attribAccessor = attrib.data.*;
+					var uv: [2]f32 = undefined;
+					_ = uvAttr.read_float(v, @ptrCast(&uv), 2);
+					vertSlice[v].uv = .{uv[0], 1 - uv[1]};
 
-						switch (attrib.type) {
-							gltf.cgltf_attribute_type_position => positionAttr = attribAccessor,
-							gltf.cgltf_attribute_type_normal => normalAttr = attribAccessor,
-							gltf.cgltf_attribute_type_texcoord => uvAttr = attribAccessor,
-							else => continue,
-						}
-					}
-
-					for (0..positionAttr.count) |v| {
-						var p: [3]f32 = undefined;
-						_ = positionAttr.read_float(v, @ptrCast(&p), 3);
-						const p2 = convertCoordinateSystemVec(p, self.coordinateSystem);
-						const pos: vec.Vec4f = finalMat.mulVec(.{p2[0], p2[1], p2[2], 1});
-						vertSlice[v].pos = vec.xyz(pos);
-
-						var normal: [3]f32 = undefined;
-						_ = normalAttr.read_float(v, @ptrCast(&normal), 3);
-						vertSlice[v].normal = convertCoordinateSystemVec(normal, self.coordinateSystem);
-
-						var uv: [2]f32 = undefined;
-						_ = uvAttr.read_float(v, @ptrCast(&uv), 2);
-						vertSlice[v].uv = .{uv[0], 1 - uv[1]};
-					}
+					vertSlice[v].nodeID = @intCast(parentNodeID);
 				}
 			}
 		}
 
 		self.vao = .init(Vertex, vertices.items, indices.items);
 		self.indexCount = @intCast(indices.items.len);
+		self.nodeCount = nodeIdx;
 	}
 
 	fn convertCoordinateSystemVec(v: Vec3f, sys: CoordinateSystem) Vec3f {
@@ -246,18 +328,6 @@ pub const EntityModel = struct {
 			.right_handed_z_up, .left_handed_z_up => Vec3f{s[0], s[1], s[2]},
 			.right_handed_y_up, .left_handed_y_up => Vec3f{s[0], s[2], s[1]},
 		};
-	}
-
-	fn getHierarchyMatrix(node: gltf.cgltf_node, sys: CoordinateSystem) Mat4f {
-		var currentMat = Mat4f.translation(convertCoordinateSystemVec(node.translation, sys));
-		currentMat = currentMat.mul(Mat4f.rotationQuat(convertCoordinateSystemQuat(node.rotation, sys)));
-		currentMat = currentMat.mul(Mat4f.scale(convertCoordinateSystemScale(node.scale, sys)));
-
-		if (node.parent == null) {
-			return currentMat;
-		}
-
-		return getHierarchyMatrix(node.parent.*, sys).mul(currentMat);
 	}
 
 	fn getGltfError(result: gltf.cgltf_result) anyerror {

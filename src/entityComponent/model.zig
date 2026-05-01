@@ -25,6 +25,9 @@ pub const entityComponentVersion = 0;
 pub const client = struct {
 	const Component = struct {
 		entityModel: main.entityModel.EntityModelIndex,
+		hasLoaded: bool = false,
+		nodes: [20]main.entityModel.EntityModel.Node = undefined,
+		matrices: [20]Mat4f = undefined,
 	};
 	pub var components: main.utils.SparseSet(Component, main.entity.Entity) = .{};
 
@@ -45,6 +48,15 @@ pub const client = struct {
 		ptr.* = Component{
 			.entityModel = .{.index = entityModel},
 		};
+		const model = ptr.entityModel.get();
+
+		for (0..model.nodeCount) |i| {
+			ptr.nodes[i] = model.nodes[i];
+		}
+
+		for (0..model.nodeCount) |i| {
+			ptr.matrices[i] = ptr.nodes[i].getHierarchyMatrix(ptr.nodes);
+		}
 	}
 	pub fn unload(entity: u32) void {
 		components.remove(@enumFromInt(entity)) catch {};

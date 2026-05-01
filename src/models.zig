@@ -7,6 +7,7 @@ const main = @import("main");
 const vec = @import("vec.zig");
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
+const Vec4f = vec.Vec4f;
 const Vec3d = vec.Vec3d;
 const Vec2f = vec.Vec2f;
 const Mat4f = vec.Mat4f;

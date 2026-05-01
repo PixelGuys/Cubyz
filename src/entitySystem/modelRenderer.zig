@@ -41,6 +41,7 @@ pub const client = struct {
 		light: c_int,
 		contrast: c_int,
 		ambientLight: c_int,
+		nodeMatrices: c_int,
 	} = undefined;
 
 	pub fn init() void {
@@ -151,6 +152,7 @@ pub const client = struct {
 				.mul(Mat4f.rotationZ(-ent.rot[2])));
 			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
+			c.glUniformMatrix4fv(uniforms.nodeMatrices, main.entityModel.EntityModel.maxNodesCount, c.GL_TRUE, @ptrCast(&component.matrices));
 			c.glDrawElements(c.GL_TRIANGLES, entModel.indexCount, c.GL_UNSIGNED_INT, null);
 		}
 	}
