@@ -222,17 +222,16 @@ const stun = struct { // MARK: stun
 		return .{.address = .{.ip4 = .loopback(settings.defaultPort)}}; // TODO: Return ip address in LAN.
 	}
 
-	fn addressFromBits(data: [6]u8) !net.IpAddress {
+	fn addressFromStunMesssage(data: [6]u8) !net.IpAddress {
 		const port = std.mem.readInt(u16, data[0..2], .big);
 		const ip = std.mem.readInt(u32, data[2..6], builtin.cpu.arch.endian()); // Needs to stay in big endian → native.
-		const addrString = std.fmt.allocPrint(main.stackAllocator.allocator, "{d}.{d}.{d}.{d}", .{
-			ip & 255,
-			ip >> 8 & 255,
-			ip >> 16 & 255,
-			ip >> 24,
-		}) catch unreachable;
-		defer main.stackAllocator.free(addrString);
-		return .parse(addrString, port);
+		const bytes: [4]u8 = .{
+			@truncate(ip & 255),
+			@truncate(ip >> 8 & 255),
+			@truncate(ip >> 16 & 255),
+			@truncate(ip >> 24),
+		};
+		return .{.ip4 = .{.bytes = bytes, .port = port}};
 	}
 
 	fn findIPPort(_data: []const u8) !net.IpAddress {
@@ -255,7 +254,7 @@ const stun = struct { // MARK: stun
 							addressData[4] ^= MAGIC_COOKIE[2];
 							addressData[5] ^= MAGIC_COOKIE[3];
 						}
-						return addressFromBits(addressData);
+						return addressFromStunMesssage(addressData);
 					} else if (data[1] == 0x02) {
 						data = data[(len + 3) & ~@as(usize, 3) ..]; // Pad to 32 Bit.
 						continue; // I don't care about IPv6.
