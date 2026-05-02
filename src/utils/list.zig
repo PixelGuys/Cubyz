@@ -449,7 +449,7 @@ test "ListUnmanaged.print multiple writes" {
 	// we use the list as print destination, we want to make sure it retains normal list behavior
 	// by inserting a single element.
 	list.append(main.stackAllocator, '\n');
-	list.print(main.stackAllocator, "BarFooSpam {}", .{main.vec.Vec2d{0.3, 0.4}});
+	list.print(main.stackAllocator, "BarFooSpam {any}", .{[2]f32{0.3, 0.4}});
 	list.append(main.stackAllocator, '\n');
 	list.print(main.stackAllocator, "fooBarSpam {}", .{34});
 	list.append(main.stackAllocator, '\n');
