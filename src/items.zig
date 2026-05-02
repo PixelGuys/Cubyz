@@ -851,7 +851,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	pub fn checkForTagAt(self: *const ProceduralItem, x: i32, y: i32, checkedTag: main.Tag) ?bool {
 		if (x < 0 or x >= 5) return null;
 		if (y < 0 or y >= 5) return null;
-		
+
 		for (self.type.tagfields()) |specificTagField| {
 			if (specificTagField.hasTagMatrix[@intCast(x + y*5)] == true) {
 				if (specificTagField.tagType == checkedTag) {
