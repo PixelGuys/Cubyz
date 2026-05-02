@@ -97,7 +97,7 @@ void main() {
 	fragColor.rgb = applyFrontfaceFog(fogDistance, fog.color, fragColor.rgb);
 	float maxColor = max(1.0, max(fragColor.r, max(fragColor.g, fragColor.b)));
 	fragColor.rgb = fragColor.rgb/maxColor;
-	
+
 	fragColor.rgb = fragColor.rgb*fragColor.rgb;
 	vec3 tmp = texture(bloomColor, texCoords).rgb;
 	fragColor.rgb += tmp*tmp;
@@ -117,7 +117,7 @@ void main() {
 	float cutoffAdjustment = 2.0;
 	float horizontalOutline = 1 - (localDepth - (getDepth(texCoords+vec2(step, 0.0)) + getDepth(texCoords+vec2(-step, 0.0)))/2)/localDepth/step;
 	float verticalOutline = 1 - (localDepth - (getDepth(texCoords+vec2(0.0, step)) + getDepth(texCoords+vec2(0.0, -step)))/2)/localDepth/step;
-	
+
 	tmp.r = horizontalOutline*verticalOutline + cutoffAdjustment;
 	tmp.r = tmp.r*tmp.r*tmp.r;
 	tmp.g =	tmp.r;
