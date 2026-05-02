@@ -293,6 +293,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	connections: main.List(*Connection) = undefined,
 	requests: main.List(*Request) = undefined,
 
+	incomingMessageQueue: main.utils.ConcurrentQueue(net.IncomingMessage) = undefined,
+
 	mutex: main.utils.Mutex = .{},
 	waitingToFinishReceive: main.utils.Condition = .{},
 	allowNewConnections: Atomic(bool) = .init(false),
@@ -321,6 +323,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		result.* = .{};
 		result.connections = .init(main.globalAllocator);
 		result.requests = .init(main.globalAllocator);
+		result.incomingMessageQueue = .init(main.globalAllocator, 256);
 		result.packetSendRequests = .initContext({});
 
 		result.localPort = localPort;
@@ -360,6 +363,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			request.requestNotifier.signal();
 		}
 		self.requests.deinit();
+		self.incomingMessageQueue.deinit();
 		while (self.packetSendRequests.pop()) |packet| {
 			main.globalAllocator.free(packet.data);
 		}
@@ -514,26 +518,38 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 	}
 
+	fn handleReceive(self: *ConnectionManager) void {
+		while (self.socket.receive(main.io, &self.receiveBuffer)) |_message| {
+			var message: net.IncomingMessage = .init;
+			message.data = main.globalAllocator.dupe(u8, _message.data);
+			message.from = _message.from;
+			self.incomingMessageQueue.pushBack(message);
+		} else |err| {
+			if (err == error.Canceled) return;
+			if (err == error.ConnectionResetByPeer) {
+				std.log.err("Got error.ConnectionResetByPeer on receive. This indicates that a previous message did not find a valid destination.", .{});
+			} else {
+				std.log.warn("Got error on receive: {s}", .{@errorName(err)});
+			}
+		}
+	}
+
 	pub fn run(self: *ConnectionManager) void {
 		self.threadId = std.Thread.getCurrentId();
 		main.initThreadLocals();
 		defer main.deinitThreadLocals();
+
+		var receiveTask = main.io.concurrent(handleReceive, .{self}) catch unreachable; //we don't support non concurrent systems
+		defer receiveTask.cancel(main.io);
 
 		var lastTime: i64 = networkTimestamp();
 		var lastExternalPacketTime = lastTime;
 		while (self.running.load(.monotonic)) {
 			main.heap.GarbageCollection.syncPoint();
 			self.waitingToFinishReceive.broadcast();
-			if (self.socket.receiveTimeout(main.io, &self.receiveBuffer, .{.duration = .{.raw = .fromMilliseconds(1), .clock = .real}})) |message| {
+			while (self.incomingMessageQueue.popFront()) |message| {
 				self.onReceive(message.data, message.from);
-			} else |err| {
-				if (err == error.Timeout) {
-					// No message within the last ~100 ms.
-				} else if (err == error.ConnectionResetByPeer) {
-					std.log.err("Got error.ConnectionResetByPeer on receive. This indicates that a previous message did not find a valid destination.", .{});
-				} else {
-					std.log.warn("Got error on receive: {s}", .{@errorName(err)});
-				}
+				main.globalAllocator.free(message.data);
 			}
 			const curTime: i64 = networkTimestamp();
 			{
