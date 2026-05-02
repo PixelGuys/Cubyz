@@ -14,6 +14,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const NeverFailingArenaAllocator = main.heap.NeverFailingArenaAllocator;
 const ListUnmanaged = main.ListUnmanaged;
 const files = main.files;
+const Image = main.graphics.Image;
 
 var common: Assets = undefined;
 
@@ -21,7 +22,9 @@ pub const Assets = struct {
 	pub const ZonHashMap = std.StringHashMapUnmanaged(ZonElement);
 	pub const BytesHashMap = std.StringHashMapUnmanaged([]const u8);
 	pub const AddonNameToZonMap = std.StringHashMapUnmanaged(ZonElement);
+	pub const ImageHashMap = std.StringHashMapUnmanaged(Image);
 
+	ui_images: ImageHashMap,
 	blocks: ZonHashMap,
 	blockMigrations: AddonNameToZonMap,
 	items: ZonHashMap,
@@ -60,6 +63,7 @@ pub const Assets = struct {
 			.structureBuildingBlocks = .{},
 			.blueprints = .{},
 			.particles = .{},
+			.ui_images = .{},
 			.worldPresets = .{},
 			.entityModelDescriptions = .{},
 			.entityModelMigrations = .{},
@@ -82,6 +86,7 @@ pub const Assets = struct {
 		self.structureBuildingBlocks.deinit(allocator.allocator);
 		self.blueprints.deinit(allocator.allocator);
 		self.particles.deinit(allocator.allocator);
+		self.ui_images.deinit(allocator.allocator);
 		self.worldPresets.deinit(allocator.allocator);
 		self.entityModelDescriptions.deinit(allocator.allocator);
 		self.entityModelMigrations.deinit(allocator.allocator);
@@ -104,6 +109,7 @@ pub const Assets = struct {
 			.structureBuildingBlocks = self.structureBuildingBlocks.clone(allocator.allocator) catch unreachable,
 			.blueprints = self.blueprints.clone(allocator.allocator) catch unreachable,
 			.particles = self.particles.clone(allocator.allocator) catch unreachable,
+			.ui_images = .{}, // Not accessible inside the world
 			.worldPresets = .{}, // Not accessible inside the world
 			.entityModelDescriptions = self.entityModelDescriptions.clone(allocator.allocator) catch unreachable,
 			.entityModelMigrations = self.entityModelMigrations.clone(allocator.allocator) catch unreachable,
@@ -126,14 +132,15 @@ pub const Assets = struct {
 			addon.readAllBlueprints(allocator, "sbb", &self.blueprints);
 			addon.readAllModels(allocator, "models", ".obj", &self.blockModels);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
+			addon.readAllImages(allocator, "ui", &self.ui_images);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
 			addon.readAllZon(allocator, "entityModels", true, &self.entityModelDescriptions, &self.entityModelMigrations);
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks, {} items, {} procedural items, {} biomes, {} cave layers, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, and {} world presets",
-			.{@tagName(typ), self.blocks.count(), self.items.count(), self.proceduralItems.count(), self.biomes.count(), self.caveLayers.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count()},
+			"Finished {s} assets reading with {} blocks, {} items, {} procedural items, {} biomes, {} cave layers, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles {} UI images, and {} world presets",
+			.{@tagName(typ), self.blocks.count(), self.items.count(), self.proceduralItems.count(), self.biomes.count(), self.caveLayers.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.ui_images.count(), self.worldPresets.count()},
 		);
 	}
 
@@ -330,6 +337,45 @@ pub const Assets = struct {
 					continue;
 				};
 				output.put(allocator.allocator, id, string) catch unreachable;
+			}
+		}
+
+		pub fn readAllImages(addon: Addon, allocator: NeverFailingAllocator, subPath: []const u8, output: *ImageHashMap) void {
+			var assetsDirectory = addon.dir.openIterableDir(subPath) catch |err| {
+				if (err != error.FileNotFound) {
+					std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
+				}
+				return;
+			};
+			defer assetsDirectory.close();
+
+			const basePath = assetsDirectory.dir.realpathAlloc(main.stackAllocator.allocator, ".") catch |err| {
+				std.log.err("Could not access {s}: {s}", .{subPath, @errorName(err)});
+				return;
+			};
+			defer main.stackAllocator.free(basePath);
+
+			var walker = assetsDirectory.walk(main.stackAllocator);
+			defer walker.deinit();
+
+			while (walker.next() catch |err| blk: {
+				std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
+				break :blk null;
+			}) |entry| {
+				if (entry.kind != .file) continue;
+				if (!std.ascii.endsWithIgnoreCase(entry.basename, ".png")) continue;
+
+				const id = createAssetStringID(allocator, addon.name, "UI image", entry.path) catch continue;
+
+				const fullPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}", .{basePath, entry.path}) catch unreachable;
+				defer main.stackAllocator.free(fullPath);
+				std.log.debug("{s}", .{fullPath});
+
+				const data = Image.readFromFile(allocator, fullPath) catch |err| {
+					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
+					continue;
+				};
+				output.put(allocator.allocator, id, data) catch unreachable;
 			}
 		}
 	};
@@ -826,6 +872,10 @@ pub fn readAsset(allocator: NeverFailingAllocator, subPath: []const u8, id: []co
 		return err;
 	};
 	return data;
+}
+
+pub fn uiImages() *const Assets.ImageHashMap {
+	return &common.ui_images;
 }
 
 pub fn worldPresets() *const Assets.ZonHashMap {
