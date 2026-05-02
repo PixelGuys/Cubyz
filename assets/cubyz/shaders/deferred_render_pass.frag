@@ -104,11 +104,10 @@ void main() {
 	fragColor.rgb = sqrt(fragColor.rgb);
 
 	// outline renderer
-
-	//controls
+	// controls
 		float outlineThickness = 3;
 		float outlineDistance = 256;
-	//code
+	// code
 	float localDepth = getDepth(texCoords);
 	float baseStep = (1.0/max(textureSize(color, 0).x,textureSize(color, 0).y));
 	// samples nearest point
