@@ -22,6 +22,14 @@
 					.id = "durable",
 					.strength = 0.45,
 				},
+				.{
+					.id = "fragile",
+					.strength = 0.1,
+					.restriction = .{
+						.id = .on_top_of,
+						.tag = .head,
+					},
+				},
 			},
 		},
 		.texture = "branch/toadstool.png",

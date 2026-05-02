@@ -560,6 +560,11 @@ const SlotInfo = packed struct { // MARK: SlotInfo
 	optional: bool = false,
 };
 
+const TagField = struct { // MARK: TagField
+	hasTagMatrix: [25]bool,
+	tagType: main.Tag,
+};
+
 const PropertyMatrix = struct { // MARK: PropertyMatrix
 	source: ?MaterialProperty,
 	destination: ?ProceduralItemProperty,
@@ -608,6 +613,9 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 	pub fn properties(self: ProceduralItemTypeIndex) []const PropertyMatrix {
 		return proceduralItemTypeList.items[@intFromEnum(self)].properties;
 	}
+	pub fn tagfields(self: ProceduralItemTypeIndex) []const TagField {
+		return proceduralItemTypeList.items[@intFromEnum(self)].tagfields;
+	}
 	pub fn slotInfos(self: ProceduralItemTypeIndex) *const [25]SlotInfo {
 		return &proceduralItemTypeList.items[@intFromEnum(self)].slotInfos;
 	}
@@ -624,6 +632,7 @@ pub const ProceduralItemType = struct { // MARK: ProceduralItemType
 	tags: []main.Tag,
 	properties: []PropertyMatrix,
 	slotInfos: [25]SlotInfo,
+	tagfields: []TagField,
 	pixelSources: [16][16]u8,
 	pixelSourcesOverlay: [16][16]u8,
 };
@@ -837,6 +846,21 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		if (x < 0 or x >= 5) return null;
 		if (y < 0 or y >= 5) return null;
 		return self.craftingGrid[@intCast(x + y*5)];
+	}
+
+	pub fn checkForTagAt(self: *const ProceduralItem, x: i32, y: i32, checkedTag: main.Tag) ?bool {
+		if (x < 0 or x >= 5) return null;
+		if (y < 0 or y >= 5) return null;
+		
+		for (self.type.tagfields()) |specificTagField| {
+			if (specificTagField.hasTagMatrix[@intCast(x + y*5)] == true) {
+				if (specificTagField.tagType == checkedTag) {
+					return true;
+				}
+			}
+		}
+		if ((self.getItemAt(x, y) orelse return false).hasTag(checkedTag)) return true;
+		return false;
 	}
 
 	pub fn getProperty(self: *ProceduralItem, prop: ProceduralItemProperty) f32 {
@@ -1287,6 +1311,15 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 		}
 		slotInfos[i].optional = zonDisabled.as(usize, 0) != 0;
 	}
+	var tagfields: main.List(TagField) = .init(main.worldArena);
+	for (zon.getChild("tagfields").toSlice()) |paramZon| {
+		const tagFieldVal = tagfields.addOne();
+		const matrixZon = paramZon.getChild("matrix");
+		for (0..25) |i| {
+			tagFieldVal.hasTagMatrix[i] = matrixZon.getAtIndex(bool, i, false);
+		}
+		tagFieldVal.tagType = main.Tag.find(paramZon.get([]const u8, "tag", "not specified"));
+	}
 	var parameterMatrices: main.List(PropertyMatrix) = .init(main.worldArena);
 	for (zon.getChild("parameters").toSlice()) |paramZon| {
 		const val = parameterMatrices.addOne();
@@ -1318,6 +1351,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 		.id = idDupe,
 		.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
 		.slotInfos = slotInfos,
+		.tagfields = tagfields.toOwnedSlice(),
 		.properties = parameterMatrices.toOwnedSlice(),
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
