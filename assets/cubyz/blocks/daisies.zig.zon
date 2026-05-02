@@ -11,7 +11,7 @@
 	.model = "cubyz:plane",
 	.rotation = "cubyz:carpet",
 	.onUpdate = .{
-		.type = .checkSupportBlocks,
+		.type = .check_support_blocks,
 	},
 	.texture = "cubyz:daisies",
 	.item = .{

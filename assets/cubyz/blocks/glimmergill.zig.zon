@@ -12,7 +12,7 @@
 	.collide = false,
 	.rotation = "cubyz:torch",
 	.onUpdate = .{
-		.type = .checkSupportBlocks,
+		.type = .check_support_blocks,
 	},
 	.model = .{
 		.base = "cubyz:glimmergill/floor",

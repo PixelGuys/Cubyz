@@ -14,7 +14,7 @@
 	},
 	.rotation = "cubyz:texture_pile",
 	.onUpdate = .{
-		.type = .checkSupportBlocks,
+		.type = .check_support_blocks,
 	},
 	.texture0 = "cubyz:red_leaf_pile/0",
 	.texture1 = "cubyz:red_leaf_pile/1",

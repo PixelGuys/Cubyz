@@ -19,6 +19,6 @@
 	},
 	.lodReplacement = "cubyz:air",
 	.onUpdate = .{
-		.type = .checkSupportBlocks,
+		.type = .check_support_blocks,
 	},
 }
