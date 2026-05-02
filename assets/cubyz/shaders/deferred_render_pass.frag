@@ -95,8 +95,8 @@ void main() {
 	float dist = zFromDepth(texture(depthTexture, texCoords).r);
 	float fogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionFraction.z, normalize(direction).z, fog.density, fog.fogLower - playerPositionInteger.z, fog.fogHigher - playerPositionInteger.z);
 	fragColor.rgb = applyFrontfaceFog(fogDistance, fog.color, fragColor.rgb);
-	//float maxColor = max(1.0, max(fragColor.r, max(fragColor.g, fragColor.b)));
-	//fragColor.rgb = fragColor.rgb/maxColor;
+	float maxColor = max(1.0, max(fragColor.r, max(fragColor.g, fragColor.b)));
+	fragColor.rgb = fragColor.rgb/maxColor;
 	
 	fragColor.rgb = fragColor.rgb*fragColor.rgb;
 	vec3 tmp = texture(bloomColor, texCoords).rgb;
