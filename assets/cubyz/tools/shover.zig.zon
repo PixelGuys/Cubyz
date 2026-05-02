@@ -107,4 +107,26 @@
 			.method = .sum,
 		},
 	},
+	.tagfields = .{
+		.{
+			.tag = .handle,
+			.matrix = .{
+				false, false, false, false, false,
+				false, false, false, false, false,
+				false, false, false, false, false,
+				false, false, false, true,  false,
+				false, false, false, false, true,
+			},
+		},
+		.{
+			.tag = .head,
+			.matrix = .{
+				true,  true,  true,  false, false,
+				true,  true,  true,  true,  false,
+				true,  true,  true,  true,  false,
+				false, true,  true,  false, false,
+				false, false, false, false, false,
+			},
+		},
+	},
 }
