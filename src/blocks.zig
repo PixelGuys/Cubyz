@@ -68,10 +68,8 @@ pub const Ore = struct {
 	seed: u64,
 };
 
-const SelectionCapability = enum {
-	always,
+const SelectionCapability = enum(u8) {
 	toolEffective,
-	never,
 
 	pub fn loadSelectionCapabilitiesFromZon(_allocator: main.heap.NeverFailingAllocator, zon: main.ZonElement) []SelectionCapability {
 		var capabilities = main.List(SelectionCapability).initCapacity(_allocator, zon.toSlice().len);
@@ -85,9 +83,7 @@ const SelectionCapability = enum {
 
 	pub fn allowsItemSelection(self: SelectionCapability, item: Item, block: Block) bool {
 		return switch (self) {
-			.always => true,
 			.toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(block),
-			.never => false,
 		};
 	}
 };
@@ -166,9 +162,6 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	if (zon.getChildOrNull("selectionCapabilities")) |capabilitiesZon| {
 		const capabilities = SelectionCapability.loadSelectionCapabilitiesFromZon(main.stackAllocator, capabilitiesZon);
 		defer main.stackAllocator.free(capabilities);
-		if (capabilities.len == 0) {
-			std.log.err("Field '.selectionCapabilities' is an empty array. This block can never be selected. Did you mean '.selectionCapabilities = .{{.never}}' instead?", .{});
-		}
 		selectionCapabilities = main.worldArena.allocator.dupe(SelectionCapability, capabilities) catch unreachable;
 	}
 	_selectionCapabilities[size] = selectionCapabilities;
