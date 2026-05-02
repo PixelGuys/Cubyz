@@ -97,7 +97,7 @@ void main() {
 	// outline renderer
 
 	float localDepth = getDepth(texCoords);
-	float baseStep = 1.0/1920;
+	float baseStep = 1.0/textureSize(color, 0);
 	// samples nearest point
 	float minSampledDepth = min(min(min(min(localDepth, getDepth(texCoords+vec2(baseStep, 0.0))), getDepth(texCoords+vec2(-baseStep, 0.0))), getDepth(texCoords+vec2(0.0, baseStep))), getDepth(texCoords+vec2(0.0, -baseStep)))
 	float maxSampledDepth = max(max(max(max(localDepth, getDepth(texCoords+vec2(baseStep, 0.0))), getDepth(texCoords+vec2(-baseStep, 0.0))), getDepth(texCoords+vec2(0.0, baseStep))), getDepth(texCoords+vec2(0.0, -baseStep)));
