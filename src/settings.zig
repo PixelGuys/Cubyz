@@ -89,7 +89,7 @@ pub fn init() void {
 			if (@typeInfo(DeclType) == .@"struct") {
 				if (DeclType == std.Io.Duration) {
 					const defaultMilli = @as(f64, @floatFromInt(@field(@This(), decl.name).toNanoseconds()))/1.0e6;
-					@field(@This(), decl.name) = .fromNanoseconds(@intFromFloat(zon.get(f64, decl.name, defaultMilli)*1.0e6));
+					@field(@This(), decl.name) = .fromNanoseconds(@trunc(zon.get(f64, decl.name, defaultMilli)*1.0e6));
 					continue;
 				}
 				@field(@This(), decl.name) = DeclType.fromZon(main.globalAllocator, zon.getChild(decl.name)) catch |err| {
