@@ -539,7 +539,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		main.initThreadLocals();
 		defer main.deinitThreadLocals();
 
-		var receiveTask = main.io.concurrent(handleReceive, .{self}) catch unreachable; //we don't support non concurrent systems
+		var receiveTask = main.io.concurrent(handleReceive, .{self}) catch @panic("No concurrency support");
 		defer receiveTask.cancel(main.io);
 
 		var lastTime: i64 = networkTimestamp();
