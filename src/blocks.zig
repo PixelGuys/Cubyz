@@ -68,7 +68,25 @@ pub const Ore = struct {
 	seed: u64,
 };
 
-const SelectionRule = enum { always, toolEffective, never };
+const SelectionCapability = enum(u8) {
+	toolEffective,
+
+	pub fn loadSelectionCapabilitiesFromZon(_allocator: main.heap.NeverFailingAllocator, zon: main.ZonElement) []SelectionCapability {
+		var capabilities = main.List(SelectionCapability).initCapacity(_allocator, zon.toSlice().len);
+		for (zon.toSlice()) |capabilityZon| {
+			if (capabilityZon.as(?SelectionCapability, null)) |capability| {
+				capabilities.appendAssumeCapacity(capability);
+			} else std.log.err("SelectionCapability is invalid. Ignoring", .{});
+		}
+		return capabilities.toOwnedSlice();
+	}
+
+	pub fn allowsItemSelection(self: SelectionCapability, item: Item, block: Block) bool {
+		return switch (self) {
+			.toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(block),
+		};
+	}
+};
 
 var _transparent: [maxBlockCount]bool = undefined;
 var _collide: [maxBlockCount]bool = undefined;
@@ -79,7 +97,7 @@ var _blockResistance: [maxBlockCount]f32 = undefined;
 
 /// Whether you can replace it with another block, mainly used for fluids/gases
 var _replaceable: [maxBlockCount]bool = undefined;
-var _selectionRule: [maxBlockCount]SelectionRule = undefined;
+var _selectionCapabilities: [maxBlockCount]?[]SelectionCapability = undefined;
 var _blockDrops: [maxBlockCount][]const BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
 var _degradable: [maxBlockCount]bool = undefined;
@@ -139,7 +157,15 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_light[size] = zon.get(u32, "emittedLight", 0);
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
-	_selectionRule[size] = zon.get(SelectionRule, "selectionRule", .always);
+
+	var selectionCapabilities: ?[]SelectionCapability = null;
+	if (zon.getChildOrNull("selectionCapabilities")) |capabilitiesZon| {
+		const capabilities = SelectionCapability.loadSelectionCapabilitiesFromZon(main.stackAllocator, capabilitiesZon);
+		defer main.stackAllocator.free(capabilities);
+		selectionCapabilities = main.worldArena.allocator.dupe(SelectionCapability, capabilities) catch unreachable;
+	}
+	_selectionCapabilities[size] = selectionCapabilities;
+
 	_replaceable[size] = zon.get(bool, "replaceable", false);
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
@@ -415,8 +441,8 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return _replaceable[self.typ];
 	}
 
-	pub inline fn selectionRule(self: Block) SelectionRule {
-		return _selectionRule[self.typ];
+	pub inline fn selectionCapabilities(self: Block) ?[]SelectionCapability {
+		return _selectionCapabilities[self.typ];
 	}
 
 	pub inline fn blockDrops(self: Block) []const BlockDrop {
@@ -535,11 +561,11 @@ pub const Block = packed struct(u32) { // MARK: Block
 			return fluidPlaceable;
 		}
 
-		return switch (self.selectionRule()) {
-			.always => true,
-			.toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(self),
-			.never => false,
-		};
+		const capabilities = self.selectionCapabilities() orelse return true;
+		for (capabilities) |capability| {
+			if (capability.allowsItemSelection(item, self)) return true;
+		}
+		return false;
 	}
 };
 

@@ -4,7 +4,7 @@
 	.drops = .{
 		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
 	},
-	.selectionRule = .toolEffective,
+	.selectionCapabilities = .{.toolEffective},
 	.replaceable = true,
 	.viewThrough = true,
 	.degradable = true,

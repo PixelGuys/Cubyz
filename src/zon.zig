@@ -188,7 +188,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 				return result;
 			},
 			.@"enum" => {
-				return std.meta.stringToEnum(T, self.as(?[]const u8, null) orelse return replacement) orelse return replacement;
+				return std.meta.stringToEnum(innerType, self.as(?[]const u8, null) orelse return replacement) orelse return replacement;
 			},
 			else => {
 				switch (innerType) {
