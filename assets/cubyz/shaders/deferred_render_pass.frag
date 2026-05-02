@@ -78,9 +78,13 @@ vec3 applyFrontfaceFog(float fogDistance, vec3 fogColor, vec3 inColor) {
 	return inColor;
 }
 
+float getDepth(vec2 inPos) {
+	return zFromDepth(texture(depthTexture, inPos).r);
+}
+
 void main() {
 	fragColor = texture(color, texCoords);
-	fragColor += texture(bloomColor, texCoords);
+
 	vec2 clampedTexCoords = (floor(texCoords*vec2(textureSize(color, 0))) + 0.5)/vec2(textureSize(color, 0));
 	vec3 direction = clampedTexCoords.x*(
 		clampedTexCoords.y*directions[0] + (1 - clampedTexCoords.y)*directions[1]
@@ -91,19 +95,26 @@ void main() {
 	float dist = zFromDepth(texture(depthTexture, texCoords).r);
 	float fogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionFraction.z, normalize(direction).z, fog.density, fog.fogLower - playerPositionInteger.z, fog.fogHigher - playerPositionInteger.z);
 	fragColor.rgb = applyFrontfaceFog(fogDistance, fog.color, fragColor.rgb);
-	float maxColor = max(1.0, max(fragColor.r, max(fragColor.g, fragColor.b)));
-	fragColor.rgb = fragColor.rgb/maxColor;
+	//float maxColor = max(1.0, max(fragColor.r, max(fragColor.g, fragColor.b)));
+	//fragColor.rgb = fragColor.rgb/maxColor;
+	
+	fragColor.rgb = fragColor.rgb*fragColor.rgb;
+	vec3 tmp = texture(bloomColor, texCoords).rgb;
+	fragColor.rgb += tmp*tmp;
+	fragColor.rgb = sqrt(fragColor.rgb);
 
 	// outline renderer
 
+	//controls
+		float outlineThickness = 3;
+		float outlineDistance = 256;
+	//code
 	float localDepth = getDepth(texCoords);
-	float baseStep = 1.0/textureSize(color, 0);
+	float baseStep = (1.0/max(textureSize(color, 0).x,textureSize(color, 0).y));
 	// samples nearest point
-	float minSampledDepth = min(min(min(min(localDepth, getDepth(texCoords+vec2(baseStep, 0.0))), getDepth(texCoords+vec2(-baseStep, 0.0))), getDepth(texCoords+vec2(0.0, baseStep))), getDepth(texCoords+vec2(0.0, -baseStep)))
-	float maxSampledDepth = max(max(max(max(localDepth, getDepth(texCoords+vec2(baseStep, 0.0))), getDepth(texCoords+vec2(-baseStep, 0.0))), getDepth(texCoords+vec2(0.0, baseStep))), getDepth(texCoords+vec2(0.0, -baseStep)));
-	float outlineThickness = 3;
-	float DistanceMult = min(256/minSampledDepth,1);
-	float step = (1.0/1920.0*DistanceMult)*outlineThickness*DistanceMult;
+	float minSampledDepth = min(min(min(min(localDepth, getDepth(texCoords+vec2(baseStep, 0.0))), getDepth(texCoords+vec2(-baseStep, 0.0))), getDepth(texCoords+vec2(0.0, baseStep))), getDepth(texCoords+vec2(0.0, -baseStep)));
+	float DistanceMult = min(outlineDistance/minSampledDepth,1);
+	float step = baseStep*outlineThickness*DistanceMult;
 	float cutoffAdjustment = 2.0;
 	float horizontalOutline = 1 - (localDepth - (getDepth(texCoords+vec2(step, 0.0)) + getDepth(texCoords+vec2(-step, 0.0)))/2)/localDepth/step;
 	float verticalOutline = 1 - (localDepth - (getDepth(texCoords+vec2(0.0, step)) + getDepth(texCoords+vec2(0.0, -step)))/2)/localDepth/step;
@@ -113,7 +124,6 @@ void main() {
 	tmp.g =	tmp.r;
 	tmp.b =	tmp.r;
 
-	tmp = normalize(tmp);
-	vec3 fogCorrection = normalize(applyFrontfaceFog(fogDistance, fog.color, tmp.rgb));
-	fragColor.rgb = tmp*fragColor.rgb + max(normalize(sqrt(fogCorrection)*(-tmp.rgb)), 0);
+	tmp = (normalize(tmp) + (3 + DistanceMult))/(4 + DistanceMult);
+	fragColor.rgb = tmp*fragColor.rgb;
 }
