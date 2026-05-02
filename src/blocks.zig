@@ -76,18 +76,9 @@ const SelectionCapability = enum {
 	pub fn loadSelectionCapabilitiesFromZon(_allocator: main.heap.NeverFailingAllocator, zon: main.ZonElement) []SelectionCapability {
 		var capabilities = main.List(SelectionCapability).initCapacity(_allocator, zon.toSlice().len);
 		for (zon.toSlice()) |capabilityZon| {
-			switch (capabilityZon) {
-				.string, .stringOwned => |string| {
-					if (std.meta.stringToEnum(SelectionCapability, string)) |capability| {
-						capabilities.appendAssumeCapacity(capability);
-					} else {
-						std.log.err("SelectionCapability '{s}' is invalid. Ignoring", .{string});
-					}
-				},
-				else => {
-					std.log.err("SelectionCapability element is not a string (type: {s}). Ignoring", .{@tagName(capabilityZon)});
-				},
-			}
+			if (capabilityZon.as(?SelectionCapability, null)) |capability| {
+				capabilities.appendAssumeCapacity(capability);
+			} else std.log.err("SelectionCapability is invalid. Ignoring", .{});
 		}
 		return capabilities.toOwnedSlice();
 	}
