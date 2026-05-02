@@ -1,0 +1,26 @@
+.{
+	.tags = .{.cuttable},
+	.blockHealth = 0.2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.degradable = true,
+	.collide = false,
+	.alwaysViewThrough = true,
+	.absorbedLight = 0x121012,
+	.model = "cubyz:ocotillo",
+	.texture_top = "cubyz:ocotillo/top",
+	.texture_bottom = "cubyz:ocotillo/bottom",
+	.item = .{
+		.texture = "ocotillo.png",
+	},
+	.lodReplacement = "cubyz:air",
+	.onUpdate = .{
+		.type = .checkSupportBlocks,
+	},
+	.onTouch = .{
+		.type = .hurt,
+		.dps = 0.5,
+		.damageType = .spiky,
+	},
+}
