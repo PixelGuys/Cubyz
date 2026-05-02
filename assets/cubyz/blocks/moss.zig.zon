@@ -2,7 +2,7 @@
 	.tags = .{.leaf, .cuttable},
 	.blockHealth = 1,
 	.drops = .{
-		.{.items = .{.auto}},
+		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
 	},
 	.rotation = "cubyz:ore",
 	.model = "cubyz:cube",
