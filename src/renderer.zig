@@ -141,8 +141,8 @@ pub fn updateFov(fov: f32) void {
 	}
 }
 pub fn updateViewport(width: u31, height: u31) void {
-	lastWidth = @intFromFloat(@as(f32, @floatFromInt(width))*main.settings.resolutionScale);
-	lastHeight = @intFromFloat(@as(f32, @floatFromInt(height))*main.settings.resolutionScale);
+	lastWidth = @trunc(@as(f32, @floatFromInt(width))*main.settings.resolutionScale);
+	lastHeight = @trunc(@as(f32, @floatFromInt(height))*main.settings.resolutionScale);
 	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(lastFov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
 	worldFrameBuffer.updateSize(lastWidth, lastHeight, c.GL_RGB16F);
 	worldFrameBuffer.unbind();
@@ -289,7 +289,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 
-	const playerBlock = mesh_storage.getBlockFromAnyLodFromRenderThread(@intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+	const playerBlock = mesh_storage.getBlockFromAnyLodFromRenderThread(@floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 
 	if (settings.bloom) {
 		Bloom.render(lastWidth, lastHeight, playerBlock, playerPos, game.camera.viewMatrix);
@@ -315,7 +315,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		c.glUniform1f(deferredUniforms.@"fog.fogHigher", 1e10);
 	}
 	c.glUniformMatrix4fv(deferredUniforms.invViewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix.transpose()));
-	c.glUniform3i(deferredUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+	c.glUniform3i(deferredUniforms.playerPositionInteger, @floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 	c.glUniform3f(deferredUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 	c.glUniform1f(deferredUniforms.zNear, zNear);
 	c.glUniform1f(deferredUniforms.zFar, zFar);
@@ -421,7 +421,7 @@ const Bloom = struct { // MARK: Bloom
 		}
 
 		c.glUniformMatrix4fv(colorExtractUniforms.invViewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix.transpose()));
-		c.glUniform3i(colorExtractUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+		c.glUniform3i(colorExtractUniforms.playerPositionInteger, @floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 		c.glUniform3f(colorExtractUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 		c.glUniform1f(colorExtractUniforms.zNear, zNear);
 		c.glUniform1f(colorExtractUniforms.zFar, zFar);
@@ -704,7 +704,7 @@ pub const Skybox = struct {
 	}
 
 	fn getStarColor(temperature: f32, light: f32, image: graphics.Image) Vec3f {
-		const rgbCol = image.getRGB(@intFromFloat(std.math.clamp(temperature/15000.0*@as(f32, @floatFromInt(image.width)), 0.0, @as(f32, @floatFromInt(image.width - 1)))), 0);
+		const rgbCol = image.getRGB(@trunc(std.math.clamp(temperature/15000.0*@as(f32, @floatFromInt(image.width)), 0.0, @as(f32, @floatFromInt(image.width - 1)))), 0);
 		var rgb: Vec3f = @floatFromInt(Vec3i{rgbCol.r, rgbCol.g, rgbCol.b});
 		rgb /= @splat(255.0);
 
@@ -933,7 +933,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		var tMax = (@floor(pos) - pos)*invDir;
 		tMax = @max(tMax, tMax + tDelta*@as(Vec3f, @floatFromInt(step)));
 		tMax = @select(f64, dir == @as(Vec3d, @splat(0)), @as(Vec3d, @splat(std.math.inf(f64))), tMax);
-		var voxelPos: Vec3i = @intFromFloat(@floor(pos));
+		var voxelPos: Vec3i = @floor(pos);
 
 		var total_tMax: f64 = 0;
 

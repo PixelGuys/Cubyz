@@ -225,7 +225,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 				.user => |user| {
 					const minDistSquare = self.pos.getMinDistanceSquared(user.clientUpdatePos);
 					//                                                                              ↓ Margin for error. (diagonal of 1 chunk)
-					var targetRenderDistance: i64 = @as(i64, user.renderDistance)*chunk.chunkSize + @as(i64, @intFromFloat(@as(comptime_int, chunk.chunkSize)*@sqrt(3.0)));
+					var targetRenderDistance: i64 = @as(i64, user.renderDistance)*chunk.chunkSize + @as(i64, @ceil(@as(comptime_int, chunk.chunkSize)*@sqrt(3.0)));
 					targetRenderDistance *= self.pos.voxelSize;
 					return minDistSquare <= targetRenderDistance*targetRenderDistance;
 				},

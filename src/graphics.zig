@@ -870,7 +870,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 	}
 
 	pub fn mousePosToIndex(self: TextBuffer, mousePos: Vec2f, bufferLen: usize) u32 {
-		var line: usize = @intFromFloat(@max(0, mousePos[1]/16.0));
+		var line: usize = @trunc(@max(0, mousePos[1]/16.0));
 		line = @min(line, self.lineBreaks.items.len - 2);
 		var x: f32 = self.getLineOffset(line);
 		const start = self.lineBreaks.items[line].index;
@@ -1798,7 +1798,7 @@ pub const TextureArray = struct { // MARK: TextureArray
 			gSum /= aSum;
 			bSum /= aSum;
 		}
-		return Color{.r = @intFromFloat(rSum), .g = @intFromFloat(gSum), .b = @intFromFloat(bSum), .a = @intFromFloat(aSum)};
+		return Color{.r = @trunc(rSum), .g = @trunc(gSum), .b = @trunc(bSum), .a = @trunc(aSum)};
 	}
 
 	/// (Re-)Generates the GPU buffer.
