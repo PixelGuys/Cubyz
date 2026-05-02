@@ -1,0 +1,48 @@
+.{
+	.properties = .{.mountain, .cold},
+	.minHeight = 80,
+	.maxHeight = 256,
+	.smoothBeaches = true,
+	.radius = 420,
+	.mountains = 150,
+	.maxSubBiomeCount = 1,
+	.stoneBlock = "cubyz:glacite/base",
+	.music = "cubyz:sunrise",
+	.ground_structure = .{
+		"cubyz:snow",
+		"4 to 6 cubyz:permafrost",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.001,
+			.block = "cubyz:snow",
+			.size = 5,
+			.size_variance = 1,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/loblolly",
+			.placeMode = .degradable,
+			.chance = 0.15,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/eastern_white",
+			.placeMode = .degradable,
+			.chance = 0.15,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/young_tree",
+			.placeMode = .degradable,
+			.chance = 0.1,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/standalone_roots",
+			.placeMode = .degradable,
+			.chance = 0.1,
+		},
+	},
+}
