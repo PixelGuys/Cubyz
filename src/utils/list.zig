@@ -421,12 +421,28 @@ pub fn ListUnmanaged(comptime T: type) type {
 	};
 }
 
-test "ListUnmanaged.print single call" {
+test "ListUnmanaged.print single call, buffer not preserved" {
 	var list: ListUnmanaged(u8) = .{};
+	const oldAddress = list.items.ptr;
+	defer list.deinit(main.stackAllocator);
+
+	list.print(main.stackAllocator, "foo {d:.1}", .{34});
+	const newAddress = list.items.ptr;
+
+	try std.testing.expect(oldAddress != newAddress);
+	try std.testing.expectEqualStrings("foo 34", list.items);
+	try std.testing.expect(list.items.len <= list.capacity);
+}
+
+test "ListUnmanaged.print initCapacity, buffer preserved" {
+	var list: ListUnmanaged(u8) = .initCapacity(main.stackAllocator, 6);
+	const oldAddress = list.items.ptr;
 	defer list.deinit(main.stackAllocator);
 
 	list.print(main.stackAllocator, "foo {}", .{34});
+	const newAddress = list.items.ptr;
 
+	try std.testing.expect(oldAddress == newAddress);
 	try std.testing.expectEqualStrings("foo 34", list.items);
 	try std.testing.expect(list.items.len <= list.capacity);
 }
@@ -441,26 +457,30 @@ test "ListUnmanaged.print with a string" {
 	try std.testing.expect(list.items.len <= list.capacity);
 }
 
-test "ListUnmanaged.print multiple writes" {
+test "ListUnmanaged.print multiple prints" {
 	var list: ListUnmanaged(u8) = .{};
+	const oldAddress = list.items.ptr;
 	defer list.deinit(main.stackAllocator);
 
 	// The tricky part of the implementation is to correctly reassign buffer bounds, so every time
 	// we use the list as print destination, we want to make sure it retains normal list behavior
 	// by inserting a single element.
 	list.append(main.stackAllocator, '\n');
-	list.print(main.stackAllocator, "BarFooSpam {any}", .{[2]f32{0.3, 0.4}});
+	list.print(main.stackAllocator, "BarFooSpam {}", .{0.3});
 	list.append(main.stackAllocator, '\n');
 	list.print(main.stackAllocator, "fooBarSpam {}", .{34});
 	list.append(main.stackAllocator, '\n');
 
+	const newAddress = list.items.ptr;
+
 	const expected =
 		\\
-		\\BarFooSpam { 0.3, 0.4 }
+		\\BarFooSpam 0.3
 		\\fooBarSpam 34
 		\\
 	;
 
+	try std.testing.expect(oldAddress != newAddress);
 	try std.testing.expectEqualStrings(expected, list.items);
 	try std.testing.expect(list.items.len <= list.capacity);
 }
