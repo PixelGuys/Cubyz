@@ -31,7 +31,7 @@ For further information, ask <img src="https://avatars.githubusercontent.com/u/1
 
 - the underground matters, often structures will generate on a slope or above a cave, exposing its underside, so make sure the structure continues underground and contains roots where applicable
 - make sure you fill your structures with `cubyz:void` blocks before saving them, unless you actually want it to replace surrounding terrain with air blocks
-- for trees and other structures with degradable components like leaves and branches, make sure all the blocks are degradable using the `/toggledecay` command
+- for trees and other structures with degradable blocks like leaves and branches, make sure all the blocks are converted to degradable variants using the `/toggledecay` command
 - always capture the smallest volume possible, these structures are not cheap
-- if your structure appears in bulk, try to split it into multiple randomized parts to avoid repetitive structures
+- if your structure appears in bulk, try to split it into multiple randomized parts to avoid clearly visible repetition
 - rare fun variants are encouraged (e.g. take inspiration from the bolete mushroom base)
