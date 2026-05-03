@@ -160,9 +160,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 
 	var selectionCapabilities: ?[]SelectionCapability = null;
 	if (zon.getChildOrNull("selectionCapabilities")) |capabilitiesZon| {
-		const capabilities = SelectionCapability.loadSelectionCapabilitiesFromZon(main.stackAllocator, capabilitiesZon);
-		defer main.stackAllocator.free(capabilities);
-		selectionCapabilities = main.worldArena.allocator.dupe(SelectionCapability, capabilities) catch unreachable;
+		selectionCapabilities = SelectionCapability.loadSelectionCapabilitiesFromZon(main.worldArena, capabilitiesZon);
 	}
 	_selectionCapabilities[size] = selectionCapabilities;
 
