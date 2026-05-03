@@ -68,6 +68,8 @@ pub const Ore = struct {
 	seed: u64,
 };
 
+const SelectionRule = enum { always, toolEffective, never };
+
 var _transparent: [maxBlockCount]bool = undefined;
 var _collide: [maxBlockCount]bool = undefined;
 var _id: [maxBlockCount][]u8 = undefined;
@@ -77,7 +79,7 @@ var _blockResistance: [maxBlockCount]f32 = undefined;
 
 /// Whether you can replace it with another block, mainly used for fluids/gases
 var _replaceable: [maxBlockCount]bool = undefined;
-var _selectable: [maxBlockCount]bool = undefined;
+var _selectionRule: [maxBlockCount]SelectionRule = undefined;
 var _blockDrops: [maxBlockCount][]const BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
 var _degradable: [maxBlockCount]bool = undefined;
@@ -137,9 +139,8 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_light[size] = zon.get(u32, "emittedLight", 0);
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
-	_selectable[size] = zon.get(bool, "selectable", true);
+	_selectionRule[size] = zon.get(SelectionRule, "selectionRule", .always);
 	_replaceable[size] = zon.get(bool, "replaceable", false);
-
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
 	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
@@ -414,8 +415,8 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return _replaceable[self.typ];
 	}
 
-	pub inline fn selectable(self: Block) bool {
-		return _selectable[self.typ];
+	pub inline fn selectionRule(self: Block) SelectionRule {
+		return _selectionRule[self.typ];
 	}
 
 	pub inline fn blockDrops(self: Block) []const BlockDrop {
@@ -524,6 +525,21 @@ pub const Block = packed struct(u32) { // MARK: Block
 
 	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
 		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
+	}
+
+	pub fn isSelectableByItem(self: Block, item: Item) bool {
+		if (item == .baseItem and item.baseItem.block() == self.typ) return true;
+
+		if (self.hasTag(.fluid)) {
+			const fluidPlaceable = item == .baseItem and item.baseItem.hasTag(.fluidPlaceable);
+			return fluidPlaceable;
+		}
+
+		return switch (self.selectionRule()) {
+			.always => true,
+			.toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(self),
+			.never => false,
+		};
 	}
 };
 

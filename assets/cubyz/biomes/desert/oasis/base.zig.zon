@@ -1,5 +1,6 @@
 .{
 	.tags = .{
+		.palm,
 		.baobab,
 		.cactus,
 	},

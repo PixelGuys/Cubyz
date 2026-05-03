@@ -600,7 +600,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		_ = xOffset;
 		scrollOffset += @floatCast(yOffset);
 		scrollOffsetFraction += @floatCast(yOffset);
-		scrollOffsetInteger += @intFromFloat(@round(scrollOffsetFraction));
+		scrollOffsetInteger += @round(scrollOffsetFraction);
 		scrollOffsetFraction -= @round(scrollOffsetFraction);
 	}
 	fn glDebugOutput(source: c_uint, typ: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.c) void {
@@ -732,6 +732,10 @@ pub fn init() void { // MARK: init()
 		vulkan.init(vulkanWindow) catch |err| {
 			std.log.err("Error while initializing Vulkan: {s}", .{@errorName(err)});
 		};
+		if (!settings.launchConfig.vulkanTestingMode) {
+			c.glfwDestroyWindow(vulkanWindow);
+			vulkan.deinit();
+		}
 	}
 
 	c.glfwWindowHint(c.GLFW_CLIENT_API, c.GLFW_OPENGL_API);
@@ -779,8 +783,10 @@ pub fn init() void { // MARK: init()
 pub fn deinit() void {
 	Gamepad.deinit();
 	c.glfwDestroyWindow(window);
-	c.glfwDestroyWindow(vulkanWindow);
-	vulkan.deinit();
+	if (settings.launchConfig.vulkanTestingMode) {
+		c.glfwDestroyWindow(vulkanWindow);
+		vulkan.deinit();
+	}
 	c.glfwTerminate();
 }
 var cursorVisible: bool = true;

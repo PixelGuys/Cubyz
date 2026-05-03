@@ -39,6 +39,7 @@ pub fn init() void {
 		"",
 		&uniforms,
 		graphics.draw.SimpleVertex2D,
+		&.{},
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.{

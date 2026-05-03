@@ -3,6 +3,7 @@
 		.cold,
 	},
 	.tags = .{
+		.birch,
 		.pine,
 		.oak,
 	},

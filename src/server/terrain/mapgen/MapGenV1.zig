@@ -94,8 +94,8 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 			const updatedY = wy + offsetY;
 			const rawXBiome = (updatedX - @as(f32, @floatFromInt(map.pos.wx)))/biomeSize;
 			const rawYBiome = (updatedY - @as(f32, @floatFromInt(map.pos.wy)))/biomeSize;
-			const xBiome: i32 = @as(i32, @intFromFloat(@floor(rawXBiome))) + offset;
-			const yBiome: i32 = @as(i32, @intFromFloat(@floor(rawYBiome))) + offset;
+			const xBiome: i32 = @as(i32, @floor(rawXBiome)) + offset;
+			const yBiome: i32 = @as(i32, @floor(rawYBiome)) + offset;
 			const relXBiome = rawXBiome - @floor(rawXBiome);
 			const relYBiome = rawYBiome - @floor(rawYBiome);
 			const interpolationCoefficientsX = interpolationWeights(relXBiome, .square);
@@ -131,14 +131,14 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 			height += (roughMap.get(x, y) - 0.5)*2*roughness;
 			height += (hillMap.get(x, y) - 0.5)*2*hills;
 			height += (mountainMap.get(x, y) - 0.5)*2*mountains;
-			map.heightMap[x][y] = @intFromFloat(height);
-			map.minHeight = @min(map.minHeight, @as(i32, @intFromFloat(height)));
+			map.heightMap[x][y] = @trunc(height);
+			map.minHeight = @min(map.minHeight, @as(i32, @trunc(height)));
 			map.minHeight = @max(map.minHeight, 0);
-			map.maxHeight = @max(map.maxHeight, @as(i32, @intFromFloat(height)));
+			map.maxHeight = @max(map.maxHeight, @as(i32, @trunc(height)));
 
 			// Select a biome. Also adding some white noise to make a smoother transition.
-			const roundedXBiome = @as(i32, @intFromFloat(@round(rawXBiome))) + offset;
-			const roundedYBiome = @as(i32, @intFromFloat(@round(rawYBiome))) + offset;
+			const roundedXBiome = @as(i32, @round(rawXBiome)) + offset;
+			const roundedYBiome = @as(i32, @round(rawYBiome)) + offset;
 			const biomePoint = biomePositions.get(@intCast(roundedXBiome), @intCast(roundedYBiome));
 			map.biomeMap[x][y] = biomePoint.biome;
 		}

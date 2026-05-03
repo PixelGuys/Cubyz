@@ -100,26 +100,21 @@ pub const RotationMode = struct { // MARK: RotationMode
 			shouldDropSourceBlockOnSuccess.* = true;
 			if (oldBlock == newBlock) return .no;
 			if (oldBlock.typ == newBlock.typ) return .yes;
-			if (!oldBlock.replaceable()) {
-				var damage: f32 = main.game.Player.defaultBlockDamage;
-				const isProceduralItem = item.item == .proceduralItem;
-				if (isProceduralItem) {
-					damage = item.item.proceduralItem.getBlockDamage(oldBlock);
-				}
-				damage -= oldBlock.blockResistance();
-				if (damage > 0) {
+			var damage: f32 = main.game.Player.defaultBlockDamage;
+			const isProceduralItem = item.item == .proceduralItem;
+			if (isProceduralItem) {
+				damage = item.item.proceduralItem.getBlockDamage(oldBlock);
+			}
+			damage -= oldBlock.blockResistance();
+			if (damage > 0) {
+				if (newBlock.typ == 0) {
 					if (isProceduralItem and item.item.proceduralItem.isEffectiveOn(oldBlock)) {
 						return .{.yes_costsDurability = 1};
 					} else return .yes;
-				}
-			} else {
-				if (item.item == .baseItem) {
+				} else if (item.item == .baseItem and oldBlock.replaceable()) {
 					if (item.item.baseItem.block() != null and item.item.baseItem.block().? == newBlock.typ) {
 						return .{.yes_costsItems = 1};
 					}
-				}
-				if (newBlock.typ == 0) {
-					return .yes;
 				}
 			}
 			return .no;

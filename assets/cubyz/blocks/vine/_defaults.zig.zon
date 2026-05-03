@@ -3,8 +3,10 @@
 	.blockHealth = 0.3,
 	.onUpdate = .{.type = .vine_decay},
 	.drops = .{
-		.{.items = .{.auto}},
+		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
 	},
+	.selectionRule = .toolEffective,
+	.replaceable = true,
 	.degradable = true,
 	.viewThrough = true,
 	.absorbedLight = 0x000000,

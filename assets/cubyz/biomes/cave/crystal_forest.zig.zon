@@ -1,6 +1,9 @@
 .{
 	.isCave = true,
-	.tags = .{.cave_layer},
+	.tags = .{
+		.cave_layer,
+		.oak,
+	},
 	.maxHeight = -512,
 	.chance = 0.01,
 

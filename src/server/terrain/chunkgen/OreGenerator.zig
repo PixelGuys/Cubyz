@@ -62,7 +62,7 @@ fn considerCoordinates(ore: *const main.blocks.Ore, relX: f32, relY: f32, relZ: 
 	// Compose the seeds from some random stats of the ore. They generally shouldn't be the same for two different ores. TODO: Give each block a hash function (id based) that can be used in cases like this.
 	var seed = startSeed ^ ore.seed;
 	// Determine how many veins of this type start in this chunk. The number depends on parameters set for the specific ore:
-	const veins: u32 = @intFromFloat(random.nextFloat(&seed)*ore.veins*2);
+	const veins: u32 = @trunc(random.nextFloat(&seed)*ore.veins*2);
 	for (0..veins) |_| {
 		// Choose some in world coordinates to start generating:
 		const veinRelX = relX + random.nextFloat(&seed)*chunkSizeFloat;
@@ -72,10 +72,10 @@ fn considerCoordinates(ore: *const main.blocks.Ore, relX: f32, relY: f32, relZ: 
 		const size = (random.nextFloat(&seed) + 0.5)*ore.size;
 		const expectedVolume = 2*size/ore.density; // Double the volume, because later the density is actually halfed.
 		const radius = std.math.cbrt(expectedVolume*3/4/std.math.pi);
-		var xMin: i32 = @intFromFloat(veinRelX - radius);
-		var xMax: i32 = @intFromFloat(@ceil(veinRelX + radius));
-		var yMin: i32 = @intFromFloat(veinRelY - radius);
-		var yMax: i32 = @intFromFloat(@ceil(veinRelY + radius));
+		var xMin: i32 = @floor(veinRelX - radius);
+		var xMax: i32 = @ceil(veinRelX + radius);
+		var yMin: i32 = @floor(veinRelY - radius);
+		var yMax: i32 = @ceil(veinRelY + radius);
 		xMin = @max(xMin, 0);
 		xMax = @min(xMax, chunk.super.width);
 		yMin = @max(yMin, 0);
@@ -91,8 +91,8 @@ fn considerCoordinates(ore: *const main.blocks.Ore, relX: f32, relY: f32, relZ: 
 				const xyDistSqr = distToCenterX*distToCenterX + distToCenterY*distToCenterY;
 				if (xyDistSqr > 1) continue;
 				const zDistance = radius*@sqrt(1 - xyDistSqr);
-				var zMin: i32 = @intFromFloat(veinRelZ - zDistance);
-				var zMax: i32 = @intFromFloat(@ceil(veinRelZ + zDistance));
+				var zMin: i32 = @floor(veinRelZ - zDistance);
+				var zMax: i32 = @ceil(veinRelZ + zDistance);
 				zMin = @max(zMin, 0);
 				zMax = @min(zMax, chunk.super.width);
 				var curZ = zMin;
