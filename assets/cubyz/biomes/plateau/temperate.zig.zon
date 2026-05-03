@@ -2,7 +2,7 @@
 	.properties = .{},
 	.tags = .{
 		.oak,
-	},	
+	},
 	.ground_structure = .{
 		"cubyz:grass",
 		"1 to 2 cubyz:soil",
