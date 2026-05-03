@@ -93,7 +93,6 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				}
 			}
 
-
 			if (nextArgument == null) {
 				failWithMessage(errorMessage, "Too many arguments for command, expected {}", .{s.fields.len});
 				return error.ParseError;
