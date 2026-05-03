@@ -102,26 +102,24 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 		}
 
 		fn resolveArgument(comptime Field: type, allocator: NeverFailingAllocator, name: []const u8, argument: ?[]const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!Field {
-			switch (@typeInfo(Field)) {
-				inline .optional => |optionalInfo| {
-					if (argument == null) return error.ParseError;
-					return resolveArgument(optionalInfo.child, allocator, name, argument, errorMessage) catch |err| {
-						return err;
-					};
-				},
+			const fieldTypeInfo = @typeInfo(Field);
+			if (fieldTypeInfo == .optional) {
+				if (argument == null) return error.ParseError;
+				return resolveArgument(fieldTypeInfo.optional.child, allocator, name, argument, errorMessage) catch |err| {
+					return err;
+				};
+			}
+
+			const arg = argument orelse {
+				errorMessage.print(main.stackAllocator, missingArgumentMessage, .{name});
+				return error.ParseError;
+			};
+			switch (fieldTypeInfo) {
 				inline .@"struct" => {
-					const arg = argument orelse {
-						errorMessage.print(main.stackAllocator, missingArgumentMessage, .{name});
-						return error.ParseError;
-					};
 					if (!@hasDecl(Field, "parse")) @compileError("Struct must have a parse function");
 					return @field(Field, "parse")(allocator, name, arg, errorMessage);
 				},
 				inline .@"enum" => {
-					const arg = argument orelse {
-						errorMessage.print(main.stackAllocator, missingArgumentMessage, .{name});
-						return error.ParseError;
-					};
 					return std.meta.stringToEnum(Field, arg) orelse {
 						const str = main.meta.concatComptime("/", std.meta.fieldNames(Field));
 						errorMessage.print(main.stackAllocator, "Expected one of {s} for <{s}>, found \"{s}\"", .{str, name, arg});
@@ -129,20 +127,12 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 					};
 				},
 				inline .float => |floatInfo| return {
-					const arg = argument orelse {
-						errorMessage.print(main.stackAllocator, missingArgumentMessage, .{name});
-						return error.ParseError;
-					};
 					return std.fmt.parseFloat(std.meta.Float(floatInfo.bits), arg) catch {
 						errorMessage.print(main.stackAllocator, "Expected a number for <{s}>, found \"{s}\"", .{name, arg});
 						return error.ParseError;
 					};
 				},
 				inline .int => |intInfo| {
-					const arg = argument orelse {
-						errorMessage.print(main.stackAllocator, missingArgumentMessage, .{name});
-						return error.ParseError;
-					};
 					return std.fmt.parseInt(std.meta.Int(intInfo.signedness, intInfo.bits), arg, 0) catch {
 						errorMessage.print(main.stackAllocator, "Expected an integer for <{s}>, found \"{s}\"", .{name, arg});
 						return error.ParseError;
@@ -314,6 +304,25 @@ test "float int optional float missing" {
 	try std.testing.expectEqual(result.x, 33.0);
 	try std.testing.expectEqual(result.y, 154);
 	try std.testing.expectEqual(result.z, null);
+}
+
+test "float int optional float present" {
+	const ArgParser = Parser(struct {
+		x: f64,
+		y: i32,
+		z: ?f32,
+	}, .{.commandName = ""});
+
+	var errors: ListUnmanaged(u8) = .{};
+	defer errors.deinit(main.stackAllocator);
+
+	const resultOrError = ArgParser.parse(main.stackAllocator, "33.0 154 0.1", &errors);
+
+	try std.testing.expectEqualStrings("", errors.items);
+	const result = try resultOrError;
+	try std.testing.expectEqual(result.x, 33.0);
+	try std.testing.expectEqual(result.y, 154);
+	try std.testing.expectEqual(result.z, 0.1);
 }
 
 test "x or xy case x" {
