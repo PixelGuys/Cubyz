@@ -93,8 +93,8 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				}
 			}
 
-			if (nextArgument == null) {
-				failWithMessage(errorMessage, "Too many arguments for command, expected {}", .{s.fields.len});
+			if (nextArgument != null) {
+				errorMessage.print(main.stackAllocator, "Too many arguments for command, expected {}", .{s.fields.len});
 				return error.ParseError;
 			}
 
@@ -111,7 +111,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				},
 				inline .@"struct" => {
 					const arg = argument orelse {
-						failWithMessage(errorMessage, missingArgumentMessage, .{name});
+						errorMessage.print(main.stackAllocator, missingArgumentMessage, .{name});
 						return error.ParseError;
 					};
 					if (!@hasDecl(Field, "parse")) @compileError("Struct must have a parse function");
@@ -119,32 +119,32 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				},
 				inline .@"enum" => {
 					const arg = argument orelse {
-						failWithMessage(errorMessage, missingArgumentMessage, .{name});
+						errorMessage.print(main.stackAllocator, missingArgumentMessage, .{name});
 						return error.ParseError;
 					};
 					return std.meta.stringToEnum(Field, arg) orelse {
 						const str = main.meta.concatComptime("/", std.meta.fieldNames(Field));
-						failWithMessage(errorMessage, "Expected one of {s} for <{s}>, found \"{s}\"", .{str, name, arg});
+						errorMessage.print(main.stackAllocator, "Expected one of {s} for <{s}>, found \"{s}\"", .{str, name, arg});
 						return error.ParseError;
 					};
 				},
 				inline .float => |floatInfo| return {
 					const arg = argument orelse {
-						failWithMessage(errorMessage, missingArgumentMessage, .{name});
+						errorMessage.print(main.stackAllocator, missingArgumentMessage, .{name});
 						return error.ParseError;
 					};
 					return std.fmt.parseFloat(std.meta.Float(floatInfo.bits), arg) catch {
-						failWithMessage(errorMessage, "Expected a number for <{s}>, found \"{s}\"", .{name, arg});
+						errorMessage.print(main.stackAllocator, "Expected a number for <{s}>, found \"{s}\"", .{name, arg});
 						return error.ParseError;
 					};
 				},
 				inline .int => |intInfo| {
 					const arg = argument orelse {
-						failWithMessage(errorMessage, missingArgumentMessage, .{name});
+						errorMessage.print(main.stackAllocator, missingArgumentMessage, .{name});
 						return error.ParseError;
 					};
 					return std.fmt.parseInt(std.meta.Int(intInfo.signedness, intInfo.bits), arg, 0) catch {
-						failWithMessage(errorMessage, "Expected an integer for <{s}>, found \"{s}\"", .{name, arg});
+						errorMessage.print(main.stackAllocator, "Expected an integer for <{s}>, found \"{s}\"", .{name, arg});
 						return error.ParseError;
 					};
 				},
@@ -210,12 +210,6 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 	};
 }
 
-fn failWithMessage(errorMessage: *ListUnmanaged(u8), comptime fmt: []const u8, args: anytype) void {
-	const msg = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
-	defer main.stackAllocator.free(msg);
-	errorMessage.appendSlice(main.stackAllocator, msg);
-}
-
 pub const AutocompleteResult = struct {
 	suggestions: ListUnmanaged([]const u8) = .{},
 
@@ -252,20 +246,21 @@ test "float" {
 	var errors: ListUnmanaged(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
-	const result = try Test.OnlyX.parse(main.stackAllocator, "33.0", &errors);
+	const resultOrError = Test.OnlyX.parse(main.stackAllocator, "33.0", &errors);
 
-	try std.testing.expect(errors.items.len == 0);
-	try std.testing.expect(result.x == 33.0);
+	try std.testing.expectEqualStrings("", errors.items);
+	const result = try resultOrError;
+	try std.testing.expectEqual(result.x, 33.0);
 }
 
 test "float negative" {
 	var errors: ListUnmanaged(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
-	const result = Test.OnlyX.parse(main.stackAllocator, "foo", &errors);
+	const resultOrError = Test.OnlyX.parse(main.stackAllocator, "foo", &errors);
 
-	try std.testing.expectError(error.ParseError, result);
-	try std.testing.expect(errors.items.len != 0);
+	try std.testing.expectEqualStrings("Expected a number for <x>, found \"foo\"", errors.items);
+	try std.testing.expectError(error.ParseError, resultOrError);
 }
 
 test "enum" {
@@ -276,10 +271,11 @@ test "enum" {
 	var errors: ListUnmanaged(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
-	const result = try ArgParser.parse(main.stackAllocator, "foo", &errors);
+	const resultOrError = ArgParser.parse(main.stackAllocator, "foo", &errors);
 
-	try std.testing.expect(errors.items.len == 0);
-	try std.testing.expect(result.cmd == .foo);
+	try std.testing.expectEqualStrings("", errors.items);
+	const result = try resultOrError;
+	try std.testing.expectEqual(result.cmd, .foo);
 }
 
 test "float int float" {
@@ -292,12 +288,13 @@ test "float int float" {
 	var errors: ListUnmanaged(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
-	const result = try ArgParser.parse(main.stackAllocator, "33.0 154 -5654.0", &errors);
+	const resultOrError = ArgParser.parse(main.stackAllocator, "33.0 154 -5654.0", &errors);
 
-	try std.testing.expect(errors.items.len == 0);
-	try std.testing.expect(result.x == 33.0);
-	try std.testing.expect(result.y == 154);
-	try std.testing.expect(result.z == -5654.0);
+	try std.testing.expectEqualStrings("", errors.items);
+	const result = try resultOrError;
+	try std.testing.expectEqual(result.x, 33.0);
+	try std.testing.expectEqual(result.y, 154);
+	try std.testing.expectEqual(result.z, -5654.0);
 }
 
 test "float int optional float missing" {
@@ -310,74 +307,95 @@ test "float int optional float missing" {
 	var errors: ListUnmanaged(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
-	const result = try ArgParser.parse(main.stackAllocator, "33.0 154", &errors);
+	const resultOrError = ArgParser.parse(main.stackAllocator, "33.0 154", &errors);
 
-	try std.testing.expect(errors.items.len == 0);
-	try std.testing.expect(result.x == 33.0);
-	try std.testing.expect(result.y == 154);
-	try std.testing.expect(result.z == null);
+	try std.testing.expectEqualStrings("", errors.items);
+	const result = try resultOrError;
+	try std.testing.expectEqual(result.x, 33.0);
+	try std.testing.expectEqual(result.y, 154);
+	try std.testing.expectEqual(result.z, null);
 }
 
 test "x or xy case x" {
 	var errors: ListUnmanaged(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
-	const result = try Test.@"Union X or XY".parse(main.stackAllocator, "0.9", &errors);
+	const resultOrError = Test.@"Union X or XY".parse(main.stackAllocator, "0.9", &errors);
 
-	try std.testing.expect(errors.items.len == 0);
-	try std.testing.expect(result.x.x == 0.9);
+	try std.testing.expectEqualStrings("", errors.items);
+	const result = try resultOrError;
+	try std.testing.expectEqual(result.x.x, 0.9);
 }
 
 test "x or xy case xy" {
 	var errors: ListUnmanaged(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
-	const result = try Test.@"Union X or XY".parse(main.stackAllocator, "0.9 1.0", &errors);
+	const resultOrError = Test.@"Union X or XY".parse(main.stackAllocator, "0.9 1.0", &errors);
 
-	try std.testing.expect(errors.items.len == 0);
-	try std.testing.expect(result.xy.x == 0.9);
-	try std.testing.expect(result.xy.y == 1.0);
+	try std.testing.expectEqualStrings("", errors.items);
+	const result = try resultOrError;
+	try std.testing.expectEqual(result.xy.x, 0.9);
+	try std.testing.expectEqual(result.xy.y, 1.0);
 }
 
 test "x or xy negative empty" {
 	var errors: ListUnmanaged(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
-	const result = Test.@"Union X or XY".parse(main.stackAllocator, "", &errors);
+	const resultOrError = Test.@"Union X or XY".parse(main.stackAllocator, "", &errors);
 
-	try std.testing.expect(errors.items.len != 0);
-	try std.testing.expectError(error.ParseError, result);
+	try std.testing.expectEqualStrings(
+		\\---
+		\\x
+		\\Expected a number for <x>, found ""
+		\\---
+		\\xy
+		\\Expected a number for <x>, found ""
+		\\---
+	, errors.items);
+	try std.testing.expectError(error.ParseError, resultOrError);
 }
 
-test "x or xy negative too much" {
+test "x or xy negative too many args" {
 	var errors: ListUnmanaged(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
-	const result = Test.@"Union X or XY".parse(main.stackAllocator, "1.0 3.0 5.0", &errors);
+	const resultOrError = Test.@"Union X or XY".parse(main.stackAllocator, "1.0 3.0 5.0", &errors);
 
-	try std.testing.expect(errors.items.len != 0);
-	try std.testing.expectError(error.ParseError, result);
+	try std.testing.expectEqualStrings(
+		\\---
+		\\x
+		\\Too many arguments for command, expected 1
+		\\---
+		\\xy
+		\\Too many arguments for command, expected 2
+		\\---
+	, errors.items);
+	try std.testing.expectError(error.ParseError, resultOrError);
 }
 
 test "subCommands foo" {
 	var errors: ListUnmanaged(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
-	const result = try Test.@"subCommands foo or bar".parse(main.stackAllocator, "foo 1.0", &errors);
+	const resultOrError = Test.@"subCommands foo or bar".parse(main.stackAllocator, "foo 1.0", &errors);
 
-	try std.testing.expect(errors.items.len == 0);
-	try std.testing.expect(result.foo.cmd == .foo);
-	try std.testing.expect(result.foo.x == 1.0);
+	try std.testing.expectEqualStrings("", errors.items);
+	const result = try resultOrError;
+	try std.testing.expectEqual(result.foo.cmd, .foo);
+	try std.testing.expectEqual(result.foo.x, 1.0);
 }
 
 test "subCommands bar" {
 	var errors: ListUnmanaged(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
-	const result = try Test.@"subCommands foo or bar".parse(main.stackAllocator, "bar 2.0 3.0", &errors);
+	const resultOrError = Test.@"subCommands foo or bar".parse(main.stackAllocator, "bar 2.0 3.0", &errors);
 
-	try std.testing.expect(errors.items.len == 0);
-	try std.testing.expect(result.bar.cmd == .bar);
-	try std.testing.expect(result.bar.x == 2.0);
-	try std.testing.expect(result.bar.y == 3.0);
+	try std.testing.expectEqualStrings("", errors.items);
+	const result = try resultOrError;
+	try std.testing.expectEqual(result.bar.cmd, .bar);
+	try std.testing.expectEqual(result.bar.x, 2.0);
+	try std.testing.expectEqual(result.bar.y, 3.0);
 }
