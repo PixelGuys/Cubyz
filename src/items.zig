@@ -848,7 +848,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		return self.craftingGrid[@intCast(x + y*5)];
 	}
 
-	pub fn checkForTagAt(self: *const ProceduralItem, x: i32, y: i32, checkedTag: main.Tag) ?bool {
+	pub fn checkForTagAt(self: *const ProceduralItem, x: i32, y: i32, checkedTag: main.Tag) bool {
 		if (x < 0 or x >= 5) return null;
 		if (y < 0 or y >= 5) return null;
 
