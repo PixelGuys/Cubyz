@@ -33,6 +33,13 @@ pub fn init(zon: ZonElement) ?*@This() {
 	return result;
 }
 
+pub fn maxExtend(self: *@This()) vec.Boxi {
+	return .{
+		.min = .{@floor(-self.maxRadius), @floor(-self.maxRadius), @floor(-self.maxHalfHeight)},
+		.max = .{@ceil(self.maxRadius), @ceil(self.maxRadius), @ceil(self.maxHalfHeight)},
+	};
+}
+
 pub fn instantiate(self: *@This(), arena: NeverFailingAllocator, seed: *u64) SdfInstance {
 	const instance = arena.create(Instance);
 	instance.* = .{

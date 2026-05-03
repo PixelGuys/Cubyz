@@ -20,9 +20,10 @@ pub const SdfModel = struct { // MARK: SdfModel
 	const VTable = struct {
 		init: *const fn (parameters: ZonElement) ?*anyopaque,
 		instantiate: *const fn (self: *anyopaque, arena: NeverFailingAllocator, seed: *u64) SdfInstance,
+		maxExtend: *const fn (self: *anyopaque) vec.Boxi,
 	};
 
-	pub fn initModel(parameters: ZonElement) ?SdfModel {
+	pub fn initModel(parameters: ZonElement) ?struct { model: SdfModel, maxExtend: vec.Boxi } {
 		const id = parameters.get([]const u8, "id", "");
 		const vtable = modelRegistry.get(id) orelse {
 			std.log.err("Couldn't find SDF model with id {s}", .{id});
@@ -33,12 +34,15 @@ pub const SdfModel = struct { // MARK: SdfModel
 			return null;
 		};
 		return .{
-			.data = vtableModel,
-			.instantiateFn = vtable.instantiate,
-			.maxBiomeCenterDistance = std.math.clamp(parameters.get(f32, "maxBiomeCenterDistance", terrain.CaveBiomeMap.CaveBiomeMapFragment.caveBiomeSize/2), 0, terrain.CaveBiomeMap.CaveBiomeMapFragment.caveBiomeSize/2),
-			.minAmount = parameters.get(f32, "minAmount", 1),
-			.maxAmount = parameters.get(f32, "maxAmount", parameters.get(f32, "minAmount", 1)),
-			.mode = parameters.get(@TypeOf(@as(SdfModel, undefined).mode), "mode", .subtractive),
+			.model = .{
+				.data = vtableModel,
+				.instantiateFn = vtable.instantiate,
+				.maxBiomeCenterDistance = std.math.clamp(parameters.get(f32, "maxBiomeCenterDistance", terrain.CaveBiomeMap.CaveBiomeMapFragment.caveBiomeSize/2), 0, terrain.CaveBiomeMap.CaveBiomeMapFragment.caveBiomeSize/2),
+				.minAmount = parameters.get(f32, "minAmount", 1),
+				.maxAmount = parameters.get(f32, "maxAmount", parameters.get(f32, "minAmount", 1)),
+				.mode = parameters.get(@TypeOf(@as(SdfModel, undefined).mode), "mode", .subtractive),
+			},
+			.maxExtend = vtable.maxExtend(vtableModel),
 		};
 	}
 
@@ -70,6 +74,7 @@ pub const SdfModel = struct { // MARK: SdfModel
 		var self: VTable = undefined;
 		self.init = main.meta.castFunctionReturnToOptionalAnyopaque(Generator.init);
 		self.instantiate = main.meta.castFunctionSelfToAnyopaque(Generator.instantiate);
+		self.maxExtend = main.meta.castFunctionSelfToAnyopaque(Generator.maxExtend);
 		modelRegistry.put(main.globalArena.allocator, Generator.id, self) catch unreachable;
 	}
 };
