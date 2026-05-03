@@ -131,11 +131,12 @@ pub fn mainButtonReleased(self: *ItemSlot, _: Vec2f) void {
 
 pub fn render(self: *ItemSlot, _: Vec2f) void {
 	self.refreshText();
-	draw.setColor(0xffffffff);
+	draw.setColor(0xff9999ff);
 	if (self.renderFrame and self.texture != null) {
 		self.texture.?.bindTo(0);
 		draw.boundImage(self.pos, self.size);
 	}
+	draw.setColor(0xffffffff);
 	const item = self.inventory.getItem(self.itemSlot);
 	if (item != .null) {
 		item.render(self.pos, self.size, border);
