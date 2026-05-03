@@ -93,7 +93,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				}
 			}
 
-			if (nextArgument != null) {
+			if (nextArgument != null and !std.mem.eql(u8, nextArgument.?, "")) {
 				errorMessage.print(main.stackAllocator, "Too many arguments for command, expected {}", .{s.fields.len});
 				return error.ParseError;
 			}
@@ -231,6 +231,16 @@ const Test = struct {
 		bar: struct { cmd: enum(u1) { bar }, x: f64, y: f64 },
 	}, .{.commandName = ""});
 };
+
+test "no arguments" {
+	var errors: ListUnmanaged(u8) = .{};
+	defer errors.deinit(main.stackAllocator);
+
+	const resultOrError = Parser(struct {}, .{.commandName = "foo"}).parse(main.stackAllocator, "", &errors);
+
+	try std.testing.expectEqualStrings("", errors.items);
+	_ = try resultOrError;
+}
 
 test "float" {
 	var errors: ListUnmanaged(u8) = .{};
