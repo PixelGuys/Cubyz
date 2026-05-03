@@ -528,7 +528,12 @@ pub const Block = packed struct(u32) { // MARK: Block
 	}
 
 	pub fn isSelectableByItem(self: Block, item: Item) bool {
-		if (item == .baseItem and item.baseItem.block() == self.typ) return true;
+		if (item == .baseItem) {
+			const base = item.baseItem;
+			if (base.block() == self.typ or std.mem.eql(u8, base.id(), "cubyz:selection_wand")) {
+				return true;
+			}
+		}
 
 		if (self.hasTag(.fluid)) {
 			const fluidPlaceable = item == .baseItem and item.baseItem.hasTag(.fluidPlaceable);
