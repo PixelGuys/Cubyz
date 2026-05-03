@@ -1316,8 +1316,8 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 			tagFieldVal.hasTagMatrix[i] = matrixZon.getAtIndex(bool, i, false);
 		}
 		tagFieldVal.tagType = main.Tag.find(paramZon.get(?[]const u8, "tag", null) orelse blk: {
-				std.log.err("Couldn't find tagfield's tag.", .{});
-				break :blk "not specified";
+			std.log.err("Couldn't find tagfield's tag.", .{});
+			break :blk "not specified";
 		});
 	}
 	var parameterMatrices: main.List(PropertyMatrix) = .init(main.worldArena);

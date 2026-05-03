@@ -12,7 +12,7 @@ const OnTopOf = struct {
 
 pub fn satisfied(self: *const OnTopOf, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
 	var isOnTopOfTag: bool = false;
-	
+
 	isOnTopOfTag = proceduralItem.checkForTagAt(x, y, self.tag);
 
 	return isOnTopOfTag;
