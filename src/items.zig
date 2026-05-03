@@ -849,12 +849,12 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	}
 
 	pub fn checkForTagAt(self: *const ProceduralItem, x: i32, y: i32, checkedTag: main.Tag) bool {
-		if (x < 0 or x >= 5) return null;
-		if (y < 0 or y >= 5) return null;
+		if (x < 0 or x >= 5) return false;
+		if (y < 0 or y >= 5) return false;
 
 		for (self.type.tagfields()) |specificTagField| {
 			if (specificTagField.tagType != checkedTag) continue;
-			return specificTagField.hasTagMatrix[@intCast(x + y*5)];
+			if (specificTagField.hasTagMatrix[@intCast(x + y*5)]) return true;
 		}
 		if ((self.getItemAt(x, y) orelse return false).hasTag(checkedTag)) return true;
 		return false;
@@ -1315,7 +1315,10 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 		for (0..25) |i| {
 			tagFieldVal.hasTagMatrix[i] = matrixZon.getAtIndex(bool, i, false);
 		}
-		tagFieldVal.tagType = main.Tag.find(paramZon.get([]const u8, "tag", "not specified"));
+		tagFieldVal.tagType = main.Tag.find(paramZon.get(?[]const u8, "tag", null) orelse blk: {
+				std.log.err("Couldn't find tagfield's tag.", .{});
+				break :blk "not specified";
+		});
 	}
 	var parameterMatrices: main.List(PropertyMatrix) = .init(main.worldArena);
 	for (zon.getChild("parameters").toSlice()) |paramZon| {
