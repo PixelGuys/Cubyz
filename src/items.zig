@@ -853,11 +853,8 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		if (y < 0 or y >= 5) return null;
 
 		for (self.type.tagfields()) |specificTagField| {
-			if (specificTagField.hasTagMatrix[@intCast(x + y*5)] == true) {
-				if (specificTagField.tagType == checkedTag) {
-					return true;
-				}
-			}
+			if (specificTagField.tagType != checkedTag) continue;
+			return specificTagField.hasTagMatrix[@intCast(x + y*5)];
 		}
 		if ((self.getItemAt(x, y) orelse return false).hasTag(checkedTag)) return true;
 		return false;
