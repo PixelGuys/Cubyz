@@ -227,7 +227,7 @@ pub fn build(b: *std.Build) !void {
 	try addModFeatures(b, exe);
 
 	if (isRelease and target.result.os.tag == .windows) {
-		exe.subsystem = .Windows;
+		exe.subsystem = .windows;
 	}
 
 	linkLibraries(b, exe, useLocalDeps);
