@@ -36,6 +36,7 @@ pressed: bool = false,
 renderFrame: bool = true,
 texture: ?Texture,
 mode: Mode,
+color: u32,
 
 var defaultTexture: Texture = undefined;
 var immutableTexture: Texture = undefined;
@@ -69,7 +70,7 @@ pub fn __deinit() void {
 	craftingResultTexture.deinit();
 }
 
-pub fn init(pos: Vec2f, inventory: ClientInventory, itemSlot: u32, texture: TextureParamType, mode: Mode) *ItemSlot {
+pub fn init(pos: Vec2f, inventory: ClientInventory, itemSlot: u32, texture: TextureParamType, mode: Mode, color: u32) *ItemSlot {
 	const self = main.globalAllocator.create(ItemSlot);
 	const amount = inventory.getAmount(itemSlot);
 	var buf: [16]u8 = undefined;
@@ -81,6 +82,7 @@ pub fn init(pos: Vec2f, inventory: ClientInventory, itemSlot: u32, texture: Text
 		.lastItemAmount = amount,
 		.texture = texture.value(),
 		.mode = mode,
+		.color = color,
 	};
 	self.textSize = self.text.calculateLineBreaks(8, self.size[0] - 2*border);
 	return self;
@@ -131,7 +133,7 @@ pub fn mainButtonReleased(self: *ItemSlot, _: Vec2f) void {
 
 pub fn render(self: *ItemSlot, _: Vec2f) void {
 	self.refreshText();
-	draw.setColor(0xff9999ff);
+	draw.setColor(self.color);
 	if (self.renderFrame and self.texture != null) {
 		self.texture.?.bindTo(0);
 		draw.boundImage(self.pos, self.size);
