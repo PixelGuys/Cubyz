@@ -232,7 +232,10 @@ pub const launchConfig = struct {
 pub const environment = struct {
 	pub var SDL_GAMECONTROLLERCONFIG: ?[]const u8 = null;
 
-	pub fn init(env: std.process.Environ) void {
+	pub var env: std.process.Environ = undefined;
+
+	pub fn init(_env: std.process.Environ) void {
+		env = _env;
 		SDL_GAMECONTROLLERCONFIG = env.getAlloc(main.globalArena.allocator, "SDL_GAMECONTROLLERCONFIG") catch null;
 	}
 };
