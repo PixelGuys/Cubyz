@@ -137,6 +137,7 @@ pub fn init() void { // MARK: init()
 		}
 	}
 	GuiWindow.globalInit();
+	GuiComponent.BagSlot.globalInit();
 	Button.globalInit();
 	CheckBox.globalInit();
 	ItemSlot.globalInit();
@@ -156,6 +157,7 @@ pub fn deinit() void {
 	}
 	openWindows.clearRetainingCapacity();
 	GuiWindow.__deinit();
+	GuiComponent.BagSlot.__deinit();
 	Button.__deinit();
 	CheckBox.__deinit();
 	ItemSlot.__deinit();

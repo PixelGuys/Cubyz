@@ -211,7 +211,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		var ii: u32 = 0;
 		while (ii < self.size) {
 			const i = self.indices[ii];
-			if (self.world.?.getSimulationChunkAndIncreaseRefCount(@intFromFloat(pos[i][0]), @intFromFloat(pos[i][1]), @intFromFloat(pos[i][2]))) |simChunk| {
+			if (self.world.?.getSimulationChunkAndIncreaseRefCount(@trunc(pos[i][0]), @trunc(pos[i][1]), @trunc(pos[i][2]))) |simChunk| {
 				defer simChunk.decreaseRefCount();
 				if (simChunk.getChunk()) |chunk| {
 					// Check collision with blocks:
@@ -378,7 +378,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 	fn fixStuckInBlock(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
 		const centeredPos = pos.* - @as(Vec3d, @splat(0.5));
-		const pos0: Vec3i = @intFromFloat(@floor(centeredPos));
+		const pos0: Vec3i = @floor(centeredPos);
 
 		var closestEmptyBlock: Vec3i = @splat(-1);
 		var closestDist = std.math.floatMax(f64);
@@ -750,7 +750,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			if (item != .null) {
 				var pos = itemDrops.list.items(.pos)[i];
 				const rot = itemDrops.list.items(.rot)[i];
-				const blockPos: Vec3i = @intFromFloat(@floor(pos));
+				const blockPos: Vec3i = @floor(pos);
 				const light: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
 				bindLightUniform(light, ambientLight);
 				pos -= playerPos;
@@ -804,7 +804,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			const rot: Vec3f = ItemDisplayManager.cameraFollow;
 
 			const lightPos = @as(Vec3d, @floatCast(playerPos)) - @as(Vec3f, @splat(0.5));
-			const blockPos: Vec3i = @intFromFloat(@floor(lightPos));
+			const blockPos: Vec3i = @floor(lightPos);
 			const localBlockPos: Vec3f = @floatCast(lightPos - @as(Vec3d, @floatFromInt(blockPos)));
 
 			var samples: [8][6]f32 = @splat(@splat(0));
@@ -837,7 +837,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			var result: [6]u8 = .{0, 0, 0, 0, 0, 0};
 			inline for (0..6) |i| {
 				const val = std.math.lerp(samples[getIndex(0, 0, 0)][i], samples[getIndex(1, 0, 0)][i], localBlockPos[0]);
-				result[i] = @as(u8, @intFromFloat(@floor(val)));
+				result[i] = @floor(val);
 			}
 
 			bindLightUniform(result, ambientLight);

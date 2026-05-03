@@ -600,7 +600,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		_ = xOffset;
 		scrollOffset += @floatCast(yOffset);
 		scrollOffsetFraction += @floatCast(yOffset);
-		scrollOffsetInteger += @intFromFloat(@round(scrollOffsetFraction));
+		scrollOffsetInteger += @round(scrollOffsetFraction);
 		scrollOffsetFraction -= @round(scrollOffsetFraction);
 	}
 	fn glDebugOutput(source: c_uint, typ: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.c) void {

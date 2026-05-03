@@ -20,31 +20,14 @@ const BinaryReader = main.utils.BinaryReader;
 
 var lastTime: i16 = 0;
 var timeDifference: utils.TimeDifference = utils.TimeDifference{};
-var uniforms: struct {
-	projectionMatrix: c_int,
-	viewMatrix: c_int,
-	light: c_int,
-	contrast: c_int,
-	ambientLight: c_int,
-} = undefined;
 
-var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 pub var entities: main.utils.VirtualList(main.client.Entity, 1 << 20) = undefined;
+pub var idMapping: main.List(?u32) = undefined;
 pub var mutex: main.utils.Mutex = .{};
-var model: *main.entityModel.EntityModel = undefined;
+
 pub fn init() void {
 	entities = .init();
-	pipeline = graphics.Pipeline.init(
-		"assets/cubyz/shaders/entity_vertex.vert",
-		"assets/cubyz/shaders/entity_fragment.frag",
-		"",
-		&uniforms,
-		main.entityModel.EntityModel.Vertex,
-		&.{},
-		.{},
-		.{.depthTest = true},
-		.{.attachments = &.{.alphaBlending}},
-	);
+	idMapping = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
@@ -52,7 +35,7 @@ pub fn deinit() void {
 		ent.deinit(main.globalAllocator);
 	}
 	entities.deinit();
-	pipeline.deinit();
+	idMapping.deinit();
 }
 
 pub fn clear() void {
@@ -60,11 +43,14 @@ pub fn clear() void {
 		ent.deinit(main.globalAllocator);
 	}
 	entities.clearRetainingCapacity();
+	idMapping.clearRetainingCapacity();
 	timeDifference = utils.TimeDifference{};
 }
 
-fn update() void {
-	main.utils.assertLocked(&mutex);
+pub fn update() void {
+	mutex.lock();
+	defer mutex.unlock();
+
 	var time: i16 = @truncate(main.timestamp().toMilliseconds() -% settings.entityLookback);
 	time -%= timeDifference.difference.load(.monotonic);
 	for (entities.items()) |*ent| {
@@ -73,112 +59,48 @@ fn update() void {
 	lastTime = time;
 }
 
-// TODO: this will be removed in future ECS parts
-pub fn initAfterWorld() void {
-	model = (main.entityModel.getById("cubyz:snale") orelse blk: {
-		std.log.err("EntityModel {s} wasn't found", .{"cubyz:snale"});
-		break :blk main.entityModel.default();
-	}).get();
-}
-pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
-	mutex.lock();
-	defer mutex.unlock();
-
-	const screenUnits = @as(f32, @floatFromInt(main.Window.height))/1024;
-	const fontBaseSize = 128.0;
-	const fontMinScreenSize = 16.0;
-	const fontScreenSize = fontBaseSize*screenUnits;
-
-	for (entities.items()) |ent| {
-		if (ent.id == game.Player.id) continue; // don't render local player
-		if (ent.name.len == 0 and !settings.showPlayerIndexWithName) continue;
-
-		const pos3d = ent.getRenderPosition() - playerPos;
-		const pos4f = Vec4f{
-			@floatCast(pos3d[0]),
-			@floatCast(pos3d[1]),
-			@floatCast(pos3d[2] + 1.1),
-			1,
-		};
-
-		const rotatedPos = game.camera.viewMatrix.mulVec(pos4f);
-		const projectedPos = projMatrix.mulVec(rotatedPos);
-		if (projectedPos[2] < 0) continue;
-		const xCenter = (1 + projectedPos[0]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.width/2));
-		const yCenter = (1 - projectedPos[1]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.height/2));
-
-		const transparency = 38.0*std.math.log10(vec.lengthSquare(pos3d) + 1) - 80.0;
-		const alpha: u32 = @intFromFloat(std.math.clamp(0xff - transparency, 0, 0xff));
-		graphics.draw.setColor(alpha << 24);
-
-		const renderedName = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{ent}) catch unreachable;
-		defer main.stackAllocator.free(renderedName);
-		var buf = graphics.TextBuffer.init(main.stackAllocator, renderedName, .{.color = 0xffffff}, false, .center);
-		defer buf.deinit();
-		const fontSize = std.mem.max(f32, &.{fontMinScreenSize, fontScreenSize/projectedPos[3]});
-		const size = buf.calculateLineBreaks(fontSize, @floatFromInt(main.Window.width*8));
-		buf.render(xCenter - size[0]/2, yCenter - size[1], fontSize);
-	}
-}
-
-pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
-	mutex.lock();
-	defer mutex.unlock();
-	update();
-	pipeline.bind(null);
-
-	c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
-	c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
-	c.glUniform1f(uniforms.contrast, 0.12);
-
-	for (entities.items()) |ent| {
-		if (ent.id == game.Player.id) continue; // don't render local player
-
-		model.bind();
-		const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));
-		const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
-		const light = (@as(u32, lightVals[0] >> 3) << 25 |
-			@as(u32, lightVals[1] >> 3) << 20 |
-			@as(u32, lightVals[2] >> 3) << 15 |
-			@as(u32, lightVals[3] >> 3) << 10 |
-			@as(u32, lightVals[4] >> 3) << 5 |
-			@as(u32, lightVals[5] >> 3) << 0);
-
-		c.glUniform1ui(uniforms.light, @bitCast(@as(u32, light)));
-
-		const pos: Vec3d = ent.getRenderPosition() - playerPos;
-		const modelMatrix = (Mat4f.identity()
-			.mul(Mat4f.translation(Vec3f{
-				@floatCast(pos[0]),
-				@floatCast(pos[1]),
-				@floatCast(pos[2] - 1.0 + 0.09375),
-			}))
-			.mul(Mat4f.rotationZ(-ent.rot[2])));
-		const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
-		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
-		c.glDrawElements(c.GL_TRIANGLES, model.indexCount, c.GL_UNSIGNED_INT, null);
-	}
-}
-
 pub fn addEntity(zon: ZonElement) !void {
 	mutex.lock();
 	defer mutex.unlock();
+
+	const id = zon.get(?u32, "id", null) orelse return error.entityIdMissing;
+	const index = entities.len;
 	var ent = entities.addOne();
+
+	if (idMapping.items.len <= id)
+		idMapping.appendNTimes(null, id - idMapping.items.len + 1);
+	idMapping.items[id] = index;
+
 	try ent.init(zon, main.globalAllocator);
 }
-
+pub fn getEntity(id: u32) ?*main.client.Entity {
+	main.utils.assertLocked(&mutex);
+	if (id < idMapping.items.len)
+		return &entities.items()[idMapping.items[id] orelse return null];
+	return null;
+}
 pub fn removeEntity(id: u32) void {
 	mutex.lock();
 	defer mutex.unlock();
-	for (entities.items(), 0..) |*ent, i| {
-		if (ent.id == id) {
-			ent.deinit(main.globalAllocator);
-			_ = entities.swapRemove(i);
-			if (i != entities.len) {
-				entities.items()[i].interpolatedValues.outPos = &entities.items()[i]._interpolationPos;
-				entities.items()[i].interpolatedValues.outVel = &entities.items()[i]._interpolationVel;
-			}
-			break;
+
+	if (idMapping.items.len <= id)
+		return;
+	const index: u32 = idMapping.items[id] orelse return;
+	const ent = entities.items()[index];
+
+	// remove id
+	idMapping.items[id] = null;
+
+	// remove entity
+	{
+		std.debug.assert(ent.id == id);
+		ent.deinit(main.globalAllocator);
+		_ = entities.swapRemove(index);
+
+		if (index != entities.len) {
+			idMapping.items[entities.items()[index].id] = index;
+			entities.items()[index].interpolatedValues.outPos = &entities.items()[index]._interpolationPos;
+			entities.items()[index].interpolatedValues.outVel = &entities.items()[index]._interpolationVel;
 		}
 	}
 }
@@ -205,11 +127,8 @@ pub fn serverUpdate(time: i16, entityData: []main.entity.EntityNetworkData) void
 			0,
 			0,
 		};
-		for (entities.items()) |*ent| {
-			if (ent.id == data.id) {
-				ent.updatePosition(&pos, &vel, time);
-				break;
-			}
+		if (getEntity(data.id)) |ent| {
+			ent.updatePosition(&pos, &vel, time);
 		}
 	}
 }

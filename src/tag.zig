@@ -11,6 +11,7 @@ pub const Tag = enum(u32) {
 	sbbChild = 2,
 	fluidPlaceable = 3,
 	chiselable = 4,
+	playerModel = 5,
 	_,
 
 	pub fn initTags() void {
