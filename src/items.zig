@@ -1313,7 +1313,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 		const tagFieldVal = tagfields.addOne();
 		const matrixZon = paramZon.getChild("matrix");
 		for (0..25) |i| {
-			tagFieldVal.hasTagMatrix[i] = (matrixZon.getAtIndex(usize, i, 0)  != 0);
+			tagFieldVal.hasTagMatrix[i] = (matrixZon.getAtIndex(usize, i, 0) != 0);
 		}
 		tagFieldVal.tagType = main.Tag.find(paramZon.get(?[]const u8, "tag", null) orelse blk: {
 			std.log.err("Couldn't find tagfield's tag.", .{});
