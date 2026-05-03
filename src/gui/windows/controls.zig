@@ -78,12 +78,17 @@ fn sensitivityFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) 
 	return std.fmt.allocPrint(allocator.allocator, "{s} Sensitivity: {d:.0}%", .{if (editingKeyboard) "Mouse" else "Controller", value*100}) catch unreachable;
 }
 
-fn toggleKeyboard() void {
-	editingKeyboard = !editingKeyboard;
+fn abortBindingProcess() void {
 	selectedKey = null;
 	main.Window.resetNextInputListenters();
 	needsUpdate = true;
 }
+
+fn toggleKeyboard() void {
+	editingKeyboard = !editingKeyboard;
+	abortBindingProcess();
+}
+
 fn unbindKey(keyPtr: usize) void {
 	var key: ?*main.Window.Key = @ptrFromInt(keyPtr);
 	if (editingKeyboard) {
@@ -97,7 +102,7 @@ fn unbindKey(keyPtr: usize) void {
 	needsUpdate = true;
 }
 
-pub fn onOpen() void {
+pub fn initWindow() void {
 	const controlsListWidth: u32 = 256;
 	const keybindButtonWidth: u32 = 160;
 	const unbindButtonWidth: u32 = 64;
@@ -132,18 +137,28 @@ pub fn onOpen() void {
 	gui.updateWindowPositions();
 }
 
-pub fn onClose() void {
+pub fn deinitWindow() void {
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
+}
+
+pub fn onOpen() void {
+	abortBindingProcess();
+	initWindow();
+}
+
+pub fn onClose() void {
+	abortBindingProcess();
+	deinitWindow();
 }
 
 pub fn render() void {
 	if (needsUpdate) {
 		needsUpdate = false;
 		const oldScroll = window.rootComponent.?.verticalList.scrollBar.currentState;
-		onClose();
-		onOpen();
+		deinitWindow();
+		initWindow();
 		window.rootComponent.?.verticalList.scrollBar.currentState = oldScroll;
 	}
 }
