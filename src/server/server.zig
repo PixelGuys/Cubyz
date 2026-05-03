@@ -416,6 +416,12 @@ pub const User = struct { // MARK: User
 		});
 	}
 
+	pub fn clearJobQueue(self: *User) void {
+		while (self.jobQueue.extractAny()) |task| {
+			task.vtable.clean(task.self);
+		}
+	}
+
 	fn isNetworkQueueFull(self: *User) bool {
 		return self.conn.secureChannel.super.sendBuffer.buffer.len > 900000;
 	}
@@ -569,6 +575,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 fn deinit() void {
 	users.clearAndFree();
 	while (userDeinitList.popFront()) |user| {
+		user.clearJobQueue();
 		if (user.refCount.load(.monotonic) == 1) {
 			user.decreaseRefCount();
 		} else {
