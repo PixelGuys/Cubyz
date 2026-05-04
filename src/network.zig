@@ -1553,6 +1553,8 @@ pub const Connection = struct { // MARK: Connection
 			result.slowChannel.deinit();
 			result.queuedConfirmations.deinit();
 		}
+		try result.secureChannel.init(main.random.nextInt(SequenceIndex, &main.seed), 10*ms, .secure, if (user != null) .server else .client);
+		errdefer result.secureChannel.deinit();
 		if (result.connectionIdentifier == 0) result.connectionIdentifier = 1;
 		result.remoteAddress = try SocketAddress.resolve(ipPort, settings.defaultPort);
 		result.bruteforcingPort = result.remoteAddress.isSymmetricNAT;
