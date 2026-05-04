@@ -284,8 +284,7 @@ pub const SocketAddress = struct {
 		const ip = parts.first();
 		var portString = parts.rest();
 		var isSymmetricNAT = false;
-		if(portString.len == 0) return error.EmptyPort;
-		if(portString[0] == '?') {
+		if(portString.len > 0 and portString[0] == '?') {
 			isSymmetricNAT = true;
 			portString = portString[1..];
 		}
@@ -1905,16 +1904,32 @@ test "Resolve address" {
 		const resolvedAddress = try Socket.resolveIP(addressStr);
 		try std.testing.expectEqualDeep(parsedAddress, resolvedAddress);
 	}
-	const socketAddresses: [4][]const u8 = .{
+	const resolvedLocalhost = try Socket.resolveIP("localhost");
+	try std.testing.expectEqualDeep(IpAddress.localhost, resolvedLocalhost);
+
+	const socketAddresses: [3][]const u8 = .{
+		"11.22.33.44",
 		"127.0.0.1:1234",
 		"123.1.111.222:?11111",
-		"1.1.1.1:255",
-		"0.0.0.0:?3333",
 	};
 	for(socketAddresses) |addressStr| {
-		const parsedAddress = try SocketAddress.parse(addressStr, null);
-		const resolvedAddress = try SocketAddress.resolve(addressStr, null);
+		const parsedAddress = try SocketAddress.parse(addressStr, 888);
+		const resolvedAddress = try SocketAddress.resolve(addressStr, 888);
 		try std.testing.expectEqualDeep(parsedAddress, resolvedAddress);
+	}
+	const localhostSocketAddresses: [3][]const u8 = .{
+		"localhost",
+		"localhost:1234",
+		"localhost:?11111",
+	};
+	const expectedLocalhostSocketAddresses: [3]SocketAddress = .{
+		.{.ip = IpAddress.localhost, .port = 888},
+		.{.ip = IpAddress.localhost, .port = 1234},
+		.{.ip = IpAddress.localhost, .port = 11111, .isSymmetricNAT = true},
+	};
+	for(localhostSocketAddresses, expectedLocalhostSocketAddresses) |addressStr, expected| {
+		const resolvedAddress = try SocketAddress.resolve(addressStr, 888);
+		try std.testing.expectEqualDeep(expected, resolvedAddress);
 	}
 }
 
