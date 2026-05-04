@@ -256,10 +256,10 @@ pub const IpAddress = struct {
 	pub fn parse(addr: []const u8) !IpAddress {
 		var parts = std.mem.splitScalar(u8, addr, '.');
 		var address: u32 = 0;
-		while(parts.next()) |part| {
+		while (parts.next()) |part| {
 			const octet = try std.fmt.parseInt(u8, part, 10);
 			address >>= 8;
-			if(address >> 24 > 0) return error.TooManyOctets;
+			if (address >> 24 > 0) return error.TooManyOctets;
 			address |= @as(u32, octet) << 24;
 		}
 		return .{.address = address};
@@ -279,12 +279,12 @@ pub const SocketAddress = struct {
 		}
 	}
 
-	fn parseInner(string: []const u8, defaultPort: ?u16) !struct {ip: []const u8, isSymmetricNAT: bool, port: u16} {
+	fn parseInner(string: []const u8, defaultPort: ?u16) !struct { ip: []const u8, isSymmetricNAT: bool, port: u16 } {
 		var parts = std.mem.splitScalar(u8, string, ':');
 		const ip = parts.first();
 		var portString = parts.rest();
 		var isSymmetricNAT = false;
-		if(portString.len > 0 and portString[0] == '?') {
+		if (portString.len > 0 and portString[0] == '?') {
 			isSymmetricNAT = true;
 			portString = portString[1..];
 		}
@@ -1899,7 +1899,7 @@ test "Resolve address" {
 		"1.1.1.1",
 		"0.0.0.0",
 	};
-	for(addresses) |addressStr| {
+	for (addresses) |addressStr| {
 		const parsedAddress = try IpAddress.parse(addressStr);
 		const resolvedAddress = try Socket.resolveIP(addressStr);
 		try std.testing.expectEqualDeep(parsedAddress, resolvedAddress);
@@ -1912,7 +1912,7 @@ test "Resolve address" {
 		"127.0.0.1:1234",
 		"123.1.111.222:?11111",
 	};
-	for(socketAddresses) |addressStr| {
+	for (socketAddresses) |addressStr| {
 		const parsedAddress = try SocketAddress.parse(addressStr, 888);
 		const resolvedAddress = try SocketAddress.resolve(addressStr, 888);
 		try std.testing.expectEqualDeep(parsedAddress, resolvedAddress);
@@ -1927,7 +1927,7 @@ test "Resolve address" {
 		.{.ip = IpAddress.localhost, .port = 1234},
 		.{.ip = IpAddress.localhost, .port = 11111, .isSymmetricNAT = true},
 	};
-	for(localhostSocketAddresses, expectedLocalhostSocketAddresses) |addressStr, expected| {
+	for (localhostSocketAddresses, expectedLocalhostSocketAddresses) |addressStr, expected| {
 		const resolvedAddress = try SocketAddress.resolve(addressStr, 888);
 		try std.testing.expectEqualDeep(expected, resolvedAddress);
 	}
@@ -1940,7 +1940,7 @@ test "Format address" {
 		"1.1.1.1",
 		"0.0.0.0",
 	};
-	for(addresses) |addressStr| {
+	for (addresses) |addressStr| {
 		const address = try IpAddress.parse(addressStr);
 		const reformattedAddress = std.fmt.allocPrint(main.heap.testingAllocator.allocator, "{f}", .{address}) catch unreachable;
 		defer main.heap.testingAllocator.free(reformattedAddress);
@@ -1952,7 +1952,7 @@ test "Format address" {
 		"1.1.1.1:255",
 		"0.0.0.0:?3333",
 	};
-	for(socketAddresses) |addressStr| {
+	for (socketAddresses) |addressStr| {
 		const address = try SocketAddress.parse(addressStr, null);
 		const reformattedAddress = std.fmt.allocPrint(main.heap.testingAllocator.allocator, "{f}", .{address}) catch unreachable;
 		defer main.heap.testingAllocator.free(reformattedAddress);
