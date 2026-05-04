@@ -656,7 +656,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	{
 		Player.mutex.lock();
 		defer Player.mutex.unlock();
-		
+
 		var stepAmount: f64 = 0.0;
 		if (!Player.isGhost.load(.monotonic)) {
 			const steppingHeightLimit = Player.eye.pos[2] - Player.eye.box.min[2];
@@ -664,7 +664,6 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}
 		physics.update(.client, deltaTime, motion, stepAmount);
 	}
-	
 
 	const time = main.timestamp();
 	if (nextBlockPlaceTime) |*placeTime| {
