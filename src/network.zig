@@ -1902,7 +1902,7 @@ test "Resolve address" {
 	};
 	for(addresses) |addressStr| {
 		const parsedAddress = try IpAddress.parse(addressStr);
-		const resolvedAddress = try IpAddress.resolve(addressStr, null);
+		const resolvedAddress = try Socket.resolveIP(addressStr);
 		try std.testing.expectEqualDeep(parsedAddress, resolvedAddress);
 	}
 	const socketAddresses: [4][]const u8 = .{
