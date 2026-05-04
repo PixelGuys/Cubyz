@@ -309,13 +309,13 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 		var dirX = try main.files.cubyzDir().openIterableDir(path);
 		defer dirX.close();
 		var iterX = dirX.iterate();
-		while (try iterX.next()) |entryX| {
+		while (try iterX.next(main.io)) |entryX| {
 			if (entryX.kind != .directory) continue;
 			const wx = std.fmt.parseInt(i32, entryX.name, 0) catch continue;
 			var dirY = try dirX.openIterableDir(entryX.name);
 			defer dirY.close();
 			var iterY = dirY.iterate();
-			while (try iterY.next()) |entryY| {
+			while (try iterY.next(main.io)) |entryY| {
 				if (entryY.kind != .file) continue;
 				const nameY = entryY.name[0 .. std.mem.indexOfScalar(u8, entryY.name, '.') orelse entryY.name.len];
 				const wy = std.fmt.parseInt(i32, nameY, 0) catch continue;

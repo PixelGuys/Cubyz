@@ -25,7 +25,7 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 	for (Neighbor.iterable) |neighbor| {
 		const neighborBlock: Block = main.server.world.?.getBlock(wx +% neighbor.relX(), wy +% neighbor.relY(), wz +% neighbor.relZ()) orelse .{.typ = 0, .data = 0};
 		const neighborModel = main.blocks.meshes.model(neighborBlock).model();
-		neighborSupportive[neighbor.toInt()] = !neighborBlock.replacable() and neighborModel.neighborFacingQuads[neighbor.reverse().toInt()].len != 0;
+		neighborSupportive[neighbor.toInt()] = !neighborBlock.replaceable() and neighborModel.neighborFacingQuads[neighbor.reverse().toInt()].len != 0;
 	}
 
 	var newBlock: Block = params.block;

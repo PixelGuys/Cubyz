@@ -9,12 +9,12 @@ var testingErrorHandlingAllocator = ErrorHandlingAllocator.init(std.testing.allo
 pub const testingAllocator = testingErrorHandlingAllocator.allocator();
 
 pub const allocators = struct { // MARK: allocators
-	pub var globalGpa = std.heap.GeneralPurposeAllocator(.{.thread_safe = true}){};
+	pub var globalGpa = std.heap.DebugAllocator(.{.thread_safe = true}){};
 	pub var handledGpa = ErrorHandlingAllocator.init(globalGpa.allocator());
 	pub var globalArenaAllocator: ThreadSafeAllocator(NeverFailingArenaAllocator) = .init(.init(handledGpa.allocator()));
 	pub var worldArenaAllocator: ThreadSafeAllocator(NeverFailingArenaAllocator) = undefined;
 	var worldArenaOpenCount: usize = 0;
-	var worldArenaMutex: std.Thread.Mutex = .{};
+	var worldArenaMutex: main.utils.Mutex = .{};
 
 	pub fn deinit() void {
 		std.log.info("Clearing global arena with {} MiB", .{globalArenaAllocator.child.arena.queryCapacity() >> 20});
@@ -452,7 +452,7 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 	///   change the size without relocating the allocation.
 	pub fn realloc(self: NeverFailingAllocator, old_mem: anytype, new_n: usize) t: {
 		const Slice = @typeInfo(@TypeOf(old_mem)).pointer;
-		break :t []align(Slice.alignment) Slice.child;
+		break :t []align(Slice.alignment orelse @alignOf(Slice.child)) Slice.child;
 	} {
 		return self.allocator.realloc(old_mem, new_n) catch unreachable;
 	}
@@ -550,7 +550,7 @@ pub fn ThreadSafeAllocator(ChildAllocatorType: type) type { // MARK: ThreadSafeA
 
 	return struct {
 		child: ChildAllocatorType,
-		mutex: std.Thread.Mutex = .{},
+		mutex: main.utils.Mutex = .{},
 
 		pub fn init(childAllocator: ChildAllocatorType) @This() {
 			return .{
@@ -647,7 +647,7 @@ pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 		free_list: ?NodePtr = null,
 		freeAllocations: usize = 0,
 		totalAllocations: usize = 0,
-		mutex: std.Thread.Mutex = .{},
+		mutex: main.utils.Mutex = .{},
 
 		/// Creates a new memory pool.
 		pub fn init(allocator: NeverFailingAllocator) Pool {
@@ -877,7 +877,7 @@ pub fn PowerOfTwoPoolAllocator(minSize: comptime_int, maxSize: comptime_int, max
 
 		arena: NeverFailingArenaAllocator,
 		buckets: [bucketCount]Bucket = @splat(.{}),
-		mutex: std.Thread.Mutex = .{},
+		mutex: main.utils.Mutex = .{},
 
 		pub fn init(backingAllocator: NeverFailingAllocator) Self {
 			return .{.arena = .init(backingAllocator)};

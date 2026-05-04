@@ -18,8 +18,7 @@ pub fn openDirInWindow(path: []const u8) void {
 		.macos => .{"open", newPath},
 		else => .{"xdg-open", newPath},
 	};
-	const result = std.process.Child.run(.{
-		.allocator = main.stackAllocator.allocator,
+	const result = std.process.run(main.stackAllocator.allocator, main.io, .{
 		.argv = &command,
 	}) catch |err| {
 		std.log.err("Got error while trying to open file explorer: {s}", .{@errorName(err)});
@@ -36,16 +35,16 @@ pub fn openDirInWindow(path: []const u8) void {
 
 pub fn cwd() Dir {
 	return Dir{
-		.dir = std.fs.cwd(),
+		.dir = std.Io.Dir.cwd(),
 	};
 }
 
-var cubyzDir_: ?std.fs.Dir = null;
+var cubyzDir_: ?std.Io.Dir = null;
 var cubyzDirStr_: []const u8 = ".";
 
 pub fn cubyzDir() Dir {
 	return .{
-		.dir = cubyzDir_ orelse std.fs.cwd(),
+		.dir = cubyzDir_ orelse std.Io.Dir.cwd(),
 	};
 }
 
@@ -53,34 +52,32 @@ pub fn cubyzDirStr() []const u8 {
 	return cubyzDirStr_;
 }
 
-fn flawedInit() !void {
+fn flawedInit(homePath: []const u8) !void {
 	if (main.settings.launchConfig.cubyzDir.len != 0) {
-		cubyzDir_ = try std.fs.cwd().makeOpenPath(main.settings.launchConfig.cubyzDir, .{});
+		cubyzDir_ = try std.Io.Dir.cwd().createDirPathOpen(main.io, main.settings.launchConfig.cubyzDir, .{});
 		cubyzDirStr_ = main.globalAllocator.dupe(u8, main.settings.launchConfig.cubyzDir);
 		return;
 	}
-	const homePath = try std.process.getEnvVarOwned(main.stackAllocator.allocator, if (builtin.os.tag == .windows) "USERPROFILE" else "HOME");
-	defer main.stackAllocator.free(homePath);
-	var homeDir = try std.fs.openDirAbsolute(homePath, .{});
-	defer homeDir.close();
+	var homeDir = try std.Io.Dir.openDirAbsolute(main.io, homePath, .{});
+	defer homeDir.close(main.io);
 	if (builtin.os.tag == .windows) {
-		cubyzDir_ = try homeDir.makeOpenPath("Saved Games/Cubyz", .{});
+		cubyzDir_ = try homeDir.createDirPathOpen(main.io, "Saved Games/Cubyz", .{});
 		cubyzDirStr_ = std.mem.concat(main.globalAllocator.allocator, u8, &.{homePath, "/Saved Games/Cubyz"}) catch unreachable;
 	} else {
-		cubyzDir_ = try homeDir.makeOpenPath(".cubyz", .{});
+		cubyzDir_ = try homeDir.createDirPathOpen(main.io, ".cubyz", .{});
 		cubyzDirStr_ = std.mem.concat(main.globalAllocator.allocator, u8, &.{homePath, "/.cubyz"}) catch unreachable;
 	}
 }
 
-pub fn init() void {
-	flawedInit() catch |err| {
+pub fn init(homePath: []const u8) void {
+	flawedInit(homePath) catch |err| {
 		std.log.err("Error {s} while opening global Cubyz directory. Using working directory instead.", .{@errorName(err)});
 	};
 }
 
 pub fn deinit() void {
 	if (cubyzDir_ != null) {
-		cubyzDir_.?.close();
+		cubyzDir_.?.close(main.io);
 	}
 	if (cubyzDirStr_.ptr != ".".ptr) {
 		main.globalAllocator.free(cubyzDirStr_);
@@ -88,35 +85,35 @@ pub fn deinit() void {
 }
 
 pub const Dir = struct {
-	dir: std.fs.Dir,
+	dir: std.Io.Dir,
 
-	pub fn init(dir: std.fs.Dir) Dir {
+	pub fn init(dir: std.Io.Dir) Dir {
 		return .{.dir = dir};
 	}
 
 	pub fn close(self: *Dir) void {
-		self.dir.close();
+		self.dir.close(main.io);
 	}
 
-	pub fn read(self: Dir, allocator: NeverFailingAllocator, path: []const u8) ![]u8 {
-		return self.dir.readFileAlloc(path, allocator.allocator, .unlimited);
+	pub fn read(self: Dir, allocator: NeverFailingAllocator, subPath: []const u8) ![]u8 {
+		return self.dir.readFileAlloc(main.io, subPath, allocator.allocator, .unlimited);
 	}
 
-	pub fn readToZon(self: Dir, allocator: NeverFailingAllocator, path: []const u8) !ZonElement {
-		const string = try self.read(main.stackAllocator, path);
+	pub fn readToZon(self: Dir, allocator: NeverFailingAllocator, subPath: []const u8) !ZonElement {
+		const string = try self.read(main.stackAllocator, subPath);
 		defer main.stackAllocator.free(string);
-		const realPath: ?[]const u8 = self.dir.realpathAlloc(main.stackAllocator.allocator, path) catch null;
+		const realPath: ?[:0]const u8 = self.dir.realPathFileAlloc(main.io, subPath, main.stackAllocator.allocator) catch null;
 		defer if (realPath) |p| main.stackAllocator.free(p);
-		return ZonElement.parseFromString(allocator, realPath orelse path, string);
+		return ZonElement.parseFromString(allocator, realPath orelse subPath, string);
 	}
 
 	pub fn write(self: Dir, path: []const u8, data: []const u8) !void {
 		const tempPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}.tmp0", .{path}) catch unreachable;
 		defer main.stackAllocator.free(tempPath);
 
-		try self.dir.writeFile(.{.data = data, .sub_path = tempPath});
+		try self.dir.writeFile(main.io, .{.data = data, .sub_path = tempPath});
 
-		return self.dir.rename(tempPath, path);
+		return self.dir.rename(tempPath, self.dir, path, main.io);
 	}
 
 	pub fn writeZon(self: Dir, path: []const u8, zon: ZonElement) !void {
@@ -125,47 +122,47 @@ pub const Dir = struct {
 		try self.write(path, string);
 	}
 
-	pub fn hasFile(self: Dir, path: []const u8) bool {
-		const file = self.dir.openFile(path, .{}) catch return false;
-		file.close();
+	pub fn hasFile(self: Dir, subPath: []const u8) bool {
+		const file = self.dir.openFile(main.io, subPath, .{}) catch return false;
+		file.close(main.io);
 		return true;
 	}
 
-	pub fn hasDir(self: Dir, path: []const u8) bool {
-		var dir = self.dir.openDir(path, .{.iterate = false}) catch return false;
-		dir.close();
+	pub fn hasDir(self: Dir, subPath: []const u8) bool {
+		var dir = self.dir.openDir(main.io, subPath, .{.iterate = false}) catch return false;
+		dir.close(main.io);
 		return true;
 	}
 
-	pub fn openDir(self: Dir, path: []const u8) !Dir {
-		return .{.dir = try self.dir.makeOpenPath(path, .{})};
+	pub fn openDir(self: Dir, subPath: []const u8) !Dir {
+		return .{.dir = try self.dir.createDirPathOpen(main.io, subPath, .{})};
 	}
 
-	pub fn openIterableDir(self: Dir, path: []const u8) !Dir {
-		return .{.dir = try self.dir.makeOpenPath(path, .{.iterate = true})};
+	pub fn openIterableDir(self: Dir, subPath: []const u8) !Dir {
+		return .{.dir = try self.dir.createDirPathOpen(main.io, subPath, .{.open_options = .{.iterate = true}})};
 	}
 
-	pub fn openFile(self: Dir, path: []const u8) !std.fs.File {
-		return self.dir.openFile(path, .{});
+	pub fn openFile(self: Dir, subPath: []const u8) !std.Io.File {
+		return self.dir.openFile(main.io, subPath, .{});
 	}
 
-	pub fn deleteTree(self: Dir, path: []const u8) !void {
-		try self.dir.deleteTree(path);
+	pub fn deleteTree(self: Dir, subPath: []const u8) !void {
+		try self.dir.deleteTree(main.io, subPath);
 	}
 
-	pub fn deleteFile(self: Dir, path: []const u8) !void {
-		try self.dir.deleteFile(path);
+	pub fn deleteFile(self: Dir, subPath: []const u8) !void {
+		try self.dir.deleteFile(main.io, subPath);
 	}
 
-	pub fn makePath(self: Dir, path: []const u8) !void {
-		try self.dir.makePath(path);
+	pub fn makePath(self: Dir, subPath: []const u8) !void {
+		try self.dir.createDirPath(main.io, subPath);
 	}
 
-	pub fn walk(self: Dir, allocator: NeverFailingAllocator) std.fs.Dir.Walker {
+	pub fn walk(self: Dir, allocator: NeverFailingAllocator) std.Io.Dir.Walker {
 		return self.dir.walk(allocator.allocator) catch unreachable;
 	}
 
-	pub fn iterate(self: Dir) std.fs.Dir.Iterator {
+	pub fn iterate(self: Dir) std.Io.Dir.Iterator {
 		return self.dir.iterate();
 	}
 };

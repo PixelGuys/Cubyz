@@ -29,17 +29,18 @@ const items = main.items;
 const ItemStack = items.ItemStack;
 const random = main.random;
 
+pub var entityComponentID: main.entity.EntityComponentId = undefined;
 pub const entityComponentVersion = 0;
 
 // ############################# Client only stuff ################################
 pub const client = struct {
-	pub fn load(id: u32, reader: *utils.BinaryReader, version: u32) void {
-		_ = id;
+	pub fn load(entityId: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
+		_ = entityId;
 		_ = reader;
 		_ = version;
 	}
-	pub fn unload(id: u32) void {
-		_ = id;
+	pub fn unload(entityId: u32) void {
+		_ = entityId;
 	}
 	pub fn init() void {}
 	pub fn deinit() void {}
@@ -48,23 +49,26 @@ pub const client = struct {
 // ############################# Server only stuff ################################
 pub const server = struct {
 	pub const ExampleComponent = struct {
-		pub fn save(self: ExampleComponent, writer: *utils.BinaryWriter) void {
+		pub fn save(self: ExampleComponent, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			_ = self;
 			_ = writer;
+			_ = audience;
+			// do i want to be saved?
+			return .save;
 		}
 	};
 	pub fn init() void {}
 	pub fn deinit() void {}
-	pub fn get(id: u32) ?ExampleComponent {
-		_ = id;
+	pub fn get(entityId: u32) ?ExampleComponent {
+		_ = entityId;
 		return null;
 	}
-	pub fn loadFromData(id: u32, reader: *utils.BinaryReader, version: u32) void {
-		_ = id;
+	pub fn loadFromData(entityId: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
+		_ = entityId;
 		_ = reader;
 		_ = version;
 	}
-	pub fn unload(id: u32) void {
-		_ = id;
+	pub fn unload(entityId: u32) void {
+		_ = entityId;
 	}
 };

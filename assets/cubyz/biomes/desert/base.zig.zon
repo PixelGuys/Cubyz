@@ -4,6 +4,9 @@
 		.dry,
 		.barren,
 	},
+	.tags = .{
+		.cactus,
+	},
 	.chance = 1.0,
 	.minHeightLimit = 7,
 	.minHeight = 22,

@@ -2,6 +2,11 @@
 	.properties = .{
 		.cold,
 	},
+	.tags = .{
+		.birch,
+		.pine,
+		.oak,
+	},
 	.chance = 0.5,
 	.minHeightLimit = 7,
 	.minHeight = 30,

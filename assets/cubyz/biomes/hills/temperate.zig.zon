@@ -1,5 +1,8 @@
 .{
 	.properties = .{},
+	.tags = .{
+		.oak,
+	},
 	.ground_structure = .{
 		"cubyz:grass",
 		"2 to 3 cubyz:soil",
@@ -33,7 +36,13 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/oak/white",
 			.placeMode = .degradable,
-			.chance = 0.01,
+			.chance = 0.007,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/young",
+			.placeMode = .degradable,
+			.chance = 0.003,
 		},
 	},
 }

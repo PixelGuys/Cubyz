@@ -13,6 +13,7 @@
 	.item = .{
 		.texture = "lush_grass.png",
 	},
+	.replaceable = true,
 	.lodReplacement = "cubyz:air",
 	.onUpdate = .{
 		.type = .checkSupportBlocks,

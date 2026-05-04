@@ -145,7 +145,7 @@ fn blueprintList(source: *User) void {
 
 	var directoryIterator = blueprintsDir.iterate();
 
-	while (directoryIterator.next() catch |err| {
+	while (directoryIterator.next(main.io) catch |err| {
 		return sendWarningAndLog("Failed to read blueprint directory ({s})", .{@errorName(err)}, source);
 	}) |entry| {
 		if (entry.kind != .file) break;

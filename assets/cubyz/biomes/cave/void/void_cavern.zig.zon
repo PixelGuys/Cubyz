@@ -1,6 +1,6 @@
 .{
 	.isCave = true,
-	.maxHeight = -50000,
+	.tags = .{.root_layer},
 	.chance = 0.1,
 	.fogDensity = 10,
 	.fogColor = 0x272334,

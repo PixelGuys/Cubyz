@@ -1,5 +1,8 @@
 .{
 	.properties = .{},
+	.tags = .{
+		.birch,
+	},
 	.minHeightLimit = 7,
 	.minHeight = 20,
 	.maxHeight = 24,

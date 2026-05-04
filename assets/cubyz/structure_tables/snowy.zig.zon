@@ -1,0 +1,12 @@
+.{
+	.id = "cubyz:snowy",
+	.tags = .{.snowy},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.chance = 0.0001,
+			.placeMode = .all,
+			.structure = "cubyz:rare/snow_snale",
+		},
+	},
+}
