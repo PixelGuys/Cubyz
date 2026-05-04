@@ -506,20 +506,20 @@ pub fn calculateWallCollision(comptime side: main.sync.Side, motion: *Vec3d, pos
 	}
 	const slipLimit = 0.25*frictionState.current;
 
-	const xMovement = collision.collideOrStep(side, .x, motion[0], pos, hitBox, adjustedSteppingHeight);
-	pos += xMovement;
-	if (crouching and onGround and @abs(vel[0]) < slipLimit) {
-		if (collision.collides(side, .x, 0, pos - Vec3d{0, 0, 1}, hitBox) == null) {
-			pos -= xMovement;
+	const xMovement = collision.collideOrStep(side, .x, motion[0], pos.*, hitBox, adjustedSteppingHeight);
+	pos.* += xMovement;
+	if (crouching and onGround.* and @abs(vel[0]) < slipLimit) {
+		if (collision.collides(side, .x, 0, pos.* - Vec3d{0, 0, 1}, hitBox) == null) {
+			pos.* -= xMovement;
 			vel[0] = 0;
 		}
 	}
 
-	const yMovement = collision.collideOrStep(side, .y, motion[1], pos, hitBox, adjustedSteppingHeight);
-	pos += yMovement;
-	if (crouching and onGround and @abs(vel[1]) < slipLimit) {
-		if (collision.collides(side, .y, 0, pos - Vec3d{0, 0, 1}, hitBox) == null) {
-			pos -= yMovement;
+	const yMovement = collision.collideOrStep(side, .y, motion[1], pos.*, hitBox, adjustedSteppingHeight);
+	pos.* += yMovement;
+	if (crouching and onGround.* and @abs(vel[1]) < slipLimit) {
+		if (collision.collides(side, .y, 0, pos.* - Vec3d{0, 0, 1}, hitBox) == null) {
+			pos.* -= yMovement;
 			vel[1] = 0;
 		}
 	}
@@ -534,7 +534,7 @@ pub fn calculateWallCollision(comptime side: main.sync.Side, motion: *Vec3d, pos
 	const stepAmount = xMovement[2] + yMovement[2];
 	if (stepAmount > 0) {
 		motion[2] = -0.01;
-		onGround = true;
+		onGround.* = true;
 	}
 	return stepAmount;
 }
