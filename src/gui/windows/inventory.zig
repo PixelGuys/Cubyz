@@ -47,12 +47,15 @@ pub fn onOpen() void {
 	// TODO: armor slots, backpack slot + stack-based backpack inventory, other items maybe?
 	{
 		const row = HorizontalList.init();
-		row.add(Button.initIcon(.{0, 0}, .{32, 32}, craftingIcon, true, gui.openWindowCallback("inventory_crafting")));
+		blk: {
+			row.add(GuiComponent.BagSlot.init(.{0, 0}, main.entity.components.@"cubyz:bag".client.getBag(main.game.Player.id) orelse break :blk));
+		}
+		row.add(Button.initIcon(.{32, 0}, .{32, 32}, craftingIcon, true, gui.openWindowCallback("inventory_crafting")));
 		list.add(row);
 	}
-	for(0..2) |y| {
+	for (0..2) |y| {
 		const row = HorizontalList.init();
-		for(0..10) |x| {
+		for (0..10) |x| {
 			const index: usize = 12 + y*10 + x;
 			const slot = ItemSlot.init(.{0, 0}, Player.inventory, @intCast(index), .default, .normal);
 			itemSlots[index - 12] = slot;
@@ -67,7 +70,7 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }

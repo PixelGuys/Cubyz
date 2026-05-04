@@ -4,8 +4,8 @@ const build_options = @import("build_options");
 pub const version = build_options.version;
 
 fn isCompatibleClientVersionImpl(clientVersion: []const u8, serverVersion: []const u8) !bool {
-	if(std.mem.endsWith(u8, serverVersion, "-dev")) return true;
-	if(std.mem.endsWith(u8, clientVersion, "-dev")) return false;
+	if (std.mem.endsWith(u8, serverVersion, "-dev")) return true;
+	if (std.mem.endsWith(u8, clientVersion, "-dev")) return false;
 
 	const client = try std.SemanticVersion.parse(clientVersion);
 	const server = try std.SemanticVersion.parse(serverVersion);

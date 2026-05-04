@@ -1,10 +1,13 @@
 .{
 	.properties = .{.mountain},
+	.tags = .{.snowy},
 	.radius = 120,
 	.minHeight = 672,
 	.maxHeight = 672,
 
 	.interpolation = .linear,
+	.hills = 10,
+	.roughness = 5,
 	.chance = 0,
 
 	.music = "cubyz:out_of_breath",
@@ -13,6 +16,7 @@
 		.{
 			.id = "cubyz:tall_mountain/slope4",
 			.chance = 1,
+			.parentEdgeDistance = 0,
 		},
 	},
 

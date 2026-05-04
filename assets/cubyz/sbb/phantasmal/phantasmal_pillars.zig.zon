@@ -1,0 +1,22 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:phantasmal/base/small/0", .chance = 1},
+		.{.id = "cubyz:phantasmal/base/small/1", .chance = 1},
+		.{.id = "cubyz:phantasmal/base/small/2", .chance = 1},
+		.{.id = "cubyz:phantasmal/base/small/3", .chance = 1},
+		.{.id = "cubyz:phantasmal/base/small/4", .chance = 1},
+		.{.id = "cubyz:phantasmal/base/small/5", .chance = 1},
+		.{.id = "cubyz:phantasmal/base/medium/0", .chance = 0.3},
+		.{.id = "cubyz:phantasmal/base/medium/1", .chance = 0.3},
+		.{.id = "cubyz:phantasmal/base/medium/2", .chance = 0.3},
+		.{.id = "cubyz:phantasmal/base/medium/3", .chance = 0.3},
+		.{.id = "cubyz:phantasmal/base/large/0", .chance = 0.1},
+		.{.id = "cubyz:phantasmal/base/large/1", .chance = 0.1},
+		.{.id = "cubyz:phantasmal/base/large/2", .chance = 0.1},
+	},
+	.children = .{
+		.black = "cubyz:phantasmal/pillar/large/large",
+		.dark_grey = "cubyz:phantasmal/pillar/medium/medium",
+		.grey = "cubyz:phantasmal/pillar/small/small",
+	},
+}

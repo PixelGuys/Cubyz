@@ -9,7 +9,7 @@
 	.maxRadius = 320,
 	.roughness = 1,
 	.hills = 15,
-	.chance = 0.02,
+	.chance = 0.01,
 	.music = "cubyz:sunrise",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
@@ -20,13 +20,13 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.00016,
-			.block = "cubyz:slate",
+			.block = "cubyz:slate/base",
 			.size = 5,
 			.size_variance = 1,
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:daisies",
+			.blocks = .{"cubyz:daisies"},
 			.chance = 0.01,
 			.width = 10,
 			.variation = 6,
@@ -35,7 +35,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:dandelions",
+			.blocks = .{"cubyz:dandelions"},
 			.chance = 0.01,
 			.width = 6,
 			.variation = 4,
@@ -56,7 +56,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:grass_vegetation",
+			.blocks = .{"cubyz:grass_vegetation"},
 			.chance = 0.1,
 			.width = 5,
 			.variation = 8,

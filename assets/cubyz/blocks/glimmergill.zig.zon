@@ -2,15 +2,19 @@
 	.tags = .{.cuttable, .mushroom},
 	.blockHealth = 0.2,
 	.drops = .{
-		.{.items = .{.auto}},
+		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
 	},
-	.replacable = true,
+	.selectionRule = .toolEffective,
+	.replaceable = true,
 	.degradable = true,
 	.viewThrough = true,
 	.absorbedLight = 0x010101,
 	.emittedLight = 0x392862,
 	.collide = false,
 	.rotation = "cubyz:torch",
+	.onUpdate = .{
+		.type = .check_support_blocks,
+	},
 	.model = .{
 		.base = "cubyz:glimmergill/floor",
 		.side = "cubyz:glimmergill/shelf",

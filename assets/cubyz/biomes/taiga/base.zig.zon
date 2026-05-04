@@ -2,6 +2,9 @@
 	.properties = .{
 		.cold,
 	},
+	.tags = .{
+		.pine,
+	},
 	.minHeightLimit = 7,
 	.minHeight = 22,
 	.maxHeight = 40,
@@ -43,7 +46,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:bolete",
+			.blocks = .{"cubyz:bolete"},
 			.chance = 0.005,
 			.width = 8,
 			.variation = 4,
@@ -52,7 +55,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:vetch",
+			.blocks = .{"cubyz:vetch"},
 			.chance = 0.01,
 			.width = 6,
 			.variation = 3,
@@ -61,7 +64,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:trumpet_lily",
+			.blocks = .{"cubyz:trumpet_lily"},
 			.chance = 0.007,
 			.width = 8,
 			.variation = 3,

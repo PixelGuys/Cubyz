@@ -26,8 +26,8 @@ pub var window = GuiWindow{
 pub fn render() void {
 	draw.setColor(0xffffffff);
 	var y: f32 = 0;
-	if(main.game.world != null) {
-		if(main.server.world != null) {
+	if (main.game.world != null) {
+		if (main.server.world != null) {
 			const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 			draw.print("Players Connected: {}", .{userList.len}, 0, y, 8, .left);
@@ -44,15 +44,15 @@ pub fn render() void {
 		y += 8;
 		draw.print("External header overhead: {}kiB", .{network.Connection.externalHeaderOverhead.load(.monotonic) >> 10}, 0, y, 8, .left);
 		y += 8;
-		inline for(@typeInfo(network.protocols).@"struct".decls) |decl| {
-			if(@TypeOf(@field(network.protocols, decl.name)) == type) {
+		inline for (@typeInfo(network.protocols).@"struct".decls) |decl| {
+			if (@TypeOf(@field(network.protocols, decl.name)) == type) {
 				const id = @field(network.protocols, decl.name).id;
 				draw.print("{s}: received {}kiB sent {}kiB", .{decl.name, network.protocols.bytesReceived[id].load(.monotonic) >> 10, network.protocols.bytesSent[id].load(.monotonic) >> 10}, 0, y, 8, .left);
 				y += 8;
 			}
 		}
 	}
-	if(window.contentSize[1] != y) {
+	if (window.contentSize[1] != y) {
 		window.contentSize[1] = y;
 		window.updateWindowPosition();
 	}

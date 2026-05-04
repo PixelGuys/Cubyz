@@ -2,14 +2,18 @@
 	.tags = .{.cuttable, .mushroom},
 	.blockHealth = 0.2,
 	.drops = .{
-		.{.items = .{.auto}},
+		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
 	},
-	.replacable = true,
+	.selectionRule = .toolEffective,
+	.replaceable = true,
 	.viewThrough = true,
 	.degradable = true,
 	.absorbedLight = 0x010101,
 	.collide = false,
 	.rotation = "cubyz:torch",
+	.onUpdate = .{
+		.type = .check_support_blocks,
+	},
 	.model = .{
 		.base = "cubyz:bolete/floor",
 		.side = "cubyz:bolete/shelf",

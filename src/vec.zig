@@ -10,6 +10,19 @@ pub const Vec4i = @Vector(4, i32);
 pub const Vec4f = @Vector(4, f32);
 pub const Vec4d = @Vector(4, f64);
 
+// copied from zmath library (MIT Liscence) : https://github.com/zig-gamedev/zmath/blob/3a5955b2b72cd081563fbb084eff05bffd1e3fbb/src/root.zig#L1430
+pub const Vec4fComponent = enum { x, y, z, w };
+
+pub inline fn swizzle(
+	v: Vec4f,
+	comptime x: Vec4fComponent,
+	comptime y: Vec4fComponent,
+	comptime z: Vec4fComponent,
+	comptime w: Vec4fComponent,
+) Vec4f {
+	return @shuffle(f32, v, undefined, [4]i32{@intFromEnum(x), @intFromEnum(y), @intFromEnum(z), @intFromEnum(w)});
+}
+
 pub inline fn combine(pos: Vec3f, w: f32) Vec4f {
 	return .{pos[0], pos[1], pos[2], w};
 }
@@ -39,7 +52,7 @@ pub fn normalize(self: anytype) @TypeOf(self) {
 }
 
 pub fn clampMag(self: anytype, maxMag: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
-	if(lengthSquare(self) > maxMag*maxMag) {
+	if (lengthSquare(self) > maxMag*maxMag) {
 		return normalize(self)*@as(@TypeOf(self), @splat(maxMag));
 	}
 
@@ -47,7 +60,7 @@ pub fn clampMag(self: anytype, maxMag: @typeInfo(@TypeOf(self)).vector.child) @T
 }
 
 pub fn cross(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
-	if(@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
+	if (@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
 	return @TypeOf(self){
 		self[1]*other[2] - self[2]*other[1],
 		self[2]*other[0] - self[0]*other[2],
@@ -56,7 +69,7 @@ pub fn cross(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
 }
 
 pub fn rotateX(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
-	if(@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
+	if (@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
 	const sin = @sin(angle);
 	const cos = @cos(angle);
 	return @TypeOf(self){
@@ -67,7 +80,7 @@ pub fn rotateX(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child) @Typ
 }
 
 pub fn rotateY(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
-	if(@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
+	if (@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
 	const sin = @sin(angle);
 	const cos = @cos(angle);
 	return @TypeOf(self){
@@ -78,7 +91,7 @@ pub fn rotateY(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child) @Typ
 }
 
 pub fn rotateZ(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
-	if(@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
+	if (@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
 	const sin = @sin(angle);
 	const cos = @cos(angle);
 	return @TypeOf(self){
@@ -89,7 +102,7 @@ pub fn rotateZ(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child) @Typ
 }
 
 pub fn rotate2d(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child, center: @TypeOf(self)) @TypeOf(self) {
-	if(@typeInfo(@TypeOf(self)).vector.len != 2) @compileError("Only available for vectors of length 2.");
+	if (@typeInfo(@TypeOf(self)).vector.len != 2) @compileError("Only available for vectors of length 2.");
 
 	const sin = @sin(angle);
 	const cos = @cos(angle);
@@ -175,6 +188,66 @@ pub const Mat4f = struct { // MARK: Mat4f
 		};
 	}
 
+	// copied from zmath library (MIT Liscence) : https://github.com/zig-gamedev/zmath/blob/3a5955b2b72cd081563fbb084eff05bffd1e3fbb/src/root.zig#L634
+	inline fn andInt(v0: anytype, v1: anytype) @TypeOf(v0, v1) {
+		const T = @TypeOf(v0, v1);
+		const Tu = @Vector(@typeInfo(T).vector.len, u32);
+		const v0u = @as(Tu, @bitCast(v0));
+		const v1u = @as(Tu, @bitCast(v1));
+		return @as(T, @bitCast(v0u & v1u)); // andps
+	}
+
+	// copied from zmath library (MIT Liscence) : https://github.com/zig-gamedev/zmath/blob/3a5955b2b72cd081563fbb084eff05bffd1e3fbb/src/root.zig#L2726
+	pub fn rotationQuat(quat: Vec4f) Mat4f {
+		const f32x4_mask3: Vec4f = Vec4f{
+			@as(f32, @bitCast(@as(u32, 0xffff_ffff))),
+			@as(f32, @bitCast(@as(u32, 0xffff_ffff))),
+			@as(f32, @bitCast(@as(u32, 0xffff_ffff))),
+			0,
+		};
+		const q0 = quat + quat;
+		var q1 = quat*q0;
+
+		var v0 = swizzle(q1, .y, .x, .x, .w);
+		v0 = andInt(v0, f32x4_mask3);
+
+		var v1 = swizzle(q1, .z, .z, .y, .w);
+		v1 = andInt(v1, f32x4_mask3);
+
+		const r0 = (Vec4f{1.0, 1.0, 1.0, 0.0} - v0) - v1;
+
+		v0 = swizzle(quat, .x, .x, .y, .w);
+		v1 = swizzle(q0, .z, .y, .z, .w);
+		v0 = v0*v1;
+
+		v1 = swizzle(quat, .w, .w, .w, .w);
+		const v2 = swizzle(q0, .y, .z, .x, .w);
+		v1 = v1*v2;
+
+		const r1 = v0 + v1;
+		const r2 = v0 - v1;
+
+		v0 = @shuffle(f32, r1, r2, [4]i32{1, 2, ~@as(i32, 0), ~@as(i32, 1)});
+		v0 = swizzle(v0, .x, .z, .w, .y);
+		v1 = @shuffle(f32, r1, r2, [4]i32{0, 0, ~@as(i32, 2), ~@as(i32, 2)});
+		v1 = swizzle(v1, .x, .z, .x, .z);
+
+		q1 = @shuffle(f32, r0, v0, [4]i32{0, 3, ~@as(i32, 0), ~@as(i32, 1)});
+		q1 = swizzle(q1, .x, .z, .w, .y);
+
+		var m: Mat4f = undefined;
+		m.rows[0] = q1;
+
+		q1 = @shuffle(f32, r0, v0, [4]i32{1, 3, ~@as(i32, 2), ~@as(i32, 3)});
+		q1 = swizzle(q1, .z, .x, .w, .y);
+		m.rows[1] = q1;
+
+		q1 = @shuffle(f32, v1, r0, [4]i32{0, 1, ~@as(i32, 2), ~@as(i32, 3)});
+		m.rows[2] = q1;
+		m.rows[3] = Vec4f{0.0, 0.0, 0.0, 1.0};
+		return m;
+	}
+
 	pub fn perspective(fovY: f32, aspect: f32, near: f32, far: f32) Mat4f { // zig fmt: off
 		const tanY = std.math.tan(fovY*0.5);
 		const tanX = aspect*tanY;
@@ -202,7 +275,7 @@ pub const Mat4f = struct { // MARK: Mat4f
 	pub fn mul(self: Mat4f, other: Mat4f) Mat4f {
 		const transposeOther = other.transpose();
 		var result: Mat4f = undefined;
-		for(&result.rows, self.rows) |*resRow, selfRow| {
+		for (&result.rows, self.rows) |*resRow, selfRow| {
 			resRow.* = .{
 				dot(selfRow, transposeOther.rows[0]),
 				dot(selfRow, transposeOther.rows[1]),
@@ -272,7 +345,7 @@ pub const Complex = struct { // MARK: Complex
 	}
 
 	pub fn fromSqrt(val: f64) Complex {
-		if(val < 0) {
+		if (val < 0) {
 			return .{.val = .{0, @sqrt(-val)}};
 		} else {
 			return .{.val = .{@sqrt(val), 0}};

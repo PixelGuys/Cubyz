@@ -17,12 +17,12 @@
 	.music = "cubyz:under_the_water_sky",
 
 	.ground_structure = .{
-		"1 to 2 cubyz:cobblestone",
+		"1 to 2 cubyz:slate/cobble",
 	},
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:moss:cubyz:cobblestone",
+			.block = "cubyz:moss:cubyz:slate/cobble",
 			.chance = 0.064,
 			.width = 6,
 			.variation = 2,

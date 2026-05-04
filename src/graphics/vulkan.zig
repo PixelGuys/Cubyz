@@ -1,8 +1,13 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const main = @import("main");
-const c = main.Window.c;
+const c = main.graphics.c;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+
+comptime {
+	std.debug.assert(@as(u1, 1) == c.VK_TRUE and @as(u1, 0) == c.VK_FALSE); // Allows using @intFromBool to convert to vulkan types
+}
 
 const VkResultEnum = enum(c_int) { // MARK: VkResultEnum
 	VK_SUCCESS = 0,
@@ -58,16 +63,26 @@ const VkResultEnum = enum(c_int) { // MARK: VkResultEnum
 };
 
 pub fn checkResult(result: c.VkResult) void {
-	const resultEnum = std.meta.intToEnum(VkResultEnum, result) catch {
+	const resultEnum = std.enums.fromInt(VkResultEnum, result) orelse {
 		std.log.err("Encountered a vulkan error with unknown error code {}", .{result});
 		return;
 	};
-	if(resultEnum == .VK_SUCCESS) return;
+	if (resultEnum == .VK_SUCCESS) return;
 	std.log.err("Encountered a vulkan error: {s}", .{@tagName(resultEnum)});
 }
 
+pub fn checkResultErr(result: c.VkResult) !void {
+	const resultEnum = std.enums.fromInt(VkResultEnum, result) orelse {
+		std.log.err("Encountered a vulkan error with unknown error code {}", .{result});
+		return error.VulkanError;
+	};
+	if (resultEnum == .VK_SUCCESS) return;
+	std.log.err("Encountered a vulkan error: {s}", .{@tagName(resultEnum)});
+	return error.VulkanError;
+}
+
 fn checkResultIfAvailable(result: anytype) void {
-	if(@TypeOf(result) != void) {
+	if (@TypeOf(result) != void) {
 		checkResult(result);
 	}
 }
@@ -75,17 +90,17 @@ fn checkResultIfAvailable(result: anytype) void {
 fn allocEnumerationGeneric(function: anytype, allocator: NeverFailingAllocator, args: anytype) []@typeInfo(@typeInfo(@TypeOf(function)).@"fn".params[@typeInfo(@TypeOf(function)).@"fn".params.len - 1].type.?).pointer.child {
 	const T = @typeInfo(@typeInfo(@TypeOf(function)).@"fn".params[@typeInfo(@TypeOf(function)).@"fn".params.len - 1].type.?).pointer.child;
 	var count: u32 = 0;
-	while(true) {
+	while (true) {
 		checkResultIfAvailable(@call(.auto, function, args ++ .{&count, null}));
 		const list = allocator.alloc(T, count);
 		const result = @call(.auto, function, args ++ .{&count, list.ptr});
-		if(@TypeOf(result) != void and result == c.VK_INCOMPLETE) {
+		if (@TypeOf(result) != void and result == c.VK_INCOMPLETE) {
 			allocator.free(list);
 			continue;
 		}
 		checkResultIfAvailable(result);
 
-		if(count < list.len) return allocator.realloc(list, count);
+		if (count < list.len) return allocator.realloc(list, count);
 		return list;
 	}
 }
@@ -125,25 +140,32 @@ pub fn getPhysicalDeviceSurfacePresentModesKHR(allocator: NeverFailingAllocator,
 var instance: c.VkInstance = undefined;
 var surface: c.VkSurfaceKHR = undefined;
 var physicalDevice: c.VkPhysicalDevice = undefined;
-var device: c.VkDevice = undefined;
+pub var device: c.VkDevice = undefined;
 var graphicsQueue: c.VkQueue = undefined;
 var presentQueue: c.VkQueue = undefined;
 
 // MARK: init
 
 pub fn init(window: ?*c.GLFWwindow) !void {
-	if(c.gladLoaderLoadVulkan(null, null, null) == 0) {
-		@panic("GLAD failed to load Vulkan functions");
+	// NOTE(blackedout): glad is currently not used on macOS
+	if (builtin.target.os.tag != .macos) {
+		if (c.gladLoaderLoadVulkan(null, null, null) == 0) {
+			@panic("GLAD failed to load Vulkan functions");
+		}
 	}
 	createInstance();
 	checkResult(c.glfwCreateWindowSurface(instance, window, null, &surface));
 	try pickPhysicalDevice();
-	if(c.gladLoaderLoadVulkan(instance, physicalDevice, null) == 0) {
-		@panic("GLAD failed to load Vulkan functions");
+	if (builtin.target.os.tag != .macos) {
+		if (c.gladLoaderLoadVulkan(instance, physicalDevice, null) == 0) {
+			@panic("GLAD failed to load Vulkan functions");
+		}
 	}
 	createLogicalDevice();
-	if(c.gladLoaderLoadVulkan(instance, physicalDevice, device) == 0) {
-		@panic("GLAD failed to load Vulkan functions");
+	if (builtin.target.os.tag != .macos) {
+		if (c.gladLoaderLoadVulkan(instance, physicalDevice, device) == 0) {
+			@panic("GLAD failed to load Vulkan functions");
+		}
 	}
 	SwapChain.init();
 }
@@ -164,9 +186,9 @@ const validationLayers: []const [*:0]const u8 = &.{
 fn checkValidationLayerSupport() bool {
 	const availableLayers = enumerateInstanceLayerProperties(main.stackAllocator);
 	defer main.stackAllocator.free(availableLayers);
-	for(validationLayers) |layerName| continueOuter: {
-		for(availableLayers) |layerProperties| {
-			if(std.mem.eql(u8, std.mem.span(layerName), std.mem.span(@as([*:0]const u8, @ptrCast(&layerProperties.layerName))))) {
+	for (validationLayers) |layerName| continueOuter: {
+		for (availableLayers) |layerProperties| {
+			if (std.mem.eql(u8, std.mem.span(layerName), std.mem.span(@as([*:0]const u8, @ptrCast(&layerProperties.layerName))))) {
 				break :continueOuter;
 			}
 		}
@@ -187,34 +209,59 @@ pub fn createInstance() void {
 	};
 	var glfwExtensionCount: u32 = 0;
 	const glfwExtensions: [*c][*c]const u8 = c.glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+	if (glfwExtensions == null) {
+		@panic("glfwGetRequiredInstanceExtensions returned a null pointer. This may be a problem with your Vulkan driver.");
+	}
 
 	const availableExtensions = enumerateInstanceExtensionProperties(main.stackAllocator, null);
 	defer main.stackAllocator.free(availableExtensions);
 	std.log.debug("Availabe vulkan instance extensions:", .{});
-	for(availableExtensions) |ext| {
+	for (availableExtensions) |ext| {
 		std.log.debug("\t{s}", .{@as([*:0]const u8, @ptrCast(&ext.extensionName))});
+	}
+
+	var createFlags: u32 = 0;
+	var extensions = main.List([*c]const u8).init(main.stackAllocator);
+	defer extensions.deinit();
+	extensions.appendSlice(glfwExtensions[0..glfwExtensionCount]);
+
+	if (builtin.target.os.tag == .macos) {
+		// NOTE(blackedout): These constants may not be available for other targets because currently only macOS uses higher version headers
+		extensions.appendSlice(&.{
+			c.VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
+			c.VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
+		});
+		createFlags |= c.VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 	}
 
 	const createInfo = c.VkInstanceCreateInfo{
 		.sType = c.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+		.flags = createFlags,
 		.pApplicationInfo = &appInfo,
-		.enabledExtensionCount = glfwExtensionCount,
-		.ppEnabledExtensionNames = glfwExtensions,
+		.enabledExtensionCount = @intCast(extensions.items.len),
+		.ppEnabledExtensionNames = extensions.items.ptr,
 		.ppEnabledLayerNames = validationLayers.ptr,
-		.enabledLayerCount = if(checkValidationLayerSupport()) validationLayers.len else 0,
+		.enabledLayerCount = if (checkValidationLayerSupport()) validationLayers.len else 0,
 	};
 	checkResult(c.vkCreateInstance(&createInfo, null, &instance));
 }
 
 // MARK: Physical Device
 
-const deviceExtensions = [_][*:0]const u8{
-	c.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+const deviceExtensions = blk: {
+	const baseDeviceExtensions = [_][*:0]const u8{
+		c.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+	};
+	if (builtin.target.os.tag == .macos) {
+		break :blk baseDeviceExtensions ++ [_][*:0]const u8{c.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME};
+	}
+	break :blk baseDeviceExtensions;
 };
 
 const deviceFeatures: c.VkPhysicalDeviceFeatures = .{
 	.multiDrawIndirect = c.VK_TRUE,
 	.dualSrcBlend = c.VK_TRUE,
+	.depthClamp = c.VK_TRUE,
 };
 
 const QueueFamilyIndidices = struct {
@@ -230,13 +277,13 @@ fn findQueueFamilies(dev: c.VkPhysicalDevice) QueueFamilyIndidices {
 	var result: QueueFamilyIndidices = .{};
 	const queueFamilies = getPhysicalDeviceQueueFamilyProperties(main.stackAllocator, dev);
 	defer main.stackAllocator.free(queueFamilies);
-	for(queueFamilies, 0..) |family, i| {
-		if(family.queueFlags & c.VK_QUEUE_GRAPHICS_BIT != 0 and family.queueFlags & c.VK_QUEUE_COMPUTE_BIT != 0) {
+	for (queueFamilies, 0..) |family, i| {
+		if (family.queueFlags & c.VK_QUEUE_GRAPHICS_BIT != 0 and family.queueFlags & c.VK_QUEUE_COMPUTE_BIT != 0) {
 			result.graphicsFamily = @intCast(i);
 		}
 		var presentSupport: u32 = 0;
 		checkResult(c.vkGetPhysicalDeviceSurfaceSupportKHR(dev, @intCast(i), surface, &presentSupport));
-		if(presentSupport != 0) {
+		if (presentSupport != 0) {
 			result.presentFamily = @intCast(i);
 		}
 	}
@@ -246,9 +293,9 @@ fn findQueueFamilies(dev: c.VkPhysicalDevice) QueueFamilyIndidices {
 fn checkDeviceExtensionSupport(dev: c.VkPhysicalDevice) bool {
 	const availableExtension = enumerateDeviceExtensionProperties(main.stackAllocator, dev, null);
 	defer main.stackAllocator.free(availableExtension);
-	for(deviceExtensions) |requiredName| continueOuter: {
-		for(availableExtension) |available| {
-			if(std.mem.eql(u8, std.mem.span(requiredName), std.mem.span(@as([*:0]const u8, @ptrCast(&available.extensionName))))) {
+	for (deviceExtensions) |requiredName| continueOuter: {
+		for (availableExtension) |available| {
+			if (std.mem.eql(u8, std.mem.span(requiredName), std.mem.span(@as([*:0]const u8, @ptrCast(&available.extensionName))))) {
 				break :continueOuter;
 			}
 		}
@@ -267,7 +314,7 @@ fn getDeviceScore(dev: c.VkPhysicalDevice) f32 {
 	std.log.debug("Properties: {}", .{properties});
 	std.log.debug("Features: {}", .{features});
 
-	const baseScore: f32 = switch(properties.deviceType) {
+	const baseScore: f32 = switch (properties.deviceType) {
 		c.VK_PHYSICAL_DEVICE_TYPE_CPU => 1e-9,
 		c.VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU => 1e9,
 		c.VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU => 1,
@@ -277,13 +324,13 @@ fn getDeviceScore(dev: c.VkPhysicalDevice) f32 {
 	const availableExtension = enumerateDeviceExtensionProperties(main.stackAllocator, dev, null);
 	defer main.stackAllocator.free(availableExtension);
 	std.log.debug("Device extensions:", .{});
-	for(availableExtension) |ext| {
+	for (availableExtension) |ext| {
 		std.log.debug("\t{s}", .{@as([*:0]const u8, @ptrCast(&ext.extensionName))});
 	}
-	if(!findQueueFamilies(dev).isComplete() or !checkDeviceExtensionSupport(dev)) return 0;
+	if (!findQueueFamilies(dev).isComplete() or !checkDeviceExtensionSupport(dev)) return 0;
 
-	inline for(comptime std.meta.fieldNames(@TypeOf(deviceFeatures))) |name| {
-		if(@field(deviceFeatures, name) == c.VK_TRUE and @field(features, name) == c.VK_FALSE) {
+	inline for (comptime std.meta.fieldNames(@TypeOf(deviceFeatures))) |name| {
+		if (@field(deviceFeatures, name) == c.VK_TRUE and @field(features, name) == c.VK_FALSE) {
 			std.log.warn("Rejecting device: {s} is not supported", .{name});
 			return 0;
 		}
@@ -295,19 +342,19 @@ fn getDeviceScore(dev: c.VkPhysicalDevice) f32 {
 fn pickPhysicalDevice() !void {
 	const devices = enumeratePhysicalDevices(main.stackAllocator);
 	defer main.stackAllocator.free(devices);
-	if(devices.len == 0) {
+	if (devices.len == 0) {
 		return error.NoDevicesFound;
 	}
 	var bestScore: f32 = 0;
-	for(devices) |dev| {
+	for (devices) |dev| {
 		const score = getDeviceScore(dev);
-		if(score > bestScore) {
+		if (score > bestScore) {
 			bestScore = score;
 			physicalDevice = dev;
 		}
 	}
 
-	if(bestScore == 0) {
+	if (bestScore == 0) {
 		return error.NoCapableDeviceFound;
 	}
 
@@ -328,7 +375,7 @@ fn createLogicalDevice() void {
 	var queueCreateInfos = main.List(c.VkDeviceQueueCreateInfo).init(main.stackAllocator);
 	defer queueCreateInfos.deinit();
 	var iterator = uniqueFamilies.keyIterator();
-	while(iterator.next()) |queueFamily| {
+	while (iterator.next()) |queueFamily| {
 		queueCreateInfos.append(.{
 			.sType = c.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 			.queueFamilyIndex = queueFamily.*,
@@ -343,7 +390,7 @@ fn createLogicalDevice() void {
 		.queueCreateInfoCount = @intCast(queueCreateInfos.items.len),
 		.pEnabledFeatures = &deviceFeatures,
 		.ppEnabledLayerNames = validationLayers.ptr,
-		.enabledLayerCount = if(checkValidationLayerSupport()) validationLayers.len else 0,
+		.enabledLayerCount = if (checkValidationLayerSupport()) validationLayers.len else 0,
 		.ppEnabledExtensionNames = &deviceExtensions,
 		.enabledExtensionCount = @intCast(deviceExtensions.len),
 	};
@@ -352,11 +399,11 @@ fn createLogicalDevice() void {
 	c.vkGetDeviceQueue(device, indices.presentFamily.?, 0, &presentQueue);
 }
 
-const SwapChain = struct { // MARK: SwapChain
+pub const SwapChain = struct { // MARK: SwapChain
 	var swapChain: c.VkSwapchainKHR = null;
 	var images: []c.VkImage = undefined;
 	var imageViews: []c.VkImageView = undefined;
-	var imageFormat: c.VkFormat = undefined;
+	pub var imageFormat: c.VkFormat = undefined;
 	var extent: c.VkExtent2D = undefined;
 
 	const SupportDetails = struct {
@@ -378,8 +425,8 @@ const SwapChain = struct { // MARK: SwapChain
 		}
 
 		fn chooseFormat(self: SupportDetails) c.VkSurfaceFormatKHR {
-			for(self.formats) |format| {
-				if(format.format == c.VK_FORMAT_B8G8R8A8_SRGB and format.colorSpace == c.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+			for (self.formats) |format| {
+				if (format.format == c.VK_FORMAT_B8G8R8A8_SRGB and format.colorSpace == c.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
 					return format;
 				}
 			}
@@ -392,7 +439,7 @@ const SwapChain = struct { // MARK: SwapChain
 		}
 
 		fn chooseSwapExtent(self: SupportDetails) c.VkExtent2D {
-			if(self.capabilities.currentExtent.width != std.math.maxInt(u32)) {
+			if (self.capabilities.currentExtent.width != std.math.maxInt(u32)) {
 				return self.capabilities.currentExtent;
 			}
 			var width: i32 = undefined;
@@ -456,7 +503,7 @@ const SwapChain = struct { // MARK: SwapChain
 			.oldSwapchain = null,
 		};
 		const queueFamilies = findQueueFamilies(physicalDevice);
-		if(queueFamilies.graphicsFamily.? != queueFamilies.presentFamily.?) {
+		if (queueFamilies.graphicsFamily.? != queueFamilies.presentFamily.?) {
 			const queueFamilyIndices = [_]u32{queueFamilies.graphicsFamily.?, queueFamilies.presentFamily.?};
 			createInfo.imageSharingMode = c.VK_SHARING_MODE_CONCURRENT;
 			createInfo.queueFamilyIndexCount = @intCast(queueFamilyIndices.len);
@@ -472,13 +519,13 @@ const SwapChain = struct { // MARK: SwapChain
 		std.debug.assert(newImageCount == imageCount);
 
 		imageViews = main.globalAllocator.alloc(c.VkImageView, imageCount);
-		for(0..images.len) |i| {
+		for (0..images.len) |i| {
 			imageViews[i] = createImageView(images[i]);
 		}
 	}
 
 	fn deinit() void {
-		for(imageViews) |imageView| {
+		for (imageViews) |imageView| {
 			c.vkDestroyImageView(device, imageView, null);
 		}
 		main.globalAllocator.free(imageViews);

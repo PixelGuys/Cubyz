@@ -1,6 +1,13 @@
 .{
+	.onUpdate = .{
+		.type = .decay,
+		.drops = .{
+			.{.items = .{"cubyz:branch/mahogany"}},
+		},
+	},
 	.drops = .{
-		.{.items = .{"cubyz:leaves/mahogany", "cubyz:mahogany_branch"}},
+		.{.items = .{"cubyz:branch/mahogany"}},
+		.{.items = .{"cubyz:leaves/mahogany"}, .allowedToolTags = .{.cuttable}},
 	},
 	.texture = "cubyz:leaves/mahogany",
 	.texture6 = "cubyz:branch/mahogany/dot",

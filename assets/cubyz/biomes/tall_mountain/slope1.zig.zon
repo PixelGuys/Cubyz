@@ -15,12 +15,13 @@
 		.{
 			.id = "cubyz:tall_mountain/base",
 			.chance = 1,
+			.parentEdgeDistance = 0,
 		},
 	},
 
 	.maxSubBiomeCount = 1,
 
 	.ground_structure = .{
-		"cubyz:cobblestone",
+		"cubyz:slate/cobble",
 	},
 }

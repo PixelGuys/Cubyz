@@ -26,26 +26,26 @@ pub fn load() void { // TODO: Do this at compile time once the caching is good e
 	// Ensures that the grid is valid in each step.
 	// This is repeated multiple times for optimal results.
 	// In the last repetition is enforced, to remove grid artifacts.
-	for(0..repetitions) |_| {
-		for(0..pattern.len) |i| {
+	for (0..repetitions) |_| {
+		for (0..pattern.len) |i| {
 			const x: i32 = @intCast(i >> sizeShift);
 			const y: i32 = @intCast(i & sizeMask);
-			outer: for(0..iterations) |_| {
+			outer: for (0..iterations) |_| {
 				const point = random.nextInt(u6, &seed);
 				const xOffset = point >> 3 & 7;
 				const yOffset = point & 7;
 				// Go through all neighbors and check validity:
 				var dx: i32 = -2;
-				while(dx <= 2) : (dx += 1) {
+				while (dx <= 2) : (dx += 1) {
 					var dy: i32 = -2;
-					while(dy <= 2) : (dy += 1) {
-						if(dx == 0 and dy == 0) continue; // Don't compare with itself!
+					while (dy <= 2) : (dy += 1) {
+						if (dx == 0 and dy == 0) continue; // Don't compare with itself!
 						const neighbor = (x + dx & sizeMask) << sizeShift | (y + dy & sizeMask);
 						const neighborPos = pattern[@intCast(neighbor)];
 						const nx = (neighborPos >> 3) + (dx << featureShift);
 						const ny = (neighborPos & 7) + (dy << featureShift);
 						const distSqr = (nx - xOffset)*(nx - xOffset) + (ny - yOffset)*(ny - yOffset);
-						if(distSqr < distSquareLimit) continue :outer;
+						if (distSqr < distSquareLimit) continue :outer;
 					}
 				}
 
@@ -68,15 +68,15 @@ pub fn getRegionData(allocator: NeverFailingAllocator, x: i32, y: i32, width: u3
 	const yMax = ((y +% height & ~@as(i32, featureMask)));
 	var result = main.ListUnmanaged(u32).initCapacity(allocator, @intCast((((xMax -% xMin) >> featureShift) + 1)*(((yMax -% yMin) >> featureShift) + 1)));
 	var xMap: i32 = xMin;
-	while(xMap -% xMax <= 0) : (xMap +%= featureSize) {
+	while (xMap -% xMax <= 0) : (xMap +%= featureSize) {
 		var yMap: i32 = yMin;
-		while(yMap -% yMax <= 0) : (yMap +%= featureSize) {
+		while (yMap -% yMax <= 0) : (yMap +%= featureSize) {
 			const val = sample(xMap >> featureShift & sizeMask, yMap >> featureShift & sizeMask);
 			var xRes = xMap -% xMin;
 			xRes += val >> 3;
 			var yRes = yMap -% yMin;
 			yRes += val & 7;
-			if(xRes >= 0 and xRes < width and yRes >= 0 and yRes < height) {
+			if (xRes >= 0 and xRes < width and yRes >= 0 and yRes < height) {
 				result.appendAssumeCapacity(@bitCast(xRes << 16 | yRes));
 			}
 		}

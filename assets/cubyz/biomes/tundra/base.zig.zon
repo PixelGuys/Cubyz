@@ -19,7 +19,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:dry_grass_vegetation",
+			.blocks = .{"cubyz:dry_grass_vegetation"},
 			.chance = 0.03,
 			.width = 5,
 			.variation = 8,
@@ -28,7 +28,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:cold_grass_vegetation",
+			.blocks = .{"cubyz:cold_grass_vegetation"},
 			.chance = 0.04,
 			.width = 5,
 			.variation = 8,
@@ -37,7 +37,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:osier",
+			.blocks = .{"cubyz:osier"},
 			.chance = 0.04,
 			.width = 7,
 			.variation = 8,

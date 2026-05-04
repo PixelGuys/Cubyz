@@ -56,15 +56,17 @@ pos: Vec2f,
 size: Vec2f,
 pressed: bool = false,
 hovered: bool = false,
-onAction: gui.Callback,
+onAction: main.callbacks.SimpleCallback,
 child: GuiComponent,
 
-pub fn __init() void {
+pub fn globalInit() void {
 	pipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/ui/button.vert",
 		"assets/cubyz/shaders/ui/button.frag",
 		"",
 		&buttonUniforms,
+		graphics.draw.SimpleVertex2D,
+		&.{},
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.alphaBlending}},
@@ -83,7 +85,7 @@ pub fn __deinit() void {
 
 fn defaultOnAction(_: usize) void {}
 
-pub fn initText(pos: Vec2f, width: f32, text: []const u8, onAction: gui.Callback) *Button {
+pub fn initText(pos: Vec2f, width: f32, text: []const u8, onAction: main.callbacks.SimpleCallback) *Button {
 	const label = Label.init(undefined, width - 3*border, text, .center);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
@@ -95,7 +97,7 @@ pub fn initText(pos: Vec2f, width: f32, text: []const u8, onAction: gui.Callback
 	return self;
 }
 
-pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, hasShadow: bool, onAction: gui.Callback) *Button {
+pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, hasShadow: bool, onAction: main.callbacks.SimpleCallback) *Button {
 	const icon = Icon.init(undefined, iconSize, iconTexture, hasShadow);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
@@ -116,27 +118,29 @@ pub fn toComponent(self: *Button) GuiComponent {
 	return .{.button = self};
 }
 
-pub fn updateHovered(self: *Button, _: Vec2f) void {
+pub fn updateHovered(self: *Button, _: Vec2f) main.callbacks.Result {
 	self.hovered = true;
+	return .handled;
 }
 
-pub fn mainButtonPressed(self: *Button, _: Vec2f) void {
+pub fn mainButtonPressed(self: *Button, _: Vec2f) main.callbacks.Result {
 	self.pressed = true;
+	return .handled;
 }
 
 pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
-	if(self.pressed) {
+	if (self.pressed) {
 		self.pressed = false;
-		if(GuiComponent.contains(self.pos, self.size, mousePosition)) {
+		if (GuiComponent.contains(self.pos, self.size, mousePosition)) {
 			self.onAction.run();
 		}
 	}
 }
 
 pub fn render(self: *Button, mousePosition: Vec2f) void {
-	const textures = if(self.pressed)
+	const textures = if (self.pressed)
 		pressedTextures
-	else if(GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered)
+	else if (GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered)
 		hoveredTextures
 	else
 		normalTextures;

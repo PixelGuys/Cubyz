@@ -2,6 +2,10 @@
 	.properties = .{
 		.mountain,
 	},
+	.tags = .{
+		.snowy,
+		.oak,
+	},
 	.minHeightLimit = 7,
 	.minHeight = 80,
 	.maxHeight = 256,
@@ -15,18 +19,14 @@
 	.ground_structure = .{
 		"0 to 1 cubyz:grass",
 		"0 to 1 cubyz:gravel",
-		"0 to 1 cubyz:cobblestone",
+		"0 to 1 cubyz:slate/cobble",
 	},
 	.structures = .{
 		.{
-			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:leaves/oak",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/young",
+			.placeMode = .degradable,
 			.chance = 0.16,
-			.type = .round,
-			.height = 4,
-			.height_variation = 1,
 		},
 		.{
 			.id = "cubyz:ground_patch",

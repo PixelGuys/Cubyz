@@ -89,12 +89,12 @@ const Context = struct {
 		var numY: u31 = undefined;
 		var x0: i32 = 0;
 		var ix: i32 = x;
-		while(ix != x +% width) : (ix +%= scale) {
+		while (ix != x +% width) : (ix +%= scale) {
 			numY = 0;
 			x0 = ix >> resolutionShift;
 			var y0: i32 = 0;
 			var iy: i32 = y;
-			while(iy != y +% width) : (iy +%= scale) {
+			while (iy != y +% width) : (iy +%= scale) {
 				y0 = iy >> resolutionShift;
 				self.xGridPoints.ptr(numX, numY).* = self.generateGradient(x0, y0, 0, resolutionShift);
 				self.yGridPoints.ptr(numX, numY).* = self.generateGradient(x0, y0, 1, resolutionShift);
@@ -107,7 +107,7 @@ const Context = struct {
 		numY = 0;
 		var y0: i32 = 0;
 		var iy: i32 = y;
-		while(iy != y +% width) : (iy +%= scale) {
+		while (iy != y +% width) : (iy +%= scale) {
 			y0 = iy >> resolutionShift;
 			self.xGridPoints.ptr(numX, numY).* = self.generateGradient(x0 + 1, y0, 0, resolutionShift);
 			self.yGridPoints.ptr(numX, numY).* = self.generateGradient(x0 + 1, y0, 1, resolutionShift);
@@ -139,7 +139,7 @@ pub fn generateSmoothNoise(allocator: NeverFailingAllocator, x: i32, y: i32, wid
 	};
 	var fac = 1/((1 - std.math.pow(f32, reductionFactor, @as(f32, @floatFromInt(@ctz(maxScale/minScale) + 1))))/(1 - reductionFactor)); // geometric series.
 	var scale = maxScale;
-	while(scale >= minScale) : (scale >>= 1) {
+	while (scale >= minScale) : (scale >>= 1) {
 		context.resolution = scale;
 		context.resolutionMask = scale - 1;
 		const x0 = x & ~context.resolutionMask;
@@ -148,9 +148,9 @@ pub fn generateSmoothNoise(allocator: NeverFailingAllocator, x: i32, y: i32, wid
 		defer context.freeGridPoints(main.stackAllocator);
 
 		var x1 = x;
-		while(x1 -% width -% x < 0) : (x1 +%= voxelSize) {
+		while (x1 -% width -% x < 0) : (x1 +%= voxelSize) {
 			var y1 = y;
-			while(y1 -% y -% height < 0) : (y1 +%= voxelSize) {
+			while (y1 -% y -% height < 0) : (y1 +%= voxelSize) {
 				map.ptr(@as(u32, @intCast(x1 -% x))/voxelSize, @as(u32, @intCast(y1 -% y))/voxelSize).* += @abs(context.perlin(x1 -% x0, y1 -% y0))*fac;
 			}
 		}

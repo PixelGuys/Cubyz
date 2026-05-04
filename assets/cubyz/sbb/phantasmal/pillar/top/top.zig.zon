@@ -1,0 +1,18 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:phantasmal/pillar/top/0", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/top/1", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/top/2", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/top/3", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/top/4", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/top/5", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/top/6", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/top/7", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/top/8", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/top/9", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/top/10", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/top/11", .chance = 1},
+		.{.id = "cubyz:phantasmal/pillar/top/12", .chance = 1},
+		.{.id = null, .chance = 8},
+	},
+}
