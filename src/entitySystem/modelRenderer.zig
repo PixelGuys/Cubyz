@@ -96,7 +96,7 @@ pub const client = struct {
 			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.height/2));
 
 			const transparency = 38.0*std.math.log10(vec.lengthSquare(pos3d) + 1) - 80.0;
-			const alpha: u32 = @intFromFloat(std.math.clamp(0xff - transparency, 0, 0xff));
+			const alpha: u32 = @trunc(std.math.clamp(0xff - transparency, 0, 0xff));
 			graphics.draw.setColor(alpha << 24);
 
 			const renderedName = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{ent}) catch unreachable;
@@ -130,7 +130,7 @@ pub const client = struct {
 			const entTexture = entModel.defaultTexture;
 
 			entTexture.?.bindTo(0);
-			const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));
+			const blockPos: vec.Vec3i = @floor(ent.pos);
 			const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
 			const light = (@as(u32, lightVals[0] >> 3) << 25 |
 				@as(u32, lightVals[1] >> 3) << 20 |

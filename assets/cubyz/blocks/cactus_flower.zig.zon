@@ -2,8 +2,10 @@
 	.tags = .{.cuttable},
 	.blockHealth = 0.2,
 	.drops = .{
-		.{.items = .{.auto}},
+		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
 	},
+	.selectionRule = .toolEffective,
+	.replaceable = true,
 	.degradable = true,
 	.collide = false,
 	.alwaysViewThrough = true,
@@ -23,6 +25,6 @@
 		.damageType = .spiky,
 	},
 	.onUpdate = .{
-		.type = .checkSupportBlocks,
+		.type = .check_support_blocks,
 	},
 }

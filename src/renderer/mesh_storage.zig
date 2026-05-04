@@ -218,7 +218,7 @@ pub fn getNeighbor(_pos: chunk.ChunkPosition, resolution: u31, neighbor: chunk.N
 
 fn reduceRenderDistance(fullRenderDistance: i64, reduction: i64) i32 {
 	const reducedRenderDistanceSquare: f64 = @floatFromInt(fullRenderDistance*fullRenderDistance - reduction*reduction);
-	const reducedRenderDistance: i32 = @intFromFloat(@ceil(@sqrt(@max(0, reducedRenderDistanceSquare))));
+	const reducedRenderDistance: i32 = @ceil(@as(f64, @sqrt(@max(0, reducedRenderDistanceSquare))));
 	return reducedRenderDistance;
 }
 
@@ -549,7 +549,7 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshR
 pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *const main.renderer.Frustum, playerPos: Vec3d, renderDistance: u16) []*chunk_meshing.ChunkMesh { // MARK: updateAndGetRenderChunks()
 	meshList.clearRetainingCapacity();
 
-	const playerPosInt: Vec3i = @intFromFloat(@floor(playerPos));
+	const playerPosInt: Vec3i = @floor(playerPos);
 
 	var meshRequests = main.List(chunk.ChunkPosition).init(main.stackAllocator);
 	defer meshRequests.deinit();
@@ -561,9 +561,9 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 	const olderPz = lastPz;
 	const olderRD = lastRD;
 	mutex.lock();
-	lastPx = @intFromFloat(playerPos[0]);
-	lastPy = @intFromFloat(playerPos[1]);
-	lastPz = @intFromFloat(playerPos[2]);
+	lastPx = @trunc(playerPos[0]);
+	lastPy = @trunc(playerPos[1]);
+	lastPz = @trunc(playerPos[2]);
 	lastRD = renderDistance;
 	mutex.unlock();
 	freeOldMeshes(olderPx, olderPy, olderPz, olderRD);
@@ -580,9 +580,9 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 	defer searchList.deinit();
 	{
 		var firstPos = chunk.ChunkPosition{
-			.wx = @intFromFloat(@floor(playerPos[0])),
-			.wy = @intFromFloat(@floor(playerPos[1])),
-			.wz = @intFromFloat(@floor(playerPos[2])),
+			.wx = @floor(playerPos[0]),
+			.wy = @floor(playerPos[1]),
+			.wz = @floor(playerPos[2]),
 			.voxelSize = 1,
 		};
 		const lod: u3 = settings.highestLod;
@@ -820,7 +820,7 @@ pub fn updateLightMap(map: *LightMap.LightMapFragment) void {
 // MARK: Block breaking animation
 
 pub fn addBreakingAnimation(pos: Vec3i, breakingProgress: f32) void {
-	const animationFrame: usize = @intFromFloat(breakingProgress*@as(f32, @floatFromInt(main.blocks.meshes.blockBreakingTextures.items.len)));
+	const animationFrame: usize = @trunc(breakingProgress*@as(f32, @floatFromInt(main.blocks.meshes.blockBreakingTextures.items.len)));
 	const texture = main.blocks.meshes.blockBreakingTextures.items[animationFrame];
 
 	const block = getBlockFromRenderThread(pos[0], pos[1], pos[2]) orelse return;

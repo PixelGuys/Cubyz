@@ -599,7 +599,7 @@ pub const Command = struct { // MARK: Command
 					info.source.ref().* = .{.item = item, .amount = info.amount};
 				},
 				.takeFromBag => |info| {
-					std.debug.assert(info.amount < info.dest.ref().amount);
+					std.debug.assert(info.amount <= info.dest.ref().amount);
 					std.debug.assert(info.source.push(.{.item = info.dest.ref().item, .amount = info.amount}) == 0);
 					info.dest.ref().amount -= info.amount;
 					if (info.dest.ref().amount == 0) {
