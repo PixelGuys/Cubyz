@@ -193,7 +193,7 @@ const Socket = struct {
 		return buffer[0..length];
 	}
 
-	fn resolveIP(name: []const u8) !u32 {
+	fn resolveIP(name: []const u8) !IpAddress {
 		var nameBuf: [255]u8 = undefined;
 		var buf: [16]std.Io.net.HostName.LookupResult = undefined;
 		var resultQueue = std.Io.Queue(std.Io.net.HostName.LookupResult).init(&buf);
@@ -203,7 +203,7 @@ const Socket = struct {
 			switch (entry) {
 				.address => |addr| {
 					if (addr != .ip4) continue;
-					return std.mem.bytesToValue(u32, addr.ip4.bytes[0..4]);
+					return .{.address = std.mem.bytesToValue(u32, addr.ip4.bytes[0..4])};
 				},
 				.canonical_name => {},
 			}
@@ -251,13 +251,6 @@ pub const IpAddress = struct {
 
 	pub fn format(self: IpAddress, writer: anytype) !void {
 		try writer.print("{}.{}.{}.{}", .{self.address & 255, self.address >> 8 & 255, self.address >> 16 & 255, self.address >> 24});
-	}
-
-	fn resolve(addr: []const u8, port: ?u16) !IpAddress {
-		const allocator = if(builtin.is_test) main.heap.testingAllocator else main.stackAllocator;
-		const list = try std.net.getAddressList(allocator.allocator, addr, port orelse settings.defaultPort);
-		defer list.deinit();
-		return .{.address = list.addrs[0].in.sa.addr};
 	}
 
 	pub fn parse(addr: []const u8) !IpAddress {
@@ -316,7 +309,7 @@ pub const SocketAddress = struct {
 	pub fn resolve(string: []const u8, defaultPort: ?u16) !SocketAddress {
 		const innerResult = try parseInner(string, defaultPort);
 		return .{
-			.ip = try IpAddress.resolve(innerResult.ip, innerResult.port),
+			.ip = try Socket.resolveIP(innerResult.ip),
 			.isSymmetricNAT = innerResult.isSymmetricNAT,
 			.port = innerResult.port,
 		};
