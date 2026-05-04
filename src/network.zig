@@ -1889,51 +1889,6 @@ pub const Connection = struct { // MARK: Connection
 	}
 };
 
-const ProtocolTask = struct {
-	conn: *Connection,
-	protocol: u8,
-	data: []const u8,
-
-	const vtable = utils.ThreadPool.VTable{
-		.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
-		.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
-		.run = main.utils.castFunctionSelfToAnyopaque(run),
-		.clean = main.utils.castFunctionSelfToAnyopaque(clean),
-		.taskType = .misc,
-	};
-
-	pub fn schedule(conn: *Connection, protocol: u8, data: []const u8) void {
-		const task = main.globalAllocator.create(ProtocolTask);
-		task.* = ProtocolTask{
-			.conn = conn,
-			.protocol = protocol,
-			.data = main.globalAllocator.dupe(u8, data),
-		};
-		main.threadPool.addTask(task, &vtable);
-	}
-
-	pub fn getPriority(_: *ProtocolTask) f32 {
-		return std.math.floatMax(f32);
-	}
-
-	pub fn isStillNeeded(_: *ProtocolTask) bool {
-		return true;
-	}
-
-	pub fn run(self: *ProtocolTask) void {
-		defer self.clean();
-		var reader = utils.BinaryReader.init(self.data);
-		protocols.list[self.protocol].?(self.conn, &reader) catch |err| {
-			std.log.err("Got error {s} while executing protocol {} with data {any}", .{@errorName(err), self.protocol, self.data}); // TODO: Maybe disconnect on error
-		};
-	}
-
-	pub fn clean(self: *ProtocolTask) void {
-		main.globalAllocator.free(self.data);
-		main.globalAllocator.destroy(self);
-	}
-};
-
 test "Parse address" {
 	const localhost: u32 = 0x0100007f;
 	try std.testing.expectEqual(localhost, IpAddress.localhost.address);
