@@ -496,47 +496,52 @@ pub fn calculateEyeMovement(comptime side: main.sync.Side, deltaTime: f64, pos: 
 	}
 }
 
-pub fn update(comptime side: main.sync.Side, deltaTime: f64, motion: Vec3d) void {
-	var move = motion;
+pub fn calculateWallCollision(comptime side: main.sync.Side, motion: *Vec3d, pos: *Vec3d, vel: *Vec3d, onGround: *bool, frictionState: FrictionState, hitBox: collision.Box, steppingHeight: f64, steppingHeightLimit: ?f64, crouching: bool) f64 {
+	var adjustedSteppingHeight = steppingHeight;
+	if (vel[2] > 0) {
+		adjustedSteppingHeight = vel[2]*vel[2]/baseGravity/2;
+	}
+	if (steppingHeightLimit) |limit| {
+		adjustedSteppingHeight = @min(adjustedSteppingHeight, limit);
+	}
+	const slipLimit = 0.25*frictionState.current;
+
+	const xMovement = collision.collideOrStep(side, .x, motion[0], pos, hitBox, adjustedSteppingHeight);
+	pos += xMovement;
+	if (crouching and onGround and @abs(vel[0]) < slipLimit) {
+		if (collision.collides(side, .x, 0, pos - Vec3d{0, 0, 1}, hitBox) == null) {
+			pos -= xMovement;
+			vel[0] = 0;
+		}
+	}
+
+	const yMovement = collision.collideOrStep(side, .y, motion[1], pos, hitBox, adjustedSteppingHeight);
+	pos += yMovement;
+	if (crouching and onGround and @abs(vel[1]) < slipLimit) {
+		if (collision.collides(side, .y, 0, pos - Vec3d{0, 0, 1}, hitBox) == null) {
+			pos -= yMovement;
+			vel[1] = 0;
+		}
+	}
+
+	if (xMovement[0] != motion[0]) {
+		vel[0] = 0;
+	}
+	if (yMovement[1] != motion[1]) {
+		vel[1] = 0;
+	}
+
+	const stepAmount = xMovement[2] + yMovement[2];
+	if (stepAmount > 0) {
+		motion[2] = -0.01;
+		onGround = true;
+	}
+	return stepAmount;
+}
+
+pub fn update(comptime side: main.sync.Side, deltaTime: f64, motion: Vec3d, stepAmount: f64) void {
 	if (!Player.isGhost.load(.monotonic)) {
-		Player.mutex.lock();
-		defer Player.mutex.unlock();
-
 		const hitBox = Player.outerBoundingBox;
-		var steppingHeight = Player.steppingHeight()[2];
-		if (Player.super.vel[2] > 0) {
-			steppingHeight = Player.super.vel[2]*Player.super.vel[2]/baseGravity/2;
-		}
-		steppingHeight = @min(steppingHeight, Player.eye.pos[2] - Player.eye.box.min[2]);
-
-		const slipLimit = 0.25*Player.friction.current;
-
-		const xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
-		Player.super.pos += xMovement;
-		if (Player.crouching and Player.onGround and @abs(Player.super.vel[0]) < slipLimit) {
-			if (collision.collides(.client, .x, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) {
-				Player.super.pos -= xMovement;
-				Player.super.vel[0] = 0;
-			}
-		}
-
-		const yMovement = collision.collideOrStep(.client, .y, move[1], Player.super.pos, hitBox, steppingHeight);
-		Player.super.pos += yMovement;
-		if (Player.crouching and Player.onGround and @abs(Player.super.vel[1]) < slipLimit) {
-			if (collision.collides(.client, .y, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) {
-				Player.super.pos -= yMovement;
-				Player.super.vel[1] = 0;
-			}
-		}
-
-		if (xMovement[0] != move[0]) {
-			Player.super.vel[0] = 0;
-		}
-		if (yMovement[1] != move[1]) {
-			Player.super.vel[1] = 0;
-		}
-
-		const stepAmount = xMovement[2] + yMovement[2];
 		if (stepAmount > 0) {
 			if (Player.eye.coyote <= 0) {
 				Player.eye.vel[2] = @max(1.5*vec.length(Player.super.vel), Player.eye.vel[2], 4);
@@ -549,15 +554,13 @@ pub fn update(comptime side: main.sync.Side, deltaTime: f64, motion: Vec3d) void
 				Player.eye.coyote = 0;
 			}
 			Player.eye.pos[2] -= stepAmount;
-			move[2] = -0.01;
-			Player.onGround = true;
 		}
 
 		const wasOnGround = Player.onGround;
 		Player.onGround = false;
-		Player.super.pos[2] += move[2];
-		if (collision.collides(.client, .z, -move[2], Player.super.pos, hitBox)) |box| {
-			if (move[2] < 0) {
+		Player.super.pos[2] += motion[2];
+		if (collision.collides(side, .z, -motion[2], Player.super.pos, hitBox)) |box| {
+			if (motion[2] < 0) {
 				if (!wasOnGround) {
 					Player.eye.vel[2] = Player.super.vel[2];
 					Player.eye.pos[2] -= (box.max[2] - hitBox.min[2] - Player.super.pos[2]);
@@ -568,7 +571,7 @@ pub fn update(comptime side: main.sync.Side, deltaTime: f64, motion: Vec3d) void
 			} else {
 				Player.super.pos[2] = box.min[2] - hitBox.max[2];
 			}
-			var bounciness = if (Player.isFlying.load(.monotonic)) 0 else collision.calculateSurfaceProperties(.client, Player.super.pos, Player.outerBoundingBox, 0.0).bounciness;
+			var bounciness = if (Player.isFlying.load(.monotonic)) 0 else collision.calculateSurfaceProperties(side, Player.super.pos, Player.outerBoundingBox, 0.0).bounciness;
 			if (Player.crouching) {
 				bounciness *= 0.5;
 			}
@@ -589,22 +592,22 @@ pub fn update(comptime side: main.sync.Side, deltaTime: f64, motion: Vec3d) void
 			}
 
 			// Always unstuck upwards for now
-			while (collision.collides(.client, .z, 0, Player.super.pos, hitBox)) |_| {
+			while (collision.collides(side, .z, 0, Player.super.pos, hitBox)) |_| {
 				Player.super.pos[2] += 1;
 			}
-		} else if (wasOnGround and move[2] < 0) {
+		} else if (wasOnGround and motion[2] < 0) {
 			// If the player drops off a ledge, they might just be walking over a small gap, so lock the y position of the eyes that long.
 			// This calculates how long the player has to fall until we know they're not walking over a small gap.
 			// We add deltaTime because we subtract deltaTime at the bottom of update
 			Player.eye.coyote = @sqrt(2*Player.steppingHeight()[2]/baseGravity) + deltaTime;
 			Player.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
-			Player.eye.pos[2] -= move[2];
+			Player.eye.pos[2] -= motion[2];
 		} else if (Player.eye.coyote > 0) {
-			Player.eye.pos[2] -= move[2];
+			Player.eye.pos[2] -= motion[2];
 		}
 		collision.touchBlocks(side, &Player.super, hitBox, deltaTime);
 	} else {
-		Player.super.pos += move;
+		Player.super.pos += motion;
 	}
 
 	// Clamp the eye.position and subtract eye coyote time.
