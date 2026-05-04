@@ -289,15 +289,14 @@ pub const SocketAddress = struct {
 	fn parseInner(string: []const u8, defaultPort: ?u16) !struct {ip: []const u8, isSymmetricNAT: bool, port: u16} {
 		var parts = std.mem.splitScalar(u8, string, ':');
 		const ip = parts.first();
-		var portString = parts.next() orelse return error.MissingColon;
-		if(parts.next() != null) return error.MultipleColons;
+		var portString = parts.rest();
 		var isSymmetricNAT = false;
 		if(portString.len == 0) return error.EmptyPort;
 		if(portString[0] == '?') {
 			isSymmetricNAT = true;
 			portString = portString[1..];
 		}
-		const port = try (std.fmt.parseInt(u16, portString, 10) catch |err| (defaultPort orelse err));
+		const port = try (std.fmt.parseUnsigned(u16, portString, 10) catch |err| (defaultPort orelse err));
 		return .{
 			.ip = ip,
 			.isSymmetricNAT = isSymmetricNAT,
