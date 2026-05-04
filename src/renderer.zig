@@ -1131,8 +1131,19 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			block.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
 			main.sync.ClientSide.mutex.unlock();
 
+			var neighborDir = Vec3i{0, 0, 0};
+			neighborDir = selectedPos - posBeforeBlock;
+			const neighborDisplacement = Vec3i{1, 1, 1} - (neighborDir*neighborDir);
+
 			if (newBlock != block) {
 				updateBlockAndSendUpdate(inventory, slot, selectedPos, block, newBlock);
+				for ([_]i32{-1, 0, 1}) |dx| {
+					for ([_]i32{-1, 0, 1}) |dy| {
+						for ([_]i32{-1, 0, 1}) |dz| {
+						updateBlockAndSendUpdate(inventory, slot, selectedPos + neighborDisplacement*Vec3i{dx, dy, dz}, block, newBlock);
+						}
+					}
+				}
 			}
 		}
 	}
