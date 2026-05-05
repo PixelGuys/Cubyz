@@ -1072,10 +1072,10 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				} else {
 					var neighborDir = Vec3i{0, 0, 0};
 					neighborDir = selectedPos - posBeforeBlock;
-					for(if (neighborDir[0] == 0) [_]i32{-1, 0, 1} else [_]i32{0, 0, 0}) |dx| {
-						for(if (neighborDir[1] == 0) [_]i32{-1, 0, 1} else [_]i32{0, 0, 0}) |dy| {
-							for(if (neighborDir[2] == 0) [_]i32{-1, 0, 1} else [_]i32{0, 0, 0}) |dz| {
-								TryMiningBlock(inventory, slot, deltaTime, selectedPos + Vec3i{dx, dy, dz});
+					for (if (neighborDir[0] == 0) [_]i32{-1, 0, 1} else [_]i32{0, 0, 0}) |dx| {
+						for (if (neighborDir[1] == 0) [_]i32{-1, 0, 1} else [_]i32{0, 0, 0}) |dy| {
+							for (if (neighborDir[2] == 0) [_]i32{-1, 0, 1} else [_]i32{0, 0, 0}) |dz| {
+								TryMiningBlock(inventory, slot, deltaTime/9, selectedPos + Vec3i{dx, dy, dz});
 							}
 						}
 					}
