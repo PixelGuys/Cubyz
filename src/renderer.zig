@@ -1067,7 +1067,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			if (stack.item != .proceduralItem) {
 				TryMiningBlock(inventory, slot, deltaTime, selectedPos);
 			} else {
-				if (stack.item.proceduralItem.modifiers) {
+				if (!stack.item.proceduralItem.hasModifer()) {
+					TryMiningBlock(inventory, slot, deltaTime, selectedPos);
 				} else {
 					var neighborDir = Vec3i{0, 0, 0};
 					neighborDir = selectedPos - posBeforeBlock;

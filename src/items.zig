@@ -209,7 +209,7 @@ const Modifier = struct {
 	}
 
 	pub fn hasModifier(self: Modifier) bool {
-		self.vTable.hasModifier();
+		return self.vTable.hasModifier();
 	}
 };
 
@@ -897,11 +897,13 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		return false;
 	}
 
-	pub fn checkForModifer(self: *const ProceduralItem) bool {
+	pub fn hasModifer(self: *const ProceduralItem) bool {
+		var hasModifierCheck = false;
 		for (self.modifiers) |modifier| {
-			modifier.ha;
+			hasModifierCheck = modifier.hasModifier();
+			if (hasModifierCheck) break;
 		}
-		return false;
+		return hasModifierCheck;
 	}
 
 	pub fn isEffectiveOn(self: *ProceduralItem, block: Block) bool {
