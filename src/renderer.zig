@@ -1064,87 +1064,98 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				return;
 			}
 
-			if (@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
-				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-				currentSwingProgress = 0;
-				currentSwingTime = 0;
-				lastSelectedBlockPos = selectedPos;
-				currentBlockProgress = 0;
-			}
-			const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
-			const holdingTargetedBlock = stack.item == .baseItem and stack.item.baseItem.block() == block.typ;
-			if ((block.hasTag(.fluid) or block.hasTag(.air)) and !holdingTargetedBlock) return;
-
-			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
-
-			main.sync.ClientSide.mutex.lock();
-			if (!game.Player.isCreative()) {
-				var damage: f32 = main.game.Player.defaultBlockDamage;
-				const isProceduralItem = stack.item == .proceduralItem;
-				if (isProceduralItem) {
-					damage = stack.item.proceduralItem.getBlockDamage(block);
-				}
-				damage -= block.blockResistance();
-				if (damage > 0) {
-					const swingTime = if (isProceduralItem and stack.item.proceduralItem.isEffectiveOn(block)) 1.0/stack.item.proceduralItem.getProperty(.swingSpeed) else 0.5;
-					if (currentSwingTime > swingTime) {
-						currentSwingProgress = 0;
-						currentSwingTime = 0;
-					}
-					if (currentSwingTime == 0) {
-						const swings = @ceil(block.blockHealth()/damage);
-						const damagePerSwing = block.blockHealth()/swings;
-						currentSwingTime = damagePerSwing/damage*swingTime;
-					}
-					currentSwingProgress += @floatCast(deltaTime);
-					while (currentSwingProgress > currentSwingTime) {
-						currentSwingProgress -= currentSwingTime;
-						currentBlockProgress += damage*currentSwingTime/swingTime/block.blockHealth();
-						if (currentBlockProgress > 0.9999) break;
-						const swings = @ceil(block.blockHealth()/damage);
-						const damagePerSwing = block.blockHealth()/swings;
-						currentSwingTime = damagePerSwing/damage*swingTime;
-					}
-					if (currentBlockProgress < 0.9999) {
-						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-						if (currentBlockProgress != 0) {
-							mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
-						}
-						main.sync.ClientSide.mutex.unlock();
-
-						return;
-					} else {
-						currentSwingProgress = 0;
-						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-						currentBlockProgress = 0;
-						currentSwingTime = 0;
-					}
+			if (stack.item != .proceduralItem) {
+				TryMiningBlock(inventory, slot, deltaTime, selectedPos);
+			} else {
+				if (stack.item.proceduralItem.modifiers) {
 				} else {
+					var neighborDir = Vec3i{0, 0, 0};
+					neighborDir = selectedPos - posBeforeBlock;
+					for(if (neighborDir[0] == 0) [_]i32{-1, 0, 1} else [_]i32{0, 0, 0}) |dx| {
+						for(if (neighborDir[1] == 0) [_]i32{-1, 0, 1} else [_]i32{0, 0, 0}) |dy| {
+							for(if (neighborDir[2] == 0) [_]i32{-1, 0, 1} else [_]i32{0, 0, 0}) |dz| {
+								TryMiningBlock(inventory, slot, deltaTime, selectedPos + Vec3i{dx, dy, dz});
+							}
+						}
+					}
+				}
+			}
+
+		}
+	}
+
+	fn TryMiningBlock(inventory: main.items.Inventory.ClientInventory, slot: u32, deltaTime: f64, givenPosition: Vec3i) void {
+		
+		const stack = inventory.getStack(slot);
+
+		if (@reduce(.Or, lastSelectedBlockPos != givenPosition)) {
+			mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+			currentSwingProgress = 0;
+			currentSwingTime = 0;
+			lastSelectedBlockPos = givenPosition;
+			currentBlockProgress = 0;
+		}
+		const block = mesh_storage.getBlockFromRenderThread(givenPosition[0], givenPosition[1], givenPosition[2]) orelse return;
+		const holdingTargetedBlock = stack.item == .baseItem and stack.item.baseItem.block() == block.typ;
+		if ((block.hasTag(.fluid) or block.hasTag(.air)) and !holdingTargetedBlock) return;
+
+		const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(givenPosition)));
+
+		main.sync.ClientSide.mutex.lock();
+		if (!game.Player.isCreative()) {
+			var damage: f32 = main.game.Player.defaultBlockDamage;
+			const isProceduralItem = stack.item == .proceduralItem;
+			if (isProceduralItem) {
+				damage = stack.item.proceduralItem.getBlockDamage(block);
+			}
+			damage -= block.blockResistance();
+			if (damage > 0) {
+				const swingTime = if (isProceduralItem and stack.item.proceduralItem.isEffectiveOn(block)) 1.0/stack.item.proceduralItem.getProperty(.swingSpeed) else 0.5;
+				if (currentSwingTime > swingTime) {
+					currentSwingProgress = 0;
+					currentSwingTime = 0;
+				}
+				if (currentSwingTime == 0) {
+					const swings = @ceil(block.blockHealth()/damage);
+					const damagePerSwing = block.blockHealth()/swings;
+					currentSwingTime = damagePerSwing/damage*swingTime;
+				}
+				currentSwingProgress += @floatCast(deltaTime);
+				while (currentSwingProgress > currentSwingTime) {
+					currentSwingProgress -= currentSwingTime;
+					currentBlockProgress += damage*currentSwingTime/swingTime/block.blockHealth();
+					if (currentBlockProgress > 0.9999) break;
+					const swings = @ceil(block.blockHealth()/damage);
+					const damagePerSwing = block.blockHealth()/swings;
+					currentSwingTime = damagePerSwing/damage*swingTime;
+				}
+				if (currentBlockProgress < 0.9999) {
+					mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+					if (currentBlockProgress != 0) {
+						mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
+					}
 					main.sync.ClientSide.mutex.unlock();
+
 					return;
+				} else {
+					currentSwingProgress = 0;
+					mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+					currentBlockProgress = 0;
+					currentSwingTime = 0;
 				}
 			} else {
-				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+				main.sync.ClientSide.mutex.unlock();
+				return;
 			}
+		} else {
+			mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+		}
 
-			var newBlock = block;
-			block.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
-			main.sync.ClientSide.mutex.unlock();
-
-			var neighborDir = Vec3i{0, 0, 0};
-			neighborDir = selectedPos - posBeforeBlock;
-			const neighborDisplacement = Vec3i{1, 1, 1} - (neighborDir*neighborDir);
-
-			if (newBlock != block) {
-				updateBlockAndSendUpdate(inventory, slot, selectedPos, block, newBlock);
-				for ([_]i32{-1, 0, 1}) |dx| {
-					for ([_]i32{-1, 0, 1}) |dy| {
-						for ([_]i32{-1, 0, 1}) |dz| {
-						updateBlockAndSendUpdate(inventory, slot, selectedPos + neighborDisplacement*Vec3i{dx, dy, dz}, block, newBlock);
-						}
-					}
-				}
-			}
+		var newBlock = block;
+		block.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
+		main.sync.ClientSide.mutex.unlock();
+		if (newBlock != block) {
+			updateBlockAndSendUpdate(inventory, slot, givenPosition, block, newBlock);
 		}
 	}
 

@@ -161,6 +161,7 @@ const Modifier = struct {
 		changeBlockDamage: *const fn (damage: f32, block: Block, data: Data) f32,
 		printTooltip: *const fn (outString: *main.List(u8), data: Data) void,
 		loadData: *const fn (zon: ZonElement) Data,
+		hasModifier: *const fn () bool,
 		priority: f32,
 
 		const Defaults = struct {
@@ -168,12 +169,16 @@ const Modifier = struct {
 			pub fn changeBlockDamage(damage: f32, _: Block, _: Data) f32 {
 				return damage;
 			}
+			pub fn hasModifier() bool {
+				return false;
+			}
 		};
 
 		inline fn initFromModifierStruct(comptime ModifierStruct: type) VTable {
 			return comptime .{
 				.changeProceduralItemParameters = @ptrCast(if (@hasDecl(ModifierStruct, "changeProceduralItemParameters")) &ModifierStruct.changeProceduralItemParameters else &VTable.Defaults.changeProceduralItemParameters),
 				.changeBlockDamage = @ptrCast(if (@hasDecl(ModifierStruct, "changeBlockDamage")) &ModifierStruct.changeBlockDamage else &VTable.Defaults.changeBlockDamage),
+				.hasModifier = @ptrCast(if (@hasDecl(ModifierStruct, "hasModifier")) &ModifierStruct.hasModifier else &VTable.Defaults.hasModifier),
 				.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
 				.printTooltip = @ptrCast(&ModifierStruct.printTooltip),
 				.loadData = @ptrCast(&ModifierStruct.loadData),
@@ -201,6 +206,10 @@ const Modifier = struct {
 
 	pub fn printTooltip(self: Modifier, outString: *main.List(u8)) void {
 		self.vTable.printTooltip(outString, self.data);
+	}
+
+	pub fn hasModifier(self: Modifier) bool {
+		self.vTable.hasModifier();
 	}
 };
 
@@ -884,6 +893,13 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	pub fn hasTag(self: *ProceduralItem, tag: Tag) bool {
 		for (self.type.tags()) |proceduralItemTag| {
 			if (proceduralItemTag == tag) return true;
+		}
+		return false;
+	}
+
+	pub fn checkForModifer(self: *const ProceduralItem) bool {
+		for (self.modifiers) |modifier| {
+			modifier.ha;
 		}
 		return false;
 	}
