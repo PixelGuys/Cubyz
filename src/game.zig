@@ -652,7 +652,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const gravity: f64 = if (Player.isFlying.load(.monotonic)) 0.0 else physics.baseGravity;
 	const jumpHeight: f64 = if (jumping) Player.jumpHeight else 0.0;
 	var motion = physics.calculateMotion(.client, deltaTime, Player.friction, Player.volumeProperties, physics.playerDensity, Player.super.pos, &Player.super.vel, acc, gravity, jumpHeight);
-	
+
 	{
 		Player.mutex.lock();
 		defer Player.mutex.unlock();
