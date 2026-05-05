@@ -1,0 +1,24 @@
+// graphics.zig
+#include <freetype/ftadvanc.h>
+#include <freetype/ftbbox.h>
+#include <freetype/ftbitmap.h>
+#include <freetype/ftcolor.h>
+#include <freetype/ftlcdfil.h>
+#include <freetype/ftsizes.h>
+#include <freetype/ftstroke.h>
+#include <freetype/fttrigon.h>
+#include <freetype/ftsynth.h>
+#include <hb.h>
+#include <hb-ft.h>
+
+#include <glad/gl.h>
+#ifdef __MACH__
+#include <vulkan/vulkan.h>
+#include <vulkan/vulkan_beta.h>
+#else
+#include <glad/vulkan.h>
+#endif
+#include <GLFW/glfw3.h>
+
+#include <stb/stb_image.h>
+#include <stb/stb_image_write.h>

@@ -48,6 +48,15 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	exe.root_module.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools", t)));
 	exe.root_module.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools-opt", t)));
 
+	const translate_c = b.addTranslateC(.{
+		.root_source_file = b.path("src/c.h"),
+		.target = target,
+		.optimize = optimize,
+	});
+	translate_c.addIncludePath(headersDeps.path("include"));
+
+	exe.root_module.addImport("c", translate_c.createModule());
+
 	if (t.os.tag == .macos) {
 		const moltenVkLibInstall = b.addInstallFile(subPath.path(b, "libMoltenVK.dylib"), "bin/Cubyz.app/Contents/Frameworks/libMoltenVK.dylib");
 		const moltenVkJsonInstall = b.addInstallFile(subPath.path(b, "MoltenVK_icd.json"), "bin/Cubyz.app/Contents/Resources/vulkan/icd.d/MoltenVK_icd.json");
