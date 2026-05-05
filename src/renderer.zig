@@ -1083,9 +1083,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			}
 		}
 	}
-	
+
 	fn TryMiningBlock(inventory: main.items.Inventory.ClientInventory, slot: u32, deltaTime: f64, givenPosition: Vec3i) void {
-		
 		const stack = inventory.getStack(slot);
 
 		if (@reduce(.Or, lastSelectedBlockPos != givenPosition)) {
