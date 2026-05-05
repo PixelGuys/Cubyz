@@ -156,15 +156,15 @@ pub fn deinit() void {
 		window.onCloseFn();
 	}
 	openWindows.clearRetainingCapacity();
-	GuiWindow.__deinit();
-	GuiComponent.BagSlot.__deinit();
-	Button.__deinit();
-	CheckBox.__deinit();
-	ItemSlot.__deinit();
-	ScrollBar.__deinit();
-	ContinuousSlider.__deinit();
-	DiscreteSlider.__deinit();
-	TextInput.__deinit();
+	GuiWindow.globalDeinit();
+	GuiComponent.BagSlot.globalDeinit();
+	Button.globalDeinit();
+	CheckBox.globalDeinit();
+	ItemSlot.globalDeinit();
+	ScrollBar.globalDeinit();
+	ContinuousSlider.globalDeinit();
+	DiscreteSlider.globalDeinit();
+	TextInput.globalDeinit();
 	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
 		const WindowStruct = @field(windowlist, decl.name);
 		if (@hasDecl(WindowStruct, "deinit")) {
