@@ -539,22 +539,25 @@ pub fn calculateWallCollision(comptime side: main.sync.Side, motion: *Vec3d, pos
 	return stepAmount;
 }
 
-pub fn update(comptime side: main.sync.Side, deltaTime: f64, motion: Vec3d, stepAmount: f64) void {
+pub fn calculateEyeStepMovement(eye: *Player.EyeData, stepAmount: f64, vel: Vec3d) void {
+	if (stepAmount > 0) {
+		if (eye.coyote <= 0) {
+			eye.vel[2] = @max(1.5*vec.length(vel), eye.vel[2], 4);
+			eye.step[2] = true;
+			if (vel[2] > 0) {
+				eye.vel[2] = vel[2];
+				eye.step[2] = false;
+			}
+		} else {
+			eye.coyote = 0;
+		}
+		eye.pos[2] -= stepAmount;
+	}
+}
+
+pub fn update(comptime side: main.sync.Side, deltaTime: f64, motion: Vec3d) void {
 	if (!Player.isGhost.load(.monotonic)) {
 		const hitBox = Player.outerBoundingBox;
-		if (stepAmount > 0) {
-			if (Player.eye.coyote <= 0) {
-				Player.eye.vel[2] = @max(1.5*vec.length(Player.super.vel), Player.eye.vel[2], 4);
-				Player.eye.step[2] = true;
-				if (Player.super.vel[2] > 0) {
-					Player.eye.vel[2] = Player.super.vel[2];
-					Player.eye.step[2] = false;
-				}
-			} else {
-				Player.eye.coyote = 0;
-			}
-			Player.eye.pos[2] -= stepAmount;
-		}
 
 		const wasOnGround = Player.onGround;
 		Player.onGround = false;

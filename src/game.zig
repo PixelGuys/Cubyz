@@ -657,12 +657,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		Player.mutex.lock();
 		defer Player.mutex.unlock();
 
-		var stepAmount: f64 = 0.0;
 		if (!Player.isGhost.load(.monotonic)) {
 			const steppingHeightLimit = Player.eye.pos[2] - Player.eye.box.min[2];
-			stepAmount = physics.calculateWallCollision(.client, &motion, &Player.super.pos, &Player.super.vel, &Player.onGround, Player.friction, Player.outerBoundingBox, Player.steppingHeight()[2], steppingHeightLimit, Player.crouching);
+			const stepAmount = physics.calculateWallCollision(.client, &motion, &Player.super.pos, &Player.super.vel, &Player.onGround, Player.friction, Player.outerBoundingBox, Player.steppingHeight()[2], steppingHeightLimit, Player.crouching);
+			physics.calculateEyeStepMovement(&Player.eye, stepAmount, Player.super.vel);
 		}
-		physics.update(.client, deltaTime, motion, stepAmount);
+		physics.update(.client, deltaTime, motion);
 	}
 
 	const time = main.timestamp();
