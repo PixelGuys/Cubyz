@@ -102,7 +102,7 @@ fn unbindKey(keyPtr: usize) void {
 	needsUpdate = true;
 }
 
-pub fn initWindow() void {
+fn initWindow() void {
 	const controlsListWidth: u32 = 256;
 	const keybindButtonWidth: u32 = 160;
 	const unbindButtonWidth: u32 = 64;
@@ -137,7 +137,7 @@ pub fn initWindow() void {
 	gui.updateWindowPositions();
 }
 
-pub fn deinitWindow() void {
+fn deinitWindow() void {
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
