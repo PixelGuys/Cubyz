@@ -1081,7 +1081,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 					}
 				}
 			}
-
 		}
 	}
 
