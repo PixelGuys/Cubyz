@@ -1,7 +1,7 @@
 .{
 	.properties = .{.mountain},
-	.minHeight = 850,
-	.maxHeight = 850,
+	.minHeight = 788,
+	.maxHeight = 788,
 	.smoothBeaches = true,
 	.radius = 110,
 	.mountains = 90,
