@@ -12,6 +12,7 @@
 #include <hb-ft.h>
 
 #include <glad/gl.h>
+// NOTE(blackedout): glad is currently not used on macOS, so use Vulkan header from the Vulkan-Headers repository instead
 #ifdef __MACH__
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_beta.h>
