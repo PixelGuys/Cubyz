@@ -11,7 +11,7 @@
 	.maxRadius = 240,
 	.hills = 15,
 	.validPlayerSpawn = false,
-	.music = "cubyz:EasternThought",
+	.music = "cubyz:totaldemented/cubyz",
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
