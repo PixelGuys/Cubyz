@@ -553,7 +553,7 @@ pub fn calculateWallCollision(comptime side: main.sync.Side, motion: *Vec3d, pos
 	return stepAmount;
 }
 
-pub fn calculateVerticalCollision(comptime side: main.sync.Side, deltaTime: f64, pos: *Vec3d, vel: *Vec3d, jumpCoyote: ?*f64, onGround: *bool, hitBox: collision.Box, motion: Vec3d, bouncinessMultiplier: f64) ?f64 {
+pub fn calculateVerticalCollision(comptime side: main.sync.Side, deltaTime: f64, pos: *Vec3d, vel: *Vec3d, jumpCoyote: ?*f64, onGround: *bool, hitBox: collision.Box, motion: Vec3d, bouncinessMultiplier: f64) bool {
 	onGround.* = false;
 	pos[2] += motion[2];
 
@@ -566,15 +566,12 @@ pub fn calculateVerticalCollision(comptime side: main.sync.Side, deltaTime: f64,
 		}
 		const bounciness = if (bouncinessMultiplier == 0) 0 else collision.calculateSurfaceProperties(side, pos.*, hitBox, 0.0).bounciness*bouncinessMultiplier;
 
-		var velocityChange: f64 = undefined;
 		if (bounciness != 0.0 and vel[2] < -3.0) {
-			velocityChange = vel[2]*@as(f64, @floatCast(1 - bounciness));
 			vel[2] = -vel[2]*bounciness;
 			if (jumpCoyote) |coyote| {
 				coyote.* = Player.jumpCoyoteTimeConstant + deltaTime;
 			}
 		} else {
-			velocityChange = vel[2];
 			vel[2] = 0;
 		}
 
@@ -582,9 +579,9 @@ pub fn calculateVerticalCollision(comptime side: main.sync.Side, deltaTime: f64,
 		while (collision.collides(side, .z, 0, pos.*, hitBox)) |_| {
 			pos[2] += 1;
 		}
-		return velocityChange;
+		return true;
 	} else {
-		return null;
+		return false;
 	}
 }
 
@@ -601,10 +598,11 @@ pub fn calculateVerticalCollisionEyeMovement(eye: *Player.EyeData, onGround: boo
 	}
 }
 
-pub fn update(comptime side: main.sync.Side, deltaTime: f64, motion: Vec3d, velocityChange: ?f64, wasOnGround: bool) void {
+pub fn update(comptime side: main.sync.Side, deltaTime: f64, prevVel: Vec3d, vel: Vec3d, didCollide: bool, motion: Vec3d, wasOnGround: bool) void {
 	if (!Player.isGhost.load(.monotonic)) {
-		if (velocityChange) |velChange| {
-			const damage: f32 = @floatCast(@round(@max((velChange*velChange)/(2*baseGravity) - 7, 0))/2);
+		if (didCollide) {
+			const velocityChange = @abs(@abs(prevVel[2]) - @abs(vel[2]));
+			const damage: f32 = @floatCast(@round(@max((velocityChange*velocityChange)/(2*baseGravity) - 7, 0))/2);
 			if (damage > 0.01) {
 				main.sync.addHealth(-damage, .fall, .client, Player.id);
 			}
