@@ -16,7 +16,27 @@
 			.modifiers = .{
 				.{
 					.id = "multi_break",
-					.strength = 1,
+					.width = 2,
+					.depth = 1,
+				},
+				.{
+					.id = "powerful",
+					.strength = 0.5,
+					.restriction = .{
+						.id = .@"and",
+						.children = .{
+							.{
+								.id = .encased,
+								.tag = .precious,
+								.amount = 4,
+							},
+							.{
+								.id = .encased,
+								.tag = .precious,
+								.amount = 4,
+							},
+						},
+					},
 				},
 			},
 		},

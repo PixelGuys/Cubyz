@@ -1067,15 +1067,20 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			if (stack.item != .proceduralItem) {
 				TryMiningBlock(inventory, slot, deltaTime, selectedPos);
 			} else {
-				if (!stack.item.proceduralItem.hasModifer()) {
+				if (false) {
 					TryMiningBlock(inventory, slot, deltaTime, selectedPos);
 				} else {
 					var neighborDir = Vec3i{0, 0, 0};
 					neighborDir = selectedPos - posBeforeBlock;
-					for (if (neighborDir[0] == 0) [_]i32{-1, 0, 1} else [_]i32{0, 0, 0}) |dx| {
-						for (if (neighborDir[1] == 0) [_]i32{-1, 0, 1} else [_]i32{0, 0, 0}) |dy| {
-							for (if (neighborDir[2] == 0) [_]i32{-1, 0, 1} else [_]i32{0, 0, 0}) |dz| {
-								TryMiningBlock(inventory, slot, deltaTime/9, selectedPos + Vec3i{dx, dy, dz});
+					const givenMiningArea: Vec3i = stack.item.proceduralItem.changeMiningArea();
+					var calculatedMiningArea: Vec3i = Vec3i{0, 0, 0};
+					if (neighborDir[0] != 0) calculatedMiningArea = Vec3i{givenMiningArea[0], givenMiningArea[1], givenMiningArea[2]};
+					if (neighborDir[1] != 0) calculatedMiningArea = Vec3i{givenMiningArea[2], givenMiningArea[0], givenMiningArea[1]};
+					if (neighborDir[2] != 0) calculatedMiningArea = Vec3i{givenMiningArea[1], givenMiningArea[2], givenMiningArea[0]};
+					for (0..@intCast(calculatedMiningArea[0]*2 - 1)) |dx| {
+						for (0..@intCast(calculatedMiningArea[1]*2 - 1)) |dy| {
+							for (0..@intCast(calculatedMiningArea[2]*2 - 1)) |dz| {
+								TryMiningBlock(inventory, slot, deltaTime/9, selectedPos + Vec3i{@as(i32 , @intCast(dx)) - (calculatedMiningArea[0]*2 - 1), @as(i32 , @intCast(dy)) - (calculatedMiningArea[1]*2 - 1), @as(i32 , @intCast(dz)) - (calculatedMiningArea[2]*2 - 1)});
 							}
 						}
 					}
