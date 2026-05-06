@@ -1,4 +1,4 @@
 .{
 	.absorbedLight = 0x1C1C38,
-	.texture = "cubyz:totaldemented/leaves/opaque/yellow",
+	.texture = "cubyz:leaves/opaque/yellow",
 }

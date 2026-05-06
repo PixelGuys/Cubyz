@@ -1,5 +1,5 @@
 .{
-	.texture = "cubyz:totaldemented/leaves/cirrus",
-	.lodReplacement = "cubyz:totaldemented/leaves/opaque/cirrus",
-	.opaqueVariant = "cubyz:totaldemented/leaves/opaque/cirrus",
+	.texture = "cubyz:leaves/cirrus",
+	.lodReplacement = "cubyz:leaves/opaque/cirrus",
+	.opaqueVariant = "cubyz:leaves/opaque/cirrus",
 }

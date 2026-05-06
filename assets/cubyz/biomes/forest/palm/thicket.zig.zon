@@ -16,7 +16,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:totaldemented/leaves/mahogany",
+			.leaves = "cubyz:leaves/mahogany",
 			.log = "cubyz:mahogany_log",
 			.top = "cubyz:mahogany_top",
 			.chance = 0.03,

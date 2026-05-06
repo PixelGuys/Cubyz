@@ -50,7 +50,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:totaldemented/leaves/yellow",
+			.leaves = "cubyz:leaves/yellow",
 			.log = "cubyz:birch_log",
 			.top = "cubyz:birch_top",
 			.chance = 0.1,
@@ -80,7 +80,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:totaldemented/leaves/red",
+			.leaves = "cubyz:leaves/red",
 			.log = "cubyz:oak_log",
 			.top = "cubyz:oak_top",
 			.chance = 0.1,
