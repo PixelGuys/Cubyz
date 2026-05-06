@@ -1,5 +1,5 @@
 .{
-	.texture = "cubyz:leaves/pine",
-	.lodReplacement = "cubyz:leaves/opaque/pine",
-	.opaqueVariant = "cubyz:leaves/opaque/pine",
+	.texture = "cubyz:totaldemented/leaves/pine",
+	.lodReplacement = "cubyz:totaldemented/leaves/opaque/pine",
+	.opaqueVariant = "cubyz:totaldemented/leaves/opaque/pine",
 }

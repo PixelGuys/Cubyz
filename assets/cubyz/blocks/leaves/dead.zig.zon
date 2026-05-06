@@ -1,6 +1,6 @@
 .{
 	.absorbedLight = 0x222222,
-	.texture = "cubyz:leaves/dead",
-	.lodReplacement = "cubyz:leaves/opaque/dead",
-	.opaqueVariant = "cubyz:leaves/opaque/dead",
+	.texture = "cubyz:totaldemented/leaves/dead",
+	.lodReplacement = "cubyz:totaldemented/leaves/opaque/dead",
+	.opaqueVariant = "cubyz:totaldemented/leaves/opaque/dead",
 }

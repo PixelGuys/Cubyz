@@ -20,7 +20,7 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.05,
-			.block = "cubyz:leaves/dead",
+			.block = "cubyz:totaldemented/leaves/dead",
 			.size = 3,
 			.size_variance = 3,
 		},

@@ -16,7 +16,7 @@
 	.roughness = 3,
 	.hills = 1,
 	.chance = 1.0,
-	.music = "cubyz:leaves",
+	.music = "cubyz:totaldemented/leaves",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"4 to 5 cubyz:mud",
@@ -76,9 +76,9 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:leaves/willow",
+			.leaves = "cubyz:totaldemented/leaves/willow",
 			.log = "cubyz:willow_log",
-			.top = "cubyz:leaves/willow",
+			.top = "cubyz:totaldemented/leaves/willow",
 			.chance = 0.8,
 			.type = .round,
 			.height = 4,

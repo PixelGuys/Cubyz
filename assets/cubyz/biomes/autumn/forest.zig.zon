@@ -16,7 +16,7 @@
 	.maxRadius = 320,
 	.roughness = 10,
 	.hills = 10,
-	.music = "cubyz:leaves",
+	.music = "cubyz:totaldemented/leaves",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"cubyz:grass",
@@ -49,7 +49,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:leaves/yellow",
+			.leaves = "cubyz:totaldemented/leaves/yellow",
 			.log = "cubyz:birch_log",
 			.top = "cubyz:birch_top",
 			.chance = 0.15,
@@ -63,7 +63,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:leaves/red",
+			.leaves = "cubyz:totaldemented/leaves/red",
 			.log = "cubyz:oak_log",
 			.top = "cubyz:oak_top",
 			.chance = 0.15,
@@ -75,7 +75,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:leaves/birch",
+			.leaves = "cubyz:totaldemented/leaves/birch",
 			.log = "cubyz:birch_log",
 			.top = "cubyz:birch_top",
 			.chance = 0.03,
@@ -89,7 +89,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:leaves/oak",
+			.leaves = "cubyz:totaldemented/leaves/oak",
 			.log = "cubyz:oak_log",
 			.top = "cubyz:oak_top",
 			.chance = 0.015,

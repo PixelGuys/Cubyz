@@ -81,7 +81,7 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:leaves/baobab",
+			.leaves = "cubyz:totaldemented/leaves/baobab",
 			.log = "cubyz:baobab_log",
 			.top = "cubyz:baobab_top",
 			.chance = 0.08,

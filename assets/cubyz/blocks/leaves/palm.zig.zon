@@ -1,7 +1,7 @@
 .{
 	.model = "cubyz:cube_hanging_planes",
-	.texture = "cubyz:leaves/palm",
-	.texture12 = "cubyz:leaves/palm_hanging",
-	.lodReplacement = "cubyz:leaves/opaque/palm",
-	.opaqueVariant = "cubyz:leaves/opaque/palm",
+	.texture = "cubyz:totaldemented/leaves/palm",
+	.texture12 = "cubyz:totaldemented/leaves/palm_hanging",
+	.lodReplacement = "cubyz:totaldemented/leaves/opaque/palm",
+	.opaqueVariant = "cubyz:totaldemented/leaves/opaque/palm",
 }
