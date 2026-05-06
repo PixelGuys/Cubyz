@@ -682,7 +682,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		} else {
 			Player.super.pos += motion;
 		}
-		
+
 		Player.eye.pos = @max(Player.eye.box.min, @min(Player.eye.pos, Player.eye.box.max));
 		Player.eye.coyote -= deltaTime;
 		Player.jumpCoyote -= deltaTime;
