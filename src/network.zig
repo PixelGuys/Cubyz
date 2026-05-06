@@ -298,6 +298,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	allowNewConnections: Atomic(bool) = .init(false),
 
 	receiveBuffer: [Connection.maxMtu]u8 = undefined,
+	recevieResultBuffer: [16]receive_timeout.Result = undefined,
 
 	world: ?*game.World = null,
 
@@ -514,6 +515,35 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 	}
 
+	const receive_timeout = struct {
+		const Result = union(enum) {
+			message: @typeInfo(@TypeOf(receive)).@"fn".return_type.?,
+			timeout: @typeInfo(@TypeOf(timeout)).@"fn".return_type.?,
+		};
+
+		fn timeout(_duration: std.Io.Duration) !void {
+			try main.io.sleep(_duration, .real);
+			return error.Timeout;
+		}
+
+		fn receive(socket: *net.Socket, _buffer: []u8) !net.IncomingMessage {
+			return socket.receive(main.io, _buffer);
+		}
+
+		fn run(self: *ConnectionManager, duration: std.Io.Duration) !net.IncomingMessage {
+			const Select = std.Io.Select(Result);
+			var select: Select = .init(main.io, &self.recevieResultBuffer);
+			defer select.cancelDiscard();
+			try select.concurrent(.message, receive, .{&self.socket, &self.receiveBuffer});
+			try select.concurrent(.timeout, timeout, .{duration});
+
+			return switch (try select.await()) {
+				.timeout => |err| if (err) unreachable else |e| e,
+				.message => |mess| mess,
+			};
+		}
+	};
+
 	pub fn run(self: *ConnectionManager) void {
 		self.threadId = std.Thread.getCurrentId();
 		main.initThreadLocals();
@@ -524,7 +554,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		while (self.running.load(.monotonic)) {
 			main.heap.GarbageCollection.syncPoint();
 			self.waitingToFinishReceive.broadcast();
-			if (self.socket.receiveTimeout(main.io, &self.receiveBuffer, .{.duration = .{.raw = .fromMilliseconds(1), .clock = .real}})) |message| {
+			if (receive_timeout.run(self, .fromMilliseconds(1))) |message| {
 				self.onReceive(message.data, message.from);
 			} else |err| {
 				if (err == error.Timeout) {
