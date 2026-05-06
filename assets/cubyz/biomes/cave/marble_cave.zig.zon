@@ -6,7 +6,7 @@
 	.chance = 0.2,
 
 	.fogDensity = 10,
-	
+
 	.music = "cubyz:totaldemented/vitreous",
 
 	.stoneBlock = "cubyz:marble/base",
