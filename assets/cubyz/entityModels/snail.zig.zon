@@ -1,0 +1,6 @@
+.{
+	.model = "cubyz:snail",
+	.defaultTexture = "cubyz:snail",
+	.height = 1,
+	.coordinateSystem = .right_handed_z_up,
+}

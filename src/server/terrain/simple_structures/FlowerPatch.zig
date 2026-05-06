@@ -19,7 +19,7 @@ pub const generationMode = .floor;
 
 const FlowerPatch = @This();
 
-block: main.blocks.Block,
+blocks: []main.blocks.Block,
 width: f32,
 variation: f32,
 density: f32,
@@ -27,7 +27,18 @@ density: f32,
 pub fn loadModel(parameters: ZonElement) ?*FlowerPatch {
 	const self = main.worldArena.create(FlowerPatch);
 	self.* = .{
-		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "")),
+		.blocks = blk: {
+			const blockZons = parameters.getChild("blocks").toSlice();
+			if (blockZons.len == 0) {
+				std.log.err("'blocks' field of flower_patch cannot be empty.", .{});
+				return null;
+			}
+			const output = main.worldArena.alloc(main.blocks.Block, blockZons.len);
+			for (blockZons, output) |zon, *block| {
+				block.* = main.blocks.parseBlock(zon.as([]const u8, ""));
+			}
+			break :blk output;
+		},
 		.width = parameters.get(f32, "width", 5),
 		.variation = parameters.get(f32, "variation", 1),
 		.density = parameters.get(f32, "density", 0.5),
@@ -47,10 +58,10 @@ pub fn generate(self: *FlowerPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 	const xSecn = ellipseParam*@cos(orientation)/width;
 	const ySecn = -ellipseParam*@sin(orientation)/width;
 
-	const xMin = @max(0, x - @as(i32, @intFromFloat(@ceil(width))));
-	const xMax = @min(chunk.super.width, x + @as(i32, @intFromFloat(@ceil(width))));
-	const yMin = @max(0, y - @as(i32, @intFromFloat(@ceil(width))));
-	const yMax = @min(chunk.super.width, y + @as(i32, @intFromFloat(@ceil(width))));
+	const xMin = @max(0, x - @as(i32, @ceil(width)));
+	const xMax = @min(chunk.super.width, x + @as(i32, @ceil(width)));
+	const yMin = @max(0, y - @as(i32, @ceil(width)));
+	const yMax = @min(chunk.super.width, y + @as(i32, @ceil(width)));
 
 	var baseHeight = z;
 	if (mode != .water_surface) {
@@ -86,7 +97,8 @@ pub fn generate(self: *FlowerPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 				startHeight = chunk.startIndex(startHeight + chunk.super.pos.voxelSize);
 				if (@abs(startHeight -% baseHeight) > 5) continue;
 				if (chunk.liesInChunk(px, py, startHeight)) {
-					chunk.updateBlockInGeneration(px, py, startHeight, self.block);
+					const block = self.blocks[random.nextIntBounded(u32, seed, @intCast(self.blocks.len))];
+					chunk.updateBlockInGeneration(px, py, startHeight, block);
 				}
 			}
 		}

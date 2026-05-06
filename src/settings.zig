@@ -26,14 +26,12 @@ pub var fpsCap: ?u32 = null;
 
 pub var fov: f32 = 70;
 
-pub var vulkanTestingWindow: bool = false;
-
 pub var mouseSensitivity: f32 = 1;
 pub var controllerSensitivity: f32 = 1;
 
 pub var invertMouseY: bool = false;
 
-pub var renderDistance: u16 = 7;
+pub var renderDistance: u16 = 12;
 
 pub var highestLod: u3 = highestSupportedLod;
 
@@ -44,6 +42,8 @@ pub var bloom: bool = true;
 pub var vsync: bool = true;
 
 pub var playerName: []const u8 = "";
+
+pub var showPlayerIndexWithName: bool = false;
 
 pub var streamerMode: bool = false;
 
@@ -89,7 +89,7 @@ pub fn init() void {
 			if (@typeInfo(DeclType) == .@"struct") {
 				if (DeclType == std.Io.Duration) {
 					const defaultMilli = @as(f64, @floatFromInt(@field(@This(), decl.name).toNanoseconds()))/1.0e6;
-					@field(@This(), decl.name) = .fromNanoseconds(@intFromFloat(zon.get(f64, decl.name, defaultMilli)*1.0e6));
+					@field(@This(), decl.name) = .fromNanoseconds(@trunc(zon.get(f64, decl.name, defaultMilli)*1.0e6));
 					continue;
 				}
 				@field(@This(), decl.name) = DeclType.fromZon(main.globalAllocator, zon.getChild(decl.name)) catch |err| {
@@ -212,6 +212,8 @@ pub const launchConfig = struct {
 	pub var headlessServer: bool = false;
 	pub var preferredAuthenticationAlgorithm: main.network.authentication.KeyTypeEnum = .ed25519;
 
+	pub var vulkanTestingMode: bool = false;
+
 	pub fn init() void {
 		const zon: ZonElement = main.files.cwd().readToZon(main.stackAllocator, "launchConfig.zon") catch |err| blk: {
 			std.log.err("Could not read launchConfig.zon: {s}", .{@errorName(err)});
@@ -223,5 +225,17 @@ pub const launchConfig = struct {
 		headlessServer = zon.get(bool, "headlessServer", headlessServer);
 		autoEnterWorld = main.globalArena.dupe(u8, zon.get([]const u8, "autoEnterWorld", autoEnterWorld));
 		preferredAuthenticationAlgorithm = zon.get(main.network.authentication.KeyTypeEnum, "preferredAuthenticationAlgorithm", preferredAuthenticationAlgorithm);
+		vulkanTestingMode = zon.get(bool, "vulkanTestingMode", false);
+	}
+};
+
+pub const environment = struct {
+	pub var SDL_GAMECONTROLLERCONFIG: ?[]const u8 = null;
+
+	pub var env: std.process.Environ = undefined;
+
+	pub fn init(_env: std.process.Environ) void {
+		env = _env;
+		SDL_GAMECONTROLLERCONFIG = env.getAlloc(main.globalArena.allocator, "SDL_GAMECONTROLLERCONFIG") catch null;
 	}
 };

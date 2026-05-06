@@ -38,7 +38,7 @@ callbacks: Callbacks,
 lastBlinkTime: std.Io.Timestamp = .fromNanoseconds(0),
 showCusor: bool = true,
 
-pub fn __init() void {
+pub fn globalInit() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/text_input.png");
 }
 
@@ -386,22 +386,22 @@ fn deleteSelection(self: *TextInput) void {
 	}
 }
 
-pub fn deleteLeft(self: *TextInput, _: main.Window.Key.Modifiers) void {
+pub fn deleteLeft(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if (self.cursor == null) return;
 	if (self.selectionStart == null) {
 		self.selectionStart = self.cursor;
-		self.moveCursorLeft(.{});
+		self.moveCursorLeft(mods);
 	}
 	self.deleteSelection();
 	self.reloadText();
 	self.ensureCursorVisibility();
 }
 
-pub fn deleteRight(self: *TextInput, _: main.Window.Key.Modifiers) void {
+pub fn deleteRight(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if (self.cursor == null) return;
 	if (self.selectionStart == null) {
 		self.selectionStart = self.cursor;
-		self.moveCursorRight(.{});
+		self.moveCursorRight(mods);
 	}
 	self.deleteSelection();
 	self.reloadText();

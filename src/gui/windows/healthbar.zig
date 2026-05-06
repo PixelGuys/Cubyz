@@ -48,10 +48,10 @@ pub fn render() void {
 
 	draw.setColor(0xffffffff);
 	const displayHealth = @max(0, main.game.Player.super.health);
-	const halfHeartUnits: usize = @intFromFloat(@ceil(displayHealth*2));
+	const halfHeartUnits: usize = @ceil(displayHealth*2);
 	const wholeHearts = halfHeartUnits/2;
 	const halfHeart = halfHeartUnits%2;
-	const totalHearts: usize = @intFromFloat(@ceil(main.game.Player.super.maxHealth));
+	const totalHearts: usize = @ceil(main.game.Player.super.maxHealth);
 
 	var x: f32 = 0;
 	var y: f32 = 0;

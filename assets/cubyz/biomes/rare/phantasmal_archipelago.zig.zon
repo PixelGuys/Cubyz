@@ -22,7 +22,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:glimmergill",
+			.blocks = .{"cubyz:glimmergill"},
 			.chance = 0.04,
 			.width = 12,
 			.variation = 6,

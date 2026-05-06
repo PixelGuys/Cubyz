@@ -19,7 +19,7 @@ const border: f32 = 3;
 pos: Vec2f = undefined,
 size: Vec2f = undefined,
 child: GuiComponent = undefined,
-mutex: std.Thread.Mutex = .{},
+mutex: main.utils.Mutex = .{},
 
 pub fn updateInner(self: *MutexComponent, _other: anytype) void {
 	main.utils.assertLocked(&self.mutex);

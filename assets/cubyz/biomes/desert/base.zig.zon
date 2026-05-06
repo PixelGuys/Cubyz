@@ -4,6 +4,9 @@
 		.dry,
 		.barren,
 	},
+	.tags = .{
+		.cactus,
+	},
 	.chance = 1.0,
 	.minHeightLimit = 7,
 	.minHeight = 22,
@@ -32,7 +35,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:tussock",
+			.blocks = .{"cubyz:tussock"},
 			.chance = 0.03,
 			.width = 4,
 			.variation = 4,

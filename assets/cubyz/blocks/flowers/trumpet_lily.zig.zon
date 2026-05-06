@@ -1,8 +1,10 @@
 .{
 	.blockHealth = 0.2,
 	.drops = .{
-		.{.items = .{.auto}},
+		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
 	},
+	.selectionRule = .toolEffective,
+	.replaceable = true,
 	.degradable = true,
 	.viewThrough = true,
 	.absorbedLight = 0x000000,
@@ -10,7 +12,7 @@
 	.model = "cubyz:flower/height_10",
 	.rotation = "cubyz:planar",
 	.onUpdate = .{
-		.type = .checkSupportBlocks,
+		.type = .check_support_blocks,
 	},
 	.texture = "cubyz:flowers/trumpet_lily",
 	.texture_top = "cubyz:flowers/trumpet_lily_top",

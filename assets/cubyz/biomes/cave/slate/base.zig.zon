@@ -1,0 +1,29 @@
+.{
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:gravel",
+			.chance = 0.064,
+			.width = 5,
+			.variation = 5,
+			.depth = 3,
+			.smoothness = 0.1,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:slate/base",
+			.chance = 0.048,
+			.size = 3,
+			.size_variation = 6,
+		},
+	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:partial_sphere",
+			.minAmount = 10,
+			.maxAmount = 20,
+			.minRadius = 8,
+			.maxRadius = 16,
+		},
+	},
+}

@@ -1,5 +1,8 @@
 .{
 	.properties = .{},
+	.tags = .{
+		.cactus,
+	},
 	.minRadius = 32,
 	.maxRadius = 48,
 	.chance = 0,
@@ -31,7 +34,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:tussock",
+			.blocks = .{"cubyz:tussock"},
 			.chance = 0.03,
 			.width = 4,
 			.variation = 4,

@@ -166,7 +166,7 @@ pub const ParticleSystem = struct {
 	var particlesLocal: [maxCapacity]ParticleLocal = undefined;
 	var previousPlayerPos: Vec3d = undefined;
 
-	var mutex: std.Thread.Mutex = .{};
+	var mutex: main.utils.Mutex = .{};
 	var networkCreationQueue: main.ListUnmanaged(struct { emitter: Emitter, pos: Vec3d, count: u32 }) = .{};
 
 	var particlesSSBO: SSBO = undefined;
@@ -185,6 +185,8 @@ pub const ParticleSystem = struct {
 			"assets/cubyz/shaders/particles/particles.frag",
 			"",
 			&uniforms,
+			graphics.VertexArray.EmptyVertex,
+			&.{},
 			.{},
 			.{.depthTest = true, .depthWrite = true},
 			.{.attachments = &.{.noBlending}},
@@ -236,35 +238,35 @@ pub const ParticleSystem = struct {
 			rot += rotVel*deltaTime;
 
 			const airDensity: f32 = physics.airDensity;
-			const frictionCoefficient = physics.gravity/physics.airTerminalVelocity*particleLocal.dragCoefficient;
+			const frictionCoefficient = physics.baseGravity/physics.airTerminalVelocity*particleLocal.dragCoefficient;
 			particleLocal.velAndRotationVel[3] = 0;
-			const effectiveGravity: f32 = @floatCast(physics.gravity*(particleLocal.density - airDensity)/particleLocal.density);
+			const effectiveGravity: f32 = @floatCast(physics.baseGravity*(particleLocal.density - airDensity)/particleLocal.density);
 			particleLocal.velAndRotationVel[2] -= effectiveGravity*deltaTime;
 			particleLocal.velAndRotationVel *= @splat(@exp(-frictionCoefficient*deltaTime));
 
 			if (particleLocal.collides) {
 				var v3Pos = playerPos + @as(Vec3d, @floatCast(pos + prevPlayerPosDifference));
 				const size = ParticleManager.types.items[particle.typ].size;
-				const hitBox: game.collision.Box = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
+				const hitBox: physics.collision.Box = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
 
 				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
 				v3Pos[0] += posDelta[0];
-				if (game.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
+				if (physics.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
 					v3Pos[0] = if (posDelta[0] < 0)
 						box.max[0] - hitBox.min[0]
 					else
 						box.min[0] - hitBox.max[0];
 				}
 				v3Pos[1] += posDelta[1];
-				if (game.collision.collides(.client, .y, -posDelta[1], v3Pos, hitBox)) |box| {
+				if (physics.collision.collides(.client, .y, -posDelta[1], v3Pos, hitBox)) |box| {
 					v3Pos[1] = if (posDelta[1] < 0)
 						box.max[1] - hitBox.min[1]
 					else
 						box.min[1] - hitBox.max[1];
 				}
 				v3Pos[2] += posDelta[2];
-				if (game.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
+				if (physics.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
 					v3Pos[2] = if (posDelta[2] < 0)
 						box.max[2] - hitBox.min[2]
 					else
@@ -282,7 +284,7 @@ pub const ParticleSystem = struct {
 			particleLocal.velAndRotationVel[3] = rotVel;
 
 			const positionf64 = @as(Vec3d, @floatCast(pos)) + playerPos;
-			const intPos: vec.Vec3i = @intFromFloat(@floor(positionf64));
+			const intPos: vec.Vec3i = @floor(positionf64);
 			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
 			const compressedLight =
 				@as(u32, light[0] >> 3) << 25 |
@@ -338,7 +340,7 @@ pub const ParticleSystem = struct {
 		c.glActiveTexture(c.GL_TEXTURE1);
 		ParticleManager.emissionTextureArray.bind();
 
-		c.glBindVertexArray(chunk_meshing.vao);
+		chunk_meshing.vao.bind();
 
 		const maxQuads = chunk_meshing.maxQuadsInIndexBuffer;
 		const count = std.math.divCeil(u32, particleCount, maxQuads) catch unreachable;

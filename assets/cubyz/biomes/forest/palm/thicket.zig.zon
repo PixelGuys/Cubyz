@@ -1,0 +1,46 @@
+.{
+	.minRadius = 16,
+	.maxRadius = 42,
+	.chance = 0,
+	.keepOriginalTerrain = 1,
+	.ground_structure = .{
+		"cubyz:grass/dew",
+		"2 to 3 cubyz:clay",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/palm/coconut",
+			.placeMode = .degradable,
+			.chance = 0.3,
+		},
+		.{
+			.id = "cubyz:simple_tree",
+			.leaves = "cubyz:leaves/mahogany",
+			.log = "cubyz:mahogany_log",
+			.top = "cubyz:mahogany_top",
+			.chance = 0.03,
+			.type = .round,
+			.height = 1,
+			.height_variation = 1,
+			.leafRadius = 2,
+			.leafRadius_variation = 1,
+			.leafElongation = 0.8,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:soil",
+			.chance = 0.1,
+			.width = 8,
+			.variation = 4,
+			.depth = 2,
+			.smoothness = 0.3,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:forest/palm/base",
+			.chance = 8,
+		},
+	},
+}

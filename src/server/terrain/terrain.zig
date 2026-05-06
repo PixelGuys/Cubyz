@@ -19,6 +19,8 @@ pub const CaveBiomeMap = @import("CaveBiomeMap.zig");
 
 pub const CaveMap = @import("CaveMap.zig");
 
+pub const cave_layers = @import("cave_layers.zig");
+
 pub const StructureMap = @import("StructureMap.zig");
 
 pub const structure_building_blocks = @import("structure_building_blocks.zig");

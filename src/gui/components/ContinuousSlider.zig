@@ -34,7 +34,7 @@ label: *Label,
 button: *Button,
 mouseAnchor: f32 = undefined,
 
-pub fn __init() void {
+pub fn globalInit() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/slider.png");
 }
 
@@ -111,12 +111,27 @@ pub fn updateHovered(self: *ContinuousSlider, mousePosition: Vec2f) main.callbac
 	return .ignored;
 }
 
+inline fn getBarPos(self: *ContinuousSlider) Vec2f {
+	return Vec2f{1.5*border + self.button.size[0]/2, self.button.pos[1] + self.button.size[1]/2 - border};
+}
+
+inline fn getBarSize(self: *ContinuousSlider) Vec2f {
+	const range: f32 = self.size[0] - 3*border - self.button.size[0];
+	return .{range, 2*border};
+}
+
 pub fn mainButtonPressed(self: *ContinuousSlider, mousePosition: Vec2f) main.callbacks.Result {
-	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
-		if (self.button.mainButtonPressed(mousePosition - self.pos) == .handled) {
+	const mousePositionRelativeToSelf = mousePosition - self.pos;
+
+	if (GuiComponent.contains(self.button.pos, self.button.size, mousePositionRelativeToSelf)) {
+		if (self.button.mainButtonPressed(mousePositionRelativeToSelf) == .handled) {
 			self.mouseAnchor = mousePosition[0] - self.button.pos[0];
 			return .handled;
 		}
+	} else if (GuiComponent.contains(self.getBarPos(), self.getBarSize(), mousePositionRelativeToSelf)) {
+		self.mouseAnchor = self.pos[0] + self.button.size[0]/2;
+		self.button.pos[0] = mousePositionRelativeToSelf[0] - self.mouseAnchor;
+		return self.button.mainButtonPressed(mousePositionRelativeToSelf);
 	}
 	return .ignored;
 }
@@ -131,16 +146,15 @@ pub fn render(self: *ContinuousSlider, mousePosition: Vec2f) void {
 	draw.setColor(0xff000000);
 	draw.customShadedRect(Button.buttonUniforms, self.pos, self.size);
 
-	const range: f32 = self.size[0] - 3*border - self.button.size[0];
 	draw.setColor(0x80000000);
-	draw.rect(self.pos + Vec2f{1.5*border + self.button.size[0]/2, self.button.pos[1] + self.button.size[1]/2 - border}, .{range, 2*border});
+	draw.rect(self.pos + self.getBarPos(), self.getBarSize());
 
 	self.label.pos = self.pos + @as(Vec2f, @splat(1.5*border));
 	self.label.render(mousePosition);
 
 	if (self.button.pressed) {
 		self.button.pos[0] = mousePosition[0] - self.mouseAnchor;
-		self.button.pos[0] = @min(@max(self.button.pos[0], 1.5*border), 1.5*border + range - 0.001);
+		self.button.pos[0] = @min(@max(self.button.pos[0], 1.5*border), 1.5*border + self.getBarSize()[0] - 0.001);
 		self.updateValueFromButtonPos();
 	}
 	const oldTranslation = draw.setTranslation(self.pos);
