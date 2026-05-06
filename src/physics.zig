@@ -556,7 +556,7 @@ pub fn calculateWallCollision(comptime side: main.sync.Side, motion: *Vec3d, pos
 pub fn calculateVerticalCollision(comptime side: main.sync.Side, deltaTime: f64, pos: *Vec3d, vel: *Vec3d, jumpCoyote: ?*f64, onGround: *bool, hitBox: collision.Box, motion: Vec3d, bouncinessMultiplier: f64) ?f64 {
 	onGround.* = false;
 	pos[2] += motion[2];
-	
+
 	if (collision.collides(side, .z, -motion[2], pos.*, hitBox)) |box| {
 		if (motion[2] < 0) {
 			onGround.* = true;
@@ -564,7 +564,7 @@ pub fn calculateVerticalCollision(comptime side: main.sync.Side, deltaTime: f64,
 		} else {
 			pos[2] = box.min[2] - hitBox.max[2];
 		}
-		const bounciness = if (bouncinessMultiplier == 0) 0 else collision.calculateSurfaceProperties(side, pos.*, hitBox, 0.0).bounciness * bouncinessMultiplier;
+		const bounciness = if (bouncinessMultiplier == 0) 0 else collision.calculateSurfaceProperties(side, pos.*, hitBox, 0.0).bounciness*bouncinessMultiplier;
 
 		var velocityChange: f64 = undefined;
 		if (bounciness != 0.0 and vel[2] < -3.0) {
