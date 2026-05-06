@@ -663,7 +663,18 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			stepAmount = physics.calculateWallCollision(.client, &motion, &Player.super.pos, &Player.super.vel, &Player.onGround, Player.friction, Player.outerBoundingBox, Player.steppingHeight()[2], steppingHeightLimit, Player.crouching);
 		}
 		physics.calculateEyeMovement(.client, deltaTime, Player.super.pos, Player.super.vel, &Player.eye, stepAmount);
-		physics.update(.client, deltaTime, motion);
+		var velocityChange: ?f64 = null;
+		const wasOnGround = Player.onGround;
+		if (!Player.isGhost.load(.monotonic)) {
+			const prevPos = Player.super.pos;
+			const prevVel = Player.super.vel;
+			const bouncinessMultiplier: f64 = if (Player.isFlying.load(.monotonic)) 0.0 else if (Player.crouching) 0.5 else 1.0;
+			velocityChange = physics.calculateVerticalCollision(.client, deltaTime, &Player.super.pos, &Player.super.vel, &Player.jumpCoyote, &Player.onGround, Player.outerBoundingBox, motion, bouncinessMultiplier);
+			if (velocityChange != null) {
+				physics.calculateVerticalCollisionEyeMovement(&Player.eye, Player.onGround, wasOnGround, prevPos, Player.super.pos, prevVel, Player.super.vel, motion);
+			}
+		}
+		physics.update(.client, deltaTime, motion, velocityChange, wasOnGround);
 	}
 
 	const time = main.timestamp();

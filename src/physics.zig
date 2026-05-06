@@ -553,48 +553,60 @@ pub fn calculateWallCollision(comptime side: main.sync.Side, motion: *Vec3d, pos
 	return stepAmount;
 }
 
-pub fn update(comptime side: main.sync.Side, deltaTime: f64, motion: Vec3d) void {
+pub fn calculateVerticalCollision(comptime side: main.sync.Side, deltaTime: f64, pos: *Vec3d, vel: *Vec3d, jumpCoyote: ?*f64, onGround: *bool, hitBox: collision.Box, motion: Vec3d, bouncinessMultiplier: f64) ?f64 {
+	onGround.* = false;
+	pos[2] += motion[2];
+	
+	if (collision.collides(side, .z, -motion[2], pos.*, hitBox)) |box| {
+		if (motion[2] < 0) {
+			onGround.* = true;
+			pos[2] = box.max[2] - hitBox.min[2];
+		} else {
+			pos[2] = box.min[2] - hitBox.max[2];
+		}
+		const bounciness = if (bouncinessMultiplier == 0) 0 else collision.calculateSurfaceProperties(side, pos.*, hitBox, 0.0).bounciness * bouncinessMultiplier;
+
+		var velocityChange: f64 = undefined;
+		if (bounciness != 0.0 and vel[2] < -3.0) {
+			velocityChange = vel[2]*@as(f64, @floatCast(1 - bounciness));
+			vel[2] = -vel[2]*bounciness;
+			if (jumpCoyote) |coyote| {
+				coyote.* = Player.jumpCoyoteTimeConstant + deltaTime;
+			}
+		} else {
+			velocityChange = vel[2];
+			vel[2] = 0;
+		}
+
+		// Always unstuck upwards for now
+		while (collision.collides(side, .z, 0, pos.*, hitBox)) |_| {
+			pos[2] += 1;
+		}
+		return velocityChange;
+	} else {
+		return null;
+	}
+}
+
+pub fn calculateVerticalCollisionEyeMovement(eye: *Player.EyeData, onGround: bool, wasOnGround: bool, prevPos: Vec3d, pos: Vec3d, prevVel: Vec3d, vel: Vec3d, motion: Vec3d) void {
+	if (onGround) {
+		if (!wasOnGround) {
+			eye.vel[2] = prevVel[2];
+			eye.pos[2] -= pos[2] - prevPos[2] - motion[2];
+		}
+		eye.coyote = 0.0;
+	}
+	if (vel[2] != 0.0) {
+		eye.vel[2] *= 2.0;
+	}
+}
+
+pub fn update(comptime side: main.sync.Side, deltaTime: f64, motion: Vec3d, velocityChange: ?f64, wasOnGround: bool) void {
 	if (!Player.isGhost.load(.monotonic)) {
-		const hitBox = Player.outerBoundingBox;
-
-		const wasOnGround = Player.onGround;
-		Player.onGround = false;
-		Player.super.pos[2] += motion[2];
-		if (collision.collides(side, .z, -motion[2], Player.super.pos, hitBox)) |box| {
-			if (motion[2] < 0) {
-				if (!wasOnGround) {
-					Player.eye.vel[2] = Player.super.vel[2];
-					Player.eye.pos[2] -= (box.max[2] - hitBox.min[2] - Player.super.pos[2]);
-				}
-				Player.onGround = true;
-				Player.super.pos[2] = box.max[2] - hitBox.min[2];
-				Player.eye.coyote = 0;
-			} else {
-				Player.super.pos[2] = box.min[2] - hitBox.max[2];
-			}
-			var bounciness = if (Player.isFlying.load(.monotonic)) 0 else collision.calculateSurfaceProperties(side, Player.super.pos, Player.outerBoundingBox, 0.0).bounciness;
-			if (Player.crouching) {
-				bounciness *= 0.5;
-			}
-			var velocityChange: f64 = undefined;
-
-			if (bounciness != 0.0 and Player.super.vel[2] < -3.0) {
-				velocityChange = Player.super.vel[2]*@as(f64, @floatCast(1 - bounciness));
-				Player.super.vel[2] = -Player.super.vel[2]*bounciness;
-				Player.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
-				Player.eye.vel[2] *= 2;
-			} else {
-				velocityChange = Player.super.vel[2];
-				Player.super.vel[2] = 0;
-			}
-			const damage: f32 = @floatCast(@round(@max((velocityChange*velocityChange)/(2*baseGravity) - 7, 0))/2);
+		if (velocityChange) |velChange| {
+			const damage: f32 = @floatCast(@round(@max((velChange*velChange)/(2*baseGravity) - 7, 0))/2);
 			if (damage > 0.01) {
 				main.sync.addHealth(-damage, .fall, .client, Player.id);
-			}
-
-			// Always unstuck upwards for now
-			while (collision.collides(side, .z, 0, Player.super.pos, hitBox)) |_| {
-				Player.super.pos[2] += 1;
 			}
 		} else if (wasOnGround and motion[2] < 0) {
 			// If the player drops off a ledge, they might just be walking over a small gap, so lock the y position of the eyes that long.
@@ -606,7 +618,7 @@ pub fn update(comptime side: main.sync.Side, deltaTime: f64, motion: Vec3d) void
 		} else if (Player.eye.coyote > 0) {
 			Player.eye.pos[2] -= motion[2];
 		}
-		collision.touchBlocks(side, &Player.super, hitBox, deltaTime);
+		collision.touchBlocks(side, &Player.super, Player.outerBoundingBox, deltaTime);
 	} else {
 		Player.super.pos += motion;
 	}
