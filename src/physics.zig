@@ -589,7 +589,7 @@ pub fn calculateVerticalCollision(comptime side: main.sync.Side, deltaTime: f64,
 	}
 }
 
-pub fn calculateVerticalCollisionEyeMovement(deltaTime: f64, eye: *Player.EyeData, didCollide: bool, onGround: bool, wasOnGround: bool, prevPos: Vec3d, pos: Vec3d, prevVel: Vec3d, vel: Vec3d, motion: Vec3d) void {
+pub fn calculateVerticalCollisionEyeMovement(deltaTime: f64, eye: *Player.EyeData, didCollide: bool, onGround: bool, wasOnGround: bool, prevPos: Vec3d, pos: Vec3d, prevVel: Vec3d, vel: Vec3d, motion: Vec3d, steppingHeight: f64) void {
 	if (didCollide) {
 		if (onGround) {
 			if (!wasOnGround) {
@@ -602,7 +602,10 @@ pub fn calculateVerticalCollisionEyeMovement(deltaTime: f64, eye: *Player.EyeDat
 			eye.vel[2] *= 2.0;
 		}
 	} else if (wasOnGround and motion[2] < 0) {
-		eye.coyote = @sqrt(2*Player.steppingHeight()[2]/baseGravity) + deltaTime;
+		// If the player drops off a ledge, they might just be walking over a small gap, so lock the y position of the eyes that long.
+		// This calculates how long the player has to fall until we know they're not walking over a small gap.
+		// We add deltaTime because we subtract deltaTime at the bottom of update
+		eye.coyote = @sqrt(2*steppingHeight/baseGravity) + deltaTime;
 		eye.pos[2] -= motion[2];
 	} else if (Player.eye.coyote > 0) {
 		eye.pos[2] -= motion[2];
