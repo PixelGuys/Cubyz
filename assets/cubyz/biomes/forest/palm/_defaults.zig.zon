@@ -21,7 +21,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:hibiscus"},
+			.blocks = .{"cubyz:flowers/hibiscus"},
 			.chance = 0.02,
 			.width = 6,
 			.variation = 3,
