@@ -97,7 +97,7 @@ var _blockResistance: [maxBlockCount]f32 = undefined;
 
 /// Whether you can replace it with another block, mainly used for fluids/gases
 var _replaceable: [maxBlockCount]bool = undefined;
-var _selectionCapabilities: [maxBlockCount]?[]SelectionCapability = undefined;
+var _selectionCapabilities: [maxBlockCount]?[]const SelectionCapability = undefined;
 var _blockDrops: [maxBlockCount][]const BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
 var _degradable: [maxBlockCount]bool = undefined;
@@ -438,7 +438,7 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return _replaceable[self.typ];
 	}
 
-	pub inline fn selectionCapabilities(self: Block) ?[]SelectionCapability {
+	pub inline fn selectionCapabilities(self: Block) ?[]const SelectionCapability {
 		return _selectionCapabilities[self.typ];
 	}
 
