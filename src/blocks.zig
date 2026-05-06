@@ -71,14 +71,14 @@ pub const Ore = struct {
 const SelectionCapability = enum(u8) {
 	toolEffective,
 
-	pub fn loadSelectionCapabilitiesFromZon(_allocator: main.heap.NeverFailingAllocator, zon: main.ZonElement) []SelectionCapability {
-		var capabilities = main.List(SelectionCapability).initCapacity(_allocator, zon.toSlice().len);
+	pub fn loadSelectionCapabilitiesFromZon(arena: main.heap.NeverFailingAllocator, zon: main.ZonElement) []SelectionCapability {
+		var capabilities = main.ListUnmanaged(SelectionCapability).initCapacity(arena, zon.toSlice().len);
 		for (zon.toSlice()) |capabilityZon| {
 			if (capabilityZon.as(?SelectionCapability, null)) |capability| {
 				capabilities.appendAssumeCapacity(capability);
 			} else std.log.err("SelectionCapability is invalid. Ignoring", .{});
 		}
-		return capabilities.toOwnedSlice();
+		return capabilities.items;
 	}
 
 	pub fn allowsItemSelection(self: SelectionCapability, item: Item, block: Block) bool {
