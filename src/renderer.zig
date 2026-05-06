@@ -1080,7 +1080,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 					for (0..@intCast(calculatedMiningArea[0]*2 - 1)) |dx| {
 						for (0..@intCast(calculatedMiningArea[1]*2 - 1)) |dy| {
 							for (0..@intCast(calculatedMiningArea[2]*2 - 1)) |dz| {
-								TryMiningBlock(inventory, slot, deltaTime/9, selectedPos + Vec3i{@as(i32 , @intCast(dx)) - (calculatedMiningArea[0]*2 - 1), @as(i32 , @intCast(dy)) - (calculatedMiningArea[1]*2 - 1), @as(i32 , @intCast(dz)) - (calculatedMiningArea[2]*2 - 1)});
+								const CalculatedPosition = selectedPos + Vec3i{@as(i32 , @intCast(dx)) - (calculatedMiningArea[0]*2), @as(i32 , @intCast(dy)) - (calculatedMiningArea[1]*2), @as(i32 , @intCast(dz)) - (calculatedMiningArea[2]*2)};
+								TryMiningBlock(inventory, slot, deltaTime/(calculatedMiningArea[1]*calculatedMiningArea[1]*calculatedMiningArea[2]), CalculatedPosition);
 							}
 						}
 					}
