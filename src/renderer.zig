@@ -815,15 +815,7 @@ pub const Skybox = struct {
 
 		const time = game.world.?.gameTime.load(.monotonic);
 
-		var starOpacity: f32 = 0;
-		const dayTime = @abs(@mod(time, game.World.dayCycle) -% game.World.dayCycle/2);
-		if (dayTime < game.World.dayCycle/4 - game.World.dayCycle/16) {
-			starOpacity = 1;
-		} else if (dayTime > game.World.dayCycle/4 + game.World.dayCycle/16) {
-			starOpacity = 0;
-		} else {
-			starOpacity = 1 - @as(f32, @floatFromInt(dayTime - (game.World.dayCycle/4 - game.World.dayCycle/16)))/@as(f32, @floatFromInt(game.World.dayCycle/8));
-		}
+		const starOpacity: f32 = (1 - game.world.?.ambientLight)/0.9;
 
 		if (starOpacity != 0) {
 			starPipeline.bind(null);
