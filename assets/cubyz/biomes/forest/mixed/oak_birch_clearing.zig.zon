@@ -10,7 +10,7 @@
 	},
 	.minRadius = 20,
 	.maxRadius = 32,
-	.music = "cubyz:sunrise",
+	.music = "cubyz:sinanimea/sunrise",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"cubyz:grass",
