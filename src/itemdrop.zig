@@ -354,10 +354,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 	fn updateEnt(pos: *Vec3d, vel: *Vec3d, onGround: *bool, deltaTime: f64) void {
 		const hitBox = physics.collision.Box{.min = @splat(-radius), .max = @splat(radius)};
-		const defaultVolumeProperties = physics.collision.VolumeProperties{.density = physics.airDensity, .terminalVelocity = terminalVelocity, .maxDensity = physics.airDensity, .mobileFriction = 1.0/terminalVelocity};
-
 		var volumeProperties: physics.collision.VolumeProperties = undefined;
-		physics.calculateVolumeProperties(.server, &volumeProperties, pos.*, hitBox, defaultVolumeProperties);
+		physics.calculateVolumeProperties(.server, &volumeProperties, pos.*, hitBox, terminalVelocity);
 
 		var friction: physics.FrictionState = undefined;
 		physics.calculateFriction(.server, &volumeProperties, &friction, pos.*, hitBox, onGround.*);

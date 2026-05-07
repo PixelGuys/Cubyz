@@ -12,7 +12,7 @@ const Player = main.game.Player;
 const camera = main.game.camera;
 
 pub const baseGravity = 30.0;
-pub const airTerminalVelocity = 90.0;
+pub const playerAirTerminalVelocity = 90.0;
 pub const airDensity = 0.001;
 pub const playerDensity = 1.2;
 
@@ -354,9 +354,9 @@ pub const FrictionState = struct {
 	mobile: f32,
 };
 
-pub fn calculateVolumeProperties(comptime side: main.sync.Side, volumeProperties: *collision.VolumeProperties, pos: @Vector(3, f64), hitBox: collision.Box, defaults: ?collision.VolumeProperties) void {
+pub fn calculateVolumeProperties(comptime side: main.sync.Side, volumeProperties: *collision.VolumeProperties, pos: @Vector(3, f64), hitBox: collision.Box, airTerminalVelocity: f64) void {
 	if (main.game.getBlockWithSide(side, @floor(pos[0]), @floor(pos[1]), @floor(pos[2])) != null) {
-		volumeProperties.* = collision.calculateVolumeProperties(side, pos, hitBox, defaults orelse .{.density = airDensity, .terminalVelocity = airTerminalVelocity, .maxDensity = airDensity, .mobileFriction = 1.0/airTerminalVelocity});
+		volumeProperties.* = collision.calculateVolumeProperties(side, pos, hitBox, .{.density = airDensity, .terminalVelocity = airTerminalVelocity, .maxDensity = airDensity, .mobileFriction = 1.0/airTerminalVelocity});
 	}
 }
 

@@ -238,7 +238,7 @@ pub const ParticleSystem = struct {
 			rot += rotVel*deltaTime;
 
 			const airDensity: f32 = physics.airDensity;
-			const frictionCoefficient = physics.baseGravity/physics.airTerminalVelocity*particleLocal.dragCoefficient;
+			const frictionCoefficient = physics.baseGravity/physics.playerAirTerminalVelocity*particleLocal.dragCoefficient;
 			particleLocal.velAndRotationVel[3] = 0;
 			const effectiveGravity: f32 = @floatCast(physics.baseGravity*(particleLocal.density - airDensity)/particleLocal.density);
 			particleLocal.velAndRotationVel[2] -= effectiveGravity*deltaTime;
