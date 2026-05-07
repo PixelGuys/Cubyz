@@ -225,13 +225,7 @@ const stun = struct { // MARK: stun
 	fn addressFromStunMesssage(data: [6]u8) !net.IpAddress {
 		const port = std.mem.readInt(u16, data[0..2], .big);
 		const ip = std.mem.readInt(u32, data[2..6], builtin.cpu.arch.endian()); // Needs to stay in big endian → native.
-		const bytes: [4]u8 = .{
-			@truncate(ip & 255),
-			@truncate(ip >> 8 & 255),
-			@truncate(ip >> 16 & 255),
-			@truncate(ip >> 24),
-		};
-		return .{.ip4 = .{.bytes = bytes, .port = port}};
+		return .{.ip4 = .{.bytes = std.mem.toBytes(ip), .port = port}};
 	}
 
 	fn findIPPort(_data: []const u8) !net.IpAddress {
