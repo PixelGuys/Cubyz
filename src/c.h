@@ -11,7 +11,7 @@
 #include <hb.h>
 #include <hb-ft.h>
 
-// used for rendering graphics and windows
+// used for rendering, windowing and inputs
 #include <glad/gl.h>
 // NOTE(blackedout): glad is currently not used on macOS, so use Vulkan header from the Vulkan-Headers repository instead
 #ifdef __MACH__
