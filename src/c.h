@@ -1,4 +1,4 @@
-// used for text rendering
+// used for text rendering and layouting
 #include <freetype/ftadvanc.h>
 #include <freetype/ftbbox.h>
 #include <freetype/ftbitmap.h>
