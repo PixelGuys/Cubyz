@@ -69,14 +69,24 @@ pub const Ore = struct {
 };
 
 const SelectionCapabilities = struct {
-	capabilities: ?[]const SelectionCapability,
+	capabilities: ?[]const Capability,
+
+	const Capability = enum(u8) {
+		toolEffective,
+
+		pub fn allowsItemSelection(self: Capability, item: Item, block: Block) bool {
+			return switch (self) {
+				.toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(block),
+			};
+		}
+	};
 
 	pub const alwaysSelectable: SelectionCapabilities = .{.capabilities = null};
 
 	pub fn loadFromZon(arena: main.heap.NeverFailingAllocator, zon: main.ZonElement) SelectionCapabilities {
-		var list = main.ListUnmanaged(SelectionCapability).initCapacity(arena, zon.toSlice().len);
+		var list = main.ListUnmanaged(Capability).initCapacity(arena, zon.toSlice().len);
 		for (zon.toSlice()) |capabilityZon| {
-			if (capabilityZon.as(?SelectionCapability, null)) |capability| {
+			if (capabilityZon.as(?Capability, null)) |capability| {
 				list.appendAssumeCapacity(capability);
 			} else std.log.err("SelectionCapability is invalid. Ignoring", .{});
 		}
@@ -101,16 +111,6 @@ const SelectionCapabilities = struct {
 			if (capability.allowsItemSelection(item, block)) return true;
 		}
 		return false;
-	}
-};
-
-const SelectionCapability = enum(u8) {
-	toolEffective,
-
-	pub fn allowsItemSelection(self: SelectionCapability, item: Item, block: Block) bool {
-		return switch (self) {
-			.toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(block),
-		};
 	}
 };
 
