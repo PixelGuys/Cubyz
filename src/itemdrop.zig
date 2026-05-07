@@ -29,6 +29,7 @@ const ItemDrop = struct { // MARK: ItemDrop
 	pos: Vec3d,
 	vel: Vec3d,
 	rot: Vec3f,
+	onGround: bool = false,
 	itemStack: ItemStack,
 	despawnTime: i32,
 	pickupCooldown: i32,
@@ -206,6 +207,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.processChanges();
 		const pos = self.list.items(.pos);
 		const vel = self.list.items(.vel);
+		const onGround = self.list.items(.onGround);
 		const pickupCooldown = self.list.items(.pickupCooldown);
 		const despawnTime = self.list.items(.despawnTime);
 		var ii: u32 = 0;
@@ -213,9 +215,9 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			const i = self.indices[ii];
 			if (self.world.?.getSimulationChunkAndIncreaseRefCount(@trunc(pos[i][0]), @trunc(pos[i][1]), @trunc(pos[i][2]))) |simChunk| {
 				defer simChunk.decreaseRefCount();
-				if (simChunk.getChunk()) |chunk| {
+				if (simChunk.getChunk() != null) {
 					// Check collision with blocks:
-					self.updateEnt(chunk, &pos[i], &vel[i], deltaTime);
+					updateEnt(&pos[i], &vel[i], &onGround[i], deltaTime);
 				}
 			}
 			pickupCooldown[i] -= 1;
@@ -352,83 +354,20 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.internalRemove(i);
 	}
 
-	fn updateEnt(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
+	fn updateEnt(pos: *Vec3d, vel: *Vec3d, onGround: *bool, deltaTime: f64) void {
 		const hitBox = physics.collision.Box{.min = @splat(-radius), .max = @splat(radius)};
-		if (physics.collision.collides(.server, .x, 0, pos.*, hitBox) != null) {
-			self.fixStuckInBlock(chunk, pos, vel, deltaTime);
-			return;
-		}
-		vel.* += Vec3d{0, 0, -gravity*deltaTime};
-		inline for (0..3) |i| {
-			const move = vel.*[i]*deltaTime; // + acceleration[i]*deltaTime;
-			if (main.physics.collision.collides(.server, @enumFromInt(i), move, pos.*, hitBox)) |box| {
-				if (move < 0) {
-					pos.*[i] = box.max[i] + radius;
-				} else {
-					pos.*[i] = box.min[i] - radius;
-				}
-				vel.*[i] = 0;
-			} else {
-				pos.*[i] += move;
-			}
-		}
-		// Apply drag:
-		vel.* *= @splat(@max(0, 1 - self.airDragFactor*deltaTime));
-	}
 
-	fn fixStuckInBlock(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
-		const centeredPos = pos.* - @as(Vec3d, @splat(0.5));
-		const pos0: Vec3i = @floor(centeredPos);
+		var volumeProperties: physics.collision.VolumeProperties = undefined;
+		physics.calculateVolumeProperties(.server, &volumeProperties, pos.*, hitBox);
+		
+		var friction: physics.FrictionState = undefined;
+		physics.calculateFriction(.server, &volumeProperties, &friction, pos.*, hitBox, onGround.*);
+		var motion = physics.calculateMotion(.server, deltaTime, friction, volumeProperties, physics.playerDensity, pos.*, vel, @splat(0.0), gravity, 0.0);
 
-		var closestEmptyBlock: Vec3i = @splat(-1);
-		var closestDist = std.math.floatMax(f64);
-		var delta = Vec3i{0, 0, 0};
-		while (delta[0] <= 1) : (delta[0] += 1) {
-			delta[1] = 0;
-			while (delta[1] <= 1) : (delta[1] += 1) {
-				delta[2] = 0;
-				while (delta[2] <= 1) : (delta[2] += 1) {
-					const isSolid = self.checkBlock(chunk, pos, pos0 + delta);
-					if (!isSolid) {
-						const dist = vec.lengthSquare(@as(Vec3d, @floatFromInt(pos0 + delta)) - centeredPos);
-						if (dist < closestDist) {
-							closestDist = dist;
-							closestEmptyBlock = delta;
-						}
-					}
-				}
-			}
-		}
+		var stepAmount: f64 = 0.0;
+		stepAmount = physics.calculateWallCollision(.server, &motion, pos, vel, onGround, friction, hitBox, 0.1, null, false);
 
-		vel.* = @splat(0);
-		const unstuckVelocity: f64 = 1;
-		if (closestDist == std.math.floatMax(f64)) {
-			// Surrounded by solid blocks → move upwards
-			vel.*[2] = unstuckVelocity;
-			pos.*[2] += vel.*[2]*deltaTime;
-		} else {
-			vel.* = @as(Vec3d, @splat(unstuckVelocity))*(@as(Vec3d, @floatFromInt(pos0 + closestEmptyBlock)) - centeredPos);
-			pos.* += (vel.*)*@as(Vec3d, @splat(deltaTime));
-		}
-	}
-
-	fn checkBlock(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, blockPos: Vec3i) bool {
-		// Transform to chunk-relative coordinates:
-		const chunkPos = blockPos & ~@as(Vec3i, @splat(main.chunk.chunkMask));
-		var block: blocks.Block = undefined;
-		if (chunk.super.pos.wx == chunkPos[0] and chunk.super.pos.wy == chunkPos[1] and chunk.super.pos.wz == chunkPos[2]) {
-			chunk.mutex.lock();
-			defer chunk.mutex.unlock();
-			block = chunk.getBlock(blockPos[0] - chunk.super.pos.wx, blockPos[1] - chunk.super.pos.wy, blockPos[2] - chunk.super.pos.wz);
-		} else {
-			const otherChunk = self.world.?.getSimulationChunkAndIncreaseRefCount(chunkPos[0], chunkPos[1], chunkPos[2]) orelse return true;
-			defer otherChunk.decreaseRefCount();
-			const ch = otherChunk.getChunk() orelse return true;
-			ch.mutex.lock();
-			defer ch.mutex.unlock();
-			block = ch.getBlock(blockPos[0] - ch.super.pos.wx, blockPos[1] - ch.super.pos.wy, blockPos[2] - ch.super.pos.wz);
-		}
-		return main.physics.collision.collideWithBlock(block, blockPos[0], blockPos[1], blockPos[2], pos.*, @splat(radius), @splat(0)) != null;
+		_ = physics.calculateVerticalCollision(.server, deltaTime, pos, vel, null, onGround, hitBox, motion, 1.0);
 	}
 
 	pub fn checkEntity(self: *ItemDropManager, user: *main.server.User) void {
