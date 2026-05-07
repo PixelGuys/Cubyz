@@ -74,7 +74,7 @@ const SelectionCapabilities = struct {
 	const Capability = enum(u8) {
 		toolEffective,
 
-		pub fn allowsItemSelection(self: Capability, item: Item, block: Block) bool {
+		pub fn allowsSelectionByItem(self: Capability, block: Block, item: Item) bool {
 			return switch (self) {
 				.toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(block),
 			};
@@ -108,7 +108,7 @@ const SelectionCapabilities = struct {
 
 		const capabilities = self.capabilities orelse return true;
 		for (capabilities) |capability| {
-			if (capability.allowsItemSelection(item, block)) return true;
+			if (capability.allowsSelectionByItem(block, item)) return true;
 		}
 		return false;
 	}
