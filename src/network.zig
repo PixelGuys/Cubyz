@@ -525,6 +525,11 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 
 		fn run(self: *ConnectionManager, duration: std.Io.Duration) !net.IncomingMessage {
+			if (builtin.os.tag != .windows) {
+				return self.socket.receiveTimeout(main.io, &self.receiveBuffer, .{.duration = .{.raw = duration, .clock = .real}});
+			}
+
+			// TODO remove this entire thing when windows has the ability to timeout on receive #3050
 			const Select = std.Io.Select(Result);
 			var select: Select = .init(main.io, &self.recevieResultBuffer);
 			defer select.cancelDiscard();
