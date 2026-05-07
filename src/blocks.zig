@@ -3,31 +3,40 @@ const std = @import("std");
 const main = @import("main");
 const Tag = main.Tag;
 const utils = main.utils;
-const ZonElement = @import("zon.zig").ZonElement;
-const chunk = @import("chunk.zig");
-const Neighbor = chunk.Neighbor;
-const Chunk = chunk.Chunk;
-const graphics = @import("graphics.zig");
-const SSBO = graphics.SSBO;
-const Image = graphics.Image;
-const Color = graphics.Color;
-const TextureArray = graphics.TextureArray;
-const items = @import("items.zig");
-const Item = items.Item;
-const models = @import("models.zig");
-const ModelIndex = models.ModelIndex;
-const rotation = @import("rotation.zig");
-const RotationMode = rotation.RotationMode;
-const Degrees = rotation.Degrees;
-const Entity = main.server.Entity;
-const block_entity = @import("block_entity.zig");
-const BlockEntityType = block_entity.BlockEntityType;
 const ClientBlockCallback = main.callbacks.ClientBlockCallback;
 const ServerBlockCallback = main.callbacks.ServerBlockCallback;
 const BlockTouchCallback = main.callbacks.BlockTouchCallback;
 const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
+const Entity = main.server.Entity;
+
+const c = @import("c");
+
+const ZonElement = @import("zon.zig").ZonElement;
+
+const chunk = @import("chunk.zig");
+const Neighbor = chunk.Neighbor;
+const Chunk = chunk.Chunk;
+
+const graphics = @import("graphics.zig");
+const SSBO = graphics.SSBO;
+const Image = graphics.Image;
+const Color = graphics.Color;
+const TextureArray = graphics.TextureArray;
+
+const items = @import("items.zig");
+const Item = items.Item;
+
+const models = @import("models.zig");
+const ModelIndex = models.ModelIndex;
+
+const rotation = @import("rotation.zig");
+const RotationMode = rotation.RotationMode;
+const Degrees = rotation.Degrees;
+
+const block_entity = @import("block_entity.zig");
+const BlockEntityType = block_entity.BlockEntityType;
 
 pub const maxBlockCount: usize = 65536; // 16 bit limit
 
@@ -803,7 +812,6 @@ pub const meshes = struct { // MARK: meshes
 
 	pub fn preProcessAnimationData(time: u32) void {
 		animationComputePipeline.bind();
-		const c = @import("c");
 		c.glUniform1ui(animationUniforms.time, time);
 		c.glUniform1ui(animationUniforms.size, @intCast(animationData.len));
 		c.glDispatchCompute(@intCast(@divFloor(animationData.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
@@ -831,7 +839,6 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn generateTextureArray() void {
-		const c = @import("c");
 		blockTextureArray.generate(blockTextures.items, true, true);
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
 		emissionTextureArray.generate(emissionTextures.items, true, false);

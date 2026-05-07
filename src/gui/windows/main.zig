@@ -3,9 +3,12 @@ const std = @import("std");
 const main = @import("main");
 const Vec2f = main.vec.Vec2f;
 
+const c = @import("c");
+
 const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
+
 const Button = @import("../components/Button.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
@@ -17,7 +20,6 @@ pub var window = GuiWindow{
 const padding: f32 = 8;
 
 fn exitGame() void {
-	const c = @import("c");
 	c.glfwSetWindowShouldClose(main.Window.window, c.GLFW_TRUE);
 }
 pub fn onOpen() void {

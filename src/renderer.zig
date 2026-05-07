@@ -7,17 +7,22 @@ const entity = @import("entity.zig");
 const graphics = @import("graphics.zig");
 const particles = @import("particles.zig");
 const c = @import("c");
+
 const game = @import("game.zig");
 const World = game.World;
+
 const itemdrop = @import("itemdrop.zig");
+
 const main = @import("main");
+const gpu_performance_measuring = main.gui.windowlist.gpu_performance_measuring;
+const crosshair = main.gui.windowlist.crosshair;
 const Window = main.Window;
+
 const models = @import("models.zig");
 const network = @import("network.zig");
 const settings = @import("settings.zig");
+
 const vec = @import("vec.zig");
-const gpu_performance_measuring = main.gui.windowlist.gpu_performance_measuring;
-const crosshair = main.gui.windowlist.crosshair;
 const Vec2f = vec.Vec2f;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;

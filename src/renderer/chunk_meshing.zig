@@ -11,7 +11,6 @@ const models = main.models;
 const QuadIndex = models.QuadIndex;
 const renderer = main.renderer;
 const graphics = main.graphics;
-const c = @import("c");
 const SSBO = graphics.SSBO;
 const lighting = @import("lighting.zig");
 const settings = main.settings;
@@ -22,6 +21,8 @@ const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Mat4f = vec.Mat4f;
 const gpu_performance_measuring = main.gui.windowlist.gpu_performance_measuring;
+
+const c = @import("c");
 
 const mesh_storage = @import("mesh_storage.zig");
 

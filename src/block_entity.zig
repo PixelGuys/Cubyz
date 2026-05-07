@@ -6,7 +6,6 @@ const Chunk = main.chunk.Chunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const getIndex = main.chunk.getIndex;
 const graphics = main.graphics;
-const c = @import("c");
 const server = main.server;
 const User = server.User;
 const mesh_storage = main.renderer.mesh_storage;
@@ -17,6 +16,8 @@ const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
+
+const c = @import("c");
 
 const UpdateEvent = union(enum) {
 	remove: void,

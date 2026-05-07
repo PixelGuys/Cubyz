@@ -2,10 +2,13 @@ const std = @import("std");
 
 const main = @import("main");
 const Vec2f = main.vec.Vec2f;
-const c = @import("c");
+
 const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
+
+const c = @import("c");
+
 const Button = @import("../components/Button.zig");
 const CheckBox = @import("../components/CheckBox.zig");
 const HorizontalList = @import("../components/HorizontalList.zig");

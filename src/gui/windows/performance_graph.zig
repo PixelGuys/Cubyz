@@ -6,6 +6,8 @@ const draw = graphics.draw;
 const Texture = graphics.Texture;
 const Vec2f = main.vec.Vec2f;
 
+const c = @import("c");
+
 const gui = @import("../gui.zig");
 const GuiWindow = gui.GuiWindow;
 const GuiComponent = gui.GuiComponent;
@@ -59,7 +61,6 @@ pub fn deinit() void {
 }
 
 pub fn render() void {
-	const c = @import("c");
 	lastFrameTime[index] = @floatCast(main.lastFrameTime.load(.monotonic)*1000.0);
 	index = (index + 1)%@as(u31, @intCast(lastFrameTime.len));
 	draw.setColor(0xffffffff);

@@ -8,8 +8,9 @@ const settings = main.settings;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 const List = main.List;
-
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+
+const c = @import("c");
 
 const Button = @import("components/Button.zig");
 const CheckBox = @import("components/CheckBox.zig");
@@ -556,7 +557,6 @@ pub fn updateAndRenderGui() void {
 	}
 	if (!hideGui) {
 		if (!main.Window.grabbed) {
-			const c = @import("c");
 			draw.setColor(0x80000000);
 			GuiWindow.borderPipeline.bind(draw.getScissor());
 			c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
