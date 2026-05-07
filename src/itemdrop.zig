@@ -68,7 +68,6 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	changeQueue: main.utils.ConcurrentQueue(union(enum) { add: struct { u16, ItemDrop }, remove: u16 }),
 
 	world: ?*ServerWorld,
-	airDragFactor: f64,
 
 	size: u32 = 0,
 
@@ -79,7 +78,6 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			.isEmpty = .initFull(),
 			.changeQueue = .init(allocator, 16),
 			.world = world,
-			.airDragFactor = gravity/terminalVelocity,
 		};
 		self.list.resize(self.allocator.allocator, maxCapacity) catch unreachable;
 	}
