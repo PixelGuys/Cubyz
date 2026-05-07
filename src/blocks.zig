@@ -185,9 +185,9 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_degradable[size] = zon.get(bool, "degradable", false);
 
 	if (zon.getChildOrNull("selectionCapabilities")) |capabilitiesZon| {
-		_selectionCapabilities[size] = SelectionCapabilities.loadFromZon(main.worldArena, capabilitiesZon);
+		_selectionCapabilities[size] = .loadFromZon(main.worldArena, capabilitiesZon);
 	} else {
-		_selectionCapabilities[size] = SelectionCapabilities.alwaysSelectable;
+		_selectionCapabilities[size] = .alwaysSelectable;
 	}
 
 	_replaceable[size] = zon.get(bool, "replaceable", false);
