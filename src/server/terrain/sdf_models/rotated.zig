@@ -32,17 +32,29 @@ const Instance = struct {
 	cos: f32,
 };
 
-pub fn init(zon: ZonElement) ?*@This() {
+pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
 	const child = sdf.SdfModel.initModel(zon.getChild("child")) orelse return null;
-	const result = main.worldArena.create(@This());
-	result.child = child;
-	result.axis = zon.get(?Axis, "axis", null) orelse {
+	const self = main.worldArena.create(@This());
+	self.child = child.model;
+	self.axis = zon.get(?Axis, "axis", null) orelse {
 		std.log.err("Missing parameter axis for cubyz:rotated SDF.", .{});
 		return null;
 	};
-	result.minAngle = std.math.degreesToRadians(zon.get(f32, "minAngle", 0));
-	result.maxAngle = std.math.degreesToRadians(zon.get(f32, "maxAngle", 360));
-	return result;
+	self.minAngle = std.math.degreesToRadians(zon.get(f32, "minAngle", 0));
+	self.maxAngle = std.math.degreesToRadians(zon.get(f32, "maxAngle", 360));
+
+	const axisVector: Vec3f = switch (self.axis) {
+		.x => .{1, 0, 0},
+		.y => .{0, 1, 0},
+		.z => .{0, 0, 1},
+	};
+	const offAxisVectors = Vec3f{1, 1, 1} - axisVector;
+	const maxDiagonal: Vec3f = @splat(vec.length(@max(@as(Vec3f, @floatFromInt(child.maxExtend.min))*offAxisVectors, @as(Vec3f, @floatFromInt(child.maxExtend.max))*offAxisVectors)));
+
+	return .{.model = self, .maxExtend = .{
+		.min = @as(Vec3i, @floor(-maxDiagonal*offAxisVectors + @as(Vec3f, @floatFromInt(child.maxExtend.min))*axisVector)),
+		.max = @as(Vec3i, @ceil(maxDiagonal*offAxisVectors + @as(Vec3f, @floatFromInt(child.maxExtend.max))*axisVector)),
+	}};
 }
 
 fn rotate(axis: Axis, sin: f32, cos: f32, in: Vec3f) Vec3f {
