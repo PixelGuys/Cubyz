@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const graphics = main.graphics;
-const c = graphics.c;
+const c = @import("c");
 const vulkan = graphics.vulkan;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 

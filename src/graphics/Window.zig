@@ -9,7 +9,7 @@ const Vec2f = vec.Vec2f;
 
 const vulkan = @import("vulkan.zig");
 
-pub const c = main.graphics.c;
+const c = @import("c");
 
 var isFullscreen: bool = false;
 pub var lastUsedMouse: bool = true;

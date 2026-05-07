@@ -3,7 +3,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-pub const c = @import("c");
+const c = @import("c");
 
 const vec = @import("vec.zig");
 const Mat4f = vec.Mat4f;

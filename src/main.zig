@@ -283,7 +283,7 @@ fn setHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
 }
 
 pub const KeyBoard = struct { // MARK: KeyBoard
-	const c = Window.c;
+	const c = @import("c");
 	pub var keys = [_]Window.Key{
 		// Gameplay:
 		.{.name = "forward", .key = c.GLFW_KEY_W, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}},
@@ -562,7 +562,7 @@ pub fn clientMain() void { // MARK: clientMain()
 		},
 	}
 
-	const c = Window.c;
+	const c = @import("c");
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastBeginRendering = timestamp();
 

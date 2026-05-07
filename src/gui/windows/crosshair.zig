@@ -9,7 +9,7 @@ const gui = @import("../gui.zig");
 const GuiWindow = gui.GuiWindow;
 const GuiComponent = gui.GuiComponent;
 
-const c = main.graphics.c;
+const c = @import("c");
 
 const size: f32 = 64;
 pub var window = GuiWindow{

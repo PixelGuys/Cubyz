@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
-const c = main.Window.c;
+const c = @import("c");
 const graphics = main.graphics;
 const draw = graphics.draw;
 const Texture = graphics.Texture;

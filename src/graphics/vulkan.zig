@@ -2,7 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 const main = @import("main");
-const c = main.graphics.c;
+const c = @import("c");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 comptime {
