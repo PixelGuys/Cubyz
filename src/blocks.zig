@@ -68,18 +68,44 @@ pub const Ore = struct {
 	seed: u64,
 };
 
-const SelectionCapability = enum(u8) {
-	toolEffective,
+const SelectionCapabilities = struct {
+	capabilities: ?[]const SelectionCapability,
 
-	pub fn loadSelectionCapabilitiesFromZon(arena: main.heap.NeverFailingAllocator, zon: main.ZonElement) []SelectionCapability {
-		var capabilities = main.ListUnmanaged(SelectionCapability).initCapacity(arena, zon.toSlice().len);
+	pub const alwaysSelectable = SelectionCapabilities{.capabilities = null};
+
+	pub fn loadFromZon(arena: main.heap.NeverFailingAllocator, zon: main.ZonElement) SelectionCapabilities {
+		var list = main.ListUnmanaged(SelectionCapability).initCapacity(arena, zon.toSlice().len);
 		for (zon.toSlice()) |capabilityZon| {
 			if (capabilityZon.as(?SelectionCapability, null)) |capability| {
-				capabilities.appendAssumeCapacity(capability);
+				list.appendAssumeCapacity(capability);
 			} else std.log.err("SelectionCapability is invalid. Ignoring", .{});
 		}
-		return capabilities.items;
+		return .{.capabilities = list.items};
 	}
+
+	pub fn allowsSelectionByItem(self: SelectionCapabilities, block: Block, item: Item) bool {
+		if (item == .baseItem) {
+			const base = item.baseItem;
+			if (base.block() == block.typ or std.mem.eql(u8, base.id(), "cubyz:selection_wand")) {
+				return true;
+			}
+		}
+
+		if (block.hasTag(.fluid)) {
+			const fluidPlaceable = item == .baseItem and item.baseItem.hasTag(.fluidPlaceable);
+			return fluidPlaceable;
+		}
+
+		const capabilities = self.capabilities orelse return true;
+		for (capabilities) |capability| {
+			if (capability.allowsItemSelection(item, block)) return true;
+		}
+		return false;
+	}
+};
+
+const SelectionCapability = enum(u8) {
+	toolEffective,
 
 	pub fn allowsItemSelection(self: SelectionCapability, item: Item, block: Block) bool {
 		return switch (self) {
@@ -97,7 +123,7 @@ var _blockResistance: [maxBlockCount]f32 = undefined;
 
 /// Whether you can replace it with another block, mainly used for fluids/gases
 var _replaceable: [maxBlockCount]bool = undefined;
-var _selectionCapabilities: [maxBlockCount]?[]const SelectionCapability = undefined;
+var _selectionCapabilities: [maxBlockCount]SelectionCapabilities = undefined;
 var _blockDrops: [maxBlockCount][]const BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
 var _degradable: [maxBlockCount]bool = undefined;
@@ -158,11 +184,11 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
 
-	var selectionCapabilities: ?[]SelectionCapability = null;
 	if (zon.getChildOrNull("selectionCapabilities")) |capabilitiesZon| {
-		selectionCapabilities = SelectionCapability.loadSelectionCapabilitiesFromZon(main.worldArena, capabilitiesZon);
+		_selectionCapabilities[size] = SelectionCapabilities.loadFromZon(main.worldArena, capabilitiesZon);
+	} else {
+		_selectionCapabilities[size] = SelectionCapabilities.alwaysSelectable;
 	}
-	_selectionCapabilities[size] = selectionCapabilities;
 
 	_replaceable[size] = zon.get(bool, "replaceable", false);
 	_transparent[size] = zon.get(bool, "transparent", false);
@@ -438,7 +464,7 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return _replaceable[self.typ];
 	}
 
-	pub inline fn selectionCapabilities(self: Block) ?[]const SelectionCapability {
+	pub inline fn selectionCapabilities(self: Block) SelectionCapabilities {
 		return _selectionCapabilities[self.typ];
 	}
 
@@ -550,24 +576,8 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
 	}
 
-	pub fn isSelectableByItem(self: Block, item: Item) bool {
-		if (item == .baseItem) {
-			const base = item.baseItem;
-			if (base.block() == self.typ or std.mem.eql(u8, base.id(), "cubyz:selection_wand")) {
-				return true;
-			}
-		}
-
-		if (self.hasTag(.fluid)) {
-			const fluidPlaceable = item == .baseItem and item.baseItem.hasTag(.fluidPlaceable);
-			return fluidPlaceable;
-		}
-
-		const capabilities = self.selectionCapabilities() orelse return true;
-		for (capabilities) |capability| {
-			if (capability.allowsItemSelection(item, self)) return true;
-		}
-		return false;
+	pub inline fn isSelectableByItem(self: Block, item: Item) bool {
+		return self.selectionCapabilities().allowsSelectionByItem(self, item);
 	}
 };
 
