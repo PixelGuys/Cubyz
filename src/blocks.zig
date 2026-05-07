@@ -71,7 +71,7 @@ pub const Ore = struct {
 const SelectionCapabilities = struct {
 	capabilities: ?[]const SelectionCapability,
 
-	pub const alwaysSelectable = SelectionCapabilities{.capabilities = null};
+	pub const alwaysSelectable: SelectionCapabilities = .{.capabilities = null};
 
 	pub fn loadFromZon(arena: main.heap.NeverFailingAllocator, zon: main.ZonElement) SelectionCapabilities {
 		var list = main.ListUnmanaged(SelectionCapability).initCapacity(arena, zon.toSlice().len);
