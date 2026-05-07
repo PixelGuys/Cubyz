@@ -22,6 +22,6 @@
 #endif
 #include <GLFW/glfw3.h>
 
-// used for exporting and reading images to/from files
+// used for reading and writing image files
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>
