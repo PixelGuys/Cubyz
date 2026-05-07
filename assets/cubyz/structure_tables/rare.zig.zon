@@ -13,5 +13,11 @@
 			.placeMode = .degradable,
 			.structure = "cubyz:rare/mushroom_pole/base",
 		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:workbench",
+			.height = 1,
+			.height_variation = 0,
+		},
 	},
 }
