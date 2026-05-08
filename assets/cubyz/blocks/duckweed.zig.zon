@@ -4,6 +4,9 @@
 	.drops = .{
 		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
 	},
+	.placementConstraints = .{
+		.{.allowedTags = .{.fluid}, .allowedFaces = .{.top}},
+	},
 	.selectionCapabilities = .{.toolEffective},
 	.replaceable = true,
 	.degradable = true,
@@ -21,7 +24,6 @@
 	.texture3 = "cubyz:duckweed/3",
 	.item = .{
 		.texture = "duckweed.png",
-		.tags = .{.fluidPlaceable},
 	},
 	.lodReplacement = "cubyz:air",
 }

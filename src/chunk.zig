@@ -2,6 +2,7 @@ const std = @import("std");
 
 const blocks = @import("blocks.zig");
 const Block = blocks.Block;
+const SelectionFace = blocks.SelectionFace;
 const main = @import("main");
 const settings = @import("settings.zig");
 const vec = @import("vec.zig");
@@ -63,6 +64,14 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 					else => return null,
 				},
 			},
+		};
+	}
+
+	pub fn toSelectionFace(self: Neighbor) SelectionFace {
+		return switch (self) {
+			.dirDown => .top,
+			.dirUp => .bottom,
+			else => .side,
 		};
 	}
 

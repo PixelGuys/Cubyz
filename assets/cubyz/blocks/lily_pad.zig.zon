@@ -4,6 +4,9 @@
 	.drops = .{
 		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
 	},
+	.placementConstraints = .{
+		.{.allowedTags = .{.fluid}, .allowedFaces = .{.top}},
+	},
 	.degradable = true,
 	.alwaysViewThrough = true,
 	.absorbedLight = 0x121012,
@@ -12,7 +15,6 @@
 	.texture = "cubyz:lily_pad",
 	.item = .{
 		.texture = "lily_pad.png",
-		.tags = .{.fluidPlaceable},
 	},
 	.lodReplacement = "cubyz:air",
 }

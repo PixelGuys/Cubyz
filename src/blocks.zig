@@ -68,15 +68,84 @@ pub const Ore = struct {
 	seed: u64,
 };
 
+const PlacementConstraints = struct {
+	constraints: []const PlacementConstraint,
+
+	pub const unconstrained: PlacementConstraints = .{.constraints = &.{}};
+
+	pub inline fn isConstrained(self: PlacementConstraints) bool {
+		return self.constraints.len != 0;
+	}
+
+	const PlacementConstraint = struct {
+		allowedTags: ?[]const Tag,
+		allowedFaces: ?SelectionFaceMask,
+
+		pub inline fn loadFromZon(arena: main.heap.NeverFailingAllocator, zon: main.ZonElement) PlacementConstraint {
+			return .{
+				.allowedTags = if (zon.getChildOrNull("allowedTags")) |tagsZon| Tag.loadTagsFromZon(arena, tagsZon) else null,
+				.allowedFaces = if (zon.getChildOrNull("allowedFaces")) |facesZon| SelectionFaceMask.loadFromZon(facesZon) else null,
+			};
+		}
+
+		pub fn allowsPlacementOnBlock(self: PlacementConstraint, target: Block, from: SelectionFace) bool {
+			if (self.allowedTags) |tags| {
+				for (tags) |tag| {
+					if (target.hasTag(tag)) break;
+				} else return false;
+			}
+			if (self.allowedFaces) |faces| {
+				if (!faces.has(from)) return false;
+			}
+			return true;
+		}
+	};
+
+	pub fn loadFromZon(arena: main.heap.NeverFailingAllocator, zon: main.ZonElement) PlacementConstraints {
+		var list = main.ListUnmanaged(PlacementConstraint).initCapacity(arena, zon.toSlice().len);
+		for (zon.toSlice()) |constraintZon| {
+			list.appendAssumeCapacity(PlacementConstraint.loadFromZon(arena, constraintZon));
+		}
+		return .{.constraints = list.items};
+	}
+
+	pub inline fn allowsPlacementOnBlock(self: PlacementConstraints, target: Block, from: Neighbor) bool {
+		return switch (target.support()) {
+			.no => false,
+			.yes => true,
+			.yesThroughConstraints => {
+				if (!self.isConstrained()) return false;
+
+				const selectionFace = from.toSelectionFace();
+				for (self.constraints) |constraint| {
+					if (constraint.allowsPlacementOnBlock(target, selectionFace)) return true;
+				}
+				return false;
+			},
+		};
+	}
+};
+
 const SelectionCapabilities = struct {
 	capabilities: ?[]const Capability,
 
-	const Capability = enum(u8) {
+	const Capability = enum {
 		toolEffective,
+		placeable,
 
-		pub fn allowsSelectionByItem(self: Capability, block: Block, item: Item) bool {
-			return switch (self) {
-				.toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(block),
+		pub fn allowsSelectionByItem(self: Capability, block: Block, item: Item, from: Neighbor) bool {
+			return switch (item) {
+				.baseItem => |baseItem| {
+					if (std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) return true;
+					if (baseItem.block()) |blockType| {
+						if (blockType == block.typ) return true;
+						return self == .placeable and Block.fromInt(blockType).isPlaceableOnBlock(block, from);
+					} else return false;
+				},
+
+				.proceduralItem => |proceduralItem| self == .toolEffective and proceduralItem.isEffectiveOn(block),
+
+				else => false,
 			};
 		}
 	};
@@ -93,25 +162,53 @@ const SelectionCapabilities = struct {
 		return .{.capabilities = list.items};
 	}
 
-	pub fn allowsSelectionByItem(self: SelectionCapabilities, block: Block, item: Item) bool {
-		if (item == .baseItem) {
-			const base = item.baseItem;
-			if (base.block() == block.typ or std.mem.eql(u8, base.id(), "cubyz:selection_wand")) {
-				return true;
-			}
-		}
-
-		if (block.hasTag(.fluid)) {
-			const fluidPlaceable = item == .baseItem and item.baseItem.hasTag(.fluidPlaceable);
-			return fluidPlaceable;
-		}
-
+	pub fn allowsSelectionByItem(self: SelectionCapabilities, block: Block, item: Item, from: Neighbor) bool {
 		const capabilities = self.capabilities orelse return true;
 		for (capabilities) |capability| {
-			if (capability.allowsSelectionByItem(block, item)) return true;
+			if (capability.allowsSelectionByItem(block, item, from)) return true;
 		}
 		return false;
 	}
+};
+
+pub const SelectionFace = enum {
+	top,
+	bottom,
+	side,
+};
+
+const SelectionFaceMask = packed struct(u3) {
+	top: bool = false,
+	bottom: bool = false,
+	side: bool = false,
+
+	pub fn loadFromZon(zon: main.ZonElement) SelectionFaceMask {
+		var mask: SelectionFaceMask = .{};
+		for (zon.toSlice()) |faceZon| {
+			if (faceZon.as(?SelectionFace, null)) |face| {
+				switch (face) {
+					.top => mask.top = true,
+					.bottom => mask.bottom = true,
+					.side => mask.side = true,
+				}
+			} else std.log.err("SelectionFace is invalid. Ignoring", .{});
+		}
+		return mask;
+	}
+
+	pub fn has(self: SelectionFaceMask, face: SelectionFace) bool {
+		return switch (face) {
+			.top => self.top,
+			.bottom => self.bottom,
+			.side => self.side,
+		};
+	}
+};
+
+const Support = enum {
+	no,
+	yes,
+	yesThroughConstraints,
 };
 
 var _transparent: [maxBlockCount]bool = undefined;
@@ -123,6 +220,8 @@ var _blockResistance: [maxBlockCount]f32 = undefined;
 
 /// Whether you can replace it with another block, mainly used for fluids/gases
 var _replaceable: [maxBlockCount]bool = undefined;
+var _support: [maxBlockCount]Support = undefined;
+var _placementConstraints: [maxBlockCount]PlacementConstraints = undefined;
 var _selectionCapabilities: [maxBlockCount]SelectionCapabilities = undefined;
 var _blockDrops: [maxBlockCount][]const BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
@@ -183,6 +282,14 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_light[size] = zon.get(u32, "emittedLight", 0);
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
+	_replaceable[size] = zon.get(bool, "replaceable", false);
+	_support[size] = zon.get(Support, "support", .yes);
+
+	if (zon.getChildOrNull("placementConstraints")) |constraintsZon| {
+		_placementConstraints[size] = .loadFromZon(main.worldArena, constraintsZon);
+	} else {
+		_placementConstraints[size] = .unconstrained;
+	}
 
 	if (zon.getChildOrNull("selectionCapabilities")) |capabilitiesZon| {
 		_selectionCapabilities[size] = .loadFromZon(main.worldArena, capabilitiesZon);
@@ -190,7 +297,6 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 		_selectionCapabilities[size] = .alwaysSelectable;
 	}
 
-	_replaceable[size] = zon.get(bool, "replaceable", false);
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
 	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
@@ -464,6 +570,14 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return _replaceable[self.typ];
 	}
 
+	pub inline fn support(self: Block) Support {
+		return _support[self.typ];
+	}
+
+	pub inline fn placementConstraints(self: Block) PlacementConstraints {
+		return _placementConstraints[self.typ];
+	}
+
 	pub inline fn selectionCapabilities(self: Block) SelectionCapabilities {
 		return _selectionCapabilities[self.typ];
 	}
@@ -576,8 +690,12 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
 	}
 
-	pub inline fn isSelectableByItem(self: Block, item: Item) bool {
-		return self.selectionCapabilities().allowsSelectionByItem(self, item);
+	pub inline fn isSelectableByItem(self: Block, item: Item, from: Neighbor) bool {
+		return self.selectionCapabilities().allowsSelectionByItem(self, item, from);
+	}
+
+	pub inline fn isPlaceableOnBlock(self: Block, target: Block, from: Neighbor) bool {
+		return self.placementConstraints().allowsPlacementOnBlock(target, from);
 	}
 };
 

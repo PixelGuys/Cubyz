@@ -1,8 +1,9 @@
 .{
 	.tags = .{.fluid},
 	.drops = .{},
-	.selectionCapabilities = .{.toolEffective},
+	.selectionCapabilities = .{.toolEffective, .placeable},
 	.replaceable = true,
+	.support = .yesThroughConstraints,
 	.degradable = true,
 	.transparent = true,
 	.hasBackFace = true,
