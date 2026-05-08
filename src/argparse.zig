@@ -29,10 +29,6 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			return resolve(ResolveMode.parse, allocator, args, errorMessage);
 		}
 
-		pub fn autocomplete(allocator: NeverFailingAllocator, args: []const u8, errorMessage: *ListUnmanaged(u8)) AutocompleteResult {
-			return resolve(ResolveMode.autocomplete, allocator, args, errorMessage);
-		}
-
 		pub fn resolve(
 			comptime mode: ResolveMode,
 			allocator: NeverFailingAllocator,
@@ -111,7 +107,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			}
 
 			const arg = argument orelse {
-				errorMessage.print(main.stackAllocator, missingArgumentMessage, .{name});
+				errorMessage.print(main.stackAllocator, "Missing argument at position <{s}>", .{name});
 				return error.ParseError;
 			};
 			switch (fieldTypeInfo) {
@@ -142,27 +138,6 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			}
 		}
 
-		const missingArgumentMessage = "Missing argument at position <{s}>";
-
-		fn autocompleteArgument(comptime Field: type, allocator: NeverFailingAllocator, _arg: ?[]const u8) AutocompleteResult {
-			const arg = _arg orelse return .{};
-			switch (@typeInfo(Field)) {
-				inline .@"struct" => {
-					if (!@hasDecl(Field, "autocomplete")) @compileError("Struct must have an autocomplete function");
-					return try @field(Field, "autocomplete")(allocator, arg);
-				},
-				inline .@"enum" => {
-					var result: AutocompleteResult = .{};
-					inline for (std.meta.fieldNames(Field)) |fieldName| {
-						if (!std.mem.startsWith(u8, fieldName, arg)) continue;
-						result.suggestions.append(allocator, allocator.dupe(u8, fieldName));
-					}
-					return result;
-				},
-				inline else => return .{},
-			}
-		}
-
 		fn parseUnion(comptime u: std.builtin.Type.Union, allocator: NeverFailingAllocator, args: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!T {
 			var tempErrorMessage: ListUnmanaged(u8) = .{};
 			defer tempErrorMessage.deinit(allocator);
@@ -186,38 +161,16 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 		}
 
 		fn autocompleteUnion(comptime u: std.builtin.Type.Union, allocator: NeverFailingAllocator, args: []const u8) AutocompleteResult {
-			var result: AutocompleteResult = .{};
-
-			inline for (u.fields) |field| {
-				var completion = Parser(field.type).resolve(true, allocator, args);
-				defer completion.deinit(allocator);
-
-				result.takeSuggestions(allocator, &completion);
-			}
-
-			return result;
+			_ = u;
+			_ = allocator;
+			_ = args;
+			return .{};
 		}
 	};
 }
 
-pub const AutocompleteResult = struct {
-	suggestions: ListUnmanaged([]const u8) = .{},
-
-	pub fn takeSuggestions(self: *AutocompleteResult, allocator: NeverFailingAllocator, other: *AutocompleteResult) void {
-		for (other.suggestions.items) |message| {
-			self.suggestions.append(allocator, message);
-		}
-		other.suggestions.clearAndFree(allocator);
-	}
-
-	pub fn deinit(self: AutocompleteResult, allocator: NeverFailingAllocator) void {
-		for (self.suggestions.items) |item| {
-			allocator.free(item);
-		}
-		self.suggestions.deinit(allocator);
-	}
-};
-
+pub const AutocompleteResult = struct {};
+// MARK: tests
 const Test = struct {
 	const OnlyX = Parser(struct { x: f64 }, .{.commandName = ""});
 
