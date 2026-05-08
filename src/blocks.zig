@@ -69,7 +69,7 @@ pub const Ore = struct {
 };
 
 const PlacementConstraints = struct {
-	constraints: []const PlacementConstraint,
+	constraints: []const Constraint,
 
 	pub const unconstrained: PlacementConstraints = .{.constraints = &.{}};
 
@@ -77,18 +77,18 @@ const PlacementConstraints = struct {
 		return self.constraints.len != 0;
 	}
 
-	const PlacementConstraint = struct {
+	const Constraint = struct {
 		allowedTags: ?[]const Tag,
 		allowedFaces: ?SelectionFaceMask,
 
-		pub inline fn loadFromZon(arena: main.heap.NeverFailingAllocator, zon: main.ZonElement) PlacementConstraint {
+		pub inline fn loadFromZon(arena: main.heap.NeverFailingAllocator, zon: main.ZonElement) Constraint {
 			return .{
 				.allowedTags = if (zon.getChildOrNull("allowedTags")) |tagsZon| Tag.loadTagsFromZon(arena, tagsZon) else null,
 				.allowedFaces = if (zon.getChildOrNull("allowedFaces")) |facesZon| SelectionFaceMask.loadFromZon(facesZon) else null,
 			};
 		}
 
-		pub fn allowsPlacementOnBlock(self: PlacementConstraint, target: Block, from: SelectionFace) bool {
+		pub fn allowsPlacementOnBlock(self: Constraint, target: Block, from: SelectionFace) bool {
 			if (self.allowedTags) |tags| {
 				for (tags) |tag| {
 					if (target.hasTag(tag)) break;
@@ -102,9 +102,9 @@ const PlacementConstraints = struct {
 	};
 
 	pub fn loadFromZon(arena: main.heap.NeverFailingAllocator, zon: main.ZonElement) PlacementConstraints {
-		var list = main.ListUnmanaged(PlacementConstraint).initCapacity(arena, zon.toSlice().len);
+		var list = main.ListUnmanaged(Constraint).initCapacity(arena, zon.toSlice().len);
 		for (zon.toSlice()) |constraintZon| {
-			list.appendAssumeCapacity(PlacementConstraint.loadFromZon(arena, constraintZon));
+			list.appendAssumeCapacity(Constraint.loadFromZon(arena, constraintZon));
 		}
 		return .{.constraints = list.items};
 	}
