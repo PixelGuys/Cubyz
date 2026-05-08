@@ -99,8 +99,9 @@ const SelectionCapabilities = packed struct(u2) {
 				if (std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) return true;
 				if (block.hasTag(.fluid) and baseItem.hasTag(.fluidPlaceable)) return true;
 				if (baseItem.block()) |blockType| {
-					return blockType == block.typ;
-				} else return false;
+					if (blockType == block.typ) return true;
+				}
+				return false;
 			},
 
 			.proceduralItem => |proceduralItem| self.toolEffective and proceduralItem.isEffectiveOn(block),
