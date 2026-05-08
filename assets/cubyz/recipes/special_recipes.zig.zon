@@ -48,6 +48,10 @@
 		.output = "cubyz:iron_block",
 	},
 	.{
+		.inputs = .{"4 cubyz:meteorite_ingot"},
+		.output = "cubyz:meteorite_block",
+	},
+	.{
 		.inputs = .{"1 cubyz:iron_ingot"},
 		.output = "4 cubyz:chain/iron",
 	},
