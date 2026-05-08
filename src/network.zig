@@ -126,7 +126,7 @@ const Socket = struct {
 	fn send(self: Socket, data: []const u8, destination: SocketAddress) void {
 		const addr = blk: {
 			var posixAddr: std.Io.Threaded.PosixAddress = undefined;
-			_ = std.Io.Threaded.addressToPosix(std.Io.net.IpAddress{.ip4 = destination.address}, &posixAddr);
+			_ = std.Io.Threaded.addressToPosix(&std.Io.net.IpAddress{.ip4 = destination.address}, &posixAddr);
 			break :blk posixAddr.in;
 		};
 		if (builtin.os.tag == .windows) {
