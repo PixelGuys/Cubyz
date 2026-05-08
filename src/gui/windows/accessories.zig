@@ -53,9 +53,10 @@ pub fn onOpen() void {
 		}
 		list.add(row);
 	}
-	list.finish(.center);
+	list.finish(.right);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
+	window.contentSize[0] = @max(window.contentSize[0], window.getMinWindowWidth());
 	gui.updateWindowPositions();
 }
 

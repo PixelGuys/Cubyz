@@ -54,6 +54,7 @@ pub fn getTotalSlotCount() u32 {
 }
 
 pub fn reset() void {
+	accessorySlots = .{};
 	accessorySlotsById = .{};
 	totalSlotCount = 0;
 }
