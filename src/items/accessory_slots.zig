@@ -25,6 +25,7 @@ fn register(id: []const u8, zon: ZonElement) void {
 	accessorySlots.append(main.worldArena, accessorySlot);
 	const slotPtr = &accessorySlots.items[accessorySlots.items.len - 1];
 	accessorySlotsById.put(main.worldArena.allocator, slotPtr.id, slotPtr) catch unreachable;
+	std.log.debug("Registered accessory slot: {s}", .{slotPtr.id});
 }
 
 pub fn registerAccessorySlots(accessorySlotMap: *const Assets.ZonHashMap) void {
