@@ -396,7 +396,7 @@ const GenerationStructure = struct {
 			for (1..preMapSize - 1) |x| {
 				for (1..preMapSize - 1) |y| {
 					const y1 = y;
-					const y2 = if (x%2 == 1) y - 1 else y + 1;
+					const y2 = if (x%2 == 1) y + 1 else y - 1;
 					const xNeighbors = neighborData[i - 1][x - 1][y1] | neighborData[i - 1][x - 1][y2] | neighborData[i - 1][x + 1][y1] | neighborData[i - 1][x + 1][y2];
 					neighborData[i][x][y] = neighborData[i - 1][x][y] | neighborData[i - 1][x][y - 1] | neighborData[i - 1][x][y + 1] | xNeighbors;
 				}
