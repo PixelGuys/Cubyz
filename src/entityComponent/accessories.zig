@@ -56,7 +56,7 @@ pub const server = struct {
 		accessories: Inventory.InventoryId,
 		pub fn save(self: Component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			if (audience != .disk and audience != .playerHimself) return .discard;
-			self.accessories.toBytes(writer);
+			Inventory.ServerSide.getInventoryFromId(self.accessories).toBytes(writer);
 			return .save;
 		}
 	};
@@ -66,7 +66,7 @@ pub const server = struct {
 		components = .{};
 	}
 	pub fn deinit() void {
-		for (components.dense.items) |bag| bag.accessories.deinit();
+		for (components.dense.items) |accessories| Inventory.ServerSide.destroyExternallyManagedInventory(accessories.accessories);
 		components.deinit(main.globalAllocator);
 	}
 
@@ -83,10 +83,11 @@ pub const server = struct {
 	}
 	pub fn loadEmpty(entityId: u32) void {
 		const accessories = &components.add(main.globalAllocator, @enumFromInt(entityId)).accessories;
-		accessories.* = Inventory.ServerSide.createExternallyManagedInventory(items.accessory_slots.getTotalSlotCount(), .{.playerAccessories = entityId}, utils.BinaryReader.init(.{}), .{});
+		var reader = utils.BinaryReader.init("");
+		accessories.* = Inventory.ServerSide.createExternallyManagedInventory(items.accessory_slots.getTotalSlotCount(), .{.playerAccessories = entityId}, &reader, .{});
 	}
 	pub fn unload(entityId: u32) void {
 		const accessories = components.fetchRemove(@enumFromInt(entityId)) catch return;
-		accessories.accessories.deinit();
+		Inventory.ServerSide.destroyExternallyManagedInventory(accessories.accessories);
 	}
 };

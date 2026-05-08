@@ -249,9 +249,9 @@ pub const ServerSide = struct { // MARK: ServerSide
 		sync.threadContext.assertCorrectContext(.server);
 		var callbacks: Callbacks = .{};
 		switch (source) {
-			.blockInventory, .playerInventory, .hand => {
+			.blockInventory, .playerInventory, .hand, .playerAccessories => {
 				switch (source) {
-					.playerInventory, .hand => |id| {
+					.playerInventory, .hand, .playerAccessories => |id| {
 						if (id != user.id) {
 							std.log.err("Player {f} tried to access the inventory of another player.", .{user});
 							return error.Invalid;
@@ -301,7 +301,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 
 		switch (source) {
 			.blockInventory => unreachable, // Should be loaded by the block entity
-			.playerInventory, .hand => unreachable, // Should be loaded on player creation
+			.playerInventory, .hand, .playerAccessories => unreachable, // Should be loaded on player creation
 			.other => {},
 			.workbench => {},
 			.alreadyFreed => unreachable,
