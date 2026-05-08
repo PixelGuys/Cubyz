@@ -124,9 +124,10 @@ const Socket = struct {
 	}
 
 	fn send(self: Socket, data: []const u8, destination: SocketAddress) void {
-		const addr = posix.sockaddr.in{
-			.port = @byteSwap(destination.address.port),
-			.addr = std.mem.readInt(u32, &destination.address.bytes, .native),
+		const addr = blk: {
+			var posixAddr: std.Io.Threaded.PosixAddress = undefined;
+			_ = std.Io.Threaded.addressToPosix(std.Io.net.IpAddress{.ip4 = destination.address}, &posixAddr);
+			break :blk posixAddr.in;
 		};
 		if (builtin.os.tag == .windows) {
 			const result = ws2.sendto(self.socketID, data.ptr, @intCast(data.len), 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
@@ -189,10 +190,7 @@ const Socket = struct {
 				}
 			}
 		};
-		resultAddress.address = .{
-			.bytes = std.mem.toBytes(addr.addr),
-			.port = @byteSwap(addr.port),
-		};
+		resultAddress.address = std.Io.Threaded.addressFromPosix(&std.Io.Threaded.PosixAddress{.in = addr}).ip4;
 		return buffer[0..length];
 	}
 
