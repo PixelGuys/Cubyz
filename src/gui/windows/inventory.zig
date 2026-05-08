@@ -30,13 +30,16 @@ pub var window = GuiWindow{
 const padding: f32 = 8;
 
 var craftingIcon: Texture = undefined;
+var accessoryIcon: Texture = undefined;
 
 pub fn init() void {
 	craftingIcon = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_icon.png");
+	accessoryIcon = Texture.initFromFile("assets/cubyz/ui/inventory/accessory_icon.png");
 }
 
 pub fn deinit() void {
 	craftingIcon.deinit();
+	accessoryIcon.deinit();
 }
 
 var itemSlots: [20]*ItemSlot = undefined;
@@ -47,6 +50,7 @@ pub fn onOpen() void {
 	// TODO: armor slots, backpack slot + stack-based backpack inventory, other items maybe?
 	{
 		const row = HorizontalList.init();
+		row.add(Button.initIcon(.{-32, 0}, .{32, 32}, accessoryIcon, true, gui.openWindowCallback("accessories")));
 		blk: {
 			row.add(GuiComponent.BagSlot.init(.{0, 0}, main.entity.components.@"cubyz:bag".client.getBag(main.game.Player.id) orelse break :blk));
 		}

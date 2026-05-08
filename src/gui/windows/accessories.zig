@@ -2,7 +2,8 @@ const std = @import("std");
 
 const main = @import("main");
 const Player = main.game.Player;
-const ItemStack = main.items.ItemStack;
+const items = main.items;
+const ItemStack = items.ItemStack;
 const Vec2f = main.vec.Vec2f;
 const Texture = main.graphics.Texture;
 
@@ -27,7 +28,7 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 
-var itemSlots: [20]*ItemSlot = undefined;
+var itemSlots: []*ItemSlot = undefined;
 
 pub fn init() void {
 }
@@ -37,24 +38,18 @@ pub fn deinit() void {
 
 
 pub fn onOpen() void {
+	itemSlots = main.globalAllocator.alloc(*ItemSlot, items.accessory_slots.getTotalSlotCount());
+
+	const accessories = main.entity.components.@"cubyz:accessories".client.getAccessories(Player.super.id) orelse return;
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
-	// Some miscellanious slots and buttons:
-	// TODO: armor slots, backpack slot + stack-based backpack inventory, other items maybe?
-	{
+	var index: u32 = 0;
+	for (items.accessory_slots.getAccessorySlots()) |accessorySlot| {
 		const row = HorizontalList.init();
-		blk: {
-			row.add(GuiComponent.BagSlot.init(.{0, 0}, main.entity.components.@"cubyz:bag".client.getBag(main.game.Player.id) orelse break :blk));
-		}
-		row.add(Button.initIcon(.{32, 0}, .{32, 32}, craftingIcon, true, gui.openWindowCallback("inventory_crafting")));
-		list.add(row);
-	}
-	for (0..2) |y| {
-		const row = HorizontalList.init();
-		for (0..10) |x| {
-			const index: usize = 12 + y*10 + x;
-			const slot = ItemSlot.init(.{0, 0}, Player.inventory, @intCast(index), .default, .normal);
-			itemSlots[index - 12] = slot;
+		for (0..accessorySlot.count) |_| {
+			const slot = ItemSlot.init(.{0, 0}, accessories.*, @intCast(index), .default, .normal);
+			itemSlots[index] = slot;
 			row.add(slot);
+			index += 1;
 		}
 		list.add(row);
 	}
@@ -68,4 +63,5 @@ pub fn onClose() void {
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
+	main.globalAllocator.free(itemSlots);
 }
