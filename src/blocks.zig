@@ -3,16 +3,6 @@ const std = @import("std");
 const main = @import("main");
 const Tag = main.Tag;
 const utils = main.utils;
-const ClientBlockCallback = main.callbacks.ClientBlockCallback;
-const ServerBlockCallback = main.callbacks.ServerBlockCallback;
-const BlockTouchCallback = main.callbacks.BlockTouchCallback;
-const sbb = main.server.terrain.structure_building_blocks;
-const blueprint = main.blueprint;
-const Assets = main.assets.Assets;
-const Entity = main.server.Entity;
-
-const c = @import("c");
-
 const ZonElement = @import("zon.zig").ZonElement;
 const chunk = @import("chunk.zig");
 const Neighbor = chunk.Neighbor;
@@ -29,8 +19,17 @@ const ModelIndex = models.ModelIndex;
 const rotation = @import("rotation.zig");
 const RotationMode = rotation.RotationMode;
 const Degrees = rotation.Degrees;
+const Entity = main.server.Entity;
 const block_entity = @import("block_entity.zig");
 const BlockEntityType = block_entity.BlockEntityType;
+const ClientBlockCallback = main.callbacks.ClientBlockCallback;
+const ServerBlockCallback = main.callbacks.ServerBlockCallback;
+const BlockTouchCallback = main.callbacks.BlockTouchCallback;
+const sbb = main.server.terrain.structure_building_blocks;
+const blueprint = main.blueprint;
+const Assets = main.assets.Assets;
+
+const c = @import("c");
 
 pub const maxBlockCount: usize = 65536; // 16 bit limit
 

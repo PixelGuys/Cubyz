@@ -5,16 +5,13 @@ const chunk_zig = @import("chunk.zig");
 const ServerChunk = chunk_zig.ServerChunk;
 const game = @import("game.zig");
 const World = game.World;
+const ServerWorld = main.server.ServerWorld;
 const graphics = @import("graphics.zig");
 const items = @import("items.zig");
 const ItemStack = items.ItemStack;
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
 const physics = main.physics;
-const ServerWorld = main.server.ServerWorld;
-const BinaryReader = main.utils.BinaryReader;
-const BinaryWriter = main.utils.BinaryWriter;
-const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const random = @import("random.zig");
 const settings = @import("settings.zig");
 const utils = @import("utils.zig");
@@ -23,6 +20,9 @@ const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
+const BinaryReader = main.utils.BinaryReader;
+const BinaryWriter = main.utils.BinaryWriter;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const c = @import("c");
 

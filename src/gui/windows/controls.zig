@@ -8,7 +8,6 @@ const c = @import("c");
 const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
-
 const Button = @import("../components/Button.zig");
 const CheckBox = @import("../components/CheckBox.zig");
 const HorizontalList = @import("../components/HorizontalList.zig");
