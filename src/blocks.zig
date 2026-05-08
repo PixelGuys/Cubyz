@@ -87,7 +87,7 @@ const SelectionCapabilities = packed struct(u2) {
 				switch (capability) {
 					.toolEffective => result.toolEffective = true,
 				}
-			}
+			} else std.log.err("SelectionCapability is invalid. Ignoring", .{});
 		}
 		return result;
 	}
