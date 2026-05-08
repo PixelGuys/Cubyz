@@ -1,3 +1,4 @@
 pub const @"cubyz:_template" = @import("_template.zig");
 pub const @"cubyz:bag" = @import("bag.zig");
+pub const @"cubyz:accessories" = @import("accessories.zig");
 pub const @"cubyz:model" = @import("model.zig");

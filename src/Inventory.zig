@@ -398,6 +398,7 @@ pub const Callbacks = struct {
 pub const SourceType = enum(u8) {
 	alreadyFreed = 0,
 	playerInventory = 1,
+	playerAccessories = 2,
 	hand = 3,
 	blockInventory = 5,
 	workbench = 6,
@@ -406,6 +407,7 @@ pub const SourceType = enum(u8) {
 pub const Source = union(SourceType) {
 	alreadyFreed: void,
 	playerInventory: u32,
+	playerAccessories: u32,
 	hand: u32,
 	blockInventory: Vec3i,
 	workbench: struct { playerId: u32, proceduralItemIndex: ProceduralItemTypeIndex },
