@@ -67,7 +67,7 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 		};
 	}
 
-	pub fn toSelectionFace(self: Neighbor) SelectionFace {
+	pub inline fn toSelectionFace(self: Neighbor) SelectionFace {
 		return switch (self) {
 			.dirDown => .top,
 			.dirUp => .bottom,
