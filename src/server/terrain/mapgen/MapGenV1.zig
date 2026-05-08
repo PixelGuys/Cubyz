@@ -153,7 +153,7 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 
 			const points = getNearestNeighborsInHexGrid(.{rawXBiome, rawYBiome});
 			const barycentricCoordinates: [3]f32 = computeBarycentricCoordinates(points, .{rawXBiome, rawYBiome});
-			var weights: [3]f32 = undefined;
+			var weights: [3]f32 = @splat(0);
 			var totalWeight: f32 = 0;
 			for (points, 0..) |point, i| {
 				const biomeSample = biomePositions.get(@intCast(point[0] + offset), @intCast(point[1] + offset));
