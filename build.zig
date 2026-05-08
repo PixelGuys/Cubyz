@@ -140,7 +140,7 @@ fn addModFeatures(b: *std.Build, exe: *std.Build.Step.Compile) !void {
 	try addModFeatureModule(b, exe, "rotation");
 }
 
-pub fn makeModFeaturesStep(step: *std.Build.Step, options: std.Build.Step.MakeOptions) anyerror!void {
+pub fn makeModFeaturesStep(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
 	var io = std.Io.Threaded.init(options.gpa, .{});
 	defer io.deinit();
 

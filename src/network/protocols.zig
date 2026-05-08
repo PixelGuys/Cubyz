@@ -912,7 +912,7 @@ pub const inventory = struct { // MARK: inventory
 	}
 	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const user = conn.user.?;
-		if (reader.remaining[0] == 0xff) return error.InvalidPacket;
+		if (reader.remaining[0] == 0xff) return error.Invalid;
 		main.sync.ServerSide.receiveCommand(user, reader);
 	}
 	pub fn sendCommand(conn: *Connection, payloadType: main.sync.Command.PayloadType, _data: []const u8) void {

@@ -130,7 +130,7 @@ const Socket = struct {
 		if (builtin.os.tag == .windows) {
 			const result = ws2.sendto(self.socketID, data.ptr, @intCast(data.len), 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
 			if (result == ws2.SOCKET_ERROR) {
-				const err: anyerror = if (windowsError(ws2.WSAGetLastError())) error.Unknown else |err| err;
+				const err = if (windowsError(ws2.WSAGetLastError())) error.Unknown else |err| err;
 				std.log.warn("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
 			} else {
 				std.debug.assert(@as(usize, @intCast(result)) == data.len);

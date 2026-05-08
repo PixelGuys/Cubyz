@@ -1700,7 +1700,7 @@ pub const BinaryReader = struct { // MARK: BinaryReader
 		return std.mem.readInt(T, self.remaining[0..bufSize], endian);
 	}
 
-	pub fn readVarInt(self: *BinaryReader, T: type) !T {
+	pub fn readVarInt(self: *BinaryReader, T: type) error{ OutOfBounds, IntOutOfBounds }!T {
 		comptime std.debug.assert(@typeInfo(T).int.signedness == .unsigned);
 		comptime std.debug.assert(@bitSizeOf(T) > 8); // Why would you use a VarInt for this?
 		var result: T = 0;
@@ -1708,9 +1708,9 @@ pub const BinaryReader = struct { // MARK: BinaryReader
 		while (true) {
 			const nextByte = try self.readInt(u8);
 			const value: T = nextByte & 0x7f;
-			result |= try std.math.shlExact(T, value, shift);
+			result |= std.math.shlExact(T, value, shift) catch return error.IntOutOfBounds;
 			if (nextByte & 0x80 == 0) break;
-			shift = try std.math.add(@TypeOf(shift), shift, 7);
+			shift = std.math.add(@TypeOf(shift), shift, 7) catch return error.IntOutOfBounds;
 		}
 		return result;
 	}
