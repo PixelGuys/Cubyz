@@ -41,6 +41,8 @@ pub const Assets = struct {
 	worldPresets: ZonHashMap,
 	entityModelDescriptions: ZonHashMap,
 	entityModelMigrations: ZonHashMap,
+	accessorySlots: ZonHashMap,
+	accessorySlotMigrations: ZonHashMap,
 
 	fn init() Assets {
 		return .{
@@ -63,6 +65,8 @@ pub const Assets = struct {
 			.worldPresets = .{},
 			.entityModelDescriptions = .{},
 			.entityModelMigrations = .{},
+			.accessorySlots = .{},
+			.accessorySlotMigrations = .{},
 		};
 	}
 	fn deinit(self: *Assets, allocator: NeverFailingAllocator) void {
@@ -85,6 +89,8 @@ pub const Assets = struct {
 		self.worldPresets.deinit(allocator.allocator);
 		self.entityModelDescriptions.deinit(allocator.allocator);
 		self.entityModelMigrations.deinit(allocator.allocator);
+		self.accessorySlots.deinit(allocator.allocator);
+		self.accessorySlotMigrations.deinit(allocator.allocator);
 	}
 	fn clone(self: Assets, allocator: NeverFailingAllocator) Assets {
 		return .{
@@ -107,6 +113,8 @@ pub const Assets = struct {
 			.worldPresets = .{}, // Not accessible inside the world
 			.entityModelDescriptions = self.entityModelDescriptions.clone(allocator.allocator) catch unreachable,
 			.entityModelMigrations = self.entityModelMigrations.clone(allocator.allocator) catch unreachable,
+			.accessorySlots = self.accessorySlots.clone(allocator.allocator) catch unreachable,
+			.accessorySlotMigrations = self.accessorySlots.clone(allocator.allocator) catch unreachable,
 		};
 	}
 	fn read(self: *Assets, allocator: NeverFailingAllocator, assetDir: main.files.Dir, assetPath: []const u8) void {
@@ -128,6 +136,8 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
 			addon.readAllZon(allocator, "entityModels", true, &self.entityModelDescriptions, &self.entityModelMigrations);
+			addon.readAllZon(allocator, "accessory_slots", true, &self.accessorySlots, &self.accessorySlotMigrations);
+			
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
@@ -747,6 +757,9 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		main.entity.initComponents();
 	}
 
+	// Accessory Slots:
+	items_zig.accessory_slots.registerAccessorySlots(&worldAssets.accessorySlots);
+
 	// Register paths for asset hot reloading:
 	var dir = main.files.cwd().openIterableDir("assets") catch |err| {
 		std.log.err("Can't open asset path {s}: {s}", .{"assets", @errorName(err)});
@@ -778,6 +791,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	sbb.reset();
 	blocks_zig.reset();
 	items_zig.reset();
+	items_zig.accessory_slots.reset();
 	migrations_zig.reset();
 	biomes_zig.reset();
 	main.server.terrain.cave_layers.reset();
