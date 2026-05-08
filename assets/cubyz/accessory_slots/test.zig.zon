@@ -1,3 +1,4 @@
 .{
+    .texture = "test.png",
     .count = 5,
 }

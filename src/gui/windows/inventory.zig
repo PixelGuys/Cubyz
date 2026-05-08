@@ -34,7 +34,7 @@ var accessoryIcon: Texture = undefined;
 
 pub fn init() void {
 	craftingIcon = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_icon.png");
-	accessoryIcon = Texture.initFromFile("assets/cubyz/ui/inventory/accessory_icon.png");
+	accessoryIcon = Texture.initFromFile("assets/cubyz/ui/inventory/accessories_icon.png");
 }
 
 pub fn deinit() void {

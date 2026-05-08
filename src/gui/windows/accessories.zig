@@ -46,7 +46,7 @@ pub fn onOpen() void {
 	for (items.accessory_slots.getAccessorySlots()) |accessorySlot| {
 		const row = HorizontalList.init();
 		for (0..accessorySlot.count) |_| {
-			const slot = ItemSlot.init(.{0, 0}, accessories.*, @intCast(index), .default, .normal);
+			const slot = ItemSlot.init(.{0, 0}, accessories.*, @intCast(index), if (accessorySlot.texture) |texture| .{.custom = texture} else .default, .normal);
 			itemSlots[index] = slot;
 			row.add(slot);
 			index += 1;
