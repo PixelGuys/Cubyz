@@ -50,6 +50,7 @@
 	.{
 		.inputs = .{"4 cubyz:meteorite_ingot"},
 		.output = "cubyz:meteorite_block",
+		.reversible = true,
 	},
 	.{
 		.inputs = .{"1 cubyz:iron_ingot"},
