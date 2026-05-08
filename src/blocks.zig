@@ -97,6 +97,7 @@ const SelectionCapabilities = packed struct(u2) {
 		return switch (item) {
 			.baseItem => |baseItem| {
 				if (std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) return true;
+				if (block.hasTag(.fluid) and baseItem.hasTag(.fluidPlaceable)) return true;
 				if (baseItem.block()) |blockType| {
 					return blockType == block.typ;
 				} else return false;
