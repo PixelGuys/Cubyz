@@ -17,8 +17,8 @@ const VerticalList = @import("../components/VerticalList.zig");
 const ContinuousSlider = @import("../components/ContinuousSlider.zig");
 
 pub var window = GuiWindow{
-    .contentSize = Vec2f{ 128, 192 },
-    .closeIfMouseIsGrabbed = true,
+	.contentSize = Vec2f{128, 192},
+	.closeIfMouseIsGrabbed = true,
 };
 
 const padding: f32 = 8;
@@ -26,59 +26,59 @@ var selectedKey: ?*main.Window.Key = null;
 var editingKeyboard: bool = true;
 var needsUpdate: bool = false;
 fn keyFunction(key: *main.Window.Key) void {
-    main.Window.setNextKeypressListener(&keypressListener) catch return;
-    selectedKey = key;
-    needsUpdate = true;
+	main.Window.setNextKeypressListener(&keypressListener) catch return;
+	selectedKey = key;
+	needsUpdate = true;
 }
 fn keypressListener(key: c_int, mouseButton: c_int, scancode: c_int) void {
-    selectedKey.?.key = key;
-    selectedKey.?.mouseButton = mouseButton;
-    selectedKey.?.scancode = scancode;
-    selectedKey = null;
-    needsUpdate = true;
-    main.settings.save();
+	selectedKey.?.key = key;
+	selectedKey.?.mouseButton = mouseButton;
+	selectedKey.?.scancode = scancode;
+	selectedKey = null;
+	needsUpdate = true;
+	main.settings.save();
 }
 
 fn gamepadFunction(key: *main.Window.Key) void {
-    main.Window.setNextGamepadListener(&gamepadListener) catch return;
-    selectedKey = key;
-    needsUpdate = true;
+	main.Window.setNextGamepadListener(&gamepadListener) catch return;
+	selectedKey = key;
+	needsUpdate = true;
 }
 fn gamepadListener(axis: ?main.Window.GamepadAxis, btn: c_int) void {
-    selectedKey.?.gamepadAxis = axis;
-    selectedKey.?.gamepadButton = btn;
-    selectedKey = null;
-    needsUpdate = true;
-    main.settings.save();
+	selectedKey.?.gamepadAxis = axis;
+	selectedKey.?.gamepadButton = btn;
+	selectedKey = null;
+	needsUpdate = true;
+	main.settings.save();
 }
 fn updateSensitivity(sensitivity: f32) void {
-    if (editingKeyboard) {
-        main.settings.mouseSensitivity = sensitivity;
-    } else {
-        main.settings.controllerSensitivity = sensitivity;
-    }
-    main.settings.save();
+	if (editingKeyboard) {
+		main.settings.mouseSensitivity = sensitivity;
+	} else {
+		main.settings.controllerSensitivity = sensitivity;
+	}
+	main.settings.save();
 }
 
 fn invertMouseYCallback(newValue: bool) void {
-    main.settings.invertMouseY = newValue;
-    main.settings.save();
+	main.settings.invertMouseY = newValue;
+	main.settings.save();
 }
 fn sprintIsToggleCallback(newValue: bool) void {
-    main.KeyBoard.setIsToggling("sprint", newValue);
-    main.settings.save();
+	main.KeyBoard.setIsToggling("sprint", newValue);
+	main.settings.save();
 }
 
 fn updateDeadzone(deadzone: f32) void {
-    main.settings.controllerAxisDeadzone = deadzone;
+	main.settings.controllerAxisDeadzone = deadzone;
 }
 
 fn deadzoneFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
-    return std.fmt.allocPrint(allocator.allocator, "Deadzone: {d:.0}%", .{value * 100}) catch unreachable;
+	return std.fmt.allocPrint(allocator.allocator, "Deadzone: {d:.0}%", .{value*100}) catch unreachable;
 }
 
 fn sensitivityFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
-    return std.fmt.allocPrint(allocator.allocator, "{s} Sensitivity: {d:.0}%", .{ if (editingKeyboard) "Mouse" else "Controller", value * 100 }) catch unreachable;
+	return std.fmt.allocPrint(allocator.allocator, "{s} Sensitivity: {d:.0}%", .{if (editingKeyboard) "Mouse" else "Controller", value*100}) catch unreachable;
 }
 
 fn abortBindingProcess() void {
@@ -93,16 +93,16 @@ fn toggleKeyboard() void {
 }
 
 fn unbindKey(keyPtr: usize) void {
-    var key: ?*main.Window.Key = @ptrFromInt(keyPtr);
-    if (editingKeyboard) {
-        key.?.key = c.GLFW_KEY_UNKNOWN;
-        key.?.mouseButton = -1;
-        key.?.scancode = 0;
-    } else {
-        key.?.gamepadAxis = null;
-        key.?.gamepadButton = -1;
-    }
-    needsUpdate = true;
+	var key: ?*main.Window.Key = @ptrFromInt(keyPtr);
+	if (editingKeyboard) {
+		key.?.key = c.GLFW_KEY_UNKNOWN;
+		key.?.mouseButton = -1;
+		key.?.scancode = 0;
+	} else {
+		key.?.gamepadAxis = null;
+		key.?.gamepadButton = -1;
+	}
+	needsUpdate = true;
 }
 
 fn initWindow() void {

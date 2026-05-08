@@ -24,140 +24,140 @@ const Vec2f = vec.Vec2f;
 const c = @import("c");
 
 pub const ParticleManager = struct {
-    var particleTypesSSBO: SSBO = undefined;
-    var types: main.ListUnmanaged(ParticleType) = .{};
-    var typesLocal: main.ListUnmanaged(ParticleTypeLocal) = .{};
-    var textures: main.ListUnmanaged(Image) = .{};
-    var emissionTextures: main.ListUnmanaged(Image) = .{};
+	var particleTypesSSBO: SSBO = undefined;
+	var types: main.ListUnmanaged(ParticleType) = .{};
+	var typesLocal: main.ListUnmanaged(ParticleTypeLocal) = .{};
+	var textures: main.ListUnmanaged(Image) = .{};
+	var emissionTextures: main.ListUnmanaged(Image) = .{};
 
-    var textureArray: TextureArray = undefined;
-    var emissionTextureArray: TextureArray = undefined;
+	var textureArray: TextureArray = undefined;
+	var emissionTextureArray: TextureArray = undefined;
 
-    const ParticleIndex = u16;
-    var particleTypeHashmap: std.StringHashMapUnmanaged(ParticleIndex) = .{};
+	const ParticleIndex = u16;
+	var particleTypeHashmap: std.StringHashMapUnmanaged(ParticleIndex) = .{};
 
-    pub fn init() void {
-        textureArray = .init();
-        emissionTextureArray = .init();
-        particleTypesSSBO = SSBO.init();
-        ParticleSystem.init();
-    }
+	pub fn init() void {
+		textureArray = .init();
+		emissionTextureArray = .init();
+		particleTypesSSBO = SSBO.init();
+		ParticleSystem.init();
+	}
 
-    pub fn deinit() void {
-        textureArray.deinit();
-        emissionTextureArray.deinit();
-        ParticleSystem.deinit();
-        particleTypesSSBO.deinit();
-    }
+	pub fn deinit() void {
+		textureArray.deinit();
+		emissionTextureArray.deinit();
+		ParticleSystem.deinit();
+		particleTypesSSBO.deinit();
+	}
 
-    pub fn reset() void {
-        types = .{};
-        typesLocal = .{};
-        textures = .{};
-        emissionTextures = .{};
-        particleTypeHashmap = .{};
-        ParticleSystem.reset();
-    }
+	pub fn reset() void {
+		types = .{};
+		typesLocal = .{};
+		textures = .{};
+		emissionTextures = .{};
+		particleTypeHashmap = .{};
+		ParticleSystem.reset();
+	}
 
-    pub fn register(assetsFolder: []const u8, id: []const u8, zon: ZonElement) void {
-        const textureId = zon.get(?[]const u8, "texture", null) orelse {
-            std.log.err("Particle texture id was not specified for {s} ({s})", .{ id, assetsFolder });
-            return;
-        };
+	pub fn register(assetsFolder: []const u8, id: []const u8, zon: ZonElement) void {
+		const textureId = zon.get(?[]const u8, "texture", null) orelse {
+			std.log.err("Particle texture id was not specified for {s} ({s})", .{id, assetsFolder});
+			return;
+		};
 
-        const particleType = readTextureDataAndParticleType(assetsFolder, textureId);
-        var rotVel: RandomRange(f32) = RandomRange(f32).fromZon(zon.getChild("rotationVelocity")) orelse .init(20, 60);
-        rotVel.min = std.math.degreesToRadians(rotVel.min);
-        rotVel.max = std.math.degreesToRadians(rotVel.max);
-        const particleTypeLocal = ParticleTypeLocal{
-            .density = RandomRange(f32).fromZon(zon.getChild("density")) orelse .init(2, 3),
-            .rotVel = rotVel,
-            .dragCoefficient = RandomRange(f32).fromZon(zon.getChild("dragCoefficient")) orelse .init(0.5, 0.6),
-        };
+		const particleType = readTextureDataAndParticleType(assetsFolder, textureId);
+		var rotVel: RandomRange(f32) = RandomRange(f32).fromZon(zon.getChild("rotationVelocity")) orelse .init(20, 60);
+		rotVel.min = std.math.degreesToRadians(rotVel.min);
+		rotVel.max = std.math.degreesToRadians(rotVel.max);
+		const particleTypeLocal = ParticleTypeLocal{
+			.density = RandomRange(f32).fromZon(zon.getChild("density")) orelse .init(2, 3),
+			.rotVel = rotVel,
+			.dragCoefficient = RandomRange(f32).fromZon(zon.getChild("dragCoefficient")) orelse .init(0.5, 0.6),
+		};
 
-        particleTypeHashmap.put(main.worldArena.allocator, id, @intCast(types.items.len)) catch unreachable;
-        types.append(main.worldArena, particleType);
-        typesLocal.append(main.worldArena, particleTypeLocal);
+		particleTypeHashmap.put(main.worldArena.allocator, id, @intCast(types.items.len)) catch unreachable;
+		types.append(main.worldArena, particleType);
+		typesLocal.append(main.worldArena, particleTypeLocal);
 
-        std.log.debug("Registered particle type: {s}", .{id});
-    }
+		std.log.debug("Registered particle type: {s}", .{id});
+	}
 
-    fn readTextureDataAndParticleType(assetsFolder: []const u8, textureId: []const u8) ParticleType {
-        var typ: ParticleType = undefined;
+	fn readTextureDataAndParticleType(assetsFolder: []const u8, textureId: []const u8) ParticleType {
+		var typ: ParticleType = undefined;
 
-        const base = readTexture(assetsFolder, textureId, ".png", Image.defaultImage, .isMandatory);
-        const emission = readTexture(assetsFolder, textureId, "_emission.png", Image.emptyImage, .isOptional);
-        const hasEmission = (emission.imageData.ptr != Image.emptyImage.imageData.ptr);
-        const baseAnimationFrameCount = base.height / base.width;
-        const emissionAnimationFrameCount = emission.height / emission.width;
+		const base = readTexture(assetsFolder, textureId, ".png", Image.defaultImage, .isMandatory);
+		const emission = readTexture(assetsFolder, textureId, "_emission.png", Image.emptyImage, .isOptional);
+		const hasEmission = (emission.imageData.ptr != Image.emptyImage.imageData.ptr);
+		const baseAnimationFrameCount = base.height/base.width;
+		const emissionAnimationFrameCount = emission.height/emission.width;
 
-        typ.frameCount = @floatFromInt(baseAnimationFrameCount);
-        typ.startFrame = @floatFromInt(textures.items.len);
-        typ.size = @as(f32, @floatFromInt(base.width)) / 16;
+		typ.frameCount = @floatFromInt(baseAnimationFrameCount);
+		typ.startFrame = @floatFromInt(textures.items.len);
+		typ.size = @as(f32, @floatFromInt(base.width))/16;
 
-        var isBaseBroken = false;
-        var isEmissionBroken = false;
+		var isBaseBroken = false;
+		var isEmissionBroken = false;
 
-        if (base.height % base.width != 0) {
-            std.log.err("Particle base texture has incorrect dimensions ({}x{}) expected height to be multiple of width for {s} ({s})", .{ base.width, base.height, textureId, assetsFolder });
-            isBaseBroken = true;
-        }
-        if (hasEmission and emission.height % emission.width != 0) {
-            std.log.err("Particle emission texture has incorrect dimensions ({}x{}) expected height to be multiple of width for {s} ({s})", .{ base.width, base.height, textureId, assetsFolder });
-            isEmissionBroken = true;
-        }
-        if (hasEmission and baseAnimationFrameCount != emissionAnimationFrameCount) {
-            std.log.err("Particle base texture and emission texture frame count mismatch ({} vs {}) for {s} ({s})", .{ baseAnimationFrameCount, emissionAnimationFrameCount, textureId, assetsFolder });
-            isEmissionBroken = true;
-        }
+		if (base.height%base.width != 0) {
+			std.log.err("Particle base texture has incorrect dimensions ({}x{}) expected height to be multiple of width for {s} ({s})", .{base.width, base.height, textureId, assetsFolder});
+			isBaseBroken = true;
+		}
+		if (hasEmission and emission.height%emission.width != 0) {
+			std.log.err("Particle emission texture has incorrect dimensions ({}x{}) expected height to be multiple of width for {s} ({s})", .{base.width, base.height, textureId, assetsFolder});
+			isEmissionBroken = true;
+		}
+		if (hasEmission and baseAnimationFrameCount != emissionAnimationFrameCount) {
+			std.log.err("Particle base texture and emission texture frame count mismatch ({} vs {}) for {s} ({s})", .{baseAnimationFrameCount, emissionAnimationFrameCount, textureId, assetsFolder});
+			isEmissionBroken = true;
+		}
 
-        createAnimationFrames(&textures, baseAnimationFrameCount, base, isBaseBroken);
-        createAnimationFrames(&emissionTextures, baseAnimationFrameCount, emission, isBaseBroken or isEmissionBroken or !hasEmission);
+		createAnimationFrames(&textures, baseAnimationFrameCount, base, isBaseBroken);
+		createAnimationFrames(&emissionTextures, baseAnimationFrameCount, emission, isBaseBroken or isEmissionBroken or !hasEmission);
 
-        return typ;
-    }
+		return typ;
+	}
 
-    fn readTexture(assetsFolder: []const u8, textureId: []const u8, suffix: []const u8, default: graphics.Image, status: enum { isOptional, isMandatory }) graphics.Image {
-        var splitter = std.mem.splitScalar(u8, textureId, ':');
-        const mod = splitter.first();
-        const id = splitter.rest();
+	fn readTexture(assetsFolder: []const u8, textureId: []const u8, suffix: []const u8, default: graphics.Image, status: enum { isOptional, isMandatory }) graphics.Image {
+		var splitter = std.mem.splitScalar(u8, textureId, ':');
+		const mod = splitter.first();
+		const id = splitter.rest();
 
-        const gameAssetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/particles/textures/{s}{s}", .{ mod, id, suffix }) catch unreachable;
-        defer main.stackAllocator.free(gameAssetsPath);
+		const gameAssetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/particles/textures/{s}{s}", .{mod, id, suffix}) catch unreachable;
+		defer main.stackAllocator.free(gameAssetsPath);
 
-        const worldAssetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/particles/textures/{s}{s}", .{ assetsFolder, mod, id, suffix }) catch unreachable;
-        defer main.stackAllocator.free(worldAssetsPath);
+		const worldAssetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/particles/textures/{s}{s}", .{assetsFolder, mod, id, suffix}) catch unreachable;
+		defer main.stackAllocator.free(worldAssetsPath);
 
-        return graphics.Image.readFromFile(main.worldArena, worldAssetsPath) catch graphics.Image.readFromFile(main.worldArena, gameAssetsPath) catch {
-            if (status == .isMandatory) std.log.err("Particle texture not found in {s} and {s}.", .{ worldAssetsPath, gameAssetsPath });
-            return default;
-        };
-    }
+		return graphics.Image.readFromFile(main.worldArena, worldAssetsPath) catch graphics.Image.readFromFile(main.worldArena, gameAssetsPath) catch {
+			if (status == .isMandatory) std.log.err("Particle texture not found in {s} and {s}.", .{worldAssetsPath, gameAssetsPath});
+			return default;
+		};
+	}
 
-    fn createAnimationFrames(container: *main.ListUnmanaged(Image), frameCount: usize, image: Image, isBroken: bool) void {
-        for (0..frameCount) |i| {
-            container.append(main.worldArena, if (isBroken) image else extractAnimationSlice(image, i));
-        }
-    }
+	fn createAnimationFrames(container: *main.ListUnmanaged(Image), frameCount: usize, image: Image, isBroken: bool) void {
+		for (0..frameCount) |i| {
+			container.append(main.worldArena, if (isBroken) image else extractAnimationSlice(image, i));
+		}
+	}
 
-    fn extractAnimationSlice(image: Image, frameIndex: usize) Image {
-        const frameCount = image.height / image.width;
-        const frameHeight = image.height / frameCount;
-        const startHeight = frameHeight * frameIndex;
-        const endHeight = frameHeight * (frameIndex + 1);
-        var result = image;
-        result.height = @intCast(frameHeight);
-        result.imageData = result.imageData[startHeight * image.width .. endHeight * image.width];
-        return result;
-    }
+	fn extractAnimationSlice(image: Image, frameIndex: usize) Image {
+		const frameCount = image.height/image.width;
+		const frameHeight = image.height/frameCount;
+		const startHeight = frameHeight*frameIndex;
+		const endHeight = frameHeight*(frameIndex + 1);
+		var result = image;
+		result.height = @intCast(frameHeight);
+		result.imageData = result.imageData[startHeight*image.width .. endHeight*image.width];
+		return result;
+	}
 
-    pub fn generateTextureArray() void {
-        textureArray.generate(textures.items, true, true);
-        emissionTextureArray.generate(emissionTextures.items, true, false);
+	pub fn generateTextureArray() void {
+		textureArray.generate(textures.items, true, true);
+		emissionTextureArray.generate(emissionTextures.items, true, false);
 
-        particleTypesSSBO.bufferData(ParticleType, ParticleManager.types.items);
-        particleTypesSSBO.bind(14);
-    }
+		particleTypesSSBO.bufferData(ParticleType, ParticleManager.types.items);
+		particleTypesSSBO.bind(14);
+	}
 };
 
 pub const ParticleSystem = struct {
@@ -364,206 +364,206 @@ pub const ParticleSystem = struct {
 };
 
 pub const EmitterProperties = struct {
-    speed: RandomRange(f32),
-    lifeTime: RandomRange(f32),
-    randomizeRotation: bool,
+	speed: RandomRange(f32),
+	lifeTime: RandomRange(f32),
+	randomizeRotation: bool,
 
-    pub fn parse(zon: ZonElement) EmitterProperties {
-        return EmitterProperties{
-            .speed = RandomRange(f32).fromZon(zon.getChild("speed")) orelse .init(1, 1.5),
-            .lifeTime = RandomRange(f32).fromZon(zon.getChild("lifeTime")) orelse .init(0.75, 1),
-            .randomizeRotation = zon.get(bool, "randomRotate", true),
-        };
-    }
+	pub fn parse(zon: ZonElement) EmitterProperties {
+		return EmitterProperties{
+			.speed = RandomRange(f32).fromZon(zon.getChild("speed")) orelse .init(1, 1.5),
+			.lifeTime = RandomRange(f32).fromZon(zon.getChild("lifeTime")) orelse .init(0.75, 1),
+			.randomizeRotation = zon.get(bool, "randomRotate", true),
+		};
+	}
 };
 
 pub const DirectionMode = union(enum) {
-    // The particle goes in the direction away from the center
-    spread: void,
-    // The particle goes in a random direction
-    scatter: void,
-    // The particle goes in the specified direction
-    direction: Vec3f,
+	// The particle goes in the direction away from the center
+	spread: void,
+	// The particle goes in a random direction
+	scatter: void,
+	// The particle goes in the specified direction
+	direction: Vec3f,
 
-    pub fn parse(zon: ZonElement) !DirectionMode {
-        const dirModeName = zon.get([]const u8, "mode", @tagName(DirectionMode.spread));
-        const dirMode = std.meta.stringToEnum(std.meta.Tag(DirectionMode), dirModeName) orelse return error.InvalidDirectionMode;
-        return switch (dirMode) {
-            .direction => .{ .direction = zon.get(Vec3f, "direction", .{ 0, 0, 1 }) },
-            inline else => |mode| @unionInit(DirectionMode, @tagName(mode), {}),
-        };
-    }
+	pub fn parse(zon: ZonElement) !DirectionMode {
+		const dirModeName = zon.get([]const u8, "mode", @tagName(DirectionMode.spread));
+		const dirMode = std.meta.stringToEnum(std.meta.Tag(DirectionMode), dirModeName) orelse return error.InvalidDirectionMode;
+		return switch (dirMode) {
+			.direction => .{.direction = zon.get(Vec3f, "direction", .{0, 0, 1})},
+			inline else => |mode| @unionInit(DirectionMode, @tagName(mode), {}),
+		};
+	}
 };
 
 pub const Emitter = struct {
-    typ: u16 = 0,
-    particleType: ParticleTypeLocal,
-    collides: bool,
-    spawnShape: SpawnShape,
-    properties: EmitterProperties,
-    mode: DirectionMode,
+	typ: u16 = 0,
+	particleType: ParticleTypeLocal,
+	collides: bool,
+	spawnShape: SpawnShape,
+	properties: EmitterProperties,
+	mode: DirectionMode,
 
-    pub const SpawnShape = union(enum) {
-        point: SpawnPoint,
-        sphere: SpawnSphere,
-        cube: SpawnCube,
+	pub const SpawnShape = union(enum) {
+		point: SpawnPoint,
+		sphere: SpawnSphere,
+		cube: SpawnCube,
 
-        pub fn spawn(self: SpawnShape, pos: Vec3d, properties: EmitterProperties, mode: DirectionMode) struct { Vec3d, Vec3f } {
-            return switch (self) {
-                inline else => |shape| shape.spawn(pos, properties, mode),
-            };
-        }
+		pub fn spawn(self: SpawnShape, pos: Vec3d, properties: EmitterProperties, mode: DirectionMode) struct { Vec3d, Vec3f } {
+			return switch (self) {
+				inline else => |shape| shape.spawn(pos, properties, mode),
+			};
+		}
 
-        pub fn parse(zon: ZonElement) !SpawnShape {
-            const typeZon = zon.get([]const u8, "shape", @tagName(SpawnShape.point));
-            const spawnType = std.meta.stringToEnum(std.meta.Tag(SpawnShape), typeZon) orelse return error.InvalidType;
-            return switch (spawnType) {
-                inline else => |shape| @unionInit(SpawnShape, @tagName(shape), try @FieldType(SpawnShape, @tagName(shape)).parse(zon)),
-            };
-        }
-    };
+		pub fn parse(zon: ZonElement) !SpawnShape {
+			const typeZon = zon.get([]const u8, "shape", @tagName(SpawnShape.point));
+			const spawnType = std.meta.stringToEnum(std.meta.Tag(SpawnShape), typeZon) orelse return error.InvalidType;
+			return switch (spawnType) {
+				inline else => |shape| @unionInit(SpawnShape, @tagName(shape), try @FieldType(SpawnShape, @tagName(shape)).parse(zon)),
+			};
+		}
+	};
 
-    pub const SpawnPoint = struct {
-        pub fn spawn(_: SpawnPoint, pos: Vec3d, properties: EmitterProperties, mode: DirectionMode) struct { Vec3d, Vec3f } {
-            const particlePos = pos;
-            const speed: Vec3f = @splat(properties.speed.get(&main.seed));
-            const dir: Vec3f = switch (mode) {
-                .direction => |dir| vec.normalize(dir),
-                .scatter, .spread => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),
-            };
-            const particleVel = dir * speed;
+	pub const SpawnPoint = struct {
+		pub fn spawn(_: SpawnPoint, pos: Vec3d, properties: EmitterProperties, mode: DirectionMode) struct { Vec3d, Vec3f } {
+			const particlePos = pos;
+			const speed: Vec3f = @splat(properties.speed.get(&main.seed));
+			const dir: Vec3f = switch (mode) {
+				.direction => |dir| vec.normalize(dir),
+				.scatter, .spread => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),
+			};
+			const particleVel = dir*speed;
 
-            return .{ particlePos, particleVel };
-        }
+			return .{particlePos, particleVel};
+		}
 
-        pub fn parse(_: ZonElement) !SpawnPoint {
-            return SpawnPoint{};
-        }
-    };
+		pub fn parse(_: ZonElement) !SpawnPoint {
+			return SpawnPoint{};
+		}
+	};
 
-    pub const SpawnSphere = struct {
-        radius: f32,
+	pub const SpawnSphere = struct {
+		radius: f32,
 
-        pub fn spawn(self: SpawnSphere, pos: Vec3d, properties: EmitterProperties, mode: DirectionMode) struct { Vec3d, Vec3f } {
-            const spawnPos: Vec3f = @splat(self.radius);
-            var offsetPos: Vec3f = undefined;
-            while (true) {
-                offsetPos = random.nextFloatVectorSigned(3, &main.seed);
-                if (vec.lengthSquare(offsetPos) <= 1) break;
-            }
-            const particlePos = pos + @as(Vec3d, @floatCast(offsetPos * spawnPos));
-            const speed: Vec3f = @splat(properties.speed.get(&main.seed));
-            const dir: Vec3f = switch (mode) {
-                .direction => |dir| vec.normalize(dir),
-                .scatter => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),
-                .spread => @floatCast(offsetPos),
-            };
-            const particleVel = dir * speed;
+		pub fn spawn(self: SpawnSphere, pos: Vec3d, properties: EmitterProperties, mode: DirectionMode) struct { Vec3d, Vec3f } {
+			const spawnPos: Vec3f = @splat(self.radius);
+			var offsetPos: Vec3f = undefined;
+			while (true) {
+				offsetPos = random.nextFloatVectorSigned(3, &main.seed);
+				if (vec.lengthSquare(offsetPos) <= 1) break;
+			}
+			const particlePos = pos + @as(Vec3d, @floatCast(offsetPos*spawnPos));
+			const speed: Vec3f = @splat(properties.speed.get(&main.seed));
+			const dir: Vec3f = switch (mode) {
+				.direction => |dir| vec.normalize(dir),
+				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),
+				.spread => @floatCast(offsetPos),
+			};
+			const particleVel = dir*speed;
 
-            return .{ particlePos, particleVel };
-        }
+			return .{particlePos, particleVel};
+		}
 
-        pub fn parse(zon: ZonElement) !SpawnSphere {
-            return SpawnSphere{
-                .radius = zon.get(f32, "radius", 1),
-            };
-        }
-    };
+		pub fn parse(zon: ZonElement) !SpawnSphere {
+			return SpawnSphere{
+				.radius = zon.get(f32, "radius", 1),
+			};
+		}
+	};
 
-    pub const SpawnCube = struct {
-        size: Vec3f,
+	pub const SpawnCube = struct {
+		size: Vec3f,
 
-        pub fn spawn(self: SpawnCube, pos: Vec3d, properties: EmitterProperties, mode: DirectionMode) struct { Vec3d, Vec3f } {
-            const spawnPos: Vec3f = self.size;
-            const offsetPos: Vec3f = random.nextFloatVectorSigned(3, &main.seed);
-            const particlePos = pos + @as(Vec3d, @floatCast(offsetPos * spawnPos));
-            const speed: Vec3f = @splat(properties.speed.get(&main.seed));
-            const dir: Vec3f = switch (mode) {
-                .direction => |dir| vec.normalize(dir),
-                .scatter => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),
-                .spread => vec.normalize(@as(Vec3f, @floatCast(offsetPos))),
-            };
-            const particleVel = dir * speed;
+		pub fn spawn(self: SpawnCube, pos: Vec3d, properties: EmitterProperties, mode: DirectionMode) struct { Vec3d, Vec3f } {
+			const spawnPos: Vec3f = self.size;
+			const offsetPos: Vec3f = random.nextFloatVectorSigned(3, &main.seed);
+			const particlePos = pos + @as(Vec3d, @floatCast(offsetPos*spawnPos));
+			const speed: Vec3f = @splat(properties.speed.get(&main.seed));
+			const dir: Vec3f = switch (mode) {
+				.direction => |dir| vec.normalize(dir),
+				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &main.seed)),
+				.spread => vec.normalize(@as(Vec3f, @floatCast(offsetPos))),
+			};
+			const particleVel = dir*speed;
 
-            return .{ particlePos, particleVel };
-        }
+			return .{particlePos, particleVel};
+		}
 
-        pub fn parse(zon: ZonElement) !SpawnCube {
-            return SpawnCube{
-                .size = zon.get(?Vec3f, "size", null) orelse @splat(zon.get(f32, "size", 1)),
-            };
-        }
-    };
+		pub fn parse(zon: ZonElement) !SpawnCube {
+			return SpawnCube{
+				.size = zon.get(?Vec3f, "size", null) orelse @splat(zon.get(f32, "size", 1)),
+			};
+		}
+	};
 
-    pub fn init(id: []const u8, collides: bool, spawnShape: SpawnShape, properties: EmitterProperties, mode: DirectionMode) Emitter {
-        const typ = ParticleManager.particleTypeHashmap.get(id) orelse 0;
+	pub fn init(id: []const u8, collides: bool, spawnShape: SpawnShape, properties: EmitterProperties, mode: DirectionMode) Emitter {
+		const typ = ParticleManager.particleTypeHashmap.get(id) orelse 0;
 
-        return Emitter{
-            .typ = typ,
-            .particleType = ParticleManager.typesLocal.items[typ],
-            .collides = collides,
-            .spawnShape = spawnShape,
-            .properties = properties,
-            .mode = mode,
-        };
-    }
+		return Emitter{
+			.typ = typ,
+			.particleType = ParticleManager.typesLocal.items[typ],
+			.collides = collides,
+			.spawnShape = spawnShape,
+			.properties = properties,
+			.mode = mode,
+		};
+	}
 
-    pub fn initFromZon(id: []const u8, collides: bool, zon: ZonElement) Emitter {
-        const typ = ParticleManager.particleTypeHashmap.get(id) orelse 0;
-        const mode = DirectionMode.parse(zon) catch |err| blk: {
-            std.log.err("Error while parsing direction mode: \"{s}\"", .{@errorName(err)});
-            break :blk .spread;
-        };
-        const spawnShape = Emitter.SpawnShape.parse(zon) catch |err| blk: {
-            std.log.err("Error while parsing particle spawn data: \"{s}\"", .{@errorName(err)});
-            break :blk Emitter.SpawnShape{ .point = .{} };
-        };
+	pub fn initFromZon(id: []const u8, collides: bool, zon: ZonElement) Emitter {
+		const typ = ParticleManager.particleTypeHashmap.get(id) orelse 0;
+		const mode = DirectionMode.parse(zon) catch |err| blk: {
+			std.log.err("Error while parsing direction mode: \"{s}\"", .{@errorName(err)});
+			break :blk .spread;
+		};
+		const spawnShape = Emitter.SpawnShape.parse(zon) catch |err| blk: {
+			std.log.err("Error while parsing particle spawn data: \"{s}\"", .{@errorName(err)});
+			break :blk Emitter.SpawnShape{.point = .{}};
+		};
 
-        return Emitter{
-            .typ = typ,
-            .particleType = ParticleManager.typesLocal.items[typ],
-            .collides = collides,
-            .spawnShape = spawnShape,
-            .properties = EmitterProperties.parse(zon),
-            .mode = mode,
-        };
-    }
+		return Emitter{
+			.typ = typ,
+			.particleType = ParticleManager.typesLocal.items[typ],
+			.collides = collides,
+			.spawnShape = spawnShape,
+			.properties = EmitterProperties.parse(zon),
+			.mode = mode,
+		};
+	}
 
-    pub fn spawnParticles(self: Emitter, pos: Vec3d, spawnCount: u32) void {
-        const count = @min(spawnCount, ParticleSystem.maxCapacity - ParticleSystem.particleCount);
-        for (0..count) |_| {
-            const particlePos, const particleVel = self.spawnShape.spawn(pos, self.properties, self.mode);
+	pub fn spawnParticles(self: Emitter, pos: Vec3d, spawnCount: u32) void {
+		const count = @min(spawnCount, ParticleSystem.maxCapacity - ParticleSystem.particleCount);
+		for (0..count) |_| {
+			const particlePos, const particleVel = self.spawnShape.spawn(pos, self.properties, self.mode);
 
-            ParticleSystem.addParticle(self.typ, self.particleType, particlePos, particleVel, self.collides, self.properties);
-        }
-    }
+			ParticleSystem.addParticle(self.typ, self.particleType, particlePos, particleVel, self.collides, self.properties);
+		}
+	}
 };
 
 pub const ParticleType = struct {
-    frameCount: f32,
-    startFrame: f32,
-    size: f32,
+	frameCount: f32,
+	startFrame: f32,
+	size: f32,
 };
 
 pub const ParticleTypeLocal = struct {
-    density: RandomRange(f32),
-    rotVel: RandomRange(f32),
-    dragCoefficient: RandomRange(f32),
+	density: RandomRange(f32),
+	rotVel: RandomRange(f32),
+	dragCoefficient: RandomRange(f32),
 };
 
 pub const Particle = extern struct {
-    pos: [3]f32 align(16),
-    rot: f32 = 0,
-    lifeRatio: f32 = 1,
-    light: u32 = 0,
-    typ: u32,
-    // 4 bytes left for use
+	pos: [3]f32 align(16),
+	rot: f32 = 0,
+	lifeRatio: f32 = 1,
+	light: u32 = 0,
+	typ: u32,
+	// 4 bytes left for use
 };
 
 pub const ParticleLocal = struct {
-    velAndRotationVel: Vec4f,
-    lifeVelocity: f32,
-    density: f32,
-    dragCoefficient: f32,
-    collides: bool,
+	velAndRotationVel: Vec4f,
+	lifeVelocity: f32,
+	density: f32,
+	dragCoefficient: f32,
+	collides: bool,
 };
