@@ -1065,76 +1065,102 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				return;
 			}
 
-			if (@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
-				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-				currentSwingProgress = 0;
-				currentSwingTime = 0;
-				lastSelectedBlockPos = selectedPos;
-				currentBlockProgress = 0;
-			}
-			const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
-			const holdingTargetedBlock = stack.item == .baseItem and stack.item.baseItem.block() == block.typ;
-			if ((block.hasTag(.fluid) or block.hasTag(.air)) and !holdingTargetedBlock) return;
-
-			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
-
-			main.sync.ClientSide.mutex.lock();
-			if (!game.Player.isCreative()) {
-				var damage: f32 = main.game.Player.defaultBlockDamage;
-				const isProceduralItem = stack.item == .proceduralItem;
-				if (isProceduralItem) {
-					damage = stack.item.proceduralItem.getBlockDamage(block);
-				}
-				damage -= block.blockResistance();
-				if (damage > 0) {
-					const swingTime = if (isProceduralItem and stack.item.proceduralItem.isEffectiveOn(block)) 1.0/stack.item.proceduralItem.getProperty(.swingSpeed) else 0.5;
-					if (currentSwingTime > swingTime) {
-						currentSwingProgress = 0;
-						currentSwingTime = 0;
-					}
-					if (currentSwingTime == 0) {
-						const swings = @ceil(block.blockHealth()/damage);
-						const damagePerSwing = block.blockHealth()/swings;
-						currentSwingTime = damagePerSwing/damage*swingTime;
-					}
-					currentSwingProgress += @floatCast(deltaTime);
-					while (currentSwingProgress > currentSwingTime) {
-						currentSwingProgress -= currentSwingTime;
-						currentBlockProgress += damage*currentSwingTime/swingTime/block.blockHealth();
-						if (currentBlockProgress > 0.9999) break;
-						const swings = @ceil(block.blockHealth()/damage);
-						const damagePerSwing = block.blockHealth()/swings;
-						currentSwingTime = damagePerSwing/damage*swingTime;
-					}
-					if (currentBlockProgress < 0.9999) {
-						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-						if (currentBlockProgress != 0) {
-							mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
-						}
-						main.sync.ClientSide.mutex.unlock();
-
-						return;
-					} else {
-						currentSwingProgress = 0;
-						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-						currentBlockProgress = 0;
-						currentSwingTime = 0;
-					}
+			if (stack.item != .proceduralItem) {
+				TryMiningBlock(inventory, slot, deltaTime, selectedPos);
+			} else {
+				if (false) {
+					TryMiningBlock(inventory, slot, deltaTime, selectedPos);
 				} else {
+					var neighborDir = Vec3i{0, 0, 0};
+					neighborDir = selectedPos - posBeforeBlock;
+					const givenMiningArea: Vec3i = stack.item.proceduralItem.changeMiningArea();
+					var calculatedMiningArea: Vec3i = Vec3i{0, 0, 0};
+					if (neighborDir[0] != 0) calculatedMiningArea = Vec3i{givenMiningArea[0], givenMiningArea[1], givenMiningArea[2]};
+					if (neighborDir[1] != 0) calculatedMiningArea = Vec3i{givenMiningArea[2], givenMiningArea[0], givenMiningArea[1]};
+					if (neighborDir[2] != 0) calculatedMiningArea = Vec3i{givenMiningArea[1], givenMiningArea[2], givenMiningArea[0]};
+					for (0..@intCast(calculatedMiningArea[0]*2 - 1)) |dx| {
+						for (0..@intCast(calculatedMiningArea[1]*2 - 1)) |dy| {
+							for (0..@intCast(calculatedMiningArea[2]*2 - 1)) |dz| {
+								TryMiningBlock(inventory, slot, deltaTime/9, selectedPos + Vec3i{@as(i32 , @intCast(dx)) - (calculatedMiningArea[0]*2 - 1), @as(i32 , @intCast(dy)) - (calculatedMiningArea[1]*2 - 1), @as(i32 , @intCast(dz)) - (calculatedMiningArea[2]*2 - 1)});
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	fn TryMiningBlock(inventory: main.items.Inventory.ClientInventory, slot: u32, deltaTime: f64, givenPosition: Vec3i) void {
+		const stack = inventory.getStack(slot);
+
+		if (@reduce(.Or, lastSelectedBlockPos != givenPosition)) {
+			mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+			currentSwingProgress = 0;
+			currentSwingTime = 0;
+			lastSelectedBlockPos = givenPosition;
+			currentBlockProgress = 0;
+		}
+		const block = mesh_storage.getBlockFromRenderThread(givenPosition[0], givenPosition[1], givenPosition[2]) orelse return;
+		const holdingTargetedBlock = stack.item == .baseItem and stack.item.baseItem.block() == block.typ;
+		if ((block.hasTag(.fluid) or block.hasTag(.air)) and !holdingTargetedBlock) return;
+
+		const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(givenPosition)));
+
+		main.sync.ClientSide.mutex.lock();
+		if (!game.Player.isCreative()) {
+			var damage: f32 = main.game.Player.defaultBlockDamage;
+			const isProceduralItem = stack.item == .proceduralItem;
+			if (isProceduralItem) {
+				damage = stack.item.proceduralItem.getBlockDamage(block);
+			}
+			damage -= block.blockResistance();
+			if (damage > 0) {
+				const swingTime = if (isProceduralItem and stack.item.proceduralItem.isEffectiveOn(block)) 1.0/stack.item.proceduralItem.getProperty(.swingSpeed) else 0.5;
+				if (currentSwingTime > swingTime) {
+					currentSwingProgress = 0;
+					currentSwingTime = 0;
+				}
+				if (currentSwingTime == 0) {
+					const swings = @ceil(block.blockHealth()/damage);
+					const damagePerSwing = block.blockHealth()/swings;
+					currentSwingTime = damagePerSwing/damage*swingTime;
+				}
+				currentSwingProgress += @floatCast(deltaTime);
+				while (currentSwingProgress > currentSwingTime) {
+					currentSwingProgress -= currentSwingTime;
+					currentBlockProgress += damage*currentSwingTime/swingTime/block.blockHealth();
+					if (currentBlockProgress > 0.9999) break;
+					const swings = @ceil(block.blockHealth()/damage);
+					const damagePerSwing = block.blockHealth()/swings;
+					currentSwingTime = damagePerSwing/damage*swingTime;
+				}
+				if (currentBlockProgress < 0.9999) {
+					mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+					if (currentBlockProgress != 0) {
+						mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
+					}
 					main.sync.ClientSide.mutex.unlock();
+
 					return;
+				} else {
+					currentSwingProgress = 0;
+					mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+					currentBlockProgress = 0;
+					currentSwingTime = 0;
 				}
 			} else {
-				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+				main.sync.ClientSide.mutex.unlock();
+				return;
 			}
+		} else {
+			mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+		}
 
-			var newBlock = block;
-			block.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
-			main.sync.ClientSide.mutex.unlock();
-
-			if (newBlock != block) {
-				updateBlockAndSendUpdate(inventory, slot, selectedPos, block, newBlock);
-			}
+		var newBlock = block;
+		block.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
+		main.sync.ClientSide.mutex.unlock();
+		if (newBlock != block) {
+			updateBlockAndSendUpdate(inventory, slot, givenPosition, block, newBlock);
 		}
 	}
 

@@ -13,6 +13,32 @@
 			.colors = .{
 				0xffa99942, 0xffbeb349, 0xffe5c64c, 0xfffae764, 0xfffeffc9,
 			},
+			.modifiers = .{
+				.{
+					.id = "multi_break",
+					.width = 2,
+					.depth = 1,
+				},
+				.{
+					.id = "powerful",
+					.strength = 0.5,
+					.restriction = .{
+						.id = .@"and",
+						.children = .{
+							.{
+								.id = .encased,
+								.tag = .precious,
+								.amount = 4,
+							},
+							.{
+								.id = .encased,
+								.tag = .precious,
+								.amount = 4,
+							},
+						},
+					},
+				},
+			},
 		},
 	},
 	.ore = .{

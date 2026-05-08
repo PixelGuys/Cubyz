@@ -161,6 +161,7 @@ const Modifier = struct {
 		changeBlockDamage: *const fn (damage: f32, block: Block, data: Data) f32,
 		printTooltip: *const fn (outString: *main.List(u8), data: Data) void,
 		loadData: *const fn (zon: ZonElement) Data,
+		changeMiningArea: *const fn () Vec3i,
 		priority: f32,
 
 		const Defaults = struct {
@@ -168,12 +169,16 @@ const Modifier = struct {
 			pub fn changeBlockDamage(damage: f32, _: Block, _: Data) f32 {
 				return damage;
 			}
+			pub fn changeMiningArea() Vec3i {
+				return Vec3i{1, 1, 1};
+			}
 		};
 
 		inline fn initFromModifierStruct(comptime ModifierStruct: type) VTable {
 			return comptime .{
 				.changeProceduralItemParameters = @ptrCast(if (@hasDecl(ModifierStruct, "changeProceduralItemParameters")) &ModifierStruct.changeProceduralItemParameters else &VTable.Defaults.changeProceduralItemParameters),
 				.changeBlockDamage = @ptrCast(if (@hasDecl(ModifierStruct, "changeBlockDamage")) &ModifierStruct.changeBlockDamage else &VTable.Defaults.changeBlockDamage),
+				.changeMiningArea = @ptrCast(if (@hasDecl(ModifierStruct, "changeMiningArea")) &ModifierStruct.changeMiningArea else &VTable.Defaults.changeMiningArea),
 				.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
 				.printTooltip = @ptrCast(&ModifierStruct.printTooltip),
 				.loadData = @ptrCast(&ModifierStruct.loadData),
@@ -201,6 +206,10 @@ const Modifier = struct {
 
 	pub fn printTooltip(self: Modifier, outString: *main.List(u8)) void {
 		self.vTable.printTooltip(outString, self.data);
+	}
+
+	pub fn changeMiningArea(self: Modifier) Vec3i {
+		return self.vTable.changeMiningArea();
 	}
 };
 
@@ -886,6 +895,15 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 			if (proceduralItemTag == tag) return true;
 		}
 		return false;
+	}
+
+	pub fn changeMiningArea(self: *const ProceduralItem) Vec3i {
+		var newMiningArea = Vec3i{1, 1, 1};
+		for (self.modifiers) |modifier| {
+			const intermediary = modifier.changeMiningArea();
+			newMiningArea = Vec3i{@max(newMiningArea[0], intermediary[0]), @max(newMiningArea[1], intermediary[1]), @max(newMiningArea[2], intermediary[2])};
+		}
+		return newMiningArea;
 	}
 
 	pub fn isEffectiveOn(self: *ProceduralItem, block: Block) bool {
