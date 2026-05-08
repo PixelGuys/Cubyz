@@ -1,7 +1,7 @@
 const builtin = @import("builtin");
 const std = @import("std");
 const Atomic = std.atomic.Value;
-const IpAddress = std.Io.net.Ip4Address;
+const IpAddress = std.Io.net.IpAddress;
 
 const main = @import("main");
 const game = main.game;
@@ -126,7 +126,7 @@ const Socket = struct {
 	fn send(self: Socket, data: []const u8, destination: SocketAddress) void {
 		const addr = blk: {
 			var posixAddr: std.Io.Threaded.PosixAddress = undefined;
-			_ = std.Io.Threaded.addressToPosix(&std.Io.net.IpAddress{.ip4 = destination.address}, &posixAddr);
+			_ = std.Io.Threaded.addressToPosix(&destination.address, &posixAddr);
 			break :blk posixAddr.in;
 		};
 		if (builtin.os.tag == .windows) {
@@ -190,7 +190,7 @@ const Socket = struct {
 				}
 			}
 		};
-		resultAddress.address = std.Io.Threaded.addressFromPosix(&std.Io.Threaded.PosixAddress{.in = addr}).ip4;
+		resultAddress.address = std.Io.Threaded.addressFromPosix(&std.Io.Threaded.PosixAddress{.in = addr});
 		return buffer[0..length];
 	}
 
@@ -204,7 +204,7 @@ const Socket = struct {
 			switch (entry) {
 				.address => |addr| {
 					if (addr != .ip4) continue;
-					return addr.ip4;
+					return addr;
 				},
 				.canonical_name => {},
 			}
@@ -287,6 +287,24 @@ pub const SocketAddress = struct {
 		return .{
 			.address = try Socket.resolveIP(innerResult.ip, innerResult.port),
 			.isSymmetricNAT = innerResult.isSymmetricNAT,
+		};
+	}
+
+	// copied from zig std, just without the port == port
+	pub fn eqlInnerWithoutPort(self: *const SocketAddress, other: *const SocketAddress) bool {
+		return switch (self.address) {
+			.ip4 => |a_ip4| switch (other.address) {
+				.ip4 => |b_ip4| {
+					const a_int: u32 = @bitCast(a_ip4.bytes);
+					const b_int: u32 = @bitCast(b_ip4.bytes);
+					return a_int == b_int;
+				},
+				else => false,
+			},
+			.ip6 => |a_ip6| switch (other.address) {
+				.ip6 => |b_ip6| std.mem.eql(u8, &a_ip6.bytes, &b_ip6.bytes),
+				else => false,
+			},
 		};
 	}
 };
@@ -433,7 +451,7 @@ const stun = struct { // MARK: stun
 					continue;
 				};
 				if (oldAddress) |other| {
-					if (other.address.eql(result.address)) {
+					if (other.address.eql(&result.address)) {
 						return result;
 					} else {
 						std.log.warn("Detected symmetric NAT. UDP-holepunching may not work reliably", .{});
@@ -447,7 +465,7 @@ const stun = struct { // MARK: stun
 				std.log.warn("Couldn't reach STUN server: {s}", .{server});
 			}
 		}
-		return SocketAddress{.address = .loopback(settings.defaultPort)}; // TODO: Return ip address in LAN.
+		return SocketAddress{.address = .{.ip4 = .loopback(settings.defaultPort)}}; // TODO: Return ip address in LAN.
 	}
 
 	fn findIPPort(_data: []const u8) !SocketAddress {
@@ -472,8 +490,10 @@ const stun = struct { // MARK: stun
 						}
 						return SocketAddress{
 							.address = .{
-								.port = std.mem.readInt(u16, addressData[0..2], .big),
-								.bytes = std.mem.toBytes(std.mem.readInt(u32, addressData[2..6], builtin.cpu.arch.endian())), // Needs to stay in big endian → native.
+								.ip4 = .{
+									.port = std.mem.readInt(u16, addressData[0..2], .big),
+									.bytes = std.mem.toBytes(std.mem.readInt(u32, addressData[2..6], builtin.cpu.arch.endian())), // Needs to stay in big endian → native.
+								},
 							},
 						};
 					} else if (data[1] == 0x02) {
@@ -644,7 +664,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		for (self.connections.items) |other| {
-			if (other.remoteAddress.address.eql(conn.remoteAddress.address)) return error.AlreadyConnected;
+			if (other.remoteAddress.address.eql(&conn.remoteAddress.address)) return error.AlreadyConnected;
 		}
 		self.connections.append(conn);
 	}
@@ -673,12 +693,12 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		self.mutex.lock();
 
 		for (self.connections.items) |conn| {
-			if (std.mem.eql(u8, &conn.remoteAddress.address.bytes, &source.address.bytes)) {
+			if (conn.remoteAddress.eqlInnerWithoutPort(&source)) {
 				if (conn.bruteforcingPort) {
-					conn.remoteAddress.address.port = source.address.port;
+					conn.remoteAddress.address.setPort(source.address.getPort());
 					conn.bruteforcingPort = false;
 				}
-				if (conn.remoteAddress.address.port == source.address.port) {
+				if (conn.remoteAddress.address.getPort() == source.address.getPort()) {
 					self.mutex.unlock();
 					conn.receive(data);
 					return;
@@ -689,15 +709,15 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			defer self.mutex.unlock();
 			// Check if it's part of an active request:
 			for (self.requests.items) |request| {
-				if (request.address.address.eql(source.address)) {
+				if (request.address.address.eql(&source.address)) {
 					request.data = main.globalAllocator.dupe(u8, data);
 					request.requestNotifier.signal();
 					return;
 				}
 			}
-			if (self.online.load(.acquire) and source.address.eql(self.externalAddress.address)) return;
+			if (self.online.load(.acquire) and source.address.eql(&self.externalAddress.address)) return;
 		}
-		if (self.allowNewConnections.load(.monotonic) or source.address.eql(.loopback(source.address.port))) {
+		if (self.allowNewConnections.load(.monotonic) or source.address.eql(&IpAddress{.ip4 = .loopback(source.address.getPort())})) {
 			if (data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
 				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{source}) catch unreachable;
 				defer main.stackAllocator.free(ip);
