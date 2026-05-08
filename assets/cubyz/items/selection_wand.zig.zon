@@ -1,4 +1,5 @@
 .{
 	.texture = "selection_wand.png",
+	.ignoreSelectionCapabilities = true,
 	.stackSize = 1,
 }

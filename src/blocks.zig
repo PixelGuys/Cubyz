@@ -96,7 +96,7 @@ const SelectionCapabilities = struct {
 	pub fn allowsSelectionByItem(self: SelectionCapabilities, block: Block, item: Item) bool {
 		if (item == .baseItem) {
 			const base = item.baseItem;
-			if (base.block() == block.typ or std.mem.eql(u8, base.id(), "cubyz:selection_wand")) {
+			if (base.ignoreSelectionCapabilities() or base.block() == block.typ) {
 				return true;
 			}
 		}

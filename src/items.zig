@@ -248,6 +248,9 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	pub fn block(self: BaseItemIndex) ?u16 {
 		return itemList[@intFromEnum(self)].block;
 	}
+	pub fn ignoreSelectionCapabilities(self: BaseItemIndex) bool {
+		return itemList[@intFromEnum(self)].ignoreSelectionCapabilities;
+	}
 	pub fn hasTag(self: BaseItemIndex, tag: Tag) bool {
 		return itemList[@intFromEnum(self)].hasTag(tag);
 	}
@@ -274,6 +277,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	material: ?Material,
 	block: ?u16,
 	foodValue: f32, // TODO: Effects.
+	ignoreSelectionCapabilities: bool,
 
 	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
 		self.id = allocator.dupe(u8, id);
@@ -300,6 +304,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 		};
 		self.texture = null;
 		self.foodValue = zon.get(f32, "food", 0);
+		self.ignoreSelectionCapabilities = zon.get(bool, "ignoreSelectionCapabilities", false);
 
 		var tooltip: main.List(u8) = .init(allocator);
 		tooltip.appendSlice(self.name);
