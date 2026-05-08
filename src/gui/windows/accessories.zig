@@ -43,10 +43,10 @@ pub fn onOpen() void {
 	const accessories = main.entity.components.@"cubyz:accessories".client.getAccessories(Player.super.id) orelse return;
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
 	var index: u32 = 0;
-	for (items.accessory_slots.getAccessorySlots()) |accessorySlot| {
+	for (items.accessory_slots.getAccessorySlots()) |*accessorySlot| {
 		const row = HorizontalList.init();
 		for (0..accessorySlot.count) |_| {
-			const slot = ItemSlot.init(.{0, 0}, accessories.*, @intCast(index), if (accessorySlot.texture) |texture| .{.custom = texture} else .default, .normal);
+			const slot = ItemSlot.init(.{0, 0}, accessories.*, @intCast(index), if (accessorySlot.getTexture()) |texture| .{.custom = texture} else .default, .normal);
 			itemSlots[index] = slot;
 			row.add(slot);
 			index += 1;
