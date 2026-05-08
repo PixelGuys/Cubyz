@@ -1893,7 +1893,7 @@ test "Resolve address" {
 		try std.testing.expectEqualDeep(parsedAddress, resolvedAddress);
 	}
 	const resolvedLocalhost = try Socket.resolveIP("localhost", 0);
-	try std.testing.expectEqualDeep(IpAddress.loopback(0), resolvedLocalhost);
+	try std.testing.expectEqualDeep(IpAddress{.ip4 = .loopback(0)}, resolvedLocalhost);
 
 	const socketAddresses: [3][]const u8 = .{
 		"11.22.33.44",
@@ -1911,9 +1911,9 @@ test "Resolve address" {
 		"localhost:11111?",
 	};
 	const expectedLocalhostSocketAddresses: [3]SocketAddress = .{
-		.{.address = .loopback(888)},
-		.{.address = .loopback(1234)},
-		.{.address = .loopback(11111), .isSymmetricNAT = true},
+		.{.address = .{.ip4 = .loopback(888)}},
+		.{.address = .{.ip4 = .loopback(1234)}},
+		.{.address = .{.ip4 = .loopback(11111)}, .isSymmetricNAT = true},
 	};
 	for (localhostSocketAddresses, expectedLocalhostSocketAddresses) |addressStr, expected| {
 		const resolvedAddress = try SocketAddress.resolve(addressStr, 888);
