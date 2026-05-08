@@ -261,6 +261,10 @@ pub const User = struct { // MARK: User
 			main.entity.components.@"cubyz:bag".server.loadEmpty(self.id);
 		}
 
+		if (main.entity.components.@"cubyz:accessories".server.get(self.id) == null) {
+			main.entity.components.@"cubyz:accessories".server.loadEmpty(self.id);
+		}
+
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();
 	}
