@@ -151,9 +151,6 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 			const rawXBiome = (updatedX - @as(f32, @floatFromInt(map.pos.wx)))/biomeSize;
 			const rawYBiome = (updatedY - @as(f32, @floatFromInt(map.pos.wy)))/biomeSize;
 
-			// Select a biome. Also adding some white noise to make a smoother transition.
-			//const roundedXBiome = @as(i32, @round(rawXBiome)) + offset;
-			//const roundedYBiome = @as(i32, @round(rawYBiome)) + offset;
 			const points = getNearestNeighborsInHexGrid(.{rawXBiome, rawYBiome});
 			const barycentricCoordinates: [3]f32 = computeBarycentricCoordinates(points, .{rawXBiome, rawYBiome});
 			var weights: [3]f32 = undefined;
