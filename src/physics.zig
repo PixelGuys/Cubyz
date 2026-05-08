@@ -12,7 +12,7 @@ const Player = main.game.Player;
 const camera = main.game.camera;
 
 pub const baseGravity = 30.0;
-pub const airTerminalVelocity = 90.0;
+pub const playerAirTerminalVelocity = 90.0;
 pub const airDensity = 0.001;
 pub const playerDensity = 1.2;
 
@@ -354,7 +354,7 @@ pub const FrictionState = struct {
 	mobile: f32,
 };
 
-pub fn calculateVolumeProperties(comptime side: main.sync.Side, volumeProperties: *collision.VolumeProperties, pos: @Vector(3, f64), hitBox: collision.Box) void {
+pub fn calculateVolumeProperties(comptime side: main.sync.Side, volumeProperties: *collision.VolumeProperties, pos: @Vector(3, f64), hitBox: collision.Box, airTerminalVelocity: f64) void {
 	if (main.game.getBlockWithSide(side, @floor(pos[0]), @floor(pos[1]), @floor(pos[2])) != null) {
 		volumeProperties.* = collision.calculateVolumeProperties(side, pos, hitBox, .{.density = airDensity, .terminalVelocity = airTerminalVelocity, .maxDensity = airDensity, .mobileFriction = 1.0/airTerminalVelocity});
 	}
@@ -416,7 +416,7 @@ pub fn calculateMotion(comptime side: main.sync.Side, deltaTime: f64, friction: 
 	return move;
 }
 
-pub fn calculateEyeMovement(comptime side: main.sync.Side, deltaTime: f64, pos: Vec3d, eye: *Player.EyeData) void {
+pub fn calculateEyeMovement(comptime side: main.sync.Side, deltaTime: f64, pos: Vec3d, vel: Vec3d, eye: *Player.EyeData, stepAmount: f64) void {
 	if (main.game.getBlockWithSide(side, @floor(pos[0]), @floor(pos[1]), @floor(pos[2])) != null) {
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
 		var acc: Vec3d = @splat(0);
@@ -494,6 +494,20 @@ pub fn calculateEyeMovement(comptime side: main.sync.Side, deltaTime: f64, pos: 
 			eye.pos[i] += firstTerm.add(secondTerm).addScalar(a/k).val[0];
 		}
 	}
+
+	if (stepAmount > 0) {
+		if (eye.coyote <= 0) {
+			eye.vel[2] = @max(1.5*vec.length(vel), eye.vel[2], 4);
+			eye.step[2] = true;
+			if (vel[2] > 0) {
+				eye.vel[2] = vel[2];
+				eye.step[2] = false;
+			}
+		} else {
+			eye.coyote = 0;
+		}
+		eye.pos[2] -= stepAmount;
+	}
 }
 
 pub fn calculateWallCollision(comptime side: main.sync.Side, motion: *Vec3d, pos: *Vec3d, vel: *Vec3d, onGround: *bool, frictionState: FrictionState, hitBox: collision.Box, steppingHeight: f64, steppingHeightLimit: ?f64, crouching: bool) f64 {
@@ -539,79 +553,61 @@ pub fn calculateWallCollision(comptime side: main.sync.Side, motion: *Vec3d, pos
 	return stepAmount;
 }
 
-pub fn update(comptime side: main.sync.Side, deltaTime: f64, motion: Vec3d, stepAmount: f64) void {
-	if (!Player.isGhost.load(.monotonic)) {
-		const hitBox = Player.outerBoundingBox;
-		if (stepAmount > 0) {
-			if (Player.eye.coyote <= 0) {
-				Player.eye.vel[2] = @max(1.5*vec.length(Player.super.vel), Player.eye.vel[2], 4);
-				Player.eye.step[2] = true;
-				if (Player.super.vel[2] > 0) {
-					Player.eye.vel[2] = Player.super.vel[2];
-					Player.eye.step[2] = false;
-				}
-			} else {
-				Player.eye.coyote = 0;
+pub fn calculateVerticalCollision(comptime side: main.sync.Side, deltaTime: f64, pos: *Vec3d, vel: *Vec3d, jumpCoyote: ?*f64, onGround: *bool, hitBox: collision.Box, motion: Vec3d, bouncinessMultiplier: f64) bool {
+	const wasOnGround = onGround.*;
+	onGround.* = false;
+	pos[2] += motion[2];
+
+	if (collision.collides(side, .z, -motion[2], pos.*, hitBox)) |box| {
+		if (motion[2] < 0) {
+			onGround.* = true;
+			pos[2] = box.max[2] - hitBox.min[2];
+		} else {
+			pos[2] = box.min[2] - hitBox.max[2];
+		}
+		const bounciness = if (bouncinessMultiplier == 0) 0 else collision.calculateSurfaceProperties(side, pos.*, hitBox, 0.0).bounciness*bouncinessMultiplier;
+
+		if (bounciness != 0.0 and vel[2] < -3.0) {
+			vel[2] = -vel[2]*bounciness;
+			if (jumpCoyote) |coyote| {
+				coyote.* = Player.jumpCoyoteTimeConstant + deltaTime;
 			}
-			Player.eye.pos[2] -= stepAmount;
+		} else {
+			vel[2] = 0;
 		}
 
-		const wasOnGround = Player.onGround;
-		Player.onGround = false;
-		Player.super.pos[2] += motion[2];
-		if (collision.collides(side, .z, -motion[2], Player.super.pos, hitBox)) |box| {
-			if (motion[2] < 0) {
-				if (!wasOnGround) {
-					Player.eye.vel[2] = Player.super.vel[2];
-					Player.eye.pos[2] -= (box.max[2] - hitBox.min[2] - Player.super.pos[2]);
-				}
-				Player.onGround = true;
-				Player.super.pos[2] = box.max[2] - hitBox.min[2];
-				Player.eye.coyote = 0;
-			} else {
-				Player.super.pos[2] = box.min[2] - hitBox.max[2];
-			}
-			var bounciness = if (Player.isFlying.load(.monotonic)) 0 else collision.calculateSurfaceProperties(side, Player.super.pos, Player.outerBoundingBox, 0.0).bounciness;
-			if (Player.crouching) {
-				bounciness *= 0.5;
-			}
-			var velocityChange: f64 = undefined;
-
-			if (bounciness != 0.0 and Player.super.vel[2] < -3.0) {
-				velocityChange = Player.super.vel[2]*@as(f64, @floatCast(1 - bounciness));
-				Player.super.vel[2] = -Player.super.vel[2]*bounciness;
-				Player.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
-				Player.eye.vel[2] *= 2;
-			} else {
-				velocityChange = Player.super.vel[2];
-				Player.super.vel[2] = 0;
-			}
-			const damage: f32 = @floatCast(@round(@max((velocityChange*velocityChange)/(2*baseGravity) - 7, 0))/2);
-			if (damage > 0.01) {
-				main.sync.addHealth(-damage, .fall, .client, Player.id);
-			}
-
-			// Always unstuck upwards for now
-			while (collision.collides(side, .z, 0, Player.super.pos, hitBox)) |_| {
-				Player.super.pos[2] += 1;
-			}
-		} else if (wasOnGround and motion[2] < 0) {
-			// If the player drops off a ledge, they might just be walking over a small gap, so lock the y position of the eyes that long.
-			// This calculates how long the player has to fall until we know they're not walking over a small gap.
-			// We add deltaTime because we subtract deltaTime at the bottom of update
-			Player.eye.coyote = @sqrt(2*Player.steppingHeight()[2]/baseGravity) + deltaTime;
-			Player.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
-			Player.eye.pos[2] -= motion[2];
-		} else if (Player.eye.coyote > 0) {
-			Player.eye.pos[2] -= motion[2];
+		// Always unstuck upwards for now
+		while (collision.collides(side, .z, 0, pos.*, hitBox)) |_| {
+			pos[2] += 1;
 		}
-		collision.touchBlocks(side, &Player.super, hitBox, deltaTime);
+		return true;
 	} else {
-		Player.super.pos += motion;
+		if (wasOnGround and motion[2] < 0 and jumpCoyote != null) {
+			jumpCoyote.?.* = Player.jumpCoyoteTimeConstant + deltaTime;
+		}
+		return false;
 	}
+}
 
-	// Clamp the eye.position and subtract eye coyote time.
-	Player.eye.pos = @max(Player.eye.box.min, @min(Player.eye.pos, Player.eye.box.max));
-	Player.eye.coyote -= deltaTime;
-	Player.jumpCoyote -= deltaTime;
+pub fn calculateVerticalCollisionEyeMovement(deltaTime: f64, eye: *Player.EyeData, didCollide: bool, onGround: bool, wasOnGround: bool, prevPos: Vec3d, pos: Vec3d, prevVel: Vec3d, vel: Vec3d, motion: Vec3d, steppingHeight: f64) void {
+	if (didCollide) {
+		if (onGround) {
+			if (!wasOnGround) {
+				eye.vel[2] = prevVel[2];
+				eye.pos[2] -= pos[2] - prevPos[2] - motion[2];
+			}
+			eye.coyote = 0.0;
+		}
+		if (vel[2] != 0.0) {
+			eye.vel[2] *= 2.0;
+		}
+	} else if (wasOnGround and motion[2] < 0) {
+		// If the player drops off a ledge, they might just be walking over a small gap, so lock the y position of the eyes that long.
+		// This calculates how long the player has to fall until we know they're not walking over a small gap.
+		// We add deltaTime because we subtract deltaTime at the bottom of update
+		eye.coyote = @sqrt(2*steppingHeight/baseGravity) + deltaTime;
+		eye.pos[2] -= motion[2];
+	} else if (Player.eye.coyote > 0) {
+		eye.pos[2] -= motion[2];
+	}
 }

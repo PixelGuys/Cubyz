@@ -161,206 +161,206 @@ pub const ParticleManager = struct {
 };
 
 pub const ParticleSystem = struct {
-    pub const maxCapacity: u32 = 524288;
-    var particleCount: u32 = 0;
-    var particles: [maxCapacity]Particle = undefined;
-    var particlesLocal: [maxCapacity]ParticleLocal = undefined;
-    var previousPlayerPos: Vec3d = undefined;
+	pub const maxCapacity: u32 = 524288;
+	var particleCount: u32 = 0;
+	var particles: [maxCapacity]Particle = undefined;
+	var particlesLocal: [maxCapacity]ParticleLocal = undefined;
+	var previousPlayerPos: Vec3d = undefined;
 
-    var mutex: main.utils.Mutex = .{};
-    var networkCreationQueue: main.ListUnmanaged(struct { emitter: Emitter, pos: Vec3d, count: u32 }) = .{};
+	var mutex: main.utils.Mutex = .{};
+	var networkCreationQueue: main.ListUnmanaged(struct { emitter: Emitter, pos: Vec3d, count: u32 }) = .{};
 
-    var particlesSSBO: SSBO = undefined;
+	var particlesSSBO: SSBO = undefined;
 
-    var pipeline: graphics.Pipeline = undefined;
-    const UniformStruct = struct {
-        projectionAndViewMatrix: c_int,
-        billboardMatrix: c_int,
-        ambientLight: c_int,
-    };
-    var uniforms: UniformStruct = undefined;
+	var pipeline: graphics.Pipeline = undefined;
+	const UniformStruct = struct {
+		projectionAndViewMatrix: c_int,
+		billboardMatrix: c_int,
+		ambientLight: c_int,
+	};
+	var uniforms: UniformStruct = undefined;
 
-    fn init() void {
-        pipeline = graphics.Pipeline.init(
-            "assets/cubyz/shaders/particles/particles.vert",
-            "assets/cubyz/shaders/particles/particles.frag",
-            "",
-            &uniforms,
-            graphics.VertexArray.EmptyVertex,
-            &.{},
-            .{},
-            .{ .depthTest = true, .depthWrite = true },
-            .{ .attachments = &.{.noBlending} },
-        );
+	fn init() void {
+		pipeline = graphics.Pipeline.init(
+			"assets/cubyz/shaders/particles/particles.vert",
+			"assets/cubyz/shaders/particles/particles.frag",
+			"",
+			&uniforms,
+			graphics.VertexArray.EmptyVertex,
+			&.{},
+			.{},
+			.{.depthTest = true, .depthWrite = true},
+			.{.attachments = &.{.noBlending}},
+		);
 
-        particlesSSBO = SSBO.init();
-        particlesSSBO.createDynamicBuffer(Particle, maxCapacity);
-        particlesSSBO.bind(13);
-    }
+		particlesSSBO = SSBO.init();
+		particlesSSBO.createDynamicBuffer(Particle, maxCapacity);
+		particlesSSBO.bind(13);
+	}
 
-    fn deinit() void {
-        pipeline.deinit();
-        particlesSSBO.deinit();
-    }
+	fn deinit() void {
+		pipeline.deinit();
+		particlesSSBO.deinit();
+	}
 
-    fn reset() void {
-        networkCreationQueue = .{};
-    }
+	fn reset() void {
+		networkCreationQueue = .{};
+	}
 
-    pub fn update(deltaTime: f32) void {
-        mutex.lock();
-        if (networkCreationQueue.items.len != 0) {
-            for (networkCreationQueue.items) |creation| {
-                creation.emitter.spawnParticles(creation.pos, creation.count);
-            }
-            networkCreationQueue.clearRetainingCapacity();
-        }
-        mutex.unlock();
+	pub fn update(deltaTime: f32) void {
+		mutex.lock();
+		if (networkCreationQueue.items.len != 0) {
+			for (networkCreationQueue.items) |creation| {
+				creation.emitter.spawnParticles(creation.pos, creation.count);
+			}
+			networkCreationQueue.clearRetainingCapacity();
+		}
+		mutex.unlock();
 
-        const vecDeltaTime: Vec4f = @as(Vec4f, @splat(deltaTime));
-        const playerPos = game.Player.getEyePosBlocking();
-        const prevPlayerPosDifference: Vec3f = @floatCast(previousPlayerPos - playerPos);
+		const vecDeltaTime: Vec4f = @as(Vec4f, @splat(deltaTime));
+		const playerPos = game.Player.getEyePosBlocking();
+		const prevPlayerPosDifference: Vec3f = @floatCast(previousPlayerPos - playerPos);
 
-        var i: u32 = 0;
-        while (i < particleCount) {
-            const particle = &particles[i];
-            const particleLocal = &particlesLocal[i];
-            particle.lifeRatio -= particleLocal.lifeVelocity * deltaTime;
-            if (particle.lifeRatio < 0) {
-                particleCount -= 1;
-                particles[i] = particles[particleCount];
-                particlesLocal[i] = particlesLocal[particleCount];
-                continue;
-            }
+		var i: u32 = 0;
+		while (i < particleCount) {
+			const particle = &particles[i];
+			const particleLocal = &particlesLocal[i];
+			particle.lifeRatio -= particleLocal.lifeVelocity*deltaTime;
+			if (particle.lifeRatio < 0) {
+				particleCount -= 1;
+				particles[i] = particles[particleCount];
+				particlesLocal[i] = particlesLocal[particleCount];
+				continue;
+			}
 
-            var pos: Vec3f = particle.pos;
-            var rot = particle.rot;
-            const rotVel = particleLocal.velAndRotationVel[3];
-            rot += rotVel * deltaTime;
+			var pos: Vec3f = particle.pos;
+			var rot = particle.rot;
+			const rotVel = particleLocal.velAndRotationVel[3];
+			rot += rotVel*deltaTime;
 
-            const airDensity: f32 = physics.airDensity;
-            const frictionCoefficient = physics.baseGravity / physics.airTerminalVelocity * particleLocal.dragCoefficient;
-            particleLocal.velAndRotationVel[3] = 0;
-            const effectiveGravity: f32 = @floatCast(physics.baseGravity * (particleLocal.density - airDensity) / particleLocal.density);
-            particleLocal.velAndRotationVel[2] -= effectiveGravity * deltaTime;
-            particleLocal.velAndRotationVel *= @splat(@exp(-frictionCoefficient * deltaTime));
+			const airDensity: f32 = physics.airDensity;
+			const frictionCoefficient = physics.baseGravity/physics.playerAirTerminalVelocity*particleLocal.dragCoefficient;
+			particleLocal.velAndRotationVel[3] = 0;
+			const effectiveGravity: f32 = @floatCast(physics.baseGravity*(particleLocal.density - airDensity)/particleLocal.density);
+			particleLocal.velAndRotationVel[2] -= effectiveGravity*deltaTime;
+			particleLocal.velAndRotationVel *= @splat(@exp(-frictionCoefficient*deltaTime));
 
-            if (particleLocal.collides) {
-                var v3Pos = playerPos + @as(Vec3d, @floatCast(pos + prevPlayerPosDifference));
-                const size = ParticleManager.types.items[particle.typ].size;
-                const hitBox: physics.collision.Box = .{ .min = @splat(size * -0.5), .max = @splat(size * 0.5) };
+			if (particleLocal.collides) {
+				var v3Pos = playerPos + @as(Vec3d, @floatCast(pos + prevPlayerPosDifference));
+				const size = ParticleManager.types.items[particle.typ].size;
+				const hitBox: physics.collision.Box = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
 
-                const posDelta = particleLocal.velAndRotationVel * vecDeltaTime;
+				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
-                v3Pos[0] += posDelta[0];
-                if (physics.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
-                    v3Pos[0] = if (posDelta[0] < 0)
-                        box.max[0] - hitBox.min[0]
-                    else
-                        box.min[0] - hitBox.max[0];
-                }
-                v3Pos[1] += posDelta[1];
-                if (physics.collision.collides(.client, .y, -posDelta[1], v3Pos, hitBox)) |box| {
-                    v3Pos[1] = if (posDelta[1] < 0)
-                        box.max[1] - hitBox.min[1]
-                    else
-                        box.min[1] - hitBox.max[1];
-                }
-                v3Pos[2] += posDelta[2];
-                if (physics.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
-                    v3Pos[2] = if (posDelta[2] < 0)
-                        box.max[2] - hitBox.min[2]
-                    else
-                        box.min[2] - hitBox.max[2];
-                }
-                pos = @as(Vec3f, @floatCast(v3Pos - playerPos));
-            } else {
-                const posDelta = particleLocal.velAndRotationVel * vecDeltaTime;
+				v3Pos[0] += posDelta[0];
+				if (physics.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
+					v3Pos[0] = if (posDelta[0] < 0)
+						box.max[0] - hitBox.min[0]
+					else
+						box.min[0] - hitBox.max[0];
+				}
+				v3Pos[1] += posDelta[1];
+				if (physics.collision.collides(.client, .y, -posDelta[1], v3Pos, hitBox)) |box| {
+					v3Pos[1] = if (posDelta[1] < 0)
+						box.max[1] - hitBox.min[1]
+					else
+						box.min[1] - hitBox.max[1];
+				}
+				v3Pos[2] += posDelta[2];
+				if (physics.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
+					v3Pos[2] = if (posDelta[2] < 0)
+						box.max[2] - hitBox.min[2]
+					else
+						box.min[2] - hitBox.max[2];
+				}
+				pos = @as(Vec3f, @floatCast(v3Pos - playerPos));
+			} else {
+				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
-                pos += Vec3f{ posDelta[0], posDelta[1], posDelta[2] } + prevPlayerPosDifference;
-            }
+				pos += Vec3f{posDelta[0], posDelta[1], posDelta[2]} + prevPlayerPosDifference;
+			}
 
-            particle.pos = pos;
-            particle.rot = rot;
-            particleLocal.velAndRotationVel[3] = rotVel;
+			particle.pos = pos;
+			particle.rot = rot;
+			particleLocal.velAndRotationVel[3] = rotVel;
 
-            const positionf64 = @as(Vec3d, @floatCast(pos)) + playerPos;
-            const intPos: vec.Vec3i = @floor(positionf64);
-            const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
-            const compressedLight =
-                @as(u32, light[0] >> 3) << 25 |
-                @as(u32, light[1] >> 3) << 20 |
-                @as(u32, light[2] >> 3) << 15 |
-                @as(u32, light[3] >> 3) << 10 |
-                @as(u32, light[4] >> 3) << 5 |
-                @as(u32, light[5] >> 3);
-            particle.light = compressedLight;
+			const positionf64 = @as(Vec3d, @floatCast(pos)) + playerPos;
+			const intPos: vec.Vec3i = @floor(positionf64);
+			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
+			const compressedLight =
+				@as(u32, light[0] >> 3) << 25 |
+				@as(u32, light[1] >> 3) << 20 |
+				@as(u32, light[2] >> 3) << 15 |
+				@as(u32, light[3] >> 3) << 10 |
+				@as(u32, light[4] >> 3) << 5 |
+				@as(u32, light[5] >> 3);
+			particle.light = compressedLight;
 
-            i += 1;
-        }
-        previousPlayerPos = playerPos;
-    }
+			i += 1;
+		}
+		previousPlayerPos = playerPos;
+	}
 
-    fn addParticle(typ: u32, particleType: ParticleTypeLocal, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties) void {
-        const lifeTime = properties.lifeTime.get(&main.seed);
-        const density = particleType.density.get(&main.seed);
-        const rot = if (properties.randomizeRotation) random.nextFloat(&main.seed) * std.math.pi * 2 else 0;
-        const rotVel = particleType.rotVel.get(&main.seed);
-        const dragCoeff = particleType.dragCoefficient.get(&main.seed);
+	fn addParticle(typ: u32, particleType: ParticleTypeLocal, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties) void {
+		const lifeTime = properties.lifeTime.get(&main.seed);
+		const density = particleType.density.get(&main.seed);
+		const rot = if (properties.randomizeRotation) random.nextFloat(&main.seed)*std.math.pi*2 else 0;
+		const rotVel = particleType.rotVel.get(&main.seed);
+		const dragCoeff = particleType.dragCoefficient.get(&main.seed);
 
-        particles[particleCount] = Particle{
-            .pos = @as(Vec3f, @floatCast(pos - previousPlayerPos)),
-            .rot = rot,
-            .typ = typ,
-        };
-        particlesLocal[particleCount] = ParticleLocal{
-            .velAndRotationVel = vec.combine(vel, rotVel),
-            .lifeVelocity = 1 / lifeTime,
-            .density = density,
-            .dragCoefficient = dragCoeff,
-            .collides = collides,
-        };
-        particleCount += 1;
-    }
+		particles[particleCount] = Particle{
+			.pos = @as(Vec3f, @floatCast(pos - previousPlayerPos)),
+			.rot = rot,
+			.typ = typ,
+		};
+		particlesLocal[particleCount] = ParticleLocal{
+			.velAndRotationVel = vec.combine(vel, rotVel),
+			.lifeVelocity = 1/lifeTime,
+			.density = density,
+			.dragCoefficient = dragCoeff,
+			.collides = collides,
+		};
+		particleCount += 1;
+	}
 
-    pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, ambientLight: Vec3f) void {
-        particlesSSBO.bufferSubData(Particle, &particles, particleCount);
+	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, ambientLight: Vec3f) void {
+		particlesSSBO.bufferSubData(Particle, &particles, particleCount);
 
-        pipeline.bind(null);
+		pipeline.bind(null);
 
-        const projectionAndViewMatrix = Mat4f.mul(projectionMatrix, viewMatrix);
-        c.glUniformMatrix4fv(uniforms.projectionAndViewMatrix, 1, c.GL_TRUE, @ptrCast(&projectionAndViewMatrix));
-        c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
+		const projectionAndViewMatrix = Mat4f.mul(projectionMatrix, viewMatrix);
+		c.glUniformMatrix4fv(uniforms.projectionAndViewMatrix, 1, c.GL_TRUE, @ptrCast(&projectionAndViewMatrix));
+		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 
-        const billboardMatrix = Mat4f.rotationZ(-game.camera.rotation[2] + std.math.pi * 0.5)
-            .mul(Mat4f.rotationY(game.camera.rotation[0] - std.math.pi * 0.5));
-        c.glUniformMatrix4fv(uniforms.billboardMatrix, 1, c.GL_TRUE, @ptrCast(&billboardMatrix));
+		const billboardMatrix = Mat4f.rotationZ(-game.camera.rotation[2] + std.math.pi*0.5)
+			.mul(Mat4f.rotationY(game.camera.rotation[0] - std.math.pi*0.5));
+		c.glUniformMatrix4fv(uniforms.billboardMatrix, 1, c.GL_TRUE, @ptrCast(&billboardMatrix));
 
-        c.glActiveTexture(c.GL_TEXTURE0);
-        ParticleManager.textureArray.bind();
-        c.glActiveTexture(c.GL_TEXTURE1);
-        ParticleManager.emissionTextureArray.bind();
+		c.glActiveTexture(c.GL_TEXTURE0);
+		ParticleManager.textureArray.bind();
+		c.glActiveTexture(c.GL_TEXTURE1);
+		ParticleManager.emissionTextureArray.bind();
 
-        chunk_meshing.vao.bind();
+		chunk_meshing.vao.bind();
 
-        const maxQuads = chunk_meshing.maxQuadsInIndexBuffer;
-        const count = std.math.divCeil(u32, particleCount, maxQuads) catch unreachable;
-        for (0..count) |i| {
-            const particleOffset = (maxQuads * 4) * i;
-            const particleCurrentCount: u32 = @min(maxQuads, particleCount - maxQuads * i);
-            c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(particleCurrentCount * 6), c.GL_UNSIGNED_INT, null, @intCast(particleOffset));
-        }
-    }
+		const maxQuads = chunk_meshing.maxQuadsInIndexBuffer;
+		const count = std.math.divCeil(u32, particleCount, maxQuads) catch unreachable;
+		for (0..count) |i| {
+			const particleOffset = (maxQuads*4)*i;
+			const particleCurrentCount: u32 = @min(maxQuads, particleCount - maxQuads*i);
+			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(particleCurrentCount*6), c.GL_UNSIGNED_INT, null, @intCast(particleOffset));
+		}
+	}
 
-    pub fn getParticleCount() u32 {
-        return particleCount;
-    }
+	pub fn getParticleCount() u32 {
+		return particleCount;
+	}
 
-    pub fn addParticlesFromNetwork(emitter: Emitter, pos: Vec3d, count: u32) void {
-        mutex.lock();
-        defer mutex.unlock();
-        networkCreationQueue.append(main.worldArena, .{ .emitter = emitter, .pos = pos, .count = count });
-    }
+	pub fn addParticlesFromNetwork(emitter: Emitter, pos: Vec3d, count: u32) void {
+		mutex.lock();
+		defer mutex.unlock();
+		networkCreationQueue.append(main.worldArena, .{.emitter = emitter, .pos = pos, .count = count});
+	}
 };
 
 pub const EmitterProperties = struct {

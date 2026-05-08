@@ -137,7 +137,7 @@ pub fn globalInit() void {
 	zoomOutTexture = Texture.initFromFile("assets/cubyz/ui/window_zoom_out.png");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	pipeline.deinit();
 	backgroundTexture.deinit();
 	titleTexture.deinit();

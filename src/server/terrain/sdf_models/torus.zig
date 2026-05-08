@@ -22,13 +22,17 @@ const Instance = struct {
 	thickness: f32,
 };
 
-pub fn init(zon: ZonElement) ?*@This() {
-	const result = main.worldArena.create(@This());
-	result.minRadius = zon.get(f32, "minRadius", 16);
-	result.maxRadius = zon.get(f32, "maxRadius", result.minRadius);
-	result.minThickness = zon.get(f32, "minThickness", result.minRadius/2);
-	result.maxThickness = zon.get(f32, "maxThickness", result.minThickness);
-	return result;
+pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
+	const self = main.worldArena.create(@This());
+	self.minRadius = zon.get(f32, "minRadius", 16);
+	self.maxRadius = zon.get(f32, "maxRadius", self.minRadius);
+	self.minThickness = zon.get(f32, "minThickness", self.minRadius/2);
+	self.maxThickness = zon.get(f32, "maxThickness", self.minThickness);
+
+	return .{.model = self, .maxExtend = .{
+		.min = .{@floor(-self.maxRadius - self.maxThickness), @floor(-self.maxRadius - self.maxThickness), @floor(-self.maxThickness)},
+		.max = .{@ceil(-self.maxRadius - self.maxThickness), @ceil(-self.maxRadius - self.maxThickness), @ceil(-self.maxThickness)},
+	}};
 }
 
 pub fn instantiate(self: *@This(), arena: NeverFailingAllocator, seed: *u64) SdfInstance {

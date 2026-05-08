@@ -80,7 +80,7 @@ pub const Gamepad = struct {
 					if ((newState.buttons[btn] == 0) and (oldState.buttons[btn] != 0)) {
 						nextGamepadListener.?(null, @intCast(btn));
 						nextGamepadListener = null;
-						break;
+						return;
 					}
 				}
 			}
@@ -91,7 +91,7 @@ pub const Gamepad = struct {
 					if (newAxis != 0 and oldAxis == 0) {
 						nextGamepadListener.?(.{.axis = @intCast(axis), .positive = newState.axes[axis] > 0}, -1);
 						nextGamepadListener = null;
-						break;
+						return;
 					}
 				}
 			}
@@ -510,17 +510,18 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		const textKeyPressedInTextField = main.gui.selectedTextInput != null and c.glfwGetKeyName(glfw_key, scancode) != null;
 		const isGrabbed = grabbed;
 		if (action == c.GLFW_PRESS or action == c.GLFW_RELEASE) {
+			if (action == c.GLFW_PRESS) {
+				if (nextKeypressListener) |listener| {
+					listener(glfw_key, -1, scancode);
+					nextKeypressListener = null;
+					return;
+				}
+			}
 			for (&main.KeyBoard.keys) |*key| {
 				if (glfw_key == key.key) {
 					if (glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
 						key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, textKeyPressedInTextField);
 					}
-				}
-			}
-			if (action == c.GLFW_PRESS) {
-				if (nextKeypressListener) |listener| {
-					listener(glfw_key, -1, scancode);
-					nextKeypressListener = null;
 				}
 			}
 		} else if (action == c.GLFW_REPEAT) {
@@ -583,15 +584,16 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
 		const isGrabbed = grabbed;
 		if (action == c.GLFW_PRESS or action == c.GLFW_RELEASE) {
-			for (&main.KeyBoard.keys) |*key| {
-				if (button == key.mouseButton) {
-					key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, false);
-				}
-			}
 			if (action == c.GLFW_PRESS) {
 				if (nextKeypressListener) |listener| {
 					listener(c.GLFW_KEY_UNKNOWN, button, 0);
 					nextKeypressListener = null;
+					return;
+				}
+			}
+			for (&main.KeyBoard.keys) |*key| {
+				if (button == key.mouseButton) {
+					key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, false);
 				}
 			}
 		}
@@ -645,6 +647,11 @@ var nextGamepadListener: ?*const fn (?GamepadAxis, c_int) void = null;
 pub fn setNextGamepadListener(listener: ?*const fn (?GamepadAxis, c_int) void) !void {
 	if (nextGamepadListener != null) return error.AlreadyUsed;
 	nextGamepadListener = listener;
+}
+
+pub fn resetNextInputListenters() void {
+	nextGamepadListener = null;
+	nextKeypressListener = null;
 }
 
 fn updateCursor() void {

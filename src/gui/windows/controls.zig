@@ -81,10 +81,17 @@ fn sensitivityFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) 
     return std.fmt.allocPrint(allocator.allocator, "{s} Sensitivity: {d:.0}%", .{ if (editingKeyboard) "Mouse" else "Controller", value * 100 }) catch unreachable;
 }
 
-fn toggleKeyboard() void {
-    editingKeyboard = !editingKeyboard;
-    needsUpdate = true;
+fn abortBindingProcess() void {
+	selectedKey = null;
+	main.Window.resetNextInputListenters();
+	needsUpdate = true;
 }
+
+fn toggleKeyboard() void {
+	editingKeyboard = !editingKeyboard;
+	abortBindingProcess();
+}
+
 fn unbindKey(keyPtr: usize) void {
     var key: ?*main.Window.Key = @ptrFromInt(keyPtr);
     if (editingKeyboard) {
@@ -98,49 +105,63 @@ fn unbindKey(keyPtr: usize) void {
     needsUpdate = true;
 }
 
+fn initWindow() void {
+	const controlsListWidth: u32 = 256;
+	const keybindButtonWidth: u32 = 160;
+	const unbindButtonWidth: u32 = 64;
+
+	const list = VerticalList.init(.{padding, 16 + padding}, 364, 8);
+	list.add(Button.initText(.{0, 0}, keybindButtonWidth, if (editingKeyboard) "Gamepad" else "Keyboard", .init(toggleKeyboard)));
+	list.add(ContinuousSlider.init(.{0, 0}, controlsListWidth, 0, 5, if (editingKeyboard) main.settings.mouseSensitivity else main.settings.controllerSensitivity, &updateSensitivity, &sensitivityFormatter));
+	list.add(CheckBox.init(.{0, 0}, controlsListWidth, "Invert mouse Y", main.settings.invertMouseY, &invertMouseYCallback));
+	list.add(CheckBox.init(.{0, 0}, controlsListWidth, "Toggle sprint", main.KeyBoard.key("sprint").isToggling == .yes, &sprintIsToggleCallback));
+
+	if (!editingKeyboard) {
+		list.add(ContinuousSlider.init(.{0, 0}, controlsListWidth, 0, 1, main.settings.controllerAxisDeadzone, &updateDeadzone, &deadzoneFormatter));
+	}
+	for (&main.KeyBoard.keys) |*key| {
+		const label = Label.init(.{0, 0}, keybindButtonWidth, key.name, .left);
+		const button = if (key == selectedKey)
+			Button.initText(.{16, 0}, keybindButtonWidth, "...", .{})
+		else
+			Button.initText(.{16, 0}, keybindButtonWidth, if (editingKeyboard) key.getName() else key.getGamepadName(), if (editingKeyboard) .initWithPtr(keyFunction, key) else .initWithPtr(gamepadFunction, key));
+
+		const unbindBtn = Button.initText(.{16, 0}, unbindButtonWidth, "Unbind", .initWithPtr(unbindKey, key));
+		const row = HorizontalList.init();
+		row.add(label);
+		row.add(button);
+		row.add(unbindBtn);
+		row.finish(.{0, 0}, .center);
+		list.add(row);
+	}
+	list.finish(.center);
+	window.rootComponent = list.toComponent();
+	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
+	gui.updateWindowPositions();
+}
+
+fn deinitWindow() void {
+	if (window.rootComponent) |*comp| {
+		comp.deinit();
+	}
+}
+
 pub fn onOpen() void {
-    const controlsListWidth: u32 = 256;
-    const keybindButtonWidth: u32 = 160;
-    const unbindButtonWidth: u32 = 64;
-
-    const list = VerticalList.init(.{ padding, 16 + padding }, 364, 8);
-    list.add(Button.initText(.{ 0, 0 }, keybindButtonWidth, if (editingKeyboard) "Gamepad" else "Keyboard", .init(toggleKeyboard)));
-    list.add(ContinuousSlider.init(.{ 0, 0 }, controlsListWidth, 0, 5, if (editingKeyboard) main.settings.mouseSensitivity else main.settings.controllerSensitivity, &updateSensitivity, &sensitivityFormatter));
-    list.add(CheckBox.init(.{ 0, 0 }, controlsListWidth, "Invert mouse Y", main.settings.invertMouseY, &invertMouseYCallback));
-    list.add(CheckBox.init(.{ 0, 0 }, controlsListWidth, "Toggle sprint", main.KeyBoard.key("sprint").isToggling == .yes, &sprintIsToggleCallback));
-
-    if (!editingKeyboard) {
-        list.add(ContinuousSlider.init(.{ 0, 0 }, controlsListWidth, 0, 1, main.settings.controllerAxisDeadzone, &updateDeadzone, &deadzoneFormatter));
-    }
-    for (&main.KeyBoard.keys) |*key| {
-        const label = Label.init(.{ 0, 0 }, keybindButtonWidth, key.name, .left);
-        const button = if (key == selectedKey) (Button.initText(.{ 16, 0 }, keybindButtonWidth, "...", .{})) else (Button.initText(.{ 16, 0 }, keybindButtonWidth, if (editingKeyboard) key.getName() else key.getGamepadName(), if (editingKeyboard) .initWithPtr(keyFunction, key) else .initWithPtr(gamepadFunction, key)));
-        const unbindBtn = Button.initText(.{ 16, 0 }, unbindButtonWidth, "Unbind", .initWithPtr(unbindKey, key));
-        const row = HorizontalList.init();
-        row.add(label);
-        row.add(button);
-        row.add(unbindBtn);
-        row.finish(.{ 0, 0 }, .center);
-        list.add(row);
-    }
-    list.finish(.center);
-    window.rootComponent = list.toComponent();
-    window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
-    gui.updateWindowPositions();
+	abortBindingProcess();
+	initWindow();
 }
 
 pub fn onClose() void {
-    if (window.rootComponent) |*comp| {
-        comp.deinit();
-    }
+	abortBindingProcess();
+	deinitWindow();
 }
 
 pub fn render() void {
-    if (needsUpdate) {
-        needsUpdate = false;
-        const oldScroll = window.rootComponent.?.verticalList.scrollBar.currentState;
-        onClose();
-        onOpen();
-        window.rootComponent.?.verticalList.scrollBar.currentState = oldScroll;
-    }
+	if (needsUpdate) {
+		needsUpdate = false;
+		const oldScroll = window.rootComponent.?.verticalList.scrollBar.currentState;
+		deinitWindow();
+		initWindow();
+		window.rootComponent.?.verticalList.scrollBar.currentState = oldScroll;
+	}
 }

@@ -71,7 +71,51 @@ pub const Ore = struct {
     seed: u64,
 };
 
-const SelectionRule = enum { always, toolEffective, never };
+const SelectionCapabilities = struct {
+	capabilities: ?[]const Capability,
+
+	const Capability = enum(u8) {
+		toolEffective,
+
+		pub fn allowsSelectionByItem(self: Capability, block: Block, item: Item) bool {
+			return switch (self) {
+				.toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(block),
+			};
+		}
+	};
+
+	pub const alwaysSelectable: SelectionCapabilities = .{.capabilities = null};
+
+	pub fn loadFromZon(arena: main.heap.NeverFailingAllocator, zon: main.ZonElement) SelectionCapabilities {
+		var list = main.ListUnmanaged(Capability).initCapacity(arena, zon.toSlice().len);
+		for (zon.toSlice()) |capabilityZon| {
+			if (capabilityZon.as(?Capability, null)) |capability| {
+				list.appendAssumeCapacity(capability);
+			} else std.log.err("SelectionCapability is invalid. Ignoring", .{});
+		}
+		return .{.capabilities = list.items};
+	}
+
+	pub fn allowsSelectionByItem(self: SelectionCapabilities, block: Block, item: Item) bool {
+		if (item == .baseItem) {
+			const base = item.baseItem;
+			if (base.block() == block.typ or std.mem.eql(u8, base.id(), "cubyz:selection_wand")) {
+				return true;
+			}
+		}
+
+		if (block.hasTag(.fluid)) {
+			const fluidPlaceable = item == .baseItem and item.baseItem.hasTag(.fluidPlaceable);
+			return fluidPlaceable;
+		}
+
+		const capabilities = self.capabilities orelse return true;
+		for (capabilities) |capability| {
+			if (capability.allowsSelectionByItem(block, item)) return true;
+		}
+		return false;
+	}
+};
 
 var _transparent: [maxBlockCount]bool = undefined;
 var _collide: [maxBlockCount]bool = undefined;
@@ -82,7 +126,7 @@ var _blockResistance: [maxBlockCount]f32 = undefined;
 
 /// Whether you can replace it with another block, mainly used for fluids/gases
 var _replaceable: [maxBlockCount]bool = undefined;
-var _selectionRule: [maxBlockCount]SelectionRule = undefined;
+var _selectionCapabilities: [maxBlockCount]SelectionCapabilities = undefined;
 var _blockDrops: [maxBlockCount][]const BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
 var _degradable: [maxBlockCount]bool = undefined;
@@ -120,64 +164,70 @@ var size: u32 = 0;
 pub var ores: main.ListUnmanaged(Ore) = .{};
 
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
-    _id[size] = main.worldArena.dupe(u8, id);
-    reverseIndices.put(main.worldArena.allocator, _id[size], @intCast(size)) catch unreachable;
+	_id[size] = main.worldArena.dupe(u8, id);
+	reverseIndices.put(main.worldArena.allocator, _id[size], @intCast(size)) catch unreachable;
 
-    _mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "cubyz:no_rotation"));
-    _blockHealth[size] = zon.get(f32, "blockHealth", 1);
-    _blockResistance[size] = zon.get(f32, "blockResistance", 0);
-    const rotation_tags = _mode[size].getBlockTags();
-    const block_tags = Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("tags"));
-    defer main.stackAllocator.free(block_tags);
-    _tags[size] = std.mem.concat(main.worldArena.allocator, Tag, &.{ rotation_tags, block_tags }) catch unreachable;
+	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "cubyz:no_rotation"));
+	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
+	_blockResistance[size] = zon.get(f32, "blockResistance", 0);
+	const rotation_tags = _mode[size].getBlockTags();
+	const block_tags = Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("tags"));
+	defer main.stackAllocator.free(block_tags);
+	_tags[size] = std.mem.concat(main.worldArena.allocator, Tag, &.{rotation_tags, block_tags}) catch unreachable;
 
-    if (_tags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
-    for (_tags[size]) |tag| {
-        if (tag == Tag.sbbChild) {
-            sbb.registerChildBlock(@intCast(size), _id[size]);
-            break;
-        }
-    }
+	if (_tags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
+	for (_tags[size]) |tag| {
+		if (tag == Tag.sbbChild) {
+			sbb.registerChildBlock(@intCast(size), _id[size]);
+			break;
+		}
+	}
 
-    _light[size] = zon.get(u32, "emittedLight", 0);
-    _absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
-    _degradable[size] = zon.get(bool, "degradable", false);
-    _selectionRule[size] = zon.get(SelectionRule, "selectionRule", .always);
-    _replaceable[size] = zon.get(bool, "replaceable", false);
-    _transparent[size] = zon.get(bool, "transparent", false);
-    _collide[size] = zon.get(bool, "collide", true);
-    _alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
-    _viewThrough[size] = zon.get(bool, "viewThrough", false) or _transparent[size] or _alwaysViewThrough[size];
-    _hasBackFace[size] = zon.get(bool, "hasBackFace", false);
-    _friction[size] = zon.get(f32, "friction", 20);
-    _bounciness[size] = zon.get(f32, "bounciness", 0.0);
-    _density[size] = zon.get(f32, "density", main.physics.airDensity);
-    _terminalVelocity[size] = zon.get(f32, "terminalVelocity", 90);
-    _mobility[size] = zon.get(f32, "mobility", 1.0);
-    _allowOres[size] = zon.get(bool, "allowOres", false);
+	_light[size] = zon.get(u32, "emittedLight", 0);
+	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
+	_degradable[size] = zon.get(bool, "degradable", false);
 
-    _blockEntity[size] = block_entity.getByID(zon.get(?[]const u8, "blockEntity", null));
+	if (zon.getChildOrNull("selectionCapabilities")) |capabilitiesZon| {
+		_selectionCapabilities[size] = .loadFromZon(main.worldArena, capabilitiesZon);
+	} else {
+		_selectionCapabilities[size] = .alwaysSelectable;
+	}
 
-    const oreProperties = zon.getChild("ore");
-    if (oreProperties != .null) blk: {
-        if (!std.mem.eql(u8, zon.get([]const u8, "rotation", "cubyz:no_rotation"), "cubyz:ore")) {
-            std.log.err("Ore must have rotation mode \"cubyz:ore\"!", .{});
-            break :blk;
-        }
-        ores.append(main.worldArena, .{
-            .veins = oreProperties.get(f32, "veins", 0),
-            .size = oreProperties.get(f32, "size", 0),
-            .maxHeight = oreProperties.get(i32, "maxHeight", std.math.maxInt(i32)),
-            .minHeight = oreProperties.get(i32, "minHeight", std.math.minInt(i32)),
-            .density = oreProperties.get(f32, "density", 0.5),
-            .blockType = @intCast(size),
-            .seed = std.hash.Wyhash.hash(0, id),
-        });
-    }
+	_replaceable[size] = zon.get(bool, "replaceable", false);
+	_transparent[size] = zon.get(bool, "transparent", false);
+	_collide[size] = zon.get(bool, "collide", true);
+	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
+	_viewThrough[size] = zon.get(bool, "viewThrough", false) or _transparent[size] or _alwaysViewThrough[size];
+	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
+	_friction[size] = zon.get(f32, "friction", 20);
+	_bounciness[size] = zon.get(f32, "bounciness", 0.0);
+	_density[size] = zon.get(f32, "density", main.physics.airDensity);
+	_terminalVelocity[size] = zon.get(f32, "terminalVelocity", 90);
+	_mobility[size] = zon.get(f32, "mobility", 1.0);
+	_allowOres[size] = zon.get(bool, "allowOres", false);
 
-    defer size += 1;
-    std.log.debug("Registered block: {d: >5} '{s}'", .{ size, id });
-    return @intCast(size);
+	_blockEntity[size] = block_entity.getByID(zon.get(?[]const u8, "blockEntity", null));
+
+	const oreProperties = zon.getChild("ore");
+	if (oreProperties != .null) blk: {
+		if (!std.mem.eql(u8, zon.get([]const u8, "rotation", "cubyz:no_rotation"), "cubyz:ore")) {
+			std.log.err("Ore must have rotation mode \"cubyz:ore\"!", .{});
+			break :blk;
+		}
+		ores.append(main.worldArena, .{
+			.veins = oreProperties.get(f32, "veins", 0),
+			.size = oreProperties.get(f32, "size", 0),
+			.maxHeight = oreProperties.get(i32, "maxHeight", std.math.maxInt(i32)),
+			.minHeight = oreProperties.get(i32, "minHeight", std.math.minInt(i32)),
+			.density = oreProperties.get(f32, "density", 0.5),
+			.blockType = @intCast(size),
+			.seed = std.hash.Wyhash.hash(0, id),
+		});
+	}
+
+	defer size += 1;
+	std.log.debug("Registered block: {d: >5} '{s}'", .{size, id});
+	return @intCast(size);
 }
 
 pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
@@ -373,181 +423,165 @@ pub fn hasRegistered(id: []const u8) bool {
 }
 
 pub const Block = packed struct(u32) { // MARK: Block
-    typ: u16,
-    data: u16,
+	typ: u16,
+	data: u16,
 
-    pub const air = Block{ .typ = 0, .data = 0 };
+	pub const air = Block{.typ = 0, .data = 0};
 
-    pub fn toInt(self: Block) u32 {
-        return @as(u32, self.typ) | @as(u32, self.data) << 16;
-    }
-    pub fn fromInt(self: u32) Block {
-        return Block{ .typ = @truncate(self), .data = @intCast(self >> 16) };
-    }
+	pub fn toInt(self: Block) u32 {
+		return @as(u32, self.typ) | @as(u32, self.data) << 16;
+	}
+	pub fn fromInt(self: u32) Block {
+		return Block{.typ = @truncate(self), .data = @intCast(self >> 16)};
+	}
 
-    pub inline fn transparent(self: Block) bool {
-        return _transparent[self.typ];
-    }
+	pub inline fn transparent(self: Block) bool {
+		return _transparent[self.typ];
+	}
 
-    pub inline fn collide(self: Block) bool {
-        return _collide[self.typ];
-    }
+	pub inline fn collide(self: Block) bool {
+		return _collide[self.typ];
+	}
 
-    pub inline fn id(self: Block) []u8 {
-        return _id[self.typ];
-    }
+	pub inline fn id(self: Block) []u8 {
+		return _id[self.typ];
+	}
 
-    pub inline fn idAndData(self: Block, list: *main.List(u8)) void {
-        list.appendSlice(self.id());
-        if (self.data == 0) return;
-        list.append(':');
-        self.mode().formatBlockData(self, list);
-    }
+	pub inline fn idAndData(self: Block, list: *main.List(u8)) void {
+		list.appendSlice(self.id());
+		if (self.data == 0) return;
+		list.append(':');
+		self.mode().formatBlockData(self, list);
+	}
 
-    pub inline fn blockHealth(self: Block) f32 {
-        return _blockHealth[self.typ];
-    }
+	pub inline fn blockHealth(self: Block) f32 {
+		return _blockHealth[self.typ];
+	}
 
-    pub inline fn blockResistance(self: Block) f32 {
-        return _blockResistance[self.typ];
-    }
+	pub inline fn blockResistance(self: Block) f32 {
+		return _blockResistance[self.typ];
+	}
 
-    /// Whether you can replace it with another block, mainly used for fluids/gases
-    pub inline fn replaceable(self: Block) bool {
-        return _replaceable[self.typ];
-    }
+	/// Whether you can replace it with another block, mainly used for fluids/gases
+	pub inline fn replaceable(self: Block) bool {
+		return _replaceable[self.typ];
+	}
 
-    pub inline fn selectionRule(self: Block) SelectionRule {
-        return _selectionRule[self.typ];
-    }
+	pub inline fn selectionCapabilities(self: Block) SelectionCapabilities {
+		return _selectionCapabilities[self.typ];
+	}
 
-    pub inline fn blockDrops(self: Block) []const BlockDrop {
-        return _blockDrops[self.typ];
-    }
+	pub inline fn blockDrops(self: Block) []const BlockDrop {
+		return _blockDrops[self.typ];
+	}
 
-    /// Meaning undegradable parts of trees or other structures can grow through this block.
-    pub inline fn degradable(self: Block) bool {
-        return _degradable[self.typ];
-    }
+	/// Meaning undegradable parts of trees or other structures can grow through this block.
+	pub inline fn degradable(self: Block) bool {
+		return _degradable[self.typ];
+	}
 
-    pub inline fn viewThrough(self: Block) bool {
-        return _viewThrough[self.typ];
-    }
+	pub inline fn viewThrough(self: Block) bool {
+		return _viewThrough[self.typ];
+	}
 
-    /// shows backfaces even when next to the same block type
-    pub inline fn alwaysViewThrough(self: Block) bool {
-        return _alwaysViewThrough[self.typ];
-    }
+	/// shows backfaces even when next to the same block type
+	pub inline fn alwaysViewThrough(self: Block) bool {
+		return _alwaysViewThrough[self.typ];
+	}
 
-    pub inline fn hasBackFace(self: Block) bool {
-        return _hasBackFace[self.typ];
-    }
+	pub inline fn hasBackFace(self: Block) bool {
+		return _hasBackFace[self.typ];
+	}
 
-    pub inline fn tags(self: Block) []const Tag {
-        return _tags[self.typ];
-    }
+	pub inline fn tags(self: Block) []const Tag {
+		return _tags[self.typ];
+	}
 
-    pub inline fn hasTag(self: Block, tag: Tag) bool {
-        return std.mem.containsAtLeastScalar(Tag, self.tags(), 1, tag);
-    }
+	pub inline fn hasTag(self: Block, tag: Tag) bool {
+		return std.mem.containsAtLeastScalar(Tag, self.tags(), 1, tag);
+	}
 
-    pub inline fn light(self: Block) u32 {
-        return _light[self.typ];
-    }
+	pub inline fn light(self: Block) u32 {
+		return _light[self.typ];
+	}
 
-    /// How much light this block absorbs if it is transparent.
-    pub inline fn absorption(self: Block) u32 {
-        return _absorption[self.typ];
-    }
+	/// How much light this block absorbs if it is transparent.
+	pub inline fn absorption(self: Block) u32 {
+		return _absorption[self.typ];
+	}
 
-    pub inline fn onInteract(self: Block) ClientBlockCallback {
-        return _onInteract[self.typ];
-    }
-    pub inline fn onBreak(self: Block) ServerBlockCallback {
-        return _onBreak[self.typ];
-    }
-    pub inline fn onUpdate(self: Block) ServerBlockCallback {
-        return _onUpdate[self.typ];
-    }
-    pub inline fn mode(self: Block) *const RotationMode {
-        return _mode[self.typ];
-    }
+	pub inline fn onInteract(self: Block) ClientBlockCallback {
+		return _onInteract[self.typ];
+	}
+	pub inline fn onBreak(self: Block) ServerBlockCallback {
+		return _onBreak[self.typ];
+	}
+	pub inline fn onUpdate(self: Block) ServerBlockCallback {
+		return _onUpdate[self.typ];
+	}
+	pub inline fn mode(self: Block) *const RotationMode {
+		return _mode[self.typ];
+	}
 
-    pub inline fn modeData(self: Block) u16 {
-        return _modeData[self.typ];
-    }
+	pub inline fn modeData(self: Block) u16 {
+		return _modeData[self.typ];
+	}
 
-    pub inline fn rotateZ(self: Block, angle: Degrees) Block {
-        return .{ .typ = self.typ, .data = self.mode().rotateZ(self.data, angle) };
-    }
+	pub inline fn rotateZ(self: Block, angle: Degrees) Block {
+		return .{.typ = self.typ, .data = self.mode().rotateZ(self.data, angle)};
+	}
 
-    pub inline fn lodReplacement(self: Block) u16 {
-        return _lodReplacement[self.typ];
-    }
+	pub inline fn lodReplacement(self: Block) u16 {
+		return _lodReplacement[self.typ];
+	}
 
-    pub inline fn opaqueVariant(self: Block) u16 {
-        return _opaqueVariant[self.typ];
-    }
+	pub inline fn opaqueVariant(self: Block) u16 {
+		return _opaqueVariant[self.typ];
+	}
 
-    pub inline fn friction(self: Block) f32 {
-        return _friction[self.typ];
-    }
+	pub inline fn friction(self: Block) f32 {
+		return _friction[self.typ];
+	}
 
-    pub inline fn bounciness(self: Block) f32 {
-        return _bounciness[self.typ];
-    }
+	pub inline fn bounciness(self: Block) f32 {
+		return _bounciness[self.typ];
+	}
 
-    pub inline fn density(self: Block) f32 {
-        return _density[self.typ];
-    }
+	pub inline fn density(self: Block) f32 {
+		return _density[self.typ];
+	}
 
-    pub inline fn terminalVelocity(self: Block) f32 {
-        return _terminalVelocity[self.typ];
-    }
+	pub inline fn terminalVelocity(self: Block) f32 {
+		return _terminalVelocity[self.typ];
+	}
 
-    pub inline fn mobility(self: Block) f32 {
-        return _mobility[self.typ];
-    }
+	pub inline fn mobility(self: Block) f32 {
+		return _mobility[self.typ];
+	}
 
-    pub inline fn allowOres(self: Block) bool {
-        return _allowOres[self.typ];
-    }
+	pub inline fn allowOres(self: Block) bool {
+		return _allowOres[self.typ];
+	}
 
-    pub inline fn onTick(self: Block) ServerBlockCallback {
-        return _onTick[self.typ];
-    }
+	pub inline fn onTick(self: Block) ServerBlockCallback {
+		return _onTick[self.typ];
+	}
 
-    pub inline fn onTouch(self: Block) BlockTouchCallback {
-        return _onTouch[self.typ];
-    }
+	pub inline fn onTouch(self: Block) BlockTouchCallback {
+		return _onTouch[self.typ];
+	}
 
-    pub fn blockEntity(self: Block) ?*const BlockEntityType {
-        return _blockEntity[self.typ];
-    }
+	pub fn blockEntity(self: Block) ?*const BlockEntityType {
+		return _blockEntity[self.typ];
+	}
 
-    pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
-        return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
-    }
+	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
+		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
+	}
 
-    pub fn isSelectableByItem(self: Block, item: Item) bool {
-        if (item == .baseItem) {
-            const base = item.baseItem;
-            if (base.block() == self.typ or std.mem.eql(u8, base.id(), "cubyz:selection_wand")) {
-                return true;
-            }
-        }
-
-        if (self.hasTag(.fluid)) {
-            const fluidPlaceable = item == .baseItem and item.baseItem.hasTag(.fluidPlaceable);
-            return fluidPlaceable;
-        }
-
-        return switch (self.selectionRule()) {
-            .always => true,
-            .toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(self),
-            .never => false,
-        };
-    }
+	pub inline fn isSelectableByItem(self: Block, item: Item) bool {
+		return self.selectionCapabilities().allowsSelectionByItem(self, item);
+	}
 };
 
 pub const meshes = struct { // MARK: meshes
