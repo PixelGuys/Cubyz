@@ -1,6 +1,8 @@
 const builtin = @import("builtin");
 const std = @import("std");
+const net = std.Io.net;
 const Atomic = std.atomic.Value;
+const Socket = net.Socket;
 
 const main = @import("main");
 const game = main.game;
@@ -24,217 +26,7 @@ inline fn networkTimestamp() i64 {
 	return @truncate(@divTrunc(main.timestamp().toNanoseconds(), 1000));
 }
 
-const Socket = struct {
-	const ws2 = @cImport({
-		@cInclude("winsock2.h");
-	});
-	const posix = std.posix;
-	socketID: if (builtin.os.tag == .windows) ws2.SOCKET else posix.socket_t,
-
-	fn windowsError(err: c_int) !void {
-		if (err == 0) return;
-		switch (err) {
-			ws2.WSASYSNOTREADY => return error.NetworkDown,
-			ws2.WSAVERNOTSUPPORTED => return error.VersionUnsupported,
-			ws2.WSAEINPROGRESS => return error.BlockingOperationInProgress,
-			ws2.WSAEPROCLIM => return error.ProcessFdQuotaExceeded,
-			ws2.WSAEFAULT => unreachable,
-			ws2.WSANOTINITIALISED => unreachable,
-			ws2.WSAENETDOWN => return error.NetworkDown,
-			ws2.WSAEACCES => return error.AccessDenied,
-			ws2.WSAEADDRINUSE => return error.AddressInUse,
-			ws2.WSAEADDRNOTAVAIL => return error.AddressNotAvailable,
-			ws2.WSAEINVAL => unreachable,
-			ws2.WSAENOBUFS => return error.SystemResources,
-			ws2.WSAENOTSOCK => return error.FileDescriptorNotASocket,
-			else => return error.UNKNOWN,
-		}
-	}
-
-	fn startup() void {
-		if (builtin.os.tag == .windows) {
-			var data: ws2.WSADATA = undefined;
-			windowsError(ws2.WSAStartup(0x0202, &data)) catch |err| {
-				std.log.err("Could not initialize the Windows Socket API: {s}", .{@errorName(err)});
-				@panic("Could not init networking.");
-			};
-		}
-	}
-
-	fn init(localPort: u16) !Socket {
-		const self = Socket{
-			.socketID = blk: {
-				if (builtin.os.tag == .windows) {
-					const socket = ws2.socket(ws2.AF_INET, ws2.SOCK_DGRAM, ws2.IPPROTO_UDP);
-					if (socket == ws2.INVALID_SOCKET) {
-						try windowsError(ws2.WSAGetLastError());
-						return error.UNKNOWN;
-					}
-					break :blk socket;
-				} else {
-					const result = std.c.socket(posix.AF.INET, posix.SOCK.DGRAM, posix.IPPROTO.UDP);
-					switch (std.c.errno(result)) {
-						.SUCCESS => break :blk result,
-						else => |err| {
-							std.log.warn("Got error while creating socket: {s}", .{@tagName(err)});
-							return error.SocketCreationFailed;
-						},
-					}
-				}
-			},
-		};
-		errdefer self.deinit();
-		const bindingAddr = posix.sockaddr.in{
-			.port = @byteSwap(localPort),
-			.addr = 0,
-		};
-		if (builtin.os.tag == .windows) {
-			if (ws2.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in)) == ws2.SOCKET_ERROR) {
-				try windowsError(ws2.WSAGetLastError());
-			}
-		} else {
-			const result = std.c.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in));
-			switch (std.c.errno(result)) {
-				.SUCCESS => {},
-				.ADDRINUSE => {
-					return error.AddressInUse;
-				},
-				else => |err| {
-					std.log.warn("Got error while binding socket: {s}", .{@tagName(err)});
-					return error.SocketCreationFailed;
-				},
-			}
-		}
-		return self;
-	}
-
-	fn deinit(self: Socket) void {
-		if (builtin.os.tag == .windows) {
-			_ = ws2.closesocket(self.socketID);
-		} else {
-			const err = std.c.errno(std.c.close(self.socketID));
-			switch (err) {
-				.SUCCESS => {},
-				else => {
-					std.log.warn("Got error while closing socket: {s}", .{@tagName(err)});
-				},
-			}
-		}
-	}
-
-	fn send(self: Socket, data: []const u8, destination: Address) void {
-		const addr = posix.sockaddr.in{
-			.port = @byteSwap(destination.port),
-			.addr = destination.ip,
-		};
-		if (builtin.os.tag == .windows) {
-			const result = ws2.sendto(self.socketID, data.ptr, @intCast(data.len), 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
-			if (result == ws2.SOCKET_ERROR) {
-				const err: anyerror = if (windowsError(ws2.WSAGetLastError())) error.Unknown else |err| err;
-				std.log.warn("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
-			} else {
-				std.debug.assert(@as(usize, @intCast(result)) == data.len);
-			}
-		} else {
-			const result = std.c.sendto(self.socketID, data.ptr, data.len, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
-			switch (std.c.errno(result)) {
-				.SUCCESS => {
-					std.debug.assert(data.len == result);
-				},
-				else => |err| {
-					std.log.warn("Got error while sending to {f}: {s}", .{destination, @tagName(err)});
-				},
-			}
-		}
-	}
-
-	fn receive(self: Socket, buffer: []u8, timeout: i32, resultAddress: *Address) ![]u8 {
-		if (builtin.os.tag == .windows) { // Of course Windows always has it's own special thing.
-			var pfd = [1]ws2.pollfd{
-				.{.fd = self.socketID, .events = ws2.POLLRDNORM | ws2.POLLRDBAND, .revents = undefined},
-			};
-			const length = ws2.WSAPoll(&pfd, pfd.len, 0); // The timeout is set to zero. Otherwise sendto operations from other threads will block on this.
-			if (length == ws2.SOCKET_ERROR) {
-				try windowsError(ws2.WSAGetLastError());
-			} else if (length == 0) {
-				main.io.sleep(.fromMilliseconds(1), .awake) catch {}; // Manually sleep, since WSAPoll is blocking.
-				return error.Timeout;
-			}
-		} else {
-			var pfd = [1]posix.pollfd{
-				.{.fd = self.socketID, .events = posix.POLL.IN, .revents = undefined},
-			};
-			const length = try posix.poll(&pfd, timeout);
-			if (length == 0) return error.Timeout;
-		}
-		var addr: posix.sockaddr.in = undefined;
-		const length: usize = blk: {
-			if (builtin.os.tag == .windows) {
-				var addrLen: c_int = @sizeOf(posix.sockaddr.in);
-				const result = ws2.recvfrom(self.socketID, buffer.ptr, @intCast(buffer.len), 0, @ptrCast(&addr), &addrLen);
-				if (result == ws2.SOCKET_ERROR) {
-					try windowsError(ws2.WSAGetLastError());
-				}
-				break :blk @intCast(result);
-			} else {
-				var addrLen: posix.socklen_t = @sizeOf(posix.sockaddr.in);
-				const result = std.c.recvfrom(self.socketID, buffer.ptr, buffer.len, 0, @ptrCast(&addr), &addrLen);
-				switch (std.c.errno(result)) {
-					.SUCCESS => break :blk @intCast(result),
-					else => |err| {
-						std.log.warn("recvfrom failed with error {s}", .{@tagName(err)});
-						return error.Failed;
-					},
-				}
-			}
-		};
-		resultAddress.ip = addr.addr;
-		resultAddress.port = @byteSwap(addr.port);
-		return buffer[0..length];
-	}
-
-	fn resolveIP(name: []const u8) !u32 {
-		var nameBuf: [255]u8 = undefined;
-		var buf: [16]std.Io.net.HostName.LookupResult = undefined;
-		var resultQueue = std.Io.Queue(std.Io.net.HostName.LookupResult).init(&buf);
-		try std.Io.net.HostName.lookup(try .init(name), main.io, &resultQueue, .{.canonical_name_buffer = &nameBuf, .port = 0});
-		while (true) {
-			const entry = resultQueue.getOneUncancelable(main.io) catch break;
-			switch (entry) {
-				.address => |addr| {
-					if (addr != .ip4) continue;
-					return std.mem.bytesToValue(u32, addr.ip4.bytes[0..4]);
-				},
-				.canonical_name => {},
-			}
-		}
-		return error.ReachedEndWithoutFindingAnything;
-	}
-
-	fn getPort(self: Socket) !u16 {
-		var addr: posix.sockaddr.in = undefined;
-		if (builtin.os.tag == .windows) {
-			var addrLen: c_int = @sizeOf(posix.sockaddr.in);
-			if (ws2.getsockname(self.socketID, @ptrCast(&addr), &addrLen) == ws2.SOCKET_ERROR) {
-				try windowsError(ws2.WSAGetLastError());
-			}
-		} else {
-			var addrLen: posix.socklen_t = @sizeOf(posix.sockaddr.in);
-			const result = std.c.getsockname(self.socketID, @ptrCast(&addr), &addrLen);
-			switch (std.c.errno(result)) {
-				.SUCCESS => {},
-				else => |err| {
-					std.log.warn("Failed to get the port from getsockname: {s}", .{@tagName(err)});
-					return error.Failed;
-				},
-			}
-		}
-		return @byteSwap(addr.port);
-	}
-};
-
 pub fn init() !void {
-	Socket.startup();
 	protocols.init();
 	authentication.init();
 	try Connection.SecureChannel.checkResult(c.psa_crypto_init(), "psa_crypto_init");
@@ -245,18 +37,27 @@ pub fn deinit() void {
 }
 
 pub const Address = struct {
-	ip: u32,
-	port: u16,
+	address: std.Io.net.IpAddress,
 	isSymmetricNAT: bool = false,
 
-	pub const localHost = 0x0100007f;
-
 	pub fn format(self: Address, writer: anytype) !void {
+		try self.address.format(writer);
 		if (self.isSymmetricNAT) {
-			try writer.print("{}.{}.{}.{}:?{}", .{self.ip & 255, self.ip >> 8 & 255, self.ip >> 16 & 255, self.ip >> 24, self.port});
-		} else {
-			try writer.print("{}.{}.{}.{}:{}", .{self.ip & 255, self.ip >> 8 & 255, self.ip >> 16 & 255, self.ip >> 24, self.port});
+			try writer.print("?", .{});
 		}
+	}
+
+	pub fn resolveAddress(name: []const u8, port: u16) !Address {
+		var lookupResultbuff: [8]std.Io.net.HostName.LookupResult = undefined; // sadly a magic number, from this example: https://codeberg.org/FObersteiner/ntp_client/src/branch/zig-0.16/src/main.zig
+		var dnsLookUpQueue: std.Io.Queue(std.Io.net.HostName.LookupResult) = .init(lookupResultbuff[0..]);
+		const hostname = try std.Io.net.HostName.init(name);
+		try hostname.lookup(main.io, &dnsLookUpQueue, .{.port = port});
+		const lookupResult = try dnsLookUpQueue.getOne(main.io);
+		const serverAddress = switch (lookupResult) {
+			.address => |addr| addr,
+			.canonical_name => (try dnsLookUpQueue.getOne(main.io)).address,
+		};
+		return .{.address = serverAddress};
 	}
 };
 
@@ -388,13 +189,10 @@ const stun = struct { // MARK: stun
 			random.fill(data[8..]); // Fill the transaction ID.
 
 			var splitter = std.mem.splitScalar(u8, server, ':');
-			const ip = splitter.first();
-			const serverAddress = Address{
-				.ip = Socket.resolveIP(ip) catch |err| {
-					std.log.warn("Cannot resolve STUN server address: {s}, error: {s}", .{ip, @errorName(err)});
-					continue;
-				},
-				.port = std.fmt.parseUnsigned(u16, splitter.rest(), 10) catch 3478,
+			const hostname = splitter.first();
+			const serverAddress = Address.resolveAddress(hostname, std.fmt.parseUnsigned(u16, splitter.rest(), 10) catch 3478) catch |err| {
+				std.log.warn("Cannot resolve STUN server address: {s}, error: {s}", .{hostname, @errorName(err)});
+				continue;
 			};
 			if (connection.sendRequest(main.globalAllocator, &data, serverAddress, .fromMilliseconds(500))) |answer| {
 				defer main.globalAllocator.free(answer);
@@ -402,12 +200,12 @@ const stun = struct { // MARK: stun
 					std.log.err("Header verification failed with {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
 					continue;
 				};
-				var result = findIPPort(answer) catch |err| {
+				var result: Address = .{.address = findIPPort(answer) catch |err| {
 					std.log.err("Could not parse IP+Port: {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
 					continue;
-				};
+				}};
 				if (oldAddress) |other| {
-					if (other.ip == result.ip and other.port == result.port) {
+					if (other.address.eql(&result.address)) {
 						return result;
 					} else {
 						std.log.warn("Detected symmetric NAT. UDP-holepunching may not work reliably", .{});
@@ -421,10 +219,16 @@ const stun = struct { // MARK: stun
 				std.log.warn("Couldn't reach STUN server: {s}", .{server});
 			}
 		}
-		return Address{.ip = Socket.resolveIP("127.0.0.1") catch unreachable, .port = settings.defaultPort}; // TODO: Return ip address in LAN.
+		return .{.address = .{.ip4 = .loopback(settings.defaultPort)}}; // TODO: Return ip address in LAN.
 	}
 
-	fn findIPPort(_data: []const u8) !Address {
+	fn addressFromStunMesssage(data: [6]u8) !net.IpAddress {
+		const port = std.mem.readInt(u16, data[0..2], .big);
+		const ip = std.mem.readInt(u32, data[2..6], builtin.cpu.arch.endian()); // Needs to stay in big endian → native.
+		return .{.ip4 = .{.bytes = std.mem.toBytes(ip), .port = port}};
+	}
+
+	fn findIPPort(_data: []const u8) !net.IpAddress {
 		var data = _data[20..]; // Skip the header.
 		while (data.len > 0) {
 			const typ = std.mem.readInt(u16, data[0..2], .big);
@@ -444,10 +248,7 @@ const stun = struct { // MARK: stun
 							addressData[4] ^= MAGIC_COOKIE[2];
 							addressData[5] ^= MAGIC_COOKIE[3];
 						}
-						return Address{
-							.port = std.mem.readInt(u16, addressData[0..2], .big),
-							.ip = std.mem.readInt(u32, addressData[2..6], builtin.cpu.arch.endian()), // Needs to stay in big endian → native.
-						};
+						return addressFromStunMesssage(addressData);
 					} else if (data[1] == 0x02) {
 						data = data[(len + 3) & ~@as(usize, 3) ..]; // Pad to 32 Bit.
 						continue; // I don't care about IPv6.
@@ -491,6 +292,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	allowNewConnections: Atomic(bool) = .init(false),
 
 	receiveBuffer: [Connection.maxMtu]u8 = undefined,
+	recevieResultBuffer: [16]receive_timeout.Result = undefined,
 
 	world: ?*game.World = null,
 
@@ -517,15 +319,17 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		result.packetSendRequests = .initContext({});
 
 		result.localPort = localPort;
-		result.socket = Socket.init(localPort) catch |err| blk: {
+		var address: net.IpAddress = .{.ip4 = .unspecified(localPort)};
+		result.socket = address.bind(main.io, .{.protocol = .udp, .mode = .dgram}) catch |err| blk: {
 			if (err == error.AddressInUse) {
-				const socket = try Socket.init(0); // Use any port.
-				result.localPort = try socket.getPort();
+				address.setPort(0);
+				const socket = try address.bind(main.io, .{.protocol = .udp, .mode = .dgram});
+				result.localPort = socket.address.getPort();
 				break :blk socket;
 			} else return err;
 		};
-		errdefer result.socket.deinit();
-		if (localPort == 0) result.localPort = try result.socket.getPort();
+		errdefer result.socket.close(main.io);
+		if (localPort == 0) result.localPort = result.socket.address.getPort();
 
 		result.thread = try std.Thread.spawn(.{}, run, .{result});
 		result.thread.setName(main.io, "Network Thread") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
@@ -545,7 +349,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 		self.running.store(false, .monotonic);
 		self.thread.join();
-		self.socket.deinit();
+		self.socket.close(main.io);
 		self.connections.deinit();
 		for (self.requests.items) |request| {
 			request.requestNotifier.signal();
@@ -576,12 +380,12 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				.time = time,
 			}) catch unreachable;
 		} else {
-			self.socket.send(data, target);
+			self.socket.send(main.io, &target.address, data) catch unreachable;
 		}
 	}
 
 	pub fn sendRequest(self: *ConnectionManager, allocator: NeverFailingAllocator, data: []const u8, target: Address, timeout: std.Io.Duration) ?[]const u8 {
-		self.socket.send(data, target);
+		self.socket.send(main.io, &target.address, data) catch unreachable;
 		var request = Request{.address = target, .data = data};
 		{
 			self.mutex.lock();
@@ -616,7 +420,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		for (self.connections.items) |other| {
-			if (other.remoteAddress.ip == conn.remoteAddress.ip and other.remoteAddress.port == conn.remoteAddress.port) return error.AlreadyConnected;
+			if (other.remoteAddress.address.eql(&conn.remoteAddress.address)) return error.AlreadyConnected;
 		}
 		self.connections.append(conn);
 	}
@@ -640,17 +444,35 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 	}
 
-	fn onReceive(self: *ConnectionManager, data: []const u8, source: Address) void {
+	// copied from the eql Method of zig ipAddress but without the port check
+	fn ipEqlWithoutPort(a: *const net.IpAddress, b: *const net.IpAddress) bool {
+		return switch (a.*) {
+			.ip4 => |a_ip4| switch (b.*) {
+				.ip4 => |b_ip4| {
+					const a_int: u32 = @bitCast(a_ip4.bytes);
+					const b_int: u32 = @bitCast(b_ip4.bytes);
+					return a_int == b_int;
+				},
+				else => false,
+			},
+			.ip6 => |a_ip6| switch (b.*) {
+				.ip6 => |b_ip6| std.mem.eql(u8, &a_ip6.bytes, &b_ip6.bytes),
+				else => false,
+			},
+		};
+	}
+
+	fn onReceive(self: *ConnectionManager, data: []const u8, source: net.IpAddress) void {
 		std.debug.assert(self.threadId == std.Thread.getCurrentId());
 		self.mutex.lock();
 
 		for (self.connections.items) |conn| {
-			if (conn.remoteAddress.ip == source.ip) {
+			if (ipEqlWithoutPort(&conn.remoteAddress.address, &source)) {
 				if (conn.bruteforcingPort) {
-					conn.remoteAddress.port = source.port;
+					conn.remoteAddress.address.setPort(source.getPort());
 					conn.bruteforcingPort = false;
 				}
-				if (conn.remoteAddress.port == source.port) {
+				if (conn.remoteAddress.address.getPort() == source.getPort()) {
 					self.mutex.unlock();
 					conn.receive(data);
 					return;
@@ -661,15 +483,15 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			defer self.mutex.unlock();
 			// Check if it's part of an active request:
 			for (self.requests.items) |request| {
-				if (request.address.ip == source.ip and request.address.port == source.port) {
+				if (request.address.address.eql(&source)) {
 					request.data = main.globalAllocator.dupe(u8, data);
 					request.requestNotifier.signal();
 					return;
 				}
 			}
-			if (self.online.load(.acquire) and source.ip == self.externalAddress.ip and source.port == self.externalAddress.port) return;
+			if (self.online.load(.acquire) and source.eql(&self.externalAddress.address)) return;
 		}
-		if (self.allowNewConnections.load(.monotonic) or source.ip == Address.localHost) {
+		if (self.allowNewConnections.load(.monotonic) or source.eql(&(net.IpAddress{.ip4 = .loopback(source.getPort())}))) {
 			if (data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
 				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{source}) catch unreachable;
 				defer main.stackAllocator.free(ip);
@@ -687,6 +509,40 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 	}
 
+	const receive_timeout = struct {
+		const Result = union(enum) {
+			message: @typeInfo(@TypeOf(receive)).@"fn".return_type.?,
+			timeout: @typeInfo(@TypeOf(timeout)).@"fn".return_type.?,
+		};
+
+		fn timeout(_duration: std.Io.Duration) !void {
+			try main.io.sleep(_duration, .real);
+			return error.Timeout;
+		}
+
+		fn receive(socket: *net.Socket, _buffer: []u8) !net.IncomingMessage {
+			return socket.receive(main.io, _buffer);
+		}
+
+		fn run(self: *ConnectionManager, duration: std.Io.Duration) !net.IncomingMessage {
+			if (builtin.os.tag != .windows) {
+				return self.socket.receiveTimeout(main.io, &self.receiveBuffer, .{.duration = .{.raw = duration, .clock = .real}});
+			}
+
+			// TODO remove this entire thing when windows has the ability to timeout on receive #3050
+			const Select = std.Io.Select(Result);
+			var select: Select = .init(main.io, &self.recevieResultBuffer);
+			defer select.cancelDiscard();
+			try select.concurrent(.message, receive, .{&self.socket, &self.receiveBuffer});
+			try select.concurrent(.timeout, timeout, .{duration});
+
+			return switch (try select.await()) {
+				.timeout => |err| if (err) unreachable else |e| e,
+				.message => |mess| mess,
+			};
+		}
+	};
+
 	pub fn run(self: *ConnectionManager) void {
 		self.threadId = std.Thread.getCurrentId();
 		main.initThreadLocals();
@@ -697,9 +553,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		while (self.running.load(.monotonic)) {
 			main.heap.GarbageCollection.syncPoint();
 			self.waitingToFinishReceive.broadcast();
-			var source: Address = undefined;
-			if (self.socket.receive(&self.receiveBuffer, 1, &source)) |data| {
-				self.onReceive(data, source);
+			if (receive_timeout.run(self, .fromMilliseconds(1))) |message| {
+				self.onReceive(message.data, message.from);
 			} else |err| {
 				if (err == error.Timeout) {
 					// No message within the last ~100 ms.
@@ -715,7 +570,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				defer self.mutex.unlock();
 				while (self.packetSendRequests.peek() != null and self.packetSendRequests.peek().?.time -% curTime <= 0) {
 					const packet = self.packetSendRequests.pop().?;
-					self.socket.send(packet.data, packet.target);
+					self.socket.send(main.io, &packet.target.address, packet.data) catch unreachable;
 					main.globalAllocator.free(packet.data);
 				}
 			}
@@ -737,7 +592,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 					lastExternalPacketTime = curTime;
 					// Send a message to external ip, to keep the port open:
 					const data = [1]u8{0};
-					self.socket.send(&data, self.externalAddress);
+					self.socket.send(main.io, &self.externalAddress.address, &data) catch unreachable;
 				}
 			}
 		}
@@ -1500,17 +1355,16 @@ pub const Connection = struct { // MARK: Connection
 
 		var splitter = std.mem.splitScalar(u8, ipPort, ':');
 		const ip = splitter.first();
-		result.remoteAddress.ip = try Socket.resolveIP(ip);
 		var port = splitter.rest();
-		if (port.len != 0 and port[0] == '?') {
+		if (port.len != 0 and port[port.len - 1] == '?') {
 			result.remoteAddress.isSymmetricNAT = true;
 			result.bruteforcingPort = true;
-			port = port[1..];
+			port = port[0 .. port.len - 1];
 		}
-		result.remoteAddress.port = std.fmt.parseUnsigned(u16, port, 10) catch blk: {
+		result.remoteAddress = try .resolveAddress(ip, std.fmt.parseUnsigned(u16, port, 10) catch blk: {
 			if (ip.len != ipPort.len) std.log.err("Could not parse port \"{s}\". Using default port instead.", .{port});
 			break :blk settings.defaultPort;
-		};
+		});
 
 		try result.manager.addConnection(result);
 		return result;
