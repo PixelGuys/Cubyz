@@ -60,7 +60,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:castilleja"},
+			.blocks = .{"cubyz:flowers/castilleja"},
 			.chance = 0.03,
 			.width = 4,
 			.variation = 4,
@@ -71,7 +71,7 @@
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:air",
 			.log = "cubyz:cactus",
-			.top = "cubyz:cactus_flower",
+			.top = "cubyz:flowers/cactus_flower",
 			.chance = 0.05,
 			.type = .round,
 			.height = 2,

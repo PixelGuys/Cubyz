@@ -37,7 +37,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:daisies"},
+			.blocks = .{"cubyz:flowers/daisies"},
 			.chance = 0.003,
 			.width = 10,
 			.variation = 6,
@@ -46,7 +46,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:dandelions"},
+			.blocks = .{"cubyz:flowers/dandelions"},
 			.chance = 0.002,
 			.width = 6,
 			.variation = 4,

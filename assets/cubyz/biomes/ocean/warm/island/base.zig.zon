@@ -28,10 +28,10 @@
 		.{
 			.id = "cubyz:flower_patch",
 			.blocks = .{
-				"cubyz:hibiscus:0",
-				"cubyz:hibiscus:1",
-				"cubyz:hibiscus:2",
-				"cubyz:hibiscus:3",
+				"cubyz:flowers/hibiscus:0",
+				"cubyz:flowers/hibiscus:1",
+				"cubyz:flowers/hibiscus:2",
+				"cubyz:flowers/hibiscus:3",
 			},
 			.chance = 0.02,
 			.width = 3,

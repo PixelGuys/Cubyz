@@ -1,5 +1,4 @@
 .{
-	.tags = .{.cuttable},
 	.blockHealth = 0.2,
 	.drops = .{
 		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
@@ -7,16 +6,17 @@
 	.selectionRule = .toolEffective,
 	.replaceable = true,
 	.degradable = true,
-	.viewThrough = true,
-	.absorbedLight = 0x121012,
 	.collide = false,
-	.model = "cubyz:cross",
-	.texture = "cubyz:marigold",
-	.item = .{
-		.texture = "marigold.png",
-	},
-	.lodReplacement = "cubyz:air",
+	.alwaysViewThrough = true,
+	.absorbedLight = 0x121012,
+	.model = "cubyz:plane",
+	.rotation = "cubyz:carpet",
 	.onUpdate = .{
 		.type = .check_support_blocks,
 	},
+	.texture = "cubyz:flowers/dandelions",
+	.item = .{
+		.texture = "flowers/dandelions.png",
+	},
+	.lodReplacement = "cubyz:air",
 }

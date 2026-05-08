@@ -1,5 +1,4 @@
 .{
-	.tags = .{.cuttable},
 	.blockHealth = 0.2,
 	.drops = .{
 		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
@@ -11,9 +10,9 @@
 	.absorbedLight = 0x121012,
 	.collide = false,
 	.model = "cubyz:cross",
-	.texture = "cubyz:vetch",
+	.texture = "cubyz:flowers/vetch",
 	.item = .{
-		.texture = "vetch.png",
+		.texture = "flowers/vetch.png",
 	},
 	.lodReplacement = "cubyz:air",
 	.onUpdate = .{
