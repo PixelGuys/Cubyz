@@ -73,7 +73,7 @@ pub const server = struct {
 	pub fn get(entityId: u32) ?Component {
 		return (components.get(@enumFromInt(entityId)) orelse return null).*;
 	}
-	pub fn getBag(entityId: u32) ?*Inventory.BagInventory {
+	pub fn getAccessories(entityId: u32) ?*Inventory.InventoryId {
 		return &(components.get(@enumFromInt(entityId)) orelse return null).accessories;
 	}
 	pub fn loadFromData(entityId: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
