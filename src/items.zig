@@ -901,8 +901,10 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		var newMiningArea = Vec3i{1, 1, 1};
 		for (self.modifiers) |modifier| {
 			const intermediary = modifier.changeMiningArea();
+			std.log.info("intermediary values {}", .{intermediary});
 			newMiningArea = Vec3i{@max(newMiningArea[0], intermediary[0]), @max(newMiningArea[1], intermediary[1]), @max(newMiningArea[2], intermediary[2])};
 		}
+		std.log.info("final result {}", .{newMiningArea});
 		return newMiningArea;
 	}
 

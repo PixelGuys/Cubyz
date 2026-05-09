@@ -21,5 +21,5 @@ pub fn changeMiningArea(data: Data) Vec3i {
 }
 
 pub fn printTooltip(outString: *main.List(u8), data: Data) void {
-	outString.print("#800000**Multi-Break**#808080 *Breaks in a 3x3 plane **{d:.0}", .{data.width});
+	outString.print("#800000**Multi-Break**#808080 *Breaks in a {d:.0}x{d:.0}x{d:.0} area **", .{data.width, data.width, data.depth});
 }
