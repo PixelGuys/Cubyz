@@ -491,7 +491,7 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	defer models.deinit();
 
 	items.globalInit();
-	defer items.deinit();
+	defer items.globalDeinit();
 
 	if (!headless) sync.ClientSide.init();
 	defer if (!headless) sync.ClientSide.deinit();
