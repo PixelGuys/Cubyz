@@ -696,7 +696,7 @@ pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 		}
 
 		fn allocNew(pool: *Pool) *align(item_alignment) [item_size]u8 {
-			main.utils.assertLocked(&pool.mutex);
+			pool.mutex.assertLocked();
 			pool.totalAllocations += 1;
 			pool.freeAllocations += 1;
 			const mem = pool.arena.allocator().alignedAlloc(u8, .fromByteUnits(item_alignment), item_size);

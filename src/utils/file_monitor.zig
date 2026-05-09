@@ -86,7 +86,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 	}
 
 	fn addWatchDescriptorsRecursive(info: *DirectoryInfo, path: []const u8) void {
-		main.utils.assertLocked(&mutex);
+		mutex.assertLocked();
 		var iterableDir = main.files.cwd().openIterableDir(path) catch |err| {
 			std.log.err("Error while opening dirs {s}: {s}", .{path, @errorName(err)});
 			return;
@@ -107,7 +107,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 	}
 
 	fn updateRecursiveCallback(info: *DirectoryInfo) void {
-		main.utils.assertLocked(&mutex);
+		mutex.assertLocked();
 		for (info.watchDescriptors.items[1..]) |watchDescriptor| {
 			removeWatchDescriptor(watchDescriptor, info.path);
 		}
@@ -155,7 +155,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 	}
 
 	fn addWatchDescriptor(info: *DirectoryInfo, path: [:0]const u8) void {
-		main.utils.assertLocked(&mutex);
+		mutex.assertLocked();
 		const watchDescriptor = c.inotify_add_watch(fd, path.ptr, c.IN_CLOSE_WRITE | c.IN_DELETE | c.IN_CREATE | c.IN_MOVE | c.IN_ONLYDIR);
 		if (watchDescriptor == -1) {
 			std.log.err("Error while adding watch descriptor for path {s}: {}", .{path, std.posix.errno(watchDescriptor)});
@@ -165,7 +165,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 	}
 
 	fn removeWatchDescriptor(watchDescriptor: c_int, path: []const u8) void {
-		main.utils.assertLocked(&mutex);
+		mutex.assertLocked();
 		_ = callbacks.remove(watchDescriptor);
 		const result = c.inotify_rm_watch(fd, watchDescriptor);
 		if (result == -1) {

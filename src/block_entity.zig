@@ -141,7 +141,7 @@ fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 			storage.clear();
 		}
 		fn createEntry(pos: Vec3i, chunk: *Chunk) BlockEntity {
-			main.utils.assertLocked(&mutex);
+			mutex.assertLocked();
 			const entity: BlockEntity = .create();
 			const localPos = chunk.getLocalBlockPos(pos);
 
@@ -158,7 +158,7 @@ fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 			storage.set(main.globalAllocator, entity, value);
 		}
 		pub fn removeAtIndex(entity: BlockEntity) ?DataT {
-			main.utils.assertLocked(&mutex);
+			mutex.assertLocked();
 			entity.destroy();
 			return storage.fetchRemove(entity) catch null;
 		}
@@ -178,12 +178,12 @@ fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 			return removeAtIndex(entity);
 		}
 		pub fn getByIndex(entity: BlockEntity) ?*DataT {
-			main.utils.assertLocked(&mutex);
+			mutex.assertLocked();
 
 			return storage.get(entity);
 		}
 		pub fn get(pos: Vec3i, chunk: *Chunk) ?*DataT {
-			main.utils.assertLocked(&mutex);
+			mutex.assertLocked();
 
 			const localPos = chunk.getLocalBlockPos(pos);
 
@@ -198,7 +198,7 @@ fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 			foundExisting: bool,
 		};
 		pub fn getOrPut(pos: Vec3i, chunk: *Chunk) GetOrPutResult {
-			main.utils.assertLocked(&mutex);
+			mutex.assertLocked();
 			if (get(pos, chunk)) |result| return .{.valuePtr = result, .foundExisting = true};
 
 			const entity = createEntry(pos, chunk);

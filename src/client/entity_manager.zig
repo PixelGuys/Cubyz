@@ -74,7 +74,7 @@ pub fn addEntity(zon: ZonElement) !void {
 	try ent.init(zon, main.globalAllocator);
 }
 pub fn getEntity(id: u32) ?*main.client.Entity {
-	main.utils.assertLocked(&mutex);
+	mutex.assertLocked();
 	if (id < idMapping.items.len)
 		return &entities.items()[idMapping.items[id] orelse return null];
 	return null;

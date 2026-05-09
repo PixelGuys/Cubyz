@@ -427,7 +427,7 @@ pub const User = struct { // MARK: User
 	}
 
 	fn scheduleJobQueue(self: *User) void {
-		main.utils.assertLocked(&self.mutex);
+		self.mutex.assertLocked();
 		if (self.jobQueueScheduled) return;
 		if (self.jobQueue.size == 0) return;
 		if (self.isNetworkQueueFull()) return;

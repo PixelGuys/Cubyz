@@ -50,22 +50,22 @@ pub const ClientSide = struct {
 
 	fn freeId(id: InventoryId) void {
 		sync.threadContext.assertCorrectContext(.client);
-		main.utils.assertLocked(&main.sync.ClientSide.mutex);
+		main.sync.ClientSide.mutex.assertLocked();
 		freeIdList.append(id);
 	}
 
 	pub fn mapServerId(serverId: InventoryId, inventory: Inventory) void {
-		main.utils.assertLocked(&main.sync.ClientSide.mutex);
+		main.sync.ClientSide.mutex.assertLocked();
 		serverToClientMap.put(serverId, inventory) catch unreachable;
 	}
 
 	pub fn unmapServerId(serverId: InventoryId, clientId: InventoryId) void {
-		main.utils.assertLocked(&main.sync.ClientSide.mutex);
+		main.sync.ClientSide.mutex.assertLocked();
 		std.debug.assert(serverToClientMap.fetchRemove(serverId).?.value.id == clientId);
 	}
 
 	pub fn unmapServerIdByClientId(clientId: InventoryId) void {
-		main.utils.assertLocked(&main.sync.ClientSide.mutex);
+		main.sync.ClientSide.mutex.assertLocked();
 		const serverId = blk: {
 			var it = serverToClientMap.iterator();
 			while (it.next()) |entry| {
@@ -77,12 +77,12 @@ pub const ClientSide = struct {
 	}
 
 	fn getInventory(serverId: InventoryId) ?Inventory {
-		main.utils.assertLocked(&main.sync.ClientSide.mutex);
+		main.sync.ClientSide.mutex.assertLocked();
 		return serverToClientMap.get(serverId);
 	}
 
 	fn getInventoryByClientId(clientId: InventoryId) ?Inventory {
-		main.utils.assertLocked(&main.sync.ClientSide.mutex);
+		main.sync.ClientSide.mutex.assertLocked();
 		var it = serverToClientMap.valueIterator();
 		while (it.next()) |inv| {
 			if (inv.id == clientId) return inv.*;
@@ -101,7 +101,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 		const Managed = enum { internallyManaged, externallyManaged };
 
 		fn init(len: usize, source: Source, managed: Managed, callbacks: Callbacks) ServerInventory {
-			main.utils.assertLocked(&inventoryCreationMutex);
+			inventoryCreationMutex.assertLocked();
 			return .{
 				.inv = Inventory._init(main.globalAllocator, len, source, .server, callbacks),
 				.users = .{},
@@ -111,7 +111,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 		}
 
 		fn deinit(self: *ServerInventory) void {
-			main.utils.assertLocked(&inventoryCreationMutex);
+			inventoryCreationMutex.assertLocked();
 			while (self.users.items.len != 0) {
 				self.removeUser(self.users.items[0].user, self.users.items[0].cliendId);
 			}
@@ -190,7 +190,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 	}
 
 	fn nextId() InventoryId {
-		main.utils.assertLocked(&inventoryCreationMutex);
+		inventoryCreationMutex.assertLocked();
 		if (freeIdList.popOrNull()) |id| {
 			return id;
 		}
@@ -200,7 +200,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 	}
 
 	fn freeId(id: InventoryId) void {
-		main.utils.assertLocked(&inventoryCreationMutex);
+		inventoryCreationMutex.assertLocked();
 		freeIdList.append(id);
 	}
 
