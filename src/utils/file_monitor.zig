@@ -3,6 +3,8 @@ const builtin = @import("builtin");
 
 const main = @import("main");
 
+const c = @import("c");
+
 const CallbackFunction = *const fn (usize) void;
 
 const Impl = if (builtin.os.tag == .windows)
@@ -41,13 +43,6 @@ const NoImpl = struct {
 };
 
 const LinuxImpl = struct { // MARK: LinuxImpl
-	const c = @cImport({
-		@cInclude("sys/inotify.h");
-		@cInclude("sys/ioctl.h");
-		@cInclude("unistd.h");
-		@cInclude("errno.h");
-	});
-
 	const DirectoryInfo = struct {
 		callback: CallbackFunction,
 		userData: usize,
@@ -211,9 +206,6 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 };
 
 const WindowsImpl = struct { // MARK: WindowsImpl
-	const c = @cImport({
-		@cInclude("windows.h");
-	});
 	const HANDLE = std.os.windows.HANDLE;
 	var notificationHandlers: std.StringHashMap(*DirectoryInfo) = undefined;
 	var callbacks: main.List(*DirectoryInfo) = undefined;

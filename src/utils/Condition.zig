@@ -144,9 +144,7 @@ const SingleThreadedImpl = struct {
 const WindowsImpl = struct {
 	condition: c.CONDITION_VARIABLE = .{},
 
-	const c = @cImport({
-		@cInclude("windows.h");
-	});
+	const c = @import("c");
 
 	pub extern "ntdll" fn RtlWakeConditionVariable(
 		ConditionVariable: *c.CONDITION_VARIABLE,
