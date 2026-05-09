@@ -19,8 +19,8 @@ const inventory = @import("inventory.zig");
 
 pub var window = GuiWindow{
 	.relativePosition = .{
+		.{.attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle}},
 		.{.attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower}},
-		.{.attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper}},
 	},
 	.contentSize = Vec2f{64*8, 64*4},
 	.scale = 0.75,
@@ -38,19 +38,19 @@ pub fn onOpen() void {
 	itemSlots = main.globalAllocator.alloc(*ItemSlot, items.accessory_slots.getTotalSlotCount());
 
 	const accessories = main.entity.components.@"cubyz:accessories".client.getAccessories(Player.super.id) orelse return;
-	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
+	const list = HorizontalList.init();
 	var index: u32 = 0;
 	for (items.accessory_slots.getAccessorySlots()) |*accessorySlot| {
-		const row = HorizontalList.init();
+		const column = VerticalList.init(.{0, 0}, 300, 0);
 		for (0..accessorySlot.count) |_| {
 			const slot = ItemSlot.init(.{0, 0}, accessories.*, @intCast(index), if (accessorySlot.getTexture()) |texture| .{.custom = texture} else .default, .normal);
 			itemSlots[index] = slot;
-			row.add(slot);
+			column.add(slot);
 			index += 1;
 		}
-		list.add(row);
+		list.add(column);
 	}
-	list.finish(.right);
+	list.finish(.{padding, padding + 16}, .right);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	window.contentSize[0] = @max(window.contentSize[0], window.getMinWindowWidth());
