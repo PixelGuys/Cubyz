@@ -992,7 +992,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			readerInput = "";
 		};
 		var reader: main.utils.BinaryReader = .init(readerInput);
-		return main.items.Inventory.ServerSide.createExternallyManagedInventory(size, source, &reader, .{});
+		return main.items.Inventory.server.createExternallyManagedInventory(size, source, &reader, .{});
 	}
 
 	fn savePlayerInventory(allocator: NeverFailingAllocator, inv: main.items.Inventory) []const u8 {
@@ -1026,11 +1026,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		{
 			main.sync.threadContext.assertCorrectContext(.server);
-			if (main.items.Inventory.ServerSide.getInventoryFromSource(.{.playerInventory = user.id})) |inv| {
+			if (main.items.Inventory.server.getInventoryFromSource(.{.playerInventory = user.id})) |inv| {
 				playerZon.put("playerInventory", ZonElement{.stringOwned = savePlayerInventory(main.stackAllocator, inv)});
 			} else @panic("The player inventory wasn't found. Cannot save player data.");
 
-			if (main.items.Inventory.ServerSide.getInventoryFromSource(.{.hand = user.id})) |inv| {
+			if (main.items.Inventory.server.getInventoryFromSource(.{.hand = user.id})) |inv| {
 				playerZon.put("hand", ZonElement{.stringOwned = savePlayerInventory(main.stackAllocator, inv)});
 			} else @panic("The player hand inventory wasn't found. Cannot save player data.");
 		}

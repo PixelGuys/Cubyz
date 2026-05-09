@@ -256,7 +256,7 @@ pub const EntityModel = struct {
 		return getHierarchyMatrix(node.parent.*, sys).mul(currentMat);
 	}
 
-	fn getGltfError(result: c.cgltf_result) anyerror {
+	fn getGltfError(result: c.cgltf_result) error{ DataTooShort, UnknownFormat, InvalidJson, InvalidGltf, InvalidOptions, FileNotFound, IoError, OutOfMemory, LegacyGltf } {
 		return switch (result) {
 			c.cgltf_result_data_too_short => error.DataTooShort,
 			c.cgltf_result_unknown_format => error.UnknownFormat,

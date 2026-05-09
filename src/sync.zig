@@ -23,7 +23,7 @@ const @"cubyz:bag" = main.entity.components.@"cubyz:bag";
 
 pub const Side = enum { client, server };
 
-pub const ClientSide = struct {
+pub const client = struct { // MARK: client
 	pub var mutex: main.utils.Mutex = .{};
 	var commands: utils.CircularBufferQueue(Command) = undefined;
 
@@ -128,7 +128,7 @@ pub const ClientSide = struct {
 	}
 };
 
-pub const ServerSide = struct { // MARK: ServerSide
+pub const server = struct { // MARK: server
 
 	pub fn init() void {
 		threadContext = .server;
@@ -208,17 +208,17 @@ pub const ServerSide = struct { // MARK: ServerSide
 pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, userId: u32) void {
 	threadContext.assertCorrectContext(side);
 	if (side == .client) {
-		ClientSide.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}});
+		client.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}});
 	} else {
-		ServerSide.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}}, null);
+		server.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}}, null);
 	}
 }
 
 pub fn setGamemode(user: ?*main.server.User, gamemode: Gamemode) void {
 	if (user == null) {
-		ClientSide.setGamemode(gamemode);
+		client.setGamemode(gamemode);
 	} else {
-		ServerSide.setGamemode(user.?, gamemode);
+		server.setGamemode(user.?, gamemode);
 	}
 }
 pub const Command = struct { // MARK: Command
@@ -412,7 +412,7 @@ pub const Command = struct { // MARK: Command
 		pub fn getUsers(self: SyncOperation, allocator: NeverFailingAllocator) []*main.server.User {
 			switch (self) {
 				inline .create, .delete, .useDurability => |data| {
-					const users = Inventory.ServerSide.getServerInventory(data.inv.inv.id).users.items;
+					const users = Inventory.server.getServerInventory(data.inv.inv.id).users.items;
 					const result = allocator.alloc(*main.server.User, users.len);
 					for (0..users.len) |i| {
 						result[i] = users[i].user;
@@ -860,7 +860,7 @@ pub const Command = struct { // MARK: Command
 			if (side != .client) return;
 			if (reader.remaining.len != 0) {
 				const serverId = try reader.readEnum(InventoryId);
-				Inventory.ClientSide.mapServerId(serverId, self.inv);
+				Inventory.client.mapServerId(serverId, self.inv);
 			}
 		}
 
@@ -903,9 +903,9 @@ pub const Command = struct { // MARK: Command
 				.other => .{.other = {}},
 				.alreadyFreed => return error.Invalid,
 			};
-			try Inventory.ServerSide.createInventory(user.?, id, len, source);
+			try Inventory.server.createInventory(user.?, id, len, source);
 			return .{
-				.inv = Inventory.ServerSide.getInventory(user.?, id) orelse return error.InventoryNotFound,
+				.inv = Inventory.server.getInventory(user.?, id) orelse return error.InventoryNotFound,
 				.source = source,
 			};
 		}
@@ -920,7 +920,7 @@ pub const Command = struct { // MARK: Command
 		fn finalize(self: Close, side: Side, _: *BinaryReader) !void {
 			if (side != .client) return;
 			self.inv._deinit(self.allocator, .client);
-			Inventory.ClientSide.unmapServerIdByClientId(self.inv.id);
+			Inventory.client.unmapServerIdByClientId(self.inv.id);
 		}
 
 		fn serialize(self: Close, writer: *BinaryWriter) void {
@@ -930,7 +930,7 @@ pub const Command = struct { // MARK: Command
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !Close {
 			if (side != .server or user == null) return error.Invalid;
 			const id = try reader.readEnum(InventoryId);
-			try Inventory.ServerSide.closeInventory(user.?, id);
+			try Inventory.server.closeInventory(user.?, id);
 			return undefined;
 		}
 	};

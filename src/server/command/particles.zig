@@ -30,16 +30,14 @@ pub fn execute(args: []const u8, source: *User) void {
 		switch (err) {
 			error.TooFewArguments => source.sendMessage("#ff0000Too few arguments for command /particles", .{}),
 			error.TooManyArguments => source.sendMessage("#ff0000Too many arguments for command /particles", .{}),
-			error.InvalidParticleId => source.sendMessage("#ff0000Invalid particle id", .{}),
 			error.InvalidBoolean => source.sendMessage("#ff0000Invalid argument. Expected \"true\" or \"false\"", .{}),
 			error.InvalidNumber => return,
-			else => source.sendMessage("#ff0000Error: {s}", .{@errorName(err)}),
 		}
 		return;
 	};
 }
 
-fn parseArguments(source: *User, args: []const u8) anyerror!void {
+fn parseArguments(source: *User, args: []const u8) !void {
 	const zonIndex = std.mem.indexOf(u8, args, " .{") orelse args.len;
 	const zonStr = args[zonIndex..];
 	var split = std.mem.splitScalar(u8, std.mem.trimEnd(u8, args[0..zonIndex], " "), ' ');
@@ -59,7 +57,7 @@ fn parseArguments(source: *User, args: []const u8) anyerror!void {
 	}
 }
 
-fn parseBool(arg: []const u8) anyerror!bool {
+fn parseBool(arg: []const u8) !bool {
 	if (std.mem.eql(u8, arg, "true")) {
 		return true;
 	} else if (std.mem.eql(u8, arg, "false")) {
@@ -69,7 +67,7 @@ fn parseBool(arg: []const u8) anyerror!bool {
 	return error.InvalidBoolean;
 }
 
-fn parseNumber(arg: []const u8, source: *User) anyerror!u32 {
+fn parseNumber(arg: []const u8, source: *User) !u32 {
 	return std.fmt.parseUnsigned(u32, arg, 0) catch |err| {
 		switch (err) {
 			error.Overflow => {

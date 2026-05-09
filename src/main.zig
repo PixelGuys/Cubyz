@@ -491,10 +491,10 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	defer models.deinit();
 
 	items.globalInit();
-	defer items.deinit();
+	defer items.globalDeinit();
 
-	if (!headless) sync.ClientSide.init();
-	defer if (!headless) sync.ClientSide.deinit();
+	if (!headless) sync.client.init();
+	defer if (!headless) sync.client.deinit();
 
 	if (!headless) itemdrop.ItemDropRenderer.init();
 	defer if (!headless) itemdrop.ItemDropRenderer.deinit();
