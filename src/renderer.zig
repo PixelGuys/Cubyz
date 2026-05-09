@@ -1078,7 +1078,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
 
-			main.sync.ClientSide.mutex.lock();
+			main.sync.client.mutex.lock();
 			if (!game.Player.isCreative()) {
 				var damage: f32 = main.game.Player.defaultBlockDamage;
 				const isProceduralItem = stack.item == .proceduralItem;
@@ -1111,7 +1111,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						if (currentBlockProgress != 0) {
 							mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
 						}
-						main.sync.ClientSide.mutex.unlock();
+						main.sync.client.mutex.unlock();
 
 						return;
 					} else {
@@ -1121,7 +1121,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						currentSwingTime = 0;
 					}
 				} else {
-					main.sync.ClientSide.mutex.unlock();
+					main.sync.client.mutex.unlock();
 					return;
 				}
 			} else {
@@ -1130,7 +1130,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 			var newBlock = block;
 			block.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
-			main.sync.ClientSide.mutex.unlock();
+			main.sync.client.mutex.unlock();
 
 			if (newBlock != block) {
 				updateBlockAndSendUpdate(inventory, slot, selectedPos, block, newBlock);
@@ -1139,7 +1139,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	fn updateBlockAndSendUpdate(source: main.items.Inventory.ClientInventory, slot: u32, pos: Vec3i, oldBlock: blocks.Block, newBlock: blocks.Block) void {
-		main.sync.ClientSide.executeCommand(.{
+		main.sync.client.executeCommand(.{
 			.updateBlock = .{
 				.source = .{.inv = source.super, .slot = slot},
 				.pos = pos,

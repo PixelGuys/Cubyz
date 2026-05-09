@@ -165,7 +165,7 @@ pub const User = struct { // MARK: User
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
 
-		main.items.Inventory.ServerSide.disconnectUser(self);
+		main.items.Inventory.server.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
 		self.inventoryClientToServerIdMap.deinit();
 
@@ -175,8 +175,8 @@ pub const User = struct { // MARK: User
 				return;
 			};
 
-			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(self.inventory.?);
-			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(self.handInventory.?);
+			main.items.Inventory.server.destroyExternallyManagedInventory(self.inventory.?);
+			main.items.Inventory.server.destroyExternallyManagedInventory(self.handInventory.?);
 		}
 
 		self.permissions.deinit();
@@ -446,7 +446,7 @@ pub const User = struct { // MARK: User
 		for (commands.items) |commandData| {
 			defer main.globalAllocator.free(commandData);
 			var reader: BinaryReader = .init(commandData);
-			main.sync.ServerSide.executeUserCommand(self, &reader) catch |err| {
+			main.sync.server.executeUserCommand(self, &reader) catch |err| {
 				if (err == error.InventoryNotFound) {
 					main.network.protocols.inventory.sendFailure(self.conn);
 				} else {
@@ -548,8 +548,8 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	}; // TODO Configure the second argument in the server settings.
 
 	main.entity.server.init();
-	main.items.Inventory.ServerSide.init();
-	main.sync.ServerSide.init();
+	main.items.Inventory.server.init();
+	main.sync.server.init();
 
 	world = ServerWorld.init(name) catch |err| {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
@@ -596,8 +596,8 @@ fn deinit() void {
 	}
 	world = null;
 
-	main.sync.ServerSide.deinit();
-	main.items.Inventory.ServerSide.deinit();
+	main.sync.server.deinit();
+	main.items.Inventory.server.deinit();
 	main.entity.server.deinit();
 
 	command.deinit();

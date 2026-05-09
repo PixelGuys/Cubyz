@@ -903,17 +903,17 @@ pub const inventory = struct { // MARK: inventory
 	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const typ = try reader.readInt(u8);
 		if (typ == 0xff) { // Confirmation
-			try main.sync.ClientSide.receiveConfirmation(reader);
+			try main.sync.client.receiveConfirmation(reader);
 		} else if (typ == 0xfe) { // Failure
-			main.sync.ClientSide.receiveFailure();
+			main.sync.client.receiveFailure();
 		} else {
-			try main.sync.ClientSide.receiveSyncOperation(reader);
+			try main.sync.client.receiveSyncOperation(reader);
 		}
 	}
 	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const user = conn.user.?;
 		if (reader.remaining[0] == 0xff) return error.Invalid;
-		main.sync.ServerSide.receiveCommand(user, reader);
+		main.sync.server.receiveCommand(user, reader);
 	}
 	pub fn sendCommand(conn: *Connection, payloadType: main.sync.Command.PayloadType, _data: []const u8) void {
 		std.debug.assert(conn.user == null);

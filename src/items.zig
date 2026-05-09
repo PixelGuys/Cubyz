@@ -1222,7 +1222,19 @@ pub fn globalInit() void {
 			.printTooltip = comptime main.meta.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.printTooltip),
 		}) catch unreachable;
 	}
-	Inventory.ClientSide.init();
+	Inventory.client.init();
+}
+
+pub fn globalDeinit() void {
+	Inventory.client.deinit();
+}
+
+pub fn reset() void {
+	proceduralItemTypeList = .{};
+	proceduralItemTypeIdToIndex = .{};
+	reverseIndices = .{};
+	recipeList.clearAndFree();
+	itemListSize = 0;
 }
 
 pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) *BaseItem {
@@ -1373,16 +1385,4 @@ pub fn clearRecipeCachedInventories() void {
 		main.globalAllocator.free(recipe.sourceItems);
 		main.globalAllocator.free(recipe.sourceAmounts);
 	}
-}
-
-pub fn reset() void {
-	proceduralItemTypeList = .{};
-	proceduralItemTypeIdToIndex = .{};
-	reverseIndices = .{};
-	recipeList.clearAndFree();
-	itemListSize = 0;
-}
-
-pub fn deinit() void {
-	Inventory.ClientSide.deinit();
 }

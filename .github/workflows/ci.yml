@@ -31,10 +31,12 @@ jobs:
             git diff --color=always;
             exit 1;
           fi
+      - run: wget -O ./Cubyz-linter https://github.com/PixelGuys/Cubyz-linter/releases/download/0.16.0%2B0/Cubyz-linter-x86_64-linux
+      - run: chmod +x ./Cubyz-linter
+      - run: ./Cubyz-linter assets/ mods/ src/ *.zon
       - run: zig build
       - run: zig build -Dtarget=x86_64-windows-gnu
       - run: zig build -Dtarget=aarch64-linux-gnu
       - run: zig build -Dtarget=aarch64-windows-gnu
       - run: zig build test
-      - run: zig build format --summary none
       - run: find assets/cubyz/shaders -type f | xargs -L1 glslangValidator -G100
