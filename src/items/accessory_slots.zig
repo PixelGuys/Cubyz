@@ -82,8 +82,8 @@ pub fn getById(id: []const u8) ?*AccessorySlot {
 	return accessorySlotsById.get(id);
 }
 
-pub fn getByIndex(index: u32) ?*AccessorySlot {
-	return accessorySlots.items[index];
+pub fn getByIndex(index: u32) *AccessorySlot {
+	return &accessorySlots.items[index];
 }
 
 pub fn getTotalSlotCount() u32 {
