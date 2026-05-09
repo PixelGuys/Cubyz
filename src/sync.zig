@@ -412,7 +412,7 @@ pub const Command = struct { // MARK: Command
 		pub fn getUsers(self: SyncOperation, allocator: NeverFailingAllocator) []*main.server.User {
 			switch (self) {
 				inline .create, .delete, .useDurability => |data| {
-					const users = Inventory.ServerSide.getServerInventory(data.inv.inv.id).users.items;
+					const users = Inventory.server.getServerInventory(data.inv.inv.id).users.items;
 					const result = allocator.alloc(*main.server.User, users.len);
 					for (0..users.len) |i| {
 						result[i] = users[i].user;
@@ -903,9 +903,9 @@ pub const Command = struct { // MARK: Command
 				.other => .{.other = {}},
 				.alreadyFreed => return error.Invalid,
 			};
-			try Inventory.ServerSide.createInventory(user.?, id, len, source);
+			try Inventory.server.createInventory(user.?, id, len, source);
 			return .{
-				.inv = Inventory.ServerSide.getInventory(user.?, id) orelse return error.InventoryNotFound,
+				.inv = Inventory.server.getInventory(user.?, id) orelse return error.InventoryNotFound,
 				.source = source,
 			};
 		}
@@ -930,7 +930,7 @@ pub const Command = struct { // MARK: Command
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !Close {
 			if (side != .server or user == null) return error.Invalid;
 			const id = try reader.readEnum(InventoryId);
-			try Inventory.ServerSide.closeInventory(user.?, id);
+			try Inventory.server.closeInventory(user.?, id);
 			return undefined;
 		}
 	};

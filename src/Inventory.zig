@@ -91,7 +91,7 @@ pub const client = struct { // MARK: client
 	}
 };
 
-pub const ServerSide = struct { // MARK: ServerSide
+pub const server = struct { // MARK: server
 	const ServerInventory = struct {
 		inv: Inventory,
 		users: main.ListUnmanaged(struct { user: *main.server.User, cliendId: InventoryId }),
@@ -274,7 +274,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 					fn callback(callbackSource: Source) void {
 						std.debug.assert(callbackSource == .workbench);
 						const workbenchInventory = getInventoryFromSource(callbackSource) orelse @panic("Could not find workbench Inventory");
-						const playerInventory = ServerSide.getInventoryFromSource(.{.playerInventory = callbackSource.workbench.playerId}) orelse @panic("Could not find player Inventory");
+						const playerInventory = server.getInventoryFromSource(.{.playerInventory = callbackSource.workbench.playerId}) orelse @panic("Could not find player Inventory");
 
 						const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 						defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
@@ -385,7 +385,7 @@ pub fn getInventory(id: InventoryId, side: sync.Side, user: ?*main.server.User) 
 	sync.threadContext.assertCorrectContext(side);
 	return switch (side) {
 		.client => client.getInventory(id),
-		.server => ServerSide.getInventory(user.?, id),
+		.server => server.getInventory(user.?, id),
 	};
 }
 
@@ -572,7 +572,7 @@ fn _init(allocator: NeverFailingAllocator, _size: usize, source: Source, side: s
 		._items = allocator.alloc(ItemStack, _size),
 		.id = switch (side) {
 			.client => client.nextId(),
-			.server => ServerSide.nextId(),
+			.server => server.nextId(),
 		},
 		.source = source,
 		.callbacks = callbacks,
@@ -586,7 +586,7 @@ fn _init(allocator: NeverFailingAllocator, _size: usize, source: Source, side: s
 pub fn _deinit(self: Inventory, allocator: NeverFailingAllocator, side: sync.Side) void {
 	switch (side) {
 		.client => client.freeId(self.id),
-		.server => ServerSide.freeId(self.id),
+		.server => server.freeId(self.id),
 	}
 	for (self._items) |*item| {
 		item.deinit();
