@@ -280,7 +280,7 @@ pub const server = struct { // MARK: server
 						defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 						for (userList) |callbackUser| {
 							if (callbackUser.id == callbackSource.workbench.playerId) {
-								sync.ServerSide.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, callbackUser.player().pos)}, null);
+								sync.server.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, callbackUser.player().pos)}, null);
 								break;
 							}
 						}
@@ -347,7 +347,7 @@ pub const server = struct { // MARK: server
 		var inventoryIdIterator = user.inventoryClientToServerIdMap.valueIterator();
 		while (inventoryIdIterator.next()) |inventoryId| {
 			if (inventories.items()[@intFromEnum(inventoryId.*)].source == .playerInventory) {
-				sync.ServerSide.executeCommand(.{.clear = .{.inv = inventories.items()[@intFromEnum(inventoryId.*)].inv}}, null);
+				sync.server.executeCommand(.{.clear = .{.inv = inventories.items()[@intFromEnum(inventoryId.*)].inv}}, null);
 			}
 		}
 	}
@@ -363,14 +363,14 @@ pub const server = struct { // MARK: server
 					if (std.meta.eql(invStack.item, itemStack.item)) {
 						const amount = @min(itemStack.item.stackSize() - invStack.amount, itemStack.amount);
 						if (amount == 0) continue;
-						sync.ServerSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = inv, .slot = @intCast(slot)}, .item = itemStack.item, .amount = invStack.amount + amount}}, null);
+						sync.server.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = inv, .slot = @intCast(slot)}, .item = itemStack.item, .amount = invStack.amount + amount}}, null);
 						itemStack.amount -= amount;
 						if (itemStack.amount == 0) break :outer;
 					}
 				}
 				for (inv._items, 0..) |invStack, slot| {
 					if (invStack.item == .null) {
-						sync.ServerSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = inv, .slot = @intCast(slot)}, .item = itemStack.item, .amount = itemStack.amount}}, null);
+						sync.server.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = inv, .slot = @intCast(slot)}, .item = itemStack.item, .amount = itemStack.amount}}, null);
 						itemStack.amount = 0;
 						break :outer;
 					}

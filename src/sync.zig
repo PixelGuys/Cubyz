@@ -128,7 +128,7 @@ pub const client = struct { // MARK: client
 	}
 };
 
-pub const ServerSide = struct { // MARK: ServerSide
+pub const server = struct { // MARK: server
 
 	pub fn init() void {
 		threadContext = .server;
@@ -210,7 +210,7 @@ pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, userId: u
 	if (side == .client) {
 		client.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}});
 	} else {
-		ServerSide.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}}, null);
+		server.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}}, null);
 	}
 }
 
@@ -218,7 +218,7 @@ pub fn setGamemode(user: ?*main.server.User, gamemode: Gamemode) void {
 	if (user == null) {
 		client.setGamemode(gamemode);
 	} else {
-		ServerSide.setGamemode(user.?, gamemode);
+		server.setGamemode(user.?, gamemode);
 	}
 }
 pub const Command = struct { // MARK: Command

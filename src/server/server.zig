@@ -446,7 +446,7 @@ pub const User = struct { // MARK: User
 		for (commands.items) |commandData| {
 			defer main.globalAllocator.free(commandData);
 			var reader: BinaryReader = .init(commandData);
-			main.sync.ServerSide.executeUserCommand(self, &reader) catch |err| {
+			main.sync.server.executeUserCommand(self, &reader) catch |err| {
 				if (err == error.InventoryNotFound) {
 					main.network.protocols.inventory.sendFailure(self.conn);
 				} else {
@@ -549,7 +549,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 
 	main.entity.server.init();
 	main.items.Inventory.server.init();
-	main.sync.ServerSide.init();
+	main.sync.server.init();
 
 	world = ServerWorld.init(name) catch |err| {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
@@ -596,7 +596,7 @@ fn deinit() void {
 	}
 	world = null;
 
-	main.sync.ServerSide.deinit();
+	main.sync.server.deinit();
 	main.items.Inventory.server.deinit();
 	main.entity.server.deinit();
 
