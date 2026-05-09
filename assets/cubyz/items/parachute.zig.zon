@@ -1,5 +1,4 @@
 .{
-	.tags = .{},
 	.texture = "parachute.png",
 	.physicsProperties = .{
 		.extraAirFriction = 5,

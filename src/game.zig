@@ -496,14 +496,14 @@ pub fn getBlockWithSide(comptime side: main.sync.Side, x: i32, y: i32, z: i32) ?
 
 pub fn getOtherAirFrictionSources(givenFriction: f32) f32 {
 	const extraItemFriction = if ((Player.inventory.getItem(Player.selectedSlot)) == .baseItem) Player.inventory.getItem(Player.selectedSlot).baseItem.physicsProperties().extraAirFriction else 0;
-	
+
 	const calculatedFriction = givenFriction + extraItemFriction;
 	return calculatedFriction;
 }
 
 pub fn getOtherMoveSpeedSources(givenSpeed: f32) f32 {
 	const extraItemSpeedMult = if (((Player.inventory.getItem(Player.selectedSlot)) == .baseItem) and (!Player.onGround)) Player.inventory.getItem(Player.selectedSlot).baseItem.physicsProperties().airSpeedmult else 1;
-	
+
 	const calculatedSpeed = givenSpeed*extraItemSpeedMult;
 	return calculatedSpeed;
 }
