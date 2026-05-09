@@ -59,7 +59,6 @@ var accessorySlotsById: std.StringHashMapUnmanaged(*AccessorySlot) = .{};
 var totalSlotCount: u32 = 0;
 
 fn register(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
-
 	const accessorySlot = AccessorySlot.init(assetFolder, id, zon);
 	accessorySlots.append(main.worldArena, accessorySlot);
 	const slotPtr = &accessorySlots.items[accessorySlots.items.len - 1];

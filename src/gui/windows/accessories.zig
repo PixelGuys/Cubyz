@@ -30,12 +30,9 @@ const padding: f32 = 8;
 
 var itemSlots: []*ItemSlot = undefined;
 
-pub fn init() void {
-}
+pub fn init() void {}
 
-pub fn deinit() void {
-}
-
+pub fn deinit() void {}
 
 pub fn onOpen() void {
 	itemSlots = main.globalAllocator.alloc(*ItemSlot, items.accessory_slots.getTotalSlotCount());

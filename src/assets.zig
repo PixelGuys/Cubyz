@@ -137,7 +137,6 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
 			addon.readAllZon(allocator, "entityModels", true, &self.entityModelDescriptions, &self.entityModelMigrations);
 			addon.readAllZon(allocator, "accessory_slots", true, &self.accessorySlots, &self.accessorySlotMigrations);
-			
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
