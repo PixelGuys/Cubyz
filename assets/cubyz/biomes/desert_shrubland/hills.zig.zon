@@ -1,6 +1,6 @@
 .{
 	.minHeightLimit = 7,
-	.minHeight = 12,
+	.minHeight = 30,
 	.maxHeight = 60,
 	.maxHeightLimit = 70,
 	.minRadius = 70,

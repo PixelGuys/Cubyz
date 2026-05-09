@@ -1,7 +1,8 @@
 .{
 	.blueprints = .{
-		.{.id = "cubyz:tree/baobab/shrub/shrub1"},
-		.{.id = "cubyz:tree/baobab/shrub/shrub2"},
-		.{.id = "cubyz:tree/baobab/shrub/shrub3"},
+		.{.id = "cubyz:tree/baobab/shrub/0"},
+		.{.id = "cubyz:tree/baobab/shrub/1"},
+		.{.id = "cubyz:tree/baobab/shrub/2"},
+		.{.id = "cubyz:tree/baobab/shrub/3"},
 	},
 }

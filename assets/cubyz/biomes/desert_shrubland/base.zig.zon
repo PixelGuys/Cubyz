@@ -6,13 +6,19 @@
 	.minRadius = 256,
 	.maxRadius = 320,
 	.hills = 30,
-	.chance = 1.0,
+	.chance = 0.5,
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/baobab/shrub",
 			.placeMode = .degradable,
 			.chance = 0.14,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/baobab/small",
+			.placeMode = .degradable,
+			.chance = 0.05,
 		},
 		.{
 			.id = "cubyz:sbb",

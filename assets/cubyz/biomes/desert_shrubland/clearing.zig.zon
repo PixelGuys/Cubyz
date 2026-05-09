@@ -1,6 +1,6 @@
 .{
 	.minHeightLimit = 7,
-	.minHeight = 22,
+	.minHeight = 32,
 	.maxHeight = 40,
 	.maxHeightLimit = 50,
 	.minRadius = 50,
@@ -38,7 +38,7 @@
 		.{
 			.id = "cubyz:flower_patch",
 			.blocks = .{"cubyz:tussock"},
-			.chance = 0.13,
+			.chance = 0.23,
 			.width = 4,
 			.variation = 4,
 			.density = 0.2,
@@ -46,7 +46,7 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.chance = 0.01,
+			.chance = 0.03,
 			.block = "cubyz:ocotillo",
 			.height = 1,
 			.height_variation = 0,
@@ -78,7 +78,7 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:desert_shrubland/base",
-			.chance = 15,
+			.chance = 25,
 		},
 	},
 }
