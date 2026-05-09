@@ -29,6 +29,8 @@ const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
 
+const c = @import("c");
+
 pub const maxBlockCount: usize = 65536; // 16 bit limit
 
 pub const BlockDrop = struct {
@@ -68,6 +70,52 @@ pub const Ore = struct {
 	seed: u64,
 };
 
+const SelectionCapabilities = struct {
+	capabilities: ?[]const Capability,
+
+	const Capability = enum(u8) {
+		toolEffective,
+
+		pub fn allowsSelectionByItem(self: Capability, block: Block, item: Item) bool {
+			return switch (self) {
+				.toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(block),
+			};
+		}
+	};
+
+	pub const alwaysSelectable: SelectionCapabilities = .{.capabilities = null};
+
+	pub fn loadFromZon(arena: main.heap.NeverFailingAllocator, zon: main.ZonElement) SelectionCapabilities {
+		var list = main.ListUnmanaged(Capability).initCapacity(arena, zon.toSlice().len);
+		for (zon.toSlice()) |capabilityZon| {
+			if (capabilityZon.as(?Capability, null)) |capability| {
+				list.appendAssumeCapacity(capability);
+			} else std.log.err("SelectionCapability is invalid. Ignoring", .{});
+		}
+		return .{.capabilities = list.items};
+	}
+
+	pub fn allowsSelectionByItem(self: SelectionCapabilities, block: Block, item: Item) bool {
+		if (item == .baseItem) {
+			const base = item.baseItem;
+			if (base.block() == block.typ or std.mem.eql(u8, base.id(), "cubyz:selection_wand")) {
+				return true;
+			}
+		}
+
+		if (block.hasTag(.fluid)) {
+			const fluidPlaceable = item == .baseItem and item.baseItem.hasTag(.fluidPlaceable);
+			return fluidPlaceable;
+		}
+
+		const capabilities = self.capabilities orelse return true;
+		for (capabilities) |capability| {
+			if (capability.allowsSelectionByItem(block, item)) return true;
+		}
+		return false;
+	}
+};
+
 var _transparent: [maxBlockCount]bool = undefined;
 var _collide: [maxBlockCount]bool = undefined;
 var _id: [maxBlockCount][]u8 = undefined;
@@ -77,7 +125,7 @@ var _blockResistance: [maxBlockCount]f32 = undefined;
 
 /// Whether you can replace it with another block, mainly used for fluids/gases
 var _replaceable: [maxBlockCount]bool = undefined;
-var _selectable: [maxBlockCount]bool = undefined;
+var _selectionCapabilities: [maxBlockCount]SelectionCapabilities = undefined;
 var _blockDrops: [maxBlockCount][]const BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
 var _degradable: [maxBlockCount]bool = undefined;
@@ -137,9 +185,14 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_light[size] = zon.get(u32, "emittedLight", 0);
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
-	_selectable[size] = zon.get(bool, "selectable", true);
-	_replaceable[size] = zon.get(bool, "replaceable", false);
 
+	if (zon.getChildOrNull("selectionCapabilities")) |capabilitiesZon| {
+		_selectionCapabilities[size] = .loadFromZon(main.worldArena, capabilitiesZon);
+	} else {
+		_selectionCapabilities[size] = .alwaysSelectable;
+	}
+
+	_replaceable[size] = zon.get(bool, "replaceable", false);
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
 	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
@@ -182,8 +235,7 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 
 	for (drops, 0..) |blockDrop, i| {
 		const itemZons = blockDrop.getChild("items").toSlice();
-		var resultItems = main.List(items.ItemStack).initCapacity(main.stackAllocator, itemZons.len);
-		defer resultItems.deinit();
+		var resultItems = main.List(items.ItemStack).initCapacity(main.worldArena, itemZons.len);
 
 		for (itemZons) |itemZon| {
 			var string = itemZon.as([]const u8, "auto");
@@ -218,7 +270,7 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 		}
 
 		blockDrops[i] = .{
-			.items = main.worldArena.dupe(main.items.ItemStack, resultItems.items),
+			.items = resultItems.items,
 			.chance = blockDrop.get(f32, "chance", 1),
 			.forbiddenToolTags = Tag.loadTagsFromZon(main.worldArena, blockDrop.getChild("forbiddenToolTags")),
 			.allowedToolTags = allowedToolTags,
@@ -414,8 +466,8 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return _replaceable[self.typ];
 	}
 
-	pub inline fn selectable(self: Block) bool {
-		return _selectable[self.typ];
+	pub inline fn selectionCapabilities(self: Block) SelectionCapabilities {
+		return _selectionCapabilities[self.typ];
 	}
 
 	pub inline fn blockDrops(self: Block) []const BlockDrop {
@@ -525,6 +577,10 @@ pub const Block = packed struct(u32) { // MARK: Block
 	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
 		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
 	}
+
+	pub inline fn isSelectableByItem(self: Block, item: Item) bool {
+		return self.selectionCapabilities().allowsSelectionByItem(self, item);
+	}
 };
 
 pub const meshes = struct { // MARK: meshes
@@ -546,7 +602,8 @@ pub const meshes = struct { // MARK: meshes
 	/// Number of loaded meshes. Used to determine if an update is needed.
 	var loadedMeshes: u32 = 0;
 
-	var textureIDs: main.ListUnmanaged([]const u8) = .{};
+	var textureIds: main.ListUnmanaged([]const u8) = .{};
+	var texturePaths: main.ListUnmanaged([]const u8) = .{};
 	var animationData: []AnimationData = &.{};
 	var blockTextures: main.ListUnmanaged(Image) = .{};
 	var emissionTextures: main.ListUnmanaged(Image) = .{};
@@ -618,7 +675,8 @@ pub const meshes = struct { // MARK: meshes
 	pub fn reset() void {
 		meshes.size = 0;
 		loadedMeshes = 0;
-		textureIDs = .{};
+		textureIds = .{};
+		texturePaths = .{};
 		animationData = &.{};
 		blockTextures = .{};
 		emissionTextures = .{};
@@ -714,8 +772,8 @@ pub const meshes = struct { // MARK: meshes
 		var path = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
 		defer main.stackAllocator.free(path);
 		// Test if it's already in the list:
-		for (textureIDs.items, 0..) |other, j| {
-			if (std.mem.eql(u8, other, path)) {
+		for (textureIds.items, 0..) |other, j| {
+			if (std.mem.eql(u8, other, textureId)) {
 				result = @intCast(j);
 				return result;
 			}
@@ -733,9 +791,10 @@ pub const meshes = struct { // MARK: meshes
 		};
 		file.close(main.io); // It was only openend to check if it exists.
 		// Otherwise read it into the list:
-		result = @intCast(textureIDs.items.len);
+		result = @intCast(textureIds.items.len);
 
-		textureIDs.append(main.worldArena, main.worldArena.dupe(u8, path));
+		textureIds.append(main.worldArena, main.worldArena.dupe(u8, textureId));
+		texturePaths.append(main.worldArena, main.worldArena.dupe(u8, path));
 		return result;
 	}
 
@@ -758,7 +817,7 @@ pub const meshes = struct { // MARK: meshes
 
 		getTextureIndices(zon, assetFolder, &textureIndices[meshes.size]);
 
-		maxTextureCount[meshes.size] = @intCast(textureIDs.items.len);
+		maxTextureCount[meshes.size] = @intCast(textureIds.items.len);
 
 		meshes.size += 1;
 	}
@@ -780,16 +839,16 @@ pub const meshes = struct { // MARK: meshes
 
 	pub fn preProcessAnimationData(time: u32) void {
 		animationComputePipeline.bind();
-		graphics.c.glUniform1ui(animationUniforms.time, time);
-		graphics.c.glUniform1ui(animationUniforms.size, @intCast(animationData.len));
-		graphics.c.glDispatchCompute(@intCast(@divFloor(animationData.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
-		graphics.c.glMemoryBarrier(graphics.c.GL_SHADER_STORAGE_BARRIER_BIT);
+		c.glUniform1ui(animationUniforms.time, time);
+		c.glUniform1ui(animationUniforms.size, @intCast(animationData.len));
+		c.glDispatchCompute(@intCast(@divFloor(animationData.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
+		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
 	}
 
 	fn finishTextureLoading() void {
-		animationData = main.worldArena.alloc(AnimationData, textureIDs.items.len);
-		textureOcclusionData = main.worldArena.alloc(std.atomic.Value(bool), textureIDs.items.len);
-		for (textureIDs.items, 0..) |path, i| {
+		animationData = main.worldArena.alloc(AnimationData, textureIds.items.len);
+		textureOcclusionData = main.worldArena.alloc(std.atomic.Value(bool), textureIds.items.len);
+		for (texturePaths.items, 0..) |path, i| {
 			readTextureData(i, path);
 		}
 	}
@@ -800,14 +859,13 @@ pub const meshes = struct { // MARK: meshes
 		reflectivityTextures.clearRetainingCapacity();
 		absorptionTextures.clearRetainingCapacity();
 		textureFogData.clearRetainingCapacity();
-		for (textureIDs.items, 0..) |path, i| {
+		for (texturePaths.items, 0..) |path, i| {
 			readTextureData(i, path);
 		}
 		generateTextureArray();
 	}
 
 	pub fn generateTextureArray() void {
-		const c = graphics.c;
 		blockTextureArray.generate(blockTextures.items, true, true);
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
 		emissionTextureArray.generate(emissionTextures.items, true, false);

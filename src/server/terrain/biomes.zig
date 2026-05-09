@@ -6,7 +6,7 @@ const ServerChunk = main.chunk.ServerChunk;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const vec = @import("main.vec");
+const vec = main.vec;
 const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
 
@@ -246,6 +246,7 @@ pub const Biome = struct { // MARK: Biome
 	supportsRivers: bool, // TODO: Reimplement rivers.
 	/// The first members in this array will get prioritized.
 	vegetationModels: []SimpleStructureModel = &.{},
+	maxSdfExtend: vec.Boxi = .{.min = @splat(0), .max = @splat(0)},
 	caveSdfModels: []terrain.sdf.SdfModel = &.{},
 	stripes: []Stripe = &.{},
 	subBiomes: main.utils.AliasTable(SubBiomeData) = .{.items = &.{}, .aliasData = &.{}},
@@ -378,7 +379,9 @@ pub const Biome = struct { // MARK: Biome
 		defer caveSdfs.deinit(main.stackAllocator);
 		for (caves.toSlice()) |elem| {
 			const model = terrain.sdf.SdfModel.initModel(elem) orelse continue;
-			caveSdfs.append(main.stackAllocator, model);
+			const spawnOffset: vec.Vec3i = @splat(@ceil(model.model.maxBiomeCenterDistance));
+			self.maxSdfExtend = self.maxSdfExtend.merge(.{.min = model.maxExtend.min - spawnOffset, .max = model.maxExtend.max + spawnOffset});
+			caveSdfs.append(main.stackAllocator, model.model);
 		}
 		self.caveSdfModels = main.worldArena.dupe(terrain.sdf.SdfModel, caveSdfs.items);
 
@@ -451,7 +454,7 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 
 	pub fn addSubTerranian(self: BlockStructure, chunk: *ServerChunk, startingDepth: i32, minDepth: i32, slope: i32, soilCreep: f32, x: i32, y: i32, seed: *u64) i32 {
 		var depth = startingDepth;
-		var remainingSkippedBlocks = @as(i32, @intFromFloat(@as(f32, @floatFromInt(slope))*soilCreep)) - 1;
+		var remainingSkippedBlocks = @as(i32, @trunc(@as(f32, @floatFromInt(slope))*soilCreep)) - 1;
 		for (self.structure) |blockStack| {
 			const total = blockStack.min + main.random.nextIntBounded(u32, seed, @as(u32, 1) + blockStack.max - blockStack.min);
 			for (0..total) |_| {

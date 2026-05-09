@@ -8,8 +8,9 @@ const settings = main.settings;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 const List = main.List;
-
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+
+const c = @import("c");
 
 const Button = @import("components/Button.zig");
 const CheckBox = @import("components/CheckBox.zig");
@@ -137,6 +138,7 @@ pub fn init() void { // MARK: init()
 		}
 	}
 	GuiWindow.globalInit();
+	GuiComponent.BagSlot.globalInit();
 	Button.globalInit();
 	CheckBox.globalInit();
 	ItemSlot.globalInit();
@@ -155,14 +157,15 @@ pub fn deinit() void {
 		window.onCloseFn();
 	}
 	openWindows.clearRetainingCapacity();
-	GuiWindow.__deinit();
-	Button.__deinit();
-	CheckBox.__deinit();
-	ItemSlot.__deinit();
-	ScrollBar.__deinit();
-	ContinuousSlider.__deinit();
-	DiscreteSlider.__deinit();
-	TextInput.__deinit();
+	GuiWindow.globalDeinit();
+	GuiComponent.BagSlot.globalDeinit();
+	Button.globalDeinit();
+	CheckBox.globalDeinit();
+	ItemSlot.globalDeinit();
+	ScrollBar.globalDeinit();
+	ContinuousSlider.globalDeinit();
+	DiscreteSlider.globalDeinit();
+	TextInput.globalDeinit();
 	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
 		const WindowStruct = @field(windowlist, decl.name);
 		if (@hasDecl(WindowStruct, "deinit")) {
@@ -556,7 +559,7 @@ pub fn updateAndRenderGui() void {
 		if (!main.Window.grabbed) {
 			draw.setColor(0x80000000);
 			GuiWindow.borderPipeline.bind(draw.getScissor());
-			graphics.c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
+			c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
 			draw.customShadedRect(GuiWindow.borderUniforms, .{0, 0}, main.Window.getWindowSize());
 		}
 		const oldScale = draw.setScale(scale);

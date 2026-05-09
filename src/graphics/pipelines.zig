@@ -2,9 +2,10 @@ const std = @import("std");
 
 const main = @import("main");
 const graphics = main.graphics;
-const c = graphics.c;
 const vulkan = graphics.vulkan;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+
+const c = @import("c");
 
 const glslang = @cImport({
 	@cInclude("glslang/Include/glslang_c_interface.h");

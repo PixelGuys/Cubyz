@@ -9,6 +9,7 @@ pub const assets = @import("assets.zig");
 pub const block_entity = @import("block_entity.zig");
 pub const blocks = @import("blocks.zig");
 pub const blueprint = @import("blueprint.zig");
+const c = @import("c");
 pub const callbacks = @import("callbacks/callbacks.zig");
 pub const chunk = @import("chunk.zig");
 pub const client = @import("client.zig");
@@ -283,7 +284,6 @@ fn setHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
 }
 
 pub const KeyBoard = struct { // MARK: KeyBoard
-	const c = Window.c;
 	pub var keys = [_]Window.Key{
 		// Gameplay:
 		.{.name = "forward", .key = c.GLFW_KEY_W, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}},
@@ -562,7 +562,6 @@ pub fn clientMain() void { // MARK: clientMain()
 		},
 	}
 
-	const c = Window.c;
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastBeginRendering = timestamp();
 

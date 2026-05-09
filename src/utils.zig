@@ -125,7 +125,7 @@ pub fn AliasTable(comptime T: type) type { // MARK: AliasTable
 				currentChances[lastOverfullIndex] -= delta;
 				self.aliasData[lastUnderfullIndex] = .{
 					.alias = lastOverfullIndex,
-					.chance = @intFromFloat(delta/desiredChance*std.math.maxInt(u16)),
+					.chance = @trunc(delta/desiredChance*std.math.maxInt(u16)),
 				};
 				if (currentChances[lastOverfullIndex] < desiredChance) {
 					lastUnderfullIndex = @min(lastUnderfullIndex, lastOverfullIndex);
@@ -1659,63 +1659,9 @@ pub const Mutex = struct { // MARK: Mutex
 	}
 };
 
-/// A read-write lock with read priority.
-pub const ReadWriteLock = struct { // MARK: ReadWriteLock
-	condition: Condition = .{},
-	mutex: main.utils.Mutex = .{},
-	readers: u32 = 0,
-
-	pub fn tryLockRead(self: *ReadWriteLock) bool {
-		if (!self.mutex.tryLock()) return false;
-		self.readers += 1;
-		self.mutex.unlock();
-		return true;
-	}
-
-	pub fn lockRead(self: *ReadWriteLock) void {
-		self.mutex.lock();
-		self.readers += 1;
-		self.mutex.unlock();
-	}
-
-	pub fn unlockRead(self: *ReadWriteLock) void {
-		self.mutex.lock();
-		self.readers -= 1;
-		if (self.readers == 0) {
-			self.condition.broadcast();
-		}
-		self.mutex.unlock();
-	}
-
-	pub fn lockWrite(self: *ReadWriteLock) void {
-		self.mutex.lock();
-		while (self.readers != 0) {
-			self.condition.wait(&self.mutex);
-		}
-	}
-
-	pub fn unlockWrite(self: *ReadWriteLock) void {
-		self.mutex.unlock();
-	}
-
-	pub fn assertLockedWrite(self: *ReadWriteLock) void {
-		if (builtin.mode == .Debug) {
-			std.debug.assert(!self.mutex.tryLock());
-		}
-	}
-
-	pub fn assertLockedRead(self: *ReadWriteLock) void {
-		if (builtin.mode == .Debug and !builtin.sanitize_thread) {
-			if (self.readers == 0) {
-				std.debug.assert(!self.mutex.tryLock());
-			}
-		}
-	}
-};
-
 const endian: std.builtin.Endian = .big;
 
-pub const BinaryReader = struct {
+pub const BinaryReader = struct { // MARK: BinaryReader
 	remaining: []const u8,
 
 	pub const AllErrors = error{ OutOfBounds, IntOutOfBounds, InvalidEnumTag, InvalidFloat };
@@ -1802,7 +1748,7 @@ pub const BinaryReader = struct {
 	}
 };
 
-pub const BinaryWriter = struct {
+pub const BinaryWriter = struct { // MARK: BinaryWriter
 	data: main.List(u8),
 
 	pub fn init(allocator: NeverFailingAllocator) BinaryWriter {

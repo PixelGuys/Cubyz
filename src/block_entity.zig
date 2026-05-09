@@ -6,7 +6,6 @@ const Chunk = main.chunk.Chunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const getIndex = main.chunk.getIndex;
 const graphics = main.graphics;
-const c = graphics.c;
 const server = main.server;
 const User = server.User;
 const mesh_storage = main.renderer.mesh_storage;
@@ -17,6 +16,8 @@ const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
+
+const c = @import("c");
 
 const UpdateEvent = union(enum) {
 	remove: void,
@@ -520,7 +521,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			c.glUniform3f(uniforms.ambientLight, ambientLight[0], ambientLight[1], ambientLight[2]);
 			c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projectionMatrix));
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&main.game.camera.viewMatrix));
-			c.glUniform3i(uniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+			c.glUniform3i(uniforms.playerPositionInteger, @floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 			c.glUniform3f(uniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 
 			outer: for (StorageClient.storage.dense.items) |signData| {
