@@ -12,11 +12,10 @@ pub const ServerBlockCallback = Callback(struct { block: Block, chunk: *main.chu
 pub const BlockTouchCallback = Callback(struct { entity: *main.server.Entity, source: Block, blockPos: Vec3i, deltaTime: f64 }, @import("block/touch/_list.zig"));
 
 pub const ItemUsedCallback = Callback(struct {
-	item: main.items.Item,
+	slot: main.items.Inventory.InventoryAndSlot,
 	selectedBlockPos: ?Vec3i = null,
 	lastDir: Vec3f,
 	mod: main.Window.Key.Modifiers,
-	deltaTime: f64,
 }, @import("item/used/_list.zig"));
 
 pub const Result = enum { handled, ignored };

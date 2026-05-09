@@ -930,16 +930,9 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 pub const ItemCallbacks = struct {
 	onLeftClick: ItemUsedCallback,
 
-	var defaultItemUsedCallback: ItemCallbacks = undefined;
-
-	fn init() void {
-		const zon = ZonElement.initObject(main.stackAllocator);
-		defer zon.deinit(main.stackAllocator);
-		zon.put("type", "breakBlock");
-		defaultItemUsedCallback = .{
-			.onLeftClick = ItemUsedCallback.init(zon) orelse .noop,
-		};
-	}
+	var defaultItemUsedCallback: ItemCallbacks = .{
+		.onLeftClick = .noop,
+	};
 
 	fn registerCallbacks(zon: ZonElement) ItemCallbacks {
 		return .{.onLeftClick = blk: {
@@ -1097,7 +1090,7 @@ pub const Item = union(ItemType) { // MARK: Item
 			inline else => |item| item.onLeftClick(),
 		};
 	}
-  
+
 	pub fn render(self: Item, pos: Vec2f, slotSize: Vec2f, border: f32) void {
 		const itemTexture = self.getTexture();
 		itemTexture.bindTo(0);
@@ -1270,7 +1263,6 @@ pub fn globalInit() void {
 			.printTooltip = comptime main.meta.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.printTooltip),
 		}) catch unreachable;
 	}
-	ItemCallbacks.init();
 	Inventory.ClientSide.init();
 }
 
