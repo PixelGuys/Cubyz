@@ -73,7 +73,7 @@ fn checkFile(dir: std.Io.Dir, filePath: []const u8) !void {
 	}
 	if (std.mem.containsAtLeast(u8, data, 1, "anyerror" ++ "!")) {
 		if (!std.mem.eql(u8, filePath, "network/protocols.zig")) {
-			std.log.err("Found anyerror" ++ "! in file {s}. Please avoid the use of anyerror" ++ "!", .{filePath});
+			std.log.err("Found anyerror" ++ "! in file {s}. Please avoid the use of anyerror" ++ "! instead please define an error set.", .{filePath});
 		}
 	}
 	if (data.len != 0 and data[data.len - 1] != '\n' or (data.len > 2 and data[data.len - 2] == '\n')) {
