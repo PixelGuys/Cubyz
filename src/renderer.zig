@@ -1055,7 +1055,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		}
 	}
 
-	pub fn breakBlock(inventory: main.items.Inventory.ClientInventory, slot: u32, deltaTime: f64) void {
+	pub fn breakBlock(inventory: main.items.Inventory.ClientInventory, slot: u32, deltaTime: f64, mods: main.Window.Key.Modifiers) void {
 		if (selectedBlockPos) |selectedPos| {
 			if (@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
 				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
@@ -1069,7 +1069,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				.slot = .{.inv = inventory.super, .slot = slot},
 				.selectedBlockPos = selectedPos,
 				.lastDir = lastDir,
-				.mod = .{},
+				.mod = mods,
 			}) == .handled) return;
 
 			const stack = inventory.getStack(slot);

@@ -219,8 +219,8 @@ pub const Player = struct { // MARK: Player
 		}
 	}
 
-	pub fn breakBlock(deltaTime: f64) void {
-		inventory.breakBlock(selectedSlot, deltaTime);
+	pub fn breakBlock(deltaTime: f64, mods: main.Window.Key.Modifiers) void {
+		inventory.breakBlock(selectedSlot, deltaTime, mods);
 	}
 
 	pub fn acquireSelectedBlock() void {
@@ -437,6 +437,7 @@ pub var fog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .densi
 
 var nextBlockPlaceTime: ?std.Io.Timestamp = null;
 var nextBlockBreakTime: ?std.Io.Timestamp = null;
+var breakBlockPressModifier: main.Window.Key.Modifiers = .{};
 
 pub fn pressPlace(mods: main.Window.Key.Modifiers) void {
 	const time = main.timestamp();
@@ -448,10 +449,11 @@ pub fn releasePlace(_: main.Window.Key.Modifiers) void {
 	nextBlockPlaceTime = null;
 }
 
-pub fn pressBreak(_: main.Window.Key.Modifiers) void {
+pub fn pressBreak(mods: main.Window.Key.Modifiers) void {
 	const time = main.timestamp();
 	nextBlockBreakTime = time.addDuration(main.settings.updateRepeatDelay);
-	Player.breakBlock(0);
+	breakBlockPressModifier = mods;
+	Player.breakBlock(0, mods);
 }
 
 pub fn releaseBreak(_: main.Window.Key.Modifiers) void {
@@ -698,7 +700,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	if (nextBlockBreakTime) |*breakTime| {
 		if (breakTime.durationTo(time).nanoseconds >= 0 or !Player.isCreative()) {
 			breakTime.* = breakTime.addDuration(main.settings.updateRepeatSpeed);
-			Player.breakBlock(deltaTime);
+			Player.breakBlock(deltaTime, breakBlockPressModifier);
 		}
 	}
 
