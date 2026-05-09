@@ -4,5 +4,5 @@
 	.physicsProperties = .{
 		.extraAirFriction = 5,
 		.airSpeedmult = 12,
-	}
+	},
 }
