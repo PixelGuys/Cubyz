@@ -26,7 +26,7 @@ struct FaceData {
 };
 layout(std430, binding = 3) buffer _faceData
 {
-	FaceData faceData[];
+    FaceData faceData[];
 };
 
 struct QuadInfo {
