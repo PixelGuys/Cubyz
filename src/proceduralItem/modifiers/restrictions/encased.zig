@@ -25,7 +25,7 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Enc
 	const result = allocator.create(Encased);
 	result.* = .{
 		.tag = main.Tag.find(zon.get(?[]const u8, "tag", null) orelse blk: {
-			std.log.err("Could not find the tag for Encased restriction", .{});
+			std.log.err("Missing tag field for encased restriction.", .{});
 			break :blk "not specified";
 		}),
 		.amount = zon.get(usize, "amount", 8),
