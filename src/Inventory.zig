@@ -39,8 +39,8 @@ pub const client = struct { // MARK: client
 	}
 
 	fn nextId() InventoryId {
-		main.sync.ClientSide.mutex.lock();
-		defer main.sync.ClientSide.mutex.unlock();
+		main.sync.client.mutex.lock();
+		defer main.sync.client.mutex.unlock();
 		if (freeIdList.popOrNull()) |id| {
 			return id;
 		}
@@ -50,22 +50,22 @@ pub const client = struct { // MARK: client
 
 	fn freeId(id: InventoryId) void {
 		sync.threadContext.assertCorrectContext(.client);
-		main.utils.assertLocked(&main.sync.ClientSide.mutex);
+		main.utils.assertLocked(&main.sync.client.mutex);
 		freeIdList.append(id);
 	}
 
 	pub fn mapServerId(serverId: InventoryId, inventory: Inventory) void {
-		main.utils.assertLocked(&main.sync.ClientSide.mutex);
+		main.utils.assertLocked(&main.sync.client.mutex);
 		serverToClientMap.put(serverId, inventory) catch unreachable;
 	}
 
 	pub fn unmapServerId(serverId: InventoryId, clientId: InventoryId) void {
-		main.utils.assertLocked(&main.sync.ClientSide.mutex);
+		main.utils.assertLocked(&main.sync.client.mutex);
 		std.debug.assert(serverToClientMap.fetchRemove(serverId).?.value.id == clientId);
 	}
 
 	pub fn unmapServerIdByClientId(clientId: InventoryId) void {
-		main.utils.assertLocked(&main.sync.ClientSide.mutex);
+		main.utils.assertLocked(&main.sync.client.mutex);
 		const serverId = blk: {
 			var it = serverToClientMap.iterator();
 			while (it.next()) |entry| {
@@ -77,12 +77,12 @@ pub const client = struct { // MARK: client
 	}
 
 	fn getInventory(serverId: InventoryId) ?Inventory {
-		main.utils.assertLocked(&main.sync.ClientSide.mutex);
+		main.utils.assertLocked(&main.sync.client.mutex);
 		return serverToClientMap.get(serverId);
 	}
 
 	fn getInventoryByClientId(clientId: InventoryId) ?Inventory {
-		main.utils.assertLocked(&main.sync.ClientSide.mutex);
+		main.utils.assertLocked(&main.sync.client.mutex);
 		var it = serverToClientMap.valueIterator();
 		while (it.next()) |inv| {
 			if (inv.id == clientId) return inv.*;
@@ -428,17 +428,17 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			.type = clientType,
 		};
 		if (clientType == .serverShared) {
-			sync.ClientSide.executeCommand(.{.open = .{.inv = self.super, .source = source}});
+			sync.client.executeCommand(.{.open = .{.inv = self.super, .source = source}});
 		}
 		return self;
 	}
 
 	pub fn deinit(self: ClientInventory, allocator: NeverFailingAllocator) void {
 		if (main.game.world.?.connected) {
-			sync.ClientSide.executeCommand(.{.close = .{.inv = self.super, .allocator = allocator}});
+			sync.client.executeCommand(.{.close = .{.inv = self.super, .allocator = allocator}});
 		} else {
-			main.sync.ClientSide.mutex.lock();
-			defer main.sync.ClientSide.mutex.unlock();
+			main.sync.client.mutex.lock();
+			defer main.sync.client.mutex.unlock();
 			self.super._deinit(allocator, .client);
 		}
 	}
@@ -450,7 +450,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			return;
 		}
 		std.debug.assert(dest.type == .serverShared);
-		main.sync.ClientSide.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = dest.super, .slot = destSlot}, .source = .{.inv = carried.super, .slot = 0}}});
+		main.sync.client.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = dest.super, .slot = destSlot}, .source = .{.inv = carried.super, .slot = 0}}});
 	}
 
 	pub fn deposit(dest: ClientInventory, destSlot: u32, source: ClientInventory, sourceSlot: u32, amount: u16) void {
@@ -460,7 +460,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			return;
 		}
 		std.debug.assert(source.type == .serverShared);
-		main.sync.ClientSide.executeCommand(.{.deposit = .{.dest = .{.inv = dest.super, .slot = destSlot}, .source = .{.inv = source.super, .slot = sourceSlot}, .amount = amount}});
+		main.sync.client.executeCommand(.{.deposit = .{.dest = .{.inv = dest.super, .slot = destSlot}, .source = .{.inv = source.super, .slot = sourceSlot}, .amount = amount}});
 	}
 
 	pub fn takeHalf(source: ClientInventory, sourceSlot: u32, carried: ClientInventory) void {
@@ -469,7 +469,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			return;
 		}
 		std.debug.assert(carried.type == .serverShared);
-		main.sync.ClientSide.executeCommand(.{.takeHalf = .{.dest = .{.inv = carried.super, .slot = 0}, .source = .{.inv = source.super, .slot = sourceSlot}}});
+		main.sync.client.executeCommand(.{.takeHalf = .{.dest = .{.inv = carried.super, .slot = 0}, .source = .{.inv = source.super, .slot = sourceSlot}}});
 	}
 
 	pub fn distribute(carried: ClientInventory, destinationInventories: []const ClientInventory, destinationSlots: []const u32) void {
@@ -483,34 +483,34 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	pub fn depositOrDrop(source: ClientInventory, destinations: []const ClientInventory) void {
 		for (destinations) |dest| std.debug.assert(dest.type == .serverShared);
 		std.debug.assert(source.type != .creative);
-		main.sync.ClientSide.executeCommand(.{.depositOrDrop = .init(destinations, source.super, undefined)});
+		main.sync.client.executeCommand(.{.depositOrDrop = .init(destinations, source.super, undefined)});
 	}
 
 	pub fn depositToAny(source: ClientInventory, sourceSlot: u32, destinations: []const ClientInventory, amount: u16) void {
 		std.debug.assert(source.type == .serverShared);
-		main.sync.ClientSide.executeCommand(.{.depositToAny = .init(destinations, .{.inv = source.super, .slot = sourceSlot}, amount)});
+		main.sync.client.executeCommand(.{.depositToAny = .init(destinations, .{.inv = source.super, .slot = sourceSlot}, amount)});
 	}
 
 	pub fn dropStack(source: ClientInventory, sourceSlot: u32) void {
 		if (source.type != .serverShared) return;
-		main.sync.ClientSide.executeCommand(.{.drop = .{.source = .{.inv = source.super, .slot = sourceSlot}}});
+		main.sync.client.executeCommand(.{.drop = .{.source = .{.inv = source.super, .slot = sourceSlot}}});
 	}
 
 	pub fn dropOne(source: ClientInventory, sourceSlot: u32) void {
 		if (source.type != .serverShared) return;
-		main.sync.ClientSide.executeCommand(.{.drop = .{.source = .{.inv = source.super, .slot = sourceSlot}, .desiredAmount = 1}});
+		main.sync.client.executeCommand(.{.drop = .{.source = .{.inv = source.super, .slot = sourceSlot}, .desiredAmount = 1}});
 	}
 
 	pub fn fillFromCreative(dest: ClientInventory, destSlot: u32, item: Item) void {
-		main.sync.ClientSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = dest.super, .slot = destSlot}, .item = item}});
+		main.sync.client.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = dest.super, .slot = destSlot}, .item = item}});
 	}
 
 	pub fn fillAmountFromCreative(dest: ClientInventory, destSlot: u32, item: Item, amount: u16) void {
-		main.sync.ClientSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = dest.super, .slot = destSlot}, .item = item, .amount = amount}});
+		main.sync.client.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = dest.super, .slot = destSlot}, .item = item, .amount = amount}});
 	}
 
 	pub fn fillAnyFromCreative(destinations: []const ClientInventory, item: Item, amount: u16) void {
-		main.sync.ClientSide.executeCommand(.{.fillAnyFromCreative = .init(destinations, item, amount)});
+		main.sync.client.executeCommand(.{.fillAnyFromCreative = .init(destinations, item, amount)});
 	}
 
 	pub fn craftFrom(source: ClientInventory, destinations: []const ClientInventory, craftingInv: ClientInventory) void {
@@ -518,19 +518,19 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		for (destinations) |inv| std.debug.assert(inv.type == .serverShared);
 		std.debug.assert(craftingInv.type == .crafting);
 
-		main.sync.ClientSide.executeCommand(.{.craftFrom = .init(destinations, &.{source}, craftingInv.type.crafting)});
+		main.sync.client.executeCommand(.{.craftFrom = .init(destinations, &.{source}, craftingInv.type.crafting)});
 	}
 
 	pub fn craftProceduralItem(source: ClientInventory, destinations: []const ClientInventory) void {
 		std.debug.assert(source.type == .workbenchResult);
 		for (destinations) |inv| std.debug.assert(inv.type == .serverShared);
 		const workbenchInv = blk: {
-			main.sync.ClientSide.mutex.lock();
-			defer main.sync.ClientSide.mutex.unlock();
+			main.sync.client.mutex.lock();
+			defer main.sync.client.mutex.unlock();
 			break :blk client.getInventoryByClientId(source.type.workbenchResult);
 		} orelse return;
 
-		main.sync.ClientSide.executeCommand(.{.craftProceduralItem = .init(destinations, workbenchInv)});
+		main.sync.client.executeCommand(.{.craftProceduralItem = .init(destinations, workbenchInv)});
 	}
 
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {

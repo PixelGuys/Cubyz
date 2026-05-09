@@ -903,11 +903,11 @@ pub const inventory = struct { // MARK: inventory
 	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const typ = try reader.readInt(u8);
 		if (typ == 0xff) { // Confirmation
-			try main.sync.ClientSide.receiveConfirmation(reader);
+			try main.sync.client.receiveConfirmation(reader);
 		} else if (typ == 0xfe) { // Failure
-			main.sync.ClientSide.receiveFailure();
+			main.sync.client.receiveFailure();
 		} else {
-			try main.sync.ClientSide.receiveSyncOperation(reader);
+			try main.sync.client.receiveSyncOperation(reader);
 		}
 	}
 	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {

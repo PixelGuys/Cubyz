@@ -23,7 +23,7 @@ const @"cubyz:bag" = main.entity.components.@"cubyz:bag";
 
 pub const Side = enum { client, server };
 
-pub const ClientSide = struct {
+pub const client = struct { // MARK: client
 	pub var mutex: main.utils.Mutex = .{};
 	var commands: utils.CircularBufferQueue(Command) = undefined;
 
@@ -208,7 +208,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, userId: u32) void {
 	threadContext.assertCorrectContext(side);
 	if (side == .client) {
-		ClientSide.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}});
+		client.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}});
 	} else {
 		ServerSide.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}}, null);
 	}
@@ -216,7 +216,7 @@ pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, userId: u
 
 pub fn setGamemode(user: ?*main.server.User, gamemode: Gamemode) void {
 	if (user == null) {
-		ClientSide.setGamemode(gamemode);
+		client.setGamemode(gamemode);
 	} else {
 		ServerSide.setGamemode(user.?, gamemode);
 	}
