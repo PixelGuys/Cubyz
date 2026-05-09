@@ -860,7 +860,7 @@ pub const Command = struct { // MARK: Command
 			if (side != .client) return;
 			if (reader.remaining.len != 0) {
 				const serverId = try reader.readEnum(InventoryId);
-				Inventory.ClientSide.mapServerId(serverId, self.inv);
+				Inventory.client.mapServerId(serverId, self.inv);
 			}
 		}
 
@@ -920,7 +920,7 @@ pub const Command = struct { // MARK: Command
 		fn finalize(self: Close, side: Side, _: *BinaryReader) !void {
 			if (side != .client) return;
 			self.inv._deinit(self.allocator, .client);
-			Inventory.ClientSide.unmapServerIdByClientId(self.inv.id);
+			Inventory.client.unmapServerIdByClientId(self.inv.id);
 		}
 
 		fn serialize(self: Close, writer: *BinaryWriter) void {

@@ -22,7 +22,7 @@ const ProceduralItemTypeIndex = main.items.ProceduralItemTypeIndex;
 
 pub const InventoryId = enum(u32) { _ };
 
-pub const ClientSide = struct {
+pub const client = struct {
 	var maxId: InventoryId = @enumFromInt(0);
 	var freeIdList: main.List(InventoryId) = undefined;
 	var serverToClientMap: std.AutoHashMap(InventoryId, Inventory) = undefined;
@@ -384,7 +384,7 @@ pub const ServerSide = struct { // MARK: ServerSide
 pub fn getInventory(id: InventoryId, side: sync.Side, user: ?*main.server.User) ?Inventory {
 	sync.threadContext.assertCorrectContext(side);
 	return switch (side) {
-		.client => ClientSide.getInventory(id),
+		.client => client.getInventory(id),
 		.server => ServerSide.getInventory(user.?, id),
 	};
 }
@@ -527,7 +527,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		const workbenchInv = blk: {
 			main.sync.ClientSide.mutex.lock();
 			defer main.sync.ClientSide.mutex.unlock();
-			break :blk ClientSide.getInventoryByClientId(source.type.workbenchResult);
+			break :blk client.getInventoryByClientId(source.type.workbenchResult);
 		} orelse return;
 
 		main.sync.ClientSide.executeCommand(.{.craftProceduralItem = .init(destinations, workbenchInv)});
@@ -571,7 +571,7 @@ fn _init(allocator: NeverFailingAllocator, _size: usize, source: Source, side: s
 	const self = Inventory{
 		._items = allocator.alloc(ItemStack, _size),
 		.id = switch (side) {
-			.client => ClientSide.nextId(),
+			.client => client.nextId(),
 			.server => ServerSide.nextId(),
 		},
 		.source = source,
@@ -585,7 +585,7 @@ fn _init(allocator: NeverFailingAllocator, _size: usize, source: Source, side: s
 
 pub fn _deinit(self: Inventory, allocator: NeverFailingAllocator, side: sync.Side) void {
 	switch (side) {
-		.client => ClientSide.freeId(self.id),
+		.client => client.freeId(self.id),
 		.server => ServerSide.freeId(self.id),
 	}
 	for (self._items) |*item| {
