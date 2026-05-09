@@ -22,7 +22,7 @@ const ProceduralItemTypeIndex = main.items.ProceduralItemTypeIndex;
 
 pub const InventoryId = enum(u32) { _ };
 
-pub const client = struct {
+pub const client = struct { // MARK: client
 	var maxId: InventoryId = @enumFromInt(0);
 	var freeIdList: main.List(InventoryId) = undefined;
 	var serverToClientMap: std.AutoHashMap(InventoryId, Inventory) = undefined;
