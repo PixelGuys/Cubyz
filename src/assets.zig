@@ -781,7 +781,6 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	migrations.reset();
 	biomes.reset();
 	main.server.terrain.cave_layers.reset();
-	migrations.reset();
 	main.server.terrain.structures.reset();
 	main.models.reset();
 	main.particles.ParticleManager.reset();
