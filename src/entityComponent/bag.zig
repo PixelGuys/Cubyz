@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const chunk = main.chunk;
+const ServerChunk = chunk.ServerChunk;
 const game = main.game;
 const graphics = main.graphics;
 const ZonElement = main.ZonElement;
@@ -18,8 +19,6 @@ const Vec4f = vec.Vec4f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const blocks = main.blocks;
-const chunk_zig = main.chunk;
-const ServerChunk = chunk_zig.ServerChunk;
 const World = game.World;
 const ServerWorld = main.server.ServerWorld;
 const items = main.items;

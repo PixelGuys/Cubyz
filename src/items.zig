@@ -1,12 +1,12 @@
 const std = @import("std");
 
+const main = @import("main");
 const blocks = @import("blocks.zig");
 const Block = blocks.Block;
 const graphics = @import("graphics.zig");
 const Color = graphics.Color;
 const Tag = main.Tag;
-const ZonElement = @import("zon.zig").ZonElement;
-const main = @import("main");
+const ZonElement = main.ZonElement;
 const ListUnmanaged = main.ListUnmanaged;
 const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
@@ -23,7 +23,7 @@ const Vec3f = vec.Vec3f;
 const modifierList = @import("proceduralItem/modifiers/_list.zig");
 const modifierRestrictionList = @import("proceduralItem/modifiers/restrictions/_list.zig");
 
-pub const recipes_zig = @import("items/recipes.zig");
+pub const recipes = @import("items/recipes.zig");
 
 pub const Inventory = @import("Inventory.zig");
 
@@ -1136,7 +1136,7 @@ pub const Recipe = struct { // MARK: Recipe
 	resultAmount: u16,
 
 	fn getValidRecipe(self: Recipe) error{Invalid}!*Recipe {
-		outer: for (main.items.recipes()) |*recipe| {
+		outer: for (main.items.getRecipes()) |*recipe| {
 			if (recipe.resultItem != self.resultItem) continue;
 			if (recipe.resultAmount != self.resultAmount) continue;
 			if (recipe.sourceItems.len != self.sourceItems.len) continue;
@@ -1201,7 +1201,7 @@ pub fn iterator() std.StringHashMap(BaseItemIndex).ValueIterator {
 	return reverseIndices.valueIterator();
 }
 
-pub fn recipes() []Recipe {
+pub fn getRecipes() []Recipe {
 	return recipeList.items;
 }
 
@@ -1371,7 +1371,7 @@ fn parseRecipe(zon: ZonElement) !Recipe {
 
 pub fn registerRecipes(zon: ZonElement) void {
 	for (zon.toSlice()) |recipeZon| {
-		recipes_zig.parseRecipe(main.globalAllocator, recipeZon, &recipeList) catch |err| {
+		recipes.parseRecipe(main.globalAllocator, recipeZon, &recipeList) catch |err| {
 			const recipeString = recipeZon.toString(main.stackAllocator);
 			defer main.stackAllocator.free(recipeString);
 			std.log.err("Skipping recipe with error {s}:\n{s}", .{@errorName(err), recipeString});

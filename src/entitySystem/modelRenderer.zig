@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const chunk = main.chunk;
+const ServerChunk = chunk.ServerChunk;
 const game = main.game;
 const graphics = main.graphics;
 const ZonElement = main.ZonElement;
@@ -18,14 +19,12 @@ const Vec4f = vec.Vec4f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const blocks = main.blocks;
-const chunk_zig = main.chunk;
-const ServerChunk = chunk_zig.ServerChunk;
 const World = game.World;
 const ServerWorld = main.server.ServerWorld;
 const items = main.items;
 const ItemStack = items.ItemStack;
 const random = main.random;
-const entityComponent = main.entity.components;
+const entity = main.entity;
 
 const c = @import("c");
 
@@ -117,7 +116,7 @@ pub const client = struct {
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
-		for (entityComponent.@"cubyz:model".client.components.dense.items, entityComponent.@"cubyz:model".client.components.denseToSparseIndex.items) |component, id| {
+		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |component, id| {
 			if (@intFromEnum(id) == game.Player.id) // don't render local player
 				continue;
 

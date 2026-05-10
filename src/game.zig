@@ -1,13 +1,13 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
 
+const main = @import("main");
 const assets = @import("assets.zig");
 const itemdrop = @import("itemdrop.zig");
 const ClientItemDropManager = itemdrop.ClientItemDropManager;
 const items = @import("items.zig");
 const ClientInventory = items.Inventory.ClientInventory;
-const ZonElement = @import("zon.zig").ZonElement;
-const main = @import("main");
+const ZonElement = main.ZonElement;
 const network = @import("network.zig");
 const particles = @import("particles.zig");
 const Connection = network.Connection;
