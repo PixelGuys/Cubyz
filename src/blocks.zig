@@ -70,10 +70,13 @@ pub const Ore = struct {
 	seed: u64,
 };
 
-const SelectionCapabilities = packed struct(u2) {
+const SelectionCapabilities = packed struct(u3) {
+	never: bool = false,
 	always: bool = false,
+
 	toolEffective: bool = false,
 
+	pub const neverSelectable: SelectionCapabilities = .{.never = true};
 	pub const alwaysSelectable: SelectionCapabilities = .{.always = true};
 
 	const Capability = enum {
@@ -89,10 +92,13 @@ const SelectionCapabilities = packed struct(u2) {
 				}
 			} else std.log.err("SelectionCapability is invalid. Ignoring", .{});
 		}
+		const T = @typeInfo(@This()).@"struct".backing_integer.?;
+		if (@as(T, @bitCast(result)) == 0) result = neverSelectable;
 		return result;
 	}
 
 	pub fn allowsSelectionByItem(self: SelectionCapabilities, block: Block, item: Item) bool {
+		if (self.never) return false;
 		if (self.always) return true;
 		return switch (item) {
 			.baseItem => |baseItem| {
