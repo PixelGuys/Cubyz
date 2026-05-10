@@ -34,7 +34,7 @@
 #include <memoryapi.h>
 #endif
 
-// used for SSL and TLS
+// used for TLS
 #include <mbedtls/debug.h>
 #include <mbedtls/ssl.h>
 
