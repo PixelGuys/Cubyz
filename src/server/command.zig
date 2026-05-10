@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const User = main.server.User;
+pub const commandList = @import("command/_list.zig");
 
 pub const Command = struct {
 	exec: *const fn (args: []const u8, source: *User) void,
@@ -15,7 +16,6 @@ pub var commands: std.StringHashMap(Command) = undefined;
 
 pub fn init() void {
 	commands = .init(main.globalAllocator.allocator);
-	const commandList = @import("_list.zig");
 	inline for (@typeInfo(commandList).@"struct".decls) |decl| {
 		commands.put(decl.name, .{
 			.name = decl.name,

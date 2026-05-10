@@ -29,7 +29,7 @@ pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
 pub const permission = @import("permission.zig");
 
-pub const command = @import("command/_command.zig");
+pub const command = @import("command.zig");
 
 pub const WorldEditData = struct {
 	const maxWorldEditHistoryCapacity: u32 = 1024;
