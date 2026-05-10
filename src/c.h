@@ -58,6 +58,6 @@
 #define STB_VORBIS_HEADER_ONLY
 #include <stb/stb_vorbis.h>
 
-// used to interact with shaders and SPIR-V
+// used to compile shaders to SPIR-V
 #include <glslang/Include/glslang_c_interface.h>
 #include <glslang/Public/resource_limits_c.h>
