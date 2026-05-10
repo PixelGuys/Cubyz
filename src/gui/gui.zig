@@ -22,7 +22,7 @@ const TextInput = @import("components/TextInput.zig");
 pub const GuiComponent = @import("gui_component.zig").GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
 
-pub const windowlist = @import("windows/_windowlist.zig");
+pub const windowlist = @import("windows/_list.zig");
 const GamepadCursor = @import("gamepad_cursor.zig");
 
 var windowList: List(*GuiWindow) = undefined;
