@@ -33,7 +33,7 @@ pub fn init() void {
 
 pub fn deinit() void {
 	fileExplorerIcon.deinit();
-	if(errorText != null) {
+	if (errorText != null) {
 		main.globalAllocator.free(errorText.?);
 		errorText = null;
 	}
@@ -44,12 +44,12 @@ fn openLog() void {
 }
 
 pub fn raiseError(newText: []const u8) void {
-	if(isOpen) {
+	if (isOpen) {
 		errorCount += 1;
 		onClose();
 		onOpen();
 	} else {
-		if(errorText != null) main.globalAllocator.free(errorText.?);
+		if (errorText != null) main.globalAllocator.free(errorText.?);
 		errorText = main.globalAllocator.dupe(u8, newText);
 		errorCount = 0;
 		gui.openWindowFromRef(&window);
@@ -71,7 +71,7 @@ pub fn onOpen() void {
 	isOpen = true;
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	var str: []const u8 = undefined;
-	if(errorCount == 0) {
+	if (errorCount == 0) {
 		str = std.fmt.allocPrint(main.stackAllocator.allocator, singleErrorFmtText, .{errorText.?}) catch unreachable;
 	} else {
 		str = std.fmt.allocPrint(main.stackAllocator.allocator, multipleErrorFmtText, .{errorText.?, errorCount}) catch unreachable;
