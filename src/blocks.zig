@@ -110,19 +110,16 @@ const PlacementConstraints = struct {
 	}
 
 	pub inline fn allowsPlacementOnBlock(self: PlacementConstraints, target: Block, from: Neighbor) bool {
-		return switch (target.support()) {
-			.no => false,
-			.yes => true,
-			.yesThroughConstraints => {
-				if (!self.isConstrained()) return false;
+		const support = target.support();
+		if (support == .no) return false;
 
-				const selectionFace = from.toSelectionFace();
-				for (self.constraints) |constraint| {
-					if (constraint.allowsPlacementOnBlock(target, selectionFace)) return true;
-				}
-				return false;
-			},
-		};
+		if (!self.isConstrained()) return support == .yes;
+
+		const selectionFace = from.toSelectionFace();
+		for (self.constraints) |constraint| {
+			if (constraint.allowsPlacementOnBlock(target, selectionFace)) return true;
+		}
+		return false;
 	}
 };
 
