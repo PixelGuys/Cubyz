@@ -146,14 +146,14 @@ fn addModFeatures(b: *std.Build, exe: *std.Build.Step.Compile) !void {
 	});
 	exe.step.dependOn(step);
 
-	try addModFeatureModule(b, exe, "rotation");
+	try addModFeatureModule(b, exe, "rotations");
 }
 
 pub fn makeModFeaturesStep(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
 	var io = std.Io.Threaded.init(options.gpa, .{});
 	defer io.deinit();
 
-	try makeModFeature(io.io(), step, "rotation");
+	try makeModFeature(io.io(), step, "rotations");
 }
 
 fn createLaunchConfig(b: *std.Build) !void {
