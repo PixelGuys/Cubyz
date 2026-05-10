@@ -26,7 +26,7 @@
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>
 
-// used for transmitting and loading models and textures
+// used for loading models
 #include <cgltf.h>
 
 // used for virtual memory management on Windows
