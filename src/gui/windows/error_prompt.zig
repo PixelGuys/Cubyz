@@ -63,7 +63,6 @@ pub fn update() void {
 	}
 }
 
-const plainErrorText = "#ffff00The game encountered errors.\nCheck the logs for details.";
 const singleErrorFmtText = "#ff0000{s}";
 const multipleErrorFmtText = "#ff0000{s}\n#ffff00And {d} more...\nCheck the logs for details.";
 
