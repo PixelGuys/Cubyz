@@ -1,12 +1,14 @@
 const std = @import("std");
 
 const main = @import("main");
+const Block = main.blocks.Block;
 const random = main.random;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
 const CaveMapView = terrain.CaveMap.CaveMapView;
 const GenerationMode = terrain.structures.SimpleStructureModel.GenerationMode;
+const Neighbor = main.chunk.Neighbor;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
@@ -23,11 +25,19 @@ const Type = enum {
 	pyramid,
 	round,
 };
+const RotationModeType = enum {
+	unknown,
+	log,
+	branch,
+	direction,
+};
 
 typ: Type,
-leavesBlock: main.blocks.Block,
-woodBlock: main.blocks.Block,
-topWoodBlock: main.blocks.Block,
+leavesBlock: Block,
+woodBlock: Block,
+woodRotationModeType: RotationModeType = .unknown,
+topWoodBlock: Block,
+topRotationModeType: RotationModeType = .unknown,
 height0: i32,
 deltaHeight: u31,
 leafRadius: f32,
@@ -38,14 +48,23 @@ branched: bool,
 
 pub fn loadModel(parameters: ZonElement) ?*SimpleTreeModel {
 	const self = main.worldArena.create(SimpleTreeModel);
+	const woodBlock = main.blocks.parseBlock(parameters.get(?[]const u8, "log", null) orelse {
+		std.log.err("Missing required 'log' field for cubyz:simple_tree rotation", .{});
+		return null;
+	});
 	self.* = .{
 		.typ = std.meta.stringToEnum(Type, parameters.get([]const u8, "type", "")) orelse blk: {
 			if (parameters.get(?[]const u8, "type", null)) |typ| std.log.err("Unknown tree type \"{s}\"", .{typ});
 			break :blk .round;
 		},
-		.leavesBlock = main.blocks.parseBlock(parameters.get([]const u8, "leaves", "cubyz:leaves/oak")),
-		.woodBlock = main.blocks.parseBlock(parameters.get([]const u8, "log", "cubyz:oak_log")),
-		.topWoodBlock = main.blocks.parseBlock(parameters.get([]const u8, "top", "cubyz:oak_top")),
+		.leavesBlock = main.blocks.parseBlock(parameters.get(?[]const u8, "leaves", null) orelse {
+			std.log.err("Missing required 'leaves' field for cubyz:simple_tree rotation", .{});
+			return null;
+		}),
+		.woodBlock = woodBlock,
+		.topWoodBlock = blk: {
+			break :blk main.blocks.parseBlock(parameters.get(?[]const u8, "top", null) orelse break :blk woodBlock);
+		},
 		.height0 = parameters.get(i32, "height", 6),
 		.deltaHeight = parameters.get(u31, "height_variation", 3),
 		.leafRadius = parameters.get(f32, "leafRadius", (1 + parameters.get(f32, "height", 6))/2),
@@ -54,7 +73,34 @@ pub fn loadModel(parameters: ZonElement) ?*SimpleTreeModel {
 		.deltaLeafElongation = parameters.get(f32, "deltaLeafElongation", 0),
 		.branched = parameters.get(bool, "branched", true),
 	};
+	if (self.woodBlock.mode() == main.rotation.getByID("cubyz:branch")) self.woodRotationModeType = .branch;
+	if (self.woodBlock.mode() == main.rotation.getByID("cubyz:log")) self.woodRotationModeType = .log;
+	if (self.woodBlock.mode() == main.rotation.getByID("cubyz:direction")) self.woodRotationModeType = .direction;
+	if (self.topWoodBlock.mode() == main.rotation.getByID("cubyz:branch")) self.topRotationModeType = .branch;
+	if (self.topWoodBlock.mode() == main.rotation.getByID("cubyz:log")) self.topRotationModeType = .log;
+	if (self.topWoodBlock.mode() == main.rotation.getByID("cubyz:direction")) self.topRotationModeType = .direction;
 	return self;
+}
+
+fn initalOrientation(block: main.blocks.Block, orientation: Neighbor, mode: RotationModeType) main.blocks.Block {
+	switch (mode) {
+		.log, .branch => {
+			return .{.typ = block.typ, .data = orientation.reverse().bitMask()};
+		},
+		.direction => {
+			return .{.typ = block.typ, .data = @intFromEnum(orientation)};
+		},
+		.unknown => return block,
+	}
+}
+
+fn addNeighbor(block: main.blocks.Block, neighborDir: Neighbor, mode: RotationModeType) main.blocks.Block {
+	switch (mode) {
+		.log, .branch => {
+			return .{.typ = block.typ, .data = block.data | neighborDir.bitMask()};
+		},
+		.direction, .unknown => return block,
+	}
 }
 
 pub fn generateStem(self: *SimpleTreeModel, x: i32, y: i32, z: i32, height: i32, chunk: *main.chunk.ServerChunk, seed: *u64) void {
@@ -62,31 +108,33 @@ pub fn generateStem(self: *SimpleTreeModel, x: i32, y: i32, z: i32, height: i32,
 		var pz: i32 = chunk.startIndex(z);
 		while (pz < z + height) : (pz += chunk.super.pos.voxelSize) {
 			if (chunk.liesInChunk(x, y, pz)) {
-				chunk.updateBlockIfDegradable(x, y, pz, if (pz == z + height - 1) self.topWoodBlock else self.woodBlock);
+				var block = if (pz == z + height - 1) self.topWoodBlock else self.woodBlock;
+				const rotationModeType = if (pz == z + height - 1) self.topRotationModeType else self.woodRotationModeType;
+				block = initalOrientation(block, .dirUp, rotationModeType);
+				if (pz != z + height - 1) block = addNeighbor(block, .dirUp, rotationModeType);
 
 				if (self.branched) {
 					const chance = @sqrt(@as(f32, @floatFromInt(pz - z))/@as(f32, @floatFromInt(height*2)));
 					if (main.random.nextFloat(seed) < chance) {
-						const d = main.random.nextIntBounded(u32, seed, 4);
-						generateBranch(self, x, y, pz, d, chunk, seed);
+						const dir: Neighbor = @enumFromInt(main.random.nextIntBounded(u32, seed, 4) + 2);
+						generateBranch(self, x, y, pz, dir, chunk);
+						block = addNeighbor(block, dir, rotationModeType);
 					}
 				}
+
+				chunk.updateBlockIfDegradable(x, y, pz, block);
 			}
 		}
 	}
 }
 
-pub fn generateBranch(self: *SimpleTreeModel, x: i32, y: i32, z: i32, d: u32, chunk: *main.chunk.ServerChunk, seed: *u64) void {
-	_ = seed;
+pub fn generateBranch(self: *SimpleTreeModel, x: i32, y: i32, z: i32, dir: Neighbor, chunk: *main.chunk.ServerChunk) void {
+	const block = initalOrientation(self.topWoodBlock, dir, self.topRotationModeType);
+	const x2 = x + dir.relX();
+	const y2 = y + dir.relY();
 
-	if (d == 0 and chunk.liesInChunk(x + 1, y, z)) {
-		chunk.updateBlockIfDegradable(x + 1, y, z, .{.typ = self.topWoodBlock.typ, .data = 2});
-	} else if (d == 1 and chunk.liesInChunk(x - 1, y, z)) {
-		chunk.updateBlockIfDegradable(x - 1, y, z, .{.typ = self.topWoodBlock.typ, .data = 3});
-	} else if (d == 2 and chunk.liesInChunk(x, y + 1, z)) {
-		chunk.updateBlockIfDegradable(x, y + 1, z, .{.typ = self.topWoodBlock.typ, .data = 4});
-	} else if (d == 3 and chunk.liesInChunk(x, y - 1, z)) {
-		chunk.updateBlockIfDegradable(x, y - 1, z, .{.typ = self.topWoodBlock.typ, .data = 5});
+	if (chunk.liesInChunk(x2, y2, z)) {
+		chunk.updateBlockIfDegradable(x2, y2, z, block);
 	}
 }
 
