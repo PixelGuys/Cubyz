@@ -80,7 +80,7 @@
 			.chance = 0.03,
 			.block = "cubyz:slate/cobble",
 			.size = 3,
-			.size_variance = 2,
+			.size_variance = 1,
 		},
 	},
 	.parentBiomes = .{
