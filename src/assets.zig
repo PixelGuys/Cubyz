@@ -755,7 +755,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	}
 
 	// Accessory Slots:
-	items_zig.accessory_slots.registerAccessorySlots(assetFolder, &worldAssets.accessorySlots);
+	items.accessory_slots.registerAccessorySlots(assetFolder, &worldAssets.accessorySlots);
 
 	// Register paths for asset hot reloading:
 	var dir = main.files.cwd().openIterableDir("assets") catch |err| {

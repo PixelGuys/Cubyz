@@ -56,7 +56,7 @@ pub const server = struct {
 		accessories: Inventory.InventoryId,
 		pub fn save(self: Component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			if (audience != .disk and audience != .playerHimself) return .discard;
-			Inventory.ServerSide.getInventoryFromId(self.accessories).toBytes(writer);
+			Inventory.server.getInventoryFromId(self.accessories).toBytes(writer);
 			return .save;
 		}
 	};
@@ -66,7 +66,7 @@ pub const server = struct {
 		components = .{};
 	}
 	pub fn deinit() void {
-		for (components.dense.items) |accessories| Inventory.ServerSide.destroyExternallyManagedInventory(accessories.accessories);
+		for (components.dense.items) |accessories| Inventory.server.destroyExternallyManagedInventory(accessories.accessories);
 		components.deinit(main.globalAllocator);
 	}
 
@@ -79,15 +79,15 @@ pub const server = struct {
 	pub fn loadFromData(entityId: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != entityComponentVersion) return error.InvalidComponentVersion;
 		const accessories = &components.add(main.globalAllocator, @enumFromInt(entityId)).accessories;
-		accessories.* = Inventory.ServerSide.createExternallyManagedInventory(items.accessory_slots.getTotalSlotCount(), .{.playerAccessories = entityId}, reader, .{});
+		accessories.* = Inventory.server.createExternallyManagedInventory(items.accessory_slots.getTotalSlotCount(), .{.playerAccessories = entityId}, reader, .{});
 	}
 	pub fn loadEmpty(entityId: u32) void {
 		const accessories = &components.add(main.globalAllocator, @enumFromInt(entityId)).accessories;
 		var reader = utils.BinaryReader.init("");
-		accessories.* = Inventory.ServerSide.createExternallyManagedInventory(items.accessory_slots.getTotalSlotCount(), .{.playerAccessories = entityId}, &reader, .{});
+		accessories.* = Inventory.server.createExternallyManagedInventory(items.accessory_slots.getTotalSlotCount(), .{.playerAccessories = entityId}, &reader, .{});
 	}
 	pub fn unload(entityId: u32) void {
 		const accessories = components.fetchRemove(@enumFromInt(entityId)) catch return;
-		Inventory.ServerSide.destroyExternallyManagedInventory(accessories.accessories);
+		Inventory.server.destroyExternallyManagedInventory(accessories.accessories);
 	}
 };
