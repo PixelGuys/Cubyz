@@ -141,4 +141,8 @@
 		.output = "4 cubyz:pebbles",
 		.reversible = true,
 	},
+	.{
+		.inputs = .{"5 cubyz:iron_ingot"},
+		.output = "cubyz:parachute",
+	},
 }
