@@ -567,15 +567,16 @@ pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 		const NodePtr = *align(item_alignment) Node;
 		const ItemPtr = *align(item_alignment) Item;
 
-		arena: NeverFailingArenaAllocator,
+		arena: NeverFailingAllocator,
 		free_list: ?NodePtr = null,
 		freeAllocations: usize = 0,
 		totalAllocations: usize = 0,
 		mutex: main.utils.Mutex = .{},
 
 		/// Creates a new memory pool.
-		pub fn init(allocator: NeverFailingAllocator) Pool {
-			return .{.arena = NeverFailingArenaAllocator.init(allocator)};
+		pub fn init(arena: NeverFailingAllocator) Pool {
+			std.debug.assert(arena.allocator.vtable.alloc == comptime NeverFailingArenaAllocator.allocator(@ptrFromInt(1024)).allocator.vtable.alloc);
+			return .{.arena = arena};
 		}
 
 		/// Destroys the memory pool and frees all allocated memory.
@@ -585,7 +586,6 @@ pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 			} else if (pool.totalAllocations != 0) {
 				std.log.info("{} MiB ({} elements) in {s} Memory pool", .{pool.totalAllocations*item_size >> 20, pool.totalAllocations, @typeName(Item)});
 			}
-			pool.arena.deinit();
 			pool.* = undefined;
 		}
 
@@ -623,7 +623,7 @@ pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 			pool.mutex.assertLocked();
 			pool.totalAllocations += 1;
 			pool.freeAllocations += 1;
-			const mem = pool.arena.allocator().alignedAlloc(u8, .fromByteUnits(item_alignment), item_size);
+			const mem = pool.arena.alignedAlloc(u8, .fromByteUnits(item_alignment), item_size);
 			return mem[0..item_size]; // coerce slice to array pointer
 		}
 	};

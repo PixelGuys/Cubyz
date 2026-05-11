@@ -101,15 +101,7 @@ const associativity = 8; // ~400 MiB
 var cache: Cache(ClimateMapFragment, cacheSize, associativity, ClimateMapFragment.deferredDeinit) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
-var memoryPool: main.heap.MemoryPool(ClimateMapFragment) = undefined;
-
-pub fn globalInit() void {
-	memoryPool = .init(main.globalAllocator);
-}
-
-pub fn globalDeinit() void {
-	memoryPool.deinit();
-}
+var memoryPool: main.heap.MemoryPool(ClimateMapFragment) = .init(main.globalArena);
 
 fn cacheInit(pos: ClimateMapFragmentPosition) *ClimateMapFragment {
 	const mapFragment = memoryPool.create();
