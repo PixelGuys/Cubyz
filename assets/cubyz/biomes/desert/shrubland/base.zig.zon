@@ -45,10 +45,19 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.chance = 0.02,
+			.chance = 0.05,
 			.block = "cubyz:ocotillo",
 			.height = 1,
 			.height_variation = 0,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:ocotillo"},
+			.chance = 0.02,
+			.width = 4,
+			.variation = 4,
+			.density = 0.2,
+			.priority = 0.1,
 		},
 	},
 	.parentBiomes = .{
