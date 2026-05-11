@@ -1,6 +1,6 @@
 .{
 	.minHeightLimit = 7,
-	.minHeight = 22,
+	.minHeight = 32,
 	.maxHeight = 40,
 	.maxHeightLimit = 50,
 	.minRadius = 50,
@@ -12,25 +12,7 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/baobab/shrub",
 			.placeMode = .degradable,
-			.chance = 0.30,
-		},
-		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/baobab/small",
-			.placeMode = .degradable,
-			.chance = 0.2,
-		},
-		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/baobab/young",
-			.placeMode = .degradable,
-			.chance = 0.05,
-		},
-		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/baobab/grandidieri",
-			.placeMode = .degradable,
-			.chance = 0.01,
+			.chance = 0.06,
 		},
 		.{
 			.id = "cubyz:sbb",
@@ -47,7 +29,7 @@
 		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:dirt",
-			.chance = 0.28,
+			.chance = 0.18,
 			.width = 5,
 			.variation = 6,
 			.depth = 3,
@@ -56,7 +38,7 @@
 		.{
 			.id = "cubyz:flower_patch",
 			.blocks = .{"cubyz:tussock"},
-			.chance = 0.28,
+			.chance = 0.23,
 			.width = 4,
 			.variation = 4,
 			.density = 0.2,
@@ -70,15 +52,24 @@
 			.height_variation = 0,
 		},
 		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:ocotillo"},
+			.chance = 0.02,
+			.width = 4,
+			.variation = 4,
+			.density = 0.2,
+			.priority = 0.1,
+		},
+		.{
 			.id = "cubyz:simple_vegetation",
-			.chance = 0.07,
+			.chance = 0.11,
 			.block = "cubyz:dry_grass_vegetation",
 			.height = 1,
 			.height_variation = 0,
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:slate/cobble",
+			.block = "cubyz:pebbles:cubyz:sand",
 			.chance = 0.05,
 			.width = 1,
 			.variation = 1,
@@ -87,7 +78,7 @@
 		},
 		.{
 			.id = "cubyz:boulder",
-			.chance = 0.03,
+			.chance = 0.02,
 			.block = "cubyz:slate/cobble",
 			.size = 2,
 			.size_variance = 2,
@@ -96,7 +87,7 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:desert_shrubland/base",
-			.chance = 30,
+			.chance = 25,
 		},
 	},
 }
