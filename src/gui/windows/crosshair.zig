@@ -22,6 +22,7 @@ pub var window = GuiWindow{
 };
 
 var texture: Texture = undefined;
+var grounded_texture: Texture = undefined;
 var pipeline: graphics.Pipeline = undefined;
 var uniforms: struct {
 	screen: c_int,
@@ -52,15 +53,21 @@ pub fn init() void {
 		}}},
 	);
 	texture = Texture.initFromFile("assets/cubyz/ui/hud/crosshair.png");
+	grounded_texture = Texture.initFromFile("assets/cubyz/ui/hud/grounded_crosshair.png");
 }
 
 pub fn deinit() void {
 	pipeline.deinit();
 	texture.deinit();
+	grounded_texture.deinit();
 }
 
 pub fn render() void {
-	texture.bindTo(0);
+	if (main.game.Player.onGround) {
+		grounded_texture.bindTo(0);
+	} else {
+		texture.bindTo(0);
+	}
 	graphics.draw.setColor(0xffffffff);
 	pipeline.bind(graphics.draw.getScissor());
 	graphics.draw.customShadedImage(&uniforms, .{0, 0}, .{size, size});
