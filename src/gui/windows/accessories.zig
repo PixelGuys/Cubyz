@@ -27,6 +27,7 @@ pub var window = GuiWindow{
 };
 
 const padding: f32 = 8;
+const numRows = 4;
 
 var itemSlots: []*ItemSlot = undefined;
 
@@ -39,26 +40,32 @@ pub fn onOpen() void {
 
 	const accessories = main.entity.components.@"cubyz:accessories".client.getAccessories(Player.super.id) orelse return;
 	const list = HorizontalList.init();
-	var column = VerticalList.init(.{0, 0}, 300, 0);
+	var currentColumn = VerticalList.init(.{0, 0}, 300, 0);
 	var index: u32 = 0;
+	var columnList = main.utils.list.ListUnmanaged(*VerticalList).initCapacity(main.stackAllocator, items.accessory_slots.getTotalSlotCount() / numRows);
+	defer columnList.deinit(main.stackAllocator);
 	for (items.accessory_slots.getAccessorySlots()) |*accessorySlot| {
 		for (0..accessorySlot.count) |_| {
 			const slot = ItemSlot.init(.{0, 0}, accessories.*, @intCast(index), if (accessorySlot.getTexture()) |texture| .{.custom = texture} else .default, .normal);
 			itemSlots[index] = slot;
-			column.add(slot);
-			if (column.children.items.len == 4) {
-				list.add(column);
-				column = VerticalList.init(.{0, 0}, 300, 0);
+			currentColumn.add(slot);
+			if (currentColumn.children.items.len == numRows) {
+				currentColumn.finish(.right);
+				columnList.append(main.stackAllocator, currentColumn);
+				currentColumn = VerticalList.init(.{0, 0}, 300, 0);
 			}
 			index += 1;
 		}
 	}
-	if (column.children.items.len > 0) {
-		list.add(column);
+	if (currentColumn.children.items.len > 0) {
+		columnList.append(main.stackAllocator, currentColumn);
 	} else {
-		list.deinit();
+		currentColumn.deinit();
 	}
-	std.mem.reverse(GuiComponent, list.children.items);
+	var iterator = std.mem.reverseIterator(columnList.items);
+	while (iterator.next()) |column| {
+		list.add(column);
+	}
 	list.finish(.{padding, padding + 16}, .right);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
