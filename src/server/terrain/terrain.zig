@@ -132,12 +132,6 @@ pub fn globalInit() void {
 			BlockGenerator.registerGenerator(@field(list, decl.name));
 		}
 	}
-	{
-		const list = @import("sdf_models/_list.zig");
-		inline for (@typeInfo(list).@"struct".decls) |decl| {
-			sdf.SdfModel.registerGenerator(@field(list, decl.name));
-		}
-	}
 	const t1 = main.timestamp();
 	noise.BlueNoise.load();
 	std.log.info("Blue noise took {} ms to load", .{t1.durationTo(main.timestamp()).toMilliseconds()});
