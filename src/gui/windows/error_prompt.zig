@@ -33,8 +33,8 @@ pub fn init() void {
 
 pub fn deinit() void {
 	fileExplorerIcon.deinit();
-	if (errorText != null) {
-		main.globalAllocator.free(errorText.?);
+	if (errorText) |text| {
+		main.globalAllocator.free(text);
 		errorText = null;
 	}
 }
@@ -49,7 +49,7 @@ pub fn raiseError(newText: []const u8) void {
 		onClose();
 		onOpen();
 	} else {
-		if (errorText != null) main.globalAllocator.free(errorText.?);
+		if (errorText) |text| main.globalAllocator.free(text);
 		errorText = main.globalAllocator.dupe(u8, newText);
 		errorCount = 0;
 		gui.openWindowFromRef(&window);
