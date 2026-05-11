@@ -19,8 +19,8 @@ const inventory = @import("inventory.zig");
 
 pub var window = GuiWindow{
 	.relativePosition = .{
-		.{.attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle}},
 		.{.attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower}},
+		.{.attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower}},
 	},
 	.contentSize = Vec2f{64*8, 64*4},
 	.scale = 0.75,
@@ -58,6 +58,7 @@ pub fn onOpen() void {
 	} else {
 		list.deinit();
 	}
+	std.mem.reverse(GuiComponent, list.children.items);
 	list.finish(.{padding, padding + 16}, .right);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
