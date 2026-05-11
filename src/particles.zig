@@ -6,11 +6,9 @@ const chunk_meshing = @import("renderer/chunk_meshing.zig");
 const graphics = @import("graphics.zig");
 const SSBO = graphics.SSBO;
 const TextureArray = graphics.TextureArray;
-const Shader = graphics.Shader;
 const Image = graphics.Image;
-const c = graphics.c;
 const game = @import("game.zig");
-const ZonElement = @import("zon.zig").ZonElement;
+const ZonElement = main.ZonElement;
 const random = @import("random.zig");
 const RandomRange = random.RandomRange;
 const vec = @import("vec.zig");
@@ -21,6 +19,8 @@ const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const Vec3i = vec.Vec3i;
 const Vec2f = vec.Vec2f;
+
+const c = @import("c");
 
 pub const ParticleManager = struct {
 	var particleTypesSSBO: SSBO = undefined;

@@ -1,17 +1,16 @@
 const std = @import("std");
 
+const main = @import("main");
 const blocks = @import("blocks.zig");
-const chunk_zig = @import("chunk.zig");
-const ServerChunk = chunk_zig.ServerChunk;
+const chunk = @import("chunk.zig");
+const ServerChunk = chunk.ServerChunk;
 const game = @import("game.zig");
 const World = game.World;
 const ServerWorld = main.server.ServerWorld;
 const graphics = @import("graphics.zig");
-const c = graphics.c;
 const items = @import("items.zig");
 const ItemStack = items.ItemStack;
-const ZonElement = @import("zon.zig").ZonElement;
-const main = @import("main");
+const ZonElement = main.ZonElement;
 const physics = main.physics;
 const random = @import("random.zig");
 const settings = @import("settings.zig");
@@ -24,6 +23,8 @@ const Vec3i = vec.Vec3i;
 const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+
+const c = @import("c");
 
 const ItemDrop = struct { // MARK: ItemDrop
 	pos: Vec3d,
@@ -382,7 +383,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			const dist = @max(min - itemPos, itemPos - max);
 			if (@reduce(.Max, dist) < radius + pickupRange) {
 				const itemStack = &self.list.items(.itemStack)[i];
-				main.items.Inventory.ServerSide.tryCollectingToPlayerInventory(user, itemStack);
+				main.items.Inventory.server.tryCollectingToPlayerInventory(user, itemStack);
 				if (itemStack.amount == 0) {
 					self.directRemove(i);
 					continue;

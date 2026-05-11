@@ -23,16 +23,17 @@
 //! thread.join();
 //! ```
 
-mutex: Mutex = .{},
-cond: Condition = .{},
-/// It is OK to initialize this field to any value.
-permits: usize = 0,
-
-const Semaphore = @This();
 const std = @import("std");
 const main = @import("main");
 const Mutex = main.utils.Mutex;
 const Condition = main.utils.Condition;
+
+const Semaphore = @This();
+
+mutex: Mutex = .{},
+cond: Condition = .{},
+/// It is OK to initialize this field to any value.
+permits: usize = 0,
 
 pub fn wait(sem: *Semaphore) void {
 	sem.mutex.lock();

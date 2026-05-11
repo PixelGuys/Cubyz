@@ -15,7 +15,6 @@
 const std = @import("std");
 const main = @import("main");
 const builtin = @import("builtin");
-const Futex = @This();
 const windows = std.os.windows;
 const linux = std.os.linux;
 const c = std.c;
@@ -23,6 +22,8 @@ const c = std.c;
 const assert = std.debug.assert;
 const testing = std.testing;
 const atomic = std.atomic;
+
+const Futex = @This();
 
 /// Checks if `ptr` still contains the value `expect` and, if so, blocks the caller until either:
 /// - The value at `ptr` is no longer equal to `expect`.

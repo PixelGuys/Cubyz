@@ -68,9 +68,9 @@ pub fn mainButtonReleased(self: *BagSlot, mousePosition: Vec2f) void {
 		if (GuiComponent.contains(self.pos, self.size, mousePosition)) {
 			const carried = gui.inventory.carried;
 			if (carried.getAmount(0) != 0) {
-				main.sync.ClientSide.executeCommand(.{.moveToPlayerBag = .{.amount = carried.getAmount(0), .source = .{.inv = carried.super, .slot = 0}}});
+				main.sync.client.executeCommand(.{.moveToPlayerBag = .{.amount = carried.getAmount(0), .source = .{.inv = carried.super, .slot = 0}}});
 			} else {
-				main.sync.ClientSide.executeCommand(.{.takeFromPlayerBag = .init(&.{carried}, std.math.maxInt(u16))});
+				main.sync.client.executeCommand(.{.takeFromPlayerBag = .init(&.{carried}, std.math.maxInt(u16))});
 			}
 		}
 	}

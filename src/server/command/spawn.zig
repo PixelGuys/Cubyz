@@ -1,9 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
+const command = main.server.command;
 const User = main.server.User;
-
-const command = @import("_command.zig");
 
 pub const description = "Get or set a player's / the world spawn point";
 pub const usage =

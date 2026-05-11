@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const Tag = main.Tag;
 const utils = main.utils;
-const ZonElement = @import("zon.zig").ZonElement;
+const ZonElement = main.ZonElement;
 const chunk = @import("chunk.zig");
 const Neighbor = chunk.Neighbor;
 const Chunk = chunk.Chunk;
@@ -25,9 +25,11 @@ const BlockEntityType = block_entity.BlockEntityType;
 const ClientBlockCallback = main.callbacks.ClientBlockCallback;
 const ServerBlockCallback = main.callbacks.ServerBlockCallback;
 const BlockTouchCallback = main.callbacks.BlockTouchCallback;
-const sbb = main.server.terrain.structure_building_blocks;
+const sbb = main.server.terrain.sbb;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
+
+const c = @import("c");
 
 pub const maxBlockCount: usize = 65536; // 16 bit limit
 
@@ -837,10 +839,10 @@ pub const meshes = struct { // MARK: meshes
 
 	pub fn preProcessAnimationData(time: u32) void {
 		animationComputePipeline.bind();
-		graphics.c.glUniform1ui(animationUniforms.time, time);
-		graphics.c.glUniform1ui(animationUniforms.size, @intCast(animationData.len));
-		graphics.c.glDispatchCompute(@intCast(@divFloor(animationData.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
-		graphics.c.glMemoryBarrier(graphics.c.GL_SHADER_STORAGE_BARRIER_BIT);
+		c.glUniform1ui(animationUniforms.time, time);
+		c.glUniform1ui(animationUniforms.size, @intCast(animationData.len));
+		c.glDispatchCompute(@intCast(@divFloor(animationData.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
+		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
 	}
 
 	fn finishTextureLoading() void {
@@ -864,7 +866,6 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn generateTextureArray() void {
-		const c = graphics.c;
 		blockTextureArray.generate(blockTextures.items, true, true);
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
 		emissionTextureArray.generate(emissionTextures.items, true, false);
