@@ -50,7 +50,6 @@ pub fn onOpen() void {
 			itemSlots[index] = slot;
 			currentColumn.add(slot);
 			if (currentColumn.children.items.len == numRows) {
-				currentColumn.finish(.right);
 				columnList.append(main.stackAllocator, currentColumn);
 				currentColumn = VerticalList.init(.{0, 0}, 300, 0);
 			}
@@ -58,7 +57,6 @@ pub fn onOpen() void {
 		}
 	}
 	if (currentColumn.children.items.len > 0) {
-		currentColumn.finish(.right);
 		columnList.append(main.stackAllocator, currentColumn);
 	} else {
 		currentColumn.deinit();
