@@ -42,7 +42,7 @@ pub fn onOpen() void {
 	const list = HorizontalList.init();
 	var currentColumn = VerticalList.init(.{0, 0}, 300, 0);
 	var index: u32 = 0;
-	var columnList = main.utils.list.ListUnmanaged(*VerticalList).initCapacity(main.stackAllocator, items.accessory_slots.getTotalSlotCount() / numRows);
+	var columnList = main.utils.list.ListUnmanaged(*VerticalList).initCapacity(main.stackAllocator, items.accessory_slots.getTotalSlotCount()/numRows);
 	defer columnList.deinit(main.stackAllocator);
 	for (items.accessory_slots.getAccessorySlots()) |*accessorySlot| {
 		for (0..accessorySlot.count) |_| {
