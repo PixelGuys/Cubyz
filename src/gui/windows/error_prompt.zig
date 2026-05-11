@@ -57,11 +57,6 @@ pub fn raiseError(newText: []const u8) void {
 }
 
 const padding: f32 = 8;
-pub fn update() void {
-	if (main.Window.Gamepad.wereControllerMappingsDownloaded()) {
-		gui.closeWindowFromRef(&window);
-	}
-}
 
 const singleErrorFmtText = "#ff0000{s}";
 const multipleErrorFmtText = "#ff0000{s}\n#ffff00And {d} more...\nCheck the logs for details.";
