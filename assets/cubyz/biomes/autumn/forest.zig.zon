@@ -26,8 +26,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:air",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.log = "cubyz:log/oak",
 			.chance = 0.015,
 			.type = .round,
 			.height = 8,
@@ -38,8 +37,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:air",
-			.log = "cubyz:birch_log",
-			.top = "cubyz:birch_top",
+			.log = "cubyz:log/birch",
 			.chance = 0.015,
 			.type = .round,
 			.height = 10,
@@ -50,8 +48,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:leaves/yellow",
-			.log = "cubyz:birch_log",
-			.top = "cubyz:birch_top",
+			.log = "cubyz:log/birch",
 			.chance = 0.15,
 			.type = .round,
 			.height = 10,
@@ -64,8 +61,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:leaves/red",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.log = "cubyz:log/oak",
 			.chance = 0.15,
 			.type = .round,
 			.height = 8,
@@ -76,8 +72,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:leaves/birch",
-			.log = "cubyz:birch_log",
-			.top = "cubyz:birch_top",
+			.log = "cubyz:log/birch",
 			.chance = 0.03,
 			.type = .round,
 			.height = 10,
@@ -90,8 +85,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:leaves/oak",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.log = "cubyz:log/oak",
 			.chance = 0.015,
 			.type = .round,
 			.height = 8,

@@ -11,6 +11,8 @@ const Biome = terrain.biomes.Biome;
 const MapFragment = terrain.SurfaceMap.MapFragment;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
+pub const climate_generators = @import("climategen/_list.zig");
+
 pub const BiomeSample = struct {
 	biome: *const Biome,
 	height: f32,
@@ -72,15 +74,18 @@ pub const ClimateMapGenerator = struct {
 	init: *const fn (parameters: ZonElement) void,
 	generateMapFragment: *const fn (fragment: *ClimateMapFragment, seed: u64) void,
 
-	var generatorRegistry: std.StringHashMapUnmanaged(ClimateMapGenerator) = .{};
-
-	pub fn registerGenerator(comptime Generator: type) void {
-		const self = ClimateMapGenerator{
-			.init = &Generator.init,
-			.generateMapFragment = &Generator.generateMapFragment,
-		};
-		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
-	}
+	const generatorRegistry: std.StaticStringMap(ClimateMapGenerator) = .initComptime(blk: {
+		const decls = @typeInfo(climate_generators).@"struct".decls;
+		var generators: [decls.len]struct { []const u8, ClimateMapGenerator } = undefined;
+		for (0..decls.len) |i| {
+			const Generator = @field(climate_generators, decls[i].name);
+			generators[i] = .{Generator.id, .{
+				.init = &Generator.init,
+				.generateMapFragment = &Generator.generateMapFragment,
+			}};
+		}
+		break :blk generators;
+	});
 
 	pub fn getGeneratorById(id: []const u8) !ClimateMapGenerator {
 		return generatorRegistry.get(id) orelse {
@@ -99,15 +104,10 @@ var profile: TerrainGenerationProfile = undefined;
 var memoryPool: main.heap.MemoryPool(ClimateMapFragment) = undefined;
 
 pub fn globalInit() void {
-	const list = @import("climategen/_list.zig");
-	inline for (@typeInfo(list).@"struct".decls) |decl| {
-		ClimateMapGenerator.registerGenerator(@field(list, decl.name));
-	}
 	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn globalDeinit() void {
-	ClimateMapGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
 	memoryPool.deinit();
 }
 

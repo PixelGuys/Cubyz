@@ -146,14 +146,14 @@ fn addModFeatures(b: *std.Build, exe: *std.Build.Step.Compile) !void {
 	});
 	exe.step.dependOn(step);
 
-	try addModFeatureModule(b, exe, "rotation");
+	try addModFeatureModule(b, exe, "rotations");
 }
 
-pub fn makeModFeaturesStep(step: *std.Build.Step, options: std.Build.Step.MakeOptions) anyerror!void {
+pub fn makeModFeaturesStep(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
 	var io = std.Io.Threaded.init(options.gpa, .{});
 	defer io.deinit();
 
-	try makeModFeature(io.io(), step, "rotation");
+	try makeModFeature(io.io(), step, "rotations");
 }
 
 fn createLaunchConfig(b: *std.Build) !void {
@@ -300,29 +300,4 @@ pub fn build(b: *std.Build) !void {
 
 	const test_step = b.step("test", "Run unit tests");
 	test_step.dependOn(&run_exe_tests.step);
-
-	// MARK: Formatter
-
-	const formatter = b.addExecutable(.{
-		.name = "CubyzFormatter",
-		.root_module = b.addModule("format", .{
-			.root_source_file = b.path("src/formatter/format.zig"),
-			.target = target,
-			.optimize = optimize,
-		}),
-	});
-	// ZLS is stupid and cannot detect which executable is the main one, so we add the import everywhere...
-	formatter.root_module.addOptions("build_options", options);
-	formatter.root_module.addImport("main", mainModule);
-
-	const formatter_install = b.addInstallArtifact(formatter, .{});
-
-	const formatter_cmd = b.addRunArtifact(formatter);
-	formatter_cmd.step.dependOn(&formatter_install.step);
-	if (b.args) |args| {
-		formatter_cmd.addArgs(args);
-	}
-
-	const formatter_step = b.step("format", "Check the formatting of the code");
-	formatter_step.dependOn(&formatter_cmd.step);
 }

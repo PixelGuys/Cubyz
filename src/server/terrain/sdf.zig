@@ -9,6 +9,8 @@ const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 
+const sdf_models = @import("sdf_models/_list.zig");
+
 pub const SdfModel = struct { // MARK: SdfModel
 	data: *anyopaque,
 	instantiateFn: *const fn (self: *anyopaque, arena: NeverFailingAllocator, seed: *u64) SdfInstance,
@@ -69,14 +71,18 @@ pub const SdfModel = struct { // MARK: SdfModel
 		return self.instantiateFn(self.data, arena, seed);
 	}
 
-	var modelRegistry: std.StringHashMapUnmanaged(VTable) = .{};
-
-	pub fn registerGenerator(comptime Generator: type) void {
-		var self: VTable = undefined;
-		self.initAndGetExtend = Generator.initAndGetExtend;
-		self.instantiate = main.meta.castFunctionSelfToAnyopaque(Generator.instantiate);
-		modelRegistry.put(main.globalArena.allocator, Generator.id, self) catch unreachable;
-	}
+	const modelRegistry: std.StaticStringMap(VTable) = .initComptime(blk: {
+		const decls = @typeInfo(sdf_models).@"struct".decls;
+		var generators: [decls.len]struct { []const u8, VTable } = undefined;
+		for (0..decls.len) |i| {
+			const Generator = @field(sdf_models, decls[i].name);
+			generators[i] = .{Generator.id, .{
+				.initAndGetExtend = Generator.initAndGetExtend,
+				.instantiate = main.meta.castFunctionSelfToAnyopaque(Generator.instantiate),
+			}};
+		}
+		break :blk generators;
+	});
 };
 
 pub const SdfInstance = struct { // MARK: SdfInstance

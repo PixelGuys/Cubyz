@@ -7,18 +7,13 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const c = @import("c");
 
-const glslang = @cImport({
-	@cInclude("glslang/Include/glslang_c_interface.h");
-	@cInclude("glslang/Public/resource_limits_c.h");
-});
-
 const Shader = struct { // MARK: Shader
 	id: c_uint,
 
-	const ShaderStage = enum(glslang.glslang_stage_t) {
-		vert = glslang.GLSLANG_STAGE_VERTEX,
-		frag = glslang.GLSLANG_STAGE_FRAGMENT,
-		comp = glslang.GLSLANG_STAGE_COMPUTE,
+	const ShaderStage = enum(c.glslang_stage_t) {
+		vert = c.GLSLANG_STAGE_VERTEX,
+		frag = c.GLSLANG_STAGE_FRAGMENT,
+		comp = c.GLSLANG_STAGE_COMPUTE,
 	};
 
 	fn compileToSpirV(allocator: NeverFailingAllocator, source: []const u8, filename: []const u8, defines: []const u8, shaderStage: ShaderStage) ![]c_uint {
@@ -33,47 +28,47 @@ const Shader = struct { // MARK: Shader
 		sourceWithDefines.appendSlice(sourceLines);
 		sourceWithDefines.append(0);
 
-		const input = glslang.glslang_input_t{
-			.language = glslang.GLSLANG_SOURCE_GLSL,
+		const input = c.glslang_input_t{
+			.language = c.GLSLANG_SOURCE_GLSL,
 			.stage = @intFromEnum(shaderStage),
-			.client = glslang.GLSLANG_CLIENT_VULKAN,
-			.client_version = glslang.GLSLANG_TARGET_VULKAN_1_0,
-			.target_language = glslang.GLSLANG_TARGET_SPV,
-			.target_language_version = glslang.GLSLANG_TARGET_SPV_1_0,
+			.client = c.GLSLANG_CLIENT_VULKAN,
+			.client_version = c.GLSLANG_TARGET_VULKAN_1_0,
+			.target_language = c.GLSLANG_TARGET_SPV,
+			.target_language_version = c.GLSLANG_TARGET_SPV_1_0,
 			.code = sourceWithDefines.items.ptr,
 			.default_version = 100,
-			.default_profile = glslang.GLSLANG_NO_PROFILE,
-			.force_default_version_and_profile = glslang.false,
-			.forward_compatible = glslang.false,
-			.messages = glslang.GLSLANG_MSG_DEFAULT_BIT,
-			.resource = glslang.glslang_default_resource(),
+			.default_profile = c.GLSLANG_NO_PROFILE,
+			.force_default_version_and_profile = c.false,
+			.forward_compatible = c.false,
+			.messages = c.GLSLANG_MSG_DEFAULT_BIT,
+			.resource = c.glslang_default_resource(),
 			.callbacks = .{}, // TODO: Add support for shader includes
 			.callbacks_ctx = null,
 		};
-		const shader = glslang.glslang_shader_create(&input);
-		defer glslang.glslang_shader_delete(shader);
-		if (glslang.glslang_shader_preprocess(shader, &input) == 0) {
-			std.log.err("Error preprocessing shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
+		const shader = c.glslang_shader_create(&input);
+		defer c.glslang_shader_delete(shader);
+		if (c.glslang_shader_preprocess(shader, &input) == 0) {
+			std.log.err("Error preprocessing shader {s}:\n{s}\n{s}\n", .{filename, c.glslang_shader_get_info_log(shader), c.glslang_shader_get_info_debug_log(shader)});
 			return error.FailedCompiling;
 		}
 
-		if (glslang.glslang_shader_parse(shader, &input) == 0) {
-			std.log.err("Error parsing shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
+		if (c.glslang_shader_parse(shader, &input) == 0) {
+			std.log.err("Error parsing shader {s}:\n{s}\n{s}\n", .{filename, c.glslang_shader_get_info_log(shader), c.glslang_shader_get_info_debug_log(shader)});
 			return error.FailedCompiling;
 		}
 
-		const program = glslang.glslang_program_create();
-		defer glslang.glslang_program_delete(program);
-		glslang.glslang_program_add_shader(program, shader);
+		const program = c.glslang_program_create();
+		defer c.glslang_program_delete(program);
+		c.glslang_program_add_shader(program, shader);
 
-		if (glslang.glslang_program_link(program, glslang.GLSLANG_MSG_SPV_RULES_BIT | glslang.GLSLANG_MSG_VULKAN_RULES_BIT) == 0) {
-			std.log.err("Error linking shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
+		if (c.glslang_program_link(program, c.GLSLANG_MSG_SPV_RULES_BIT | c.GLSLANG_MSG_VULKAN_RULES_BIT) == 0) {
+			std.log.err("Error linking shader {s}:\n{s}\n{s}\n", .{filename, c.glslang_shader_get_info_log(shader), c.glslang_shader_get_info_debug_log(shader)});
 			return error.FailedCompiling;
 		}
 
-		glslang.glslang_program_SPIRV_generate(program, @intFromEnum(shaderStage));
-		const result = allocator.alloc(c_uint, glslang.glslang_program_SPIRV_get_size(program));
-		glslang.glslang_program_SPIRV_get(program, result.ptr);
+		c.glslang_program_SPIRV_generate(program, @intFromEnum(shaderStage));
+		const result = allocator.alloc(c_uint, c.glslang_program_SPIRV_get_size(program));
+		c.glslang_program_SPIRV_get(program, result.ptr);
 		return result;
 	}
 
@@ -767,9 +762,9 @@ pub const ComputePipeline = struct { // MARK: ComputePipeline
 };
 
 pub fn init() void { // MARK: init()
-	if (glslang.glslang_initialize_process() == glslang.false) std.log.err("glslang_initialize_process failed", .{});
+	if (c.glslang_initialize_process() == c.false) std.log.err("glslang_initialize_process failed", .{});
 }
 
 pub fn deinit() void { // MARK: deinit()
-	glslang.glslang_finalize_process();
+	c.glslang_finalize_process();
 }

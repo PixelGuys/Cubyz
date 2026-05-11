@@ -5,6 +5,7 @@ pub const gui = @import("gui/gui.zig");
 pub const server = @import("server/server.zig");
 
 pub const audio = @import("audio.zig");
+pub const argparse = @import("argparse.zig");
 pub const assets = @import("assets.zig");
 pub const block_entity = @import("block_entity.zig");
 pub const blocks = @import("blocks.zig");
@@ -36,15 +37,16 @@ const tag = @import("tag.zig");
 pub const Tag = tag.Tag;
 pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
-pub const ZonElement = @import("zon.zig").ZonElement;
+const zon = @import("zon.zig");
+pub const ZonElement = zon.ZonElement;
 
 pub const Window = @import("graphics/Window.zig");
 
 pub const heap = @import("utils/heap.zig");
 
-pub const List = @import("utils/list.zig").List;
-pub const ListUnmanaged = @import("utils/list.zig").ListUnmanaged;
-pub const MultiArray = @import("utils/list.zig").MultiArray;
+pub const List = utils.list.List;
+pub const ListUnmanaged = utils.list.ListUnmanaged;
+pub const MultiArray = utils.list.MultiArray;
 
 const file_monitor = utils.file_monitor;
 
@@ -491,10 +493,10 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	defer models.deinit();
 
 	items.globalInit();
-	defer items.deinit();
+	defer items.globalDeinit();
 
-	if (!headless) sync.ClientSide.init();
-	defer if (!headless) sync.ClientSide.deinit();
+	if (!headless) sync.client.init();
+	defer if (!headless) sync.client.deinit();
 
 	if (!headless) itemdrop.ItemDropRenderer.init();
 	defer if (!headless) itemdrop.ItemDropRenderer.deinit();

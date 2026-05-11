@@ -1,12 +1,12 @@
 const std = @import("std");
 
+const main = @import("main");
 const blocks = @import("blocks.zig");
 const Block = blocks.Block;
 const graphics = @import("graphics.zig");
 const Color = graphics.Color;
 const Tag = main.Tag;
-const ZonElement = @import("zon.zig").ZonElement;
-const main = @import("main");
+const ZonElement = main.ZonElement;
 const ListUnmanaged = main.ListUnmanaged;
 const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
@@ -25,7 +25,7 @@ const modifierRestrictionList = @import("proceduralItem/modifiers/restrictions/_
 
 const ItemUsedCallback = main.callbacks.ItemUsedCallback;
 
-pub const recipes_zig = @import("items/recipes.zig");
+pub const recipes = @import("items/recipes.zig");
 
 pub const Inventory = @import("Inventory.zig");
 
@@ -1177,7 +1177,7 @@ pub const Recipe = struct { // MARK: Recipe
 	resultAmount: u16,
 
 	fn getValidRecipe(self: Recipe) error{Invalid}!*Recipe {
-		outer: for (main.items.recipes()) |*recipe| {
+		outer: for (main.items.getRecipes()) |*recipe| {
 			if (recipe.resultItem != self.resultItem) continue;
 			if (recipe.resultAmount != self.resultAmount) continue;
 			if (recipe.sourceItems.len != self.sourceItems.len) continue;
@@ -1242,7 +1242,7 @@ pub fn iterator() std.StringHashMap(BaseItemIndex).ValueIterator {
 	return reverseIndices.valueIterator();
 }
 
-pub fn recipes() []Recipe {
+pub fn getRecipes() []Recipe {
 	return recipeList.items;
 }
 
@@ -1263,7 +1263,19 @@ pub fn globalInit() void {
 			.printTooltip = comptime main.meta.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.printTooltip),
 		}) catch unreachable;
 	}
-	Inventory.ClientSide.init();
+	Inventory.client.init();
+}
+
+pub fn globalDeinit() void {
+	Inventory.client.deinit();
+}
+
+pub fn reset() void {
+	proceduralItemTypeList = .{};
+	proceduralItemTypeIdToIndex = .{};
+	reverseIndices = .{};
+	recipeList.clearAndFree();
+	itemListSize = 0;
 }
 
 pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) *BaseItem {
@@ -1401,7 +1413,7 @@ fn parseRecipe(zon: ZonElement) !Recipe {
 
 pub fn registerRecipes(zon: ZonElement) void {
 	for (zon.toSlice()) |recipeZon| {
-		recipes_zig.parseRecipe(main.globalAllocator, recipeZon, &recipeList) catch |err| {
+		recipes.parseRecipe(main.globalAllocator, recipeZon, &recipeList) catch |err| {
 			const recipeString = recipeZon.toString(main.stackAllocator);
 			defer main.stackAllocator.free(recipeString);
 			std.log.err("Skipping recipe with error {s}:\n{s}", .{@errorName(err), recipeString});
@@ -1415,16 +1427,4 @@ pub fn clearRecipeCachedInventories() void {
 		main.globalAllocator.free(recipe.sourceItems);
 		main.globalAllocator.free(recipe.sourceAmounts);
 	}
-}
-
-pub fn reset() void {
-	proceduralItemTypeList = .{};
-	proceduralItemTypeIdToIndex = .{};
-	reverseIndices = .{};
-	recipeList.clearAndFree();
-	itemListSize = 0;
-}
-
-pub fn deinit() void {
-	Inventory.ClientSide.deinit();
 }

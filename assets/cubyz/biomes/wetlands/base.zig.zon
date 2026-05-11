@@ -33,8 +33,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:leaves/willow",
-			.log = "cubyz:willow_log",
-			.top = "cubyz:willow_top",
+			.log = "cubyz:log/willow",
 			.chance = 0.02,
 			.type = .round,
 			.height = 12,
@@ -48,8 +47,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:leaves/willow",
-			.log = "cubyz:willow_log",
-			.top = "cubyz:willow_top",
+			.log = "cubyz:log/willow",
 			.chance = 0.02,
 			.type = .round,
 			.height = 10,

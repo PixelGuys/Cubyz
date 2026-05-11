@@ -1401,7 +1401,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	};
 
 	pub fn finishData(self: *ChunkMesh) void {
-		main.utils.assertLocked(&self.mutex);
+		self.mutex.assertLocked();
 
 		var lightList = main.List(u32).init(main.stackAllocator);
 		defer lightList.deinit();
@@ -1470,7 +1470,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	fn updateTransparencyDataAfterMeshUpload(self: *ChunkMesh) void {
-		main.utils.assertLocked(&self.meshUploadMutex);
+		self.meshUploadMutex.assertLocked();
 		var len: usize = 0;
 		const coreList = self.transparentMesh.completeList.getRange(.core);
 		len += coreList.len;

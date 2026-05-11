@@ -14,6 +14,8 @@ const terrain = @import("terrain.zig");
 const GeneratorState = terrain.GeneratorState;
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 
+pub const structure_map_generators = @import("structuremapgen/_list.zig");
+
 const StructureInternal = struct {
 	generateFn: *const fn (self: *const anyopaque, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void,
 	data: *const anyopaque,
@@ -131,25 +133,26 @@ pub const StructureMapGenerator = struct {
 	generatorSeed: u64,
 	defaultState: GeneratorState,
 
-	var generatorRegistry: std.StringHashMapUnmanaged(StructureMapGenerator) = .{};
-
-	pub fn registerGenerator(comptime Generator: type) void {
-		const self = StructureMapGenerator{
-			.init = &Generator.init,
-			.generate = &Generator.generate,
-			.priority = Generator.priority,
-			.generatorSeed = Generator.generatorSeed,
-			.defaultState = Generator.defaultState,
-		};
-		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
-	}
+	const generatorRegistry: std.StaticStringMap(StructureMapGenerator) = .initComptime(blk: {
+		const decls = @typeInfo(structure_map_generators).@"struct".decls;
+		var generators: [decls.len]struct { []const u8, StructureMapGenerator } = undefined;
+		for (0..decls.len) |i| {
+			const Generator = @field(structure_map_generators, decls[i].name);
+			generators[i] = .{Generator.id, .{
+				.init = &Generator.init,
+				.generate = &Generator.generate,
+				.priority = Generator.priority,
+				.generatorSeed = Generator.generatorSeed,
+				.defaultState = Generator.defaultState,
+			}};
+		}
+		break :blk generators;
+	});
 
 	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []StructureMapGenerator {
-		var list: main.ListUnmanaged(StructureMapGenerator) = .initCapacity(allocator, generatorRegistry.size);
-		var iterator = generatorRegistry.iterator();
-		while (iterator.next()) |generatorEntry| {
-			const generator = generatorEntry.value_ptr.*;
-			const generatorSettings = settings.getChild(generatorEntry.key_ptr.*);
+		var list: main.ListUnmanaged(StructureMapGenerator) = .initCapacity(allocator, generatorRegistry.values().len);
+		for (generatorRegistry.keys(), generatorRegistry.values()) |id, generator| {
+			const generatorSettings = settings.getChild(id);
 			if (generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
 			generator.init(generatorSettings);
 			list.appendAssumeCapacity(generator);
@@ -183,15 +186,10 @@ fn cacheInit(pos: ChunkPosition) *StructureMapFragment {
 }
 
 pub fn globalInit() void {
-	const list = @import("structuremapgen/_list.zig");
-	inline for (@typeInfo(list).@"struct".decls) |decl| {
-		StructureMapGenerator.registerGenerator(@field(list, decl.name));
-	}
 	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn globalDeinit() void {
-	StructureMapGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
 	memoryPool.deinit();
 }
 
