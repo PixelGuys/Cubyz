@@ -615,7 +615,7 @@ const TransitionBiome = struct {
 var unfinishedTransitionBiomes: std.StringHashMapUnmanaged([]UnfinishedTransitionBiomeData) = .{};
 
 pub fn init() void {
-	const list = @import("simple_structures/_list.zig");
+	const list = terrain.structures.simple_structures;
 	inline for (@typeInfo(list).@"struct".decls) |decl| {
 		SimpleStructureModel.registerGenerator(@field(list, decl.name));
 	}

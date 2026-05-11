@@ -9,6 +9,8 @@ const Assets = main.assets.Assets;
 const biomes = main.server.terrain.biomes;
 const Tag = main.Tag;
 
+pub const simple_structures = @import("simple_structures/_list.zig");
+
 pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	pub const GenerationMode = enum {
 		floor,

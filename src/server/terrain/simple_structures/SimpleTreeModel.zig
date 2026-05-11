@@ -25,7 +25,7 @@ const Type = enum {
 	pyramid,
 	round,
 };
-const RotationModeType = enum {
+pub const RotationModeType = enum {
 	unknown,
 	log,
 	branch,
@@ -82,7 +82,7 @@ pub fn loadModel(parameters: ZonElement) ?*SimpleTreeModel {
 	return self;
 }
 
-fn initalOrientation(block: main.blocks.Block, orientation: Neighbor, mode: RotationModeType) main.blocks.Block {
+pub fn initalOrientation(block: main.blocks.Block, orientation: Neighbor, mode: RotationModeType) main.blocks.Block {
 	switch (mode) {
 		.log, .branch => {
 			return .{.typ = block.typ, .data = orientation.reverse().bitMask()};
@@ -94,7 +94,7 @@ fn initalOrientation(block: main.blocks.Block, orientation: Neighbor, mode: Rota
 	}
 }
 
-fn addNeighbor(block: main.blocks.Block, neighborDir: Neighbor, mode: RotationModeType) main.blocks.Block {
+pub fn addNeighbor(block: main.blocks.Block, neighborDir: Neighbor, mode: RotationModeType) main.blocks.Block {
 	switch (mode) {
 		.log, .branch => {
 			return .{.typ = block.typ, .data = block.data | neighborDir.bitMask()};

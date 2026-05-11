@@ -10,8 +10,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:fallen_tree",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_log",
+			.log = "cubyz:log/oak",
 			.height = 6,
 			.height_variation = 3,
 			.chance = 0.002,
