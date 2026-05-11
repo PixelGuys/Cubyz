@@ -12,7 +12,7 @@ const Label = @import("../components/Label.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 const Button = @import("../components/Button.zig");
 
-var errorCount: u32 = 0;
+var overflowErrorCount: u32 = 0;
 var errorText: ?[]const u8 = null;
 var fileExplorerIcon: Texture = undefined;
 var isOpen: bool = false;
@@ -45,13 +45,13 @@ fn openLog() void {
 
 pub fn raiseError(newText: []const u8) void {
 	if (isOpen) {
-		errorCount += 1;
+		overflowErrorCount += 1;
 		onClose();
 		onOpen();
 	} else {
 		if (errorText) |text| main.globalAllocator.free(text);
 		errorText = main.globalAllocator.dupe(u8, newText);
-		errorCount = 0;
+		overflowErrorCount = 0;
 		gui.openWindowFromRef(&window);
 	}
 }
@@ -65,10 +65,10 @@ pub fn onOpen() void {
 	isOpen = true;
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	var str: []const u8 = undefined;
-	if (errorCount == 0) {
+	if (overflowErrorCount == 0) {
 		str = std.fmt.allocPrint(main.stackAllocator.allocator, singleErrorFmtText, .{errorText.?}) catch unreachable;
 	} else {
-		str = std.fmt.allocPrint(main.stackAllocator.allocator, multipleErrorFmtText, .{errorText.?, errorCount}) catch unreachable;
+		str = std.fmt.allocPrint(main.stackAllocator.allocator, multipleErrorFmtText, .{errorText.?, overflowErrorCount}) catch unreachable;
 	}
 	defer main.stackAllocator.free(str);
 	list.add(Label.init(.{padding, 16 + padding}, 256, str, .center));
