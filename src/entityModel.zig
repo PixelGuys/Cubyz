@@ -4,11 +4,11 @@ const main = @import("main");
 const chunk = main.chunk;
 const game = main.game;
 const graphics = main.graphics;
-const c = graphics.c;
 const ZonElement = main.ZonElement;
 const renderer = main.renderer;
 const settings = main.settings;
 const utils = main.utils;
+const BinaryReader = utils.BinaryReader;
 const vec = main.vec;
 const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
@@ -16,11 +16,7 @@ const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
-const BinaryReader = main.utils.BinaryReader;
-
-const gltf = @cImport({
-	@cInclude("cgltf.h");
-});
+const c = @import("c");
 
 pub const EntityModel = struct {
 	height: f32,
@@ -135,25 +131,25 @@ pub const EntityModel = struct {
 		const file = try main.assets.readAsset(main.stackAllocator, "entityModels/models", self.modelId.?, ".glb");
 		defer main.stackAllocator.free(file);
 
-		var options: gltf.cgltf_options = .{};
-		var data: *gltf.cgltf_data = undefined;
+		var options: c.cgltf_options = .{};
+		var data: *c.cgltf_data = undefined;
 
-		var result = gltf.cgltf_parse(&options, @ptrCast(file.ptr), @intCast(file.len), @ptrCast(&data));
-		if (result != gltf.cgltf_result_success) {
+		var result = c.cgltf_parse(&options, @ptrCast(file.ptr), @intCast(file.len), @ptrCast(&data));
+		if (result != c.cgltf_result_success) {
 			std.log.err("GLTF Parse error: {s}", .{@errorName(getGltfError(result))});
 			return getGltfError(result);
 		}
 
-		defer gltf.cgltf_free(@ptrCast(data));
+		defer c.cgltf_free(@ptrCast(data));
 
-		result = gltf.cgltf_load_buffers(&options, @ptrCast(data), "data:application/octet-stream");
-		if (result != gltf.cgltf_result_success) {
+		result = c.cgltf_load_buffers(&options, @ptrCast(data), "data:application/octet-stream");
+		if (result != c.cgltf_result_success) {
 			std.log.err("GLTF Load buffers error: {s}", .{@errorName(getGltfError(result))});
 			return getGltfError(result);
 		}
 
-		result = gltf.cgltf_validate(@ptrCast(data));
-		if (result != gltf.cgltf_result_success) {
+		result = c.cgltf_validate(@ptrCast(data));
+		if (result != c.cgltf_result_success) {
 			std.log.err("GLTF Validation error: {s}", .{@errorName(getGltfError(result))});
 			return getGltfError(result);
 		}
@@ -170,7 +166,7 @@ pub const EntityModel = struct {
 
 				const primitives = node.mesh.*.primitives;
 				for (primitives[0..node.mesh.*.primitives_count]) |primitive| {
-					if (primitive.type != gltf.cgltf_primitive_type_triangles) {
+					if (primitive.type != c.cgltf_primitive_type_triangles) {
 						std.log.warn("Unsupported primitive type: {d}", .{primitive.type});
 						continue;
 					}
@@ -186,16 +182,16 @@ pub const EntityModel = struct {
 						indicesSlice[i] = @as(u32, @intCast(idx)) + baseVertex;
 					}
 
-					var positionAttr: gltf.cgltf_accessor = undefined;
-					var normalAttr: gltf.cgltf_accessor = undefined;
-					var uvAttr: gltf.cgltf_accessor = undefined;
+					var positionAttr: c.cgltf_accessor = undefined;
+					var normalAttr: c.cgltf_accessor = undefined;
+					var uvAttr: c.cgltf_accessor = undefined;
 					for (primitive.attributes, 0..primitive.attributes_count) |attrib, _| {
 						const attribAccessor = attrib.data.*;
 
 						switch (attrib.type) {
-							gltf.cgltf_attribute_type_position => positionAttr = attribAccessor,
-							gltf.cgltf_attribute_type_normal => normalAttr = attribAccessor,
-							gltf.cgltf_attribute_type_texcoord => uvAttr = attribAccessor,
+							c.cgltf_attribute_type_position => positionAttr = attribAccessor,
+							c.cgltf_attribute_type_normal => normalAttr = attribAccessor,
+							c.cgltf_attribute_type_texcoord => uvAttr = attribAccessor,
 							else => continue,
 						}
 					}
@@ -248,7 +244,7 @@ pub const EntityModel = struct {
 		};
 	}
 
-	fn getHierarchyMatrix(node: gltf.cgltf_node, sys: CoordinateSystem) Mat4f {
+	fn getHierarchyMatrix(node: c.cgltf_node, sys: CoordinateSystem) Mat4f {
 		var currentMat = Mat4f.translation(convertCoordinateSystemVec(node.translation, sys));
 		currentMat = currentMat.mul(Mat4f.rotationQuat(convertCoordinateSystemQuat(node.rotation, sys)));
 		currentMat = currentMat.mul(Mat4f.scale(convertCoordinateSystemScale(node.scale, sys)));
@@ -260,17 +256,17 @@ pub const EntityModel = struct {
 		return getHierarchyMatrix(node.parent.*, sys).mul(currentMat);
 	}
 
-	fn getGltfError(result: gltf.cgltf_result) anyerror {
+	fn getGltfError(result: c.cgltf_result) error{ DataTooShort, UnknownFormat, InvalidJson, InvalidGltf, InvalidOptions, FileNotFound, IoError, OutOfMemory, LegacyGltf } {
 		return switch (result) {
-			gltf.cgltf_result_data_too_short => error.DataTooShort,
-			gltf.cgltf_result_unknown_format => error.UnknownFormat,
-			gltf.cgltf_result_invalid_json => error.InvalidJson,
-			gltf.cgltf_result_invalid_gltf => error.InvalidGltf,
-			gltf.cgltf_result_invalid_options => error.InvalidOptions,
-			gltf.cgltf_result_file_not_found => error.FileNotFound,
-			gltf.cgltf_result_io_error => error.IoError,
-			gltf.cgltf_result_out_of_memory => error.OutOfMemory,
-			gltf.cgltf_result_legacy_gltf => error.LegacyGltf,
+			c.cgltf_result_data_too_short => error.DataTooShort,
+			c.cgltf_result_unknown_format => error.UnknownFormat,
+			c.cgltf_result_invalid_json => error.InvalidJson,
+			c.cgltf_result_invalid_gltf => error.InvalidGltf,
+			c.cgltf_result_invalid_options => error.InvalidOptions,
+			c.cgltf_result_file_not_found => error.FileNotFound,
+			c.cgltf_result_io_error => error.IoError,
+			c.cgltf_result_out_of_memory => error.OutOfMemory,
+			c.cgltf_result_legacy_gltf => error.LegacyGltf,
 			else => unreachable,
 		};
 	}

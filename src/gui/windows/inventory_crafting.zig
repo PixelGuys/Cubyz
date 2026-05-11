@@ -84,7 +84,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 	}
 	inventories.clearRetainingCapacity();
 	// Find all recipes the player can make:
-	outer: for (items.recipes()) |*recipe| {
+	outer: for (items.getRecipes()) |*recipe| {
 		middle: for (recipe.sourceItems, recipe.sourceAmounts) |sourceItem, sourceAmount| {
 			for (availableItems.items, itemAmount.items) |availableItem, availableAmount| {
 				if (availableItem == sourceItem and availableAmount >= sourceAmount) {

@@ -13,6 +13,8 @@ const terrain = @import("terrain.zig");
 const GeneratorState = terrain.GeneratorState;
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 
+pub const cave_generators = @import("cavegen/_list.zig");
+
 /// Cave data represented in a 1-Bit per block format, where 0 means empty and 1 means not empty.
 pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 	pub const width = 1 << 6;
@@ -92,25 +94,26 @@ pub const CaveGenerator = struct { // MARK: CaveGenerator
 	generatorSeed: u64,
 	defaultState: GeneratorState,
 
-	var generatorRegistry: std.StringHashMapUnmanaged(CaveGenerator) = .{};
-
-	pub fn registerGenerator(comptime Generator: type) void {
-		const self = CaveGenerator{
-			.init = &Generator.init,
-			.generate = &Generator.generate,
-			.priority = Generator.priority,
-			.generatorSeed = Generator.generatorSeed,
-			.defaultState = Generator.defaultState,
-		};
-		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
-	}
+	const generatorRegistry: std.StaticStringMap(CaveGenerator) = .initComptime(blk: {
+		const decls = @typeInfo(cave_generators).@"struct".decls;
+		var generators: [decls.len]struct { []const u8, CaveGenerator } = undefined;
+		for (0..decls.len) |i| {
+			const Generator = @field(cave_generators, decls[i].name);
+			generators[i] = .{Generator.id, .{
+				.init = &Generator.init,
+				.generate = &Generator.generate,
+				.priority = Generator.priority,
+				.generatorSeed = Generator.generatorSeed,
+				.defaultState = Generator.defaultState,
+			}};
+		}
+		break :blk generators;
+	});
 
 	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []CaveGenerator {
-		var list: main.ListUnmanaged(CaveGenerator) = .initCapacity(allocator, generatorRegistry.size);
-		var iterator = generatorRegistry.iterator();
-		while (iterator.next()) |generatorEntry| {
-			const generator = generatorEntry.value_ptr.*;
-			const generatorSettings = settings.getChild(generatorEntry.key_ptr.*);
+		var list: main.ListUnmanaged(CaveGenerator) = .initCapacity(allocator, generatorRegistry.values().len);
+		for (generatorRegistry.keys(), generatorRegistry.values()) |id, generator| {
+			const generatorSettings = settings.getChild(id);
 			if (generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
 			generator.init(generatorSettings);
 			list.appendAssumeCapacity(generator);
@@ -285,15 +288,10 @@ fn cacheInit(pos: ChunkPosition) *CaveMapFragment {
 }
 
 pub fn globalInit() void {
-	const list = @import("cavegen/_list.zig");
-	inline for (@typeInfo(list).@"struct".decls) |decl| {
-		CaveGenerator.registerGenerator(@field(list, decl.name));
-	}
 	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn globalDeinit() void {
-	CaveGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
 	memoryPool.deinit();
 }
 

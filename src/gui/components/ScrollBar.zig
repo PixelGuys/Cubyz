@@ -30,7 +30,7 @@ pub fn globalInit() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/scrollbar.png");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	texture.deinit();
 }
 

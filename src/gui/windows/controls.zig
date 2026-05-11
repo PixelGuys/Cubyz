@@ -2,7 +2,9 @@ const std = @import("std");
 
 const main = @import("main");
 const Vec2f = main.vec.Vec2f;
-const c = main.Window.c;
+
+const c = @import("c");
+
 const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;

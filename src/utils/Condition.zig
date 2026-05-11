@@ -49,13 +49,14 @@
 const std = @import("std");
 const main = @import("main");
 const builtin = @import("builtin");
-const Condition = @This();
 const Mutex = main.utils.Mutex;
 
 const os = std.os;
 const assert = std.debug.assert;
 const testing = std.testing;
 const Futex = main.utils.Futex;
+
+const Condition = @This();
 
 impl: Impl = .{},
 

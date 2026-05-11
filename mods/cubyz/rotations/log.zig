@@ -15,12 +15,16 @@ const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 const branch = @import("branch.zig");
+const BranchData = branch.BranchData;
+const Direction = branch.Direction;
+
+pub const rotateZ = branch.rotateZ;
 
 pub const dependsOnNeighbors = true;
 
 var modelIndex: ?ModelIndex = null;
 
-const LogData = branch.BranchData;
+const LogData = BranchData;
 
 pub fn init() void {}
 
@@ -30,13 +34,11 @@ pub fn reset() void {
 	modelIndex = null;
 }
 
-const DirectionWithSign = branch.Direction;
-
 const DirectionWithoutSign = enum(u1) {
 	y = 0,
 	x = 1,
 
-	fn fromBranchDirection(dir: DirectionWithSign) DirectionWithoutSign {
+	fn fromBranchDirection(dir: Direction) DirectionWithoutSign {
 		return switch (dir) {
 			.negYDir => .y,
 			.posXDir => .x,
@@ -49,8 +51,8 @@ const DirectionWithoutSign = enum(u1) {
 const Pattern = union(enum) {
 	dot: void,
 	line: DirectionWithoutSign,
-	bend: DirectionWithSign,
-	intersection: DirectionWithSign,
+	bend: Direction,
+	intersection: Direction,
 	cross: void,
 	cut: void,
 };
@@ -180,8 +182,6 @@ pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 pub fn model(block: Block) ModelIndex {
 	return blocks.meshes.modelIndexStart(block).add(block.data & 63);
 }
-
-pub const rotateZ = branch.rotateZ;
 
 pub fn generateData(
 	_: *main.game.World,

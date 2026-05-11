@@ -59,8 +59,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:air",
-			.log = "cubyz:birch_log",
-			.top = "cubyz:birch_top",
+			.log = "cubyz:log/birch",
 			.chance = 0.03,
 			.type = .round,
 			.height = 10,
@@ -99,8 +98,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:air",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.log = "cubyz:log/oak",
 			.chance = 0.075,
 			.type = .round,
 			.height = 8,

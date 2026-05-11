@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const Tag = main.Tag;
 const utils = main.utils;
-const ZonElement = @import("zon.zig").ZonElement;
+const ZonElement = main.ZonElement;
 const chunk = @import("chunk.zig");
 const Neighbor = chunk.Neighbor;
 const Chunk = chunk.Chunk;
@@ -25,9 +25,11 @@ const BlockEntityType = block_entity.BlockEntityType;
 const ClientBlockCallback = main.callbacks.ClientBlockCallback;
 const ServerBlockCallback = main.callbacks.ServerBlockCallback;
 const BlockTouchCallback = main.callbacks.BlockTouchCallback;
-const sbb = main.server.terrain.structure_building_blocks;
+const sbb = main.server.terrain.sbb;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
+
+const c = @import("c");
 
 pub const maxBlockCount: usize = 65536; // 16 bit limit
 
@@ -68,7 +70,51 @@ pub const Ore = struct {
 	seed: u64,
 };
 
-const SelectionRule = enum { always, toolEffective, never };
+const SelectionCapabilities = struct {
+	capabilities: ?[]const Capability,
+
+	const Capability = enum(u8) {
+		toolEffective,
+
+		pub fn allowsSelectionByItem(self: Capability, block: Block, item: Item) bool {
+			return switch (self) {
+				.toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(block),
+			};
+		}
+	};
+
+	pub const alwaysSelectable: SelectionCapabilities = .{.capabilities = null};
+
+	pub fn loadFromZon(arena: main.heap.NeverFailingAllocator, zon: main.ZonElement) SelectionCapabilities {
+		var list = main.ListUnmanaged(Capability).initCapacity(arena, zon.toSlice().len);
+		for (zon.toSlice()) |capabilityZon| {
+			if (capabilityZon.as(?Capability, null)) |capability| {
+				list.appendAssumeCapacity(capability);
+			} else std.log.err("SelectionCapability is invalid. Ignoring", .{});
+		}
+		return .{.capabilities = list.items};
+	}
+
+	pub fn allowsSelectionByItem(self: SelectionCapabilities, block: Block, item: Item) bool {
+		if (item == .baseItem) {
+			const base = item.baseItem;
+			if (base.block() == block.typ or std.mem.eql(u8, base.id(), "cubyz:selection_wand")) {
+				return true;
+			}
+		}
+
+		if (block.hasTag(.fluid)) {
+			const fluidPlaceable = item == .baseItem and item.baseItem.hasTag(.fluidPlaceable);
+			return fluidPlaceable;
+		}
+
+		const capabilities = self.capabilities orelse return true;
+		for (capabilities) |capability| {
+			if (capability.allowsSelectionByItem(block, item)) return true;
+		}
+		return false;
+	}
+};
 
 var _transparent: [maxBlockCount]bool = undefined;
 var _collide: [maxBlockCount]bool = undefined;
@@ -79,7 +125,7 @@ var _blockResistance: [maxBlockCount]f32 = undefined;
 
 /// Whether you can replace it with another block, mainly used for fluids/gases
 var _replaceable: [maxBlockCount]bool = undefined;
-var _selectionRule: [maxBlockCount]SelectionRule = undefined;
+var _selectionCapabilities: [maxBlockCount]SelectionCapabilities = undefined;
 var _blockDrops: [maxBlockCount][]const BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
 var _degradable: [maxBlockCount]bool = undefined;
@@ -139,7 +185,13 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_light[size] = zon.get(u32, "emittedLight", 0);
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
-	_selectionRule[size] = zon.get(SelectionRule, "selectionRule", .always);
+
+	if (zon.getChildOrNull("selectionCapabilities")) |capabilitiesZon| {
+		_selectionCapabilities[size] = .loadFromZon(main.worldArena, capabilitiesZon);
+	} else {
+		_selectionCapabilities[size] = .alwaysSelectable;
+	}
+
 	_replaceable[size] = zon.get(bool, "replaceable", false);
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
@@ -414,8 +466,8 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return _replaceable[self.typ];
 	}
 
-	pub inline fn selectionRule(self: Block) SelectionRule {
-		return _selectionRule[self.typ];
+	pub inline fn selectionCapabilities(self: Block) SelectionCapabilities {
+		return _selectionCapabilities[self.typ];
 	}
 
 	pub inline fn blockDrops(self: Block) []const BlockDrop {
@@ -526,24 +578,8 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
 	}
 
-	pub fn isSelectableByItem(self: Block, item: Item) bool {
-		if (item == .baseItem) {
-			const base = item.baseItem;
-			if (base.block() == self.typ or std.mem.eql(u8, base.id(), "cubyz:selection_wand")) {
-				return true;
-			}
-		}
-
-		if (self.hasTag(.fluid)) {
-			const fluidPlaceable = item == .baseItem and item.baseItem.hasTag(.fluidPlaceable);
-			return fluidPlaceable;
-		}
-
-		return switch (self.selectionRule()) {
-			.always => true,
-			.toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(self),
-			.never => false,
-		};
+	pub inline fn isSelectableByItem(self: Block, item: Item) bool {
+		return self.selectionCapabilities().allowsSelectionByItem(self, item);
 	}
 };
 
@@ -803,10 +839,10 @@ pub const meshes = struct { // MARK: meshes
 
 	pub fn preProcessAnimationData(time: u32) void {
 		animationComputePipeline.bind();
-		graphics.c.glUniform1ui(animationUniforms.time, time);
-		graphics.c.glUniform1ui(animationUniforms.size, @intCast(animationData.len));
-		graphics.c.glDispatchCompute(@intCast(@divFloor(animationData.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
-		graphics.c.glMemoryBarrier(graphics.c.GL_SHADER_STORAGE_BARRIER_BIT);
+		c.glUniform1ui(animationUniforms.time, time);
+		c.glUniform1ui(animationUniforms.size, @intCast(animationData.len));
+		c.glDispatchCompute(@intCast(@divFloor(animationData.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
+		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
 	}
 
 	fn finishTextureLoading() void {
@@ -830,7 +866,6 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn generateTextureArray() void {
-		const c = graphics.c;
 		blockTextureArray.generate(blockTextures.items, true, true);
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
 		emissionTextureArray.generate(emissionTextures.items, true, false);
