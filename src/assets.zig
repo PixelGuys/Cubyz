@@ -384,8 +384,6 @@ fn createAssetStringID(
 }
 
 pub fn init() void {
-	biomes.init();
-
 	common = .init();
 	common.read(main.globalArena, main.files.cwd(), "assets/");
 	common.log(.common);

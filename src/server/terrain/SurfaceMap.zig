@@ -241,7 +241,7 @@ pub const MapGenerator = struct {
 	init: *const fn (parameters: ZonElement) void,
 	generateMapFragment: *const fn (fragment: *MapFragment, seed: u64) void,
 
-	var generatorRegistry: std.StaticStringMap(MapGenerator) = .initComptime(blk: {
+	const generatorRegistry: std.StaticStringMap(MapGenerator) = .initComptime(blk: {
 		const decls = @typeInfo(map_generators).@"struct".decls;
 		var generators: [decls.len]struct { []const u8, MapGenerator } = undefined;
 		for (0..decls.len) |i| {

@@ -56,20 +56,24 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		self.vtable.generate(self.data, self.generationMode, x, y, z, chunk, caveMap, biomeMap, seed, isCeiling);
 	}
 
-	var modelRegistry: std.StringHashMapUnmanaged(VTable) = .{};
-
-	pub fn registerGenerator(comptime Generator: type) void {
-		var self: VTable = undefined;
-		self.loadModel = main.meta.castFunctionReturnToOptionalAnyopaque(Generator.loadModel);
-		self.generate = main.meta.castFunctionSelfToAnyopaque(Generator.generate);
-		self.hashFunction = main.meta.castFunctionSelfToAnyopaque(struct {
-			fn hash(ptr: *Generator) u64 {
-				return biomes.hashGeneric(ptr.*);
-			}
-		}.hash);
-		self.generationMode = Generator.generationMode;
-		modelRegistry.put(main.globalArena.allocator, Generator.id, self) catch unreachable;
-	}
+	const modelRegistry: std.StaticStringMap(VTable) = .initComptime(blk: {
+		const decls = @typeInfo(simple_structures).@"struct".decls;
+		var generators: [decls.len]struct { []const u8, VTable } = undefined;
+		for (0..decls.len) |i| {
+			const Generator = @field(simple_structures, decls[i].name);
+			generators[i] = .{Generator.id, .{
+				.loadModel = main.meta.castFunctionReturnToOptionalAnyopaque(Generator.loadModel),
+				.generate = main.meta.castFunctionSelfToAnyopaque(Generator.generate),
+				.hashFunction = main.meta.castFunctionSelfToAnyopaque(struct {
+					fn hash(ptr: *Generator) u64 {
+						return biomes.hashGeneric(ptr.*);
+					}
+				}.hash),
+				.generationMode = Generator.generationMode,
+			}};
+		}
+		break :blk generators;
+	});
 
 	fn getHash(self: SimpleStructureModel) u64 {
 		return self.vtable.hashFunction(self.data);
