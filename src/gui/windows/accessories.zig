@@ -58,6 +58,7 @@ pub fn onOpen() void {
 		}
 	}
 	if (currentColumn.children.items.len > 0) {
+		currentColumn.finish(.right);
 		columnList.append(main.stackAllocator, currentColumn);
 	} else {
 		currentColumn.deinit();
