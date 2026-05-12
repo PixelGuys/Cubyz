@@ -94,7 +94,7 @@ pub fn init() void {
 		&transparentUniforms,
 		graphics.VertexArray.EmptyVertex,
 		&.{},
-		.{.depthBias = .{.slopeFactor = 0.002, .constantFactor = 1, .clamp = 0}},
+		.{.depthBias = .{.slopeFactor = 0.0, .constantFactor = 10, .clamp = 0}},
 		.{.depthTest = true, .depthWrite = false, .depthCompare = .less},
 		.{.attachments = &.{.{
 			.srcColorBlendFactor = .one,
