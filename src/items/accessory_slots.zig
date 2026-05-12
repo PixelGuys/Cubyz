@@ -8,6 +8,7 @@ const Assets = main.assets.Assets;
 pub const AccessorySlot = struct {
 	id: []const u8,
 	count: u32,
+	positionHint: u32,
 	image: ?main.graphics.Image,
 	texture: ?main.graphics.Texture,
 
@@ -15,6 +16,7 @@ pub const AccessorySlot = struct {
 		var self: AccessorySlot = .{
 			.id = id,
 			.count = zon.get(u32, "count", 1),
+			.positionHint = zon.get(u32, "position_hint", std.math.maxInt(u32)),
 			.image = null,
 			.texture = null,
 		};
@@ -61,10 +63,8 @@ var totalSlotCount: u32 = 0;
 fn register(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
 	const accessorySlot = AccessorySlot.init(assetFolder, id, zon);
 	accessorySlots.append(main.worldArena, accessorySlot);
-	const slotPtr = &accessorySlots.items[accessorySlots.items.len - 1];
-	accessorySlotsById.put(main.worldArena.allocator, slotPtr.id, slotPtr) catch unreachable;
-	totalSlotCount += slotPtr.count;
-	std.log.debug("Registered accessory slot: {s}", .{slotPtr.id});
+	totalSlotCount += accessorySlot.count;
+	std.log.debug("Registered accessory slot: {s}", .{accessorySlot.id});
 }
 
 pub fn registerAccessorySlots(assetFolder: []const u8, accessorySlotMap: *const Assets.ZonHashMap) void {
@@ -72,6 +72,16 @@ pub fn registerAccessorySlots(assetFolder: []const u8, accessorySlotMap: *const 
 	while (iterator.next()) |entry| {
 		register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 	}
+	std.mem.sort(AccessorySlot, accessorySlots.items, {}, lessThan);
+	for (accessorySlots.items) |*accessorySlot| {
+		accessorySlotsById.put(main.worldArena.allocator, accessorySlot.id, accessorySlot) catch unreachable;
+	}
+}
+
+fn lessThan(_: void, lhs: AccessorySlot, rhs: AccessorySlot) bool {
+	if (lhs.positionHint < rhs.positionHint) return true;
+	if (lhs.positionHint > rhs.positionHint) return false;
+	return std.ascii.orderIgnoreCase(lhs.id, rhs.id) == .gt;
 }
 
 pub fn getAccessorySlots() []AccessorySlot {
