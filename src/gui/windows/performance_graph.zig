@@ -6,6 +6,8 @@ const draw = graphics.draw;
 const Texture = graphics.Texture;
 const Vec2f = main.vec.Vec2f;
 
+const c = @import("c");
+
 const gui = @import("../gui.zig");
 const GuiWindow = gui.GuiWindow;
 const GuiComponent = gui.GuiComponent;
@@ -71,9 +73,9 @@ pub fn render() void {
 	draw.line(.{border, 56}, .{window.contentSize[0] - border, 56});
 	draw.setColor(0xffffffff);
 	pipeline.bind(null);
-	graphics.c.glUniform1i(uniforms.points, lastFrameTime.len);
-	graphics.c.glUniform1i(uniforms.offset, index);
-	graphics.c.glUniform3f(uniforms.lineColor, 1, 1, 1);
+	c.glUniform1i(uniforms.points, lastFrameTime.len);
+	c.glUniform1i(uniforms.offset, index);
+	c.glUniform3f(uniforms.lineColor, 1, 1, 1);
 	var pos = Vec2f{border, border};
 	var dim = window.contentSize - @as(Vec2f, @splat(2*border));
 	pos *= @splat(draw.setScale(1));
@@ -83,10 +85,10 @@ pub fn render() void {
 	dim = @ceil(dim);
 	pos[1] += dim[1];
 
-	graphics.c.glUniform2f(uniforms.screen, @floatFromInt(main.Window.width), @floatFromInt(main.Window.height));
-	graphics.c.glUniform2f(uniforms.start, pos[0], pos[1]);
-	graphics.c.glUniform2f(uniforms.dimension, dim[0], draw.setScale(1));
+	c.glUniform2f(uniforms.screen, @floatFromInt(main.Window.width), @floatFromInt(main.Window.height));
+	c.glUniform2f(uniforms.start, pos[0], pos[1]);
+	c.glUniform2f(uniforms.dimension, dim[0], draw.setScale(1));
 	ssbo.bufferData(f32, &lastFrameTime);
 	ssbo.bind(5);
-	graphics.c.glDrawArrays(graphics.c.GL_LINE_STRIP, 0, lastFrameTime.len);
+	c.glDrawArrays(c.GL_LINE_STRIP, 0, lastFrameTime.len);
 }

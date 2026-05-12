@@ -24,13 +24,17 @@ const Instance = struct {
 	halfHeight: f32,
 };
 
-pub fn init(zon: ZonElement) ?*@This() {
-	const result = main.worldArena.create(@This());
-	result.minRadius = zon.get(f32, "minRadius", 16);
-	result.maxRadius = zon.get(f32, "maxRadius", result.minRadius);
-	result.minHalfHeight = zon.get(f32, "minHeight", 32)/2;
-	result.maxHalfHeight = zon.get(f32, "maxfHeight", result.minHalfHeight*2)/2;
-	return result;
+pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
+	const self = main.worldArena.create(@This());
+	self.minRadius = zon.get(f32, "minRadius", 16);
+	self.maxRadius = zon.get(f32, "maxRadius", self.minRadius);
+	self.minHalfHeight = zon.get(f32, "minHeight", 32)/2;
+	self.maxHalfHeight = zon.get(f32, "maxfHeight", self.minHalfHeight*2)/2;
+
+	return .{.model = self, .maxExtend = .{
+		.min = .{@floor(-self.maxRadius), @floor(-self.maxRadius), @floor(-self.maxHalfHeight)},
+		.max = .{@ceil(self.maxRadius), @ceil(self.maxRadius), @ceil(self.maxHalfHeight)},
+	}};
 }
 
 pub fn instantiate(self: *@This(), arena: NeverFailingAllocator, seed: *u64) SdfInstance {

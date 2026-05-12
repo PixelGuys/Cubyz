@@ -48,6 +48,15 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	exe.root_module.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools", t)));
 	exe.root_module.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools-opt", t)));
 
+	const translate_c = b.addTranslateC(.{
+		.root_source_file = b.path("src/c.h"),
+		.target = target,
+		.optimize = optimize,
+	});
+	translate_c.addIncludePath(headersDeps.path("include"));
+
+	exe.root_module.addImport("c", translate_c.createModule());
+
 	if (t.os.tag == .macos) {
 		const moltenVkLibInstall = b.addInstallFile(subPath.path(b, "libMoltenVK.dylib"), "bin/Cubyz.app/Contents/Frameworks/libMoltenVK.dylib");
 		const moltenVkJsonInstall = b.addInstallFile(subPath.path(b, "MoltenVK_icd.json"), "bin/Cubyz.app/Contents/Resources/vulkan/icd.d/MoltenVK_icd.json");
@@ -137,14 +146,14 @@ fn addModFeatures(b: *std.Build, exe: *std.Build.Step.Compile) !void {
 	});
 	exe.step.dependOn(step);
 
-	try addModFeatureModule(b, exe, "rotation");
+	try addModFeatureModule(b, exe, "rotations");
 }
 
-pub fn makeModFeaturesStep(step: *std.Build.Step, options: std.Build.Step.MakeOptions) anyerror!void {
+pub fn makeModFeaturesStep(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
 	var io = std.Io.Threaded.init(options.gpa, .{});
 	defer io.deinit();
 
-	try makeModFeature(io.io(), step, "rotation");
+	try makeModFeature(io.io(), step, "rotations");
 }
 
 fn createLaunchConfig(b: *std.Build) !void {
@@ -291,29 +300,4 @@ pub fn build(b: *std.Build) !void {
 
 	const test_step = b.step("test", "Run unit tests");
 	test_step.dependOn(&run_exe_tests.step);
-
-	// MARK: Formatter
-
-	const formatter = b.addExecutable(.{
-		.name = "CubyzFormatter",
-		.root_module = b.addModule("format", .{
-			.root_source_file = b.path("src/formatter/format.zig"),
-			.target = target,
-			.optimize = optimize,
-		}),
-	});
-	// ZLS is stupid and cannot detect which executable is the main one, so we add the import everywhere...
-	formatter.root_module.addOptions("build_options", options);
-	formatter.root_module.addImport("main", mainModule);
-
-	const formatter_install = b.addInstallArtifact(formatter, .{});
-
-	const formatter_cmd = b.addRunArtifact(formatter);
-	formatter_cmd.step.dependOn(&formatter_install.step);
-	if (b.args) |args| {
-		formatter_cmd.addArgs(args);
-	}
-
-	const formatter_step = b.step("format", "Check the formatting of the code");
-	formatter_step.dependOn(&formatter_cmd.step);
 }

@@ -23,7 +23,7 @@ pub const cave_layers = @import("cave_layers.zig");
 
 pub const StructureMap = @import("StructureMap.zig");
 
-pub const structure_building_blocks = @import("structure_building_blocks.zig");
+pub const sbb = @import("sbb.zig");
 
 pub const sdf = @import("sdf.zig");
 
@@ -130,12 +130,6 @@ pub fn globalInit() void {
 		const list = @import("chunkgen/_list.zig");
 		inline for (@typeInfo(list).@"struct".decls) |decl| {
 			BlockGenerator.registerGenerator(@field(list, decl.name));
-		}
-	}
-	{
-		const list = @import("sdf_models/_list.zig");
-		inline for (@typeInfo(list).@"struct".decls) |decl| {
-			sdf.SdfModel.registerGenerator(@field(list, decl.name));
 		}
 	}
 	const t1 = main.timestamp();

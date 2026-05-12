@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
-const User = main.server.User;
 const command = main.server.command;
+const User = main.server.User;
 
 pub const description = "Kicks a player";
 pub const usage = "/kick @<playerIndex>";

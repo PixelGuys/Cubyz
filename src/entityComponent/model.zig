@@ -4,11 +4,11 @@ const main = @import("main");
 const chunk = main.chunk;
 const game = main.game;
 const graphics = main.graphics;
-const c = graphics.c;
 const ZonElement = main.ZonElement;
 const renderer = main.renderer;
 const settings = main.settings;
 const utils = main.utils;
+const BinaryReader = utils.BinaryReader;
 const vec = main.vec;
 const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
@@ -16,7 +16,7 @@ const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
-const BinaryReader = main.utils.BinaryReader;
+const c = @import("c");
 
 pub var entityComponentID: main.entity.EntityComponentId = undefined;
 pub const entityComponentVersion = 0;

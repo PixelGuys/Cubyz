@@ -1,9 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
+const command = main.server.command;
 const User = main.server.User;
-
-const command = @import("_command.zig");
 
 pub const description = "Shows info about all the commands.";
 pub const usage = "/help\n/help <command>";

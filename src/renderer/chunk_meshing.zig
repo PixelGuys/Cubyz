@@ -11,7 +11,6 @@ const models = main.models;
 const QuadIndex = models.QuadIndex;
 const renderer = main.renderer;
 const graphics = main.graphics;
-const c = graphics.c;
 const SSBO = graphics.SSBO;
 const lighting = @import("lighting.zig");
 const settings = main.settings;
@@ -22,6 +21,8 @@ const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Mat4f = vec.Mat4f;
 const gpu_performance_measuring = main.gui.windowlist.gpu_performance_measuring;
+
+const c = @import("c");
 
 const mesh_storage = @import("mesh_storage.zig");
 
@@ -1400,7 +1401,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	};
 
 	pub fn finishData(self: *ChunkMesh) void {
-		main.utils.assertLocked(&self.mutex);
+		self.mutex.assertLocked();
 
 		var lightList = main.List(u32).init(main.stackAllocator);
 		defer lightList.deinit();
@@ -1469,7 +1470,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	fn updateTransparencyDataAfterMeshUpload(self: *ChunkMesh) void {
-		main.utils.assertLocked(&self.meshUploadMutex);
+		self.meshUploadMutex.assertLocked();
 		var len: usize = 0;
 		const coreList = self.transparentMesh.completeList.getRange(.core);
 		len += coreList.len;

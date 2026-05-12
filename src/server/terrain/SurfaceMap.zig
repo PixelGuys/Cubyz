@@ -14,6 +14,8 @@ const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 const Biome = terrain.biomes.Biome;
 
+pub const map_generators = @import("mapgen/_list.zig");
+
 pub const MapFragmentPosition = struct {
 	wx: i32,
 	wy: i32,
@@ -239,15 +241,18 @@ pub const MapGenerator = struct {
 	init: *const fn (parameters: ZonElement) void,
 	generateMapFragment: *const fn (fragment: *MapFragment, seed: u64) void,
 
-	var generatorRegistry: std.StringHashMapUnmanaged(MapGenerator) = .{};
-
-	fn registerGenerator(comptime Generator: type) void {
-		const self = MapGenerator{
-			.init = &Generator.init,
-			.generateMapFragment = &Generator.generateMapFragment,
-		};
-		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
-	}
+	const generatorRegistry: std.StaticStringMap(MapGenerator) = .initComptime(blk: {
+		const decls = @typeInfo(map_generators).@"struct".decls;
+		var generators: [decls.len]struct { []const u8, MapGenerator } = undefined;
+		for (0..decls.len) |i| {
+			const Generator = @field(map_generators, decls[i].name);
+			generators[i] = .{Generator.id, .{
+				.init = &Generator.init,
+				.generateMapFragment = &Generator.generateMapFragment,
+			}};
+		}
+		break :blk generators;
+	});
 
 	pub fn getGeneratorById(id: []const u8) !MapGenerator {
 		return generatorRegistry.get(id) orelse {
@@ -266,15 +271,10 @@ var profile: TerrainGenerationProfile = undefined;
 var memoryPool: main.heap.MemoryPool(MapFragment) = undefined;
 
 pub fn globalInit() void {
-	const list = @import("mapgen/_list.zig");
-	inline for (@typeInfo(list).@"struct".decls) |decl| {
-		MapGenerator.registerGenerator(@field(list, decl.name));
-	}
 	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn globalDeinit() void {
-	MapGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
 	memoryPool.deinit();
 }
 
