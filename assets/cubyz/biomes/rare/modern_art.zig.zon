@@ -10,7 +10,7 @@
 	.roughness = 10,
 	.hills = 10,
 
-	.music = "cubyz:totaldemented/cubyz_remastered",
+	.music = "cubyz:totaldemented/cublajz",
 
 	.validPlayerSpawn = false,
 
