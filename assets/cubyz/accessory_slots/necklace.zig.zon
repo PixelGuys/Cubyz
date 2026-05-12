@@ -1,4 +1,4 @@
 .{
 	.texture = "necklace.png",
-	.count = 2,
+	.count = 1,
 }
