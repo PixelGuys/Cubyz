@@ -3,6 +3,10 @@
 		.hot,
 		.dry,
 	},
+	.tags = .{
+		.baobab,
+		.cactus,
+	},
 	.minHeight = 64,
 	.maxHeight = 65,
 	.minRadius = 80,

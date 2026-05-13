@@ -1,4 +1,7 @@
 .{
+	.tags = .{
+		.cactus,
+	},
 	.chance = 0.2,
 	.minHeightLimit = 7,
 	.minHeight = 22,

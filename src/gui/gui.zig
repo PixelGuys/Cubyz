@@ -8,8 +8,9 @@ const settings = main.settings;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 const List = main.List;
-
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+
+const c = @import("c");
 
 const Button = @import("components/Button.zig");
 const CheckBox = @import("components/CheckBox.zig");
@@ -18,11 +19,12 @@ const ScrollBar = @import("components/ScrollBar.zig");
 const ContinuousSlider = @import("components/ContinuousSlider.zig");
 const DiscreteSlider = @import("components/DiscreteSlider.zig");
 const TextInput = @import("components/TextInput.zig");
-pub const GuiComponent = @import("gui_component.zig").GuiComponent;
+const gui_component = @import("gui_component.zig");
+pub const GuiComponent = gui_component.GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
 
-pub const windowlist = @import("windows/_windowlist.zig");
-const GamepadCursor = @import("gamepad_cursor.zig");
+pub const windowlist = @import("windows/_list.zig");
+const gamepad_cursor = @import("gamepad_cursor.zig");
 
 var windowList: List(*GuiWindow) = undefined;
 var hudWindows: List(*GuiWindow) = undefined;
@@ -136,33 +138,35 @@ pub fn init() void { // MARK: init()
 			windowStruct.init();
 		}
 	}
-	GuiWindow.__init();
-	Button.__init();
-	CheckBox.__init();
-	ItemSlot.__init();
-	ScrollBar.__init();
-	ContinuousSlider.__init();
-	DiscreteSlider.__init();
-	TextInput.__init();
+	GuiWindow.globalInit();
+	GuiComponent.BagSlot.globalInit();
+	Button.globalInit();
+	CheckBox.globalInit();
+	ItemSlot.globalInit();
+	ScrollBar.globalInit();
+	ContinuousSlider.globalInit();
+	DiscreteSlider.globalInit();
+	TextInput.globalInit();
 	load();
-	GamepadCursor.init();
+	gamepad_cursor.init();
 }
 
 pub fn deinit() void {
 	save();
-	GamepadCursor.deinit();
+	gamepad_cursor.deinit();
 	for (openWindows.items) |window| {
 		window.onCloseFn();
 	}
 	openWindows.clearRetainingCapacity();
-	GuiWindow.__deinit();
-	Button.__deinit();
-	CheckBox.__deinit();
-	ItemSlot.__deinit();
-	ScrollBar.__deinit();
-	ContinuousSlider.__deinit();
-	DiscreteSlider.__deinit();
-	TextInput.__deinit();
+	GuiWindow.globalDeinit();
+	GuiComponent.BagSlot.globalDeinit();
+	Button.globalDeinit();
+	CheckBox.globalDeinit();
+	ItemSlot.globalDeinit();
+	ScrollBar.globalDeinit();
+	ContinuousSlider.globalDeinit();
+	DiscreteSlider.globalDeinit();
+	TextInput.globalDeinit();
 	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
 		const WindowStruct = @field(windowlist, decl.name);
 		if (@hasDecl(WindowStruct, "deinit")) {
@@ -556,7 +560,7 @@ pub fn updateAndRenderGui() void {
 		if (!main.Window.grabbed) {
 			draw.setColor(0x80000000);
 			GuiWindow.borderPipeline.bind(draw.getScissor());
-			graphics.c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
+			c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
 			draw.customShadedRect(GuiWindow.borderUniforms, .{0, 0}, main.Window.getWindowSize());
 		}
 		const oldScale = draw.setScale(scale);
@@ -568,7 +572,7 @@ pub fn updateAndRenderGui() void {
 	}
 	const oldScale = draw.setScale(scale);
 	defer draw.restoreScale(oldScale);
-	GamepadCursor.render();
+	gamepad_cursor.render();
 }
 
 pub fn toggleGameMenu() void {
@@ -609,7 +613,7 @@ pub const inventory = struct { // MARK: inventory
 	var isCrafting: bool = false;
 
 	pub fn init() void {
-		carried = ClientInventory.init(main.globalAllocator, 1, .normal, .serverShared, .{.hand = main.game.Player.id}, .{});
+		carried = ClientInventory.init(main.globalAllocator, 1, .serverShared, .{.hand = main.game.Player.id}, .{});
 		carriedItemSlot = ItemSlot.init(.{0, 0}, carried, 0, .default, .normal);
 		carriedItemSlot.renderFrame = false;
 		initialized = true;
@@ -655,10 +659,7 @@ pub const inventory = struct { // MARK: inventory
 		if (itemSlot.mode == .immutable) return;
 		const mainGuiButton = main.KeyBoard.key("mainGuiButton");
 		const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
-		if (itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
-			const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
-			if (recipeItem == .null and item != .null) recipeItem = item.clone();
-			if (!std.meta.eql(item, recipeItem)) return;
+		if ((itemSlot.inventory.type == .crafting or itemSlot.inventory.type == .workbenchResult) and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
 			const time = main.timestamp();
 			if (!isCrafting) {
 				isCrafting = true;
@@ -668,10 +669,22 @@ pub const inventory = struct { // MARK: inventory
 			while (time.durationTo(nextCraftingAction).nanoseconds <= 0) {
 				nextCraftingAction = nextCraftingAction.addDuration(craftingCooldown);
 				craftingCooldown.nanoseconds -= @divTrunc((craftingCooldown.nanoseconds -% minCraftingCooldown.nanoseconds)*craftingCooldown.nanoseconds, std.time.ns_per_s);
-				if (mainGuiButton.modsOnPress.shift) {
-					main.game.Player.inventory.craftFrom(&.{main.game.Player.inventory}, itemSlot.inventory);
-				} else {
-					main.game.Player.inventory.craftFrom(&.{carried}, itemSlot.inventory);
+
+				if (itemSlot.inventory.type == .crafting) {
+					const item = itemSlot.inventory.getItem(itemSlot.itemSlot);
+					if (recipeItem == .null and item != .null) recipeItem = item.clone();
+					if (!std.meta.eql(item, recipeItem)) return;
+					if (mainGuiButton.modsOnPress.shift) {
+						main.game.Player.inventory.craftFrom(&.{main.game.Player.inventory}, itemSlot.inventory);
+					} else {
+						main.game.Player.inventory.craftFrom(&.{carried}, itemSlot.inventory);
+					}
+				} else if (itemSlot.inventory.type == .workbenchResult) {
+					if (mainGuiButton.modsOnPress.shift) {
+						itemSlot.inventory.craftProceduralItem(&.{main.game.Player.inventory});
+					} else {
+						itemSlot.inventory.craftProceduralItem(&.{carried});
+					}
 				}
 			}
 			return;
@@ -734,7 +747,7 @@ pub const inventory = struct { // MARK: inventory
 				carried.distribute(targetInventories, targetSlots);
 				leftClickSlots.clearRetainingCapacity();
 			} else if (hoveredItemSlot) |hovered| {
-				if (hovered.inventory.type == .crafting) return;
+				if (hovered.inventory.type == .crafting or hovered.inventory.type == .workbenchResult) return;
 				if (main.KeyBoard.key("mainGuiButton").modsOnPress.shift) {
 					if (hovered.inventory.type == .creative) {
 						const item = hovered.inventory.getItem(hovered.itemSlot);
@@ -744,20 +757,20 @@ pub const inventory = struct { // MARK: inventory
 				}
 				if (!hovered.pressed) return;
 				hovered.inventory.depositOrSwap(hovered.itemSlot, carried);
-			} else if (!hoveredAWindow) {
+			} else if (!hoveredAWindow and selectedWindow == null) {
 				carried.dropStack(0);
 			}
 		} else {
 			if (rightClickSlots.items.len != 0) {
 				rightClickSlots.clearRetainingCapacity();
 			} else if (hoveredItemSlot) |hovered| {
-				if (hovered.inventory.type == .crafting) return;
+				if (hovered.inventory.type == .crafting or hovered.inventory.type == .workbenchResult) return;
 				if (hovered.inventory.type == .creative) {
 					carried.deposit(0, hovered.inventory, hovered.itemSlot, 1);
 				} else {
 					hovered.inventory.takeHalf(hovered.itemSlot, carried);
 				}
-			} else if (!hoveredAWindow) {
+			} else if (!hoveredAWindow and selectedWindow == null) {
 				carried.dropOne(0);
 			}
 		}

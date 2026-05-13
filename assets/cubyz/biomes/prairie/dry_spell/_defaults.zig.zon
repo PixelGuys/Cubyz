@@ -2,6 +2,9 @@
 	.properties = .{
 		.dry,
 	},
+	.tags = .{
+		.oak,
+	},
 	.chance = 0,
 	.minRadius = 45,
 	.maxRadius = 60,

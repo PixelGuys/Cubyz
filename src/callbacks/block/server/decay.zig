@@ -9,7 +9,7 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const ZonElement = main.ZonElement;
 const server = main.server;
-const Branch = main.rotation.list.@"cubyz:branch";
+const branch = main.rotation.rotations.@"cubyz:branch";
 
 decayReplacement: blocks.Block,
 prevention: []const main.Tag,
@@ -88,7 +88,7 @@ fn foundWayToLog(self: *@This(), world: *server.ServerWorld, leaf: Block, wx: i3
 			// it is the same type of leaf? continue search! (Don't do it for branches. We've got isConnected instead!)
 			if (!sourceIsBranch and log.typ != leaf.typ) continue;
 			if (sourceIsBranch and log.mode() != branchRotation and !log.viewThrough()) return true;
-			const branchData = Branch.BranchData.init(log.data);
+			const branchData = branch.BranchData.init(log.data);
 
 			for (main.chunk.Neighbor.iterable) |offset| {
 				const relativePosition = value + offset.relPos();
@@ -118,7 +118,7 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 		if (params.block.data != 0)
 			return .ignored;
 	} else if (params.block.mode() == main.rotation.getByID("cubyz:branch")) {
-		const bd = Branch.BranchData.init(params.block.data);
+		const bd = branch.BranchData.init(params.block.data);
 		if (bd.placedByHuman)
 			return .ignored;
 	} else {

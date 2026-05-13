@@ -1,0 +1,20 @@
+.{
+	.chance = 0,
+	.properties = .{
+		.ocean,
+		.hot,
+	},
+	.music = "cubyz:Sincerely",
+	.stoneBlock = "cubyz:sandstone/base",
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:amber_ore:cubyz:sand",
+			.chance = 0.008,
+			.width = 1,
+			.variation = 2,
+			.depth = 1,
+			.smoothness = 0.1,
+		},
+	},
+}

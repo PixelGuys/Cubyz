@@ -379,8 +379,8 @@ pub const Chunk = struct { // MARK: Chunk
 	voxelSizeShift: u5,
 	voxelSizeMask: i32,
 
-	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(BlockPos, main.block_entity.BlockEntityIndex),
-	blockPosToEntityDataMapMutex: std.Thread.Mutex,
+	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(BlockPos, main.block_entity.BlockEntity),
+	blockPosToEntityDataMapMutex: main.utils.Mutex,
 
 	pub fn init(pos: ChunkPosition) *Chunk {
 		const self = memoryPool.create();
@@ -410,21 +410,21 @@ pub const Chunk = struct { // MARK: Chunk
 		self.data.deferredDeinit();
 	}
 
-	pub fn unloadBlockEntities(self: *Chunk, comptime side: main.utils.Side) void {
+	pub fn unloadBlockEntities(self: *Chunk, comptime side: main.sync.Side) void {
 		self.blockPosToEntityDataMapMutex.lock();
 		defer self.blockPosToEntityDataMapMutex.unlock();
 		var iterator = self.blockPosToEntityDataMap.iterator();
 		while (iterator.next()) |elem| {
 			const pos = elem.key_ptr.*;
-			const entityDataIndex = elem.value_ptr.*;
+			const entity = elem.value_ptr.*;
 			const block = self.data.getValue(pos.toIndex());
 			const blockEntity = block.blockEntity() orelse unreachable;
 			switch (side) {
 				.client => {
-					blockEntity.onUnloadClient(entityDataIndex);
+					blockEntity.onUnloadClient(entity);
 				},
 				.server => {
-					blockEntity.onUnloadServer(entityDataIndex);
+					blockEntity.onUnloadServer(entity);
 				},
 			}
 		}
@@ -476,7 +476,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	wasStored: bool = false,
 	shouldStoreNeighbors: bool = false,
 
-	mutex: std.Thread.Mutex = .{},
+	mutex: main.utils.Mutex = .{},
 	refCount: std.atomic.Value(u16),
 
 	pub fn initAndIncreaseRefCount(pos: ChunkPosition) *ServerChunk {
@@ -513,7 +513,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	}
 
 	pub fn setChanged(self: *ServerChunk) void {
-		main.utils.assertLocked(&self.mutex);
+		self.mutex.assertLocked();
 		if (!self.wasChanged) {
 			self.wasChanged = true;
 			self.increaseRefCount();
@@ -551,7 +551,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	/// Gets a block if it is inside this chunk.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
 	pub fn getBlock(self: *const ServerChunk, x: i32, y: i32, z: i32) Block {
-		main.utils.assertLocked(&self.mutex);
+		self.mutex.assertLocked();
 		const pos = BlockPos.fromLodCoords(x, y, z, self.super.voxelSizeShift);
 		return self.super.data.getValue(pos.toIndex());
 	}
@@ -559,7 +559,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	/// Updates a block if it is inside this chunk.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
 	pub fn updateBlockAndSetChanged(self: *ServerChunk, x: i32, y: i32, z: i32, newBlock: Block) void {
-		main.utils.assertLocked(&self.mutex);
+		self.mutex.assertLocked();
 		const pos = BlockPos.fromLodCoords(x, y, z, self.super.voxelSizeShift);
 		self.super.data.setValue(pos.toIndex(), newBlock);
 		self.shouldStoreNeighbors = true;
@@ -569,7 +569,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	/// Updates a block if current value is air or the current block is degradable.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
 	pub fn updateBlockIfDegradable(self: *ServerChunk, x: i32, y: i32, z: i32, newBlock: Block) void {
-		main.utils.assertLocked(&self.mutex);
+		self.mutex.assertLocked();
 		const pos = BlockPos.fromLodCoords(x, y, z, self.super.voxelSizeShift);
 		const oldBlock = self.super.data.getValue(pos.toIndex());
 		if (oldBlock.typ == 0 or oldBlock.degradable()) {
@@ -580,7 +580,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	/// Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
 	pub fn updateBlockInGeneration(self: *ServerChunk, x: i32, y: i32, z: i32, newBlock: Block) void {
-		main.utils.assertLocked(&self.mutex);
+		self.mutex.assertLocked();
 		const pos = BlockPos.fromLodCoords(x, y, z, self.super.voxelSizeShift);
 		self.super.data.setValue(pos.toIndex(), newBlock);
 	}
@@ -589,7 +589,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
 	pub fn updateBlockColumnInGeneration(self: *ServerChunk, x: i32, y: i32, zStartInclusive: i32, zEndInclusive: i32, newBlock: Block) void {
 		std.debug.assert(zStartInclusive <= zEndInclusive);
-		main.utils.assertLocked(&self.mutex);
+		self.mutex.assertLocked();
 		const posStart = BlockPos.fromLodCoords(x, y, zStartInclusive, self.super.voxelSizeShift);
 		const posEnd = BlockPos.fromLodCoords(x, y, zEndInclusive, self.super.voxelSizeShift);
 		self.super.data.setValueInColumn(posStart.toIndex(), @as(usize, posEnd.toIndex()) + 1, newBlock);
@@ -602,7 +602,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		const zOffset = if (other.super.pos.wz != self.super.pos.wz) chunkSize/2 else 0;
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		main.utils.assertLocked(&other.mutex);
+		self.mutex.assertLocked();
 
 		// Count the neighbors for each subblock. An transparent block counts 5. A chunk border(unknown block) only counts 1.
 

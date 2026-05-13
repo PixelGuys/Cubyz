@@ -5,6 +5,8 @@
 	.maxHeight = 384,
 
 	.interpolation = .linear,
+	.hills = 10,
+	.roughness = 5,
 
 	.chance = 0,
 
@@ -14,6 +16,7 @@
 		.{
 			.id = "cubyz:tall_mountain/slope1",
 			.chance = 1,
+			.parentEdgeDistance = 0,
 		},
 	},
 

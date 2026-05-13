@@ -15,4 +15,8 @@
 		.inputs = .{"cubyz:{item}/base"},
 		.output = "cubyz:{item}/cobble",
 	},
+	.{
+		.inputs = .{"cubyz:{item}/base"},
+		.output = "cubyz:{item}/pillar",
+	},
 }

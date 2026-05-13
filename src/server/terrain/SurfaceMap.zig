@@ -14,6 +14,8 @@ const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 const Biome = terrain.biomes.Biome;
 
+pub const map_generators = @import("mapgen/_list.zig");
+
 pub const MapFragmentPosition = struct {
 	wx: i32,
 	wy: i32,
@@ -84,7 +86,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 		terrain.noise.FractalNoise.generateSparseFractalTerrain(wx, wy, 64, main.server.world.?.settings.seed ^ 0x764923684396, caveBiomeOffsetMap, voxelSize);
 		for (0..mapSize) |x| {
 			for (0..mapSize) |y| {
-				self.caveBiomeOffsetMap[x][y] = @intFromFloat(@floor(caveBiomeOffsetMap.get(x, y)));
+				self.caveBiomeOffsetMap[x][y] = @floor(caveBiomeOffsetMap.get(x, y));
 			}
 		}
 	}
@@ -159,8 +161,8 @@ pub const MapFragment = struct { // MARK: MapFragment
 				for (0..mapSize) |x| {
 					for (0..mapSize) |y| {
 						self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[std.mem.readInt(u32, biomeData[4*(x*mapSize + y) ..][0..4], .big)]);
-						self.heightMap[x][y] = @intFromFloat(@as(f32, @bitCast(std.mem.readInt(u32, heightData[4*(x*mapSize + y) ..][0..4], .big))));
-						if (originalHeightMap) |map| map[x][y] = @intFromFloat(@as(f32, @bitCast(std.mem.readInt(u32, originalHeightData[4*(x*mapSize + y) ..][0..4], .big))));
+						self.heightMap[x][y] = @trunc(@as(f32, @bitCast(std.mem.readInt(u32, heightData[4*(x*mapSize + y) ..][0..4], .big))));
+						if (originalHeightMap) |map| map[x][y] = @trunc(@as(f32, @bitCast(std.mem.readInt(u32, originalHeightData[4*(x*mapSize + y) ..][0..4], .big))));
 					}
 				}
 			},
@@ -239,15 +241,18 @@ pub const MapGenerator = struct {
 	init: *const fn (parameters: ZonElement) void,
 	generateMapFragment: *const fn (fragment: *MapFragment, seed: u64) void,
 
-	var generatorRegistry: std.StringHashMapUnmanaged(MapGenerator) = .{};
-
-	fn registerGenerator(comptime Generator: type) void {
-		const self = MapGenerator{
-			.init = &Generator.init,
-			.generateMapFragment = &Generator.generateMapFragment,
-		};
-		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
-	}
+	const generatorRegistry: std.StaticStringMap(MapGenerator) = .initComptime(blk: {
+		const decls = @typeInfo(map_generators).@"struct".decls;
+		var generators: [decls.len]struct { []const u8, MapGenerator } = undefined;
+		for (0..decls.len) |i| {
+			const Generator = @field(map_generators, decls[i].name);
+			generators[i] = .{Generator.id, .{
+				.init = &Generator.init,
+				.generateMapFragment = &Generator.generateMapFragment,
+			}};
+		}
+		break :blk generators;
+	});
 
 	pub fn getGeneratorById(id: []const u8) !MapGenerator {
 		return generatorRegistry.get(id) orelse {
@@ -266,15 +271,10 @@ var profile: TerrainGenerationProfile = undefined;
 var memoryPool: main.heap.MemoryPool(MapFragment) = undefined;
 
 pub fn globalInit() void {
-	const list = @import("mapgen/_list.zig");
-	inline for (@typeInfo(list).@"struct".decls) |decl| {
-		MapGenerator.registerGenerator(@field(list, decl.name));
-	}
 	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn globalDeinit() void {
-	MapGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
 	memoryPool.deinit();
 }
 
@@ -309,13 +309,13 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 		var dirX = try main.files.cubyzDir().openIterableDir(path);
 		defer dirX.close();
 		var iterX = dirX.iterate();
-		while (try iterX.next()) |entryX| {
+		while (try iterX.next(main.io)) |entryX| {
 			if (entryX.kind != .directory) continue;
 			const wx = std.fmt.parseInt(i32, entryX.name, 0) catch continue;
 			var dirY = try dirX.openIterableDir(entryX.name);
 			defer dirY.close();
 			var iterY = dirY.iterate();
-			while (try iterY.next()) |entryY| {
+			while (try iterY.next(main.io)) |entryY| {
 				if (entryY.kind != .file) continue;
 				const nameY = entryY.name[0 .. std.mem.indexOfScalar(u8, entryY.name, '.') orelse entryY.name.len];
 				const wy = std.fmt.parseInt(i32, nameY, 0) catch continue;
@@ -414,7 +414,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 							if (neighborInfo.@"+o" and neighborInfo.@"o+" and neighborInfo.@"++") factor = 1;
 							const x = MapFragment.mapSize - 1 - a;
 							const y = MapFragment.mapSize - 1 - b;
-							originalHeightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
+							originalHeightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
 						}
 						if (neighborInfo.@"+o" or neighborInfo.@"o-") {
 							var factor: f32 = 1;
@@ -424,7 +424,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 							if (neighborInfo.@"+o" and neighborInfo.@"o-" and neighborInfo.@"+-") factor = 1;
 							const x = MapFragment.mapSize - 1 - a;
 							const y = b;
-							originalHeightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
+							originalHeightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
 						}
 						if (neighborInfo.@"-o" or neighborInfo.@"o+") {
 							var factor: f32 = 1;
@@ -434,7 +434,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 							if (neighborInfo.@"-o" and neighborInfo.@"o+" and neighborInfo.@"-+") factor = 1;
 							const x = a;
 							const y = MapFragment.mapSize - 1 - b;
-							originalHeightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
+							originalHeightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
 						}
 						if (neighborInfo.@"-o" or neighborInfo.@"o-") {
 							var factor: f32 = 1;
@@ -444,7 +444,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 							if (neighborInfo.@"-o" and neighborInfo.@"o-" and neighborInfo.@"--") factor = 1;
 							const x = a;
 							const y = b;
-							originalHeightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
+							originalHeightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
 						}
 					}
 				}
@@ -498,7 +498,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 					if (!neighborInfo.@"+o") {
 						const x = MapFragment.mapSize - 1 - a;
 						const y = b;
-						mapFragment.heightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factorX + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factorX));
+						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factorX + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factorX));
 						if (factorX < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
@@ -506,7 +506,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 					if (!neighborInfo.@"-o") {
 						const x = a;
 						const y = b;
-						mapFragment.heightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factorX + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factorX));
+						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factorX + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factorX));
 						if (factorX < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
@@ -514,7 +514,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 					if (!neighborInfo.@"o+") {
 						const x = b;
 						const y = MapFragment.mapSize - 1 - a;
-						mapFragment.heightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factorY + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factorY));
+						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factorY + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factorY));
 						if (factorY < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
@@ -522,7 +522,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 					if (!neighborInfo.@"o-") {
 						const x = b;
 						const y = a;
-						mapFragment.heightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factorY + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factorY));
+						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factorY + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factorY));
 						if (factorY < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
@@ -543,7 +543,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 						const factor = 1 - (1 - factorX2)*(1 - factorY2);
 						const x = MapFragment.mapSize - 1 - a;
 						const y = MapFragment.mapSize - 1 - b;
-						mapFragment.heightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
+						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
 						if (factor < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
@@ -552,7 +552,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 						const factor = 1 - (1 - factorX1)*(1 - factorY2);
 						const x = MapFragment.mapSize - 1 - a;
 						const y = b;
-						mapFragment.heightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
+						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
 						if (factor < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
@@ -561,7 +561,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 						const factor = 1 - (1 - factorX2)*(1 - factorY1);
 						const x = a;
 						const y = MapFragment.mapSize - 1 - b;
-						mapFragment.heightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
+						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
 						if (factor < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
@@ -570,7 +570,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 						const factor = 1 - (1 - factorX1)*(1 - factorY1);
 						const x = a;
 						const y = b;
-						mapFragment.heightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
+						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
 						if (factor < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}

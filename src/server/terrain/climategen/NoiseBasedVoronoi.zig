@@ -93,7 +93,7 @@ const Chunk = struct {
 	}
 
 	fn checkIfBiomeIsValid(x: i32, y: i32, biomeRadius: f32, biomesSortedByX: []BiomePoint, chunkLocalMaxBiomeRadius: i32) bool {
-		const ceiledBiomeRadius: i32 = @intFromFloat(@ceil(biomeRadius));
+		const ceiledBiomeRadius: i32 = @ceil(biomeRadius);
 		const minX = x -% ceiledBiomeRadius -% chunkLocalMaxBiomeRadius;
 		const maxX = x +% ceiledBiomeRadius +% chunkLocalMaxBiomeRadius;
 		const i: usize = getStartCoordinate(minX, biomesSortedByX);
@@ -130,7 +130,7 @@ const Chunk = struct {
 				}
 			}
 			rejections = 0;
-			chunkLocalMaxBiomeRadius = @max(chunkLocalMaxBiomeRadius, @as(i32, @intFromFloat(@ceil(radius))));
+			chunkLocalMaxBiomeRadius = @max(chunkLocalMaxBiomeRadius, @as(i32, @ceil(radius)));
 			selectedBiomes.insertSorted(allocator, .{
 				.biome = drawnBiome,
 				.pos = .{x, y},
@@ -307,7 +307,7 @@ const GenerationStructure = struct {
 				while (y < max[1]) : (y += 1) {
 					const distSquare = vec.lengthSquare(Vec2f{x, y} - relPos);
 					if (distSquare < relRadius*relRadius) {
-						if (map.map[@intFromFloat(x)][@intFromFloat(y)].biome != parentBiome) {
+						if (map.map[@trunc(x)][@trunc(y)].biome != parentBiome) {
 							return error.biomeMismatch;
 						}
 					}
@@ -320,7 +320,7 @@ const GenerationStructure = struct {
 			while (y < max[1]) : (y += 1) {
 				const distSquare = vec.lengthSquare(Vec2f{x, y} - relPos);
 				if (distSquare < relRadius*relRadius) {
-					const entry = &map.map[@intFromFloat(x)][@intFromFloat(y)];
+					const entry = &map.map[@trunc(x)][@trunc(y)];
 					var seed = entry.seed;
 					const newHeight = @as(f32, @floatFromInt(biome.minHeight)) + @as(f32, @floatFromInt(biome.maxHeight - biome.minHeight))*random.nextFloat(&seed);
 					entry.* = .{
@@ -351,21 +351,25 @@ const GenerationStructure = struct {
 		var fails: usize = 0;
 		while (i < biomeCount) : (i += 1) {
 			if (biomeCount - i < random.nextFloat(&seed)) break;
-			const subBiome = biome.biome.subBiomes.sample(&seed).*;
+			const subBiomeData = biome.biome.subBiomes.sample(&seed).*;
+			const subBiome = subBiomeData.biome;
 			const subRadius = subBiome.radius + subBiome.radiusVariation*random.nextFloatSigned(&seed);
 			var maxCenterOffset: f32 = biome.radius - subRadius;
 			if (radius == .unknown) {
 				maxCenterOffset += biome.radius/2;
+			} else {
+				maxCenterOffset -= subBiomeData.parentEdgeDistance;
 			}
 			if (maxCenterOffset < 0) {
 				maxCenterOffset = 0;
 			}
-			const point = biome.pos +% @as(Vec2i, @intFromFloat(random.nextPointInUnitCircle(&seed)*@as(Vec2f, @splat(maxCenterOffset))));
+			const point = biome.pos +% @as(Vec2i, @trunc(random.nextPointInUnitCircle(&seed)*@as(Vec2f, @splat(maxCenterOffset))));
 			drawCircleOnTheMap(map, subBiome, subRadius, wx, wy, width, height, point, radius == .unknown, biome.biome) catch if (radius == .unknown) {
 				fails += 1;
-				if (fails < @as(usize, @intFromFloat(biomeCount))) {
+				if (fails < @as(usize, @trunc(biomeCount))) {
 					i -= 1;
 				}
+				continue;
 			};
 			extraBiomes.append(.{
 				.biome = subBiome,
@@ -379,7 +383,7 @@ const GenerationStructure = struct {
 
 	fn addTransitionBiomes(map: *[preMapSize][preMapSize]BiomeSample) void {
 		const neighborData = main.stackAllocator.create([16][preMapSize][preMapSize]u15);
-		defer main.stackAllocator.free(neighborData);
+		defer main.stackAllocator.destroy(neighborData);
 		for (0..preMapSize) |x| {
 			for (0..preMapSize) |y| {
 				neighborData[0][x][y] = @bitCast(map[x][y].biome.properties);
@@ -457,7 +461,7 @@ const GenerationStructure = struct {
 
 				newCandidates.clearRetainingCapacity();
 				for (biomeCandidates) |candidate| {
-					const influenceRadius = 3*@as(i32, @intFromFloat(@ceil(candidate.radius)));
+					const influenceRadius = 3*@as(i32, @ceil(candidate.radius));
 					const candidateMinX = wxMin -% influenceRadius;
 					const candidateMaxX = wxMax +% influenceRadius;
 					const candidateMinY = wyMin -% influenceRadius;

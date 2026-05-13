@@ -58,10 +58,10 @@ pub fn generate(self: *FlowerPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 	const xSecn = ellipseParam*@cos(orientation)/width;
 	const ySecn = -ellipseParam*@sin(orientation)/width;
 
-	const xMin = @max(0, x - @as(i32, @intFromFloat(@ceil(width))));
-	const xMax = @min(chunk.super.width, x + @as(i32, @intFromFloat(@ceil(width))));
-	const yMin = @max(0, y - @as(i32, @intFromFloat(@ceil(width))));
-	const yMax = @min(chunk.super.width, y + @as(i32, @intFromFloat(@ceil(width))));
+	const xMin = @max(0, x - @as(i32, @ceil(width)));
+	const xMax = @min(chunk.super.width, x + @as(i32, @ceil(width)));
+	const yMin = @max(0, y - @as(i32, @ceil(width)));
+	const yMax = @min(chunk.super.width, y + @as(i32, @ceil(width)));
 
 	var baseHeight = z;
 	if (mode != .water_surface) {

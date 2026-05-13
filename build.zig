@@ -12,9 +12,6 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	const t = target.result;
 	const optimize = exe.root_module.optimize.?;
 
-	exe.linkLibC();
-	exe.linkLibCpp();
-
 	const depsLib = b.fmt("cubyz_deps_{s}-{s}-{s}", .{@tagName(t.cpu.arch), @tagName(t.os.tag), switch (t.os.tag) {
 		.linux => "musl",
 		.macos => "none",
@@ -40,16 +37,25 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 		return;
 	};
 
-	exe.addIncludePath(headersDeps.path("include"));
-	exe.addObjectFile(libsDeps.path("lib").path(b, artifactName));
+	exe.root_module.addIncludePath(headersDeps.path("include"));
+	exe.root_module.addObjectFile(libsDeps.path("lib").path(b, artifactName));
 	const subPath = libsDeps.path("lib").path(b, depsLib);
-	exe.addObjectFile(subPath.path(b, libName(b, "glslang", t)));
-	exe.addObjectFile(subPath.path(b, libName(b, "MachineIndependent", t)));
-	exe.addObjectFile(subPath.path(b, libName(b, "GenericCodeGen", t)));
-	exe.addObjectFile(subPath.path(b, libName(b, "glslang-default-resource-limits", t)));
-	exe.addObjectFile(subPath.path(b, libName(b, "SPIRV", t)));
-	exe.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools", t)));
-	exe.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools-opt", t)));
+	exe.root_module.addObjectFile(subPath.path(b, libName(b, "glslang", t)));
+	exe.root_module.addObjectFile(subPath.path(b, libName(b, "MachineIndependent", t)));
+	exe.root_module.addObjectFile(subPath.path(b, libName(b, "GenericCodeGen", t)));
+	exe.root_module.addObjectFile(subPath.path(b, libName(b, "glslang-default-resource-limits", t)));
+	exe.root_module.addObjectFile(subPath.path(b, libName(b, "SPIRV", t)));
+	exe.root_module.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools", t)));
+	exe.root_module.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools-opt", t)));
+
+	const translate_c = b.addTranslateC(.{
+		.root_source_file = b.path("src/c.h"),
+		.target = target,
+		.optimize = optimize,
+	});
+	translate_c.addIncludePath(headersDeps.path("include"));
+
+	exe.root_module.addImport("c", translate_c.createModule());
 
 	if (t.os.tag == .macos) {
 		const moltenVkLibInstall = b.addInstallFile(subPath.path(b, "libMoltenVK.dylib"), "bin/Cubyz.app/Contents/Frameworks/libMoltenVK.dylib");
@@ -64,40 +70,40 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	}
 
 	if (t.os.tag == .windows) {
-		exe.linkSystemLibrary("bcrypt");
-		exe.linkSystemLibrary("crypt32");
-		exe.linkSystemLibrary("gdi32");
-		exe.linkSystemLibrary("opengl32");
-		exe.linkSystemLibrary("ws2_32");
+		exe.root_module.linkSystemLibrary("bcrypt", .{});
+		exe.root_module.linkSystemLibrary("crypt32", .{});
+		exe.root_module.linkSystemLibrary("gdi32", .{});
+		exe.root_module.linkSystemLibrary("opengl32", .{});
+		exe.root_module.linkSystemLibrary("ws2_32", .{});
 	} else if (t.os.tag == .macos) {
-		exe.linkFramework("Cocoa");
-		exe.linkFramework("CoreFoundation");
-		exe.linkFramework("IOKit");
-		exe.linkFramework("QuartzCore");
+		exe.root_module.linkFramework("Cocoa", .{});
+		exe.root_module.linkFramework("CoreFoundation", .{});
+		exe.root_module.linkFramework("IOKit", .{});
+		exe.root_module.linkFramework("QuartzCore", .{});
 	} else if (t.os.tag != .linux) {
 		std.log.err("Unsupported target: {}\n", .{t.os.tag});
 	}
 }
 
-pub fn makeModFeature(step: *std.Build.Step, name: []const u8) !void {
-	var featureList: std.ArrayListUnmanaged(u8) = .{};
+pub fn makeModFeature(io: std.Io, step: *std.Build.Step, name: []const u8) !void {
+	var featureList: std.ArrayListUnmanaged(u8) = .empty;
 	defer featureList.deinit(step.owner.allocator);
 
-	var modDir = try std.fs.cwd().openDir("mods", .{.iterate = true});
-	defer modDir.close();
+	var modDir = try std.Io.Dir.cwd().openDir(io, "mods", .{.iterate = true});
+	defer modDir.close(io);
 
 	var iterator = modDir.iterate();
-	while (try iterator.next()) |modEntry| {
+	while (try iterator.next(io)) |modEntry| {
 		if (modEntry.kind != .directory) continue;
 
-		var mod = try modDir.openDir(modEntry.name, .{});
-		defer mod.close();
+		var mod = try modDir.openDir(io, modEntry.name, .{});
+		defer mod.close(io);
 
-		var featureDir = mod.openDir(name, .{.iterate = true}) catch continue;
-		defer featureDir.close();
+		var featureDir = mod.openDir(io, name, .{.iterate = true}) catch continue;
+		defer featureDir.close(io);
 
 		var featureIterator = featureDir.iterate();
-		while (try featureIterator.next()) |featureEntry| {
+		while (try featureIterator.next(io)) |featureEntry| {
 			if (featureEntry.kind != .file) continue;
 			if (!std.mem.endsWith(u8, featureEntry.name, ".zig")) continue;
 
@@ -117,7 +123,7 @@ pub fn makeModFeature(step: *std.Build.Step, name: []const u8) !void {
 	}
 
 	const file_path = step.owner.fmt("mods/{s}.zig", .{name});
-	try std.fs.cwd().writeFile(.{.data = featureList.items, .sub_path = file_path});
+	try std.Io.Dir.cwd().writeFile(io, .{.data = featureList.items, .sub_path = file_path});
 }
 
 pub fn addModFeatureModule(b: *std.Build, exe: *std.Build.Step.Compile, name: []const u8) !void {
@@ -140,15 +146,20 @@ fn addModFeatures(b: *std.Build, exe: *std.Build.Step.Compile) !void {
 	});
 	exe.step.dependOn(step);
 
-	try addModFeatureModule(b, exe, "rotation");
+	try addModFeatureModule(b, exe, "rotations");
 }
 
-pub fn makeModFeaturesStep(step: *std.Build.Step, _: std.Build.Step.MakeOptions) anyerror!void {
-	try makeModFeature(step, "rotation");
+pub fn makeModFeaturesStep(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
+	var io = std.Io.Threaded.init(options.gpa, .{});
+	defer io.deinit();
+
+	try makeModFeature(io.io(), step, "rotations");
 }
 
-fn createLaunchConfig() !void {
-	std.fs.cwd().access("launchConfig.zon", .{}) catch {
+fn createLaunchConfig(b: *std.Build) !void {
+	var io = std.Io.Threaded.init(b.allocator, .{});
+	defer io.deinit();
+	std.Io.Dir.cwd().access(io.io(), "launchConfig.zon", .{}) catch {
 		const launchConfig =
 			\\.{
 			\\    .cubyzDir = "",
@@ -157,7 +168,7 @@ fn createLaunchConfig() !void {
 			\\    // .preferredAuthenticationAlgorithm = .ed25519, // Uncomment and change this if you own a server in an outdated game version where the default algorithm got compromised.
 			\\}
 		;
-		try std.fs.cwd().writeFile(.{
+		try std.Io.Dir.cwd().writeFile(io.io(), .{
 			.data = launchConfig,
 			.sub_path = "launchConfig.zon",
 		});
@@ -165,7 +176,7 @@ fn createLaunchConfig() !void {
 }
 
 pub fn build(b: *std.Build) !void {
-	try createLaunchConfig();
+	try createLaunchConfig(b);
 
 	// Standard target options allows the person running `zig build` to choose
 	// what target to build for. Here we do not override the defaults, which
@@ -179,7 +190,7 @@ pub fn build(b: *std.Build) !void {
 
 	const options = b.addOptions();
 	const isRelease = b.option(bool, "release", "Removes the -dev flag from the version") orelse false;
-	const version = b.fmt("0.2.0{s}", .{if (isRelease) "" else "-dev"});
+	const version = b.fmt("0.3.0{s}", .{if (isRelease) "" else "-dev"});
 	if (b.option([]const u8, "version", "used by the CI to check if the git tag and game version match")) |tagVersion| {
 		const tagVersionUpperbound: usize = std.mem.indexOfScalar(u8, tagVersion, '-') orelse tagVersion.len;
 		const versionUpperbound: usize = std.mem.indexOfScalar(u8, version, '-') orelse version.len;
@@ -211,20 +222,21 @@ pub fn build(b: *std.Build) !void {
 		.root_source_file = b.path("src/main.zig"),
 		.target = target,
 		.optimize = optimize,
+		.link_libc = true,
+		.link_libcpp = true,
 	});
 
 	const exe = b.addExecutable(.{
 		.name = "Cubyz",
 		.root_module = mainModule,
 		//.sanitize_thread = true,
-		.use_llvm = true,
 	});
 	exe.root_module.addOptions("build_options", options);
 	exe.root_module.addImport("main", mainModule);
 	try addModFeatures(b, exe);
 
 	if (isRelease and target.result.os.tag == .windows) {
-		exe.subsystem = .Windows;
+		exe.subsystem = .windows;
 	}
 
 	linkLibraries(b, exe, useLocalDeps);
@@ -288,29 +300,4 @@ pub fn build(b: *std.Build) !void {
 
 	const test_step = b.step("test", "Run unit tests");
 	test_step.dependOn(&run_exe_tests.step);
-
-	// MARK: Formatter
-
-	const formatter = b.addExecutable(.{
-		.name = "CubyzFormatter",
-		.root_module = b.addModule("format", .{
-			.root_source_file = b.path("src/formatter/format.zig"),
-			.target = target,
-			.optimize = optimize,
-		}),
-	});
-	// ZLS is stupid and cannot detect which executable is the main one, so we add the import everywhere...
-	formatter.root_module.addOptions("build_options", options);
-	formatter.root_module.addImport("main", mainModule);
-
-	const formatter_install = b.addInstallArtifact(formatter, .{});
-
-	const formatter_cmd = b.addRunArtifact(formatter);
-	formatter_cmd.step.dependOn(&formatter_install.step);
-	if (b.args) |args| {
-		formatter_cmd.addArgs(args);
-	}
-
-	const formatter_step = b.step("format", "Check the formatting of the code");
-	formatter_step.dependOn(&formatter_cmd.step);
 }

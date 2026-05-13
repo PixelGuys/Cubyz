@@ -9,15 +9,15 @@ var testingErrorHandlingAllocator = ErrorHandlingAllocator.init(std.testing.allo
 pub const testingAllocator = testingErrorHandlingAllocator.allocator();
 
 pub const allocators = struct { // MARK: allocators
-	pub var globalGpa = std.heap.GeneralPurposeAllocator(.{.thread_safe = true}){};
+	pub var globalGpa = std.heap.DebugAllocator(.{.thread_safe = true}){};
 	pub var handledGpa = ErrorHandlingAllocator.init(globalGpa.allocator());
-	pub var globalArenaAllocator: ThreadSafeAllocator(NeverFailingArenaAllocator) = .init(.init(handledGpa.allocator()));
-	pub var worldArenaAllocator: ThreadSafeAllocator(NeverFailingArenaAllocator) = undefined;
+	pub var globalArenaAllocator: NeverFailingArenaAllocator = .init(handledGpa.allocator());
+	pub var worldArenaAllocator: NeverFailingArenaAllocator = undefined;
 	var worldArenaOpenCount: usize = 0;
-	var worldArenaMutex: std.Thread.Mutex = .{};
+	var worldArenaMutex: main.utils.Mutex = .{};
 
 	pub fn deinit() void {
-		std.log.info("Clearing global arena with {} MiB", .{globalArenaAllocator.child.arena.queryCapacity() >> 20});
+		std.log.info("Clearing global arena with {} MiB", .{globalArenaAllocator.arena.queryCapacity() >> 20});
 		globalArenaAllocator.deinit();
 		globalArenaAllocator = undefined;
 		if (globalGpa.deinit() == .leak) {
@@ -30,7 +30,7 @@ pub const allocators = struct { // MARK: allocators
 		worldArenaMutex.lock();
 		defer worldArenaMutex.unlock();
 		if (worldArenaOpenCount == 0) {
-			worldArenaAllocator = .init(.init(handledGpa.allocator()));
+			worldArenaAllocator = .init(handledGpa.allocator());
 		}
 		worldArenaOpenCount += 1;
 	}
@@ -40,7 +40,7 @@ pub const allocators = struct { // MARK: allocators
 		defer worldArenaMutex.unlock();
 		worldArenaOpenCount -= 1;
 		if (worldArenaOpenCount == 0) {
-			std.log.info("Clearing world arena with {} MiB", .{worldArenaAllocator.child.arena.queryCapacity() >> 20});
+			std.log.info("Clearing world arena with {} MiB", .{worldArenaAllocator.arena.queryCapacity() >> 20});
 			worldArenaAllocator.deinit();
 			worldArenaAllocator = undefined;
 		}
@@ -452,7 +452,7 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 	///   change the size without relocating the allocation.
 	pub fn realloc(self: NeverFailingAllocator, old_mem: anytype, new_n: usize) t: {
 		const Slice = @typeInfo(@TypeOf(old_mem)).pointer;
-		break :t []align(Slice.alignment) Slice.child;
+		break :t []align(Slice.alignment orelse @alignOf(Slice.child)) Slice.child;
 	} {
 		return self.allocator.realloc(old_mem, new_n) catch unreachable;
 	}
@@ -545,82 +545,6 @@ pub const NeverFailingArenaAllocator = struct { // MARK: NeverFailingArena
 	}
 };
 
-pub fn ThreadSafeAllocator(ChildAllocatorType: type) type { // MARK: ThreadSafeAllocator
-	std.debug.assert(@TypeOf(ChildAllocatorType.allocator(undefined)) == NeverFailingAllocator);
-
-	return struct {
-		child: ChildAllocatorType,
-		mutex: std.Thread.Mutex = .{},
-
-		pub fn init(childAllocator: ChildAllocatorType) @This() {
-			return .{
-				.child = childAllocator,
-			};
-		}
-
-		pub fn deinit(self: @This()) void {
-			self.child.deinit();
-		}
-
-		pub fn allocator(self: *@This()) NeverFailingAllocator {
-			return .{
-				.allocator = .{
-					.ptr = self,
-					.vtable = &.{
-						.alloc = alloc,
-						.resize = resize,
-						.remap = remap,
-						.free = free,
-					},
-				},
-				.IAssertThatTheProvidedAllocatorCantFail = {},
-			};
-		}
-
-		pub fn swapChild(self: *@This(), other: *ChildAllocatorType) void {
-			self.mutex.lock();
-			defer self.mutex.unlock();
-			std.mem.swap(ChildAllocatorType, &self.child, other);
-		}
-
-		fn alloc(context: *anyopaque, n: usize, alignment: std.mem.Alignment, ra: usize) ?[*]u8 {
-			const self: *@This() = @ptrCast(@alignCast(context));
-
-			self.mutex.lock();
-			defer self.mutex.unlock();
-
-			return self.child.allocator().rawAlloc(n, alignment, ra);
-		}
-
-		fn resize(context: *anyopaque, buf: []u8, alignment: std.mem.Alignment, new_len: usize, ret_addr: usize) bool {
-			const self: *@This() = @ptrCast(@alignCast(context));
-
-			self.mutex.lock();
-			defer self.mutex.unlock();
-
-			return self.child.allocator().rawResize(buf, alignment, new_len, ret_addr);
-		}
-
-		fn remap(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, return_address: usize) ?[*]u8 {
-			const self: *@This() = @ptrCast(@alignCast(context));
-
-			self.mutex.lock();
-			defer self.mutex.unlock();
-
-			return self.child.allocator().rawRemap(memory, alignment, new_len, return_address);
-		}
-
-		fn free(context: *anyopaque, buf: []u8, alignment: std.mem.Alignment, ret_addr: usize) void {
-			const self: *@This() = @ptrCast(@alignCast(context));
-
-			self.mutex.lock();
-			defer self.mutex.unlock();
-
-			return self.child.allocator().rawFree(buf, alignment, ret_addr);
-		}
-	};
-}
-
 /// basically a copy of std.heap.MemoryPool, except it's thread-safe and has some more diagnostics.
 pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 	return struct {
@@ -647,7 +571,7 @@ pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 		free_list: ?NodePtr = null,
 		freeAllocations: usize = 0,
 		totalAllocations: usize = 0,
-		mutex: std.Thread.Mutex = .{},
+		mutex: main.utils.Mutex = .{},
 
 		/// Creates a new memory pool.
 		pub fn init(allocator: NeverFailingAllocator) Pool {
@@ -696,7 +620,7 @@ pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 		}
 
 		fn allocNew(pool: *Pool) *align(item_alignment) [item_size]u8 {
-			main.utils.assertLocked(&pool.mutex);
+			pool.mutex.assertLocked();
 			pool.totalAllocations += 1;
 			pool.freeAllocations += 1;
 			const mem = pool.arena.allocator().alignedAlloc(u8, .fromByteUnits(item_alignment), item_size);
@@ -877,7 +801,7 @@ pub fn PowerOfTwoPoolAllocator(minSize: comptime_int, maxSize: comptime_int, max
 
 		arena: NeverFailingArenaAllocator,
 		buckets: [bucketCount]Bucket = @splat(.{}),
-		mutex: std.Thread.Mutex = .{},
+		mutex: main.utils.Mutex = .{},
 
 		pub fn init(backingAllocator: NeverFailingAllocator) Self {
 			return .{.arena = .init(backingAllocator)};

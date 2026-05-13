@@ -3,7 +3,11 @@
 	.properties = .{
 		.wet,
 	},
+	.tags = .{
+		.oak,
+	},
 	.radius = 32,
+	.keepOriginalTerrain = 1,
 	.minHeight = 22,
 	.maxHeight = 40,
 
@@ -20,21 +24,17 @@
 	},
 	.structures = .{
 		.{
-			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:leaves/oak",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/young",
+			.placeMode = .degradable,
 			.chance = 0.8,
-			.type = .round,
-			.height = 6,
-			.height_variation = 3,
 		},
 	},
 
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:grassland",
-			.chance = 0.1,
+			.chance = 0.5,
 		},
 	},
 }

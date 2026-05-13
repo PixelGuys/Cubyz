@@ -2,9 +2,10 @@
 	.tags = .{.cuttable, .mushroom},
 	.blockHealth = 0.2,
 	.drops = .{
-		.{.items = .{.auto}},
+		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
 	},
-	.replacable = true,
+	.selectionCapabilities = .{.toolEffective},
+	.replaceable = true,
 	.degradable = true,
 	.viewThrough = true,
 	.absorbedLight = 0x010101,
@@ -12,7 +13,7 @@
 	.collide = false,
 	.rotation = "cubyz:torch",
 	.onUpdate = .{
-		.type = .checkSupportBlocks,
+		.type = .check_support_blocks,
 	},
 	.model = .{
 		.base = "cubyz:glimmergill/floor",

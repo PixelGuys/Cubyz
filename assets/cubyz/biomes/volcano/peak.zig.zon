@@ -13,6 +13,7 @@
 		.{
 			.id = "cubyz:volcano/slope6",
 			.chance = 1,
+			.parentEdgeDistance = 16,
 		},
 	},
 
