@@ -379,6 +379,17 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		return self.surfaceFragments[index].getHeight(wx, wy);
 	}
 
+	pub fn getSurfaceBiome(self: CaveBiomeMapView, wx: i32, wy: i32) *const Biome {
+		var index: u8 = 0;
+		if (wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
+			index += 2;
+		}
+		if (wy -% self.surfaceFragments[0].pos.wy >= MapFragment.mapSize*self.pos.voxelSize) {
+			index += 1;
+		}
+		return self.surfaceFragments[index].getBiome(wx, wy);
+	}
+
 	pub fn getCaveBiomeOffset(self: CaveBiomeMapView, wx: i32, wy: i32) i16 {
 		var index: u8 = 0;
 		if (wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
