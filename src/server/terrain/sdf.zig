@@ -11,13 +11,17 @@ const ZonElement = main.ZonElement;
 
 const sdf_models = @import("sdf_models/_list.zig");
 
+const Mode = enum { additive, subtractive };
+
+pub const margin = 16; // TODO: Make sure all places that need it use the margin
+
 pub const SdfModel = struct { // MARK: SdfModel
 	data: *anyopaque,
 	instantiateFn: *const fn (self: *anyopaque, arena: NeverFailingAllocator, seed: *u64) SdfInstance,
 	maxBiomeCenterDistance: f32,
 	minAmount: f32,
 	maxAmount: f32,
-	mode: enum { additive, subtractive },
+	mode: Mode,
 
 	pub const InitResult = ?struct { model: *anyopaque, maxExtend: vec.Boxi };
 
@@ -49,26 +53,17 @@ pub const SdfModel = struct { // MARK: SdfModel
 		};
 	}
 
-	pub fn generate(self: SdfModel, sdf: main.utils.Array3D(f32), biomeMap: *const CaveBiomeMapView, interpolationSmoothness: main.utils.Array3D(f32), sdfPos: Vec3i, biomePos: Vec3i, seed: *u64, perimeter: comptime_int, voxelSize: u31, voxelSizeShift: u5) void {
-		const amount: usize = @floor(self.minAmount + main.random.nextFloat(seed)*(self.maxAmount - self.minAmount) + main.random.nextFloat(seed));
-		for (0..amount) |_| {
-			const arena = main.stackAllocator.createArena();
-			defer main.stackAllocator.destroyArena(arena);
-			const offsetDir = blk: while (true) {
-				const offset = main.random.nextFloatVectorSigned(3, seed);
-				if (vec.lengthSquare(offset) < 1) break :blk offset;
-			};
-			var pos = biomePos +% @as(Vec3i, @trunc(offsetDir*@as(Vec3f, @splat(self.maxBiomeCenterDistance))));
-			pos[2] +%= biomeMap.getCaveBiomeOffset(pos[0], pos[1]);
-			var instance = self.instantiateFn(self.data, arena, seed);
-			instance.minBounds +%= pos -% sdfPos;
-			instance.maxBounds +%= pos -% sdfPos;
-			instance.generate(sdf, interpolationSmoothness, perimeter, voxelSize, voxelSizeShift);
-		}
-	}
-
-	pub fn instantiate(self: SdfModel, arena: NeverFailingAllocator, seed: *u64) SdfInstance {
-		return self.instantiateFn(self.data, arena, seed);
+	pub fn instantiate(self: SdfModel, arena: NeverFailingAllocator, biomePos: Vec3i, mapPos: Vec3i, seed: *u64) SdfInstance {
+		const offsetDir = blk: while (true) {
+			const offset = main.random.nextFloatVectorSigned(3, seed);
+			if (vec.lengthSquare(offset) < 1) break :blk offset;
+		};
+		const pos = biomePos +% @as(Vec3i, @trunc(offsetDir*@as(Vec3f, @splat(self.maxBiomeCenterDistance))));
+		var instance = self.instantiateFn(self.data, arena, seed);
+		instance.mode = self.mode;
+		instance.minBounds +%= pos -% mapPos;
+		instance.maxBounds +%= pos -% mapPos;
+		return instance;
 	}
 
 	const modelRegistry: std.StaticStringMap(VTable) = .initComptime(blk: {
@@ -91,6 +86,7 @@ pub const SdfInstance = struct { // MARK: SdfInstance
 	minBounds: Vec3i,
 	maxBounds: Vec3i,
 	centerPosOffset: Vec3f,
+	mode: Mode = undefined,
 
 	pub fn generate(self: SdfInstance, sdf: main.utils.Array3D(f32), interpolationSmoothness: main.utils.Array3D(f32), perimeter: comptime_int, voxelSize: u31, voxelSizeShift: u5) void {
 		const dimVector: Vec3i = @intCast(@Vector(3, u32){sdf.width*voxelSize, sdf.depth*voxelSize, sdf.height*voxelSize});

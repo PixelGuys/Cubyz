@@ -87,7 +87,7 @@ pub fn instantiate(self: *@This(), arena: NeverFailingAllocator, seed: *u64) Sdf
 	const angle = self.minAngle + (self.maxAngle - self.minAngle)*main.random.nextFloat(seed);
 	const sin = @sin(angle);
 	const cos = @cos(angle);
-	const child = self.child.instantiate(arena, seed);
+	const child = self.child.instantiateFn(self.child.data, arena, seed);
 	var minBounds: Vec3i = @splat(1e9);
 	var maxBounds: Vec3i = @splat(-1e9);
 	for (0..2) |xi| {

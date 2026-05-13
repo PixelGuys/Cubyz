@@ -22,6 +22,7 @@ pub const CaveMap = @import("CaveMap.zig");
 pub const cave_layers = @import("cave_layers.zig");
 
 pub const StructureMap = @import("StructureMap.zig");
+pub const large_structure_map = @import("large_structure_map.zig");
 
 pub const sbb = @import("sbb.zig");
 
@@ -81,6 +82,7 @@ pub const TerrainGenerationProfile = struct {
 	caveBiomeGenerators: []CaveBiomeMap.CaveBiomeGenerator = undefined,
 	caveGenerators: []CaveMap.CaveGenerator = undefined,
 	structureMapGenerators: []StructureMap.StructureMapGenerator = undefined,
+	largeStructureMapGenerators: []large_structure_map.LargeStructureMapGenerator = undefined,
 	generators: []BlockGenerator = undefined,
 	climateWavelengths: [5]f32 = undefined,
 	seed: u64,
@@ -105,6 +107,9 @@ pub const TerrainGenerationProfile = struct {
 
 		generator = settings.getChild("structureMapGenerators");
 		self.structureMapGenerators = StructureMap.StructureMapGenerator.getAndInitGenerators(main.worldArena, generator);
+
+		generator = settings.getChild("largeStructureMapGenerators");
+		self.largeStructureMapGenerators = large_structure_map.LargeStructureMapGenerator.getAndInitGenerators(main.worldArena, generator);
 
 		generator = settings.getChild("generators");
 		self.generators = BlockGenerator.getAndInitGenerators(main.worldArena, generator);
@@ -140,6 +145,7 @@ pub fn init(profile: TerrainGenerationProfile) void {
 	CaveBiomeMap.init(profile);
 	CaveMap.init(profile);
 	StructureMap.init(profile);
+	large_structure_map.init(profile);
 	ClimateMap.init(profile);
 	SurfaceMap.init(profile);
 }
@@ -148,6 +154,7 @@ pub fn deinit() void {
 	CaveBiomeMap.deinit();
 	CaveMap.deinit();
 	StructureMap.deinit();
+	large_structure_map.deinit();
 	ClimateMap.deinit();
 	SurfaceMap.deinit();
 	LightMap.deinit();

@@ -16,7 +16,7 @@ const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 
 pub const structure_map_generators = @import("structuremapgen/_list.zig");
 
-const StructureInternal = struct {
+pub const StructureInternal = struct {
 	generateFn: *const fn (self: *const anyopaque, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void,
 	data: *const anyopaque,
 
@@ -29,12 +29,12 @@ pub const Structure = struct {
 	internal: StructureInternal,
 	priority: f32,
 
-	fn lessThan(_: void, lhs: Structure, rhs: Structure) bool {
+	pub fn lessThan(_: void, lhs: Structure, rhs: Structure) bool {
 		return lhs.priority < rhs.priority;
 	}
 };
 
-pub const StructureMapFragment = struct {
+pub const StructureMapFragment = struct { // MARK: StructureMapFragment
 	pub const size = 1 << 7;
 	pub const sizeMask = size - 1;
 	pub const chunkedSize = size >> main.chunk.chunkShift;
@@ -123,8 +123,8 @@ pub const StructureMapFragment = struct {
 	}
 };
 
-/// A generator for the cave map.
-pub const StructureMapGenerator = struct {
+/// A generator for the structure map.
+pub const StructureMapGenerator = struct { // MARK: StructureMapGenerator
 	init: *const fn (parameters: ZonElement) void,
 	generate: *const fn (map: *StructureMapFragment, seed: u64) void,
 	/// Used to prioritize certain generators over others.

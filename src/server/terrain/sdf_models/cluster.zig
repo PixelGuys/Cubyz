@@ -67,7 +67,7 @@ pub fn instantiate(self: *@This(), arena: NeverFailingAllocator, seed: *u64) Sdf
 	var minPos: Vec3i = @splat(1e9);
 	var maxPos: Vec3i = @splat(-1e9);
 	for (self.children, instance.children) |entry, *result| {
-		result.* = entry.model.instantiate(arena, seed);
+		result.* = entry.model.instantiateFn(entry.model.data, arena, seed);
 		result.minBounds +%= @trunc(entry.positionOffset + entry.randomOffset*main.random.nextFloatVectorSigned(3, seed));
 		result.maxBounds +%= @trunc(entry.positionOffset + entry.randomOffset*main.random.nextFloatVectorSigned(3, seed));
 		minPos = @min(minPos, result.minBounds);

@@ -9,6 +9,7 @@ const terrain = main.server.terrain;
 const CaveMapFragment = terrain.CaveMap.CaveMapFragment;
 const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
 const FractalNoise3D = terrain.noise.FractalNoise3D;
+const large_structure_map = terrain.large_structure_map;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
@@ -38,30 +39,24 @@ fn getValue(noise: Array3D(f32), outerSizeShift: u5, relX: u31, relY: u31, relZ:
 	return noise.get(relX >> outerSizeShift, relY >> outerSizeShift, relZ >> outerSizeShift);
 }
 
-fn generateSdf(map: *const CaveMapFragment, biomeMap: *const CaveBiomeMapView, additiveOutput: Array3D(f32), subtractiveOutput: Array3D(f32), interpolationSmoothness: Array3D(f32), voxelSize: u31, voxelSizeShift: u5, worldSeed: u64) void {
+fn generateSdf(map: *const CaveMapFragment, additiveOutput: Array3D(f32), subtractiveOutput: Array3D(f32), interpolationSmoothness: Array3D(f32), voxelSize: u31, voxelSizeShift: u5) void {
 	@memset(subtractiveOutput.mem, 1000);
 	@memset(additiveOutput.mem, 1000);
-	const mapPos: Vec3i = .{map.pos.wx, map.pos.wy, map.pos.wz};
-	const margin: Vec3i = @splat(256 + perimeter + terrain.CaveBiomeMap.CaveBiomeMapFragment.caveBiomeSize);
-	const biomePoints = biomeMap.getCaveBiomesInRange(main.stackAllocator, mapPos -% margin, mapPos +% margin +% Vec3i{CaveMapFragment.width*map.pos.voxelSize, CaveMapFragment.width*map.pos.voxelSize, CaveMapFragment.height*map.pos.voxelSize});
-	defer main.stackAllocator.free(biomePoints);
+	const largeStructureMap = large_structure_map.getOrGenerateFragment(.{map.pos.wx, map.pos.wy, map.pos.wz});
+	const sdfModels = largeStructureMap.getSdfs(.{map.pos.wx, map.pos.wy, map.pos.wz}); // TODO: What if the map size is larger than the structure map chunks?
 
-	const mapSize = Vec3i{CaveMapFragment.width, CaveMapFragment.width, CaveMapFragment.height} << @as(@Vector(3, u5), @splat(voxelSizeShift));
-
-	for (biomePoints) |biomePoint| {
-		const distance = mapPos -% biomePoint.worldPos;
-		if (@reduce(.Or, distance +% mapSize < biomePoint.biome.maxSdfExtend.min -% @as(Vec3i, @splat(perimeter)))) continue;
-		if (@reduce(.Or, distance > biomePoint.biome.maxSdfExtend.max +% @as(Vec3i, @splat(perimeter)))) continue;
-		var seed = main.random.initSeed3D(worldSeed, biomePoint.worldPos);
-		for (biomePoint.biome.caveSdfModels) |sdfModel| {
-			switch (sdfModel.mode) {
-				.additive => {
-					sdfModel.generate(additiveOutput, biomeMap, interpolationSmoothness, mapPos, biomePoint.worldPos, &seed, perimeter, voxelSize, voxelSizeShift);
-				},
-				.subtractive => {
-					sdfModel.generate(subtractiveOutput, biomeMap, interpolationSmoothness, mapPos, biomePoint.worldPos, &seed, perimeter, voxelSize, voxelSizeShift);
-				},
-			}
+	for (sdfModels) |sdfModel_| {
+		const posOffset = Vec3i{map.pos.wx, map.pos.wy, map.pos.wz} -% largeStructureMap.pos;
+		var sdfModel = sdfModel_;
+		sdfModel.minBounds -%= posOffset;
+		sdfModel.maxBounds -%= posOffset;
+		switch (sdfModel.mode) {
+			.additive => {
+				sdfModel.generate(additiveOutput, interpolationSmoothness, perimeter, voxelSize, voxelSizeShift);
+			},
+			.subtractive => {
+				sdfModel.generate(subtractiveOutput, interpolationSmoothness, perimeter, voxelSize, voxelSizeShift);
+			},
 		}
 	}
 }
@@ -85,7 +80,7 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	const biomeNoiseStrength = Array3D(f32).init(main.stackAllocator, width, width, height);
 	defer biomeNoiseStrength.deinit(main.stackAllocator);
 	biomeMap.bulkInterpolateValues(&.{"caveSmoothness", "caveNoiseStrength"}, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, &.{biomeSmoothness, biomeNoiseStrength});
-	generateSdf(map, &biomeMap, additiveOutput, subtractiveOutput, biomeSmoothness, outerSize, outerSizeShift, worldSeed);
+	generateSdf(map, additiveOutput, subtractiveOutput, biomeSmoothness, outerSize, outerSizeShift);
 
 	generateMap(map, subtractiveOutput, biomeNoiseStrength, worldSeed, .subtractive);
 	generateMap(map, additiveOutput, biomeNoiseStrength, worldSeed, .additive);
