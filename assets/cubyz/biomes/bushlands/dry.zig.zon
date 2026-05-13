@@ -2,7 +2,7 @@
 	.chance = 0,
 	.keepOriginalTerrain = 1,
 	.minRadius = 20,
-	.maxRadius = 40,
+	.maxRadius = 64,
 	.ground_structure = .{
 		"1 to 2 cubyz:dirt",
 	},
