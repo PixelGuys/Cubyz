@@ -1065,12 +1065,15 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				currentBlockProgress = 0;
 			}
 
-			if (inventory.getItem(slot).onLeftClick().run(.{
-				.slot = .{.inv = inventory.super, .slot = slot},
-				.selectedBlockPos = selectedPos,
-				.lastDir = lastDir,
-				.mod = mods,
-			}) == .handled) return;
+			if (!inventory.getItem(slot).onLeftClick().isNoop()) {
+				main.sync.ClientSide.executeCommand(.{.keyPress = .{
+					.lastDir = lastDir,
+					.selectedBlockPos = selectedBlockPos,
+					.mod = mods,
+					.source = .{.inv = inventory.super, .slot = slot},
+				}});
+				return;
+			}
 
 			const stack = inventory.getStack(slot);
 			const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;

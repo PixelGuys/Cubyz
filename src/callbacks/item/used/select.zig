@@ -13,6 +13,7 @@ pub fn init(_: ZonElement) ?*@This() {
 
 pub fn run(_: *@This(), params: main.callbacks.ItemUsedCallback.Params) main.callbacks.Result {
 	const selectedPos = params.selectedBlockPos orelse return .ignored;
+	if (params.ctx.side == .server) return .handled;
 
 	main.game.Player.selectionPosition1 = selectedPos;
 	main.network.protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selectedPos);

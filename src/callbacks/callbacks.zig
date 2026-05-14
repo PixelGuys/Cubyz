@@ -12,6 +12,7 @@ pub const ServerBlockCallback = Callback(struct { block: Block, chunk: *main.chu
 pub const BlockTouchCallback = Callback(struct { entity: *main.server.Entity, source: Block, blockPos: Vec3i, deltaTime: f64 }, @import("block/touch/_list.zig"));
 
 pub const ItemUsedCallback = Callback(struct {
+	ctx: main.sync.Command.Context,
 	slot: main.items.Inventory.InventoryAndSlot,
 	selectedBlockPos: ?Vec3i = null,
 	lastDir: Vec3f,
