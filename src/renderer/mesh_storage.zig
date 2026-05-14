@@ -615,7 +615,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 			for (chunk.Neighbor.iterable) |neighbor| {
 				const component = neighbor.extractDirectionComponent(relPosFloat);
 				if (neighbor.isPositive() and component + @as(f32, @floatFromInt(chunk.chunkSize*pos.voxelSize)) <= 0) continue;
-				if (!neighbor.isPositive() and component >= 0) continue;
+				if (!neighbor.isPositive() and component > 0) continue;
 				const neighborPos = chunk.ChunkPosition{
 					.wx = pos.wx +% neighbor.relX()*chunk.chunkSize*pos.voxelSize,
 					.wy = pos.wy +% neighbor.relY()*chunk.chunkSize*pos.voxelSize,
