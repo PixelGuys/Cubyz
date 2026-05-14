@@ -69,6 +69,7 @@ pub fn openWorld(name: []const u8) void {
 	const ipPort = std.fmt.allocPrint(main.stackAllocator.allocator, "127.0.0.1:{}", .{main.server.connectionManager.localPort}) catch unreachable;
 	defer main.stackAllocator.free(ipPort);
 	main.game.world = &main.game.testWorld;
+	main.game.dayCycle = .{};
 	main.game.testWorld.init(ipPort, clientConnection) catch |err| {
 		std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
 	};

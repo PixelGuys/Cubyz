@@ -66,6 +66,8 @@ pub fn render() void {
 		y += 8;
 		draw.print("Game Time: {}", .{main.game.world.?.gameTime.load(.monotonic)}, 0, y, 8, .left);
 		y += 8;
+		draw.print("Day Time: {}", .{main.game.dayCycle.?.dayTime}, 0, y, 8, .left);
+		y += 8;
 		draw.print("Queue size: {}", .{main.threadPool.queueSize()}, 0, y, 8, .left);
 		y += 8;
 		const perf = main.threadPool.performance.read();

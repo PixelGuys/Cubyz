@@ -211,10 +211,10 @@ pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d
 pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
 	transparentPipeline.bind(null);
 
-	c.glUniform3fv(transparentUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
-	c.glUniform1f(transparentUniforms.@"fog.density", game.fog.density);
-	c.glUniform1f(transparentUniforms.@"fog.fogLower", game.fog.fogLower);
-	c.glUniform1f(transparentUniforms.@"fog.fogHigher", game.fog.fogHigher);
+	c.glUniform3fv(transparentUniforms.@"fog.color", 1, @ptrCast(&game.dayCycle.?.fog.fogColor));
+	c.glUniform1f(transparentUniforms.@"fog.density", game.dayCycle.?.fog.density);
+	c.glUniform1f(transparentUniforms.@"fog.fogLower", game.dayCycle.?.fog.fogLower);
+	c.glUniform1f(transparentUniforms.@"fog.fogHigher", game.dayCycle.?.fog.fogHigher);
 
 	bindCommonUniforms(&transparentUniforms, projMatrix, ambient, playerPos);
 
