@@ -1,13 +1,16 @@
 .{
-	.properties = .{
-		.cold,
-		.wet,
-		.barren,
-	},
-	.tags = .{.snowy},
-	.roughness = 1,
-	.fogDensity = 1.5,
-	.fogColor = 0xe2f2ff,
-	.soilCreep = 1.0,
-	.validPlayerSpawn = false,
+    .properties = .{
+        .cold,
+        .wet,
+        .barren,
+    },
+
+    .music = "totaldemented/frigid_feeling",
+
+    .tags = .{.snowy},
+    .roughness = 1,
+    .fogDensity = 1.5,
+    .fogColor = 0xe2f2ff,
+    .soilCreep = 1.0,
+    .validPlayerSpawn = false,
 }
