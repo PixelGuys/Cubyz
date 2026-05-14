@@ -1777,24 +1777,42 @@ pub const Command = struct { // MARK: Command
 	const KeyPress = struct { // MARK: KeyPress
 		source: InventoryAndSlot,
 		mod: main.Window.Key.Modifiers,
+		key: main.game.GameKeys,
 
 		// TODO remove after information is thrugh other methods synced with server
 		lastDir: Vec3f,
 		selectedBlockPos: ?Vec3i = null,
 
 		pub fn run(self: KeyPress, ctx: Context) error{serverFailure}!void {
-			_ = main.game.Player.inventory.getItem(self.source.slot).onLeftClick().run(.{
-				.ctx = ctx,
-				.slot = self.source,
-				.selectedBlockPos = self.selectedBlockPos,
-				.lastDir = self.lastDir,
-				.mod = self.mod,
-			});
+			switch (self.key) {
+				.leftClick => {
+					_ = main.game.Player.inventory.getItem(self.source.slot).onLeftClick().run(.{
+						.ctx = ctx,
+						.slot = self.source,
+						.selectedBlockPos = self.selectedBlockPos,
+						.lastDir = self.lastDir,
+						.mod = self.mod,
+					});
+				},
+				.rightClick => {
+					if (ctx.side == .server) return;
+					const blockPos = self.selectedBlockPos orelse return;
+
+					const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(blockPos, 1)) orelse return;
+					const block = mesh.chunk.getBlock(blockPos[0] - mesh.pos.wx, blockPos[1] - mesh.pos.wy, blockPos[2] - mesh.pos.wz);
+					_ = block.onInteract().run(.{
+						.block = block,
+						.blockPos = blockPos,
+						.chunk = mesh.chunk,
+					});
+				},
+			}
 		}
 
 		fn serialize(self: KeyPress, writer: *BinaryWriter) void {
 			self.source.write(writer);
 			writer.writeInt(u6, self.mod.toInt());
+			writer.writeEnum(main.game.GameKeys, self.key);
 
 			writer.writeVec(Vec3f, self.lastDir);
 			if (self.selectedBlockPos) |selectedBlockPos| {
@@ -1806,6 +1824,7 @@ pub const Command = struct { // MARK: Command
 			return .{
 				.source = try .read(reader, side, user),
 				.mod = .fromInt(try reader.readInt(u6)),
+				.key = try reader.readEnum(main.game.GameKeys),
 				.lastDir = try reader.readVec(Vec3f),
 				.selectedBlockPos = reader.readVec(Vec3i) catch null,
 			};
