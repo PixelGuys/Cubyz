@@ -1,7 +1,7 @@
 .{
-    .chance = 0,
-    .properties = .{
-        .ocean,
-    },
-    .music = "cubyz:totaldemented/tides",
+	.chance = 0,
+	.properties = .{
+		.ocean,
+	},
+	.music = "cubyz:totaldemented/tides",
 }
