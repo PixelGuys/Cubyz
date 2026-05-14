@@ -1,55 +1,55 @@
 .{
-    .name = .Cubyzig,
-    .fingerprint = 0x782a2e402c0ee887,
-    .version = "0.0.0",
-    .paths = .{""},
-    .dependencies = .{
-        .local = .{
-            .path = "../Cubyz-libs/zig-out", // Local alternative to the cubyz_deps below
-            .lazy = true,
-        },
-        .cubyz_deps_headers = .{
-            .url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/11/cubyz_deps_headers.tar.gz",
-            .hash = "N-V-__8AAAQ8dwBKANzWIqLXH227TZFN-Cs3SEUz1BlvOIdk",
-        },
-        .cubyz_deps_aarch64_macos = .{
-            .url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/11/cubyz_deps_aarch64-macos-none.tar.gz",
-            .hash = "N-V-__8AAFDsiwWqygpcW19zQ5qWleEjoqaiuzT1NiLJkwgV",
-            .lazy = true,
-        },
-        .cubyz_deps_aarch64_linux = .{
-            .url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/11/cubyz_deps_aarch64-linux-musl.tar.gz",
-            .hash = "N-V-__8AANpf5AKBmNccW_gzB8L0ROUX23R9SvwakkIaC8dI",
-            .lazy = true,
-        },
-        .cubyz_deps_aarch64_windows = .{
-            .url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/11/cubyz_deps_aarch64-windows-gnu.tar.gz",
-            .hash = "N-V-__8AAEpU-wLzojxVacuzuCWzgxX832c35NhDPdlpzzNV",
-            .lazy = true,
-        },
-        .cubyz_deps_x86_64_macos = .{
-            .url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/11/cubyz_deps_x86_64-macos-none.tar.gz",
-            .hash = "N-V-__8AAFEIfwXPoQ_whMaJiUEiYTYbz7i3GLbtGJ5yyuYn",
-            .lazy = true,
-        },
-        .cubyz_deps_x86_64_linux = .{
-            .url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/11/cubyz_deps_x86_64-linux-musl.tar.gz",
-            .hash = "N-V-__8AAIg94AIPPluGDS6T9ZsEmWU6NjyhrCVNhzb93w-V",
-            .lazy = true,
-        },
-        .cubyz_deps_x86_64_windows = .{
-            .url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/11/cubyz_deps_x86_64-windows-gnu.tar.gz",
-            .hash = "N-V-__8AALI8HwOYeQDK3pbIUi7_ugLq5oXLbwdoVp6JNnYW",
-            .lazy = true,
-        },
-        .cubyz_large_assets = .{
-            .url = "https://github.com/PixelGuys/Cubyz-Assets/releases/download/0.3.3/assets.tar.gz",
-            .hash = "N-V-__8AANFRTQm8QE4WdcA_BJzGFJRWE_nGq48_2zlcSDmr",
-        },
-        .cubyz_test_runner = .{
-            .url = "https://github.com/PixelGuys/Cubyz-std-lib/archive/refs/tags/0.16.0+1.tar.gz",
-            .hash = "zig-0.0.0-Fp4XJG_h5A3OLpPXqVTJ1DRl3lZhqHp_fClrI7MUVjU_",
-            .lazy = true,
-        },
-    },
+	.name = .Cubyzig,
+	.fingerprint = 0x782a2e402c0ee887,
+	.version = "0.0.0",
+	.paths = .{""},
+	.dependencies = .{
+		.local = .{
+			.path = "../Cubyz-libs/zig-out", // Local alternative to the cubyz_deps below
+			.lazy = true,
+		},
+		.cubyz_deps_headers = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/11/cubyz_deps_headers.tar.gz",
+			.hash = "N-V-__8AAAQ8dwBKANzWIqLXH227TZFN-Cs3SEUz1BlvOIdk",
+		},
+		.cubyz_deps_aarch64_macos = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/11/cubyz_deps_aarch64-macos-none.tar.gz",
+			.hash = "N-V-__8AAFDsiwWqygpcW19zQ5qWleEjoqaiuzT1NiLJkwgV",
+			.lazy = true,
+		},
+		.cubyz_deps_aarch64_linux = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/11/cubyz_deps_aarch64-linux-musl.tar.gz",
+			.hash = "N-V-__8AANpf5AKBmNccW_gzB8L0ROUX23R9SvwakkIaC8dI",
+			.lazy = true,
+		},
+		.cubyz_deps_aarch64_windows = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/11/cubyz_deps_aarch64-windows-gnu.tar.gz",
+			.hash = "N-V-__8AAEpU-wLzojxVacuzuCWzgxX832c35NhDPdlpzzNV",
+			.lazy = true,
+		},
+		.cubyz_deps_x86_64_macos = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/11/cubyz_deps_x86_64-macos-none.tar.gz",
+			.hash = "N-V-__8AAFEIfwXPoQ_whMaJiUEiYTYbz7i3GLbtGJ5yyuYn",
+			.lazy = true,
+		},
+		.cubyz_deps_x86_64_linux = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/11/cubyz_deps_x86_64-linux-musl.tar.gz",
+			.hash = "N-V-__8AAIg94AIPPluGDS6T9ZsEmWU6NjyhrCVNhzb93w-V",
+			.lazy = true,
+		},
+		.cubyz_deps_x86_64_windows = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/11/cubyz_deps_x86_64-windows-gnu.tar.gz",
+			.hash = "N-V-__8AALI8HwOYeQDK3pbIUi7_ugLq5oXLbwdoVp6JNnYW",
+			.lazy = true,
+		},
+		.cubyz_large_assets = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Assets/releases/download/0.3.3/assets.tar.gz",
+			.hash = "N-V-__8AANFRTQm8QE4WdcA_BJzGFJRWE_nGq48_2zlcSDmr",
+		},
+		.cubyz_test_runner = .{
+			.url = "https://github.com/PixelGuys/Cubyz-std-lib/archive/refs/tags/0.16.0+1.tar.gz",
+			.hash = "zig-0.0.0-Fp4XJG_h5A3OLpPXqVTJ1DRl3lZhqHp_fClrI7MUVjU_",
+			.lazy = true,
+		},
+	},
 }
