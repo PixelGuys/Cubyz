@@ -1066,7 +1066,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			}
 
 			if (!inventory.getItem(slot).onLeftClick().isNoop()) {
-				main.sync.ClientSide.executeCommand(.{.keyPress = .{
+				main.sync.client.executeCommand(.{.keyPress = .{
 					.lastDir = lastDir,
 					.selectedBlockPos = selectedBlockPos,
 					.mod = mods,
