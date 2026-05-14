@@ -1,8 +1,8 @@
 .{
-    .fogDensity = 1.5,
-    .fogColor = 0xe2f2ff,
-    .soilCreep = 1.0,
-    .tags = .{.snowy},
+	.fogDensity = 1.5,
+	.fogColor = 0xe2f2ff,
+	.soilCreep = 1.0,
+	.tags = .{.snowy},
 
-    .music = "totaldemented/frigid_feeling",
+	.music = "totaldemented/frigid_feeling",
 }
