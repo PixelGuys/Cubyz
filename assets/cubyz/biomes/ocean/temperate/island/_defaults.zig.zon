@@ -1,7 +1,7 @@
 .{
-	.chance = 0,
-	.properties = .{
-		.ocean,
-	},
-	.music = "cubyz:ikabodbtw/atlantis",
+    .chance = 0,
+    .properties = .{
+        .ocean,
+    },
+    .music = "cubyz:ikabod/atlantis",
 }

@@ -1,8 +1,8 @@
 .{
-	.chance = 0,
-	.properties = .{
-		.ocean,
-		.cold,
-	},
-	.music = "cubyz:ikabodbtw/atlantis",
+    .chance = 0,
+    .properties = .{
+        .ocean,
+        .cold,
+    },
+    .music = "cubyz:ikabod/atlantis",
 }

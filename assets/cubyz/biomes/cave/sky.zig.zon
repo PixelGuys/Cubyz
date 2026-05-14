@@ -1,17 +1,17 @@
 .{
-	.isCave = true,
-	.tags = .{.sky_layer},
-	.caveNoiseStrength = 10,
-	.music = "cubyz:totaldemented/kubis",
+    .isCave = true,
+    .tags = .{.sky_layer},
+    .caveNoiseStrength = 10,
+    .music = "cubyz:totaldemented/filled_with_love",
 
-	.ground_structure = .{},
-	.caveModels = .{
-		.{
-			.id = "cubyz:partial_sphere",
-			.minAmount = 10,
-			.maxAmount = 16,
-			.minRadius = 6,
-			.maxRadius = 14,
-		},
-	},
+    .ground_structure = .{},
+    .caveModels = .{
+        .{
+            .id = "cubyz:partial_sphere",
+            .minAmount = 10,
+            .maxAmount = 16,
+            .minRadius = 6,
+            .maxRadius = 14,
+        },
+    },
 }
