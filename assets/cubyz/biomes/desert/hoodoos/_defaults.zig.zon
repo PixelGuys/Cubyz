@@ -1,21 +1,21 @@
 .{
-    .properties = .{
-        .hot,
-        .dry,
-        .barren,
-    },
+	.properties = .{
+		.hot,
+		.dry,
+		.barren,
+	},
 
-    .music = "cubyz:totaldemented/hypoxia",
+	.music = "cubyz:totaldemented/hypoxia",
 
-    .fogDensity = 1.5,
-    .fogColor = 0xe9f2e2,
-    .stripes = .{
-        .{
-            .direction = .{ 1, 1, 6 },
-            .block = "cubyz:limestone/base",
-            .distance = 10,
-            .offset = 6,
-            .width = 2,
-        },
-    },
+	.fogDensity = 1.5,
+	.fogColor = 0xe9f2e2,
+	.stripes = .{
+		.{
+			.direction = .{1, 1, 6},
+			.block = "cubyz:limestone/base",
+			.distance = 10,
+			.offset = 6,
+			.width = 2,
+		},
+	},
 }
