@@ -1,49 +1,49 @@
 .{
-	.properties = .{
-		.hot,
-		.dry,
-		.barren,
-	},
-	.tags = .{
-		.cactus,
-	},
-	.chance = 1.0,
-	.minHeightLimit = 7,
-	.minHeight = 22,
-	.maxHeight = 40,
-	.maxHeightLimit = 50,
-	.minRadius = 512,
-	.maxRadius = 640,
-	.hills = 20,
-	.validPlayerSpawn = false,
+    .properties = .{
+        .hot,
+        .dry,
+        .barren,
+    },
+    .tags = .{
+        .cactus,
+    },
+    .chance = 1.0,
+    .minHeightLimit = 7,
+    .minHeight = 22,
+    .maxHeight = 40,
+    .maxHeightLimit = 50,
+    .minRadius = 512,
+    .maxRadius = 640,
+    .hills = 20,
+    .validPlayerSpawn = false,
 
-	.music = "totaldemented/hypoxia",
+    .music = "cubyz:totaldemented/hypoxia",
 
-	.ground_structure = .{
-		"3 to 4 cubyz:sand",
-	},
-	.structures = .{
-		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:cactus/saguaro",
-			.placeMode = .degradable,
-			.chance = 0.01,
-		},
-		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:cactus/young",
-			.placeMode = .degradable,
-			.chance = 0.006,
-		},
-		.{
-			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:tussock"},
-			.chance = 0.03,
-			.width = 4,
-			.variation = 4,
-			.density = 0.2,
-			.priority = 0.1,
-		},
-	},
-	.stoneBlock = "cubyz:sandstone/base",
+    .ground_structure = .{
+        "3 to 4 cubyz:sand",
+    },
+    .structures = .{
+        .{
+            .id = "cubyz:sbb",
+            .structure = "cubyz:cactus/saguaro",
+            .placeMode = .degradable,
+            .chance = 0.01,
+        },
+        .{
+            .id = "cubyz:sbb",
+            .structure = "cubyz:cactus/young",
+            .placeMode = .degradable,
+            .chance = 0.006,
+        },
+        .{
+            .id = "cubyz:flower_patch",
+            .blocks = .{"cubyz:tussock"},
+            .chance = 0.03,
+            .width = 4,
+            .variation = 4,
+            .density = 0.2,
+            .priority = 0.1,
+        },
+    },
+    .stoneBlock = "cubyz:sandstone/base",
 }

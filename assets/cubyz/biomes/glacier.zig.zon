@@ -1,28 +1,28 @@
 .{
-	.properties = .{
-		.cold,
-		.wet,
-		.barren,
-	},
-	.tags = .{.snowy},
+    .properties = .{
+        .cold,
+        .wet,
+        .barren,
+    },
+    .tags = .{.snowy},
 
-	.music = "totaldemented/frigid_feeling",
+    .music = "cubyz:totaldemented/frigid_feeling",
 
-	.minHeightLimit = 7,
-	.minHeight = 80,
-	.maxHeight = 256,
-	.smoothBeaches = true,
-	.fogDensity = 1.5,
-	.fogColor = 0xe2f2ff,
-	.minRadius = 150,
-	.maxRadius = 300,
-	.roughness = 50,
-	.mountains = 50,
-	.hills = 50,
+    .minHeightLimit = 7,
+    .minHeight = 80,
+    .maxHeight = 256,
+    .smoothBeaches = true,
+    .fogDensity = 1.5,
+    .fogColor = 0xe2f2ff,
+    .minRadius = 150,
+    .maxRadius = 300,
+    .roughness = 50,
+    .mountains = 50,
+    .hills = 50,
 
-	.ground_structure = .{
-		"3 to 5 cubyz:snow",
-		"4 cubyz:frost",
-	},
-	.stoneBlock = "cubyz:frost",
+    .ground_structure = .{
+        "3 to 5 cubyz:snow",
+        "4 cubyz:frost",
+    },
+    .stoneBlock = "cubyz:frost",
 }
