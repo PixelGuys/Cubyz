@@ -1173,8 +1173,7 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn run(self: FillAnyFromCreative, ctx: Context) error{serverFailure}!void {
-			if (ctx.side == .server and ctx.user != null and ctx.gamemode != .creative) return;
-			if (ctx.side == .client and ctx.gamemode != .creative) return;
+			if (ctx.gamemode != .creative) return;
 			_ = self.destinations.putItemsInto(ctx, self.amount, .{.create = self.item});
 		}
 
