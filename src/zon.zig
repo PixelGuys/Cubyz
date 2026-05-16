@@ -152,16 +152,16 @@ pub const ZonElement = union(enum) { // MARK: Zon
 
 	pub fn as(self: *const ZonElement, comptime T: type, replacement: T) T {
 		comptime var typeInfo: std.builtin.Type = @typeInfo(T);
-		comptime var innerType = T;
+		comptime var InnerType = T;
 		inline while (typeInfo == .optional) {
-			innerType = typeInfo.optional.child;
-			typeInfo = @typeInfo(innerType);
+			InnerType = typeInfo.optional.child;
+			typeInfo = @typeInfo(InnerType);
 		}
 		switch (typeInfo) {
 			.int => {
 				switch (self.*) {
-					.int => return std.math.cast(innerType, self.int) orelse replacement,
-					.float => return std.math.lossyCast(innerType, std.math.round(self.float)),
+					.int => return std.math.cast(InnerType, self.int) orelse replacement,
+					.float => return std.math.lossyCast(InnerType, std.math.round(self.float)),
 					else => return replacement,
 				}
 			},
@@ -176,10 +176,10 @@ pub const ZonElement = union(enum) { // MARK: Zon
 				const len = typeInfo.vector.len;
 				const elems = self.toSlice();
 				if (elems.len != len) return replacement;
-				var result: innerType = undefined;
-				if (innerType == T) result = replacement;
+				var result: InnerType = undefined;
+				if (InnerType == T) result = replacement;
 				inline for (0..len) |i| {
-					if (innerType == T) {
+					if (InnerType == T) {
 						result[i] = elems[i].as(typeInfo.vector.child, result[i]);
 					} else {
 						result[i] = elems[i].as(?typeInfo.vector.child, null) orelse return replacement;
@@ -188,10 +188,10 @@ pub const ZonElement = union(enum) { // MARK: Zon
 				return result;
 			},
 			.@"enum" => {
-				return std.meta.stringToEnum(T, self.as(?[]const u8, null) orelse return replacement) orelse return replacement;
+				return std.meta.stringToEnum(InnerType, self.as(?[]const u8, null) orelse return replacement) orelse return replacement;
 			},
 			else => {
-				switch (innerType) {
+				switch (InnerType) {
 					[]const u8 => {
 						switch (self.*) {
 							.string => return self.string,

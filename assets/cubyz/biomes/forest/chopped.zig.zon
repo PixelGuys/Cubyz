@@ -1,5 +1,9 @@
 .{
 	.properties = .{},
+	.tags = .{
+		.birch,
+		.oak,
+	},
 	.minHeight = 22,
 	.maxHeight = 40,
 	.minRadius = 64,
@@ -7,7 +11,7 @@
 	.roughness = 10,
 	.hills = 10,
 	.chance = 0,
-	.music = "cubyz:leaves",
+	.music = "cubyz:totaldemented/leaves",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"cubyz:grass",

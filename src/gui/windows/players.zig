@@ -21,7 +21,7 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 var userList: []*main.server.User = &.{};
-var entityCount: u32 = 0;
+var entityCount: usize = 0;
 
 fn kickbyConnection(conn: *main.network.Connection) void {
 	conn.disconnect();
@@ -29,7 +29,7 @@ fn kickbyConnection(conn: *main.network.Connection) void {
 
 fn kickByPlayerIndex(playerIndex: usize) void {
 	const command = std.fmt.allocPrint(main.globalAllocator.allocator, "kick @{d}", .{playerIndex}) catch unreachable;
-	main.sync.ClientSide.executeCommand(.{.chatCommand = .{.message = command}});
+	main.sync.client.executeCommand(.{.chatCommand = .{.message = command}});
 }
 
 pub fn onOpen() void {

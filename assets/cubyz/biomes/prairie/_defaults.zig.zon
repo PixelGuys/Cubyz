@@ -1,11 +1,16 @@
 .{
-	.properties = .{.dry},
+	.properties = .{
+		.dry,
+	},
+	.tags = .{
+		.oak,
+	},
 	.minHeightLimit = 7,
 	.maxHeightLimit = 60,
 	.smoothBeaches = true,
 	.roughness = 1,
 	.hills = 6,
-	.music = "cubyz:sunrise",
+	.music = "cubyz:sinanimea/sunrise",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"1 cubyz:dry_grass",

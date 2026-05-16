@@ -5,10 +5,12 @@ pub const gui = @import("gui/gui.zig");
 pub const server = @import("server/server.zig");
 
 pub const audio = @import("audio.zig");
+pub const argparse = @import("argparse.zig");
 pub const assets = @import("assets.zig");
 pub const block_entity = @import("block_entity.zig");
 pub const blocks = @import("blocks.zig");
 pub const blueprint = @import("blueprint.zig");
+const c = @import("c");
 pub const callbacks = @import("callbacks/callbacks.zig");
 pub const chunk = @import("chunk.zig");
 pub const client = @import("client.zig");
@@ -35,25 +37,26 @@ const tag = @import("tag.zig");
 pub const Tag = tag.Tag;
 pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
-pub const ZonElement = @import("zon.zig").ZonElement;
+const zon = @import("zon.zig");
+pub const ZonElement = zon.ZonElement;
 
 pub const Window = @import("graphics/Window.zig");
 
 pub const heap = @import("utils/heap.zig");
 
-pub const List = @import("utils/list.zig").List;
-pub const ListUnmanaged = @import("utils/list.zig").ListUnmanaged;
-pub const MultiArray = @import("utils/list.zig").MultiArray;
+pub const List = utils.list.List;
+pub const ListUnmanaged = utils.list.ListUnmanaged;
+pub const MultiArray = utils.list.MultiArray;
 
 const file_monitor = utils.file_monitor;
 
 const Vec2f = vec.Vec2f;
 const Vec3d = vec.Vec3d;
 
-pub threadlocal var stackAllocator: heap.NeverFailingAllocator = undefined;
+pub threadlocal var stackAllocator: heap.NeverFailingAllocator = if (builtin.is_test) heap.testingAllocator else undefined;
 pub threadlocal var seed: u64 = undefined;
 threadlocal var stackAllocatorBase: heap.StackAllocator = undefined;
-pub const globalAllocator: heap.NeverFailingAllocator = heap.allocators.handledGpa.allocator();
+pub const globalAllocator: heap.NeverFailingAllocator = if (builtin.is_test) heap.testingAllocator else heap.allocators.handledGpa.allocator();
 pub const globalArena = heap.allocators.globalArenaAllocator.allocator();
 pub const worldArena = heap.allocators.worldArenaAllocator.allocator();
 pub var threadPool: *utils.ThreadPool = undefined;
@@ -73,7 +76,7 @@ pub fn deinitThreadLocals() void {
 }
 
 pub fn timestamp() std.Io.Timestamp {
-	return (std.Io.Clock.Timestamp.now(io, if (@import("builtin").os.tag == .windows) .real else .awake) catch unreachable).raw; // TODO: On windows the awake time is broken
+	return std.Io.Clock.Timestamp.now(io, .awake).raw;
 }
 
 fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
@@ -83,8 +86,8 @@ fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
 fn cacheString(comptime str: []const u8) []const u8 {
 	return cacheStringImpl(str.len, str[0..].*);
 }
-var logFile: ?std.fs.File = undefined;
-var logFileTs: ?std.fs.File = undefined;
+var logFile: ?std.Io.File = undefined;
+var logFileTs: ?std.Io.File = undefined;
 var supportsANSIColors: bool = undefined;
 var openingErrorWindow: bool = false;
 // overwrite the log function:
@@ -93,7 +96,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 	.logFn = struct {
 		pub fn logFn(
 			comptime level: std.log.Level,
-			comptime _: @Type(.enum_literal),
+			comptime _: @EnumLiteral(),
 			comptime format: []const u8,
 			args: anytype,
 		) void {
@@ -148,32 +151,32 @@ fn initLogging() void {
 		std.log.err("Couldn't create logs folder: {s}", .{@errorName(err)});
 		return;
 	};
-	logFile = std.fs.cwd().createFile("logs/latest.log", .{}) catch |err| {
+	logFile = std.Io.Dir.cwd().createFile(io, "logs/latest.log", .{}) catch |err| {
 		std.log.err("Couldn't create logs/latest.log: {s}", .{@errorName(err)});
 		return;
 	};
 
-	const _timestamp = (std.Io.Clock.Timestamp.now(io, .real) catch unreachable).raw;
+	const _timestamp = std.Io.Clock.Timestamp.now(io, .real).raw;
 
 	const _path_str = std.fmt.allocPrint(stackAllocator.allocator, "logs/ts_{}.log", .{_timestamp.nanoseconds}) catch unreachable;
 	defer stackAllocator.free(_path_str);
 
-	logFileTs = std.fs.cwd().createFile(_path_str, .{}) catch |err| {
+	logFileTs = std.Io.Dir.cwd().createFile(io, _path_str, .{}) catch |err| {
 		std.log.err("Couldn't create {s}: {s}", .{_path_str, @errorName(err)});
 		return;
 	};
 
-	supportsANSIColors = std.fs.File.stdout().supportsAnsiEscapeCodes();
+	supportsANSIColors = std.Io.File.stdout().supportsAnsiEscapeCodes(io) catch unreachable;
 }
 
 fn deinitLogging() void {
 	if (logFile) |_logFile| {
-		_logFile.close();
+		_logFile.close(io);
 		logFile = null;
 	}
 
 	if (logFileTs) |_logFileTs| {
-		_logFileTs.close();
+		_logFileTs.close(io);
 		logFileTs = null;
 	}
 }
@@ -184,8 +187,8 @@ fn logToFile(comptime format: []const u8, args: anytype) void {
 	const allocator = fba.allocator();
 
 	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	(logFile orelse return).writeAll(string) catch {};
-	(logFileTs orelse return).writeAll(string) catch {};
+	(logFile orelse return).writeStreamingAll(io, string) catch {};
+	(logFileTs orelse return).writeStreamingAll(io, string) catch {};
 }
 
 fn logToStdErr(comptime format: []const u8, args: anytype) void {
@@ -194,9 +197,9 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 	const allocator = fba.allocator();
 
 	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	const writer = std.debug.lockStderrWriter(&.{});
-	defer std.debug.unlockStderrWriter();
-	nosuspend writer[0].writeAll(string) catch {};
+	const writer = std.debug.lockStderr(&.{});
+	defer std.debug.unlockStderr();
+	nosuspend writer.file_writer.interface.writeAll(string) catch {};
 }
 
 // MARK: Callbacks
@@ -283,7 +286,6 @@ fn setHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
 }
 
 pub const KeyBoard = struct { // MARK: KeyBoard
-	const c = Window.c;
 	pub var keys = [_]Window.Key{
 		// Gameplay:
 		.{.name = "forward", .key = c.GLFW_KEY_W, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}},
@@ -420,12 +422,12 @@ fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
 	return false;
 }
 
-pub fn main() void { // MARK: main()
+pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	defer heap.allocators.deinit();
 	defer heap.GarbageCollection.assertAllThreadsStopped();
 	initThreadLocals();
 	defer deinitThreadLocals();
-	threadedIo = .init(globalAllocator.allocator);
+	threadedIo = .init(globalAllocator.allocator, .{});
 	defer threadedIo.deinit();
 
 	initLogging();
@@ -437,6 +439,7 @@ pub fn main() void { // MARK: main()
 		std.log.warn("Cubyz detected it's running on Windows. For optimal performance and reduced power usage please install Linux.", .{});
 	}
 
+	settings.environment.init(args.environ);
 	settings.launchConfig.init();
 
 	const headless = settings.launchConfig.headlessServer;
@@ -444,7 +447,14 @@ pub fn main() void { // MARK: main()
 	if (!headless) gui.initWindowList();
 	defer if (!headless) gui.deinitWindowList();
 
-	files.init();
+	{
+		const homePath = args.environ.getAlloc(stackAllocator.allocator, if (builtin.os.tag == .windows) "USERPROFILE" else "HOME") catch |err| {
+			std.log.err("Failed to get environment variable for home path: {s}", .{@errorName(err)});
+			@panic("Failed to get environment variable for home path");
+		};
+		defer stackAllocator.free(homePath);
+		files.init(homePath);
+	}
 	defer files.deinit();
 
 	settings.init();
@@ -468,9 +478,6 @@ pub fn main() void { // MARK: main()
 	utils.initDynamicIntArrayStorage();
 	defer utils.deinitDynamicIntArrayStorage();
 
-	chunk.init();
-	defer chunk.deinit();
-
 	rotation.init();
 	defer rotation.deinit();
 
@@ -483,10 +490,10 @@ pub fn main() void { // MARK: main()
 	defer models.deinit();
 
 	items.globalInit();
-	defer items.deinit();
+	defer items.globalDeinit();
 
-	if (!headless) sync.ClientSide.init();
-	defer if (!headless) sync.ClientSide.deinit();
+	if (!headless) sync.client.init();
+	defer if (!headless) sync.client.deinit();
 
 	if (!headless) itemdrop.ItemDropRenderer.init();
 	defer if (!headless) itemdrop.ItemDropRenderer.deinit();
@@ -554,7 +561,6 @@ pub fn clientMain() void { // MARK: clientMain()
 		},
 	}
 
-	const c = Window.c;
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastBeginRendering = timestamp();
 
@@ -659,4 +665,12 @@ test "abc" {
 	@setEvalBranchQuota(1000000);
 	refAllDeclsRecursiveExceptCImports(@This());
 	_ = @import("zon.zig");
+}
+
+test "allocators are usable in tests" {
+	const allocation1 = stackAllocator.create(u64);
+	stackAllocator.destroy(allocation1);
+
+	const allocation2 = globalAllocator.create(u64);
+	globalAllocator.destroy(allocation2);
 }

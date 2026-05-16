@@ -1,12 +1,16 @@
 .{
 	.chance = 0,
 	.keepOriginalTerrain = 1,
+	.radius = 32,
 	.minHeight = 22,
 	.maxHeight = 40,
 	.properties = .{},
+	.tags = .{
+		.oak,
+	},
 	.minRadius = 20,
 	.maxRadius = 32,
-	.music = "cubyz:sunrise",
+	.music = "cubyz:sinanimea/sunrise",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"cubyz:grass",
@@ -17,7 +21,13 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/oak/white",
 			.placeMode = .degradable,
-			.chance = 0.005,
+			.chance = 0.004,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/young",
+			.placeMode = .degradable,
+			.chance = 0.001,
 		},
 		.{
 			.id = "cubyz:sbb",

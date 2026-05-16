@@ -263,7 +263,7 @@ pub fn sendMessage() void {
 			}
 
 			if (input.currentString.items[0] == '/') {
-				main.sync.ClientSide.executeCommand(.{.chatCommand = .{.message = main.globalAllocator.dupe(u8, input.currentString.items[1..])}});
+				main.sync.client.executeCommand(.{.chatCommand = .{.message = main.globalAllocator.dupe(u8, input.currentString.items[1..])}});
 			} else {
 				main.network.protocols.chat.send(main.game.world.?.conn, data);
 			}

@@ -1,5 +1,11 @@
 .{
-	.properties = .{.wet},
+	.properties = .{
+		.wet,
+	},
+	.tags = .{
+		.oak,
+		.pine,
+	},
 	.minHeightLimit = 7,
 	.minHeight = 20,
 	.maxHeight = 50,
@@ -9,7 +15,7 @@
 	.maxRadius = 320,
 	.roughness = 10,
 	.hills = 12,
-	.music = "cubyz:leaves",
+	.music = "cubyz:totaldemented/leaves",
 	.validPlayerSpawn = true,
 	.structures = .{
 		.{

@@ -1,7 +1,7 @@
 .{
 	.minHeight = -10,
 	.maxHeight = -1,
-	.radius = 77,
+	.radius = 70,
 	.hills = 3,
 	.ground_structure = .{
 		"2 to 3 cubyz:gravel",

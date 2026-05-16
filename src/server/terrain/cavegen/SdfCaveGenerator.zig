@@ -46,7 +46,12 @@ fn generateSdf(map: *const CaveMapFragment, biomeMap: *const CaveBiomeMapView, a
 	const biomePoints = biomeMap.getCaveBiomesInRange(main.stackAllocator, mapPos -% margin, mapPos +% margin +% Vec3i{CaveMapFragment.width*map.pos.voxelSize, CaveMapFragment.width*map.pos.voxelSize, CaveMapFragment.height*map.pos.voxelSize});
 	defer main.stackAllocator.free(biomePoints);
 
+	const mapSize = Vec3i{CaveMapFragment.width, CaveMapFragment.width, CaveMapFragment.height} << @as(@Vector(3, u5), @splat(voxelSizeShift));
+
 	for (biomePoints) |biomePoint| {
+		const distance = mapPos -% biomePoint.worldPos;
+		if (@reduce(.Or, distance +% mapSize < biomePoint.biome.maxSdfExtend.min -% @as(Vec3i, @splat(perimeter)))) continue;
+		if (@reduce(.Or, distance > biomePoint.biome.maxSdfExtend.max +% @as(Vec3i, @splat(perimeter)))) continue;
 		var seed = main.random.initSeed3D(worldSeed, biomePoint.worldPos);
 		for (biomePoint.biome.caveSdfModels) |sdfModel| {
 			switch (sdfModel.mode) {
@@ -125,7 +130,7 @@ fn generateMap(map: *CaveMapFragment, output: Array3D(f32), biomeNoiseStrength: 
 				const val110 = getValue(noise, outerSizeShift, x + outerSize, y + outerSize, z);
 				const val111 = getValue(noise, outerSizeShift, x + outerSize, y + outerSize, z + outerSize);
 				// Test if they are all inside or all outside the cave to skip these cases:
-				const measureForEquality = sign(val000) + sign(val001) + sign(val010) + sign(val011) + sign(val100) + sign(val101) + sign(val110) + sign(val111);
+				const measureForEquality = @as(f32, sign(val000)) + @as(f32, sign(val001)) + @as(f32, sign(val010)) + @as(f32, sign(val011)) + @as(f32, sign(val100)) + @as(f32, sign(val101)) + @as(f32, sign(val110)) + @as(f32, sign(val111));
 				if (measureForEquality == 8) {
 					// No cave in here :)
 					continue;

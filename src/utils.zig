@@ -6,8 +6,14 @@ const builtin = @import("builtin");
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
+pub const list = @import("utils/list.zig");
 pub const file_monitor = @import("utils/file_monitor.zig");
-pub const VirtualList = @import("utils/virtual_mem.zig").VirtualList;
+const virtual_mem = @import("utils/virtual_mem.zig");
+pub const VirtualList = virtual_mem.VirtualList;
+
+pub const Condition = @import("utils/Condition.zig");
+pub const Futex = @import("utils/Futex.zig");
+pub const Semaphore = @import("utils/Semaphore.zig");
 
 pub const Compression = struct { // MARK: Compression
 	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8, level: std.compress.flate.Compress.Options) []u8 {
@@ -15,6 +21,7 @@ pub const Compression = struct { // MARK: Compression
 		var buffer: [65536]u8 = undefined;
 		var compress = std.compress.flate.Compress.init(&result.writer, &buffer, .raw, level) catch unreachable;
 		compress.writer.writeAll(data) catch unreachable;
+		compress.finish() catch unreachable;
 		compress.writer.flush() catch unreachable;
 		result.writer.flush() catch unreachable;
 		return result.toOwnedSlice() catch unreachable;
@@ -33,7 +40,7 @@ pub const Compression = struct { // MARK: Compression
 		var walker = sourceDir.walk(main.stackAllocator);
 		defer walker.deinit();
 
-		while (try walker.next()) |entry| {
+		while (try walker.next(main.io)) |entry| {
 			if (entry.kind == .file) {
 				var relPath: []const u8 = entry.path;
 				if (builtin.os.tag == .windows) { // I hate you
@@ -57,6 +64,7 @@ pub const Compression = struct { // MARK: Compression
 				_ = try comp.writer.writeAll(fileData);
 			}
 		}
+		try comp.finish();
 		try comp.writer.flush();
 		try writer.flush();
 	}
@@ -119,7 +127,7 @@ pub fn AliasTable(comptime T: type) type { // MARK: AliasTable
 				currentChances[lastOverfullIndex] -= delta;
 				self.aliasData[lastUnderfullIndex] = .{
 					.alias = lastOverfullIndex,
-					.chance = @intFromFloat(delta/desiredChance*std.math.maxInt(u16)),
+					.chance = @trunc(delta/desiredChance*std.math.maxInt(u16)),
 				};
 				if (currentChances[lastOverfullIndex] < desiredChance) {
 					lastUnderfullIndex = @min(lastUnderfullIndex, lastOverfullIndex);
@@ -588,7 +596,7 @@ pub fn ConcurrentQueue(comptime T: type) type { // MARK: ConcurrentQueue
 	return struct {
 		const Self = @This();
 		super: CircularBufferQueue(T),
-		mutex: std.Thread.Mutex = .{},
+		mutex: main.utils.Mutex = .{},
 
 		pub fn init(allocator: NeverFailingAllocator, initialCapacity: usize) Self {
 			return .{
@@ -628,7 +636,7 @@ pub fn ConcurrentMaxHeap(comptime T: type) type { // MARK: ConcurrentMaxHeap
 		const initialSize = 16;
 		size: usize,
 		array: []T,
-		mutex: std.Thread.Mutex = .{},
+		mutex: main.utils.Mutex = .{},
 		allocator: NeverFailingAllocator,
 
 		pub fn init(allocator: NeverFailingAllocator) @This() {
@@ -646,7 +654,7 @@ pub fn ConcurrentMaxHeap(comptime T: type) type { // MARK: ConcurrentMaxHeap
 
 		/// Moves an element from a given index down the heap, such that all children are always smaller than their parents.
 		fn siftDown(self: *@This(), _i: usize) void {
-			assertLocked(&self.mutex);
+			self.mutex.assertLocked();
 			var i = _i;
 			while (2*i + 1 < self.size) {
 				const biggest = if (2*i + 2 < self.size and self.array[2*i + 2].biggerThan(self.array[2*i + 1])) 2*i + 2 else 2*i + 1;
@@ -663,7 +671,7 @@ pub fn ConcurrentMaxHeap(comptime T: type) type { // MARK: ConcurrentMaxHeap
 
 		/// Moves an element from a given index up the heap, such that all children are always smaller than their parents.
 		fn siftUp(self: *@This(), _i: usize) void {
-			assertLocked(&self.mutex);
+			self.mutex.assertLocked();
 			var i = _i;
 			while (i > 0) {
 				const parentIndex = (i - 1)/2;
@@ -686,7 +694,7 @@ pub fn ConcurrentMaxHeap(comptime T: type) type { // MARK: ConcurrentMaxHeap
 
 		/// Returns the i-th element in the heap. Useless for most applications.
 		pub fn get(self: *@This(), i: usize) ?T {
-			assertLocked(&self.mutex);
+			self.mutex.assertLocked();
 			if (i >= self.size) return null;
 			return self.array[i];
 		}
@@ -719,7 +727,7 @@ pub fn ConcurrentMaxHeap(comptime T: type) type { // MARK: ConcurrentMaxHeap
 		}
 
 		fn removeIndex(self: *@This(), i: usize) void {
-			assertLocked(&self.mutex);
+			self.mutex.assertLocked();
 			self.size -= 1;
 			self.array[i] = self.array[self.size];
 			self.siftDown(i);
@@ -776,7 +784,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		taskType: TaskType = .misc,
 	};
 	pub const Performance = struct {
-		mutex: std.Thread.Mutex = .{},
+		mutex: main.utils.Mutex = .{},
 		tasks: [taskTypes]u32 = undefined,
 		utime: [taskTypes]i64 = undefined,
 
@@ -809,7 +817,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	currentTasks: []Atomic(?*const VTable),
 	loadList: ConcurrentMaxHeap(Task),
 	playerJobQueue: ConcurrentQueue(*main.server.User),
-	semaphore: std.Thread.Semaphore = .{},
+	semaphore: main.utils.Semaphore = .{},
 	allocator: NeverFailingAllocator,
 	running: Atomic(bool) = .init(true),
 
@@ -834,7 +842,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 				@panic("ThreadPool Creation Failed.");
 			};
 			var buf: [std.Thread.max_name_len]u8 = undefined;
-			thread.setName(std.fmt.bufPrint(&buf, "Worker {}", .{i + 1}) catch "Worker n") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
+			thread.setName(main.io, std.fmt.bufPrint(&buf, "Worker {}", .{i + 1}) catch "Worker n") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
 		}
 		return self;
 	}
@@ -873,7 +881,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			if (task.vtable == vtable) {
 				task.vtable.clean(task.self);
 				self.loadList.removeIndex(i);
-				self.semaphore.timedWait(0) catch {};
+				self.semaphore.timedWait(.zero) catch {};
 			} else {
 				i += 1;
 			}
@@ -920,7 +928,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		outer: while (self.running.load(.monotonic)) {
 			main.heap.GarbageCollection.syncPoint();
 
-			self.semaphore.timedWait(10_000_000) catch continue :outer;
+			self.semaphore.timedWait(.fromMilliseconds(10)) catch continue :outer;
 
 			{
 				const task = self.getNextTask() orelse continue :outer;
@@ -938,7 +946,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 				var temporaryTaskList = main.List(Task).init(main.stackAllocator);
 				defer temporaryTaskList.deinit();
 				while (self.loadList.extractAny()) |task| {
-					self.semaphore.timedWait(0) catch {};
+					self.semaphore.timedWait(.zero) catch {};
 					if (!task.vtable.isStillNeeded(task.self)) {
 						task.vtable.clean(task.self);
 						_ = self.trueQueueSize.fetchSub(1, .monotonic);
@@ -979,7 +987,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	pub fn clear(self: *ThreadPool) void {
 		// Clear the remaining tasks:
 		while (self.loadList.extractAny()) |task| {
-			self.semaphore.timedWait(0) catch {};
+			self.semaphore.timedWait(.zero) catch {};
 			task.vtable.clean(task.self);
 			_ = self.trueQueueSize.fetchSub(1, .monotonic);
 		}
@@ -987,7 +995,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			while (player.getTaskFromJobQueue()) |task| {
 				task[0].vtable.clean(task[0].self);
 			}
-			self.semaphore.timedWait(0) catch {};
+			self.semaphore.timedWait(.zero) catch {};
 			player.decreaseRefCount();
 			_ = self.trueQueueSize.fetchSub(1, .monotonic);
 		}
@@ -1342,11 +1350,11 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 	if (numberOfBuckets & hashMask != 0) @compileError("The number of buckets should be a power of 2!");
 
 	const Bucket = struct {
-		mutex: std.Thread.Mutex = .{},
+		mutex: main.utils.Mutex = .{},
 		items: [bucketSize]?*T = @splat(null),
 
 		fn find(self: *@This(), compare: anytype) ?*T {
-			assertLocked(&self.mutex);
+			self.mutex.assertLocked();
 			for (self.items, 0..) |item, i| {
 				if (compare.equals(item)) {
 					if (i != 0) {
@@ -1361,7 +1369,7 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 
 		/// Returns the object that got kicked out of the cache. This must be deinited by the user.
 		fn add(self: *@This(), item: *T) ?*T {
-			assertLocked(&self.mutex);
+			self.mutex.assertLocked();
 			const previous = self.items[bucketSize - 1];
 			std.mem.copyBackwards(?*T, self.items[1..], self.items[0 .. bucketSize - 1]);
 			self.items[0] = item;
@@ -1369,7 +1377,7 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 		}
 
 		fn findOrCreate(self: *@This(), compare: anytype, comptime initFunction: fn (@TypeOf(compare)) *T) *T {
-			assertLocked(&self.mutex);
+			self.mutex.assertLocked();
 			if (self.find(compare)) |item| {
 				return item;
 			}
@@ -1622,68 +1630,40 @@ pub const TimeDifference = struct { // MARK: TimeDifference
 	}
 };
 
-pub fn assertLocked(mutex: *const std.Thread.Mutex) void { // MARK: assertLocked()
-	if (builtin.mode == .Debug) {
-		std.debug.assert(!@constCast(mutex).tryLock());
-	}
-}
+/// A wrapper over Zig's mutex to avoid having to pass the io everywhere
+pub const Mutex = struct { // MARK: Mutex
+	super: if (builtin.os.tag == .windows) @import("utils/Mutex.zig") else std.Io.Mutex = .init,
 
-pub fn assertLockedShared(lock: *const std.Thread.RwLock) void {
-	if (builtin.mode == .Debug) {
-		std.debug.assert(!@constCast(lock).tryLock());
-	}
-}
-
-/// A read-write lock with read priority.
-pub const ReadWriteLock = struct { // MARK: ReadWriteLock
-	condition: std.Thread.Condition = .{},
-	mutex: std.Thread.Mutex = .{},
-	readers: u32 = 0,
-
-	pub fn lockRead(self: *ReadWriteLock) void {
-		self.mutex.lock();
-		self.readers += 1;
-		self.mutex.unlock();
+	pub fn tryLock(self: *Mutex) bool {
+		return self.super.tryLock();
 	}
 
-	pub fn unlockRead(self: *ReadWriteLock) void {
-		self.mutex.lock();
-		self.readers -= 1;
-		if (self.readers == 0) {
-			self.condition.broadcast();
-		}
-		self.mutex.unlock();
-	}
-
-	pub fn lockWrite(self: *ReadWriteLock) void {
-		self.mutex.lock();
-		while (self.readers != 0) {
-			self.condition.wait(&self.mutex);
+	pub fn lock(self: *Mutex) void {
+		if (builtin.os.tag == .windows) {
+			self.super.lock();
+		} else {
+			self.super.lockUncancelable(main.io);
 		}
 	}
 
-	pub fn unlockWrite(self: *ReadWriteLock) void {
-		self.mutex.unlock();
+	pub fn unlock(self: *Mutex) void {
+		if (builtin.os.tag == .windows) {
+			self.super.unlock();
+		} else {
+			self.super.unlock(main.io);
+		}
 	}
 
-	pub fn assertLockedWrite(self: *ReadWriteLock) void {
+	pub fn assertLocked(self: *const main.utils.Mutex) void {
 		if (builtin.mode == .Debug) {
-			std.debug.assert(!self.mutex.tryLock());
-		}
-	}
-
-	pub fn assertLockedRead(self: *ReadWriteLock) void {
-		if (builtin.mode == .Debug and !builtin.sanitize_thread) {
-			if (self.readers == 0) {
-				std.debug.assert(!self.mutex.tryLock());
-			}
+			std.debug.assert(!@constCast(self).tryLock());
 		}
 	}
 };
 
 const endian: std.builtin.Endian = .big;
 
-pub const BinaryReader = struct {
+pub const BinaryReader = struct { // MARK: BinaryReader
 	remaining: []const u8,
 
 	pub const AllErrors = error{ OutOfBounds, IntOutOfBounds, InvalidEnumTag, InvalidFloat };
@@ -1722,7 +1702,7 @@ pub const BinaryReader = struct {
 		return std.mem.readInt(T, self.remaining[0..bufSize], endian);
 	}
 
-	pub fn readVarInt(self: *BinaryReader, T: type) !T {
+	pub fn readVarInt(self: *BinaryReader, T: type) error{ OutOfBounds, IntOutOfBounds }!T {
 		comptime std.debug.assert(@typeInfo(T).int.signedness == .unsigned);
 		comptime std.debug.assert(@bitSizeOf(T) > 8); // Why would you use a VarInt for this?
 		var result: T = 0;
@@ -1730,9 +1710,9 @@ pub const BinaryReader = struct {
 		while (true) {
 			const nextByte = try self.readInt(u8);
 			const value: T = nextByte & 0x7f;
-			result |= try std.math.shlExact(T, value, shift);
+			result |= std.math.shlExact(T, value, shift) catch return error.IntOutOfBounds;
 			if (nextByte & 0x80 == 0) break;
-			shift = try std.math.add(@TypeOf(shift), shift, 7);
+			shift = std.math.add(@TypeOf(shift), shift, 7) catch return error.IntOutOfBounds;
 		}
 		return result;
 	}
@@ -1746,7 +1726,7 @@ pub const BinaryReader = struct {
 
 	pub fn readEnum(self: *BinaryReader, T: type) error{ OutOfBounds, IntOutOfBounds, InvalidEnumTag }!T {
 		const int = try self.readInt(@typeInfo(T).@"enum".tag_type);
-		return std.meta.intToEnum(T, int);
+		return std.enums.fromInt(T, int) orelse error.InvalidEnumTag;
 	}
 
 	pub fn readBool(self: *BinaryReader) error{ OutOfBounds, IntOutOfBounds, InvalidEnumTag }!bool {
@@ -1770,7 +1750,7 @@ pub const BinaryReader = struct {
 	}
 };
 
-pub const BinaryWriter = struct {
+pub const BinaryWriter = struct { // MARK: BinaryWriter
 	data: main.List(u8),
 
 	pub fn init(allocator: NeverFailingAllocator) BinaryWriter {
@@ -1863,7 +1843,7 @@ const ReadWriteTest = struct {
 		defer writer.deinit();
 		writer.writeInt(IntT, expected);
 
-		const expectedWidth = std.math.divCeil(comptime_int, @bitSizeOf(IntT), 8);
+		const expectedWidth = std.math.divCeil(comptime_int, @bitSizeOf(IntT), 8) catch unreachable;
 		try std.testing.expectEqual(expectedWidth, writer.data.items.len);
 
 		var reader = getReader(writer.data.items);
