@@ -4,7 +4,7 @@
 		.ocean,
 	},
 	.radius = 500,
-	.minHeight = -30,
+	.minHeight = -15,
 	.maxHeight = -10,
 	.maxHeightLimit = 7,
 	.smoothBeaches = true,
@@ -12,7 +12,7 @@
 	.roughness = 10,
 	.hills = 20,
 
-	.music = "cubyz:tides",
+	.music = "cubyz:totaldemented/tides",
 
 	.ground_structure = .{
 		"2 to 4 cubyz:sand",
@@ -23,11 +23,11 @@
 		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:gravel",
-			.chance = 0.032,
-			.width = 6,
-			.variation = 2,
+			.chance = 0.01,
+			.width = 10,
+			.variation = 5,
 			.depth = 2,
-			.smoothness = 0.2,
+			.smoothness = 0.4,
 		},
 	},
 	.transitionBiomes = .{

@@ -22,7 +22,7 @@
 		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:moss:cubyz:slate/cobble",
-			.chance = 0.064,
+			.chance = 0.032,
 			.width = 6,
 			.variation = 2,
 			.depth = 2,
@@ -31,11 +31,11 @@
 		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:sand",
-			.chance = 0.032,
-			.width = 6,
-			.variation = 2,
+			.chance = 0.064,
+			.width = 10,
+			.variation = 4,
 			.depth = 2,
-			.smoothness = 0.2,
+			.smoothness = 0.4,
 		},
 	},
 	.transitionBiomes = .{
