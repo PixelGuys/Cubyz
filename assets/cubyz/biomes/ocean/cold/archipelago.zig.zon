@@ -1,11 +1,11 @@
 .{
+	.chance = 0.1,
 	.properties = .{
 		.cold,
 		.ocean,
 	},
-	.type = .arctic_ocean,
-	.minHeight = -100,
-	.maxHeight = -22,
+	.minHeight = -15,
+	.maxHeight = -10,
 	.maxHeightLimit = 7,
 	.smoothBeaches = true,
 
@@ -14,7 +14,7 @@
 	.roughness = 20,
 	.hills = 10,
 
-	.music = "cubyz:sinanimea/under_the_water_sky",
+	.music = "cubyz:totaldemented/tides",
 
 	.ground_structure = .{
 		"1 to 2 cubyz:slate/cobble",
