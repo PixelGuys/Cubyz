@@ -135,18 +135,8 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 	}
 };
 
-var memoryPool: main.heap.MemoryPool(Chunk) = undefined;
-var serverPool: main.heap.MemoryPool(ServerChunk) = undefined;
-
-pub fn init() void {
-	memoryPool = .init(main.globalAllocator);
-	serverPool = .init(main.globalAllocator);
-}
-
-pub fn deinit() void {
-	memoryPool.deinit();
-	serverPool.deinit();
-}
+var memoryPool: main.heap.MemoryPool(Chunk) = .init(main.globalArena);
+var serverPool: main.heap.MemoryPool(ServerChunk) = .init(main.globalArena);
 
 pub const Lod = enum(u5) {
 	@"1" = 0,

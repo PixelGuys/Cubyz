@@ -15,7 +15,7 @@
 	.maxRadius = 320,
 	.roughness = 10,
 	.hills = 12,
-	.music = "cubyz:leaves",
+	.music = "cubyz:totaldemented/leaves",
 	.validPlayerSpawn = true,
 	.structures = .{
 		.{

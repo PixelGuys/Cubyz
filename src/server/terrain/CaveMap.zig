@@ -276,7 +276,7 @@ const associativity = 8; // 1024 MiB Cache size
 var cache: Cache(CaveMapFragment, cacheSize, associativity, CaveMapFragment.deferredDeinit) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
-var memoryPool: main.heap.MemoryPool(CaveMapFragment) = undefined;
+var memoryPool: main.heap.MemoryPool(CaveMapFragment) = .init(main.globalArena);
 
 fn cacheInit(pos: ChunkPosition) *CaveMapFragment {
 	const mapFragment = memoryPool.create();
@@ -285,14 +285,6 @@ fn cacheInit(pos: ChunkPosition) *CaveMapFragment {
 		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
 	}
 	return mapFragment;
-}
-
-pub fn globalInit() void {
-	memoryPool = .init(main.globalAllocator);
-}
-
-pub fn globalDeinit() void {
-	memoryPool.deinit();
 }
 
 pub fn init(_profile: TerrainGenerationProfile) void {

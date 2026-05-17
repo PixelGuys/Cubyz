@@ -66,11 +66,10 @@ pub const BlockUpdate = struct {
 	}
 };
 
-pub var meshMemoryPool: main.heap.MemoryPool(chunk_meshing.ChunkMesh) = undefined;
+pub var meshMemoryPool: main.heap.MemoryPool(chunk_meshing.ChunkMesh) = .init(main.globalArena);
 
 pub fn init() void { // MARK: init()
 	lastRD = 0;
-	meshMemoryPool = .init(main.globalAllocator);
 	for (&storageLists) |*storageList| {
 		storageList.* = main.globalAllocator.create([storageSize*storageSize*storageSize]ChunkMeshNode);
 		for (storageList.*) |*val| {
@@ -110,7 +109,6 @@ pub fn deinit() void {
 	priorityMeshUpdateList.deinit();
 	meshList.clearAndFree();
 	main.heap.GarbageCollection.waitForFreeCompletion();
-	meshMemoryPool.deinit();
 }
 
 // MARK: getters

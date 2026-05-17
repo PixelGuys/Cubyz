@@ -4,7 +4,7 @@
 
 	.chance = 0.01,
 
-	.music = "cubyz:heart-of-the-beast",
+	.music = "cubyz:ikabod/live",
 
 	.ground_structure = .{
 		"0 to 1 cubyz:gravel",

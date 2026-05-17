@@ -121,11 +121,6 @@ pub const TerrainGenerationProfile = struct {
 };
 
 pub fn globalInit() void {
-	SurfaceMap.globalInit();
-	ClimateMap.globalInit();
-	CaveBiomeMap.globalInit();
-	CaveMap.globalInit();
-	StructureMap.globalInit();
 	{
 		const list = @import("chunkgen/_list.zig");
 		inline for (@typeInfo(list).@"struct".decls) |decl| {
@@ -138,11 +133,6 @@ pub fn globalInit() void {
 }
 
 pub fn globalDeinit() void {
-	CaveBiomeMap.globalDeinit();
-	CaveMap.globalDeinit();
-	StructureMap.globalDeinit();
-	ClimateMap.globalDeinit();
-	SurfaceMap.globalDeinit();
 	BlockGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 

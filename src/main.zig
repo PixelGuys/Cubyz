@@ -478,9 +478,6 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	utils.initDynamicIntArrayStorage();
 	defer utils.deinitDynamicIntArrayStorage();
 
-	chunk.init();
-	defer chunk.deinit();
-
 	rotation.init();
 	defer rotation.deinit();
 

@@ -75,7 +75,6 @@ pub var transparentQuadsDrawn: usize = 0;
 pub const maxQuadsInIndexBuffer = 3 << (3*chunk.chunkShift); // maximum 3 faces/block
 
 pub fn init() void {
-	lighting.init();
 	pipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/chunks/chunk_vertex.vert",
 		"assets/cubyz/shaders/chunks/chunk_fragment.frag",
@@ -145,7 +144,6 @@ pub fn init() void {
 }
 
 pub fn deinit() void {
-	lighting.deinit();
 	pipeline.deinit();
 	transparentPipeline.deinit();
 	occlusionTestPipeline.deinit();
