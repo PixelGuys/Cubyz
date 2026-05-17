@@ -57,7 +57,6 @@ fn join() void {
 	if (connection) |_connection| {
 		_connection.world = &main.game.testWorld;
 		main.game.world = &main.game.testWorld;
-		main.game.dayCycle = .{};
 		std.log.info("Connecting to server: {s}", .{ipAddressEntry.currentString.items});
 		main.game.testWorld.init(ipAddressEntry.currentString.items, _connection) catch |err| {
 			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});

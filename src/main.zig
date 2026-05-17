@@ -631,9 +631,6 @@ pub fn clientMain() void { // MARK: clientMain()
 				world.deinit();
 				game.world = null;
 			}
-			if (game.dayCycle) |_| {
-				game.dayCycle = null;
-			}
 			gui.openWindow("main");
 			audio.setMusic("cubyz:totaldemented/cubyz_remastered");
 		}
@@ -642,9 +639,6 @@ pub fn clientMain() void { // MARK: clientMain()
 	if (game.world) |world| {
 		world.deinit();
 		game.world = null;
-	}
-	if (game.dayCycle) |_| {
-		game.dayCycle = null;
 	}
 }
 
