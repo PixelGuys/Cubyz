@@ -239,7 +239,7 @@ pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 		var remaining: u8 = ~@as(u8, @intCast(i));
 		for (0..2) |dx| {
 			for (0..2) |dy| {
-				for(0..2) |dz| {
+				for (0..2) |dz| {
 					var mask = subBlockMask(@intCast(dx), @intCast(dy), @intCast(dz));
 					if (remaining & mask == 0) continue;
 					var dx2 = dx + 1;

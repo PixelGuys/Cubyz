@@ -315,7 +315,7 @@ pub fn createBlockModel(_: Block, modeData: *u16, zon: ZonElement) ModelIndex {
 			if (data.enabledConnections & Neighbor.dirUp.bitMask() != 0) boxZ.max[2] = 1;
 			boxes.appendAssumeCapacity(boxZ);
 		}
-		
+
 		if (boxes.items.len == 0) boxes.appendAssumeCapacity(innerBox);
 
 		const index = main.models.Model.initWithCollisionModel(quads.items, boxes.items);
