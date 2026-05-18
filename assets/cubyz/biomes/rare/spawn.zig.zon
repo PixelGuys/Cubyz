@@ -47,7 +47,7 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:oak_log",
+			.block = "cubyz:log/oak:0b000011",
 			.chance = 0.01,
 			.height = 1,
 			.height_variation = 2,
