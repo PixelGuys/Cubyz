@@ -170,7 +170,7 @@ pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 			quads.append(rotateQuad(pattern, neighbor));
 		}
 
-		const index = main.models.Model.init(quads.items);
+		const index = main.models.Model.initWithCollisionModel(quads.items, &.{.{.min = @splat(0), .max = @splat(1)}});
 		if (i == 0) {
 			modelIndex = index;
 		}

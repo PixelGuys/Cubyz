@@ -275,8 +275,14 @@ pub fn createBlockModel(_: Block, modeData: *u16, zon: ZonElement) ModelIndex {
 		shellModel.getRawFaces(&shellQuads);
 	}
 
+	const innerBox: main.physics.collision.Box = .{
+		.min = @splat(0.5 - radius/16.0),
+		.max = @splat(0.5 + radius/16.0),
+	};
+
 	var modelIndex: ModelIndex = undefined;
 	for (0..64) |i| {
+		const data: BranchData = @bitCast(@as(u7, @intCast(i)));
 		var quads = main.ListManaged(main.models.QuadInfo).init(main.stackAllocator);
 		defer quads.deinit();
 		quads.appendSlice(shellQuads.items);
@@ -289,7 +295,30 @@ pub fn createBlockModel(_: Block, modeData: *u16, zon: ZonElement) ModelIndex {
 			}
 		}
 
-		const index = main.models.Model.init(quads.items);
+		var boxes: main.ListUnmanaged(main.physics.collision.Box) = .initCapacity(main.stackAllocator, 3);
+		defer boxes.deinit(main.stackAllocator);
+		if (data.enabledConnections & Neighbor.dirNegX.bitMask() != 0 or data.enabledConnections & Neighbor.dirPosX.bitMask() != 0) {
+			var boxX = innerBox;
+			if (data.enabledConnections & Neighbor.dirNegX.bitMask() != 0) boxX.min[0] = 0;
+			if (data.enabledConnections & Neighbor.dirPosX.bitMask() != 0) boxX.max[0] = 1;
+			boxes.appendAssumeCapacity(boxX);
+		}
+		if (data.enabledConnections & Neighbor.dirNegY.bitMask() != 0 or data.enabledConnections & Neighbor.dirPosY.bitMask() != 0) {
+			var boxY = innerBox;
+			if (data.enabledConnections & Neighbor.dirNegY.bitMask() != 0) boxY.min[1] = 0;
+			if (data.enabledConnections & Neighbor.dirPosY.bitMask() != 0) boxY.max[1] = 1;
+			boxes.appendAssumeCapacity(boxY);
+		}
+		if (data.enabledConnections & Neighbor.dirDown.bitMask() != 0 or data.enabledConnections & Neighbor.dirUp.bitMask() != 0) {
+			var boxZ = innerBox;
+			if (data.enabledConnections & Neighbor.dirDown.bitMask() != 0) boxZ.min[2] = 0;
+			if (data.enabledConnections & Neighbor.dirUp.bitMask() != 0) boxZ.max[2] = 1;
+			boxes.appendAssumeCapacity(boxZ);
+		}
+		
+		if (boxes.items.len == 0) boxes.appendAssumeCapacity(innerBox);
+
+		const index = main.models.Model.initWithCollisionModel(quads.items, boxes.items);
 		if (i == 0) {
 			modelIndex = index;
 		}
