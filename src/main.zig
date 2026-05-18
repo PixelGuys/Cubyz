@@ -519,7 +519,6 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	defer if (!headless) particles.ParticleManager.deinit();
 
 	server.terrain.globalInit();
-	defer server.terrain.globalDeinit();
 
 	if (headless) {
 		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null);
