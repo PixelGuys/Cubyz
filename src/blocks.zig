@@ -70,36 +70,38 @@ pub const Ore = struct {
 	seed: u64,
 };
 
-const SelectionCapabilities = packed struct(u3) {
-	never: bool = false,
-	always: bool = false,
+const SelectionCapabilities = union(enum) {
+	const backingType = u1;
 
-	toolEffective: bool = false,
+	never: void,
+	always: void,
+	custom: packed struct(backingType) {
+		toolEffective: bool = false,
+	},
 
-	pub const neverSelectable: SelectionCapabilities = .{.never = true};
-	pub const alwaysSelectable: SelectionCapabilities = .{.always = true};
+	pub const neverSelectable: SelectionCapabilities = .{.never = {}};
+	pub const alwaysSelectable: SelectionCapabilities = .{.always = {}};
 
 	const Capability = enum {
 		toolEffective,
 	};
 
 	pub fn loadFromZon(zon: main.ZonElement) SelectionCapabilities {
-		var result: SelectionCapabilities = .{};
+		var result: SelectionCapabilities = .{.custom = .{}};
 		for (zon.toSlice()) |capabilityZon| {
 			if (capabilityZon.as(?Capability, null)) |capability| {
 				switch (capability) {
-					.toolEffective => result.toolEffective = true,
+					.toolEffective => result.custom.toolEffective = true,
 				}
 			} else std.log.err("SelectionCapability is invalid. Ignoring", .{});
 		}
-		const T = @typeInfo(@This()).@"struct".backing_integer.?;
-		if (@as(T, @bitCast(result)) == 0) result = neverSelectable;
+		if (@as(backingType, @bitCast(result.custom)) == 0) result = neverSelectable;
 		return result;
 	}
 
 	pub fn allowsSelectionByItem(self: SelectionCapabilities, block: Block, item: Item) bool {
-		if (self.never) return false;
-		if (self.always) return true;
+		if (self == .never) return false;
+		if (self == .always) return true;
 		return switch (item) {
 			.baseItem => |baseItem| {
 				if (std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) return true;
@@ -110,7 +112,7 @@ const SelectionCapabilities = packed struct(u3) {
 				return false;
 			},
 
-			.proceduralItem => |proceduralItem| self.toolEffective and proceduralItem.isEffectiveOn(block),
+			.proceduralItem => |proceduralItem| self.custom.toolEffective and proceduralItem.isEffectiveOn(block),
 
 			else => false,
 		};
