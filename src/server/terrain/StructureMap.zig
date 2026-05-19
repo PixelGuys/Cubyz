@@ -173,7 +173,7 @@ const associativity = 8;
 var cache: Cache(StructureMapFragment, cacheSize, associativity, StructureMapFragment.deferredDeinit) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
-var memoryPool: main.heap.MemoryPool(StructureMapFragment) = undefined;
+var memoryPool: main.heap.MemoryPool(StructureMapFragment) = .init(main.globalArena);
 
 fn cacheInit(pos: ChunkPosition) *StructureMapFragment {
 	const mapFragment = memoryPool.create();
@@ -183,14 +183,6 @@ fn cacheInit(pos: ChunkPosition) *StructureMapFragment {
 	}
 	mapFragment.finishGeneration();
 	return mapFragment;
-}
-
-pub fn globalInit() void {
-	memoryPool = .init(main.globalAllocator);
-}
-
-pub fn globalDeinit() void {
-	memoryPool.deinit();
 }
 
 pub fn init(_profile: TerrainGenerationProfile) void {

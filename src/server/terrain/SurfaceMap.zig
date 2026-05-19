@@ -268,15 +268,7 @@ const associativity = 8; // ~400MiB MiB Cache size
 var cache: Cache(MapFragment, cacheSize, associativity, MapFragment.deferredDeinit) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
-var memoryPool: main.heap.MemoryPool(MapFragment) = undefined;
-
-pub fn globalInit() void {
-	memoryPool = .init(main.globalAllocator);
-}
-
-pub fn globalDeinit() void {
-	memoryPool.deinit();
-}
+var memoryPool: main.heap.MemoryPool(MapFragment) = .init(main.globalArena);
 
 fn cacheInit(pos: MapFragmentPosition) *MapFragment {
 	const mapFragment = memoryPool.create();

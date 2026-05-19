@@ -9,7 +9,7 @@
 
 	.crystals = 32,
 
-	.music = "cubyz:leaves",
+	.music = "cubyz:totaldemented/midnight_melody",
 
 	.stoneBlock = "cubyz:slate/base",
 	.ground_structure = .{

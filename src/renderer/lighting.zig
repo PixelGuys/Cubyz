@@ -14,15 +14,7 @@ const vec = main.vec;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 
-var memoryPool: main.heap.MemoryPool(ChannelChunk) = undefined;
-
-pub fn init() void {
-	memoryPool = .init(main.globalAllocator);
-}
-
-pub fn deinit() void {
-	memoryPool.deinit();
-}
+var memoryPool: main.heap.MemoryPool(ChannelChunk) = .init(main.globalArena);
 
 const LightValue = packed struct(u32) {
 	r: u8,

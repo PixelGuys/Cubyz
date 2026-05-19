@@ -19,7 +19,7 @@
 	.rivers = true,
 	.chance = 0.5,
 
-	.music = "cubyz:EasternThought",
+	.music = "cubyz:totaldemented/cubyz",
 
 	.stoneBlock = "cubyz:limestone/base",
 

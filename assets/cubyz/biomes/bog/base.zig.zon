@@ -16,7 +16,7 @@
 	.roughness = 1,
 	.hills = 2,
 	.chance = 0.8,
-	.music = "cubyz:leaves",
+	.music = "cubyz:totaldemented/leaves",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"1 cubyz:lush_grass",

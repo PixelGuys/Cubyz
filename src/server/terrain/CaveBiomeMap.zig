@@ -535,15 +535,7 @@ var cache: Cache(CaveBiomeMapFragment, cacheSize, associativity, CaveBiomeMapFra
 
 var profile: TerrainGenerationProfile = undefined;
 
-var memoryPool: main.heap.MemoryPool(CaveBiomeMapFragment) = undefined;
-
-pub fn globalInit() void {
-	memoryPool = .init(main.globalAllocator);
-}
-
-pub fn globalDeinit() void {
-	memoryPool.deinit();
-}
+var memoryPool: main.heap.MemoryPool(CaveBiomeMapFragment) = .init(main.globalArena);
 
 pub fn init(_profile: TerrainGenerationProfile) void {
 	profile = _profile;

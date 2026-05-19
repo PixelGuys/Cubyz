@@ -1107,8 +1107,7 @@ pub const Command = struct { // MARK: Command
 
 		fn run(self: FillFromCreative, ctx: Context) error{serverFailure}!void {
 			if (self.dest.inv.source == .workbench and (self.dest.inv.source.workbench.proceduralItemIndex.slotInfos()[self.dest.slot].disabled or !canPutIntoWorkbench(self.item))) return;
-			if (ctx.side == .server and ctx.user != null and ctx.gamemode != .creative) return;
-			if (ctx.side == .client and ctx.gamemode != .creative) return;
+			if (ctx.gamemode != .creative) return;
 
 			if (!self.dest.ref().empty()) {
 				ctx.execute(.{.delete = .{
@@ -1173,6 +1172,7 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn run(self: FillAnyFromCreative, ctx: Context) error{serverFailure}!void {
+			if (ctx.gamemode != .creative) return;
 			_ = self.destinations.putItemsInto(ctx, self.amount, .{.create = self.item});
 		}
 
