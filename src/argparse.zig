@@ -64,12 +64,12 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			.parse => error{ParseError}!T,
 		} {
 			var result: T = undefined;
-			var split = std.mem.splitScalar(u8, args, ' ');
+			var tokens = std.mem.tokenizeScalar(u8, args, ' ');
 
 			var tempErrorMessage: ListUnmanaged(u8) = .{};
 			defer tempErrorMessage.deinit(main.stackAllocator);
 
-			var nextArgument: ?[]const u8 = split.next();
+			var nextArgument: ?[]const u8 = tokens.next();
 
 			inline for (s.fields) |field| {
 				const value = resolveArgument(field.type, allocator, field.name[0..], nextArgument, &tempErrorMessage);
@@ -85,11 +85,11 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				} else {
 					@field(result, field.name) = value catch unreachable;
 					tempErrorMessage.clearRetainingCapacity();
-					nextArgument = split.next();
+					nextArgument = tokens.next();
 				}
 			}
 
-			if (nextArgument != null and !std.mem.eql(u8, nextArgument.?, "")) {
+			if (nextArgument != null) {
 				errorMessage.print(main.stackAllocator, "Too many arguments for command, expected {}", .{s.fields.len});
 				return error.ParseError;
 			}
@@ -320,10 +320,10 @@ test "x or xy negative empty" {
 	try std.testing.expectEqualStrings(
 		\\---
 		\\x
-		\\Expected a number for <x>, found ""
+		\\Missing argument at position <x>
 		\\---
 		\\xy
-		\\Expected a number for <x>, found ""
+		\\Missing argument at position <x>
 		\\---
 	, errors.items);
 	try std.testing.expectError(error.ParseError, resultOrError);
