@@ -211,7 +211,8 @@ const GenerationStructure = struct {
 
 	fn findClosestBiomeTo(prefilteredCandidates: []*BiomePoint, wx: i32, wy: i32, relX: i32, relY: i32, worldSeed: u64) BiomeSample {
 		const x = wx +% relX*terrain.SurfaceMap.MapFragment.biomeSize;
-		const y = wy +% relY*terrain.SurfaceMap.MapFragment.biomeSize;
+		var y = wy +% relY*terrain.SurfaceMap.MapFragment.biomeSize;
+		if (@mod(relX, 2) == 1) y += terrain.SurfaceMap.MapFragment.biomeSize/2;
 		var closestDist = std.math.floatMax(f32);
 		var secondClosestDist = std.math.floatMax(f32);
 		var closestBiomePoint: BiomePoint = undefined;
@@ -303,7 +304,8 @@ const GenerationStructure = struct {
 		if (skipMismatched) {
 			var x: f32 = min[0];
 			while (x < max[0]) : (x += 1) {
-				var y: f32 = min[1];
+				const yOffset: f32 = @mod(x, 2)*0.5;
+				var y: f32 = min[1] + yOffset;
 				while (y < max[1]) : (y += 1) {
 					const distSquare = vec.lengthSquare(Vec2f{x, y} - relPos);
 					if (distSquare < relRadius*relRadius) {
@@ -316,7 +318,8 @@ const GenerationStructure = struct {
 		}
 		var x: f32 = min[0];
 		while (x < max[0]) : (x += 1) {
-			var y: f32 = min[1];
+			const yOffset: f32 = @mod(x, 2)*0.5;
+			var y: f32 = min[1] + yOffset;
 			while (y < max[1]) : (y += 1) {
 				const distSquare = vec.lengthSquare(Vec2f{x, y} - relPos);
 				if (distSquare < relRadius*relRadius) {
@@ -392,7 +395,10 @@ const GenerationStructure = struct {
 		for (1..neighborData.len) |i| {
 			for (1..preMapSize - 1) |x| {
 				for (1..preMapSize - 1) |y| {
-					neighborData[i][x][y] = neighborData[i - 1][x][y] | neighborData[i - 1][x - 1][y] | neighborData[i - 1][x + 1][y] | neighborData[i - 1][x][y - 1] | neighborData[i - 1][x][y + 1];
+					const y1 = y;
+					const y2 = if (x%2 == 1) y + 1 else y - 1;
+					const xNeighbors = neighborData[i - 1][x - 1][y1] | neighborData[i - 1][x - 1][y2] | neighborData[i - 1][x + 1][y1] | neighborData[i - 1][x + 1][y2];
+					neighborData[i][x][y] = neighborData[i - 1][x][y] | neighborData[i - 1][x][y - 1] | neighborData[i - 1][x][y + 1] | xNeighbors;
 				}
 			}
 		}
@@ -457,7 +463,7 @@ const GenerationStructure = struct {
 				const wxMin = wx +% newRelX*terrain.SurfaceMap.MapFragment.biomeSize;
 				const wxMax = wxMin +% newWidth*terrain.SurfaceMap.MapFragment.biomeSize;
 				const wyMin = wy +% newRelY*terrain.SurfaceMap.MapFragment.biomeSize;
-				const wyMax = wyMin +% newHeight*terrain.SurfaceMap.MapFragment.biomeSize;
+				const wyMax = wyMin +% newHeight*terrain.SurfaceMap.MapFragment.biomeSize +% terrain.SurfaceMap.MapFragment.biomeSize;
 
 				newCandidates.clearRetainingCapacity();
 				for (biomeCandidates) |candidate| {

@@ -43,8 +43,8 @@
 			.lazy = true,
 		},
 		.cubyz_large_assets = .{
-			.url = "https://github.com/PixelGuys/Cubyz-Assets/releases/download/0.3.2/assets.tar.gz",
-			.hash = "N-V-__8AANbteAm7IVB2b8O_9rZE_R--oY-CWzUXu9gAXzVD",
+			.url = "https://github.com/PixelGuys/Cubyz-Assets/releases/download/0.3.3/assets.tar.gz",
+			.hash = "N-V-__8AANFRTQm8QE4WdcA_BJzGFJRWE_nGq48_2zlcSDmr",
 		},
 		.cubyz_test_runner = .{
 			.url = "https://github.com/PixelGuys/Cubyz-std-lib/archive/refs/tags/0.16.0+1.tar.gz",

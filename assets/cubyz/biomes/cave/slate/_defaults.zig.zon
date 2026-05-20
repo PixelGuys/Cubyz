@@ -3,7 +3,7 @@
 	.tags = .{.cave_layer},
 	.fogDensity = 2,
 	.caveNoiseStrength = 10,
-	.music = "cubyz:heart-of-the-beast",
+	.music = "cubyz:totaldemented/vitreous",
 
 	.structures = .{
 		.{

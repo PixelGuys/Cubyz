@@ -110,7 +110,7 @@ pub fn execute(argsString: []const u8, source: *User) void {
 
 pub fn toggledecay(decayState: State, current: Block) Block {
 	if (current.mode() == main.rotation.getByID("cubyz:branch")) {
-		var branchData = main.rotation.list.@"cubyz:branch".BranchData.init(current.data);
+		var branchData = main.rotation.rotations.@"cubyz:branch".BranchData.init(current.data);
 		branchData.placedByHuman = decayState == .off;
 		return .{.typ = current.typ, .data = @as(u7, @bitCast(branchData))};
 	}

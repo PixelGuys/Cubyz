@@ -14,7 +14,7 @@
 	.roughness = 10,
 	.hills = 10,
 
-	.music = "cubyz:leaves",
+	.music = "cubyz:totaldemented/leaves",
 
 	.validPlayerSpawn = true,
 
