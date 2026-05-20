@@ -89,7 +89,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				}
 			}
 
-			if (nextArgument != null and !std.mem.eql(u8, nextArgument.?, "")) {
+			if (nextArgument != null) {
 				errorMessage.print(main.stackAllocator, "Too many arguments for command, expected {}", .{s.fields.len});
 				return error.ParseError;
 			}
