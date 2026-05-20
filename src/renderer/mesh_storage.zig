@@ -66,11 +66,10 @@ pub const BlockUpdate = struct {
 	}
 };
 
-pub var meshMemoryPool: main.heap.MemoryPool(chunk_meshing.ChunkMesh) = undefined;
+pub var meshMemoryPool: main.heap.MemoryPool(chunk_meshing.ChunkMesh) = .init(main.globalArena);
 
 pub fn init() void { // MARK: init()
 	lastRD = 0;
-	meshMemoryPool = .init(main.globalAllocator);
 	for (&storageLists) |*storageList| {
 		storageList.* = main.globalAllocator.create([storageSize*storageSize*storageSize]ChunkMeshNode);
 		for (storageList.*) |*val| {
@@ -110,7 +109,6 @@ pub fn deinit() void {
 	priorityMeshUpdateList.deinit();
 	meshList.clearAndFree();
 	main.heap.GarbageCollection.waitForFreeCompletion();
-	meshMemoryPool.deinit();
 }
 
 // MARK: getters
@@ -615,7 +613,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 			for (chunk.Neighbor.iterable) |neighbor| {
 				const component = neighbor.extractDirectionComponent(relPosFloat);
 				if (neighbor.isPositive() and component + @as(f32, @floatFromInt(chunk.chunkSize*pos.voxelSize)) <= 0) continue;
-				if (!neighbor.isPositive() and component >= 0) continue;
+				if (!neighbor.isPositive() and component > 0) continue;
 				const neighborPos = chunk.ChunkPosition{
 					.wx = pos.wx +% neighbor.relX()*chunk.chunkSize*pos.voxelSize,
 					.wy = pos.wy +% neighbor.relY()*chunk.chunkSize*pos.voxelSize,

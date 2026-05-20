@@ -358,3 +358,14 @@ pub const Complex = struct { // MARK: Complex
 		return complexFactor.mulScalar(realFactor);
 	}
 };
+
+// MARK: Box
+
+pub const Boxi = struct {
+	min: Vec3i,
+	max: Vec3i,
+
+	pub fn merge(self: Boxi, other: Boxi) Boxi {
+		return .{.min = @min(self.min, other.min), .max = @max(self.max, other.max)};
+	}
+};

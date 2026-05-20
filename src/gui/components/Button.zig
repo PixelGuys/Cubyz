@@ -76,7 +76,7 @@ pub fn globalInit() void {
 	pressedTextures = Textures.init("assets/cubyz/ui/button_pressed");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	pipeline.deinit();
 	normalTextures.deinit();
 	hoveredTextures.deinit();

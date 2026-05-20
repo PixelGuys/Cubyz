@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const Compression = main.utils.Compression;
-const ZonElement = @import("zon.zig").ZonElement;
+const ZonElement = main.ZonElement;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
@@ -14,15 +14,15 @@ const ServerChunk = main.chunk.ServerChunk;
 const Degrees = main.rotation.Degrees;
 const Tag = main.Tag;
 
-const GameIdToBlueprintIdMapType = std.AutoHashMap(Block, BlockStorageType);
-const BlockIdSizeType = u32;
-const BlockStorageType = u32;
-
 const BinaryWriter = main.utils.BinaryWriter;
 const BinaryReader = main.utils.BinaryReader;
 
 const AliasTable = main.utils.AliasTable;
 const ListUnmanaged = main.ListUnmanaged;
+
+const GameIdToBlueprintIdMapType = std.AutoHashMap(Block, BlockStorageType);
+const BlockIdSizeType = u32;
+const BlockStorageType = u32;
 
 pub const blueprintVersion = 1;
 var voidType: ?u16 = null;

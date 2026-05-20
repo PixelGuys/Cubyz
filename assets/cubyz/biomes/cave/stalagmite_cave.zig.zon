@@ -8,7 +8,7 @@
 	.fogDensity = 10,
 	.fogColor = 0x57575e,
 
-	.music = "cubyz:heart-of-the-beast",
+	.music = "cubyz:totaldemented/vitreous",
 
 	.structures = .{
 		.{

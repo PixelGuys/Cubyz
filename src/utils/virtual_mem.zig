@@ -5,9 +5,7 @@ const page_size_min = std.heap.page_size_min;
 const page_size_max = std.heap.page_size_max;
 const pageSize = std.heap.pageSize;
 
-const c = @cImport({
-	@cInclude("memoryapi.h");
-});
+const c = @import("c");
 
 fn reserveMemory(len: usize) [*]align(page_size_min) u8 {
 	if (builtin.os.tag == .windows) {
