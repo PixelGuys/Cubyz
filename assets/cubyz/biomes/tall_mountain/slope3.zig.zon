@@ -1,32 +1,98 @@
 .{
 	.properties = .{.mountain},
-	.tags = .{.snowy},
-	.radius = 200,
-	.minHeight = 480,
-	.maxHeight = 480,
-
-	.interpolation = .linear,
-	.hills = 10,
-	.roughness = 5,
-
+	.minHeight = 458,
+	.maxHeight = 458,
+	.smoothBeaches = true,
+	.radius = 230,
+	.mountains = 120,
 	.chance = 0,
-
-	.music = "cubyz:mrmayman/out_of_breath",
-
+	.maxSubBiomeCount = 1,
+	.stoneBlock = "cubyz:slate/base",
+	.validPlayerSpawn = false,
+	.music = "cubyz:out_of_breath",
+	.ground_structure = .{
+		"cubyz:cold_grass",
+		"3 to 5 cubyz:soil",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/white",
+			.placeMode = .degradable,
+			.chance = 0.07,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/loblolly",
+			.placeMode = .degradable,
+			.chance = 0.05,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/eastern_white",
+			.placeMode = .degradable,
+			.chance = 0.05,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/young_tree",
+			.placeMode = .degradable,
+			.chance = 0.05,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/standalone_roots",
+			.placeMode = .degradable,
+			.chance = 0.02,
+		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:grass_vegetation",
+			.chance = 0.4,
+			.height = 1,
+			.height_variation = 0,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:grass_vegetation"},
+			.chance = 0.1,
+			.width = 3,
+			.variation = 6,
+			.density = 0.4,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:soil",
+			.chance = 0.1,
+			.width = 5,
+			.variation = 4,
+			.depth = 2,
+			.smoothness = 0.3,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:bluebells"},
+			.chance = 0.01,
+			.width = 3,
+			.variation = 3,
+			.density = 0.4,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:trumpet_lily"},
+			.chance = 0.006,
+			.width = 8,
+			.variation = 3,
+			.density = 0.1,
+			.priority = 0.1,
+		},
+	},
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:tall_mountain/slope2",
 			.chance = 1,
-			.parentEdgeDistance = 0,
 		},
-	},
-
-	.maxSubBiomeCount = 1,
-
-	.soilCreep = 1.0,
-
-	.ground_structure = .{
-		"2 to 3 cubyz:snow",
-		"cubyz:slate/cobble",
 	},
 }
