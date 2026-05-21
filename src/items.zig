@@ -24,6 +24,7 @@ const modifierList = @import("proceduralItem/modifiers/_list.zig");
 const modifierRestrictionList = @import("proceduralItem/modifiers/restrictions/_list.zig");
 
 const ItemUsedCallback = main.callbacks.ItemUsedCallback;
+const ItemCanSelectCallback = main.callbacks.ItemCanSelectCallback;
 
 pub const recipes = @import("items/recipes.zig");
 
@@ -264,6 +265,9 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	}
 	pub fn onLeftClick(self: BaseItemIndex) ItemUsedCallback {
 		return itemList[@intFromEnum(self)].callbacks.onLeftClick;
+	}
+	pub fn canSelect(self: BaseItemIndex) ItemCanSelectCallback {
+		return itemList[@intFromEnum(self)].callbacks.canSelect;
 	}
 };
 
@@ -925,24 +929,41 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	pub fn onLeftClick(self: *ProceduralItem) ItemUsedCallback {
 		return self.type.callbacks().onLeftClick;
 	}
+	pub fn canSelect(self: *ProceduralItem) ItemCanSelectCallback {
+		return self.type.callbacks().canSelect;
+	}
 };
 
 pub const ItemCallbacks = struct {
 	onLeftClick: ItemUsedCallback,
+	canSelect: ItemCanSelectCallback,
 
-	var defaultItemUsedCallback: ItemCallbacks = .{
-		.onLeftClick = .noop,
-	};
+	pub inline fn getDefaultItemCallbacks() ItemCallbacks {
+		return .{
+			.onLeftClick = .noop,
+			.canSelect = ItemCanSelectCallback.manualInit("through_capabilities") orelse .noop, //TODO - better error handling, like an unreachable maybe?
+		};
+	}
 
 	fn registerCallbacks(zon: ZonElement) ItemCallbacks {
-		return .{.onLeftClick = blk: {
-			break :blk ItemUsedCallback.init(zon.getChildOrNull("onLeftClick") orelse {
-				break :blk defaultItemUsedCallback.onLeftClick;
-			}) orelse {
-				std.log.err("Failed to load onLeftClick event for item", .{});
-				break :blk .noop;
-			};
-		}};
+		return .{
+			.onLeftClick = blk: {
+				break :blk ItemUsedCallback.init(zon.getChildOrNull("onLeftClick") orelse {
+					break :blk getDefaultItemCallbacks().onLeftClick;
+				}) orelse {
+					std.log.err("Failed to load onLeftClick event for item", .{});
+					break :blk .noop;
+				};
+			},
+			.canSelect = blk: {
+				break :blk ItemCanSelectCallback.init(zon.getChildOrNull("canSelect") orelse {
+					break :blk getDefaultItemCallbacks().canSelect;
+				}) orelse {
+					std.log.err("Failed to load canSelect event for item", .{});
+					break :blk .noop;
+				};
+			},
+		};
 	}
 };
 
@@ -1086,8 +1107,15 @@ pub const Item = union(ItemType) { // MARK: Item
 
 	pub fn onLeftClick(self: Item) ItemUsedCallback {
 		return switch (self) {
-			.null => ItemCallbacks.defaultItemUsedCallback.onLeftClick,
+			.null => ItemCallbacks.getDefaultItemCallbacks().onLeftClick,
 			inline else => |item| item.onLeftClick(),
+		};
+	}
+
+	pub fn canSelect(self: Item) ItemCanSelectCallback {
+		return switch (self) {
+			.null => ItemCallbacks.getDefaultItemCallbacks().canSelect,
+			inline else => |item| item.canSelect(),
 		};
 	}
 

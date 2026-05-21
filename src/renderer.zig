@@ -943,7 +943,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		while (total_tMax < closestDistance) {
 			const block = mesh_storage.getBlockFromRenderThread(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
 			if (block.typ != 0) blk: {
-				if (!block.isSelectableByItem(item)) break :blk;
+				if (item.canSelect().run(.{.item = item, .block = block}) == .ignored) break :blk;
 
 				const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
 				if (block.mode().rayIntersection(block, item, relativePlayerPos, _dir)) |intersection| {

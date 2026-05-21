@@ -19,6 +19,8 @@ pub const ItemUsedCallback = Callback(struct {
 	mod: main.Window.Key.Modifiers,
 }, @import("item/used/_list.zig"));
 
+pub const ItemCanSelectCallback = Callback(struct { item: main.items.Item, block: Block }, @import("item/canSelect/_list.zig"));
+
 pub const Result = enum { handled, ignored };
 
 pub fn init() void {
@@ -26,6 +28,7 @@ pub fn init() void {
 	ServerBlockCallback.globalInit();
 	BlockTouchCallback.globalInit();
 	ItemUsedCallback.globalInit();
+	ItemCanSelectCallback.globalInit();
 }
 
 fn Callback(_Params: type, list: type) type {
@@ -50,6 +53,14 @@ fn Callback(_Params: type, list: type) type {
 					.run = main.meta.castFunctionSelfToAnyopaque(CallbackStruct.run),
 				}) catch unreachable;
 			}
+		}
+
+		pub fn manualInit(typ: []const u8) ?@This() {
+			const vtable = eventCreationMap.get(typ) orelse return null; //TODO - error logging
+			return .{
+				.data = undefined,
+				.inner = vtable.run,
+			};
 		}
 
 		pub fn init(zon: main.ZonElement) ?@This() {
