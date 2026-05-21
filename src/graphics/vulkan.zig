@@ -2,8 +2,9 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 const main = @import("main");
-const c = main.graphics.c;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+
+const c = @import("c");
 
 comptime {
 	std.debug.assert(@as(u1, 1) == c.VK_TRUE and @as(u1, 0) == c.VK_FALSE); // Allows using @intFromBool to convert to vulkan types

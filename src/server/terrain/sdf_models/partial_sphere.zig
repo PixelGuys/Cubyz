@@ -24,14 +24,18 @@ const Instance = struct {
 	cutDirection: Vec3f,
 };
 
-pub fn init(zon: ZonElement) ?*@This() {
-	const result = main.worldArena.create(@This());
-	result.minRadius = zon.get(f32, "minRadius", 16);
-	result.maxRadius = zon.get(f32, "maxRadius", result.minRadius);
-	result.cutPercentage = zon.get(f32, "cutPercentage", 0.5);
-	result.cutDirection = vec.normalize(zon.get(Vec3f, "cutDirection", .{0, 0, -1}));
-	result.cutDirectionRandomness = zon.get(f32, "cutDirectionRandomness", 0);
-	return result;
+pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
+	const self = main.worldArena.create(@This());
+	self.minRadius = zon.get(f32, "minRadius", 16);
+	self.maxRadius = zon.get(f32, "maxRadius", self.minRadius);
+	self.cutPercentage = zon.get(f32, "cutPercentage", 0.5);
+	self.cutDirection = vec.normalize(zon.get(Vec3f, "cutDirection", .{0, 0, -1}));
+	self.cutDirectionRandomness = zon.get(f32, "cutDirectionRandomness", 0);
+
+	return .{.model = self, .maxExtend = .{
+		.min = @splat(@floor(-self.maxRadius)),
+		.max = @splat(@ceil(self.maxRadius)),
+	}};
 }
 
 pub fn instantiate(self: *@This(), arena: NeverFailingAllocator, seed: *u64) SdfInstance {

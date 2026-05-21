@@ -6,7 +6,7 @@
 	.chance = 0.01,
 	.maxHeight = -1000,
 	.minHeight = -7500,
-	.music = "cubyz:cubyz",
+	.music = "cubyz:ikabod/live",
 	.stoneBlock = "cubyz:slate/base",
 
 	.ground_structure = .{

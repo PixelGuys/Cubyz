@@ -5,11 +5,11 @@ const graphics = main.graphics;
 const Texture = graphics.Texture;
 const Vec2f = main.vec.Vec2f;
 
+const c = @import("c");
+
 const gui = @import("../gui.zig");
 const GuiWindow = gui.GuiWindow;
 const GuiComponent = gui.GuiComponent;
-
-const c = main.graphics.c;
 
 const size: f32 = 64;
 pub var window = GuiWindow{

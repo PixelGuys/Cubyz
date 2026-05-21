@@ -63,7 +63,7 @@ pub fn globalInit() void {
 	craftingResultTexture = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_result_slot.png");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	defaultTexture.deinit();
 	immutableTexture.deinit();
 	craftingResultTexture.deinit();
