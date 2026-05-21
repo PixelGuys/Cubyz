@@ -1,0 +1,55 @@
+.{
+	.interpolation = .none,
+	.interpolationWeight = 0.2,
+	.keepOriginalTerrain = 0.98,
+	.properties = .{},
+	.minHeightLimit = 7,
+	.minHeight = 2000,
+	.maxHeight = 2100,
+	.maxHeightLimit = 80,
+	.smoothBeaches = true,
+	.minRadius = 64,
+	.maxRadius = 128,
+	.roughness = 1,
+	.hills = 2,
+	.chance = 0,
+	.tags = .{
+		.oak,
+	},
+	.ground_structure = .{
+		"cubyz:grass/dew",
+		"1 to 2 cubyz:clay",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/mahogany/khaya_ivorensis/medium",
+			.placeMode = .degradable,
+			.chance = 0.01,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/mahogany/khaya_ivorensis/small",
+			.placeMode = .degradable,
+			.chance = 0.01,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/mahogany/sapele/large",
+			.placeMode = .degradable,
+			.chance = 0.005,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/mahogany/sapele/medium",
+			.placeMode = .degradable,
+			.chance = 0.015,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:jungle/hills/base",
+			.chance = 2,
+		},
+	},
+}
