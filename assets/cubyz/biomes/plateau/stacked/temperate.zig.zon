@@ -1,5 +1,8 @@
 .{
 	.properties = .{},
+	.tags = .{
+		.oak,
+	},
 	.ground_structure = .{
 		"cubyz:grass",
 		"1 to 2 cubyz:soil",
@@ -7,8 +10,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:fallen_tree",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_log",
+			.log = "cubyz:log/oak",
 			.height = 6,
 			.height_variation = 3,
 			.chance = 0.002,
@@ -33,7 +35,13 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/oak/white",
 			.placeMode = .degradable,
-			.chance = 0.01,
+			.chance = 0.007,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/young",
+			.placeMode = .degradable,
+			.chance = 0.003,
 		},
 	},
 	.parentBiomes = .{

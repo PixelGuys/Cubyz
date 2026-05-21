@@ -1,15 +1,15 @@
 const std = @import("std");
 
-const blocks_zig = @import("blocks.zig");
-const items_zig = @import("items.zig");
-const migrations_zig = @import("migrations.zig");
-const blueprints_zig = @import("blueprint.zig");
-const Blueprint = blueprints_zig.Blueprint;
-const particles_zig = @import("particles.zig");
-const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
-const biomes_zig = main.server.terrain.biomes;
-const sbb = main.server.terrain.structure_building_blocks;
+const blocks = @import("blocks.zig");
+const items = @import("items.zig");
+const migrations = @import("migrations.zig");
+const blueprint = @import("blueprint.zig");
+const Blueprint = blueprint.Blueprint;
+const particles = @import("particles.zig");
+const ZonElement = main.ZonElement;
+const biomes = main.server.terrain.biomes;
+const sbb = main.server.terrain.sbb;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const NeverFailingArenaAllocator = main.heap.NeverFailingArenaAllocator;
 const ListUnmanaged = main.ListUnmanaged;
@@ -26,7 +26,7 @@ pub const Assets = struct {
 	blockMigrations: AddonNameToZonMap,
 	items: ZonHashMap,
 	itemMigrations: ZonHashMap,
-	tools: ZonHashMap,
+	proceduralItems: ZonHashMap,
 	biomes: ZonHashMap,
 	biomeMigrations: AddonNameToZonMap,
 	caveLayers: ZonHashMap,
@@ -35,12 +35,12 @@ pub const Assets = struct {
 	structureTables: ZonHashMap,
 	recipes: ZonHashMap,
 	blockModels: BytesHashMap,
-	entityModels: BytesHashMap,
 	structureBuildingBlocks: ZonHashMap,
 	blueprints: BytesHashMap,
 	particles: ZonHashMap,
 	worldPresets: ZonHashMap,
 	entityModelDescriptions: ZonHashMap,
+	entityModelMigrations: ZonHashMap,
 
 	fn init() Assets {
 		return .{
@@ -48,7 +48,7 @@ pub const Assets = struct {
 			.blockMigrations = .{},
 			.items = .{},
 			.itemMigrations = .{},
-			.tools = .{},
+			.proceduralItems = .{},
 			.biomes = .{},
 			.biomeMigrations = .{},
 			.caveLayers = .{},
@@ -57,12 +57,12 @@ pub const Assets = struct {
 			.structureTables = .{},
 			.recipes = .{},
 			.blockModels = .{},
-			.entityModels = .{},
 			.structureBuildingBlocks = .{},
 			.blueprints = .{},
 			.particles = .{},
 			.worldPresets = .{},
 			.entityModelDescriptions = .{},
+			.entityModelMigrations = .{},
 		};
 	}
 	fn deinit(self: *Assets, allocator: NeverFailingAllocator) void {
@@ -70,7 +70,7 @@ pub const Assets = struct {
 		self.blockMigrations.deinit(allocator.allocator);
 		self.items.deinit(allocator.allocator);
 		self.itemMigrations.deinit(allocator.allocator);
-		self.tools.deinit(allocator.allocator);
+		self.proceduralItems.deinit(allocator.allocator);
 		self.biomes.deinit(allocator.allocator);
 		self.biomeMigrations.deinit(allocator.allocator);
 		self.caveLayers.deinit(allocator.allocator);
@@ -79,12 +79,12 @@ pub const Assets = struct {
 		self.structureTables.deinit(allocator.allocator);
 		self.recipes.deinit(allocator.allocator);
 		self.blockModels.deinit(allocator.allocator);
-		self.entityModels.deinit(allocator.allocator);
 		self.structureBuildingBlocks.deinit(allocator.allocator);
 		self.blueprints.deinit(allocator.allocator);
 		self.particles.deinit(allocator.allocator);
 		self.worldPresets.deinit(allocator.allocator);
 		self.entityModelDescriptions.deinit(allocator.allocator);
+		self.entityModelMigrations.deinit(allocator.allocator);
 	}
 	fn clone(self: Assets, allocator: NeverFailingAllocator) Assets {
 		return .{
@@ -92,7 +92,7 @@ pub const Assets = struct {
 			.blockMigrations = self.blockMigrations.clone(allocator.allocator) catch unreachable,
 			.items = self.items.clone(allocator.allocator) catch unreachable,
 			.itemMigrations = self.itemMigrations.clone(allocator.allocator) catch unreachable,
-			.tools = self.tools.clone(allocator.allocator) catch unreachable,
+			.proceduralItems = self.proceduralItems.clone(allocator.allocator) catch unreachable,
 			.biomes = self.biomes.clone(allocator.allocator) catch unreachable,
 			.biomeMigrations = self.biomeMigrations.clone(allocator.allocator) catch unreachable,
 			.caveLayers = self.caveLayers.clone(allocator.allocator) catch unreachable,
@@ -101,12 +101,12 @@ pub const Assets = struct {
 			.structureTables = self.structureTables.clone(allocator.allocator) catch unreachable,
 			.recipes = self.recipes.clone(allocator.allocator) catch unreachable,
 			.blockModels = self.blockModels.clone(allocator.allocator) catch unreachable,
-			.entityModels = self.entityModels.clone(allocator.allocator) catch unreachable,
 			.structureBuildingBlocks = self.structureBuildingBlocks.clone(allocator.allocator) catch unreachable,
 			.blueprints = self.blueprints.clone(allocator.allocator) catch unreachable,
 			.particles = self.particles.clone(allocator.allocator) catch unreachable,
 			.worldPresets = .{}, // Not accessible inside the world
 			.entityModelDescriptions = self.entityModelDescriptions.clone(allocator.allocator) catch unreachable,
+			.entityModelMigrations = self.entityModelMigrations.clone(allocator.allocator) catch unreachable,
 		};
 	}
 	fn read(self: *Assets, allocator: NeverFailingAllocator, assetDir: main.files.Dir, assetPath: []const u8) void {
@@ -117,24 +117,23 @@ pub const Assets = struct {
 		for (addons.items) |addon| {
 			addon.readAllZon(allocator, "blocks", true, &self.blocks, &self.blockMigrations);
 			addon.readAllZon(allocator, "items", true, &self.items, &self.itemMigrations);
-			addon.readAllZon(allocator, "tools", true, &self.tools, null);
+			addon.readAllZon(allocator, "tools", true, &self.proceduralItems, null);
 			addon.readAllZon(allocator, "structure_tables", false, &self.structureTables, null);
 			addon.readAllZon(allocator, "biomes", true, &self.biomes, &self.biomeMigrations);
 			addon.readAllZon(allocator, "cave_layers", true, &self.caveLayers, null);
 			addon.readAllZon(allocator, "recipes", false, &self.recipes, null);
 			addon.readAllZon(allocator, "sbb", true, &self.structureBuildingBlocks, null);
 			addon.readAllBlueprints(allocator, "sbb", &self.blueprints);
-			addon.readAllModels(allocator, "models", &self.blockModels);
-			addon.readAllModels(allocator, "entityModels/models", &self.entityModels);
+			addon.readAllModels(allocator, "models", ".obj", &self.blockModels);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
-			addon.readAllZon(allocator, "entityModels", true, &self.entityModelDescriptions, null);
+			addon.readAllZon(allocator, "entityModels", true, &self.entityModelDescriptions, &self.entityModelMigrations);
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks, {} items, {} tools, {} biomes, {} cave layers, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, and {} world presets",
-			.{@tagName(typ), self.blocks.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.caveLayers.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count()},
+			"Finished {s} assets reading with {} blocks, {} items, {} procedural items, {} biomes, {} cave layers, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, and {} world presets",
+			.{@tagName(typ), self.blocks.count(), self.items.count(), self.proceduralItems.count(), self.biomes.count(), self.caveLayers.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count()},
 		);
 	}
 
@@ -152,7 +151,7 @@ pub const Assets = struct {
 			defer dir.close();
 
 			var iterator = dir.iterate();
-			outer: while (iterator.next() catch |err| blk: {
+			outer: while (iterator.next(main.io) catch |err| blk: {
 				std.log.err("Got error while iterating over asset path {s}: {s}", .{path, @errorName(err)});
 				break :blk null;
 			}) |addon| {
@@ -229,7 +228,7 @@ pub const Assets = struct {
 			}
 		};
 
-		pub fn readAllZon(addon: Addon, allocator: NeverFailingAllocator, assetType: []const u8, hasDefaults: bool, output: *ZonHashMap, migrations: ?*AddonNameToZonMap) void {
+		pub fn readAllZon(addon: Addon, allocator: NeverFailingAllocator, assetType: []const u8, hasDefaults: bool, output: *ZonHashMap, _migrations: ?*AddonNameToZonMap) void {
 			var assetsDirectory = addon.dir.openIterableDir(assetType) catch |err| {
 				if (err != error.FileNotFound) {
 					std.log.err("Could not open addon directory {s}: {s}", .{assetType, @errorName(err)});
@@ -245,7 +244,7 @@ pub const Assets = struct {
 			var walker = assetsDirectory.walk(main.stackAllocator);
 			defer walker.deinit();
 
-			while (walker.next() catch |err| blk: {
+			while (walker.next(main.io) catch |err| blk: {
 				std.log.err("Got error while iterating addon directory {s}: {s}", .{assetType, @errorName(err)});
 				break :blk null;
 			}) |entry| {
@@ -266,12 +265,12 @@ pub const Assets = struct {
 				}
 				output.put(allocator.allocator, id, zon) catch unreachable;
 			}
-			if (migrations != null) blk: {
+			if (_migrations != null) blk: {
 				const zon = assetsDirectory.readToZon(allocator, "_migrations.zig.zon") catch |err| {
 					if (err != error.FileNotFound) std.log.err("Cannot read {s} migration file for addon {s}", .{assetType, addon.name});
 					break :blk;
 				};
-				migrations.?.put(allocator.allocator, allocator.dupe(u8, addon.name), zon) catch unreachable;
+				_migrations.?.put(allocator.allocator, allocator.dupe(u8, addon.name), zon) catch unreachable;
 			}
 		}
 
@@ -287,7 +286,7 @@ pub const Assets = struct {
 			var walker = assetsDirectory.walk(main.stackAllocator);
 			defer walker.deinit();
 
-			while (walker.next() catch |err| blk: {
+			while (walker.next(main.io) catch |err| blk: {
 				std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
 				break :blk null;
 			}) |entry| {
@@ -306,7 +305,7 @@ pub const Assets = struct {
 			}
 		}
 
-		pub fn readAllModels(addon: Addon, allocator: NeverFailingAllocator, subPath: []const u8, output: *BytesHashMap) void {
+		pub fn readAllModels(addon: Addon, allocator: NeverFailingAllocator, subPath: []const u8, fileEnding: []const u8, output: *BytesHashMap) void {
 			var assetsDirectory = addon.dir.openIterableDir(subPath) catch |err| {
 				if (err != error.FileNotFound) {
 					std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
@@ -317,12 +316,12 @@ pub const Assets = struct {
 			var walker = assetsDirectory.walk(main.stackAllocator);
 			defer walker.deinit();
 
-			while (walker.next() catch |err| blk: {
+			while (walker.next(main.io) catch |err| blk: {
 				std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
 				break :blk null;
 			}) |entry| {
 				if (entry.kind != .file) continue;
-				if (!std.ascii.endsWithIgnoreCase(entry.basename, ".obj")) continue;
+				if (!std.ascii.endsWithIgnoreCase(entry.basename, fileEnding)) continue;
 
 				const id = createAssetStringID(allocator, addon.name, "model", entry.path) catch continue;
 
@@ -385,8 +384,6 @@ fn createAssetStringID(
 }
 
 pub fn init() void {
-	biomes_zig.init();
-
 	common = .init();
 	common.read(main.globalArena, main.files.cwd(), "assets/");
 	common.log(.common);
@@ -403,35 +400,35 @@ fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void 
 		texturePath = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/items/textures/{s}", .{assetFolder, mod, texture});
 		replacementTexturePath = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/items/textures/{s}", .{mod, texture});
 	}
-	_ = items_zig.register(assetFolder, texturePath, replacementTexturePath, id, zon);
+	_ = items.register(assetFolder, texturePath, replacementTexturePath, id, zon);
 }
 
-fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
-	items_zig.registerTool(assetFolder, id, zon);
+fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
+	items.registerProceduralItem(assetFolder, id, zon);
 }
 
 fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
 	if (zon == .null) std.log.err("Missing block: {s}. Replacing it with default block.", .{id});
 
-	_ = blocks_zig.register(assetFolder, id, zon);
-	blocks_zig.meshes.register(assetFolder, id, zon);
+	_ = blocks.register(assetFolder, id, zon);
+	blocks.meshes.register(assetFolder, id, zon);
 }
 
 fn assignBlockItem(stringId: []const u8) !void {
-	const block = blocks_zig.getTypeById(stringId);
+	const block = blocks.getTypeById(stringId);
 	// TODO: This must be gone in PixelGuys/Cubyz#1205
-	const index = items_zig.BaseItemIndex.fromId(stringId) orelse unreachable;
-	const item = &items_zig.itemList[@intFromEnum(index)];
+	const index = items.BaseItemIndex.fromId(stringId) orelse unreachable;
+	const item = &items.itemList[@intFromEnum(index)];
 	item.block = block;
 }
 
 fn registerBiome(numericId: u32, stringId: []const u8, zon: ZonElement) void {
 	if (zon == .null) std.log.err("Missing biome: {s}. Replacing it with default biome.", .{stringId});
-	biomes_zig.register(stringId, numericId, zon);
+	biomes.register(stringId, numericId, zon);
 }
 
 fn registerRecipesFromZon(zon: ZonElement) void {
-	items_zig.registerRecipes(zon);
+	items.registerRecipes(zon);
 }
 
 pub const Palette = struct { // MARK: Palette
@@ -455,15 +452,15 @@ pub const Palette = struct { // MARK: Palette
 		return self;
 	}
 	fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) !*Palette {
-		const items = zon.toSlice();
+		const elems = zon.toSlice();
 
 		const self = allocator.create(Palette);
 		self.* = Palette{
-			.palette = .initCapacity(allocator, items.len),
+			.palette = .initCapacity(allocator, elems.len),
 		};
 		errdefer self.deinit();
 
-		for (items) |name| {
+		for (elems) |name| {
 			const stringId = name.as(?[]const u8, null) orelse return error.InvalidPaletteFormat;
 			self.palette.appendAssumeCapacity(allocator.dupe(u8, stringId));
 		}
@@ -537,11 +534,13 @@ pub const Palette = struct { // MARK: Palette
 };
 
 var loadedAssets: bool = false;
-pub var rawEntityModelData: std.StringHashMap([]const main.models.QuadInfo) = undefined;
+pub var worldAssetFolder: []const u8 = undefined;
 
-pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
+pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, proceduralItemPalette: *Palette, biomePalette: *Palette, entityModelPalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
 	if (loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
+
+	worldAssetFolder = main.worldArena.dupe(u8, assetFolder);
 
 	main.Tag.initTags();
 
@@ -553,17 +552,20 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	errdefer unloadAssets();
 
-	migrations_zig.registerAll(.block, &worldAssets.blockMigrations);
-	migrations_zig.apply(.block, blockPalette);
+	migrations.registerAll(.block, &worldAssets.blockMigrations);
+	migrations.apply(.block, blockPalette);
 
-	migrations_zig.registerAll(.item, &worldAssets.itemMigrations);
-	migrations_zig.apply(.item, itemPalette);
+	migrations.registerAll(.item, &worldAssets.itemMigrations);
+	migrations.apply(.item, itemPalette);
 
-	migrations_zig.registerAll(.biome, &worldAssets.biomeMigrations);
-	migrations_zig.apply(.biome, biomePalette);
+	migrations.registerAll(.biome, &worldAssets.biomeMigrations);
+	migrations.apply(.biome, biomePalette);
 
-	migrations_zig.registerAll(.entityComponent, &worldAssets.entityComponentMigrations);
-	migrations_zig.apply(.entityComponent, entityComponentPalette);
+	migrations.registerAll(.entityModel, &worldAssets.entityModelMigrations);
+	migrations.apply(.entityModel, entityModelPalette);
+
+	migrations.registerAll(.entityComponent, &worldAssets.entityComponentMigrations);
+	migrations.apply(.entityComponent, entityComponentPalette);
 
 	// models (block optimized):
 	{
@@ -573,16 +575,28 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		}
 	}
 
-	// models (Entities):
+	// EntityModels:
 	{
-		var modelIterator = worldAssets.entityModels.iterator();
-		rawEntityModelData = .init(main.worldArena.allocator);
-		while (modelIterator.next()) |entry| {
+		// First models from the palette to enforce ID values.
+		for (entityModelPalette.palette.items) |entityModelId| {
+			std.log.debug("Registering entity model {s}", .{entityModelId});
+			_ = main.entityModel.register(assetFolder, entityModelId, worldAssets.entityModelDescriptions.get(entityModelId) orelse .null);
+		}
+		// Then all the models that were missing in palette but are present in the game.
+		var entModelIterator = worldAssets.entityModelDescriptions.iterator();
+		while (entModelIterator.next()) |entry| {
+			const entityModelId = entry.key_ptr.*;
+			const zon = entry.value_ptr.*;
+
+			if (main.entityModel.getById(entityModelId) != null) continue;
+
 			std.log.debug("Registering entity model {s}", .{entry.key_ptr.*});
-			registerEntityModelRaw(entry.key_ptr.*, entry.value_ptr.*);
+			_ = main.entityModel.register(assetFolder, entityModelId, zon);
+			entityModelPalette.add(entityModelId);
 		}
 	}
-	if (!main.settings.launchConfig.headlessServer) blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
+
+	if (!main.settings.launchConfig.headlessServer) blocks.meshes.registerBlockBreakingAnimation(assetFolder);
 
 	// Blocks:
 	// First blocks from the palette to enforce ID values.
@@ -596,7 +610,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		const stringId = entry.key_ptr.*;
 		const zon = entry.value_ptr.*;
 
-		if (blocks_zig.hasRegistered(stringId)) continue;
+		if (blocks.hasRegistered(stringId)) continue;
 
 		try registerBlock(assetFolder, stringId, zon);
 		blockPalette.add(stringId);
@@ -628,7 +642,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		const zon = worldAssets.blocks.get(stringId) orelse .null;
 
 		if (!zon.get(bool, "hasItem", true)) continue;
-		if (items_zig.hasRegistered(stringId)) continue;
+		if (items.hasRegistered(stringId)) continue;
 
 		try registerItem(assetFolder, stringId, zon.getChild("item"));
 		itemPalette.add(stringId);
@@ -640,7 +654,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		const stringId = entry.key_ptr.*;
 		const zon = entry.value_ptr.*;
 
-		if (items_zig.hasRegistered(stringId)) continue;
+		if (items.hasRegistered(stringId)) continue;
 		std.debug.assert(zon != .null);
 
 		try registerItem(assetFolder, stringId, zon);
@@ -652,26 +666,26 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		const zon = worldAssets.blocks.get(stringId) orelse .null;
 
 		if (!zon.get(bool, "hasItem", true)) continue;
-		std.debug.assert(items_zig.hasRegistered(stringId));
+		std.debug.assert(items.hasRegistered(stringId));
 
 		try assignBlockItem(stringId);
 	}
 
-	for (toolPalette.palette.items) |id| {
-		registerTool(assetFolder, id, worldAssets.tools.get(id) orelse .null);
+	for (proceduralItemPalette.palette.items) |id| {
+		registerProceduralItem(assetFolder, id, worldAssets.proceduralItems.get(id) orelse .null);
 	}
 
-	// tools:
-	iterator = worldAssets.tools.iterator();
+	// procedural items:
+	iterator = worldAssets.proceduralItems.iterator();
 	while (iterator.next()) |entry| {
 		const id = entry.key_ptr.*;
-		if (items_zig.hasRegisteredTool(id)) continue;
-		registerTool(assetFolder, id, entry.value_ptr.*);
-		toolPalette.add(id);
+		if (items.hasRegisteredProceduralItem(id)) continue;
+		registerProceduralItem(assetFolder, id, entry.value_ptr.*);
+		proceduralItemPalette.add(id);
 	}
 
 	// block drops:
-	blocks_zig.finishBlocks(worldAssets.blocks);
+	blocks.finishBlocks(worldAssets.blocks);
 
 	iterator = worldAssets.recipes.iterator();
 	while (iterator.next()) |entry| {
@@ -684,7 +698,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	iterator = worldAssets.particles.iterator();
 	while (iterator.next()) |entry| {
-		particles_zig.ParticleManager.register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+		particles.ParticleManager.register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 	}
 
 	// Biomes:
@@ -695,12 +709,12 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	}
 	iterator = worldAssets.biomes.iterator();
 	while (iterator.next()) |entry| {
-		if (biomes_zig.hasRegistered(entry.key_ptr.*)) continue;
+		if (biomes.hasRegistered(entry.key_ptr.*)) continue;
 		registerBiome(nextBiomeNumericId, entry.key_ptr.*, entry.value_ptr.*);
 		biomePalette.add(entry.key_ptr.*);
 		nextBiomeNumericId += 1;
 	}
-	biomes_zig.finishLoading();
+	biomes.finishLoading();
 
 	// Cave layers:
 	try main.server.terrain.cave_layers.registerCaveLayers(&worldAssets.caveLayers);
@@ -724,10 +738,11 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 				@field(main.entity.components, decl.name).entityComponentID = id;
 			} else {
 				entityComponentPalette.add(name);
+				@field(main.entity.components, decl.name).entityComponentID = index;
 				index += 1;
 			}
 		}
-		main.entity.initComponent();
+		main.entity.initComponents();
 	}
 
 	// Register paths for asset hot reloading:
@@ -737,7 +752,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	};
 	defer dir.close();
 	var dirIterator = dir.iterate();
-	while (dirIterator.next() catch |err| blk: {
+	while (dirIterator.next(main.io) catch |err| blk: {
 		std.log.err("Got error while iterating over asset path {s}: {s}", .{"assets", @errorName(err)});
 		break :blk null;
 	}) |addon| {
@@ -752,21 +767,18 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	worldAssets.log(.world);
 }
-pub fn registerEntityModelRaw(id: []const u8, data: []const u8) void {
-	rawEntityModelData.put(id, main.models.Model.loadRawModelDataFromObj(main.worldArena, data)) catch unreachable;
-}
+
 pub fn unloadAssets() void { // MARK: unloadAssets()
 	if (!loadedAssets) return;
 	loadedAssets = false;
 
-	main.entity.deinitComponent();
+	main.entity.deinitComponents();
 	sbb.reset();
-	blocks_zig.reset();
-	items_zig.reset();
-	migrations_zig.reset();
-	biomes_zig.reset();
+	blocks.reset();
+	items.reset();
+	migrations.reset();
+	biomes.reset();
 	main.server.terrain.cave_layers.reset();
-	migrations_zig.reset();
 	main.server.terrain.structures.reset();
 	main.models.reset();
 	main.particles.ParticleManager.reset();
@@ -780,7 +792,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	};
 	defer dir.close();
 	var dirIterator = dir.iterate();
-	while (dirIterator.next() catch |err| blk: {
+	while (dirIterator.next(main.io) catch |err| blk: {
 		std.log.err("Got error while iterating over asset path {s}: {s}", .{"assets", @errorName(err)});
 		break :blk null;
 	}) |addon| {
@@ -792,6 +804,25 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 			main.utils.file_monitor.removePath(path);
 		}
 	}
+}
+
+pub fn readAsset(allocator: NeverFailingAllocator, subPath: []const u8, id: []const u8, fileEnding: []const u8) ![]const u8 {
+	var split = std.mem.splitScalar(u8, id, ':');
+	const mod = split.first();
+	const name = split.next() orelse unreachable;
+
+	var path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/{s}/{s}{s}", .{worldAssetFolder, mod, subPath, name, fileEnding}) catch unreachable;
+	defer main.stackAllocator.free(path);
+	if (!main.files.cwd().hasFile(path)) {
+		main.stackAllocator.free(path);
+		path = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/{s}/{s}{s}", .{mod, subPath, name, fileEnding}) catch unreachable;
+	}
+
+	const data = main.files.cwd().read(allocator, path) catch |err| {
+		std.log.err("Could not open {s}/{s}{s}: {s}", .{subPath, name, fileEnding, @errorName(err)});
+		return err;
+	};
+	return data;
 }
 
 pub fn worldPresets() *const Assets.ZonHashMap {

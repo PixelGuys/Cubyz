@@ -1,4 +1,5 @@
 .{
+	.tags = .{.snowy},
 	.minRadius = 32,
 	.maxRadius = 48,
 	.chance = 0,

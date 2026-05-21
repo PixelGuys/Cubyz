@@ -1,12 +1,16 @@
 .{
 	.isCave = true,
-	.tags = .{.cave_layer, .deep_cave_layer},
+	.tags = .{
+		.cave_layer,
+		.deep_cave_layer,
+		.oak,
+	},
 	.maxHeight = -512,
 	.chance = 0.01,
 
 	.crystals = 32,
 
-	.music = "cubyz:leaves",
+	.music = "cubyz:totaldemented/midnight_melody",
 
 	.stoneBlock = "cubyz:slate/base",
 	.ground_structure = .{
@@ -15,14 +19,10 @@
 	},
 	.structures = .{
 		.{
-			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:leaves/oak",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/young",
+			.placeMode = .degradable,
 			.chance = 0.32,
-			.type = .round,
-			.height = 4,
-			.height_variation = 2,
 		},
 	},
 	.caveModels = .{

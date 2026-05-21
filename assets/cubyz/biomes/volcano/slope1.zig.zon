@@ -9,12 +9,13 @@
 
 	.chance = 0,
 
-	.music = "cubyz:out_of_breath",
+	.music = "cubyz:mrmayman/out_of_breath",
 
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:volcano/base",
 			.chance = 1,
+			.parentEdgeDistance = 16,
 		},
 	},
 

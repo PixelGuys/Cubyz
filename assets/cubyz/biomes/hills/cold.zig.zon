@@ -1,5 +1,10 @@
 .{
-	.properties = .{.cold},
+	.properties = .{
+		.cold,
+	},
+	.tags = .{
+		.pine,
+	},
 	.ground_structure = .{
 		"cubyz:cold_grass",
 		"2 to 3 cubyz:soil",
@@ -7,8 +12,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:fallen_tree",
-			.log = "cubyz:pine_log",
-			.top = "cubyz:pine_log",
+			.log = "cubyz:log/pine",
 			.height = 6,
 			.height_variation = 3,
 			.chance = 0.002,

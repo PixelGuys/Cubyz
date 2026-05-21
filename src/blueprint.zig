@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const Compression = main.utils.Compression;
-const ZonElement = @import("zon.zig").ZonElement;
+const ZonElement = main.ZonElement;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
@@ -14,15 +14,15 @@ const ServerChunk = main.chunk.ServerChunk;
 const Degrees = main.rotation.Degrees;
 const Tag = main.Tag;
 
-const GameIdToBlueprintIdMapType = std.AutoHashMap(Block, BlockStorageType);
-const BlockIdSizeType = u32;
-const BlockStorageType = u32;
-
 const BinaryWriter = main.utils.BinaryWriter;
 const BinaryReader = main.utils.BinaryReader;
 
 const AliasTable = main.utils.AliasTable;
 const ListUnmanaged = main.ListUnmanaged;
+
+const GameIdToBlueprintIdMapType = std.AutoHashMap(Block, BlockStorageType);
+const BlockIdSizeType = u32;
+const BlockStorageType = u32;
 
 pub const blueprintVersion = 1;
 var voidType: ?u16 = null;
@@ -417,7 +417,8 @@ pub const Mask = struct {
 			blockProperty: Property,
 
 			const Property = blk: {
-				var tempFields: [@typeInfo(Block).@"struct".decls.len]std.builtin.Type.EnumField = undefined;
+				var fieldNames: [@typeInfo(Block).@"struct".decls.len][]const u8 = undefined;
+				var fieldValues: [@typeInfo(Block).@"struct".decls.len]u8 = undefined;
 				var count = 0;
 
 				for (std.meta.declarations(Block)) |decl| {
@@ -426,18 +427,12 @@ pub const Mask = struct {
 					if (declInfo.@"fn".return_type != bool) continue;
 					if (declInfo.@"fn".params.len != 1) continue;
 
-					tempFields[count] = .{.name = decl.name, .value = count};
+					fieldNames[count] = decl.name;
+					fieldValues[count] = count;
 					count += 1;
 				}
 
-				const outFields: [count]std.builtin.Type.EnumField = tempFields[0..count].*;
-
-				break :blk @Type(.{.@"enum" = .{
-					.tag_type = u8,
-					.fields = &outFields,
-					.decls = &.{},
-					.is_exhaustive = true,
-				}});
+				break :blk @Enum(u8, .exhaustive, fieldNames[0..count], fieldValues[0..count]);
 			};
 
 			fn initFromString(specifier: []const u8) !Inner {

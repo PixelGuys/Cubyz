@@ -6,7 +6,7 @@ const ServerChunk = main.chunk.ServerChunk;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const vec = @import("main.vec");
+const vec = main.vec;
 const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
 
@@ -246,9 +246,10 @@ pub const Biome = struct { // MARK: Biome
 	supportsRivers: bool, // TODO: Reimplement rivers.
 	/// The first members in this array will get prioritized.
 	vegetationModels: []SimpleStructureModel = &.{},
+	maxSdfExtend: vec.Boxi = .{.min = @splat(0), .max = @splat(0)},
 	caveSdfModels: []terrain.sdf.SdfModel = &.{},
 	stripes: []Stripe = &.{},
-	subBiomes: main.utils.AliasTable(*const Biome) = .{.items = &.{}, .aliasData = &.{}},
+	subBiomes: main.utils.AliasTable(SubBiomeData) = .{.items = &.{}, .aliasData = &.{}},
 	transitionBiomes: []TransitionBiome = &.{},
 	maxSubBiomeCount: f32,
 	subBiomeTotalChance: f32 = 0,
@@ -292,7 +293,7 @@ pub const Biome = struct { // MARK: Biome
 			.maxHeightLimit = zon.get(i32, "maxHeightLimit", std.math.maxInt(i32)),
 			.smoothBeaches = zon.get(bool, "smoothBeaches", false),
 			.supportsRivers = zon.get(bool, "rivers", false),
-			.preferredMusic = main.worldArena.dupe(u8, zon.get([]const u8, "music", "cubyz:TotalDemented/Cubyz")),
+			.preferredMusic = main.worldArena.dupe(u8, zon.get([]const u8, "music", "cubyz:totaldemented/cubyz")),
 			.isValidPlayerSpawn = zon.get(bool, "validPlayerSpawn", false),
 			.chance = zon.get(f32, "chance", if (zon == .null) 0 else 1),
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
@@ -317,7 +318,11 @@ pub const Biome = struct { // MARK: Biome
 		const parentBiomeList = zon.getChild("parentBiomes");
 		for (parentBiomeList.toSlice()) |parent| {
 			const result = unfinishedSubBiomes.getOrPutValue(main.globalAllocator.allocator, parent.get([]const u8, "id", ""), .{}) catch unreachable;
-			result.value_ptr.append(main.globalAllocator, .{.biomeId = self.id, .chance = parent.get(f32, "chance", 1)});
+			result.value_ptr.append(main.globalAllocator, .{
+				.biomeId = self.id,
+				.chance = parent.get(f32, "chance", 1),
+				.parentEdgeDistance = parent.get(f32, "parentEdgeDistance", terrain.SurfaceMap.MapFragment.biomeSize),
+			});
 		}
 
 		const transitionBiomeList = zon.getChild("transitionBiomes").toSlice();
@@ -374,7 +379,9 @@ pub const Biome = struct { // MARK: Biome
 		defer caveSdfs.deinit(main.stackAllocator);
 		for (caves.toSlice()) |elem| {
 			const model = terrain.sdf.SdfModel.initModel(elem) orelse continue;
-			caveSdfs.append(main.stackAllocator, model);
+			const spawnOffset: vec.Vec3i = @splat(@ceil(model.model.maxBiomeCenterDistance));
+			self.maxSdfExtend = self.maxSdfExtend.merge(.{.min = model.maxExtend.min - spawnOffset, .max = model.maxExtend.max + spawnOffset});
+			caveSdfs.append(main.stackAllocator, model.model);
 		}
 		self.caveSdfModels = main.worldArena.dupe(terrain.sdf.SdfModel, caveSdfs.items);
 
@@ -447,7 +454,7 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 
 	pub fn addSubTerranian(self: BlockStructure, chunk: *ServerChunk, startingDepth: i32, minDepth: i32, slope: i32, soilCreep: f32, x: i32, y: i32, seed: *u64) i32 {
 		var depth = startingDepth;
-		var remainingSkippedBlocks = @as(i32, @intFromFloat(@as(f32, @floatFromInt(slope))*soilCreep)) - 1;
+		var remainingSkippedBlocks = @as(i32, @trunc(@as(f32, @floatFromInt(slope))*soilCreep)) - 1;
 		for (self.structure) |blockStack| {
 			const total = blockStack.min + main.random.nextIntBounded(u32, seed, @as(u32, 1) + blockStack.max - blockStack.min);
 			for (0..total) |_| {
@@ -578,11 +585,17 @@ var biomesById: std.StringHashMapUnmanaged(*Biome) = .{};
 var biomesByIndex: main.ListUnmanaged(*Biome) = .{};
 pub var byTypeBiomes: *TreeNode = undefined;
 
+const SubBiomeData = struct {
+	biome: *const Biome,
+	parentEdgeDistance: f32,
+};
+
 const UnfinishedSubBiomeData = struct {
 	biomeId: []const u8,
 	chance: f32,
-	pub fn getItem(self: UnfinishedSubBiomeData) *const Biome {
-		return getById(self.biomeId);
+	parentEdgeDistance: f32,
+	pub fn getItem(self: UnfinishedSubBiomeData) SubBiomeData {
+		return .{.biome = getById(self.biomeId), .parentEdgeDistance = self.parentEdgeDistance};
 	}
 };
 var unfinishedSubBiomes: std.StringHashMapUnmanaged(main.ListUnmanaged(UnfinishedSubBiomeData)) = .{};
@@ -600,13 +613,6 @@ const TransitionBiome = struct {
 	width: u8,
 };
 var unfinishedTransitionBiomes: std.StringHashMapUnmanaged([]UnfinishedTransitionBiomeData) = .{};
-
-pub fn init() void {
-	const list = @import("simple_structures/_list.zig");
-	inline for (@typeInfo(list).@"struct".decls) |decl| {
-		SimpleStructureModel.registerGenerator(@field(list, decl.name));
-	}
-}
 
 pub fn reset() void {
 	finishedLoading = false;

@@ -1,0 +1,16 @@
+.{
+	.blueprints = .{
+		.{.id = null, .chance = 0.5},
+		.{.id = "cubyz:tree/cirrus/rings/bottom/0"},
+		.{.id = "cubyz:tree/cirrus/rings/bottom/1"},
+		.{.id = "cubyz:tree/cirrus/rings/bottom/2"},
+		.{.id = "cubyz:tree/cirrus/rings/bottom/3"},
+		.{.id = "cubyz:tree/cirrus/rings/bottom/4"},
+		.{.id = "cubyz:tree/cirrus/rings/bottom/5"},
+		.{.id = "cubyz:tree/cirrus/rings/bottom/6"},
+		.{.id = "cubyz:tree/cirrus/rings/bottom/7"},
+	},
+	.children = .{
+		.blue = "cubyz:tree/cirrus/vine",
+	},
+}

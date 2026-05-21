@@ -7,12 +7,13 @@
 	.interpolation = .smooth,
 	.chance = 0,
 
-	.music = "cubyz:out_of_breath",
+	.music = "cubyz:mrmayman/out_of_breath",
 
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:volcano/slope6",
 			.chance = 1,
+			.parentEdgeDistance = 16,
 		},
 	},
 

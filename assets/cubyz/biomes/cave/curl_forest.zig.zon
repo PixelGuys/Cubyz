@@ -7,7 +7,7 @@
 
 	.chance = 0.01,
 
-	.music = "cubyz:heart-of-the-beast",
+	.music = "cubyz:ikabod/live",
 
 	.structures = .{
 		.{

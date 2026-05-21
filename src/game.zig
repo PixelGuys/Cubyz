@@ -1,13 +1,13 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
 
+const main = @import("main");
 const assets = @import("assets.zig");
 const itemdrop = @import("itemdrop.zig");
 const ClientItemDropManager = itemdrop.ClientItemDropManager;
 const items = @import("items.zig");
 const ClientInventory = items.Inventory.ClientInventory;
-const ZonElement = @import("zon.zig").ZonElement;
-const main = @import("main");
+const ZonElement = main.ZonElement;
 const network = @import("network.zig");
 const particles = @import("particles.zig");
 const Connection = network.Connection;
@@ -46,344 +46,6 @@ pub const camera = struct { // MARK: camera
 	}
 };
 
-pub const collision = struct {
-	pub const Box = struct {
-		min: Vec3d,
-		max: Vec3d,
-
-		pub fn center(self: Box) Vec3d {
-			return (self.min + self.max)*@as(Vec3d, @splat(0.5));
-		}
-
-		pub fn extent(self: Box) Vec3d {
-			return (self.max - self.min)*@as(Vec3d, @splat(0.5));
-		}
-
-		pub fn intersects(self: Box, other: Box) bool {
-			return @reduce(.And, (self.max > other.min)) and @reduce(.And, (self.min < other.max));
-		}
-	};
-
-	const Direction = enum(u2) { x = 0, y = 1, z = 2 };
-
-	pub fn collideWithBlock(block: main.blocks.Block, x: i32, y: i32, z: i32, entityPosition: Vec3d, entityBoundingBoxExtent: Vec3d, directionVector: Vec3d) ?struct { box: Box, dist: f64 } {
-		var resultBox: ?Box = null;
-		var minDistance: f64 = std.math.floatMax(f64);
-		if (block.collide()) {
-			const model = block.mode().model(block).model();
-
-			const pos = Vec3d{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
-			const entityCollision = Box{.min = entityPosition - entityBoundingBoxExtent, .max = entityPosition + entityBoundingBoxExtent};
-
-			for (model.collision) |relativeBlockCollision| {
-				const blockCollision = Box{.min = relativeBlockCollision.min + pos, .max = relativeBlockCollision.max + pos};
-				if (blockCollision.intersects(entityCollision)) {
-					const dotMin = vec.dot(directionVector, blockCollision.min);
-					const dotMax = vec.dot(directionVector, blockCollision.max);
-
-					const distance = @min(dotMin, dotMax);
-
-					if (distance < minDistance) {
-						resultBox = blockCollision;
-						minDistance = distance;
-					} else if (distance == minDistance) {
-						resultBox = .{.min = @min(resultBox.?.min, blockCollision.min), .max = @max(resultBox.?.max, blockCollision.max)};
-					}
-				}
-			}
-		}
-		return .{.box = resultBox orelse return null, .dist = minDistance};
-	}
-
-	pub fn collides(comptime side: main.sync.Side, dir: Direction, amount: f64, pos: Vec3d, hitBox: Box) ?Box {
-		var boundingBox: Box = .{
-			.min = pos + hitBox.min,
-			.max = pos + hitBox.max,
-		};
-		switch (dir) {
-			.x => {
-				if (amount < 0) boundingBox.min[0] += amount else boundingBox.max[0] += amount;
-			},
-			.y => {
-				if (amount < 0) boundingBox.min[1] += amount else boundingBox.max[1] += amount;
-			},
-			.z => {
-				if (amount < 0) boundingBox.min[2] += amount else boundingBox.max[2] += amount;
-			},
-		}
-		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0]));
-		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0]));
-		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1]));
-		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1]));
-		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2]));
-		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2]));
-
-		const boundingBoxCenter = boundingBox.center();
-		const fullBoundingBoxExtent = boundingBox.extent();
-
-		var resultBox: ?Box = null;
-		var minDistance: f64 = std.math.floatMax(f64);
-		const directionVector: Vec3d = switch (dir) {
-			.x => .{-std.math.sign(amount), 0, 0},
-			.y => .{0, -std.math.sign(amount), 0},
-			.z => .{0, 0, -std.math.sign(amount)},
-		};
-
-		var x: i32 = minX;
-		while (x <= maxX) : (x += 1) {
-			var y: i32 = minY;
-			while (y <= maxY) : (y += 1) {
-				var z: i32 = maxZ;
-				while (z >= minZ) : (z -= 1) {
-					const _block = if (side == .client) main.renderer.mesh_storage.getBlockFromRenderThread(x, y, z) else main.server.world.?.getBlock(x, y, z);
-					if (_block) |block| {
-						if (collideWithBlock(block, x, y, z, boundingBoxCenter, fullBoundingBoxExtent, directionVector)) |res| {
-							if (res.dist < minDistance) {
-								resultBox = res.box;
-								minDistance = res.dist;
-							} else if (res.dist == minDistance) {
-								resultBox.?.min = @min(resultBox.?.min, res.box.min);
-								resultBox.?.max = @min(resultBox.?.max, res.box.max);
-							}
-						}
-					}
-				}
-			}
-		}
-
-		return resultBox;
-	}
-
-	const SurfaceProperties = struct {
-		friction: f32,
-		bounciness: f32,
-	};
-
-	pub fn calculateSurfaceProperties(comptime side: main.sync.Side, pos: Vec3d, hitBox: Box, defaultFriction: f32) SurfaceProperties {
-		const boundingBox: Box = .{
-			.min = pos + hitBox.min,
-			.max = pos + hitBox.max,
-		};
-		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0]));
-		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0]));
-		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1]));
-		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1]));
-
-		const z: i32 = @intFromFloat(@floor(boundingBox.min[2] - 0.01));
-
-		var friction: f64 = 0;
-		var bounciness: f64 = 0;
-		var totalArea: f64 = 0;
-
-		var x = minX;
-		while (x <= maxX) : (x += 1) {
-			var y = minY;
-			while (y <= maxY) : (y += 1) {
-				const _block = if (side == .client) main.renderer.mesh_storage.getBlockFromRenderThread(x, y, z) else main.server.world.?.getBlock(x, y, z);
-
-				if (_block) |block| {
-					const blockPos: Vec3d = .{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
-
-					const blockBox: Box = .{
-						.min = blockPos + @as(Vec3d, @floatCast(block.mode().model(block).model().min)),
-						.max = blockPos + @as(Vec3d, @floatCast(block.mode().model(block).model().max)),
-					};
-
-					if (boundingBox.min[2] > blockBox.max[2] or boundingBox.max[2] < blockBox.min[2]) {
-						continue;
-					}
-
-					const max = std.math.clamp(vec.xy(blockBox.max), vec.xy(boundingBox.min), vec.xy(boundingBox.max));
-					const min = std.math.clamp(vec.xy(blockBox.min), vec.xy(boundingBox.min), vec.xy(boundingBox.max));
-
-					const area = (max[0] - min[0])*(max[1] - min[1]);
-
-					if (block.collide()) {
-						totalArea += area;
-						friction += area*@as(f64, @floatCast(block.friction()));
-						bounciness += area*@as(f64, @floatCast(block.bounciness()));
-					}
-				}
-			}
-		}
-
-		if (totalArea == 0) {
-			friction = defaultFriction;
-			bounciness = 0.0;
-		} else {
-			friction = friction/totalArea;
-			bounciness = bounciness/totalArea;
-		}
-
-		return .{
-			.friction = @floatCast(friction),
-			.bounciness = @floatCast(bounciness),
-		};
-	}
-
-	const VolumeProperties = struct {
-		terminalVelocity: f64,
-		density: f64,
-		maxDensity: f64,
-		mobileFriction: f64,
-	};
-
-	fn overlapVolume(a: Box, b: Box) f64 {
-		const min = @max(a.min, b.min);
-		const max = @min(a.max, b.max);
-		if (@reduce(.Or, min >= max)) return 0;
-		return @reduce(.Mul, max - min);
-	}
-
-	pub fn calculateVolumeProperties(comptime side: main.sync.Side, pos: Vec3d, hitBox: Box, defaults: VolumeProperties) VolumeProperties {
-		const boundingBox: Box = .{
-			.min = pos + hitBox.min,
-			.max = pos + hitBox.max,
-		};
-		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0]));
-		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0]));
-		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1]));
-		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1]));
-		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2]));
-		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2]));
-
-		var invTerminalVelocitySum: f64 = 0;
-		var densitySum: f64 = 0;
-		var maxDensity: f64 = defaults.maxDensity;
-		var mobileFrictionSum: f64 = 0;
-		var volumeSum: f64 = 0;
-
-		var x: i32 = minX;
-		while (x <= maxX) : (x += 1) {
-			var y: i32 = minY;
-			while (y <= maxY) : (y += 1) {
-				var z: i32 = maxZ;
-				while (z >= minZ) : (z -= 1) {
-					const _block = if (side == .client) main.renderer.mesh_storage.getBlockFromRenderThread(x, y, z) else main.server.world.?.getBlock(x, y, z);
-					const totalBox: Box = .{
-						.min = @floatFromInt(Vec3i{x, y, z}),
-						.max = @floatFromInt(Vec3i{x + 1, y + 1, z + 1}),
-					};
-					const gridVolume = overlapVolume(boundingBox, totalBox);
-					volumeSum += gridVolume;
-
-					if (_block) |block| {
-						const collisionBox: Box = .{ // TODO: Check all AABBs individually
-							.min = totalBox.min + main.blocks.meshes.model(block).model().min,
-							.max = totalBox.min + main.blocks.meshes.model(block).model().max,
-						};
-						const filledVolume = @min(gridVolume, overlapVolume(collisionBox, totalBox));
-						const emptyVolume = gridVolume - filledVolume;
-						invTerminalVelocitySum += emptyVolume/defaults.terminalVelocity;
-						mobileFrictionSum += emptyVolume*defaults.mobileFriction;
-						densitySum += emptyVolume*defaults.density;
-						invTerminalVelocitySum += filledVolume/block.terminalVelocity();
-						mobileFrictionSum += filledVolume*block.mobility()/block.terminalVelocity();
-						densitySum += filledVolume*block.density();
-						maxDensity = @max(maxDensity, block.density());
-					} else {
-						invTerminalVelocitySum += gridVolume/defaults.terminalVelocity;
-						densitySum += gridVolume*defaults.density;
-						mobileFrictionSum += gridVolume*defaults.mobileFriction;
-					}
-				}
-			}
-		}
-
-		return .{
-			.terminalVelocity = volumeSum/invTerminalVelocitySum,
-			.density = densitySum/volumeSum,
-			.maxDensity = maxDensity,
-			.mobileFriction = mobileFrictionSum/volumeSum,
-		};
-	}
-
-	pub fn collideOrStep(comptime side: main.sync.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Box, steppingHeight: f64) Vec3d {
-		const index = @intFromEnum(dir);
-
-		// First argument is amount we end up moving in dir, second argument is how far up we step
-		var resultingMovement: Vec3d = .{0, 0, 0};
-		resultingMovement[index] = amount;
-		var checkPos = pos;
-		checkPos[index] += amount;
-
-		if (collision.collides(side, dir, -amount, checkPos, hitBox)) |box| {
-			const newFloor = box.max[2] + hitBox.max[2];
-			const heightDifference = newFloor - checkPos[2];
-			if (heightDifference <= steppingHeight) {
-				// If we collide but might be able to step up
-				checkPos[2] = newFloor;
-				if (collision.collides(side, dir, -amount, checkPos, hitBox) == null) {
-					// If there's no new collision then we can execute the step-up
-					resultingMovement[2] = heightDifference;
-					return resultingMovement;
-				}
-			}
-
-			// Otherwise move as close to the container as possible
-			if (amount < 0) {
-				resultingMovement[index] = box.max[index] - hitBox.min[index] - pos[index];
-			} else {
-				resultingMovement[index] = box.min[index] - hitBox.max[index] - pos[index];
-			}
-		}
-
-		return resultingMovement;
-	}
-
-	fn isBlockIntersecting(block: Block, posX: i32, posY: i32, posZ: i32, center: Vec3d, extent: Vec3d) bool {
-		const model = block.mode().model(block).model();
-		const position = Vec3d{@floatFromInt(posX), @floatFromInt(posY), @floatFromInt(posZ)};
-		const entityBox = Box{.min = center - extent, .max = center + extent};
-		for (model.collision) |relativeBlockCollision| {
-			const blockBox = Box{.min = position + relativeBlockCollision.min, .max = position + relativeBlockCollision.max};
-			if (blockBox.intersects(entityBox)) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	pub fn touchBlocks(entity: *main.server.Entity, hitBox: Box, side: main.sync.Side, deltaTime: f64) void {
-		const boundingBox: Box = .{.min = entity.pos + hitBox.min, .max = entity.pos + hitBox.max};
-
-		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0] - 0.01));
-		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] + 0.01));
-		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1] - 0.01));
-		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1] + 0.01));
-		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2] - 0.01));
-		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2] + 0.01));
-
-		const center: Vec3d = boundingBox.center();
-		const extent: Vec3d = boundingBox.extent();
-
-		const extentX: Vec3d = extent + Vec3d{0.01, -0.01, -0.01};
-		const extentY: Vec3d = extent + Vec3d{-0.01, 0.01, -0.01};
-		const extentZ: Vec3d = extent + Vec3d{-0.01, -0.01, 0.01};
-
-		var posX: i32 = minX;
-		while (posX <= maxX) : (posX += 1) {
-			var posY: i32 = minY;
-			while (posY <= maxY) : (posY += 1) {
-				var posZ: i32 = minZ;
-				while (posZ <= maxZ) : (posZ += 1) {
-					const block: ?Block =
-						if (side == .client) main.renderer.mesh_storage.getBlockFromRenderThread(posX, posY, posZ) else main.server.world.?.getBlock(posX, posY, posZ);
-					if (block == null or block.?.onTouch().isNoop())
-						continue;
-					const touchX: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentX);
-					const touchY: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentY);
-					const touchZ: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentZ);
-					if (touchX or touchY or touchZ) {
-						_ = block.?.onTouch().run(.{.entity = entity, .source = block.?, .blockPos = .{posX, posY, posZ}, .deltaTime = deltaTime});
-					}
-				}
-			}
-		}
-	}
-};
-
 pub const Gamemode = enum(u8) { survival = 0, creative = 1 };
 
 pub const DamageType = enum(u8) {
@@ -410,7 +72,7 @@ pub const Player = struct { // MARK: Player
 		vel: Vec3d = .{0, 0, 0},
 		coyote: f64 = 0.0,
 		step: @Vector(3, bool) = .{false, false, false},
-		box: collision.Box = .{
+		box: physics.collision.Box = .{
 			.min = -Vec3d{standingBoundingBoxExtent[0]*0.2, standingBoundingBoxExtent[1]*0.2, 0.6},
 			.max = Vec3d{standingBoundingBoxExtent[0]*0.2, standingBoundingBoxExtent[1]*0.2, 0.9 - 0.05},
 		},
@@ -424,7 +86,7 @@ pub const Player = struct { // MARK: Player
 	pub var isFlying: Atomic(bool) = .init(false);
 	pub var isGhost: Atomic(bool) = .init(false);
 	pub var hyperSpeed: Atomic(bool) = .init(false);
-	pub var mutex: std.Thread.Mutex = .{};
+	pub var mutex: main.utils.Mutex = .{};
 	pub const inventorySize = 32;
 	pub var inventory: ClientInventory = undefined;
 	pub var selectedSlot: u32 = 0;
@@ -433,9 +95,8 @@ pub const Player = struct { // MARK: Player
 	pub var selectionPosition1: ?Vec3i = null;
 	pub var selectionPosition2: ?Vec3i = null;
 
-	pub var currentFriction: f32 = 0;
-	pub var mobileFriction: f32 = 0;
-	pub var volumeProperties: collision.VolumeProperties = .{.density = 0, .maxDensity = 0, .mobileFriction = 0, .terminalVelocity = 0};
+	pub var friction: physics.FrictionState = .{.current = 0, .mobile = 0};
+	pub var volumeProperties: physics.collision.VolumeProperties = .{.density = 0, .maxDensity = 0, .mobileFriction = 0, .terminalVelocity = 0};
 
 	pub var onGround: bool = false;
 	pub var jumpCooldown: f64 = 0;
@@ -448,7 +109,7 @@ pub const Player = struct { // MARK: Player
 	pub var crouchPerc: f32 = 0;
 
 	pub var outerBoundingBoxExtent: Vec3d = standingBoundingBoxExtent;
-	pub var outerBoundingBox: collision.Box = .{
+	pub var outerBoundingBox: physics.collision.Box = .{
 		.min = -standingBoundingBoxExtent,
 		.max = standingBoundingBoxExtent,
 	};
@@ -615,8 +276,9 @@ pub const World = struct { // MARK: World
 	connected: bool = true,
 	blockPalette: *assets.Palette = undefined,
 	itemPalette: *assets.Palette = undefined,
-	toolPalette: *assets.Palette = undefined,
+	proceduralItemPalette: *assets.Palette = undefined,
 	biomePalette: *assets.Palette = undefined,
+	entityModelPalette: *assets.Palette = undefined,
 	entityComponentPalette: *assets.Palette = undefined,
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
@@ -634,6 +296,7 @@ pub const World = struct { // MARK: World
 
 		self.itemDrops.init(main.globalAllocator);
 		errdefer self.itemDrops.deinit();
+
 		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
 
 		main.Window.setMouseGrabbed(true);
@@ -641,6 +304,7 @@ pub const World = struct { // MARK: World
 		main.blocks.meshes.generateTextureArray();
 		main.particles.ParticleManager.generateTextureArray();
 		main.models.uploadModels();
+		main.entityModel.loadModelsAndTexture();
 	}
 
 	pub fn deinit(self: *World) void {
@@ -654,18 +318,20 @@ pub const World = struct { // MARK: World
 		main.gui.init();
 		Player.inventory.deinit(main.globalAllocator);
 		main.items.clearRecipeCachedInventories();
-		main.sync.ClientSide.reset();
+		main.sync.client.reset();
 
 		main.threadPool.clear();
 		main.entity.client.clear();
 		self.itemDrops.deinit();
 		self.blockPalette.deinit();
 		self.itemPalette.deinit();
-		self.toolPalette.deinit();
+		self.proceduralItemPalette.deinit();
 		self.biomePalette.deinit();
 		self.entityComponentPalette.deinit();
+		self.entityModelPalette.deinit();
 		self.manager.deinit();
 		main.server.stop();
+		main.entityModel.reset();
 
 		Player.super.deinit(.client);
 
@@ -688,19 +354,22 @@ pub const World = struct { // MARK: World
 		errdefer self.biomePalette.deinit();
 		self.itemPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("itemPalette"), null);
 		errdefer self.itemPalette.deinit();
-		self.toolPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("toolPalette"), null);
-		errdefer self.toolPalette.deinit();
+		self.proceduralItemPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("toolPalette"), null);
+		errdefer self.proceduralItemPalette.deinit();
+		self.entityModelPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("entityModelPalette"), "cubyz:missing");
+		errdefer self.entityModelPalette.deinit();
 		self.entityComponentPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("entityComponentPalette"), null);
 		errdefer self.entityComponentPalette.deinit();
 
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/serverAssets", .{main.files.cubyzDirStr()}) catch unreachable;
 		defer main.stackAllocator.free(path);
-		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette, self.entityComponentPalette);
+		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.proceduralItemPalette, self.biomePalette, self.entityModelPalette, self.entityComponentPalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .serverShared, .{.playerInventory = Player.id}, .{});
-		try Player.loadFrom(zon.getChild("player"));
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
+
+		try Player.loadFrom(zon.getChild("player"));
 	}
 
 	fn dayNightLightFactor(gameTime: i64) struct { f32, Vec3f } {
@@ -817,8 +486,21 @@ pub fn hyperSpeedToggle(_: main.Window.Key.Modifiers) void {
 	Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
 }
 
+pub fn getBlockWithSide(comptime side: main.sync.Side, x: i32, y: i32, z: i32) ?Block {
+	if (side == .client) {
+		return main.renderer.mesh_storage.getBlockFromRenderThread(x, y, z);
+	} else {
+		return main.server.world.?.getBlock(x, y, z);
+	}
+}
+
 pub fn update(deltaTime: f64) void { // MARK: update()
-	physics.calculateProperties();
+	physics.calculateVolumeProperties(.client, &Player.volumeProperties, Player.super.pos, Player.outerBoundingBox, physics.playerAirTerminalVelocity);
+	if (Player.isFlying.load(.monotonic)) {
+		Player.friction = .{.current = 20, .mobile = 20};
+	} else {
+		physics.calculateFriction(.client, &Player.volumeProperties, &Player.friction, Player.super.pos, Player.outerBoundingBox, Player.onGround);
+	}
 	var acc = Vec3d{0, 0, 0};
 	const speedMultiplier: f32 = if (Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
 
@@ -828,7 +510,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	var jumping = false;
 	Player.jumpCooldown -= deltaTime;
 	// At equillibrium we want to have dv/dt = a - λv = 0 → a = λ*v
-	const fricMul = speedMultiplier*Player.mobileFriction;
+	const fricMul = speedMultiplier*Player.friction.mobile;
 
 	const horizontalForward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
 	const forward = vec.normalize(std.math.lerp(horizontalForward, camera.direction, @as(Vec3d, @splat(density/@max(1.0, maxDensity)))));
@@ -935,7 +617,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	Player.crouching = main.Window.grabbed and KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
 
-	if (collision.collides(.client, .x, 0, Player.super.pos + Player.standingBoundingBoxExtent - Player.crouchingBoundingBoxExtent, .{
+	if (physics.collision.collides(.client, .x, 0, Player.super.pos + Player.standingBoundingBoxExtent - Player.crouchingBoundingBoxExtent, .{
 		.min = -Player.standingBoundingBoxExtent,
 		.max = Player.standingBoundingBoxExtent,
 	}) == null) {
@@ -967,7 +649,44 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		Player.eye.desiredPos = (Vec3d{0, 0, 1.3 - Player.crouchingBoundingBoxExtent[2]} - Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]})*@as(Vec3f, @splat(smoothPerc)) + Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]};
 	}
 
-	physics.update(deltaTime, acc, jumping);
+	const gravity: f64 = if (Player.isFlying.load(.monotonic)) 0.0 else physics.baseGravity;
+	const jumpHeight: f64 = if (jumping) Player.jumpHeight else 0.0;
+	var motion = physics.calculateMotion(.client, deltaTime, Player.friction, Player.volumeProperties, physics.playerDensity, Player.super.pos, &Player.super.vel, acc, gravity, jumpHeight);
+
+	{
+		Player.mutex.lock();
+		defer Player.mutex.unlock();
+
+		var stepAmount: f64 = 0.0;
+		if (!Player.isGhost.load(.monotonic)) {
+			const steppingHeightLimit = Player.eye.pos[2] - Player.eye.box.min[2];
+			stepAmount = physics.calculateWallCollision(.client, &motion, &Player.super.pos, &Player.super.vel, &Player.onGround, Player.friction, Player.outerBoundingBox, Player.steppingHeight()[2], steppingHeightLimit, Player.crouching);
+		}
+		physics.calculateEyeMovement(.client, deltaTime, Player.super.pos, Player.super.vel, &Player.eye, stepAmount);
+		var didCollide: bool = false;
+		const wasOnGround = Player.onGround;
+		const prevPos = Player.super.pos;
+		const prevVel = Player.super.vel;
+		if (!Player.isGhost.load(.monotonic)) {
+			const bouncinessMultiplier: f64 = if (Player.isFlying.load(.monotonic)) 0.0 else if (Player.crouching) 0.5 else 1.0;
+			didCollide = physics.calculateVerticalCollision(.client, deltaTime, &Player.super.pos, &Player.super.vel, &Player.jumpCoyote, &Player.onGround, Player.outerBoundingBox, motion, bouncinessMultiplier);
+			if (didCollide) {
+				const velocityChange = @abs(@abs(prevVel[2]) - @abs(Player.super.vel[2]));
+				const damage: f32 = @floatCast(@round(@max((velocityChange*velocityChange)/(2*physics.baseGravity) - 7, 0))/2);
+				if (damage > 0.01) {
+					main.sync.addHealth(-damage, .fall, .client, Player.id);
+				}
+			}
+			physics.calculateVerticalCollisionEyeMovement(deltaTime, &Player.eye, didCollide, Player.onGround, wasOnGround, prevPos, Player.super.pos, prevVel, Player.super.vel, motion, Player.steppingHeight()[2]);
+			physics.collision.touchBlocks(.client, &Player.super, Player.outerBoundingBox, deltaTime);
+		} else {
+			Player.super.pos += motion;
+		}
+
+		Player.eye.pos = @max(Player.eye.box.min, @min(Player.eye.pos, Player.eye.box.max));
+		Player.eye.coyote -= deltaTime;
+		Player.jumpCoyote -= deltaTime;
+	}
 
 	const time = main.timestamp();
 	if (nextBlockPlaceTime) |*placeTime| {

@@ -38,11 +38,11 @@ callbacks: Callbacks,
 lastBlinkTime: std.Io.Timestamp = .fromNanoseconds(0),
 showCusor: bool = true,
 
-pub fn __init() void {
+pub fn globalInit() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/text_input.png");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	texture.deinit();
 }
 

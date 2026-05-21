@@ -3,6 +3,9 @@
 		.cold,
 		.wet,
 	},
+
+	.music = "cubyz:totaldemented/frigid_feeling",
+
 	.roughness = 0,
 	.minHeightLimit = 7,
 	.minHeight = 22,

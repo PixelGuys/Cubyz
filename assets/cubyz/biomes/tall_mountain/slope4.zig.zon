@@ -1,5 +1,6 @@
 .{
 	.properties = .{.mountain},
+	.tags = .{.snowy},
 	.radius = 160,
 	.minHeight = 576,
 	.maxHeight = 576,
@@ -10,12 +11,13 @@
 
 	.chance = 0,
 
-	.music = "cubyz:out_of_breath",
+	.music = "cubyz:mrmayman/out_of_breath",
 
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:tall_mountain/slope3",
 			.chance = 1,
+			.parentEdgeDistance = 0,
 		},
 	},
 
