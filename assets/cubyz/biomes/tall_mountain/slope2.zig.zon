@@ -21,9 +21,9 @@
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/oak/white",
+			.structure = "cubyz:tree/oak/young",
 			.placeMode = .degradable,
-			.chance = 0.035,
+			.chance = 0.05,
 		},
 		.{
 			.id = "cubyz:sbb",
