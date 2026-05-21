@@ -1,5 +1,5 @@
 .{
-	.properties = .{.mountain},
+	.properties = .{.mountain, .cold, .pine},
 	.minHeight = 788,
 	.maxHeight = 788,
 	.smoothBeaches = true,
@@ -26,7 +26,7 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/coniferous/pine/young_tree",
 			.placeMode = .degradable,
-			.chance = 0.03,
+			.chance = 0.02,
 		},
 	},
 	.parentBiomes = .{

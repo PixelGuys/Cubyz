@@ -1,5 +1,5 @@
 .{
-	.properties = .{.mountain},
+	.properties = .{.mountain, .cold, .pine},
 	.minHeight = 458,
 	.maxHeight = 458,
 	.smoothBeaches = true,
@@ -26,19 +26,19 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/coniferous/pine/loblolly",
 			.placeMode = .degradable,
-			.chance = 0.05,
+			.chance = 0.025,
 		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/coniferous/pine/eastern_white",
 			.placeMode = .degradable,
-			.chance = 0.05,
+			.chance = 0.025,
 		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/coniferous/pine/young_tree",
 			.placeMode = .degradable,
-			.chance = 0.04,
+			.chance = 0.02,
 		},
 		.{
 			.id = "cubyz:sbb",
