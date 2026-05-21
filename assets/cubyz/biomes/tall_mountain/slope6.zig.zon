@@ -1,5 +1,5 @@
 .{
-	.properties = .{.mountain},
+	.properties = .{.mountain, .pine},
 	.minHeight = 788,
 	.maxHeight = 788,
 	.smoothBeaches = true,
