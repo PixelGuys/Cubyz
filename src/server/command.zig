@@ -1,6 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const ListUnmanaged = main.ListUnmanaged;
 const User = main.server.User;
 pub const commandList = @import("command/_list.zig");
 
@@ -115,5 +117,13 @@ pub const Target = struct {
 
 	pub fn deinit(self: Target) void {
 		if (self.increasedRefCount) self.user.decreaseRefCount();
+	}
+};
+
+pub const String = struct {
+	string: []const u8,
+
+	pub fn parse(_: NeverFailingAllocator, _: []const u8, arg: []const u8, _: *ListUnmanaged(u8)) error{ParseError}!String {
+		return .{.string = arg};
 	}
 };
