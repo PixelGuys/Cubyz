@@ -16,7 +16,7 @@ const Args = union(enum) {
 	@"/tp <x> <y> <z>": struct {
 		x: command.Axis,
 		y: command.Axis,
-		z: ?command.Axis,
+		z: command.Axis,
 	},
 	@"/tp <playerIndex>": struct { playerIndex: command.PlayerIndex },
 };
@@ -89,7 +89,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			break :blk .{
 				pos.x.toValue(source.player().pos[0]),
 				pos.y.toValue(source.player().pos[1]),
-				if (pos.z) |z| z.toValue(source.player().pos[2]) else source.player().pos[2],
+				pos.z.toValue(source.player().pos[2]),
 			};
 		},
 		.@"/tp <playerIndex>" => |index| {
