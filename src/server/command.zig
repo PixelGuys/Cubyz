@@ -54,7 +54,7 @@ pub const Axis = struct {
 	value: f64,
 
 	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, arg: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!Axis {
-		const hasTilde = if (arg.len == 0) false else arg[0] == '~';
+		const hasTilde = arg[0] == '~';
 		const numberSlice = if (hasTilde) arg[1..] else arg;
 		if (hasTilde and numberSlice.len == 0) return .{.hasTilde = true, .value = 0};
 		return .{
