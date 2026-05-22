@@ -2085,7 +2085,7 @@ pub const Image = struct { // MARK: Image
 		if (self.imageData.ptr == &defaultImageData or self.imageData.ptr == &emptyImageData or self.imageData.ptr == &whiteImageData) return;
 		allocator.free(self.imageData);
 	}
-	pub fn readFromFile(allocator: NeverFailingAllocator, path: []const u8, options: struct { orientation: enum{asIs, openGl} }) !Image {
+	pub fn readFromFile(allocator: NeverFailingAllocator, path: []const u8, options: struct { orientation: enum { asIs, openGl } }) !Image {
 		var result: Image = undefined;
 		var channel: c_int = undefined;
 		const nullTerminatedPath = main.stackAllocator.dupeZ(u8, path); // TODO: Find a more zig-friendly image loading library.
