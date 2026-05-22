@@ -51,16 +51,16 @@ pub fn execute(msg: []const u8, source: *User) void {
 
 pub const Coordinate = struct {
 	isRelative: bool, // Relative coordinates are indicated by leading `~`.
-	value: f64,  // Absolute value for absolute coordinates, offset for relative coordinates.
+	value: f64, // Absolute value for absolute coordinates, offset for relative coordinates.
 
 	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, arg: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!Coordinate {
-		const hasTilde = arg[0] == '~';
-		const numberSlice = if (hasTilde) arg[1..] else arg;
-		if (hasTilde and numberSlice.len == 0) return .{.hasTilde = true, .value = 0};
+		const isRelative = arg[0] == '~';
+		const numberSlice = if (isRelative) arg[1..] else arg;
+		if (isRelative and numberSlice.len == 0) return .{.isRelative = true, .value = 0};
 		return .{
-			.hasTilde = hasTilde,
+			.isRelative = isRelative,
 			.value = std.fmt.parseFloat(f64, numberSlice) catch {
-				if (hasTilde) {
+				if (isRelative) {
 					errorMessage.print(allocator, "#ff0000Expected number, found \"{s}\"", .{numberSlice});
 				} else {
 					errorMessage.print(allocator, "#ff0000Expected number or \"~\", found \"{s}\"", .{arg});
@@ -71,7 +71,7 @@ pub const Coordinate = struct {
 	}
 
 	pub fn toValue(self: Coordinate, playerPos: f64) f64 {
-		return std.math.clamp(if (self.hasTilde) playerPos + self.value else self.value, -1e9, 1e9); // TODO: Remove clamp after #310 is implemented
+		return std.math.clamp(if (self.isRelative) playerPos + self.value else self.value, -1e9, 1e9); // TODO: Remove clamp after #310 is implemented
 	}
 };
 
