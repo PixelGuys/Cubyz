@@ -75,6 +75,20 @@ pub const Axis = struct {
 	}
 };
 
+pub const Coordinates = struct {
+	x: Axis,
+	y: Axis,
+	z: ?Axis,
+
+	pub fn toVec(self: Coordinates, source: *User) main.vec.Vec3d {
+		return .{
+			self.x.toValue(source.player().pos[0]),
+			self.y.toValue(source.player().pos[1]),
+			if (self.z) |z| z.toValue(source.player().pos[2]) else source.player().pos[2],
+		};
+	}
+};
+
 fn parseAxis(arg: []const u8, playerPos: f64, source: *User) !f64 {
 	const hasTilde = if (arg.len == 0) false else arg[0] == '~';
 	const numberSlice = if (hasTilde) arg[1..] else arg;
