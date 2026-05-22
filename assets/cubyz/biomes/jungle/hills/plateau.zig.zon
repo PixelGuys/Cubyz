@@ -7,15 +7,11 @@
 	.minHeight = 2000,
 	.maxHeight = 2100,
 	.maxHeightLimit = 80,
-	.smoothBeaches = true,
 	.minRadius = 64,
 	.maxRadius = 128,
 	.roughness = 1,
 	.hills = 2,
 	.chance = 0,
-	.tags = .{
-		.oak,
-	},
 	.ground_structure = .{
 		"cubyz:grass/dew",
 		"1 to 2 cubyz:clay",
@@ -44,6 +40,18 @@
 			.structure = "cubyz:tree/mahogany/sapele/medium",
 			.placeMode = .degradable,
 			.chance = 0.015,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/mahogany/sapele/ancient_short",
+			.placeMode = .degradable,
+			.chance = 0.0003,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/mahogany/sapele/ancient_tall",
+			.placeMode = .degradable,
+			.chance = 0.0002,
 		},
 	},
 	.parentBiomes = .{

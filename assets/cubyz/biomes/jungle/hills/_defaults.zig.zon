@@ -1,5 +1,5 @@
 .{
-	.fogDensity = 1.5,
+	.fogDensity = 1.2,
 	.fogColor = 0xb0e9d2,
 	.properties = .{.wet, .hot},
 	.tags = .{
