@@ -1,6 +1,6 @@
 .{
 	.isCave = true,
-	.tags = .{.cave_layer, .snowy, .deep_cave_layer},
+	.tags = .{.cave_layer, .snowy, .post_mantle_layer},
 	.caveNoiseStrength = 10,
 	.maxHeight = -256,
 	.chance = 0.2,

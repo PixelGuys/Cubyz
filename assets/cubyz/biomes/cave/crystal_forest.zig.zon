@@ -2,7 +2,7 @@
 	.isCave = true,
 	.tags = .{
 		.cave_layer,
-		.deep_cave_layer,
+		.post_mantle_layer,
 		.oak,
 	},
 	.maxHeight = -512,

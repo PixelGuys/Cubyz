@@ -1,6 +1,6 @@
 .{
 	.isCave = true,
-	.tags = .{.cave_layer, .deep_cave_layer},
+	.tags = .{.cave_layer, .post_mantle_layer},
 	.maxHeight = -10000,
 	.music = "cubyz:ikabod/xeric",
 	.chance = 0.1,
