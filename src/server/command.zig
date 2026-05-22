@@ -49,11 +49,11 @@ pub fn execute(msg: []const u8, source: *User) void {
 	}
 }
 
-pub const Axis = struct {
+pub const Coordinate = struct {
 	hasTilde: bool,
 	value: f64,
 
-	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, arg: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!Axis {
+	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, arg: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!Coordinate {
 		const hasTilde = arg[0] == '~';
 		const numberSlice = if (hasTilde) arg[1..] else arg;
 		if (hasTilde and numberSlice.len == 0) return .{.hasTilde = true, .value = 0};
@@ -70,7 +70,7 @@ pub const Axis = struct {
 		};
 	}
 
-	pub fn toValue(self: Axis, playerPos: f64) f64 {
+	pub fn toValue(self: Coordinate, playerPos: f64) f64 {
 		return std.math.clamp(if (self.hasTilde) playerPos + self.value else self.value, -1e9, 1e9); // TODO: Remove clamp after #310 is implemented
 	}
 };
