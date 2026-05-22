@@ -32,11 +32,8 @@ pub fn execute(args: []const u8, source: *User) void {
 		const pos: Vec3i = @floor(source.player().pos);
 		source.sendMessage("Pasting: {}", .{pos});
 
-		const undo = Blueprint.capture(main.globalAllocator, pos, .{
-			pos[0] + @as(i32, @intCast(clipboard.blocks.width)) - 1,
-			pos[1] + @as(i32, @intCast(clipboard.blocks.depth)) - 1,
-			pos[2] + @as(i32, @intCast(clipboard.blocks.height)) - 1,
-		});
+		const selection: Blueprint.Selection = .init(pos, pos + clipboard.extent() - @as(Vec3i, @splat(1)));
+		const undo = Blueprint.capture(main.globalAllocator, selection);
 		switch (undo) {
 			.success => |blueprint| {
 				source.worldEditData.undoHistory.push(.init(blueprint, pos, "paste"));

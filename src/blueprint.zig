@@ -40,6 +40,11 @@ pub const Blueprint = struct {
 	pub fn deinit(self: Blueprint, allocator: NeverFailingAllocator) void {
 		self.blocks.deinit(allocator);
 	}
+	pub fn extent(self: Blueprint) Vec3i {
+		return .{
+			@intCast(self.blocks.width), @intCast(self.blocks.depth), @intCast(self.blocks.height),
+		};
+	}
 	pub fn clone(self: Blueprint, allocator: NeverFailingAllocator) Blueprint {
 		return .{.blocks = self.blocks.clone(allocator)};
 	}
@@ -74,18 +79,25 @@ pub const Blueprint = struct {
 		failure: struct { pos: Vec3i, message: []const u8 },
 	};
 
-	pub fn capture(allocator: NeverFailingAllocator, pos1: Vec3i, pos2: Vec3i) CaptureResult {
-		const startX = @min(pos1[0], pos2[0]);
-		const startY = @min(pos1[1], pos2[1]);
-		const startZ = @min(pos1[2], pos2[2]);
+	pub const Selection = struct {
+		minPos: Vec3i,
+		maxPos: Vec3i,
 
-		const endX = @max(pos1[0], pos2[0]);
-		const endY = @max(pos1[1], pos2[1]);
-		const endZ = @max(pos1[2], pos2[2]);
+		pub fn init(pos1: Vec3i, pos2: Vec3i) Selection {
+			return .{.minPos = @min(pos1, pos2), .maxPos = @max(pos1, pos2)};
+		}
+		pub fn size(self: Selection) @Vector(3, u32) {
+			return @intCast(self.maxPos - self.minPos + @as(Vec3i, @splat(1)));
+		}
 
-		const sizeX: u32 = @intCast(endX - startX + 1);
-		const sizeY: u32 = @intCast(endY - startY + 1);
-		const sizeZ: u32 = @intCast(endZ - startZ + 1);
+		pub fn format(self: Selection, writer: *std.Io.Writer) std.Io.Writer.Error!void {
+			try writer.print("{} {}", .{self.minPos, self.maxPos});
+		}
+	};
+
+	pub fn capture(allocator: NeverFailingAllocator, selection: Selection) CaptureResult {
+		const startX, const startY, const startZ = selection.minPos;
+		const sizeX, const sizeY, const sizeZ = selection.size();
 
 		const self = Blueprint{.blocks = .init(allocator, sizeX, sizeY, sizeZ)};
 

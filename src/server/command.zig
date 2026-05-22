@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
+const Blueprint = main.blueprint.Blueprint;
 const User = main.server.User;
 pub const commandList = @import("command/_list.zig");
 
@@ -117,3 +118,16 @@ pub const Target = struct {
 		if (self.increasedRefCount) self.user.decreaseRefCount();
 	}
 };
+
+/// Get current selection from user data. This function will output appropriate error to chat upon failure.
+pub fn getCurrentSelection(source: *User) !Blueprint.Selection {
+	const pos1 = source.worldEditData.selectionPosition1 orelse {
+		source.sendMessage("#ff0000Position 1 isn't set", .{});
+		return error.SelectionPartiallyUnset;
+	};
+	const pos2 = source.worldEditData.selectionPosition2 orelse {
+		source.sendMessage("#ff0000Position 2 isn't set", .{});
+		return error.SelectionPartiallyUnset;
+	};
+	return .init(pos1, pos2);
+}
