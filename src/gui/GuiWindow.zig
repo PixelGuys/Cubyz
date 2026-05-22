@@ -152,7 +152,7 @@ pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) main.call
 	const scaledMousePos = (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale));
 	const btnPos = self.getButtonPositions();
 	const zoomInPos = btnPos[2]/self.scale;
-	if (scaledMousePos[1] < titleBarHeight and (self.showTitleBar or gui.reorderWindows)) {
+	if (scaledMousePos[1] < titleBarHeight*self.scale and (self.showTitleBar or gui.reorderWindows)) {
 		grabbedWindow = self;
 		grabPosition = mousePosition;
 		selfPositionWhenGrabbed = self.pos;
@@ -185,7 +185,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 		const mousePositionRelative = mousePosition - self.pos;
 		const grabPositionRelative = if (grabPosition) |gp| gp - self.pos else @as(@Vector(2, f32), .{0.0, 0.0});
 
-		if (mousePositionRelative[1] >= 0 and mousePositionRelative[1] <= titleBarHeight) {
+		if (mousePositionRelative[1] >= 0 and mousePositionRelative[1] <= titleBarHeight*self.scale) {
 			if (mousePositionRelative[0] > zoomInPos and mousePositionRelative[0] <= zoomOutPos and grabPositionRelative[0] > zoomInPos and grabPositionRelative[0] <= zoomOutPos) {
 				// Zoom in
 				if (self.scale >= 1) {
@@ -383,7 +383,7 @@ pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) void {
 
 pub fn updateHovered(self: *GuiWindow, mousePosition: Vec2f) main.callbacks.Result {
 	const scaledMousePos = (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale));
-	if (scaledMousePos[1] < titleBarHeight and (self.showTitleBar or gui.reorderWindows)) return .handled;
+	if (scaledMousePos[1] < titleBarHeight*self.scale and (self.showTitleBar or gui.reorderWindows)) return .handled;
 	if (self.updateHoveredFn() == .handled) return .handled;
 	if (self.rootComponent) |component| {
 		if (GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
