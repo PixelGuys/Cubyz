@@ -147,8 +147,8 @@ pub const Target = struct {
 			.increasedRefCount = false,
 		};
 		return .{
-			.user = main.server.getUserByIndexAndIncreaseRefCount(playerIndex) orelse {
-				source.sendMessage("#ff0000Player with index {d} not found or not online", .{playerIndex});
+			.user = main.server.getUserByIndexAndIncreaseRefCount(playerIndex.index) orelse {
+				source.sendMessage("#ff0000Player with index {d} not found or not online", .{playerIndex.index});
 				return error.InvalidArg;
 			},
 			.increasedRefCount = true,
