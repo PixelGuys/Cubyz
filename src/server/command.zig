@@ -1,6 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const ListUnmanaged = main.ListUnmanaged;
 const User = main.server.User;
 pub const commandList = @import("command/_list.zig");
 
@@ -46,6 +48,32 @@ pub fn execute(msg: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Unrecognized Command \"{s}\"", .{command});
 	}
 }
+
+pub const Axis = struct {
+	hasTilde: bool,
+	value: f64,
+
+	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, arg: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!Axis {
+		const hasTilde = if (arg.len == 0) false else arg[0] == '~';
+		const numberSlice = if (hasTilde) arg[1..] else arg;
+		if (hasTilde and numberSlice.len == 0) return .{.hasTilde = true, .value = 0};
+		return .{
+			.hasTilde = hasTilde,
+			.value = std.fmt.parseFloat(f64, numberSlice) catch {
+				if (hasTilde) {
+					errorMessage.print(allocator, "#ff0000Expected number, found \"{s}\"", .{numberSlice});
+				} else {
+					errorMessage.print(allocator, "#ff0000Expected number or \"~\", found \"{s}\"", .{arg});
+				}
+				return error.ParseError;
+			},
+		};
+	}
+
+	pub fn toValue(self: Axis, playerPos: f64) f64 {
+		return std.math.clamp(if (self.hasTilde) playerPos + self.value else self.value, -1e9, 1e9); // TODO: Remove clamp after #310 is implemented
+	}
+};
 
 fn parseAxis(arg: []const u8, playerPos: f64, source: *User) !f64 {
 	const hasTilde = if (arg.len == 0) false else arg[0] == '~';
@@ -115,5 +143,38 @@ pub const Target = struct {
 
 	pub fn deinit(self: Target) void {
 		if (self.increasedRefCount) self.user.decreaseRefCount();
+	}
+};
+
+pub const TargetArg = struct {
+	index: ?usize,
+
+	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, arg: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!TargetArg {
+		if (arg.len == 0) return .{.index = null};
+
+		if (!std.ascii.startsWithIgnoreCase(arg, "@")) {
+			errorMessage.print(allocator, "#ff0000Player index specifiers always start with @, found \"{s}\"", .{arg});
+			return error.ParseError;
+		}
+		return .{.index = std.fmt.parseInt(usize, arg[1..], 10) catch {
+			errorMessage.print(allocator, "#ff0000Player index must be an integer, found \"{s}\"", .{arg[1..]});
+			return error.ParseError;
+		}};
+	}
+
+	pub fn toTarget(self: TargetArg, source: *User) !Target {
+		if (self.index == null) {
+			return .{
+				.user = source,
+				.increasedRefCount = false,
+			};
+		}
+		return .{
+			.user = main.server.getUserByIndexAndIncreaseRefCount(self.index.?) orelse {
+				source.sendMessage("#ff0000Player with index {d} not found or not online", .{self.index.?});
+				return error.InvalidArg;
+			},
+			.increasedRefCount = true,
+		};
 	}
 };
