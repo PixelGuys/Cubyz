@@ -141,17 +141,29 @@ pub const Target = struct {
 		return .{.user = user, .increasedRefCount = increasedRefCount};
 	}
 
+	pub fn fromPlayerIndex(arg: ?PlayerIndex, source: *User) !Target {
+		const playerIndex = arg orelse return .{
+			.user = source,
+			.increasedRefCount = false,
+		};
+		return .{
+			.user = main.server.getUserByIndexAndIncreaseRefCount(playerIndex) orelse {
+				source.sendMessage("#ff0000Player with index {d} not found or not online", .{playerIndex});
+				return error.InvalidArg;
+			},
+			.increasedRefCount = true,
+		};
+	}
+
 	pub fn deinit(self: Target) void {
 		if (self.increasedRefCount) self.user.decreaseRefCount();
 	}
 };
 
-pub const TargetArg = struct {
-	index: ?usize,
+pub const PlayerIndex = struct {
+	index: usize,
 
-	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, arg: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!TargetArg {
-		if (arg.len == 0) return .{.index = null};
-
+	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, arg: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!PlayerIndex {
 		if (!std.ascii.startsWithIgnoreCase(arg, "@")) {
 			errorMessage.print(allocator, "#ff0000Player index specifiers always start with @, found \"{s}\"", .{arg});
 			return error.ParseError;
@@ -160,21 +172,5 @@ pub const TargetArg = struct {
 			errorMessage.print(allocator, "#ff0000Player index must be an integer, found \"{s}\"", .{arg[1..]});
 			return error.ParseError;
 		}};
-	}
-
-	pub fn toTarget(self: TargetArg, source: *User) !Target {
-		if (self.index == null) {
-			return .{
-				.user = source,
-				.increasedRefCount = false,
-			};
-		}
-		return .{
-			.user = main.server.getUserByIndexAndIncreaseRefCount(self.index.?) orelse {
-				source.sendMessage("#ff0000Player with index {d} not found or not online", .{self.index.?});
-				return error.InvalidArg;
-			},
-			.increasedRefCount = true,
-		};
 	}
 };
