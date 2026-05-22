@@ -1,6 +1,0 @@
-.{
-	.chance = 0,
-	.caves = -10,
-	.caveRadiusFactor = 0,
-	.stoneBlock = "cubyz:lava",
-}
