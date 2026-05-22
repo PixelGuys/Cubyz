@@ -51,7 +51,7 @@ pub fn execute(msg: []const u8, source: *User) void {
 
 pub const Coordinate = struct {
 	isRelative: bool, // Relative coordinates are indicated by leading `~`.
-	value: f64,
+	value: f64,  // Absolute value for absolute coordinates, offset for relative coordinates.
 
 	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, arg: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!Coordinate {
 		const hasTilde = arg[0] == '~';
