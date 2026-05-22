@@ -50,7 +50,7 @@ pub fn execute(msg: []const u8, source: *User) void {
 }
 
 pub const Coordinate = struct {
-	hasTilde: bool,
+	isRelative: bool, // Relative coordinates are indicated by leading `~`.
 	value: f64,
 
 	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, arg: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!Coordinate {
