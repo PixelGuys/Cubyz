@@ -2090,7 +2090,10 @@ pub const Image = struct { // MARK: Image
 		var channel: c_int = undefined;
 		const nullTerminatedPath = main.stackAllocator.dupeZ(u8, path); // TODO: Find a more zig-friendly image loading library.
 		errdefer main.stackAllocator.free(nullTerminatedPath);
-		if (options.is_flipped_vertically) c.stbi_set_flip_vertically_on_load(1);
+		switch (options.orientation) {
+			.asIs => {},
+			.openGl => c.stbi_set_flip_vertically_on_load(1),
+		}
 		const data = c.stbi_load(nullTerminatedPath.ptr, @ptrCast(&result.width), @ptrCast(&result.height), &channel, 4) orelse {
 			return error.FileNotFound;
 		};
