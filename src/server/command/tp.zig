@@ -28,7 +28,7 @@ const Args = union(enum) {
 		y: command.Axis,
 		z: ?command.Axis,
 	},
-	@"/tp <playerIndex>": struct { playerIndex: command.TargetArg },
+	@"/tp <playerIndex>": struct { playerIndex: command.PlayerIndex },
 };
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/tp"});
@@ -103,7 +103,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			};
 		},
 		.@"/tp <playerIndex>" => |index| {
-			const target = index.playerIndex.toTarget(source) catch return;
+			const target = command.Target.fromPlayerIndex(index.playerIndex, source) catch return;
 			defer target.deinit();
 			break :blk target.user.player().pos;
 		},
