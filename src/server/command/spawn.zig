@@ -15,8 +15,8 @@ pub const usage =
 ;
 
 const Args = union(enum) {
-	@"/spawn <playerIndex> <x> <y> <z>": struct { playerIndex: ?command.PlayerIndex, x: command.Axis, y: command.Axis, z: command.Axis },
-	@"/spawn <world> <x> <y> <z>": struct { world: enum { world }, x: command.Axis, y: command.Axis, z: command.Axis },
+	@"/spawn <playerIndex> <x> <y> <z>": struct { playerIndex: ?command.PlayerIndex, x: command.Coordinate, y: command.Coordinate, z: command.Coordinate },
+	@"/spawn <world> <x> <y> <z>": struct { world: enum { world }, x: command.Coordinate, y: command.Coordinate, z: command.Coordinate },
 	@"/spawn <world>": struct { world: enum { world } },
 	@"/spawn <playerIndex>": struct { playerIndex: ?command.PlayerIndex },
 };
