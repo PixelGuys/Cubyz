@@ -3,7 +3,7 @@
 		.mountain,
 		.oak,
 		.birch,
-		},
+	},
 	.minHeight = 238,
 	.maxHeight = 238,
 	.smoothBeaches = true,
