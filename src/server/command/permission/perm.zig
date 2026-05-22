@@ -1,6 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const ListUnmanaged = main.ListUnmanaged;
 const User = main.server.User;
 const permission = main.server.permission;
 const ListType = permission.Permissions.ListType;
@@ -8,20 +10,32 @@ const command = main.server.command;
 
 pub const description = "Performs changes on the permissions of the player or shows the if has permission for a specific permission path";
 pub const usage =
-	\\/perm add <whitelist/blacklist> <permissionPath>
-	\\/perm remove <whitelist/blacklist> <permissionPath>
 	\\/perm <permissionPath>
-	\\/perm add <whitelist/blacklist> @<playerIndex> <permissionPath>
-	\\/perm remove <whitelist/blacklist> @<playerIndex> <permissionPath>
 	\\/perm @<playerIndex> <permissionPath>
+	\\/perm <add/remove> <whitelist/blacklist> <permissionPath>
+	\\/perm <add/remove> <whitelist/blacklist> @<playerIndex> <permissionPath>
 ;
 
+const Args = union(enum) {
+	@"/perm <add> <list> <playerIndex> <permissionPath>": struct {
+		add: enum { add },
+		list: enum { whitelist, blacklist },
+		playerIndex: ?command.PlayerIndex,
+		permissionPath: Path,
+	},
+	@"/perm <playerIndex> <permissionPath>": struct { playerIndex: ?command.PlayerIndex, permissionPath: Path },
+};
+
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/time"});
+
 pub fn execute(args: []const u8, source: *User) void {
-	if (args.len == 0) {
-		source.sendMessage("#ff0000Too few arguments for command /perm. Expected at least one argument.", .{});
+	var errorMessage: main.ListUnmanaged(u8) = .{};
+	defer errorMessage.deinit(main.stackAllocator);
+
+	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
+		source.sendMessage("#ff0000{s}", .{errorMessage.items});
 		return;
-	}
-	var split = std.mem.splitScalar(u8, args, ' ');
+	};
 	if (split.next()) |arg| {
 		if (std.ascii.eqlIgnoreCase(arg, "remove")) {
 			const helper = Helper.init(source, &split) catch return;
@@ -54,6 +68,18 @@ pub fn execute(args: []const u8, source: *User) void {
 		}
 	}
 }
+
+const Path = struct {
+	path: []const u8,
+
+	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, arg: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!Path {
+		if (arg[0] != '/') {
+			errorMessage.print(allocator, "#ff0000Permission paths always begin with a \"/\", got: {s}", .{arg});
+			return error.ParseError;
+		}
+		return .{.path = arg};
+	}
+};
 
 const Helper = struct {
 	listType: ListType,
