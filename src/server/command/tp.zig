@@ -14,9 +14,9 @@ pub const usage =
 const Args = union(enum) {
 	@"/tp <biome>": struct { biome: command.Biome },
 	@"/tp <x> <y> <z>": struct {
-		x: command.Axis,
-		y: command.Axis,
-		z: command.Axis,
+		x: command.Coordinate,
+		y: command.Coordinate,
+		z: command.Coordinate,
 	},
 	@"/tp <playerIndex>": struct { playerIndex: command.PlayerIndex },
 };
