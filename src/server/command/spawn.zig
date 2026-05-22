@@ -21,7 +21,7 @@ const Args = union(enum) {
 	@"/spawn <playerIndex>": struct { playerIndex: ?command.PlayerIndex },
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/time"});
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/spawn"});
 
 pub fn execute(args: []const u8, source: *User) void {
 	var errorMessage: main.ListUnmanaged(u8) = .{};
