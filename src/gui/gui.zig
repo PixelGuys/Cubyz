@@ -8,8 +8,9 @@ const settings = main.settings;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 const List = main.List;
-
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+
+const c = @import("c");
 
 const Button = @import("components/Button.zig");
 const CheckBox = @import("components/CheckBox.zig");
@@ -18,11 +19,12 @@ const ScrollBar = @import("components/ScrollBar.zig");
 const ContinuousSlider = @import("components/ContinuousSlider.zig");
 const DiscreteSlider = @import("components/DiscreteSlider.zig");
 const TextInput = @import("components/TextInput.zig");
-pub const GuiComponent = @import("gui_component.zig").GuiComponent;
+const gui_component = @import("gui_component.zig");
+pub const GuiComponent = gui_component.GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
 
-pub const windowlist = @import("windows/_windowlist.zig");
-const GamepadCursor = @import("gamepad_cursor.zig");
+pub const windowlist = @import("windows/_list.zig");
+const gamepad_cursor = @import("gamepad_cursor.zig");
 
 var windowList: List(*GuiWindow) = undefined;
 var hudWindows: List(*GuiWindow) = undefined;
@@ -136,33 +138,35 @@ pub fn init() void { // MARK: init()
 			windowStruct.init();
 		}
 	}
-	GuiWindow.__init();
-	Button.__init();
-	CheckBox.__init();
-	ItemSlot.__init();
-	ScrollBar.__init();
-	ContinuousSlider.__init();
-	DiscreteSlider.__init();
-	TextInput.__init();
+	GuiWindow.globalInit();
+	GuiComponent.BagSlot.globalInit();
+	Button.globalInit();
+	CheckBox.globalInit();
+	ItemSlot.globalInit();
+	ScrollBar.globalInit();
+	ContinuousSlider.globalInit();
+	DiscreteSlider.globalInit();
+	TextInput.globalInit();
 	load();
-	GamepadCursor.init();
+	gamepad_cursor.init();
 }
 
 pub fn deinit() void {
 	save();
-	GamepadCursor.deinit();
+	gamepad_cursor.deinit();
 	for (openWindows.items) |window| {
 		window.onCloseFn();
 	}
 	openWindows.clearRetainingCapacity();
-	GuiWindow.__deinit();
-	Button.__deinit();
-	CheckBox.__deinit();
-	ItemSlot.__deinit();
-	ScrollBar.__deinit();
-	ContinuousSlider.__deinit();
-	DiscreteSlider.__deinit();
-	TextInput.__deinit();
+	GuiWindow.globalDeinit();
+	GuiComponent.BagSlot.globalDeinit();
+	Button.globalDeinit();
+	CheckBox.globalDeinit();
+	ItemSlot.globalDeinit();
+	ScrollBar.globalDeinit();
+	ContinuousSlider.globalDeinit();
+	DiscreteSlider.globalDeinit();
+	TextInput.globalDeinit();
 	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
 		const WindowStruct = @field(windowlist, decl.name);
 		if (@hasDecl(WindowStruct, "deinit")) {
@@ -556,7 +560,7 @@ pub fn updateAndRenderGui() void {
 		if (!main.Window.grabbed) {
 			draw.setColor(0x80000000);
 			GuiWindow.borderPipeline.bind(draw.getScissor());
-			graphics.c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
+			c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
 			draw.customShadedRect(GuiWindow.borderUniforms, .{0, 0}, main.Window.getWindowSize());
 		}
 		const oldScale = draw.setScale(scale);
@@ -568,7 +572,7 @@ pub fn updateAndRenderGui() void {
 	}
 	const oldScale = draw.setScale(scale);
 	defer draw.restoreScale(oldScale);
-	GamepadCursor.render();
+	gamepad_cursor.render();
 }
 
 pub fn toggleGameMenu() void {

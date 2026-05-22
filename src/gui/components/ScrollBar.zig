@@ -26,11 +26,11 @@ currentState: f32,
 button: *Button,
 mouseAnchor: f32 = undefined,
 
-pub fn __init() void {
+pub fn globalInit() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/scrollbar.png");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	texture.deinit();
 }
 

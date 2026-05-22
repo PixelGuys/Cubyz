@@ -4,7 +4,7 @@
 
 	.chance = 0.01,
 
-	.music = "cubyz:heart-of-the-beast",
+	.music = "cubyz:ikabod/live",
 
 	.ground_structure = .{
 		"0 to 1 cubyz:gravel",
@@ -36,7 +36,6 @@
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:slate/cobble",
 			.log = "cubyz:slate/base",
-			.top = "cubyz:slate/base",
 			.chance = 0.16,
 			.type = .round,
 			.height = 3,
@@ -46,7 +45,6 @@
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:slate/base",
 			.log = "cubyz:slate/base",
-			.top = "cubyz:slate/base",
 			.chance = 0.48,
 			.type = .round,
 			.height = 3,

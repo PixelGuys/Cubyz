@@ -59,12 +59,14 @@ hovered: bool = false,
 onAction: main.callbacks.SimpleCallback,
 child: GuiComponent,
 
-pub fn __init() void {
+pub fn globalInit() void {
 	pipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/ui/button.vert",
 		"assets/cubyz/shaders/ui/button.frag",
 		"",
 		&buttonUniforms,
+		graphics.draw.SimpleVertex2D,
+		&.{},
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.alphaBlending}},
@@ -74,7 +76,7 @@ pub fn __init() void {
 	pressedTextures = Textures.init("assets/cubyz/ui/button_pressed");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	pipeline.deinit();
 	normalTextures.deinit();
 	hoveredTextures.deinit();

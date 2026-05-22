@@ -1,11 +1,12 @@
 const std = @import("std");
 
 const main = @import("main");
-const c = main.Window.c;
 const graphics = main.graphics;
 const draw = graphics.draw;
 const Texture = graphics.Texture;
 const Vec2f = main.vec.Vec2f;
+
+const c = @import("c");
 
 const gui = @import("../gui.zig");
 const GuiWindow = gui.GuiWindow;
