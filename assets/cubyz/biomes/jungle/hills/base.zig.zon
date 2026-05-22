@@ -1,4 +1,5 @@
 .{
+	.soilCreep = 1.0,
 	.ground_structure = .{
 		"cubyz:grass/dew",
 		"2 to 3 cubyz:clay",
