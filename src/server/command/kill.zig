@@ -5,7 +5,10 @@ const command = main.server.command;
 const User = main.server.User;
 
 pub const description = "Kills the player";
-pub const usage = "/kill";
+pub const usage =
+	\\/kill
+	\\/kill @<playerIndex>
+;
 
 const Args = union(enum) {
 	@"/kill <playerIndex>": struct { playerIndex: ?command.PlayerIndex },
