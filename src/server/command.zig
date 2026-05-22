@@ -174,3 +174,14 @@ pub const PlayerIndex = struct {
 		}};
 	}
 };
+
+pub const Biome = struct {
+	biome: *const main.server.terrain.biomes.Biome,
+
+	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, args: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!@This() {
+		return .{.biome = main.server.terrain.biomes.getByIdOptional(args) orelse {
+			errorMessage.print(allocator, "#ff0000Couldn't find biome with id \"{s}\"", .{args});
+			return error.ParseError;
+		}};
+	}
+};

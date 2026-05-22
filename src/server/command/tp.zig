@@ -1,8 +1,6 @@
 const std = @import("std");
 
 const main = @import("main");
-const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const ListUnmanaged = main.ListUnmanaged;
 const command = main.server.command;
 const User = main.server.User;
 
@@ -14,15 +12,7 @@ pub const usage =
 ;
 
 const Args = union(enum) {
-	@"/tp <biome>": struct { biome: struct {
-		biome: *const main.server.terrain.biomes.Biome,
-		pub fn parse(allocator: NeverFailingAllocator, _: []const u8, args: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!@This() {
-			return .{.biome = main.server.terrain.biomes.getByIdOptional(args) orelse {
-				errorMessage.print(allocator, "#ff0000Couldn't find biome with id \"{s}\"", .{args});
-				return error.ParseError;
-			}};
-		}
-	} },
+	@"/tp <biome>": struct { biome: command.Biome },
 	@"/tp <x> <y> <z>": struct {
 		x: command.Axis,
 		y: command.Axis,
