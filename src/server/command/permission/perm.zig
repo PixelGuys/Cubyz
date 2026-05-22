@@ -26,7 +26,7 @@ const Args = union(enum) {
 	@"/perm <playerIndex> <permissionPath>": struct { playerIndex: ?command.PlayerIndex, permissionPath: Path },
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/time"});
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/perm"});
 
 pub fn execute(args: []const u8, source: *User) void {
 	var errorMessage: main.ListUnmanaged(u8) = .{};
