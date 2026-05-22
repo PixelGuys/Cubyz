@@ -4,6 +4,7 @@
 	.fogDensity = 15,
 	.fogColor = 0x3d1a11,
 	.stoneBlock = "cubyz:pyrolite/base",
+	.music = "cubyz:totaldemented/scoria",
 	.caveModels = .{
 		.{
 			.id = "cubyz:partial_sphere",
