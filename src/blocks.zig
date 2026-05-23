@@ -76,6 +76,25 @@ const SelectionCapabilities = union(enum) {
 	always: void,
 	custom: packed struct(BackingType) {
 		toolEffective: bool = false,
+
+		pub fn allowsSelectionByItem(self: @This(), block: Block, item: Item) bool {
+			if (@as(BackingType, @bitCast(self)) == 0) return false;
+
+			return switch (item) {
+				.baseItem => |baseItem| {
+					if (std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) return true;
+					if (block.hasTag(.fluid) and baseItem.hasTag(.fluidPlaceable)) return true;
+					if (baseItem.block()) |blockType| {
+						if (blockType == block.typ) return true;
+					}
+					return false;
+				},
+
+				.proceduralItem => |proceduralItem| self.toolEffective and proceduralItem.isEffectiveOn(block),
+
+				else => false,
+			};
+		}
 	},
 
 	const Capability = enum {
@@ -97,24 +116,7 @@ const SelectionCapabilities = union(enum) {
 	pub inline fn allowsSelectionByItem(self: SelectionCapabilities, block: Block, item: Item) bool {
 		return switch (self) {
 			.always => true,
-			.custom => |custom| {
-				if (@as(BackingType, @bitCast(custom)) == 0) return false;
-
-				return switch (item) {
-					.baseItem => |baseItem| {
-						if (std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) return true;
-						if (block.hasTag(.fluid) and baseItem.hasTag(.fluidPlaceable)) return true;
-						if (baseItem.block()) |blockType| {
-							if (blockType == block.typ) return true;
-						}
-						return false;
-					},
-
-					.proceduralItem => |proceduralItem| custom.toolEffective and proceduralItem.isEffectiveOn(block),
-
-					else => false,
-				};
-			},
+			.custom => |custom| custom.allowsSelectionByItem(block, item),
 		};
 	}
 };
