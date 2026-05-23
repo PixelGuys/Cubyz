@@ -111,8 +111,8 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				return error.ParseError;
 			};
 			switch (fieldTypeInfo) {
-				inline .@"struct" => {
-					if (!@hasDecl(Field, "parse")) @compileError("Struct must have a parse function");
+				inline .@"struct", .@"union" => {
+					if (!@hasDecl(Field, "parse")) @compileError("Structs / Unions must have a parse function");
 					return @field(Field, "parse")(allocator, name, arg, errorMessage);
 				},
 				inline .@"enum" => {
