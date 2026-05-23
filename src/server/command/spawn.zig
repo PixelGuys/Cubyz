@@ -36,11 +36,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		.@"/spawn <playerIndex> <x> <y> <z>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
 			defer target.deinit();
-			target.user.spawnPos = .{
-				params.x.toValue(source.player().pos[0]),
-				params.y.toValue(source.player().pos[1]),
-				params.z.toValue(source.player().pos[2]),
-			};
+			target.user.spawnPos = command.resolveCoordinates(params.x, params.y, params.z, source);
 		},
 		.@"/spawn <playerIndex>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
@@ -48,11 +44,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			source.sendMessage("#ffff00{}", .{target.user.getSpawnPos()});
 		},
 		.@"/spawn <world> <x> <y> <z>" => |params| {
-			const pos: main.vec.Vec3d = .{
-				params.x.toValue(source.player().pos[0]),
-				params.y.toValue(source.player().pos[1]),
-				params.z.toValue(source.player().pos[2]),
-			};
+			const pos = command.resolveCoordinates(params.x, params.y, params.z, source);
 			const world = main.server.world.?;
 			world.spawn = @trunc(pos);
 		},
