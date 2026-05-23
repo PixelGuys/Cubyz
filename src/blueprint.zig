@@ -87,7 +87,7 @@ pub const Blueprint = struct {
 			return .{.minPos = @min(pos1, pos2), .maxPos = @max(pos1, pos2)};
 		}
 		pub fn size(self: Selection) @Vector(3, u32) {
-			return @intCast(self.maxPos - self.minPos + @as(Vec3i, @splat(1)));
+			return @intCast(self.maxPos -% self.minPos + @as(Vec3i, @splat(1)));
 		}
 
 		pub fn format(self: Selection, writer: *std.Io.Writer) std.Io.Writer.Error!void {
