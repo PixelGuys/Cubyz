@@ -79,9 +79,6 @@ const SelectionCapabilities = union(enum) {
 		toolEffective: bool = false,
 	},
 
-	pub const neverSelectable: SelectionCapabilities = .{.never = {}};
-	pub const alwaysSelectable: SelectionCapabilities = .{.always = {}};
-
 	const Capability = enum {
 		toolEffective,
 	};
@@ -95,7 +92,7 @@ const SelectionCapabilities = union(enum) {
 				}
 			} else std.log.err("SelectionCapability is invalid. Ignoring", .{});
 		}
-		if (@as(BackingType, @bitCast(result.custom)) == 0) result = neverSelectable;
+		if (@as(BackingType, @bitCast(result.custom)) == 0) result = .never;
 		return result;
 	}
 
@@ -192,7 +189,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	if (zon.getChildOrNull("selectionCapabilities")) |capabilitiesZon| {
 		_selectionCapabilities[size] = .loadFromZon(capabilitiesZon);
 	} else {
-		_selectionCapabilities[size] = .alwaysSelectable;
+		_selectionCapabilities[size] = .always;
 	}
 
 	_replaceable[size] = zon.get(bool, "replaceable", false);
