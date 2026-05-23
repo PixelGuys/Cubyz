@@ -10,6 +10,7 @@ pub const description = "Shows info about all the commands.";
 pub const usage = "/help\n/help <command>";
 
 const Args = union(enum) {
+	@"/help <bobik>": struct { bobik: enum { Bobik, bobik } },
 	@"/help <command>": struct { command: Cmd },
 	@"/help": struct {},
 };
@@ -49,6 +50,9 @@ pub fn execute(args: []const u8, source: *User) void {
 			msg.append('\n');
 			msg.appendSlice(cmd.usage);
 			msg.append('\n');
+		},
+		.@"/help <bobik>" => {
+			msg.appendSlice("Even Bobik can't help you anymore ");
 		},
 	}
 	if (msg.items[msg.items.len - 1] == '\n') _ = msg.pop();
