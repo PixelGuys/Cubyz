@@ -71,11 +71,11 @@ pub const Ore = struct {
 };
 
 const SelectionCapabilities = union(enum) {
-	const backingType = u1;
+	const BackingType = u1;
 
 	never: void,
 	always: void,
-	custom: packed struct(backingType) {
+	custom: packed struct(BackingType) {
 		toolEffective: bool = false,
 	},
 
@@ -95,7 +95,7 @@ const SelectionCapabilities = union(enum) {
 				}
 			} else std.log.err("SelectionCapability is invalid. Ignoring", .{});
 		}
-		if (@as(backingType, @bitCast(result.custom)) == 0) result = neverSelectable;
+		if (@as(BackingType, @bitCast(result.custom)) == 0) result = neverSelectable;
 		return result;
 	}
 
