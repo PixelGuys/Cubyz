@@ -149,8 +149,8 @@ pub const Target = struct {
 		return .{.user = user, .increasedRefCount = increasedRefCount};
 	}
 
-	pub fn fromPlayerIndex(_arg: ?PlayerIndex, source: *User) !Target {
-		const playerIndex = _arg orelse return .{
+	pub fn fromPlayerIndex(arg: ?PlayerIndex, source: *User) !Target {
+		const playerIndex = arg orelse return .{
 			.user = source,
 			.increasedRefCount = false,
 		};
