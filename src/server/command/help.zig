@@ -15,7 +15,7 @@ const Args = union(enum) {
 	@"/help": struct {},
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/time"});
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/help"});
 
 pub fn execute(args: []const u8, source: *User) void {
 	var errorMessage: main.ListUnmanaged(u8) = .{};
