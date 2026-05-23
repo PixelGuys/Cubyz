@@ -59,12 +59,12 @@ pub const Coordinate = union(enum) {
 		if (isRelative and numberSlice.len == 0) return .{.relative = 0};
 		if (isRelative) {
 			return .{.relative = std.fmt.parseFloat(f64, numberSlice) catch {
-				errorMessage.print(allocator, "<{s}>: Expected number, found \"{s}\"", .{name, numberSlice});
+				errorMessage.print(allocator, "Expected number for <{s}>, found \"{s}\"", .{name, numberSlice});
 				return error.ParseError;
 			}};
 		}
 		return .{.absolute = std.fmt.parseFloat(f64, numberSlice) catch {
-			errorMessage.print(allocator, "<{s}>: Expected number or \"~\", found \"{s}\"", .{name, arg});
+			errorMessage.print(allocator, "Expected number or \"~\" for <{s}>, found \"{s}\"", .{name, arg});
 			return error.ParseError;
 		}};
 	}
@@ -173,11 +173,11 @@ pub const PlayerIndex = struct {
 
 	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!PlayerIndex {
 		if (!std.ascii.startsWithIgnoreCase(arg, "@")) {
-			errorMessage.print(allocator, "<{s}>: Player index specifiers always start with @, found \"{s}\"", .{name, arg});
+			errorMessage.print(allocator, "Expected to start with @ for <{s}>, found \"{s}\"", .{name, arg});
 			return error.ParseError;
 		}
 		return .{.index = std.fmt.parseInt(usize, arg[1..], 10) catch {
-			errorMessage.print(allocator, "<{s}>: Player index must be an integer, found \"{s}\"", .{name, arg[1..]});
+			errorMessage.print(allocator, "Expected and integer after @ for <{s}>, found \"{s}\"", .{name, arg[1..]});
 			return error.ParseError;
 		}};
 	}
