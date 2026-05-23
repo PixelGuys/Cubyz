@@ -188,7 +188,7 @@ pub const Biome = struct {
 
 	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, args: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!@This() {
 		return .{.biome = main.server.terrain.biomes.getByIdOptional(args) orelse {
-			errorMessage.print(allocator, "<{s}>: Couldn't find biome with id \"{s}\"", .{name, args});
+			errorMessage.print(allocator, "Couldn't find biome for <{s}> with id \"{s}\"", .{name, args});
 			return error.ParseError;
 		}};
 	}
