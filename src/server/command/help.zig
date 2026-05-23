@@ -58,10 +58,10 @@ pub fn execute(args: []const u8, source: *User) void {
 const Cmd = struct {
 	cmd: command.Command,
 
-	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, arg: []const u8, errorList: *ListUnmanaged(u8)) error{ParseError}!Cmd {
+	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorList: *ListUnmanaged(u8)) error{ParseError}!Cmd {
 		return .{
 			.cmd = command.commands.get(arg) orelse {
-				errorList.print(allocator, "#ff0000Unrecognized Command {s}", .{arg});
+				errorList.print(allocator, "Unrecognized command name for <{s}>, got {s}", .{name, arg});
 				return error.ParseError;
 			},
 		};
