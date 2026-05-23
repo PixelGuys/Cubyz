@@ -86,11 +86,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			return;
 		},
 		.@"/tp <x> <y> <z>" => |pos| {
-			break :blk .{
-				pos.x.toValue(source.player().pos[0]),
-				pos.y.toValue(source.player().pos[1]),
-				pos.z.toValue(source.player().pos[2]),
-			};
+			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source);
 		},
 		.@"/tp <playerIndex>" => |index| {
 			const target = command.Target.fromPlayerIndex(index.playerIndex, source) catch return;
