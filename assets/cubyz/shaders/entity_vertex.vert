@@ -3,7 +3,7 @@
 layout (location = 0) in vec3 inPos;
 layout (location = 1) in vec3 inNormal;
 layout (location = 2) in vec2 inUV;
-layout (location = 3) in uint inNodeID;
+layout (location = 3) in uint inNodeId;
 
 layout(location = 0) out vec2 outTexCoord;
 layout(location = 1) out vec3 mvVertexPos;
@@ -37,7 +37,7 @@ vec3 calcLight(uint fullLight) {
 void main() {
 	normal = inNormal;
 
-	vec4 mvPos = viewMatrix*nodeMatrices[inNodeID]*vec4(inPos, 1);
+	vec4 mvPos = viewMatrix*nodeMatrices[inNodeId]*vec4(inPos, 1);
 	gl_Position = projectionMatrix*mvPos;
 	mvVertexPos = mvPos.xyz;
 	outTexCoord = inUV;

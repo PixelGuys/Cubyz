@@ -69,7 +69,7 @@ pub const EntityModel = struct {
 		pos: [3]f32,
 		normal: [3]f32,
 		uv: [2]f32,
-		nodeID: c_uint,
+		nodeId: c_uint,
 
 		pub const attributeDescriptions: []const c.VkVertexInputAttributeDescription = &.{
 			.{
@@ -90,7 +90,7 @@ pub const EntityModel = struct {
 			.{
 				.location = 3,
 				.format = c.VK_FORMAT_R32_UINT,
-				.offset = @offsetOf(@This(), "nodeID"),
+				.offset = @offsetOf(@This(), "nodeId"),
 			},
 		};
 	};
@@ -290,7 +290,7 @@ pub const EntityModel = struct {
 						_ = uvAttr.read_float(v, @ptrCast(&uv), 2);
 						vertSlice[v].uv = .{uv[0], 1 - uv[1]};
 
-						vertSlice[v].nodeID = @intCast(parentNodeID);
+						vertSlice[v].nodeId = @intCast(parentNodeID);
 					}
 				}
 			}
