@@ -2,8 +2,10 @@
 	.tags = .{.cuttable},
 	.blockHealth = 0.2,
 	.drops = .{
-		.{.items = .{.auto}},
+		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
 	},
+	.selectionCapabilities = .{.toolEffective},
+	.replaceable = true,
 	.degradable = true,
 	.collide = false,
 	.alwaysViewThrough = true,
@@ -11,7 +13,7 @@
 	.model = "cubyz:plane",
 	.rotation = "cubyz:carpet",
 	.onUpdate = .{
-		.type = .checkSupportBlocks,
+		.type = .check_support_blocks,
 	},
 	.texture = "cubyz:osier",
 	.item = .{

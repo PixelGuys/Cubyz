@@ -1,12 +1,12 @@
 const std = @import("std");
 
+const main = @import("main");
 const blocks = @import("blocks.zig");
 const Block = blocks.Block;
 const graphics = @import("graphics.zig");
 const Color = graphics.Color;
 const Tag = main.Tag;
-const ZonElement = @import("zon.zig").ZonElement;
-const main = @import("main");
+const ZonElement = main.ZonElement;
 const ListUnmanaged = main.ListUnmanaged;
 const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
@@ -23,7 +23,7 @@ const Vec3f = vec.Vec3f;
 const modifierList = @import("proceduralItem/modifiers/_list.zig");
 const modifierRestrictionList = @import("proceduralItem/modifiers/restrictions/_list.zig");
 
-pub const recipes_zig = @import("items/recipes.zig");
+pub const recipes = @import("items/recipes.zig");
 
 pub const Inventory = @import("Inventory.zig");
 
@@ -280,7 +280,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 		if (texturePath.len == 0) {
 			self.image = graphics.Image.defaultImage;
 		} else {
-			self.image = graphics.Image.readFromFile(allocator, texturePath) catch graphics.Image.readFromFile(allocator, replacementTexturePath) catch blk: {
+			self.image = graphics.Image.readFromFile(allocator, texturePath, .{.orientation = .openGl}) catch graphics.Image.readFromFile(allocator, replacementTexturePath, .{.orientation = .openGl}) catch blk: {
 				std.log.err("Item texture not found in {s} and {s}.", .{texturePath, replacementTexturePath});
 				break :blk graphics.Image.defaultImage;
 			};
@@ -441,7 +441,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 						light += 4; // illuminate everything by an amount
 						light /= 8; // near-normalize the light value
 						light = @max(@min(light, 1), 0);
-						const colorIndex: usize = @intFromFloat(@round(light*@as(f32, @floatFromInt(material.colorPalette.len - 1))));
+						const colorIndex: usize = @round(light*@as(f32, @floatFromInt(material.colorPalette.len - 1)));
 						img.setRGB(x, 15 - y, material.colorPalette[colorIndex]);
 					} else {
 						img.setRGB(x, 15 - y, if ((x ^ y) & 1 == 0) Color{.r = 255, .g = 0, .b = 255, .a = 255} else Color{.r = 0, .g = 0, .b = 0, .a = 255});
@@ -1049,6 +1049,29 @@ pub const Item = union(ItemType) { // MARK: Item
 			inline else => |item| item.hashCode(),
 		};
 	}
+
+	pub fn render(self: Item, pos: Vec2f, slotSize: Vec2f, border: f32) void {
+		const itemTexture = self.getTexture();
+		itemTexture.bindTo(0);
+		graphics.draw.boundImage(pos + @as(Vec2f, @splat(border)), slotSize - @as(Vec2f, @splat(2*border)));
+
+		if (self == .proceduralItem) {
+			const proceduralItem = self.proceduralItem;
+			const durabilityPercentage = @as(f32, @floatFromInt(proceduralItem.durability))/proceduralItem.getProperty(.maxDurability);
+
+			if (durabilityPercentage < 1) {
+				const width = durabilityPercentage*(slotSize[0] - 2*border);
+				graphics.draw.setColorSameAlpha(0x000000);
+				graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{slotSize[0] - 2*border, (slotSize[1] - 2*border)/16.0});
+
+				const red = std.math.lossyCast(u8, (2 - durabilityPercentage*2)*255);
+				const green = std.math.lossyCast(u8, durabilityPercentage*2*255);
+
+				graphics.draw.setColorSameAlpha((@as(u24, @intCast(red)) << 16) | (@as(u24, @intCast(green)) << 8));
+				graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{width, (slotSize[1] - 2*border)/16.0});
+			}
+		}
+	}
 };
 
 pub const ItemStack = struct { // MARK: ItemStack
@@ -1113,7 +1136,7 @@ pub const Recipe = struct { // MARK: Recipe
 	resultAmount: u16,
 
 	fn getValidRecipe(self: Recipe) error{Invalid}!*Recipe {
-		outer: for (main.items.recipes()) |*recipe| {
+		outer: for (main.items.getRecipes()) |*recipe| {
 			if (recipe.resultItem != self.resultItem) continue;
 			if (recipe.resultAmount != self.resultAmount) continue;
 			if (recipe.sourceItems.len != self.sourceItems.len) continue;
@@ -1178,7 +1201,7 @@ pub fn iterator() std.StringHashMap(BaseItemIndex).ValueIterator {
 	return reverseIndices.valueIterator();
 }
 
-pub fn recipes() []Recipe {
+pub fn getRecipes() []Recipe {
 	return recipeList.items;
 }
 
@@ -1199,7 +1222,19 @@ pub fn globalInit() void {
 			.printTooltip = comptime main.meta.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.printTooltip),
 		}) catch unreachable;
 	}
-	Inventory.ClientSide.init();
+	Inventory.client.init();
+}
+
+pub fn globalDeinit() void {
+	Inventory.client.deinit();
+}
+
+pub fn reset() void {
+	proceduralItemTypeList = .{};
+	proceduralItemTypeIdToIndex = .{};
+	reverseIndices = .{};
+	recipeList.clearAndFree();
+	itemListSize = 0;
 }
 
 pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) *BaseItem {
@@ -1219,13 +1254,13 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 	const proceduralItem = split.rest();
 	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/tools/{s}{s}.png", .{assetFolder, mod, proceduralItem, layerPostfix}) catch unreachable;
 	defer main.stackAllocator.free(path);
-	const image = main.graphics.Image.readFromFile(main.stackAllocator, path) catch |err| blk: {
+	const image = main.graphics.Image.readFromFile(main.stackAllocator, path, .{.orientation = .openGl}) catch |err| blk: {
 		if (err != error.FileNotFound) {
 			std.log.err("Error while reading procedural item image '{s}': {s}", .{path, @errorName(err)});
 		}
 		const replacementPath = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/tools/{s}{s}.png", .{mod, proceduralItem, layerPostfix}) catch unreachable;
 		defer main.stackAllocator.free(replacementPath);
-		break :blk main.graphics.Image.readFromFile(main.stackAllocator, replacementPath) catch |err2| {
+		break :blk main.graphics.Image.readFromFile(main.stackAllocator, replacementPath, .{.orientation = .openGl}) catch |err2| {
 			if (layerPostfix.len == 0 or err2 != error.FileNotFound)
 				std.log.err("Error while reading procedural item image. Tried '{s}' and '{s}': {s}", .{path, replacementPath, @errorName(err2)});
 			break :blk main.graphics.Image.emptyImage;
@@ -1336,7 +1371,7 @@ fn parseRecipe(zon: ZonElement) !Recipe {
 
 pub fn registerRecipes(zon: ZonElement) void {
 	for (zon.toSlice()) |recipeZon| {
-		recipes_zig.parseRecipe(main.globalAllocator, recipeZon, &recipeList) catch |err| {
+		recipes.parseRecipe(main.globalAllocator, recipeZon, &recipeList) catch |err| {
 			const recipeString = recipeZon.toString(main.stackAllocator);
 			defer main.stackAllocator.free(recipeString);
 			std.log.err("Skipping recipe with error {s}:\n{s}", .{@errorName(err), recipeString});
@@ -1350,16 +1385,4 @@ pub fn clearRecipeCachedInventories() void {
 		main.globalAllocator.free(recipe.sourceItems);
 		main.globalAllocator.free(recipe.sourceAmounts);
 	}
-}
-
-pub fn reset() void {
-	proceduralItemTypeList = .{};
-	proceduralItemTypeIdToIndex = .{};
-	reverseIndices = .{};
-	recipeList.clearAndFree();
-	itemListSize = 0;
-}
-
-pub fn deinit() void {
-	Inventory.ClientSide.deinit();
 }

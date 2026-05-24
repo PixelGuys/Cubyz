@@ -11,7 +11,6 @@ const models = main.models;
 const QuadIndex = models.QuadIndex;
 const renderer = main.renderer;
 const graphics = main.graphics;
-const c = graphics.c;
 const SSBO = graphics.SSBO;
 const lighting = @import("lighting.zig");
 const settings = main.settings;
@@ -22,6 +21,8 @@ const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Mat4f = vec.Mat4f;
 const gpu_performance_measuring = main.gui.windowlist.gpu_performance_measuring;
+
+const c = @import("c");
 
 const mesh_storage = @import("mesh_storage.zig");
 
@@ -74,7 +75,6 @@ pub var transparentQuadsDrawn: usize = 0;
 pub const maxQuadsInIndexBuffer = 3 << (3*chunk.chunkShift); // maximum 3 faces/block
 
 pub fn init() void {
-	lighting.init();
 	pipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/chunks/chunk_vertex.vert",
 		"assets/cubyz/shaders/chunks/chunk_fragment.frag",
@@ -144,7 +144,6 @@ pub fn init() void {
 }
 
 pub fn deinit() void {
-	lighting.deinit();
 	pipeline.deinit();
 	transparentPipeline.deinit();
 	occlusionTestPipeline.deinit();
@@ -195,7 +194,7 @@ fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec
 	c.glUniform1f(locations.zNear, renderer.zNear);
 	c.glUniform1f(locations.zFar, renderer.zFar);
 
-	c.glUniform3i(locations.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+	c.glUniform3i(locations.playerPositionInteger, @floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 	c.glUniform3f(locations.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 }
 
@@ -247,7 +246,7 @@ fn drawChunksOfLod(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec3f, pla
 	c.glUniform1ui(commandUniforms.commandIndexStart, allocation.start);
 	c.glUniform1ui(commandUniforms.size, @intCast(chunkIDs.len));
 	c.glUniform1i(commandUniforms.isTransparent, @intFromBool(transparent));
-	c.glUniform3i(commandUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+	c.glUniform3i(commandUniforms.playerPositionInteger, @floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 	if (!transparent) {
 		c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 0);
 		c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
@@ -264,7 +263,7 @@ fn drawChunksOfLod(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec3f, pla
 
 	// Occlusion tests:
 	occlusionTestPipeline.bind(null);
-	c.glUniform3i(occlusionTestUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+	c.glUniform3i(occlusionTestUniforms.playerPositionInteger, @floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 	c.glUniform3f(occlusionTestUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 	c.glUniformMatrix4fv(occlusionTestUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 	c.glUniformMatrix4fv(occlusionTestUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
@@ -477,9 +476,9 @@ const SortingData = struct { // MARK: SortingData
 		const quadIndex = self.face.blockAndQuad.quadIndex;
 		const normalVector: Vec3f = quadIndex.quadInfo().normal;
 		self.shouldBeCulled = vec.dot(normalVector, @floatFromInt(Vec3i{dx, dy, dz})) > 0; // TODO: Adjust for arbitrary voxel models.
-		const fullDx = dx - @as(i32, @intFromFloat(normalVector[0])); // TODO: This calculation should only be done for border faces.
-		const fullDy = dy - @as(i32, @intFromFloat(normalVector[1]));
-		const fullDz = dz - @as(i32, @intFromFloat(normalVector[2]));
+		const fullDx = dx - @as(i32, @trunc(normalVector[0])); // TODO: This calculation should only be done for border faces.
+		const fullDy = dy - @as(i32, @trunc(normalVector[1]));
+		const fullDz = dz - @as(i32, @trunc(normalVector[2]));
 		self.distance = @abs(fullDx) + @abs(fullDy) + @abs(fullDz);
 	}
 };
@@ -1400,7 +1399,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	};
 
 	pub fn finishData(self: *ChunkMesh) void {
-		main.utils.assertLocked(&self.mutex);
+		self.mutex.assertLocked();
 
 		var lightList = main.List(u32).init(main.stackAllocator);
 		defer lightList.deinit();
@@ -1469,7 +1468,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	fn updateTransparencyDataAfterMeshUpload(self: *ChunkMesh) void {
-		main.utils.assertLocked(&self.meshUploadMutex);
+		self.meshUploadMutex.assertLocked();
 		var len: usize = 0;
 		const coreList = self.transparentMesh.completeList.getRange(.core);
 		len += coreList.len;
@@ -1512,7 +1511,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}/@as(Vec3d, @splat(@as(f64, @floatFromInt(self.pos.voxelSize))));
 		relativePos = @min(relativePos, @as(Vec3d, @splat(0)));
 		relativePos = @max(relativePos, @as(Vec3d, @splat(-32)));
-		const updatePos: Vec3i = @intFromFloat(relativePos);
+		const updatePos: Vec3i = @trunc(relativePos);
 		if (@reduce(.Or, updatePos != self.lastTransparentUpdatePos)) {
 			self.lastTransparentUpdatePos = updatePos;
 			needsUpdate = true;

@@ -44,7 +44,7 @@ pub fn globalInit() void {
 	textureEmptyPressed = Texture.initFromFile("assets/cubyz/ui/box_pressed.png");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	textureCheckedNormal.deinit();
 	textureCheckedHovered.deinit();
 	textureCheckedPressed.deinit();

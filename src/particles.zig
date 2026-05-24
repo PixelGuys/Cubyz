@@ -6,11 +6,9 @@ const chunk_meshing = @import("renderer/chunk_meshing.zig");
 const graphics = @import("graphics.zig");
 const SSBO = graphics.SSBO;
 const TextureArray = graphics.TextureArray;
-const Shader = graphics.Shader;
 const Image = graphics.Image;
-const c = graphics.c;
 const game = @import("game.zig");
-const ZonElement = @import("zon.zig").ZonElement;
+const ZonElement = main.ZonElement;
 const random = @import("random.zig");
 const RandomRange = random.RandomRange;
 const vec = @import("vec.zig");
@@ -21,6 +19,8 @@ const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const Vec3i = vec.Vec3i;
 const Vec2f = vec.Vec2f;
+
+const c = @import("c");
 
 pub const ParticleManager = struct {
 	var particleTypesSSBO: SSBO = undefined;
@@ -127,7 +127,7 @@ pub const ParticleManager = struct {
 		const worldAssetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/particles/textures/{s}{s}", .{assetsFolder, mod, id, suffix}) catch unreachable;
 		defer main.stackAllocator.free(worldAssetsPath);
 
-		return graphics.Image.readFromFile(main.worldArena, worldAssetsPath) catch graphics.Image.readFromFile(main.worldArena, gameAssetsPath) catch {
+		return graphics.Image.readFromFile(main.worldArena, worldAssetsPath, .{.orientation = .openGl}) catch graphics.Image.readFromFile(main.worldArena, gameAssetsPath, .{.orientation = .openGl}) catch {
 			if (status == .isMandatory) std.log.err("Particle texture not found in {s} and {s}.", .{worldAssetsPath, gameAssetsPath});
 			return default;
 		};
@@ -238,7 +238,7 @@ pub const ParticleSystem = struct {
 			rot += rotVel*deltaTime;
 
 			const airDensity: f32 = physics.airDensity;
-			const frictionCoefficient = physics.baseGravity/physics.airTerminalVelocity*particleLocal.dragCoefficient;
+			const frictionCoefficient = physics.baseGravity/physics.playerAirTerminalVelocity*particleLocal.dragCoefficient;
 			particleLocal.velAndRotationVel[3] = 0;
 			const effectiveGravity: f32 = @floatCast(physics.baseGravity*(particleLocal.density - airDensity)/particleLocal.density);
 			particleLocal.velAndRotationVel[2] -= effectiveGravity*deltaTime;
@@ -284,7 +284,7 @@ pub const ParticleSystem = struct {
 			particleLocal.velAndRotationVel[3] = rotVel;
 
 			const positionf64 = @as(Vec3d, @floatCast(pos)) + playerPos;
-			const intPos: vec.Vec3i = @intFromFloat(@floor(positionf64));
+			const intPos: vec.Vec3i = @floor(positionf64);
 			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
 			const compressedLight =
 				@as(u32, light[0] >> 3) << 25 |

@@ -8,6 +8,9 @@
 	.tags = .{
 		.cactus,
 	},
+
+	.music = "cubyz:totaldemented/hypoxia",
+
 	.minHeightLimit = 7,
 	.minHeight = 80,
 	.maxHeight = 256,
