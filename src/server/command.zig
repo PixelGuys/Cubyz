@@ -168,14 +168,6 @@ pub const Target = struct {
 	}
 };
 
-pub const String = struct {
-	string: []const u8,
-
-	pub fn parse(_: NeverFailingAllocator, _: []const u8, arg: []const u8, _: *ListUnmanaged(u8)) error{ParseError}!String {
-		return .{.string = arg};
-	}
-};
-
 pub const PlayerIndex = struct {
 	index: usize,
 

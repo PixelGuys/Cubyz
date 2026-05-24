@@ -8,7 +8,7 @@ pub const description = "Invite a player";
 pub const usage = "/invite <ip>";
 
 const Args = union(enum) {
-	@"/invite <ip>": struct { ip: command.String },
+	@"/invite <ip>": struct { ip: []const u8 },
 };
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/invite"});
@@ -22,7 +22,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	};
 
-	const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, result.@"/invite <ip>".ip.string) catch |err| {
+	const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, result.@"/invite <ip>".ip) catch |err| {
 		std.log.err("Error while trying to connect: {s}", .{@errorName(err)});
 		source.sendMessage("#ff0000Error while trying to connect: {s}", .{@errorName(err)});
 		return;
