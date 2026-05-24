@@ -183,7 +183,7 @@ pub const PlayerIndex = struct {
 	}
 };
 
-pub const Biome = struct {
+pub const BiomeId = struct {
 	biome: *const main.server.terrain.biomes.Biome,
 
 	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, args: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!@This() {

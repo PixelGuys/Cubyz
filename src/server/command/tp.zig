@@ -12,7 +12,7 @@ pub const usage =
 ;
 
 const Args = union(enum) {
-	@"/tp <biome>": struct { biome: command.Biome },
+	@"/tp <biome>": struct { biome: command.BiomeId },
 	@"/tp <x> <y> <z>": struct {
 		x: command.Coordinate,
 		y: command.Coordinate,
