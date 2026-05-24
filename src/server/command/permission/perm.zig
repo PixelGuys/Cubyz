@@ -74,7 +74,7 @@ const Path = struct {
 
 	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!Path {
 		if (arg[0] != '/') {
-			errorMessage.print(allocator, "Permission path got for <{s}> doens't begin with a \"/\", got: {s}", .{name, arg});
+			errorMessage.print(allocator, "Permission path for <{s}> doesn't begin with a \"/\", got: {s}", .{name, arg});
 			return error.ParseError;
 		}
 		return .{.path = arg};
