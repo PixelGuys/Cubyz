@@ -10,6 +10,7 @@ pub const description = "Shows info about all the commands.";
 pub const usage = "/help\n/help <command>";
 
 const Args = union(enum) {
+	@"/help <bobik>": struct { bobik: enum { Bobik, bobik } },
 	@"/help <command>": struct { command: Cmd },
 	@"/help": struct {},
 };
@@ -41,10 +42,6 @@ pub fn execute(args: []const u8, source: *User) void {
 			msg.appendSlice("\nUse /help <command> for usage of a specific command.\n");
 		},
 		.@"/help <command>" => |params| {
-			if (params.command == .bobik) {
-				source.sendMessage("#ffff00Even Bobik can't help you anymore", .{});
-				return;
-			}
 			const cmd = params.command.cmd;
 			msg.append('/');
 			msg.appendSlice(cmd.name);
@@ -54,19 +51,18 @@ pub fn execute(args: []const u8, source: *User) void {
 			msg.appendSlice(cmd.usage);
 			msg.append('\n');
 		},
+		.@"/help <bobik>" => {
+			msg.appendSlice("Even Bobik can't help you anymore ");
+		},
 	}
 	if (msg.items[msg.items.len - 1] == '\n') _ = msg.pop();
 	source.sendMessage("{s}", .{msg.items});
 }
 
-const Cmd = union(enum) {
+const Cmd = struct {
 	cmd: command.Command,
-	bobik: void,
 
 	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorList: *ListUnmanaged(u8)) error{ParseError}!Cmd {
-		if (std.mem.eql(u8, arg, "Bobik")) {
-			return .bobik;
-		}
 		return .{
 			.cmd = command.commands.get(arg) orelse {
 				errorList.print(allocator, "Unrecognized command name for <{s}>, got {s}", .{name, arg});
