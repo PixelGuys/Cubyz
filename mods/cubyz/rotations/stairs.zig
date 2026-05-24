@@ -127,7 +127,7 @@ fn mergeFaces(faceVisible: [2][2]bool, mem: []GreedyFaceInfo) []GreedyFaceInfo {
 pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 	if (modelIndex) |idx| return idx;
 	for (0..256) |i| {
-		var quads = main.List(main.models.QuadInfo).init(main.stackAllocator);
+		var quads = main.ListManaged(main.models.QuadInfo).init(main.stackAllocator);
 		defer quads.deinit();
 		for (Neighbor.iterable) |neighbor| {
 			const xComponent = @abs(neighbor.textureX());

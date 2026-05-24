@@ -603,13 +603,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		if (worldData.get(u32, "version", 0) == 4) { // TODO: #2458
 			std.log.info("Migrating old world with world version 4 to version 5", .{});
 			// Player file names are now numerical instead of based on the name.
-			var fileNames: main.List([]const u8) = .init(arena);
+			var fileNames: main.ListUnmanaged([]const u8) = .{};
 			var playerDir = try dir.openIterableDir("players");
 			defer playerDir.close();
 			var iterator = playerDir.iterate();
 			while (try iterator.next(main.io)) |file| {
 				if (file.kind == .file and std.mem.endsWith(u8, file.name, ".zon")) {
-					fileNames.append(arena.dupe(u8, file.name));
+					fileNames.append(arena, arena.dupe(u8, file.name));
 				}
 			}
 
@@ -783,8 +783,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			};
 		}
 		// Find all the stored chunks:
-		var chunkPositions = main.List(ChunkPosition).init(main.stackAllocator);
-		defer chunkPositions.deinit();
+		var chunkPositions: main.ListUnmanaged(ChunkPosition) = .{};
+		defer chunkPositions.deinit(main.stackAllocator);
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks/1", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(path);
 		blk: {
@@ -810,7 +810,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 						if (entryZ.kind != .file) continue;
 						const nameZ = entryZ.name[0 .. std.mem.indexOfScalar(u8, entryZ.name, '.') orelse entryZ.name.len];
 						const wz = std.fmt.parseInt(i32, nameZ, 0) catch continue;
-						chunkPositions.append(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1});
+						chunkPositions.append(main.stackAllocator, .{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1});
 					}
 				}
 			}

@@ -535,7 +535,7 @@ pub fn clientMain() void { // MARK: clientMain()
 				gui.openWindow("authentication/login");
 				break :blk;
 			}
-			var failureText: List(u8) = .init(stackAllocator);
+			var failureText: ListManaged(u8) = .init(stackAllocator);
 			defer failureText.deinit();
 			const accountCode = settings.storedAccount.decryptFromPassword(undefined, &failureText) catch |err| {
 				std.log.err("Got error while loading Account Code: {s}", .{@errorName(err)});

@@ -285,7 +285,7 @@ pub const Blueprint = struct {
 
 		std.log.info("Blueprint block palette:", .{});
 
-		var idAndDataList: main.List(u8) = .init(main.stackAllocator);
+		var idAndDataList: main.ListManaged(u8) = .init(main.stackAllocator);
 		defer idAndDataList.deinit();
 
 		for (0..blockPalette.len) |index| {

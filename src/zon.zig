@@ -3,7 +3,7 @@ const builtin = @import("builtin");
 
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const List = main.List;
+const ListManaged = main.ListManaged;
 
 pub const ZonElement = union(enum) { // MARK: Zon
 	int: i128,
@@ -12,7 +12,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 	stringOwned: []const u8,
 	bool: bool,
 	null: void,
-	array: *List(ZonElement),
+	array: *ListManaged(ZonElement),
 	object: *std.StringHashMap(ZonElement),
 
 	pub fn initObject(allocator: NeverFailingAllocator) ZonElement {
@@ -22,7 +22,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 	}
 
 	pub fn initArray(allocator: NeverFailingAllocator) ZonElement {
-		const list = allocator.create(List(ZonElement));
+		const list = allocator.create(ListManaged(ZonElement));
 		list.* = .init(allocator);
 		return .{.array = list};
 	}
@@ -337,7 +337,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		return self.* == .null;
 	}
 
-	fn escape(list: *List(u8), string: []const u8) void {
+	fn escape(list: *ListManaged(u8), string: []const u8) void {
 		for (string) |char| {
 			switch (char) {
 				'\\' => list.appendSlice("\\\\"),
@@ -348,7 +348,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 			}
 		}
 	}
-	fn writeTabs(list: *List(u8), tabs: u32) void {
+	fn writeTabs(list: *ListManaged(u8), tabs: u32) void {
 		for (0..tabs) |_| {
 			list.append('\t');
 		}
@@ -361,7 +361,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		}
 		return true;
 	}
-	fn recurseToString(zon: ZonElement, list: *List(u8), tabs: u32, comptime visualCharacters: bool) void {
+	fn recurseToString(zon: ZonElement, list: *ListManaged(u8), tabs: u32, comptime visualCharacters: bool) void {
 		switch (zon) {
 			.int => |value| {
 				list.print("{d}", .{value});
@@ -442,14 +442,14 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		}
 	}
 	pub fn toString(zon: ZonElement, allocator: NeverFailingAllocator) []const u8 {
-		var string = List(u8).init(allocator);
+		var string: ListManaged(u8) = .init(allocator);
 		recurseToString(zon, &string, 0, true);
 		return string.toOwnedSlice();
 	}
 
 	/// Ignores all the visual characters(spaces, tabs and newlines) and allows adding a custom prefix(which is for example required by networking).
 	pub fn toStringEfficient(zon: ZonElement, allocator: NeverFailingAllocator, prefix: []const u8) []const u8 {
-		var string = List(u8).init(allocator);
+		var string: ListManaged(u8) = .init(allocator);
 		string.appendSlice(prefix);
 		recurseToString(zon, &string, 0, false);
 		return string.toOwnedSlice();
@@ -576,7 +576,7 @@ const Parser = struct { // MARK: Parser
 	}
 
 	fn parseString(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) []const u8 {
-		var builder = List(u8).init(allocator);
+		var builder: ListManaged(u8) = .init(allocator);
 		while (index.* < chars.len) : (index.* += 1) {
 			if (chars[index.*] == '\"') {
 				index.* += 1;
@@ -607,7 +607,7 @@ const Parser = struct { // MARK: Parser
 	}
 
 	fn parseIdentifierOrStringOrEnumLiteral(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) []const u8 {
-		var builder = List(u8).init(allocator);
+		var builder: ListManaged(u8) = .init(allocator);
 		if (index.* == chars.len) return &.{};
 		if (chars[index.*] == '@') {
 			index.* += 1;
@@ -627,7 +627,7 @@ const Parser = struct { // MARK: Parser
 	}
 
 	fn parseArray(allocator: NeverFailingAllocator, filePath: ?[]const u8, chars: []const u8, index: *u32) ZonElement {
-		const list = allocator.create(List(ZonElement));
+		const list = allocator.create(ListManaged(ZonElement));
 		list.* = .init(allocator);
 		while (index.* < chars.len) {
 			skipWhitespaceAndComments(chars, index);
