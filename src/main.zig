@@ -44,7 +44,8 @@ pub const Window = @import("graphics/Window.zig");
 
 pub const heap = @import("utils/heap.zig");
 
-pub const List = utils.list.List;
+pub const List = ListManaged;
+pub const ListManaged = utils.list.ListManaged;
 pub const ListUnmanaged = utils.list.ListUnmanaged;
 pub const MultiArray = utils.list.MultiArray;
 
