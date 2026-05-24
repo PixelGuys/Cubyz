@@ -80,20 +80,22 @@ const SelectionCapabilities = union(enum) {
 		pub fn allowsSelectionByItem(self: @This(), block: Block, item: Item) bool {
 			if (@as(BackingType, @bitCast(self)) == 0) return false;
 
-			return switch (item) {
-				.baseItem => |baseItem| {
-					if (std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) return true;
-					if (block.hasTag(.fluid) and baseItem.hasTag(.fluidPlaceable)) return true;
-					if (baseItem.block()) |blockType| {
-						if (blockType == block.typ) return true;
-					}
-					return false;
-				},
+			if (self.toolEffective) {
+				if (item == .proceduralItem) {
+					return item.proceduralItem.isEffectiveOn(block);
+				}
+			}
 
-				.proceduralItem => |proceduralItem| self.toolEffective and proceduralItem.isEffectiveOn(block),
+			if (item == .baseItem) {
+				const baseItem = item.baseItem;
+				if (std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) return true;
+				if (block.hasTag(.fluid) and baseItem.hasTag(.fluidPlaceable)) return true;
+				if (baseItem.block()) |blockType| {
+					if (blockType == block.typ) return true;
+				}
+			}
 
-				else => false,
-			};
+			return false;
 		}
 	},
 
