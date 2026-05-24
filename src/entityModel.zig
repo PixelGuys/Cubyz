@@ -30,7 +30,7 @@ pub const EntityModel = struct {
 	nodeReverse: std.StringHashMap(u16) = undefined,
 	nodes: NodeList = undefined,
 	nodeCount: u8,
-
+///ssstest
 	vao: ?graphics.VertexArray = null,
 	indexCount: c_int,
 	defaultTexture: ?main.graphics.Texture,
