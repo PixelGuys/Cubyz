@@ -495,7 +495,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 				defer c.glViewport(oldViewport[0], oldViewport[1], oldViewport[2], oldViewport[3]);
 
 				var finalFrameBuffer: graphics.FrameBuffer = undefined;
-				finalFrameBuffer.init(false, c.GL_NEAREST, c.GL_REPEAT);
+				finalFrameBuffer.init(true, false, c.GL_NEAREST, c.GL_REPEAT);
 				finalFrameBuffer.updateSize(textureWidth, textureHeight, c.GL_RGBA8);
 				finalFrameBuffer.bind();
 				finalFrameBuffer.clear(.{0, 0, 0, 0});

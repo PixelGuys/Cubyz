@@ -14,6 +14,8 @@ const GuiComponent = gui.GuiComponent;
 
 pub const Samples = enum(u8) {
 	screenbuffer_clear,
+	depth_framebuffer_clear,
+	depth_framebuffer_chunk_rendering,
 	clear,
 	skybox,
 	animation,
@@ -33,6 +35,8 @@ pub const Samples = enum(u8) {
 
 const names = [_][]const u8{
 	"Screenbuffer clear",
+	"Depth Framebuffer clear",
+	"Depth Framebuffer Chunk Rendering",
 	"Clear",
 	"Skybox",
 	"Pre-processing Block Animations",

@@ -4,11 +4,12 @@ layout(location = 0) in vec3 mvVertexPos;
 layout(location = 1) in vec3 direction;
 layout(location = 2) in vec3 light;
 layout(location = 3) in vec2 uv;
-layout(location = 4) flat in vec3 normal;
-layout(location = 5) flat in int textureIndex;
-layout(location = 6) flat in int isBackFace;
-layout(location = 7) flat in float distanceForLodCheck;
-layout(location = 8) flat in int opaqueInLod;
+layout(location = 4) in vec4 mvVertexLightSpacePos;
+layout(location = 5) flat in vec3 normal;
+layout(location = 6) flat in int textureIndex;
+layout(location = 7) flat in int isBackFace;
+layout(location = 8) flat in float distanceForLodCheck;
+layout(location = 9) flat in int opaqueInLod;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -17,10 +18,13 @@ layout(binding = 1) uniform sampler2DArray emissionSampler;
 layout(binding = 2) uniform sampler2DArray reflectivityAndAbsorptionSampler;
 layout(binding = 4) uniform samplerCube reflectionMap;
 layout(binding = 5) uniform sampler2D ditherTexture;
+layout(binding = 6) uniform sampler2D shadowMap;
 
 layout(location = 5) uniform float reflectionMapSize;
 layout(location = 6) uniform float contrast;
 layout(location = 7) uniform float lodDistance;
+layout(location = 8) uniform mat4 lightProjectionMatrix;
+layout(location = 9) uniform mat4 lightViewMatrix;
 
 layout(std430, binding = 1) buffer _animatedTexture
 {
@@ -51,6 +55,15 @@ vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012
 	return texture(reflectionMap, v);
 }
 
+float shadowCalculation(vec4 fragPosLightSpace) {
+	vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+	projCoords = projCoords * 0.5 + 0.5;
+	float closestDepth = texture(shadowMap, projCoords.xy).r;
+	float currentDepth = projCoords.z;
+	float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
+	return shadow;
+}
+
 void main() {
 	float animatedTextureIndex = animatedTexture[textureIndex];
 	float normalVariation = lightVariation(normal);
@@ -63,7 +76,8 @@ void main() {
 	reflectivity = reflectivity*fixedCubeMapLookup(reflect(direction, normal)).x;
 	reflectivity = reflectivity*(1 - fresnelReflection) + fresnelReflection;
 
-	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
+	float shadow = shadowCalculation(mvVertexLightSpacePos);
+	vec3 pixelLight = max((1.0 - shadow*0.5)*light*normalVariation, texture(emissionSampler, textureCoords).r*4);
 	fragColor = texture(textureSampler, textureCoords)*vec4(pixelLight, 1);
 	fragColor.rgb += reflectivity*pixelLight;
 

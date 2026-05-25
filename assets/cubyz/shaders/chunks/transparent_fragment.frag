@@ -4,11 +4,12 @@ layout(location = 0) in vec3 mvVertexPos;
 layout(location = 1) in vec3 direction;
 layout(location = 2) in vec3 light;
 layout(location = 3) in vec2 uv;
-layout(location = 4) flat in vec3 normal;
-layout(location = 5) flat in int textureIndex;
-layout(location = 6) flat in int isBackFace;
-layout(location = 7) flat in float distanceForLodCheck;
-layout(location = 8) flat in int opaqueInLod;
+layout(location = 4) in vec4 mvVertexLightSpacePos;
+layout(location = 5) flat in vec3 normal;
+layout(location = 6) flat in int textureIndex;
+layout(location = 7) flat in int isBackFace;
+layout(location = 8) flat in float distanceForLodCheck;
+layout(location = 9) flat in int opaqueInLod;
 
 layout(location = 0, index = 0) out vec4 fragColor;
 layout(location = 0, index = 1) out vec4 blendColor;
@@ -25,8 +26,8 @@ layout(location = 4) uniform vec3 playerPositionFraction;
 layout(location = 5) uniform float reflectionMapSize;
 layout(location = 6) uniform float contrast;
 
-layout(location = 8) uniform float zNear;
-layout(location = 9) uniform float zFar;
+layout(location = 10) uniform float zNear;
+layout(location = 11) uniform float zFar;
 
 struct Fog {
 	vec3 color;
@@ -35,7 +36,7 @@ struct Fog {
 	float fogHigher;
 };
 
-layout(location = 10) uniform Fog fog;
+layout(location = 12) uniform Fog fog;
 
 layout(std430, binding = 1) buffer _animatedTexture
 {
