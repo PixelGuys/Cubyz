@@ -97,17 +97,13 @@ const SelectionCapabilities = union(enum) {
 		}
 	},
 
-	const Capability = enum {
-		toolEffective,
-	};
-
 	pub fn loadFromZon(zon: main.ZonElement) SelectionCapabilities {
 		var result: SelectionCapabilities = .{.custom = .{}};
+
+		const Capability = std.meta.FieldEnum(@TypeOf(result.custom));
 		for (zon.toSlice()) |capabilityZon| {
 			if (capabilityZon.as(?Capability, null)) |capability| {
-				switch (capability) {
-					.toolEffective => result.custom.toolEffective = true,
-				}
+				@field(result.custom, @tagName(capability)) = true;
 			} else std.log.err("SelectionCapability is invalid. Ignoring", .{});
 		}
 		return result;
