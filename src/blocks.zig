@@ -81,8 +81,8 @@ const SelectionCapabilities = union(enum) {
 			if (@as(BackingType, @bitCast(self)) == 0) return false;
 
 			if (self.toolEffective) {
-				if (item == .proceduralItem) {
-					return item.proceduralItem.isEffectiveOn(block);
+				if (item == .proceduralItem and item.proceduralItem.isEffectiveOn(block)) {
+					return true;
 				}
 			}
 
