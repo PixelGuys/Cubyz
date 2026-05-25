@@ -23,6 +23,9 @@ const Vec3f = vec.Vec3f;
 const modifierList = @import("proceduralItem/modifiers/_list.zig");
 const modifierRestrictionList = @import("proceduralItem/modifiers/restrictions/_list.zig");
 
+const ItemUsedCallback = main.callbacks.ItemUsedCallback;
+const ItemCanSelectCallback = main.callbacks.ItemCanSelectCallback;
+
 pub const recipes = @import("items/recipes.zig");
 
 pub const Inventory = @import("Inventory.zig");
@@ -260,6 +263,12 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	pub fn getTooltip(self: BaseItemIndex) []const u8 {
 		return itemList[@intFromEnum(self)].getTooltip();
 	}
+	pub fn onLeftClick(self: BaseItemIndex) ItemUsedCallback {
+		return itemList[@intFromEnum(self)].callbacks.onLeftClick;
+	}
+	pub fn canSelect(self: BaseItemIndex) ItemCanSelectCallback {
+		return itemList[@intFromEnum(self)].callbacks.canSelect;
+	}
 };
 
 pub const BaseItem = struct { // MARK: BaseItem
@@ -269,6 +278,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	name: []const u8,
 	tags: []const Tag,
 	tooltip: []const u8,
+	callbacks: ItemCallbacks,
 
 	stackSize: u16,
 	material: ?Material,
@@ -319,6 +329,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 			_ = tooltip.swapRemove(tooltip.items.len - 1);
 		}
 		self.tooltip = tooltip.toOwnedSlice();
+		self.callbacks = .registerCallbacks(zon);
 	}
 
 	fn hashCode(self: BaseItem) u32 {
@@ -617,6 +628,9 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 	pub fn pixelSourcesOverlay(self: ProceduralItemTypeIndex) *const [16][16]u8 {
 		return &proceduralItemTypeList.items[@intFromEnum(self)].pixelSourcesOverlay;
 	}
+	pub fn callbacks(self: ProceduralItemTypeIndex) ItemCallbacks {
+		return proceduralItemTypeList.items[@intFromEnum(self)].callbacks;
+	}
 };
 
 pub const ProceduralItemType = struct { // MARK: ProceduralItemType
@@ -626,6 +640,7 @@ pub const ProceduralItemType = struct { // MARK: ProceduralItemType
 	slotInfos: [25]SlotInfo,
 	pixelSources: [16][16]u8,
 	pixelSourcesOverlay: [16][16]u8,
+	callbacks: ItemCallbacks,
 };
 
 const ProceduralItemProperty = enum {
@@ -910,6 +925,46 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		self.durability -|= 1;
 		return self.durability == 0;
 	}
+
+	pub fn onLeftClick(self: *ProceduralItem) ItemUsedCallback {
+		return self.type.callbacks().onLeftClick;
+	}
+	pub fn canSelect(self: *ProceduralItem) ItemCanSelectCallback {
+		return self.type.callbacks().canSelect;
+	}
+};
+
+pub const ItemCallbacks = struct {
+	onLeftClick: ItemUsedCallback,
+	canSelect: ItemCanSelectCallback,
+
+	pub inline fn getDefaultItemCallbacks() ItemCallbacks {
+		return .{
+			.onLeftClick = .noop,
+			.canSelect = ItemCanSelectCallback.manualInit("through_capabilities") orelse .noop, //TODO - better error handling, like an unreachable maybe?
+		};
+	}
+
+	fn registerCallbacks(zon: ZonElement) ItemCallbacks {
+		return .{
+			.onLeftClick = blk: {
+				break :blk ItemUsedCallback.init(zon.getChildOrNull("onLeftClick") orelse {
+					break :blk getDefaultItemCallbacks().onLeftClick;
+				}) orelse {
+					std.log.err("Failed to load onLeftClick event for item", .{});
+					break :blk .noop;
+				};
+			},
+			.canSelect = blk: {
+				break :blk ItemCanSelectCallback.init(zon.getChildOrNull("canSelect") orelse {
+					break :blk getDefaultItemCallbacks().canSelect;
+				}) orelse {
+					std.log.err("Failed to load canSelect event for item", .{});
+					break :blk .noop;
+				};
+			},
+		};
+	}
 };
 
 const ItemType = enum(u7) {
@@ -1047,6 +1102,20 @@ pub const Item = union(ItemType) { // MARK: Item
 		return switch (self) {
 			.null => unreachable,
 			inline else => |item| item.hashCode(),
+		};
+	}
+
+	pub fn onLeftClick(self: Item) ItemUsedCallback {
+		return switch (self) {
+			.null => ItemCallbacks.getDefaultItemCallbacks().onLeftClick,
+			inline else => |item| item.onLeftClick(),
+		};
+	}
+
+	pub fn canSelect(self: Item) ItemCanSelectCallback {
+		return switch (self) {
+			.null => ItemCallbacks.getDefaultItemCallbacks().canSelect,
+			inline else => |item| item.canSelect(),
 		};
 	}
 
@@ -1333,6 +1402,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 		.properties = parameterMatrices.toOwnedSlice(),
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
+		.callbacks = .registerCallbacks(zon),
 	});
 	proceduralItemTypeIdToIndex.put(main.worldArena.allocator, idDupe, @enumFromInt(proceduralItemTypeList.items.len - 1)) catch unreachable;
 

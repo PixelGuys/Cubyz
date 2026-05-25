@@ -4,11 +4,22 @@ const main = @import("main");
 const Block = main.blocks.Block;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
+const Vec3f = vec.Vec3f;
 
 pub const ClientBlockCallback = Callback(struct { block: Block, chunk: *main.chunk.Chunk, blockPos: Vec3i }, @import("block/client/_list.zig"));
 pub const ServerBlockCallback = Callback(struct { block: Block, chunk: *main.chunk.ServerChunk, blockPos: main.chunk.BlockPos }, @import("block/server/_list.zig"));
 
 pub const BlockTouchCallback = Callback(struct { entity: *main.server.Entity, source: Block, blockPos: Vec3i, deltaTime: f64 }, @import("block/touch/_list.zig"));
+
+pub const ItemUsedCallback = Callback(struct {
+	ctx: main.sync.Command.Context,
+	slot: main.items.Inventory.InventoryAndSlot,
+	selectedBlockPos: ?Vec3i = null,
+	lastDir: Vec3f,
+	mod: main.Window.Key.Modifiers,
+}, @import("item/used/_list.zig"));
+
+pub const ItemCanSelectCallback = Callback(struct { item: main.items.Item, block: Block }, @import("item/canSelect/_list.zig"));
 
 pub const Result = enum { handled, ignored };
 
@@ -16,6 +27,8 @@ pub fn init() void {
 	ClientBlockCallback.globalInit();
 	ServerBlockCallback.globalInit();
 	BlockTouchCallback.globalInit();
+	ItemUsedCallback.globalInit();
+	ItemCanSelectCallback.globalInit();
 }
 
 fn Callback(_Params: type, list: type) type {
@@ -40,6 +53,14 @@ fn Callback(_Params: type, list: type) type {
 					.run = main.meta.castFunctionSelfToAnyopaque(CallbackStruct.run),
 				}) catch unreachable;
 			}
+		}
+
+		pub fn manualInit(typ: []const u8) ?@This() {
+			const vtable = eventCreationMap.get(typ) orelse return null; //TODO - error logging
+			return .{
+				.data = undefined,
+				.inner = vtable.run,
+			};
 		}
 
 		pub fn init(zon: main.ZonElement) ?@This() {

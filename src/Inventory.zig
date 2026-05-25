@@ -533,14 +533,9 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		main.sync.client.executeCommand(.{.craftProceduralItem = .init(destinations, workbenchInv)});
 	}
 
-	pub fn placeBlock(self: ClientInventory, slot: u32) void {
+	pub fn keyPress(self: ClientInventory, key: main.game.GameKeys, slot: u32, deltaTime: f64, mods: main.Window.Key.Modifiers) void {
 		std.debug.assert(self.type == .serverShared);
-		main.renderer.MeshSelection.placeBlock(self, slot);
-	}
-
-	pub fn breakBlock(self: ClientInventory, slot: u32, deltaTime: f64) void {
-		std.debug.assert(self.type == .serverShared);
-		main.renderer.MeshSelection.breakBlock(self, slot, deltaTime);
+		main.renderer.MeshSelection.keyPress(key, self, slot, deltaTime, mods);
 	}
 
 	pub fn size(self: ClientInventory) usize {
