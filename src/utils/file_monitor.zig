@@ -208,8 +208,8 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 const WindowsImpl = struct { // MARK: WindowsImpl
 	const HANDLE = std.os.windows.HANDLE;
 	var notificationHandlers: std.StringHashMap(*DirectoryInfo) = undefined;
-	var callbacks: main.List(*DirectoryInfo) = undefined;
-	var justTheHandles: main.List(HANDLE) = undefined;
+	var callbacks: main.ListManaged(*DirectoryInfo) = undefined;
+	var justTheHandles: main.ListManaged(HANDLE) = undefined;
 	var mutex: main.utils.Mutex = .{};
 
 	const DirectoryInfo = struct {

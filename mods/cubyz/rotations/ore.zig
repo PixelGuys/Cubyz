@@ -31,7 +31,7 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 	if (modelCache) |modelIndex| return modelIndex;
 
 	const baseModel = main.models.getModelIndex("cubyz:cube").model();
-	var quadList = main.List(main.models.QuadInfo).init(main.stackAllocator);
+	var quadList = main.ListManaged(main.models.QuadInfo).init(main.stackAllocator);
 	defer quadList.deinit();
 	baseModel.getRawFaces(&quadList);
 	const len = quadList.items.len;
@@ -73,6 +73,6 @@ pub fn onBlockBreaking(_: main.items.Item, _: Vec3f, _: Vec3f, currentData: *Blo
 	currentData.data = 0;
 }
 
-pub fn formatBlockData(block: Block, _list: *main.List(u8)) void {
+pub fn formatBlockData(block: Block, _list: *main.ListManaged(u8)) void {
 	_list.appendSlice((Block{.typ = block.data, .data = 0}).id());
 }

@@ -154,10 +154,10 @@ pub const EntityModel = struct {
 			return getGltfError(result);
 		}
 
-		var vertices = main.List(Vertex).init(main.stackAllocator);
-		defer vertices.deinit();
-		var indices = main.List(u32).init(main.stackAllocator);
-		defer indices.deinit();
+		var vertices: main.ListUnmanaged(Vertex) = .{};
+		defer vertices.deinit(main.stackAllocator);
+		var indices: main.ListUnmanaged(u32) = .{};
+		defer indices.deinit(main.stackAllocator);
 		var baseVertex: u32 = 0;
 
 		for (data.nodes[0..data.nodes_count]) |node| {
@@ -173,9 +173,9 @@ pub const EntityModel = struct {
 
 					const indicesAccessor = primitive.indices.*;
 					const vertCount = primitive.attributes[0].data.*.count;
-					var indicesSlice = indices.addMany(indicesAccessor.count);
+					var indicesSlice = indices.addMany(main.stackAllocator, indicesAccessor.count);
 					baseVertex = @intCast(vertices.items.len);
-					const vertSlice: []Vertex = vertices.addMany(vertCount);
+					const vertSlice: []Vertex = vertices.addMany(main.stackAllocator, vertCount);
 
 					for (0..indicesAccessor.count) |i| {
 						const idx = indicesAccessor.read_index(i);

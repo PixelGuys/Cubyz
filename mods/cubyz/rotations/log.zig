@@ -159,7 +159,7 @@ pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 	if (modelIndex) |idx| return idx;
 
 	for (0..64) |i| {
-		var quads = main.List(main.models.QuadInfo).init(main.stackAllocator);
+		var quads = main.ListManaged(main.models.QuadInfo).init(main.stackAllocator);
 		defer quads.deinit();
 
 		const data = LogData.init(@intCast(i));

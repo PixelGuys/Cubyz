@@ -943,15 +943,15 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 
 			if (id == 0 and lastUpdate.durationTo(main.timestamp()).nanoseconds > refreshTime.nanoseconds) {
 				const start = main.timestamp();
-				var temporaryTaskList = main.List(Task).init(main.stackAllocator);
-				defer temporaryTaskList.deinit();
+				var temporaryTaskList: main.ListUnmanaged(Task) = .{};
+				defer temporaryTaskList.deinit(main.stackAllocator);
 				while (self.loadList.extractAny()) |task| {
 					self.semaphore.timedWait(.zero) catch {};
 					if (!task.vtable.isStillNeeded(task.self)) {
 						task.vtable.clean(task.self);
 						_ = self.trueQueueSize.fetchSub(1, .monotonic);
 					} else {
-						const taskPtr = temporaryTaskList.addOne();
+						const taskPtr = temporaryTaskList.addOne(main.stackAllocator);
 						taskPtr.* = task;
 						taskPtr.cachedPriority = task.vtable.getPriority(task.self);
 					}
@@ -1751,7 +1751,7 @@ pub const BinaryReader = struct { // MARK: BinaryReader
 };
 
 pub const BinaryWriter = struct { // MARK: BinaryWriter
-	data: main.List(u8),
+	data: main.ListManaged(u8),
 
 	pub fn init(allocator: NeverFailingAllocator) BinaryWriter {
 		return .{.data = .init(allocator)};

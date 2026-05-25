@@ -235,7 +235,7 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 
 	for (drops, 0..) |blockDrop, i| {
 		const itemZons = blockDrop.getChild("items").toSlice();
-		var resultItems = main.List(items.ItemStack).initCapacity(main.worldArena, itemZons.len);
+		var resultItems = main.ListUnmanaged(items.ItemStack).initCapacity(main.worldArena, itemZons.len);
 
 		for (itemZons) |itemZon| {
 			var string = itemZon.as([]const u8, "auto");
@@ -257,7 +257,7 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 			}
 
 			const item = items.BaseItemIndex.fromId(name) orelse continue;
-			resultItems.append(.{.item = .{.baseItem = item}, .amount = amount});
+			resultItems.appendAssumeCapacity(.{.item = .{.baseItem = item}, .amount = amount});
 		}
 
 		var allowedToolTags: ?[]Tag = null;
@@ -446,7 +446,7 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return _id[self.typ];
 	}
 
-	pub inline fn idAndData(self: Block, list: *main.List(u8)) void {
+	pub inline fn idAndData(self: Block, list: *main.ListManaged(u8)) void {
 		list.appendSlice(self.id());
 		if (self.data == 0) return;
 		list.append(':');
