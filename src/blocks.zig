@@ -70,49 +70,50 @@ pub const Ore = struct {
 	seed: u64,
 };
 
-const SelectionCapabilities = struct {
-	capabilities: ?[]const Capability,
+const SelectionCapabilities = union(enum) {
+	always: void,
+	custom: packed struct(u1) {
+		toolEffective: bool = false,
 
-	const Capability = enum(u8) {
-		toolEffective,
+		pub fn allowsSelectionByItem(self: @This(), block: Block, item: Item) bool {
+			if (self == @This(){}) return false;
 
-		pub fn allowsSelectionByItem(self: Capability, block: Block, item: Item) bool {
-			return switch (self) {
-				.toolEffective => item == .proceduralItem and item.proceduralItem.isEffectiveOn(block),
-			};
+			if (self.toolEffective) {
+				if (item == .proceduralItem and item.proceduralItem.isEffectiveOn(block)) {
+					return true;
+				}
+			}
+
+			if (item == .baseItem) {
+				const baseItem = item.baseItem;
+				if (std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) return true;
+				if (block.hasTag(.fluid) and baseItem.hasTag(.fluidPlaceable)) return true;
+				if (baseItem.block()) |blockType| {
+					if (blockType == block.typ) return true;
+				}
+			}
+
+			return false;
 		}
-	};
+	},
 
-	pub const alwaysSelectable: SelectionCapabilities = .{.capabilities = null};
+	pub fn loadFromZon(zon: main.ZonElement) SelectionCapabilities {
+		var result: SelectionCapabilities = .{.custom = .{}};
 
-	pub fn loadFromZon(arena: main.heap.NeverFailingAllocator, zon: main.ZonElement) SelectionCapabilities {
-		var list = main.ListUnmanaged(Capability).initCapacity(arena, zon.toSlice().len);
+		const Capability = std.meta.FieldEnum(@TypeOf(result.custom));
 		for (zon.toSlice()) |capabilityZon| {
 			if (capabilityZon.as(?Capability, null)) |capability| {
-				list.appendAssumeCapacity(capability);
+				@field(result.custom, @tagName(capability)) = true;
 			} else std.log.err("SelectionCapability is invalid. Ignoring", .{});
 		}
-		return .{.capabilities = list.items};
+		return result;
 	}
 
-	pub fn allowsSelectionByItem(self: SelectionCapabilities, block: Block, item: Item) bool {
-		if (item == .baseItem) {
-			const base = item.baseItem;
-			if (base.block() == block.typ or std.mem.eql(u8, base.id(), "cubyz:selection_wand")) {
-				return true;
-			}
-		}
-
-		if (block.hasTag(.fluid)) {
-			const fluidPlaceable = item == .baseItem and item.baseItem.hasTag(.fluidPlaceable);
-			return fluidPlaceable;
-		}
-
-		const capabilities = self.capabilities orelse return true;
-		for (capabilities) |capability| {
-			if (capability.allowsSelectionByItem(block, item)) return true;
-		}
-		return false;
+	pub inline fn allowsSelectionByItem(self: SelectionCapabilities, block: Block, item: Item) bool {
+		return switch (self) {
+			.always => true,
+			.custom => |custom| custom.allowsSelectionByItem(block, item),
+		};
 	}
 };
 
@@ -187,9 +188,9 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_degradable[size] = zon.get(bool, "degradable", false);
 
 	if (zon.getChildOrNull("selectionCapabilities")) |capabilitiesZon| {
-		_selectionCapabilities[size] = .loadFromZon(main.worldArena, capabilitiesZon);
+		_selectionCapabilities[size] = .loadFromZon(capabilitiesZon);
 	} else {
-		_selectionCapabilities[size] = .alwaysSelectable;
+		_selectionCapabilities[size] = .always;
 	}
 
 	_replaceable[size] = zon.get(bool, "replaceable", false);
