@@ -71,14 +71,12 @@ pub const Ore = struct {
 };
 
 const SelectionCapabilities = union(enum) {
-	const BackingType = u1;
-
 	always: void,
-	custom: packed struct(BackingType) {
+	custom: packed struct(u1) {
 		toolEffective: bool = false,
 
 		pub fn allowsSelectionByItem(self: @This(), block: Block, item: Item) bool {
-			if (@as(BackingType, @bitCast(self)) == 0) return false;
+			if (self == @This(){}) return false;
 
 			if (self.toolEffective) {
 				if (item == .proceduralItem and item.proceduralItem.isEffectiveOn(block)) {
