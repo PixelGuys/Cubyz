@@ -10,8 +10,8 @@ layout(location = 6) flat out int opaqueInLod;
 
 layout(location = 1) uniform mat4 projectionMatrix;
 layout(location = 2) uniform mat4 viewMatrix;
-layout(location = 3) uniform ivec3 lightPositionInteger;
-layout(location = 4) uniform vec3 lightPositionFraction;
+layout(location = 3) uniform ivec3 playerPositionInteger;
+layout(location = 4) uniform vec3 playerPositionFraction;
 
 struct FaceData {
 	int encodedPositionAndLightIndex;
@@ -84,8 +84,8 @@ void main() {
 
 	position += vec3(quads[quadIndex].corners[vertexID][0], quads[quadIndex].corners[vertexID][1], quads[quadIndex].corners[vertexID][2]);
 	position *= voxelSize;
-	position += vec3(chunks[chunkID].position.xyz - lightPositionInteger);
-	position -= lightPositionFraction;
+	position += vec3(chunks[chunkID].position.xyz - playerPositionInteger);
+	position -= playerPositionFraction;
 
 	direction = position;
 

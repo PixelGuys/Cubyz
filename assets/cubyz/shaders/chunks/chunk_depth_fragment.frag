@@ -16,5 +16,4 @@ layout(std430, binding = 1) buffer _animatedTexture
 };
 
 void main() {
-	gl_FragDepth = mvVertexPos.z;
 }

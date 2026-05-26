@@ -1658,6 +1658,9 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, textureWrap);
 			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, textureWrap);
 			c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_COLOR_ATTACHMENT0, c.GL_TEXTURE_2D, self.texture, 0);
+		} else {
+			c.glDrawBuffer(c.GL_NONE);
+			c.glReadBuffer(c.GL_NONE);
 		}
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 	}

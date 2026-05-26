@@ -53,8 +53,8 @@ pub var transparentUniforms: UniformStruct = undefined;
 const DepthUniformStruct = struct {
 	projectionMatrix: c_int,
 	viewMatrix: c_int,
-	lightPositionInteger: c_int,
-	lightPositionFraction: c_int,
+	playerPositionInteger: c_int,
+	playerPositionFraction: c_int,
 	lodDistance: c_int,
 	zNear: c_int,
 	zFar: c_int,
@@ -124,7 +124,7 @@ pub fn init() void {
 		&depthUniforms,
 		graphics.VertexArray.EmptyVertex,
 		&.{},
-		.{},
+		.{.cullMode = .none},
 		.{.depthTest = true, .depthWrite = true, .depthCompare = .lessOrEqual},
 		.{.attachments = &.{.noBlending}},
 	);
@@ -259,8 +259,8 @@ pub fn bindDepthShaderAndUniforms(projMatrix: Mat4f, viewMatrix: Mat4f, cameraPo
 	c.glUniform1f(depthUniforms.zNear, renderer.zNear);
 	c.glUniform1f(depthUniforms.zFar, renderer.zFar);
 
-	c.glUniform3i(depthUniforms.lightPositionInteger, @floor(cameraPos[0]), @floor(cameraPos[1]), @floor(cameraPos[2]));
-	c.glUniform3f(depthUniforms.lightPositionFraction, @floatCast(@mod(cameraPos[0], 1)), @floatCast(@mod(cameraPos[1], 1)), @floatCast(@mod(cameraPos[2], 1)));
+	c.glUniform3i(depthUniforms.playerPositionInteger, @floor(cameraPos[0]), @floor(cameraPos[1]), @floor(cameraPos[2]));
+	c.glUniform3f(depthUniforms.playerPositionFraction, @floatCast(@mod(cameraPos[0], 1)), @floatCast(@mod(cameraPos[1], 1)), @floatCast(@mod(cameraPos[2], 1)));
 
 	vao.bind();
 }
