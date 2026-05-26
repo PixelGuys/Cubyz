@@ -124,5 +124,5 @@ void main() {
 	uv = quads[quadIndex].cornerUV[vertexID]*voxelSize;
 	opaqueInLod = quads[quadIndex].opaqueInLod;
 
-	shadowPos = position - normal * 0.001;
+	shadowPos = position + normal * 0.05;
 }

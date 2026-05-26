@@ -87,7 +87,10 @@ float shadowCalculation() {
 	float closestDepth = texture(shadowMap, projCoords.xy).r;
 	float currentDepth = projCoords.z;
 	vec3 lightDir = -normalize(lightViewMatrix[2].xyz);
-	float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
+	float ndotl = max(dot(normal, lightDir), 0.0);
+
+    float bias = max(0.0002 * (1.0 - ndotl), 0.00002);
+	float shadow = currentDepth + 1.0/textureSize(shadowMap, 0).x > closestDepth ? 1.0 : 0.0;
 	if(projCoords.z > 1.0 || projCoords.z < 0.0)
         shadow = 0.0;
 	return shadow;
