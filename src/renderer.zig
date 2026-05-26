@@ -200,35 +200,36 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glClear(c.GL_DEPTH_BUFFER_BIT);
 	gpu_performance_measuring.stopQuery();
 
-	// Uses FrustumCulling on the chunks.
-	const frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
-	game.camera.updateViewMatrix();
-
-	chunk_meshing.quadsDrawn = 0;
-	chunk_meshing.transparentQuadsDrawn = 0;
-	const meshes = mesh_storage.updateAndGetRenderChunks(world.conn, &frustum, playerPos, settings.renderDistance);
-
-	gpu_performance_measuring.startQuery(.chunk_rendering_preparation);
-	const direction = crosshairDirection(game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
-	MeshSelection.select(playerPos, direction, game.Player.inventory.getItem(game.Player.selectedSlot));
-
-	chunk_meshing.beginRender();
-
-	
-
-	var chunkLists: [main.settings.highestSupportedLod + 1]main.List(u32) = @splat(main.List(u32).init(main.stackAllocator));
-	defer for (chunkLists) |list| list.deinit();
-	for (meshes) |mesh| {
-		mesh.prepareRendering(&chunkLists);
-	}
-	gpu_performance_measuring.stopQuery();
 
 	const lightOffset: Vec3f = Vec3f {@floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1))};
 
 	const lightProjection: Mat4f = .orthogonal(-shadowMapSize/2, shadowMapSize/2, -shadowMapSize/2, shadowMapSize/2, -shadowMapSize/2, shadowMapSize/2);
-	const lightView: Mat4f = Mat4f.identity().mul(.rotationX(std.math.pi*3.0/4.0)).mul(.translation(lightOffset));
+	const lightView: Mat4f = Mat4f.identity().mul(.rotationX(std.math.pi*0.6)).mul(.translation(lightOffset));
+
+	game.camera.updateViewMatrix();
+
+	chunk_meshing.quadsDrawn = 0;
+	chunk_meshing.transparentQuadsDrawn = 0;
+	const depthMeshes = mesh_storage.updateAndGetRenderChunks(world.conn, null, playerPos, settings.renderDistance);
+
+	gpu_performance_measuring.startQuery(.depth_framebuffer_chunk_rendering_preparation);
+	chunk_meshing.beginRender();
+
+	
+
+	var depthChunkLists: [main.settings.highestSupportedLod + 1]main.List(u32) = @splat(main.List(u32).init(main.stackAllocator));
+	defer for (depthChunkLists) |list| list.deinit();
+	for (depthMeshes) |mesh| {
+		mesh.prepareRendering(&depthChunkLists);
+	}
+	gpu_performance_measuring.stopQuery();
+
+	// Rebind block textures back to their original slots
+	c.glActiveTexture(c.GL_TEXTURE0);
+	blocks.meshes.blockTextureArray.bind();
+
 	gpu_performance_measuring.startQuery(.depth_framebuffer_chunk_rendering);
-	chunk_meshing.drawChunksIndirect(&chunkLists, lightProjection, lightProjection, lightView, ambientLight, playerPos, .depth);
+	chunk_meshing.drawChunksIndirect(&depthChunkLists, lightProjection, lightProjection, lightView, ambientLight, playerPos, .depth);
 	gpu_performance_measuring.stopQuery();
 	
 	chunk_meshing.endRender();
@@ -266,6 +267,29 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	chunk_meshing.quadsDrawn = 0;
 	chunk_meshing.transparentQuadsDrawn = 0;
+	
+	// Uses FrustumCulling on the chunks.
+	const frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
+	game.camera.updateViewMatrix();
+
+	chunk_meshing.quadsDrawn = 0;
+	chunk_meshing.transparentQuadsDrawn = 0;
+	const meshes = mesh_storage.updateAndGetRenderChunks(world.conn, &frustum, playerPos, settings.renderDistance);
+
+	gpu_performance_measuring.startQuery(.chunk_rendering_preparation);
+	const direction = crosshairDirection(game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
+	MeshSelection.select(playerPos, direction, game.Player.inventory.getItem(game.Player.selectedSlot));
+
+	chunk_meshing.beginRender();
+
+	
+
+	var chunkLists: [main.settings.highestSupportedLod + 1]main.List(u32) = @splat(main.List(u32).init(main.stackAllocator));
+	defer for (chunkLists) |list| list.deinit();
+	for (meshes) |mesh| {
+		mesh.prepareRendering(&chunkLists);
+	}
+	gpu_performance_measuring.stopQuery();
 	chunk_meshing.beginRender();
 
 	gpu_performance_measuring.startQuery(.chunk_rendering);

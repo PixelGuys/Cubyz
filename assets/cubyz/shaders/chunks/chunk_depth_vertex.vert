@@ -4,9 +4,10 @@ layout(location = 0) out vec3 mvVertexPos;
 layout(location = 1) out vec3 direction;
 layout(location = 2) out vec2 uv;
 layout(location = 3) flat out vec3 normal;
-layout(location = 4) flat out int isBackFace;
-layout(location = 5) flat out float distanceForLodCheck;
-layout(location = 6) flat out int opaqueInLod;
+layout(location = 4) flat out int textureIndex;
+layout(location = 5) flat out int isBackFace;
+layout(location = 6) flat out float distanceForLodCheck;
+layout(location = 7) flat out int opaqueInLod;
 
 layout(location = 1) uniform mat4 projectionMatrix;
 layout(location = 2) uniform mat4 viewMatrix;
@@ -72,6 +73,7 @@ void main() {
 	int textureAndQuad = faceData[faceID].textureAndQuad;
 	isBackFace = encodedPositionAndLightIndex>>15 & 1;
 
+	textureIndex = textureAndQuad & 65535;
 	int quadIndex = textureAndQuad >> 16;
 
 	vec3 position = vec3(
