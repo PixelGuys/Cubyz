@@ -62,8 +62,8 @@ pub var activeFrameBuffer: c_uint = 0;
 pub const reflectionCubeMapSize = 64;
 var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
-pub const shadowMapResolution = 512;
-pub const shadowMapSize = 64.0;
+pub const shadowMapResolution = 1024;
+pub const shadowMapSize = 128.0;
 var depthFrameBuffer: graphics.FrameBuffer = undefined;
 
 pub fn init() void {
@@ -224,7 +224,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 
 	const lightProjection: Mat4f = .orthogonal(-shadowMapSize/2, shadowMapSize/2, -shadowMapSize/2, shadowMapSize/2, -shadowMapSize/2, shadowMapSize/2);
-	const lightView: Mat4f = Mat4f.rotationX(std.math.pi);
+	const lightView: Mat4f = Mat4f.identity().mul(Mat4f.rotationX(-std.math.pi/4.0));
 	gpu_performance_measuring.startQuery(.depth_framebuffer_chunk_rendering);
 	chunk_meshing.drawChunksIndirect(&chunkLists, lightProjection, lightProjection, lightView, ambientLight, playerPos, .depth);
 	gpu_performance_measuring.stopQuery();

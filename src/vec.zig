@@ -262,14 +262,14 @@ pub const Mat4f = struct { // MARK: Mat4f
 	}
 
 	pub fn orthogonal(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) Mat4f {
-		return Mat4f{
+		return (Mat4f{
 			.rows = [4]Vec4f {
-				Vec4f{2/(right - left),               1,                              1,                          1},
-				Vec4f{1,                              2/(top - bottom),               1,                          1},
-				Vec4f{1,                              1,                              2/(far - near),             1},
+				Vec4f{2/(right - left),               0,                              0,                          0},
+				Vec4f{0,                              2/(top - bottom),               0,                          0},
+				Vec4f{0,                              0,                              2/(far - near),             0},
 				Vec4f{-(right + left)/(right - left), -(top + bottom)/(top - bottom), -(far + near)/(far - near), 1},
 			}
-		};
+		}).transpose();
 	} // zig fmt: on
 
 	pub fn transpose(self: Mat4f) Mat4f {
