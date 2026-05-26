@@ -4,7 +4,7 @@ layout(location = 0) out vec3 mvVertexPos;
 layout(location = 1) out vec3 direction;
 layout(location = 2) out vec3 light;
 layout(location = 3) out vec2 uv;
-layout(location = 4) out vec4 mvVertexLightSpacePos;
+layout(location = 4) out vec3 shadowPos;
 layout(location = 5) flat out vec3 normal;
 layout(location = 6) flat out int textureIndex;
 layout(location = 7) flat out int isBackFace;
@@ -124,6 +124,5 @@ void main() {
 	uv = quads[quadIndex].cornerUV[vertexID]*voxelSize;
 	opaqueInLod = quads[quadIndex].opaqueInLod;
 
-	vec3 shadowPos = position + normal * 0.02;
-	mvVertexLightSpacePos = lightProjectionMatrix*lightViewMatrix*vec4(shadowPos, 1);
+	shadowPos = position - normal * 0.001;
 }
