@@ -62,7 +62,7 @@ pub var activeFrameBuffer: c_uint = 0;
 pub const reflectionCubeMapSize = 64;
 var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
-pub const shadowMapResolution = 4096;
+pub const shadowMapResolution = 2048;
 pub const shadowMapSize = 128.0;
 var depthFrameBuffer: graphics.FrameBuffer = undefined;
 
