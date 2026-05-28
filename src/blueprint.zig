@@ -80,14 +80,17 @@ pub const Blueprint = struct {
 	};
 
 	pub const Selection = struct {
+		/// Minimal position in selection.
 		minPos: Vec3i,
+		/// Maximal position, just outside of selection.
 		maxPos: Vec3i,
 
-		pub fn init(pos1: Vec3i, pos2: Vec3i) Selection {
-			return .{.minPos = @min(pos1, pos2), .maxPos = @max(pos1, pos2)};
+		pub fn init(pos1Inclusive: Vec3i, pos2Inclusive: Vec3i) Selection {
+			return .{.minPos = @min(pos1Inclusive, pos2Inclusive), .maxPos = @max(pos1Inclusive, pos2Inclusive) +% @as(Vec3i, @splat(1))};
 		}
+
 		pub fn size(self: Selection) @Vector(3, u32) {
-			return @intCast(self.maxPos -% self.minPos + @as(Vec3i, @splat(1)));
+			return @intCast(self.maxPos -% self.minPos);
 		}
 
 		pub fn format(self: Selection, writer: *std.Io.Writer) std.Io.Writer.Error!void {
