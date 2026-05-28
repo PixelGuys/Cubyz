@@ -179,7 +179,7 @@ pub fn getCurrentSelection(source: *User) !Blueprint.Selection {
 		source.sendMessage("#ff0000Position 2 isn't set", .{});
 		return error.SelectionPartiallyUnset;
 	};
-	return .init(pos1, pos2);
+	return .initFromInclusive(pos1, pos2);
 }
 
 pub const PlayerIndex = struct {

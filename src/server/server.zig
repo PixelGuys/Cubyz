@@ -57,7 +57,7 @@ pub const WorldEditData = struct {
 				self.blueprint.deinit(main.globalAllocator);
 			}
 			pub fn selection(self: Value) Blueprint.Selection {
-				return .init(self.position, self.position +% self.blueprint.extent());
+				return .initFromExtent(self.position, self.blueprint.extent());
 			}
 		};
 		pub fn init() History {

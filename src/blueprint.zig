@@ -85,8 +85,18 @@ pub const Blueprint = struct {
 		/// Maximal position of a block, exclusive.
 		maxPos: Vec3i,
 
-		pub fn init(pos1Inclusive: Vec3i, pos2Inclusive: Vec3i) Selection {
-			return .{.minPos = @min(pos1Inclusive, pos2Inclusive), .maxPos = @max(pos1Inclusive, pos2Inclusive) +% @as(Vec3i, @splat(1))};
+		pub fn init(pos1Inclusive: Vec3i, pos2Exclusive: Vec3i) Selection {
+			return .{.minPos = @min(pos1Inclusive, pos2Exclusive), .maxPos = @max(pos1Inclusive, pos2Exclusive)};
+		}
+
+		pub fn initFromInclusive(pos1Inclusive: Vec3i, pos2Inclusive: Vec3i) Selection {
+			var self = Selection.init(pos1Inclusive, pos2Inclusive);
+			self.maxPos +%= @as(Vec3i, @splat(1));
+			return self;
+		}
+
+		pub fn initFromExtent(pos1Inclusive: Vec3i, selectionExtent: Vec3i) Selection {
+			return .init(pos1Inclusive, pos1Inclusive + selectionExtent);
 		}
 
 		pub fn size(self: Selection) @Vector(3, u32) {
