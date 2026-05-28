@@ -80,9 +80,9 @@ pub const Blueprint = struct {
 	};
 
 	pub const Selection = struct {
-		/// Minimal position in selection.
+		/// Minimal position of a block, inclusive.
 		minPos: Vec3i,
-		/// Maximal position, just outside of selection.
+		/// Maximal position of a block, exclusive.
 		maxPos: Vec3i,
 
 		pub fn init(pos1Inclusive: Vec3i, pos2Inclusive: Vec3i) Selection {
