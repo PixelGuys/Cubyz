@@ -70,12 +70,12 @@ pub const client = struct { // MARK: client
 	pub fn receiveFailure() void {
 		mutex.lock();
 		defer mutex.unlock();
-		var tempData = main.List(Command).init(main.stackAllocator);
-		defer tempData.deinit();
+		var tempData: main.ListUnmanaged(Command) = .{};
+		defer tempData.deinit(main.stackAllocator);
 		while (commands.popBack()) |_cmd| {
 			var cmd = _cmd;
 			cmd.undo();
-			tempData.append(cmd);
+			tempData.append(main.stackAllocator, cmd);
 		}
 		if (tempData.popOrNull()) |_cmd| {
 			var cmd = _cmd;
@@ -94,12 +94,12 @@ pub const client = struct { // MARK: client
 	pub fn receiveSyncOperation(reader: *BinaryReader) !void {
 		mutex.lock();
 		defer mutex.unlock();
-		var tempData = main.List(Command).init(main.stackAllocator);
-		defer tempData.deinit();
+		var tempData: main.ListUnmanaged(Command) = .{};
+		defer tempData.deinit(main.stackAllocator);
 		while (commands.popBack()) |_cmd| {
 			var cmd = _cmd;
 			cmd.undo();
-			tempData.append(cmd);
+			tempData.append(main.stackAllocator, cmd);
 		}
 		try Command.SyncOperation.executeFromData(reader);
 		while (tempData.popOrNull()) |_cmd| {
@@ -113,12 +113,12 @@ pub const client = struct { // MARK: client
 		mutex.lock();
 		defer mutex.unlock();
 		main.game.Player.setGamemode(gamemode);
-		var tempData = main.List(Command).init(main.stackAllocator);
-		defer tempData.deinit();
+		var tempData: main.ListUnmanaged(Command) = .{};
+		defer tempData.deinit(main.stackAllocator);
 		while (commands.popBack()) |_cmd| {
 			var cmd = _cmd;
 			cmd.undo();
-			tempData.append(cmd);
+			tempData.append(main.stackAllocator, cmd);
 		}
 		while (tempData.popOrNull()) |_cmd| {
 			var cmd = _cmd;

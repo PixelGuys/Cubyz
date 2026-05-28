@@ -566,8 +566,8 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 	width: f32,
 	buffer: ?*c.hb_buffer_t,
 	glyphs: []GlyphData,
-	lines: main.List(Line),
-	lineBreaks: main.List(LineBreak),
+	lines: main.ListManaged(Line),
+	lineBreaks: main.ListManaged(LineBreak),
 
 	fn addLine(self: *TextBuffer, line: Line) void {
 		if (line.start != line.end) {
@@ -603,9 +603,9 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 	pub const Parser = struct {
 		unicodeIterator: std.unicode.Utf8Iterator,
 		currentFontEffect: FontEffect,
-		parsedText: main.List(u32),
-		fontEffects: main.List(FontEffect),
-		characterIndex: main.List(u32),
+		parsedText: main.ListManaged(u32),
+		fontEffects: main.ListManaged(FontEffect),
+		characterIndex: main.ListManaged(u32),
 		showControlCharacters: bool,
 		curChar: u21 = undefined,
 		curIndex: u32 = 0,
@@ -1103,8 +1103,8 @@ const TextRendering = struct { // MARK: TextRendering
 	var freetypeFace: c.FT_Face = undefined;
 	var harfbuzzFace: ?*c.hb_face_t = undefined;
 	var harfbuzzFont: ?*c.hb_font_t = undefined;
-	var glyphMapping: main.List(u31) = undefined;
-	var glyphData: main.List(Glyph) = undefined;
+	var glyphMapping: main.ListManaged(u31) = undefined;
+	var glyphData: main.ListManaged(Glyph) = undefined;
 	var glyphTexture: [2]c_uint = undefined;
 	var textureWidth: i32 = 1024;
 	const textureHeight: i32 = 16;
@@ -1457,9 +1457,9 @@ pub const SubAllocation = struct {
 pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 	return struct {
 		ssbo: SSBO,
-		freeBlocks: main.List(SubAllocation),
+		freeBlocks: main.ListManaged(SubAllocation),
 		fences: [3]c.GLsync,
-		fencedFreeLists: [3]main.List(SubAllocation),
+		fencedFreeLists: [3]main.ListManaged(SubAllocation),
 		activeFence: u8,
 		capacity: u31,
 		used: u31,
@@ -1874,7 +1874,7 @@ pub const Texture = struct { // MARK: Texture
 
 	pub fn initFromFile(path: []const u8) Texture {
 		const self = Texture.init();
-		const image = Image.readFromFile(main.stackAllocator, path) catch |err| blk: {
+		const image = Image.readFromFile(main.stackAllocator, path, .{.orientation = .openGl}) catch |err| blk: {
 			std.log.err("Couldn't read image from {s}: {s}", .{path, @errorName(err)});
 			break :blk Image.defaultImage;
 		};
@@ -1898,7 +1898,7 @@ pub const Texture = struct { // MARK: Texture
 		while (curSize != 0) : (curSize /= 2) {
 			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}{}.png", .{pathPrefix, curSize}) catch unreachable;
 			defer main.stackAllocator.free(path);
-			const image = Image.readFromFile(main.stackAllocator, path) catch |err| blk: {
+			const image = Image.readFromFile(main.stackAllocator, path, .{.orientation = .openGl}) catch |err| blk: {
 				std.log.err("Couldn't read image from {s}: {s}", .{path, @errorName(err)});
 				break :blk Image.defaultImage;
 			};
@@ -2085,25 +2085,15 @@ pub const Image = struct { // MARK: Image
 		if (self.imageData.ptr == &defaultImageData or self.imageData.ptr == &emptyImageData or self.imageData.ptr == &whiteImageData) return;
 		allocator.free(self.imageData);
 	}
-	pub fn readFromFile(allocator: NeverFailingAllocator, path: []const u8) !Image {
+	pub fn readFromFile(allocator: NeverFailingAllocator, path: []const u8, options: struct { orientation: enum { asIs, openGl } }) !Image {
 		var result: Image = undefined;
 		var channel: c_int = undefined;
 		const nullTerminatedPath = main.stackAllocator.dupeZ(u8, path); // TODO: Find a more zig-friendly image loading library.
 		errdefer main.stackAllocator.free(nullTerminatedPath);
-		c.stbi_set_flip_vertically_on_load(1);
-		const data = c.stbi_load(nullTerminatedPath.ptr, @ptrCast(&result.width), @ptrCast(&result.height), &channel, 4) orelse {
-			return error.FileNotFound;
-		};
-		main.stackAllocator.free(nullTerminatedPath);
-		result.imageData = allocator.dupe(Color, @as([*]Color, @ptrCast(data))[0 .. result.width*result.height]);
-		c.stbi_image_free(data);
-		return result;
-	}
-	pub fn readUnflippedFromFile(allocator: NeverFailingAllocator, path: []const u8) !Image {
-		var result: Image = undefined;
-		var channel: c_int = undefined;
-		const nullTerminatedPath = main.stackAllocator.dupeZ(u8, path); // TODO: Find a more zig-friendly image loading library.
-		errdefer main.stackAllocator.free(nullTerminatedPath);
+		switch (options.orientation) {
+			.asIs => {},
+			.openGl => c.stbi_set_flip_vertically_on_load(1),
+		}
 		const data = c.stbi_load(nullTerminatedPath.ptr, @ptrCast(&result.width), @ptrCast(&result.height), &channel, 4) orelse {
 			return error.FileNotFound;
 		};

@@ -125,7 +125,7 @@ fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, min: f32, max: f32, s
 	return res;
 }
 
-fn addQuads(pattern: Pattern, side: Neighbor, radius: f32, out: *main.List(main.models.QuadInfo), textureSlotOffset: u32) void {
+fn addQuads(pattern: Pattern, side: Neighbor, radius: f32, out: *main.ListManaged(main.models.QuadInfo), textureSlotOffset: u32) void {
 	const min: f32 = (8.0 - radius)/16.0;
 	const max: f32 = (8.0 + radius)/16.0;
 	switch (pattern) {
@@ -268,7 +268,7 @@ pub fn createBlockModel(_: Block, modeData: *u16, zon: ZonElement) ModelIndex {
 	const textureSlotOffset = zon.get(u32, "textureSlotOffset", 0);
 	if (branchModels.get(.{.radius = radiusForComparisons, .shellModelId = shellModelId, .textureSlotOffset = textureSlotOffset})) |modelIndex| return modelIndex;
 
-	var shellQuads = main.List(main.models.QuadInfo).init(main.stackAllocator);
+	var shellQuads = main.ListManaged(main.models.QuadInfo).init(main.stackAllocator);
 	defer shellQuads.deinit();
 	if (shellModelId.len != 0) {
 		const shellModel = main.models.getModelIndex(shellModelId).model();
@@ -277,7 +277,7 @@ pub fn createBlockModel(_: Block, modeData: *u16, zon: ZonElement) ModelIndex {
 
 	var modelIndex: ModelIndex = undefined;
 	for (0..64) |i| {
-		var quads = main.List(main.models.QuadInfo).init(main.stackAllocator);
+		var quads = main.ListManaged(main.models.QuadInfo).init(main.stackAllocator);
 		defer quads.deinit();
 		quads.appendSlice(shellQuads.items);
 

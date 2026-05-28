@@ -12,7 +12,7 @@ fn growCapacity(current: usize, minimum: usize) usize {
 	}
 }
 
-pub fn List(comptime T: type) type {
+pub fn ListManaged(comptime T: type) type {
 	return struct {
 		items: []T = &.{},
 		capacity: usize = 0,

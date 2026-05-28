@@ -160,11 +160,11 @@ pub const PublicKey = union(KeyTypeEnum) {
 pub const AccountCode = struct {
 	text: []u8,
 
-	fn printInvalidCharError(failureText: *main.List(u8), codepoint: u21) void {
+	fn printInvalidCharError(failureText: *main.ListManaged(u8), codepoint: u21) void {
 		failureText.print("Account Code contains invalid character '{u}' (U+{X}), only ASCII letters and whitespaces are allowed.\n", .{codepoint, codepoint});
 	}
 
-	pub fn initFromUserInput(text: []const u8, failureText: *main.List(u8)) AccountCode {
+	pub fn initFromUserInput(text: []const u8, failureText: *main.ListManaged(u8)) AccountCode {
 		var result: main.ListUnmanaged(u8) = .initCapacity(main.stackAllocator, text.len);
 		defer result.deinit(main.stackAllocator);
 		defer std.crypto.secureZero(u8, result.items);
@@ -325,7 +325,7 @@ pub const PasswordEncodedAccountCode = struct {
 		allocator.free(self.authenticationTag);
 	}
 
-	pub fn decryptFromPassword(self: PasswordEncodedAccountCode, password: []const u8, failureText: *main.List(u8)) !AccountCode {
+	pub fn decryptFromPassword(self: PasswordEncodedAccountCode, password: []const u8, failureText: *main.ListManaged(u8)) !AccountCode {
 		if (self.typ == .none) {
 			return AccountCode.initFromUserInput(self.data, failureText);
 		}
