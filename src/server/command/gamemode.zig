@@ -4,7 +4,7 @@ const main = @import("main");
 const command = main.server.command;
 const User = main.server.User;
 
-pub const description = "Get or set the players gamemode.";
+pub const description = "Get or set a player's gamemode.";
 pub const usage =
 	\\/gamemode <survival/creative>
 	\\/gamemode @playerIndex <survival/creative>
