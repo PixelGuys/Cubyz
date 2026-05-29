@@ -610,7 +610,7 @@ pub const Model = struct {
 		main.globalAllocator.free(self.collision);
 	}
 
-	pub fn getRawFaces(model: Model, quadList: *main.List(QuadInfo)) void {
+	pub fn getRawFaces(model: Model, quadList: *main.ListManaged(QuadInfo)) void {
 		for (model.internalQuads) |quadIndex| {
 			quadList.append(quadIndex.quadInfo().*);
 		}

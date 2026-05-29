@@ -446,9 +446,9 @@ pub const entityPosition = struct { // MARK: entityPosition
 		if (conn.manager.world) |world| {
 			const time = try reader.readInt(i16);
 			const playerPos = try reader.readVec(Vec3d);
-			var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+			var entityData: main.ListManaged(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 			defer entityData.deinit();
-			var itemData: main.List(main.itemdrop.ItemDropNetworkData) = .init(main.stackAllocator);
+			var itemData: main.ListManaged(main.itemdrop.ItemDropNetworkData) = .init(main.stackAllocator);
 			defer itemData.deinit();
 			while (reader.remaining.len != 0) {
 				const typ = try reader.readEnum(Type);

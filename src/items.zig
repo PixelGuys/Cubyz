@@ -99,7 +99,7 @@ const Material = struct { // MARK: Material
 		}
 	}
 
-	pub fn printTooltip(self: Material, outString: *main.List(u8)) void {
+	pub fn printTooltip(self: Material, outString: *main.ListManaged(u8)) void {
 		if (self.modifiers.len == 0) {
 			outString.appendSlice("§#808080Material\n");
 		}
@@ -125,7 +125,7 @@ pub const ModifierRestriction = struct {
 	pub const VTable = struct {
 		satisfied: *const fn (data: *anyopaque, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool,
 		loadFromZon: *const fn (allocator: NeverFailingAllocator, zon: ZonElement) *anyopaque,
-		printTooltip: *const fn (data: *anyopaque, outString: *main.List(u8)) void,
+		printTooltip: *const fn (data: *anyopaque, outString: *main.ListManaged(u8)) void,
 	};
 
 	pub fn satisfied(self: ModifierRestriction, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
@@ -144,7 +144,7 @@ pub const ModifierRestriction = struct {
 		};
 	}
 
-	pub fn printTooltip(self: ModifierRestriction, outString: *main.List(u8)) void {
+	pub fn printTooltip(self: ModifierRestriction, outString: *main.ListManaged(u8)) void {
 		self.vTable.printTooltip(self.data, outString);
 	}
 };
@@ -159,7 +159,7 @@ const Modifier = struct {
 		combineModifiers: *const fn (data1: Data, data2: Data) ?Data,
 		changeProceduralItemParameters: *const fn (proceduralItem: *ProceduralItem, data: Data) void,
 		changeBlockDamage: *const fn (damage: f32, block: Block, data: Data) f32,
-		printTooltip: *const fn (outString: *main.List(u8), data: Data) void,
+		printTooltip: *const fn (outString: *main.ListManaged(u8), data: Data) void,
 		loadData: *const fn (zon: ZonElement) Data,
 		priority: f32,
 
@@ -199,7 +199,7 @@ const Modifier = struct {
 		return self.vTable.changeBlockDamage(damage, block, self.data);
 	}
 
-	pub fn printTooltip(self: Modifier, outString: *main.List(u8)) void {
+	pub fn printTooltip(self: Modifier, outString: *main.ListManaged(u8)) void {
 		self.vTable.printTooltip(outString, self.data);
 	}
 };
@@ -301,7 +301,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 		self.texture = null;
 		self.foodValue = zon.get(f32, "food", 0);
 
-		var tooltip: main.List(u8) = .init(allocator);
+		var tooltip: main.ListManaged(u8) = .init(allocator);
 		tooltip.appendSlice(self.name);
 		tooltip.append('\n');
 		if (self.material) |mat| {
@@ -459,8 +459,8 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 	/// Determines all the basic properties of the proceduralItem.
 	pub fn evaluateProceduralItem(proceduralItem: *ProceduralItem) void {
 		proceduralItem.properties = @splat(0);
-		var tempModifiers: main.List(Modifier) = .init(main.stackAllocator);
-		defer tempModifiers.deinit();
+		var tempModifiers: main.ListUnmanaged(Modifier) = .{};
+		defer tempModifiers.deinit(main.stackAllocator);
 		for (proceduralItem.type.properties()) |property| {
 			if (property.destination == null) continue;
 			var sum: f32 = 0;
@@ -492,7 +492,7 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 						continue :outer;
 					}
 				}
-				tempModifiers.append(newMod);
+				tempModifiers.append(main.stackAllocator, newMod);
 			}
 		}
 		std.sort.insertion(Modifier, tempModifiers.items, {}, struct {
@@ -649,7 +649,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	craftingGrid: [craftingGridSize]?BaseItemIndex,
 	materialGrid: [16][16]?BaseItemIndex,
 	modifiers: []Modifier,
-	tooltip: main.List(u8),
+	tooltip: main.ListManaged(u8),
 	image: graphics.Image,
 	texture: ?graphics.Texture,
 	seed: u32,
@@ -1164,14 +1164,14 @@ pub const Recipe = struct { // MARK: Recipe
 		const resultAmount = try reader.readVarInt(u16);
 		const sourceCount = try reader.readVarInt(usize);
 
-		var sourceItems: main.List(BaseItemIndex) = .initCapacity(main.stackAllocator, @min(256, sourceCount));
-		defer sourceItems.deinit();
-		var sourceAmounts: main.List(u16) = .initCapacity(main.stackAllocator, @min(256, sourceCount));
-		defer sourceAmounts.deinit();
+		var sourceItems: main.ListUnmanaged(BaseItemIndex) = .initCapacity(main.stackAllocator, @min(256, sourceCount));
+		defer sourceItems.deinit(main.stackAllocator);
+		var sourceAmounts: main.ListUnmanaged(u16) = .initCapacity(main.stackAllocator, @min(256, sourceCount));
+		defer sourceAmounts.deinit(main.stackAllocator);
 
 		while (reader.remaining.len > 0 and sourceItems.items.len < sourceCount) {
-			sourceItems.append(try reader.readEnum(BaseItemIndex));
-			sourceAmounts.append(try reader.readVarInt(u16));
+			sourceItems.append(main.stackAllocator, try reader.readEnum(BaseItemIndex));
+			sourceAmounts.append(main.stackAllocator, try reader.readVarInt(u16));
 		}
 
 		return getValidRecipe(.{.sourceItems = sourceItems.items, .sourceAmounts = sourceAmounts.items, .resultItem = resultItem, .resultAmount = resultAmount});
@@ -1187,7 +1187,7 @@ var modifierRestrictions: std.StringHashMapUnmanaged(*const ModifierRestriction.
 pub var itemList: [65536]BaseItem = undefined;
 pub var itemListSize: u16 = 0;
 
-var recipeList: main.List(Recipe) = undefined;
+var recipeList: main.ListManaged(Recipe) = .init(main.worldArena);
 
 pub fn hasRegistered(id: []const u8) bool {
 	return reverseIndices.contains(id);
@@ -1208,7 +1208,6 @@ pub fn getRecipes() []Recipe {
 pub fn globalInit() void {
 	proceduralItemTypeIdToIndex = .{};
 
-	recipeList = .init(main.worldArena);
 	itemListSize = 0;
 	inline for (@typeInfo(modifierList).@"struct".decls) |decl| {
 		const ModifierStruct: type = @field(modifierList, decl.name);

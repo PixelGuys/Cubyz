@@ -99,7 +99,7 @@ pub fn render() void {
 		}
 		{
 			const biome = main.game.world.?.playerBiome.load(.monotonic);
-			var tags = main.List(u8).init(main.stackAllocator);
+			var tags = main.ListManaged(u8).init(main.stackAllocator);
 			defer tags.deinit();
 			inline for (comptime std.meta.fieldNames(main.server.terrain.biomes.Biome.GenerationProperties)) |name| {
 				if (@field(biome.properties, name)) {

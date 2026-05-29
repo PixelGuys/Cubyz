@@ -110,6 +110,11 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				errorMessage.print(main.stackAllocator, "Missing argument at position <{s}>", .{name});
 				return error.ParseError;
 			};
+
+			if (Field == []const u8) {
+				return arg;
+			}
+
 			switch (fieldTypeInfo) {
 				inline .@"struct", .@"union" => {
 					if (!@hasDecl(Field, "parse")) @compileError("Structs / Unions must have a parse function");

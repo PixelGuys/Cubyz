@@ -12,7 +12,7 @@ const Block = main.blocks.Block;
 const Segment = union(enum) { literal: []const u8, symbol: []const u8 };
 
 fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8) ![]const Segment {
-	var segments: main.List(Segment) = .init(allocator);
+	var segments: main.ListManaged(Segment) = .init(allocator);
 	defer segments.deinit();
 	var idx: usize = 0;
 	while (idx < pattern.len) {
@@ -68,7 +68,7 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 				idx += literal.len;
 			},
 			.symbol => |symbol| {
-				var endIndices: main.List(usize) = .init(allocator);
+				var endIndices: main.ListManaged(usize) = .init(allocator);
 				defer endIndices.deinit();
 				if (newKeys.get(symbol)) |value| {
 					if (!std.mem.startsWith(u8, target[idx..], value)) {
@@ -94,7 +94,7 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 						idx = endIndices.items[0];
 					} else {
 						defer newKeys.deinit();
-						var newKeyPairs: main.List(std.StringHashMap([]const u8)) = .init(allocator);
+						var newKeyPairs: main.ListManaged(std.StringHashMap([]const u8)) = .init(allocator);
 						defer newKeyPairs.deinit();
 						for (endIndices.items) |endIndex| {
 							newKeys.put(symbol, target[idx..endIndex]) catch unreachable;
@@ -140,7 +140,7 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 			.keys = keys.clone() catch unreachable,
 		}});
 	}
-	var itemPairs: main.List(ItemKeyPair) = .initCapacity(allocator, 1);
+	var itemPairs: main.ListManaged(ItemKeyPair) = .initCapacity(allocator, 1);
 	defer itemPairs.deinit();
 	var iter = items.iterator();
 	while (iter.next()) |item| {
@@ -162,14 +162,14 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []const ZonEleme
 	const arena = main.stackAllocator.createArena();
 	defer main.stackAllocator.destroyArena(arena);
 
-	var inputCombos: main.List([]const ItemWithAmount) = .initCapacity(arena, 1);
+	var inputCombos: main.ListManaged([]const ItemWithAmount) = .initCapacity(arena, 1);
 	inputCombos.append(arena.alloc(ItemWithAmount, recipe.len));
-	var keyList: main.List(std.StringHashMap([]const u8)) = .initCapacity(arena, 1);
+	var keyList: main.ListManaged(std.StringHashMap([]const u8)) = .initCapacity(arena, 1);
 	keyList.append(.init(arena.allocator));
 	for (0.., recipe[0..]) |i, itemZon| {
 		const pattern = try parseItemZon(arena, itemZon);
-		var newKeyList: main.List(std.StringHashMap([]const u8)) = .init(arena);
-		var newInputCombos: main.List([]const ItemWithAmount) = .init(arena);
+		var newKeyList: main.ListManaged(std.StringHashMap([]const u8)) = .init(arena);
+		var newInputCombos: main.ListManaged([]const ItemWithAmount) = .init(arena);
 
 		for (keyList.items, inputCombos.items) |*keys, inputs| {
 			const parsedItems = try findRecipeItemOptions(arena, pattern, keys);
@@ -190,7 +190,7 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []const ZonEleme
 	return newInputCombos;
 }
 
-pub fn addRecipe(allocator: NeverFailingAllocator, itemCombo: []const ItemWithAmount, list: *main.List(Recipe)) void {
+pub fn addRecipe(allocator: NeverFailingAllocator, itemCombo: []const ItemWithAmount, list: *main.ListManaged(Recipe)) void {
 	const inputs = itemCombo[0 .. itemCombo.len - 1];
 	const output = itemCombo[itemCombo.len - 1];
 	const recipe = Recipe{
@@ -206,7 +206,7 @@ pub fn addRecipe(allocator: NeverFailingAllocator, itemCombo: []const ItemWithAm
 	list.append(recipe);
 }
 
-pub fn parseRecipe(allocator: NeverFailingAllocator, zon: ZonElement, list: *main.List(Recipe)) !void {
+pub fn parseRecipe(allocator: NeverFailingAllocator, zon: ZonElement, list: *main.ListManaged(Recipe)) !void {
 	const arena = main.stackAllocator.createArena();
 	defer main.stackAllocator.destroyArena(arena);
 

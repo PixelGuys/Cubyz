@@ -56,6 +56,9 @@ pub const WorldEditData = struct {
 				main.globalAllocator.free(self.message);
 				self.blueprint.deinit(main.globalAllocator);
 			}
+			pub fn selection(self: Value) Blueprint.Selection {
+				return .initFromExtent(self.position, self.blueprint.extent());
+			}
 		};
 		pub fn init() History {
 			return .{.changes = .init(main.globalAllocator, maxWorldEditHistoryCapacity)};
@@ -523,7 +526,7 @@ const updateTime: std.Io.Duration = .fromNanoseconds(1000000000/20);
 
 pub var world: ?*ServerWorld = null;
 var userMutex: main.utils.Mutex = .{};
-var users: main.List(*User) = undefined;
+var users: main.ListManaged(*User) = undefined;
 var userDeinitList: main.utils.ConcurrentQueue(*User) = undefined;
 var userConnectList: main.utils.ConcurrentQueue(*User) = undefined;
 
@@ -654,7 +657,7 @@ fn update() void { // MARK: update()
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
 	defer main.stackAllocator.free(itemData);
 
-	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+	var entityData: main.ListManaged(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 	defer entityData.deinit();
 
 	for (userList) |user| {

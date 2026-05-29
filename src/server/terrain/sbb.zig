@@ -4,7 +4,7 @@ const main = @import("main");
 const Vec3i = main.vec.Vec3i;
 const ZonElement = main.ZonElement;
 const Blueprint = main.blueprint.Blueprint;
-const List = main.List;
+const ListManaged = main.ListManaged;
 const ListUnmanaged = main.ListUnmanaged;
 const AliasTable = main.utils.AliasTable;
 const Neighbor = main.chunk.Neighbor;
@@ -19,7 +19,7 @@ var structureMap: std.StringHashMapUnmanaged(StructureIndex) = .{};
 var blueprintList: ListUnmanaged([4]BlueprintEntry) = .{};
 var blueprintMap: std.StringHashMapUnmanaged(BlueprintIndex) = .{};
 
-var childrenToResolve: List(struct { structureId: []const u8, structure: *?*StructureBuildingBlock }) = undefined;
+var childrenToResolve: ListManaged(struct { structureId: []const u8, structure: *?*StructureBuildingBlock }) = undefined;
 
 const originBlockStringId = "cubyz:sbb/origin";
 var originBlockNumericId: u16 = 0;

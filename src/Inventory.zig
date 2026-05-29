@@ -24,17 +24,16 @@ pub const InventoryId = enum(u32) { _ };
 
 pub const client = struct { // MARK: client
 	var maxId: InventoryId = @enumFromInt(0);
-	var freeIdList: main.List(InventoryId) = undefined;
+	var freeIdList: main.ListUnmanaged(InventoryId) = .{};
 	var serverToClientMap: std.AutoHashMap(InventoryId, Inventory) = undefined;
 
 	pub fn init() void {
-		freeIdList = .init(main.globalAllocator);
 		serverToClientMap = .init(main.globalAllocator.allocator);
 	}
 
 	pub fn deinit() void {
 		std.debug.assert(freeIdList.items.len == @intFromEnum(maxId)); // leak
-		freeIdList.deinit();
+		freeIdList.clearAndFree(main.globalAllocator);
 		serverToClientMap.deinit();
 	}
 
@@ -51,7 +50,7 @@ pub const client = struct { // MARK: client
 	fn freeId(id: InventoryId) void {
 		sync.threadContext.assertCorrectContext(.client);
 		main.sync.client.mutex.assertLocked();
-		freeIdList.append(id);
+		freeIdList.append(main.globalAllocator, id);
 	}
 
 	pub fn mapServerId(serverId: InventoryId, inventory: Inventory) void {
@@ -159,12 +158,11 @@ pub const server = struct { // MARK: server
 
 	var inventories: main.utils.VirtualList(ServerInventory, 1 << 24) = undefined;
 	var maxId: InventoryId = @enumFromInt(0);
-	var freeIdList: main.List(InventoryId) = undefined;
+	var freeIdList: main.ListUnmanaged(InventoryId) = .{};
 	var inventoryCreationMutex: main.utils.Mutex = .{};
 
 	pub fn init() void {
 		inventories = .init();
-		freeIdList = .init(main.globalAllocator);
 	}
 
 	pub fn deinit() void {
@@ -174,7 +172,7 @@ pub const server = struct { // MARK: server
 			}
 		}
 		std.debug.assert(freeIdList.items.len == @intFromEnum(maxId)); // leak
-		freeIdList.deinit();
+		freeIdList.deinit(main.globalAllocator);
 		inventories.deinit();
 		maxId = @enumFromInt(0);
 	}
@@ -201,7 +199,7 @@ pub const server = struct { // MARK: server
 
 	fn freeId(id: InventoryId) void {
 		inventoryCreationMutex.assertLocked();
-		freeIdList.append(id);
+		freeIdList.append(main.globalAllocator, id);
 	}
 
 	pub fn createExternallyManagedInventory(len: usize, source: Source, data: *BinaryReader, callbacks: Callbacks) InventoryId {
@@ -691,7 +689,7 @@ pub const InventoryAndSlot = struct {
 
 pub const BagInventory = struct { // MARK: BagInventory
 	sizeLimit: u32,
-	slots: main.List(ItemStack),
+	slots: main.ListManaged(ItemStack),
 
 	pub fn init(allocator: NeverFailingAllocator, sizeLimit: u32) BagInventory {
 		return .{

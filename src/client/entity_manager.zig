@@ -22,7 +22,7 @@ var lastTime: i16 = 0;
 var timeDifference: utils.TimeDifference = utils.TimeDifference{};
 
 pub var entities: main.utils.VirtualList(main.client.Entity, 1 << 20) = undefined;
-pub var idMapping: main.List(?u32) = undefined;
+pub var idMapping: main.ListManaged(?u32) = undefined;
 pub var mutex: main.utils.Mutex = .{};
 
 pub fn init() void {

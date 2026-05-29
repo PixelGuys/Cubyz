@@ -519,8 +519,8 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	} = undefined;
 
 	var itemModelSSBO: graphics.SSBO = undefined;
-	var modelData: main.List(u32) = undefined;
-	var freeSlots: main.List(*ItemVoxelModel) = undefined;
+	var modelData: main.ListManaged(u32) = undefined;
+	var freeSlots: main.ListManaged(*ItemVoxelModel) = undefined;
 
 	const ItemVoxelModel = struct {
 		index: u31 = undefined,
@@ -551,7 +551,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				var block = blocks.Block{.typ = self.item.baseItem.block().?, .data = 0};
 				block.data = block.mode().naturalStandard;
 				const model = blocks.meshes.model(block).model();
-				var data = main.List(u32).init(main.stackAllocator);
+				var data: main.ListManaged(u32) = .init(main.stackAllocator);
 				defer data.deinit();
 				for (model.internalQuads) |quad| {
 					const textureIndex = blocks.meshes.textureIndex(block, quad.quadInfo().textureSlot);

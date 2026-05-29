@@ -566,8 +566,8 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 	width: f32,
 	buffer: ?*c.hb_buffer_t,
 	glyphs: []GlyphData,
-	lines: main.List(Line),
-	lineBreaks: main.List(LineBreak),
+	lines: main.ListManaged(Line),
+	lineBreaks: main.ListManaged(LineBreak),
 
 	fn addLine(self: *TextBuffer, line: Line) void {
 		if (line.start != line.end) {
@@ -603,9 +603,9 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 	pub const Parser = struct {
 		unicodeIterator: std.unicode.Utf8Iterator,
 		currentFontEffect: FontEffect,
-		parsedText: main.List(u32),
-		fontEffects: main.List(FontEffect),
-		characterIndex: main.List(u32),
+		parsedText: main.ListManaged(u32),
+		fontEffects: main.ListManaged(FontEffect),
+		characterIndex: main.ListManaged(u32),
 		showControlCharacters: bool,
 		curChar: u21 = undefined,
 		curIndex: u32 = 0,
@@ -1103,8 +1103,8 @@ const TextRendering = struct { // MARK: TextRendering
 	var freetypeFace: c.FT_Face = undefined;
 	var harfbuzzFace: ?*c.hb_face_t = undefined;
 	var harfbuzzFont: ?*c.hb_font_t = undefined;
-	var glyphMapping: main.List(u31) = undefined;
-	var glyphData: main.List(Glyph) = undefined;
+	var glyphMapping: main.ListManaged(u31) = undefined;
+	var glyphData: main.ListManaged(Glyph) = undefined;
 	var glyphTexture: [2]c_uint = undefined;
 	var textureWidth: i32 = 1024;
 	const textureHeight: i32 = 16;
@@ -1457,9 +1457,9 @@ pub const SubAllocation = struct {
 pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 	return struct {
 		ssbo: SSBO,
-		freeBlocks: main.List(SubAllocation),
+		freeBlocks: main.ListManaged(SubAllocation),
 		fences: [3]c.GLsync,
-		fencedFreeLists: [3]main.List(SubAllocation),
+		fencedFreeLists: [3]main.ListManaged(SubAllocation),
 		activeFence: u8,
 		capacity: u31,
 		used: u31,

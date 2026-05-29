@@ -339,7 +339,7 @@ const GenerationStructure = struct {
 		}
 	}
 
-	fn addSubBiomesOf(biome: BiomePoint, map: *ClimateMapFragment, extraBiomes: *main.List(BiomePoint), wx: i32, wy: i32, width: u31, height: u31, worldSeed: u64, comptime radius: enum { known, unknown }) void {
+	fn addSubBiomesOf(biome: BiomePoint, map: *ClimateMapFragment, extraBiomes: *main.ListManaged(BiomePoint), wx: i32, wy: i32, width: u31, height: u31, worldSeed: u64, comptime radius: enum { known, unknown }) void {
 		var seed = random.initSeed2D(worldSeed, @bitCast(biome.pos));
 		var biomeCount: f32 = undefined;
 		if (biome.biome.subBiomeTotalChance > biome.biome.maxSubBiomeCount) {
@@ -483,11 +483,11 @@ const GenerationStructure = struct {
 
 	pub fn toMap(self: GenerationStructure, map: *ClimateMapFragment, width: u31, height: u31, worldSeed: u64) void {
 		var preMap: [preMapSize][preMapSize]BiomeSample = undefined;
-		var allCandidates: main.List(*BiomePoint) = .initCapacity(main.stackAllocator, 1024);
-		defer allCandidates.deinit();
+		var allCandidates: main.ListUnmanaged(*BiomePoint) = .initCapacity(main.stackAllocator, 1024);
+		defer allCandidates.deinit(main.stackAllocator);
 		for (self.chunks.mem) |chunk| {
 			for (chunk.biomesSortedByX) |*candidate| {
-				allCandidates.append(candidate);
+				allCandidates.append(main.stackAllocator, candidate);
 			}
 		}
 		fillRecursively(map.pos.wx, map.pos.wy, &preMap, allCandidates.items, worldSeed, -margin, -margin, preMapSize, preMapSize);
@@ -497,7 +497,7 @@ const GenerationStructure = struct {
 		}
 
 		// Add some sub-biomes:
-		var extraBiomes = main.List(BiomePoint).init(main.stackAllocator);
+		var extraBiomes: main.ListManaged(BiomePoint) = .init(main.stackAllocator);
 		defer extraBiomes.deinit();
 		for (self.chunks.mem) |chunk| {
 			for (chunk.biomesSortedByX) |biome| {
