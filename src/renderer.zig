@@ -200,8 +200,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glClear(c.GL_DEPTH_BUFFER_BIT);
 	gpu_performance_measuring.stopQuery();
 
-
-	const lightOffset: Vec3f = Vec3f {@floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1))};
+	const lightOffset: Vec3f = Vec3f{@floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1))};
 
 	const lightProjection: Mat4f = .orthogonal(-shadowMapSize/2, shadowMapSize/2, -shadowMapSize/2, shadowMapSize/2, -shadowMapSize, shadowMapSize);
 	const lightView: Mat4f = Mat4f.identity().mul(.rotationX(std.math.pi*0.8)).mul(.rotationZ(std.math.pi*0.2)).mul(.translation(lightOffset));
@@ -214,8 +213,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	gpu_performance_measuring.startQuery(.depth_framebuffer_chunk_rendering_preparation);
 	chunk_meshing.beginRender();
-
-	
 
 	var depthChunkLists: [main.settings.highestSupportedLod + 1]main.List(u32) = @splat(main.List(u32).init(main.stackAllocator));
 	defer for (depthChunkLists) |list| list.deinit();
@@ -231,7 +228,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.depth_framebuffer_chunk_rendering);
 	chunk_meshing.drawChunksIndirect(&depthChunkLists, lightProjection, lightProjection, lightView, ambientLight, playerPos, .depth);
 	gpu_performance_measuring.stopQuery();
-	
+
 	chunk_meshing.endRender();
 
 	worldFrameBuffer.bind();
@@ -239,7 +236,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.clear);
 	worldFrameBuffer.clear(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
 	gpu_performance_measuring.stopQuery();
-
 
 	const time: u32 = @intCast(main.timestamp().toMilliseconds() & std.math.maxInt(u32));
 
@@ -267,7 +263,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	chunk_meshing.quadsDrawn = 0;
 	chunk_meshing.transparentQuadsDrawn = 0;
-	
+
 	// Uses FrustumCulling on the chunks.
 	const frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
 	game.camera.updateViewMatrix();
