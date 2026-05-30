@@ -156,6 +156,8 @@ pub var interestingExtensions: struct {
 	VK_KHR_buffer_device_address: bool = false, // #2960
 	VK_EXT_fragment_shader_interlock: bool = false, // #817
 	VK_EXT_descriptor_buffer: bool = false, // for bindless
+	VK_EXT_descriptor_heap: bool = false, // for bindless
+	VK_EXT_descriptor_indexing: bool = false, // for bindless
 	VK_EXT_mutable_descriptor_type: bool = false, // also for bindless
 } = .{};
 
