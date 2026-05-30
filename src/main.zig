@@ -40,18 +40,21 @@ pub const vec = @import("vec.zig");
 const zon = @import("zon.zig");
 pub const ZonElement = zon.ZonElement;
 
-pub const Window = @import("graphics/Window.zig");
-
-pub const heap = @import("utils/heap.zig");
-
-pub const List = utils.list.List;
-pub const ListUnmanaged = utils.list.ListUnmanaged;
-pub const MultiArray = utils.list.MultiArray;
-
 const file_monitor = utils.file_monitor;
 
 const Vec2f = vec.Vec2f;
 const Vec3d = vec.Vec3d;
+
+pub const Window = @import("graphics/Window.zig");
+
+pub const heap = @import("utils/heap.zig");
+
+pub const ListManaged = utils.list.ListManaged;
+pub const ListUnmanaged = utils.list.ListUnmanaged;
+pub const MultiArray = utils.list.MultiArray;
+
+/// Deprecated, use ListManaged instead. Will be changed to point to ListUnmanaged in the future.
+pub const List = ListManaged;
 
 pub threadlocal var stackAllocator: heap.NeverFailingAllocator = if (builtin.is_test) heap.testingAllocator else undefined;
 pub threadlocal var seed: u64 = undefined;
@@ -534,7 +537,7 @@ pub fn clientMain() void { // MARK: clientMain()
 				gui.openWindow("authentication/login");
 				break :blk;
 			}
-			var failureText: List(u8) = .init(stackAllocator);
+			var failureText: ListManaged(u8) = .init(stackAllocator);
 			defer failureText.deinit();
 			const accountCode = settings.storedAccount.decryptFromPassword(undefined, &failureText) catch |err| {
 				std.log.err("Got error while loading Account Code: {s}", .{@errorName(err)});

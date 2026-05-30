@@ -27,8 +27,8 @@ const Instance = struct {
 };
 
 pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
-	var list: main.List(Entry) = .init(main.stackAllocator);
-	defer list.deinit();
+	var list: main.ListUnmanaged(Entry) = .{};
+	defer list.deinit(main.stackAllocator);
 
 	var maxExtend: vec.Boxi = .{
 		.min = @splat(1e9),
@@ -44,7 +44,7 @@ pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
 		};
 		maxExtend.min = @min(maxExtend.min, @as(Vec3i, @floor(@as(Vec3f, @floatFromInt(childModelAndExtend.maxExtend.min)) + childEntry.positionOffset - childEntry.randomOffset)));
 		maxExtend.max = @max(maxExtend.max, @as(Vec3i, @ceil(@as(Vec3f, @floatFromInt(childModelAndExtend.maxExtend.max)) + childEntry.positionOffset + childEntry.randomOffset)));
-		list.append(childEntry);
+		list.append(main.stackAllocator, childEntry);
 	}
 
 	if (list.items.len == 0) {

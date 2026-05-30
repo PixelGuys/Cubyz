@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
+const Blueprint = main.blueprint.Blueprint;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ListUnmanaged = main.ListUnmanaged;
 const User = main.server.User;
@@ -168,6 +169,19 @@ pub const Target = struct {
 	}
 };
 
+/// Get current selection from user data. This function will output appropriate error to chat upon failure.
+pub fn getCurrentSelection(source: *User) !Blueprint.Selection {
+	const pos1 = source.worldEditData.selectionPosition1 orelse {
+		source.sendMessage("#ff0000Position 1 isn't set", .{});
+		return error.SelectionPartiallyUnset;
+	};
+	const pos2 = source.worldEditData.selectionPosition2 orelse {
+		source.sendMessage("#ff0000Position 2 isn't set", .{});
+		return error.SelectionPartiallyUnset;
+	};
+	return .initFromInclusive(pos1, pos2);
+}
+
 pub const PlayerIndex = struct {
 	index: usize,
 
@@ -178,6 +192,17 @@ pub const PlayerIndex = struct {
 		}
 		return .{.index = std.fmt.parseInt(usize, arg[1..], 10) catch {
 			errorMessage.print(allocator, "Expected and integer after @ for <{s}>, found \"{s}\"", .{name, arg[1..]});
+			return error.ParseError;
+		}};
+	}
+};
+
+pub const BiomeId = struct {
+	biome: *const main.server.terrain.biomes.Biome,
+
+	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, args: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!@This() {
+		return .{.biome = main.server.terrain.biomes.getByIdOptional(args) orelse {
+			errorMessage.print(allocator, "Couldn't find biome for <{s}> with id \"{s}\"", .{name, args});
 			return error.ParseError;
 		}};
 	}

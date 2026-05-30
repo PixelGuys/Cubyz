@@ -21,7 +21,7 @@ const Shader = struct { // MARK: Shader
 		const versionLine = source[0..versionLineEnd];
 		const sourceLines = source[versionLineEnd..];
 
-		var sourceWithDefines = main.List(u8).init(main.stackAllocator);
+		var sourceWithDefines: main.ListManaged(u8) = .init(main.stackAllocator);
 		defer sourceWithDefines.deinit();
 		sourceWithDefines.appendSlice(versionLine);
 		sourceWithDefines.appendSlice(defines);

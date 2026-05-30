@@ -432,7 +432,8 @@ fn registerRecipesFromZon(zon: ZonElement) void {
 }
 
 pub const Palette = struct { // MARK: Palette
-	palette: main.List([]const u8),
+	allocator: NeverFailingAllocator,
+	palette: main.ListUnmanaged([]const u8),
 
 	pub fn init(allocator: NeverFailingAllocator, zon: ZonElement, firstElement: ?[]const u8) !*Palette {
 		const self = switch (zon) {
@@ -443,7 +444,7 @@ pub const Palette = struct { // MARK: Palette
 
 		if (firstElement) |elem| {
 			if (self.palette.items.len == 0) {
-				self.palette.append(allocator.dupe(u8, elem));
+				self.palette.append(allocator, allocator.dupe(u8, elem));
 			}
 			if (!std.mem.eql(u8, self.palette.items[0], elem)) {
 				return error.FistItemMismatch;
@@ -457,6 +458,7 @@ pub const Palette = struct { // MARK: Palette
 		const self = allocator.create(Palette);
 		self.* = Palette{
 			.palette = .initCapacity(allocator, elems.len),
+			.allocator = allocator,
 		};
 		errdefer self.deinit();
 
@@ -489,6 +491,7 @@ pub const Palette = struct { // MARK: Palette
 		const self = allocator.create(Palette);
 		self.* = Palette{
 			.palette = .initCapacity(allocator, paletteLength),
+			.allocator = allocator,
 		};
 		errdefer self.deinit();
 
@@ -501,15 +504,14 @@ pub const Palette = struct { // MARK: Palette
 
 	pub fn deinit(self: *Palette) void {
 		for (self.palette.items) |item| {
-			self.palette.allocator.free(item);
+			self.allocator.free(item);
 		}
-		const allocator = self.palette.allocator;
-		self.palette.deinit();
-		allocator.destroy(self);
+		self.palette.deinit(self.allocator);
+		self.allocator.destroy(self);
 	}
 
 	pub fn add(self: *Palette, id: []const u8) void {
-		self.palette.append(self.palette.allocator.dupe(u8, id));
+		self.palette.append(self.allocator, self.allocator.dupe(u8, id));
 	}
 
 	pub fn storeToZon(self: *Palette, allocator: NeverFailingAllocator) ZonElement {
@@ -528,8 +530,8 @@ pub const Palette = struct { // MARK: Palette
 	}
 
 	pub fn replaceEntry(self: *Palette, entryIndex: usize, newEntry: []const u8) void {
-		self.palette.allocator.free(self.palette.items[entryIndex]);
-		self.palette.items[entryIndex] = self.palette.allocator.dupe(u8, newEntry);
+		self.allocator.free(self.palette.items[entryIndex]);
+		self.palette.items[entryIndex] = self.allocator.dupe(u8, newEntry);
 	}
 };
 

@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
+const command = main.server.command;
 const User = main.server.User;
 
 const Block = main.blocks.Block;
@@ -14,16 +15,10 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Too many arguments for command /copy. Expected no arguments.", .{});
 		return;
 	}
-	const pos1 = source.worldEditData.selectionPosition1 orelse {
-		return source.sendMessage("#ff0000Position 1 isn't set", .{});
-	};
-	const pos2 = source.worldEditData.selectionPosition2 orelse {
-		return source.sendMessage("#ff0000Position 2 isn't set", .{});
-	};
+	const selection = command.getCurrentSelection(source) catch return;
+	source.sendMessage("Copying: {f}", .{selection});
 
-	source.sendMessage("Copying: {} {}", .{pos1, pos2});
-
-	const result = Blueprint.capture(main.globalAllocator, pos1, pos2);
+	const result = Blueprint.capture(main.globalAllocator, selection);
 	switch (result) {
 		.success => {
 			if (source.worldEditData.clipboard != null) {

@@ -79,7 +79,6 @@ pub const server = struct {
 		components = .{};
 	}
 	pub fn deinit() void {
-		for (components.dense.items) |bag| bag.bag.deinit();
 		components.deinit(main.globalAllocator);
 	}
 
