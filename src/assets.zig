@@ -111,10 +111,10 @@ pub const Assets = struct {
 	}
 	fn read(self: *Assets, allocator: NeverFailingAllocator, assetDir: main.files.Dir, assetPath: []const u8) void {
 		const addons = Addon.discoverAll(main.stackAllocator, assetDir, assetPath);
-		main.stackAllocator.free(addons);
-		defer for (addons.items) |*addon| addon.deinit(main.stackAllocator);
+		defer main.stackAllocator.free(addons);
+		defer for (addons) |*addon| addon.deinit(main.stackAllocator);
 
-		for (addons.items) |addon| {
+		for (addons) |addon| {
 			addon.readAllZon(allocator, "blocks", true, &self.blocks, &self.blockMigrations);
 			addon.readAllZon(allocator, "items", true, &self.items, &self.itemMigrations);
 			addon.readAllZon(allocator, "tools", true, &self.proceduralItems, null);
@@ -141,12 +141,12 @@ pub const Assets = struct {
 		name: []const u8,
 		dir: files.Dir,
 
-		fn discoverAll(allocator: NeverFailingAllocator, assetDir: main.files.Dir, path: []const u8) []const Addon {
+		fn discoverAll(allocator: NeverFailingAllocator, assetDir: main.files.Dir, path: []const u8) []Addon {
 			var addons: main.ListUnmanaged(Addon) = .{};
 
 			var dir = assetDir.openIterableDir(path) catch |err| {
 				std.log.err("Can't open asset path {s}: {s}", .{path, @errorName(err)});
-				return addons;
+				return &.{};
 			};
 			defer dir.close();
 
