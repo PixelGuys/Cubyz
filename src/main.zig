@@ -53,9 +53,6 @@ pub const ListManaged = utils.list.ListManaged;
 pub const ListUnmanaged = utils.list.ListUnmanaged;
 pub const MultiArray = utils.list.MultiArray;
 
-/// Deprecated, use ListManaged instead. Will be changed to point to ListUnmanaged in the future.
-pub const List = ListManaged;
-
 pub threadlocal var stackAllocator: heap.NeverFailingAllocator = if (builtin.is_test) heap.testingAllocator else undefined;
 pub threadlocal var seed: u64 = undefined;
 threadlocal var stackAllocatorBase: heap.StackAllocator = undefined;
