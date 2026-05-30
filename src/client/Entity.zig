@@ -79,25 +79,6 @@ pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 	self.rot[0] = @floatCast(self.interpolatedValues.outPos[3]);
 	self.rot[1] = @floatCast(self.interpolatedValues.outPos[4]);
 	self.rot[2] = @floatCast(self.interpolatedValues.outPos[5]);
-
-	if (main.entity.components.@"cubyz:model".client.get(self.id)) |modelComp| {
-		const model = modelComp.entityModel.get();
-
-		const head = model.nodeReverse.get("Head");
-		if (model.nodeReverse.get("Eyestalks")) |eyestalksId| {
-			const stalkRot = self.rot[0]*0.25;
-			const headRot = self.rot[0]*0.75;
-			modelComp.nodes[eyestalksId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, stalkRot);
-			modelComp.matrices[eyestalksId] = modelComp.nodes[eyestalksId].getHierarchyMatrix(modelComp.nodes);
-
-			const headId = head.?;
-			modelComp.nodes[headId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, headRot);
-			modelComp.matrices[headId] = modelComp.nodes[headId].getHierarchyMatrix(modelComp.nodes);
-		} else if (head) |headId| {
-			modelComp.nodes[headId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, self.rot[0]);
-			modelComp.matrices[headId] = modelComp.nodes[headId].getHierarchyMatrix(modelComp.nodes);
-		}
-	}
 }
 
 pub fn format(self: *const @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {

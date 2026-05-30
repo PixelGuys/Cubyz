@@ -38,7 +38,7 @@ pub const client = struct {
 		light: c_int,
 		contrast: c_int,
 		ambientLight: c_int,
-		nodeMatrices: c_int,
+		nodeBufferOffset: c_int,
 	} = undefined;
 
 	pub fn init() void {
@@ -117,6 +117,8 @@ pub const client = struct {
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
+		main.entity.systems.nodeProcessor.client.nodeBuffer.beginRender();
+
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |component, id| {
 			if (@intFromEnum(id) == game.Player.id) // don't render local player
 				continue;
@@ -138,6 +140,7 @@ pub const client = struct {
 				@as(u32, lightVals[5] >> 3) << 0);
 
 			c.glUniform1ui(uniforms.light, @bitCast(@as(u32, light)));
+			c.glUniform1ui(uniforms.nodeBufferOffset, @bitCast(@as(u32, component.bufferAllocation.start)));
 
 			const pos: Vec3d = ent.getRenderPosition() - playerPos;
 			const modelMatrix = (Mat4f.identity()
@@ -149,9 +152,10 @@ pub const client = struct {
 				.mul(Mat4f.rotationZ(-ent.rot[2])));
 			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
-			c.glUniformMatrix4fv(uniforms.nodeMatrices, main.entityModel.EntityModel.maxNodesCount, c.GL_TRUE, @ptrCast(&component.matrices));
 			c.glDrawElements(c.GL_TRIANGLES, entModel.indexCount, c.GL_UNSIGNED_INT, null);
 		}
+
+		main.entity.systems.nodeProcessor.client.nodeBuffer.endRender();
 	}
 };
 // ############################# Server only stuff ################################

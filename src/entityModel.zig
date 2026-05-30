@@ -18,43 +18,57 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const c = @import("c");
 
+
 pub const EntityModel = struct {
 	height: f32,
 	texturePath: []const u8,
 	modelId: ?[]const u8,
 
-	nodeReverse: std.StringHashMap(u16) = undefined,
-	nodes: NodeList = undefined,
-	nodeCount: u8,
+	nodeIndexMap: std.StringHashMap(u16) = undefined,
+	nodes: []Node = undefined,
+	nodePivots: []Mat4f = undefined,
+	nodeCount: u16,
 
 	vao: ?graphics.VertexArray = null,
 	indexCount: c_int,
 	defaultTexture: ?main.graphics.Texture,
 	coordinateSystem: CoordinateSystem,
 
-	pub const maxNodesCount = 20;
-	pub const NodeList = [maxNodesCount]Node;
-	pub const MatrixList = [maxNodesCount]Mat4f;
+	// TODO: add a static array for recalculating matrices?
 
 	pub const Node = struct {
 		pos: Vec3f = @splat(0),
 		rot: Vec4f = Vec4f{0, 0, 0, 1},
 		scale: Vec3f = @splat(1),
-
-		originMat: Mat4f,
-
 		parent: ?u16 = null,
+		isDirty: bool = true,
+		version: u32 = 1, // saying how many times transform has been modified
+		parentVersion: u32 = 0, // same as above but for children tracking and comparing their versions to detect changes
 
-		pub fn getHierarchyMatrix(self: Node, nodes: NodeList) Mat4f {
-			var mat = self.originMat.mul(Mat4f.translation(self.pos));
-			mat = mat.mul(Mat4f.rotationQuat(self.rot));
-			mat = mat.mul(Mat4f.scale(self.scale));
+		pub fn setPos(self: *Node, pos: Vec3f) void {
+			self.pos = pos;
+			self.version += 1;
+			self.isDirty = true;
+		}
 
-			if (self.parent == null) {
-				return mat;
-			}
+		pub fn setRot(self: *Node, rot: Vec4f) void {
+			self.rot = rot;
+			self.version += 1;
+			self.isDirty = true;
+		}
 
-			return nodes[self.parent.?].getHierarchyMatrix(nodes).mul(mat);
+		pub fn setScale(self: *Node, scale: Vec3f) void {
+			self.scale = scale;
+			self.version += 1;
+			self.isDirty = true;
+		}
+
+		pub fn recalc(self: Node, pivotMat: Mat4f) Mat4f {
+			var newMat = pivotMat.mul(Mat4f.translation(self.pos));
+			newMat = newMat.mul(Mat4f.rotationQuat(self.rot));
+			newMat = newMat.mul(Mat4f.scale(self.scale));
+
+			return newMat;
 		}
 	};
 
@@ -95,6 +109,12 @@ pub const EntityModel = struct {
 		};
 	};
 
+	const NodeRemap = struct {
+		depth: u16,
+		nodeIdx: u16, 
+		gltfNodeIdx: u32
+	};
+
 	pub fn init(assetFolder: []const u8, index: EntityModelIndex, zon: ZonElement) EntityModel {
 		var self: EntityModel = undefined;
 		if (zon.get(?[]const u8, "model", null)) |modelId| {
@@ -108,8 +128,9 @@ pub const EntityModel = struct {
 		self.indexCount = 0;
 		self.coordinateSystem = zon.get(CoordinateSystem, "coordinateSystem", .right_handed_z_up);
 
-		self.nodeReverse = .init(main.worldArena.allocator);
-		self.nodes = std.mem.zeroes([20]Node);
+		self.nodeIndexMap = .init(main.worldArena.allocator);
+		self.nodes = main.worldArena.alloc(Node, 0);
+		self.nodePivots = main.worldArena.alloc(Mat4f, 0);
 		self.nodeCount = 0;
 
 		if (zon.getChildOrNull("isPlayerModel")) |isPlayerModel| {
@@ -158,6 +179,10 @@ pub const EntityModel = struct {
 	}
 
 	fn cloneMetaData(self: *EntityModel) EntityModel {
+		const newNodes = main.worldArena.alloc(Node, self.nodes.len);
+		@memcpy(newNodes, self.nodes);
+		const newNodePivots = main.worldArena.alloc(Mat4f, self.nodePivots.len);
+		@memcpy(newNodePivots, self.nodePivots);
 		return .{
 			.height = self.height,
 			.texturePath = main.worldArena.dupe(u8, self.texturePath),
@@ -166,8 +191,9 @@ pub const EntityModel = struct {
 			.indexCount = 0,
 			.defaultTexture = null,
 			.coordinateSystem = self.coordinateSystem,
-			.nodeReverse = self.nodeReverse.clone() catch unreachable,
-			.nodes = self.nodes,
+			.nodeIndexMap = self.nodeIndexMap.clone() catch unreachable,
+			.nodes = newNodes,
+			.nodePivots = newNodePivots,
 			.nodeCount = self.nodeCount,
 		};
 	}
@@ -209,30 +235,49 @@ pub const EntityModel = struct {
 		defer indices.deinit();
 		var baseVertex: u32 = 0;
 
-		var nodeIdx: u8 = 0;
+		var nodeDepthRemap = main.List(NodeRemap).init(main.stackAllocator);
+		defer nodeDepthRemap.deinit();
 
-		for (data.nodes, 0..data.nodes_count) |node, _| {
+		var nodeIdx: u16 = 0;
+		for (data.nodes, 0..data.nodes_count) |node, gltfNodeIdx| {
 			if (node.children_count == 0) continue;
-			const nameC = std.mem.span(node.name);
+			nodeDepthRemap.append(.{
+				.depth = getHierarchyDepth(node, 0), 
+				.nodeIdx = nodeIdx, 
+				.gltfNodeIdx = @intCast(gltfNodeIdx),
+			});
 
-			const name = main.globalArena.alloc(u8, nameC.len);
-			@memcpy(name, nameC);
-			self.nodeReverse.put(name, @intCast(nodeIdx)) catch unreachable;
-
-			var originMat = Mat4f.translation(convertCoordinateSystemVec(node.translation, self.coordinateSystem));
-			originMat = originMat.mul(Mat4f.rotationQuat(convertCoordinateSystemQuat(node.rotation, self.coordinateSystem)));
-			originMat = originMat.mul(Mat4f.scale(convertCoordinateSystemScale(node.scale, self.coordinateSystem)));
-			self.nodes[nodeIdx] = Node{
-				.originMat = originMat,
-			};
 			nodeIdx += 1;
 		}
+		const nodeCount = nodeIdx;
 
-		for (data.nodes, 0..data.nodes_count) |node, _| {
-			if (node.children_count == 0 or node.parent == null) continue;
+		std.mem.sort(NodeRemap, nodeDepthRemap.items, {}, compareDepth);
 
-			const curNode = self.nodeReverse.get(std.mem.span(node.name)).?;
-			self.nodes[curNode].parent = self.nodeReverse.get(std.mem.span(node.parent.*.name)).?;
+		self.nodes = main.worldArena.alloc(Node, nodeCount);
+		self.nodePivots = main.worldArena.alloc(Mat4f, nodeCount);
+
+		for (nodeDepthRemap.items, 0..) |nodeRemap, i| {
+			const node = data.nodes[nodeRemap.gltfNodeIdx];
+
+			const nameC = std.mem.span(node.name);
+			const name = main.globalArena.alloc(u8, nameC.len);
+			@memcpy(name, nameC);
+			self.nodeIndexMap.put(name, @intCast(i)) catch unreachable;
+
+			var pivotMat = Mat4f.translation(convertCoordinateSystemVec(node.translation, self.coordinateSystem));
+			pivotMat = pivotMat.mul(Mat4f.rotationQuat(convertCoordinateSystemQuat(node.rotation, self.coordinateSystem)));
+			pivotMat = pivotMat.mul(Mat4f.scale(convertCoordinateSystemScale(node.scale, self.coordinateSystem)));
+
+			self.nodes[i] = Node{};
+			self.nodePivots[i] = pivotMat;
+		}
+
+		for (nodeDepthRemap.items) |nodeRemap| {
+			const node = data.nodes[nodeRemap.gltfNodeIdx];
+			if (node.parent == null) continue;
+
+			const curNode = self.nodeIndexMap.get(std.mem.span(node.name)).?;
+			self.nodes[curNode].parent = self.nodeIndexMap.get(std.mem.span(node.parent.*.name)).?;
 		}
 
 		for (data.nodes[0..data.nodes_count]) |node| {
@@ -241,7 +286,7 @@ pub const EntityModel = struct {
 				finalMat = finalMat.mul(Mat4f.rotationQuat(convertCoordinateSystemQuat(node.rotation, self.coordinateSystem)));
 				finalMat = finalMat.mul(Mat4f.scale(convertCoordinateSystemScale(node.scale, self.coordinateSystem)));
 
-				const parentNodeID = if (node.parent) |p| self.nodeReverse.get(std.mem.span(p.*.name)).? else 0;
+				const parentNodeID = if (node.parent) |p| self.nodeIndexMap.get(std.mem.span(p.*.name)).? else 0;
 
 				const primitives = node.mesh.*.primitives;
 				for (primitives[0..node.mesh.*.primitives_count]) |primitive| {
@@ -299,6 +344,18 @@ pub const EntityModel = struct {
 		self.vao = .init(Vertex, vertices.items, indices.items);
 		self.indexCount = @intCast(indices.items.len);
 		self.nodeCount = nodeIdx;
+	}
+
+	fn compareDepth(_: void, lhs: NodeRemap, rhs: NodeRemap) bool {
+		return lhs.depth < rhs.depth;
+	}
+
+	fn getHierarchyDepth(node: c.cgltf_node, depth: u16) u16 {
+		if (node.parent == null) {
+			return depth;
+		}
+
+		return getHierarchyDepth(node.parent.*, depth + 1);
 	}
 
 	fn convertCoordinateSystemVec(v: Vec3f, sys: CoordinateSystem) Vec3f {

@@ -15,6 +15,7 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const EntityModel = main.entityModel.EntityModel;
 
 const c = @import("c");
 
@@ -25,9 +26,17 @@ pub const entityComponentVersion = 0;
 pub const client = struct {
 	const Component = struct {
 		entityModel: main.entityModel.EntityModelIndex,
-		hasLoaded: bool = false,
-		nodes: [20]main.entityModel.EntityModel.Node = undefined,
-		matrices: [20]Mat4f = undefined,
+
+		bufferAllocation: graphics.SubAllocation = .{ .len = 0, .start = 0 },
+		nodes: []EntityModel.Node = undefined,
+		matrices: []Mat4f = undefined,
+
+		pub fn deinit(self: Component) void {
+			main.globalAllocator.free(self.nodes);
+			main.globalAllocator.free(self.matrices);
+
+			main.entity.systems.nodeProcessor.client.nodeBuffer.free(self.bufferAllocation);
+		}
 	};
 	pub var components: main.utils.SparseSet(Component, main.entity.Entity) = .{};
 
@@ -50,16 +59,14 @@ pub const client = struct {
 		};
 		const model = ptr.entityModel.get();
 
-		for (0..model.nodeCount) |i| {
-			ptr.nodes[i] = model.nodes[i];
-		}
+		ptr.nodes = main.globalAllocator.alloc(EntityModel.Node, model.nodeCount);
+		@memcpy(ptr.nodes, model.nodes);
+		ptr.matrices = main.globalAllocator.alloc(Mat4f, model.nodeCount);
 
-		for (0..model.nodeCount) |i| {
-			ptr.matrices[i] = ptr.nodes[i].getHierarchyMatrix(ptr.nodes);
-		}
 	}
 	pub fn unload(entity: u32) void {
-		components.remove(@enumFromInt(entity)) catch {};
+		const ptr = components.fetchRemove(@enumFromInt(entity)) catch return;
+		ptr.deinit();
 	}
 	pub fn get(entity: u32) ?*Component {
 		return components.get(@enumFromInt(entity));
