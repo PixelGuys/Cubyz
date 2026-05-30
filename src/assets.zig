@@ -111,7 +111,7 @@ pub const Assets = struct {
 	}
 	fn read(self: *Assets, allocator: NeverFailingAllocator, assetDir: main.files.Dir, assetPath: []const u8) void {
 		const addons = Addon.discoverAll(main.stackAllocator, assetDir, assetPath);
-		defer addons.deinit(main.stackAllocator);
+		main.stackAllocator.free(addons);
 		defer for (addons.items) |*addon| addon.deinit(main.stackAllocator);
 
 		for (addons.items) |addon| {
@@ -141,7 +141,7 @@ pub const Assets = struct {
 		name: []const u8,
 		dir: files.Dir,
 
-		fn discoverAll(allocator: NeverFailingAllocator, assetDir: main.files.Dir, path: []const u8) main.ListUnmanaged(Addon) {
+		fn discoverAll(allocator: NeverFailingAllocator, assetDir: main.files.Dir, path: []const u8) []const Addon {
 			var addons: main.ListUnmanaged(Addon) = .{};
 
 			var dir = assetDir.openIterableDir(path) catch |err| {
@@ -173,7 +173,7 @@ pub const Assets = struct {
 				};
 				addons.append(allocator, .{.name = allocator.dupe(u8, addon.name), .dir = directory});
 			}
-			return addons;
+			return addons.toOwnedSlice(allocator);
 		}
 
 		fn deinit(self: *Addon, allocator: NeverFailingAllocator) void {
