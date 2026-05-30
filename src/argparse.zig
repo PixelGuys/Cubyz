@@ -64,12 +64,13 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			.parse => error{ParseError}!T,
 		} {
 			var result: T = undefined;
-			var tokens = std.mem.tokenizeScalar(u8, args, ' ');
+			var tokens: Tokenizer = .init(main.stackAllocator, args);
+			defer tokens.deinit(main.stackAllocator);
 
 			var tempErrorMessage: ListUnmanaged(u8) = .{};
 			defer tempErrorMessage.deinit(main.stackAllocator);
 
-			var nextArgument: ?[]const u8 = tokens.next();
+			var nextArgument = tokens.next() catch |err| return otherError(errorMessage, err);
 
 			inline for (s.fields) |field| {
 				const value = resolveArgument(field.type, allocator, field.name[0..], nextArgument, &tempErrorMessage);
@@ -85,7 +86,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				} else {
 					@field(result, field.name) = value catch unreachable;
 					tempErrorMessage.clearRetainingCapacity();
-					nextArgument = tokens.next();
+					nextArgument = tokens.next() catch |err| return otherError(errorMessage, err);
 				}
 			}
 
@@ -95,6 +96,11 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			}
 
 			return result;
+		}
+
+		fn otherError(errorMessage: *ListUnmanaged(u8), err: anyerror) error{ParseError} {
+			errorMessage.print(main.stackAllocator, "Couldn't parse arguments list: {s}", .{@errorName(err)});
+			return error.ParseError;
 		}
 
 		fn resolveArgument(comptime Field: type, allocator: NeverFailingAllocator, name: []const u8, argument: ?[]const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!Field {
