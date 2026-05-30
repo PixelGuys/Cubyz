@@ -69,6 +69,7 @@ pub var commandUniforms: struct {
 	playerPositionInteger: c_int,
 	onlyDrawPreviouslyInvisible: c_int,
 	lodDistance: c_int,
+	isDepth: c_int,
 } = undefined;
 pub var occlusionTestPipeline: graphics.Pipeline = undefined;
 pub var occlusionTestUniforms: struct {
@@ -76,6 +77,7 @@ pub var occlusionTestUniforms: struct {
 	viewMatrix: c_int,
 	playerPositionInteger: c_int,
 	playerPositionFraction: c_int,
+	isDepth: c_int,
 } = undefined;
 pub var vao: graphics.VertexArray = undefined;
 pub var faceBuffers: [settings.highestSupportedLod + 1]graphics.LargeBuffer(FaceData) = undefined;
@@ -299,6 +301,7 @@ fn drawChunksOfLod(chunkIDs: []const u32, projMatrix: Mat4f, lightProjMatrix: Ma
 	c.glUniform1ui(commandUniforms.commandIndexStart, allocation.start);
 	c.glUniform1ui(commandUniforms.size, @intCast(chunkIDs.len));
 	c.glUniform1i(commandUniforms.isTransparent, @intFromBool(mode == .transparent));
+	c.glUniform1i(commandUniforms.isDepth, @intFromBool(mode == .depth));
 	c.glUniform3i(commandUniforms.playerPositionInteger, @floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 	if (mode != .transparent) {
 		c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 0);
@@ -320,6 +323,7 @@ fn drawChunksOfLod(chunkIDs: []const u32, projMatrix: Mat4f, lightProjMatrix: Ma
 	c.glUniform3f(occlusionTestUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 	c.glUniformMatrix4fv(occlusionTestUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 	c.glUniformMatrix4fv(occlusionTestUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&if(mode == .depth) lightViewMatrix else game.camera.viewMatrix));
+	c.glUniform1i(occlusionTestUniforms.isDepth, @intFromBool(mode == .depth));
 	vao.bind();
 	c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(6*6*chunkIDs.len), c.GL_UNSIGNED_INT, null, chunkIDAllocation.start*24);
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
@@ -372,6 +376,8 @@ pub const ChunkData = extern struct {
 	vertexCountTransparent: u32,
 	visibilityState: u32,
 	oldVisibilityState: u32,
+	visibilityStateDepth: u32,
+	oldVisibilityStateDepth: u32,
 };
 
 pub const IndirectData = extern struct {
@@ -1505,6 +1511,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			.max = self.max,
 			.visibilityState = 0,
 			.oldVisibilityState = 0,
+			.visibilityStateDepth = 0,
+			.oldVisibilityStateDepth = 0,
 		}}, &self.chunkAllocation);
 	}
 

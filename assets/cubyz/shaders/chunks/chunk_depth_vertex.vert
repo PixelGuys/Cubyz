@@ -53,6 +53,8 @@ struct ChunkData {
 	uint vertexCountTransparent;
 	uint visibilityState;
 	uint oldVisibilityState;
+	uint visibilityStateDepth;
+	uint oldVisibilityStateDepth;
 };
 
 layout(std430, binding = 6) buffer _chunks

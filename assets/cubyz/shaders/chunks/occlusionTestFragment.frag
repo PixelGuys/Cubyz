@@ -16,6 +16,8 @@ struct ChunkData {
 	uint vertexCountTransparent;
 	uint visibilityState;
 	uint oldVisibilityState;
+	uint visibilityStateDepth;
+	uint oldVisibilityStateDepth;
 };
 
 layout(std430, binding = 6) buffer _chunks
@@ -23,6 +25,12 @@ layout(std430, binding = 6) buffer _chunks
 	ChunkData chunks[];
 };
 
+layout(location = 4) uniform bool isDepth;
+
 void main() {
-	chunks[chunkID].visibilityState = 1;
+	if(isDepth) {
+		chunks[chunkID].visibilityStateDepth = 1;
+	} else {
+		chunks[chunkID].visibilityState = 1;
+	}
 }

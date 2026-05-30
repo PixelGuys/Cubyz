@@ -2251,6 +2251,8 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 			.vertexCountTransparent = undefined,
 			.visibilityState = 0,
 			.oldVisibilityState = 0,
+			.visibilityStateDepth = 0,
+			.oldVisibilityStateDepth = 0,
 		}}, &chunkAllocation);
 		defer main.renderer.chunk_meshing.chunkBuffer.free(chunkAllocation);
 		if (block.transparent()) {
