@@ -211,7 +211,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	const yR = val[1];
 	const zR = val[2];
 
-	//std.log.debug("{} {} {}", .{xR, yR, zR});
+	std.log.debug("{} {} {}", .{xR, yR, zR});
 
 	const far = shadowMapSize;
 	const near = -shadowMapSize;
@@ -225,8 +225,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	}).mul(.scale(.{1.0/shadowMapSize, 1.0/shadowMapSize, 1.0})).mul(.rotationZ(-zRot)).mul(.rotationZ(-xRot));
 
 	const lightView: Mat4f = Mat4f.identity().mul(.rotationX(xRot)).mul(.rotationZ(zRot)).mul(.translation(lightOffset));
-
-	//std.log.debug("View matrix {}", .{lightView.rows});
 
 	game.camera.updateViewMatrix();
 
