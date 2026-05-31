@@ -10,6 +10,8 @@ pub const tickspeed = @import("tickspeed.zig");
 pub const time = @import("time.zig");
 pub const tp = @import("tp.zig");
 
+pub const avatar = @import("entity/avatar.zig");
+
 pub const perm = @import("permission/perm.zig");
 
 pub const undo = @import("worldedit/undo.zig");
@@ -26,4 +28,3 @@ pub const mask = @import("worldedit/mask.zig");
 pub const replace = @import("worldedit/replace.zig");
 pub const toggledecay = @import("worldedit/toggledecay.zig");
 
-pub const avatar = @import("entity/avatar.zig");
