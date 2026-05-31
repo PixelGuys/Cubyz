@@ -14,35 +14,35 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const description = "Input-output operations on blueprints.";
 pub const usage =
-	\\/blueprint save <file-name>
-	\\/blueprint delete <file-name>
-	\\/blueprint load <file-name>
+	\\/blueprint save <filePath>
+	\\/blueprint delete <filePath>
+	\\/blueprint load <filePath>
 	\\/blueprint list
 ;
 
 const Args = union(enum) {
-	@"/blueprint save <file-name>": struct {
+	@"/blueprint save <filePath>": struct {
 		_: enum { save },
-		path: FilePath,
+		filePath: FilePath,
 
 		fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
-			self.path.deinit(allocator);
+			self.filePath.deinit(allocator);
 		}
 	},
-	@"/blueprint delete <file-name>": struct {
+	@"/blueprint delete <filePath>": struct {
 		_: enum { delete },
-		path: FilePath,
+		filePath: FilePath,
 
 		fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
-			self.path.deinit(allocator);
+			self.filePath.deinit(allocator);
 		}
 	},
-	@"/blueprint load <file-name>": struct {
+	@"/blueprint load <filePath>": struct {
 		_: enum { load },
-		path: FilePath,
+		filePath: FilePath,
 
 		fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
-			self.path.deinit(allocator);
+			self.filePath.deinit(allocator);
 		}
 	},
 	@"/blueprint list": struct {
