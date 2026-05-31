@@ -2,8 +2,9 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 const main = @import("main");
-const c = main.graphics.c;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+
+const c = @import("c");
 
 comptime {
 	std.debug.assert(@as(u1, 1) == c.VK_TRUE and @as(u1, 0) == c.VK_FALSE); // Allows using @intFromBool to convert to vulkan types
@@ -221,7 +222,7 @@ pub fn createInstance() void {
 	}
 
 	var createFlags: u32 = 0;
-	var extensions = main.List([*c]const u8).init(main.stackAllocator);
+	var extensions: main.ListManaged([*c]const u8) = .init(main.stackAllocator);
 	defer extensions.deinit();
 	extensions.appendSlice(glfwExtensions[0..glfwExtensionCount]);
 
@@ -372,7 +373,7 @@ fn createLogicalDevice() void {
 	_ = uniqueFamilies.getOrPut(main.stackAllocator.allocator, indices.graphicsFamily.?) catch unreachable;
 	_ = uniqueFamilies.getOrPut(main.stackAllocator.allocator, indices.presentFamily.?) catch unreachable;
 
-	var queueCreateInfos = main.List(c.VkDeviceQueueCreateInfo).init(main.stackAllocator);
+	var queueCreateInfos: main.ListManaged(c.VkDeviceQueueCreateInfo) = .init(main.stackAllocator);
 	defer queueCreateInfos.deinit();
 	var iterator = uniqueFamilies.keyIterator();
 	while (iterator.next()) |queueFamily| {

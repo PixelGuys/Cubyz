@@ -137,7 +137,7 @@ pub fn globalInit() void {
 	zoomOutTexture = Texture.initFromFile("assets/cubyz/ui/window_zoom_out.png");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	pipeline.deinit();
 	backgroundTexture.deinit();
 	titleTexture.deinit();
@@ -185,7 +185,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 		const mousePositionRelative = mousePosition - self.pos;
 		const grabPositionRelative = if (grabPosition) |gp| gp - self.pos else @as(@Vector(2, f32), .{0.0, 0.0});
 
-		if (mousePositionRelative[1] >= 0 and mousePositionRelative[1] <= titleBarHeight) {
+		if (mousePositionRelative[1] >= 0 and mousePositionRelative[1] <= titleBarHeight*self.scale) {
 			if (mousePositionRelative[0] > zoomInPos and mousePositionRelative[0] <= zoomOutPos and grabPositionRelative[0] > zoomInPos and grabPositionRelative[0] <= zoomOutPos) {
 				// Zoom in
 				if (self.scale >= 1) {

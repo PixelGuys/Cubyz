@@ -44,8 +44,7 @@
 		},
 		.{
 			.id = "cubyz:fallen_tree",
-			.log = "cubyz:mahogany_log",
-			.top = "cubyz:mahogany_log",
+			.log = "cubyz:log/mahogany",
 			.chance = 0.03,
 			.height = 6,
 			.height_variation = 3,

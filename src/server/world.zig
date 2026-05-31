@@ -225,7 +225,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 				.user => |user| {
 					const minDistSquare = self.pos.getMinDistanceSquared(user.clientUpdatePos);
 					//                                                                              ↓ Margin for error. (diagonal of 1 chunk)
-					var targetRenderDistance: i64 = @as(i64, user.renderDistance)*chunk.chunkSize + @as(i64, @intFromFloat(@as(comptime_int, chunk.chunkSize)*@sqrt(3.0)));
+					var targetRenderDistance: i64 = @as(i64, user.renderDistance)*chunk.chunkSize + @as(i64, @ceil(@as(comptime_int, chunk.chunkSize)*@sqrt(3.0)));
 					targetRenderDistance *= self.pos.voxelSize;
 					return minDistSquare <= targetRenderDistance*targetRenderDistance;
 				},
@@ -603,13 +603,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		if (worldData.get(u32, "version", 0) == 4) { // TODO: #2458
 			std.log.info("Migrating old world with world version 4 to version 5", .{});
 			// Player file names are now numerical instead of based on the name.
-			var fileNames: main.List([]const u8) = .init(arena);
+			var fileNames: main.ListUnmanaged([]const u8) = .{};
 			var playerDir = try dir.openIterableDir("players");
 			defer playerDir.close();
 			var iterator = playerDir.iterate();
 			while (try iterator.next(main.io)) |file| {
 				if (file.kind == .file and std.mem.endsWith(u8, file.name, ".zon")) {
-					fileNames.append(arena.dupe(u8, file.name));
+					fileNames.append(arena, arena.dupe(u8, file.name));
 				}
 			}
 
@@ -783,8 +783,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			};
 		}
 		// Find all the stored chunks:
-		var chunkPositions = main.List(ChunkPosition).init(main.stackAllocator);
-		defer chunkPositions.deinit();
+		var chunkPositions: main.ListUnmanaged(ChunkPosition) = .{};
+		defer chunkPositions.deinit(main.stackAllocator);
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks/1", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(path);
 		blk: {
@@ -810,7 +810,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 						if (entryZ.kind != .file) continue;
 						const nameZ = entryZ.name[0 .. std.mem.indexOfScalar(u8, entryZ.name, '.') orelse entryZ.name.len];
 						const wz = std.fmt.parseInt(i32, nameZ, 0) catch continue;
-						chunkPositions.append(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1});
+						chunkPositions.append(main.stackAllocator, .{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1});
 					}
 				}
 			}
@@ -992,7 +992,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			readerInput = "";
 		};
 		var reader: main.utils.BinaryReader = .init(readerInput);
-		return main.items.Inventory.ServerSide.createExternallyManagedInventory(size, source, &reader, .{});
+		return main.items.Inventory.server.createExternallyManagedInventory(size, source, &reader, .{});
 	}
 
 	fn savePlayerInventory(allocator: NeverFailingAllocator, inv: main.items.Inventory) []const u8 {
@@ -1026,11 +1026,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		{
 			main.sync.threadContext.assertCorrectContext(.server);
-			if (main.items.Inventory.ServerSide.getInventoryFromSource(.{.playerInventory = user.id})) |inv| {
+			if (main.items.Inventory.server.getInventoryFromSource(.{.playerInventory = user.id})) |inv| {
 				playerZon.put("playerInventory", ZonElement{.stringOwned = savePlayerInventory(main.stackAllocator, inv)});
 			} else @panic("The player inventory wasn't found. Cannot save player data.");
 
-			if (main.items.Inventory.ServerSide.getInventoryFromSource(.{.hand = user.id})) |inv| {
+			if (main.items.Inventory.server.getInventoryFromSource(.{.hand = user.id})) |inv| {
 				playerZon.put("hand", ZonElement{.stringOwned = savePlayerInventory(main.stackAllocator, inv)});
 			} else @panic("The player hand inventory wasn't found. Cannot save player data.");
 		}

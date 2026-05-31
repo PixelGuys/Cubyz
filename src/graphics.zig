@@ -3,21 +3,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-pub const hbft = @cImport({
-	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
-	@cInclude("freetype/ftadvanc.h");
-	@cInclude("freetype/ftbbox.h");
-	@cInclude("freetype/ftbitmap.h");
-	@cInclude("freetype/ftcolor.h");
-	@cInclude("freetype/ftlcdfil.h");
-	@cInclude("freetype/ftsizes.h");
-	@cInclude("freetype/ftstroke.h");
-	@cInclude("freetype/fttrigon.h");
-	@cInclude("freetype/ftsynth.h");
-	@cInclude("hb.h");
-	@cInclude("hb-ft.h");
-});
-
 const vec = @import("vec.zig");
 const Mat4f = vec.Mat4f;
 const Vec4i = vec.Vec4i;
@@ -28,32 +13,15 @@ const Vec3f = vec.Vec3f;
 
 const main = @import("main");
 const Window = main.Window;
-
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+
+const c = @import("c");
 
 const pipelines = @import("graphics/pipelines.zig");
 pub const ComputePipeline = pipelines.ComputePipeline;
 pub const Pipeline = pipelines.Pipeline;
+
 pub const vulkan = @import("graphics/vulkan.zig");
-
-pub const c = @cImport({
-	@cInclude("glad/gl.h");
-
-	// NOTE(blackedout): glad is currently not used on macOS, so use Vulkan header from the Vulkan-Headers repository instead
-	if (builtin.target.os.tag == .macos) {
-		@cInclude("vulkan/vulkan.h");
-		@cInclude("vulkan/vulkan_beta.h");
-	} else {
-		@cInclude("glad/vulkan.h");
-	}
-	@cInclude("GLFW/glfw3.h");
-});
-
-pub const stb_image = @cImport({
-	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
-	@cInclude("stb/stb_image.h");
-	@cInclude("stb/stb_image_write.h");
-});
 
 pub const draw = struct { // MARK: draw
 	var color: u32 = 0;
@@ -596,10 +564,10 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 
 	alignment: Alignment,
 	width: f32,
-	buffer: ?*hbft.hb_buffer_t,
+	buffer: ?*c.hb_buffer_t,
 	glyphs: []GlyphData,
-	lines: main.List(Line),
-	lineBreaks: main.List(LineBreak),
+	lines: main.ListManaged(Line),
+	lineBreaks: main.ListManaged(LineBreak),
 
 	fn addLine(self: *TextBuffer, line: Line) void {
 		if (line.start != line.end) {
@@ -635,9 +603,9 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 	pub const Parser = struct {
 		unicodeIterator: std.unicode.Utf8Iterator,
 		currentFontEffect: FontEffect,
-		parsedText: main.List(u32),
-		fontEffects: main.List(FontEffect),
-		characterIndex: main.List(u32),
+		parsedText: main.ListManaged(u32),
+		fontEffects: main.ListManaged(FontEffect),
+		characterIndex: main.ListManaged(u32),
 		showControlCharacters: bool,
 		curChar: u21 = undefined,
 		curIndex: u32 = 0,
@@ -797,19 +765,19 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		}
 
 		// Let harfbuzz do its thing:
-		const buffer = hbft.hb_buffer_create() orelse @panic("Out of Memory while creating harfbuzz buffer");
-		defer hbft.hb_buffer_destroy(buffer);
-		hbft.hb_buffer_add_utf32(buffer, parser.parsedText.items.ptr, @intCast(parser.parsedText.items.len), 0, @intCast(parser.parsedText.items.len));
-		hbft.hb_buffer_set_direction(buffer, hbft.HB_DIRECTION_LTR);
-		hbft.hb_buffer_set_script(buffer, hbft.HB_SCRIPT_COMMON);
-		hbft.hb_buffer_set_language(buffer, hbft.hb_language_get_default());
-		hbft.hb_shape(TextRendering.harfbuzzFont, buffer, null, 0);
-		var glyphInfos: []hbft.hb_glyph_info_t = undefined;
-		var glyphPositions: []hbft.hb_glyph_position_t = undefined;
+		const buffer = c.hb_buffer_create() orelse @panic("Out of Memory while creating harfbuzz buffer");
+		defer c.hb_buffer_destroy(buffer);
+		c.hb_buffer_add_utf32(buffer, parser.parsedText.items.ptr, @intCast(parser.parsedText.items.len), 0, @intCast(parser.parsedText.items.len));
+		c.hb_buffer_set_direction(buffer, c.HB_DIRECTION_LTR);
+		c.hb_buffer_set_script(buffer, c.HB_SCRIPT_COMMON);
+		c.hb_buffer_set_language(buffer, c.hb_language_get_default());
+		c.hb_shape(TextRendering.harfbuzzFont, buffer, null, 0);
+		var glyphInfos: []c.hb_glyph_info_t = undefined;
+		var glyphPositions: []c.hb_glyph_position_t = undefined;
 		{
 			var len: c_uint = 0;
-			glyphInfos.ptr = hbft.hb_buffer_get_glyph_infos(buffer, &len).?;
-			glyphPositions.ptr = hbft.hb_buffer_get_glyph_positions(buffer, &len).?;
+			glyphInfos.ptr = c.hb_buffer_get_glyph_infos(buffer, &len).?;
+			glyphPositions.ptr = c.hb_buffer_get_glyph_positions(buffer, &len).?;
 			glyphInfos.len = len;
 			glyphPositions.len = len;
 		}
@@ -870,7 +838,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 	}
 
 	pub fn mousePosToIndex(self: TextBuffer, mousePos: Vec2f, bufferLen: usize) u32 {
-		var line: usize = @intFromFloat(@max(0, mousePos[1]/16.0));
+		var line: usize = @trunc(@max(0, mousePos[1]/16.0));
 		line = @min(line, self.lineBreaks.items.len - 2);
 		var x: f32 = self.getLineOffset(line);
 		const start = self.lineBreaks.items[line].index;
@@ -1131,21 +1099,21 @@ const TextRendering = struct { // MARK: TextRendering
 		alpha: c_int,
 	} = undefined;
 
-	var freetypeLib: hbft.FT_Library = undefined;
-	var freetypeFace: hbft.FT_Face = undefined;
-	var harfbuzzFace: ?*hbft.hb_face_t = undefined;
-	var harfbuzzFont: ?*hbft.hb_font_t = undefined;
-	var glyphMapping: main.List(u31) = undefined;
-	var glyphData: main.List(Glyph) = undefined;
+	var freetypeLib: c.FT_Library = undefined;
+	var freetypeFace: c.FT_Face = undefined;
+	var harfbuzzFace: ?*c.hb_face_t = undefined;
+	var harfbuzzFont: ?*c.hb_font_t = undefined;
+	var glyphMapping: main.ListManaged(u31) = undefined;
+	var glyphData: main.ListManaged(Glyph) = undefined;
 	var glyphTexture: [2]c_uint = undefined;
 	var textureWidth: i32 = 1024;
 	const textureHeight: i32 = 16;
 	var textureOffset: i32 = 0;
 	var fontUnitsPerPixel: f32 = undefined;
 
-	fn ftError(errorCode: hbft.FT_Error) !void {
+	fn ftError(errorCode: c.FT_Error) !void {
 		if (errorCode == 0) return;
-		const errorString = hbft.FT_Error_String(errorCode);
+		const errorString = c.FT_Error_String(errorCode);
 		std.log.err("Got freetype error {s}", .{errorString});
 		return error.freetype;
 	}
@@ -1166,11 +1134,11 @@ const TextRendering = struct { // MARK: TextRendering
 		errdefer pipeline.deinit();
 		c.glUniform1f(uniforms.alpha, 1.0);
 		c.glUniform2f(uniforms.fontSize, @floatFromInt(textureWidth), @floatFromInt(textureHeight));
-		try ftError(hbft.FT_Init_FreeType(&freetypeLib));
-		try ftError(hbft.FT_New_Face(freetypeLib, "assets/cubyz/fonts/unscii-16-full.ttf", 0, &freetypeFace));
-		try ftError(hbft.FT_Set_Pixel_Sizes(freetypeFace, 0, textureHeight));
-		harfbuzzFace = hbft.hb_ft_face_create_referenced(freetypeFace);
-		harfbuzzFont = hbft.hb_font_create(harfbuzzFace);
+		try ftError(c.FT_Init_FreeType(&freetypeLib));
+		try ftError(c.FT_New_Face(freetypeLib, "assets/cubyz/fonts/unscii-16-full.ttf", 0, &freetypeFace));
+		try ftError(c.FT_Set_Pixel_Sizes(freetypeFace, 0, textureHeight));
+		harfbuzzFace = c.hb_ft_face_create_referenced(freetypeFace);
+		harfbuzzFont = c.hb_font_create(harfbuzzFace);
 		fontUnitsPerPixel = @as(f32, @floatFromInt(freetypeFace.*.units_per_EM))/@as(f32, @floatFromInt(textureHeight));
 
 		glyphMapping = .init(main.globalAllocator);
@@ -1192,11 +1160,11 @@ const TextRendering = struct { // MARK: TextRendering
 
 	fn deinit() void {
 		pipeline.deinit();
-		ftError(hbft.FT_Done_FreeType(freetypeLib)) catch {};
+		ftError(c.FT_Done_FreeType(freetypeLib)) catch {};
 		glyphMapping.deinit();
 		glyphData.deinit();
 		c.glDeleteTextures(2, &glyphTexture);
-		hbft.hb_font_destroy(harfbuzzFont);
+		c.hb_font_destroy(harfbuzzFont);
 	}
 
 	fn resizeTexture(newWidth: i32) void {
@@ -1212,7 +1180,7 @@ const TextRendering = struct { // MARK: TextRendering
 		c.glUniform2f(uniforms.fontSize, @floatFromInt(textureWidth), @floatFromInt(textureHeight));
 	}
 
-	fn uploadData(bitmap: hbft.FT_Bitmap) void {
+	fn uploadData(bitmap: c.FT_Bitmap) void {
 		const width: i32 = @bitCast(bitmap.width);
 		const height: i32 = @bitCast(bitmap.rows);
 		const buffer = bitmap.buffer orelse return;
@@ -1229,7 +1197,7 @@ const TextRendering = struct { // MARK: TextRendering
 			glyphMapping.appendNTimes(0, index - glyphMapping.items.len + 1);
 		}
 		if (glyphMapping.items[index] == 0) { // glyph was not initialized yet.
-			try ftError(hbft.FT_Load_Glyph(freetypeFace, index, hbft.FT_LOAD_RENDER));
+			try ftError(c.FT_Load_Glyph(freetypeFace, index, c.FT_LOAD_RENDER));
 			const glyph = freetypeFace.*.glyph;
 			const bitmap = glyph.*.bitmap;
 			const width = bitmap.width;
@@ -1489,9 +1457,9 @@ pub const SubAllocation = struct {
 pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 	return struct {
 		ssbo: SSBO,
-		freeBlocks: main.List(SubAllocation),
+		freeBlocks: main.ListManaged(SubAllocation),
 		fences: [3]c.GLsync,
-		fencedFreeLists: [3]main.List(SubAllocation),
+		fencedFreeLists: [3]main.ListManaged(SubAllocation),
 		activeFence: u8,
 		capacity: u31,
 		used: u31,
@@ -1798,7 +1766,7 @@ pub const TextureArray = struct { // MARK: TextureArray
 			gSum /= aSum;
 			bSum /= aSum;
 		}
-		return Color{.r = @intFromFloat(rSum), .g = @intFromFloat(gSum), .b = @intFromFloat(bSum), .a = @intFromFloat(aSum)};
+		return Color{.r = @trunc(rSum), .g = @trunc(gSum), .b = @trunc(bSum), .a = @trunc(aSum)};
 	}
 
 	/// (Re-)Generates the GPU buffer.
@@ -1906,7 +1874,7 @@ pub const Texture = struct { // MARK: Texture
 
 	pub fn initFromFile(path: []const u8) Texture {
 		const self = Texture.init();
-		const image = Image.readFromFile(main.stackAllocator, path) catch |err| blk: {
+		const image = Image.readFromFile(main.stackAllocator, path, .{.orientation = .openGl}) catch |err| blk: {
 			std.log.err("Couldn't read image from {s}: {s}", .{path, @errorName(err)});
 			break :blk Image.defaultImage;
 		};
@@ -1930,7 +1898,7 @@ pub const Texture = struct { // MARK: Texture
 		while (curSize != 0) : (curSize /= 2) {
 			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}{}.png", .{pathPrefix, curSize}) catch unreachable;
 			defer main.stackAllocator.free(path);
-			const image = Image.readFromFile(main.stackAllocator, path) catch |err| blk: {
+			const image = Image.readFromFile(main.stackAllocator, path, .{.orientation = .openGl}) catch |err| blk: {
 				std.log.err("Couldn't read image from {s}: {s}", .{path, @errorName(err)});
 				break :blk Image.defaultImage;
 			};
@@ -2117,37 +2085,27 @@ pub const Image = struct { // MARK: Image
 		if (self.imageData.ptr == &defaultImageData or self.imageData.ptr == &emptyImageData or self.imageData.ptr == &whiteImageData) return;
 		allocator.free(self.imageData);
 	}
-	pub fn readFromFile(allocator: NeverFailingAllocator, path: []const u8) !Image {
+	pub fn readFromFile(allocator: NeverFailingAllocator, path: []const u8, options: struct { orientation: enum { asIs, openGl } }) !Image {
 		var result: Image = undefined;
 		var channel: c_int = undefined;
 		const nullTerminatedPath = main.stackAllocator.dupeZ(u8, path); // TODO: Find a more zig-friendly image loading library.
 		errdefer main.stackAllocator.free(nullTerminatedPath);
-		stb_image.stbi_set_flip_vertically_on_load(1);
-		const data = stb_image.stbi_load(nullTerminatedPath.ptr, @ptrCast(&result.width), @ptrCast(&result.height), &channel, 4) orelse {
+		switch (options.orientation) {
+			.asIs => {},
+			.openGl => c.stbi_set_flip_vertically_on_load(1),
+		}
+		const data = c.stbi_load(nullTerminatedPath.ptr, @ptrCast(&result.width), @ptrCast(&result.height), &channel, 4) orelse {
 			return error.FileNotFound;
 		};
 		main.stackAllocator.free(nullTerminatedPath);
 		result.imageData = allocator.dupe(Color, @as([*]Color, @ptrCast(data))[0 .. result.width*result.height]);
-		stb_image.stbi_image_free(data);
-		return result;
-	}
-	pub fn readUnflippedFromFile(allocator: NeverFailingAllocator, path: []const u8) !Image {
-		var result: Image = undefined;
-		var channel: c_int = undefined;
-		const nullTerminatedPath = main.stackAllocator.dupeZ(u8, path); // TODO: Find a more zig-friendly image loading library.
-		errdefer main.stackAllocator.free(nullTerminatedPath);
-		const data = stb_image.stbi_load(nullTerminatedPath.ptr, @ptrCast(&result.width), @ptrCast(&result.height), &channel, 4) orelse {
-			return error.FileNotFound;
-		};
-		main.stackAllocator.free(nullTerminatedPath);
-		result.imageData = allocator.dupe(Color, @as([*]Color, @ptrCast(data))[0 .. result.width*result.height]);
-		stb_image.stbi_image_free(data);
+		c.stbi_image_free(data);
 		return result;
 	}
 	pub fn exportToFile(self: Image, path: []const u8) !void {
 		const nullTerminated = main.stackAllocator.dupeZ(u8, path);
 		defer main.stackAllocator.free(nullTerminated);
-		_ = stb_image.stbi_write_png(nullTerminated.ptr, self.width, self.height, 4, self.imageData.ptr, self.width*4); // TODO: Handle the return type.
+		_ = c.stbi_write_png(nullTerminated.ptr, self.width, self.height, 4, self.imageData.ptr, self.width*4); // TODO: Handle the return type.
 	}
 	pub fn getRGB(self: Image, x: usize, y: usize) Color {
 		std.debug.assert(x < self.width);

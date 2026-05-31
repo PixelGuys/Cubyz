@@ -14,15 +14,7 @@ const vec = main.vec;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 
-var memoryPool: main.heap.MemoryPool(ChannelChunk) = undefined;
-
-pub fn init() void {
-	memoryPool = .init(main.globalAllocator);
-}
-
-pub fn deinit() void {
-	memoryPool.deinit();
-}
+var memoryPool: main.heap.MemoryPool(ChannelChunk) = .init(main.globalArena);
 
 const LightValue = packed struct(u32) {
 	r: u8,
@@ -114,7 +106,7 @@ pub const ChannelChunk = struct {
 		}
 	}
 
-	fn propagateDirect(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lightRefreshList: *main.List(chunk.ChunkPosition)) void {
+	fn propagateDirect(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
 		var neighborLists: [6]main.ListUnmanaged(Entry) = @splat(.{});
 		defer {
 			for (&neighborLists) |*list| {
@@ -163,7 +155,7 @@ pub const ChannelChunk = struct {
 		}
 	}
 
-	fn addSelfToLightRefreshList(self: *ChannelChunk, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
+	fn addSelfToLightRefreshList(self: *ChannelChunk, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
 		for (lightRefreshList.items) |other| {
 			if (self.ch.pos.equals(other)) {
 				return;
@@ -172,7 +164,7 @@ pub const ChannelChunk = struct {
 		lightRefreshList.append(self.ch.pos);
 	}
 
-	fn propagateDestructive(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), constructiveEntries: *main.ListUnmanaged(ChunkEntries), isFirstBlock: bool, lightRefreshList: *main.List(chunk.ChunkPosition)) main.ListUnmanaged(BlockPos) {
+	fn propagateDestructive(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), constructiveEntries: *main.ListUnmanaged(ChunkEntries), isFirstBlock: bool, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) main.ListUnmanaged(BlockPos) {
 		var neighborLists: [6]main.ListUnmanaged(Entry) = @splat(.{});
 		var constructiveList: main.ListUnmanaged(BlockPos) = .{};
 		defer {
@@ -253,7 +245,7 @@ pub const ChannelChunk = struct {
 		return constructiveList;
 	}
 
-	fn propagateFromNeighbor(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lights: []const Entry, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
+	fn propagateFromNeighbor(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lights: []const Entry, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
 		std.debug.assert(lightQueue.isEmpty());
 		for (lights) |entry| {
 			var result = entry;
@@ -263,7 +255,7 @@ pub const ChannelChunk = struct {
 		self.propagateDirect(lightQueue, lightRefreshList);
 	}
 
-	fn propagateDestructiveFromNeighbor(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lights: []const Entry, constructiveEntries: *main.ListUnmanaged(ChunkEntries), lightRefreshList: *main.List(chunk.ChunkPosition)) main.ListUnmanaged(BlockPos) {
+	fn propagateDestructiveFromNeighbor(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lights: []const Entry, constructiveEntries: *main.ListUnmanaged(ChunkEntries), lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) main.ListUnmanaged(BlockPos) {
 		std.debug.assert(lightQueue.isEmpty());
 		for (lights) |entry| {
 			var result = entry;
@@ -273,7 +265,7 @@ pub const ChannelChunk = struct {
 		return self.propagateDestructive(lightQueue, constructiveEntries, false, lightRefreshList);
 	}
 
-	pub fn propagateLights(self: *ChannelChunk, lights: []const BlockPos, comptime checkNeighbors: bool, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
+	pub fn propagateLights(self: *ChannelChunk, lights: []const BlockPos, comptime checkNeighbors: bool, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
 		var lightQueue = main.utils.CircularBufferQueue(Entry).init(main.stackAllocator, 1 << 12);
 		defer lightQueue.deinit();
 		for (lights) |pos| {
@@ -327,7 +319,7 @@ pub const ChannelChunk = struct {
 		self.propagateDirect(&lightQueue, lightRefreshList);
 	}
 
-	pub fn propagateUniformSun(self: *ChannelChunk, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
+	pub fn propagateUniformSun(self: *ChannelChunk, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
 		std.debug.assert(self.isSun);
 		self.mutex.lock();
 		self.data.fillUniform(.fromArray(.{255, 255, 255}));
@@ -377,7 +369,7 @@ pub const ChannelChunk = struct {
 		}
 	}
 
-	pub fn propagateLightsDestructive(self: *ChannelChunk, lights: []const BlockPos, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
+	pub fn propagateLightsDestructive(self: *ChannelChunk, lights: []const BlockPos, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
 		var lightQueue = main.utils.CircularBufferQueue(Entry).init(main.stackAllocator, 1 << 12);
 		defer lightQueue.deinit();
 		for (lights) |pos| {
@@ -437,7 +429,7 @@ fn getLightAt(parent: *ChunkMesh, x: i32, y: i32, z: i32) LightVector {
 
 fn getCornerLight(parent: *ChunkMesh, pos: Vec3i, normal: Vec3f) LightVector {
 	const lightPos = @as(Vec3f, @floatFromInt(pos)) + normal*@as(Vec3f, @splat(0.5)) - @as(Vec3f, @splat(0.5));
-	const startPos: Vec3i = @intFromFloat(@floor(lightPos));
+	const startPos: Vec3i = @floor(lightPos);
 	const interp = lightPos - @floor(lightPos);
 	var val: LightVector = @splat(0);
 	var dx: i32 = 0;
@@ -450,7 +442,7 @@ fn getCornerLight(parent: *ChunkMesh, pos: Vec3i, normal: Vec3f) LightVector {
 				if (dx == 0) weight = 1 - interp[0] else weight = interp[0];
 				if (dy == 0) weight *= 1 - interp[1] else weight *= interp[1];
 				if (dz == 0) weight *= 1 - interp[2] else weight *= interp[2];
-				const integerWeight: u16 = @intFromFloat(weight*256);
+				const integerWeight: u16 = @trunc(weight*256);
 				const lightVal: LightVector = getLightAt(parent, startPos[0] +% dx, startPos[1] +% dy, startPos[2] +% dz);
 				val += lightVal*@as(LightVector, @splat(integerWeight));
 			}
@@ -507,7 +499,7 @@ pub fn getLight(parent: *ChunkMesh, blockPos: Vec3i, textureIndex: u16, quadInde
 		var rawVals: [4]LightVector = undefined;
 		for (0..4) |i| {
 			const vertexPos: Vec3f = quadInfo.corners[i];
-			const fullPos = blockPos +% @as(Vec3i, @intFromFloat(vertexPos));
+			const fullPos = blockPos +% @as(Vec3i, @trunc(vertexPos));
 			rawVals[i] = getCornerLight(parent, fullPos, normal);
 		}
 		return packLightValues(rawVals);
@@ -516,7 +508,7 @@ pub fn getLight(parent: *ChunkMesh, blockPos: Vec3i, textureIndex: u16, quadInde
 	for (0..4) |i| {
 		const vertexPos: Vec3f = quadInfo.corners[i];
 		const lightPos = vertexPos + @as(Vec3f, @floatFromInt(blockPos));
-		const containingBlockPos: Vec3i = @intFromFloat(@floor(lightPos));
+		const containingBlockPos: Vec3i = @floor(lightPos);
 		const interp = std.math.clamp(lightPos - @as(Vec3f, @floatFromInt(containingBlockPos)), @as(Vec3f, @splat(0)), @as(Vec3f, @splat(1)));
 
 		var cornerVals: [2][2][2]LightVector = undefined;
@@ -541,7 +533,7 @@ pub fn getLight(parent: *ChunkMesh, blockPos: Vec3i, textureIndex: u16, quadInde
 					if (dx == 0) weight = 1 - interp[0] else weight = interp[0];
 					if (dy == 0) weight *= 1 - interp[1] else weight *= interp[1];
 					if (dz == 0) weight *= 1 - interp[2] else weight *= interp[2];
-					const integerWeight: u16 = @intFromFloat(weight*256);
+					const integerWeight: u16 = @trunc(weight*256);
 					val += cornerVals[dx][dy][dz]*@as(LightVector, @splat(integerWeight));
 				}
 			}

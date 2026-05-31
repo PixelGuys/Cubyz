@@ -30,7 +30,7 @@ pub fn globalInit() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/inventory/bag_slot.png");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	texture.deinit();
 }
 
@@ -68,9 +68,9 @@ pub fn mainButtonReleased(self: *BagSlot, mousePosition: Vec2f) void {
 		if (GuiComponent.contains(self.pos, self.size, mousePosition)) {
 			const carried = gui.inventory.carried;
 			if (carried.getAmount(0) != 0) {
-				main.sync.ClientSide.executeCommand(.{.moveToPlayerBag = .{.amount = carried.getAmount(0), .source = .{.inv = carried.super, .slot = 0}}});
+				main.sync.client.executeCommand(.{.moveToPlayerBag = .{.amount = carried.getAmount(0), .source = .{.inv = carried.super, .slot = 0}}});
 			} else {
-				main.sync.ClientSide.executeCommand(.{.takeFromPlayerBag = .init(&.{carried}, std.math.maxInt(u16))});
+				main.sync.client.executeCommand(.{.takeFromPlayerBag = .init(&.{carried}, std.math.maxInt(u16))});
 			}
 		}
 	}
@@ -86,7 +86,7 @@ pub fn render(self: *BagSlot, _: Vec2f) void {
 		const item = self.inventory.peek(i).item;
 		if (item == .null) continue;
 		const opacity: f32 = std.math.pow(f32, 0.5, @as(f32, @floatFromInt(i)));
-		draw.setColor(0xffffff | @as(u32, @intFromFloat(opacity*255)) << 24);
+		draw.setColor(0xffffff | @as(u32, @trunc(opacity*255)) << 24);
 		item.render(self.pos, @splat(sizeWithBorder), border);
 	}
 

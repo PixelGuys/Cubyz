@@ -3,6 +3,8 @@ const builtin = @import("builtin");
 
 const main = @import("main");
 
+const c = @import("c");
+
 const CallbackFunction = *const fn (usize) void;
 
 const Impl = if (builtin.os.tag == .windows)
@@ -41,13 +43,6 @@ const NoImpl = struct {
 };
 
 const LinuxImpl = struct { // MARK: LinuxImpl
-	const c = @cImport({
-		@cInclude("sys/inotify.h");
-		@cInclude("sys/ioctl.h");
-		@cInclude("unistd.h");
-		@cInclude("errno.h");
-	});
-
 	const DirectoryInfo = struct {
 		callback: CallbackFunction,
 		userData: usize,
@@ -86,7 +81,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 	}
 
 	fn addWatchDescriptorsRecursive(info: *DirectoryInfo, path: []const u8) void {
-		main.utils.assertLocked(&mutex);
+		mutex.assertLocked();
 		var iterableDir = main.files.cwd().openIterableDir(path) catch |err| {
 			std.log.err("Error while opening dirs {s}: {s}", .{path, @errorName(err)});
 			return;
@@ -107,7 +102,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 	}
 
 	fn updateRecursiveCallback(info: *DirectoryInfo) void {
-		main.utils.assertLocked(&mutex);
+		mutex.assertLocked();
 		for (info.watchDescriptors.items[1..]) |watchDescriptor| {
 			removeWatchDescriptor(watchDescriptor, info.path);
 		}
@@ -155,7 +150,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 	}
 
 	fn addWatchDescriptor(info: *DirectoryInfo, path: [:0]const u8) void {
-		main.utils.assertLocked(&mutex);
+		mutex.assertLocked();
 		const watchDescriptor = c.inotify_add_watch(fd, path.ptr, c.IN_CLOSE_WRITE | c.IN_DELETE | c.IN_CREATE | c.IN_MOVE | c.IN_ONLYDIR);
 		if (watchDescriptor == -1) {
 			std.log.err("Error while adding watch descriptor for path {s}: {}", .{path, std.posix.errno(watchDescriptor)});
@@ -165,7 +160,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 	}
 
 	fn removeWatchDescriptor(watchDescriptor: c_int, path: []const u8) void {
-		main.utils.assertLocked(&mutex);
+		mutex.assertLocked();
 		_ = callbacks.remove(watchDescriptor);
 		const result = c.inotify_rm_watch(fd, watchDescriptor);
 		if (result == -1) {
@@ -211,13 +206,10 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 };
 
 const WindowsImpl = struct { // MARK: WindowsImpl
-	const c = @cImport({
-		@cInclude("windows.h");
-	});
 	const HANDLE = std.os.windows.HANDLE;
 	var notificationHandlers: std.StringHashMap(*DirectoryInfo) = undefined;
-	var callbacks: main.List(*DirectoryInfo) = undefined;
-	var justTheHandles: main.List(HANDLE) = undefined;
+	var callbacks: main.ListManaged(*DirectoryInfo) = undefined;
+	var justTheHandles: main.ListManaged(HANDLE) = undefined;
 	var mutex: main.utils.Mutex = .{};
 
 	const DirectoryInfo = struct {

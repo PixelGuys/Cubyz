@@ -43,12 +43,12 @@ pub const CaveLayer = struct {
 				return null;
 			}
 		}
-		var biomes: main.List(*const Biome) = .init(main.stackAllocator);
-		defer biomes.deinit();
+		var biomes: main.ListUnmanaged(*const Biome) = .{};
+		defer biomes.deinit(main.stackAllocator);
 		outer: for (terrain.biomes.getCaveBiomes()) |*biome| {
 			for (tags) |tag| {
 				if (biome.hasTag(tag)) {
-					biomes.append(biome);
+					biomes.append(main.stackAllocator, biome);
 					continue :outer;
 				}
 			}

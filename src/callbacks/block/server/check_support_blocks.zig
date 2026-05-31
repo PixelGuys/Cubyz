@@ -30,10 +30,10 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 
 	var newBlock: Block = params.block;
 
-	inline for (comptime std.meta.declarations(main.rotation.list)) |rotationMode| {
+	inline for (comptime std.meta.declarations(main.rotation.rotations)) |rotationMode| {
 		if (params.block.mode() == main.rotation.getByID(rotationMode.name)) {
-			if (@hasDecl(@field(main.rotation.list, rotationMode.name), "updateBlockFromNeighborConnectivity")) {
-				@field(main.rotation.list, rotationMode.name).updateBlockFromNeighborConnectivity(&newBlock, neighborSupportive);
+			if (@hasDecl(@field(main.rotation.rotations, rotationMode.name), "updateBlockFromNeighborConnectivity")) {
+				@field(main.rotation.rotations, rotationMode.name).updateBlockFromNeighborConnectivity(&newBlock, neighborSupportive);
 			} else {
 				std.log.err("Rotation mode {s} has no updateBlockFromNeighborConnectivity function and cannot be used for {s} callback", .{rotationMode.name, @typeName(@This())});
 			}

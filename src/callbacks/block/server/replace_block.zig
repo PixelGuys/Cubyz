@@ -8,7 +8,7 @@ pub fn init(zon: main.ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
 	result.* = .{
 		.block = main.blocks.parseBlock(zon.get(?[]const u8, "block", null) orelse {
-			std.log.err("Missing field \"block\" for replaceBlock event", .{});
+			std.log.err("Missing field \"block\" for replace_block event", .{});
 			return null;
 		}),
 	};

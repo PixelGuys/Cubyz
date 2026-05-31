@@ -2,13 +2,15 @@ const std = @import("std");
 
 const main = @import("main");
 const chunk = main.chunk;
+const ServerChunk = chunk.ServerChunk;
 const game = main.game;
 const graphics = main.graphics;
-const c = graphics.c;
 const ZonElement = main.ZonElement;
 const renderer = main.renderer;
 const settings = main.settings;
 const utils = main.utils;
+const BinaryReader = utils.BinaryReader;
+const BinaryWriter = utils.BinaryWriter;
 const vec = main.vec;
 const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
@@ -16,20 +18,15 @@ const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-
-const BinaryReader = main.utils.BinaryReader;
-const BinaryWriter = main.utils.BinaryWriter;
-
 const blocks = main.blocks;
-const chunk_zig = main.chunk;
-const ServerChunk = chunk_zig.ServerChunk;
 const World = game.World;
 const ServerWorld = main.server.ServerWorld;
 const items = main.items;
 const ItemStack = items.ItemStack;
 const random = main.random;
+const entity = main.entity;
 
-const entityComponent = main.entity.components;
+const c = @import("c");
 
 // ############################# Client only stuff ################################
 pub const client = struct {
@@ -96,7 +93,7 @@ pub const client = struct {
 			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.height/2));
 
 			const transparency = 38.0*std.math.log10(vec.lengthSquare(pos3d) + 1) - 80.0;
-			const alpha: u32 = @intFromFloat(std.math.clamp(0xff - transparency, 0, 0xff));
+			const alpha: u32 = @trunc(std.math.clamp(0xff - transparency, 0, 0xff));
 			graphics.draw.setColor(alpha << 24);
 
 			const renderedName = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{ent}) catch unreachable;
@@ -119,7 +116,7 @@ pub const client = struct {
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
-		for (entityComponent.@"cubyz:model".client.components.dense.items, entityComponent.@"cubyz:model".client.components.denseToSparseIndex.items) |component, id| {
+		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |component, id| {
 			if (@intFromEnum(id) == game.Player.id) // don't render local player
 				continue;
 
@@ -130,7 +127,7 @@ pub const client = struct {
 			const entTexture = entModel.defaultTexture;
 
 			entTexture.?.bindTo(0);
-			const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));
+			const blockPos: vec.Vec3i = @floor(ent.pos);
 			const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
 			const light = (@as(u32, lightVals[0] >> 3) << 25 |
 				@as(u32, lightVals[1] >> 3) << 20 |

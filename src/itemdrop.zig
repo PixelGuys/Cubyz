@@ -1,17 +1,16 @@
 const std = @import("std");
 
+const main = @import("main");
 const blocks = @import("blocks.zig");
-const chunk_zig = @import("chunk.zig");
-const ServerChunk = chunk_zig.ServerChunk;
+const chunk = @import("chunk.zig");
+const ServerChunk = chunk.ServerChunk;
 const game = @import("game.zig");
 const World = game.World;
 const ServerWorld = main.server.ServerWorld;
 const graphics = @import("graphics.zig");
-const c = graphics.c;
 const items = @import("items.zig");
 const ItemStack = items.ItemStack;
-const ZonElement = @import("zon.zig").ZonElement;
-const main = @import("main");
+const ZonElement = main.ZonElement;
 const physics = main.physics;
 const random = @import("random.zig");
 const settings = @import("settings.zig");
@@ -25,10 +24,13 @@ const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
+const c = @import("c");
+
 const ItemDrop = struct { // MARK: ItemDrop
 	pos: Vec3d,
 	vel: Vec3d,
 	rot: Vec3f,
+	onGround: bool = false,
 	itemStack: ItemStack,
 	despawnTime: i32,
 	pickupCooldown: i32,
@@ -67,7 +69,6 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	changeQueue: main.utils.ConcurrentQueue(union(enum) { add: struct { u16, ItemDrop }, remove: u16 }),
 
 	world: ?*ServerWorld,
-	airDragFactor: f64,
 
 	size: u32 = 0,
 
@@ -78,7 +79,6 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			.isEmpty = .initFull(),
 			.changeQueue = .init(allocator, 16),
 			.world = world,
-			.airDragFactor = gravity/terminalVelocity,
 		};
 		self.list.resize(self.allocator.allocator, maxCapacity) catch unreachable;
 	}
@@ -206,16 +206,17 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.processChanges();
 		const pos = self.list.items(.pos);
 		const vel = self.list.items(.vel);
+		const onGround = self.list.items(.onGround);
 		const pickupCooldown = self.list.items(.pickupCooldown);
 		const despawnTime = self.list.items(.despawnTime);
 		var ii: u32 = 0;
 		while (ii < self.size) {
 			const i = self.indices[ii];
-			if (self.world.?.getSimulationChunkAndIncreaseRefCount(@intFromFloat(pos[i][0]), @intFromFloat(pos[i][1]), @intFromFloat(pos[i][2]))) |simChunk| {
+			if (self.world.?.getSimulationChunkAndIncreaseRefCount(@trunc(pos[i][0]), @trunc(pos[i][1]), @trunc(pos[i][2]))) |simChunk| {
 				defer simChunk.decreaseRefCount();
-				if (simChunk.getChunk()) |chunk| {
+				if (simChunk.getChunk() != null) {
 					// Check collision with blocks:
-					self.updateEnt(chunk, &pos[i], &vel[i], deltaTime);
+					updateEnt(&pos[i], &vel[i], &onGround[i], deltaTime);
 				}
 			}
 			pickupCooldown[i] -= 1;
@@ -352,83 +353,19 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.internalRemove(i);
 	}
 
-	fn updateEnt(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
+	fn updateEnt(pos: *Vec3d, vel: *Vec3d, onGround: *bool, deltaTime: f64) void {
 		const hitBox = physics.collision.Box{.min = @splat(-radius), .max = @splat(radius)};
-		if (physics.collision.collides(.server, .x, 0, pos.*, hitBox) != null) {
-			self.fixStuckInBlock(chunk, pos, vel, deltaTime);
-			return;
-		}
-		vel.* += Vec3d{0, 0, -gravity*deltaTime};
-		inline for (0..3) |i| {
-			const move = vel.*[i]*deltaTime; // + acceleration[i]*deltaTime;
-			if (main.physics.collision.collides(.server, @enumFromInt(i), move, pos.*, hitBox)) |box| {
-				if (move < 0) {
-					pos.*[i] = box.max[i] + radius;
-				} else {
-					pos.*[i] = box.min[i] - radius;
-				}
-				vel.*[i] = 0;
-			} else {
-				pos.*[i] += move;
-			}
-		}
-		// Apply drag:
-		vel.* *= @splat(@max(0, 1 - self.airDragFactor*deltaTime));
-	}
+		var volumeProperties: physics.collision.VolumeProperties = undefined;
+		physics.calculateVolumeProperties(.server, &volumeProperties, pos.*, hitBox, terminalVelocity);
 
-	fn fixStuckInBlock(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
-		const centeredPos = pos.* - @as(Vec3d, @splat(0.5));
-		const pos0: Vec3i = @intFromFloat(@floor(centeredPos));
+		var friction: physics.FrictionState = undefined;
+		physics.calculateFriction(.server, &volumeProperties, &friction, pos.*, hitBox, onGround.*);
+		var motion = physics.calculateMotion(.server, deltaTime, friction, volumeProperties, physics.playerDensity, pos.*, vel, @splat(0.0), gravity, 0.0);
 
-		var closestEmptyBlock: Vec3i = @splat(-1);
-		var closestDist = std.math.floatMax(f64);
-		var delta = Vec3i{0, 0, 0};
-		while (delta[0] <= 1) : (delta[0] += 1) {
-			delta[1] = 0;
-			while (delta[1] <= 1) : (delta[1] += 1) {
-				delta[2] = 0;
-				while (delta[2] <= 1) : (delta[2] += 1) {
-					const isSolid = self.checkBlock(chunk, pos, pos0 + delta);
-					if (!isSolid) {
-						const dist = vec.lengthSquare(@as(Vec3d, @floatFromInt(pos0 + delta)) - centeredPos);
-						if (dist < closestDist) {
-							closestDist = dist;
-							closestEmptyBlock = delta;
-						}
-					}
-				}
-			}
-		}
+		var stepAmount: f64 = 0.0;
+		stepAmount = physics.calculateWallCollision(.server, &motion, pos, vel, onGround, friction, hitBox, 0.1, null, false);
 
-		vel.* = @splat(0);
-		const unstuckVelocity: f64 = 1;
-		if (closestDist == std.math.floatMax(f64)) {
-			// Surrounded by solid blocks → move upwards
-			vel.*[2] = unstuckVelocity;
-			pos.*[2] += vel.*[2]*deltaTime;
-		} else {
-			vel.* = @as(Vec3d, @splat(unstuckVelocity))*(@as(Vec3d, @floatFromInt(pos0 + closestEmptyBlock)) - centeredPos);
-			pos.* += (vel.*)*@as(Vec3d, @splat(deltaTime));
-		}
-	}
-
-	fn checkBlock(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, blockPos: Vec3i) bool {
-		// Transform to chunk-relative coordinates:
-		const chunkPos = blockPos & ~@as(Vec3i, @splat(main.chunk.chunkMask));
-		var block: blocks.Block = undefined;
-		if (chunk.super.pos.wx == chunkPos[0] and chunk.super.pos.wy == chunkPos[1] and chunk.super.pos.wz == chunkPos[2]) {
-			chunk.mutex.lock();
-			defer chunk.mutex.unlock();
-			block = chunk.getBlock(blockPos[0] - chunk.super.pos.wx, blockPos[1] - chunk.super.pos.wy, blockPos[2] - chunk.super.pos.wz);
-		} else {
-			const otherChunk = self.world.?.getSimulationChunkAndIncreaseRefCount(chunkPos[0], chunkPos[1], chunkPos[2]) orelse return true;
-			defer otherChunk.decreaseRefCount();
-			const ch = otherChunk.getChunk() orelse return true;
-			ch.mutex.lock();
-			defer ch.mutex.unlock();
-			block = ch.getBlock(blockPos[0] - ch.super.pos.wx, blockPos[1] - ch.super.pos.wy, blockPos[2] - ch.super.pos.wz);
-		}
-		return main.physics.collision.collideWithBlock(block, blockPos[0], blockPos[1], blockPos[2], pos.*, @splat(radius), @splat(0)) != null;
+		_ = physics.calculateVerticalCollision(.server, deltaTime, pos, vel, null, onGround, hitBox, motion, 1.0);
 	}
 
 	pub fn checkEntity(self: *ItemDropManager, user: *main.server.User) void {
@@ -446,7 +383,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			const dist = @max(min - itemPos, itemPos - max);
 			if (@reduce(.Max, dist) < radius + pickupRange) {
 				const itemStack = &self.list.items(.itemStack)[i];
-				main.items.Inventory.ServerSide.tryCollectingToPlayerInventory(user, itemStack);
+				main.items.Inventory.server.tryCollectingToPlayerInventory(user, itemStack);
 				if (itemStack.amount == 0) {
 					self.directRemove(i);
 					continue;
@@ -582,8 +519,8 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	} = undefined;
 
 	var itemModelSSBO: graphics.SSBO = undefined;
-	var modelData: main.List(u32) = undefined;
-	var freeSlots: main.List(*ItemVoxelModel) = undefined;
+	var modelData: main.ListManaged(u32) = undefined;
+	var freeSlots: main.ListManaged(*ItemVoxelModel) = undefined;
 
 	const ItemVoxelModel = struct {
 		index: u31 = undefined,
@@ -614,7 +551,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				var block = blocks.Block{.typ = self.item.baseItem.block().?, .data = 0};
 				block.data = block.mode().naturalStandard;
 				const model = blocks.meshes.model(block).model();
-				var data = main.List(u32).init(main.stackAllocator);
+				var data: main.ListManaged(u32) = .init(main.stackAllocator);
 				defer data.deinit();
 				for (model.internalQuads) |quad| {
 					const textureIndex = blocks.meshes.textureIndex(block, quad.quadInfo().textureSlot);
@@ -750,7 +687,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			if (item != .null) {
 				var pos = itemDrops.list.items(.pos)[i];
 				const rot = itemDrops.list.items(.rot)[i];
-				const blockPos: Vec3i = @intFromFloat(@floor(pos));
+				const blockPos: Vec3i = @floor(pos);
 				const light: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
 				bindLightUniform(light, ambientLight);
 				pos -= playerPos;
@@ -804,7 +741,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			const rot: Vec3f = ItemDisplayManager.cameraFollow;
 
 			const lightPos = @as(Vec3d, @floatCast(playerPos)) - @as(Vec3f, @splat(0.5));
-			const blockPos: Vec3i = @intFromFloat(@floor(lightPos));
+			const blockPos: Vec3i = @floor(lightPos);
 			const localBlockPos: Vec3f = @floatCast(lightPos - @as(Vec3d, @floatFromInt(blockPos)));
 
 			var samples: [8][6]f32 = @splat(@splat(0));
@@ -837,7 +774,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			var result: [6]u8 = .{0, 0, 0, 0, 0, 0};
 			inline for (0..6) |i| {
 				const val = std.math.lerp(samples[getIndex(0, 0, 0)][i], samples[getIndex(1, 0, 0)][i], localBlockPos[0]);
-				result[i] = @as(u8, @intFromFloat(@floor(val)));
+				result[i] = @floor(val);
 			}
 
 			bindLightUniform(result, ambientLight);

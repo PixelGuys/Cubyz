@@ -11,7 +11,6 @@ const models = main.models;
 const QuadIndex = models.QuadIndex;
 const renderer = main.renderer;
 const graphics = main.graphics;
-const c = graphics.c;
 const SSBO = graphics.SSBO;
 const lighting = @import("lighting.zig");
 const settings = main.settings;
@@ -22,6 +21,8 @@ const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Mat4f = vec.Mat4f;
 const gpu_performance_measuring = main.gui.windowlist.gpu_performance_measuring;
+
+const c = @import("c");
 
 const mesh_storage = @import("mesh_storage.zig");
 
@@ -74,7 +75,6 @@ pub var transparentQuadsDrawn: usize = 0;
 pub const maxQuadsInIndexBuffer = 3 << (3*chunk.chunkShift); // maximum 3 faces/block
 
 pub fn init() void {
-	lighting.init();
 	pipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/chunks/chunk_vertex.vert",
 		"assets/cubyz/shaders/chunks/chunk_fragment.frag",
@@ -144,7 +144,6 @@ pub fn init() void {
 }
 
 pub fn deinit() void {
-	lighting.deinit();
 	pipeline.deinit();
 	transparentPipeline.deinit();
 	occlusionTestPipeline.deinit();
@@ -195,7 +194,7 @@ fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec
 	c.glUniform1f(locations.zNear, renderer.zNear);
 	c.glUniform1f(locations.zFar, renderer.zFar);
 
-	c.glUniform3i(locations.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+	c.glUniform3i(locations.playerPositionInteger, @floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 	c.glUniform3f(locations.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 }
 
@@ -225,7 +224,7 @@ fn bindBuffers(lod: usize) void {
 	lightBuffers[lod].ssbo.bind(lightBuffers[lod].binding);
 }
 
-pub fn drawChunksIndirect(chunkIds: *const [main.settings.highestSupportedLod + 1]main.List(u32), projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d, transparent: bool) void {
+pub fn drawChunksIndirect(chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d, transparent: bool) void {
 	for (0..chunkIds.len) |i| {
 		const lod = if (transparent) main.settings.highestSupportedLod - i else i;
 		bindBuffers(lod);
@@ -247,7 +246,7 @@ fn drawChunksOfLod(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec3f, pla
 	c.glUniform1ui(commandUniforms.commandIndexStart, allocation.start);
 	c.glUniform1ui(commandUniforms.size, @intCast(chunkIDs.len));
 	c.glUniform1i(commandUniforms.isTransparent, @intFromBool(transparent));
-	c.glUniform3i(commandUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+	c.glUniform3i(commandUniforms.playerPositionInteger, @floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 	if (!transparent) {
 		c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 0);
 		c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
@@ -264,7 +263,7 @@ fn drawChunksOfLod(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec3f, pla
 
 	// Occlusion tests:
 	occlusionTestPipeline.bind(null);
-	c.glUniform3i(occlusionTestUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+	c.glUniform3i(occlusionTestUniforms.playerPositionInteger, @floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 	c.glUniform3f(occlusionTestUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 	c.glUniformMatrix4fv(occlusionTestUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 	c.glUniformMatrix4fv(occlusionTestUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
@@ -374,7 +373,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		self.completeList.replaceRange(main.globalAllocator, group, items);
 	}
 
-	fn finish(self: *PrimitiveMesh, parent: *ChunkMesh, lightList: *main.List(u32), lightMap: *std.AutoHashMap([4]u32, u16)) void {
+	fn finish(self: *PrimitiveMesh, parent: *ChunkMesh, lightList: *main.ListManaged(u32), lightMap: *std.AutoHashMap([4]u32, u16)) void {
 		self.min = @splat(std.math.floatMax(f32));
 		self.max = @splat(-std.math.floatMax(f32));
 
@@ -477,9 +476,9 @@ const SortingData = struct { // MARK: SortingData
 		const quadIndex = self.face.blockAndQuad.quadIndex;
 		const normalVector: Vec3f = quadIndex.quadInfo().normal;
 		self.shouldBeCulled = vec.dot(normalVector, @floatFromInt(Vec3i{dx, dy, dz})) > 0; // TODO: Adjust for arbitrary voxel models.
-		const fullDx = dx - @as(i32, @intFromFloat(normalVector[0])); // TODO: This calculation should only be done for border faces.
-		const fullDy = dy - @as(i32, @intFromFloat(normalVector[1]));
-		const fullDz = dz - @as(i32, @intFromFloat(normalVector[2]));
+		const fullDx = dx - @as(i32, @trunc(normalVector[0])); // TODO: This calculation should only be done for border faces.
+		const fullDy = dy - @as(i32, @trunc(normalVector[1]));
+		const fullDz = dz - @as(i32, @trunc(normalVector[2]));
 		self.distance = @abs(fullDx) + @abs(fullDy) + @abs(fullDz);
 	}
 };
@@ -519,7 +518,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	min: Vec3f = undefined,
 	max: Vec3f = undefined,
 
-	blockBreakingFaces: main.List(FaceData),
+	blockBreakingFaces: main.ListManaged(FaceData),
 	blockBreakingFacesSortingData: []SortingData = &.{},
 	blockBreakingFacesChanged: bool = false,
 
@@ -576,9 +575,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		return self.opaqueMesh.vertexCount == 0 and self.transparentMesh.vertexCount == 0;
 	}
 
-	fn initLight(self: *ChunkMesh, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
+	fn initLight(self: *ChunkMesh, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
 		self.mutex.lock();
-		var lightEmittingBlocks = main.List(chunk.BlockPos).init(main.stackAllocator);
+		var lightEmittingBlocks = main.ListManaged(chunk.BlockPos).init(main.stackAllocator);
 		defer lightEmittingBlocks.deinit();
 		for (0..chunk.chunkVolume) |index| {
 			const block = self.chunk.data.getValue(index);
@@ -617,7 +616,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	pub fn generateLightingData(self: *ChunkMesh) error{ AlreadyStored, NoLongerNeeded }!void {
 		try mesh_storage.addMeshToStorage(self);
 
-		var lightRefreshList = main.List(chunk.ChunkPosition).init(main.stackAllocator);
+		var lightRefreshList = main.ListManaged(chunk.ChunkPosition).init(main.stackAllocator);
 		defer lightRefreshList.deinit();
 		self.initLight(&lightRefreshList);
 
@@ -686,7 +685,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.finishedLightingMeshData = false;
 	}
 
-	pub fn generateMesh(self: *ChunkMesh, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
+	pub fn generateMesh(self: *ChunkMesh, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
 		var alwaysViewThroughMask: [chunk.chunkSize][chunk.chunkSize]u32 = undefined;
 		@memset(std.mem.asBytes(&alwaysViewThroughMask), 0);
 		var alwaysViewThroughMask2: [chunk.chunkSize][chunk.chunkSize]u32 = undefined;
@@ -983,7 +982,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.finishNeighbors(lightRefreshList);
 	}
 
-	fn finishNeighbors(self: *ChunkMesh, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
+	fn finishNeighbors(self: *ChunkMesh, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
 		for (chunk.Neighbor.iterable) |neighbor| {
 			const nullNeighborMesh = mesh_storage.getNeighbor(self.pos, self.pos.voxelSize, neighbor);
 			if (nullNeighborMesh) |neighborMesh| sameLodBlock: {
@@ -1158,7 +1157,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	// MARK: block updates
 	// --------------------------------------------------------------------------------------------
 
-	fn updateBlockLight(self: *ChunkMesh, pos: chunk.BlockPos, newBlock: Block, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
+	fn updateBlockLight(self: *ChunkMesh, pos: chunk.BlockPos, newBlock: Block, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
 		for (self.lightingData[0..]) |lightingData| {
 			lightingData.propagateLightsDestructive(&.{pos}, lightRefreshList);
 		}
@@ -1167,7 +1166,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	fn updateBlockLightAndMesh(self: *ChunkMesh, blockUpdatePos: Vec3i, lightRefreshList: *main.List(chunk.ChunkPosition), regenerateMeshList: *main.List(*ChunkMesh)) void {
+	fn updateBlockLightAndMesh(self: *ChunkMesh, blockUpdatePos: Vec3i, lightRefreshList: *main.ListManaged(chunk.ChunkPosition), regenerateMeshList: *main.ListManaged(*ChunkMesh)) void {
 		const blockPos = chunk.BlockPos.fromWorldCoords(blockUpdatePos[0], blockUpdatePos[1], blockUpdatePos[2]);
 		self.mutex.lock();
 		var newBlock = self.chunk.data.getValue(blockPos.toIndex());
@@ -1240,7 +1239,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		appendIfNotContained(regenerateMeshList, self);
 	}
 
-	fn appendIfNotContained(list: *main.List(*ChunkMesh), mesh: *ChunkMesh) void {
+	fn appendIfNotContained(list: *main.ListManaged(*ChunkMesh), mesh: *ChunkMesh) void {
 		for (list.items) |other| {
 			if (other == mesh) {
 				return;
@@ -1310,10 +1309,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		pub fn run(self: *BlockUpdateTask) void {
 			defer main.globalAllocator.destroy(self);
 
-			var lightRefreshList = main.List(chunk.ChunkPosition).init(main.stackAllocator);
+			var lightRefreshList: main.ListManaged(chunk.ChunkPosition) = .init(main.stackAllocator);
 			defer lightRefreshList.deinit();
 
-			var regenerateMeshList = main.List(*ChunkMesh).init(main.stackAllocator);
+			var regenerateMeshList: main.ListManaged(*ChunkMesh) = .init(main.stackAllocator);
 			defer regenerateMeshList.deinit();
 
 			{
@@ -1400,9 +1399,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	};
 
 	pub fn finishData(self: *ChunkMesh) void {
-		main.utils.assertLocked(&self.mutex);
+		self.mutex.assertLocked();
 
-		var lightList = main.List(u32).init(main.stackAllocator);
+		var lightList: main.ListManaged(u32) = .init(main.stackAllocator);
 		defer lightList.deinit();
 		var lightMap = std.AutoHashMap([4]u32, u16).init(main.stackAllocator.allocator);
 		defer lightMap.deinit();
@@ -1460,7 +1459,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	// MARK: rendering
 	// --------------------------------------------------------------------------------------------
 
-	pub fn prepareRendering(self: *ChunkMesh, chunkLists: *[main.settings.highestSupportedLod + 1]main.List(u32)) void {
+	pub fn prepareRendering(self: *ChunkMesh, chunkLists: *[main.settings.highestSupportedLod + 1]main.ListManaged(u32)) void {
 		if (self.opaqueMesh.vertexCount == 0) return;
 
 		chunkLists[std.math.log2_int(u32, self.pos.voxelSize)].append(self.chunkAllocation.start);
@@ -1469,7 +1468,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	fn updateTransparencyDataAfterMeshUpload(self: *ChunkMesh) void {
-		main.utils.assertLocked(&self.meshUploadMutex);
+		self.meshUploadMutex.assertLocked();
 		var len: usize = 0;
 		const coreList = self.transparentMesh.completeList.getRange(.core);
 		len += coreList.len;
@@ -1496,7 +1495,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	pub fn prepareTransparentRendering(self: *ChunkMesh, playerPosition: Vec3d, chunkLists: *[main.settings.highestSupportedLod + 1]main.List(u32)) void {
+	pub fn prepareTransparentRendering(self: *ChunkMesh, playerPosition: Vec3d, chunkLists: *[main.settings.highestSupportedLod + 1]main.ListManaged(u32)) void {
 		if (self.transparentMesh.vertexCount == 0 and self.blockBreakingFaces.items.len == 0) return;
 
 		var needsUpdate: bool = false;
@@ -1512,7 +1511,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}/@as(Vec3d, @splat(@as(f64, @floatFromInt(self.pos.voxelSize))));
 		relativePos = @min(relativePos, @as(Vec3d, @splat(0)));
 		relativePos = @max(relativePos, @as(Vec3d, @splat(-32)));
-		const updatePos: Vec3i = @intFromFloat(relativePos);
+		const updatePos: Vec3i = @trunc(relativePos);
 		if (@reduce(.Or, updatePos != self.lastTransparentUpdatePos)) {
 			self.lastTransparentUpdatePos = updatePos;
 			needsUpdate = true;
