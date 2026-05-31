@@ -209,18 +209,16 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	const yR = lightDir[1];
 	const zR = lightDir[2];
 
-	const shadowMapSize = shadowMapResolution / 16.0;
+	const shadowMapSize = shadowMapResolution/16.0;
 
 	const far = shadowMapSize;
 	const near = -shadowMapSize;
-	const lightProjection = Mat4f.scale(.{2.0/shadowMapSize, 2.0/shadowMapSize, 1.0}).mul(.{
-		.rows = [4]Vec4f {
-			Vec4f{1, 0, xR/zR,            0.0},
-			Vec4f{0, 1, yR/zR,            0.0},
-			Vec4f{0, 0, 1.0/(far - near), -near/(far - near)},
-			Vec4f{0, 0, 0,                1},
-		}
-	}).mul(.scale(.{1, 1, -1}));
+	const lightProjection = Mat4f.scale(.{2.0/shadowMapSize, 2.0/shadowMapSize, 1.0}).mul(.{.rows = [4]Vec4f{
+		Vec4f{1, 0, xR/zR, 0.0},
+		Vec4f{0, 1, yR/zR, 0.0},
+		Vec4f{0, 0, 1.0/(far - near), -near/(far - near)},
+		Vec4f{0, 0, 0, 1},
+	}}).mul(.scale(.{1, 1, -1}));
 
 	const lightView: Mat4f = Mat4f.identity().mul(.translation(lightOffset));
 
