@@ -2200,19 +2200,19 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	defer main.game.camera.viewMatrix = oldViewMatrix;
 	const uniforms = if (block.transparent()) &main.renderer.chunk_meshing.transparentUniforms else &main.renderer.chunk_meshing.uniforms;
 
-	var faceData: main.ListUnmanaged(main.renderer.chunk_meshing.FaceData) = .{};
-	defer faceData.deinit(main.stackAllocator);
+	var faceData: main.ListManaged(main.renderer.chunk_meshing.FaceData) = .init(main.stackAllocator);
+	defer faceData.deinit();
 	const model = main.blocks.meshes.model(block).model();
 	const pos: main.chunk.BlockPos = .fromCoords(1, 1, 1);
 	if (block.hasBackFace()) {
-		model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, pos, true);
+		model.appendInternalQuadsToList(&faceData, block, pos, true);
 		for (main.chunk.Neighbor.iterable) |neighbor| {
-			model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, pos, true);
+			model.appendNeighborFacingQuadsToList(&faceData, block, neighbor, pos, true);
 		}
 	}
-	model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, pos, false);
+	model.appendInternalQuadsToList(&faceData, block, pos, false);
 	for (main.chunk.Neighbor.iterable) |neighbor| {
-		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, pos.neighbor(neighbor)[0], false);
+		model.appendNeighborFacingQuadsToList(&faceData, block, neighbor, pos.neighbor(neighbor)[0], false);
 	}
 
 	for (faceData.items) |*face| {

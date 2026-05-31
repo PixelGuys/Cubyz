@@ -23,6 +23,7 @@ pub const EntityModel = struct {
 	height: f32,
 	texturePath: []const u8,
 	modelId: ?[]const u8,
+	entityModelId: []const u8,
 
 	nodeIndexMap: std.StringHashMap(u16) = undefined,
 	nodes: []Node = undefined,
@@ -88,15 +89,16 @@ pub const EntityModel = struct {
 		};
 	};
 
-	const NodeRemap = struct { depth: u16, nodeIdx: u16, gltfNodeIdx: u32 };
+	const NodeRemap = struct { depth: u16, gltfNodeIdx: u32 };
 
-	pub fn init(assetFolder: []const u8, index: EntityModelIndex, zon: ZonElement) EntityModel {
+	pub fn init(assetFolder: []const u8, entityModelId: []const u8, index: EntityModelIndex, zon: ZonElement) EntityModel {
 		var self: EntityModel = undefined;
 		if (zon.get(?[]const u8, "model", null)) |modelId| {
 			self.modelId = main.worldArena.dupe(u8, modelId);
 		} else {
 			self.modelId = null;
 		}
+		self.entityModelId = main.worldArena.dupe(u8, entityModelId);
 		self.height = zon.getChild("height").as(f32, 1);
 		self.defaultTexture = null;
 		self.vao = null;
@@ -162,6 +164,7 @@ pub const EntityModel = struct {
 			.height = self.height,
 			.texturePath = main.worldArena.dupe(u8, self.texturePath),
 			.modelId = if (self.modelId) |modelId| main.worldArena.dupe(u8, modelId) else null,
+			.entityModelId = main.worldArena.dupe(u8, self.entityModelId),
 			.vao = null,
 			.indexCount = 0,
 			.defaultTexture = null,
@@ -218,7 +221,6 @@ pub const EntityModel = struct {
 			if (node.children_count == 0) continue;
 			nodeDepthRemap.append(.{
 				.depth = getHierarchyDepth(node, 0),
-				.nodeIdx = nodeIdx,
 				.gltfNodeIdx = @intCast(gltfNodeIdx),
 			});
 
@@ -393,7 +395,7 @@ pub var entityModels: main.ListUnmanaged(EntityModel) = .{};
 
 pub fn register(assetFolder: []const u8, entityModelId: []const u8, zon: ZonElement) EntityModelIndex {
 	const index = EntityModelIndex{.index = @intCast(entityModels.items.len)};
-	entityModels.append(main.worldArena, EntityModel.init(assetFolder, index, zon));
+	entityModels.append(main.worldArena, EntityModel.init(assetFolder, entityModelId, index, zon));
 	reverseIndices.put(main.worldArena.allocator, entityModelId, index) catch unreachable;
 	return index;
 }

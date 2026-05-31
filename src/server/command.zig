@@ -207,3 +207,16 @@ pub const BiomeId = struct {
 		}};
 	}
 };
+
+pub const EntityModel = struct {
+	index: main.entityModel.EntityModelIndex,
+
+	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, args: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!EntityModel {
+		if (main.entityModel.getById(args)) |entityModel| {
+			return .{.index = entityModel};
+		} else {
+			errorMessage.print(allocator, "Couldn't find EntityModel for <{s}> with id \"{s}\"", .{name, args});
+			return error.ParseError;
+		}
+	}
+};
