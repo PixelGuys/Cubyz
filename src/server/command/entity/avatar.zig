@@ -30,7 +30,6 @@ pub fn execute(args: []const u8, source: *User) void {
 			model.server.put(source.id, .{
 				.entityModel = params.entityModel.index,
 			});
-			main.entity.server.transmitChange(model, source.id);
 			source.sendMessage("#00ff00You're EntityModel was changed to {s}.", .{params.entityModel.index.get().entityModelId});
 		},
 		.@"/avatar" => {

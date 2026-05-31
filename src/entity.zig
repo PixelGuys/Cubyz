@@ -198,13 +198,13 @@ pub const server = struct {
 
 		if (EntityComponent.server.get(entity)) |ptr| {
 			if (ptr.save(&binaryWriter, .playerNearby) == .save) {
-				for (main.server.connectionManager.connections.items) |conn| {
-					main.network.protocols.EntityComponentUpdate.load(conn, entity, EntityComponent.entityComponentID, EntityComponent.entityComponentVersion, binaryWriter.data.items);
+				for (main.server.users.items) |user| {
+					main.network.protocols.EntityComponentUpdate.load(user.conn, entity, EntityComponent.entityComponentID, EntityComponent.entityComponentVersion, binaryWriter.data.items);
 				}
 			}
 		} else {
-			for (main.server.connectionManager.connections.items) |conn| {
-				main.network.protocols.EntityComponentUpdate.unload(conn, entity, EntityComponent.entityComponentID);
+			for (main.server.users.items) |user| {
+				main.network.protocols.EntityComponentUpdate.unload(user.conn, entity, EntityComponent.entityComponentID);
 			}
 		}
 	}

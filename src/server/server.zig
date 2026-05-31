@@ -518,7 +518,7 @@ const updateTime: std.Io.Duration = .fromNanoseconds(1000000000/20);
 
 pub var world: ?*ServerWorld = null;
 var userMutex: main.utils.Mutex = .{};
-var users: main.ListManaged(*User) = undefined;
+pub var users: main.ListManaged(*User) = undefined;
 var userDeinitList: main.utils.ConcurrentQueue(*User) = undefined;
 var userConnectList: main.utils.ConcurrentQueue(*User) = undefined;
 
@@ -763,7 +763,6 @@ pub fn connectInternal(user: *User) void {
 			if (main.entityModel.playerEntityModels.items.len != 0) {
 				const defaultModel = main.entityModel.playerEntityModels.items[main.random.nextIntBounded(u32, &main.seed, @intCast(main.entityModel.playerEntityModels.items.len))];
 				main.entity.components.@"cubyz:model".server.put(user.id, .{.entityModel = defaultModel});
-				main.entity.server.transmitChange(main.entity.components.@"cubyz:model", user.id);
 			}
 		}
 		if (main.entity.components.@"cubyz:bag".server.get(user.id) == null) {

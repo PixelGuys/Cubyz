@@ -88,6 +88,7 @@ pub const server = struct {
 	pub fn put(entity: u32, renderComponent: Component) void {
 		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
 		ptr.* = renderComponent;
+		main.entity.server.transmitChange(root, entity);
 	}
 	pub fn get(entity: u32) ?*const Component {
 		return components.get(@enumFromInt(entity));
