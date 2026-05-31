@@ -14,6 +14,7 @@ const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
+const Quat = vec.Quat;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const c = @import("c");
@@ -219,7 +220,7 @@ pub const EntityModel = struct {
 		self.indexCount = @intCast(indices.items.len);
 	}
 
-	fn convertCoordinateSystemVec(v: Vec3f, sys: CoordinateSystem) Vec3f {
+	fn convertCoordinateSystemVec(v: [3]c.cgltf_float, sys: CoordinateSystem) Vec3f {
 		return switch (sys) {
 			.right_handed_z_up => Vec3f{v[0], v[1], v[2]},
 			.right_handed_y_up => Vec3f{v[0], v[2], -v[1]},
@@ -228,16 +229,16 @@ pub const EntityModel = struct {
 		};
 	}
 
-	fn convertCoordinateSystemQuat(q: Vec4f, sys: CoordinateSystem) Vec4f {
+	fn convertCoordinateSystemQuat(q: [4]c.cgltf_float, sys: CoordinateSystem) Quat {
 		return switch (sys) {
-			.right_handed_z_up => Vec4f{q[0], q[1], q[2], q[3]},
-			.right_handed_y_up => Vec4f{q[0], q[2], -q[1], q[3]},
-			.left_handed_z_up => Vec4f{-q[0], q[1], q[2], q[3]},
-			.left_handed_y_up => Vec4f{-q[0], q[2], q[1], q[3]},
+			.right_handed_z_up => Quat{.q = Vec4f{q[0], q[1], q[2], q[3]}},
+			.right_handed_y_up => Quat{.q = Vec4f{q[0], q[2], -q[1], q[3]}},
+			.left_handed_z_up => Quat{.q = Vec4f{-q[0], q[1], q[2], q[3]}},
+			.left_handed_y_up => Quat{.q = Vec4f{-q[0], q[2], q[1], q[3]}},
 		};
 	}
 
-	fn convertCoordinateSystemScale(s: Vec3f, sys: CoordinateSystem) Vec3f {
+	fn convertCoordinateSystemScale(s: [3]c.cgltf_float, sys: CoordinateSystem) Vec3f {
 		return switch (sys) {
 			.right_handed_z_up, .left_handed_z_up => Vec3f{s[0], s[1], s[2]},
 			.right_handed_y_up, .left_handed_y_up => Vec3f{s[0], s[2], s[1]},
