@@ -177,12 +177,16 @@ pub const MapFragment = struct { // MARK: MapFragment
 
 				var reader = BinaryReader.init(rawData);
 
-				for (0..mapSize) |x| for (0..mapSize) |y| {
-					self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)]);
-				};
-				for (0..mapSize) |x| for (0..mapSize) |y| {
-					self.heightMap[x][y] = try reader.readInt(i32);
-				};
+				for (0..mapSize) |x| {
+					for (0..mapSize) |y| {
+						self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)]);
+					}
+				}
+				for (0..mapSize) |x| {
+					for (0..mapSize) |y| {
+						self.heightMap[x][y] = try reader.readInt(i32);
+					}
+				}
 				if (originalHeightMap) |map| {
 					for (0..mapSize) |x| {
 						for (0..mapSize) |y| {
