@@ -231,7 +231,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.depth_framebuffer_chunk_rendering_preparation);
 	chunk_meshing.beginRender();
 
-	var depthChunkLists: [main.settings.highestSupportedLod + 1]main.List(u32) = @splat(main.List(u32).init(main.stackAllocator));
+	var depthChunkLists: [main.settings.highestSupportedLod + 1]main.ListManaged(u32) = @splat(main.ListManaged(u32).init(main.stackAllocator));
 	defer for (depthChunkLists) |list| list.deinit();
 	for (depthMeshes) |mesh| {
 		mesh.prepareRendering(&depthChunkLists);
@@ -295,7 +295,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	chunk_meshing.beginRender();
 
-	var chunkLists: [main.settings.highestSupportedLod + 1]main.List(u32) = @splat(main.List(u32).init(main.stackAllocator));
+	var chunkLists: [main.settings.highestSupportedLod + 1]main.ListManaged(u32) = @splat(main.ListManaged(u32).init(main.stackAllocator));
 	defer for (chunkLists) |list| list.deinit();
 	for (meshes) |mesh| {
 		mesh.prepareRendering(&chunkLists);
