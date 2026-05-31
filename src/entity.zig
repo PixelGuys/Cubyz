@@ -191,6 +191,23 @@ pub const server = struct {
 			@field(list, decl.name).server.unload(entityId);
 		}
 	}
+
+	pub fn transmitChange(EntityComponent: type, entity: u32) void {
+		var binaryWriter = main.utils.BinaryWriter.init(main.stackAllocator);
+		defer binaryWriter.deinit();
+
+		if (EntityComponent.server.get(entity)) |ptr| {
+			if (ptr.save(&binaryWriter, .playerNearby) == .save) {
+				for (main.server.connectionManager.connections.items) |conn| {
+					main.network.protocols.EntityComponentUpdate.load(conn, entity, EntityComponent.entityComponentID, EntityComponent.entityComponentVersion, binaryWriter.data.items);
+				}
+			}
+		} else {
+			for (main.server.connectionManager.connections.items) |conn| {
+				main.network.protocols.EntityComponentUpdate.unload(conn, entity, EntityComponent.entityComponentID);
+			}
+		}
+	}
 };
 
 pub fn loadComponentsFromBase64(base64Data: []const u8, entityId: u32, comptime side: main.sync.Side) EntityComponentLoadError!void {

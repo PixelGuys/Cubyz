@@ -252,17 +252,9 @@ pub const User = struct { // MARK: User
 		self.id = freeId;
 		freeId += 1;
 
-		if (main.entityModel.playerEntityModels.items.len != 0) {
-			const defaultModel = main.entityModel.playerEntityModels.items[main.random.nextIntBounded(u32, &main.seed, @intCast(main.entityModel.playerEntityModels.items.len))];
-			main.entity.components.@"cubyz:model".server.loadByIndex(self.id, defaultModel) catch unreachable;
-		}
 		world.?.loadPlayer(self) catch {
 			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
 		};
-
-		if (main.entity.components.@"cubyz:bag".server.get(self.id) == null) {
-			main.entity.components.@"cubyz:bag".server.loadEmpty(self.id);
-		}
 
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();
@@ -766,6 +758,19 @@ pub fn connect(user: *User) void {
 pub fn connectInternal(user: *User) void {
 	user.initPlayer();
 	main.network.protocols.handShake.sendServerPlayerData(user.conn);
+	{ // send entity data after entityComponentList has been initizialed
+		if (main.entity.components.@"cubyz:model".server.get(user.id) == null) {
+			if (main.entityModel.playerEntityModels.items.len != 0) {
+				const defaultModel = main.entityModel.playerEntityModels.items[main.random.nextIntBounded(u32, &main.seed, @intCast(main.entityModel.playerEntityModels.items.len))];
+				main.entity.components.@"cubyz:model".server.put(user.id, .{.entityModel = defaultModel});
+				main.entity.server.transmitChange(main.entity.components.@"cubyz:model", user.id);
+			}
+		}
+		if (main.entity.components.@"cubyz:bag".server.get(user.id) == null) {
+			main.entity.components.@"cubyz:bag".server.loadEmpty(user.id);
+		}
+	}
+
 	// TODO: addEntity(player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);

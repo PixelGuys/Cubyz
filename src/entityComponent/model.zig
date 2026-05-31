@@ -15,6 +15,7 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const root = @This();
 
 const c = @import("c");
 
@@ -77,16 +78,9 @@ pub const server = struct {
 			return error.InvalidComponentVersion;
 		const entityModel = reader.readVarInt(u32) catch return error.UnreadableComponentData;
 
-		try loadByIndex(entity, .{.index = entityModel});
-	}
-	pub fn loadByID(entity: u32, entityModelID: []const u8) main.entity.EntityComponentLoadError!void {
-		try loadByIndex(entity, main.entityModel.getById(entityModelID) orelse main.entityModel.default());
-	}
-	pub fn loadByIndex(entity: u32, entityModel: main.entityModel.EntityModelIndex) main.entity.EntityComponentLoadError!void {
-		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
-		ptr.* = Component{
-			.entityModel = entityModel,
-		};
+		put(entity, Component{
+			.entityModel = .{.index = entityModel},
+		});
 	}
 	pub fn unload(entity: u32) void {
 		components.remove(@enumFromInt(entity)) catch {};
@@ -95,7 +89,7 @@ pub const server = struct {
 		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
 		ptr.* = renderComponent;
 	}
-	pub fn get(entity: u32) ?*Component {
+	pub fn get(entity: u32) ?*const Component {
 		return components.get(@enumFromInt(entity));
 	}
 };

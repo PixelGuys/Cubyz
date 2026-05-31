@@ -11,7 +11,7 @@ pub const usage =
 	\\/avatar <entityModel>
 ;
 const Args = union(enum) {
-	@"/avatar": struct{ },
+	@"/avatar": struct {},
 	@"/avatar <entityModel>": struct { entityModel: command.EntityModel },
 };
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/avatar"});
@@ -26,27 +26,17 @@ pub fn execute(args: []const u8, source: *User) void {
 	};
 
 	switch (result) {
-		.@"/avatar <entityModel>" => |params|{
+		.@"/avatar <entityModel>" => |params| {
 			model.server.put(source.id, .{
-			.entityModel = params.entityModel.index,
+				.entityModel = params.entityModel.index,
 			});
+			main.entity.server.transmitChange(model, source.id);
 			source.sendMessage("#00ff00You're EntityModel was changed to {s}.", .{params.entityModel.index.get().entityModelId});
-
-			// transmit
-			if (model.server.get(source.id)) |rc| {
-				var binaryWriter = main.utils.BinaryWriter.init(main.stackAllocator);
-				defer binaryWriter.deinit();
-				if (rc.save(&binaryWriter, .playerNearby) == .save) {
-					for (main.server.connectionManager.connections.items) |conn| {
-						main.network.protocols.EntityComponentUpdate.load(conn, source.id, model.entityComponentID, model.entityComponentVersion, binaryWriter.data.items);
-					}
-				}
-			}
 		},
 		.@"/avatar" => {
 			if (model.server.get(source.id)) |rc| {
 				source.sendMessage("#00ff00You are a {s}", .{rc.entityModel.get().entityModelId});
 			} else source.sendMessage("#ff00ffYou are invisible.", .{});
-		}
+		},
 	}
 }
