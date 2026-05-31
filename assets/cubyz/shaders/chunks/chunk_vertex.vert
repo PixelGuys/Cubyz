@@ -2,14 +2,15 @@
 
 layout(location = 0) out vec3 mvVertexPos;
 layout(location = 1) out vec3 direction;
-layout(location = 2) out vec3 light;
-layout(location = 3) out vec2 uv;
-layout(location = 4) out vec3 shadowPos;
-layout(location = 5) flat out vec3 normal;
-layout(location = 6) flat out int textureIndex;
-layout(location = 7) flat out int isBackFace;
-layout(location = 8) flat out float distanceForLodCheck;
-layout(location = 9) flat out int opaqueInLod;
+layout(location = 2) out vec3 sunLight;
+layout(location = 3) out vec3 blockLight;
+layout(location = 4) out vec2 uv;
+layout(location = 5) out vec3 shadowPos;
+layout(location = 6) flat out vec3 normal;
+layout(location = 7) flat out int textureIndex;
+layout(location = 8) flat out int isBackFace;
+layout(location = 9) flat out float distanceForLodCheck;
+layout(location = 10) flat out int opaqueInLod;
 
 layout(location = 0) uniform vec3 ambientLight;
 layout(location = 1) uniform mat4 projectionMatrix;
@@ -84,17 +85,16 @@ void main() {
 	int textureAndQuad = faceData[faceID].textureAndQuad;
 	uint lightIndex = chunks[chunkID].lightStart + 4*(encodedPositionAndLightIndex >> 16);
 	uint fullLight = lightData[lightIndex + vertexID];
-	vec3 sunLight = vec3(
+	sunLight = vec3(
 		fullLight >> 25 & 31u,
 		fullLight >> 20 & 31u,
 		fullLight >> 15 & 31u
-	);
-	vec3 blockLight = vec3(
+	) * ambientLight;
+	blockLight = vec3(
 		fullLight >> 10 & 31u,
 		fullLight >> 5 & 31u,
 		fullLight >> 0 & 31u
 	);
-	light = min(sqrt(square(sunLight*ambientLight) + square(blockLight)), vec3(31))/31;
 	isBackFace = encodedPositionAndLightIndex>>15 & 1;
 
 	textureIndex = textureAndQuad & 65535;

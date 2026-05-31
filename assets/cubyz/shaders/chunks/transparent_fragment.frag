@@ -2,14 +2,15 @@
 
 layout(location = 0) in vec3 mvVertexPos;
 layout(location = 1) in vec3 direction;
-layout(location = 2) in vec3 light;
-layout(location = 3) in vec2 uv;
-layout(location = 4) in vec3 shadowPos;
-layout(location = 5) flat in vec3 normal;
-layout(location = 6) flat in int textureIndex;
-layout(location = 7) flat in int isBackFace;
-layout(location = 8) flat in float distanceForLodCheck;
-layout(location = 9) flat in int opaqueInLod;
+layout(location = 2) in vec3 sunLight;
+layout(location = 3) in vec3 blockLight;
+layout(location = 4) in vec2 uv;
+layout(location = 5) in vec3 shadowPos;
+layout(location = 6) flat in vec3 normal;
+layout(location = 7) flat in int textureIndex;
+layout(location = 8) flat in int isBackFace;
+layout(location = 9) flat in float distanceForLodCheck;
+layout(location = 10) flat in int opaqueInLod;
 
 layout(location = 0, index = 0) out vec4 fragColor;
 layout(location = 0, index = 1) out vec4 blendColor;
@@ -52,6 +53,10 @@ layout(std430, binding = 7) buffer _fogData
 {
 	FogData fogData[];
 };
+
+vec3 square(vec3 x) {
+	return x*x;
+}
 
 float lightVariation(vec3 normal) {
 	const vec3 directionalPart = vec3(0, contrast/2, contrast);
@@ -140,6 +145,7 @@ void main() {
 	float fogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionFraction.z, normalize(direction).z, fogData[int(animatedTextureIndex)].fogDensity, 1e10, 1e10);
 	float airFogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionFraction.z, normalize(direction).z, fog.density, fog.fogLower - playerPositionInteger.z, fog.fogHigher - playerPositionInteger.z);
 	vec3 fogColor = unpackColor(fogData[int(animatedTextureIndex)].fogColor);
+	vec3 light = min(sqrt(square(sunLight) + square(blockLight)), vec3(31))/31;
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
 	vec4 textureColor = texture(textureSampler, textureCoords)*vec4(pixelLight, 1);
 

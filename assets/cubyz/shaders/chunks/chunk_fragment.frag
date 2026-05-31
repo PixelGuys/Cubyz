@@ -2,14 +2,15 @@
 
 layout(location = 0) in vec3 mvVertexPos;
 layout(location = 1) in vec3 direction;
-layout(location = 2) in vec3 light;
-layout(location = 3) in vec2 uv;
-layout(location = 4) in vec3 shadowPos;
-layout(location = 5) flat in vec3 normal;
-layout(location = 6) flat in int textureIndex;
-layout(location = 7) flat in int isBackFace;
-layout(location = 8) flat in float distanceForLodCheck;
-layout(location = 9) flat in int opaqueInLod;
+layout(location = 2) in vec3 sunLight;
+layout(location = 3) in vec3 blockLight;
+layout(location = 4) in vec2 uv;
+layout(location = 5) in vec3 shadowPos;
+layout(location = 6) flat in vec3 normal;
+layout(location = 7) flat in int textureIndex;
+layout(location = 8) flat in int isBackFace;
+layout(location = 9) flat in float distanceForLodCheck;
+layout(location = 10) flat in int opaqueInLod;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -30,6 +31,10 @@ layout(std430, binding = 1) buffer _animatedTexture
 {
 	float animatedTexture[];
 };
+
+vec3 square(vec3 x) {
+	return x*x;
+}
 
 float lightVariation(vec3 normal) {
 	const vec3 directionalPart = vec3(0, contrast/2, contrast);
@@ -110,8 +115,11 @@ void main() {
 	reflectivity = reflectivity*fixedCubeMapLookup(reflect(direction, normal)).x;
 	reflectivity = reflectivity*(1 - fresnelReflection) + fresnelReflection;
 
+
 	float shadow = shadowCalculation();
-	vec3 pixelLight = max((1.0 - shadow*0.5)*light*normalVariation, texture(emissionSampler, textureCoords).r*4);
+	vec3 light = min(sqrt(square((1.0 - shadow*0.5)*sunLight) + square(blockLight)), vec3(31))/31;
+
+	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
 	fragColor = texture(textureSampler, textureCoords)*vec4(pixelLight, 1);
 	fragColor.rgb += reflectivity*pixelLight;
 
