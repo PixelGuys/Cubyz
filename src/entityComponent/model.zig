@@ -36,8 +36,7 @@ pub const client = struct {
 		components.clear();
 	}
 	pub fn load(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
-		if (version != 0)
-			return error.InvalidComponentVersion;
+		if (version != 0) return error.InvalidComponentVersion;
 
 		const entityModel = reader.readVarInt(u32) catch return error.UnreadableComponentData;
 
@@ -73,8 +72,7 @@ pub const server = struct {
 		components.deinit(main.globalAllocator);
 	}
 	pub fn loadFromData(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
-		if (version != 0)
-			return error.InvalidComponentVersion;
+		if (version != 0) return error.InvalidComponentVersion;
 		const entityModel = reader.readVarInt(u32) catch return error.UnreadableComponentData;
 
 		try loadByIndex(entity, .{.index = entityModel});

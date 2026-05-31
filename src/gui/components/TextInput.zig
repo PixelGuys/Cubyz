@@ -153,8 +153,9 @@ pub fn select(self: *TextInput) void {
 	gui.setSelectedTextInput(self);
 	self.pressed = false;
 	self.selectionStart = null;
-	if (self.cursor == null)
+	if (self.cursor == null) {
 		self.cursor = @intCast(self.currentString.items.len);
+	}
 }
 
 pub fn deselect(self: *TextInput) void {

@@ -7,8 +7,7 @@ fn growCapacity(current: usize, minimum: usize) usize {
 	var new = current;
 	while (true) {
 		new +|= new/2 + 8;
-		if (new >= minimum)
-			return new;
+		if (new >= minimum) return new;
 	}
 }
 
@@ -189,9 +188,9 @@ pub fn ListManaged(comptime T: type) type {
 			const after_range = start + len;
 			const range = self.items[start..after_range];
 
-			if (range.len == new_items.len)
-				@memcpy(range[0..new_items.len], new_items)
-			else if (range.len < new_items.len) {
+			if (range.len == new_items.len) {
+				@memcpy(range[0..new_items.len], new_items);
+			} else if (range.len < new_items.len) {
 				const first = new_items[0..range.len];
 				const rest = new_items[range.len..];
 
@@ -387,9 +386,9 @@ pub fn ListUnmanaged(comptime T: type) type {
 			const after_range = start + len;
 			const range = self.items[start..after_range];
 
-			if (range.len == new_items.len)
-				@memcpy(range[0..new_items.len], new_items)
-			else if (range.len < new_items.len) {
+			if (range.len == new_items.len) {
+				@memcpy(range[0..new_items.len], new_items);
+			} else if (range.len < new_items.len) {
 				const first = new_items[0..range.len];
 				const rest = new_items[range.len..];
 

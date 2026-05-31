@@ -120,10 +120,15 @@ fn initWindow() void {
 	}
 	for (&main.KeyBoard.keys) |*key| {
 		const label = Label.init(.{0, 0}, keybindButtonWidth, key.name, .left);
-		const button = if (key == selectedKey)
-			Button.initText(.{16, 0}, keybindButtonWidth, "...", .{})
-		else
-			Button.initText(.{16, 0}, keybindButtonWidth, if (editingKeyboard) key.getName() else key.getGamepadName(), if (editingKeyboard) .initWithPtr(keyFunction, key) else .initWithPtr(gamepadFunction, key));
+		const button = blk: {
+			if (key == selectedKey) {
+				break :blk Button.initText(.{16, 0}, keybindButtonWidth, "...", .{});
+			} else if (editingKeyboard) {
+				break :blk Button.initText(.{16, 0}, keybindButtonWidth, key.getName(), .initWithPtr(keyFunction, key));
+			} else {
+				break :blk Button.initText(.{16, 0}, keybindButtonWidth, key.getGamepadName(), .initWithPtr(gamepadFunction, key));
+			}
+		};
 
 		const unbindBtn = Button.initText(.{16, 0}, unbindButtonWidth, "Unbind", .initWithPtr(unbindKey, key));
 		const row = HorizontalList.init();

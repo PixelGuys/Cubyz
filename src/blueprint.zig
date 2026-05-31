@@ -183,8 +183,9 @@ pub const Blueprint = struct {
 					const worldZ = startZ +% @as(i32, @intCast(z));
 
 					const block = self.blocks.get(x, y, z);
-					if (block.typ != voidType or flags.preserveVoid)
+					if (block.typ != voidType or flags.preserveVoid) {
 						_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block);
+					}
 				}
 			}
 		}

@@ -353,13 +353,15 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 	}
 
 	fn chunkInitFunctionForCacheAndIncreaseRefCount(pos: ChunkPosition) *ServerChunk {
-		if (pos.voxelSize == 1) if (getSimulationChunkAndIncreaseRefCount(pos)) |simulationChunk| { // Check if we already have it in memory.
-			defer simulationChunk.decreaseRefCount();
-			if (simulationChunk.getChunk()) |ch| {
-				ch.increaseRefCount();
-				return ch;
+		if (pos.voxelSize == 1) {
+			if (getSimulationChunkAndIncreaseRefCount(pos)) |simulationChunk| { // Check if we already have it in memory.
+				defer simulationChunk.decreaseRefCount();
+				if (simulationChunk.getChunk()) |ch| {
+					ch.increaseRefCount();
+					return ch;
+				}
 			}
-		};
+		}
 		const regionSize = pos.voxelSize*chunk.chunkSize*storage.RegionFile.regionSize;
 		const regionMask: i32 = regionSize - 1;
 		const region = storage.loadRegionFileAndIncreaseRefCount(pos.wx & ~regionMask, pos.wy & ~regionMask, pos.wz & ~regionMask, pos.voxelSize);
@@ -1258,9 +1260,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer baseChunk.mutex.unlock();
 
 		if (currentBlock != _newBlock) {
-			if (currentBlock.blockEntity()) |blockEntity| blockEntity.updateServerData(.{wx, wy, wz}, &baseChunk.super, .remove) catch |err| {
-				std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{wx, wy, wz}, currentBlock.id()});
-			};
+			if (currentBlock.blockEntity()) |blockEntity| {
+				blockEntity.updateServerData(.{wx, wy, wz}, &baseChunk.super, .remove) catch |err| {
+					std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{wx, wy, wz}, currentBlock.id()});
+				};
+			}
 		}
 		baseChunk.updateBlockAndSetChanged(pos.x, pos.y, pos.z, newBlock);
 

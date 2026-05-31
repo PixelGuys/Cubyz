@@ -781,7 +781,8 @@ pub const inventory = struct { // MARK: inventory
 		carriedItemSlot.pos = mousePos - Vec2f{12, 12};
 		carriedItemSlot.render(.{0, 0});
 		// Draw tooltip:
-		if (carried.getAmount(0) == 0) if (hoveredItemSlot) |hovered| {
+		const hovered = hoveredItemSlot orelse return;
+		if (carried.getAmount(0) == 0) {
 			if (hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltip| {
 				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, tooltip, .{}, false, .left);
 				defer textBuffer.deinit();
@@ -809,6 +810,6 @@ pub const inventory = struct { // MARK: inventory
 				draw.rect(pos - @as(Vec2f, @splat(padding)), size + @as(Vec2f, @splat(2*padding)));
 				textBuffer.render(pos[0], pos[1], fontSize);
 			}
-		};
+		}
 	}
 };

@@ -1260,8 +1260,9 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 		const replacementPath = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/tools/{s}{s}.png", .{mod, proceduralItem, layerPostfix}) catch unreachable;
 		defer main.stackAllocator.free(replacementPath);
 		break :blk main.graphics.Image.readFromFile(main.stackAllocator, replacementPath, .{.orientation = .openGl}) catch |err2| {
-			if (layerPostfix.len == 0 or err2 != error.FileNotFound)
+			if (layerPostfix.len == 0 or err2 != error.FileNotFound) {
 				std.log.err("Error while reading procedural item image. Tried '{s}' and '{s}': {s}", .{path, replacementPath, @errorName(err2)});
+			}
 			break :blk main.graphics.Image.emptyImage;
 		};
 	};

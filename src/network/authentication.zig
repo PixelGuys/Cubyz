@@ -85,10 +85,13 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 	pub fn getPublicKeys(allocator: NeverFailingAllocator) ZonElement {
 		const result = ZonElement.initObject(allocator);
 		inline for (comptime std.meta.declarations(Storage)) |decl| {
-			const bytes = if (@hasDecl(@TypeOf(@field(Storage, decl.name).public_key), "toBytes"))
-				@field(Storage, decl.name).public_key.toBytes()
-			else
-				@field(Storage, decl.name).public_key.toUncompressedSec1();
+			const bytes = blk: {
+				if (@hasDecl(@TypeOf(@field(Storage, decl.name).public_key), "toBytes")) {
+					break :blk @field(Storage, decl.name).public_key.toBytes();
+				} else {
+					break :blk @field(Storage, decl.name).public_key.toUncompressedSec1();
+				}
+			};
 			var base64: [std.base64.standard.Encoder.calcSize(bytes.len)]u8 = undefined;
 			result.putOwnedString(decl.name, std.base64.standard.Encoder.encode(&base64, &bytes));
 		}
@@ -98,10 +101,13 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 	pub fn getPublicKey(allocator: NeverFailingAllocator, keyType: KeyTypeEnum) []const u8 {
 		switch (keyType) {
 			inline else => |_typ| {
-				const bytes = if (@hasDecl(@TypeOf(@field(Storage, @tagName(_typ)).public_key), "toBytes"))
-					@field(Storage, @tagName(_typ)).public_key.toBytes()
-				else
-					@field(Storage, @tagName(_typ)).public_key.toUncompressedSec1();
+				const bytes = blk: {
+					if (@hasDecl(@TypeOf(@field(Storage, @tagName(_typ)).public_key), "toBytes")) {
+						break :blk @field(Storage, @tagName(_typ)).public_key.toBytes();
+					} else {
+						break :blk @field(Storage, @tagName(_typ)).public_key.toUncompressedSec1();
+					}
+				};
 				var base64: [std.base64.standard.Encoder.calcSize(bytes.len)]u8 = undefined;
 				const key = std.base64.standard.Encoder.encode(&base64, &bytes);
 				return std.mem.concat(allocator.allocator, u8, &.{@tagName(_typ), ":", key}) catch unreachable;

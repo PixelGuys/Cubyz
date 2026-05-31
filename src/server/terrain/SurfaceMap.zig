@@ -183,9 +183,13 @@ pub const MapFragment = struct { // MARK: MapFragment
 				for (0..mapSize) |x| for (0..mapSize) |y| {
 					self.heightMap[x][y] = try reader.readInt(i32);
 				};
-				if (originalHeightMap) |map| for (0..mapSize) |x| for (0..mapSize) |y| {
-					map[x][y] = try reader.readInt(i32);
-				};
+				if (originalHeightMap) |map| {
+					for (0..mapSize) |x| {
+						for (0..mapSize) |y| {
+							map[x][y] = try reader.readInt(i32);
+						}
+					}
+				}
 			},
 			else => return error.OutdatedFileVersion,
 		}

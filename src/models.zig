@@ -472,16 +472,14 @@ pub const Model = struct {
 
 		var splitIterator = std.mem.splitScalar(u8, data, '\n');
 		while (splitIterator.next()) |lineUntrimmed| {
-			if (lineUntrimmed.len < 3)
-				continue;
+			if (lineUntrimmed.len < 3) continue;
 
 			var line = lineUntrimmed;
 			if (line[line.len - 1] == '\r') {
 				line = line[0 .. line.len - 1];
 			}
 
-			if (line[0] == '#')
-				continue;
+			if (line[0] == '#') continue;
 
 			if (std.mem.eql(u8, line[0..2], "v ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[2..], ' ');
