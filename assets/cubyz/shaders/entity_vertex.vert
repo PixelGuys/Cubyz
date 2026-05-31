@@ -18,7 +18,7 @@ layout(location = 6) uniform uint nodeBufferOffset;
 
 layout(std430, binding = 15) buffer _nodeMatrices
 {
-	mat4 nodeMatrices[]; 
+	mat4 nodeMatrices[];
 };
 
 vec3 square(vec3 x) {
