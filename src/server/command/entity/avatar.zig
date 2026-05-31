@@ -30,7 +30,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			model.server.put(source.id, .{
 				.entityModel = params.entityModel.index,
 			});
-			source.sendMessage("#00ff00You're EntityModel was changed to {s}.", .{params.entityModel.index.get().entityModelId});
+			source.sendMessage("#00ff00Your EntityModel was changed to {s}.", .{params.entityModel.index.get().entityModelId});
 		},
 		.@"/avatar" => {
 			if (model.server.get(source.id)) |rc| {
