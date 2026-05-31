@@ -124,9 +124,7 @@ pub const Quat = struct {
 		const n = Vec4f{normal[0], normal[1], normal[2], 1.0};
 		const a = angle*0.5;
 		const sc: [2]f32 = .{@sin(a), @cos(a)};
-		return .{ 
-			.q = n*Vec4f{sc[0], sc[0], sc[0], sc[1]}
-		};
+		return .{.q = n*Vec4f{sc[0], sc[0], sc[0], sc[1]}};
 	}
 };
 
