@@ -18,7 +18,6 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const c = @import("c");
 
-
 pub const EntityModel = struct {
 	height: f32,
 	texturePath: []const u8,
@@ -88,11 +87,7 @@ pub const EntityModel = struct {
 		};
 	};
 
-	const NodeRemap = struct {
-		depth: u16,
-		nodeIdx: u16, 
-		gltfNodeIdx: u32
-	};
+	const NodeRemap = struct { depth: u16, nodeIdx: u16, gltfNodeIdx: u32 };
 
 	pub fn init(assetFolder: []const u8, index: EntityModelIndex, zon: ZonElement) EntityModel {
 		var self: EntityModel = undefined;
@@ -221,8 +216,8 @@ pub const EntityModel = struct {
 		for (data.nodes, 0..data.nodes_count) |node, gltfNodeIdx| {
 			if (node.children_count == 0) continue;
 			nodeDepthRemap.append(.{
-				.depth = getHierarchyDepth(node, 0), 
-				.nodeIdx = nodeIdx, 
+				.depth = getHierarchyDepth(node, 0),
+				.nodeIdx = nodeIdx,
 				.gltfNodeIdx = @intCast(gltfNodeIdx),
 			});
 

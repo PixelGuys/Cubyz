@@ -27,7 +27,7 @@ pub const client = struct {
 	const Component = struct {
 		entityModel: main.entityModel.EntityModelIndex,
 
-		bufferAllocation: graphics.SubAllocation = .{ .len = 0, .start = 0 },
+		bufferAllocation: graphics.SubAllocation = .{.len = 0, .start = 0},
 		nodes: []EntityModel.Node = undefined,
 		matrices: []Mat4f = undefined,
 
@@ -62,7 +62,6 @@ pub const client = struct {
 		ptr.nodes = main.globalAllocator.alloc(EntityModel.Node, model.nodeCount);
 		@memcpy(ptr.nodes, model.nodes);
 		ptr.matrices = main.globalAllocator.alloc(Mat4f, model.nodeCount);
-
 	}
 	pub fn unload(entity: u32) void {
 		const ptr = components.fetchRemove(@enumFromInt(entity)) catch return;
