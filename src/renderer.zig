@@ -62,8 +62,8 @@ pub var activeFrameBuffer: c_uint = 0;
 pub const reflectionCubeMapSize = 64;
 var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
-pub const shadowMapResolution = 2048;
-pub const shadowMapSize = 96.0;
+pub const shadowMapResolution = 2048.0;
+pub const shadowMapSize = 128.0;
 var depthFrameBuffer: graphics.FrameBuffer = undefined;
 
 pub fn init() void {
@@ -202,8 +202,30 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	const lightOffset: Vec3f = Vec3f{@floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1))};
 
-	const lightProjection: Mat4f = .orthogonal(-shadowMapSize/2, shadowMapSize/2, -shadowMapSize/2, shadowMapSize/2, -shadowMapSize, shadowMapSize);
-	const lightView: Mat4f = Mat4f.identity().mul(.rotationX(std.math.pi*0.8)).mul(.rotationZ(std.math.pi*0.2)).mul(.translation(lightOffset));
+	const xRot = std.math.pi*0.8;
+	const zRot = std.math.pi*0.2;
+
+	const lightDir = vec.rotateZ(vec.rotateX(Vec3f{0.0, 0.0, 1.0}, xRot), zRot);
+	const xR = lightDir[0];
+	const yR = lightDir[1];
+	const zR = lightDir[2];
+
+	//std.log.debug("{} {} {}", .{xR, yR, zR});
+
+	const far = shadowMapSize;
+	const near = -shadowMapSize;
+	const lightProjection = Mat4f.scale(.{2.0/shadowMapSize, 2.0/shadowMapSize, 1.0}).mul(.{
+		.rows = [4]Vec4f {
+			Vec4f{1, 0, xR/zR,            0.0},
+			Vec4f{0, 1, yR/zR,            0.0},
+			Vec4f{0, 0, 1.0/(far - near), -near/(far - near)},
+			Vec4f{0, 0, 0,                1},
+		}
+	}).mul(.scale(.{1, 1, -1}));
+
+	const lightView: Mat4f = Mat4f.identity().mul(.translation(lightOffset));
+
+	//std.log.debug("View matrix {}", .{lightView.rows});
 
 	game.camera.updateViewMatrix();
 
@@ -226,7 +248,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	blocks.meshes.blockTextureArray.bind();
 
 	gpu_performance_measuring.startQuery(.depth_framebuffer_chunk_rendering);
-	chunk_meshing.drawChunksIndirect(&depthChunkLists, lightProjection, lightProjection, lightView, ambientLight, playerPos, .depth);
+	chunk_meshing.drawChunksIndirect(&depthChunkLists, lightProjection, lightProjection, lightView, lightDir, ambientLight, playerPos, .depth);
 	gpu_performance_measuring.stopQuery();
 
 	chunk_meshing.endRender();
@@ -248,7 +270,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
-	chunk_meshing.bindShaderAndUniforms(game.projectionMatrix, lightProjection, lightView, ambientLight, playerPos);
+	chunk_meshing.bindShaderAndUniforms(game.projectionMatrix, lightProjection, lightView, lightDir, ambientLight, playerPos);
 
 	c.glActiveTexture(c.GL_TEXTURE0);
 	blocks.meshes.blockTextureArray.bind();
@@ -287,7 +309,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	chunk_meshing.beginRender();
 
 	gpu_performance_measuring.startQuery(.chunk_rendering);
-	chunk_meshing.drawChunksIndirect(&chunkLists, game.projectionMatrix, lightProjection, lightView, ambientLight, playerPos, .regular);
+	chunk_meshing.drawChunksIndirect(&chunkLists, game.projectionMatrix, lightProjection, lightView, lightDir, ambientLight, playerPos, .regular);
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
@@ -328,7 +350,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		}
 		gpu_performance_measuring.stopQuery();
 		gpu_performance_measuring.startQuery(.transparent_rendering);
-		chunk_meshing.drawChunksIndirect(&chunkLists, game.projectionMatrix, lightProjection, lightView, ambientLight, playerPos, .transparent);
+		chunk_meshing.drawChunksIndirect(&chunkLists, game.projectionMatrix, lightProjection, lightView, lightDir, ambientLight, playerPos, .transparent);
 		gpu_performance_measuring.stopQuery();
 	}
 

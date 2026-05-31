@@ -601,7 +601,6 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: ?*c
 	while (searchList.popFront()) |node| {
 		std.debug.assert(node.finishedMeshing);
 		std.debug.assert(node.active);
-		if (!node.active) continue;
 		node.active = false;
 
 		const pos = node.pos;
@@ -609,6 +608,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: ?*c
 		const relPos: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{pos.wx, pos.wy, pos.wz})) - playerPos;
 		const relPosFloat: Vec3f = @floatCast(relPos);
 
+		// TODO: This seems like a good place for a comment, could someone please add one?
 		if (pos.voxelSize == @as(i32, 1) << settings.highestLod) {
 			for (chunk.Neighbor.iterable) |neighbor| {
 				const component = neighbor.extractDirectionComponent(relPosFloat);

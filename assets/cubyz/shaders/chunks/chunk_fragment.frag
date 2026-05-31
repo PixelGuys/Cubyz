@@ -26,6 +26,7 @@ layout(location = 6) uniform float contrast;
 layout(location = 7) uniform float lodDistance;
 layout(location = 8) uniform mat4 lightProjectionMatrix;
 layout(location = 9) uniform mat4 lightViewMatrix;
+layout(location = 42) uniform vec3 lightDir;
 
 layout(std430, binding = 1) buffer _animatedTexture
 {
@@ -61,11 +62,6 @@ vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012
 }
 
 float shadowCalculation() {
-	vec3 lightDir = normalize(vec3(
-		lightViewMatrix[0][2],
-		lightViewMatrix[1][2],
-		lightViewMatrix[2][2]
-	));
 	if (dot(lightDir, normal) > 0.0) return 1.0;
 	vec3 dx = dFdx(shadowPos);
 	vec3 dy = dFdy(shadowPos);
@@ -97,6 +93,7 @@ float shadowCalculation() {
 	projCoords = projCoords * 0.5 + 0.5;
 	float closestDepth = texture(shadowMap, projCoords.xy).r;
 	float currentDepth = projCoords.z;
+	currentDepth += 0.00018;
 	float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
 	if(projCoords.z > 1.0)
         shadow = 0.0;

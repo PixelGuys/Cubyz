@@ -2258,9 +2258,9 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 		if (block.transparent()) {
 			c.glBlendEquation(c.GL_FUNC_ADD);
 			c.glBlendFunc(c.GL_ONE, c.GL_SRC1_COLOR);
-			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(projMatrix, Mat4f.identity(), Mat4f.identity(), .{1, 1, 1}, .{x, y, z});
+			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(projMatrix, Mat4f.identity(), Mat4f.identity(), .{0, 0, 0}, .{1, 1, 1}, .{x, y, z});
 		} else {
-			main.renderer.chunk_meshing.bindShaderAndUniforms(projMatrix, Mat4f.identity(), Mat4f.identity(), .{1, 1, 1}, .{x, y, z});
+			main.renderer.chunk_meshing.bindShaderAndUniforms(projMatrix, Mat4f.identity(), Mat4f.identity(), .{0, 0, 0}, .{1, 1, 1}, .{x, y, z});
 		}
 		c.glUniform1f(uniforms.contrast, 0.25);
 		c.glActiveTexture(c.GL_TEXTURE0);
