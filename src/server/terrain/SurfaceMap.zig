@@ -293,8 +293,8 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 		};
 	}
 	// Find all the stored maps:
-	var mapPositions = main.List(MapFragmentPosition).init(main.stackAllocator);
-	defer mapPositions.deinit();
+	var mapPositions: main.ListUnmanaged(MapFragmentPosition) = .{};
+	defer mapPositions.deinit(main.stackAllocator);
 	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps/1", .{worldName}) catch unreachable;
 	defer main.stackAllocator.free(path);
 	{
@@ -311,7 +311,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 				if (entryY.kind != .file) continue;
 				const nameY = entryY.name[0 .. std.mem.indexOfScalar(u8, entryY.name, '.') orelse entryY.name.len];
 				const wy = std.fmt.parseInt(i32, nameY, 0) catch continue;
-				mapPositions.append(.{.wx = wx, .wy = wy, .voxelSize = 1, .voxelSizeShift = 0});
+				mapPositions.append(main.stackAllocator, .{.wx = wx, .wy = wy, .voxelSize = 1, .voxelSizeShift = 0});
 			}
 		}
 	}

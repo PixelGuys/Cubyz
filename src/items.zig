@@ -1298,9 +1298,10 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 		}
 		slotInfos[i].optional = zonDisabled.as(usize, 0) != 0;
 	}
-	var parameterMatrices: main.List(PropertyMatrix) = .init(main.worldArena);
+	var parameterMatrices: main.ListUnmanaged(PropertyMatrix) = .{};
+	defer parameterMatrices.deinit(main.stackAllocator);
 	for (zon.getChild("parameters").toSlice()) |paramZon| {
-		const val = parameterMatrices.addOne();
+		const val = parameterMatrices.addOne(main.stackAllocator);
 		val.source = MaterialProperty.fromString(paramZon.get([]const u8, "source", "not specified"));
 		val.destination = ProceduralItemProperty.fromString(paramZon.get([]const u8, "destination", "not specified"));
 		val.resultScale = paramZon.get(f32, "factor", 1.0);
@@ -1329,7 +1330,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 		.id = idDupe,
 		.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
 		.slotInfos = slotInfos,
-		.properties = parameterMatrices.toOwnedSlice(),
+		.properties = main.worldArena.dupe(PropertyMatrix, parameterMatrices.items),
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
 	});

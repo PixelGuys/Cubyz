@@ -6,7 +6,7 @@ const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
 const Dir = main.files.Dir;
-const List = main.List;
+const ListUnmanaged = main.ListUnmanaged;
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
@@ -36,12 +36,12 @@ const BlueprintSubCommand = enum {
 };
 
 pub fn execute(args: []const u8, source: *User) void {
-	var argsList = List([]const u8).init(main.stackAllocator);
-	defer argsList.deinit();
+	var argsList: ListUnmanaged([]const u8) = .{};
+	defer argsList.deinit(main.stackAllocator);
 
 	var splitIterator = std.mem.splitScalar(u8, args, ' ');
 	while (splitIterator.next()) |a| {
-		argsList.append(a);
+		argsList.append(main.stackAllocator, a);
 	}
 
 	if (argsList.items.len < 1) {
