@@ -16,7 +16,7 @@ layout(location = 2) uniform vec3 ambientLight;
 layout(location = 3) uniform uint light;
 layout(location = 6) uniform uint nodeBufferOffset;
 
-layout(std430, binding = 15) buffer _nodeMatrices 
+layout(std430, binding = 15) buffer _nodeMatrices
 {
 	mat4 nodeMatrices[]; 
 };
