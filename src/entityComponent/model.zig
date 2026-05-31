@@ -17,7 +17,7 @@ const Vec4f = vec.Vec4f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const c = @import("c");
-const root = @This();
+const Self = @This();
 
 pub var entityComponentID: main.entity.EntityComponentId = undefined;
 pub const entityComponentVersion = 0;
@@ -88,7 +88,7 @@ pub const server = struct {
 	pub fn put(entity: u32, renderComponent: Component) void {
 		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
 		ptr.* = renderComponent;
-		main.entity.server.transmitChange(root, entity);
+		main.entity.server.transmitChange(Self, entity);
 	}
 	pub fn get(entity: u32) ?*const Component {
 		return components.get(@enumFromInt(entity));

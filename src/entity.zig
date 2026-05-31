@@ -196,14 +196,17 @@ pub const server = struct {
 		var binaryWriter = main.utils.BinaryWriter.init(main.stackAllocator);
 		defer binaryWriter.deinit();
 
+		const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+		main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
+		 
 		if (EntityComponent.server.get(entity)) |ptr| {
 			if (ptr.save(&binaryWriter, .playerNearby) == .save) {
-				for (main.server.users.items) |user| {
+				for (users) |user| {
 					main.network.protocols.EntityComponentUpdate.load(user.conn, entity, EntityComponent.entityComponentID, EntityComponent.entityComponentVersion, binaryWriter.data.items);
 				}
 			}
 		} else {
-			for (main.server.users.items) |user| {
+			for (users) |user| {
 				main.network.protocols.EntityComponentUpdate.unload(user.conn, entity, EntityComponent.entityComponentID);
 			}
 		}
