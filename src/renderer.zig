@@ -63,7 +63,7 @@ pub const reflectionCubeMapSize = 64;
 var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
 pub const shadowMapResolution = 2048;
-pub const shadowMapSize = 16.0;
+pub const shadowMapSize = 96.0;
 var depthFrameBuffer: graphics.FrameBuffer = undefined;
 
 pub fn init() void {
@@ -202,29 +202,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	const lightOffset: Vec3f = Vec3f{@floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1))};
 
-
-	const xRot = std.math.pi*0.8;
-	const zRot = std.math.pi*0.2;
-
-	const val = vec.rotateZ(vec.rotateX(Vec3f{0.0, 0.0, 1.0}, xRot), zRot);
-	const xR = val[0];
-	const yR = val[1];
-	const zR = val[2];
-
-	std.log.debug("{} {} {}", .{xR, yR, zR});
-
-	const far = shadowMapSize;
-	const near = -shadowMapSize;
-	const lightProjection = (Mat4f{
-		.rows = [4]Vec4f {
-			Vec4f{1, 0, xR/zR,            0.0},
-			Vec4f{0, 1, yR/zR,            0.0},
-			Vec4f{0, 0, 1.0/(far - near), -near/(far - near)},
-			Vec4f{0, 0, 0,                1},
-		}
-	}).mul(.scale(.{1.0/shadowMapSize, 1.0/shadowMapSize, 1.0})).mul(.rotationZ(-zRot)).mul(.rotationZ(-xRot));
-
-	const lightView: Mat4f = Mat4f.identity().mul(.rotationX(xRot)).mul(.rotationZ(zRot)).mul(.translation(lightOffset));
+	const lightProjection: Mat4f = .orthogonal(-shadowMapSize/2, shadowMapSize/2, -shadowMapSize/2, shadowMapSize/2, -shadowMapSize, shadowMapSize);
+	const lightView: Mat4f = Mat4f.identity().mul(.rotationX(std.math.pi*0.8)).mul(.rotationZ(std.math.pi*0.2)).mul(.translation(lightOffset));
 
 	game.camera.updateViewMatrix();
 
