@@ -116,6 +116,7 @@ pub const client = struct {
 		main.client.entity_manager.mutex.lock();
 		defer main.client.entity_manager.mutex.unlock();
 
+		// TODO: move to a separate system after we get custom system ordering
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |*component, id| {
 			if (@intFromEnum(id) == game.Player.id) // don't render local player
 				continue;
