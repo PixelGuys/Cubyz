@@ -1,34 +1,35 @@
 const std = @import("std");
 
 const main = @import("main");
+const command = main.server.command;
 const User = main.server.User;
-
-pub const description = "Change your avatar";
-pub const usage = "/avatar <entityTypeID>";
-
 const model = main.entity.components.@"cubyz:model";
 
+pub const description = "Lookup or change your avatar";
+pub const usage =
+	\\/avatar
+	\\/avatar <entityModelId>
+;
+const Args = union(enum) {
+	@"/avatar <entityModelId>": struct { entityModelIndex: ?command.EntityModelIndex },
+};
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/avatar"});
+
 pub fn execute(args: []const u8, source: *User) void {
-	if (args.len == 0) {
-		if (model.server.get(source.id)) |rc| {
-			source.sendMessage("#00ff00You are a {s}", .{rc.entityModel.get().entityModelId});
-		} else source.sendMessage("#ff00ffYou are invisible.", .{});
+	var errorMessage: main.ListUnmanaged(u8) = .{};
+	defer errorMessage.deinit(main.stackAllocator);
+
+	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
+		source.sendMessage("#ff0000{s}", .{errorMessage.items});
 		return;
-	}
-	var split = std.mem.splitScalar(u8, args, ' ');
-	if (split.next()) |entityModelId| {
-		if (split.next() != null) {
-			source.sendMessage("#ff0000Too many arguments for command /avatar", .{});
-			return;
-		}
-		if (main.entityModel.getById(entityModelId)) |entityModel| {
-			model.server.put(source.id, .{
-				.entityModel = entityModel,
-			});
-			source.sendMessage("#00ff00EntityModelId was changed to {s}.", .{entityModelId});
-		} else {
-			source.sendMessage("#ff0000EntityModelId {s} doesnt exist", .{entityModelId});
-		}
+	};
+
+	if (result.@"/avatar <entityModelId>".entityModelIndex) |entityModelIndex| {
+		model.server.put(source.id, .{
+			.entityModel = entityModelIndex.index,
+		});
+		source.sendMessage("#00ff00You're EntityModel was changed to {s}.", .{entityModelIndex.index.get().entityModelId});
+
 		// transmit
 		if (model.server.get(source.id)) |rc| {
 			var binaryWriter = main.utils.BinaryWriter.init(main.stackAllocator);
@@ -39,5 +40,10 @@ pub fn execute(args: []const u8, source: *User) void {
 				}
 			}
 		}
+	} else {
+		if (model.server.get(source.id)) |rc| {
+			source.sendMessage("#00ff00You are a {s}", .{rc.entityModel.get().entityModelId});
+		} else source.sendMessage("#ff00ffYou are invisible.", .{});
+		return;
 	}
 }
