@@ -63,7 +63,6 @@ pub const reflectionCubeMapSize = 64;
 var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
 pub const shadowMapResolution = 2048.0;
-pub const shadowMapSize = 128.0;
 var depthFrameBuffer: graphics.FrameBuffer = undefined;
 
 pub fn init() void {
@@ -203,14 +202,14 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	const lightOffset: Vec3f = Vec3f{@floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1))};
 
 	const xRot = std.math.pi*0.8;
-	const zRot = std.math.pi*0.2;
+	const zRot = std.math.pi*0.1;
 
 	const lightDir = vec.rotateZ(vec.rotateX(Vec3f{0.0, 0.0, 1.0}, xRot), zRot);
 	const xR = lightDir[0];
 	const yR = lightDir[1];
 	const zR = lightDir[2];
 
-	//std.log.debug("{} {} {}", .{xR, yR, zR});
+	const shadowMapSize = shadowMapResolution / 16.0;
 
 	const far = shadowMapSize;
 	const near = -shadowMapSize;
@@ -224,8 +223,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	}).mul(.scale(.{1, 1, -1}));
 
 	const lightView: Mat4f = Mat4f.identity().mul(.translation(lightOffset));
-
-	//std.log.debug("View matrix {}", .{lightView.rows});
 
 	game.camera.updateViewMatrix();
 

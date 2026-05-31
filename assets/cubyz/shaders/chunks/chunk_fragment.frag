@@ -89,7 +89,7 @@ float shadowCalculation() {
 		lightProjectionMatrix *
 		lightViewMatrix *
 		vec4(snappedShadowPos, 1.0);
-	vec3 projCoords = lightPos.xyz / lightPos.w;
+	vec3 projCoords = lightPos.xyz;
 	projCoords = projCoords * 0.5 + 0.5;
 	float closestDepth = texture(shadowMap, projCoords.xy).r;
 	float currentDepth = projCoords.z;
