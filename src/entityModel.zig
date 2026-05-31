@@ -41,27 +41,6 @@ pub const EntityModel = struct {
 		rot: Vec4f = Vec4f{0, 0, 0, 1},
 		scale: Vec3f = @splat(1),
 		parent: ?u16 = null,
-		isDirty: bool = true,
-		version: u32 = 1, // saying how many times transform has been modified
-		parentVersion: u32 = 0, // same as above but for children tracking and comparing their versions to detect changes
-
-		pub fn setPos(self: *Node, pos: Vec3f) void {
-			self.pos = pos;
-			self.version += 1;
-			self.isDirty = true;
-		}
-
-		pub fn setRot(self: *Node, rot: Vec4f) void {
-			self.rot = rot;
-			self.version += 1;
-			self.isDirty = true;
-		}
-
-		pub fn setScale(self: *Node, scale: Vec3f) void {
-			self.scale = scale;
-			self.version += 1;
-			self.isDirty = true;
-		}
 
 		pub fn recalc(self: Node, pivotMat: Mat4f) Mat4f {
 			var newMat = pivotMat.mul(Mat4f.translation(self.pos));
@@ -272,12 +251,11 @@ pub const EntityModel = struct {
 			self.nodePivots[i] = pivotMat;
 		}
 
-		for (nodeDepthRemap.items) |nodeRemap| {
+		for (nodeDepthRemap.items, 0..) |nodeRemap, i| {
 			const node = data.nodes[nodeRemap.gltfNodeIdx];
 			if (node.parent == null) continue;
 
-			const curNode = self.nodeIndexMap.get(std.mem.span(node.name)).?;
-			self.nodes[curNode].parent = self.nodeIndexMap.get(std.mem.span(node.parent.*.name)).?;
+			self.nodes[i].parent = self.nodeIndexMap.get(std.mem.span(node.parent.*.name)).?;
 		}
 
 		for (data.nodes[0..data.nodes_count]) |node| {

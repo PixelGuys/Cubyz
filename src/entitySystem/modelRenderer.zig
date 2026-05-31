@@ -31,6 +31,7 @@ const c = @import("c");
 // ############################# Client only stuff ################################
 pub const client = struct {
 	var pipeline: graphics.Pipeline = undefined;
+	pub var nodeBuffer: graphics.LargeBuffer(Mat4f) = undefined;
 
 	var uniforms: struct {
 		projectionMatrix: c_int,
@@ -53,9 +54,12 @@ pub const client = struct {
 			.{.depthTest = true},
 			.{.attachments = &.{.alphaBlending}},
 		);
+
+		nodeBuffer.init(main.globalAllocator, 1 << 20, 15);
 	}
 	pub fn deinit() void {
 		pipeline.deinit();
+		nodeBuffer.deinit();
 	}
 	pub fn clear() void {}
 
@@ -111,13 +115,42 @@ pub const client = struct {
 		_ = deltaTime;
 		main.client.entity_manager.mutex.lock();
 		defer main.client.entity_manager.mutex.unlock();
+
+		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |*component, id| {
+			if (@intFromEnum(id) == game.Player.id) // don't render local player
+				continue;
+
+			const entModel = component.entityModel.get();
+			const ent = main.client.entity_manager.getEntity(@intFromEnum(id)) orelse continue;
+
+			const head = entModel.nodeIndexMap.get("Head");
+			if (entModel.nodeIndexMap.get("Eyestalks")) |eyestalksId| {
+				const stalkRot = ent.rot[0]*0.25;
+				const headRot = ent.rot[0]*0.75;
+				component.nodes[eyestalksId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, stalkRot);
+
+				const headId = head.?;
+				component.nodes[headId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, headRot);
+			} else if (head) |headId| {
+				component.nodes[headId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, ent.rot[0]);
+			}
+
+			for (component.nodes, 0..) |*node, i| {
+				const parentMat = if (node.parent) |p| component.matrices[p].transpose() else Mat4f.identity();
+
+				component.matrices[i] = parentMat.mul(node.recalc(entModel.nodePivots[i])).transpose();
+			}
+
+			main.entity.systems.modelRenderer.client.nodeBuffer.uploadData(component.matrices, &component.bufferAllocation);
+		}
+
 		pipeline.bind(null);
 
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
-		main.entity.systems.nodeProcessor.client.nodeBuffer.beginRender();
+		main.entity.systems.modelRenderer.client.nodeBuffer.beginRender();
 
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |component, id| {
 			if (@intFromEnum(id) == game.Player.id) // don't render local player
@@ -155,7 +188,7 @@ pub const client = struct {
 			c.glDrawElements(c.GL_TRIANGLES, entModel.indexCount, c.GL_UNSIGNED_INT, null);
 		}
 
-		main.entity.systems.nodeProcessor.client.nodeBuffer.endRender();
+		main.entity.systems.modelRenderer.client.nodeBuffer.endRender();
 	}
 };
 // ############################# Server only stuff ################################

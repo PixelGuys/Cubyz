@@ -35,7 +35,7 @@ pub const client = struct {
 			main.globalAllocator.free(self.nodes);
 			main.globalAllocator.free(self.matrices);
 
-			main.entity.systems.nodeProcessor.client.nodeBuffer.free(self.bufferAllocation);
+			main.entity.systems.modelRenderer.client.nodeBuffer.free(self.bufferAllocation);
 		}
 	};
 	pub var components: main.utils.SparseSet(Component, main.entity.Entity) = .{};
