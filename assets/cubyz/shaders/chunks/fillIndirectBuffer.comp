@@ -107,13 +107,13 @@ void main() {
 		if(isDepth) {
 			oldVisibilityState = chunks[chunkID].oldVisibilityStateDepth;
 		} else {
-			oldVisibilityState = chunks[chunkID].oldVisibilityState;			
+			oldVisibilityState = chunks[chunkID].oldVisibilityState;
 		}
 		uint visibilityState;
 		if(isDepth) {
 			visibilityState = chunks[chunkID].visibilityStateDepth;
 		} else {
-			visibilityState = chunks[chunkID].visibilityState;			
+			visibilityState = chunks[chunkID].visibilityState;
 		}
 		if((onlyDrawPreviouslyInvisible && oldVisibilityState == 0 && visibilityState != 0) || (oldVisibilityState != 0 && !onlyDrawPreviouslyInvisible)) {
 			for(int i = 0; i < 14; i++) {

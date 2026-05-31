@@ -95,8 +95,9 @@ float shadowCalculation() {
 	float currentDepth = projCoords.z;
 	currentDepth += 0.00018;
 	float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
-	if(projCoords.z > 1.0)
-        shadow = 0.0;
+	if(projCoords.z > 1.0) {
+		shadow = 0.0;
+	}
 	return shadow;
 }
 
