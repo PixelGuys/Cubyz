@@ -26,7 +26,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	};
 
-	var msg = main.List(u8).init(main.stackAllocator);
+	var msg: main.ListManaged(u8) = .init(main.stackAllocator);
 	defer msg.deinit();
 	msg.appendSlice("#ffff00");
 	switch (result) {

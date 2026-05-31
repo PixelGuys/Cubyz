@@ -252,14 +252,15 @@ pub const User = struct { // MARK: User
 		self.id = freeId;
 		freeId += 1;
 
-		if (main.entityModel.playerEntityModels.items.len != 0) {
-			const defaultModel = main.entityModel.playerEntityModels.items[main.random.nextIntBounded(u32, &main.seed, @intCast(main.entityModel.playerEntityModels.items.len))];
-			main.entity.components.@"cubyz:model".server.loadByIndex(self.id, defaultModel) catch unreachable;
-		}
 		world.?.loadPlayer(self) catch {
 			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
 		};
-
+		if (main.entity.components.@"cubyz:model".server.get(self.id) == null) {
+			if (main.entityModel.playerEntityModels.items.len != 0) {
+				const defaultModel = main.entityModel.playerEntityModels.items[main.random.nextIntBounded(u32, &main.seed, @intCast(main.entityModel.playerEntityModels.items.len))];
+				main.entity.components.@"cubyz:model".server.put(self.id, .{.entityModel = defaultModel});
+			}
+		}
 		if (main.entity.components.@"cubyz:bag".server.get(self.id) == null) {
 			main.entity.components.@"cubyz:bag".server.loadEmpty(self.id);
 		}
@@ -766,6 +767,7 @@ pub fn connect(user: *User) void {
 pub fn connectInternal(user: *User) void {
 	user.initPlayer();
 	main.network.protocols.handShake.sendServerPlayerData(user.conn);
+
 	// TODO: addEntity(player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
@@ -810,6 +812,7 @@ pub fn connectInternal(user: *User) void {
 	main.network.protocols.entity.send(user.conn, initialList);
 	main.stackAllocator.free(initialList);
 	sendMessage("{s}§#ffff00 joined", .{user.name});
+	user.permissions.addPermission(.white, "/command/avatar");
 
 	userMutex.lock();
 	users.append(user);

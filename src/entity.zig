@@ -191,6 +191,26 @@ pub const server = struct {
 			@field(list, decl.name).server.unload(entityId);
 		}
 	}
+
+	pub fn transmitChange(EntityComponent: type, entity: u32) void {
+		var binaryWriter = main.utils.BinaryWriter.init(main.stackAllocator);
+		defer binaryWriter.deinit();
+
+		const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
+
+		if (EntityComponent.server.get(entity)) |ptr| {
+			if (ptr.save(&binaryWriter, .playerNearby) == .save) {
+				for (users) |user| {
+					main.network.protocols.EntityComponentUpdate.load(user.conn, entity, EntityComponent.entityComponentID, EntityComponent.entityComponentVersion, binaryWriter.data.items);
+				}
+			}
+		} else {
+			for (users) |user| {
+				main.network.protocols.EntityComponentUpdate.unload(user.conn, entity, EntityComponent.entityComponentID);
+			}
+		}
+	}
 };
 
 pub fn loadComponentsFromBase64(base64Data: []const u8, entityId: u32, comptime side: main.sync.Side) EntityComponentLoadError!void {
