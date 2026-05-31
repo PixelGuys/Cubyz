@@ -7,7 +7,6 @@ const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
 const Dir = main.files.Dir;
-const ListUnmanaged = main.ListUnmanaged;
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
@@ -61,7 +60,7 @@ const Args = union(enum) {
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/blueprint"});
 
 pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.ListUnmanaged(u8) = .{};
+	var errorMessage: ListUnmanaged(u8) = .{};
 	defer errorMessage.deinit(main.stackAllocator);
 
 	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
@@ -71,14 +70,14 @@ pub fn execute(args: []const u8, source: *User) void {
 	defer result.deinit(main.stackAllocator);
 
 	switch (result) {
-		.@"/blueprint save <file-name>" => |params| blueprintSave(params.path, source),
-		.@"/blueprint delete <file-name>" => |params| blueprintDelete(params.path, source),
-		.@"/blueprint load <file-name>" => |params| blueprintLoad(params.path, source),
+		.@"/blueprint save <filePath>" => |params| blueprintSave(params.filePath, source),
+		.@"/blueprint delete <filePath>" => |params| blueprintDelete(params.filePath, source),
+		.@"/blueprint load <filePath>" => |params| blueprintLoad(params.filePath, source),
 		.@"/blueprint list" => blueprintList(source),
 	}
 }
 
-fn blueprintSave(path: FilePath, source: *User) void {
+fn blueprintSave(filePath: FilePath, source: *User) void {
 	if (source.worldEditData.clipboard) |clipboard| {
 		const storedBlueprint = clipboard.store(main.stackAllocator);
 		defer main.stackAllocator.free(storedBlueprint);
@@ -86,11 +85,11 @@ fn blueprintSave(path: FilePath, source: *User) void {
 		var blueprintsDir = openBlueprintsDir(source) orelse return;
 		defer blueprintsDir.close();
 
-		blueprintsDir.write(path.path, storedBlueprint) catch |err| {
-			return sendWarningAndLog("Failed to write blueprint file '{s}' ({s})", .{path.path, @errorName(err)}, source);
+		blueprintsDir.write(filePath.path, storedBlueprint) catch |err| {
+			return sendWarningAndLog("Failed to write blueprint file '{s}' ({s})", .{filePath.path, @errorName(err)}, source);
 		};
 
-		sendInfoAndLog("Saved clipboard to blueprint file: {s}", .{path.path}, source);
+		sendInfoAndLog("Saved clipboard to blueprint file: {s}", .{filePath.path}, source);
 	} else {
 		source.sendMessage("#ff0000Error: No clipboard content to save.", .{});
 	}
@@ -113,15 +112,15 @@ fn openBlueprintsDir(source: *User) ?Dir {
 	};
 }
 
-fn blueprintDelete(path: FilePath, source: *User) void {
+fn blueprintDelete(filePath: FilePath, source: *User) void {
 	var blueprintsDir = openBlueprintsDir(source) orelse return;
 	defer blueprintsDir.close();
 
-	blueprintsDir.deleteFile(path.path) catch |err| {
-		return sendWarningAndLog("Failed to delete blueprint file '{s}' ({s})", .{path.path, @errorName(err)}, source);
+	blueprintsDir.deleteFile(filePath.path) catch |err| {
+		return sendWarningAndLog("Failed to delete blueprint file '{s}' ({s})", .{filePath.path, @errorName(err)}, source);
 	};
 
-	sendWarningAndLog("Deleted blueprint file: {s}", .{path.path}, source);
+	sendWarningAndLog("Deleted blueprint file: {s}", .{filePath.path}, source);
 }
 
 fn blueprintList(source: *User) void {
@@ -142,12 +141,12 @@ fn blueprintList(source: *User) void {
 	}
 }
 
-fn blueprintLoad(path: FilePath, source: *User) void {
+fn blueprintLoad(filePath: FilePath, source: *User) void {
 	var blueprintsDir = openBlueprintsDir(source) orelse return;
 	defer blueprintsDir.close();
 
-	const storedBlueprint = blueprintsDir.read(main.stackAllocator, path.path) catch |err| {
-		sendWarningAndLog("Failed to read blueprint file '{s}' ({s})", .{path.path, @errorName(err)}, source);
+	const storedBlueprint = blueprintsDir.read(main.stackAllocator, filePath.path) catch |err| {
+		sendWarningAndLog("Failed to read blueprint file '{s}' ({s})", .{filePath.path, @errorName(err)}, source);
 		return;
 	};
 	defer main.stackAllocator.free(storedBlueprint);
@@ -156,10 +155,10 @@ fn blueprintLoad(path: FilePath, source: *User) void {
 		oldClipboard.deinit(main.globalAllocator);
 	}
 	source.worldEditData.clipboard = Blueprint.load(main.globalAllocator, storedBlueprint) catch |err| {
-		return sendWarningAndLog("Failed to load blueprint file '{s}' ({s})", .{path.path, @errorName(err)}, source);
+		return sendWarningAndLog("Failed to load blueprint file '{s}' ({s})", .{filePath.path, @errorName(err)}, source);
 	};
 
-	sendInfoAndLog("Loaded blueprint file: {s}", .{path.path}, source);
+	sendInfoAndLog("Loaded blueprint file: {s}", .{filePath.path}, source);
 }
 
 const FilePath = struct {
