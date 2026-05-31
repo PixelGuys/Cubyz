@@ -14,6 +14,7 @@ const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
+const Quat = vec.Quat;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const c = @import("c");
@@ -228,12 +229,12 @@ pub const EntityModel = struct {
 		};
 	}
 
-	fn convertCoordinateSystemQuat(q: Vec4f, sys: CoordinateSystem) Vec4f {
+	fn convertCoordinateSystemQuat(q: Vec4f, sys: CoordinateSystem) Quat {
 		return switch (sys) {
-			.right_handed_z_up => Vec4f{q[0], q[1], q[2], q[3]},
-			.right_handed_y_up => Vec4f{q[0], q[2], -q[1], q[3]},
-			.left_handed_z_up => Vec4f{-q[0], q[1], q[2], q[3]},
-			.left_handed_y_up => Vec4f{-q[0], q[2], q[1], q[3]},
+			.right_handed_z_up => Quat{.q = Vec4f{q[0], q[1], q[2], q[3]}},
+			.right_handed_y_up => Quat{.q = Vec4f{q[0], q[2], -q[1], q[3]}},
+			.left_handed_z_up => Quat{.q = Vec4f{-q[0], q[1], q[2], q[3]}},
+			.left_handed_y_up => Quat{.q = Vec4f{-q[0], q[2], q[1], q[3]}},
 		};
 	}
 
