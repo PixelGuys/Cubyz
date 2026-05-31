@@ -126,14 +126,14 @@ pub const client = struct {
 
 			const head = entModel.nodeIndexMap.get("Head");
 			if (entModel.nodeIndexMap.get("Eyestalks")) |eyestalksId| {
-				const stalkRot = ent.rot[0]*0.25;
-				const headRot = ent.rot[0]*0.75;
-				component.nodes[eyestalksId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, stalkRot);
+				const stalkRot = -ent.rot[0]*0.25;
+				const headRot = -ent.rot[0]*0.75;
+				component.nodes[eyestalksId].rot = vec.Quat.quatFromAxisAngle(Vec3f{1, 0, 0}, stalkRot);
 
 				const headId = head.?;
-				component.nodes[headId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, headRot);
+				component.nodes[headId].rot = vec.Quat.quatFromAxisAngle(Vec3f{1, 0, 0}, headRot);
 			} else if (head) |headId| {
-				component.nodes[headId].rot = vec.quatFromAxisAngle(Vec3f{1, 0, 0}, ent.rot[0]);
+				component.nodes[headId].rot = vec.Quat.quatFromAxisAngle(Vec3f{1, 0, 0}, -ent.rot[0]);
 			}
 
 			for (component.nodes, 0..) |*node, i| {
