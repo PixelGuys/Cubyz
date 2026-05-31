@@ -115,9 +115,10 @@ void main() {
 	reflectivity = reflectivity*fixedCubeMapLookup(reflect(direction, normal)).x;
 	reflectivity = reflectivity*(1 - fresnelReflection) + fresnelReflection;
 
+	vec3 shadowColor = vec3(0.5, 0.5, 0.35);
 
 	float shadow = shadowCalculation();
-	vec3 light = min(sqrt(square((1.0 - shadow*0.5)*sunLight) + square(blockLight)), vec3(31))/31;
+	vec3 light = min(sqrt(square((1.0 - shadow*shadowColor)*sunLight) + square(blockLight)), vec3(31))/31;
 
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
 	fragColor = texture(textureSampler, textureCoords)*vec4(pixelLight, 1);
