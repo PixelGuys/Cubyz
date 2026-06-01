@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const Blueprint = main.blueprint.Blueprint;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const ListUnmanaged = main.ListUnmanaged;
+const List = main.List;
 const User = main.server.User;
 pub const commandList = @import("command/_list.zig");
 
@@ -54,7 +54,7 @@ pub const Coordinate = union(enum) {
 	relative: f64, // Relative coordinates are indicated by leading `~`.
 	absolute: f64,
 
-	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!Coordinate {
+	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *List(u8)) error{ParseError}!Coordinate {
 		const isRelative = arg[0] == '~';
 		const numberSlice = if (isRelative) arg[1..] else arg;
 		if (isRelative and numberSlice.len == 0) return .{.relative = 0};
@@ -185,7 +185,7 @@ pub fn getCurrentSelection(source: *User) !Blueprint.Selection {
 pub const PlayerIndex = struct {
 	index: usize,
 
-	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!PlayerIndex {
+	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *List(u8)) error{ParseError}!PlayerIndex {
 		if (!std.ascii.startsWithIgnoreCase(arg, "@")) {
 			errorMessage.print(allocator, "Expected to start with @ for <{s}>, found \"{s}\"", .{name, arg});
 			return error.ParseError;
@@ -200,7 +200,7 @@ pub const PlayerIndex = struct {
 pub const BiomeId = struct {
 	biome: *const main.server.terrain.biomes.Biome,
 
-	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, args: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!@This() {
+	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, args: []const u8, errorMessage: *List(u8)) error{ParseError}!@This() {
 		return .{.biome = main.server.terrain.biomes.getByIdOptional(args) orelse {
 			errorMessage.print(allocator, "Couldn't find biome for <{s}> with id \"{s}\"", .{name, args});
 			return error.ParseError;
@@ -211,7 +211,7 @@ pub const BiomeId = struct {
 pub const EntityModel = struct {
 	index: main.entityModel.EntityModelIndex,
 
-	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, args: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!EntityModel {
+	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, args: []const u8, errorMessage: *List(u8)) error{ParseError}!EntityModel {
 		if (main.entityModel.getById(args)) |entityModel| {
 			return .{.index = entityModel};
 		} else {

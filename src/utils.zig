@@ -943,7 +943,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 
 			if (id == 0 and lastUpdate.durationTo(main.timestamp()).nanoseconds > refreshTime.nanoseconds) {
 				const start = main.timestamp();
-				var temporaryTaskList: main.ListUnmanaged(Task) = .{};
+				var temporaryTaskList: main.List(Task) = .{};
 				defer temporaryTaskList.deinit(main.stackAllocator);
 				while (self.loadList.extractAny()) |task| {
 					self.semaphore.timedWait(.zero) catch {};
@@ -2068,9 +2068,9 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 	return struct {
 		const Self = @This();
 
-		dense: main.ListUnmanaged(T) = .{},
-		denseToSparseIndex: main.ListUnmanaged(IdType) = .{},
-		sparseToDenseIndex: main.ListUnmanaged(IdType) = .{},
+		dense: main.List(T) = .{},
+		denseToSparseIndex: main.List(IdType) = .{},
+		sparseToDenseIndex: main.List(IdType) = .{},
 
 		pub fn clear(self: *Self) void {
 			self.dense.clearRetainingCapacity();

@@ -158,9 +158,9 @@ pub const EntityModel = struct {
 			return getGltfError(result);
 		}
 
-		var vertices: main.ListUnmanaged(Vertex) = .{};
+		var vertices: main.List(Vertex) = .{};
 		defer vertices.deinit(main.stackAllocator);
-		var indices: main.ListUnmanaged(u32) = .{};
+		var indices: main.List(u32) = .{};
 		defer indices.deinit(main.stackAllocator);
 		var baseVertex: u32 = 0;
 
@@ -289,10 +289,10 @@ pub const EntityModelIndex = struct {
 	}
 };
 
-pub var playerEntityModels: main.ListUnmanaged(EntityModelIndex) = .{};
+pub var playerEntityModels: main.List(EntityModelIndex) = .{};
 
 pub var reverseIndices: std.StringHashMapUnmanaged(EntityModelIndex) = .{};
-pub var entityModels: main.ListUnmanaged(EntityModel) = .{};
+pub var entityModels: main.List(EntityModel) = .{};
 
 pub fn register(assetFolder: []const u8, entityModelId: []const u8, zon: ZonElement) EntityModelIndex {
 	const index = EntityModelIndex{.index = @intCast(entityModels.items.len)};

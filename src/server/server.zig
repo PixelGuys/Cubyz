@@ -142,7 +142,7 @@ pub const User = struct { // MARK: User
 
 	mutex: main.utils.Mutex = .{},
 
-	inventoryCommands: main.ListUnmanaged([]const u8) = .{},
+	inventoryCommands: main.List([]const u8) = .{},
 
 	permissions: permission.Permissions = undefined,
 
@@ -357,7 +357,7 @@ pub const User = struct { // MARK: User
 					pub fn run(user: *User) void {
 						defer user.decreaseRefCount();
 
-						var newTasks: main.ListUnmanaged(main.utils.ThreadPool.Task) = .initCapacity(main.stackAllocator, user.jobQueue.size);
+						var newTasks: main.List(main.utils.ThreadPool.Task) = .initCapacity(main.stackAllocator, user.jobQueue.size);
 						defer newTasks.deinit(main.stackAllocator);
 						while (user.jobQueue.extractAny()) |_task| {
 							var task = _task;

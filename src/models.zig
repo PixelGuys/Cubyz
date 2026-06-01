@@ -363,7 +363,7 @@ pub const Model = struct {
 			floodfillQueue.pushBack(.{.x = elem.x, .y = elem.y, .val = ~newValue << 1 | ~newValue >> 1});
 		}
 
-		var collision: main.ListUnmanaged(Box) = .{};
+		var collision: main.List(Box) = .{};
 
 		for (0..collisionGridSize) |x| {
 			for (0..collisionGridSize) |y| {
@@ -669,8 +669,8 @@ pub fn getModelIndex(string: []const u8) ModelIndex {
 	};
 }
 
-var quads: main.ListUnmanaged(QuadInfo) = .{};
-var extraQuadInfos: main.ListUnmanaged(ExtraQuadInfo) = .{};
+var quads: main.List(QuadInfo) = .{};
+var extraQuadInfos: main.List(ExtraQuadInfo) = .{};
 var models: main.utils.VirtualList(Model, 1 << 20) = undefined;
 
 var quadDeduplication: std.AutoHashMap([@sizeOf(QuadInfo)]u8, QuadIndex) = undefined;
@@ -721,7 +721,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 	}
 
 	if (extraQuadInfo.alignedNormalDirection) |normal| {
-		var lightSamples: main.ListUnmanaged(LightSample) = .initCapacity(main.stackAllocator, 4*8*4);
+		var lightSamples: main.List(LightSample) = .initCapacity(main.stackAllocator, 4*8*4);
 		defer lightSamples.deinit(main.stackAllocator);
 
 		for (0..4) |i| {
@@ -761,7 +761,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 			}
 		}.lessThan);
 
-		var deduplicatedList: main.ListUnmanaged(LightSample) = .initCapacity(main.stackAllocator, lightSamples.items.len);
+		var deduplicatedList: main.List(LightSample) = .initCapacity(main.stackAllocator, lightSamples.items.len);
 		defer deduplicatedList.deinit(main.stackAllocator);
 
 		for (lightSamples.items) |sample| {
@@ -781,7 +781,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 	return index;
 }
 
-fn addCornerLightSamples(lightSamples: *main.ListUnmanaged(LightSample), pos: Vec3i, direction: chunk.Neighbor, weights: [4]u16) void {
+fn addCornerLightSamples(lightSamples: *main.List(LightSample), pos: Vec3i, direction: chunk.Neighbor, weights: [4]u16) void {
 	const normal: Vec3f = @floatFromInt(Vec3i{direction.relX(), direction.relY(), direction.relZ()});
 	const lightPos = @as(Vec3f, @floatFromInt(pos)) + normal*@as(Vec3f, @splat(0.5)) - @as(Vec3f, @splat(0.5));
 	const startPos: Vec3i = @floor(lightPos);

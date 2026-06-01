@@ -24,10 +24,10 @@ const c = @import("c");
 
 pub const ParticleManager = struct {
 	var particleTypesSSBO: SSBO = undefined;
-	var types: main.ListUnmanaged(ParticleType) = .{};
-	var typesLocal: main.ListUnmanaged(ParticleTypeLocal) = .{};
-	var textures: main.ListUnmanaged(Image) = .{};
-	var emissionTextures: main.ListUnmanaged(Image) = .{};
+	var types: main.List(ParticleType) = .{};
+	var typesLocal: main.List(ParticleTypeLocal) = .{};
+	var textures: main.List(Image) = .{};
+	var emissionTextures: main.List(Image) = .{};
 
 	var textureArray: TextureArray = undefined;
 	var emissionTextureArray: TextureArray = undefined;
@@ -133,7 +133,7 @@ pub const ParticleManager = struct {
 		};
 	}
 
-	fn createAnimationFrames(container: *main.ListUnmanaged(Image), frameCount: usize, image: Image, isBroken: bool) void {
+	fn createAnimationFrames(container: *main.List(Image), frameCount: usize, image: Image, isBroken: bool) void {
 		for (0..frameCount) |i| {
 			container.append(main.worldArena, if (isBroken) image else extractAnimationSlice(image, i));
 		}
@@ -167,7 +167,7 @@ pub const ParticleSystem = struct {
 	var previousPlayerPos: Vec3d = undefined;
 
 	var mutex: main.utils.Mutex = .{};
-	var networkCreationQueue: main.ListUnmanaged(struct { emitter: Emitter, pos: Vec3d, count: u32 }) = .{};
+	var networkCreationQueue: main.List(struct { emitter: Emitter, pos: Vec3d, count: u32 }) = .{};
 
 	var particlesSSBO: SSBO = undefined;
 

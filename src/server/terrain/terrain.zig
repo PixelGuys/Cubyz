@@ -58,7 +58,7 @@ pub const BlockGenerator = struct {
 	});
 
 	fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []const BlockGenerator {
-		var list: main.ListUnmanaged(BlockGenerator) = .initCapacity(allocator, generatorRegistry.values().len);
+		var list: main.List(BlockGenerator) = .initCapacity(allocator, generatorRegistry.values().len);
 		for (generatorRegistry.keys(), generatorRegistry.values()) |id, generator| {
 			const generatorSettings = settings.getChild(id);
 			if (generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;

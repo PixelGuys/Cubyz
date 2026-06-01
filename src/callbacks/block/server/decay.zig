@@ -29,7 +29,7 @@ pub fn init(zon: ZonElement) ?*@This() {
 	result.prevention = &.{};
 	if (zon.getChildOrNull("prevention")) |tagNames| {
 		if (tagNames == .array) {
-			var prevention = main.ListUnmanaged(main.Tag).initCapacity(main.worldArena, tagNames.array.items.len);
+			var prevention = main.List(main.Tag).initCapacity(main.worldArena, tagNames.array.items.len);
 			for (tagNames.array.items) |value| {
 				const tagName = value.as(?[]const u8, null) orelse {
 					std.log.err("Invalid TagName for decay prevention.", .{});

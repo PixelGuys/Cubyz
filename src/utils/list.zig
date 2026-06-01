@@ -218,7 +218,7 @@ pub fn ListManaged(comptime T: type) type {
 	};
 }
 
-pub fn ListUnmanaged(comptime T: type) type {
+pub fn List(comptime T: type) type {
 	return struct {
 		items: []T = &.{},
 		capacity: usize = 0,
@@ -421,8 +421,8 @@ pub fn ListUnmanaged(comptime T: type) type {
 	};
 }
 
-test "ListUnmanaged.print single call, buffer not preserved" {
-	var list: ListUnmanaged(u8) = .{};
+test "List.print single call, buffer not preserved" {
+	var list: List(u8) = .{};
 	const oldAddress = list.items.ptr;
 	defer list.deinit(main.stackAllocator);
 
@@ -434,8 +434,8 @@ test "ListUnmanaged.print single call, buffer not preserved" {
 	try std.testing.expect(list.items.len <= list.capacity);
 }
 
-test "ListUnmanaged.print initCapacity, buffer preserved" {
-	var list: ListUnmanaged(u8) = .initCapacity(main.stackAllocator, 6);
+test "List.print initCapacity, buffer preserved" {
+	var list: List(u8) = .initCapacity(main.stackAllocator, 6);
 	const oldAddress = list.items.ptr;
 	defer list.deinit(main.stackAllocator);
 
@@ -447,8 +447,8 @@ test "ListUnmanaged.print initCapacity, buffer preserved" {
 	try std.testing.expect(list.items.len <= list.capacity);
 }
 
-test "ListUnmanaged.print with a string" {
-	var list: ListUnmanaged(u8) = .{};
+test "List.print with a string" {
+	var list: List(u8) = .{};
 	defer list.deinit(main.stackAllocator);
 
 	list.print(main.stackAllocator, "foo {s}", .{"bar spam BUZZ"});
@@ -457,8 +457,8 @@ test "ListUnmanaged.print with a string" {
 	try std.testing.expect(list.items.len <= list.capacity);
 }
 
-test "ListUnmanaged.print multiple prints" {
-	var list: ListUnmanaged(u8) = .{};
+test "List.print multiple prints" {
+	var list: List(u8) = .{};
 	const oldAddress = list.items.ptr;
 	defer list.deinit(main.stackAllocator);
 
