@@ -23,7 +23,6 @@ const Connection = network.Connection;
 
 var clientReceiveList: [256]?*const fn (*Connection, *utils.BinaryReader) anyerror!void = @splat(null);
 var serverReceiveList: [256]?*const fn (*Connection, *utils.BinaryReader) anyerror!void = @splat(null);
-var isAsynchronous: [256]bool = @splat(false);
 pub var bytesReceived: [256]Atomic(usize) = @splat(.init(0));
 pub var bytesSent: [256]Atomic(usize) = @splat(.init(0));
 
@@ -39,7 +38,6 @@ pub fn init() void { // MARK: init()
 				if (@hasDecl(Protocol, "serverReceive")) {
 					serverReceiveList[id] = Protocol.serverReceive;
 				}
-				isAsynchronous[id] = Protocol.asynchronous;
 			} else {
 				std.log.err("Duplicate list id {}.", .{id});
 			}
@@ -53,69 +51,17 @@ pub fn onReceive(conn: *Connection, protocolIndex: u8, data: []const u8) !void {
 		break :blk clientReceiveList[protocolIndex] orelse return error.Invalid;
 	};
 
-	if (isAsynchronous[protocolIndex]) {
-		ProtocolTask.schedule(conn, protocolIndex, protocolReceive, data);
-	} else {
-		var reader = utils.BinaryReader.init(data);
-		protocolReceive(conn, &reader) catch |err| {
-			std.log.debug("Got error while executing protocol {} with data {any}", .{protocolIndex, data});
-			return err;
-		};
-	}
+	var reader = utils.BinaryReader.init(data);
+	protocolReceive(conn, &reader) catch |err| {
+		std.log.debug("Got error while executing protocol {} with data {any}", .{protocolIndex, data});
+		return err;
+	};
 
 	_ = bytesReceived[protocolIndex].fetchAdd(data.len, .monotonic);
 }
 
-const ProtocolTask = struct { // MARK: ProtocolTask
-	conn: *Connection,
-	protocol: u8,
-	protocolReceive: *const fn (*Connection, *utils.BinaryReader) anyerror!void,
-	data: []const u8,
-
-	const vtable = utils.ThreadPool.VTable{
-		.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
-		.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
-		.run = main.meta.castFunctionSelfToAnyopaque(run),
-		.clean = main.meta.castFunctionSelfToAnyopaque(clean),
-		.taskType = .misc,
-	};
-
-	pub fn schedule(conn: *Connection, protocol: u8, protocolReceive: *const fn (*Connection, *utils.BinaryReader) anyerror!void, data: []const u8) void {
-		const task = main.globalAllocator.create(ProtocolTask);
-		task.* = ProtocolTask{
-			.conn = conn,
-			.protocol = protocol,
-			.protocolReceive = protocolReceive,
-			.data = main.globalAllocator.dupe(u8, data),
-		};
-		main.threadPool.addTask(task, &vtable);
-	}
-
-	pub fn getPriority(_: *ProtocolTask) f32 {
-		return std.math.floatMax(f32);
-	}
-
-	pub fn isStillNeeded(_: *ProtocolTask) bool {
-		return true;
-	}
-
-	pub fn run(self: *ProtocolTask) void {
-		defer self.clean();
-		var reader = utils.BinaryReader.init(self.data);
-		self.protocolReceive(self.conn, &reader) catch |err| {
-			std.log.err("Got error {s} while executing protocol {} with data {any}", .{@errorName(err), self.protocol, self.data}); // TODO: Maybe disconnect on error
-		};
-	}
-
-	pub fn clean(self: *ProtocolTask) void {
-		main.globalAllocator.free(self.data);
-		main.globalAllocator.destroy(self);
-	}
-};
-
 pub const handShake = struct { // MARK: handShake
 	pub const id: u8 = 1;
-	pub const asynchronous = false;
 
 	fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const newState = try reader.readEnum(Connection.HandShakeState);
@@ -278,7 +224,7 @@ pub const handShake = struct { // MARK: handShake
 
 pub const chunkRequest = struct { // MARK: chunkRequest
 	pub const id: u8 = 2;
-	pub const asynchronous = false;
+
 	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const basePosition = try reader.readVec(Vec3i);
 		conn.user.?.clientUpdatePos = basePosition;
@@ -319,7 +265,6 @@ pub const chunkRequest = struct { // MARK: chunkRequest
 
 pub const chunkTransmission = struct { // MARK: chunkTransmission
 	pub const id: u8 = 3;
-	pub const asynchronous = false;
 
 	pub const MeshGenerationTask = struct {
 		pos: chunk.ChunkPosition,
@@ -403,7 +348,7 @@ pub const chunkTransmission = struct { // MARK: chunkTransmission
 
 pub const playerPosition = struct { // MARK: playerPosition
 	pub const id: u8 = 4;
-	pub const asynchronous = false;
+
 	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		try conn.user.?.receiveData(reader);
 	}
@@ -431,7 +376,6 @@ pub const playerPosition = struct { // MARK: playerPosition
 
 pub const entityPosition = struct { // MARK: entityPosition
 	pub const id: u8 = 6;
-	pub const asynchronous = false;
 	const type_entity: u8 = 0;
 	const type_item: u8 = 1;
 	const Type = enum(u8) {
@@ -525,7 +469,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 
 pub const blockUpdate = struct { // MARK: blockUpdate
 	pub const id: u8 = 7;
-	pub const asynchronous = false;
+
 	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		while (reader.remaining.len != 0) {
 			renderer.mesh_storage.updateBlock(.{
@@ -551,7 +495,7 @@ pub const blockUpdate = struct { // MARK: blockUpdate
 
 pub const entity = struct { // MARK: entity
 	pub const id: u8 = 8;
-	pub const asynchronous = false;
+
 	fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const zonArray = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 		defer zonArray.deinit(main.stackAllocator);
@@ -592,7 +536,6 @@ pub const entity = struct { // MARK: entity
 
 pub const genericUpdate = struct { // MARK: genericUpdate
 	pub const id: u8 = 9;
-	pub const asynchronous = false;
 
 	const UpdateType = enum(u8) {
 		gamemode = 0,
@@ -790,7 +733,7 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 
 pub const chat = struct { // MARK: chat
 	pub const id: u8 = 10;
-	pub const asynchronous = false;
+
 	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const msg = reader.remaining;
 		if (!std.unicode.utf8ValidateSlice(msg)) {
@@ -820,7 +763,7 @@ pub const chat = struct { // MARK: chat
 
 pub const lightMapRequest = struct { // MARK: lightMapRequest
 	pub const id: u8 = 11;
-	pub const asynchronous = false;
+
 	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		while (reader.remaining.len >= 9) {
 			const wx = try reader.readInt(i32);
@@ -853,7 +796,6 @@ pub const lightMapRequest = struct { // MARK: lightMapRequest
 
 pub const lightMapTransmission = struct { // MARK: lightMapTransmission
 	pub const id: u8 = 12;
-	pub const asynchronous = false;
 
 	const LightMapTask = struct {
 		wx: i32,
@@ -948,7 +890,7 @@ pub const lightMapTransmission = struct { // MARK: lightMapTransmission
 
 pub const inventory = struct { // MARK: inventory
 	pub const id: u8 = 13;
-	pub const asynchronous = false;
+
 	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const typ = try reader.readInt(u8);
 		if (typ == 0xff) { // Confirmation
@@ -997,7 +939,7 @@ pub const inventory = struct { // MARK: inventory
 
 pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 	pub const id: u8 = 14;
-	pub const asynchronous = false;
+
 	fn serverReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const pos = try reader.readVec(Vec3i);
 		const blockType = try reader.readInt(u16);
@@ -1060,7 +1002,6 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 
 pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 	pub const id: u8 = 15;
-	pub const asynchronous = false;
 
 	const ActionType = enum(u8) {
 		unload = 0,
