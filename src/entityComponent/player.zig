@@ -80,7 +80,7 @@ pub const server = struct {
 		load(entity, playerIndex);
 	}
 	pub fn load(entity: u32, playerIndex: u32) void {
-		put(entity,Component{
+		put(entity, Component{
 			.playerIndex = playerIndex,
 		});
 	}
