@@ -42,18 +42,30 @@ pub const client = struct {
 
 	pub fn init() void {}
 	pub fn deinit() void {
-		components.deinit(main.globalAllocator);
-	}
-	pub fn clear() void {
-		components.clear();
-	}
+        for (components.dense.items) |comp| {
+            comp.deinit();
+        }
+        components.deinit(main.globalAllocator);
+    }
+    pub fn clear() void {
+        for (components.dense.items) |comp| {
+            comp.deinit();
+        }
+        components.clear();
+    }
 	pub fn load(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != 0)
 			return error.InvalidComponentVersion;
 
 		const entityModel = reader.readVarInt(u32) catch return error.UnreadableComponentData;
 
-		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
+		var ptr: *Component = undefined;
+		if (components.get(@enumFromInt(entity))) |p| {
+			ptr = p;
+			ptr.deinit();
+		} else {
+			ptr =  components.add(main.globalAllocator, @enumFromInt(entity));
+		}
 		ptr.* = Component{
 			.entityModel = .{.index = entityModel},
 		};
