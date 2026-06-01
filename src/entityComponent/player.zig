@@ -37,7 +37,7 @@ pub const client = struct {
 	}
 	pub fn load(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != 0)
-			return main.entity.EntityComponentLoadError.InvalidComponentVersion;
+			return error.InvalidComponentVersion;
 		const playerIndex = reader.readVarInt(u32) catch return main.entity.EntityComponentLoadError.UnreadableComponentData;
 
 		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
