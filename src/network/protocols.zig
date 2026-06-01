@@ -853,31 +853,80 @@ pub const lightMapRequest = struct { // MARK: lightMapRequest
 
 pub const lightMapTransmission = struct { // MARK: lightMapTransmission
 	pub const id: u8 = 12;
-	pub const asynchronous = true;
-	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
-		const wx = try reader.readInt(i32);
-		const wy = try reader.readInt(i32);
-		const voxelSizeShift = try reader.readInt(u5);
-		const pos = main.server.terrain.SurfaceMap.MapFragmentPosition{
-			.wx = wx,
-			.wy = wy,
-			.voxelSize = @as(u31, 1) << voxelSizeShift,
-			.voxelSizeShift = voxelSizeShift,
+	pub const asynchronous = false;
+
+	const LightMapTask = struct {
+		wx: i32,
+		wy: i32,
+		voxelSizeShift: u5,
+		data: []const u8,
+
+		const vtable = utils.ThreadPool.VTable{
+			.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
+			.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
+			.run = main.meta.castFunctionSelfToAnyopaque(run),
+			.clean = main.meta.castFunctionSelfToAnyopaque(clean),
+			.taskType = .misc,
 		};
-		const _inflatedData = main.stackAllocator.alloc(u8, main.server.terrain.LightMap.LightMapFragment.mapSize*main.server.terrain.LightMap.LightMapFragment.mapSize*2);
-		defer main.stackAllocator.free(_inflatedData);
-		const _inflatedLen = try utils.Compression.inflateTo(_inflatedData, reader.remaining);
-		if (_inflatedLen != main.server.terrain.LightMap.LightMapFragment.mapSize*main.server.terrain.LightMap.LightMapFragment.mapSize*2) {
-			std.log.err("Transmission of light map has invalid size: {}. Input data: {any}, After inflate: {any}", .{_inflatedLen, reader.remaining, _inflatedData[0.._inflatedLen]});
-			return error.Invalid;
+
+		pub fn getPriority(_: *LightMapTask) f32 {
+			return std.math.floatMax(f32);
 		}
-		var ligthMapReader = utils.BinaryReader.init(_inflatedData);
-		const map = main.globalAllocator.create(main.server.terrain.LightMap.LightMapFragment);
-		map.init(pos.wx, pos.wy, pos.voxelSize);
-		for (&map.startHeight) |*val| {
-			val.* = try ligthMapReader.readInt(i16);
+
+		pub fn isStillNeeded(_: *LightMapTask) bool {
+			return true;
 		}
-		renderer.mesh_storage.updateLightMap(map);
+
+		pub fn run(self: *LightMapTask) void {
+			defer self.clean();
+
+			const pos = main.server.terrain.SurfaceMap.MapFragmentPosition{
+				.wx = self.wx,
+				.wy = self.wy,
+				.voxelSize = @as(u31, 1) << self.voxelSizeShift,
+				.voxelSizeShift = self.voxelSizeShift,
+			};
+			const _inflatedData = main.stackAllocator.alloc(u8, main.server.terrain.LightMap.LightMapFragment.mapSize*main.server.terrain.LightMap.LightMapFragment.mapSize*2);
+			defer main.stackAllocator.free(_inflatedData);
+			const _inflatedLen = utils.Compression.inflateTo(_inflatedData, self.data) catch |err| {
+				std.log.err("Got error {s} while decompressing lightmap data at position {} with data {any}", .{@errorName(err), pos, self.data});
+				main.game.world.?.conn.disconnect();
+				return;
+			};
+			if (_inflatedLen != main.server.terrain.LightMap.LightMapFragment.mapSize*main.server.terrain.LightMap.LightMapFragment.mapSize*2) {
+				std.log.err("Transmission of light map has invalid size: {}. Input data: {any}, After inflate: {any}", .{_inflatedLen, self.data, _inflatedData[0.._inflatedLen]});
+				main.game.world.?.conn.disconnect();
+				return;
+			}
+			var ligthMapReader = utils.BinaryReader.init(_inflatedData);
+			const map = main.globalAllocator.create(main.server.terrain.LightMap.LightMapFragment);
+			map.init(pos.wx, pos.wy, pos.voxelSize);
+			for (&map.startHeight) |*val| {
+				val.* = ligthMapReader.readInt(i16) catch |err| {
+					std.log.err("Got error {s} while reading decompressed lightmap data at position {} with data {any}", .{@errorName(err), pos, _inflatedData});
+					main.game.world.?.conn.disconnect();
+					return;
+				};
+			}
+			renderer.mesh_storage.updateLightMap(map);
+		}
+
+		pub fn clean(self: *LightMapTask) void {
+			main.globalAllocator.free(self.data);
+			main.globalAllocator.destroy(self);
+		}
+	};
+
+	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+		const task = main.globalAllocator.create(LightMapTask);
+		errdefer main.globalAllocator.destroy(task);
+		task.* = .{
+			.wx = try reader.readInt(i32),
+			.wy = try reader.readInt(i32),
+			.voxelSizeShift = try reader.readInt(u5),
+			.data = main.globalAllocator.dupe(u8, reader.remaining),
+		};
+		main.threadPool.addTask(task, &LightMapTask.vtable);
 	}
 	pub fn sendLightMap(conn: *Connection, map: *main.server.terrain.LightMap.LightMapFragment) void {
 		var ligthMapWriter = utils.BinaryWriter.initCapacity(main.stackAllocator, @sizeOf(@TypeOf(map.startHeight)));
