@@ -169,18 +169,27 @@ fn reloadText(self: *TextInput) void {
 	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, self.maxWidth - 2*border - scrollBarWidth);
 }
 
+fn characterType(char: u8) enum { literal, symbol, whitespace } {
+	if (std.ascii.isAlphanumeric(char)) return .literal;
+	if (!std.ascii.isAscii(char)) return .literal;
+	if (char == '_') return .literal;
+	if (std.ascii.isWhitespace(char)) return .whitespace;
+	return .symbol;
+}
+
 fn moveCursorLeft(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if (mods.control) {
 		const text = self.currentString.items;
 		if (self.cursor.? == 0) return;
 		self.cursor.? -= 1;
 		// Find end of previous "word":
-		while (!std.ascii.isAlphabetic(text[self.cursor.?]) and std.ascii.isAscii(text[self.cursor.?])) {
+		while (characterType(text[self.cursor.?]) == .whitespace) {
 			if (self.cursor.? == 0) return;
 			self.cursor.? -= 1;
 		}
 		// Find the start of the previous "word":
-		while (std.ascii.isAlphabetic(text[self.cursor.?]) or !std.ascii.isAscii(text[self.cursor.?])) {
+		const wordType = characterType(text[self.cursor.?]);
+		while (characterType(text[self.cursor.?]) == wordType) {
 			if (self.cursor.? == 0) return;
 			self.cursor.? -= 1;
 		}
@@ -220,12 +229,13 @@ fn moveCursorRight(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 		if (mods.control) {
 			const text = self.currentString.items;
 			// Find start of next "word":
-			while (!std.ascii.isAlphabetic(text[self.cursor.?]) and std.ascii.isAscii(text[self.cursor.?])) {
+			while (characterType(text[self.cursor.?]) == .whitespace) {
 				self.cursor.? += 1;
 				if (self.cursor.? >= self.currentString.items.len) return;
 			}
 			// Find the end of the next "word":
-			while (std.ascii.isAlphabetic(text[self.cursor.?]) or !std.ascii.isAscii(text[self.cursor.?])) {
+			const wordType = characterType(text[self.cursor.?]);
+			while (characterType(text[self.cursor.?]) == wordType) {
 				self.cursor.? += 1;
 				if (self.cursor.? >= self.currentString.items.len) return;
 			}
