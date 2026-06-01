@@ -64,12 +64,13 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			.parse => error{ParseError}!T,
 		} {
 			var result: T = undefined;
-			var tokens = std.mem.tokenizeScalar(u8, args, ' ');
+			var tokens: Tokenizer = .init(main.stackAllocator, args);
+			defer tokens.deinit(main.stackAllocator);
 
 			var tempErrorMessage: ListUnmanaged(u8) = .{};
 			defer tempErrorMessage.deinit(main.stackAllocator);
 
-			var nextArgument: ?[]const u8 = tokens.next();
+			var nextArgument = tokens.next() catch |err| return otherError(errorMessage, err);
 
 			inline for (s.fields) |field| {
 				const value = resolveArgument(field.type, allocator, field.name[0..], nextArgument, &tempErrorMessage);
@@ -85,7 +86,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				} else {
 					@field(result, field.name) = value catch unreachable;
 					tempErrorMessage.clearRetainingCapacity();
-					nextArgument = tokens.next();
+					nextArgument = tokens.next() catch |err| return otherError(errorMessage, err);
 				}
 			}
 
@@ -95,6 +96,11 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			}
 
 			return result;
+		}
+
+		fn otherError(errorMessage: *ListUnmanaged(u8), err: anyerror) error{ParseError} {
+			errorMessage.print(main.stackAllocator, "Couldn't parse arguments list: {s}", .{@errorName(err)});
+			return error.ParseError;
 		}
 
 		fn resolveArgument(comptime Field: type, allocator: NeverFailingAllocator, name: []const u8, argument: ?[]const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!Field {
@@ -413,4 +419,156 @@ test "subCommands bar" {
 	try std.testing.expectEqual(result.bar.cmd, .bar);
 	try std.testing.expectEqual(result.bar.x, 2.0);
 	try std.testing.expectEqual(result.bar.y, 3.0);
+}
+
+const Tokenizer = struct {
+	buffer: []const u8,
+	index: usize,
+	// Buffer used to store string literals. String literals contain escape sequences which have to be resolved
+	// Before returning the string to caller.
+	stringTokenBuffer: ListUnmanaged(u8),
+
+	pub fn init(allocator: NeverFailingAllocator, buffer: []const u8) Tokenizer {
+		return .{
+			.buffer = buffer,
+			.index = 0,
+			.stringTokenBuffer = .initCapacity(allocator, buffer.len),
+		};
+	}
+
+	pub fn deinit(self: Tokenizer, allocator: NeverFailingAllocator) void {
+		self.stringTokenBuffer.deinit(allocator);
+	}
+
+	/// Returns a slice containing next token, or null if tokenization is complete.
+	/// Slices are owned by Tokenizer.
+	pub fn next(self: *Tokenizer) !?[]const u8 {
+		self.skipWhitespace();
+		if (self.index == self.buffer.len) return null;
+
+		return switch (self.buffer[self.index]) {
+			'"', '\'', '`' => try self.nextString(self.index),
+			else => self.nextIdentifier(self.index),
+		};
+	}
+
+	fn skipWhitespace(self: *Tokenizer) void {
+		while (self.index < self.buffer.len and std.ascii.isWhitespace(self.buffer[self.index])) : (self.index += 1) {}
+	}
+	/// Returns a slice containing next string token with escape sequences resolved.
+	///
+	/// A string has to be enclosed in one of quote type.
+	/// Strings support escape sequences with use of \, one for each quote char and
+	/// special escape sequence of \\ to create a single \
+	fn nextString(self: *Tokenizer, start: usize) ![]const u8 {
+		// We fetch the opening quote, this way we always match the right quote type.
+		const start_c = self.buffer[start];
+		self.index += 1;
+		if (self.index == self.buffer.len) return "";
+
+		// We only copy string content chars to self.stringTokenBuffer, so it will likely be desynced from self.buffer
+		// therefore we need a separate start index for it.
+		const tokenStart = self.stringTokenBuffer.items.len;
+
+		// Escaping always works only on next character, so its enough to toggle a bolean to track escaping.
+		var escaped: bool = false;
+
+		while (self.index < self.buffer.len) : (self.index += 1) {
+			const c = self.buffer[self.index];
+			if (escaped) {
+				escaped = false;
+				switch (c) {
+					'\\', '"', '\'', '`' => {
+						self.stringTokenBuffer.appendAssumeCapacity(c);
+					},
+					'n' => {
+						self.stringTokenBuffer.appendAssumeCapacity('\n');
+					},
+					else => return error.InvalidEscapeSequence,
+				}
+				continue;
+			}
+			if (c == '\\') {
+				escaped = !escaped;
+				continue;
+			}
+
+			// We have encountered the matching closing quote and it was not escaped, thats the end of this string.
+			// Since we did not append ending quote, nor opening quote to stringTokenBuffer, we don't have to explicitly
+			// strip them.
+			if (c == start_c) {
+				self.index += 1; // We have to skip closing quote!
+				return self.stringTokenBuffer.items[tokenStart..];
+			}
+
+			self.stringTokenBuffer.appendAssumeCapacity(c);
+		}
+		// We have exhausted the buffer without encountering string end character.
+		return self.stringTokenBuffer.items[tokenStart..];
+	}
+
+	fn nextIdentifier(self: *Tokenizer, start: usize) []const u8 {
+		while (self.index < self.buffer.len and !std.ascii.isWhitespace(self.buffer[self.index])) : (self.index += 1) {}
+		return self.buffer[start..self.index];
+	}
+};
+
+fn expectEqualOptionalStrings(expectedOptional: ?[]const u8, actualOptional: ?[]const u8) !void {
+	if (expectedOptional) |expected| {
+		if (actualOptional) |actual| {
+			return try std.testing.expectEqualStrings(expected, actual);
+		}
+		std.debug.print("expected '{s}', got: null", .{expected});
+		return try std.testing.expect(expectedOptional == null);
+	}
+	if (actualOptional) |actual| std.debug.print("expected null, got: '{s}'", .{actual});
+	return try std.testing.expect(null == actualOptional);
+}
+
+test "Tokenizer: empty string" {
+	var t: Tokenizer = .init(main.stackAllocator, "");
+	defer t.deinit(main.stackAllocator);
+	for ([_]?[]const u8{null}) |token| try expectEqualOptionalStrings(token, try t.next());
+}
+
+test "Tokenizer: signle identifier" {
+	var t: Tokenizer = .init(main.stackAllocator, "foo");
+	defer t.deinit(main.stackAllocator);
+	for ([_]?[]const u8{"foo", null}) |token| try expectEqualOptionalStrings(token, try t.next());
+}
+
+test "Tokenizer: series of plain identifiers" {
+	var t: Tokenizer = .init(main.stackAllocator, "foo bar spam");
+	defer t.deinit(main.stackAllocator);
+	for ([_]?[]const u8{"foo", "bar", "spam", null}) |token| try expectEqualOptionalStrings(token, try t.next());
+}
+
+test "Tokenizer: string double quote" {
+	var t: Tokenizer = .init(main.stackAllocator, "\"foo bar\"");
+	defer t.deinit(main.stackAllocator);
+	for ([_]?[]const u8{"foo bar", null}) |token| try expectEqualOptionalStrings(token, try t.next());
+}
+
+test "Tokenizer: string double quote with escaped quote" {
+	var t: Tokenizer = .init(main.stackAllocator, "\"foo \\\"bar\"");
+	defer t.deinit(main.stackAllocator);
+	for ([_]?[]const u8{"foo \"bar", null}) |token| try expectEqualOptionalStrings(token, try t.next());
+}
+
+test "Tokenizer: string invalid escape sequence" {
+	var t: Tokenizer = .init(main.stackAllocator, "\"\\k\"");
+	defer t.deinit(main.stackAllocator);
+	try std.testing.expectError(error.InvalidEscapeSequence, t.next());
+}
+
+test "Tokenizer: identifiers and string double quote" {
+	var t: Tokenizer = .init(main.stackAllocator, "foo \"bar spam\" foo2");
+	defer t.deinit(main.stackAllocator);
+	for ([_]?[]const u8{"foo", "bar spam", "foo2", null}) |token| try expectEqualOptionalStrings(token, try t.next());
+}
+
+test "Tokenizer: strings different quotes" {
+	var t: Tokenizer = .init(main.stackAllocator, "'foo 1' \"bar 2\" `spam 3`");
+	defer t.deinit(main.stackAllocator);
+	for ([_]?[]const u8{"foo 1", "bar 2", "spam 3", null}) |token| try expectEqualOptionalStrings(token, try t.next());
 }
