@@ -172,7 +172,7 @@ pub const server = struct { // MARK: server
 			}
 		}
 		std.debug.assert(freeIdList.items.len == @intFromEnum(maxId)); // leak
-		freeIdList.deinit(main.globalAllocator);
+		freeIdList.clearAndFree(main.globalAllocator);
 		inventories.deinit();
 		maxId = @enumFromInt(0);
 	}
