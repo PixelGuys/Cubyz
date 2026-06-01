@@ -28,6 +28,7 @@ const mesh_storage = @import("mesh_storage.zig");
 
 var pipeline: graphics.Pipeline = undefined;
 var transparentPipeline: graphics.Pipeline = undefined;
+var depthPipeline: graphics.Pipeline = undefined;
 const UniformStruct = struct {
 	projectionMatrix: c_int,
 	viewMatrix: c_int,
@@ -44,9 +45,22 @@ const UniformStruct = struct {
 	lodDistance: c_int,
 	zNear: c_int,
 	zFar: c_int,
+	lightProjectionMatrix: c_int,
+	lightViewMatrix: c_int,
+	lightDir: c_int,
 };
 pub var uniforms: UniformStruct = undefined;
 pub var transparentUniforms: UniformStruct = undefined;
+const DepthUniformStruct = struct {
+	projectionMatrix: c_int,
+	viewMatrix: c_int,
+	playerPositionInteger: c_int,
+	playerPositionFraction: c_int,
+	lodDistance: c_int,
+	zNear: c_int,
+	zFar: c_int,
+};
+pub var depthUniforms: DepthUniformStruct = undefined;
 pub var commandPipeline: graphics.ComputePipeline = undefined;
 pub var commandUniforms: struct {
 	chunkIDIndex: c_int,
@@ -56,6 +70,7 @@ pub var commandUniforms: struct {
 	playerPositionInteger: c_int,
 	onlyDrawPreviouslyInvisible: c_int,
 	lodDistance: c_int,
+	isDepth: c_int,
 } = undefined;
 pub var occlusionTestPipeline: graphics.Pipeline = undefined;
 pub var occlusionTestUniforms: struct {
@@ -63,6 +78,7 @@ pub var occlusionTestUniforms: struct {
 	viewMatrix: c_int,
 	playerPositionInteger: c_int,
 	playerPositionFraction: c_int,
+	isDepth: c_int,
 } = undefined;
 pub var vao: graphics.VertexArray = undefined;
 pub var faceBuffers: [settings.highestSupportedLod + 1]graphics.LargeBuffer(FaceData) = undefined;
@@ -103,6 +119,17 @@ pub fn init() void {
 			.dstAlphaBlendFactor = .src1Alpha,
 			.alphaBlendOp = .add,
 		}}},
+	);
+	depthPipeline = graphics.Pipeline.init(
+		"assets/cubyz/shaders/chunks/chunk_depth_vertex.vert",
+		"assets/cubyz/shaders/chunks/chunk_depth_fragment.frag",
+		"",
+		&depthUniforms,
+		graphics.VertexArray.EmptyVertex,
+		&.{},
+		.{.cullMode = .back},
+		.{.depthTest = true, .depthWrite = true, .depthCompare = .lessOrEqual},
+		.{.attachments = &.{.noBlending}},
 	);
 	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms);
 	occlusionTestPipeline = graphics.Pipeline.init(
@@ -146,6 +173,7 @@ pub fn init() void {
 pub fn deinit() void {
 	pipeline.deinit();
 	transparentPipeline.deinit();
+	depthPipeline.deinit();
 	occlusionTestPipeline.deinit();
 	commandPipeline.deinit();
 	vao.deinit();
@@ -178,7 +206,7 @@ pub fn endRender() void {
 	chunkIDBuffer.endRender();
 }
 
-fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
+fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, lightProjMatrix: Mat4f, lightViewMatrix: Mat4f, lightDir: Vec3f, ambient: Vec3f, playerPos: Vec3d) void {
 	c.glUniformMatrix4fv(locations.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 
 	c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
@@ -196,17 +224,21 @@ fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec
 
 	c.glUniform3i(locations.playerPositionInteger, @floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 	c.glUniform3f(locations.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
+
+	c.glUniformMatrix4fv(locations.lightProjectionMatrix, 1, c.GL_TRUE, @ptrCast(&lightProjMatrix));
+	c.glUniformMatrix4fv(locations.lightViewMatrix, 1, c.GL_TRUE, @ptrCast(&lightViewMatrix));
+	c.glUniform3fv(locations.lightDir, 1, @ptrCast(&lightDir));
 }
 
-pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
+pub fn bindShaderAndUniforms(projMatrix: Mat4f, lightProjMatrix: Mat4f, lightViewMatrix: Mat4f, lightDir: Vec3f, ambient: Vec3f, playerPos: Vec3d) void {
 	pipeline.bind(null);
 
-	bindCommonUniforms(&uniforms, projMatrix, ambient, playerPos);
+	bindCommonUniforms(&uniforms, projMatrix, lightProjMatrix, lightViewMatrix, lightDir, ambient, playerPos);
 
 	vao.bind();
 }
 
-pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
+pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, lightProjMatrix: Mat4f, lightViewMatrix: Mat4f, lightDir: Vec3f, ambient: Vec3f, playerPos: Vec3d) void {
 	transparentPipeline.bind(null);
 
 	c.glUniform3fv(transparentUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
@@ -214,7 +246,25 @@ pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playe
 	c.glUniform1f(transparentUniforms.@"fog.fogLower", game.fog.fogLower);
 	c.glUniform1f(transparentUniforms.@"fog.fogHigher", game.fog.fogHigher);
 
-	bindCommonUniforms(&transparentUniforms, projMatrix, ambient, playerPos);
+	bindCommonUniforms(&transparentUniforms, projMatrix, lightProjMatrix, lightViewMatrix, lightDir, ambient, playerPos);
+
+	vao.bind();
+}
+
+pub fn bindDepthShaderAndUniforms(projMatrix: Mat4f, viewMatrix: Mat4f, _: Vec3f, cameraPos: Vec3d) void {
+	depthPipeline.bind(null);
+
+	c.glUniformMatrix4fv(depthUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
+
+	c.glUniform1f(depthUniforms.lodDistance, main.settings.@"lod0.5Distance");
+
+	c.glUniformMatrix4fv(depthUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
+
+	c.glUniform1f(depthUniforms.zNear, renderer.zNear);
+	c.glUniform1f(depthUniforms.zFar, renderer.zFar);
+
+	c.glUniform3i(depthUniforms.playerPositionInteger, @floor(cameraPos[0]), @floor(cameraPos[1]), @floor(cameraPos[2]));
+	c.glUniform3f(depthUniforms.playerPositionFraction, @floatCast(@mod(cameraPos[0], 1)), @floatCast(@mod(cameraPos[1], 1)), @floatCast(@mod(cameraPos[2], 1)));
 
 	vao.bind();
 }
@@ -224,17 +274,23 @@ fn bindBuffers(lod: usize) void {
 	lightBuffers[lod].ssbo.bind(lightBuffers[lod].binding);
 }
 
-pub fn drawChunksIndirect(chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d, transparent: bool) void {
+pub const DrawMode = enum {
+	regular,
+	transparent,
+	depth,
+};
+
+pub fn drawChunksIndirect(chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), projMatrix: Mat4f, lightProjMatrix: Mat4f, lightViewMatrix: Mat4f, lightDir: Vec3f, ambient: Vec3f, playerPos: Vec3d, mode: DrawMode) void {
 	for (0..chunkIds.len) |i| {
-		const lod = if (transparent) main.settings.highestSupportedLod - i else i;
+		const lod = if (mode == .transparent) main.settings.highestSupportedLod - i else i;
 		bindBuffers(lod);
-		drawChunksOfLod(chunkIds[lod].items, projMatrix, ambient, playerPos, transparent);
+		drawChunksOfLod(chunkIds[lod].items, projMatrix, lightProjMatrix, lightViewMatrix, lightDir, ambient, playerPos, mode);
 	}
 }
 
-fn drawChunksOfLod(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d, transparent: bool) void {
+fn drawChunksOfLod(chunkIDs: []const u32, projMatrix: Mat4f, lightProjMatrix: Mat4f, lightViewMatrix: Mat4f, lightDir: Vec3f, ambient: Vec3f, playerPos: Vec3d, mode: DrawMode) void {
 	if (chunkIDs.len == 0) return;
-	const drawCallsEstimate: u31 = @intCast(if (transparent) chunkIDs.len else chunkIDs.len*8);
+	const drawCallsEstimate: u31 = @intCast(if (mode == .transparent) chunkIDs.len else chunkIDs.len*8);
 	var chunkIDAllocation: main.graphics.SubAllocation = .{.start = 0, .len = 0};
 	chunkIDBuffer.uploadData(chunkIDs, &chunkIDAllocation);
 	defer chunkIDBuffer.free(chunkIDAllocation);
@@ -245,17 +301,18 @@ fn drawChunksOfLod(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec3f, pla
 	c.glUniform1ui(commandUniforms.chunkIDIndex, chunkIDAllocation.start);
 	c.glUniform1ui(commandUniforms.commandIndexStart, allocation.start);
 	c.glUniform1ui(commandUniforms.size, @intCast(chunkIDs.len));
-	c.glUniform1i(commandUniforms.isTransparent, @intFromBool(transparent));
+	c.glUniform1i(commandUniforms.isTransparent, @intFromBool(mode == .transparent));
+	c.glUniform1i(commandUniforms.isDepth, @intFromBool(mode == .depth));
 	c.glUniform3i(commandUniforms.playerPositionInteger, @floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
-	if (!transparent) {
+	if (mode != .transparent) {
 		c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 0);
 		c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
 		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
-		if (transparent) {
-			bindTransparentShaderAndUniforms(projMatrix, ambient, playerPos);
+		if (mode == .depth) {
+			bindDepthShaderAndUniforms(lightProjMatrix, lightViewMatrix, lightDir, playerPos);
 		} else {
-			bindShaderAndUniforms(projMatrix, ambient, playerPos);
+			bindShaderAndUniforms(projMatrix, lightProjMatrix, lightViewMatrix, lightDir, ambient, playerPos);
 		}
 		c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 		c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
@@ -266,7 +323,8 @@ fn drawChunksOfLod(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec3f, pla
 	c.glUniform3i(occlusionTestUniforms.playerPositionInteger, @floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 	c.glUniform3f(occlusionTestUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 	c.glUniformMatrix4fv(occlusionTestUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
-	c.glUniformMatrix4fv(occlusionTestUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
+	c.glUniformMatrix4fv(occlusionTestUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&if (mode == .depth) lightViewMatrix else game.camera.viewMatrix));
+	c.glUniform1i(occlusionTestUniforms.isDepth, @intFromBool(mode == .depth));
 	vao.bind();
 	c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(6*6*chunkIDs.len), c.GL_UNSIGNED_INT, null, chunkIDAllocation.start*24);
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
@@ -277,10 +335,10 @@ fn drawChunksOfLod(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec3f, pla
 	c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
-	if (transparent) {
-		bindTransparentShaderAndUniforms(projMatrix, ambient, playerPos);
-	} else {
-		bindShaderAndUniforms(projMatrix, ambient, playerPos);
+	switch (mode) {
+		.regular => bindShaderAndUniforms(projMatrix, lightProjMatrix, lightViewMatrix, lightDir, ambient, playerPos),
+		.transparent => bindTransparentShaderAndUniforms(projMatrix, lightProjMatrix, lightViewMatrix, lightDir, ambient, playerPos),
+		.depth => bindDepthShaderAndUniforms(lightProjMatrix, lightViewMatrix, lightDir, playerPos),
 	}
 	c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 	c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
@@ -319,6 +377,8 @@ pub const ChunkData = extern struct {
 	vertexCountTransparent: u32,
 	visibilityState: u32,
 	oldVisibilityState: u32,
+	visibilityStateDepth: u32,
+	oldVisibilityStateDepth: u32,
 };
 
 pub const IndirectData = extern struct {
@@ -1452,6 +1512,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			.max = self.max,
 			.visibilityState = 0,
 			.oldVisibilityState = 0,
+			.visibilityStateDepth = 0,
+			.oldVisibilityStateDepth = 0,
 		}}, &self.chunkAllocation);
 	}
 

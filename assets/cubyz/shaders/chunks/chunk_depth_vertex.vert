@@ -1,28 +1,16 @@
 #version 460
 
-layout(location = 0) out vec3 mvVertexPos;
 layout(location = 1) out vec3 direction;
-layout(location = 2) out vec3 sunLight;
-layout(location = 3) out vec3 blockLight;
-layout(location = 4) out vec2 uv;
-layout(location = 5) out vec3 shadowPos;
-layout(location = 6) flat out vec3 normal;
-layout(location = 7) flat out int textureIndex;
-layout(location = 8) flat out int isBackFace;
-layout(location = 9) flat out float distanceForLodCheck;
-layout(location = 10) flat out int opaqueInLod;
+layout(location = 2) out vec2 uv;
+layout(location = 3) flat out vec3 normal;
+layout(location = 4) flat out int textureIndex;
+layout(location = 5) flat out int isBackFace;
+layout(location = 7) flat out int opaqueInLod;
 
-layout(location = 0) uniform vec3 ambientLight;
 layout(location = 1) uniform mat4 projectionMatrix;
 layout(location = 2) uniform mat4 viewMatrix;
 layout(location = 3) uniform ivec3 playerPositionInteger;
 layout(location = 4) uniform vec3 playerPositionFraction;
-layout(location = 8) uniform mat4 lightProjectionMatrix;
-layout(location = 9) uniform mat4 lightViewMatrix;
-
-#ifdef ENTITY
-layout(location = 14) uniform mat4 modelMatrix;
-#endif
 
 struct FaceData {
 	int encodedPositionAndLightIndex;
@@ -83,18 +71,6 @@ void main() {
 	int voxelSize = chunks[chunkID].voxelSize;
 	int encodedPositionAndLightIndex = faceData[faceID].encodedPositionAndLightIndex;
 	int textureAndQuad = faceData[faceID].textureAndQuad;
-	uint lightIndex = chunks[chunkID].lightStart + 4*(encodedPositionAndLightIndex >> 16);
-	uint fullLight = lightData[lightIndex + vertexID];
-	sunLight = vec3(
-		fullLight >> 25 & 31u,
-		fullLight >> 20 & 31u,
-		fullLight >> 15 & 31u
-	) * ambientLight;
-	blockLight = vec3(
-		fullLight >> 10 & 31u,
-		fullLight >> 5 & 31u,
-		fullLight >> 0 & 31u
-	);
 	isBackFace = encodedPositionAndLightIndex>>15 & 1;
 
 	textureIndex = textureAndQuad & 65535;
@@ -109,22 +85,13 @@ void main() {
 	normal = quads[quadIndex].normal;
 
 	position += vec3(quads[quadIndex].corners[vertexID][0], quads[quadIndex].corners[vertexID][1], quads[quadIndex].corners[vertexID][2]);
-#ifdef ENTITY
-	// Offset by one to account for block position in chunk
-	position = (modelMatrix*vec4(position - vec3(1), 1)).xyz + vec3(1);
-#endif
 	position *= voxelSize;
 	position += vec3(chunks[chunkID].position.xyz - playerPositionInteger);
 	position -= playerPositionFraction;
 
 	direction = position;
 
-	vec4 mvPos = viewMatrix*vec4(position, 1);
-	gl_Position = projectionMatrix*mvPos;
-	mvVertexPos = mvPos.xyz;
-	distanceForLodCheck = length(mvPos.xyz) + voxelSize;
+	gl_Position = projectionMatrix*viewMatrix*vec4(position, 1);
 	uv = quads[quadIndex].cornerUV[vertexID]*voxelSize;
 	opaqueInLod = quads[quadIndex].opaqueInLod;
-
-	shadowPos = position + normal * 0.04;
 }

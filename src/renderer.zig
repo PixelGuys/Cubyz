@@ -62,6 +62,9 @@ pub var activeFrameBuffer: c_uint = 0;
 pub const reflectionCubeMapSize = 64;
 var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
+pub const shadowMapResolution = 2048.0;
+var depthFrameBuffer: graphics.FrameBuffer = undefined;
+
 pub fn init() void {
 	deferredRenderPassPipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/deferred_render_pass.vert",
@@ -85,7 +88,7 @@ pub fn init() void {
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.noBlending}},
 	);
-	worldFrameBuffer.init(true, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
+	worldFrameBuffer.init(true, true, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGB16F);
 	Bloom.init();
 	MeshSelection.init();
@@ -96,6 +99,8 @@ pub fn init() void {
 	reflectionCubeMap = .init();
 	reflectionCubeMap.generate(reflectionCubeMapSize, reflectionCubeMapSize);
 	initReflectionCubeMap();
+	depthFrameBuffer.init(false, true, c.GL_NEAREST, c.GL_CLAMP_TO_BORDER);
+	depthFrameBuffer.updateSize(shadowMapResolution, shadowMapResolution, null);
 }
 
 pub fn deinit() void {
@@ -109,12 +114,13 @@ pub fn deinit() void {
 	mesh_storage.deinit();
 	chunk_meshing.deinit();
 	reflectionCubeMap.deinit();
+	depthFrameBuffer.deinit();
 }
 
 fn initReflectionCubeMap() void {
 	c.glViewport(0, 0, reflectionCubeMapSize, reflectionCubeMapSize);
 	var framebuffer: graphics.FrameBuffer = undefined;
-	framebuffer.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
+	framebuffer.init(true, false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
 	defer framebuffer.deinit();
 	framebuffer.bind();
 	fakeReflectionPipeline.bind(null);
@@ -187,15 +193,66 @@ pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: 
 }
 
 pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) void { // MARK: renderWorld()
+	depthFrameBuffer.bind();
+	c.glViewport(0, 0, shadowMapResolution, shadowMapResolution);
+	gpu_performance_measuring.startQuery(.depth_framebuffer_clear);
+	c.glClear(c.GL_DEPTH_BUFFER_BIT);
+	gpu_performance_measuring.stopQuery();
+
+	const lightOffset: Vec3f = Vec3f{@floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1))};
+
+	const xRot = std.math.pi*0.8;
+	const zRot = std.math.pi*0.1;
+
+	const lightDir = vec.rotateZ(vec.rotateX(Vec3f{0.0, 0.0, 1.0}, xRot), zRot);
+	const xR = lightDir[0];
+	const yR = lightDir[1];
+	const zR = lightDir[2];
+
+	const shadowMapSize = shadowMapResolution/16.0;
+
+	const far = shadowMapSize;
+	const near = -shadowMapSize;
+	const lightProjection = Mat4f.scale(.{2.0/shadowMapSize, 2.0/shadowMapSize, 1.0}).mul(.{.rows = [4]Vec4f{
+		Vec4f{1, 0, xR/zR, 0.0},
+		Vec4f{0, 1, yR/zR, 0.0},
+		Vec4f{0, 0, 1.0/(far - near), -near/(far - near)},
+		Vec4f{0, 0, 0, 1},
+	}}).mul(.scale(.{1, 1, -1}));
+
+	const lightView: Mat4f = Mat4f.identity().mul(.translation(lightOffset));
+
+	game.camera.updateViewMatrix();
+
+	chunk_meshing.quadsDrawn = 0;
+	chunk_meshing.transparentQuadsDrawn = 0;
+	const depthMeshes = mesh_storage.updateAndGetRenderChunks(world.conn, null, playerPos, settings.renderDistance);
+
+	gpu_performance_measuring.startQuery(.depth_framebuffer_chunk_rendering_preparation);
+	chunk_meshing.beginRender();
+
+	var depthChunkLists: [main.settings.highestSupportedLod + 1]main.ListManaged(u32) = @splat(main.ListManaged(u32).init(main.stackAllocator));
+	defer for (depthChunkLists) |list| list.deinit();
+	for (depthMeshes) |mesh| {
+		mesh.prepareRendering(&depthChunkLists);
+	}
+	gpu_performance_measuring.stopQuery();
+
+	// Rebind block textures back to their original slots
+	c.glActiveTexture(c.GL_TEXTURE0);
+	blocks.meshes.blockTextureArray.bind();
+
+	gpu_performance_measuring.startQuery(.depth_framebuffer_chunk_rendering);
+	chunk_meshing.drawChunksIndirect(&depthChunkLists, lightProjection, lightProjection, lightView, lightDir, ambientLight, playerPos, .depth);
+	gpu_performance_measuring.stopQuery();
+
+	chunk_meshing.endRender();
+
 	worldFrameBuffer.bind();
 	c.glViewport(0, 0, lastWidth, lastHeight);
 	gpu_performance_measuring.startQuery(.clear);
 	worldFrameBuffer.clear(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
 	gpu_performance_measuring.stopQuery();
-	game.camera.updateViewMatrix();
-
-	// Uses FrustumCulling on the chunks.
-	const frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
 
 	const time: u32 = @intCast(main.timestamp().toMilliseconds() & std.math.maxInt(u32));
 
@@ -208,7 +265,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
-	chunk_meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, playerPos);
+	chunk_meshing.bindShaderAndUniforms(game.projectionMatrix, lightProjection, lightView, lightDir, ambientLight, playerPos);
 
 	c.glActiveTexture(c.GL_TEXTURE0);
 	blocks.meshes.blockTextureArray.bind();
@@ -219,6 +276,14 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glActiveTexture(c.GL_TEXTURE5);
 	blocks.meshes.ditherTexture.bind();
 	reflectionCubeMap.bindTo(4);
+	depthFrameBuffer.bindDepthTexture(c.GL_TEXTURE6);
+
+	chunk_meshing.quadsDrawn = 0;
+	chunk_meshing.transparentQuadsDrawn = 0;
+
+	// Uses FrustumCulling on the chunks.
+	const frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
+	game.camera.updateViewMatrix();
 
 	chunk_meshing.quadsDrawn = 0;
 	chunk_meshing.transparentQuadsDrawn = 0;
@@ -236,8 +301,10 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		mesh.prepareRendering(&chunkLists);
 	}
 	gpu_performance_measuring.stopQuery();
+	chunk_meshing.beginRender();
+
 	gpu_performance_measuring.startQuery(.chunk_rendering);
-	chunk_meshing.drawChunksIndirect(&chunkLists, game.projectionMatrix, ambientLight, playerPos, false);
+	chunk_meshing.drawChunksIndirect(&chunkLists, game.projectionMatrix, lightProjection, lightView, lightDir, ambientLight, playerPos, .regular);
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
@@ -278,7 +345,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		}
 		gpu_performance_measuring.stopQuery();
 		gpu_performance_measuring.startQuery(.transparent_rendering);
-		chunk_meshing.drawChunksIndirect(&chunkLists, game.projectionMatrix, ambientLight, playerPos, true);
+		chunk_meshing.drawChunksIndirect(&chunkLists, game.projectionMatrix, lightProjection, lightView, lightDir, ambientLight, playerPos, .transparent);
 		gpu_performance_measuring.stopQuery();
 	}
 
@@ -356,8 +423,8 @@ const Bloom = struct { // MARK: Bloom
 	} = undefined;
 
 	pub fn init() void {
-		buffer1.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
-		buffer2.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
+		buffer1.init(true, false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
+		buffer2.init(true, false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
 		emptyBuffer = .init();
 		emptyBuffer.generate(graphics.Image.emptyImage);
 		firstPassPipeline = graphics.Pipeline.init(
@@ -633,7 +700,7 @@ pub const MenuBackGround = struct {
 		defer updateViewport(Window.width, Window.height);
 
 		var buffer: graphics.FrameBuffer = undefined;
-		buffer.init(true, c.GL_NEAREST, c.GL_REPEAT);
+		buffer.init(true, true, c.GL_NEAREST, c.GL_REPEAT);
 		defer buffer.deinit();
 		buffer.updateSize(size, size, c.GL_RGBA8);
 

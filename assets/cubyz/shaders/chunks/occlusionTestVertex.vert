@@ -14,6 +14,8 @@ struct ChunkData {
 	uint vertexCountTransparent;
 	uint visibilityState;
 	uint oldVisibilityState;
+	uint visibilityStateDepth;
+	uint oldVisibilityStateDepth;
 };
 
 layout(std430, binding = 6) buffer _chunks
@@ -61,6 +63,7 @@ layout(location = 0) uniform mat4 projectionMatrix;
 layout(location = 1) uniform mat4 viewMatrix;
 layout(location = 2) uniform ivec3 playerPositionInteger;
 layout(location = 3) uniform vec3 playerPositionFraction;
+layout(location = 4) uniform bool isDepth;
 
 void main() {
 	uint chunkIDID = uint(gl_VertexID)/24u;
@@ -68,7 +71,11 @@ void main() {
 	chunkID = chunkIDs[chunkIDID];
 	vec3 modelPosition = vec3(chunks[chunkID].position.xyz - playerPositionInteger) - playerPositionFraction;
 	if(all(lessThan(modelPosition + chunks[chunkID].minPos.xyz*chunks[chunkID].voxelSize, vec3(0, 0, 0))) && all(greaterThan(modelPosition + chunks[chunkID].maxPos.xyz*chunks[chunkID].voxelSize, vec3(0, 0, 0)))) {
-		chunks[chunkID].visibilityState = 1;
+		if(isDepth) {
+			chunks[chunkID].visibilityStateDepth = 1;
+		} else {
+			chunks[chunkID].visibilityState = 1;
+		}
 		gl_Position = vec4(-2, -2, -2, 1);
 		return;
 	}

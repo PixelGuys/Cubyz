@@ -19,6 +19,8 @@ struct ChunkData {
 	uint vertexCountTransparent;
 	uint visibilityState;
 	uint oldVisibilityState;
+	uint visibilityStateDepth;
+	uint oldVisibilityStateDepth;
 };
 layout(std430, binding = 6) buffer _chunks
 {
@@ -48,6 +50,8 @@ layout(location = 4) uniform bool onlyDrawPreviouslyInvisible;
 layout(location = 5) uniform ivec3 playerPositionInteger;
 
 layout(location = 6) uniform float lodDistance;
+
+layout(location = 7) uniform bool isDepth;
 
 bool isVisible(int dir, ivec3 playerDist) {
 	switch(dir) {
@@ -87,14 +91,31 @@ void main() {
 		uint commandIndexEnd = commandIndex + 8;
 		uint groupFaceOffset = 0;
 		uint groupFaceCount = 0;
-		uint oldoldvisibilityState = chunks[chunkID].oldVisibilityState;
+		uint oldoldvisibilityState;
+		if(isDepth) {
+			oldoldvisibilityState = chunks[chunkID].oldVisibilityStateDepth;
+		} else {
+			oldoldvisibilityState = chunks[chunkID].oldVisibilityState;
+		}
 		ivec3 playerDist = playerPositionInteger - chunks[chunkID].position.xyz;
 		if(playerDist.x > 0) playerDist.x = max(0, playerDist.x - 32*chunks[chunkID].voxelSize);
 		if(playerDist.y > 0) playerDist.y = max(0, playerDist.y - 32*chunks[chunkID].voxelSize);
 		if(playerDist.z > 0) playerDist.z = max(0, playerDist.z - 32*chunks[chunkID].voxelSize);
 		float playerDistSquare = dot(playerDist, playerDist);
 
-		if((onlyDrawPreviouslyInvisible && chunks[chunkID].oldVisibilityState == 0 && chunks[chunkID].visibilityState != 0) || (chunks[chunkID].oldVisibilityState != 0 && !onlyDrawPreviouslyInvisible)) {
+		uint oldVisibilityState;
+		if(isDepth) {
+			oldVisibilityState = chunks[chunkID].oldVisibilityStateDepth;
+		} else {
+			oldVisibilityState = chunks[chunkID].oldVisibilityState;
+		}
+		uint visibilityState;
+		if(isDepth) {
+			visibilityState = chunks[chunkID].visibilityStateDepth;
+		} else {
+			visibilityState = chunks[chunkID].visibilityState;
+		}
+		if((onlyDrawPreviouslyInvisible && oldVisibilityState == 0 && visibilityState != 0) || (oldVisibilityState != 0 && !onlyDrawPreviouslyInvisible)) {
 			for(int i = 0; i < 14; i++) {
 				if(playerDistSquare >= lodDistance*lodDistance && i == 7) break;
 				uint faceCount = chunks[chunkID].faceCountsByNormalOpaque[i];
@@ -112,8 +133,15 @@ void main() {
 			}
 		}
 		if(onlyDrawPreviouslyInvisible) {
-			chunks[chunkID].oldVisibilityState = chunks[chunkID].visibilityState;
-			chunks[chunkID].visibilityState = 0;
+			if(isDepth) {
+				chunks[chunkID].oldVisibilityStateDepth = chunks[chunkID].visibilityStateDepth;
+				chunks[chunkID].visibilityStateDepth = 0;
+				oldVisibilityState = chunks[chunkID].oldVisibilityStateDepth;
+			} else {
+				chunks[chunkID].oldVisibilityState = chunks[chunkID].visibilityState;
+				chunks[chunkID].visibilityState = 0;
+				oldVisibilityState = chunks[chunkID].oldVisibilityState;
+			}
 		}
 		if(groupFaceCount != 0) {
 			commands[commandIndex] = addCommand(6*groupFaceCount, chunks[chunkID].vertexStartOpaque + 4*groupFaceOffset, chunkID);
@@ -121,7 +149,7 @@ void main() {
 		}
 
 		for(; commandIndex < commandIndexEnd; commandIndex++) {
-			commands[commandIndex] = DrawElementsIndirectCommand(0, 0, 0, 0, oldoldvisibilityState << 1 | chunks[chunkID].oldVisibilityState);
+			commands[commandIndex] = DrawElementsIndirectCommand(0, 0, 0, 0, oldoldvisibilityState << 1 | oldVisibilityState);
 		}
 	}
 }
