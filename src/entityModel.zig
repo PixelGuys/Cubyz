@@ -213,13 +213,13 @@ pub const EntityModel = struct {
 		defer indices.deinit(main.stackAllocator);
 		var baseVertex: u32 = 0;
 
-		var nodeDepthRemap = main.List(NodeRemap).init(main.stackAllocator);
-		defer nodeDepthRemap.deinit();
+		var nodeDepthRemap: main.ListUnmanaged(NodeRemap) = .{};
+		defer nodeDepthRemap.deinit(main.stackAllocator);
 
 		var nodeIdx: u16 = 0;
 		for (data.nodes, 0..data.nodes_count) |node, gltfNodeIdx| {
 			if (node.children_count == 0) continue;
-			nodeDepthRemap.append(.{
+			nodeDepthRemap.append(main.stackAllocator, .{
 				.depth = getHierarchyDepth(node, 0),
 				.gltfNodeIdx = @intCast(gltfNodeIdx),
 			});
