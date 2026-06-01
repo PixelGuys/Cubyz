@@ -74,7 +74,7 @@ pub const server = struct {
 	}
 	pub fn loadFromData(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != 0)
-			return main.entity.EntityComponentLoadError.InvalidComponentVersion;
+			return error.InvalidComponentVersion;
 		const playerIndex = reader.readVarInt(u32) catch return error.UnreadableComponentData;
 
 		load(entity, playerIndex);
