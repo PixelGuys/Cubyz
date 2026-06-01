@@ -3,6 +3,10 @@
 		.hot,
 		.dry,
 	},
+	.tags = .{
+		.baobab,
+		.cactus,
+	},
 	.minHeightLimit = 7,
 	.minHeight = 30,
 	.maxHeight = 40,
@@ -12,7 +16,7 @@
 	.maxRadius = 320,
 	.hills = 6,
 	.validPlayerSpawn = true,
-	.music = "cubyz:EasternThought",
+	.music = "cubyz:totaldemented/cubyz",
 	.ground_structure = .{
 		"7 to 8 cubyz:limestone/base",
 	},

@@ -106,12 +106,14 @@ pub var borderUniforms: struct {
 	effectLength: c_int,
 } = undefined;
 
-pub fn __init() void {
+pub fn globalInit() void {
 	pipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/ui/button.vert",
 		"assets/cubyz/shaders/ui/button.frag",
 		"",
 		&windowUniforms,
+		graphics.draw.SimpleVertex2D,
+		&.{},
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.alphaBlending}},
@@ -121,6 +123,8 @@ pub fn __init() void {
 		"assets/cubyz/shaders/ui/window_border.frag",
 		"",
 		&borderUniforms,
+		graphics.draw.SimpleVertex2D,
+		&.{},
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.alphaBlending}},
@@ -133,7 +137,7 @@ pub fn __init() void {
 	zoomOutTexture = Texture.initFromFile("assets/cubyz/ui/window_zoom_out.png");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	pipeline.deinit();
 	backgroundTexture.deinit();
 	titleTexture.deinit();
@@ -181,7 +185,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 		const mousePositionRelative = mousePosition - self.pos;
 		const grabPositionRelative = if (grabPosition) |gp| gp - self.pos else @as(@Vector(2, f32), .{0.0, 0.0});
 
-		if (mousePositionRelative[1] >= 0 and mousePositionRelative[1] <= titleBarHeight) {
+		if (mousePositionRelative[1] >= 0 and mousePositionRelative[1] <= titleBarHeight*self.scale) {
 			if (mousePositionRelative[0] > zoomInPos and mousePositionRelative[0] <= zoomOutPos and grabPositionRelative[0] > zoomInPos and grabPositionRelative[0] <= zoomOutPos) {
 				// Zoom in
 				if (self.scale >= 1) {

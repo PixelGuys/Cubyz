@@ -2,8 +2,13 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 const main = @import("main");
-const c = main.Window.c;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+
+const c = @import("c");
+
+comptime {
+	std.debug.assert(@as(u1, 1) == c.VK_TRUE and @as(u1, 0) == c.VK_FALSE); // Allows using @intFromBool to convert to vulkan types
+}
 
 const VkResultEnum = enum(c_int) { // MARK: VkResultEnum
 	VK_SUCCESS = 0,
@@ -59,12 +64,22 @@ const VkResultEnum = enum(c_int) { // MARK: VkResultEnum
 };
 
 pub fn checkResult(result: c.VkResult) void {
-	const resultEnum = std.meta.intToEnum(VkResultEnum, result) catch {
+	const resultEnum = std.enums.fromInt(VkResultEnum, result) orelse {
 		std.log.err("Encountered a vulkan error with unknown error code {}", .{result});
 		return;
 	};
 	if (resultEnum == .VK_SUCCESS) return;
 	std.log.err("Encountered a vulkan error: {s}", .{@tagName(resultEnum)});
+}
+
+pub fn checkResultErr(result: c.VkResult) !void {
+	const resultEnum = std.enums.fromInt(VkResultEnum, result) orelse {
+		std.log.err("Encountered a vulkan error with unknown error code {}", .{result});
+		return error.VulkanError;
+	};
+	if (resultEnum == .VK_SUCCESS) return;
+	std.log.err("Encountered a vulkan error: {s}", .{@tagName(resultEnum)});
+	return error.VulkanError;
 }
 
 fn checkResultIfAvailable(result: anytype) void {
@@ -126,7 +141,7 @@ pub fn getPhysicalDeviceSurfacePresentModesKHR(allocator: NeverFailingAllocator,
 var instance: c.VkInstance = undefined;
 var surface: c.VkSurfaceKHR = undefined;
 var physicalDevice: c.VkPhysicalDevice = undefined;
-var device: c.VkDevice = undefined;
+pub var device: c.VkDevice = undefined;
 var graphicsQueue: c.VkQueue = undefined;
 var presentQueue: c.VkQueue = undefined;
 
@@ -207,7 +222,7 @@ pub fn createInstance() void {
 	}
 
 	var createFlags: u32 = 0;
-	var extensions = main.List([*c]const u8).init(main.stackAllocator);
+	var extensions: main.ListManaged([*c]const u8) = .init(main.stackAllocator);
 	defer extensions.deinit();
 	extensions.appendSlice(glfwExtensions[0..glfwExtensionCount]);
 
@@ -247,6 +262,7 @@ const deviceExtensions = blk: {
 const deviceFeatures: c.VkPhysicalDeviceFeatures = .{
 	.multiDrawIndirect = c.VK_TRUE,
 	.dualSrcBlend = c.VK_TRUE,
+	.depthClamp = c.VK_TRUE,
 };
 
 const QueueFamilyIndidices = struct {
@@ -357,7 +373,7 @@ fn createLogicalDevice() void {
 	_ = uniqueFamilies.getOrPut(main.stackAllocator.allocator, indices.graphicsFamily.?) catch unreachable;
 	_ = uniqueFamilies.getOrPut(main.stackAllocator.allocator, indices.presentFamily.?) catch unreachable;
 
-	var queueCreateInfos = main.List(c.VkDeviceQueueCreateInfo).init(main.stackAllocator);
+	var queueCreateInfos: main.ListManaged(c.VkDeviceQueueCreateInfo) = .init(main.stackAllocator);
 	defer queueCreateInfos.deinit();
 	var iterator = uniqueFamilies.keyIterator();
 	while (iterator.next()) |queueFamily| {
@@ -384,11 +400,11 @@ fn createLogicalDevice() void {
 	c.vkGetDeviceQueue(device, indices.presentFamily.?, 0, &presentQueue);
 }
 
-const SwapChain = struct { // MARK: SwapChain
+pub const SwapChain = struct { // MARK: SwapChain
 	var swapChain: c.VkSwapchainKHR = null;
 	var images: []c.VkImage = undefined;
 	var imageViews: []c.VkImageView = undefined;
-	var imageFormat: c.VkFormat = undefined;
+	pub var imageFormat: c.VkFormat = undefined;
 	var extent: c.VkExtent2D = undefined;
 
 	const SupportDetails = struct {

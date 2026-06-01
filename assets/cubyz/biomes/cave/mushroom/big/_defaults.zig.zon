@@ -2,7 +2,7 @@
 	.isCave = true,
 	.tags = .{.cave_layer},
 	.maxHeight = -512,
-	.music = "cubyz:la_kubisa_caverna",
+	.music = "cubyz:totaldemented/mycelia",
 	.ground_structure = .{
 		"2 to 3 cubyz:soil",
 	},

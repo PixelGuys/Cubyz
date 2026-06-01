@@ -13,8 +13,9 @@ const CaveMapView = terrain.CaveMap.CaveMapView;
 const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
 const SbbGen = @import("../simple_structures/SbbGen.zig");
 const ServerChunk = main.chunk.ServerChunk;
-const SimpleStructure = @import("SimpleStructureGen.zig").SimpleStructure;
-const StructureBuildingBlock = terrain.structure_building_blocks.StructureBuildingBlock;
+const SimpleStructureGen = @import("SimpleStructureGen.zig");
+const SimpleStructure = SimpleStructureGen.SimpleStructure;
+const StructureBuildingBlock = terrain.sbb.StructureBuildingBlock;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
@@ -37,7 +38,7 @@ pub fn init(parameters: ZonElement) void {
 	const Entry = struct { sbb: *const StructureBuildingBlock, hasParent: bool, reachable: bool };
 	var localSbbList: main.ListUnmanaged(Entry) = .{};
 	defer localSbbList.deinit(main.stackAllocator);
-	for (terrain.structure_building_blocks.list()) |*entry| {
+	for (terrain.sbb.list()) |*entry| {
 		localSbbList.append(main.stackAllocator, .{.sbb = entry, .hasParent = false, .reachable = false});
 	}
 
