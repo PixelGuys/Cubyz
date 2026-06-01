@@ -347,8 +347,8 @@ pub const EntityModel = struct {
 		return switch (sys) {
 			.right_handed_z_up => Quat{.q = Vec4f{q[0], q[1], q[2], q[3]}},
 			.right_handed_y_up => Quat{.q = Vec4f{q[0], q[2], -q[1], q[3]}},
-			.left_handed_z_up => Quat{.q = Vec4f{-q[0], q[1], q[2], q[3]}},
-			.left_handed_y_up => Quat{.q = Vec4f{-q[0], q[2], q[1], q[3]}},
+			.left_handed_z_up => Quat{.q = Vec4f{q[0], q[1], q[2], q[3]}},
+			.left_handed_y_up => Quat{.q = Vec4f{q[0], q[2], q[1], q[3]}},
 		};
 	}
 
