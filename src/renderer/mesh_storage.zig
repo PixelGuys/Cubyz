@@ -34,9 +34,9 @@ const storageSize = 64;
 const storageMask = storageSize - 1;
 var storageLists: [settings.highestSupportedLod + 1]*[storageSize*storageSize*storageSize]ChunkMeshNode = undefined;
 var mapStorageLists: [settings.highestSupportedLod + 1]*[storageSize*storageSize]Atomic(?*LightMap.LightMapFragment) = undefined;
-var meshList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
+var meshList: main.ListUnmanaged(*chunk_meshing.ChunkMesh) = .{};
 var priorityMeshUpdateList: main.utils.ConcurrentQueue(chunk.ChunkPosition) = undefined;
-pub var updatableList = main.List(chunk.ChunkPosition).init(main.globalAllocator);
+pub var updatableList: main.ListUnmanaged(chunk.ChunkPosition) = .{};
 var mapUpdatableList: main.utils.ConcurrentQueue(*LightMap.LightMapFragment) = undefined;
 var lastPx: i32 = 0;
 var lastPy: i32 = 0;
@@ -101,13 +101,13 @@ pub fn deinit() void {
 		main.globalAllocator.destroy(mapStorageList);
 	}
 
-	updatableList.clearAndFree();
+	updatableList.clearAndFree(main.globalAllocator);
 	while (mapUpdatableList.popFront()) |map| {
 		map.deferredDeinit();
 	}
 	mapUpdatableList.deinit();
 	priorityMeshUpdateList.deinit();
-	meshList.clearAndFree();
+	meshList.clearAndFree(main.globalAllocator);
 	main.heap.GarbageCollection.waitForFreeCompletion();
 }
 
@@ -407,7 +407,7 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { 
 	}
 }
 
-fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshRequests: *main.List(chunk.ChunkPosition), mapRequests: *main.List(LightMap.MapFragmentPosition)) void { // MARK: createNewMeshes()
+fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshRequests: *main.ListManaged(chunk.ChunkPosition), mapRequests: *main.ListManaged(LightMap.MapFragmentPosition)) void { // MARK: createNewMeshes()
 	for (0..settings.highestLod + 1) |_lod| {
 		const lod: u5 = @intCast(_lod);
 		const maxRenderDistanceNew = lastRD*chunk.chunkSize << lod;
@@ -549,9 +549,9 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 
 	const playerPosInt: Vec3i = @floor(playerPos);
 
-	var meshRequests = main.List(chunk.ChunkPosition).init(main.stackAllocator);
+	var meshRequests: main.ListManaged(chunk.ChunkPosition) = .init(main.stackAllocator);
 	defer meshRequests.deinit();
-	var mapRequests = main.List(LightMap.MapFragmentPosition).init(main.stackAllocator);
+	var mapRequests: main.ListManaged(LightMap.MapFragmentPosition) = .init(main.stackAllocator);
 	defer mapRequests.deinit();
 
 	const olderPx = lastPx;
@@ -596,7 +596,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 			searchList.pushBack(node);
 		}
 	}
-	var nodeList = main.List(*ChunkMeshNode).initCapacity(main.stackAllocator, 1024);
+	var nodeList: main.ListManaged(*ChunkMeshNode) = .initCapacity(main.stackAllocator, 1024);
 	defer nodeList.deinit();
 	while (searchList.popFront()) |node| {
 		std.debug.assert(node.finishedMeshing);
@@ -700,7 +700,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 		}
 		// Remove empty meshes.
 		if (!mesh.isEmpty()) {
-			meshList.append(mesh);
+			meshList.append(main.globalAllocator, mesh);
 		}
 	}
 
@@ -799,7 +799,7 @@ pub fn addMeshToStorage(mesh: *chunk_meshing.ChunkMesh) error{ AlreadyStored, No
 pub fn finishMesh(pos: chunk.ChunkPosition) void {
 	mutex.lock();
 	defer mutex.unlock();
-	updatableList.append(pos);
+	updatableList.append(main.globalAllocator, pos);
 }
 
 // MARK: updaters
