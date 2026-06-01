@@ -126,7 +126,7 @@ pub const client = struct {
 			for (component.nodes, 0..) |*node, i| {
 				const parentMat = if (node.parent) |p| component.matrices[p].transpose() else Mat4f.identity();
 
-				component.matrices[i] = parentMat.mul(node.recalc(entModel.nodePivots[i])).transpose();
+				component.matrices[i] = parentMat.mul(entModel.nodePivots[i]).transpose();
 			}
 
 			main.entity.systems.modelRenderer.client.nodeBuffer.uploadData(component.matrices, &component.bufferAllocation);

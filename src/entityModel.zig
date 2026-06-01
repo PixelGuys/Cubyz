@@ -35,21 +35,8 @@ pub const EntityModel = struct {
 	defaultTexture: ?main.graphics.Texture,
 	coordinateSystem: CoordinateSystem,
 
-	// TODO: add a static array for recalculating matrices?
-
 	pub const Node = struct {
-		pos: Vec3f = @splat(0),
-		rot: Quat = Quat{},
-		scale: Vec3f = @splat(1),
 		parent: ?u16 = null,
-
-		pub fn recalc(self: Node, pivotMat: Mat4f) Mat4f {
-			var newMat = pivotMat.mul(Mat4f.translation(self.pos));
-			newMat = newMat.mul(Mat4f.rotationQuat(self.rot));
-			newMat = newMat.mul(Mat4f.scale(self.scale));
-
-			return newMat;
-		}
 	};
 
 	pub const CoordinateSystem = enum {
