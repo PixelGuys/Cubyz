@@ -230,6 +230,7 @@ pub fn build(b: *std.Build) !void {
 		.name = "Cubyz",
 		.root_module = mainModule,
 		//.sanitize_thread = true,
+		.use_llvm = true, 
 	});
 	exe.root_module.addOptions("build_options", options);
 	exe.root_module.addImport("main", mainModule);

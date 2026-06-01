@@ -199,6 +199,15 @@ pub const Player = struct { // MARK: Player
 
 		inventory.placeBlock(selectedSlot);
 	}
+	
+	pub fn breakBlock(deltaTime: f64) void {
+		inventory.breakBlock(selectedSlot, deltaTime);
+	}
+
+	pub fn clickEntity(mods: main.Window.Key.Modifiers,button:main.sync.Command.PlayerClickEntity.Button)void {
+		_ = mods;
+		inventory.clickEntity(selectedSlot, button);
+	}
 
 	pub fn kill(spawnPos: Vec3d) void {
 		Player.super.pos = spawnPos;
@@ -219,10 +228,7 @@ pub const Player = struct { // MARK: Player
 		}
 	}
 
-	pub fn breakBlock(deltaTime: f64) void {
-		inventory.breakBlock(selectedSlot, deltaTime);
-	}
-
+	
 	pub fn acquireSelectedBlock() void {
 		if (main.renderer.MeshSelection.selectedBlockPos) |selectedPos| {
 			const block = main.renderer.mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
@@ -305,6 +311,20 @@ pub const World = struct { // MARK: World
 		main.particles.ParticleManager.generateTextureArray();
 		main.models.uploadModels();
 		main.entityModel.loadModelsAndTexture();
+
+		// TODO: remove before merge
+		main.client.entity_manager.addEntity(main.ZonElement.parseFromString(main.globalArena, null,
+			\\ .{
+			\\    .id = 1,
+			\\    .name = "bobik",
+			\\
+			\\  }
+		)) catch unreachable;
+		var write = main.utils.BinaryWriter.init(main.stackAllocator);
+		write.writeVarInt(u32, main.entityModel.getById("cubyz:cubert").?.index);
+		defer write.deinit();
+		var reader = main.utils.BinaryReader.init(write.data.items);
+		main.entity.components.@"cubyz:model".client.load(1,&reader,0) catch unreachable;
 	}
 
 	pub fn deinit(self: *World) void {
@@ -439,19 +459,27 @@ var nextBlockPlaceTime: ?std.Io.Timestamp = null;
 var nextBlockBreakTime: ?std.Io.Timestamp = null;
 
 pub fn pressPlace(mods: main.Window.Key.Modifiers) void {
-	const time = main.timestamp();
-	nextBlockPlaceTime = time.addDuration(main.settings.updateRepeatDelay);
-	Player.placeBlock(mods);
+	if(main.renderer.MeshSelection.selectedEntity != null){
+		Player.clickEntity(mods,  .right);
+	}else{
+		const time = main.timestamp();
+		nextBlockPlaceTime = time.addDuration(main.settings.updateRepeatDelay);
+		Player.placeBlock(mods);
+	}
 }
 
 pub fn releasePlace(_: main.Window.Key.Modifiers) void {
 	nextBlockPlaceTime = null;
 }
 
-pub fn pressBreak(_: main.Window.Key.Modifiers) void {
-	const time = main.timestamp();
-	nextBlockBreakTime = time.addDuration(main.settings.updateRepeatDelay);
-	Player.breakBlock(0);
+pub fn pressBreak(mods: main.Window.Key.Modifiers) void {
+	if(main.renderer.MeshSelection.selectedEntity != null){
+		Player.clickEntity(mods, .left);
+	}else{
+		const time = main.timestamp();
+		nextBlockBreakTime = time.addDuration(main.settings.updateRepeatDelay);
+		Player.breakBlock(0);
+	}
 }
 
 pub fn releaseBreak(_: main.Window.Key.Modifiers) void {

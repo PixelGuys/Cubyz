@@ -238,6 +238,7 @@ pub const Command = struct { // MARK: Command
 		craftFrom = 13,
 		craftProceduralItem = 15,
 		clear = 8,
+		playerClickEntity = 18,
 		updateBlock = 9,
 		addHealth = 10,
 		chatCommand = 12,
@@ -258,6 +259,7 @@ pub const Command = struct { // MARK: Command
 		craftFrom: CraftFrom,
 		craftProceduralItem: CraftProceduralItem,
 		clear: Clear,
+		playerClickEntity :PlayerClickEntity,
 		updateBlock: UpdateBlock,
 		addHealth: AddHealth,
 		chatCommand: ChatCommand,
@@ -1513,14 +1515,71 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 	};
+    pub const PlayerClickEntity = struct {
+		source: InventoryAndSlot,
+		pos: Vec3d,
+		dir: Vec3d,
+		entityId: u32,
+		button: Button,
+		
+		pub const Button = enum {
+			left, right
+		};
+		fn run(self: PlayerClickEntity, ctx: Context) error{}!void {
+			const stack = self.source.ref();
 
+			if (ctx.side == .server) {	
+				//TODO: better cheat prevention.
+				
+				addHealth(-2, .spiky, .server, self.entityId);
+
+				if(self.source.ref().item == .proceduralItem){
+					ctx.execute(.{.useDurability = .{
+						.source = self.source,
+						.durability = 1,
+					}});
+				}
+				std.debug.print(" hit got : {}\n", .{self.entityId});
+				_ = stack;
+			}
+
+			// Apply inventory changes:
+			//const handItem = self.source.inv.getItem(self.source.slot); // State should be stored before procedural item breaks
+			
+			// .yes_costsDurability => |durability| {
+				// ctx.execute(.{.useDurability = .{
+					// .source = self.source,
+					// .durability = durability,
+				// }});
+			// },
+			
+			
+		}
+		fn serialize(self: PlayerClickEntity, writer: *BinaryWriter) void {
+			self.source.write(writer);
+			writer.writeVec(Vec3d, self.pos);
+			writer.writeVec(Vec3d, self.dir);
+			writer.writeInt(u32, self.entityId);
+			writer.writeEnum(Button, self.button);
+		}
+
+		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !PlayerClickEntity {
+			return .{
+				.source = try InventoryAndSlot.read(reader, side, user),
+				.pos = try reader.readVec(Vec3d),
+				.dir = try reader.readVec(Vec3d),
+				.entityId = try reader.readInt(u32),
+				.button = try reader.readEnum(Button),
+			};
+		}
+	};
 	const UpdateBlock = struct { // MARK: UpdateBlock
 		source: InventoryAndSlot,
 		pos: Vec3i,
 		dropLocation: BlockDropLocation,
 		oldBlock: Block,
 		newBlock: Block,
-
+		
 		const half = @as(Vec3f, @splat(0.5));
 		const itemHitBoxMargin: f32 = @floatCast(main.itemdrop.ItemDropManager.radius);
 		const itemHitBoxMarginVec: Vec3f = @splat(itemHitBoxMargin);

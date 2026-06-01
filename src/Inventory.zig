@@ -541,6 +541,11 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		main.renderer.MeshSelection.breakBlock(self, slot, deltaTime);
 	}
 
+	pub fn clickEntity(self: ClientInventory, slot: u32, button:main.sync.Command.PlayerClickEntity.Button) void {
+		std.debug.assert(self.type == .serverShared);
+		main.renderer.MeshSelection.clickEntity(self, slot, button);
+	}
+
 	pub fn size(self: ClientInventory) usize {
 		return self.super.size();
 	}
