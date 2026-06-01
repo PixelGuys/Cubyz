@@ -268,9 +268,7 @@ pub const User = struct { // MARK: User
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();
 
-		main.entity.components.@"cubyz:player".server.load(self.id, @truncate(self.playerIndex)) catch {
-			self.conn.disconnect();
-		};
+		main.entity.components.@"cubyz:player".server.load(self.id, @truncate(self.playerIndex));
 	}
 
 	fn simArrIndex(x: i32) usize {
