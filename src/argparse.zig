@@ -274,6 +274,25 @@ test "float int optional float missing" {
 	try std.testing.expectEqual(result.z, null);
 }
 
+test "two optionals missing" {
+	const ArgParser = Parser(struct {
+		x: f32,
+		y: ?f32,
+		z: ?f32,
+	}, .{.commandName = ""});
+
+	var errors: ListUnmanaged(u8) = .{};
+	defer errors.deinit(main.stackAllocator);
+
+	const resultOrError = ArgParser.parse(main.stackAllocator, "1.0", &errors);
+
+	try std.testing.expectEqualStrings("", errors.items);
+	const result = try resultOrError;
+	try std.testing.expectEqual(result.x, 1.0);
+	try std.testing.expectEqual(result.y, null);
+	try std.testing.expectEqual(result.z, null);
+}
+
 test "float int optional float present" {
 	const ArgParser = Parser(struct {
 		x: f64,
@@ -291,6 +310,25 @@ test "float int optional float present" {
 	try std.testing.expectEqual(result.x, 33.0);
 	try std.testing.expectEqual(result.y, 154);
 	try std.testing.expectEqual(result.z, 0.1);
+}
+
+test "optional inbetween" {
+	const ArgParser = Parser(struct {
+		x: enum { foo },
+		y: ?f32,
+		z: enum { bar },
+	}, .{.commandName = "c"});
+
+	var errors: ListUnmanaged(u8) = .{};
+	defer errors.deinit(main.stackAllocator);
+
+	const resultOrError = ArgParser.parse(main.stackAllocator, "foo bar", &errors);
+
+	try std.testing.expectEqualStrings("", errors.items);
+	const result = try resultOrError;
+	try std.testing.expectEqual(result.x, .foo);
+	try std.testing.expectEqual(result.y, null);
+	try std.testing.expectEqual(result.z, .bar);
 }
 
 test "x or xy case x" {
