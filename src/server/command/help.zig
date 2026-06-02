@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const ListUnmanaged = main.ListUnmanaged;
+const List = main.List;
 const command = main.server.command;
 const User = main.server.User;
 
@@ -18,7 +18,7 @@ const Args = union(enum) {
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/help"});
 
 pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.ListUnmanaged(u8) = .{};
+	var errorMessage: main.List(u8) = .{};
 	defer errorMessage.deinit(main.stackAllocator);
 
 	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
@@ -62,7 +62,7 @@ pub fn execute(args: []const u8, source: *User) void {
 const Cmd = struct {
 	cmd: command.Command,
 
-	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorList: *ListUnmanaged(u8)) error{ParseError}!Cmd {
+	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorList: *List(u8)) error{ParseError}!Cmd {
 		return .{
 			.cmd = command.commands.get(arg) orelse {
 				errorList.print(allocator, "Unrecognized command name for <{s}>, got {s}", .{name, arg});

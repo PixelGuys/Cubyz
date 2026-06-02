@@ -12,7 +12,7 @@ const biomes = main.server.terrain.biomes;
 const sbb = main.server.terrain.sbb;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const NeverFailingArenaAllocator = main.heap.NeverFailingArenaAllocator;
-const ListUnmanaged = main.ListUnmanaged;
+const List = main.List;
 const files = main.files;
 
 var common: Assets = undefined;
@@ -142,7 +142,7 @@ pub const Assets = struct {
 		dir: files.Dir,
 
 		fn discoverAll(allocator: NeverFailingAllocator, assetDir: main.files.Dir, path: []const u8) []Addon {
-			var addons: main.ListUnmanaged(Addon) = .{};
+			var addons: main.List(Addon) = .{};
 
 			var dir = assetDir.openIterableDir(path) catch |err| {
 				std.log.err("Can't open asset path {s}: {s}", .{path, @errorName(err)});
@@ -433,7 +433,7 @@ fn registerRecipesFromZon(zon: ZonElement) void {
 
 pub const Palette = struct { // MARK: Palette
 	allocator: NeverFailingAllocator,
-	palette: main.ListUnmanaged([]const u8),
+	palette: main.List([]const u8),
 
 	pub fn init(allocator: NeverFailingAllocator, zon: ZonElement, firstElement: ?[]const u8) !*Palette {
 		const self = switch (zon) {

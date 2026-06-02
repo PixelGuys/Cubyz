@@ -18,7 +18,7 @@ const BinaryWriter = main.utils.BinaryWriter;
 const BinaryReader = main.utils.BinaryReader;
 
 const AliasTable = main.utils.AliasTable;
-const ListUnmanaged = main.ListUnmanaged;
+const List = main.List;
 
 const GameIdToBlueprintIdMapType = std.AutoHashMap(Block, BlockStorageType);
 const BlockIdSizeType = u32;
@@ -183,8 +183,9 @@ pub const Blueprint = struct {
 					const worldZ = startZ +% @as(i32, @intCast(z));
 
 					const block = self.blocks.get(x, y, z);
-					if (block.typ != voidType or flags.preserveVoid)
+					if (block.typ != voidType or flags.preserveVoid) {
 						_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block);
+					}
 				}
 			}
 		}
@@ -376,7 +377,7 @@ pub const Pattern = struct {
 		var specifiers = std.mem.splitScalar(u8, source, expressionSeparator);
 		var totalWeight: f32 = 0;
 
-		var weightedEntries: ListUnmanaged(struct { block: Block, weight: f32 }) = .{};
+		var weightedEntries: List(struct { block: Block, weight: f32 }) = .{};
 		defer weightedEntries.deinit(main.stackAllocator);
 
 		while (specifiers.next()) |specifier| {
@@ -414,8 +415,8 @@ pub const Pattern = struct {
 };
 
 pub const Mask = struct {
-	const AndList = ListUnmanaged(Entry);
-	const OrList = ListUnmanaged(AndList);
+	const AndList = List(Entry);
+	const OrList = List(AndList);
 
 	entries: OrList,
 

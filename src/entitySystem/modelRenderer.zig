@@ -68,8 +68,7 @@ pub const client = struct {
 		const fontScreenSize = fontBaseSize*screenUnits;
 
 		for (main.client.entity_manager.entities.items()) |ent| {
-			if (ent.id == game.Player.id) // don't render local player
-				continue;
+			if (ent.id == game.Player.id) continue; // don't render local player
 			if (ent.name.len == 0 and !settings.showPlayerIndexWithName) continue;
 
 			var offsetText: f32 = 0;
@@ -117,8 +116,7 @@ pub const client = struct {
 		c.glUniform1f(uniforms.contrast, 0.12);
 
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |component, id| {
-			if (@intFromEnum(id) == game.Player.id) // don't render local player
-				continue;
+			if (@intFromEnum(id) == game.Player.id) continue; // don't render local player
 
 			const entModel = component.entityModel.get();
 			const ent = main.client.entity_manager.getEntity(@intFromEnum(id)) orelse continue;

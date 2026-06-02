@@ -7,7 +7,7 @@ const graphics = @import("graphics.zig");
 const Color = graphics.Color;
 const Tag = main.Tag;
 const ZonElement = main.ZonElement;
-const ListUnmanaged = main.ListUnmanaged;
+const List = main.List;
 const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
@@ -459,7 +459,7 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 	/// Determines all the basic properties of the proceduralItem.
 	pub fn evaluateProceduralItem(proceduralItem: *ProceduralItem) void {
 		proceduralItem.properties = @splat(0);
-		var tempModifiers: main.ListUnmanaged(Modifier) = .{};
+		var tempModifiers: main.List(Modifier) = .{};
 		defer tempModifiers.deinit(main.stackAllocator);
 		for (proceduralItem.type.properties()) |property| {
 			if (property.destination == null) continue;
@@ -1164,9 +1164,9 @@ pub const Recipe = struct { // MARK: Recipe
 		const resultAmount = try reader.readVarInt(u16);
 		const sourceCount = try reader.readVarInt(usize);
 
-		var sourceItems: main.ListUnmanaged(BaseItemIndex) = .initCapacity(main.stackAllocator, @min(256, sourceCount));
+		var sourceItems: main.List(BaseItemIndex) = .initCapacity(main.stackAllocator, @min(256, sourceCount));
 		defer sourceItems.deinit(main.stackAllocator);
-		var sourceAmounts: main.ListUnmanaged(u16) = .initCapacity(main.stackAllocator, @min(256, sourceCount));
+		var sourceAmounts: main.List(u16) = .initCapacity(main.stackAllocator, @min(256, sourceCount));
 		defer sourceAmounts.deinit(main.stackAllocator);
 
 		while (reader.remaining.len > 0 and sourceItems.items.len < sourceCount) {
@@ -1178,7 +1178,7 @@ pub const Recipe = struct { // MARK: Recipe
 	}
 };
 
-var proceduralItemTypeList: ListUnmanaged(ProceduralItemType) = .{};
+var proceduralItemTypeList: List(ProceduralItemType) = .{};
 var proceduralItemTypeIdToIndex: std.StringHashMapUnmanaged(ProceduralItemTypeIndex) = .{};
 
 var reverseIndices: std.StringHashMapUnmanaged(BaseItemIndex) = .{};
@@ -1260,8 +1260,9 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 		const replacementPath = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/tools/{s}{s}.png", .{mod, proceduralItem, layerPostfix}) catch unreachable;
 		defer main.stackAllocator.free(replacementPath);
 		break :blk main.graphics.Image.readFromFile(main.stackAllocator, replacementPath, .{.orientation = .openGl}) catch |err2| {
-			if (layerPostfix.len == 0 or err2 != error.FileNotFound)
+			if (layerPostfix.len == 0 or err2 != error.FileNotFound) {
 				std.log.err("Error while reading procedural item image. Tried '{s}' and '{s}': {s}", .{path, replacementPath, @errorName(err2)});
+			}
 			break :blk main.graphics.Image.emptyImage;
 		};
 	};
@@ -1298,7 +1299,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 		}
 		slotInfos[i].optional = zonDisabled.as(usize, 0) != 0;
 	}
-	var parameterMatrices: main.ListUnmanaged(PropertyMatrix) = .{};
+	var parameterMatrices: main.List(PropertyMatrix) = .{};
 	defer parameterMatrices.deinit(main.stackAllocator);
 	for (zon.getChild("parameters").toSlice()) |paramZon| {
 		const val = parameterMatrices.addOne(main.stackAllocator);

@@ -222,7 +222,7 @@ const GenerationStructure = struct {
 		var mountains: f32 = 0;
 		var totalWeight: f32 = 0;
 		// all BiomePoints are within ±2 chunks of the current one.
-		var candidateList: main.ListUnmanaged(struct { point: *BiomePoint, weight: f32 }) = .initCapacity(main.stackAllocator, prefilteredCandidates.len);
+		var candidateList: main.List(struct { point: *BiomePoint, weight: f32 }) = .initCapacity(main.stackAllocator, prefilteredCandidates.len);
 		defer candidateList.deinit(main.stackAllocator);
 		for (prefilteredCandidates) |candidate| {
 			candidateList.appendAssumeCapacity(.{.point = candidate, .weight = 1});
@@ -451,7 +451,7 @@ const GenerationStructure = struct {
 		// Subdivide
 		const halfWidth = width/2;
 		const halfHeight = height/2;
-		var newCandidates: main.ListUnmanaged(*BiomePoint) = .initCapacity(main.stackAllocator, biomeCandidates.len);
+		var newCandidates: main.List(*BiomePoint) = .initCapacity(main.stackAllocator, biomeCandidates.len);
 		defer newCandidates.deinit(main.stackAllocator);
 		for (0..2) |dx| {
 			for (0..2) |dy| {
@@ -483,7 +483,7 @@ const GenerationStructure = struct {
 
 	pub fn toMap(self: GenerationStructure, map: *ClimateMapFragment, width: u31, height: u31, worldSeed: u64) void {
 		var preMap: [preMapSize][preMapSize]BiomeSample = undefined;
-		var allCandidates: main.ListUnmanaged(*BiomePoint) = .initCapacity(main.stackAllocator, 1024);
+		var allCandidates: main.List(*BiomePoint) = .initCapacity(main.stackAllocator, 1024);
 		defer allCandidates.deinit(main.stackAllocator);
 		for (self.chunks.mem) |chunk| {
 			for (chunk.biomesSortedByX) |*candidate| {

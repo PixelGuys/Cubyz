@@ -71,8 +71,9 @@ pub fn render() void {
 		const perf = main.threadPool.performance.read();
 		const values = comptime std.enums.values(TaskType);
 		var totalUtime: i64 = 0;
-		for (values) |task|
+		for (values) |task| {
 			totalUtime += perf.utime[@intFromEnum(task)];
+		}
 		for (values) |t| {
 			const name = @tagName(t);
 			const i = @intFromEnum(t);
