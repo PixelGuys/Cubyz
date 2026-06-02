@@ -74,6 +74,6 @@ pub fn deinit(self: *@This(), comptime side: main.sync.Side) void {
 	}
 }
 
-pub fn memoryAddressChanged(self: *@This()) void {
+pub fn updateMemoryAddress(self: *@This()) void {
 	self.interpolation.init(@ptrCast(&self.pos), @ptrCast(&self.vel));
 }

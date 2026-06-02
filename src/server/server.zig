@@ -265,7 +265,7 @@ pub const User = struct { // MARK: User
 		if (main.entity.components.@"cubyz:bag".server.get(self.id) == null) {
 			main.entity.components.@"cubyz:bag".server.loadEmpty(self.id);
 		}
-		self.player().memoryAddressChanged();
+		self.player().updateMemoryAddress();
 		self.loadUnloadChunks();
 
 		main.entity.components.@"cubyz:player".server.load(self.id, @truncate(self.playerIndex));
