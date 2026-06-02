@@ -134,7 +134,7 @@ pub const Model = struct {
 		return @popCount(@as(u3, @bitCast(hasTwoOnes))) == 2 and @popCount(@as(u3, @bitCast(hasTwoZeroes))) == 2;
 	}
 
-	pub fn init(quadInfos: []const QuadInfo) ModelIndex {
+	pub fn initWithCollisionModel(quadInfos: []const QuadInfo, collisionModel: ?[]const Box) ModelIndex {
 		const adjustedQuads = main.stackAllocator.alloc(QuadInfo, quadInfos.len);
 		defer main.stackAllocator.free(adjustedQuads);
 		for (adjustedQuads, quadInfos) |*dest, *src| {
@@ -207,8 +207,16 @@ pub const Model = struct {
 			self.allNeighborsOccluded = self.allNeighborsOccluded and self.isNeighborOccluded[neighbor];
 			self.noNeighborsOccluded = self.noNeighborsOccluded and !self.isNeighborOccluded[neighbor];
 		}
-		generateCollision(self, adjustedQuads);
+		if (collisionModel) |collision| {
+			self.collision = main.globalAllocator.dupe(Box, collision);
+		} else {
+			generateCollision(self, adjustedQuads);
+		}
 		return modelIndex;
+	}
+
+	pub fn init(quadInfos: []const QuadInfo) ModelIndex {
+		return initWithCollisionModel(quadInfos, null);
 	}
 
 	fn edgeInterp(y: f32, x0: f32, y0: f32, x1: f32, y1: f32) f32 {
