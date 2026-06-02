@@ -165,7 +165,7 @@ pub const AccountCode = struct {
 	}
 
 	pub fn initFromUserInput(text: []const u8, failureText: *main.ListManaged(u8)) AccountCode {
-		var result: main.ListUnmanaged(u8) = .initCapacity(main.stackAllocator, text.len);
+		var result: main.List(u8) = .initCapacity(main.stackAllocator, text.len);
 		defer result.deinit(main.stackAllocator);
 		defer std.crypto.secureZero(u8, result.items);
 
@@ -246,7 +246,7 @@ pub const AccountCode = struct {
 		std.crypto.hash.sha2.Sha256.hash(bits[0..20], &sha256Result, .{});
 		bits[20] = sha256Result[0];
 
-		var result: main.ListUnmanaged(u8) = .{};
+		var result: main.List(u8) = .{};
 		defer result.deinit(main.stackAllocator);
 		defer std.crypto.secureZero(u8, result.items);
 

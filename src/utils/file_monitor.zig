@@ -46,7 +46,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 	const DirectoryInfo = struct {
 		callback: CallbackFunction,
 		userData: usize,
-		watchDescriptors: main.ListUnmanaged(c_int),
+		watchDescriptors: main.List(c_int),
 		needsUpdate: bool,
 		path: []const u8,
 	};

@@ -161,7 +161,7 @@ var reverseIndices: std.StringHashMapUnmanaged(u16) = .{};
 
 var size: u32 = 0;
 
-pub var ores: main.ListUnmanaged(Ore) = .{};
+pub var ores: main.List(Ore) = .{};
 
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_id[size] = main.worldArena.dupe(u8, id);
@@ -236,7 +236,7 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 
 	for (drops, 0..) |blockDrop, i| {
 		const itemZons = blockDrop.getChild("items").toSlice();
-		var resultItems = main.ListUnmanaged(items.ItemStack).initCapacity(main.worldArena, itemZons.len);
+		var resultItems = main.List(items.ItemStack).initCapacity(main.worldArena, itemZons.len);
 
 		for (itemZons) |itemZon| {
 			var string = itemZon.as([]const u8, "auto");
@@ -603,17 +603,17 @@ pub const meshes = struct { // MARK: meshes
 	/// Number of loaded meshes. Used to determine if an update is needed.
 	var loadedMeshes: u32 = 0;
 
-	var textureIds: main.ListUnmanaged([]const u8) = .{};
-	var texturePaths: main.ListUnmanaged([]const u8) = .{};
+	var textureIds: main.List([]const u8) = .{};
+	var texturePaths: main.List([]const u8) = .{};
 	var animationData: []AnimationData = &.{};
-	var blockTextures: main.ListUnmanaged(Image) = .{};
-	var emissionTextures: main.ListUnmanaged(Image) = .{};
-	var reflectivityTextures: main.ListUnmanaged(Image) = .{};
-	var absorptionTextures: main.ListUnmanaged(Image) = .{};
-	var textureFogData: main.ListUnmanaged(FogData) = .{};
+	var blockTextures: main.List(Image) = .{};
+	var emissionTextures: main.List(Image) = .{};
+	var reflectivityTextures: main.List(Image) = .{};
+	var absorptionTextures: main.List(Image) = .{};
+	var textureFogData: main.List(FogData) = .{};
 	pub var textureOcclusionData: []std.atomic.Value(bool) = &.{};
 
-	pub var blockBreakingTextures: main.ListUnmanaged(u16) = .{};
+	pub var blockBreakingTextures: main.List(u16) = .{};
 
 	const sideNames = blk: {
 		var names: [6][]const u8 = undefined;

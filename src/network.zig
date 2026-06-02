@@ -476,8 +476,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	online: Atomic(bool) = .init(false),
 	running: Atomic(bool) = .init(true),
 
-	connections: main.ListUnmanaged(*Connection) = .{},
-	requests: main.ListUnmanaged(*Request) = .{},
+	connections: main.List(*Connection) = .{},
+	requests: main.List(*Request) = .{},
 
 	mutex: main.utils.Mutex = .{},
 	waitingToFinishReceive: main.utils.Condition = .{},
@@ -776,7 +776,7 @@ pub const Connection = struct { // MARK: Connection
 				return self.start +% self.len;
 			}
 		};
-		ranges: main.ListUnmanaged(Range),
+		ranges: main.List(Range),
 
 		pub fn init() RangeBuffer {
 			return .{
@@ -865,7 +865,7 @@ pub const Connection = struct { // MARK: Connection
 		decryptedBuffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
 		buffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
 		header: ?Header = null,
-		protocolBuffer: main.ListUnmanaged(u8) = .{},
+		protocolBuffer: main.List(u8) = .{},
 
 		pub fn init() ReceiveBuffer {
 			return .{
@@ -1209,7 +1209,7 @@ pub const Connection = struct { // MARK: Connection
 
 		side: main.sync.Side,
 		finishedCollectingClientVerificationData: bool = false,
-		verificationDataForClientSignature: main.ListUnmanaged(u8) = .{},
+		verificationDataForClientSignature: main.List(u8) = .{},
 
 		pub fn init(self: *SecureChannel, sequenceIndex: SequenceIndex, delay: i64, id: ChannelId, side: main.sync.Side) !void {
 			self.* = .{
