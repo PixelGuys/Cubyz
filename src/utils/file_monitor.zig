@@ -7,12 +7,11 @@ const c = @import("c");
 
 const CallbackFunction = *const fn (usize) void;
 
-const Impl = if (builtin.os.tag == .windows)
-	WindowsImpl
-else if (builtin.os.tag == .linux)
-	LinuxImpl
-else
-	NoImpl;
+const Impl = switch (builtin.os.tag) {
+	.windows => WindowsImpl,
+	.linux => LinuxImpl,
+	else => NoImpl,
+};
 
 pub fn init() void {
 	Impl.init();

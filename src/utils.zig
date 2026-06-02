@@ -114,13 +114,11 @@ pub fn AliasTable(comptime T: type) type { // MARK: AliasTable
 			outer: while (true) {
 				while (currentChances[lastOverfullIndex] <= desiredChance) {
 					lastOverfullIndex += 1;
-					if (lastOverfullIndex == self.items.len)
-						break :outer;
+					if (lastOverfullIndex == self.items.len) break :outer;
 				}
 				while (currentChances[lastUnderfullIndex] >= desiredChance) {
 					lastUnderfullIndex += 1;
-					if (lastUnderfullIndex == self.items.len)
-						break :outer;
+					if (lastUnderfullIndex == self.items.len) break :outer;
 				}
 				const delta = desiredChance - currentChances[lastUnderfullIndex];
 				currentChances[lastUnderfullIndex] = desiredChance;

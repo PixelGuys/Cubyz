@@ -67,24 +67,23 @@ pub fn addEntity(zon: ZonElement) !void {
 	const index = entities.len;
 	var ent = entities.addOne();
 
-	if (idMapping.items.len <= id)
+	if (idMapping.items.len <= id) {
 		idMapping.appendNTimes(null, id - idMapping.items.len + 1);
+	}
 	idMapping.items[id] = index;
 
 	try ent.init(zon, main.globalAllocator);
 }
 pub fn getEntity(id: u32) ?*main.client.Entity {
 	mutex.assertLocked();
-	if (id < idMapping.items.len)
-		return &entities.items()[idMapping.items[id] orelse return null];
-	return null;
+	if (id >= idMapping.items.len) return null;
+	return &entities.items()[idMapping.items[id] orelse return null];
 }
 pub fn removeEntity(id: u32) void {
 	mutex.lock();
 	defer mutex.unlock();
 
-	if (idMapping.items.len <= id)
-		return;
+	if (idMapping.items.len <= id) return;
 	const index: u32 = idMapping.items[id] orelse return;
 	const ent = entities.items()[index];
 

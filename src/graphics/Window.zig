@@ -660,8 +660,9 @@ fn updateCursor() void {
 		// Behavior seems much more intended without this line on MacOS.
 		// Perhaps this is an inconsistency in GLFW due to its fresh XQuartz support?
 		if (@import("builtin").target.os.tag != .macos) {
-			if (c.glfwRawMouseMotionSupported() != 0)
+			if (c.glfwRawMouseMotionSupported() != 0) {
 				c.glfwSetInputMode(window, c.GLFW_RAW_MOUSE_MOTION, c.GLFW_TRUE);
+			}
 		}
 		GLFWCallbacks.ignoreDataAfterRecentGrab = true;
 	} else {

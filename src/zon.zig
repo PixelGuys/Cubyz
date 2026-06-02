@@ -583,8 +583,7 @@ const Parser = struct { // MARK: Parser
 				break;
 			} else if (chars[index.*] == '\\') {
 				index.* += 1;
-				if (index.* >= chars.len)
-					break;
+				if (index.* >= chars.len) break;
 				switch (chars[index.*]) {
 					't' => {
 						builder.append('\t');

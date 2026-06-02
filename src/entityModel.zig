@@ -129,8 +129,7 @@ pub const EntityModel = struct {
 
 	fn loadModelAndTexture(self: *EntityModel) !void {
 		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
-		if (self.modelId == null)
-			return error.NoModelSpecified;
+		if (self.modelId == null) return error.NoModelSpecified;
 
 		const file = try main.assets.readAsset(main.stackAllocator, "entityModels/models", self.modelId.?, ".glb");
 		defer main.stackAllocator.free(file);

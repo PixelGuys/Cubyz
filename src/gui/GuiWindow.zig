@@ -359,7 +359,8 @@ pub fn update(self: *GuiWindow) void {
 pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) void {
 	self.updateSelectedFn();
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
-	if (self == grabbedWindow and windowMoving and (gui.reorderWindows or self.showTitleBar)) if (grabPosition) |_grabPosition| {
+	if (self == grabbedWindow and windowMoving and (gui.reorderWindows or self.showTitleBar)) blk: {
+		const _grabPosition = grabPosition orelse break :blk;
 		self.relativePosition[0] = .{.ratio = undefined};
 		self.relativePosition[1] = .{.ratio = undefined};
 		self.pos = (mousePosition - _grabPosition) + selfPositionWhenGrabbed;
@@ -375,7 +376,7 @@ pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) void {
 		self.pos = @min(self.pos, windowSize - self.size);
 		gui.updateWindowPositions();
 		gui.save();
-	};
+	}
 	if (self.rootComponent) |*component| {
 		component.updateSelected();
 	}

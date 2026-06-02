@@ -253,24 +253,27 @@ pub const ParticleSystem = struct {
 
 				v3Pos[0] += posDelta[0];
 				if (physics.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
-					v3Pos[0] = if (posDelta[0] < 0)
-						box.max[0] - hitBox.min[0]
-					else
-						box.min[0] - hitBox.max[0];
+					if (posDelta[0] < 0) {
+						v3Pos[0] = box.max[0] - hitBox.min[0];
+					} else {
+						v3Pos[0] = box.min[0] - hitBox.max[0];
+					}
 				}
 				v3Pos[1] += posDelta[1];
 				if (physics.collision.collides(.client, .y, -posDelta[1], v3Pos, hitBox)) |box| {
-					v3Pos[1] = if (posDelta[1] < 0)
-						box.max[1] - hitBox.min[1]
-					else
-						box.min[1] - hitBox.max[1];
+					if (posDelta[1] < 0) {
+						v3Pos[1] = box.max[1] - hitBox.min[1];
+					} else {
+						v3Pos[1] = box.min[1] - hitBox.max[1];
+					}
 				}
 				v3Pos[2] += posDelta[2];
 				if (physics.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
-					v3Pos[2] = if (posDelta[2] < 0)
-						box.max[2] - hitBox.min[2]
-					else
-						box.min[2] - hitBox.max[2];
+					if (posDelta[2] < 0) {
+						v3Pos[2] = box.max[2] - hitBox.min[2];
+					} else {
+						v3Pos[2] = box.min[2] - hitBox.max[2];
+					}
 				}
 				pos = @as(Vec3f, @floatCast(v3Pos - playerPos));
 			} else {
