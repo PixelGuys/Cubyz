@@ -59,8 +59,9 @@ pub fn save(self: *const @This(), allocator: NeverFailingAllocator, audience: ma
 	defer base64.deinit(allocator);
 	zon.putOwnedString("components", base64.getEncodedMessage());
 
-	if (self.name) |name|
+	if (self.name) |name| {
 		zon.put("name", name);
+	}
 	return zon;
 }
 pub fn deinit(self: *@This(), comptime side: main.sync.Side) void {

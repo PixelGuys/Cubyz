@@ -23,7 +23,6 @@ const Connection = network.Connection;
 
 var clientReceiveList: [256]?*const fn (*Connection, *utils.BinaryReader) anyerror!void = @splat(null);
 var serverReceiveList: [256]?*const fn (*Connection, *utils.BinaryReader) anyerror!void = @splat(null);
-var isAsynchronous: [256]bool = @splat(false);
 pub var bytesReceived: [256]Atomic(usize) = @splat(.init(0));
 pub var bytesSent: [256]Atomic(usize) = @splat(.init(0));
 
@@ -39,7 +38,6 @@ pub fn init() void { // MARK: init()
 				if (@hasDecl(Protocol, "serverReceive")) {
 					serverReceiveList[id] = Protocol.serverReceive;
 				}
-				isAsynchronous[id] = Protocol.asynchronous;
 			} else {
 				std.log.err("Duplicate list id {}.", .{id});
 			}
@@ -53,69 +51,17 @@ pub fn onReceive(conn: *Connection, protocolIndex: u8, data: []const u8) !void {
 		break :blk clientReceiveList[protocolIndex] orelse return error.Invalid;
 	};
 
-	if (isAsynchronous[protocolIndex]) {
-		ProtocolTask.schedule(conn, protocolIndex, protocolReceive, data);
-	} else {
-		var reader = utils.BinaryReader.init(data);
-		protocolReceive(conn, &reader) catch |err| {
-			std.log.debug("Got error while executing protocol {} with data {any}", .{protocolIndex, data});
-			return err;
-		};
-	}
+	var reader = utils.BinaryReader.init(data);
+	protocolReceive(conn, &reader) catch |err| {
+		std.log.debug("Got error while executing protocol {} with data {any}", .{protocolIndex, data});
+		return err;
+	};
 
 	_ = bytesReceived[protocolIndex].fetchAdd(data.len, .monotonic);
 }
 
-const ProtocolTask = struct { // MARK: ProtocolTask
-	conn: *Connection,
-	protocol: u8,
-	protocolReceive: *const fn (*Connection, *utils.BinaryReader) anyerror!void,
-	data: []const u8,
-
-	const vtable = utils.ThreadPool.VTable{
-		.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
-		.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
-		.run = main.meta.castFunctionSelfToAnyopaque(run),
-		.clean = main.meta.castFunctionSelfToAnyopaque(clean),
-		.taskType = .misc,
-	};
-
-	pub fn schedule(conn: *Connection, protocol: u8, protocolReceive: *const fn (*Connection, *utils.BinaryReader) anyerror!void, data: []const u8) void {
-		const task = main.globalAllocator.create(ProtocolTask);
-		task.* = ProtocolTask{
-			.conn = conn,
-			.protocol = protocol,
-			.protocolReceive = protocolReceive,
-			.data = main.globalAllocator.dupe(u8, data),
-		};
-		main.threadPool.addTask(task, &vtable);
-	}
-
-	pub fn getPriority(_: *ProtocolTask) f32 {
-		return std.math.floatMax(f32);
-	}
-
-	pub fn isStillNeeded(_: *ProtocolTask) bool {
-		return true;
-	}
-
-	pub fn run(self: *ProtocolTask) void {
-		defer self.clean();
-		var reader = utils.BinaryReader.init(self.data);
-		self.protocolReceive(self.conn, &reader) catch |err| {
-			std.log.err("Got error {s} while executing protocol {} with data {any}", .{@errorName(err), self.protocol, self.data}); // TODO: Maybe disconnect on error
-		};
-	}
-
-	pub fn clean(self: *ProtocolTask) void {
-		main.globalAllocator.free(self.data);
-		main.globalAllocator.destroy(self);
-	}
-};
-
 pub const handShake = struct { // MARK: handShake
 	pub const id: u8 = 1;
-	pub const asynchronous = false;
 
 	fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const newState = try reader.readEnum(Connection.HandShakeState);
@@ -265,7 +211,7 @@ pub const handShake = struct { // MARK: handShake
 
 		conn.mutex.lock();
 		while (true) {
-			conn.handShakeWaiting.timedWait(&conn.mutex, 16_000_000) catch {
+			conn.handShakeWaiting.timedWait(&conn.mutex, .fromMilliseconds(16)) catch {
 				main.heap.GarbageCollection.syncPoint();
 				continue;
 			};
@@ -278,7 +224,7 @@ pub const handShake = struct { // MARK: handShake
 
 pub const chunkRequest = struct { // MARK: chunkRequest
 	pub const id: u8 = 2;
-	pub const asynchronous = false;
+
 	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const basePosition = try reader.readVec(Vec3i);
 		conn.user.?.clientUpdatePos = basePosition;
@@ -319,17 +265,67 @@ pub const chunkRequest = struct { // MARK: chunkRequest
 
 pub const chunkTransmission = struct { // MARK: chunkTransmission
 	pub const id: u8 = 3;
-	pub const asynchronous = true;
-	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
-		const pos = chunk.ChunkPosition{
-			.wx = try reader.readInt(i32),
-			.wy = try reader.readInt(i32),
-			.wz = try reader.readInt(i32),
-			.voxelSize = try reader.readInt(u31),
+
+	pub const MeshGenerationTask = struct {
+		pos: chunk.ChunkPosition,
+		data: []const u8,
+
+		pub const vtable = utils.ThreadPool.VTable{
+			.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
+			.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
+			.run = main.meta.castFunctionSelfToAnyopaque(run),
+			.clean = main.meta.castFunctionSelfToAnyopaque(clean),
+			.taskType = .meshgenAndLighting,
 		};
-		const ch = chunk.Chunk.init(pos);
-		try main.server.storage.ChunkCompression.loadChunk(ch, .client, reader.remaining);
-		renderer.mesh_storage.updateChunkMesh(ch);
+
+		fn schedule(mesh: *chunk.Chunk) void {
+			const task = main.globalAllocator.create(MeshGenerationTask);
+			task.* = MeshGenerationTask{
+				.mesh = mesh,
+			};
+			main.threadPool.addTask(task, &vtable);
+		}
+
+		pub fn getPriority(self: *MeshGenerationTask) f32 {
+			return self.pos.getPriority(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
+		}
+
+		pub fn isStillNeeded(self: *MeshGenerationTask) bool {
+			const distanceSqr = self.pos.getMinDistanceSquared(@trunc(game.Player.getPosBlocking())); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
+			var maxRenderDistance = settings.renderDistance*chunk.chunkSize*self.pos.voxelSize;
+			maxRenderDistance += 2*self.pos.voxelSize*chunk.chunkSize;
+			return distanceSqr < maxRenderDistance*maxRenderDistance;
+		}
+
+		pub fn run(self: *MeshGenerationTask) void {
+			defer self.clean();
+			const pos = self.pos;
+			const mesh = main.renderer.chunk_meshing.ChunkMesh.init(pos, self.data) catch |err| {
+				std.log.err("Could not load chunk mesh from server: {s} Disconnecting.", .{@errorName(err)});
+				main.game.world.?.conn.disconnect();
+				return;
+			};
+			mesh.generateLightingData() catch mesh.deferredDeinit();
+		}
+
+		pub fn clean(self: *MeshGenerationTask) void {
+			main.globalAllocator.free(self.data);
+			main.globalAllocator.destroy(self);
+		}
+	};
+	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+		const task = main.globalAllocator.create(MeshGenerationTask);
+		errdefer main.globalAllocator.destroy(task);
+		task.* = .{
+			.pos = .{
+				.wx = try reader.readInt(i32),
+				.wy = try reader.readInt(i32),
+				.wz = try reader.readInt(i32),
+				.voxelSize = try reader.readInt(u31),
+			},
+			.data = main.globalAllocator.dupe(u8, reader.remaining),
+		};
+		main.threadPool.addTask(task, &MeshGenerationTask.vtable);
 	}
 	fn sendChunkOverTheNetwork(conn: *Connection, ch: *chunk.ServerChunk) void {
 		ch.mutex.lock();
@@ -352,7 +348,7 @@ pub const chunkTransmission = struct { // MARK: chunkTransmission
 
 pub const playerPosition = struct { // MARK: playerPosition
 	pub const id: u8 = 4;
-	pub const asynchronous = false;
+
 	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		try conn.user.?.receiveData(reader);
 	}
@@ -380,7 +376,6 @@ pub const playerPosition = struct { // MARK: playerPosition
 
 pub const entityPosition = struct { // MARK: entityPosition
 	pub const id: u8 = 6;
-	pub const asynchronous = false;
 	const type_entity: u8 = 0;
 	const type_item: u8 = 1;
 	const Type = enum(u8) {
@@ -395,9 +390,9 @@ pub const entityPosition = struct { // MARK: entityPosition
 		if (conn.manager.world) |world| {
 			const time = try reader.readInt(i16);
 			const playerPos = try reader.readVec(Vec3d);
-			var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+			var entityData: main.ListManaged(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 			defer entityData.deinit();
-			var itemData: main.List(main.itemdrop.ItemDropNetworkData) = .init(main.stackAllocator);
+			var itemData: main.ListManaged(main.itemdrop.ItemDropNetworkData) = .init(main.stackAllocator);
 			defer itemData.deinit();
 			while (reader.remaining.len != 0) {
 				const typ = try reader.readEnum(Type);
@@ -474,7 +469,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 
 pub const blockUpdate = struct { // MARK: blockUpdate
 	pub const id: u8 = 7;
-	pub const asynchronous = false;
+
 	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		while (reader.remaining.len != 0) {
 			renderer.mesh_storage.updateBlock(.{
@@ -500,7 +495,7 @@ pub const blockUpdate = struct { // MARK: blockUpdate
 
 pub const entity = struct { // MARK: entity
 	pub const id: u8 = 8;
-	pub const asynchronous = false;
+
 	fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const zonArray = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 		defer zonArray.deinit(main.stackAllocator);
@@ -541,7 +536,6 @@ pub const entity = struct { // MARK: entity
 
 pub const genericUpdate = struct { // MARK: genericUpdate
 	pub const id: u8 = 9;
-	pub const asynchronous = false;
 
 	const UpdateType = enum(u8) {
 		gamemode = 0,
@@ -739,7 +733,7 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 
 pub const chat = struct { // MARK: chat
 	pub const id: u8 = 10;
-	pub const asynchronous = false;
+
 	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const msg = reader.remaining;
 		if (!std.unicode.utf8ValidateSlice(msg)) {
@@ -769,7 +763,7 @@ pub const chat = struct { // MARK: chat
 
 pub const lightMapRequest = struct { // MARK: lightMapRequest
 	pub const id: u8 = 11;
-	pub const asynchronous = false;
+
 	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		while (reader.remaining.len >= 9) {
 			const wx = try reader.readInt(i32);
@@ -802,31 +796,79 @@ pub const lightMapRequest = struct { // MARK: lightMapRequest
 
 pub const lightMapTransmission = struct { // MARK: lightMapTransmission
 	pub const id: u8 = 12;
-	pub const asynchronous = true;
-	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
-		const wx = try reader.readInt(i32);
-		const wy = try reader.readInt(i32);
-		const voxelSizeShift = try reader.readInt(u5);
-		const pos = main.server.terrain.SurfaceMap.MapFragmentPosition{
-			.wx = wx,
-			.wy = wy,
-			.voxelSize = @as(u31, 1) << voxelSizeShift,
-			.voxelSizeShift = voxelSizeShift,
+
+	const LightMapTask = struct {
+		wx: i32,
+		wy: i32,
+		voxelSizeShift: u5,
+		data: []const u8,
+
+		const vtable = utils.ThreadPool.VTable{
+			.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
+			.isStillNeeded = main.meta.castFunctionSelfToAnyopaque(isStillNeeded),
+			.run = main.meta.castFunctionSelfToAnyopaque(run),
+			.clean = main.meta.castFunctionSelfToAnyopaque(clean),
+			.taskType = .misc,
 		};
-		const _inflatedData = main.stackAllocator.alloc(u8, main.server.terrain.LightMap.LightMapFragment.mapSize*main.server.terrain.LightMap.LightMapFragment.mapSize*2);
-		defer main.stackAllocator.free(_inflatedData);
-		const _inflatedLen = try utils.Compression.inflateTo(_inflatedData, reader.remaining);
-		if (_inflatedLen != main.server.terrain.LightMap.LightMapFragment.mapSize*main.server.terrain.LightMap.LightMapFragment.mapSize*2) {
-			std.log.err("Transmission of light map has invalid size: {}. Input data: {any}, After inflate: {any}", .{_inflatedLen, reader.remaining, _inflatedData[0.._inflatedLen]});
-			return error.Invalid;
+
+		pub fn getPriority(_: *LightMapTask) f32 {
+			return std.math.floatMax(f32);
 		}
-		var ligthMapReader = utils.BinaryReader.init(_inflatedData);
-		const map = main.globalAllocator.create(main.server.terrain.LightMap.LightMapFragment);
-		map.init(pos.wx, pos.wy, pos.voxelSize);
-		for (&map.startHeight) |*val| {
-			val.* = try ligthMapReader.readInt(i16);
+
+		pub fn isStillNeeded(_: *LightMapTask) bool {
+			return true;
 		}
-		renderer.mesh_storage.updateLightMap(map);
+
+		pub fn run(self: *LightMapTask) void {
+			defer self.clean();
+
+			const pos = main.server.terrain.SurfaceMap.MapFragmentPosition{
+				.wx = self.wx,
+				.wy = self.wy,
+				.voxelSize = @as(u31, 1) << self.voxelSizeShift,
+				.voxelSizeShift = self.voxelSizeShift,
+			};
+			const _inflatedData = main.stackAllocator.alloc(u8, main.server.terrain.LightMap.LightMapFragment.mapSize*main.server.terrain.LightMap.LightMapFragment.mapSize*2);
+			defer main.stackAllocator.free(_inflatedData);
+			const _inflatedLen = utils.Compression.inflateTo(_inflatedData, self.data) catch |err| {
+				std.log.err("Got error {s} while decompressing lightmap data at position {} with data {any}", .{@errorName(err), pos, self.data});
+				main.game.world.?.conn.disconnect();
+				return;
+			};
+			if (_inflatedLen != main.server.terrain.LightMap.LightMapFragment.mapSize*main.server.terrain.LightMap.LightMapFragment.mapSize*2) {
+				std.log.err("Transmission of light map has invalid size: {}. Input data: {any}, After inflate: {any}", .{_inflatedLen, self.data, _inflatedData[0.._inflatedLen]});
+				main.game.world.?.conn.disconnect();
+				return;
+			}
+			var ligthMapReader = utils.BinaryReader.init(_inflatedData);
+			const map = main.globalAllocator.create(main.server.terrain.LightMap.LightMapFragment);
+			map.init(pos.wx, pos.wy, pos.voxelSize);
+			for (&map.startHeight) |*val| {
+				val.* = ligthMapReader.readInt(i16) catch |err| {
+					std.log.err("Got error {s} while reading decompressed lightmap data at position {} with data {any}", .{@errorName(err), pos, _inflatedData});
+					main.game.world.?.conn.disconnect();
+					return;
+				};
+			}
+			renderer.mesh_storage.updateLightMap(map);
+		}
+
+		pub fn clean(self: *LightMapTask) void {
+			main.globalAllocator.free(self.data);
+			main.globalAllocator.destroy(self);
+		}
+	};
+
+	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+		const task = main.globalAllocator.create(LightMapTask);
+		errdefer main.globalAllocator.destroy(task);
+		task.* = .{
+			.wx = try reader.readInt(i32),
+			.wy = try reader.readInt(i32),
+			.voxelSizeShift = try reader.readInt(u5),
+			.data = main.globalAllocator.dupe(u8, reader.remaining),
+		};
+		main.threadPool.addTask(task, &LightMapTask.vtable);
 	}
 	pub fn sendLightMap(conn: *Connection, map: *main.server.terrain.LightMap.LightMapFragment) void {
 		var ligthMapWriter = utils.BinaryWriter.initCapacity(main.stackAllocator, @sizeOf(@TypeOf(map.startHeight)));
@@ -848,21 +890,21 @@ pub const lightMapTransmission = struct { // MARK: lightMapTransmission
 
 pub const inventory = struct { // MARK: inventory
 	pub const id: u8 = 13;
-	pub const asynchronous = false;
+
 	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const typ = try reader.readInt(u8);
 		if (typ == 0xff) { // Confirmation
-			try main.sync.ClientSide.receiveConfirmation(reader);
+			try main.sync.client.receiveConfirmation(reader);
 		} else if (typ == 0xfe) { // Failure
-			main.sync.ClientSide.receiveFailure();
+			main.sync.client.receiveFailure();
 		} else {
-			try main.sync.ClientSide.receiveSyncOperation(reader);
+			try main.sync.client.receiveSyncOperation(reader);
 		}
 	}
 	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const user = conn.user.?;
-		if (reader.remaining[0] == 0xff) return error.InvalidPacket;
-		main.sync.ServerSide.receiveCommand(user, reader);
+		if (reader.remaining[0] == 0xff) return error.Invalid;
+		main.sync.server.receiveCommand(user, reader);
 	}
 	pub fn sendCommand(conn: *Connection, payloadType: main.sync.Command.PayloadType, _data: []const u8) void {
 		std.debug.assert(conn.user == null);
@@ -897,7 +939,7 @@ pub const inventory = struct { // MARK: inventory
 
 pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 	pub const id: u8 = 14;
-	pub const asynchronous = false;
+
 	fn serverReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const pos = try reader.readVec(Vec3i);
 		const blockType = try reader.readInt(u16);
@@ -960,7 +1002,6 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 
 pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 	pub const id: u8 = 15;
-	pub const asynchronous = false;
 
 	const ActionType = enum(u8) {
 		unload = 0,

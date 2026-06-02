@@ -34,7 +34,7 @@ const WorldInfo = struct {
 	name: []const u8,
 	fileName: []const u8,
 };
-var worldList: main.ListUnmanaged(WorldInfo) = .{};
+var worldList: main.List(WorldInfo) = .{};
 
 pub fn init() void {
 	deleteIcon = Texture.initFromFile("assets/cubyz/ui/delete_icon.png");
@@ -57,7 +57,7 @@ pub fn openWorld(name: []const u8) void {
 		std.log.err("Encountered error while starting server thread: {s}", .{@errorName(err)});
 		return;
 	};
-	main.server.thread.?.setName("Server") catch |err| {
+	main.server.thread.?.setName(main.io, "Server") catch |err| {
 		std.log.err("Failed to rename Server thread: {s}", .{@errorName(err)});
 	};
 
@@ -117,7 +117,7 @@ pub fn onOpen() void {
 		defer dir.close();
 
 		var iterator = dir.iterate();
-		while (iterator.next() catch |err| {
+		while (iterator.next(main.io) catch |err| {
 			list.add(Label.init(.{0, 0}, 128, "Encountered error while iterating over saves folder:", .center));
 			list.add(Label.init(.{0, 0}, 128, @errorName(err), .center));
 			break :readingSaves;

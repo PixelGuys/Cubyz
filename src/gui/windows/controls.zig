@@ -2,7 +2,9 @@ const std = @import("std");
 
 const main = @import("main");
 const Vec2f = main.vec.Vec2f;
-const c = main.Window.c;
+
+const c = @import("c");
+
 const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
@@ -78,10 +80,17 @@ fn sensitivityFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) 
 	return std.fmt.allocPrint(allocator.allocator, "{s} Sensitivity: {d:.0}%", .{if (editingKeyboard) "Mouse" else "Controller", value*100}) catch unreachable;
 }
 
-fn toggleKeyboard() void {
-	editingKeyboard = !editingKeyboard;
+fn abortBindingProcess() void {
+	selectedKey = null;
+	main.Window.resetNextInputListenters();
 	needsUpdate = true;
 }
+
+fn toggleKeyboard() void {
+	editingKeyboard = !editingKeyboard;
+	abortBindingProcess();
+}
+
 fn unbindKey(keyPtr: usize) void {
 	var key: ?*main.Window.Key = @ptrFromInt(keyPtr);
 	if (editingKeyboard) {
@@ -95,7 +104,7 @@ fn unbindKey(keyPtr: usize) void {
 	needsUpdate = true;
 }
 
-pub fn onOpen() void {
+fn initWindow() void {
 	const controlsListWidth: u32 = 256;
 	const keybindButtonWidth: u32 = 160;
 	const unbindButtonWidth: u32 = 64;
@@ -111,7 +120,16 @@ pub fn onOpen() void {
 	}
 	for (&main.KeyBoard.keys) |*key| {
 		const label = Label.init(.{0, 0}, keybindButtonWidth, key.name, .left);
-		const button = if (key == selectedKey) (Button.initText(.{16, 0}, keybindButtonWidth, "...", .{})) else (Button.initText(.{16, 0}, keybindButtonWidth, if (editingKeyboard) key.getName() else key.getGamepadName(), if (editingKeyboard) .initWithPtr(keyFunction, key) else .initWithPtr(gamepadFunction, key)));
+		const button = blk: {
+			if (key == selectedKey) {
+				break :blk Button.initText(.{16, 0}, keybindButtonWidth, "...", .{});
+			} else if (editingKeyboard) {
+				break :blk Button.initText(.{16, 0}, keybindButtonWidth, key.getName(), .initWithPtr(keyFunction, key));
+			} else {
+				break :blk Button.initText(.{16, 0}, keybindButtonWidth, key.getGamepadName(), .initWithPtr(gamepadFunction, key));
+			}
+		};
+
 		const unbindBtn = Button.initText(.{16, 0}, unbindButtonWidth, "Unbind", .initWithPtr(unbindKey, key));
 		const row = HorizontalList.init();
 		row.add(label);
@@ -126,18 +144,28 @@ pub fn onOpen() void {
 	gui.updateWindowPositions();
 }
 
-pub fn onClose() void {
+fn deinitWindow() void {
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
+}
+
+pub fn onOpen() void {
+	abortBindingProcess();
+	initWindow();
+}
+
+pub fn onClose() void {
+	abortBindingProcess();
+	deinitWindow();
 }
 
 pub fn render() void {
 	if (needsUpdate) {
 		needsUpdate = false;
 		const oldScroll = window.rootComponent.?.verticalList.scrollBar.currentState;
-		onClose();
-		onOpen();
+		deinitWindow();
+		initWindow();
 		window.rootComponent.?.verticalList.scrollBar.currentState = oldScroll;
 	}
 }

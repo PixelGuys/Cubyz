@@ -7,8 +7,8 @@ const vec = main.vec;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
-list: main.ListUnmanaged(BlockPos) = .{},
-mutex: std.Thread.Mutex = .{},
+list: main.List(BlockPos) = .{},
+mutex: main.utils.Mutex = .{},
 
 pub fn init() @This() {
 	return .{};

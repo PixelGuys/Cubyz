@@ -4,6 +4,9 @@
 		.dry,
 		.barren,
 	},
+	.tags = .{
+		.cactus,
+	},
 	.chance = 1.0,
 	.minHeightLimit = 7,
 	.minHeight = 22,
@@ -13,7 +16,9 @@
 	.maxRadius = 640,
 	.hills = 20,
 	.validPlayerSpawn = false,
-	.music = "cubyz:EasternThought",
+
+	.music = "cubyz:totaldemented/hypoxia",
+
 	.ground_structure = .{
 		"3 to 4 cubyz:sand",
 	},

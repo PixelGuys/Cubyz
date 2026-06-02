@@ -7,12 +7,11 @@ fn growCapacity(current: usize, minimum: usize) usize {
 	var new = current;
 	while (true) {
 		new +|= new/2 + 8;
-		if (new >= minimum)
-			return new;
+		if (new >= minimum) return new;
 	}
 }
 
-pub fn List(comptime T: type) type {
+pub fn ListManaged(comptime T: type) type {
 	return struct {
 		items: []T = &.{},
 		capacity: usize = 0,
@@ -189,9 +188,9 @@ pub fn List(comptime T: type) type {
 			const after_range = start + len;
 			const range = self.items[start..after_range];
 
-			if (range.len == new_items.len)
-				@memcpy(range[0..new_items.len], new_items)
-			else if (range.len < new_items.len) {
+			if (range.len == new_items.len) {
+				@memcpy(range[0..new_items.len], new_items);
+			} else if (range.len < new_items.len) {
 				const first = new_items[0..range.len];
 				const rest = new_items[range.len..];
 
@@ -218,7 +217,7 @@ pub fn List(comptime T: type) type {
 	};
 }
 
-pub fn ListUnmanaged(comptime T: type) type {
+pub fn List(comptime T: type) type {
 	return struct {
 		items: []T = &.{},
 		capacity: usize = 0,
@@ -387,9 +386,9 @@ pub fn ListUnmanaged(comptime T: type) type {
 			const after_range = start + len;
 			const range = self.items[start..after_range];
 
-			if (range.len == new_items.len)
-				@memcpy(range[0..new_items.len], new_items)
-			else if (range.len < new_items.len) {
+			if (range.len == new_items.len) {
+				@memcpy(range[0..new_items.len], new_items);
+			} else if (range.len < new_items.len) {
 				const first = new_items[0..range.len];
 				const rest = new_items[range.len..];
 
@@ -406,7 +405,83 @@ pub fn ListUnmanaged(comptime T: type) type {
 				self.items.len -= len - new_items.len;
 			}
 		}
+
+		pub fn print(self: *@This(), allocator: NeverFailingAllocator, comptime fmt: []const u8, args: anytype) void {
+			var buffer: std.ArrayList(u8) = .{.items = self.items, .capacity = self.capacity};
+			var writer = std.Io.Writer.Allocating.fromArrayList(allocator.allocator, &buffer);
+			// We don't deinit, we will keep the ownership of the array later on!
+
+			writer.writer.print(fmt, args) catch unreachable;
+			buffer = writer.toArrayList();
+
+			self.items = buffer.items;
+			self.capacity = buffer.capacity;
+		}
 	};
+}
+
+test "List.print single call, buffer not preserved" {
+	var list: List(u8) = .{};
+	const oldAddress = list.items.ptr;
+	defer list.deinit(main.stackAllocator);
+
+	list.print(main.stackAllocator, "foo {d:.1}", .{34});
+	const newAddress = list.items.ptr;
+
+	try std.testing.expect(oldAddress != newAddress);
+	try std.testing.expectEqualStrings("foo 34", list.items);
+	try std.testing.expect(list.items.len <= list.capacity);
+}
+
+test "List.print initCapacity, buffer preserved" {
+	var list: List(u8) = .initCapacity(main.stackAllocator, 6);
+	const oldAddress = list.items.ptr;
+	defer list.deinit(main.stackAllocator);
+
+	list.print(main.stackAllocator, "foo {}", .{34});
+	const newAddress = list.items.ptr;
+
+	try std.testing.expect(oldAddress == newAddress);
+	try std.testing.expectEqualStrings("foo 34", list.items);
+	try std.testing.expect(list.items.len <= list.capacity);
+}
+
+test "List.print with a string" {
+	var list: List(u8) = .{};
+	defer list.deinit(main.stackAllocator);
+
+	list.print(main.stackAllocator, "foo {s}", .{"bar spam BUZZ"});
+
+	try std.testing.expectEqualStrings("foo bar spam BUZZ", list.items);
+	try std.testing.expect(list.items.len <= list.capacity);
+}
+
+test "List.print multiple prints" {
+	var list: List(u8) = .{};
+	const oldAddress = list.items.ptr;
+	defer list.deinit(main.stackAllocator);
+
+	// The tricky part of the implementation is to correctly reassign buffer bounds, so every time
+	// we use the list as print destination, we want to make sure it retains normal list behavior
+	// by inserting a single element.
+	list.append(main.stackAllocator, '\n');
+	list.print(main.stackAllocator, "BarFooSpam {}", .{0.3});
+	list.append(main.stackAllocator, '\n');
+	list.print(main.stackAllocator, "fooBarSpam {}", .{34});
+	list.append(main.stackAllocator, '\n');
+
+	const newAddress = list.items.ptr;
+
+	const expected =
+		\\
+		\\BarFooSpam 0.3
+		\\fooBarSpam 34
+		\\
+	;
+
+	try std.testing.expect(oldAddress != newAddress);
+	try std.testing.expectEqualStrings(expected, list.items);
+	try std.testing.expect(list.items.len <= list.capacity);
 }
 
 /// Holds multiple arrays sequentially in memory.

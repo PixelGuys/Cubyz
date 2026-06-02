@@ -36,12 +36,12 @@ const BlueprintSubCommand = enum {
 };
 
 pub fn execute(args: []const u8, source: *User) void {
-	var argsList = List([]const u8).init(main.stackAllocator);
-	defer argsList.deinit();
+	var argsList: List([]const u8) = .{};
+	defer argsList.deinit(main.stackAllocator);
 
 	var splitIterator = std.mem.splitScalar(u8, args, ' ');
 	while (splitIterator.next()) |a| {
-		argsList.append(a);
+		argsList.append(main.stackAllocator, a);
 	}
 
 	if (argsList.items.len < 1) {
@@ -145,7 +145,7 @@ fn blueprintList(source: *User) void {
 
 	var directoryIterator = blueprintsDir.iterate();
 
-	while (directoryIterator.next() catch |err| {
+	while (directoryIterator.next(main.io) catch |err| {
 		return sendWarningAndLog("Failed to read blueprint directory ({s})", .{@errorName(err)}, source);
 	}) |entry| {
 		if (entry.kind != .file) break;

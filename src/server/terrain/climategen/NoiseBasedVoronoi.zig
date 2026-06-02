@@ -93,7 +93,7 @@ const Chunk = struct {
 	}
 
 	fn checkIfBiomeIsValid(x: i32, y: i32, biomeRadius: f32, biomesSortedByX: []BiomePoint, chunkLocalMaxBiomeRadius: i32) bool {
-		const ceiledBiomeRadius: i32 = @intFromFloat(@ceil(biomeRadius));
+		const ceiledBiomeRadius: i32 = @ceil(biomeRadius);
 		const minX = x -% ceiledBiomeRadius -% chunkLocalMaxBiomeRadius;
 		const maxX = x +% ceiledBiomeRadius +% chunkLocalMaxBiomeRadius;
 		const i: usize = getStartCoordinate(minX, biomesSortedByX);
@@ -130,7 +130,7 @@ const Chunk = struct {
 				}
 			}
 			rejections = 0;
-			chunkLocalMaxBiomeRadius = @max(chunkLocalMaxBiomeRadius, @as(i32, @intFromFloat(@ceil(radius))));
+			chunkLocalMaxBiomeRadius = @max(chunkLocalMaxBiomeRadius, @as(i32, @ceil(radius)));
 			selectedBiomes.insertSorted(allocator, .{
 				.biome = drawnBiome,
 				.pos = .{x, y},
@@ -211,7 +211,8 @@ const GenerationStructure = struct {
 
 	fn findClosestBiomeTo(prefilteredCandidates: []*BiomePoint, wx: i32, wy: i32, relX: i32, relY: i32, worldSeed: u64) BiomeSample {
 		const x = wx +% relX*terrain.SurfaceMap.MapFragment.biomeSize;
-		const y = wy +% relY*terrain.SurfaceMap.MapFragment.biomeSize;
+		var y = wy +% relY*terrain.SurfaceMap.MapFragment.biomeSize;
+		if (@mod(relX, 2) == 1) y += terrain.SurfaceMap.MapFragment.biomeSize/2;
 		var closestDist = std.math.floatMax(f32);
 		var secondClosestDist = std.math.floatMax(f32);
 		var closestBiomePoint: BiomePoint = undefined;
@@ -221,7 +222,7 @@ const GenerationStructure = struct {
 		var mountains: f32 = 0;
 		var totalWeight: f32 = 0;
 		// all BiomePoints are within ±2 chunks of the current one.
-		var candidateList: main.ListUnmanaged(struct { point: *BiomePoint, weight: f32 }) = .initCapacity(main.stackAllocator, prefilteredCandidates.len);
+		var candidateList: main.List(struct { point: *BiomePoint, weight: f32 }) = .initCapacity(main.stackAllocator, prefilteredCandidates.len);
 		defer candidateList.deinit(main.stackAllocator);
 		for (prefilteredCandidates) |candidate| {
 			candidateList.appendAssumeCapacity(.{.point = candidate, .weight = 1});
@@ -303,11 +304,12 @@ const GenerationStructure = struct {
 		if (skipMismatched) {
 			var x: f32 = min[0];
 			while (x < max[0]) : (x += 1) {
-				var y: f32 = min[1];
+				const yOffset: f32 = @mod(x, 2)*0.5;
+				var y: f32 = min[1] + yOffset;
 				while (y < max[1]) : (y += 1) {
 					const distSquare = vec.lengthSquare(Vec2f{x, y} - relPos);
 					if (distSquare < relRadius*relRadius) {
-						if (map.map[@intFromFloat(x)][@intFromFloat(y)].biome != parentBiome) {
+						if (map.map[@trunc(x)][@trunc(y)].biome != parentBiome) {
 							return error.biomeMismatch;
 						}
 					}
@@ -316,11 +318,12 @@ const GenerationStructure = struct {
 		}
 		var x: f32 = min[0];
 		while (x < max[0]) : (x += 1) {
-			var y: f32 = min[1];
+			const yOffset: f32 = @mod(x, 2)*0.5;
+			var y: f32 = min[1] + yOffset;
 			while (y < max[1]) : (y += 1) {
 				const distSquare = vec.lengthSquare(Vec2f{x, y} - relPos);
 				if (distSquare < relRadius*relRadius) {
-					const entry = &map.map[@intFromFloat(x)][@intFromFloat(y)];
+					const entry = &map.map[@trunc(x)][@trunc(y)];
 					var seed = entry.seed;
 					const newHeight = @as(f32, @floatFromInt(biome.minHeight)) + @as(f32, @floatFromInt(biome.maxHeight - biome.minHeight))*random.nextFloat(&seed);
 					entry.* = .{
@@ -336,7 +339,7 @@ const GenerationStructure = struct {
 		}
 	}
 
-	fn addSubBiomesOf(biome: BiomePoint, map: *ClimateMapFragment, extraBiomes: *main.List(BiomePoint), wx: i32, wy: i32, width: u31, height: u31, worldSeed: u64, comptime radius: enum { known, unknown }) void {
+	fn addSubBiomesOf(biome: BiomePoint, map: *ClimateMapFragment, extraBiomes: *main.ListManaged(BiomePoint), wx: i32, wy: i32, width: u31, height: u31, worldSeed: u64, comptime radius: enum { known, unknown }) void {
 		var seed = random.initSeed2D(worldSeed, @bitCast(biome.pos));
 		var biomeCount: f32 = undefined;
 		if (biome.biome.subBiomeTotalChance > biome.biome.maxSubBiomeCount) {
@@ -363,10 +366,10 @@ const GenerationStructure = struct {
 			if (maxCenterOffset < 0) {
 				maxCenterOffset = 0;
 			}
-			const point = biome.pos +% @as(Vec2i, @intFromFloat(random.nextPointInUnitCircle(&seed)*@as(Vec2f, @splat(maxCenterOffset))));
+			const point = biome.pos +% @as(Vec2i, @trunc(random.nextPointInUnitCircle(&seed)*@as(Vec2f, @splat(maxCenterOffset))));
 			drawCircleOnTheMap(map, subBiome, subRadius, wx, wy, width, height, point, radius == .unknown, biome.biome) catch if (radius == .unknown) {
 				fails += 1;
-				if (fails < @as(usize, @intFromFloat(biomeCount))) {
+				if (fails < @as(usize, @trunc(biomeCount))) {
 					i -= 1;
 				}
 				continue;
@@ -383,7 +386,7 @@ const GenerationStructure = struct {
 
 	fn addTransitionBiomes(map: *[preMapSize][preMapSize]BiomeSample) void {
 		const neighborData = main.stackAllocator.create([16][preMapSize][preMapSize]u15);
-		defer main.stackAllocator.free(neighborData);
+		defer main.stackAllocator.destroy(neighborData);
 		for (0..preMapSize) |x| {
 			for (0..preMapSize) |y| {
 				neighborData[0][x][y] = @bitCast(map[x][y].biome.properties);
@@ -392,7 +395,10 @@ const GenerationStructure = struct {
 		for (1..neighborData.len) |i| {
 			for (1..preMapSize - 1) |x| {
 				for (1..preMapSize - 1) |y| {
-					neighborData[i][x][y] = neighborData[i - 1][x][y] | neighborData[i - 1][x - 1][y] | neighborData[i - 1][x + 1][y] | neighborData[i - 1][x][y - 1] | neighborData[i - 1][x][y + 1];
+					const y1 = y;
+					const y2 = if (x%2 == 1) y + 1 else y - 1;
+					const xNeighbors = neighborData[i - 1][x - 1][y1] | neighborData[i - 1][x - 1][y2] | neighborData[i - 1][x + 1][y1] | neighborData[i - 1][x + 1][y2];
+					neighborData[i][x][y] = neighborData[i - 1][x][y] | neighborData[i - 1][x][y - 1] | neighborData[i - 1][x][y + 1] | xNeighbors;
 				}
 			}
 		}
@@ -445,7 +451,7 @@ const GenerationStructure = struct {
 		// Subdivide
 		const halfWidth = width/2;
 		const halfHeight = height/2;
-		var newCandidates: main.ListUnmanaged(*BiomePoint) = .initCapacity(main.stackAllocator, biomeCandidates.len);
+		var newCandidates: main.List(*BiomePoint) = .initCapacity(main.stackAllocator, biomeCandidates.len);
 		defer newCandidates.deinit(main.stackAllocator);
 		for (0..2) |dx| {
 			for (0..2) |dy| {
@@ -457,11 +463,11 @@ const GenerationStructure = struct {
 				const wxMin = wx +% newRelX*terrain.SurfaceMap.MapFragment.biomeSize;
 				const wxMax = wxMin +% newWidth*terrain.SurfaceMap.MapFragment.biomeSize;
 				const wyMin = wy +% newRelY*terrain.SurfaceMap.MapFragment.biomeSize;
-				const wyMax = wyMin +% newHeight*terrain.SurfaceMap.MapFragment.biomeSize;
+				const wyMax = wyMin +% newHeight*terrain.SurfaceMap.MapFragment.biomeSize +% terrain.SurfaceMap.MapFragment.biomeSize;
 
 				newCandidates.clearRetainingCapacity();
 				for (biomeCandidates) |candidate| {
-					const influenceRadius = 3*@as(i32, @intFromFloat(@ceil(candidate.radius)));
+					const influenceRadius = 3*@as(i32, @ceil(candidate.radius));
 					const candidateMinX = wxMin -% influenceRadius;
 					const candidateMaxX = wxMax +% influenceRadius;
 					const candidateMinY = wyMin -% influenceRadius;
@@ -478,10 +484,10 @@ const GenerationStructure = struct {
 	pub fn toMap(self: GenerationStructure, map: *ClimateMapFragment, width: u31, height: u31, worldSeed: u64) void {
 		var preMap: [preMapSize][preMapSize]BiomeSample = undefined;
 		var allCandidates: main.List(*BiomePoint) = .initCapacity(main.stackAllocator, 1024);
-		defer allCandidates.deinit();
+		defer allCandidates.deinit(main.stackAllocator);
 		for (self.chunks.mem) |chunk| {
 			for (chunk.biomesSortedByX) |*candidate| {
-				allCandidates.append(candidate);
+				allCandidates.append(main.stackAllocator, candidate);
 			}
 		}
 		fillRecursively(map.pos.wx, map.pos.wy, &preMap, allCandidates.items, worldSeed, -margin, -margin, preMapSize, preMapSize);
@@ -491,7 +497,7 @@ const GenerationStructure = struct {
 		}
 
 		// Add some sub-biomes:
-		var extraBiomes = main.List(BiomePoint).init(main.stackAllocator);
+		var extraBiomes: main.ListManaged(BiomePoint) = .init(main.stackAllocator);
 		defer extraBiomes.deinit();
 		for (self.chunks.mem) |chunk| {
 			for (chunk.biomesSortedByX) |biome| {

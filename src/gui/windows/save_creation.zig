@@ -49,7 +49,7 @@ fn chooseSeed(seedStr: []const u8) u64 {
 }
 
 fn gamemodeCallback() void {
-	worldSettings.defaultGamemode = std.meta.intToEnum(main.game.Gamemode, @intFromEnum(worldSettings.defaultGamemode) + 1) catch @enumFromInt(0);
+	worldSettings.defaultGamemode = std.enums.fromInt(main.game.Gamemode, @intFromEnum(worldSettings.defaultGamemode) + 1) orelse @enumFromInt(0);
 	gamemodeInput.child.label.updateText(@tagName(worldSettings.defaultGamemode));
 }
 
@@ -84,7 +84,7 @@ pub fn onOpen() void {
 
 	if (worldPresets.len == 0) {
 		var presetMap = main.assets.worldPresets();
-		var entryList: main.ListUnmanaged(ZonMapEntry) = .initCapacity(main.globalArena, presetMap.count());
+		var entryList: main.List(ZonMapEntry) = .initCapacity(main.globalArena, presetMap.count());
 		var iterator = presetMap.iterator();
 		while (iterator.next()) |entry| {
 			entryList.appendAssumeCapacity(entry);

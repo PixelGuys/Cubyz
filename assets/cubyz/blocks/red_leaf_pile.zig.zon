@@ -2,8 +2,10 @@
 	.tags = .{.cuttable, .leaf},
 	.blockHealth = 0.1,
 	.drops = .{
-		.{.items = .{.auto}},
+		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
 	},
+	.selectionCapabilities = .{.toolEffective},
+	.replaceable = true,
 	.degradable = true,
 	.collide = false,
 	.alwaysViewThrough = true,
@@ -14,7 +16,7 @@
 	},
 	.rotation = "cubyz:texture_pile",
 	.onUpdate = .{
-		.type = .checkSupportBlocks,
+		.type = .check_support_blocks,
 	},
 	.texture0 = "cubyz:red_leaf_pile/0",
 	.texture1 = "cubyz:red_leaf_pile/1",

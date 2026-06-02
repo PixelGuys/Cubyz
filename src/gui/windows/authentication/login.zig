@@ -34,7 +34,7 @@ var encryptAccountCode: bool = true;
 const padding: f32 = 8;
 
 fn login() void {
-	var failureText: main.List(u8) = .init(main.stackAllocator);
+	var failureText: main.ListManaged(u8) = .init(main.stackAllocator);
 	defer failureText.deinit();
 	const accountCode = main.network.authentication.AccountCode.initFromUserInput(textComponent.currentString.items, &failureText);
 	defer accountCode.deinit();
@@ -152,9 +152,9 @@ pub fn onOpen() void {
 
 pub fn onClose() void {
 	// Make sure there remains no trace of the account code or password in memory
-	main.network.authentication.secureZero(@TypeOf(textComponent.textBuffer.glyphs[0]), textComponent.textBuffer.glyphs);
+	std.crypto.secureZero(@TypeOf(textComponent.textBuffer.glyphs[0]), textComponent.textBuffer.glyphs);
 	std.crypto.secureZero(u8, textComponent.currentString.items);
-	main.network.authentication.secureZero(@TypeOf(passwordTextField.textBuffer.glyphs[0]), passwordTextField.textBuffer.glyphs);
+	std.crypto.secureZero(@TypeOf(passwordTextField.textBuffer.glyphs[0]), passwordTextField.textBuffer.glyphs);
 	std.crypto.secureZero(u8, passwordTextField.currentString.items);
 	main.Window.setClipboardString("");
 	gui.openWindow("clipboard_deleted");

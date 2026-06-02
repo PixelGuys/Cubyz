@@ -29,14 +29,11 @@ pub fn execute(args: []const u8, source: *User) void {
 	}
 
 	if (source.worldEditData.clipboard) |clipboard| {
-		const pos: Vec3i = @intFromFloat(source.player().pos);
+		const pos: Vec3i = @floor(source.player().pos);
 		source.sendMessage("Pasting: {}", .{pos});
 
-		const undo = Blueprint.capture(main.globalAllocator, pos, .{
-			pos[0] + @as(i32, @intCast(clipboard.blocks.width)) - 1,
-			pos[1] + @as(i32, @intCast(clipboard.blocks.depth)) - 1,
-			pos[2] + @as(i32, @intCast(clipboard.blocks.height)) - 1,
-		});
+		const selection: Blueprint.Selection = .initFromExtent(pos, clipboard.extent());
+		const undo = Blueprint.capture(main.globalAllocator, selection);
 		switch (undo) {
 			.success => |blueprint| {
 				source.worldEditData.undoHistory.push(.init(blueprint, pos, "paste"));

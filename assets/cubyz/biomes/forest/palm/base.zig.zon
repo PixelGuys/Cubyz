@@ -13,8 +13,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:leaves/mahogany",
-			.log = "cubyz:mahogany_log",
-			.top = "cubyz:mahogany_top",
+			.log = "cubyz:log/mahogany",
 			.chance = 0.07,
 			.type = .round,
 			.height = 1,

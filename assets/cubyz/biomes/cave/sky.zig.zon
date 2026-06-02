@@ -2,7 +2,7 @@
 	.isCave = true,
 	.tags = .{.sky_layer},
 	.caveNoiseStrength = 10,
-	.music = "cubyz:GymnopedieNo1",
+	.music = "cubyz:totaldemented/filled_with_love",
 
 	.ground_structure = .{},
 	.caveModels = .{

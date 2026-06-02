@@ -17,12 +17,12 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 }
 
 pub fn changeBlockDamage(damage: f32, block: main.blocks.Block, data: Data) f32 {
-	for (block.blockTags()) |tag| {
+	for (block.tags()) |tag| {
 		if (tag == data.tag) return damage*(1 - data.strength);
 	}
 	return damage;
 }
 
-pub fn printTooltip(outString: *main.List(u8), data: Data) void {
+pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
 	outString.print("#a00050**Bad at**#808080 *Decreases damage by **{d:.0}%** on \n***#a00050{s}#808080*** blocks", .{data.strength*100, data.tag.getName()});
 }

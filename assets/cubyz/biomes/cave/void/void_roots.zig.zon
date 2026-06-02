@@ -6,7 +6,7 @@
 	.chance = 1,
 	.caveRadiusFactor = -1,
 
-	.music = "cubyz:heart-of-the-beast",
+	.music = "cubyz:totaldemented/sense_of_wonder",
 
 	.structures = .{
 		.{

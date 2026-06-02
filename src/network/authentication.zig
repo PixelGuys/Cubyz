@@ -85,10 +85,13 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 	pub fn getPublicKeys(allocator: NeverFailingAllocator) ZonElement {
 		const result = ZonElement.initObject(allocator);
 		inline for (comptime std.meta.declarations(Storage)) |decl| {
-			const bytes = if (@hasDecl(@TypeOf(@field(Storage, decl.name).public_key), "toBytes"))
-				@field(Storage, decl.name).public_key.toBytes()
-			else
-				@field(Storage, decl.name).public_key.toUncompressedSec1();
+			const bytes = blk: {
+				if (@hasDecl(@TypeOf(@field(Storage, decl.name).public_key), "toBytes")) {
+					break :blk @field(Storage, decl.name).public_key.toBytes();
+				} else {
+					break :blk @field(Storage, decl.name).public_key.toUncompressedSec1();
+				}
+			};
 			var base64: [std.base64.standard.Encoder.calcSize(bytes.len)]u8 = undefined;
 			result.putOwnedString(decl.name, std.base64.standard.Encoder.encode(&base64, &bytes));
 		}
@@ -98,10 +101,13 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 	pub fn getPublicKey(allocator: NeverFailingAllocator, keyType: KeyTypeEnum) []const u8 {
 		switch (keyType) {
 			inline else => |_typ| {
-				const bytes = if (@hasDecl(@TypeOf(@field(Storage, @tagName(_typ)).public_key), "toBytes"))
-					@field(Storage, @tagName(_typ)).public_key.toBytes()
-				else
-					@field(Storage, @tagName(_typ)).public_key.toUncompressedSec1();
+				const bytes = blk: {
+					if (@hasDecl(@TypeOf(@field(Storage, @tagName(_typ)).public_key), "toBytes")) {
+						break :blk @field(Storage, @tagName(_typ)).public_key.toBytes();
+					} else {
+						break :blk @field(Storage, @tagName(_typ)).public_key.toUncompressedSec1();
+					}
+				};
 				var base64: [std.base64.standard.Encoder.calcSize(bytes.len)]u8 = undefined;
 				const key = std.base64.standard.Encoder.encode(&base64, &bytes);
 				return std.mem.concat(allocator.allocator, u8, &.{@tagName(_typ), ":", key}) catch unreachable;
@@ -113,7 +119,8 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 		switch (typ) {
 			inline else => |_typ| {
 				const AlgorithmType = _typ.getAlgorithmType();
-				const randomBytes = std.crypto.random.array(u8, AlgorithmType.noise_length);
+				var randomBytes: [AlgorithmType.noise_length]u8 = undefined;
+				main.io.random(&randomBytes);
 				const signature = @field(Storage, @tagName(_typ)).sign(message, randomBytes) catch |err| {
 					std.debug.panic("Failed to sign message with error {s}. Maybe try reconnecting, if the error persists, I'd suggest creating a new account", .{@errorName(err)});
 				};
@@ -159,12 +166,12 @@ pub const PublicKey = union(KeyTypeEnum) {
 pub const AccountCode = struct {
 	text: []u8,
 
-	fn printInvalidCharError(failureText: *main.List(u8), codepoint: u21) void {
+	fn printInvalidCharError(failureText: *main.ListManaged(u8), codepoint: u21) void {
 		failureText.print("Account Code contains invalid character '{u}' (U+{X}), only ASCII letters and whitespaces are allowed.\n", .{codepoint, codepoint});
 	}
 
-	pub fn initFromUserInput(text: []const u8, failureText: *main.List(u8)) AccountCode {
-		var result: main.ListUnmanaged(u8) = .initCapacity(main.stackAllocator, text.len);
+	pub fn initFromUserInput(text: []const u8, failureText: *main.ListManaged(u8)) AccountCode {
+		var result: main.List(u8) = .initCapacity(main.stackAllocator, text.len);
 		defer result.deinit(main.stackAllocator);
 		defer std.crypto.secureZero(u8, result.items);
 
@@ -239,13 +246,13 @@ pub const AccountCode = struct {
 		if (wordlist == null) @panic("Cannot generate new Account without a valid wordlist.");
 		var bits: [21]u8 = undefined;
 		defer std.crypto.secureZero(u8, &bits);
-		std.crypto.random.bytes(bits[0..20]);
+		main.io.random(bits[0..20]);
 		var sha256Result: [32]u8 = undefined;
 		defer std.crypto.secureZero(u8, &sha256Result);
 		std.crypto.hash.sha2.Sha256.hash(bits[0..20], &sha256Result, .{});
 		bits[20] = sha256Result[0];
 
-		var result: main.ListUnmanaged(u8) = .{};
+		var result: main.List(u8) = .{};
 		defer result.deinit(main.stackAllocator);
 		defer std.crypto.secureZero(u8, result.items);
 
@@ -283,7 +290,8 @@ pub const PasswordEncodedAccountCode = struct {
 	pub const empty: PasswordEncodedAccountCode = .{.typ = .none, .salt = &.{}, .nonce = &.{}, .data = &.{}, .authenticationTag = &.{}};
 
 	pub fn initFromPassword(allocator: NeverFailingAllocator, accountCode: AccountCode, password: []const u8) PasswordEncodedAccountCode {
-		var salt: [32]u8 = std.crypto.random.array(u8, 32);
+		var salt: [32]u8 = undefined;
+		main.io.random(&salt);
 		const saltBase64 = allocator.alloc(u8, std.base64.standard.Encoder.calcSize(salt.len));
 		std.debug.assert(std.base64.standard.Encoder.encode(saltBase64, &salt).len == saltBase64.len);
 
@@ -293,7 +301,8 @@ pub const PasswordEncodedAccountCode = struct {
 
 		const encryptedBuffer = allocator.alloc(u8, accountCode.text.len);
 		var authenticationTag: [std.crypto.aead.aes_gcm.Aes256Gcm.tag_length]u8 = undefined;
-		const nonce = std.crypto.random.array(u8, std.crypto.aead.aes_gcm.Aes256Gcm.nonce_length);
+		var nonce: [std.crypto.aead.aes_gcm.Aes256Gcm.nonce_length]u8 = undefined;
+		main.io.random(&nonce);
 		std.crypto.aead.aes_gcm.Aes256Gcm.encrypt(encryptedBuffer, &authenticationTag, accountCode.text, &.{}, nonce, key);
 
 		return .{
@@ -322,7 +331,7 @@ pub const PasswordEncodedAccountCode = struct {
 		allocator.free(self.authenticationTag);
 	}
 
-	pub fn decryptFromPassword(self: PasswordEncodedAccountCode, password: []const u8, failureText: *main.List(u8)) !AccountCode {
+	pub fn decryptFromPassword(self: PasswordEncodedAccountCode, password: []const u8, failureText: *main.ListManaged(u8)) !AccountCode {
 		if (self.typ == .none) {
 			return AccountCode.initFromUserInput(self.data, failureText);
 		}
@@ -354,7 +363,7 @@ pub const PasswordEncodedAccountCode = struct {
 					.t = 10,
 					.m = 32000,
 					.p = 1,
-				}, .argon2id) catch unreachable;
+				}, .argon2id, main.io) catch unreachable;
 			},
 		}
 	}
@@ -409,7 +418,3 @@ pub const PasswordEncodedAccountCode = struct {
 		return zon;
 	}
 };
-
-pub fn secureZero(comptime T: type, s: []volatile T) void { // TODO: Remove after zig#31197
-	@memset(s, std.mem.zeroes(T));
-}
