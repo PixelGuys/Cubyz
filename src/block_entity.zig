@@ -93,7 +93,7 @@ pub const BlockEntity = enum(u32) { // MARK: BlockEntity
 	noValue = std.math.maxInt(u32),
 	_,
 
-	var freeIndexList: main.ListUnmanaged(BlockEntity) = .{};
+	var freeIndexList: main.List(BlockEntity) = .{};
 	var nextIndex: BlockEntity = @enumFromInt(0);
 	var mutex: main.utils.Mutex = .{};
 
@@ -312,7 +312,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 				}
 			}
 		});
-		var textureDeinitList: main.ListUnmanaged(graphics.Texture) = .{};
+		var textureDeinitList: main.List(graphics.Texture) = .{};
 		var textureDeinitLock: main.utils.Mutex = .{};
 		var pipeline: graphics.Pipeline = undefined;
 		var uniforms: struct {

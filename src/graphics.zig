@@ -637,102 +637,106 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		fn parse(self: *Parser) void {
 			self.curIndex = @intCast(self.unicodeIterator.i);
 			self.curChar = self.unicodeIterator.nextCodepoint() orelse return;
-			while (true) switch (self.curChar) {
-				'*' => {
-					self.appendControlGetNext() orelse return;
-					if (self.curChar == '*') {
+			while (true) {
+				switch (self.curChar) {
+					'*' => {
 						self.appendControlGetNext() orelse return;
-						self.currentFontEffect.bold = !self.currentFontEffect.bold;
-					} else {
-						self.currentFontEffect.italic = !self.currentFontEffect.italic;
-					}
-				},
-				'_' => {
-					if (self.peekNextByte() == '_') {
+						if (self.curChar == '*') {
+							self.appendControlGetNext() orelse return;
+							self.currentFontEffect.bold = !self.currentFontEffect.bold;
+						} else {
+							self.currentFontEffect.italic = !self.currentFontEffect.italic;
+						}
+					},
+					'_' => {
+						if (self.peekNextByte() == '_') {
+							self.appendControlGetNext() orelse return;
+							self.appendControlGetNext() orelse return;
+							self.currentFontEffect.underline = !self.currentFontEffect.underline;
+						} else {
+							self.appendGetNext() orelse return;
+						}
+					},
+					'~' => {
+						if (self.peekNextByte() == '~') {
+							self.appendControlGetNext() orelse return;
+							self.appendControlGetNext() orelse return;
+							self.currentFontEffect.strikethrough = !self.currentFontEffect.strikethrough;
+						} else {
+							self.appendGetNext() orelse return;
+						}
+					},
+					'\\' => {
 						self.appendControlGetNext() orelse return;
-						self.appendControlGetNext() orelse return;
-						self.currentFontEffect.underline = !self.currentFontEffect.underline;
-					} else {
 						self.appendGetNext() orelse return;
-					}
-				},
-				'~' => {
-					if (self.peekNextByte() == '~') {
+					},
+					'#' => {
 						self.appendControlGetNext() orelse return;
+						var shift: u5 = 20;
+						while (true) : (shift -= 4) {
+							self.currentFontEffect.color = (self.currentFontEffect.color & ~(@as(u24, 0xf) << shift)) | @as(u24, switch (self.curChar) {
+								'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => self.curChar - '0',
+								'a', 'b', 'c', 'd', 'e', 'f' => self.curChar - 'a' + 10,
+								'A', 'B', 'C', 'D', 'E', 'F' => self.curChar - 'A' + 10,
+								else => 0,
+							}) << shift;
+							self.appendControlGetNext() orelse return;
+							if (shift == 0) break;
+						}
+					},
+					'§' => {
+						self.currentFontEffect = .{.color = self.currentFontEffect.color};
 						self.appendControlGetNext() orelse return;
-						self.currentFontEffect.strikethrough = !self.currentFontEffect.strikethrough;
-					} else {
+					},
+					else => {
 						self.appendGetNext() orelse return;
-					}
-				},
-				'\\' => {
-					self.appendControlGetNext() orelse return;
-					self.appendGetNext() orelse return;
-				},
-				'#' => {
-					self.appendControlGetNext() orelse return;
-					var shift: u5 = 20;
-					while (true) : (shift -= 4) {
-						self.currentFontEffect.color = (self.currentFontEffect.color & ~(@as(u24, 0xf) << shift)) | @as(u24, switch (self.curChar) {
-							'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => self.curChar - '0',
-							'a', 'b', 'c', 'd', 'e', 'f' => self.curChar - 'a' + 10,
-							'A', 'B', 'C', 'D', 'E', 'F' => self.curChar - 'A' + 10,
-							else => 0,
-						}) << shift;
-						self.appendControlGetNext() orelse return;
-						if (shift == 0) break;
-					}
-				},
-				'§' => {
-					self.currentFontEffect = .{.color = self.currentFontEffect.color};
-					self.appendControlGetNext() orelse return;
-				},
-				else => {
-					self.appendGetNext() orelse return;
-				},
-			};
+					},
+				}
+			}
 		}
 
 		pub fn countVisibleCharacters(text: []const u8) usize {
 			var unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0};
 			var count: usize = 0;
 			var curChar = unicodeIterator.nextCodepoint() orelse return count;
-			outer: while (true) switch (curChar) {
-				'*' => {
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-				},
-				'_' => {
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-					if (curChar == '_') {
+			outer: while (true) {
+				switch (curChar) {
+					'*' => {
 						curChar = unicodeIterator.nextCodepoint() orelse break;
-					} else {
-						count += 1;
-					}
-				},
-				'~' => {
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-					if (curChar == '~') {
+					},
+					'_' => {
 						curChar = unicodeIterator.nextCodepoint() orelse break;
-					} else {
+						if (curChar == '_') {
+							curChar = unicodeIterator.nextCodepoint() orelse break;
+						} else {
+							count += 1;
+						}
+					},
+					'~' => {
+						curChar = unicodeIterator.nextCodepoint() orelse break;
+						if (curChar == '~') {
+							curChar = unicodeIterator.nextCodepoint() orelse break;
+						} else {
+							count += 1;
+						}
+					},
+					'\\' => {
+						curChar = unicodeIterator.nextCodepoint() orelse break;
+						curChar = unicodeIterator.nextCodepoint() orelse break;
 						count += 1;
-					}
-				},
-				'\\' => {
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-					count += 1;
-				},
-				'#' => {
-					for (0..7) |_| curChar = unicodeIterator.nextCodepoint() orelse break :outer;
-				},
-				'§' => {
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-				},
-				else => {
-					count += 1;
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-				},
-			};
+					},
+					'#' => {
+						for (0..7) |_| curChar = unicodeIterator.nextCodepoint() orelse break :outer;
+					},
+					'§' => {
+						curChar = unicodeIterator.nextCodepoint() orelse break;
+					},
+					else => {
+						count += 1;
+						curChar = unicodeIterator.nextCodepoint() orelse break;
+					},
+				}
+			}
 			return count;
 		}
 	};

@@ -177,15 +177,23 @@ pub const MapFragment = struct { // MARK: MapFragment
 
 				var reader = BinaryReader.init(rawData);
 
-				for (0..mapSize) |x| for (0..mapSize) |y| {
-					self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)]);
-				};
-				for (0..mapSize) |x| for (0..mapSize) |y| {
-					self.heightMap[x][y] = try reader.readInt(i32);
-				};
-				if (originalHeightMap) |map| for (0..mapSize) |x| for (0..mapSize) |y| {
-					map[x][y] = try reader.readInt(i32);
-				};
+				for (0..mapSize) |x| {
+					for (0..mapSize) |y| {
+						self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)]);
+					}
+				}
+				for (0..mapSize) |x| {
+					for (0..mapSize) |y| {
+						self.heightMap[x][y] = try reader.readInt(i32);
+					}
+				}
+				if (originalHeightMap) |map| {
+					for (0..mapSize) |x| {
+						for (0..mapSize) |y| {
+							map[x][y] = try reader.readInt(i32);
+						}
+					}
+				}
 			},
 			else => return error.OutdatedFileVersion,
 		}
@@ -293,7 +301,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 		};
 	}
 	// Find all the stored maps:
-	var mapPositions: main.ListUnmanaged(MapFragmentPosition) = .{};
+	var mapPositions: main.List(MapFragmentPosition) = .{};
 	defer mapPositions.deinit(main.stackAllocator);
 	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps/1", .{worldName}) catch unreachable;
 	defer main.stackAllocator.free(path);

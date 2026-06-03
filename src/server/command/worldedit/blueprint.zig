@@ -1,12 +1,12 @@
 const std = @import("std");
 
 const main = @import("main");
-const ListUnmanaged = main.ListUnmanaged;
 const User = main.server.User;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
 const Dir = main.files.Dir;
+const List = main.List;
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
@@ -60,7 +60,7 @@ const Args = union(enum) {
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/blueprint"});
 
 pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: ListUnmanaged(u8) = .{};
+	var errorMessage: List(u8) = .{};
 	defer errorMessage.deinit(main.stackAllocator);
 
 	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
@@ -168,7 +168,7 @@ const FilePath = struct {
 		allocator.free(self.path);
 	}
 
-	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, arg: []const u8, _: *ListUnmanaged(u8)) error{ParseError}!FilePath {
+	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, arg: []const u8, _: *List(u8)) error{ParseError}!FilePath {
 		return .{.path = ensureBlueprintExtension(allocator, arg)};
 	}
 

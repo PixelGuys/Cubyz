@@ -145,6 +145,22 @@ pub var device: c.VkDevice = undefined;
 var graphicsQueue: c.VkQueue = undefined;
 var presentQueue: c.VkQueue = undefined;
 
+pub var version: packed struct(u32) {
+	patch: u12,
+	minor: u10,
+	major: u7,
+	variant: u3,
+} = @bitCast(@as(u32, 0));
+
+pub var interestingExtensions: struct {
+	VK_KHR_buffer_device_address: bool = false, // #2960
+	VK_EXT_fragment_shader_interlock: bool = false, // #817
+	VK_EXT_descriptor_buffer: bool = false, // for bindless
+	VK_EXT_descriptor_heap: bool = false, // for bindless
+	VK_EXT_descriptor_indexing: bool = false, // for bindless
+	VK_EXT_mutable_descriptor_type: bool = false, // also for bindless
+} = .{};
+
 // MARK: init
 
 pub fn init(window: ?*c.GLFWwindow) !void {
@@ -361,6 +377,18 @@ fn pickPhysicalDevice() !void {
 
 	var properties: c.VkPhysicalDeviceProperties = undefined;
 	c.vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+	version = @bitCast(properties.apiVersion);
+
+	const availableExtension = enumerateDeviceExtensionProperties(main.stackAllocator, physicalDevice, null);
+	defer main.stackAllocator.free(availableExtension);
+	for (availableExtension) |ext| {
+		inline for (comptime std.meta.fieldNames(@TypeOf(interestingExtensions))) |extensionName| {
+			if (std.mem.eql(u8, ext.extensionName[0..extensionName.len], extensionName)) {
+				@field(interestingExtensions, extensionName) = true;
+			}
+		}
+	}
+
 	std.log.info("Selected device {s}", .{@as([*:0]const u8, @ptrCast(&properties.deviceName))});
 }
 
