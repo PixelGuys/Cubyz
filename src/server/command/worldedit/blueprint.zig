@@ -168,11 +168,7 @@ const FilePath = struct {
 		allocator.free(self.path);
 	}
 
-	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!FilePath {
-		if (std.mem.containsAtLeast(u8, arg, 1, "..")) {
-			errorMessage.print(main.stackAllocator, "File path for <{s}> is not allowed to contain parent directory references (..) for security reasons: '{s}'", .{name, arg});
-			return error.ParseError;
-		}
+	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, arg: []const u8, _: *ListUnmanaged(u8)) error{ParseError}!FilePath {
 		return .{.path = ensureBlueprintExtension(allocator, arg)};
 	}
 
