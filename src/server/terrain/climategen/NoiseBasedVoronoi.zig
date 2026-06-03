@@ -28,8 +28,11 @@ pub fn init(parameters: ZonElement) void {
 pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) void {
 	var seed: u64 = worldSeed;
 
-	const generator = GenerationStructure.init(main.stackAllocator, map.pos.wx, map.pos.wy, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, terrain.biomes.byTypeBiomes, seed);
-	defer generator.deinit(main.stackAllocator);
+	const arena = main.globalAllocator.createArena();
+	defer main.globalAllocator.destroyArena(arena);
+
+	const generator = GenerationStructure.init(arena, map.pos.wx, map.pos.wy, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, terrain.biomes.byTypeBiomes, seed);
+	defer generator.deinit(arena);
 
 	generator.toMap(map, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, worldSeed);
 
@@ -156,6 +159,79 @@ const Chunk = struct {
 	}
 };
 
+const ClimateChunkGenerationSupportTask = struct {
+	resultAllocator: NeverFailingAllocator,
+	wx: i32,
+	wy: i32,
+	tree: *TreeNode,
+	worldSeed: u64,
+	structure: *const GenerationStructure,
+	offset: [2]u31,
+	neighborOffsets: []const [2]i32,
+
+	remainingTasks: std.atomic.Value(isize),
+	remainingIncompleteTasks: std.atomic.Value(isize),
+
+	pub fn init(structure: *const GenerationStructure, resultAllocator: NeverFailingAllocator, wx: i32, wy: i32, tree: *TreeNode, worldSeed: u64, offset: [2]u31, neighborOffsets: []const [2]i32) *ClimateChunkGenerationSupportTask {
+		const self = main.globalAllocator.create(ClimateChunkGenerationSupportTask);
+		const taskCount = ((structure.chunks.width - offset[0] + 1)/2)*((structure.chunks.height - offset[1] + 1)/2);
+		self.* = .{
+			.resultAllocator = resultAllocator,
+			.wx = wx,
+			.wy = wy,
+			.tree = tree,
+			.worldSeed = worldSeed,
+			.structure = structure,
+			.remainingTasks = .init(taskCount),
+			.remainingIncompleteTasks = .init(taskCount),
+			.offset = offset,
+			.neighborOffsets = neighborOffsets,
+		};
+		return self;
+	}
+
+	fn privateDeinit(self: *ClimateChunkGenerationSupportTask) void {
+		main.globalAllocator.destroy(self);
+	}
+
+	pub fn deferredDeinit(self: *ClimateChunkGenerationSupportTask) void {
+		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
+	}
+
+	pub fn runAndSchedule(self: *ClimateChunkGenerationSupportTask) void {
+		if (self.remainingTasks.load(.monotonic) > 0) {
+			main.threadPool.addSupportTask(.{
+				.run = main.meta.castFunctionSelfToAnyopaque(runAndSchedule),
+				.self = self,
+			});
+		}
+
+		while (true) {
+			const taskIndex = self.remainingTasks.fetchSub(1, .monotonic) - 1;
+			if (taskIndex < 0) return;
+			defer _ = self.remainingIncompleteTasks.fetchSub(1, .release);
+
+			const x = self.offset[0] + @as(u31, @intCast(taskIndex))/(@as(u31, @intCast(self.structure.chunks.width))/2)*2;
+			const y = self.offset[1] + @as(u31, @intCast(taskIndex))%(@as(u31, @intCast(self.structure.chunks.width))/2)*2;
+			var neighbors: [8]*const Chunk = undefined;
+			var j: usize = 0;
+			for (self.neighborOffsets) |neighborOffset| {
+				const nx = x + neighborOffset[0];
+				if (nx < 0 or @as(usize, @intCast(nx)) >= self.structure.chunks.width) continue;
+				const ny = y + neighborOffset[1];
+				if (ny < 0 or @as(usize, @intCast(ny)) >= self.structure.chunks.height) continue;
+				neighbors[j] = self.structure.chunks.get(@intCast(nx), @intCast(ny));
+				j += 1;
+			}
+			self.structure.chunks.ptr(x, y).* = Chunk.init(self.resultAllocator, self.tree, self.worldSeed, self.wx +% x*chunkSize -% 4*chunkSize, self.wy +% y*chunkSize -% 4*chunkSize, neighbors[0..j]);
+		}
+	}
+
+	pub fn waitForCompletion(self: *ClimateChunkGenerationSupportTask) void {
+		while (self.remainingIncompleteTasks.load(.acquire) != 0) {}
+	}
+};
+
 const GenerationStructure = struct {
 	chunks: Array2D(*Chunk) = undefined, // Implemented as slices into the original array!
 
@@ -177,23 +253,10 @@ const GenerationStructure = struct {
 			&.{.{0, -1}, .{0, 1}, .{-1, 0}, .{1, 0}, .{-1, -1}, .{1, -1}, .{-1, 1}, .{1, 1}},
 		};
 		for (0..4) |i| {
-			var x: u31 = offset[i][0];
-			while (x < self.chunks.width) : (x += 2) {
-				var y: u31 = offset[i][1];
-				while (y < self.chunks.height) : (y += 2) {
-					var neighbors: [8]*const Chunk = undefined;
-					var j: usize = 0;
-					for (neighborOffsets[i]) |neighborOffset| {
-						const nx = x + neighborOffset[0];
-						if (nx < 0 or @as(usize, @intCast(nx)) >= self.chunks.width) continue;
-						const ny = y + neighborOffset[1];
-						if (ny < 0 or @as(usize, @intCast(ny)) >= self.chunks.height) continue;
-						neighbors[j] = self.chunks.get(@intCast(nx), @intCast(ny));
-						j += 1;
-					}
-					self.chunks.ptr(x, y).* = Chunk.init(allocator, tree, worldSeed, wx +% x*chunkSize -% 4*chunkSize, wy +% y*chunkSize -% 4*chunkSize, neighbors[0..j]);
-				}
-			}
+			const supportTask = ClimateChunkGenerationSupportTask.init(&self, allocator, wx, wy, tree, worldSeed, offset[i], neighborOffsets[i]);
+			defer supportTask.deferredDeinit();
+			supportTask.runAndSchedule();
+			supportTask.waitForCompletion();
 		}
 		return self;
 	}
