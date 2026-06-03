@@ -45,7 +45,8 @@ fn generateSdf(map: *const CaveMapFragment, biomeMap: *const CaveBiomeMapView, a
     const margin: Vec3i = @splat(256 + perimeter + terrain.CaveBiomeMap.CaveBiomeMapFragment.caveBiomeSize);
     const biomePoints = biomeMap.getCaveBiomesInRange(main.stackAllocator, mapPos -% margin, mapPos +% margin +% Vec3i{ CaveMapFragment.width * map.pos.voxelSize, CaveMapFragment.width * map.pos.voxelSize, CaveMapFragment.height * map.pos.voxelSize });
     defer main.stackAllocator.free(biomePoints);
-    const mapSize = Vec3i{ CaveMapFragment.width, CaveMapFragment.width, CaveMapFragment.height } << @as(@Vector(3, u5), @splat(voxelSizeShift));
+
+    const mapSize = Vec3i{ CaveMapFragment.width * map.pos.voxelSize, CaveMapFragment.width * map.pos.voxelSize, CaveMapFragment.height * map.pos.voxelSize };
 
     for (biomePoints) |biomePoint| {
         const distance = mapPos -% biomePoint.worldPos;
@@ -67,11 +68,8 @@ fn generateSdf(map: *const CaveMapFragment, biomeMap: *const CaveBiomeMapView, a
 
 pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
     if (map.pos.voxelSize > 4) return;
-
-    const margin_val = 256 + perimeter + terrain.CaveBiomeMap.CaveBiomeMapFragment.caveBiomeSize;
-    const biomeMap = CaveBiomeMapView.init(main.stackAllocator, map.pos, CaveMapFragment.width * map.pos.voxelSize, margin_val);
+    const biomeMap = CaveBiomeMapView.init(main.stackAllocator, map.pos, CaveMapFragment.width * map.pos.voxelSize, 0);
     defer biomeMap.deinit();
-
     const outerSize = map.pos.voxelSize * interpolatedPart;
     const outerSizeShift = std.math.log2_int(u31, outerSize);
 
@@ -109,6 +107,7 @@ fn generateMap(map: *CaveMapFragment, output: Array3D(f32), biomeNoiseStrength: 
     const outerSize = map.pos.voxelSize * interpolatedPart;
     const outerSizeShift = std.math.log2_int(u31, outerSize);
     const outerSizeFloat: f32 = @floatFromInt(outerSize);
+
     const noise = FractalNoise3D.generateAligned(main.stackAllocator, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, CaveMapFragment.width * map.pos.voxelSize / outerSize + 1, CaveMapFragment.width * map.pos.voxelSize / outerSize + 1, CaveMapFragment.height * map.pos.voxelSize / outerSize + 1, worldSeed ^ 4329561871 ^ 112 * @intFromEnum(mode), noiseScale);
     defer noise.deinit(main.stackAllocator);
 
