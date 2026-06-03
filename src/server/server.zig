@@ -187,7 +187,7 @@ pub const User = struct { // MARK: User
 		self.permissions.deinit();
 
 		self.player().deinit(.server);
-		EntityManager.remove(self.id);
+		EntityManager.removeEntity(self.id);
 
 		self.worldEditData.deinit();
 
@@ -251,7 +251,7 @@ pub const User = struct { // MARK: User
 	}
 
 	pub fn initPlayer(self: *User) void {
-		self.id = EntityManager.add();
+		self.id = EntityManager.addEntity();
 
 		world.?.loadPlayer(self) catch {
 			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});

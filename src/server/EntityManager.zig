@@ -21,70 +21,93 @@ const CircularBufferQueue = main.utils.CircularBufferQueue;
 const sync = main.sync;
 const server = main.server;
 
-pub var entities: main.utils.SparseSet(server.Entity, main.entity.Entity) = undefined;
+var entities: main.utils.VirtualList(server.Entity, 1 << 24) = undefined;
+var idMapping: main.ListManaged(?u32) = undefined;
+
 var freedList: main.ListUnmanaged(u32) = undefined;
 
 pub fn init() void {
-	entities = .{};
+	entities = .init();
+	idMapping = .init(main.globalAllocator);
 	freedList = .{};
 }
 pub fn deinit() void {
-	for (entities.dense.items) |*value| {
-		value.deinit(.server);
+	for (entities.items()) |*ent| {
+		ent.deinit(.server);
 	}
-	entities.deinit(main.globalAllocator);
+	entities.deinit();
+	idMapping.deinit();
 	freedList.deinit(main.globalAllocator);
 }
+
 pub fn getAll() []server.Entity {
-	return entities.dense.items;
+	return entities.items();
 }
 
 var freeId: u32 = 0;
-pub fn add() u32 {
+pub fn addEntity() u32 {
+	// get a free Id
 	var entityId: u32 = undefined;
-	var ent: *server.Entity = undefined;
 	if (freedList.items.len > 0) {
-		entityId = freedList.items[0];
-		_ = freedList.swapRemove(0);
-		ent = entities.add(main.globalAllocator, @enumFromInt(entityId));
+		entityId = freedList.swapRemove(0);
 	} else {
 		entityId = freeId;
 		freeId += 1;
-		ent = entities.get(@enumFromInt(entityId)) orelse entities.add(main.globalAllocator, @enumFromInt(entityId));
 	}
+
+	// get a new memory address
+	const index: u32 = entities.len;
+	var ent = entities.addOne();
+
+	// assign index to memory address
+	if (idMapping.items.len <= entityId) {
+		idMapping.appendNTimes(null, entityId - idMapping.items.len + 1);
+	}
+	idMapping.items[entityId] = index;
+
+	// initialization of the Entity
 	ent.* = server.Entity{};
 	ent.id = entityId;
+	ent.updateMemoryAddress();
 	return entityId;
 }
 
-fn updateMemoryAddress(entity: *server.Entity) void {
-	entity.updateMemoryAddress();
+pub fn getEntity(entityId: u32) ?*server.Entity {
+	if (entityId >= idMapping.items.len) return null;
+	return &entities.items()[idMapping.items[entityId] orelse return null];
 }
-pub fn remove(entityId: u32) void {
-	if (entities.get(@enumFromInt(entityId))) |entity| {
-		entity.deinit(.server);
-		_ = entities.fetchRemoveAndUpdateMemoryAddressSwapped(@enumFromInt(entityId), updateMemoryAddress) catch {
-			std.log.err("failed to remove entityId {}", .{entityId});
-		};
+
+pub fn removeEntity(entityId: u32) void {
+	if (idMapping.items.len <= entityId) return;
+	const index: u32 = idMapping.items[entityId] orelse return;
+	const ent = &entities.items()[index];
+
+	// remove id
+	idMapping.items[entityId] = null;
+
+	// remove entity
+	{
+		std.debug.assert(ent.id == entityId);
+		ent.deinit(.server);
+		_ = entities.swapRemove(index);
+
+		if (index != entities.len) {
+			idMapping.items[entities.items()[index].id] = index;
+			entities.items()[index].updateMemoryAddress();
+		}
 		freedList.addOne(main.globalAllocator).* = entityId;
 	}
 }
-pub fn getEntity(entityId: u32) ?*server.Entity {
-	return entities.get(@enumFromInt(entityId));
-}
+
 pub fn getEntitiesNearbyInfo(allocator: main.heap.NeverFailingAllocator) main.ZonElement {
 	const zonArray = main.ZonElement.initArray(allocator);
-	for (entities.dense.items) |entity| {
+	for (entities.items()) |*entity| {
 		const entityZon = entity.save(allocator, .playerNearby);
 		zonArray.array.append(entityZon);
 	}
 	return zonArray;
 }
 pub fn getEntityNearbyInfo(entityId: u32, allocator: main.heap.NeverFailingAllocator) ?main.ZonElement {
-	const entity = entities.get(@enumFromInt(entityId));
-	if (entity) |ent| {
-		return ent.save(allocator, .playerNearby);
-	} else {
-		return null;
-	}
+	const entity = getEntity(entityId) orelse return null;
+	return entity.save(allocator, .playerNearby);
 }
