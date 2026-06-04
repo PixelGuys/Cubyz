@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const Blueprint = main.blueprint.Blueprint;
+const Mask = main.blueprint.Mask;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const List = main.List;
 const User = main.server.User;
@@ -218,5 +219,22 @@ pub const EntityModel = struct {
 			errorMessage.print(allocator, "Couldn't find EntityModel for <{s}> with id \"{s}\"", .{name, args});
 			return error.ParseError;
 		}
+	}
+};
+
+pub const MaskExpression = struct {
+	// Always uses global allocator to guarantee arbitrary lifetime.
+	// This is particularily useful for use as global mask.
+	mask: Mask,
+
+	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, args: []const u8, errorMessage: *List(u8)) error{ParseError}!MaskExpression {
+		return .{.mask = Mask.initFromString(main.globalAllocator, args) catch |err| {
+			errorMessage.print(allocator, "Couldn't parse mask: {s}", .{@errorName(err)});
+			return error.ParseError;
+		}};
+	}
+
+	pub fn deinit(self: MaskExpression) void {
+		self.mask.deinit(main.globalAllocator);
 	}
 };
