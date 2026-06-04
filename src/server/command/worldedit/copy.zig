@@ -14,7 +14,7 @@ const Args = union(enum) {
 	@"/copy": struct {},
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/kill"});
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/copy"});
 
 pub fn execute(args: []const u8, source: *User) void {
 	var errorMessage: main.ListUnmanaged(u8) = .{};
