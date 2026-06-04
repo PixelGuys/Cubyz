@@ -787,6 +787,50 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		self: *anyopaque,
 		run: *const fn (*anyopaque) void,
 	};
+	pub fn GenericSupportTask(T: type) type {
+		return struct {
+			data: T,
+
+			remainingTasks: std.atomic.Value(isize),
+			remainingIncompleteTasks: std.atomic.Value(isize),
+
+			pub fn init(data: T, taskCount: isize) *@This() {
+				const self = main.globalAllocator.create(@This());
+				self.* = .{
+					.data = data,
+					.remainingTasks = .init(taskCount),
+					.remainingIncompleteTasks = .init(taskCount),
+				};
+				return self;
+			}
+
+			fn privateDeinit(self: *@This()) void {
+				main.globalAllocator.destroy(self);
+			}
+
+			pub fn runAndSchedule(self: *@This()) void {
+				if (self.remainingTasks.load(.monotonic) > 0) {
+					main.threadPool.addSupportTask(.{
+						.run = main.meta.castFunctionSelfToAnyopaque(runAndSchedule),
+						.self = self,
+					});
+				}
+
+				while (true) {
+					const taskIndex = self.remainingTasks.fetchSub(1, .monotonic) - 1;
+					if (taskIndex < 0) return;
+					defer _ = self.remainingIncompleteTasks.fetchSub(1, .release);
+
+					self.data.run(@intCast(taskIndex));
+				}
+			}
+
+			pub fn waitForCompletionAndDeinit(self: *@This()) void {
+				while (self.remainingIncompleteTasks.load(.acquire) != 0) {}
+				main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
+			}
+		};
+	}
 	pub const Performance = struct {
 		mutex: main.utils.Mutex = .{},
 		tasks: [taskTypes]u32 = undefined,
