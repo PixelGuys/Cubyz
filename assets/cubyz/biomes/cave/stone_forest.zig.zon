@@ -1,6 +1,6 @@
 .{
 	.isCave = true,
-	.tags = .{.cave_layer},
+	.tags = .{.shallow_cave_layer},
 
 	.chance = 0.01,
 

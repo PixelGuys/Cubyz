@@ -1,6 +1,6 @@
 .{
 	.isCave = true,
-	.tags = .{.cave_layer, .post_mantle_layer},
+	.tags = .{.cave_layer},
 	.maxHeight = -512,
 
 	.fogDensity = 2,
