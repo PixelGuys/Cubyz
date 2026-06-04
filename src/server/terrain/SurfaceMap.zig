@@ -287,8 +287,73 @@ fn cacheInit(pos: MapFragmentPosition) *MapFragment {
 	return mapFragment;
 }
 
+const InterpolationPolynomial = struct {
+	// Basically we want an interpolation function with the following properties:
+	// f(0) = 0
+	// f(1) = 1
+	// f'(0) = 0
+	// f'(1) = 0
+	// f(0.5) = noise
+	// This must be a polynomial of degree 4 with a factor x²
+	// f(x) = ax⁴ + bx³ + cx²
+	// f'(x) = 4ax³ + 3x² + 2cx
+	// f(1) = a + b + c = 1 → c = 1 - a - b
+	// f'(1) = 4a + 3b + 2c = 0 → 4a + 3b + 2 - 2a - 2b = 0 → 2a + b + 2 = 0 → b = -2a - 2
+	// f(0.5) = a 0.5⁴ + b 0.5³ + c 0.5² = noise → a 0.5⁴ + (-2a - 2) 0.5³ + (3 + a) 0.5² = noise → a (0.5⁴ - 2·0.5³ + 0.5²) = 2·0.5³ - 3 0.5² + noise
+	// → a 0.5⁴ = 0.5² - 3 0.5² + noise
+	// → a = (-0.5 + noise)·2⁴
+	// → a = 16·noise - 8
+	a: f32,
+	b: f32,
+	c: f32,
+	fn init(noise: f32) @This() {
+		const a = 16*noise - 8;
+		const b = -2*a - 2;
+		const c = 1 - a - b;
+		return .{.a = a, .b = b, .c = c};
+	}
+	fn eval(self: @This(), x: f32) f32 {
+		return @max(0, @min(0.99999, ((self.a*x + self.b)*x + self.c)*x*x));
+	}
+};
+
+const TiledNoise = struct {
+	noisePolynomials: main.utils.Array2D(InterpolationPolynomial),
+	sizeMask: u31,
+
+	fn init(allocator: main.heap.NeverFailingAllocator, size: u31) TiledNoise {
+		std.debug.assert(std.math.isPowerOfTwo(size));
+
+		var rawNoise: main.utils.Array2D(f32) = .init(main.stackAllocator, size, size);
+		defer rawNoise.deinit(main.stackAllocator);
+		terrain.noise.FractalNoise.generateSparseFractalTerrain(0, 0, @intCast(MapFragment.mapSize*@as(usize, 1 << 32)/size), 0, rawNoise, @intCast(@as(usize, 1 << 32)/size));
+
+		const result: TiledNoise = .{
+			.noisePolynomials = .init(allocator, size, size),
+			.sizeMask = size - 1,
+		};
+		for (rawNoise.mem, result.noisePolynomials.mem) |noise, *polynomial| {
+			polynomial.* = .init(noise);
+		}
+		return result;
+	}
+
+	fn deinit(self: TiledNoise, allocator: main.heap.NeverFailingAllocator) void {
+		self.noisePolynomials.deinit(allocator);
+	}
+
+	fn get(self: TiledNoise, wx: i32, wy: i32) InterpolationPolynomial {
+		const x = wx & self.sizeMask;
+		const y = wy & self.sizeMask;
+		return self.noisePolynomials.get(@intCast(x), @intCast(y));
+	}
+};
+
 pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 	std.log.info("Regenerating map LODs...", .{});
+
+	var noise: TiledNoise = .init(main.stackAllocator, 8*MapFragment.mapSize);
+	defer noise.deinit(main.stackAllocator);
 	// Delete old LODs:
 	for (1..main.settings.highestSupportedLod + 1) |i| {
 		const lod = @as(u32, 1) << @intCast(i);
@@ -324,7 +389,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 		}
 	}
 	// Load all the stored maps and update their next LODs.
-	const interpolationDistance = 64;
+	const interpolationDistance = MapFragment.mapSize/2;
 	for (mapPositions.items) |pos| {
 		main.heap.GarbageCollection.syncPoint();
 		var neighborInfo: MapFragment.NeighborInfo = undefined;
@@ -346,10 +411,6 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 		const mapFragment = main.stackAllocator.create(MapFragment);
 		defer main.stackAllocator.destroy(mapFragment);
 		mapFragment.init(pos.wx, pos.wy, pos.voxelSize);
-		var xNoise: [MapFragment.mapSize]f32 = undefined;
-		var yNoise: [MapFragment.mapSize]f32 = undefined;
-		terrain.noise.FractalNoise1D.generateSparseFractalTerrain(pos.wx, 32, main.server.world.?.settings.seed, &xNoise);
-		terrain.noise.FractalNoise1D.generateSparseFractalTerrain(pos.wy, 32, main.server.world.?.settings.seed ^ 0x785298638131, &yNoise);
 		var originalHeightMap: [MapFragment.mapSize][MapFragment.mapSize]i32 = undefined;
 		const oldNeighborInfo = mapFragment.load(main.server.world.?.biomePalette, &originalHeightMap) catch |err| {
 			std.log.err("Error loading map at position {}: {s}", .{pos, @errorName(err)});
@@ -451,38 +512,6 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 			}
 		}
 		{ // Interpolate the terraing height:
-			const InterpolationPolynomial = struct {
-				// Basically we want an interpolation function with the following properties:
-				// f(0) = 0
-				// f(1) = 1
-				// f'(0) = 0
-				// f'(1) = 0
-				// f(noise) = 0.5
-				// This must be a polynomial of degree 4 with a factor x²
-				// f(x) = ax⁴ + bx³ + cx²
-				// f'(x) = 4ax³ + 3x² + 2cx
-				// f(1) = a + b + c = 1 → c = 1 - a - b
-				// f'(1) = 4a + 3b + 2c = 0 → 4a + 3b + 2 - 2a - 2b = 0 → 2a + b + 2 = 0 → b = -2a - 2
-				// f(noise) = a noise⁴ + b noise³ + c noise² = 0.5 → a noise⁴ + (-2a - 2) noise³ + (3 + a) noise² = 0.5 → a (noise⁴ - 2noise³ + noise²) = 2noise³ - 3 noise² + 0.5
-				// → a = (2noise³ - 3 noise² + 0.5)/(noise⁴ - 2noise³ + noise²)
-				// → a = (2noise - 3 + 0.5/noise²)/(noise² - 2noise + 1)
-				// → a = (2noise - 3 + 0.5/noise²)/(noise - 1)²
-				a: f32,
-				b: f32,
-				c: f32,
-				fn get(noise: f32) @This() {
-					const noise2 = noise*noise;
-					const noise3 = noise2*noise;
-					const noise4 = noise2*noise2;
-					const a = (2*noise3 - 3*noise2 + 0.5)/(noise4 - 2*noise3 + noise2);
-					const b = -2*a - 2;
-					const c = 1 - a - b;
-					return .{.a = a, .b = b, .c = c};
-				}
-				fn eval(self: @This(), x: f32) f32 {
-					return @max(0, @min(0.99999, ((self.a*x + self.b)*x + self.c)*x*x));
-				}
-			};
 			const generatedMap = main.stackAllocator.create(MapFragment);
 			defer main.stackAllocator.destroy(generatedMap);
 			generatedMap.init(pos.wx, pos.wy, pos.voxelSize);
@@ -490,86 +519,94 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 
 			@memcpy(&mapFragment.heightMap, &originalHeightMap);
 			for (0..MapFragment.mapSize) |b| {
-				const polynomialX = InterpolationPolynomial.get(yNoise[b]*0.5 + 0.25);
-				const polynomialY = InterpolationPolynomial.get(xNoise[b]*0.5 + 0.25);
 				for (0..interpolationDistance) |a| { // edges
-					const factorX = polynomialX.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
-					const factorY = polynomialY.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
 					if (!neighborInfo.@"+o") {
 						const x = MapFragment.mapSize - 1 - a;
 						const y = b;
-						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factorX + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factorX));
-						if (factorX < 0.25) {
+						const polynomial = noise.get(mapFragment.pos.wx + @as(i32, @intCast(x)), mapFragment.pos.wy + @as(i32, @intCast(y)));
+						const factor = polynomial.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
+						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
+						if (factor < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
 					}
 					if (!neighborInfo.@"-o") {
 						const x = a;
 						const y = b;
-						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factorX + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factorX));
-						if (factorX < 0.25) {
+						const polynomial = noise.get(mapFragment.pos.wx + @as(i32, @intCast(x)), mapFragment.pos.wy + @as(i32, @intCast(y)));
+						const factor = polynomial.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
+						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
+						if (factor < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
 					}
 					if (!neighborInfo.@"o+") {
 						const x = b;
 						const y = MapFragment.mapSize - 1 - a;
-						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factorY + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factorY));
-						if (factorY < 0.25) {
+						const polynomial = noise.get(mapFragment.pos.wx + @as(i32, @intCast(x)), mapFragment.pos.wy + @as(i32, @intCast(y)));
+						const factor = polynomial.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
+						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
+						if (factor < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
 					}
 					if (!neighborInfo.@"o-") {
 						const x = b;
 						const y = a;
-						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factorY + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factorY));
-						if (factorY < 0.25) {
+						const polynomial = noise.get(mapFragment.pos.wx + @as(i32, @intCast(x)), mapFragment.pos.wy + @as(i32, @intCast(y)));
+						const factor = polynomial.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
+						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
+						if (factor < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
 					}
 				}
 			}
 			for (0..interpolationDistance) |a| { // corners:
-				const polynomialY1 = InterpolationPolynomial.get(xNoise[a]*0.5 + 0.25);
-				const polynomialY2 = InterpolationPolynomial.get(xNoise[MapFragment.mapSize - 1 - a]*0.5 + 0.25);
 				for (0..interpolationDistance) |b| {
-					const polynomialX1 = InterpolationPolynomial.get(yNoise[b]*0.5 + 0.25);
-					const polynomialX2 = InterpolationPolynomial.get(yNoise[MapFragment.mapSize - 1 - b]*0.5 + 0.25);
-					const factorX1 = polynomialX1.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
-					const factorX2 = polynomialX2.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
-					const factorY1 = polynomialY1.eval(@as(f32, @floatFromInt(b))/interpolationDistance);
-					const factorY2 = polynomialY2.eval(@as(f32, @floatFromInt(b))/interpolationDistance);
 					if (!neighborInfo.@"++" and neighborInfo.@"+o" and neighborInfo.@"o+") {
-						const factor = 1 - (1 - factorX2)*(1 - factorY2);
 						const x = MapFragment.mapSize - 1 - a;
 						const y = MapFragment.mapSize - 1 - b;
+						const polynomial = noise.get(mapFragment.pos.wx + @as(i32, @intCast(x)), mapFragment.pos.wy + @as(i32, @intCast(y)));
+						const factorX = polynomial.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
+						const factorY = polynomial.eval(@as(f32, @floatFromInt(b))/interpolationDistance);
+						const factor = 1 - (1 - factorX)*(1 - factorY);
 						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
 						if (factor < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
 					}
 					if (!neighborInfo.@"+-" and neighborInfo.@"+o" and neighborInfo.@"o-") {
-						const factor = 1 - (1 - factorX1)*(1 - factorY2);
 						const x = MapFragment.mapSize - 1 - a;
 						const y = b;
+						const polynomial = noise.get(mapFragment.pos.wx + @as(i32, @intCast(x)), mapFragment.pos.wy + @as(i32, @intCast(y)));
+						const factorX = polynomial.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
+						const factorY = polynomial.eval(@as(f32, @floatFromInt(b))/interpolationDistance);
+						const factor = 1 - (1 - factorX)*(1 - factorY);
 						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
 						if (factor < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
 					}
 					if (!neighborInfo.@"-+" and neighborInfo.@"-o" and neighborInfo.@"o+") {
-						const factor = 1 - (1 - factorX2)*(1 - factorY1);
 						const x = a;
 						const y = MapFragment.mapSize - 1 - b;
+						const polynomial = noise.get(mapFragment.pos.wx + @as(i32, @intCast(x)), mapFragment.pos.wy + @as(i32, @intCast(y)));
+						const factorX = polynomial.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
+						const factorY = polynomial.eval(@as(f32, @floatFromInt(b))/interpolationDistance);
+						const factor = 1 - (1 - factorX)*(1 - factorY);
 						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
 						if (factor < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
 					}
 					if (!neighborInfo.@"--" and neighborInfo.@"-o" and neighborInfo.@"o-") {
-						const factor = 1 - (1 - factorX1)*(1 - factorY1);
 						const x = a;
 						const y = b;
+						const polynomial = noise.get(mapFragment.pos.wx + @as(i32, @intCast(x)), mapFragment.pos.wy + @as(i32, @intCast(y)));
+						const factorX = polynomial.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
+						const factorY = polynomial.eval(@as(f32, @floatFromInt(b))/interpolationDistance);
+						const factor = 1 - (1 - factorX)*(1 - factorY);
 						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
 						if (factor < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
