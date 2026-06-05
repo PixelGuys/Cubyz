@@ -222,6 +222,11 @@ pub fn List(comptime T: type) type {
 		items: []T = &.{},
 		capacity: usize = 0,
 
+		pub const empty: @This() = .{
+			.items = &.{},
+			.capacity = 0,
+		};
+
 		pub fn initCapacity(allocator: NeverFailingAllocator, capacity: usize) @This() {
 			return .{
 				.items = allocator.alloc(T, capacity)[0..0],
