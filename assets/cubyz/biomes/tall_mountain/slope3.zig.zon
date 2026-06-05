@@ -93,7 +93,7 @@
 		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:slate/base",
-			.chance = 0.05,
+			.chance = 0.008,
 			.width = 8,
 			.variation = 9,
 			.depth = 10,
