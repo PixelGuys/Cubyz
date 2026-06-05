@@ -317,7 +317,7 @@ pub const Biome = struct { // MARK: Biome
 		}
 		const parentBiomeList = zon.getChild("parentBiomes");
 		for (parentBiomeList.toSlice()) |parent| {
-			const result = unfinishedSubBiomes.getOrPutValue(main.globalAllocator.allocator, parent.get([]const u8, "id", ""), .{}) catch unreachable;
+			const result = unfinishedSubBiomes.getOrPutValue(main.globalAllocator.allocator, parent.get([]const u8, "id", ""), .empty) catch unreachable;
 			result.value_ptr.append(main.globalAllocator, .{
 				.biomeId = self.id,
 				.chance = parent.get(f32, "chance", 1),
@@ -347,7 +347,7 @@ pub const Biome = struct { // MARK: Biome
 		self.structure = BlockStructure.init(main.worldArena, zon.getChild("ground_structure"));
 
 		const structures = zon.getChild("structures");
-		var vegetation: main.List(SimpleStructureModel) = .{};
+		var vegetation: main.List(SimpleStructureModel) = .empty;
 		var totalChance: f32 = 0;
 		defer vegetation.deinit(main.stackAllocator);
 		// Add structures from the biome's internal structure table
@@ -375,7 +375,7 @@ pub const Biome = struct { // MARK: Biome
 		self.vegetationModels = main.worldArena.dupe(SimpleStructureModel, vegetation.items);
 
 		const caves = zon.getChild("caveModels");
-		var caveSdfs: main.List(terrain.sdf.SdfModel) = .{};
+		var caveSdfs: main.List(terrain.sdf.SdfModel) = .empty;
 		defer caveSdfs.deinit(main.stackAllocator);
 		for (caves.toSlice()) |elem| {
 			const model = terrain.sdf.SdfModel.initModel(elem) orelse continue;
@@ -580,10 +580,10 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 
 // MARK: init/register
 var finishedLoading: bool = false;
-var biomes: main.List(Biome) = .{};
-var caveBiomes: main.List(Biome) = .{};
+var biomes: main.List(Biome) = .empty;
+var caveBiomes: main.List(Biome) = .empty;
 var biomesById: std.StringHashMapUnmanaged(*Biome) = .{};
-var biomesByIndex: main.List(*Biome) = .{};
+var biomesByIndex: main.List(*Biome) = .empty;
 pub var byTypeBiomes: *TreeNode = undefined;
 
 const SubBiomeData = struct {
@@ -617,10 +617,10 @@ var unfinishedTransitionBiomes: std.StringHashMapUnmanaged([]UnfinishedTransitio
 
 pub fn reset() void {
 	finishedLoading = false;
-	biomes = .{};
-	caveBiomes = .{};
+	biomes = .empty;
+	caveBiomes = .empty;
 	biomesById = .{};
-	biomesByIndex = .{};
+	biomesByIndex = .empty;
 	byTypeBiomes = undefined;
 }
 

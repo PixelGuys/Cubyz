@@ -34,7 +34,7 @@ const WorldInfo = struct {
 	name: []const u8,
 	fileName: []const u8,
 };
-var worldList: main.List(WorldInfo) = .{};
+var worldList: main.List(WorldInfo) = .empty;
 
 pub fn init() void {
 	deleteIcon = Texture.initFromFile("assets/cubyz/ui/delete_icon.png");
