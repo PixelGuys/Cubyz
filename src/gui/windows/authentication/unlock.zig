@@ -27,7 +27,7 @@ var textComponent: *TextInput = undefined;
 var incorrectPasswordLabel: *Label = undefined;
 
 fn apply() void {
-	var failureText: main.List(u8) = .init(main.stackAllocator);
+	var failureText: main.ListManaged(u8) = .init(main.stackAllocator);
 	defer failureText.deinit();
 	const accountCode = main.settings.storedAccount.decryptFromPassword(textComponent.currentString.items, &failureText) catch |err| {
 		if (err == error.AuthenticationFailed) {

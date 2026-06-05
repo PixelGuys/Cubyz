@@ -13,7 +13,7 @@
 	.maxRadius = 320,
 	.mountains = 30,
 
-	.music = "cubyz:sunrise",
+	.music = "cubyz:sinanimea/sunrise",
 
 	.ground_structure = .{
 		"cubyz:grass",
@@ -23,8 +23,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:leaves/oak",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.log = "cubyz:log/oak",
 			.chance = 0.014,
 			.type = .round,
 			.height = 6,

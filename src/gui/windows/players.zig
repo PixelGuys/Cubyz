@@ -29,7 +29,7 @@ fn kickbyConnection(conn: *main.network.Connection) void {
 
 fn kickByPlayerIndex(playerIndex: usize) void {
 	const command = std.fmt.allocPrint(main.globalAllocator.allocator, "kick @{d}", .{playerIndex}) catch unreachable;
-	main.sync.ClientSide.executeCommand(.{.chatCommand = .{.message = command}});
+	main.sync.client.executeCommand(.{.chatCommand = .{.message = command}});
 }
 
 pub fn onOpen() void {
@@ -42,13 +42,13 @@ pub fn onOpen() void {
 		}
 
 		for (main.client.entity_manager.entities.items()) |ent| {
-			if (ent.playerIndex == null) continue;
+			const playerComponent = main.entity.components.@"cubyz:player".client.get(ent.id) orelse continue;
 			const row = HorizontalList.init();
 
 			const string = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{std.fmt.alt(ent, .formatWithPlayerIndex)}) catch unreachable;
 			defer main.stackAllocator.free(string);
 			row.add(Label.init(.{0, 0}, 200, string, .left));
-			row.add(Button.initText(.{0, 0}, 100, "Kick", .initWithInt(kickByPlayerIndex, ent.playerIndex.?)));
+			row.add(Button.initText(.{0, 0}, 100, "Kick", .initWithInt(kickByPlayerIndex, playerComponent.playerIndex)));
 			list.add(row);
 		}
 	} else {

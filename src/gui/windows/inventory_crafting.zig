@@ -32,9 +32,9 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 
-var availableItems: main.List(BaseItemIndex) = undefined;
-var itemAmount: main.List(u32) = undefined;
-var inventories: main.List(ClientInventory) = undefined;
+var availableItems: main.ListManaged(BaseItemIndex) = undefined;
+var itemAmount: main.ListManaged(u32) = undefined;
+var inventories: main.ListManaged(ClientInventory) = undefined;
 
 pub var arrowTexture: Texture = undefined;
 
@@ -84,7 +84,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 	}
 	inventories.clearRetainingCapacity();
 	// Find all recipes the player can make:
-	outer: for (items.recipes()) |*recipe| {
+	outer: for (items.getRecipes()) |*recipe| {
 		middle: for (recipe.sourceItems, recipe.sourceAmounts) |sourceItem, sourceAmount| {
 			for (availableItems.items, itemAmount.items) |availableItem, availableAmount| {
 				if (availableItem == sourceItem and availableAmount >= sourceAmount) {

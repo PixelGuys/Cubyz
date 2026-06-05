@@ -4,8 +4,8 @@ const main = @import("main");
 const Vec3i = main.vec.Vec3i;
 const ZonElement = main.ZonElement;
 const Blueprint = main.blueprint.Blueprint;
+const ListManaged = main.ListManaged;
 const List = main.List;
-const ListUnmanaged = main.ListUnmanaged;
 const AliasTable = main.utils.AliasTable;
 const Neighbor = main.chunk.Neighbor;
 const Block = main.blocks.Block;
@@ -13,19 +13,19 @@ const Degrees = main.rotation.Degrees;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const Assets = main.assets.Assets;
 
-var structureList: ListUnmanaged(StructureBuildingBlock) = .{};
+var structureList: List(StructureBuildingBlock) = .{};
 var structureMap: std.StringHashMapUnmanaged(StructureIndex) = .{};
 
-var blueprintList: ListUnmanaged([4]BlueprintEntry) = .{};
+var blueprintList: List([4]BlueprintEntry) = .{};
 var blueprintMap: std.StringHashMapUnmanaged(BlueprintIndex) = .{};
 
-var childrenToResolve: List(struct { structureId: []const u8, structure: *?*StructureBuildingBlock }) = undefined;
+var childrenToResolve: ListManaged(struct { structureId: []const u8, structure: *?*StructureBuildingBlock }) = undefined;
 
 const originBlockStringId = "cubyz:sbb/origin";
 var originBlockNumericId: u16 = 0;
 
 var childBlockNumericIdMap: std.AutoHashMapUnmanaged(GlobalBlockIndex, LocalBlockIndex) = .{};
-var childBlockName: ListUnmanaged([]const u8) = .{};
+var childBlockName: List([]const u8) = .{};
 var childBlockNameToLocalIndex: std.StringHashMapUnmanaged(LocalBlockIndex) = .{};
 
 pub const BlueprintIndex = enum(u32) {
@@ -101,7 +101,7 @@ const BlueprintEntry = struct {
 		};
 
 		var hasOrigin = false;
-		var childBlocks: ListUnmanaged(StructureBlock) = .{};
+		var childBlocks: List(StructureBlock) = .{};
 		defer childBlocks.deinit(main.stackAllocator);
 
 		for (0..blueprint.blocks.width) |x| {
@@ -309,7 +309,7 @@ pub const StructureBuildingBlock = struct {
 	}
 	pub fn postResolutionChecks(self: StructureBuildingBlock) void {
 		// Collect all unique child blocks used in blueprints of this SBB.
-		var childBlocksInBlueprints: ListUnmanaged(LocalBlockIndex) = .{};
+		var childBlocksInBlueprints: List(LocalBlockIndex) = .{};
 		defer childBlocksInBlueprints.deinit(main.stackAllocator);
 
 		for (self.blueprints.items, 0..) |blueprints, blueprintIndex| {

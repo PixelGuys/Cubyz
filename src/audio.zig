@@ -3,12 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const utils = main.utils;
 
-const c = @cImport({
-	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
-	@cInclude("miniaudio.h");
-	@cDefine("STB_VORBIS_HEADER_ONLY", "");
-	@cInclude("stb/stb_vorbis.h");
-});
+const c = @import("c");
 
 fn handleError(miniaudioError: c.ma_result) !void {
 	if (miniaudioError != c.MA_SUCCESS) {
@@ -100,7 +95,7 @@ const AudioData = struct {
 	}
 };
 
-var activeTasks: main.ListUnmanaged([]const u8) = .{};
+var activeTasks: main.List([]const u8) = .{};
 var taskMutex: main.utils.Mutex = .{};
 
 var musicCache: utils.Cache(AudioData, 4, 4, AudioData.deinit) = .{};

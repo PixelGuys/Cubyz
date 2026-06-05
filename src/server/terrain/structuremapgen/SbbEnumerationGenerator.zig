@@ -13,8 +13,9 @@ const CaveMapView = terrain.CaveMap.CaveMapView;
 const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
 const SbbGen = @import("../simple_structures/SbbGen.zig");
 const ServerChunk = main.chunk.ServerChunk;
-const SimpleStructure = @import("SimpleStructureGen.zig").SimpleStructure;
-const StructureBuildingBlock = terrain.structure_building_blocks.StructureBuildingBlock;
+const SimpleStructureGen = @import("SimpleStructureGen.zig");
+const SimpleStructure = SimpleStructureGen.SimpleStructure;
+const StructureBuildingBlock = terrain.sbb.StructureBuildingBlock;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
@@ -35,9 +36,9 @@ pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 
 	const Entry = struct { sbb: *const StructureBuildingBlock, hasParent: bool, reachable: bool };
-	var localSbbList: main.ListUnmanaged(Entry) = .{};
+	var localSbbList: main.List(Entry) = .{};
 	defer localSbbList.deinit(main.stackAllocator);
-	for (terrain.structure_building_blocks.list()) |*entry| {
+	for (terrain.sbb.list()) |*entry| {
 		localSbbList.append(main.stackAllocator, .{.sbb = entry, .hasParent = false, .reachable = false});
 	}
 
@@ -54,10 +55,10 @@ pub fn init(parameters: ZonElement) void {
 			}
 		}
 	}
-	var rootSbbList: main.ListUnmanaged(*const StructureBuildingBlock) = .initCapacity(main.stackAllocator, localSbbList.items.len);
+	var rootSbbList: main.List(*const StructureBuildingBlock) = .initCapacity(main.stackAllocator, localSbbList.items.len);
 	defer rootSbbList.deinit(main.stackAllocator);
 	{ // Ensure that every structure was reachable (in case of recursion)
-		var unreachables: main.ListUnmanaged(*Entry) = .initCapacity(main.stackAllocator, localSbbList.items.len);
+		var unreachables: main.List(*Entry) = .initCapacity(main.stackAllocator, localSbbList.items.len);
 		defer unreachables.deinit(main.stackAllocator);
 
 		for (localSbbList.items) |*candidate| {

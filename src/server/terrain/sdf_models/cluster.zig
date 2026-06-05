@@ -26,20 +26,36 @@ const Instance = struct {
 	smoothness: f32,
 };
 
-pub fn init(zon: ZonElement) ?*@This() {
-	var list: main.List(Entry) = .init(main.stackAllocator);
-	defer list.deinit();
+pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
+	var list: main.List(Entry) = .{};
+	defer list.deinit(main.stackAllocator);
+
+	var maxExtend: vec.Boxi = .{
+		.min = @splat(1e9),
+		.max = @splat(-1e9),
+	};
+
 	for (zon.getChild("children").toSlice()) |child| {
-		list.append(.{
-			.model = sdf.SdfModel.initModel(child) orelse return null,
+		const childModelAndExtend = sdf.SdfModel.initModel(child) orelse return null;
+		const childEntry: Entry = .{
+			.model = childModelAndExtend.model,
 			.positionOffset = child.get(Vec3f, "positionOffset", @splat(0)),
 			.randomOffset = child.get(Vec3f, "randomOffset", @splat(0)),
-		});
+		};
+		maxExtend.min = @min(maxExtend.min, @as(Vec3i, @floor(@as(Vec3f, @floatFromInt(childModelAndExtend.maxExtend.min)) + childEntry.positionOffset - childEntry.randomOffset)));
+		maxExtend.max = @max(maxExtend.max, @as(Vec3i, @ceil(@as(Vec3f, @floatFromInt(childModelAndExtend.maxExtend.max)) + childEntry.positionOffset + childEntry.randomOffset)));
+		list.append(main.stackAllocator, childEntry);
 	}
-	const result = main.worldArena.create(@This());
-	result.children = main.worldArena.dupe(Entry, list.items);
-	result.smoothness = zon.get(f32, "smothness", 4);
-	return result;
+
+	if (list.items.len == 0) {
+		std.log.err("cubyz:cluster SDF expected at last one child SDF.", .{});
+		return null;
+	}
+
+	const self = main.worldArena.create(@This());
+	self.children = main.worldArena.dupe(Entry, list.items);
+	self.smoothness = zon.get(f32, "smothness", 4);
+	return .{.model = self, .maxExtend = maxExtend};
 }
 
 pub fn instantiate(self: *@This(), arena: NeverFailingAllocator, seed: *u64) SdfInstance {
@@ -52,8 +68,9 @@ pub fn instantiate(self: *@This(), arena: NeverFailingAllocator, seed: *u64) Sdf
 	var maxPos: Vec3i = @splat(-1e9);
 	for (self.children, instance.children) |entry, *result| {
 		result.* = entry.model.instantiate(arena, seed);
-		result.minBounds +%= @trunc(entry.positionOffset + entry.randomOffset*main.random.nextFloatVectorSigned(3, seed));
-		result.maxBounds +%= @trunc(entry.positionOffset + entry.randomOffset*main.random.nextFloatVectorSigned(3, seed));
+		const offset = entry.positionOffset + entry.randomOffset*main.random.nextFloatVectorSigned(3, seed);
+		result.minBounds +%= @trunc(offset);
+		result.maxBounds +%= @trunc(offset);
 		minPos = @min(minPos, result.minBounds);
 		maxPos = @max(maxPos, result.maxBounds);
 	}

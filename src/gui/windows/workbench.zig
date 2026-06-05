@@ -40,7 +40,7 @@ var craftingResultInv: ClientInventory = undefined;
 
 var itemSlots: [25]*ItemSlot = undefined;
 
-var proceduralItemTypes: main.ListUnmanaged(ProceduralItemTypeIndex) = undefined;
+var proceduralItemTypes: main.List(ProceduralItemTypeIndex) = undefined;
 var currentProceduralItemType: usize = 0;
 
 var proceduralItemButton: *Button = undefined;

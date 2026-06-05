@@ -6,7 +6,7 @@ const ServerChunk = main.chunk.ServerChunk;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const vec = @import("main.vec");
+const vec = main.vec;
 const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
 
@@ -246,6 +246,7 @@ pub const Biome = struct { // MARK: Biome
 	supportsRivers: bool, // TODO: Reimplement rivers.
 	/// The first members in this array will get prioritized.
 	vegetationModels: []SimpleStructureModel = &.{},
+	maxSdfExtend: vec.Boxi = .{.min = @splat(0), .max = @splat(0)},
 	caveSdfModels: []terrain.sdf.SdfModel = &.{},
 	stripes: []Stripe = &.{},
 	subBiomes: main.utils.AliasTable(SubBiomeData) = .{.items = &.{}, .aliasData = &.{}},
@@ -346,7 +347,7 @@ pub const Biome = struct { // MARK: Biome
 		self.structure = BlockStructure.init(main.worldArena, zon.getChild("ground_structure"));
 
 		const structures = zon.getChild("structures");
-		var vegetation: main.ListUnmanaged(SimpleStructureModel) = .{};
+		var vegetation: main.List(SimpleStructureModel) = .{};
 		var totalChance: f32 = 0;
 		defer vegetation.deinit(main.stackAllocator);
 		// Add structures from the biome's internal structure table
@@ -374,11 +375,13 @@ pub const Biome = struct { // MARK: Biome
 		self.vegetationModels = main.worldArena.dupe(SimpleStructureModel, vegetation.items);
 
 		const caves = zon.getChild("caveModels");
-		var caveSdfs: main.ListUnmanaged(terrain.sdf.SdfModel) = .{};
+		var caveSdfs: main.List(terrain.sdf.SdfModel) = .{};
 		defer caveSdfs.deinit(main.stackAllocator);
 		for (caves.toSlice()) |elem| {
 			const model = terrain.sdf.SdfModel.initModel(elem) orelse continue;
-			caveSdfs.append(main.stackAllocator, model);
+			const spawnOffset: vec.Vec3i = @splat(@ceil(model.model.maxBiomeCenterDistance));
+			self.maxSdfExtend = self.maxSdfExtend.merge(.{.min = model.maxExtend.min - spawnOffset, .max = model.maxExtend.max + spawnOffset});
+			caveSdfs.append(main.stackAllocator, model.model);
 		}
 		self.caveSdfModels = main.worldArena.dupe(terrain.sdf.SdfModel, caveSdfs.items);
 
@@ -463,8 +466,9 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 					chunk.updateBlockInGeneration(x, y, depth, blockStack.block);
 				}
 				depth -%= chunk.super.pos.voxelSize;
-				if (depth -% minDepth <= 0)
+				if (depth -% minDepth <= 0) {
 					return depth +% chunk.super.pos.voxelSize;
+				}
 			}
 		}
 		return depth +% chunk.super.pos.voxelSize;
@@ -522,7 +526,7 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 		var lowerIndex: usize = undefined;
 		var upperIndex: usize = undefined;
 		{
-			var lists: [3]main.ListUnmanaged(Biome) = .{
+			var lists: [3]main.List(Biome) = .{
 				.initCapacity(main.stackAllocator, currentSlice.len),
 				.initCapacity(main.stackAllocator, currentSlice.len),
 				.initCapacity(main.stackAllocator, currentSlice.len),
@@ -576,10 +580,10 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 
 // MARK: init/register
 var finishedLoading: bool = false;
-var biomes: main.ListUnmanaged(Biome) = .{};
-var caveBiomes: main.ListUnmanaged(Biome) = .{};
+var biomes: main.List(Biome) = .{};
+var caveBiomes: main.List(Biome) = .{};
 var biomesById: std.StringHashMapUnmanaged(*Biome) = .{};
-var biomesByIndex: main.ListUnmanaged(*Biome) = .{};
+var biomesByIndex: main.List(*Biome) = .{};
 pub var byTypeBiomes: *TreeNode = undefined;
 
 const SubBiomeData = struct {
@@ -595,7 +599,7 @@ const UnfinishedSubBiomeData = struct {
 		return .{.biome = getById(self.biomeId), .parentEdgeDistance = self.parentEdgeDistance};
 	}
 };
-var unfinishedSubBiomes: std.StringHashMapUnmanaged(main.ListUnmanaged(UnfinishedSubBiomeData)) = .{};
+var unfinishedSubBiomes: std.StringHashMapUnmanaged(main.List(UnfinishedSubBiomeData)) = .{};
 
 const UnfinishedTransitionBiomeData = struct {
 	biomeId: []const u8,
@@ -610,13 +614,6 @@ const TransitionBiome = struct {
 	width: u8,
 };
 var unfinishedTransitionBiomes: std.StringHashMapUnmanaged([]UnfinishedTransitionBiomeData) = .{};
-
-pub fn init() void {
-	const list = @import("simple_structures/_list.zig");
-	inline for (@typeInfo(list).@"struct".decls) |decl| {
-		SimpleStructureModel.registerGenerator(@field(list, decl.name));
-	}
-}
 
 pub fn reset() void {
 	finishedLoading = false;
