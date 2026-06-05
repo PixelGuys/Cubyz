@@ -76,6 +76,13 @@
 			.density = 0.1,
 			.priority = 0.1,
 		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:cold_grass_vegetation",
+			.chance = 0.2,
+			.height = 1,
+			.height_variation = 0,
+		},
 	},
 	.parentBiomes = .{
 		.{
