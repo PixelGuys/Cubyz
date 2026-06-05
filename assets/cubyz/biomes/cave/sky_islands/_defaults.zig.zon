@@ -6,7 +6,7 @@
 	.fogLower = 1e10,
 	.fogHigher = 1e10,
 
-	.music = "cubyz:GymnopedieNo1",
+	.music = "cubyz:mischol/sunshower",
 	.stoneBlock = "cubyz:nimbusite/base",
 	.ground_structure = .{
 		"cubyz:grass/sky",

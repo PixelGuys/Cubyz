@@ -211,7 +211,8 @@ const GenerationStructure = struct {
 
 	fn findClosestBiomeTo(prefilteredCandidates: []*BiomePoint, wx: i32, wy: i32, relX: i32, relY: i32, worldSeed: u64) BiomeSample {
 		const x = wx +% relX*terrain.SurfaceMap.MapFragment.biomeSize;
-		const y = wy +% relY*terrain.SurfaceMap.MapFragment.biomeSize;
+		var y = wy +% relY*terrain.SurfaceMap.MapFragment.biomeSize;
+		if (@mod(relX, 2) == 1) y += terrain.SurfaceMap.MapFragment.biomeSize/2;
 		var closestDist = std.math.floatMax(f32);
 		var secondClosestDist = std.math.floatMax(f32);
 		var closestBiomePoint: BiomePoint = undefined;
@@ -221,7 +222,7 @@ const GenerationStructure = struct {
 		var mountains: f32 = 0;
 		var totalWeight: f32 = 0;
 		// all BiomePoints are within ±2 chunks of the current one.
-		var candidateList: main.ListUnmanaged(struct { point: *BiomePoint, weight: f32 }) = .initCapacity(main.stackAllocator, prefilteredCandidates.len);
+		var candidateList: main.List(struct { point: *BiomePoint, weight: f32 }) = .initCapacity(main.stackAllocator, prefilteredCandidates.len);
 		defer candidateList.deinit(main.stackAllocator);
 		for (prefilteredCandidates) |candidate| {
 			candidateList.appendAssumeCapacity(.{.point = candidate, .weight = 1});
@@ -303,7 +304,8 @@ const GenerationStructure = struct {
 		if (skipMismatched) {
 			var x: f32 = min[0];
 			while (x < max[0]) : (x += 1) {
-				var y: f32 = min[1];
+				const yOffset: f32 = @mod(x, 2)*0.5;
+				var y: f32 = min[1] + yOffset;
 				while (y < max[1]) : (y += 1) {
 					const distSquare = vec.lengthSquare(Vec2f{x, y} - relPos);
 					if (distSquare < relRadius*relRadius) {
@@ -316,7 +318,8 @@ const GenerationStructure = struct {
 		}
 		var x: f32 = min[0];
 		while (x < max[0]) : (x += 1) {
-			var y: f32 = min[1];
+			const yOffset: f32 = @mod(x, 2)*0.5;
+			var y: f32 = min[1] + yOffset;
 			while (y < max[1]) : (y += 1) {
 				const distSquare = vec.lengthSquare(Vec2f{x, y} - relPos);
 				if (distSquare < relRadius*relRadius) {
@@ -336,7 +339,7 @@ const GenerationStructure = struct {
 		}
 	}
 
-	fn addSubBiomesOf(biome: BiomePoint, map: *ClimateMapFragment, extraBiomes: *main.List(BiomePoint), wx: i32, wy: i32, width: u31, height: u31, worldSeed: u64, comptime radius: enum { known, unknown }) void {
+	fn addSubBiomesOf(biome: BiomePoint, map: *ClimateMapFragment, extraBiomes: *main.ListManaged(BiomePoint), wx: i32, wy: i32, width: u31, height: u31, worldSeed: u64, comptime radius: enum { known, unknown }) void {
 		var seed = random.initSeed2D(worldSeed, @bitCast(biome.pos));
 		var biomeCount: f32 = undefined;
 		if (biome.biome.subBiomeTotalChance > biome.biome.maxSubBiomeCount) {
@@ -392,7 +395,10 @@ const GenerationStructure = struct {
 		for (1..neighborData.len) |i| {
 			for (1..preMapSize - 1) |x| {
 				for (1..preMapSize - 1) |y| {
-					neighborData[i][x][y] = neighborData[i - 1][x][y] | neighborData[i - 1][x - 1][y] | neighborData[i - 1][x + 1][y] | neighborData[i - 1][x][y - 1] | neighborData[i - 1][x][y + 1];
+					const y1 = y;
+					const y2 = if (x%2 == 1) y + 1 else y - 1;
+					const xNeighbors = neighborData[i - 1][x - 1][y1] | neighborData[i - 1][x - 1][y2] | neighborData[i - 1][x + 1][y1] | neighborData[i - 1][x + 1][y2];
+					neighborData[i][x][y] = neighborData[i - 1][x][y] | neighborData[i - 1][x][y - 1] | neighborData[i - 1][x][y + 1] | xNeighbors;
 				}
 			}
 		}
@@ -445,7 +451,7 @@ const GenerationStructure = struct {
 		// Subdivide
 		const halfWidth = width/2;
 		const halfHeight = height/2;
-		var newCandidates: main.ListUnmanaged(*BiomePoint) = .initCapacity(main.stackAllocator, biomeCandidates.len);
+		var newCandidates: main.List(*BiomePoint) = .initCapacity(main.stackAllocator, biomeCandidates.len);
 		defer newCandidates.deinit(main.stackAllocator);
 		for (0..2) |dx| {
 			for (0..2) |dy| {
@@ -457,7 +463,7 @@ const GenerationStructure = struct {
 				const wxMin = wx +% newRelX*terrain.SurfaceMap.MapFragment.biomeSize;
 				const wxMax = wxMin +% newWidth*terrain.SurfaceMap.MapFragment.biomeSize;
 				const wyMin = wy +% newRelY*terrain.SurfaceMap.MapFragment.biomeSize;
-				const wyMax = wyMin +% newHeight*terrain.SurfaceMap.MapFragment.biomeSize;
+				const wyMax = wyMin +% newHeight*terrain.SurfaceMap.MapFragment.biomeSize +% terrain.SurfaceMap.MapFragment.biomeSize;
 
 				newCandidates.clearRetainingCapacity();
 				for (biomeCandidates) |candidate| {
@@ -478,10 +484,10 @@ const GenerationStructure = struct {
 	pub fn toMap(self: GenerationStructure, map: *ClimateMapFragment, width: u31, height: u31, worldSeed: u64) void {
 		var preMap: [preMapSize][preMapSize]BiomeSample = undefined;
 		var allCandidates: main.List(*BiomePoint) = .initCapacity(main.stackAllocator, 1024);
-		defer allCandidates.deinit();
+		defer allCandidates.deinit(main.stackAllocator);
 		for (self.chunks.mem) |chunk| {
 			for (chunk.biomesSortedByX) |*candidate| {
-				allCandidates.append(candidate);
+				allCandidates.append(main.stackAllocator, candidate);
 			}
 		}
 		fillRecursively(map.pos.wx, map.pos.wy, &preMap, allCandidates.items, worldSeed, -margin, -margin, preMapSize, preMapSize);
@@ -491,7 +497,7 @@ const GenerationStructure = struct {
 		}
 
 		// Add some sub-biomes:
-		var extraBiomes = main.List(BiomePoint).init(main.stackAllocator);
+		var extraBiomes: main.ListManaged(BiomePoint) = .init(main.stackAllocator);
 		defer extraBiomes.deinit();
 		for (self.chunks.mem) |chunk| {
 			for (chunk.biomesSortedByX) |biome| {

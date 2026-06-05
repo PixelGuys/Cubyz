@@ -43,12 +43,12 @@ pub const CaveLayer = struct {
 				return null;
 			}
 		}
-		var biomes: main.List(*const Biome) = .init(main.stackAllocator);
-		defer biomes.deinit();
+		var biomes: main.List(*const Biome) = .empty;
+		defer biomes.deinit(main.stackAllocator);
 		outer: for (terrain.biomes.getCaveBiomes()) |*biome| {
 			for (tags) |tag| {
 				if (biome.hasTag(tag)) {
-					biomes.append(biome);
+					biomes.append(main.stackAllocator, biome);
 					continue :outer;
 				}
 			}
@@ -72,7 +72,7 @@ pub const CaveLayer = struct {
 };
 
 var finishedLoading: bool = false;
-var caveLayers: main.ListUnmanaged(CaveLayer) = .{};
+var caveLayers: main.List(CaveLayer) = .empty;
 
 fn register(id: []const u8, zon: ZonElement) void {
 	const caveLayer = CaveLayer.init(id, zon) orelse return;
@@ -135,5 +135,5 @@ pub fn getLayer(height: i32) CaveLayer {
 
 pub fn reset() void {
 	finishedLoading = false;
-	caveLayers = .{};
+	caveLayers = .empty;
 }

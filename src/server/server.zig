@@ -29,7 +29,7 @@ pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
 pub const permission = @import("permission.zig");
 
-pub const command = @import("command/_command.zig");
+pub const command = @import("command.zig");
 
 pub const WorldEditData = struct {
 	const maxWorldEditHistoryCapacity: u32 = 1024;
@@ -55,6 +55,9 @@ pub const WorldEditData = struct {
 			pub fn deinit(self: Value) void {
 				main.globalAllocator.free(self.message);
 				self.blueprint.deinit(main.globalAllocator);
+			}
+			pub fn selection(self: Value) Blueprint.Selection {
+				return .initFromExtent(self.position, self.blueprint.extent());
 			}
 		};
 		pub fn init() History {
@@ -139,7 +142,7 @@ pub const User = struct { // MARK: User
 
 	mutex: main.utils.Mutex = .{},
 
-	inventoryCommands: main.ListUnmanaged([]const u8) = .{},
+	inventoryCommands: main.List([]const u8) = .empty,
 
 	permissions: permission.Permissions = undefined,
 
@@ -165,7 +168,7 @@ pub const User = struct { // MARK: User
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
 
-		main.items.Inventory.ServerSide.disconnectUser(self);
+		main.items.Inventory.server.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
 		self.inventoryClientToServerIdMap.deinit();
 
@@ -175,8 +178,8 @@ pub const User = struct { // MARK: User
 				return;
 			};
 
-			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(self.inventory.?);
-			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(self.handInventory.?);
+			main.items.Inventory.server.destroyExternallyManagedInventory(self.inventory.?);
+			main.items.Inventory.server.destroyExternallyManagedInventory(self.handInventory.?);
 		}
 
 		self.permissions.deinit();
@@ -249,20 +252,23 @@ pub const User = struct { // MARK: User
 		self.id = freeId;
 		freeId += 1;
 
-		if (main.entityModel.playerEntityModels.items.len != 0) {
-			const defaultModel = main.entityModel.playerEntityModels.items[main.random.nextIntBounded(u32, &main.seed, @intCast(main.entityModel.playerEntityModels.items.len))];
-			main.entity.components.@"cubyz:model".server.loadByIndex(self.id, defaultModel) catch unreachable;
-		}
 		world.?.loadPlayer(self) catch {
 			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
 		};
-
+		if (main.entity.components.@"cubyz:model".server.get(self.id) == null) {
+			if (main.entityModel.playerEntityModels.items.len != 0) {
+				const defaultModel = main.entityModel.playerEntityModels.items[main.random.nextIntBounded(u32, &main.seed, @intCast(main.entityModel.playerEntityModels.items.len))];
+				main.entity.components.@"cubyz:model".server.put(self.id, .{.entityModel = defaultModel});
+			}
+		}
 		if (main.entity.components.@"cubyz:bag".server.get(self.id) == null) {
 			main.entity.components.@"cubyz:bag".server.loadEmpty(self.id);
 		}
 
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();
+
+		main.entity.components.@"cubyz:player".server.load(self.id, @truncate(self.playerIndex));
 	}
 
 	fn simArrIndex(x: i32) usize {
@@ -353,7 +359,7 @@ pub const User = struct { // MARK: User
 					pub fn run(user: *User) void {
 						defer user.decreaseRefCount();
 
-						var newTasks: main.ListUnmanaged(main.utils.ThreadPool.Task) = .initCapacity(main.stackAllocator, user.jobQueue.size);
+						var newTasks: main.List(main.utils.ThreadPool.Task) = .initCapacity(main.stackAllocator, user.jobQueue.size);
 						defer newTasks.deinit(main.stackAllocator);
 						while (user.jobQueue.extractAny()) |_task| {
 							var task = _task;
@@ -416,12 +422,18 @@ pub const User = struct { // MARK: User
 		});
 	}
 
+	pub fn clearJobQueue(self: *User) void {
+		while (self.jobQueue.extractAny()) |task| {
+			task.vtable.clean(task.self);
+		}
+	}
+
 	fn isNetworkQueueFull(self: *User) bool {
 		return self.conn.secureChannel.super.sendBuffer.buffer.len > 900000;
 	}
 
 	fn scheduleJobQueue(self: *User) void {
-		main.utils.assertLocked(&self.mutex);
+		self.mutex.assertLocked();
 		if (self.jobQueueScheduled) return;
 		if (self.jobQueue.size == 0) return;
 		if (self.isNetworkQueueFull()) return;
@@ -434,13 +446,13 @@ pub const User = struct { // MARK: User
 		self.scheduleJobQueue();
 		const commands = self.inventoryCommands;
 		defer commands.deinit(main.globalAllocator);
-		self.inventoryCommands = .{};
+		self.inventoryCommands = .empty;
 		self.mutex.unlock();
 
 		for (commands.items) |commandData| {
 			defer main.globalAllocator.free(commandData);
 			var reader: BinaryReader = .init(commandData);
-			main.sync.ServerSide.executeUserCommand(self, &reader) catch |err| {
+			main.sync.server.executeUserCommand(self, &reader) catch |err| {
 				if (err == error.InventoryNotFound) {
 					main.network.protocols.inventory.sendFailure(self.conn);
 				} else {
@@ -517,7 +529,7 @@ const updateTime: std.Io.Duration = .fromNanoseconds(1000000000/20);
 
 pub var world: ?*ServerWorld = null;
 var userMutex: main.utils.Mutex = .{};
-var users: main.List(*User) = undefined;
+var users: main.ListManaged(*User) = undefined;
 var userDeinitList: main.utils.ConcurrentQueue(*User) = undefined;
 var userConnectList: main.utils.ConcurrentQueue(*User) = undefined;
 
@@ -542,8 +554,8 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	}; // TODO Configure the second argument in the server settings.
 
 	main.entity.server.init();
-	main.items.Inventory.ServerSide.init();
-	main.sync.ServerSide.init();
+	main.items.Inventory.server.init();
+	main.sync.server.init();
 
 	world = ServerWorld.init(name) catch |err| {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
@@ -569,6 +581,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 fn deinit() void {
 	users.clearAndFree();
 	while (userDeinitList.popFront()) |user| {
+		user.clearJobQueue();
 		if (user.refCount.load(.monotonic) == 1) {
 			user.decreaseRefCount();
 		} else {
@@ -589,8 +602,8 @@ fn deinit() void {
 	}
 	world = null;
 
-	main.sync.ServerSide.deinit();
-	main.items.Inventory.ServerSide.deinit();
+	main.sync.server.deinit();
+	main.items.Inventory.server.deinit();
 	main.entity.server.deinit();
 
 	command.deinit();
@@ -647,7 +660,7 @@ fn update() void { // MARK: update()
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
 	defer main.stackAllocator.free(itemData);
 
-	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+	var entityData: main.ListManaged(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 	defer entityData.deinit();
 
 	for (userList) |user| {
@@ -756,6 +769,7 @@ pub fn connect(user: *User) void {
 pub fn connectInternal(user: *User) void {
 	user.initPlayer();
 	main.network.protocols.handShake.sendServerPlayerData(user.conn);
+
 	// TODO: addEntity(player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
@@ -774,8 +788,6 @@ pub fn connectInternal(user: *User) void {
 		defer zonArray.deinit(main.stackAllocator);
 
 		const entityZon = user.player().save(main.stackAllocator, .playerNearby);
-		entityZon.put("name", user.name);
-		entityZon.put("playerIndex", user.playerIndex);
 		zonArray.array.append(entityZon);
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
@@ -788,8 +800,6 @@ pub fn connectInternal(user: *User) void {
 		defer zonArray.deinit(main.stackAllocator);
 		for (userList) |other| {
 			const entityZon = other.player().save(main.stackAllocator, .playerNearby);
-			entityZon.put("name", other.name);
-			entityZon.put("playerIndex", other.playerIndex);
 			zonArray.array.append(entityZon);
 		}
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
@@ -800,6 +810,7 @@ pub fn connectInternal(user: *User) void {
 	main.network.protocols.entity.send(user.conn, initialList);
 	main.stackAllocator.free(initialList);
 	sendMessage("{s}§#ffff00 joined", .{user.name});
+	user.permissions.addPermission(.white, "/command/avatar");
 
 	userMutex.lock();
 	users.append(user);

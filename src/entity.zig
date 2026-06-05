@@ -38,7 +38,7 @@ const EntityComponentVTable = struct {
 var componentList: []?EntityComponentVTable = undefined;
 
 pub fn initComponents() void {
-	var tmpComponentList: main.ListUnmanaged(?EntityComponentVTable) = .{};
+	var tmpComponentList: main.List(?EntityComponentVTable) = .empty;
 	inline for (@typeInfo(components).@"struct".decls) |decl| {
 		@field(components, decl.name).client.init();
 		const componentId = @field(components, decl.name).entityComponentID;
@@ -100,31 +100,31 @@ pub fn unloadComponent(comptime side: main.sync.Side, componentId: EntityCompone
 
 pub const client = struct {
 	pub fn init() void {
-		inline for (@typeInfo(components).@"struct".decls) |decl| {
-			@field(components, decl.name).client.init();
-		}
 		inline for (@typeInfo(systems).@"struct".decls) |decl| {
 			@field(systems, decl.name).client.init();
+		}
+		inline for (@typeInfo(components).@"struct".decls) |decl| {
+			@field(components, decl.name).client.init();
 		}
 		main.client.entity_manager.init();
 	}
 	pub fn deinit() void {
+		main.client.entity_manager.deinit();
 		inline for (@typeInfo(components).@"struct".decls) |decl| {
 			@field(components, decl.name).client.deinit();
 		}
 		inline for (@typeInfo(systems).@"struct".decls) |decl| {
 			@field(systems, decl.name).client.deinit();
 		}
-		main.client.entity_manager.deinit();
 	}
 	pub fn clear() void {
-		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).client.clear();
-		}
+		main.client.entity_manager.clear();
 		inline for (@typeInfo(components).@"struct".decls) |decl| {
 			@field(components, decl.name).client.clear();
 		}
-		main.client.entity_manager.clear();
+		inline for (@typeInfo(systems).@"struct".decls) |decl| {
+			@field(systems, decl.name).client.clear();
+		}
 	}
 	pub fn removeAllComponents(id: u32) void {
 		const list = main.entity.components;
@@ -146,11 +146,11 @@ pub const client = struct {
 };
 pub const server = struct {
 	pub fn init() void {
-		inline for (@typeInfo(components).@"struct".decls) |decl| {
-			@field(components, decl.name).server.init();
-		}
 		inline for (@typeInfo(systems).@"struct".decls) |decl| {
 			@field(systems, decl.name).server.init();
+		}
+		inline for (@typeInfo(components).@"struct".decls) |decl| {
+			@field(components, decl.name).server.init();
 		}
 	}
 	pub fn deinit() void {
@@ -189,6 +189,26 @@ pub const server = struct {
 		const list = main.entity.components;
 		inline for (@typeInfo(list).@"struct".decls) |decl| {
 			@field(list, decl.name).server.unload(entityId);
+		}
+	}
+
+	pub fn transmitChange(EntityComponent: type, entity: u32) void {
+		var binaryWriter = main.utils.BinaryWriter.init(main.stackAllocator);
+		defer binaryWriter.deinit();
+
+		const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
+
+		if (EntityComponent.server.get(entity)) |ptr| {
+			if (ptr.save(&binaryWriter, .playerNearby) == .save) {
+				for (users) |user| {
+					main.network.protocols.EntityComponentUpdate.load(user.conn, entity, EntityComponent.entityComponentID, EntityComponent.entityComponentVersion, binaryWriter.data.items);
+				}
+			}
+		} else {
+			for (users) |user| {
+				main.network.protocols.EntityComponentUpdate.unload(user.conn, entity, EntityComponent.entityComponentID);
+			}
 		}
 	}
 };

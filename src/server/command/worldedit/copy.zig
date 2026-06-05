@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
+const command = main.server.command;
 const User = main.server.User;
 
 const Block = main.blocks.Block;
@@ -9,21 +10,25 @@ const Blueprint = main.blueprint.Blueprint;
 pub const description = "Copy selection to clipboard.";
 pub const usage = "/copy";
 
+const Args = union(enum) {
+	@"/copy": struct {},
+};
+
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/copy"});
+
 pub fn execute(args: []const u8, source: *User) void {
-	if (args.len != 0) {
-		source.sendMessage("#ff0000Too many arguments for command /copy. Expected no arguments.", .{});
+	var errorMessage: main.ListUnmanaged(u8) = .empty;
+	defer errorMessage.deinit(main.stackAllocator);
+
+	_ = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
+		source.sendMessage("#ff0000{s}", .{errorMessage.items});
 		return;
-	}
-	const pos1 = source.worldEditData.selectionPosition1 orelse {
-		return source.sendMessage("#ff0000Position 1 isn't set", .{});
-	};
-	const pos2 = source.worldEditData.selectionPosition2 orelse {
-		return source.sendMessage("#ff0000Position 2 isn't set", .{});
 	};
 
-	source.sendMessage("Copying: {} {}", .{pos1, pos2});
+	const selection = command.getCurrentSelection(source) catch return;
+	source.sendMessage("Copying: {f}", .{selection});
 
-	const result = Blueprint.capture(main.globalAllocator, pos1, pos2);
+	const result = Blueprint.capture(main.globalAllocator, selection);
 	switch (result) {
 		.success => {
 			if (source.worldEditData.clipboard != null) {

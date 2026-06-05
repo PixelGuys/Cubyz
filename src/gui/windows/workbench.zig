@@ -40,7 +40,7 @@ var craftingResultInv: ClientInventory = undefined;
 
 var itemSlots: [25]*ItemSlot = undefined;
 
-var proceduralItemTypes: main.ListUnmanaged(ProceduralItemTypeIndex) = undefined;
+var proceduralItemTypes: main.List(ProceduralItemTypeIndex) = undefined;
 var currentProceduralItemType: usize = 0;
 
 var proceduralItemButton: *Button = undefined;
@@ -132,7 +132,7 @@ pub fn render() void {
 pub fn onOpen() void {
 	currentProceduralItemType = 0;
 
-	proceduralItemTypes = .{};
+	proceduralItemTypes = .empty;
 	var iterator = ProceduralItemTypeIndex.iterator();
 	while (iterator.next()) |proceduralItemType| {
 		proceduralItemTypes.append(main.globalAllocator, proceduralItemType);

@@ -76,7 +76,7 @@ pub fn globalInit() void {
 	pressedTextures = Textures.init("assets/cubyz/ui/button_pressed");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	pipeline.deinit();
 	normalTextures.deinit();
 	hoveredTextures.deinit();
@@ -138,12 +138,13 @@ pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 }
 
 pub fn render(self: *Button, mousePosition: Vec2f) void {
-	const textures = if (self.pressed)
-		pressedTextures
-	else if (GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered)
-		hoveredTextures
-	else
-		normalTextures;
+	const textures = blk: {
+		if (self.pressed) break :blk pressedTextures;
+		if (GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered) {
+			break :blk hoveredTextures;
+		}
+		break :blk normalTextures;
+	};
 	draw.setColor(0xff000000);
 	textures.texture.bindTo(0);
 	pipeline.bind(draw.getScissor());

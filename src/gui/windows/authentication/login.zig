@@ -34,7 +34,7 @@ var encryptAccountCode: bool = true;
 const padding: f32 = 8;
 
 fn login() void {
-	var failureText: main.List(u8) = .init(main.stackAllocator);
+	var failureText: main.ListManaged(u8) = .init(main.stackAllocator);
 	defer failureText.deinit();
 	const accountCode = main.network.authentication.AccountCode.initFromUserInput(textComponent.currentString.items, &failureText);
 	defer accountCode.deinit();
