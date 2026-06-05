@@ -219,8 +219,8 @@ pub fn ListManaged(comptime T: type) type {
 
 pub fn List(comptime T: type) type {
 	return struct {
-		items: []T,
-		capacity: usize,
+		items: []T = &.{},
+		capacity: usize = 0,
 
 		pub const empty: @This() = .{
 			.items = &.{},
