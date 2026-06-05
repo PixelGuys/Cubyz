@@ -1321,6 +1321,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 		slotInfos[i].optional = zonDisabled.as(usize, 0) != 0;
 	}
 	var tagfields: main.List(TagField) = .empty;
+	defer tagfields.deinit(main.stackAllocator);
 	for (zon.getChild("tagfields").toSlice()) |paramZon| {
 		const tagFieldVal = tagfields.addOne(main.stackAllocator);
 		const matrixZon = paramZon.getChild("matrix");
