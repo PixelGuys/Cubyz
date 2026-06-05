@@ -21,7 +21,7 @@ pub const Tag = enum(u32) {
 	}
 
 	pub fn resetTags() void {
-		tagList = .{};
+		tagList = .empty;
 		tagIds = .{};
 	}
 

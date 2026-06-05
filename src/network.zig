@@ -780,7 +780,7 @@ pub const Connection = struct { // MARK: Connection
 
 		pub fn init() RangeBuffer {
 			return .{
-				.ranges = .{},
+				.ranges = .empty,
 			};
 		}
 

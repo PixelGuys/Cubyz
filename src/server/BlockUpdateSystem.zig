@@ -27,7 +27,7 @@ pub fn update(self: *@This(), ch: *main.chunk.ServerChunk) void {
 	self.mutex.lock();
 	const list = self.list;
 	defer list.deinit(main.globalAllocator);
-	self.list = .{};
+	self.list = .empty;
 	self.mutex.unlock();
 
 	// handle events

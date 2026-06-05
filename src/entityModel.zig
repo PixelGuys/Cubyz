@@ -303,9 +303,9 @@ pub fn reset() void {
 	for (entityModels.items) |*model| {
 		model.deinit();
 	}
-	entityModels = .{};
+	entityModels = .empty;
 	reverseIndices = .{};
-	playerEntityModels = .{};
+	playerEntityModels = .empty;
 }
 
 pub fn getById(id: []const u8) ?EntityModelIndex {

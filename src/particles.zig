@@ -50,10 +50,10 @@ pub const ParticleManager = struct {
 	}
 
 	pub fn reset() void {
-		types = .{};
-		typesLocal = .{};
-		textures = .{};
-		emissionTextures = .{};
+		types = .empty;
+		typesLocal = .empty;
+		textures = .empty;
+		emissionTextures = .empty;
 		particleTypeHashmap = .{};
 		ParticleSystem.reset();
 	}
@@ -203,7 +203,7 @@ pub const ParticleSystem = struct {
 	}
 
 	fn reset() void {
-		networkCreationQueue = .{};
+		networkCreationQueue = .empty;
 	}
 
 	pub fn update(deltaTime: f32) void {

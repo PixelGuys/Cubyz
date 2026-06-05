@@ -107,7 +107,7 @@ pub const ChannelChunk = struct {
 	}
 
 	fn propagateDirect(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
-		var neighborLists: [6]main.List(Entry) = @splat(.{});
+		var neighborLists: [6]main.List(Entry) = @splat(.empty);
 		defer {
 			for (&neighborLists) |*list| {
 				list.deinit(main.stackAllocator);
@@ -165,7 +165,7 @@ pub const ChannelChunk = struct {
 	}
 
 	fn propagateDestructive(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), constructiveEntries: *main.List(ChunkEntries), isFirstBlock: bool, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) main.List(BlockPos) {
-		var neighborLists: [6]main.List(Entry) = @splat(.{});
+		var neighborLists: [6]main.List(Entry) = @splat(.empty);
 		var constructiveList: main.List(BlockPos) = .empty;
 		defer {
 			for (&neighborLists) |*list| {

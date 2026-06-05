@@ -446,7 +446,7 @@ pub const User = struct { // MARK: User
 		self.scheduleJobQueue();
 		const commands = self.inventoryCommands;
 		defer commands.deinit(main.globalAllocator);
-		self.inventoryCommands = .{};
+		self.inventoryCommands = .empty;
 		self.mutex.unlock();
 
 		for (commands.items) |commandData| {

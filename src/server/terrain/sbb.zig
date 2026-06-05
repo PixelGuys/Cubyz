@@ -436,12 +436,12 @@ pub fn list() []const StructureBuildingBlock {
 
 pub fn reset() void {
 	childBlockNumericIdMap = .{};
-	childBlockName = .{};
+	childBlockName = .empty;
 	childBlockNameToLocalIndex = .{};
 
-	structureList = .{};
+	structureList = .empty;
 	structureMap = .{};
 
-	blueprintList = .{};
+	blueprintList = .empty;
 	blueprintMap = .{};
 }

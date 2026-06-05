@@ -1229,7 +1229,7 @@ pub fn globalDeinit() void {
 }
 
 pub fn reset() void {
-	proceduralItemTypeList = .{};
+	proceduralItemTypeList = .empty;
 	proceduralItemTypeIdToIndex = .{};
 	reverseIndices = .{};
 	recipeList.clearAndFree();

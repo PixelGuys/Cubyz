@@ -135,5 +135,5 @@ pub fn getLayer(height: i32) CaveLayer {
 
 pub fn reset() void {
 	finishedLoading = false;
-	caveLayers = .{};
+	caveLayers = .empty;
 }

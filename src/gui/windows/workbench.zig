@@ -132,7 +132,7 @@ pub fn render() void {
 pub fn onOpen() void {
 	currentProceduralItemType = 0;
 
-	proceduralItemTypes = .{};
+	proceduralItemTypes = .empty;
 	var iterator = ProceduralItemTypeIndex.iterator();
 	while (iterator.next()) |proceduralItemType| {
 		proceduralItemTypes.append(main.globalAllocator, proceduralItemType);

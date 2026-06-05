@@ -347,7 +347,7 @@ pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 
 pub fn reset() void {
 	size = 0;
-	ores = .{};
+	ores = .empty;
 	reverseIndices = .{};
 	meshes.reset();
 }
@@ -676,16 +676,16 @@ pub const meshes = struct { // MARK: meshes
 	pub fn reset() void {
 		meshes.size = 0;
 		loadedMeshes = 0;
-		textureIds = .{};
-		texturePaths = .{};
+		textureIds = .empty;
+		texturePaths = .empty;
 		animationData = &.{};
-		blockTextures = .{};
-		emissionTextures = .{};
-		reflectivityTextures = .{};
-		absorptionTextures = .{};
-		textureFogData = .{};
+		blockTextures = .empty;
+		emissionTextures = .empty;
+		reflectivityTextures = .empty;
+		absorptionTextures = .empty;
+		textureFogData = .empty;
 		textureOcclusionData = &.{};
-		blockBreakingTextures = .{};
+		blockBreakingTextures = .empty;
 	}
 
 	pub inline fn model(block: Block) ModelIndex {
