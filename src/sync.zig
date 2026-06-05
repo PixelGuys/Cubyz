@@ -70,12 +70,12 @@ pub const client = struct { // MARK: client
 	pub fn receiveFailure() void {
 		mutex.lock();
 		defer mutex.unlock();
-		var tempData = main.List(Command).init(main.stackAllocator);
-		defer tempData.deinit();
+		var tempData: main.List(Command) = .{};
+		defer tempData.deinit(main.stackAllocator);
 		while (commands.popBack()) |_cmd| {
 			var cmd = _cmd;
 			cmd.undo();
-			tempData.append(cmd);
+			tempData.append(main.stackAllocator, cmd);
 		}
 		if (tempData.popOrNull()) |_cmd| {
 			var cmd = _cmd;
@@ -94,12 +94,12 @@ pub const client = struct { // MARK: client
 	pub fn receiveSyncOperation(reader: *BinaryReader) !void {
 		mutex.lock();
 		defer mutex.unlock();
-		var tempData = main.List(Command).init(main.stackAllocator);
-		defer tempData.deinit();
+		var tempData: main.List(Command) = .{};
+		defer tempData.deinit(main.stackAllocator);
 		while (commands.popBack()) |_cmd| {
 			var cmd = _cmd;
 			cmd.undo();
-			tempData.append(cmd);
+			tempData.append(main.stackAllocator, cmd);
 		}
 		try Command.SyncOperation.executeFromData(reader);
 		while (tempData.popOrNull()) |_cmd| {
@@ -113,12 +113,12 @@ pub const client = struct { // MARK: client
 		mutex.lock();
 		defer mutex.unlock();
 		main.game.Player.setGamemode(gamemode);
-		var tempData = main.List(Command).init(main.stackAllocator);
-		defer tempData.deinit();
+		var tempData: main.List(Command) = .{};
+		defer tempData.deinit(main.stackAllocator);
 		while (commands.popBack()) |_cmd| {
 			var cmd = _cmd;
 			cmd.undo();
-			tempData.append(cmd);
+			tempData.append(main.stackAllocator, cmd);
 		}
 		while (tempData.popOrNull()) |_cmd| {
 			var cmd = _cmd;
@@ -517,8 +517,8 @@ pub const Command = struct { // MARK: Command
 	};
 
 	payload: Payload,
-	baseOperations: main.ListUnmanaged(BaseOperation) = .{},
-	syncOperations: main.ListUnmanaged(SyncOperation) = .{},
+	baseOperations: main.List(BaseOperation) = .{},
+	syncOperations: main.List(SyncOperation) = .{},
 
 	fn serializePayload(self: *Command, allocator: NeverFailingAllocator) []const u8 {
 		var writer = BinaryWriter.init(allocator);

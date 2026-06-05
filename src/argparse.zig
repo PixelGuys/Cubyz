@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const ListUnmanaged = main.ListUnmanaged;
+const List = main.List;
 const utils = main.utils;
 
 pub const Options = struct {
@@ -25,7 +25,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 		/// - `allocator` - will be used for dynamic allocations of the parsing result returned.
 		/// - `args` - unprocessed string containing command arguments without command name.
 		/// - `errorMessage` - out parameter used to store and return errors, if any occur. Has to be allocated with stackAllocator.
-		pub fn parse(allocator: NeverFailingAllocator, args: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!T {
+		pub fn parse(allocator: NeverFailingAllocator, args: []const u8, errorMessage: *List(u8)) error{ParseError}!T {
 			return resolve(ResolveMode.parse, allocator, args, errorMessage);
 		}
 
@@ -33,7 +33,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			comptime mode: ResolveMode,
 			allocator: NeverFailingAllocator,
 			args: []const u8,
-			errorMessage: *ListUnmanaged(u8),
+			errorMessage: *List(u8),
 		) switch (mode) {
 			.autocomplete => AutocompleteResult,
 			.parse => error{ParseError}!T,
@@ -58,7 +58,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			comptime s: std.builtin.Type.Struct,
 			allocator: NeverFailingAllocator,
 			args: []const u8,
-			errorMessage: *ListUnmanaged(u8),
+			errorMessage: *List(u8),
 		) switch (mode) {
 			.autocomplete => AutocompleteResult,
 			.parse => error{ParseError}!T,
@@ -66,7 +66,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			var result: T = undefined;
 			var tokens = std.mem.tokenizeScalar(u8, args, ' ');
 
-			var tempErrorMessage: ListUnmanaged(u8) = .{};
+			var tempErrorMessage: List(u8) = .{};
 			defer tempErrorMessage.deinit(main.stackAllocator);
 
 			var nextArgument: ?[]const u8 = tokens.next();
@@ -97,7 +97,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			return result;
 		}
 
-		fn resolveArgument(comptime Field: type, allocator: NeverFailingAllocator, name: []const u8, argument: ?[]const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!Field {
+		fn resolveArgument(comptime Field: type, allocator: NeverFailingAllocator, name: []const u8, argument: ?[]const u8, errorMessage: *List(u8)) error{ParseError}!Field {
 			const fieldTypeInfo = @typeInfo(Field);
 			if (fieldTypeInfo == .optional) {
 				if (argument == null) return error.ParseError;
@@ -110,9 +110,14 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				errorMessage.print(main.stackAllocator, "Missing argument at position <{s}>", .{name});
 				return error.ParseError;
 			};
+
+			if (Field == []const u8) {
+				return arg;
+			}
+
 			switch (fieldTypeInfo) {
-				inline .@"struct" => {
-					if (!@hasDecl(Field, "parse")) @compileError("Struct must have a parse function");
+				inline .@"struct", .@"union" => {
+					if (!@hasDecl(Field, "parse")) @compileError("Structs / Unions must have a parse function");
 					return @field(Field, "parse")(allocator, name, arg, errorMessage);
 				},
 				inline .@"enum" => {
@@ -138,8 +143,8 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			}
 		}
 
-		fn parseUnion(comptime u: std.builtin.Type.Union, allocator: NeverFailingAllocator, args: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!T {
-			var tempErrorMessage: ListUnmanaged(u8) = .{};
+		fn parseUnion(comptime u: std.builtin.Type.Union, allocator: NeverFailingAllocator, args: []const u8, errorMessage: *List(u8)) error{ParseError}!T {
+			var tempErrorMessage: List(u8) = .{};
 			defer tempErrorMessage.deinit(allocator);
 
 			tempErrorMessage.appendSlice(allocator, "---");
@@ -186,7 +191,7 @@ const Test = struct {
 };
 
 test "no arguments" {
-	var errors: ListUnmanaged(u8) = .{};
+	var errors: List(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Parser(struct {}, .{.commandName = "foo"}).parse(main.stackAllocator, "", &errors);
@@ -196,7 +201,7 @@ test "no arguments" {
 }
 
 test "float" {
-	var errors: ListUnmanaged(u8) = .{};
+	var errors: List(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Test.OnlyX.parse(main.stackAllocator, "33.0", &errors);
@@ -207,7 +212,7 @@ test "float" {
 }
 
 test "float negative" {
-	var errors: ListUnmanaged(u8) = .{};
+	var errors: List(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Test.OnlyX.parse(main.stackAllocator, "foo", &errors);
@@ -221,7 +226,7 @@ test "enum" {
 		cmd: enum(u1) { foo },
 	}, .{.commandName = "c"});
 
-	var errors: ListUnmanaged(u8) = .{};
+	var errors: List(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = ArgParser.parse(main.stackAllocator, "foo", &errors);
@@ -238,7 +243,7 @@ test "float int float" {
 		z: f32,
 	}, .{.commandName = ""});
 
-	var errors: ListUnmanaged(u8) = .{};
+	var errors: List(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = ArgParser.parse(main.stackAllocator, "33.0 154 -5654.0", &errors);
@@ -257,7 +262,7 @@ test "float int optional float missing" {
 		z: ?f32,
 	}, .{.commandName = ""});
 
-	var errors: ListUnmanaged(u8) = .{};
+	var errors: List(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = ArgParser.parse(main.stackAllocator, "33.0 154", &errors);
@@ -269,6 +274,25 @@ test "float int optional float missing" {
 	try std.testing.expectEqual(result.z, null);
 }
 
+test "two optionals missing" {
+	const ArgParser = Parser(struct {
+		x: f32,
+		y: ?f32,
+		z: ?f32,
+	}, .{.commandName = ""});
+
+	var errors: List(u8) = .{};
+	defer errors.deinit(main.stackAllocator);
+
+	const resultOrError = ArgParser.parse(main.stackAllocator, "1.0", &errors);
+
+	try std.testing.expectEqualStrings("", errors.items);
+	const result = try resultOrError;
+	try std.testing.expectEqual(result.x, 1.0);
+	try std.testing.expectEqual(result.y, null);
+	try std.testing.expectEqual(result.z, null);
+}
+
 test "float int optional float present" {
 	const ArgParser = Parser(struct {
 		x: f64,
@@ -276,7 +300,7 @@ test "float int optional float present" {
 		z: ?f32,
 	}, .{.commandName = ""});
 
-	var errors: ListUnmanaged(u8) = .{};
+	var errors: List(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = ArgParser.parse(main.stackAllocator, "33.0 154 0.1", &errors);
@@ -288,8 +312,27 @@ test "float int optional float present" {
 	try std.testing.expectEqual(result.z, 0.1);
 }
 
+test "optional inbetween" {
+	const ArgParser = Parser(struct {
+		x: enum { foo },
+		y: ?f32,
+		z: enum { bar },
+	}, .{.commandName = "c"});
+
+	var errors: List(u8) = .{};
+	defer errors.deinit(main.stackAllocator);
+
+	const resultOrError = ArgParser.parse(main.stackAllocator, "foo bar", &errors);
+
+	try std.testing.expectEqualStrings("", errors.items);
+	const result = try resultOrError;
+	try std.testing.expectEqual(result.x, .foo);
+	try std.testing.expectEqual(result.y, null);
+	try std.testing.expectEqual(result.z, .bar);
+}
+
 test "x or xy case x" {
-	var errors: ListUnmanaged(u8) = .{};
+	var errors: List(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Test.@"Union X or XY".parse(main.stackAllocator, "0.9", &errors);
@@ -300,7 +343,7 @@ test "x or xy case x" {
 }
 
 test "x or xy case xy" {
-	var errors: ListUnmanaged(u8) = .{};
+	var errors: List(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Test.@"Union X or XY".parse(main.stackAllocator, "0.9 1.0", &errors);
@@ -312,7 +355,7 @@ test "x or xy case xy" {
 }
 
 test "x or xy negative empty" {
-	var errors: ListUnmanaged(u8) = .{};
+	var errors: List(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Test.@"Union X or XY".parse(main.stackAllocator, "", &errors);
@@ -330,7 +373,7 @@ test "x or xy negative empty" {
 }
 
 test "x or xy negative too many args" {
-	var errors: ListUnmanaged(u8) = .{};
+	var errors: List(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Test.@"Union X or XY".parse(main.stackAllocator, "1.0 3.0 5.0", &errors);
@@ -348,7 +391,7 @@ test "x or xy negative too many args" {
 }
 
 test "subCommands foo" {
-	var errors: ListUnmanaged(u8) = .{};
+	var errors: List(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Test.@"subCommands foo or bar".parse(main.stackAllocator, "foo 1.0", &errors);
@@ -360,7 +403,7 @@ test "subCommands foo" {
 }
 
 test "subCommands bar" {
-	var errors: ListUnmanaged(u8) = .{};
+	var errors: List(u8) = .{};
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Test.@"subCommands foo or bar".parse(main.stackAllocator, "bar 2.0 3.0", &errors);

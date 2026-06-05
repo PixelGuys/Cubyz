@@ -144,8 +144,7 @@ pub fn generate(self: *SimpleTreeModel, _: GenerationMode, x: i32, y: i32, z: i3
 	const leafRadius = self.leafRadius + factor*self.deltaLeafRadius;
 	const leafElongation: f32 = self.leafElongation + random.nextFloatSigned(seed)*self.deltaLeafElongation;
 
-	if (z + height >= caveMap.findTerrainChangeAbove(x, y, z)) // Space is too small.Allocator
-		return;
+	if (z + height >= caveMap.findTerrainChangeAbove(x, y, z)) return; // Space is too small.Allocator
 
 	if (z > chunk.super.width) return;
 
@@ -171,8 +170,9 @@ pub fn generate(self: *SimpleTreeModel, _: GenerationMode, x: i32, y: i32, z: i3
 				while (px < x + j) : (px += chunk.super.pos.voxelSize) {
 					var py = chunk.startIndex(y + 1 - j);
 					while (py < y + j) : (py += chunk.super.pos.voxelSize) {
-						if (chunk.liesInChunk(px, py, pz))
+						if (chunk.liesInChunk(px, py, pz)) {
 							chunk.updateBlockIfDegradable(px, py, pz, self.leavesBlock);
+						}
 					}
 				}
 			}

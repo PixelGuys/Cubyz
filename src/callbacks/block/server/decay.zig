@@ -29,7 +29,7 @@ pub fn init(zon: ZonElement) ?*@This() {
 	result.prevention = &.{};
 	if (zon.getChildOrNull("prevention")) |tagNames| {
 		if (tagNames == .array) {
-			var prevention = main.ListUnmanaged(main.Tag).initCapacity(main.worldArena, tagNames.array.items.len);
+			var prevention = main.List(main.Tag).initCapacity(main.worldArena, tagNames.array.items.len);
 			for (tagNames.array.items) |value| {
 				const tagName = value.as(?[]const u8, null) orelse {
 					std.log.err("Invalid TagName for decay prevention.", .{});
@@ -52,8 +52,7 @@ fn getIndexInCheckArray(relativePosition: Vec3i, checkRange: comptime_int) usize
 }
 fn preventsDecay(self: *@This(), log: Block) bool {
 	for (self.prevention) |tag| {
-		if (log.hasTag(tag))
-			return true;
+		if (log.hasTag(tag)) return true;
 	}
 	return false;
 }
@@ -94,14 +93,11 @@ fn foundWayToLog(self: *@This(), world: *server.ServerWorld, leaf: Block, wx: i3
 				const relativePosition = value + offset.relPos();
 
 				// out of range
-				if (vec.lengthSquare(relativePosition) > checkRange*checkRange)
-					continue;
-				if (sourceIsBranch and !branchData.isConnected(offset))
-					continue;
+				if (vec.lengthSquare(relativePosition) > checkRange*checkRange) continue;
+				if (sourceIsBranch and !branchData.isConnected(offset)) continue;
 
 				// mark as checked
-				if (checked[getIndexInCheckArray(relativePosition, checkRange)])
-					continue;
+				if (checked[getIndexInCheckArray(relativePosition, checkRange)]) continue;
 				checked[getIndexInCheckArray(relativePosition, checkRange)] = true;
 				queue.pushBack(relativePosition);
 			}
@@ -115,12 +111,10 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 	const wz = params.chunk.super.pos.wz + params.blockPos.z;
 
 	if (params.block.mode() == main.rotation.getByID("cubyz:decayable")) {
-		if (params.block.data != 0)
-			return .ignored;
+		if (params.block.data != 0) return .ignored;
 	} else if (params.block.mode() == main.rotation.getByID("cubyz:branch")) {
 		const bd = branch.BranchData.init(params.block.data);
-		if (bd.placedByHuman)
-			return .ignored;
+		if (bd.placedByHuman) return .ignored;
 	} else {
 		std.log.err("Expected {s} to have cubyz:decayable or cubyz:branch as rotation", .{params.block.id()});
 	}
@@ -128,8 +122,7 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 	if (server.world) |world| {
 		if (world.getBlock(wx, wy, wz)) |leaf| {
 			// check if there is any log in the proximity?^
-			if (self.foundWayToLog(world, leaf, wx, wy, wz))
-				return .ignored;
+			if (self.foundWayToLog(world, leaf, wx, wy, wz)) return .ignored;
 
 			// no, there is no log in proximity
 			if (world.cmpxchgBlock(wx, wy, wz, leaf, self.decayReplacement) == null) {

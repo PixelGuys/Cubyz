@@ -7,12 +7,11 @@ const c = @import("c");
 
 const CallbackFunction = *const fn (usize) void;
 
-const Impl = if (builtin.os.tag == .windows)
-	WindowsImpl
-else if (builtin.os.tag == .linux)
-	LinuxImpl
-else
-	NoImpl;
+const Impl = switch (builtin.os.tag) {
+	.windows => WindowsImpl,
+	.linux => LinuxImpl,
+	else => NoImpl,
+};
 
 pub fn init() void {
 	Impl.init();
@@ -46,7 +45,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 	const DirectoryInfo = struct {
 		callback: CallbackFunction,
 		userData: usize,
-		watchDescriptors: main.ListUnmanaged(c_int),
+		watchDescriptors: main.List(c_int),
 		needsUpdate: bool,
 		path: []const u8,
 	};
@@ -208,8 +207,8 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 const WindowsImpl = struct { // MARK: WindowsImpl
 	const HANDLE = std.os.windows.HANDLE;
 	var notificationHandlers: std.StringHashMap(*DirectoryInfo) = undefined;
-	var callbacks: main.List(*DirectoryInfo) = undefined;
-	var justTheHandles: main.List(HANDLE) = undefined;
+	var callbacks: main.ListManaged(*DirectoryInfo) = undefined;
+	var justTheHandles: main.ListManaged(HANDLE) = undefined;
 	var mutex: main.utils.Mutex = .{};
 
 	const DirectoryInfo = struct {

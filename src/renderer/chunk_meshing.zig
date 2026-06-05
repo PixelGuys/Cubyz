@@ -224,7 +224,7 @@ fn bindBuffers(lod: usize) void {
 	lightBuffers[lod].ssbo.bind(lightBuffers[lod].binding);
 }
 
-pub fn drawChunksIndirect(chunkIds: *const [main.settings.highestSupportedLod + 1]main.List(u32), projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d, transparent: bool) void {
+pub fn drawChunksIndirect(chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d, transparent: bool) void {
 	for (0..chunkIds.len) |i| {
 		const lod = if (transparent) main.settings.highestSupportedLod - i else i;
 		bindBuffers(lod);
@@ -373,7 +373,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		self.completeList.replaceRange(main.globalAllocator, group, items);
 	}
 
-	fn finish(self: *PrimitiveMesh, parent: *ChunkMesh, lightList: *main.List(u32), lightMap: *std.AutoHashMap([4]u32, u16)) void {
+	fn finish(self: *PrimitiveMesh, parent: *ChunkMesh, lightList: *main.ListManaged(u32), lightMap: *std.AutoHashMap([4]u32, u16)) void {
 		self.min = @splat(std.math.floatMax(f32));
 		self.max = @splat(-std.math.floatMax(f32));
 
@@ -518,7 +518,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	min: Vec3f = undefined,
 	max: Vec3f = undefined,
 
-	blockBreakingFaces: main.List(FaceData),
+	blockBreakingFaces: main.ListManaged(FaceData),
 	blockBreakingFacesSortingData: []SortingData = &.{},
 	blockBreakingFacesChanged: bool = false,
 
@@ -575,9 +575,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		return self.opaqueMesh.vertexCount == 0 and self.transparentMesh.vertexCount == 0;
 	}
 
-	fn initLight(self: *ChunkMesh, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
+	fn initLight(self: *ChunkMesh, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
 		self.mutex.lock();
-		var lightEmittingBlocks = main.List(chunk.BlockPos).init(main.stackAllocator);
+		var lightEmittingBlocks = main.ListManaged(chunk.BlockPos).init(main.stackAllocator);
 		defer lightEmittingBlocks.deinit();
 		for (0..chunk.chunkVolume) |index| {
 			const block = self.chunk.data.getValue(index);
@@ -616,7 +616,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	pub fn generateLightingData(self: *ChunkMesh) error{ AlreadyStored, NoLongerNeeded }!void {
 		try mesh_storage.addMeshToStorage(self);
 
-		var lightRefreshList = main.List(chunk.ChunkPosition).init(main.stackAllocator);
+		var lightRefreshList = main.ListManaged(chunk.ChunkPosition).init(main.stackAllocator);
 		defer lightRefreshList.deinit();
 		self.initLight(&lightRefreshList);
 
@@ -667,14 +667,14 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		return block.typ != 0 and (other.typ == 0 or (block != other and other.viewThrough()) or other.alwaysViewThrough() or !blocks.meshes.model(other).model().isNeighborOccluded[neighbor.reverse().toInt()]);
 	}
 
-	fn appendInternalQuads(block: Block, pos: chunk.BlockPos, comptime backFace: bool, list: *main.ListUnmanaged(FaceData), allocator: main.heap.NeverFailingAllocator) void {
+	fn appendInternalQuads(block: Block, pos: chunk.BlockPos, comptime backFace: bool, list: *main.ListManaged(FaceData)) void {
 		const model = blocks.meshes.model(block).model();
-		model.appendInternalQuadsToList(list, allocator, block, pos, backFace);
+		model.appendInternalQuadsToList(list, block, pos, backFace);
 	}
 
-	fn appendNeighborFacingQuads(block: Block, neighbor: chunk.Neighbor, pos: chunk.BlockPos, comptime backFace: bool, list: *main.ListUnmanaged(FaceData), allocator: main.heap.NeverFailingAllocator) void {
+	fn appendNeighborFacingQuads(block: Block, neighbor: chunk.Neighbor, pos: chunk.BlockPos, comptime backFace: bool, list: *main.ListManaged(FaceData)) void {
 		const model = blocks.meshes.model(block).model();
-		model.appendNeighborFacingQuadsToList(list, allocator, block, neighbor, pos, backFace);
+		model.appendNeighborFacingQuadsToList(list, block, neighbor, pos, backFace);
 	}
 
 	fn replaceRanges(self: *ChunkMesh, group: FaceGroups, opaqueFaces: []const FaceData, transparentFaces: []const FaceData) void {
@@ -685,7 +685,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.finishedLightingMeshData = false;
 	}
 
-	pub fn generateMesh(self: *ChunkMesh, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
+	pub fn generateMesh(self: *ChunkMesh, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
 		var alwaysViewThroughMask: [chunk.chunkSize][chunk.chunkSize]u32 = undefined;
 		@memset(std.mem.asBytes(&alwaysViewThroughMask), 0);
 		var alwaysViewThroughMask2: [chunk.chunkSize][chunk.chunkSize]u32 = undefined;
@@ -697,14 +697,14 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		@memset(std.mem.asBytes(&hasFaces), 0);
 		self.mutex.lock();
 
-		var transparentCore: main.ListUnmanaged(FaceData) = .{};
-		defer transparentCore.deinit(main.stackAllocator);
-		var opaqueCore: main.ListUnmanaged(FaceData) = .{};
-		defer opaqueCore.deinit(main.stackAllocator);
-		var transparentOptional: main.ListUnmanaged(FaceData) = .{};
-		defer transparentOptional.deinit(main.stackAllocator);
-		var opaqueOptional: main.ListUnmanaged(FaceData) = .{};
-		defer opaqueOptional.deinit(main.stackAllocator);
+		var transparentCore: main.ListManaged(FaceData) = .init(main.stackAllocator);
+		defer transparentCore.deinit();
+		var opaqueCore: main.ListManaged(FaceData) = .init(main.stackAllocator);
+		defer opaqueCore.deinit();
+		var transparentOptional: main.ListManaged(FaceData) = .init(main.stackAllocator);
+		defer transparentOptional.deinit();
+		var opaqueOptional: main.ListManaged(FaceData) = .init(main.stackAllocator);
+		defer opaqueOptional.deinit();
 
 		const OcclusionInfo = packed struct {
 			canSeeNeighbor: u6 = 0,
@@ -792,9 +792,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			if (occlusionInfo.hasInternalQuads) {
 				const block = self.chunk.data.palette()[paletteId].load(.unordered);
 				if (block.transparent()) {
-					appendInternalQuads(block, pos, false, &transparentCore, main.stackAllocator);
+					appendInternalQuads(block, pos, false, &transparentCore);
 				} else {
-					appendInternalQuads(block, pos, false, &opaqueCore, main.stackAllocator);
+					appendInternalQuads(block, pos, false, &opaqueCore);
 				}
 			}
 		}
@@ -818,11 +818,11 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						}
 						if (block.transparent()) {
 							if (block.hasBackFace()) {
-								appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentCore, main.stackAllocator);
+								appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentCore);
 							}
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, &transparentCore, main.stackAllocator);
+							appendNeighborFacingQuads(block, neighbor, neighborPos, false, &transparentCore);
 						} else {
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, if (initialAlwaysViewThroughMask[x - 1][y] & setBit != 0) &opaqueOptional else &opaqueCore, main.stackAllocator);
+							appendNeighborFacingQuads(block, neighbor, neighborPos, false, if (initialAlwaysViewThroughMask[x - 1][y] & setBit != 0) &opaqueOptional else &opaqueCore);
 						}
 					}
 				}
@@ -847,11 +847,11 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						}
 						if (block.transparent()) {
 							if (block.hasBackFace()) {
-								appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentCore, main.stackAllocator);
+								appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentCore);
 							}
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, &transparentCore, main.stackAllocator);
+							appendNeighborFacingQuads(block, neighbor, neighborPos, false, &transparentCore);
 						} else {
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, if (initialAlwaysViewThroughMask[x + 1][y] & setBit != 0) &opaqueOptional else &opaqueCore, main.stackAllocator);
+							appendNeighborFacingQuads(block, neighbor, neighborPos, false, if (initialAlwaysViewThroughMask[x + 1][y] & setBit != 0) &opaqueOptional else &opaqueCore);
 						}
 					}
 				}
@@ -876,11 +876,11 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						}
 						if (block.transparent()) {
 							if (block.hasBackFace()) {
-								appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentCore, main.stackAllocator);
+								appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentCore);
 							}
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, &transparentCore, main.stackAllocator);
+							appendNeighborFacingQuads(block, neighbor, neighborPos, false, &transparentCore);
 						} else {
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, if (initialAlwaysViewThroughMask[x][y - 1] & setBit != 0) &opaqueOptional else &opaqueCore, main.stackAllocator);
+							appendNeighborFacingQuads(block, neighbor, neighborPos, false, if (initialAlwaysViewThroughMask[x][y - 1] & setBit != 0) &opaqueOptional else &opaqueCore);
 						}
 					}
 				}
@@ -905,11 +905,11 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						}
 						if (block.transparent()) {
 							if (block.hasBackFace()) {
-								appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentCore, main.stackAllocator);
+								appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentCore);
 							}
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, &transparentCore, main.stackAllocator);
+							appendNeighborFacingQuads(block, neighbor, neighborPos, false, &transparentCore);
 						} else {
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, if (initialAlwaysViewThroughMask[x][y + 1] & setBit != 0) &opaqueOptional else &opaqueCore, main.stackAllocator);
+							appendNeighborFacingQuads(block, neighbor, neighborPos, false, if (initialAlwaysViewThroughMask[x][y + 1] & setBit != 0) &opaqueOptional else &opaqueCore);
 						}
 					}
 				}
@@ -934,11 +934,11 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						}
 						if (block.transparent()) {
 							if (block.hasBackFace()) {
-								appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentCore, main.stackAllocator);
+								appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentCore);
 							}
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, &transparentCore, main.stackAllocator);
+							appendNeighborFacingQuads(block, neighbor, neighborPos, false, &transparentCore);
 						} else {
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, if (initialAlwaysViewThroughMask[x][y] << 1 & setBit != 0) &opaqueOptional else &opaqueCore, main.stackAllocator);
+							appendNeighborFacingQuads(block, neighbor, neighborPos, false, if (initialAlwaysViewThroughMask[x][y] << 1 & setBit != 0) &opaqueOptional else &opaqueCore);
 						}
 					}
 				}
@@ -963,11 +963,11 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						}
 						if (block.transparent()) {
 							if (block.hasBackFace()) {
-								appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentCore, main.stackAllocator);
+								appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentCore);
 							}
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, &transparentCore, main.stackAllocator);
+							appendNeighborFacingQuads(block, neighbor, neighborPos, false, &transparentCore);
 						} else {
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, if (initialAlwaysViewThroughMask[x][y] >> 1 & setBit != 0) &opaqueOptional else &opaqueCore, main.stackAllocator);
+							appendNeighborFacingQuads(block, neighbor, neighborPos, false, if (initialAlwaysViewThroughMask[x][y] >> 1 & setBit != 0) &opaqueOptional else &opaqueCore);
 						}
 					}
 				}
@@ -982,7 +982,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.finishNeighbors(lightRefreshList);
 	}
 
-	fn finishNeighbors(self: *ChunkMesh, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
+	fn finishNeighbors(self: *ChunkMesh, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
 		for (chunk.Neighbor.iterable) |neighbor| {
 			const nullNeighborMesh = mesh_storage.getNeighbor(self.pos, self.pos.voxelSize, neighbor);
 			if (nullNeighborMesh) |neighborMesh| sameLodBlock: {
@@ -994,14 +994,14 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				self.lastNeighborsSameLod[neighbor.toInt()] = neighborMesh;
 				neighborMesh.lastNeighborsSameLod[neighbor.reverse().toInt()] = self;
 
-				var transparentSelf: main.ListUnmanaged(FaceData) = .{};
-				defer transparentSelf.deinit(main.stackAllocator);
-				var opaqueSelf: main.ListUnmanaged(FaceData) = .{};
-				defer opaqueSelf.deinit(main.stackAllocator);
-				var transparentNeighbor: main.ListUnmanaged(FaceData) = .{};
-				defer transparentNeighbor.deinit(main.stackAllocator);
-				var opaqueNeighbor: main.ListUnmanaged(FaceData) = .{};
-				defer opaqueNeighbor.deinit(main.stackAllocator);
+				var transparentSelf: main.ListManaged(FaceData) = .init(main.stackAllocator);
+				defer transparentSelf.deinit();
+				var opaqueSelf: main.ListManaged(FaceData) = .init(main.stackAllocator);
+				defer opaqueSelf.deinit();
+				var transparentNeighbor: main.ListManaged(FaceData) = .init(main.stackAllocator);
+				defer transparentNeighbor.deinit();
+				var opaqueNeighbor: main.ListManaged(FaceData) = .init(main.stackAllocator);
+				defer opaqueNeighbor.deinit();
 
 				const x3: i32 = if (neighbor.isPositive()) chunk.chunkMask else 0;
 				var x1: i32 = 0;
@@ -1033,21 +1033,21 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						if (canBeSeenThroughOtherBlock(block, otherBlock, neighbor)) {
 							if (block.transparent()) {
 								if (block.hasBackFace()) {
-									appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentSelf, main.stackAllocator);
+									appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentSelf);
 								}
-								appendNeighborFacingQuads(block, neighbor, neighborPos, false, &transparentNeighbor, main.stackAllocator);
+								appendNeighborFacingQuads(block, neighbor, neighborPos, false, &transparentNeighbor);
 							} else {
-								appendNeighborFacingQuads(block, neighbor, neighborPos, false, &opaqueNeighbor, main.stackAllocator);
+								appendNeighborFacingQuads(block, neighbor, neighborPos, false, &opaqueNeighbor);
 							}
 						}
 						if (canBeSeenThroughOtherBlock(otherBlock, block, neighbor.reverse())) {
 							if (otherBlock.transparent()) {
 								if (otherBlock.hasBackFace()) {
-									appendNeighborFacingQuads(otherBlock, neighbor, neighborPos, true, &transparentNeighbor, main.stackAllocator);
+									appendNeighborFacingQuads(otherBlock, neighbor, neighborPos, true, &transparentNeighbor);
 								}
-								appendNeighborFacingQuads(otherBlock, neighbor.reverse(), pos, false, &transparentSelf, main.stackAllocator);
+								appendNeighborFacingQuads(otherBlock, neighbor.reverse(), pos, false, &transparentSelf);
 							} else {
-								appendNeighborFacingQuads(otherBlock, neighbor.reverse(), pos, false, &opaqueSelf, main.stackAllocator);
+								appendNeighborFacingQuads(otherBlock, neighbor.reverse(), pos, false, &opaqueSelf);
 							}
 						}
 					}
@@ -1082,10 +1082,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			if (self.lastNeighborsHigherLod[neighbor.toInt()] == neighborMesh) continue;
 			self.lastNeighborsHigherLod[neighbor.toInt()] = neighborMesh;
 
-			var transparentSelf: main.ListUnmanaged(FaceData) = .{};
-			defer transparentSelf.deinit(main.stackAllocator);
-			var opaqueSelf: main.ListUnmanaged(FaceData) = .{};
-			defer opaqueSelf.deinit(main.stackAllocator);
+			var transparentSelf: main.ListManaged(FaceData) = .init(main.stackAllocator);
+			defer transparentSelf.deinit();
+			var opaqueSelf: main.ListManaged(FaceData) = .init(main.stackAllocator);
+			defer opaqueSelf.deinit();
 
 			const x3: i32 = if (neighbor.isPositive()) chunk.chunkMask else 0;
 			const offsetX = @divExact(self.pos.wx, self.pos.voxelSize) & chunk.chunkSize;
@@ -1122,14 +1122,14 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					if (settings.leavesQuality == 0) otherBlock.typ = otherBlock.opaqueVariant();
 					if (canBeSeenThroughOtherBlock(otherBlock, block, neighbor.reverse())) {
 						if (otherBlock.transparent()) {
-							appendNeighborFacingQuads(otherBlock, neighbor.reverse(), pos, false, &transparentSelf, main.stackAllocator);
+							appendNeighborFacingQuads(otherBlock, neighbor.reverse(), pos, false, &transparentSelf);
 						} else {
-							appendNeighborFacingQuads(otherBlock, neighbor.reverse(), pos, false, &opaqueSelf, main.stackAllocator);
+							appendNeighborFacingQuads(otherBlock, neighbor.reverse(), pos, false, &opaqueSelf);
 						}
 					}
 					if (block.hasBackFace()) {
 						if (canBeSeenThroughOtherBlock(block, otherBlock, neighbor)) {
-							appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentSelf, main.stackAllocator);
+							appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentSelf);
 						}
 					}
 				}
@@ -1157,7 +1157,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	// MARK: block updates
 	// --------------------------------------------------------------------------------------------
 
-	fn updateBlockLight(self: *ChunkMesh, pos: chunk.BlockPos, newBlock: Block, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
+	fn updateBlockLight(self: *ChunkMesh, pos: chunk.BlockPos, newBlock: Block, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
 		for (self.lightingData[0..]) |lightingData| {
 			lightingData.propagateLightsDestructive(&.{pos}, lightRefreshList);
 		}
@@ -1166,7 +1166,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	fn updateBlockLightAndMesh(self: *ChunkMesh, blockUpdatePos: Vec3i, lightRefreshList: *main.List(chunk.ChunkPosition), regenerateMeshList: *main.List(*ChunkMesh)) void {
+	fn updateBlockLightAndMesh(self: *ChunkMesh, blockUpdatePos: Vec3i, lightRefreshList: *main.ListManaged(chunk.ChunkPosition), regenerateMeshList: *main.ListManaged(*ChunkMesh)) void {
 		const blockPos = chunk.BlockPos.fromWorldCoords(blockUpdatePos[0], blockUpdatePos[1], blockUpdatePos[2]);
 		self.mutex.lock();
 		var newBlock = self.chunk.data.getValue(blockPos.toIndex());
@@ -1239,7 +1239,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		appendIfNotContained(regenerateMeshList, self);
 	}
 
-	fn appendIfNotContained(list: *main.List(*ChunkMesh), mesh: *ChunkMesh) void {
+	fn appendIfNotContained(list: *main.ListManaged(*ChunkMesh), mesh: *ChunkMesh) void {
 		for (list.items) |other| {
 			if (other == mesh) {
 				return;
@@ -1309,10 +1309,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		pub fn run(self: *BlockUpdateTask) void {
 			defer main.globalAllocator.destroy(self);
 
-			var lightRefreshList = main.List(chunk.ChunkPosition).init(main.stackAllocator);
+			var lightRefreshList: main.ListManaged(chunk.ChunkPosition) = .init(main.stackAllocator);
 			defer lightRefreshList.deinit();
 
-			var regenerateMeshList = main.List(*ChunkMesh).init(main.stackAllocator);
+			var regenerateMeshList: main.ListManaged(*ChunkMesh) = .init(main.stackAllocator);
 			defer regenerateMeshList.deinit();
 
 			{
@@ -1401,7 +1401,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	pub fn finishData(self: *ChunkMesh) void {
 		self.mutex.assertLocked();
 
-		var lightList = main.List(u32).init(main.stackAllocator);
+		var lightList: main.ListManaged(u32) = .init(main.stackAllocator);
 		defer lightList.deinit();
 		var lightMap = std.AutoHashMap([4]u32, u16).init(main.stackAllocator.allocator);
 		defer lightMap.deinit();
@@ -1459,7 +1459,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	// MARK: rendering
 	// --------------------------------------------------------------------------------------------
 
-	pub fn prepareRendering(self: *ChunkMesh, chunkLists: *[main.settings.highestSupportedLod + 1]main.List(u32)) void {
+	pub fn prepareRendering(self: *ChunkMesh, chunkLists: *[main.settings.highestSupportedLod + 1]main.ListManaged(u32)) void {
 		if (self.opaqueMesh.vertexCount == 0) return;
 
 		chunkLists[std.math.log2_int(u32, self.pos.voxelSize)].append(self.chunkAllocation.start);
@@ -1495,7 +1495,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	pub fn prepareTransparentRendering(self: *ChunkMesh, playerPosition: Vec3d, chunkLists: *[main.settings.highestSupportedLod + 1]main.List(u32)) void {
+	pub fn prepareTransparentRendering(self: *ChunkMesh, playerPosition: Vec3d, chunkLists: *[main.settings.highestSupportedLod + 1]main.ListManaged(u32)) void {
 		if (self.transparentMesh.vertexCount == 0 and self.blockBreakingFaces.items.len == 0) return;
 
 		var needsUpdate: bool = false;

@@ -335,8 +335,7 @@ pub const collision = struct {
 				var posZ: i32 = minZ;
 				while (posZ <= maxZ) : (posZ += 1) {
 					const block = main.game.getBlockWithSide(side, posX, posY, posZ);
-					if (block == null or block.?.onTouch().isNoop())
-						continue;
+					if (block == null or block.?.onTouch().isNoop()) continue;
 					const touchX: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentX);
 					const touchY: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentY);
 					const touchZ: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentZ);

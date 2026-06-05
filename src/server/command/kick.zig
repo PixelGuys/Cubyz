@@ -7,14 +7,21 @@ const User = main.server.User;
 pub const description = "Kicks a player";
 pub const usage = "/kick @<playerIndex>";
 
-pub fn execute(args: []const u8, source: *User) void {
-	if (args.len == 0) {
-		source.sendMessage("#ff0000Too few arguments for command /kick. Expected one argument.", .{});
-		return;
-	}
-	var split = std.mem.splitScalar(u8, args, ' ');
+const Args = union(enum) {
+	@"/kick <playerIndex>": struct { playerIndex: command.PlayerIndex },
+};
 
-	const target = command.Target.init(&split, source) catch return;
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/kick"});
+
+pub fn execute(args: []const u8, source: *User) void {
+	var errorMessage: main.List(u8) = .{};
+	defer errorMessage.deinit(main.stackAllocator);
+
+	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
+		source.sendMessage("#ff0000{s}", .{errorMessage.items});
+		return;
+	};
+	const target = command.Target.fromPlayerIndex(result.@"/kick <playerIndex>".playerIndex, source) catch return;
 	defer target.deinit();
 
 	target.user.conn.disconnect();

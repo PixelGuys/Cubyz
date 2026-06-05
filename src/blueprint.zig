@@ -18,7 +18,7 @@ const BinaryWriter = main.utils.BinaryWriter;
 const BinaryReader = main.utils.BinaryReader;
 
 const AliasTable = main.utils.AliasTable;
-const ListUnmanaged = main.ListUnmanaged;
+const List = main.List;
 
 const GameIdToBlueprintIdMapType = std.AutoHashMap(Block, BlockStorageType);
 const BlockIdSizeType = u32;
@@ -39,6 +39,11 @@ pub const Blueprint = struct {
 	}
 	pub fn deinit(self: Blueprint, allocator: NeverFailingAllocator) void {
 		self.blocks.deinit(allocator);
+	}
+	pub fn extent(self: Blueprint) Vec3i {
+		return .{
+			@intCast(self.blocks.width), @intCast(self.blocks.depth), @intCast(self.blocks.height),
+		};
 	}
 	pub fn clone(self: Blueprint, allocator: NeverFailingAllocator) Blueprint {
 		return .{.blocks = self.blocks.clone(allocator)};
@@ -74,18 +79,32 @@ pub const Blueprint = struct {
 		failure: struct { pos: Vec3i, message: []const u8 },
 	};
 
-	pub fn capture(allocator: NeverFailingAllocator, pos1: Vec3i, pos2: Vec3i) CaptureResult {
-		const startX = @min(pos1[0], pos2[0]);
-		const startY = @min(pos1[1], pos2[1]);
-		const startZ = @min(pos1[2], pos2[2]);
+	pub const Selection = struct {
+		/// Minimal position of a block, inclusive.
+		minPos: Vec3i,
+		/// Maximal position of a block, exclusive.
+		maxPos: Vec3i,
 
-		const endX = @max(pos1[0], pos2[0]);
-		const endY = @max(pos1[1], pos2[1]);
-		const endZ = @max(pos1[2], pos2[2]);
+		pub fn initFromInclusive(pos1Inclusive: Vec3i, pos2Inclusive: Vec3i) Selection {
+			return .{.minPos = @min(pos1Inclusive, pos2Inclusive), .maxPos = @max(pos1Inclusive, pos2Inclusive) +% @as(Vec3i, @splat(1))};
+		}
 
-		const sizeX: u32 = @intCast(endX - startX + 1);
-		const sizeY: u32 = @intCast(endY - startY + 1);
-		const sizeZ: u32 = @intCast(endZ - startZ + 1);
+		pub fn initFromExtent(pos1Inclusive: Vec3i, selectionExtent: Vec3i) Selection {
+			return .{.minPos = pos1Inclusive, .maxPos = pos1Inclusive + selectionExtent};
+		}
+
+		pub fn size(self: Selection) @Vector(3, u32) {
+			return @intCast(self.maxPos -% self.minPos);
+		}
+
+		pub fn format(self: Selection, writer: *std.Io.Writer) std.Io.Writer.Error!void {
+			try writer.print("{} {}", .{self.minPos, self.maxPos});
+		}
+	};
+
+	pub fn capture(allocator: NeverFailingAllocator, selection: Selection) CaptureResult {
+		const startX, const startY, const startZ = selection.minPos;
+		const sizeX, const sizeY, const sizeZ = selection.size();
 
 		const self = Blueprint{.blocks = .init(allocator, sizeX, sizeY, sizeZ)};
 
@@ -164,8 +183,9 @@ pub const Blueprint = struct {
 					const worldZ = startZ +% @as(i32, @intCast(z));
 
 					const block = self.blocks.get(x, y, z);
-					if (block.typ != voidType or flags.preserveVoid)
+					if (block.typ != voidType or flags.preserveVoid) {
 						_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block);
+					}
 				}
 			}
 		}
@@ -285,7 +305,7 @@ pub const Blueprint = struct {
 
 		std.log.info("Blueprint block palette:", .{});
 
-		var idAndDataList: main.List(u8) = .init(main.stackAllocator);
+		var idAndDataList: main.ListManaged(u8) = .init(main.stackAllocator);
 		defer idAndDataList.deinit();
 
 		for (0..blockPalette.len) |index| {
@@ -357,7 +377,7 @@ pub const Pattern = struct {
 		var specifiers = std.mem.splitScalar(u8, source, expressionSeparator);
 		var totalWeight: f32 = 0;
 
-		var weightedEntries: ListUnmanaged(struct { block: Block, weight: f32 }) = .{};
+		var weightedEntries: List(struct { block: Block, weight: f32 }) = .{};
 		defer weightedEntries.deinit(main.stackAllocator);
 
 		while (specifiers.next()) |specifier| {
@@ -395,8 +415,8 @@ pub const Pattern = struct {
 };
 
 pub const Mask = struct {
-	const AndList = ListUnmanaged(Entry);
-	const OrList = ListUnmanaged(AndList);
+	const AndList = List(Entry);
+	const OrList = List(AndList);
 
 	entries: OrList,
 

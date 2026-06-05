@@ -93,7 +93,7 @@ pub const BlockEntity = enum(u32) { // MARK: BlockEntity
 	noValue = std.math.maxInt(u32),
 	_,
 
-	var freeIndexList: main.ListUnmanaged(BlockEntity) = .{};
+	var freeIndexList: main.List(BlockEntity) = .{};
 	var nextIndex: BlockEntity = @enumFromInt(0);
 	var mutex: main.utils.Mutex = .{};
 
@@ -308,11 +308,11 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 				if (self.renderedTexture) |texture| {
 					textureDeinitLock.lock();
 					defer textureDeinitLock.unlock();
-					textureDeinitList.append(texture);
+					textureDeinitList.append(main.globalAllocator, texture);
 				}
 			}
 		});
-		var textureDeinitList: main.List(graphics.Texture) = undefined;
+		var textureDeinitList: main.List(graphics.Texture) = .{};
 		var textureDeinitLock: main.utils.Mutex = .{};
 		var pipeline: graphics.Pipeline = undefined;
 		var uniforms: struct {
@@ -335,7 +335,6 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 		pub fn init() void {
 			StorageServer.init();
 			StorageClient.init();
-			textureDeinitList = .init(main.globalAllocator);
 			if (!main.settings.launchConfig.headlessServer) {
 				pipeline = graphics.Pipeline.init(
 					"assets/cubyz/shaders/block_entity/sign.vert",
@@ -354,7 +353,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			while (textureDeinitList.popOrNull()) |texture| {
 				texture.deinit();
 			}
-			textureDeinitList.deinit();
+			textureDeinitList.deinit(main.globalAllocator);
 			pipeline.deinit();
 			StorageServer.deinit();
 			StorageClient.deinit();

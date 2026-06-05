@@ -566,8 +566,8 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 	width: f32,
 	buffer: ?*c.hb_buffer_t,
 	glyphs: []GlyphData,
-	lines: main.List(Line),
-	lineBreaks: main.List(LineBreak),
+	lines: main.ListManaged(Line),
+	lineBreaks: main.ListManaged(LineBreak),
 
 	fn addLine(self: *TextBuffer, line: Line) void {
 		if (line.start != line.end) {
@@ -603,9 +603,9 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 	pub const Parser = struct {
 		unicodeIterator: std.unicode.Utf8Iterator,
 		currentFontEffect: FontEffect,
-		parsedText: main.List(u32),
-		fontEffects: main.List(FontEffect),
-		characterIndex: main.List(u32),
+		parsedText: main.ListManaged(u32),
+		fontEffects: main.ListManaged(FontEffect),
+		characterIndex: main.ListManaged(u32),
 		showControlCharacters: bool,
 		curChar: u21 = undefined,
 		curIndex: u32 = 0,
@@ -637,102 +637,106 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		fn parse(self: *Parser) void {
 			self.curIndex = @intCast(self.unicodeIterator.i);
 			self.curChar = self.unicodeIterator.nextCodepoint() orelse return;
-			while (true) switch (self.curChar) {
-				'*' => {
-					self.appendControlGetNext() orelse return;
-					if (self.curChar == '*') {
+			while (true) {
+				switch (self.curChar) {
+					'*' => {
 						self.appendControlGetNext() orelse return;
-						self.currentFontEffect.bold = !self.currentFontEffect.bold;
-					} else {
-						self.currentFontEffect.italic = !self.currentFontEffect.italic;
-					}
-				},
-				'_' => {
-					if (self.peekNextByte() == '_') {
+						if (self.curChar == '*') {
+							self.appendControlGetNext() orelse return;
+							self.currentFontEffect.bold = !self.currentFontEffect.bold;
+						} else {
+							self.currentFontEffect.italic = !self.currentFontEffect.italic;
+						}
+					},
+					'_' => {
+						if (self.peekNextByte() == '_') {
+							self.appendControlGetNext() orelse return;
+							self.appendControlGetNext() orelse return;
+							self.currentFontEffect.underline = !self.currentFontEffect.underline;
+						} else {
+							self.appendGetNext() orelse return;
+						}
+					},
+					'~' => {
+						if (self.peekNextByte() == '~') {
+							self.appendControlGetNext() orelse return;
+							self.appendControlGetNext() orelse return;
+							self.currentFontEffect.strikethrough = !self.currentFontEffect.strikethrough;
+						} else {
+							self.appendGetNext() orelse return;
+						}
+					},
+					'\\' => {
 						self.appendControlGetNext() orelse return;
-						self.appendControlGetNext() orelse return;
-						self.currentFontEffect.underline = !self.currentFontEffect.underline;
-					} else {
 						self.appendGetNext() orelse return;
-					}
-				},
-				'~' => {
-					if (self.peekNextByte() == '~') {
+					},
+					'#' => {
 						self.appendControlGetNext() orelse return;
+						var shift: u5 = 20;
+						while (true) : (shift -= 4) {
+							self.currentFontEffect.color = (self.currentFontEffect.color & ~(@as(u24, 0xf) << shift)) | @as(u24, switch (self.curChar) {
+								'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => self.curChar - '0',
+								'a', 'b', 'c', 'd', 'e', 'f' => self.curChar - 'a' + 10,
+								'A', 'B', 'C', 'D', 'E', 'F' => self.curChar - 'A' + 10,
+								else => 0,
+							}) << shift;
+							self.appendControlGetNext() orelse return;
+							if (shift == 0) break;
+						}
+					},
+					'§' => {
+						self.currentFontEffect = .{.color = self.currentFontEffect.color};
 						self.appendControlGetNext() orelse return;
-						self.currentFontEffect.strikethrough = !self.currentFontEffect.strikethrough;
-					} else {
+					},
+					else => {
 						self.appendGetNext() orelse return;
-					}
-				},
-				'\\' => {
-					self.appendControlGetNext() orelse return;
-					self.appendGetNext() orelse return;
-				},
-				'#' => {
-					self.appendControlGetNext() orelse return;
-					var shift: u5 = 20;
-					while (true) : (shift -= 4) {
-						self.currentFontEffect.color = (self.currentFontEffect.color & ~(@as(u24, 0xf) << shift)) | @as(u24, switch (self.curChar) {
-							'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => self.curChar - '0',
-							'a', 'b', 'c', 'd', 'e', 'f' => self.curChar - 'a' + 10,
-							'A', 'B', 'C', 'D', 'E', 'F' => self.curChar - 'A' + 10,
-							else => 0,
-						}) << shift;
-						self.appendControlGetNext() orelse return;
-						if (shift == 0) break;
-					}
-				},
-				'§' => {
-					self.currentFontEffect = .{.color = self.currentFontEffect.color};
-					self.appendControlGetNext() orelse return;
-				},
-				else => {
-					self.appendGetNext() orelse return;
-				},
-			};
+					},
+				}
+			}
 		}
 
 		pub fn countVisibleCharacters(text: []const u8) usize {
 			var unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0};
 			var count: usize = 0;
 			var curChar = unicodeIterator.nextCodepoint() orelse return count;
-			outer: while (true) switch (curChar) {
-				'*' => {
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-				},
-				'_' => {
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-					if (curChar == '_') {
+			outer: while (true) {
+				switch (curChar) {
+					'*' => {
 						curChar = unicodeIterator.nextCodepoint() orelse break;
-					} else {
-						count += 1;
-					}
-				},
-				'~' => {
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-					if (curChar == '~') {
+					},
+					'_' => {
 						curChar = unicodeIterator.nextCodepoint() orelse break;
-					} else {
+						if (curChar == '_') {
+							curChar = unicodeIterator.nextCodepoint() orelse break;
+						} else {
+							count += 1;
+						}
+					},
+					'~' => {
+						curChar = unicodeIterator.nextCodepoint() orelse break;
+						if (curChar == '~') {
+							curChar = unicodeIterator.nextCodepoint() orelse break;
+						} else {
+							count += 1;
+						}
+					},
+					'\\' => {
+						curChar = unicodeIterator.nextCodepoint() orelse break;
+						curChar = unicodeIterator.nextCodepoint() orelse break;
 						count += 1;
-					}
-				},
-				'\\' => {
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-					count += 1;
-				},
-				'#' => {
-					for (0..7) |_| curChar = unicodeIterator.nextCodepoint() orelse break :outer;
-				},
-				'§' => {
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-				},
-				else => {
-					count += 1;
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-				},
-			};
+					},
+					'#' => {
+						for (0..7) |_| curChar = unicodeIterator.nextCodepoint() orelse break :outer;
+					},
+					'§' => {
+						curChar = unicodeIterator.nextCodepoint() orelse break;
+					},
+					else => {
+						count += 1;
+						curChar = unicodeIterator.nextCodepoint() orelse break;
+					},
+				}
+			}
 			return count;
 		}
 	};
@@ -1103,8 +1107,8 @@ const TextRendering = struct { // MARK: TextRendering
 	var freetypeFace: c.FT_Face = undefined;
 	var harfbuzzFace: ?*c.hb_face_t = undefined;
 	var harfbuzzFont: ?*c.hb_font_t = undefined;
-	var glyphMapping: main.List(u31) = undefined;
-	var glyphData: main.List(Glyph) = undefined;
+	var glyphMapping: main.ListManaged(u31) = undefined;
+	var glyphData: main.ListManaged(Glyph) = undefined;
 	var glyphTexture: [2]c_uint = undefined;
 	var textureWidth: i32 = 1024;
 	const textureHeight: i32 = 16;
@@ -1457,9 +1461,9 @@ pub const SubAllocation = struct {
 pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 	return struct {
 		ssbo: SSBO,
-		freeBlocks: main.List(SubAllocation),
+		freeBlocks: main.ListManaged(SubAllocation),
 		fences: [3]c.GLsync,
-		fencedFreeLists: [3]main.List(SubAllocation),
+		fencedFreeLists: [3]main.ListManaged(SubAllocation),
 		activeFence: u8,
 		capacity: u31,
 		used: u31,
@@ -1874,7 +1878,7 @@ pub const Texture = struct { // MARK: Texture
 
 	pub fn initFromFile(path: []const u8) Texture {
 		const self = Texture.init();
-		const image = Image.readFromFile(main.stackAllocator, path) catch |err| blk: {
+		const image = Image.readFromFile(main.stackAllocator, path, .{.orientation = .openGl}) catch |err| blk: {
 			std.log.err("Couldn't read image from {s}: {s}", .{path, @errorName(err)});
 			break :blk Image.defaultImage;
 		};
@@ -1898,7 +1902,7 @@ pub const Texture = struct { // MARK: Texture
 		while (curSize != 0) : (curSize /= 2) {
 			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}{}.png", .{pathPrefix, curSize}) catch unreachable;
 			defer main.stackAllocator.free(path);
-			const image = Image.readFromFile(main.stackAllocator, path) catch |err| blk: {
+			const image = Image.readFromFile(main.stackAllocator, path, .{.orientation = .openGl}) catch |err| blk: {
 				std.log.err("Couldn't read image from {s}: {s}", .{path, @errorName(err)});
 				break :blk Image.defaultImage;
 			};
@@ -2085,25 +2089,15 @@ pub const Image = struct { // MARK: Image
 		if (self.imageData.ptr == &defaultImageData or self.imageData.ptr == &emptyImageData or self.imageData.ptr == &whiteImageData) return;
 		allocator.free(self.imageData);
 	}
-	pub fn readFromFile(allocator: NeverFailingAllocator, path: []const u8) !Image {
+	pub fn readFromFile(allocator: NeverFailingAllocator, path: []const u8, options: struct { orientation: enum { asIs, openGl } }) !Image {
 		var result: Image = undefined;
 		var channel: c_int = undefined;
 		const nullTerminatedPath = main.stackAllocator.dupeZ(u8, path); // TODO: Find a more zig-friendly image loading library.
 		errdefer main.stackAllocator.free(nullTerminatedPath);
-		c.stbi_set_flip_vertically_on_load(1);
-		const data = c.stbi_load(nullTerminatedPath.ptr, @ptrCast(&result.width), @ptrCast(&result.height), &channel, 4) orelse {
-			return error.FileNotFound;
-		};
-		main.stackAllocator.free(nullTerminatedPath);
-		result.imageData = allocator.dupe(Color, @as([*]Color, @ptrCast(data))[0 .. result.width*result.height]);
-		c.stbi_image_free(data);
-		return result;
-	}
-	pub fn readUnflippedFromFile(allocator: NeverFailingAllocator, path: []const u8) !Image {
-		var result: Image = undefined;
-		var channel: c_int = undefined;
-		const nullTerminatedPath = main.stackAllocator.dupeZ(u8, path); // TODO: Find a more zig-friendly image loading library.
-		errdefer main.stackAllocator.free(nullTerminatedPath);
+		switch (options.orientation) {
+			.asIs => {},
+			.openGl => c.stbi_set_flip_vertically_on_load(1),
+		}
 		const data = c.stbi_load(nullTerminatedPath.ptr, @ptrCast(&result.width), @ptrCast(&result.height), &channel, 4) orelse {
 			return error.FileNotFound;
 		};
@@ -2204,19 +2198,19 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	defer main.game.camera.viewMatrix = oldViewMatrix;
 	const uniforms = if (block.transparent()) &main.renderer.chunk_meshing.transparentUniforms else &main.renderer.chunk_meshing.uniforms;
 
-	var faceData: main.ListUnmanaged(main.renderer.chunk_meshing.FaceData) = .{};
-	defer faceData.deinit(main.stackAllocator);
+	var faceData: main.ListManaged(main.renderer.chunk_meshing.FaceData) = .init(main.stackAllocator);
+	defer faceData.deinit();
 	const model = main.blocks.meshes.model(block).model();
 	const pos: main.chunk.BlockPos = .fromCoords(1, 1, 1);
 	if (block.hasBackFace()) {
-		model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, pos, true);
+		model.appendInternalQuadsToList(&faceData, block, pos, true);
 		for (main.chunk.Neighbor.iterable) |neighbor| {
-			model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, pos, true);
+			model.appendNeighborFacingQuadsToList(&faceData, block, neighbor, pos, true);
 		}
 	}
-	model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, pos, false);
+	model.appendInternalQuadsToList(&faceData, block, pos, false);
 	for (main.chunk.Neighbor.iterable) |neighbor| {
-		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, pos.neighbor(neighbor)[0], false);
+		model.appendNeighborFacingQuadsToList(&faceData, block, neighbor, pos.neighbor(neighbor)[0], false);
 	}
 
 	for (faceData.items) |*face| {

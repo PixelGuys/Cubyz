@@ -353,13 +353,15 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 	}
 
 	fn chunkInitFunctionForCacheAndIncreaseRefCount(pos: ChunkPosition) *ServerChunk {
-		if (pos.voxelSize == 1) if (getSimulationChunkAndIncreaseRefCount(pos)) |simulationChunk| { // Check if we already have it in memory.
-			defer simulationChunk.decreaseRefCount();
-			if (simulationChunk.getChunk()) |ch| {
-				ch.increaseRefCount();
-				return ch;
+		if (pos.voxelSize == 1) {
+			if (getSimulationChunkAndIncreaseRefCount(pos)) |simulationChunk| { // Check if we already have it in memory.
+				defer simulationChunk.decreaseRefCount();
+				if (simulationChunk.getChunk()) |ch| {
+					ch.increaseRefCount();
+					return ch;
+				}
 			}
-		};
+		}
 		const regionSize = pos.voxelSize*chunk.chunkSize*storage.RegionFile.regionSize;
 		const regionMask: i32 = regionSize - 1;
 		const region = storage.loadRegionFileAndIncreaseRefCount(pos.wx & ~regionMask, pos.wy & ~regionMask, pos.wz & ~regionMask, pos.voxelSize);
@@ -603,13 +605,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		if (worldData.get(u32, "version", 0) == 4) { // TODO: #2458
 			std.log.info("Migrating old world with world version 4 to version 5", .{});
 			// Player file names are now numerical instead of based on the name.
-			var fileNames: main.List([]const u8) = .init(arena);
+			var fileNames: main.List([]const u8) = .{};
 			var playerDir = try dir.openIterableDir("players");
 			defer playerDir.close();
 			var iterator = playerDir.iterate();
 			while (try iterator.next(main.io)) |file| {
 				if (file.kind == .file and std.mem.endsWith(u8, file.name, ".zon")) {
-					fileNames.append(arena.dupe(u8, file.name));
+					fileNames.append(arena, arena.dupe(u8, file.name));
 				}
 			}
 
@@ -783,8 +785,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			};
 		}
 		// Find all the stored chunks:
-		var chunkPositions = main.List(ChunkPosition).init(main.stackAllocator);
-		defer chunkPositions.deinit();
+		var chunkPositions: main.List(ChunkPosition) = .{};
+		defer chunkPositions.deinit(main.stackAllocator);
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks/1", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(path);
 		blk: {
@@ -810,7 +812,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 						if (entryZ.kind != .file) continue;
 						const nameZ = entryZ.name[0 .. std.mem.indexOfScalar(u8, entryZ.name, '.') orelse entryZ.name.len];
 						const wz = std.fmt.parseInt(i32, nameZ, 0) catch continue;
-						chunkPositions.append(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1});
+						chunkPositions.append(main.stackAllocator, .{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1});
 					}
 				}
 			}
@@ -959,6 +961,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 		const player = user.player();
 		const loadingError = player.loadFrom(user.id, playerData.getChild("entity"), .server);
+
+		// override the name for players.
+		if (player.name) |name| {
+			main.globalAllocator.free(name);
+		}
+		player.name = main.globalAllocator.dupe(u8, user.name);
+
 		if (playerData == .null) {
 			player.pos = @floatFromInt(self.spawn);
 
@@ -1088,7 +1097,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	fn tick(self: *ServerWorld) void {
 		ChunkManager.mutex.lock();
 		var iter = ChunkManager.simulationChunkHashMap.valueIterator();
-		var currentChunks: main.ListUnmanaged(*SimulationChunk) = .initCapacity(main.stackAllocator, iter.len);
+		var currentChunks: main.List(*SimulationChunk) = .initCapacity(main.stackAllocator, iter.len);
 		defer currentChunks.deinit(main.stackAllocator);
 		while (iter.next()) |simulationChunk| {
 			simulationChunk.*.increaseRefCount();
@@ -1258,9 +1267,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer baseChunk.mutex.unlock();
 
 		if (currentBlock != _newBlock) {
-			if (currentBlock.blockEntity()) |blockEntity| blockEntity.updateServerData(.{wx, wy, wz}, &baseChunk.super, .remove) catch |err| {
-				std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{wx, wy, wz}, currentBlock.id()});
-			};
+			if (currentBlock.blockEntity()) |blockEntity| {
+				blockEntity.updateServerData(.{wx, wy, wz}, &baseChunk.super, .remove) catch |err| {
+					std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{wx, wy, wz}, currentBlock.id()});
+				};
+			}
 		}
 		baseChunk.updateBlockAndSetChanged(pos.x, pos.y, pos.z, newBlock);
 

@@ -27,14 +27,10 @@ pub var window = GuiWindow{
 };
 
 const padding: f32 = 8;
-var itemSlots: main.List(*ItemSlot) = undefined;
-
-pub fn init() void {
-	itemSlots = .init(main.globalAllocator);
-}
+var itemSlots: main.List(*ItemSlot) = .{};
 
 pub fn deinit() void {
-	itemSlots.deinit();
+	itemSlots.deinit(main.globalAllocator);
 }
 
 pub var openInventory: main.items.Inventory.ClientInventory = undefined;
@@ -51,7 +47,7 @@ pub fn onOpen() void {
 		for (0..10) |x| {
 			const index: usize = y*10 + x;
 			const slot = ItemSlot.init(.{0, 0}, openInventory, @intCast(index), .default, .normal);
-			itemSlots.append(slot);
+			itemSlots.append(main.globalAllocator, slot);
 			row.add(slot);
 		}
 		list.add(row);

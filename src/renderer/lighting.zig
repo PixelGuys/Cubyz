@@ -72,7 +72,7 @@ pub const ChannelChunk = struct {
 
 	const ChunkEntries = struct {
 		mesh: ?*chunk_meshing.ChunkMesh,
-		entries: main.ListUnmanaged(BlockPos),
+		entries: main.List(BlockPos),
 	};
 
 	pub fn getValue(self: *ChannelChunk, pos: BlockPos) LightValue {
@@ -106,8 +106,8 @@ pub const ChannelChunk = struct {
 		}
 	}
 
-	fn propagateDirect(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lightRefreshList: *main.List(chunk.ChunkPosition)) void {
-		var neighborLists: [6]main.ListUnmanaged(Entry) = @splat(.{});
+	fn propagateDirect(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
+		var neighborLists: [6]main.List(Entry) = @splat(.{});
 		defer {
 			for (&neighborLists) |*list| {
 				list.deinit(main.stackAllocator);
@@ -155,7 +155,7 @@ pub const ChannelChunk = struct {
 		}
 	}
 
-	fn addSelfToLightRefreshList(self: *ChannelChunk, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
+	fn addSelfToLightRefreshList(self: *ChannelChunk, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
 		for (lightRefreshList.items) |other| {
 			if (self.ch.pos.equals(other)) {
 				return;
@@ -164,9 +164,9 @@ pub const ChannelChunk = struct {
 		lightRefreshList.append(self.ch.pos);
 	}
 
-	fn propagateDestructive(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), constructiveEntries: *main.ListUnmanaged(ChunkEntries), isFirstBlock: bool, lightRefreshList: *main.List(chunk.ChunkPosition)) main.ListUnmanaged(BlockPos) {
-		var neighborLists: [6]main.ListUnmanaged(Entry) = @splat(.{});
-		var constructiveList: main.ListUnmanaged(BlockPos) = .{};
+	fn propagateDestructive(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), constructiveEntries: *main.List(ChunkEntries), isFirstBlock: bool, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) main.List(BlockPos) {
+		var neighborLists: [6]main.List(Entry) = @splat(.{});
+		var constructiveList: main.List(BlockPos) = .{};
 		defer {
 			for (&neighborLists) |*list| {
 				list.deinit(main.stackAllocator);
@@ -245,7 +245,7 @@ pub const ChannelChunk = struct {
 		return constructiveList;
 	}
 
-	fn propagateFromNeighbor(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lights: []const Entry, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
+	fn propagateFromNeighbor(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lights: []const Entry, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
 		std.debug.assert(lightQueue.isEmpty());
 		for (lights) |entry| {
 			var result = entry;
@@ -255,7 +255,7 @@ pub const ChannelChunk = struct {
 		self.propagateDirect(lightQueue, lightRefreshList);
 	}
 
-	fn propagateDestructiveFromNeighbor(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lights: []const Entry, constructiveEntries: *main.ListUnmanaged(ChunkEntries), lightRefreshList: *main.List(chunk.ChunkPosition)) main.ListUnmanaged(BlockPos) {
+	fn propagateDestructiveFromNeighbor(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lights: []const Entry, constructiveEntries: *main.List(ChunkEntries), lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) main.List(BlockPos) {
 		std.debug.assert(lightQueue.isEmpty());
 		for (lights) |entry| {
 			var result = entry;
@@ -265,7 +265,7 @@ pub const ChannelChunk = struct {
 		return self.propagateDestructive(lightQueue, constructiveEntries, false, lightRefreshList);
 	}
 
-	pub fn propagateLights(self: *ChannelChunk, lights: []const BlockPos, comptime checkNeighbors: bool, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
+	pub fn propagateLights(self: *ChannelChunk, lights: []const BlockPos, comptime checkNeighbors: bool, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
 		var lightQueue = main.utils.CircularBufferQueue(Entry).init(main.stackAllocator, 1 << 12);
 		defer lightQueue.deinit();
 		for (lights) |pos| {
@@ -319,7 +319,7 @@ pub const ChannelChunk = struct {
 		self.propagateDirect(&lightQueue, lightRefreshList);
 	}
 
-	pub fn propagateUniformSun(self: *ChannelChunk, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
+	pub fn propagateUniformSun(self: *ChannelChunk, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
 		std.debug.assert(self.isSun);
 		self.mutex.lock();
 		self.data.fillUniform(.fromArray(.{255, 255, 255}));
@@ -369,13 +369,13 @@ pub const ChannelChunk = struct {
 		}
 	}
 
-	pub fn propagateLightsDestructive(self: *ChannelChunk, lights: []const BlockPos, lightRefreshList: *main.List(chunk.ChunkPosition)) void {
+	pub fn propagateLightsDestructive(self: *ChannelChunk, lights: []const BlockPos, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
 		var lightQueue = main.utils.CircularBufferQueue(Entry).init(main.stackAllocator, 1 << 12);
 		defer lightQueue.deinit();
 		for (lights) |pos| {
 			lightQueue.pushBack(.{.pos = pos, .value = self.data.getValue(pos.toIndex()).toArray(), .sourceDir = 6, .activeValue = 0b111});
 		}
-		var constructiveEntries: main.ListUnmanaged(ChunkEntries) = .{};
+		var constructiveEntries: main.List(ChunkEntries) = .{};
 		defer constructiveEntries.deinit(main.stackAllocator);
 		constructiveEntries.append(main.stackAllocator, .{
 			.mesh = null,

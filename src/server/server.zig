@@ -56,6 +56,9 @@ pub const WorldEditData = struct {
 				main.globalAllocator.free(self.message);
 				self.blueprint.deinit(main.globalAllocator);
 			}
+			pub fn selection(self: Value) Blueprint.Selection {
+				return .initFromExtent(self.position, self.blueprint.extent());
+			}
 		};
 		pub fn init() History {
 			return .{.changes = .init(main.globalAllocator, maxWorldEditHistoryCapacity)};
@@ -139,7 +142,7 @@ pub const User = struct { // MARK: User
 
 	mutex: main.utils.Mutex = .{},
 
-	inventoryCommands: main.ListUnmanaged([]const u8) = .{},
+	inventoryCommands: main.List([]const u8) = .{},
 
 	permissions: permission.Permissions = undefined,
 
@@ -249,20 +252,23 @@ pub const User = struct { // MARK: User
 		self.id = freeId;
 		freeId += 1;
 
-		if (main.entityModel.playerEntityModels.items.len != 0) {
-			const defaultModel = main.entityModel.playerEntityModels.items[main.random.nextIntBounded(u32, &main.seed, @intCast(main.entityModel.playerEntityModels.items.len))];
-			main.entity.components.@"cubyz:model".server.loadByIndex(self.id, defaultModel) catch unreachable;
-		}
 		world.?.loadPlayer(self) catch {
 			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
 		};
-
+		if (main.entity.components.@"cubyz:model".server.get(self.id) == null) {
+			if (main.entityModel.playerEntityModels.items.len != 0) {
+				const defaultModel = main.entityModel.playerEntityModels.items[main.random.nextIntBounded(u32, &main.seed, @intCast(main.entityModel.playerEntityModels.items.len))];
+				main.entity.components.@"cubyz:model".server.put(self.id, .{.entityModel = defaultModel});
+			}
+		}
 		if (main.entity.components.@"cubyz:bag".server.get(self.id) == null) {
 			main.entity.components.@"cubyz:bag".server.loadEmpty(self.id);
 		}
 
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();
+
+		main.entity.components.@"cubyz:player".server.load(self.id, @truncate(self.playerIndex));
 	}
 
 	fn simArrIndex(x: i32) usize {
@@ -353,7 +359,7 @@ pub const User = struct { // MARK: User
 					pub fn run(user: *User) void {
 						defer user.decreaseRefCount();
 
-						var newTasks: main.ListUnmanaged(main.utils.ThreadPool.Task) = .initCapacity(main.stackAllocator, user.jobQueue.size);
+						var newTasks: main.List(main.utils.ThreadPool.Task) = .initCapacity(main.stackAllocator, user.jobQueue.size);
 						defer newTasks.deinit(main.stackAllocator);
 						while (user.jobQueue.extractAny()) |_task| {
 							var task = _task;
@@ -523,7 +529,7 @@ const updateTime: std.Io.Duration = .fromNanoseconds(1000000000/20);
 
 pub var world: ?*ServerWorld = null;
 var userMutex: main.utils.Mutex = .{};
-var users: main.List(*User) = undefined;
+var users: main.ListManaged(*User) = undefined;
 var userDeinitList: main.utils.ConcurrentQueue(*User) = undefined;
 var userConnectList: main.utils.ConcurrentQueue(*User) = undefined;
 
@@ -654,7 +660,7 @@ fn update() void { // MARK: update()
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
 	defer main.stackAllocator.free(itemData);
 
-	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+	var entityData: main.ListManaged(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 	defer entityData.deinit();
 
 	for (userList) |user| {
@@ -763,6 +769,7 @@ pub fn connect(user: *User) void {
 pub fn connectInternal(user: *User) void {
 	user.initPlayer();
 	main.network.protocols.handShake.sendServerPlayerData(user.conn);
+
 	// TODO: addEntity(player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
@@ -781,8 +788,6 @@ pub fn connectInternal(user: *User) void {
 		defer zonArray.deinit(main.stackAllocator);
 
 		const entityZon = user.player().save(main.stackAllocator, .playerNearby);
-		entityZon.put("name", user.name);
-		entityZon.put("playerIndex", user.playerIndex);
 		zonArray.array.append(entityZon);
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
@@ -795,8 +800,6 @@ pub fn connectInternal(user: *User) void {
 		defer zonArray.deinit(main.stackAllocator);
 		for (userList) |other| {
 			const entityZon = other.player().save(main.stackAllocator, .playerNearby);
-			entityZon.put("name", other.name);
-			entityZon.put("playerIndex", other.playerIndex);
 			zonArray.array.append(entityZon);
 		}
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
@@ -807,6 +810,7 @@ pub fn connectInternal(user: *User) void {
 	main.network.protocols.entity.send(user.conn, initialList);
 	main.stackAllocator.free(initialList);
 	sendMessage("{s}§#ffff00 joined", .{user.name});
+	user.permissions.addPermission(.white, "/command/avatar");
 
 	userMutex.lock();
 	users.append(user);

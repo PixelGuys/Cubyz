@@ -476,8 +476,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	online: Atomic(bool) = .init(false),
 	running: Atomic(bool) = .init(true),
 
-	connections: main.List(*Connection) = undefined,
-	requests: main.List(*Request) = undefined,
+	connections: main.List(*Connection) = .{},
+	requests: main.List(*Request) = .{},
 
 	mutex: main.utils.Mutex = .{},
 	waitingToFinishReceive: main.utils.Condition = .{},
@@ -505,8 +505,6 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		const result: *ConnectionManager = main.globalAllocator.create(ConnectionManager);
 		errdefer main.globalAllocator.destroy(result);
 		result.* = .{};
-		result.connections = .init(main.globalAllocator);
-		result.requests = .init(main.globalAllocator);
 		result.packetSendRequests = .initContext({});
 
 		result.localPort = localPort;
@@ -539,11 +537,11 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		self.running.store(false, .monotonic);
 		self.thread.join();
 		self.socket.deinit();
-		self.connections.deinit();
+		self.connections.deinit(main.globalAllocator);
 		for (self.requests.items) |request| {
 			request.requestNotifier.signal();
 		}
-		self.requests.deinit();
+		self.requests.deinit(main.globalAllocator);
 		while (self.packetSendRequests.pop()) |packet| {
 			main.globalAllocator.free(packet.data);
 		}
@@ -579,7 +577,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		{
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			self.requests.append(&request);
+			self.requests.append(main.globalAllocator, &request);
 
 			request.requestNotifier.timedWait(&self.mutex, timeout) catch {};
 
@@ -611,7 +609,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		for (self.connections.items) |other| {
 			if (other.remoteAddress.ip == conn.remoteAddress.ip and other.remoteAddress.port == conn.remoteAddress.port) return error.AlreadyConnected;
 		}
-		self.connections.append(conn);
+		self.connections.append(main.globalAllocator, conn);
 	}
 
 	pub fn finishCurrentReceive(self: *ConnectionManager) void {
@@ -778,7 +776,7 @@ pub const Connection = struct { // MARK: Connection
 				return self.start +% self.len;
 			}
 		};
-		ranges: main.ListUnmanaged(Range),
+		ranges: main.List(Range),
 
 		pub fn init() RangeBuffer {
 			return .{
@@ -867,7 +865,7 @@ pub const Connection = struct { // MARK: Connection
 		decryptedBuffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
 		buffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
 		header: ?Header = null,
-		protocolBuffer: main.ListUnmanaged(u8) = .{},
+		protocolBuffer: main.List(u8) = .{},
 
 		pub fn init() ReceiveBuffer {
 			return .{
@@ -1009,7 +1007,7 @@ pub const Connection = struct { // MARK: Connection
 			if (self.highestSentIndex == self.fullyConfirmedIndex) {
 				self.lastUnsentTime = time;
 			}
-			var fullData: main.List(u8) = .init(main.stackAllocator);
+			var fullData: main.ListManaged(u8) = .init(main.stackAllocator);
 			defer fullData.deinit();
 			if (data.len + self.buffer.len > std.math.maxInt(SequenceIndex)) return error.OutOfMemory;
 			fullData.append(protocolIndex);
@@ -1211,7 +1209,7 @@ pub const Connection = struct { // MARK: Connection
 
 		side: main.sync.Side,
 		finishedCollectingClientVerificationData: bool = false,
-		verificationDataForClientSignature: main.ListUnmanaged(u8) = .{},
+		verificationDataForClientSignature: main.List(u8) = .{},
 
 		pub fn init(self: *SecureChannel, sequenceIndex: SequenceIndex, delay: i64, id: ChannelId, side: main.sync.Side) !void {
 			self.* = .{

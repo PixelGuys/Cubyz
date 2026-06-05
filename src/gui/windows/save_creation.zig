@@ -84,7 +84,7 @@ pub fn onOpen() void {
 
 	if (worldPresets.len == 0) {
 		var presetMap = main.assets.worldPresets();
-		var entryList: main.ListUnmanaged(ZonMapEntry) = .initCapacity(main.globalArena, presetMap.count());
+		var entryList: main.List(ZonMapEntry) = .initCapacity(main.globalArena, presetMap.count());
 		var iterator = presetMap.iterator();
 		while (iterator.next()) |entry| {
 			entryList.appendAssumeCapacity(entry);
