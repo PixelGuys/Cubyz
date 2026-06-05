@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 
-var tagList: main.List([]const u8) = .{};
+var tagList: main.List([]const u8) = .empty;
 var tagIds: std.StringHashMapUnmanaged(Tag) = .{};
 
 pub const Tag = enum(u32) {

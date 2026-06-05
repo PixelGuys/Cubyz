@@ -36,7 +36,7 @@ pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 
 	const Entry = struct { sbb: *const StructureBuildingBlock, hasParent: bool, reachable: bool };
-	var localSbbList: main.List(Entry) = .{};
+	var localSbbList: main.List(Entry) = .empty;
 	defer localSbbList.deinit(main.stackAllocator);
 	for (terrain.sbb.list()) |*entry| {
 		localSbbList.append(main.stackAllocator, .{.sbb = entry, .hasParent = false, .reachable = false});

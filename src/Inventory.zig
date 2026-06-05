@@ -24,7 +24,7 @@ pub const InventoryId = enum(u32) { _ };
 
 pub const client = struct { // MARK: client
 	var maxId: InventoryId = @enumFromInt(0);
-	var freeIdList: main.List(InventoryId) = .{};
+	var freeIdList: main.List(InventoryId) = .empty;
 	var serverToClientMap: std.AutoHashMap(InventoryId, Inventory) = undefined;
 
 	pub fn init() void {
@@ -158,7 +158,7 @@ pub const server = struct { // MARK: server
 
 	var inventories: main.utils.VirtualList(ServerInventory, 1 << 24) = undefined;
 	var maxId: InventoryId = @enumFromInt(0);
-	var freeIdList: main.List(InventoryId) = .{};
+	var freeIdList: main.List(InventoryId) = .empty;
 	var inventoryCreationMutex: main.utils.Mutex = .{};
 
 	pub fn init() void {

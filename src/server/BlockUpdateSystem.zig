@@ -7,7 +7,7 @@ const vec = main.vec;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
-list: main.List(BlockPos) = .{},
+list: main.List(BlockPos) = .empty,
 mutex: main.utils.Mutex = .{},
 
 pub fn init() @This() {

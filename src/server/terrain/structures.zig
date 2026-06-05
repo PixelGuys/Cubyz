@@ -120,7 +120,7 @@ pub const StructureTable = struct {
 };
 
 var finishedLoading: bool = false;
-var structureTables: main.List(StructureTable) = .{};
+var structureTables: main.List(StructureTable) = .empty;
 var structureTablesById: std.StringHashMapUnmanaged(*StructureTable) = .{};
 
 fn register(id: []const u8, zon: ZonElement) void {

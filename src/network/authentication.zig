@@ -252,7 +252,7 @@ pub const AccountCode = struct {
 		std.crypto.hash.sha2.Sha256.hash(bits[0..20], &sha256Result, .{});
 		bits[20] = sha256Result[0];
 
-		var result: main.List(u8) = .{};
+		var result: main.List(u8) = .empty;
 		defer result.deinit(main.stackAllocator);
 		defer std.crypto.secureZero(u8, result.items);
 

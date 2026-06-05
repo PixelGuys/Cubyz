@@ -43,7 +43,7 @@ pub const CaveLayer = struct {
 				return null;
 			}
 		}
-		var biomes: main.List(*const Biome) = .{};
+		var biomes: main.List(*const Biome) = .empty;
 		defer biomes.deinit(main.stackAllocator);
 		outer: for (terrain.biomes.getCaveBiomes()) |*biome| {
 			for (tags) |tag| {
@@ -72,7 +72,7 @@ pub const CaveLayer = struct {
 };
 
 var finishedLoading: bool = false;
-var caveLayers: main.List(CaveLayer) = .{};
+var caveLayers: main.List(CaveLayer) = .empty;
 
 fn register(id: []const u8, zon: ZonElement) void {
 	const caveLayer = CaveLayer.init(id, zon) orelse return;

@@ -459,7 +459,7 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 	/// Determines all the basic properties of the proceduralItem.
 	pub fn evaluateProceduralItem(proceduralItem: *ProceduralItem) void {
 		proceduralItem.properties = @splat(0);
-		var tempModifiers: main.List(Modifier) = .{};
+		var tempModifiers: main.List(Modifier) = .empty;
 		defer tempModifiers.deinit(main.stackAllocator);
 		for (proceduralItem.type.properties()) |property| {
 			if (property.destination == null) continue;
@@ -1299,7 +1299,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 		}
 		slotInfos[i].optional = zonDisabled.as(usize, 0) != 0;
 	}
-	var parameterMatrices: main.List(PropertyMatrix) = .{};
+	var parameterMatrices: main.List(PropertyMatrix) = .empty;
 	defer parameterMatrices.deinit(main.stackAllocator);
 	for (zon.getChild("parameters").toSlice()) |paramZon| {
 		const val = parameterMatrices.addOne(main.stackAllocator);

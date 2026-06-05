@@ -142,7 +142,7 @@ pub const User = struct { // MARK: User
 
 	mutex: main.utils.Mutex = .{},
 
-	inventoryCommands: main.List([]const u8) = .{},
+	inventoryCommands: main.List([]const u8) = .empty,
 
 	permissions: permission.Permissions = undefined,
 

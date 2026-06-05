@@ -245,7 +245,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 	const CaveBiomesResult = struct { worldPos: Vec3i, biome: *const Biome };
 
 	pub fn getCaveBiomesInRange(self: CaveBiomeMapView, allocator: NeverFailingAllocator, min: Vec3i, max: Vec3i) []CaveBiomesResult {
-		var list: main.List(CaveBiomesResult) = .{};
+		var list: main.List(CaveBiomesResult) = .empty;
 
 		var minRotated: Vec3i = CaveBiomeMapFragment.rotate(min);
 		var maxRotated: Vec3i = min;

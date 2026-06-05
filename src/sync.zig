@@ -70,7 +70,7 @@ pub const client = struct { // MARK: client
 	pub fn receiveFailure() void {
 		mutex.lock();
 		defer mutex.unlock();
-		var tempData: main.List(Command) = .{};
+		var tempData: main.List(Command) = .empty;
 		defer tempData.deinit(main.stackAllocator);
 		while (commands.popBack()) |_cmd| {
 			var cmd = _cmd;
@@ -94,7 +94,7 @@ pub const client = struct { // MARK: client
 	pub fn receiveSyncOperation(reader: *BinaryReader) !void {
 		mutex.lock();
 		defer mutex.unlock();
-		var tempData: main.List(Command) = .{};
+		var tempData: main.List(Command) = .empty;
 		defer tempData.deinit(main.stackAllocator);
 		while (commands.popBack()) |_cmd| {
 			var cmd = _cmd;
@@ -113,7 +113,7 @@ pub const client = struct { // MARK: client
 		mutex.lock();
 		defer mutex.unlock();
 		main.game.Player.setGamemode(gamemode);
-		var tempData: main.List(Command) = .{};
+		var tempData: main.List(Command) = .empty;
 		defer tempData.deinit(main.stackAllocator);
 		while (commands.popBack()) |_cmd| {
 			var cmd = _cmd;
@@ -517,8 +517,8 @@ pub const Command = struct { // MARK: Command
 	};
 
 	payload: Payload,
-	baseOperations: main.List(BaseOperation) = .{},
-	syncOperations: main.List(SyncOperation) = .{},
+	baseOperations: main.List(BaseOperation) = .empty,
+	syncOperations: main.List(SyncOperation) = .empty,
 
 	fn serializePayload(self: *Command, allocator: NeverFailingAllocator) []const u8 {
 		var writer = BinaryWriter.init(allocator);
