@@ -13,10 +13,10 @@ const Degrees = main.rotation.Degrees;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const Assets = main.assets.Assets;
 
-var structureList: List(StructureBuildingBlock) = .{};
+var structureList: List(StructureBuildingBlock) = .empty;
 var structureMap: std.StringHashMapUnmanaged(StructureIndex) = .{};
 
-var blueprintList: List([4]BlueprintEntry) = .{};
+var blueprintList: List([4]BlueprintEntry) = .empty;
 var blueprintMap: std.StringHashMapUnmanaged(BlueprintIndex) = .{};
 
 var childrenToResolve: ListManaged(struct { structureId: []const u8, structure: *?*StructureBuildingBlock }) = undefined;
@@ -25,7 +25,7 @@ const originBlockStringId = "cubyz:sbb/origin";
 var originBlockNumericId: u16 = 0;
 
 var childBlockNumericIdMap: std.AutoHashMapUnmanaged(GlobalBlockIndex, LocalBlockIndex) = .{};
-var childBlockName: List([]const u8) = .{};
+var childBlockName: List([]const u8) = .empty;
 var childBlockNameToLocalIndex: std.StringHashMapUnmanaged(LocalBlockIndex) = .{};
 
 pub const BlueprintIndex = enum(u32) {
@@ -101,7 +101,7 @@ const BlueprintEntry = struct {
 		};
 
 		var hasOrigin = false;
-		var childBlocks: List(StructureBlock) = .{};
+		var childBlocks: List(StructureBlock) = .empty;
 		defer childBlocks.deinit(main.stackAllocator);
 
 		for (0..blueprint.blocks.width) |x| {
@@ -309,7 +309,7 @@ pub const StructureBuildingBlock = struct {
 	}
 	pub fn postResolutionChecks(self: StructureBuildingBlock) void {
 		// Collect all unique child blocks used in blueprints of this SBB.
-		var childBlocksInBlueprints: List(LocalBlockIndex) = .{};
+		var childBlocksInBlueprints: List(LocalBlockIndex) = .empty;
 		defer childBlocksInBlueprints.deinit(main.stackAllocator);
 
 		for (self.blueprints.items, 0..) |blueprints, blueprintIndex| {

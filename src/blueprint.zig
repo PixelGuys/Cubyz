@@ -377,7 +377,7 @@ pub const Pattern = struct {
 		var specifiers = std.mem.splitScalar(u8, source, expressionSeparator);
 		var totalWeight: f32 = 0;
 
-		var weightedEntries: List(struct { block: Block, weight: f32 }) = .{};
+		var weightedEntries: List(struct { block: Block, weight: f32 }) = .empty;
 		defer weightedEntries.deinit(main.stackAllocator);
 
 		while (specifiers.next()) |specifier| {

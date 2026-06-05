@@ -66,7 +66,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			var result: T = undefined;
 			var tokens = std.mem.tokenizeScalar(u8, args, ' ');
 
-			var tempErrorMessage: List(u8) = .{};
+			var tempErrorMessage: List(u8) = .empty;
 			defer tempErrorMessage.deinit(main.stackAllocator);
 
 			var nextArgument: ?[]const u8 = tokens.next();
@@ -144,7 +144,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 		}
 
 		fn parseUnion(comptime u: std.builtin.Type.Union, allocator: NeverFailingAllocator, args: []const u8, errorMessage: *List(u8)) error{ParseError}!T {
-			var tempErrorMessage: List(u8) = .{};
+			var tempErrorMessage: List(u8) = .empty;
 			defer tempErrorMessage.deinit(allocator);
 
 			tempErrorMessage.appendSlice(allocator, "---");
@@ -191,7 +191,7 @@ const Test = struct {
 };
 
 test "no arguments" {
-	var errors: List(u8) = .{};
+	var errors: List(u8) = .empty;
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Parser(struct {}, .{.commandName = "foo"}).parse(main.stackAllocator, "", &errors);
@@ -201,7 +201,7 @@ test "no arguments" {
 }
 
 test "float" {
-	var errors: List(u8) = .{};
+	var errors: List(u8) = .empty;
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Test.OnlyX.parse(main.stackAllocator, "33.0", &errors);
@@ -212,7 +212,7 @@ test "float" {
 }
 
 test "float negative" {
-	var errors: List(u8) = .{};
+	var errors: List(u8) = .empty;
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Test.OnlyX.parse(main.stackAllocator, "foo", &errors);
@@ -226,7 +226,7 @@ test "enum" {
 		cmd: enum(u1) { foo },
 	}, .{.commandName = "c"});
 
-	var errors: List(u8) = .{};
+	var errors: List(u8) = .empty;
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = ArgParser.parse(main.stackAllocator, "foo", &errors);
@@ -243,7 +243,7 @@ test "float int float" {
 		z: f32,
 	}, .{.commandName = ""});
 
-	var errors: List(u8) = .{};
+	var errors: List(u8) = .empty;
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = ArgParser.parse(main.stackAllocator, "33.0 154 -5654.0", &errors);
@@ -262,7 +262,7 @@ test "float int optional float missing" {
 		z: ?f32,
 	}, .{.commandName = ""});
 
-	var errors: List(u8) = .{};
+	var errors: List(u8) = .empty;
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = ArgParser.parse(main.stackAllocator, "33.0 154", &errors);
@@ -281,7 +281,7 @@ test "two optionals missing" {
 		z: ?f32,
 	}, .{.commandName = ""});
 
-	var errors: List(u8) = .{};
+	var errors: List(u8) = .empty;
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = ArgParser.parse(main.stackAllocator, "1.0", &errors);
@@ -300,7 +300,7 @@ test "float int optional float present" {
 		z: ?f32,
 	}, .{.commandName = ""});
 
-	var errors: List(u8) = .{};
+	var errors: List(u8) = .empty;
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = ArgParser.parse(main.stackAllocator, "33.0 154 0.1", &errors);
@@ -319,7 +319,7 @@ test "optional inbetween" {
 		z: enum { bar },
 	}, .{.commandName = "c"});
 
-	var errors: List(u8) = .{};
+	var errors: List(u8) = .empty;
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = ArgParser.parse(main.stackAllocator, "foo bar", &errors);
@@ -332,7 +332,7 @@ test "optional inbetween" {
 }
 
 test "x or xy case x" {
-	var errors: List(u8) = .{};
+	var errors: List(u8) = .empty;
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Test.@"Union X or XY".parse(main.stackAllocator, "0.9", &errors);
@@ -343,7 +343,7 @@ test "x or xy case x" {
 }
 
 test "x or xy case xy" {
-	var errors: List(u8) = .{};
+	var errors: List(u8) = .empty;
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Test.@"Union X or XY".parse(main.stackAllocator, "0.9 1.0", &errors);
@@ -355,7 +355,7 @@ test "x or xy case xy" {
 }
 
 test "x or xy negative empty" {
-	var errors: List(u8) = .{};
+	var errors: List(u8) = .empty;
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Test.@"Union X or XY".parse(main.stackAllocator, "", &errors);
@@ -373,7 +373,7 @@ test "x or xy negative empty" {
 }
 
 test "x or xy negative too many args" {
-	var errors: List(u8) = .{};
+	var errors: List(u8) = .empty;
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Test.@"Union X or XY".parse(main.stackAllocator, "1.0 3.0 5.0", &errors);
@@ -391,7 +391,7 @@ test "x or xy negative too many args" {
 }
 
 test "subCommands foo" {
-	var errors: List(u8) = .{};
+	var errors: List(u8) = .empty;
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Test.@"subCommands foo or bar".parse(main.stackAllocator, "foo 1.0", &errors);
@@ -403,7 +403,7 @@ test "subCommands foo" {
 }
 
 test "subCommands bar" {
-	var errors: List(u8) = .{};
+	var errors: List(u8) = .empty;
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Test.@"subCommands foo or bar".parse(main.stackAllocator, "bar 2.0 3.0", &errors);

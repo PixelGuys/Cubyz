@@ -103,7 +103,7 @@ pub const server = struct { // MARK: server
 			inventoryCreationMutex.assertLocked();
 			return .{
 				.inv = Inventory._init(main.globalAllocator, len, source, .server, callbacks),
-				.users = .{},
+				.users = .empty,
 				.source = source,
 				.managed = managed,
 			};

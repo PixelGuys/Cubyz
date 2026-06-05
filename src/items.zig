@@ -1178,7 +1178,7 @@ pub const Recipe = struct { // MARK: Recipe
 	}
 };
 
-var proceduralItemTypeList: List(ProceduralItemType) = .{};
+var proceduralItemTypeList: List(ProceduralItemType) = .empty;
 var proceduralItemTypeIdToIndex: std.StringHashMapUnmanaged(ProceduralItemTypeIndex) = .{};
 
 var reverseIndices: std.StringHashMapUnmanaged(BaseItemIndex) = .{};

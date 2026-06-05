@@ -219,8 +219,8 @@ pub fn ListManaged(comptime T: type) type {
 
 pub fn List(comptime T: type) type {
 	return struct {
-		items: []T = &.{},
-		capacity: usize = 0,
+		items: []T,
+		capacity: usize,
 
 		pub const empty: @This() = .{
 			.items = &.{},
@@ -242,7 +242,7 @@ pub fn List(comptime T: type) type {
 
 		pub fn clearAndFree(self: *@This(), allocator: NeverFailingAllocator) void {
 			self.deinit(allocator);
-			self.* = .{};
+			self.* = .empty;
 		}
 
 		pub fn clearRetainingCapacity(self: *@This()) void {
@@ -257,7 +257,7 @@ pub fn List(comptime T: type) type {
 
 		pub fn toOwnedSlice(self: *@This(), allocator: NeverFailingAllocator) []T {
 			const result = allocator.realloc(self.items.ptr[0..self.capacity], self.items.len);
-			self.* = .{};
+			self.* = .empty;
 			return result;
 		}
 
@@ -426,7 +426,7 @@ pub fn List(comptime T: type) type {
 }
 
 test "List.print single call, buffer not preserved" {
-	var list: List(u8) = .{};
+	var list: List(u8) = .empty;
 	const oldAddress = list.items.ptr;
 	defer list.deinit(main.stackAllocator);
 
@@ -452,7 +452,7 @@ test "List.print initCapacity, buffer preserved" {
 }
 
 test "List.print with a string" {
-	var list: List(u8) = .{};
+	var list: List(u8) = .empty;
 	defer list.deinit(main.stackAllocator);
 
 	list.print(main.stackAllocator, "foo {s}", .{"bar spam BUZZ"});
@@ -462,7 +462,7 @@ test "List.print with a string" {
 }
 
 test "List.print multiple prints" {
-	var list: List(u8) = .{};
+	var list: List(u8) = .empty;
 	const oldAddress = list.items.ptr;
 	defer list.deinit(main.stackAllocator);
 
