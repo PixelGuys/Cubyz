@@ -982,7 +982,7 @@ pub const Item = union(ItemType) { // MARK: Item
 		switch (typ) {
 			.baseItem => {
 				const index = try reader.readEnum(BaseItemIndex);
-				return .{.baseItem = realItemIndices[@intFromEnum(index)]};
+				return .{.baseItem = itemDeduplicationMap[@intFromEnum(index)]};
 			},
 			.proceduralItem => {
 				return .{.proceduralItem = try ProceduralItem.fromBytes(reader)};
@@ -1189,7 +1189,7 @@ pub var itemList: [65536]BaseItem = undefined;
 pub var itemListSize: u16 = 0;
 
 // Due to migrations multiple indices can map to the same item. This must be resolved during inventory loading using this map.
-var realItemIndices: [65536]BaseItemIndex = undefined;
+var itemDeduplicationMap: [65536]BaseItemIndex = undefined;
 
 var recipeList: main.ListManaged(Recipe) = .init(main.worldArena);
 
@@ -1249,7 +1249,7 @@ pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: 
 	if (!result.found_existing) {
 		result.value_ptr.* = @enumFromInt(itemListSize);
 	}
-	realItemIndices[itemListSize] = result.value_ptr.*;
+	itemDeduplicationMap[itemListSize] = result.value_ptr.*;
 
 	std.log.debug("Registered item: {d: >5} '{s}'", .{itemListSize, id});
 	return newItem;
