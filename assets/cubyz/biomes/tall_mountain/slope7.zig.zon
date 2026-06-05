@@ -38,6 +38,15 @@
 			.placeMode = .degradable,
 			.chance = 0.01,
 		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:slate/base",
+			.chance = 0.05,
+			.width = 8,
+			.variation = 9,
+			.depth = 10,
+			.smoothness = 1,
+		},
 	},
 	.parentBiomes = .{
 		.{
