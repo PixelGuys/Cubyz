@@ -476,8 +476,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	online: Atomic(bool) = .init(false),
 	running: Atomic(bool) = .init(true),
 
-	connections: main.List(*Connection) = .{},
-	requests: main.List(*Request) = .{},
+	connections: main.List(*Connection) = .empty,
+	requests: main.List(*Request) = .empty,
 
 	mutex: main.utils.Mutex = .{},
 	waitingToFinishReceive: main.utils.Condition = .{},
@@ -780,7 +780,7 @@ pub const Connection = struct { // MARK: Connection
 
 		pub fn init() RangeBuffer {
 			return .{
-				.ranges = .{},
+				.ranges = .empty,
 			};
 		}
 
@@ -865,7 +865,7 @@ pub const Connection = struct { // MARK: Connection
 		decryptedBuffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
 		buffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
 		header: ?Header = null,
-		protocolBuffer: main.List(u8) = .{},
+		protocolBuffer: main.List(u8) = .empty,
 
 		pub fn init() ReceiveBuffer {
 			return .{
@@ -1209,7 +1209,7 @@ pub const Connection = struct { // MARK: Connection
 
 		side: main.sync.Side,
 		finishedCollectingClientVerificationData: bool = false,
-		verificationDataForClientSignature: main.List(u8) = .{},
+		verificationDataForClientSignature: main.List(u8) = .empty,
 
 		pub fn init(self: *SecureChannel, sequenceIndex: SequenceIndex, delay: i64, id: ChannelId, side: main.sync.Side) !void {
 			self.* = .{

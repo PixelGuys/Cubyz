@@ -371,7 +371,7 @@ pub const Model = struct {
 			floodfillQueue.pushBack(.{.x = elem.x, .y = elem.y, .val = ~newValue << 1 | ~newValue >> 1});
 		}
 
-		var collision: main.List(Box) = .{};
+		var collision: main.List(Box) = .empty;
 
 		for (0..collisionGridSize) |x| {
 			for (0..collisionGridSize) |y| {
@@ -675,8 +675,8 @@ pub fn getModelIndex(string: []const u8) ModelIndex {
 	};
 }
 
-var quads: main.List(QuadInfo) = .{};
-var extraQuadInfos: main.List(ExtraQuadInfo) = .{};
+var quads: main.List(QuadInfo) = .empty;
+var extraQuadInfos: main.List(ExtraQuadInfo) = .empty;
 var models: main.utils.VirtualList(Model, 1 << 20) = undefined;
 
 var quadDeduplication: std.AutoHashMap([@sizeOf(QuadInfo)]u8, QuadIndex) = undefined;

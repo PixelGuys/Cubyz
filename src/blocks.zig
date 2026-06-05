@@ -161,7 +161,7 @@ var reverseIndices: std.StringHashMapUnmanaged(u16) = .{};
 
 var size: u32 = 0;
 
-pub var ores: main.List(Ore) = .{};
+pub var ores: main.List(Ore) = .empty;
 
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_id[size] = main.worldArena.dupe(u8, id);
@@ -347,7 +347,7 @@ pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 
 pub fn reset() void {
 	size = 0;
-	ores = .{};
+	ores = .empty;
 	reverseIndices = .{};
 	meshes.reset();
 }
@@ -603,17 +603,17 @@ pub const meshes = struct { // MARK: meshes
 	/// Number of loaded meshes. Used to determine if an update is needed.
 	var loadedMeshes: u32 = 0;
 
-	var textureIds: main.List([]const u8) = .{};
-	var texturePaths: main.List([]const u8) = .{};
+	var textureIds: main.List([]const u8) = .empty;
+	var texturePaths: main.List([]const u8) = .empty;
 	var animationData: []AnimationData = &.{};
-	var blockTextures: main.List(Image) = .{};
-	var emissionTextures: main.List(Image) = .{};
-	var reflectivityTextures: main.List(Image) = .{};
-	var absorptionTextures: main.List(Image) = .{};
-	var textureFogData: main.List(FogData) = .{};
+	var blockTextures: main.List(Image) = .empty;
+	var emissionTextures: main.List(Image) = .empty;
+	var reflectivityTextures: main.List(Image) = .empty;
+	var absorptionTextures: main.List(Image) = .empty;
+	var textureFogData: main.List(FogData) = .empty;
 	pub var textureOcclusionData: []std.atomic.Value(bool) = &.{};
 
-	pub var blockBreakingTextures: main.List(u16) = .{};
+	pub var blockBreakingTextures: main.List(u16) = .empty;
 
 	const sideNames = blk: {
 		var names: [6][]const u8 = undefined;
@@ -676,16 +676,16 @@ pub const meshes = struct { // MARK: meshes
 	pub fn reset() void {
 		meshes.size = 0;
 		loadedMeshes = 0;
-		textureIds = .{};
-		texturePaths = .{};
+		textureIds = .empty;
+		texturePaths = .empty;
 		animationData = &.{};
-		blockTextures = .{};
-		emissionTextures = .{};
-		reflectivityTextures = .{};
-		absorptionTextures = .{};
-		textureFogData = .{};
+		blockTextures = .empty;
+		emissionTextures = .empty;
+		reflectivityTextures = .empty;
+		absorptionTextures = .empty;
+		textureFogData = .empty;
 		textureOcclusionData = &.{};
-		blockBreakingTextures = .{};
+		blockBreakingTextures = .empty;
 	}
 
 	pub inline fn model(block: Block) ModelIndex {

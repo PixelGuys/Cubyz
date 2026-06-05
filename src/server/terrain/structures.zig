@@ -90,7 +90,7 @@ pub const StructureTable = struct {
 			.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
 		};
 		const tableChance: ?f32 = zon.get(?f32, "chance", null);
-		var structureList = main.List(SimpleStructureModel){};
+		var structureList: main.List(SimpleStructureModel) = .empty;
 		defer structureList.deinit(main.stackAllocator);
 
 		const structures = zon.getChild("structures");
@@ -120,7 +120,7 @@ pub const StructureTable = struct {
 };
 
 var finishedLoading: bool = false;
-var structureTables: main.List(StructureTable) = .{};
+var structureTables: main.List(StructureTable) = .empty;
 var structureTablesById: std.StringHashMapUnmanaged(*StructureTable) = .{};
 
 fn register(id: []const u8, zon: ZonElement) void {
@@ -162,6 +162,6 @@ pub fn getSlice() []StructureTable {
 
 pub fn reset() void {
 	finishedLoading = false;
-	structureTables = .{};
+	structureTables = .empty;
 	structureTablesById = .{};
 }

@@ -27,7 +27,7 @@ pub var window = GuiWindow{
 };
 
 const padding: f32 = 8;
-var itemSlots: main.List(*ItemSlot) = .{};
+var itemSlots: main.List(*ItemSlot) = .empty;
 
 pub fn deinit() void {
 	itemSlots.deinit(main.globalAllocator);

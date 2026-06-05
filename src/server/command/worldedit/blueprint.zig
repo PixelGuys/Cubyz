@@ -60,7 +60,7 @@ const Args = union(enum) {
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/blueprint"});
 
 pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: List(u8) = .{};
+	var errorMessage: List(u8) = .empty;
 	defer errorMessage.deinit(main.stackAllocator);
 
 	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {

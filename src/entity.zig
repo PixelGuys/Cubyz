@@ -38,7 +38,7 @@ const EntityComponentVTable = struct {
 var componentList: []?EntityComponentVTable = undefined;
 
 pub fn initComponents() void {
-	var tmpComponentList: main.List(?EntityComponentVTable) = .{};
+	var tmpComponentList: main.List(?EntityComponentVTable) = .empty;
 	inline for (@typeInfo(components).@"struct".decls) |decl| {
 		@field(components, decl.name).client.init();
 		const componentId = @field(components, decl.name).entityComponentID;

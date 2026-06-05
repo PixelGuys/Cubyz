@@ -605,7 +605,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		if (worldData.get(u32, "version", 0) == 4) { // TODO: #2458
 			std.log.info("Migrating old world with world version 4 to version 5", .{});
 			// Player file names are now numerical instead of based on the name.
-			var fileNames: main.List([]const u8) = .{};
+			var fileNames: main.List([]const u8) = .empty;
 			var playerDir = try dir.openIterableDir("players");
 			defer playerDir.close();
 			var iterator = playerDir.iterate();
@@ -785,7 +785,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			};
 		}
 		// Find all the stored chunks:
-		var chunkPositions: main.List(ChunkPosition) = .{};
+		var chunkPositions: main.List(ChunkPosition) = .empty;
 		defer chunkPositions.deinit(main.stackAllocator);
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks/1", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(path);

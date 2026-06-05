@@ -377,7 +377,7 @@ pub const Pattern = struct {
 		var specifiers = std.mem.splitScalar(u8, source, expressionSeparator);
 		var totalWeight: f32 = 0;
 
-		var weightedEntries: List(struct { block: Block, weight: f32 }) = .{};
+		var weightedEntries: List(struct { block: Block, weight: f32 }) = .empty;
 		defer weightedEntries.deinit(main.stackAllocator);
 
 		while (specifiers.next()) |specifier| {
@@ -491,14 +491,14 @@ pub const Mask = struct {
 	};
 
 	pub fn initFromString(allocator: NeverFailingAllocator, source: []const u8) !@This() {
-		var result: @This() = .{.entries = .{}};
+		var result: @This() = .{.entries = .empty};
 		errdefer result.deinit(allocator);
 
 		var oredExpressions = std.mem.splitScalar(u8, source, or_);
 		while (oredExpressions.next()) |subExpression| {
 			if (subExpression.len == 0) return error.MissingExpression;
 
-			var andStorage: AndList = .{};
+			var andStorage: AndList = .empty;
 			errdefer andStorage.deinit(allocator);
 
 			var andedExpressions = std.mem.splitScalar(u8, subExpression, and_);

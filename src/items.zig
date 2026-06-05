@@ -459,7 +459,7 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 	/// Determines all the basic properties of the proceduralItem.
 	pub fn evaluateProceduralItem(proceduralItem: *ProceduralItem) void {
 		proceduralItem.properties = @splat(0);
-		var tempModifiers: main.List(Modifier) = .{};
+		var tempModifiers: main.List(Modifier) = .empty;
 		defer tempModifiers.deinit(main.stackAllocator);
 		for (proceduralItem.type.properties()) |property| {
 			if (property.destination == null) continue;
@@ -1179,7 +1179,7 @@ pub const Recipe = struct { // MARK: Recipe
 	}
 };
 
-var proceduralItemTypeList: List(ProceduralItemType) = .{};
+var proceduralItemTypeList: List(ProceduralItemType) = .empty;
 var proceduralItemTypeIdToIndex: std.StringHashMapUnmanaged(ProceduralItemTypeIndex) = .{};
 
 var reverseIndices: std.StringHashMapUnmanaged(BaseItemIndex) = .{};
@@ -1230,7 +1230,7 @@ pub fn globalDeinit() void {
 }
 
 pub fn reset() void {
-	proceduralItemTypeList = .{};
+	proceduralItemTypeList = .empty;
 	proceduralItemTypeIdToIndex = .{};
 	reverseIndices = .{};
 	recipeList.clearAndFree();
@@ -1307,7 +1307,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 		}
 		slotInfos[i].color = zonDisabled.as(u32, 0xffffffff);
 	}
-	var parameterMatrices: main.List(PropertyMatrix) = .{};
+	var parameterMatrices: main.List(PropertyMatrix) = .empty;
 	defer parameterMatrices.deinit(main.stackAllocator);
 	for (zon.getChild("parameters").toSlice()) |paramZon| {
 		const val = parameterMatrices.addOne(main.stackAllocator);

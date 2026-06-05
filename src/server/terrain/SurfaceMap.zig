@@ -366,7 +366,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 		};
 	}
 	// Find all the stored maps:
-	var mapPositions: main.List(MapFragmentPosition) = .{};
+	var mapPositions: main.List(MapFragmentPosition) = .empty;
 	defer mapPositions.deinit(main.stackAllocator);
 	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps/1", .{worldName}) catch unreachable;
 	defer main.stackAllocator.free(path);

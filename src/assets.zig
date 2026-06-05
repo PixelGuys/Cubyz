@@ -142,7 +142,7 @@ pub const Assets = struct {
 		dir: files.Dir,
 
 		fn discoverAll(allocator: NeverFailingAllocator, assetDir: main.files.Dir, path: []const u8) []Addon {
-			var addons: main.List(Addon) = .{};
+			var addons: main.List(Addon) = .empty;
 
 			var dir = assetDir.openIterableDir(path) catch |err| {
 				std.log.err("Can't open asset path {s}: {s}", .{path, @errorName(err)});

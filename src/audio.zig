@@ -95,7 +95,7 @@ const AudioData = struct {
 	}
 };
 
-var activeTasks: main.List([]const u8) = .{};
+var activeTasks: main.List([]const u8) = .empty;
 var taskMutex: main.utils.Mutex = .{};
 
 var musicCache: utils.Cache(AudioData, 4, 4, AudioData.deinit) = .{};
