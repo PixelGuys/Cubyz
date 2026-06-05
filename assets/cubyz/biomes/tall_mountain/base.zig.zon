@@ -7,7 +7,7 @@
 	.minHeight = 128,
 	.maxHeight = 128,
 	.smoothBeaches = true,
-	.radius = 370,
+	.radius = 380,
 	.mountains = 170,
 	.chance = 0,
 	.maxSubBiomeCount = 1,
@@ -86,6 +86,13 @@
 			.variation = 3,
 			.density = 0.1,
 			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.032,
+			.block = "cubyz:slate/base",
+			.size = 4,
+			.size_variance = 5,
 		},
 	},
 	.parentBiomes = .{

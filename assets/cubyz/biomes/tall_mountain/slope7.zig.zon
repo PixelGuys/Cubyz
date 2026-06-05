@@ -20,10 +20,17 @@
 	.structures = .{
 		.{
 			.id = "cubyz:boulder",
-			.chance = 0.001,
+			.chance = 0.01,
 			.block = "cubyz:snow",
 			.size = 5,
 			.size_variance = 1,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.016,
+			.block = "cubyz:slate/base",
+			.size = 4,
+			.size_variance = 5,
 		},
 		.{
 			.id = "cubyz:sbb",

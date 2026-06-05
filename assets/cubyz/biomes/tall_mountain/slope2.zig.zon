@@ -44,6 +44,13 @@
 			.height = 1,
 			.height_variation = 0,
 		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.032,
+			.block = "cubyz:slate/base",
+			.size = 4,
+			.size_variance = 5,
+		},
 	},
 	.parentBiomes = .{
 		.{

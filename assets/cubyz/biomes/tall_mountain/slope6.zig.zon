@@ -49,6 +49,13 @@
 			.placeMode = .degradable,
 			.chance = 0.005,
 		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.032,
+			.block = "cubyz:slate/base",
+			.size = 4,
+			.size_variance = 5,
+		},
 	},
 	.parentBiomes = .{
 		.{

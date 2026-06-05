@@ -18,7 +18,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:boulder",
-			.chance = 0.002,
+			.chance = 0.02,
 			.block = "cubyz:snow",
 			.size = 6,
 			.size_variance = 2,
