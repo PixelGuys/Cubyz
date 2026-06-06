@@ -111,7 +111,7 @@ pub const User = struct { // MARK: User
 	clientUpdatePos: Vec3i = .{0, 0, 0},
 	receivedFirstEntityData: bool = false,
 	isLocal: bool = false,
-	id: u32 = undefined, // TODO: Use entity id.
+	id: u32 = std.math.maxInt(u32), // TODO: Use entity id.
 	// TODO: ipPort: []const u8,
 	loadedChunks: [simulationSize][simulationSize][simulationSize]*SimulationChunk = undefined,
 	lastRenderDistance: u16 = 0,
@@ -167,6 +167,7 @@ pub const User = struct { // MARK: User
 
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
+		std.debug.assert(self.id != std.math.maxInt(u32));
 
 		main.items.Inventory.server.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
