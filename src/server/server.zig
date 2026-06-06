@@ -111,7 +111,7 @@ pub const User = struct { // MARK: User
 	clientUpdatePos: Vec3i = .{0, 0, 0},
 	receivedFirstEntityData: bool = false,
 	isLocal: bool = false,
-	id: u32 = 0, // TODO: Use entity id.
+	id: u32 = undefined, // TODO: Use entity id.
 	// TODO: ipPort: []const u8,
 	loadedChunks: [simulationSize][simulationSize][simulationSize]*SimulationChunk = undefined,
 	lastRenderDistance: u16 = 0,
