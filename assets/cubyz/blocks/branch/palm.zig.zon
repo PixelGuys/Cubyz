@@ -3,7 +3,7 @@
 	.onUpdate = .{
 		.type = .decay,
 		.drops = .{
-			.{.chance = 0.8, .items = .{"cubyz:branch/palm"}},
+			.{.chance = 0.7, .items = .{"cubyz:branch/palm"}},
 		},
 	},
 	.blockHealth = 4,
