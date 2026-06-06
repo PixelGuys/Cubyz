@@ -60,6 +60,11 @@ pub fn save(self: *const @This(), allocator: NeverFailingAllocator, audience: ma
 	if (self.name) |name| {
 		zon.put("name", name);
 	}
+
+
+	// TMP 
+	std.debug.assert(main.entity.components.@"cubyz:model".server.get(self.id)!=null);
+	
 	return zon;
 }
 pub fn deinit(self: *@This(), comptime side: main.sync.Side) void {
