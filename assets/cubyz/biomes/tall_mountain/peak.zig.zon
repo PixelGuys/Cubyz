@@ -11,7 +11,7 @@
 
 	.soilCreep = 1.5,
 
-	.music = "cubyz:out_of_breath",
+	.music = "cubyz:mischol/sunshower",
 
 	.parentBiomes = .{
 		.{

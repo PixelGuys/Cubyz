@@ -1,6 +1,7 @@
 .{
 	.properties = .{},
 	.tags = .{
+		.birch,
 		.oak,
 	},
 	.minHeightLimit = 7,
@@ -12,7 +13,7 @@
 	.maxRadius = 320,
 	.roughness = 10,
 	.hills = 10,
-	.music = "cubyz:leaves",
+	.music = "cubyz:totaldemented/leaves",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"cubyz:grass",
@@ -23,7 +24,13 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/oak/white",
 			.placeMode = .degradable,
-			.chance = 0.1,
+			.chance = 0.07,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/young",
+			.placeMode = .degradable,
+			.chance = 0.03,
 		},
 		.{
 			.id = "cubyz:sbb",
@@ -39,16 +46,14 @@
 		},
 		.{
 			.id = "cubyz:fallen_tree",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_log",
+			.log = "cubyz:log/oak",
 			.chance = 0.005,
 			.height = 6,
 			.height_variation = 3,
 		},
 		.{
 			.id = "cubyz:fallen_tree",
-			.log = "cubyz:birch_log",
-			.top = "cubyz:birch_log",
+			.log = "cubyz:log/birch",
 			.chance = 0.002,
 			.height = 6,
 			.height_variation = 3,

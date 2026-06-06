@@ -21,10 +21,10 @@ jobs:
         with:
           version: ${{ env.VERSION }}
 
-      - run: zig build -Dtarget=x86_64-linux-gnu -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline -Dversion="$tag"
+      - run: zig build -Dtarget=x86_64-linux-gnu.2.27 -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline -Dversion="$tag"
       - run: tar -czf Linux-x86_64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz launchConfig.zon -C zig-out/bin Cubyz
 
-      - run: zig build -Dtarget=aarch64-linux-gnu -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline -Dversion="$tag"
+      - run: zig build -Dtarget=aarch64-linux-gnu.2.27 -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline -Dversion="$tag"
       - run: tar -czf Linux-aarch64.tar.gz --transform 's,^,Cubyz/,' assets/cubyz launchConfig.zon -C zig-out/bin Cubyz
 
       - run: zig build -Dtarget=x86_64-windows-gnu -Doptimize=ReleaseFast -Drelease=true -Dcpu=baseline -Dversion="$tag"

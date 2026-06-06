@@ -4,7 +4,7 @@
 		.ocean,
 		.hot,
 	},
-	.music = "cubyz:Sincerely",
+	.music = "cubyz:totaldemented/tides",
 	.stoneBlock = "cubyz:sandstone/base",
 	.structures = .{
 		.{

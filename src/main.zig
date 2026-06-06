@@ -5,10 +5,12 @@ pub const gui = @import("gui/gui.zig");
 pub const server = @import("server/server.zig");
 
 pub const audio = @import("audio.zig");
+pub const argparse = @import("argparse.zig");
 pub const assets = @import("assets.zig");
 pub const block_entity = @import("block_entity.zig");
 pub const blocks = @import("blocks.zig");
 pub const blueprint = @import("blueprint.zig");
+const c = @import("c");
 pub const callbacks = @import("callbacks/callbacks.zig");
 pub const chunk = @import("chunk.zig");
 pub const client = @import("client.zig");
@@ -35,25 +37,29 @@ const tag = @import("tag.zig");
 pub const Tag = tag.Tag;
 pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
-pub const ZonElement = @import("zon.zig").ZonElement;
-
-pub const Window = @import("graphics/Window.zig");
-
-pub const heap = @import("utils/heap.zig");
-
-pub const List = @import("utils/list.zig").List;
-pub const ListUnmanaged = @import("utils/list.zig").ListUnmanaged;
-pub const MultiArray = @import("utils/list.zig").MultiArray;
+const zon = @import("zon.zig");
+pub const ZonElement = zon.ZonElement;
 
 const file_monitor = utils.file_monitor;
 
 const Vec2f = vec.Vec2f;
 const Vec3d = vec.Vec3d;
 
-pub threadlocal var stackAllocator: heap.NeverFailingAllocator = undefined;
+pub const Window = @import("graphics/Window.zig");
+
+pub const heap = @import("utils/heap.zig");
+
+pub const ListManaged = utils.list.ListManaged;
+pub const List = utils.list.List;
+pub const MultiArray = utils.list.MultiArray;
+
+// Dprecated, will be removed in progress of #1181
+pub const ListUnmanaged = List;
+
+pub threadlocal var stackAllocator: heap.NeverFailingAllocator = if (builtin.is_test) heap.testingAllocator else undefined;
 pub threadlocal var seed: u64 = undefined;
 threadlocal var stackAllocatorBase: heap.StackAllocator = undefined;
-pub const globalAllocator: heap.NeverFailingAllocator = heap.allocators.handledGpa.allocator();
+pub const globalAllocator: heap.NeverFailingAllocator = if (builtin.is_test) heap.testingAllocator else heap.allocators.handledGpa.allocator();
 pub const globalArena = heap.allocators.globalArenaAllocator.allocator();
 pub const worldArena = heap.allocators.worldArenaAllocator.allocator();
 pub var threadPool: *utils.ThreadPool = undefined;
@@ -267,6 +273,9 @@ fn toggleNetworkDebugOverlay(_: Window.Key.Modifiers) void {
 fn toggleAdvancedNetworkDebugOverlay(_: Window.Key.Modifiers) void {
 	gui.toggleWindow("debug_network_advanced");
 }
+fn toggleVulkanDebugOverlay(_: Window.Key.Modifiers) void {
+	gui.toggleWindow("debug_vulkan_info");
+}
 fn cycleHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
 	return &struct {
 		fn set(_: Window.Key.Modifiers) void {
@@ -283,7 +292,6 @@ fn setHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
 }
 
 pub const KeyBoard = struct { // MARK: KeyBoard
-	const c = Window.c;
 	pub var keys = [_]Window.Key{
 		// Gameplay:
 		.{.name = "forward", .key = c.GLFW_KEY_W, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}},
@@ -362,6 +370,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .pressAction = &toggleGPUPerformanceOverlay},
 		.{.name = "networkDebugOverlay", .key = c.GLFW_KEY_F6, .pressAction = &toggleNetworkDebugOverlay},
 		.{.name = "advancedNetworkDebugOverlay", .key = c.GLFW_KEY_F7, .pressAction = &toggleAdvancedNetworkDebugOverlay},
+		.{.name = "vulkanDebugOverlay", .key = c.GLFW_KEY_F8, .pressAction = &toggleVulkanDebugOverlay},
 	};
 
 	fn findKey(name: []const u8) ?*Window.Key { // TODO: Maybe I should use a hashmap here?
@@ -476,9 +485,6 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	utils.initDynamicIntArrayStorage();
 	defer utils.deinitDynamicIntArrayStorage();
 
-	chunk.init();
-	defer chunk.deinit();
-
 	rotation.init();
 	defer rotation.deinit();
 
@@ -491,10 +497,10 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	defer models.deinit();
 
 	items.globalInit();
-	defer items.deinit();
+	defer items.globalDeinit();
 
-	if (!headless) sync.ClientSide.init();
-	defer if (!headless) sync.ClientSide.deinit();
+	if (!headless) sync.client.init();
+	defer if (!headless) sync.client.deinit();
 
 	if (!headless) itemdrop.ItemDropRenderer.init();
 	defer if (!headless) itemdrop.ItemDropRenderer.deinit();
@@ -520,7 +526,6 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	defer if (!headless) particles.ParticleManager.deinit();
 
 	server.terrain.globalInit();
-	defer server.terrain.globalDeinit();
 
 	if (headless) {
 		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null);
@@ -536,7 +541,7 @@ pub fn clientMain() void { // MARK: clientMain()
 				gui.openWindow("authentication/login");
 				break :blk;
 			}
-			var failureText: List(u8) = .init(stackAllocator);
+			var failureText: ListManaged(u8) = .init(stackAllocator);
 			defer failureText.deinit();
 			const accountCode = settings.storedAccount.decryptFromPassword(undefined, &failureText) catch |err| {
 				std.log.err("Got error while loading Account Code: {s}", .{@errorName(err)});
@@ -562,7 +567,6 @@ pub fn clientMain() void { // MARK: clientMain()
 		},
 	}
 
-	const c = Window.c;
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastBeginRendering = timestamp();
 
@@ -667,4 +671,12 @@ test "abc" {
 	@setEvalBranchQuota(1000000);
 	refAllDeclsRecursiveExceptCImports(@This());
 	_ = @import("zon.zig");
+}
+
+test "allocators are usable in tests" {
+	const allocation1 = stackAllocator.create(u64);
+	stackAllocator.destroy(allocation1);
+
+	const allocation2 = globalAllocator.create(u64);
+	globalAllocator.destroy(allocation2);
 }

@@ -11,11 +11,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 pub const authentication = @import("network/authentication.zig");
 pub const protocols = @import("network/protocols.zig");
 
-const c = @cImport({
-	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
-	@cInclude("mbedtls/debug.h");
-	@cInclude("mbedtls/ssl.h");
-});
+const c = @import("c");
 
 // TODO: Might want to use SSL or something similar to encode the message
 
@@ -25,36 +21,33 @@ inline fn networkTimestamp() i64 {
 }
 
 const Socket = struct {
-	const ws2 = @cImport({
-		@cInclude("winsock2.h");
-	});
 	const posix = std.posix;
-	socketID: if (builtin.os.tag == .windows) ws2.SOCKET else posix.socket_t,
+	socketID: if (builtin.os.tag == .windows) c.SOCKET else posix.socket_t,
 
 	fn windowsError(err: c_int) !void {
 		if (err == 0) return;
 		switch (err) {
-			ws2.WSASYSNOTREADY => return error.NetworkDown,
-			ws2.WSAVERNOTSUPPORTED => return error.VersionUnsupported,
-			ws2.WSAEINPROGRESS => return error.BlockingOperationInProgress,
-			ws2.WSAEPROCLIM => return error.ProcessFdQuotaExceeded,
-			ws2.WSAEFAULT => unreachable,
-			ws2.WSANOTINITIALISED => unreachable,
-			ws2.WSAENETDOWN => return error.NetworkDown,
-			ws2.WSAEACCES => return error.AccessDenied,
-			ws2.WSAEADDRINUSE => return error.AddressInUse,
-			ws2.WSAEADDRNOTAVAIL => return error.AddressNotAvailable,
-			ws2.WSAEINVAL => unreachable,
-			ws2.WSAENOBUFS => return error.SystemResources,
-			ws2.WSAENOTSOCK => return error.FileDescriptorNotASocket,
+			c.WSASYSNOTREADY => return error.NetworkDown,
+			c.WSAVERNOTSUPPORTED => return error.VersionUnsupported,
+			c.WSAEINPROGRESS => return error.BlockingOperationInProgress,
+			c.WSAEPROCLIM => return error.ProcessFdQuotaExceeded,
+			c.WSAEFAULT => unreachable,
+			c.WSANOTINITIALISED => unreachable,
+			c.WSAENETDOWN => return error.NetworkDown,
+			c.WSAEACCES => return error.AccessDenied,
+			c.WSAEADDRINUSE => return error.AddressInUse,
+			c.WSAEADDRNOTAVAIL => return error.AddressNotAvailable,
+			c.WSAEINVAL => unreachable,
+			c.WSAENOBUFS => return error.SystemResources,
+			c.WSAENOTSOCK => return error.FileDescriptorNotASocket,
 			else => return error.UNKNOWN,
 		}
 	}
 
 	fn startup() void {
 		if (builtin.os.tag == .windows) {
-			var data: ws2.WSADATA = undefined;
-			windowsError(ws2.WSAStartup(0x0202, &data)) catch |err| {
+			var data: c.WSADATA = undefined;
+			windowsError(c.WSAStartup(0x0202, &data)) catch |err| {
 				std.log.err("Could not initialize the Windows Socket API: {s}", .{@errorName(err)});
 				@panic("Could not init networking.");
 			};
@@ -65,9 +58,9 @@ const Socket = struct {
 		const self = Socket{
 			.socketID = blk: {
 				if (builtin.os.tag == .windows) {
-					const socket = ws2.socket(ws2.AF_INET, ws2.SOCK_DGRAM, ws2.IPPROTO_UDP);
-					if (socket == ws2.INVALID_SOCKET) {
-						try windowsError(ws2.WSAGetLastError());
+					const socket = c.socket(c.AF_INET, c.SOCK_DGRAM, c.IPPROTO_UDP);
+					if (socket == c.INVALID_SOCKET) {
+						try windowsError(c.WSAGetLastError());
 						return error.UNKNOWN;
 					}
 					break :blk socket;
@@ -89,8 +82,8 @@ const Socket = struct {
 			.addr = 0,
 		};
 		if (builtin.os.tag == .windows) {
-			if (ws2.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in)) == ws2.SOCKET_ERROR) {
-				try windowsError(ws2.WSAGetLastError());
+			if (c.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in)) == c.SOCKET_ERROR) {
+				try windowsError(c.WSAGetLastError());
 			}
 		} else {
 			const result = std.c.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in));
@@ -110,7 +103,7 @@ const Socket = struct {
 
 	fn deinit(self: Socket) void {
 		if (builtin.os.tag == .windows) {
-			_ = ws2.closesocket(self.socketID);
+			_ = c.closesocket(self.socketID);
 		} else {
 			const err = std.c.errno(std.c.close(self.socketID));
 			switch (err) {
@@ -128,9 +121,9 @@ const Socket = struct {
 			.addr = destination.ip,
 		};
 		if (builtin.os.tag == .windows) {
-			const result = ws2.sendto(self.socketID, data.ptr, @intCast(data.len), 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
-			if (result == ws2.SOCKET_ERROR) {
-				const err: anyerror = if (windowsError(ws2.WSAGetLastError())) error.Unknown else |err| err;
+			const result = c.sendto(self.socketID, data.ptr, @intCast(data.len), 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
+			if (result == c.SOCKET_ERROR) {
+				const err = if (windowsError(c.WSAGetLastError())) error.Unknown else |err| err;
 				std.log.warn("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
 			} else {
 				std.debug.assert(@as(usize, @intCast(result)) == data.len);
@@ -150,12 +143,12 @@ const Socket = struct {
 
 	fn receive(self: Socket, buffer: []u8, timeout: i32, resultAddress: *Address) ![]u8 {
 		if (builtin.os.tag == .windows) { // Of course Windows always has it's own special thing.
-			var pfd = [1]ws2.pollfd{
-				.{.fd = self.socketID, .events = ws2.POLLRDNORM | ws2.POLLRDBAND, .revents = undefined},
+			var pfd = [1]c.pollfd{
+				.{.fd = self.socketID, .events = c.POLLRDNORM | c.POLLRDBAND, .revents = undefined},
 			};
-			const length = ws2.WSAPoll(&pfd, pfd.len, 0); // The timeout is set to zero. Otherwise sendto operations from other threads will block on this.
-			if (length == ws2.SOCKET_ERROR) {
-				try windowsError(ws2.WSAGetLastError());
+			const length = c.WSAPoll(&pfd, pfd.len, 0); // The timeout is set to zero. Otherwise sendto operations from other threads will block on this.
+			if (length == c.SOCKET_ERROR) {
+				try windowsError(c.WSAGetLastError());
 			} else if (length == 0) {
 				main.io.sleep(.fromMilliseconds(1), .awake) catch {}; // Manually sleep, since WSAPoll is blocking.
 				return error.Timeout;
@@ -171,9 +164,9 @@ const Socket = struct {
 		const length: usize = blk: {
 			if (builtin.os.tag == .windows) {
 				var addrLen: c_int = @sizeOf(posix.sockaddr.in);
-				const result = ws2.recvfrom(self.socketID, buffer.ptr, @intCast(buffer.len), 0, @ptrCast(&addr), &addrLen);
-				if (result == ws2.SOCKET_ERROR) {
-					try windowsError(ws2.WSAGetLastError());
+				const result = c.recvfrom(self.socketID, buffer.ptr, @intCast(buffer.len), 0, @ptrCast(&addr), &addrLen);
+				if (result == c.SOCKET_ERROR) {
+					try windowsError(c.WSAGetLastError());
 				}
 				break :blk @intCast(result);
 			} else {
@@ -215,8 +208,8 @@ const Socket = struct {
 		var addr: posix.sockaddr.in = undefined;
 		if (builtin.os.tag == .windows) {
 			var addrLen: c_int = @sizeOf(posix.sockaddr.in);
-			if (ws2.getsockname(self.socketID, @ptrCast(&addr), &addrLen) == ws2.SOCKET_ERROR) {
-				try windowsError(ws2.WSAGetLastError());
+			if (c.getsockname(self.socketID, @ptrCast(&addr), &addrLen) == c.SOCKET_ERROR) {
+				try windowsError(c.WSAGetLastError());
 			}
 		} else {
 			var addrLen: posix.socklen_t = @sizeOf(posix.sockaddr.in);
@@ -483,8 +476,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	online: Atomic(bool) = .init(false),
 	running: Atomic(bool) = .init(true),
 
-	connections: main.List(*Connection) = undefined,
-	requests: main.List(*Request) = undefined,
+	connections: main.List(*Connection) = .empty,
+	requests: main.List(*Request) = .empty,
 
 	mutex: main.utils.Mutex = .{},
 	waitingToFinishReceive: main.utils.Condition = .{},
@@ -512,8 +505,6 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		const result: *ConnectionManager = main.globalAllocator.create(ConnectionManager);
 		errdefer main.globalAllocator.destroy(result);
 		result.* = .{};
-		result.connections = .init(main.globalAllocator);
-		result.requests = .init(main.globalAllocator);
 		result.packetSendRequests = .initContext({});
 
 		result.localPort = localPort;
@@ -546,11 +537,11 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		self.running.store(false, .monotonic);
 		self.thread.join();
 		self.socket.deinit();
-		self.connections.deinit();
+		self.connections.deinit(main.globalAllocator);
 		for (self.requests.items) |request| {
 			request.requestNotifier.signal();
 		}
-		self.requests.deinit();
+		self.requests.deinit(main.globalAllocator);
 		while (self.packetSendRequests.pop()) |packet| {
 			main.globalAllocator.free(packet.data);
 		}
@@ -586,7 +577,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		{
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			self.requests.append(&request);
+			self.requests.append(main.globalAllocator, &request);
 
 			request.requestNotifier.timedWait(&self.mutex, timeout) catch {};
 
@@ -618,7 +609,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		for (self.connections.items) |other| {
 			if (other.remoteAddress.ip == conn.remoteAddress.ip and other.remoteAddress.port == conn.remoteAddress.port) return error.AlreadyConnected;
 		}
-		self.connections.append(conn);
+		self.connections.append(main.globalAllocator, conn);
 	}
 
 	pub fn finishCurrentReceive(self: *ConnectionManager) void {
@@ -785,11 +776,11 @@ pub const Connection = struct { // MARK: Connection
 				return self.start +% self.len;
 			}
 		};
-		ranges: main.ListUnmanaged(Range),
+		ranges: main.List(Range),
 
 		pub fn init() RangeBuffer {
 			return .{
-				.ranges = .{},
+				.ranges = .empty,
 			};
 		}
 
@@ -874,7 +865,7 @@ pub const Connection = struct { // MARK: Connection
 		decryptedBuffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
 		buffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
 		header: ?Header = null,
-		protocolBuffer: main.ListUnmanaged(u8) = .{},
+		protocolBuffer: main.List(u8) = .empty,
 
 		pub fn init() ReceiveBuffer {
 			return .{
@@ -1016,7 +1007,7 @@ pub const Connection = struct { // MARK: Connection
 			if (self.highestSentIndex == self.fullyConfirmedIndex) {
 				self.lastUnsentTime = time;
 			}
-			var fullData: main.List(u8) = .init(main.stackAllocator);
+			var fullData: main.ListManaged(u8) = .init(main.stackAllocator);
 			defer fullData.deinit();
 			if (data.len + self.buffer.len > std.math.maxInt(SequenceIndex)) return error.OutOfMemory;
 			fullData.append(protocolIndex);
@@ -1177,7 +1168,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		pub fn checkForLosses(self: *Channel, conn: *Connection, time: i64) LossStatus {
-			const retransmissionTimeout: i64 = @intFromFloat(conn.rttEstimate + 3*conn.rttUncertainty + @as(f32, @floatFromInt(self.allowedDelay)));
+			const retransmissionTimeout: i64 = @trunc(conn.rttEstimate + 3*conn.rttUncertainty + @as(f32, @floatFromInt(self.allowedDelay)));
 			return self.sendBuffer.checkForLosses(time, retransmissionTimeout);
 		}
 
@@ -1218,7 +1209,7 @@ pub const Connection = struct { // MARK: Connection
 
 		side: main.sync.Side,
 		finishedCollectingClientVerificationData: bool = false,
-		verificationDataForClientSignature: main.ListUnmanaged(u8) = .{},
+		verificationDataForClientSignature: main.List(u8) = .empty,
 
 		pub fn init(self: *SecureChannel, sequenceIndex: SequenceIndex, delay: i64, id: ChannelId, side: main.sync.Side) !void {
 			self.* = .{
@@ -1419,7 +1410,7 @@ pub const Connection = struct { // MARK: Connection
 		awaitingServerResponse,
 		awaitingClientAcknowledgement,
 		connected,
-		disconnectDesired,
+		disconnected,
 	};
 
 	pub const HandShakeState = enum(u8) {
@@ -1517,8 +1508,10 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn deinit(self: *Connection) void {
-		self.disconnect();
-		self.manager.finishCurrentReceive(); // Wait until all currently received packets are done.
+		if (self.connectionState.load(.monotonic) != .disconnected) {
+			self.disconnect();
+			self.manager.finishCurrentReceive(); // Wait until all currently received packets are done.
+		}
 		self.lossyChannel.deinit();
 		self.secureChannel.deinit();
 		self.slowChannel.deinit();
@@ -1695,7 +1688,7 @@ pub const Connection = struct { // MARK: Connection
 						return;
 					}
 				},
-				.disconnectDesired => {},
+				.disconnected => {},
 			}
 			// Acknowledge the packet on the client:
 			if (self.user == null) {
@@ -1786,7 +1779,7 @@ pub const Connection = struct { // MARK: Connection
 				return;
 			},
 			.connected => {},
-			.disconnectDesired => return,
+			.disconnected => return,
 		}
 
 		self.handlePacketLoss(self.lossyChannel.checkForLosses(self, timestamp));
@@ -1799,7 +1792,7 @@ pub const Connection = struct { // MARK: Connection
 			self.nextPacketTimestamp = timestamp -% 10*ms;
 		}
 
-		if (self.relativeIdleTime + self.relativeSendTime > @as(i64, @intFromFloat(self.rttEstimate))) {
+		if (self.relativeIdleTime + self.relativeSendTime > @as(i64, @trunc(self.rttEstimate))) {
 			self.relativeIdleTime >>= 1;
 			self.relativeSendTime >>= 1;
 		}
@@ -1821,7 +1814,7 @@ pub const Connection = struct { // MARK: Connection
 				break;
 			};
 			const networkLen: f32 = @floatFromInt(dataLen + headerOverhead);
-			const packetTime: i64 = @intFromFloat(@max(1, networkLen/self.bandwidthEstimateInBytesPerRtt*self.rttEstimate));
+			const packetTime: i64 = @trunc(@max(1, networkLen/self.bandwidthEstimateInBytesPerRtt*self.rttEstimate));
 			self.nextPacketTimestamp +%= packetTime;
 			self.relativeSendTime += packetTime;
 		}
@@ -1829,7 +1822,7 @@ pub const Connection = struct { // MARK: Connection
 
 	pub fn disconnect(self: *Connection) void {
 		self.manager.send(&.{@intFromEnum(ChannelId.disconnect)}, self.remoteAddress, null);
-		self.connectionState.store(.disconnectDesired, .monotonic);
+		self.connectionState.store(.disconnected, .monotonic);
 		if (builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
 			main.io.sleep(.fromMilliseconds(10), .awake) catch {}; // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
 		}
