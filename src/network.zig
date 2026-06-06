@@ -1410,7 +1410,7 @@ pub const Connection = struct { // MARK: Connection
 		awaitingServerResponse,
 		awaitingClientAcknowledgement,
 		connected,
-		disconnectDesired,
+		disconnected,
 	};
 
 	pub const HandShakeState = enum(u8) {
@@ -1508,8 +1508,10 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn deinit(self: *Connection) void {
-		self.disconnect();
-		self.manager.finishCurrentReceive(); // Wait until all currently received packets are done.
+		if (self.connectionState.load(.monotonic) != .disconnected) {
+			self.disconnect();
+			self.manager.finishCurrentReceive(); // Wait until all currently received packets are done.
+		}
 		self.lossyChannel.deinit();
 		self.secureChannel.deinit();
 		self.slowChannel.deinit();
@@ -1686,7 +1688,7 @@ pub const Connection = struct { // MARK: Connection
 						return;
 					}
 				},
-				.disconnectDesired => {},
+				.disconnected => {},
 			}
 			// Acknowledge the packet on the client:
 			if (self.user == null) {
@@ -1777,7 +1779,7 @@ pub const Connection = struct { // MARK: Connection
 				return;
 			},
 			.connected => {},
-			.disconnectDesired => return,
+			.disconnected => return,
 		}
 
 		self.handlePacketLoss(self.lossyChannel.checkForLosses(self, timestamp));
@@ -1820,7 +1822,7 @@ pub const Connection = struct { // MARK: Connection
 
 	pub fn disconnect(self: *Connection) void {
 		self.manager.send(&.{@intFromEnum(ChannelId.disconnect)}, self.remoteAddress, null);
-		self.connectionState.store(.disconnectDesired, .monotonic);
+		self.connectionState.store(.disconnected, .monotonic);
 		if (builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
 			main.io.sleep(.fromMilliseconds(10), .awake) catch {}; // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
 		}

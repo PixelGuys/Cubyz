@@ -217,7 +217,7 @@ pub const handShake = struct { // MARK: handShake
 			};
 			break;
 		}
-		if (conn.connectionState.load(.monotonic) == .disconnectDesired) return error.DisconnectedByServer;
+		if (conn.connectionState.load(.monotonic) == .disconnected) return error.DisconnectedByServer;
 		conn.mutex.unlock();
 	}
 };

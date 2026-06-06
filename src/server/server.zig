@@ -579,6 +579,8 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 }
 
 fn deinit() void {
+	connectionManager.deinit();
+	connectionManager = undefined;
 	users.clearAndFree();
 	while (userDeinitList.popFront()) |user| {
 		user.clearJobQueue();
@@ -591,11 +593,6 @@ fn deinit() void {
 	}
 	userDeinitList.deinit();
 	userConnectList.deinit();
-	for (connectionManager.connections.items) |conn| {
-		conn.user.?.decreaseRefCount();
-	}
-	connectionManager.deinit();
-	connectionManager = undefined;
 
 	if (world) |_world| {
 		_world.deinit();
