@@ -237,6 +237,7 @@ pub const Command = struct { // MARK: Command
 		takeFromPlayerBag = 17,
 		craftFrom = 13,
 		craftProceduralItem = 15,
+		sortItems = 18,
 		clear = 8,
 		updateBlock = 9,
 		addHealth = 10,
@@ -257,6 +258,7 @@ pub const Command = struct { // MARK: Command
 		takeFromPlayerBag: TakeFromPlayerBag,
 		craftFrom: CraftFrom,
 		craftProceduralItem: CraftProceduralItem,
+		sortItems: SortItems,
 		clear: Clear,
 		updateBlock: UpdateBlock,
 		addHealth: AddHealth,
@@ -1768,6 +1770,44 @@ pub const Command = struct { // MARK: Command
 			const len = try reader.readVarInt(usize);
 			return .{
 				.message = main.globalAllocator.dupe(u8, try reader.readSlice(len)),
+			};
+		}
+	};
+
+	const SortItems = struct { // MARK: SortItems
+		target: InventoryAndSlot,
+
+		fn run(self: SortItems, ctx: Context) error{serverFailure}!void {
+			// first compresses items before sorting
+			for (self.target.inv._items, 0..) |invStack, slot| {
+				if (invStack.item != .null) {
+					for (self.target.inv._items, @intCast(slot + 1)..) |checkedInvStack, checkedSlot| {
+						if (checkedInvStack.item != .null) {
+							if (std.meta.eql(invStack.item, checkedInvStack.item)) {
+								if (self.target.ref().amount >= invStack.item.stackSize()) return;
+								const amount = @min(invStack.item.stackSize() - self.target.ref().amount, self.target.ref().amount);
+								const dest: InventoryAndSlot = .{.inv = self.target.inv, .slot = @intCast(checkedSlot)};
+								const source: InventoryAndSlot = .{.inv = self.target.inv, .slot = @intCast(slot)};
+								ctx.execute(.{.move = .{
+									.dest = dest,
+									.source = source,
+									.amount = amount,
+								}});
+							}
+						}
+					}
+				}
+			}
+			// we sort out procedural tools first then generally try to put items with similar tags together
+		}
+
+		fn serialize(self: SortItems, writer: *BinaryWriter) void {
+			self.target.write(writer);
+		}
+
+		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !SortItems {
+			return .{
+				.target = try InventoryAndSlot.read(reader, side, user),
 			};
 		}
 	};
