@@ -903,6 +903,7 @@ pub const Command = struct { // MARK: Command
 				.other => .{.other = {}},
 				.alreadyFreed => return error.Invalid,
 			};
+			if (source == .workbench and !source.workbench.proceduralItemIndex.check()) return error.Invalid;
 			try Inventory.server.createInventory(user.?, id, len, source);
 			return .{
 				.inv = Inventory.server.getInventory(user.?, id) orelse return error.InventoryNotFound,

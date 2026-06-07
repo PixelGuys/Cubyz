@@ -593,6 +593,10 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 		}
 	};
 
+	pub fn check(self: ProceduralItemTypeIndex) bool {
+		return @intFromEnum(self) < proceduralItemTypeList.items.len;
+	}
+
 	pub fn iterator() ProceduralItemTypeIterator {
 		return .{};
 	}
