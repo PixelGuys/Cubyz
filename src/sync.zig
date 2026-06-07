@@ -1782,14 +1782,17 @@ pub const Command = struct { // MARK: Command
 			// first compresses items before sorting
 			for (self.target.inv._items, 0..) |invStack, slot| {
 				if (invStack.item != .null) {
-					for (self.target.inv._items, @intCast(slot + 1)..) |checkedInvStack, checkedSlot| {
+					for (self.target.inv._items, 0..) |checkedInvStack, checkedSlot| {
 						if (checkedInvStack.item != .null) {
 							if (std.meta.eql(invStack.item, checkedInvStack.item)) {
-								if (self.target.ref().amount >= invStack.item.stackSize()) return;
-								const amount = @min(invStack.item.stackSize() - self.target.ref().amount, self.target.ref().amount);
+								if (self.target.ref().amount >= invStack.item.stackSize()) continue;
+								if (slot <= checkedSlot) continue;
+								const amount = @min(checkedInvStack.item.stackSize() - checkedInvStack.amount, invStack.amount);
 								const dest: InventoryAndSlot = .{.inv = self.target.inv, .slot = @intCast(checkedSlot)};
 								const source: InventoryAndSlot = .{.inv = self.target.inv, .slot = @intCast(slot)};
 								std.log.debug("Moving objects", .{});
+								std.log.debug("{}", .{invStack.item.stackSize() - invStack.amount});
+								std.log.debug("{}", .{amount});
 								ctx.execute(.{.move = .{
 									.dest = dest,
 									.source = source,
