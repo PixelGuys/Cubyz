@@ -1,7 +1,7 @@
 .{
 	.id = "cubyz:oak",
 	.tags = .{.oak},
-	.chance = 0.000005,
+	.chance = 0.00005,
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
