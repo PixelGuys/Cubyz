@@ -1778,6 +1778,7 @@ pub const Command = struct { // MARK: Command
 		target: InventoryAndSlot,
 
 		fn run(self: SortItems, ctx: Context) error{serverFailure}!void {
+			std.log.debug("Running Sort", .{});
 			// first compresses items before sorting
 			for (self.target.inv._items, 0..) |invStack, slot| {
 				if (invStack.item != .null) {
@@ -1788,6 +1789,7 @@ pub const Command = struct { // MARK: Command
 								const amount = @min(invStack.item.stackSize() - self.target.ref().amount, self.target.ref().amount);
 								const dest: InventoryAndSlot = .{.inv = self.target.inv, .slot = @intCast(checkedSlot)};
 								const source: InventoryAndSlot = .{.inv = self.target.inv, .slot = @intCast(slot)};
+								std.log.debug("Moving objects", .{});
 								ctx.execute(.{.move = .{
 									.dest = dest,
 									.source = source,
