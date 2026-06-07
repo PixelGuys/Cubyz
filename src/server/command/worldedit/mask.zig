@@ -42,13 +42,14 @@ pub fn execute(args: []const u8, source: *User) void {
 	};
 	defer result.deinit(main.stackAllocator);
 
+	if (source.worldEditData.mask) |mask| mask.deinit(main.globalAllocator);
+
 	switch (result) {
 		.@"/mask <mask>" => |cmd| {
 			source.worldEditData.mask = cmd.mask.mask.clone(main.globalAllocator);
 			source.sendMessage("#00ff00Mask set.", .{});
 		},
 		.@"/mask" => {
-			if (source.worldEditData.mask) |mask| mask.deinit(main.globalAllocator);
 			source.worldEditData.mask = null;
 			source.sendMessage("#00ff00Mask cleared.", .{});
 		},
