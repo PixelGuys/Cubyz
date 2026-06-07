@@ -524,6 +524,20 @@ pub const Mask = struct {
 		self.entries.deinit(allocator);
 	}
 
+	pub fn clone(self: Mask, allocator: NeverFailingAllocator) Mask {
+		var orListCopy: OrList = .initCapacity(allocator, self.entries.items.len);
+
+		for (self.entries.items) |andList| {
+			var andListCopy: AndList = .initCapacity(allocator, andList.items.len);
+			defer orListCopy.appendAssumeCapacity(andListCopy);
+
+			for (andList.items) |entry| {
+				andListCopy.appendAssumeCapacity(entry);
+			}
+		}
+		return .{.entries = orListCopy};
+	}
+
 	pub fn match(self: @This(), block: Block) bool {
 		for (self.entries.items) |andedExpressions| {
 			const status = blk: {

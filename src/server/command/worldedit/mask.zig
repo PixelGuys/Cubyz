@@ -1,9 +1,9 @@
 const std = @import("std");
 
 const main = @import("main");
+const command = main.server.command;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const User = main.server.User;
-
-const Mask = main.blueprint.Mask;
 
 pub const description = "Set edit mask. When used with no mask expression it will clear current mask.";
 pub const usage =
@@ -11,17 +11,47 @@ pub const usage =
 	\\/mask
 ;
 
-pub fn execute(args: []const u8, source: *User) void {
-	if (args.len == 0) {
-		if (source.worldEditData.mask) |mask| mask.deinit(main.globalAllocator);
-		source.worldEditData.mask = null;
-		source.sendMessage("#00ff00Mask cleared.", .{});
-		return;
+const Args = union(enum) {
+	@"/mask": struct {
+		fn deinit(_: @This(), _: NeverFailingAllocator) void {}
+	},
+	@"/mask <mask>": struct {
+		mask: command.MaskExpression,
+
+		fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
+			self.mask.deinit(allocator);
+		}
+	},
+
+	fn deinit(self: Args, allocator: NeverFailingAllocator) void {
+		switch (self) {
+			inline else => |object| object.deinit(allocator),
+		}
 	}
-	const mask = Mask.initFromString(main.globalAllocator, args) catch |err| {
-		source.sendMessage("#ff0000Error parsing mask: {}", .{err});
+};
+
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/mask"});
+
+pub fn execute(args: []const u8, source: *User) void {
+	var errorMessage: main.List(u8) = .{};
+	defer errorMessage.deinit(main.stackAllocator);
+
+	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
+		source.sendMessage("#ff0000{s}", .{errorMessage.items});
 		return;
 	};
-	source.worldEditData.mask = mask;
-	source.sendMessage("#00ff00Mask set.", .{});
+	defer result.deinit(main.stackAllocator);
+
+	if (source.worldEditData.mask) |mask| mask.deinit(main.globalAllocator);
+
+	switch (result) {
+		.@"/mask <mask>" => |cmd| {
+			source.worldEditData.mask = cmd.mask.mask.clone(main.globalAllocator);
+			source.sendMessage("#00ff00Mask set.", .{});
+		},
+		.@"/mask" => {
+			source.worldEditData.mask = null;
+			source.sendMessage("#00ff00Mask cleared.", .{});
+		},
+	}
 }
