@@ -1826,17 +1826,20 @@ pub const Command = struct { // MARK: Command
 				var dest: InventoryAndSlot = .{.inv = self.target.inv, .slot = 0};
 				var source: InventoryAndSlot = .{.inv = self.target.inv, .slot = 0};
 				var foundSimilarTag = false;
-				std.log.debug("test {}", .{invStack.item.proceduralItem.type.tags().len});
 				if (invStack.item.proceduralItem.type.tags().len == 0) continue;
 				std.log.debug("starting tag sort", .{});
 				for (self.target.inv._items, 0..) |checkedInvStack, checkedSlot| {
-					if ((foundSimilarTag) or checkedInvStack.item != .proceduralItem) {
+					if ((foundSimilarTag)) {
+						if (checkedInvStack.item == .proceduralItem) {
+							if (checkedInvStack.item.proceduralItem.hasTag(invStack.item.proceduralItem.type.tags()[0])) continue;
+						} else {
+							continue;
+						}
 						std.log.debug("found a proper swap", .{});
 						dest.slot = @intCast(checkedSlot);
 						source.slot = @intCast(slot);
 						break;
 					}
-					if (checkedSlot == slot) continue;
 					if (checkedInvStack.item == .proceduralItem) {
 						if (checkedInvStack.item.proceduralItem.type.tags().len == 0) continue;
 						std.log.debug("{}", .{(invStack.item.proceduralItem.type.tags()[0])});
@@ -1850,6 +1853,58 @@ pub const Command = struct { // MARK: Command
 				}});
 			}
 			// then we sort normal items
+			for (self.target.inv._items, 0..) |invStack, slot| {
+				if (invStack.item == .baseItem) {
+					var dest: InventoryAndSlot = .{.inv = self.target.inv, .slot = 0};
+					var source: InventoryAndSlot = .{.inv = self.target.inv, .slot = 0};
+					for (self.target.inv._items, 0..) |checkedInvStack, checkedSlot| {
+						if (checkedInvStack.item == .proceduralItem) continue;
+						if (checkedInvStack.item != .baseItem) {
+							dest.slot = @intCast(checkedSlot);
+							source.slot = @intCast(slot);
+							break;
+						}
+					}
+					ctx.execute(.{.swap = .{
+						.dest = dest,
+						.source = source,
+					}});
+				}
+			}
+			for (self.target.inv._items, 0..) |invStack, slot| {
+				if (invStack.item == .proceduralItem) continue;
+				if (invStack.item != .baseItem) break;
+				std.log.debug("try tag sort", .{});
+				var dest: InventoryAndSlot = .{.inv = self.target.inv, .slot = 0};
+				var source: InventoryAndSlot = .{.inv = self.target.inv, .slot = 0};
+				var foundSimilarTag = false;
+				if (invStack.item.baseItem.tags().len == 0) continue;
+				std.log.debug("starting tag sort", .{});
+				for (self.target.inv._items, 0..) |checkedInvStack, checkedSlot| {
+					if (invStack.item == .proceduralItem) continue;
+					if ((foundSimilarTag)) {
+						if (checkedInvStack.item == .baseItem) {
+							if (checkedInvStack.item.baseItem.hasTag(invStack.item.baseItem.tags()[0])) continue;
+						} else {
+							continue;
+						}
+						std.log.debug("found a proper swap", .{});
+						dest.slot = @intCast(checkedSlot);
+						source.slot = @intCast(slot);
+						break;
+					}
+					if (checkedInvStack.item == .baseItem) {
+						if (checkedInvStack.item.baseItem.tags().len == 0) continue;
+						std.log.debug("{}", .{(invStack.item.baseItem.tags()[0])});
+						if (checkedInvStack.item.baseItem.hasTag(invStack.item.baseItem.tags()[0])) foundSimilarTag = true;
+					}
+				}
+				std.log.debug("swapping {} {}", .{source.slot, dest.slot});
+				ctx.execute(.{.swap = .{
+					.dest = dest,
+					.source = source,
+				}});
+			}
 		}
 
 		fn serialize(self: SortItems, writer: *BinaryWriter) void {

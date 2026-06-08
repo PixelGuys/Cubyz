@@ -1,5 +1,5 @@
 .{
-	.tags = .{.stone, .mineable, .basalt},
+	.tags = .{.basalt, .stone, .mineable},
 	.blockHealth = 30,
 	.blockResistance = 1,
 	.drops = .{
