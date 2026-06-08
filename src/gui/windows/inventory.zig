@@ -41,12 +41,19 @@ pub fn deinit() void {
 
 var itemSlots: [20]*ItemSlot = undefined;
 
+pub fn sortItems(target: main.items.Inventory.ClientInventory) void {
+	const convertedInv: main.items.Inventory.InventoryAndSlot = .{.inv = target.super, .slot = 0};
+	main.sync.client.executeCommand(.{.sortItems = .{.target = convertedInv}});
+}
+
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
 	// Some miscellanious slots and buttons:
 	// TODO: armor slots, backpack slot + stack-based backpack inventory, other items maybe?
 	{
 		const row = HorizontalList.init();
+		const sortCallback: main.callbacks.SimpleCallback = .{.inner = @ptrCast(&sortItems), .data = &Player.inventory};
+		row.add(Button.initIcon(.{32, 0}, .{32, 32}, craftingIcon, true, sortCallback));
 		blk: {
 			row.add(GuiComponent.BagSlot.init(.{0, 0}, main.entity.components.@"cubyz:bag".client.getBag(main.game.Player.id) orelse break :blk));
 		}
