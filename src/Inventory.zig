@@ -531,6 +531,10 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		main.sync.client.executeCommand(.{.craftProceduralItem = .init(destinations, workbenchInv)});
 	}
 
+	pub fn sortItems() void {
+		
+	}
+
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {
 		std.debug.assert(self.type == .serverShared);
 		main.renderer.MeshSelection.placeBlock(self, slot);
