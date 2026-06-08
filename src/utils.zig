@@ -2083,6 +2083,7 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 		}
 
 		pub fn contains(self: *Self, id: IdType) bool {
+			std.debug.assert(id != .noValue);
 			return @intFromEnum(id) < self.sparseToDenseIndex.items.len and self.sparseToDenseIndex.items[@intFromEnum(id)] != .noValue;
 		}
 
@@ -2103,6 +2104,7 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 		}
 
 		pub fn set(self: *Self, allocator: NeverFailingAllocator, id: IdType, value: T) void {
+			std.debug.assert(id != .noValue);
 			self.add(allocator, id).* = value;
 		}
 
@@ -2126,6 +2128,7 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 		}
 
 		pub fn get(self: *Self, id: IdType) ?*T {
+			std.debug.assert(id != .noValue);
 			if (@intFromEnum(id) >= self.sparseToDenseIndex.items.len) return null;
 			const index = self.sparseToDenseIndex.items[@intFromEnum(id)];
 			if (index == .noValue) return null;
