@@ -1777,9 +1777,7 @@ pub const Command = struct { // MARK: Command
 	const SortItems = struct { // MARK: SortItems
 		target: InventoryAndSlot,
 
-		fn run(self: SortItems, ctx: Context) error{serverFailure}!void {
-			std.log.debug("Running Sort", .{});
-			// first compresses items before sorting
+		fn compressItems(self: SortItems, ctx: Context) void {
 			for (self.target.inv._items, 0..) |invStack, slot| {
 				if (invStack.item != .null) {
 					for (self.target.inv._items, 0..) |checkedInvStack, checkedSlot| {
@@ -1802,7 +1800,9 @@ pub const Command = struct { // MARK: Command
 					}
 				}
 			}
-			// we sort out procedural tools first then generally try to put items with similar tags together
+		}
+
+		fn sortProceduralItems(self: SortItems, ctx: Context) void {
 			for (self.target.inv._items, 0..) |invStack, slot| {
 				if (invStack.item == .proceduralItem) {
 					var dest: InventoryAndSlot = .{.inv = self.target.inv, .slot = 0};
@@ -1822,12 +1822,10 @@ pub const Command = struct { // MARK: Command
 			}
 			for (self.target.inv._items, 0..) |invStack, slot| {
 				if (invStack.item != .proceduralItem) break;
-				std.log.debug("try tag sort", .{});
 				var dest: InventoryAndSlot = .{.inv = self.target.inv, .slot = 0};
 				var source: InventoryAndSlot = .{.inv = self.target.inv, .slot = 0};
 				var foundSimilarTag = false;
 				if (invStack.item.proceduralItem.type.tags().len == 0) continue;
-				std.log.debug("starting tag sort", .{});
 				for (self.target.inv._items, 0..) |checkedInvStack, checkedSlot| {
 					if ((foundSimilarTag)) {
 						if (checkedInvStack.item == .proceduralItem) {
@@ -1835,7 +1833,6 @@ pub const Command = struct { // MARK: Command
 						} else {
 							continue;
 						}
-						std.log.debug("found a proper swap", .{});
 						dest.slot = @intCast(checkedSlot);
 						source.slot = @intCast(slot);
 						break;
@@ -1846,13 +1843,14 @@ pub const Command = struct { // MARK: Command
 						if (checkedInvStack.item.proceduralItem.hasTag(invStack.item.proceduralItem.type.tags()[0])) foundSimilarTag = true;
 					}
 				}
-				std.log.debug("swapping {} {}", .{source.slot, dest.slot});
 				ctx.execute(.{.swap = .{
 					.dest = dest,
 					.source = source,
 				}});
 			}
-			// then we sort normal items
+		}
+
+		fn sortBaseItems(self: SortItems, ctx: Context) void {
 			for (self.target.inv._items, 0..) |invStack, slot| {
 				if (invStack.item == .baseItem) {
 					var dest: InventoryAndSlot = .{.inv = self.target.inv, .slot = 0};
@@ -1874,21 +1872,22 @@ pub const Command = struct { // MARK: Command
 			for (self.target.inv._items, 0..) |invStack, slot| {
 				if (invStack.item == .proceduralItem) continue;
 				if (invStack.item != .baseItem) break;
-				std.log.debug("try tag sort", .{});
+				std.log.debug("trying sort", .{});
 				var dest: InventoryAndSlot = .{.inv = self.target.inv, .slot = 0};
 				var source: InventoryAndSlot = .{.inv = self.target.inv, .slot = 0};
 				var foundSimilarTag = false;
+				std.log.debug("trying sort 2  {}", .{invStack.item});
+				std.log.debug("trying sort 2  {}", .{invStack.item.baseItem.tags()});
 				if (invStack.item.baseItem.tags().len == 0) continue;
-				std.log.debug("starting tag sort", .{});
+				std.log.debug("trying sort 3", .{});
 				for (self.target.inv._items, 0..) |checkedInvStack, checkedSlot| {
-					if (invStack.item == .proceduralItem) continue;
 					if ((foundSimilarTag)) {
 						if (checkedInvStack.item == .baseItem) {
 							if (checkedInvStack.item.baseItem.hasTag(invStack.item.baseItem.tags()[0])) continue;
 						} else {
 							continue;
 						}
-						std.log.debug("found a proper swap", .{});
+						std.log.debug("found a proper swap for the items", .{});
 						dest.slot = @intCast(checkedSlot);
 						source.slot = @intCast(slot);
 						break;
@@ -1905,6 +1904,16 @@ pub const Command = struct { // MARK: Command
 					.source = source,
 				}});
 			}
+		}
+
+		fn run(self: SortItems, ctx: Context) error{serverFailure}!void {
+			std.log.debug("Running Sort", .{});
+			// first compresses items before sorting
+			// we sort out procedural tools second then generally try to put items with similar tags together
+			// then we sort normal items
+			compressItems(self, ctx);
+			sortProceduralItems(self, ctx);
+			sortBaseItems(self, ctx);
 		}
 
 		fn serialize(self: SortItems, writer: *BinaryWriter) void {
