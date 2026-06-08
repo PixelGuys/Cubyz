@@ -1792,7 +1792,6 @@ pub const Command = struct { // MARK: Command
 								const source: InventoryAndSlot = .{.inv = self.target.inv, .slot = @intCast(slot)};
 								std.log.debug("Moving objects", .{});
 								std.log.debug("{}", .{invStack.item.stackSize() - invStack.amount});
-								std.log.debug("{}", .{amount});
 								ctx.execute(.{.move = .{
 									.dest = dest,
 									.source = source,
@@ -1804,6 +1803,53 @@ pub const Command = struct { // MARK: Command
 				}
 			}
 			// we sort out procedural tools first then generally try to put items with similar tags together
+			for (self.target.inv._items, 0..) |invStack, slot| {
+				if (invStack.item == .proceduralItem) {
+					var dest: InventoryAndSlot = .{.inv = self.target.inv, .slot = 0};
+					var source: InventoryAndSlot = .{.inv = self.target.inv, .slot = 0};
+					for (self.target.inv._items, 0..) |checkedInvStack, checkedSlot| {
+						if (checkedInvStack.item != .proceduralItem) {
+							dest.slot = @intCast(checkedSlot);
+							source.slot = @intCast(slot);
+							break;
+						}
+					}
+					ctx.execute(.{.swap = .{
+						.dest = dest,
+						.source = source,
+					}});
+				}
+			}
+			for (self.target.inv._items, 0..) |invStack, slot| {
+				if (invStack.item != .proceduralItem) break;
+				std.log.debug("try tag sort", .{});
+				var dest: InventoryAndSlot = .{.inv = self.target.inv, .slot = 0};
+				var source: InventoryAndSlot = .{.inv = self.target.inv, .slot = 0};
+				var foundSimilarTag = false;
+				std.log.debug("test {}", .{invStack.item.proceduralItem.type.tags().len});
+				if (invStack.item.proceduralItem.type.tags().len == 0) continue;
+				std.log.debug("starting tag sort", .{});
+				for (self.target.inv._items, 0..) |checkedInvStack, checkedSlot| {
+					if ((foundSimilarTag) or checkedInvStack.item != .proceduralItem) {
+						std.log.debug("found a proper swap", .{});
+						dest.slot = @intCast(checkedSlot);
+						source.slot = @intCast(slot);
+						break;
+					}
+					if (checkedSlot == slot) continue;
+					if (checkedInvStack.item == .proceduralItem) {
+						if (checkedInvStack.item.proceduralItem.type.tags().len == 0) continue;
+						std.log.debug("{}", .{(invStack.item.proceduralItem.type.tags()[0])});
+						if (checkedInvStack.item.proceduralItem.hasTag(invStack.item.proceduralItem.type.tags()[0])) foundSimilarTag = true;
+					}
+				}
+				std.log.debug("swapping {} {}", .{source.slot, dest.slot});
+				ctx.execute(.{.swap = .{
+					.dest = dest,
+					.source = source,
+				}});
+			}
+			// then we sort normal items
 		}
 
 		fn serialize(self: SortItems, writer: *BinaryWriter) void {
