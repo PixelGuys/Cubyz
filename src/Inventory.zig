@@ -7,6 +7,7 @@ const Item = main.items.Item;
 const ItemStack = main.items.ItemStack;
 const ProceduralItem = main.items.ProceduralItem;
 const utils = main.utils;
+const Tag = main.Tag;
 const BinaryWriter = utils.BinaryWriter;
 const BinaryReader = utils.BinaryReader;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
@@ -531,8 +532,84 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		main.sync.client.executeCommand(.{.craftProceduralItem = .init(destinations, workbenchInv)});
 	}
 
-	pub fn sortItems() void {
-		
+	pub fn sortItems(source: ClientInventory) void {
+		//compressItems(source);
+		//orderItems(source);
+		sortByTag(source, 0);
+	}
+	
+	pub fn compressItems(source: ClientInventory) void {
+		for (source.super._items, 0..) |invStack, slot| {
+			for (source.super._items, 0..) |checkedInvStack, checkedSlot| {
+				if (std.meta.eql(invStack.item, checkedInvStack.item)) {
+					main.sync.client.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = source.super, .slot = @intCast(checkedSlot)}, .source = .{.inv = source.super, .slot = @intCast(slot)}}});
+				}
+			}
+		}
+	}
+
+	pub fn orderItems(source: ClientInventory) void {
+		for (source.super._items, 0..) |invStack, slot| {
+			if (invStack.item == .null) continue;
+			for (source.super._items, 0..) |checkedInvStack, checkedSlot| {
+				if (checkedInvStack.item != .null) continue;
+				main.sync.client.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = source.super, .slot = @intCast(slot)}, .source = .{.inv = source.super, .slot = @intCast(checkedSlot)}}});
+			}
+		}
+	}
+
+	pub fn sortByTag(source: ClientInventory, tagIndex: usize) void {
+		std.log.debug("sorting by tags", .{});
+		var tagToCheck: ?Tag = null;
+		for (source.super._items, 0..) |invStack, slot| {
+			if (invStack.item == .null) continue;
+			std.log.debug("test", .{});
+			if (getSortingTag(invStack.item, tagIndex) == tagToCheck) continue;
+			var similarTagCounter: usize = 1;
+			tagToCheck = getSortingTag(invStack.item, tagIndex);
+			std.log.debug("checking items", .{});
+			std.log.debug("{}", .{invStack.amount});
+			for (source.super._items, 0..) |checkedInvStack, checkedSlot| {
+				if (tagToCheck == null) break;
+				if (invStack.item == .null) continue;
+				if (!hasSortingTag(checkedInvStack.item, tagToCheck)) continue;
+				std.log.debug("checking items more {checkedSlot}", .{});
+				main.sync.client.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = source.super, .slot = @intCast(checkedSlot)}, .source = .{.inv = source.super, .slot = @intCast(slot + similarTagCounter)}}});
+				similarTagCounter += 1;
+			}
+		}
+	}
+
+	pub fn hasSortingTag(givenItem: Item, givenTag: ?Tag) bool {
+		if (givenTag == null) return false;
+		const checkedTag: Tag = givenTag orelse Tag.air;
+		if (givenItem == .null) {
+			return false;
+		} else if (givenItem == .proceduralItem) {
+			return givenItem.proceduralItem.hasTag(checkedTag);
+		} else if (givenItem == .baseItem) {
+			return givenItem.baseItem.hasTag(checkedTag);
+		} else {
+			std.log.err("hasSortingTag: Could not find item class {}", .{givenItem});
+			return false;
+		}
+	}
+
+	pub fn getSortingTag(givenItem: Item, tagIndex: usize) ?Tag {
+		if (givenItem == .null) {
+			return null;
+		} else if (givenItem == .proceduralItem) {
+			std.log.debug("procedural item tags {}", .{givenItem.proceduralItem.type.tags()});
+			if (givenItem.proceduralItem.type.tags().len <= (tagIndex)) return null;
+			return givenItem.proceduralItem.type.tags()[tagIndex];
+		} else if (givenItem == .baseItem) {
+			std.log.debug("base item tags {}", .{givenItem.baseItem.tags()});
+			if (givenItem.baseItem.tags().len <= (tagIndex)) return null;
+			return givenItem.baseItem.tags()[tagIndex];
+		} else {
+			std.log.err("getSortingTag: Could not find item class {}", .{givenItem});
+			return null;
+		}
 	}
 
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {

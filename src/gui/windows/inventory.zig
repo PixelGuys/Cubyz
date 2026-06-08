@@ -42,8 +42,7 @@ pub fn deinit() void {
 var itemSlots: [20]*ItemSlot = undefined;
 
 pub fn sortItems(target: main.items.Inventory.ClientInventory) void {
-	const convertedInv: main.items.Inventory.InventoryAndSlot = .{.inv = target.super, .slot = 0};
-	main.sync.client.executeCommand(.{.sortItems = .{.target = convertedInv}});
+	target.sortItems();
 }
 
 pub fn onOpen() void {
