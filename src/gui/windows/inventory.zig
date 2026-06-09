@@ -30,9 +30,11 @@ pub var window = GuiWindow{
 const padding: f32 = 8;
 
 var craftingIcon: Texture = undefined;
+var sortIcon: Texture = undefined;
 
 pub fn init() void {
 	craftingIcon = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_icon.png");
+	sortIcon = Texture.initFromFile("assets/cubyz/ui/inventory/sort_icon.png");
 }
 
 pub fn deinit() void {
@@ -52,9 +54,9 @@ pub fn onOpen() void {
 	{
 		const row = HorizontalList.init();
 		const sortCallback: main.callbacks.SimpleCallback = .{.inner = @ptrCast(&sortItems), .data = &Player.inventory};
-		row.add(Button.initIcon(.{32, 0}, .{32, 32}, craftingIcon, true, sortCallback));
+		row.add(Button.initIcon(.{0, 0}, .{32, 32}, sortIcon, true, sortCallback));
 		blk: {
-			row.add(GuiComponent.BagSlot.init(.{0, 0}, main.entity.components.@"cubyz:bag".client.getBag(main.game.Player.id) orelse break :blk));
+			row.add(GuiComponent.BagSlot.init(.{32, 0}, main.entity.components.@"cubyz:bag".client.getBag(main.game.Player.id) orelse break :blk));
 		}
 		row.add(Button.initIcon(.{32, 0}, .{32, 32}, craftingIcon, true, gui.openWindowCallback("inventory_crafting")));
 		list.add(row);
