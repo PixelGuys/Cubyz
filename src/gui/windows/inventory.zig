@@ -42,7 +42,7 @@ pub fn deinit() void {
 var itemSlots: [20]*ItemSlot = undefined;
 
 pub fn sortItems(target: main.items.Inventory.ClientInventory) void {
-	target.sortItems();
+	target.sortItems(12);
 }
 
 pub fn onOpen() void {
