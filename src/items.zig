@@ -25,6 +25,8 @@ const modifierRestrictionList = @import("proceduralItem/modifiers/restrictions/_
 
 pub const recipes = @import("items/recipes.zig");
 
+pub const accessory_slots = @import("items/accessory_slots.zig");
+
 pub const Inventory = @import("Inventory.zig");
 
 const Material = struct { // MARK: Material

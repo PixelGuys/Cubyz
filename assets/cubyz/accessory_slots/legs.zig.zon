@@ -1,0 +1,5 @@
+.{
+	.texture = "legs.png",
+	.count = 1,
+	.position_hint = 2,
+}

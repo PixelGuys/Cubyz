@@ -1,0 +1,5 @@
+.{
+	.texture = "head.png",
+	.count = 1,
+	.position_hint = 0,
+}

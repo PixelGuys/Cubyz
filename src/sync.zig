@@ -875,7 +875,7 @@ pub const Command = struct { // MARK: Command
 			writer.writeInt(usize, self.inv._items.len);
 			writer.writeEnum(Inventory.SourceType, self.source);
 			switch (self.source) {
-				.playerInventory, .hand => |val| {
+				.playerInventory, .hand, .playerAccessories => |val| {
 					writer.writeInt(u32, val);
 				},
 				.blockInventory => |val| {
@@ -898,6 +898,7 @@ pub const Command = struct { // MARK: Command
 			const source: Inventory.Source = switch (sourceType) {
 				.playerInventory => .{.playerInventory = try reader.readInt(u32)},
 				.hand => .{.hand = try reader.readInt(u32)},
+				.playerAccessories => .{.playerAccessories = try reader.readInt(u32)},
 				.blockInventory => .{.blockInventory = try reader.readVec(Vec3i)},
 				.workbench => .{.workbench = .{.playerId = try reader.readInt(u32), .proceduralItemIndex = try reader.readEnum(main.items.ProceduralItemTypeIndex)}},
 				.other => .{.other = {}},
