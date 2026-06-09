@@ -541,7 +541,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			sortBaseItemsByTag(source, index, ignoredSlotCount);
 		}
 	}
-	
+
 	pub fn compressItems(source: ClientInventory) void {
 		for (source.super._items, 0..) |invStack, slot| {
 			for (source.super._items, 0..) |checkedInvStack, checkedSlot| {
@@ -649,7 +649,6 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		return returnBool;
 	}
 
-
 	pub fn hasSortingTag(givenItem: Item, givenTag: ?Tag, tagIndex: usize) bool {
 		return (processGetSortingTag(getTagsFromItem(givenItem), tagIndex) == givenTag);
 	}
@@ -657,7 +656,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	pub fn getSortingTag(givenItem: Item, tagIndex: usize) ?Tag {
 		return processGetSortingTag(getTagsFromItem(givenItem), tagIndex);
 	}
-	
+
 	pub fn processGetSortingTag(tagList: []const Tag, tagIndex: usize) ?Tag {
 		if (tagList.len <= tagIndex) return null;
 		if (tagList[tagIndex] == .chiselable) return null; // we ignore block rotation tags
@@ -676,7 +675,6 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			return &[_]Tag{};
 		}
 	}
-	
 
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {
 		std.debug.assert(self.type == .serverShared);
