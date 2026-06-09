@@ -535,7 +535,11 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	pub fn sortItems(source: ClientInventory, ignoredSlotCount: usize) void {
 		compressItems(source);
 		orderItems(source, ignoredSlotCount);
-		sortByTag(source, 0, ignoredSlotCount);
+		const tagCount = findHighestTagCount(source);
+		sortProceduralItemsByTag(source, 0, ignoredSlotCount);
+		for (0..tagCount) |index| {
+			sortBaseItemsByTag(source, index, ignoredSlotCount);
+		}
 	}
 	
 	pub fn compressItems(source: ClientInventory) void {
@@ -549,72 +553,109 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	}
 
 	pub fn orderItems(source: ClientInventory, ignoredSlotCount: usize) void {
-		std.log.debug("reordering items", .{});
+		// put proceduralItems first then BaseItems
+		for (source.super._items, 0..) |invStack, slot| {
+			if (slot + 1 <= ignoredSlotCount) continue;
+			if (invStack.item == .proceduralItem) continue;
+			for (source.super._items, 0..) |checkedInvStack, checkedSlot| {
+				if (checkedSlot + 1 <= ignoredSlotCount) continue;
+				if (checkedSlot < slot) continue;
+				if (checkedInvStack.item != .proceduralItem) continue;
+				main.sync.client.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = source.super, .slot = @intCast(slot)}, .source = .{.inv = source.super, .slot = @intCast(checkedSlot)}}});
+				break;
+			}
+		}
 		for (source.super._items, 0..) |invStack, slot| {
 			if (slot + 1 <= ignoredSlotCount) continue;
 			if (invStack.item != .null) continue;
 			for (source.super._items, 0..) |checkedInvStack, checkedSlot| {
 				if (checkedSlot + 1 <= ignoredSlotCount) continue;
 				if (checkedSlot < slot) continue;
-				if (checkedInvStack.item == .null) continue;
-				std.log.debug("testing slot {} {}", .{slot, checkedSlot});
+				if (checkedInvStack.item != .baseItem) continue;
 				main.sync.client.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = source.super, .slot = @intCast(slot)}, .source = .{.inv = source.super, .slot = @intCast(checkedSlot)}}});
 				break;
 			}
 		}
 	}
 
-	pub fn sortByTag(source: ClientInventory, tagIndex: usize, ignoredSlotCount: usize) void {
+	pub fn findHighestTagCount(source: ClientInventory) usize {
+		var highestTagCount: usize = 0;
+		for (source.super._items) |invStack| {
+			if (getTagsFromItem(invStack.item).len > highestTagCount) highestTagCount = getTagsFromItem(invStack.item).len;
+		}
+		return highestTagCount;
+	}
+
+	pub fn sortBaseItemsByTag(source: ClientInventory, tagIndex: usize, ignoredSlotCount: usize) void {
 		// takes the first tag it can find and aligns all other tags with it
 		var tagToCheck: ?Tag = null;
-		std.log.debug("testing ================", .{});
 		for (source.super._items, 0..) |invStack, slot| {
 			if (slot + 1 <= ignoredSlotCount) continue;
 			if (invStack.item == .null) break;
+			if (invStack.item != .baseItem) continue;
 			var destTarget: InventoryAndSlot = .{.inv = source.super, .slot = 0};
 			var sourceTarget: InventoryAndSlot = .{.inv = source.super, .slot = 0};
 			tagToCheck = getSortingTag(invStack.item, tagIndex);
 			for (source.super._items, 0..) |checkedInvStack, checkedSlot| {
 				if (checkedSlot + 1 <= ignoredSlotCount) continue;
 				if (checkedInvStack.item == .null) break;
+				if (checkedInvStack.item != .baseItem) continue;
 				if (!hasSortingTag(checkedInvStack.item, tagToCheck, tagIndex)) continue;
+				if (!hasLowerTags(checkedInvStack.item, invStack.item, tagIndex)) continue;
 				destTarget.slot = @intCast(slot + 1);
 				sourceTarget.slot = @intCast(checkedSlot);
 				break;
 			}
 			if (source.super._items[destTarget.slot].item == .null) continue;
 			if (destTarget.slot + 1 > source.super._items.len) continue;
-			std.log.debug("testing slot {} {} {}", .{sourceTarget.slot, destTarget.slot, tagToCheck});
 			main.sync.client.executeCommand(.{.depositOrSwap = .{.dest = destTarget, .source = sourceTarget}});
 		}
 	}
 
-	pub fn hasSortingTag(givenItem: Item, givenTag: ?Tag, tagIndex: usize) bool {
-		if (givenItem == .null) {
-			return false;
-		} else if (givenItem == .proceduralItem) {
-			if (givenItem.proceduralItem.type.tags().len <= tagIndex) return false;
-			return (givenItem.proceduralItem.type.tags()[tagIndex] == givenTag);
-		} else if (givenItem == .baseItem) {
-			if (givenItem.baseItem.tags().len <= tagIndex) return false;
-			return (givenItem.baseItem.tags()[tagIndex] == givenTag);
-		} else {
-			std.log.err("hasSortingTag: Could not find item class {}", .{givenItem});
-			return false;
+	pub fn sortProceduralItemsByTag(source: ClientInventory, tagIndex: usize, ignoredSlotCount: usize) void {
+		// takes the first tag it can find and aligns all other tags with it
+		var tagToCheck: ?Tag = null;
+		for (source.super._items, 0..) |invStack, slot| {
+			if (slot + 1 <= ignoredSlotCount) continue;
+			if (invStack.item == .null) break;
+			if (invStack.item != .proceduralItem) continue;
+			var destTarget: InventoryAndSlot = .{.inv = source.super, .slot = 0};
+			var sourceTarget: InventoryAndSlot = .{.inv = source.super, .slot = 0};
+			tagToCheck = getSortingTag(invStack.item, tagIndex);
+			for (source.super._items, 0..) |checkedInvStack, checkedSlot| {
+				if (checkedSlot + 1 <= ignoredSlotCount) continue;
+				if (checkedInvStack.item == .null) break;
+				if (checkedInvStack.item != .proceduralItem) continue;
+				if (!hasSortingTag(checkedInvStack.item, tagToCheck, tagIndex)) continue;
+				if (!hasLowerTags(checkedInvStack.item, invStack.item, tagIndex)) continue;
+				destTarget.slot = @intCast(slot + 1);
+				sourceTarget.slot = @intCast(checkedSlot);
+				break;
+			}
+			if (source.super._items[destTarget.slot].item == .null) continue;
+			if (destTarget.slot + 1 > source.super._items.len) continue;
+			main.sync.client.executeCommand(.{.depositOrSwap = .{.dest = destTarget, .source = sourceTarget}});
 		}
 	}
 
-	pub fn getSortingTag(givenItem: Item, tagIndex: usize) ?Tag {
-		if (givenItem == .null) {
-			return null;
-		} else if (givenItem == .proceduralItem) {
-			return processGetSortingTag(givenItem.proceduralItem.type.tags(), tagIndex);
-		} else if (givenItem == .baseItem) {
-			return processGetSortingTag(givenItem.baseItem.tags(), tagIndex);
-		} else {
-			std.log.err("getSortingTag: Could not find item class {}", .{givenItem});
-			return null;
+	pub fn hasLowerTags(givenItem: Item, refereceItem: Item, tagIndex: usize) bool { // weeds out items that are not part of the same catagory
+		if (tagIndex == 0) return true; // no need to check lower tags if there are none
+		var returnBool: bool = true;
+		for (0..getTagsFromItem(givenItem).len) |checkedIndex| {
+			if (getTagsFromItem(givenItem).len < tagIndex - 1) return false;
+			if (checkedIndex >= tagIndex) break;
+			returnBool = ((returnBool) and (getTagsFromItem(givenItem)[checkedIndex] == getTagsFromItem(refereceItem)[checkedIndex]));
 		}
+		return returnBool;
+	}
+
+
+	pub fn hasSortingTag(givenItem: Item, givenTag: ?Tag, tagIndex: usize) bool {
+		return (processGetSortingTag(getTagsFromItem(givenItem), tagIndex) == givenTag);
+	}
+
+	pub fn getSortingTag(givenItem: Item, tagIndex: usize) ?Tag {
+		return processGetSortingTag(getTagsFromItem(givenItem), tagIndex);
 	}
 	
 	pub fn processGetSortingTag(tagList: []const Tag, tagIndex: usize) ?Tag {
@@ -622,6 +663,20 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		if (tagList[tagIndex] == .chiselable) return null; // we ignore block rotation tags
 		return tagList[tagIndex];
 	}
+
+	pub fn getTagsFromItem(givenItem: Item) []const Tag {
+		if (givenItem == .null) {
+			return &[_]Tag{};
+		} else if (givenItem == .proceduralItem) {
+			return givenItem.proceduralItem.type.tags();
+		} else if (givenItem == .baseItem) {
+			return givenItem.baseItem.tags();
+		} else {
+			std.log.err("getSortingTag: Could not find item class {}", .{givenItem});
+			return &[_]Tag{};
+		}
+	}
+	
 
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {
 		std.debug.assert(self.type == .serverShared);
