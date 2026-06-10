@@ -43,6 +43,7 @@ const Textures = struct {
 var normalTextures: Textures = undefined;
 var hoveredTextures: Textures = undefined;
 var pressedTextures: Textures = undefined;
+var disabledTextures: Textures = undefined;
 pub var pipeline: graphics.Pipeline = undefined;
 pub var buttonUniforms: struct {
 	screen: c_int,
@@ -54,6 +55,7 @@ pub var buttonUniforms: struct {
 
 pos: Vec2f,
 size: Vec2f,
+disabled: bool = false,
 pressed: bool = false,
 hovered: bool = false,
 onAction: main.callbacks.SimpleCallback,
@@ -74,6 +76,7 @@ pub fn globalInit() void {
 	normalTextures = Textures.init("assets/cubyz/ui/button");
 	hoveredTextures = Textures.init("assets/cubyz/ui/button_hovered");
 	pressedTextures = Textures.init("assets/cubyz/ui/button_pressed");
+	disabledTextures = Textures.init("assets/cubyz/ui/button_disabled");
 }
 
 pub fn globalDeinit() void {
@@ -85,26 +88,33 @@ pub fn globalDeinit() void {
 
 fn defaultOnAction(_: usize) void {}
 
-pub fn initText(pos: Vec2f, width: f32, text: []const u8, onAction: main.callbacks.SimpleCallback) *Button {
+const Options = struct {
+	onAction: main.callbacks.SimpleCallback = .{},
+	disabled: bool = false,
+};
+
+pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *Button {
 	const label = Label.init(undefined, width - 3*border, text, .center);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
 		.size = Vec2f{width, label.size[1] + 3*border},
-		.onAction = onAction,
+		.onAction = options.onAction,
 		.child = label.toComponent(),
+		.disabled = options.disabled,
 	};
 	return self;
 }
 
-pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, hasShadow: bool, onAction: main.callbacks.SimpleCallback) *Button {
+pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, hasShadow: bool, options: Options) *Button {
 	const icon = Icon.init(undefined, iconSize, iconTexture, hasShadow);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
 		.size = icon.size + @as(Vec2f, @splat(3*border)),
-		.onAction = onAction,
+		.onAction = options.onAction,
 		.child = icon.toComponent(),
+		.disabled = options.disabled,
 	};
 	return self;
 }
@@ -124,7 +134,7 @@ pub fn updateHovered(self: *Button, _: Vec2f) main.callbacks.Result {
 }
 
 pub fn mainButtonPressed(self: *Button, _: Vec2f) main.callbacks.Result {
-	self.pressed = true;
+	if (!self.disabled) self.pressed = true;
 	return .handled;
 }
 
@@ -139,6 +149,7 @@ pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 
 pub fn render(self: *Button, mousePosition: Vec2f) void {
 	const textures = blk: {
+		if (self.disabled) break :blk disabledTextures;
 		if (self.pressed) break :blk pressedTextures;
 		if (GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered) {
 			break :blk hoveredTextures;
