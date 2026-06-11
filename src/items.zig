@@ -558,6 +558,7 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 const SlotInfo = packed struct { // MARK: SlotInfo
 	disabled: bool = false,
 	optional: bool = false,
+	color: u32 = 0xffffffff,
 };
 
 const PropertyMatrix = struct { // MARK: PropertyMatrix
@@ -1298,6 +1299,13 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 			break;
 		}
 		slotInfos[i].optional = (zonDisabled.as(usize) orelse 0) != 0;
+	}
+	for (zon.getChild("slotColors").toSlice(), 0..) |zonDisabled, i| {
+		if (i >= 25) {
+			std.log.err("disabled array of {s} has too many entries", .{id});
+			break;
+		}
+		slotInfos[i].color = zonDisabled.as(u32, 0xffffffff);
 	}
 	var parameterMatrices: main.List(PropertyMatrix) = .empty;
 	defer parameterMatrices.deinit(main.stackAllocator);

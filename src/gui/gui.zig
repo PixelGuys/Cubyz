@@ -614,7 +614,7 @@ pub const inventory = struct { // MARK: inventory
 
 	pub fn init() void {
 		carried = ClientInventory.init(main.globalAllocator, 1, .serverShared, .{.hand = main.game.Player.id}, .{});
-		carriedItemSlot = ItemSlot.init(.{0, 0}, carried, 0, .default, .normal);
+		carriedItemSlot = ItemSlot.init(.{0, 0}, carried, 0, .default, .normal, 0xffffffff);
 		carriedItemSlot.renderFrame = false;
 		initialized = true;
 		isCrafting = false;

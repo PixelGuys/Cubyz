@@ -72,7 +72,7 @@ fn openInventory() void {
 			for (0..5) |x| {
 				const index = x + y*5;
 				const slotInfo = proceduralItemTypes.items[currentProceduralItemType].slotInfos()[index];
-				const slot = ItemSlot.init(.{0, 0}, craftingGridInv, @intCast(index), if (slotInfo.disabled) .invisible else if (slotInfo.optional) .immutable else .default, if (slotInfo.disabled) .immutable else .normal);
+				const slot = ItemSlot.init(.{0, 0}, craftingGridInv, @intCast(index), if (slotInfo.disabled) .invisible else if (slotInfo.optional) .immutable else .default, if (slotInfo.disabled) .immutable else .normal, slotInfo.color);
 				itemSlots[index] = slot;
 				row.add(slot);
 			}
@@ -87,7 +87,7 @@ fn openInventory() void {
 	const buttonHeight = verticalThing.size[1];
 	const craftingResultList = HorizontalList.init();
 	craftingResultList.add(Icon.init(.{0, 0}, .{32, 32}, inventory_crafting.arrowTexture, false));
-	craftingResultList.add(ItemSlot.init(.{8, 0}, craftingResultInv, 0, .craftingResult, .takeOnly));
+	craftingResultList.add(ItemSlot.init(.{8, 0}, craftingResultInv, 0, .craftingResult, .takeOnly, 0xffffffff));
 	craftingResultList.finish(.{padding, padding}, .center);
 	verticalThing.add(craftingResultList);
 	verticalThing.size[1] += buttonHeight + 2*padding; // Centering the thing
