@@ -111,7 +111,7 @@ pub const User = struct { // MARK: User
 	clientUpdatePos: Vec3i = .{0, 0, 0},
 	receivedFirstEntityData: bool = false,
 	isLocal: bool = false,
-	id: u32 = 0, // TODO: Use entity id.
+	id: main.entity.Entity = .noValue,
 	// TODO: ipPort: []const u8,
 	loadedChunks: [simulationSize][simulationSize][simulationSize]*SimulationChunk = undefined,
 	lastRenderDistance: u16 = 0,
@@ -247,9 +247,9 @@ pub const User = struct { // MARK: User
 		}
 	}
 
-	var freeId: u32 = 0;
+	var freeId: u32 = 0; // TODO: Use id provided by the ECS.
 	pub fn initPlayer(self: *User) void {
-		self.id = freeId;
+		self.id = @enumFromInt(freeId);
 		freeId += 1;
 
 		world.?.loadPlayer(self) catch {
@@ -748,7 +748,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	// Let the other clients know about that this new one left.
 	const zonArray = main.ZonElement.initArray(main.stackAllocator);
 	defer zonArray.deinit(main.stackAllocator);
-	zonArray.array.append(.{.int = user.id});
+	zonArray.array.append(.{.int = @intFromEnum(user.id)});
 	const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 	defer main.stackAllocator.free(data);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);

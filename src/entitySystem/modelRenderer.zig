@@ -116,10 +116,10 @@ pub const client = struct {
 		c.glUniform1f(uniforms.contrast, 0.12);
 
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |component, id| {
-			if (@intFromEnum(id) == game.Player.id) continue; // don't render local player
+			if (id == game.Player.id) continue; // don't render local player
 
 			const entModel = component.entityModel.get();
-			const ent = main.client.entity_manager.getEntity(@intFromEnum(id)) orelse continue;
+			const ent = main.client.entity_manager.getEntity(id) orelse continue;
 
 			entModel.bind();
 			const entTexture = entModel.defaultTexture;
