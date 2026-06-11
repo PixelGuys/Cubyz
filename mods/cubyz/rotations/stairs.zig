@@ -234,7 +234,7 @@ pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 				});
 			}
 		}
-		var boxes: main.ListUnmanaged(main.physics.collision.Box) = .initCapacity(main.stackAllocator, 4);
+		var boxes: main.List(main.physics.collision.Box) = .initCapacity(main.stackAllocator, 4);
 		defer boxes.deinit(main.stackAllocator);
 		var remaining: u8 = ~@as(u8, @intCast(i));
 		for (0..2) |dx| {

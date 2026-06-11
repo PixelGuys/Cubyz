@@ -295,7 +295,7 @@ pub fn createBlockModel(_: Block, modeData: *u16, zon: ZonElement) ModelIndex {
 			}
 		}
 
-		var boxes: main.ListUnmanaged(main.physics.collision.Box) = .initCapacity(main.stackAllocator, 3);
+		var boxes: main.List(main.physics.collision.Box) = .initCapacity(main.stackAllocator, 3);
 		defer boxes.deinit(main.stackAllocator);
 		if (data.enabledConnections & Neighbor.dirNegX.bitMask() != 0 or data.enabledConnections & Neighbor.dirPosX.bitMask() != 0) {
 			var boxX = innerBox;
