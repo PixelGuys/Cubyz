@@ -971,11 +971,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		if (playerData == .null) {
 			player.pos = @floatFromInt(self.spawn);
 
+			user.gamemode = .init(self.settings.defaultGamemode);
+
 			main.sync.setGamemode(user, self.settings.defaultGamemode);
 		} else {
 			user.permissions.fromZon(playerData);
 
-			main.sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.settings.defaultGamemode))) orelse self.settings.defaultGamemode);
+			user.gamemode = .init(std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.settings.defaultGamemode))) orelse self.settings.defaultGamemode);
 		}
 		user.inventory = loadPlayerInventory(main.game.Player.inventorySize, playerData.get([]const u8, "playerInventory", ""), .{.playerInventory = user.id}, path);
 		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand", ""), .{.hand = user.id}, path);

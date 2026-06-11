@@ -1520,6 +1520,8 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn send(self: *Connection, comptime channel: ChannelId, protocolIndex: u8, data: []const u8) void {
+		std.debug.assert(self.handShakeState.raw == .complete or protocolIndex == protocols.handShake.id);
+		std.debug.assert(self.handShakeState.raw != .complete or protocolIndex != protocols.handShake.id);
 		_ = protocols.bytesSent[protocolIndex].fetchAdd(data.len, .monotonic);
 		self.mutex.lock();
 		defer self.mutex.unlock();
@@ -1704,6 +1706,7 @@ pub const Connection = struct { // MARK: Connection
 			return;
 		}
 		if (self.connectionState.load(.monotonic) != .connected) return; // Reject all non-handshake packets until the handshake is done.
+		if (self.handShakeState.load(.monotonic) != .complete and (channel == .lossy or channel == .slow)) return; // Reject all non-handshake packets from other channels.
 		switch (channel) {
 			.lossy => {
 				const start = try reader.readInt(SequenceIndex);
