@@ -186,7 +186,9 @@ pub const User = struct { // MARK: User
 
 		self.worldEditData.deinit();
 
-		self.player().deinit(.server);
+		if (self.player().id != .noValue) {
+			self.player().deinit(.server);
+		}
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
