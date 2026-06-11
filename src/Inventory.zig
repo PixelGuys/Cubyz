@@ -549,37 +549,37 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		}
 	}
 
-const SortContext = struct {
-	inv: ClientInventory,
+	const SortContext = struct {
+		inv: ClientInventory,
 
-	pub fn lessThan(ctx: @This(), a: usize, b: usize) bool {
-		const itemA: Item = ctx.inv.getItem(a);
-		const itemB: Item = ctx.inv.getItem(b);
+		pub fn lessThan(ctx: @This(), a: usize, b: usize) bool {
+			const itemA: Item = ctx.inv.getItem(a);
+			const itemB: Item = ctx.inv.getItem(b);
 
-		if(itemA == .null) return false;
-		if(itemB == .null) return true;
-		if((itemA != .proceduralItem) and (itemB == .proceduralItem)) return false;
-		if((itemA == .proceduralItem) and (itemB != .proceduralItem)) return true;
+			if(itemA == .null) return false;
+			if(itemB == .null) return true;
+			if((itemA != .proceduralItem) and (itemB == .proceduralItem)) return false;
+			if((itemA == .proceduralItem) and (itemB != .proceduralItem)) return true;
 
-		const itemATags = getTagsFromItem(itemA);
-		const itemBTags = getTagsFromItem(itemB);
+			const itemATags = getTagsFromItem(itemA);
+			const itemBTags = getTagsFromItem(itemB);
 
-		for(0..@min(itemATags.len, itemBTags.len)) |i| {
-			if(itemATags[i] == itemBTags[i]) continue;
-			return std.mem.lessThan(u8, itemATags[i].getName(), itemBTags[i].getName());
+			for(0..@min(itemATags.len, itemBTags.len)) |i| {
+				if(itemATags[i] == itemBTags[i]) continue;
+				return std.mem.lessThan(u8, itemATags[i].getName(), itemBTags[i].getName());
+			}
+			if(itemATags.len != itemBTags.len) return itemATags.len < itemBTags.len;
+
+			return std.mem.lessThan(u8, itemA.id().?, itemB.id().?);
 		}
-		if(itemATags.len != itemBTags.len) return itemATags.len < itemBTags.len;
 
-		return std.mem.lessThan(u8, itemA.id().?, itemB.id().?);
-	}
-
-	pub fn swap(ctx: @This(), a: usize, b: usize) void {
-		main.sync.client.executeCommand(.{.depositOrSwap = .{
-			.dest = .{.inv = ctx.inv.super, .slot = @intCast(a)}, 
-			.source = .{.inv = ctx.inv.super, .slot = @intCast(b)},
-		}});
-	}
-};
+		pub fn swap(ctx: @This(), a: usize, b: usize) void {
+			main.sync.client.executeCommand(.{.depositOrSwap = .{
+				.dest = .{.inv = ctx.inv.super, .slot = @intCast(a)}, 
+				.source = .{.inv = ctx.inv.super, .slot = @intCast(b)},
+			}});
+		}
+	};
 
 	pub fn getTagsFromItem(givenItem: Item) []const Tag {
 		if (givenItem == .null) {
