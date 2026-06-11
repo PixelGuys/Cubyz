@@ -504,7 +504,7 @@ pub const entity = struct { // MARK: entity
 			const elem = zonArray.array.items[i];
 			switch (elem) {
 				.int => {
-					main.client.entity_manager.removeEntity(@enumFromInt(elem.as(u32, 0)));
+					main.client.entity_manager.removeEntity(@enumFromInt(elem.as(u32) orelse return error.Invalid));
 				},
 				.object => {
 					try main.client.entity_manager.addEntity(elem);
@@ -521,7 +521,7 @@ pub const entity = struct { // MARK: entity
 		while (i < zonArray.array.items.len) : (i += 1) {
 			const elem: ZonElement = zonArray.array.items[i];
 			if (elem == .int) {
-				conn.manager.world.?.itemDrops.remove(elem.as(u16, 0));
+				conn.manager.world.?.itemDrops.remove(elem.as(u16) orelse return error.Invalid);
 			} else if (!elem.getChild("array").isNull()) {
 				conn.manager.world.?.itemDrops.loadFrom(elem);
 			} else {

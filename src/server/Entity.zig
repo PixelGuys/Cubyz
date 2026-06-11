@@ -26,14 +26,14 @@ pub fn loadFrom(self: *@This(), id: main.entity.Entity, zon: ZonElement, comptim
 	self.health = zon.get(f32, "health", self.maxHealth);
 	self.energy = zon.get(f32, "energy", self.maxEnergy);
 	if (zon.getChildOrNull("components")) |components| {
-		try main.entity.loadComponentsFromBase64(components.as([]const u8, ""), self.id, side);
+		try main.entity.loadComponentsFromBase64(components.as([]const u8) orelse "", self.id, side);
 	}
 
 	if (zon.getChildOrNull("name")) |name| {
 		if (self.name) |oldname| {
 			main.globalAllocator.free(oldname);
 		}
-		self.name = main.globalAllocator.dupe(u8, name.as([]const u8, "invalid name"));
+		self.name = main.globalAllocator.dupe(u8, name.as([]const u8) orelse "invalid name");
 	}
 }
 pub fn clone(self: *@This(), copy: *@This()) void {
