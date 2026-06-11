@@ -89,7 +89,6 @@ fn cacheString(comptime str: []const u8) []const u8 {
 var logFile: ?std.Io.File = undefined;
 var logFileTs: ?std.Io.File = undefined;
 var supportsANSIColors: bool = undefined;
-var openingErrorWindow: bool = false;
 // overwrite the log function:
 pub const std_options: std.Options = .{ // MARK: std_options
 	.log_level = .debug,
@@ -138,10 +137,8 @@ noinline fn runtimeLogFn(level: std.log.Level, format: []const u8, args: []const
 		logToStdErr("[{s}]: {s}{s}", .{filePrefix, writer.buffered(), fileSuffix});
 	}
 
-	if (level == .err and !openingErrorWindow and !settings.launchConfig.headlessServer) {
-		openingErrorWindow = true;
-		gui.openWindow("error_prompt");
-		openingErrorWindow = false;
+	if (level == .err and !settings.launchConfig.headlessServer) {
+		gui.windowlist.error_prompt.raiseError(writer.buffered());
 	}
 }
 
