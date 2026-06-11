@@ -69,7 +69,7 @@ pub const EntityModel = struct {
 			self.modelId = null;
 		}
 		self.entityModelId = main.worldArena.dupe(u8, entityModelId);
-		self.height = zon.getChild("height").as(f32, 1);
+		self.height = zon.get(f32, "height", 1);
 		self.defaultTexture = null;
 		self.vao = null;
 		self.indexCount = 0;

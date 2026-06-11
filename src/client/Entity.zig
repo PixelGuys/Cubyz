@@ -50,7 +50,7 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) !
 	self.interpolatedValues.init(&self._interpolationPos, &self._interpolationVel);
 
 	if (zon.getChildOrNull("components")) |components| {
-		try main.entity.loadComponentsFromBase64(components.as([]const u8, ""), self.id, .client);
+		try main.entity.loadComponentsFromBase64(components.as([]const u8) orelse "", self.id, .client);
 	}
 }
 
