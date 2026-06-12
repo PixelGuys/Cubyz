@@ -1385,7 +1385,7 @@ pub fn clearRecipeCachedInventories() void {
 	for (recipeList.items) |*recipe| {
 		main.globalAllocator.free(recipe.sourceItems);
 		main.globalAllocator.free(recipe.sourceAmounts);
-		recipe.sourceItems   = &.{};
+		recipe.sourceItems = &.{};
 		recipe.sourceAmounts = &.{};
 	}
 }
