@@ -569,6 +569,10 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 				return std.mem.lessThan(u8, itemATags[i].getName(), itemBTags[i].getName());
 			}
 			if (itemATags.len != itemBTags.len) return itemATags.len < itemBTags.len;
+			if ((itemA == .proceduralItem) and (itemB == .proceduralItem)) {
+					std.log.debug("checking durability", .{});
+					return (itemA.proceduralItem.durability < itemB.proceduralItem.durability);
+			}
 
 			return std.mem.lessThan(u8, itemA.id().?, itemB.id().?);
 		}
