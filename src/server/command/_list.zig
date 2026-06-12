@@ -6,6 +6,7 @@ pub const kick = @import("kick.zig");
 pub const kill = @import("kill.zig");
 pub const particles = @import("particles.zig");
 pub const spawn = @import("spawn.zig");
+pub const stop = @import("stop.zig");
 pub const tickspeed = @import("tickspeed.zig");
 pub const time = @import("time.zig");
 pub const tp = @import("tp.zig");
