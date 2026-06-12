@@ -27,12 +27,12 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		return .{.array = list};
 	}
 
-	pub fn getAtIndex(self: *const ZonElement, comptime _type: type, index: usize, replacement: _type) _type {
+	pub fn getAtIndex(self: *const ZonElement, comptime T: type, index: usize, replacement: T) T {
 		if (self.* != .array) {
 			return replacement;
 		} else {
 			if (index < self.array.items.len) {
-				return self.array.items[index].as(_type) orelse replacement;
+				return self.array.items[index].as(T) orelse replacement;
 			} else {
 				return replacement;
 			}
@@ -51,15 +51,15 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		}
 	}
 
-	pub fn get(self: *const ZonElement, comptime _type: type, key: []const u8, replacement: _type) _type {
+	pub fn get(self: *const ZonElement, comptime T: type, key: []const u8, replacement: T) T {
 		if (self.* != .object) {
 			return replacement;
 		} else {
 			if (self.object.get(key)) |elem| {
-				if (@typeInfo(_type) == .optional) {
-					return elem.as(@typeInfo(_type).optional.child) orelse replacement;
+				if (@typeInfo(T) == .optional) {
+					return elem.as(@typeInfo(T).optional.child) orelse replacement;
 				}
-				return elem.as(_type) orelse replacement;
+				return elem.as(T) orelse replacement;
 			} else {
 				return replacement;
 			}
