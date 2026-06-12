@@ -230,7 +230,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	return @intCast(size);
 }
 
-pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
+pub fn loadBlockDrop(blockId: []const u8, zon: ZonElement) []const BlockDrop {
 	const drops = zon.getChild("drops").toSlice();
 	const blockDrops = main.worldArena.alloc(BlockDrop, drops.len);
 
@@ -252,9 +252,7 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 			}
 
 			if (std.mem.eql(u8, name, "auto")) {
-				if (blockId) |id| {
-					name = id;
-				} else std.log.err("Cannot use 'auto' in this context", .{});
+				name = blockId;
 			}
 
 			const item = items.BaseItemIndex.fromId(name) orelse continue;
@@ -302,31 +300,31 @@ fn registerOpaqueVariant(typ: u16, zon: ZonElement) void {
 
 fn registerCallbacks(typ: u16, zon: ZonElement) void {
 	_onInteract[typ] = blk: {
-		break :blk ClientBlockCallback.init(zon.getChildOrNull("onInteract") orelse break :blk .noop) orelse {
+		break :blk ClientBlockCallback.init(zon.getChildOrNull("onInteract") orelse break :blk .noop, .{.block = .{.typ = typ, .data = 0}}) orelse {
 			std.log.err("Failed to load onInteract event for block {s}", .{_id[typ]});
 			break :blk .noop;
 		};
 	};
 	_onBreak[typ] = blk: {
-		break :blk ServerBlockCallback.init(zon.getChildOrNull("onBreak") orelse break :blk .noop) orelse {
+		break :blk ServerBlockCallback.init(zon.getChildOrNull("onBreak") orelse break :blk .noop, .{.block = .{.typ = typ, .data = 0}}) orelse {
 			std.log.err("Failed to load onBreak event for block {s}", .{_id[typ]});
 			break :blk .noop;
 		};
 	};
 	_onUpdate[typ] = blk: {
-		break :blk ServerBlockCallback.init(zon.getChildOrNull("onUpdate") orelse break :blk .noop) orelse {
+		break :blk ServerBlockCallback.init(zon.getChildOrNull("onUpdate") orelse break :blk .noop, .{.block = .{.typ = typ, .data = 0}}) orelse {
 			std.log.err("Failed to load onUpdate event for block {s}", .{_id[typ]});
 			break :blk .noop;
 		};
 	};
 	_onTick[typ] = blk: {
-		break :blk ServerBlockCallback.init(zon.getChildOrNull("onTick") orelse break :blk .noop) orelse {
+		break :blk ServerBlockCallback.init(zon.getChildOrNull("onTick") orelse break :blk .noop, .{.block = .{.typ = typ, .data = 0}}) orelse {
 			std.log.err("Failed to load onTick event for block {s}", .{_id[typ]});
 			break :blk .noop;
 		};
 	};
 	_onTouch[typ] = blk: {
-		break :blk BlockTouchCallback.init(zon.getChildOrNull("onTouch") orelse break :blk .noop) orelse {
+		break :blk BlockTouchCallback.init(zon.getChildOrNull("onTouch") orelse break :blk .noop, .{.block = .{.typ = typ, .data = 0}}) orelse {
 			std.log.err("Failed to load onTouch event for block {s}", .{_id[typ]});
 			break :blk .noop;
 		};
