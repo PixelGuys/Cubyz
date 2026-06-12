@@ -768,6 +768,7 @@ pub fn connect(user: *User) void {
 pub fn connectInternal(user: *User) void {
 	user.initPlayer();
 	main.network.protocols.handShake.sendServerPlayerData(user.conn);
+	user.conn.handShakeState.store(.complete, .monotonic);
 
 	// TODO: addEntity(player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
@@ -814,7 +815,6 @@ pub fn connectInternal(user: *User) void {
 	userMutex.lock();
 	users.append(user);
 	userMutex.unlock();
-	user.conn.handShakeState.store(.complete, .monotonic);
 }
 
 pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message

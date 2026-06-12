@@ -46,6 +46,7 @@ pub fn init() void { // MARK: init()
 }
 
 pub fn onReceive(conn: *Connection, protocolIndex: u8, data: []const u8) !void { // MARK: onReceive()
+	if (conn.handShakeState.raw != .complete and protocolIndex != handShake.id) return error.HandshakeIncomplete;
 	const protocolReceive = blk: {
 		if (conn.isServerSide()) break :blk serverReceiveList[protocolIndex] orelse return error.Invalid;
 		break :blk clientReceiveList[protocolIndex] orelse return error.Invalid;
@@ -96,8 +97,8 @@ pub const handShake = struct { // MARK: handShake
 				.serverData => {
 					const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 					defer zon.deinit(main.stackAllocator);
-					try conn.manager.world.?.finishHandshake(zon);
 					conn.handShakeState.store(.complete, .monotonic);
+					try conn.manager.world.?.finishHandshake(zon);
 					conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
 				},
 				.start, .complete => {},
@@ -184,6 +185,7 @@ pub const handShake = struct { // MARK: handShake
 		defer zonObject.deinit(main.stackAllocator);
 		zonObject.put("player", conn.user.?.player().save(main.stackAllocator, .playerHimself));
 		zonObject.put("player_id", @intFromEnum(conn.user.?.id));
+		zonObject.put("gamemode", @intFromEnum(conn.user.?.gamemode.raw));
 		zonObject.put("blockPalette", main.server.world.?.blockPalette.storeToZon(main.stackAllocator));
 		zonObject.put("itemPalette", main.server.world.?.itemPalette.storeToZon(main.stackAllocator));
 		zonObject.put("toolPalette", main.server.world.?.proceduralItemPalette.storeToZon(main.stackAllocator));
