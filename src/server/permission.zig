@@ -14,7 +14,7 @@ const PermissionMap = struct { // MARK: PermissionMap
 	pub fn fromZon(self: *PermissionMap, arena: NeverFailingAllocator, zon: ZonElement) void {
 		sync.threadContext.assertCorrectContext(.server);
 		for (zon.toSlice()) |item| {
-			const string = item.as(?[]const u8, null) orelse continue;
+			const string = item.as([]const u8) orelse continue;
 			self.put(arena, string);
 		}
 	}

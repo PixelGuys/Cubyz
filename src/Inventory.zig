@@ -403,10 +403,10 @@ pub const SourceType = enum(u8) {
 };
 pub const Source = union(SourceType) {
 	alreadyFreed: void,
-	playerInventory: u32,
-	hand: u32,
+	playerInventory: main.entity.Entity,
+	hand: main.entity.Entity,
 	blockInventory: Vec3i,
-	workbench: struct { playerId: u32, proceduralItemIndex: ProceduralItemTypeIndex },
+	workbench: struct { playerId: main.entity.Entity, proceduralItemIndex: ProceduralItemTypeIndex },
 	other: void,
 };
 

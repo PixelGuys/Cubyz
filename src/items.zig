@@ -58,7 +58,7 @@ const Material = struct { // MARK: Material
 		const colors = zon.getChild("colors");
 		self.colorPalette = allocator.alloc(Color, colors.toSlice().len);
 		for (colors.toSlice(), self.colorPalette) |item, *color| {
-			const colorInt: u32 = @intCast(item.as(i64, 0xff000000) & 0xffffffff);
+			const colorInt: u32 = @intCast((item.as(i64) orelse 0xff000000) & 0xffffffff);
 			color.* = Color{
 				.r = @intCast(colorInt >> 16 & 0xff),
 				.g = @intCast(colorInt >> 8 & 0xff),
@@ -1290,14 +1290,14 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 			std.log.err("disabled array of {s} has too many entries", .{id});
 			break;
 		}
-		slotInfos[i].disabled = zonDisabled.as(usize, 0) != 0;
+		slotInfos[i].disabled = (zonDisabled.as(usize) orelse 0) != 0;
 	}
 	for (zon.getChild("optional").toSlice(), 0..) |zonDisabled, i| {
 		if (i >= 25) {
 			std.log.err("disabled array of {s} has too many entries", .{id});
 			break;
 		}
-		slotInfos[i].optional = zonDisabled.as(usize, 0) != 0;
+		slotInfos[i].optional = (zonDisabled.as(usize) orelse 0) != 0;
 	}
 	var parameterMatrices: main.List(PropertyMatrix) = .empty;
 	defer parameterMatrices.deinit(main.stackAllocator);

@@ -271,7 +271,7 @@ pub const StructureBuildingBlock = struct {
 		const rotationParam = zon.getChild("rotation");
 		const rotation = Rotation.fromZon(rotationParam) catch |err| blk: {
 			switch (err) {
-				error.UnknownString => std.log.err("['{s}'] specified unknown rotation '{s}'", .{stringId, rotationParam.as([]const u8, "")}),
+				error.UnknownString => std.log.err("['{s}'] specified unknown rotation '{s}'", .{stringId, rotationParam.as([]const u8).?}),
 				error.UnknownType => std.log.err("['{s}'] unsupported type of rotation field '{s}'", .{stringId, @tagName(rotationParam)}),
 			}
 			break :blk .inherit;

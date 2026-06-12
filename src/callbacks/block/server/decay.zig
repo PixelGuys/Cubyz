@@ -31,7 +31,7 @@ pub fn init(zon: ZonElement) ?*@This() {
 		if (tagNames == .array) {
 			var prevention = main.List(main.Tag).initCapacity(main.worldArena, tagNames.array.items.len);
 			for (tagNames.array.items) |value| {
-				const tagName = value.as(?[]const u8, null) orelse {
+				const tagName = value.as([]const u8) orelse {
 					std.log.err("Invalid TagName for decay prevention.", .{});
 					continue;
 				};

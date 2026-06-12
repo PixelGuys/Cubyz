@@ -44,8 +44,11 @@ pub const RotationMode = struct { // MARK: RotationMode
 		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, _: *Block, _: Block, blockPlacing: bool) bool {
 			return blockPlacing;
 		}
-		pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
-			return main.models.getModelIndex(zon.as([]const u8, "cubyz:cube"));
+		pub fn createBlockModel(block: Block, _: *u16, zon: ZonElement) ModelIndex {
+			return main.models.getModelIndex(zon.as([]const u8) orelse blk: {
+				std.log.err("Invalid model data for block {s} found {s}, expected string", .{block.id(), @tagName(zon)});
+				break :blk "cubyz:cube";
+			});
 		}
 		pub fn updateData(_: *Block, _: Neighbor, _: Block) bool {
 			return false;
