@@ -586,7 +586,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 					while (x < img.width) : (x += 1) {
 						var y: u32 = 0;
 						while (y < img.height) : (y += 1) {
-							dataSection[i] = @bitCast(img.getRGB(x, y));
+							dataSection[i] = img.getRGB(x, y).toArgb();
 							i += 1;
 						}
 					}

@@ -2047,10 +2047,14 @@ pub const CubeMapTexture = struct { // MARK: CubeMapTexture
 };
 
 pub const Color = packed struct(u32) { // MARK: Color
-	b: u8,
-	g: u8,
 	r: u8,
+	g: u8,
+	b: u8,
 	a: u8,
+
+	pub fn toArgb(self: Color) u32 {
+		return @as(u32, self.a) << 24 | @as(u32, self.r) << 16 | @as(u32, self.g) << 8 | @as(u32, self.b);
+	}
 };
 
 pub const Image = struct { // MARK: Image
