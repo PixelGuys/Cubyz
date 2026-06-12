@@ -759,9 +759,10 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	}
 
 	fn extractItemsFromZon(zonArray: ZonElement) [craftingGridSize]?BaseItemIndex {
-		var items: [craftingGridSize]?BaseItemIndex = undefined;
-		for (&items, 0..) |*item, i| {
-			item.* = .fromId(zonArray.getAtIndex([]const u8, i, "null"));
+		const itemZonArray = zonArray.toSlice();
+		var items: [craftingGridSize]?BaseItemIndex = @splat(null);
+		for (&items, itemZonArray) |*item, itemZon| {
+			item.* = .fromId(itemZon.as([]const u8) orelse "null");
 			if (item.* != null and item.*.?.material() == null) item.* = null;
 		}
 		return items;
@@ -1307,10 +1308,11 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 		val.destination = ProceduralItemProperty.fromString(paramZon.get([]const u8, "destination", "not specified"));
 		val.resultScale = paramZon.get(f32, "factor", 1.0);
 		val.method = PropertyMatrix.Method.fromString(paramZon.get([]const u8, "method", "not specified")) orelse .sum;
-		const matrixZon = paramZon.getChild("matrix");
+		const weightMatrix = paramZon.getChild("matrix").toSlice();
+		@memset(&val.weights, 0.0);
 		var total_weight: f32 = 0.0;
-		for (0..25) |i| {
-			val.weights[i] = matrixZon.getAtIndex(f32, i, 0.0);
+		for (weightMatrix, 0..25) |weightZon, i| {
+			if (weightZon.as(f32)) |weight| val.weights[i] = weight;
 		}
 		for (0..25) |i| {
 			total_weight += val.weights[i];
