@@ -1811,15 +1811,15 @@ pub const Connection = struct { // MARK: Connection
 			const dataLen = blk: {
 				self.mutex.lock();
 				defer self.mutex.unlock();
-				for (0..3) |_| {
+				for (0..2) |_| {
 					permutation +%= 1;
-					break :blk switch (permutation%3) {
+					break :blk switch (permutation%2) {
 						0 => self.lossyChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl),
 						1 => self.secureChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl),
-						2 => self.slowChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl),
 						else => unreachable,
 					} orelse continue;
 				}
+				if (self.slowChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
 				break;
 			};
 			const networkLen: f32 = @floatFromInt(dataLen + headerOverhead);
