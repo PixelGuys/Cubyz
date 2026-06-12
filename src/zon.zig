@@ -51,18 +51,15 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		}
 	}
 
-	pub fn get(self: *const ZonElement, comptime T: type, key: []const u8, replacement: T) T {
-		if (self.* != .object) {
-			return replacement;
-		} else {
-			if (self.object.get(key)) |elem| {
-				if (@typeInfo(T) == .optional) {
-					return elem.as(@typeInfo(T).optional.child) orelse replacement;
-				}
-				return elem.as(T) orelse replacement;
-			} else {
-				return replacement;
+	pub fn get(self: *const ZonElement, comptime T: type, key: []const u8) ?T {
+		if (self.* != .object) return null;
+		if (self.object.get(key)) |elem| {
+			if (@typeInfo(T) == .optional) {
+				return elem.as(@typeInfo(T).optional.child);
 			}
+			return elem.as(T);
+		} else {
+			return null;
 		}
 	}
 
@@ -158,7 +155,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		switch (typeInfo) {
 			.int => {
 				switch (self.*) {
-					.int => return std.math.cast(T, self.int) orelse null,
+					.int => return std.math.cast(T, self.int),
 					.float => return std.math.lossyCast(T, std.math.round(self.float)),
 					else => return null,
 				}
@@ -993,8 +990,8 @@ test "merging" {
 	const zon10 = ZonElement.parseFromString(allocator, null, ".{.c = \"foo\", .b = .{.a = \"bar\"}}");
 	defer zon10.deinit(allocator);
 	zon9.join(.preferLeft, zon10);
-	try std.testing.expectEqual(zon9.get(?i32, "a", null), 1);
-	try std.testing.expectEqualSlices(u8, zon9.get(?[]const u8, "c", null).?, "foo");
+	try std.testing.expectEqual(zon9.get(i32, "a")) orelse 1;
+	try std.testing.expectEqualSlices(u8, zon9.get([]const u8, "c").?) orelse "foo";
 	try std.testing.expectEqual(zon9.getChild("b").get(?i32, "a", null), 2);
 	try std.testing.expectEqual(zon9.getChild("b").get(?i32, "b", null), 3);
 
@@ -1003,8 +1000,8 @@ test "merging" {
 	const zon12 = ZonElement.parseFromString(allocator, null, ".{.c = \"foo\", .b = .{.a = \"bar\"}}");
 	defer zon12.deinit(allocator);
 	zon11.join(.preferRight, zon12);
-	try std.testing.expectEqual(zon11.get(?i32, "a", null), 1);
-	try std.testing.expectEqualSlices(u8, zon11.get(?[]const u8, "c", null).?, "foo");
+	try std.testing.expectEqual(zon11.get(i32, "a")) orelse 1;
+	try std.testing.expectEqualSlices(u8, zon11.get([]const u8, "c").?) orelse "foo";
 	try std.testing.expectEqualSlices(u8, zon11.getChild("b").get(?[]const u8, "a", null).?, "bar");
 	try std.testing.expectEqual(zon11.getChild("b").get(?i32, "b", null), 3);
 }

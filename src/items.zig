@@ -38,23 +38,23 @@ const Material = struct { // MARK: Material
 	modifiers: []Modifier = undefined,
 
 	pub fn init(self: *Material, allocator: NeverFailingAllocator, zon: ZonElement) void {
-		self.massDamage = zon.get(?f32, "massDamage", null) orelse blk: {
+		self.massDamage = zon.get(f32, "massDamage") orelse blk: {
 			std.log.err("Couldn't find material attribute 'massDamage'", .{});
 			break :blk 0;
 		};
-		self.hardnessDamage = zon.get(?f32, "hardnessDamage", null) orelse blk: {
+		self.hardnessDamage = zon.get(f32, "hardnessDamage") orelse blk: {
 			std.log.err("Couldn't find material attribute 'hardnessDamage'", .{});
 			break :blk 0;
 		};
-		self.durability = zon.get(?f32, "durability", null) orelse blk: {
+		self.durability = zon.get(f32, "durability") orelse blk: {
 			std.log.err("Couldn't find material attribute 'durability'", .{});
 			break :blk 0;
 		};
-		self.swingSpeed = zon.get(?f32, "swingSpeed", null) orelse blk: {
+		self.swingSpeed = zon.get(f32, "swingSpeed") orelse blk: {
 			std.log.err("Couldn't find material attribute 'swingSpeed'", .{});
 			break :blk 0;
 		};
-		self.textureRoughness = @max(0, zon.get(f32, "textureRoughness", 1.0));
+		self.textureRoughness = @max(0, zon.get(f32, "textureRoughness") orelse 1.0);
 		const colors = zon.getChild("colors");
 		self.colorPalette = allocator.alloc(Color, colors.toSlice().len);
 		for (colors.toSlice(), self.colorPalette) |item, *color| {
@@ -69,7 +69,7 @@ const Material = struct { // MARK: Material
 		const modifiersZon = zon.getChild("modifiers");
 		self.modifiers = allocator.alloc(Modifier, modifiersZon.toSlice().len);
 		for (modifiersZon.toSlice(), self.modifiers) |item, *modifier| {
-			const id = item.get([]const u8, "id", "not specified");
+			const id = item.get([]const u8, "id") orelse "not specified";
 			const vTable = modifiers.get(id) orelse blk: {
 				std.log.err("Couldn't find modifier with id '{s}'. Replacing it with 'durable'", .{id});
 				break :blk modifiers.get("durable") orelse unreachable;
@@ -133,7 +133,7 @@ pub const ModifierRestriction = struct {
 	}
 
 	pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) ModifierRestriction {
-		const id = zon.get([]const u8, "id", "always");
+		const id = zon.get([]const u8, "id") orelse "always";
 		const vTable = modifierRestrictions.get(id) orelse blk: {
 			std.log.err("Couldn't find modifier restriction with id '{s}'. Replacing it with 'always'", .{id});
 			break :blk modifierRestrictions.get("always") orelse unreachable;
@@ -285,9 +285,9 @@ pub const BaseItem = struct { // MARK: BaseItem
 				break :blk graphics.Image.defaultImage;
 			};
 		}
-		self.name = allocator.dupe(u8, zon.get([]const u8, "name", id));
+		self.name = allocator.dupe(u8, zon.get([]const u8, "name") orelse id);
 		self.tags = Tag.loadTagsFromZon(allocator, zon.getChild("tags"));
-		self.stackSize = zon.get(u16, "stackSize", 120);
+		self.stackSize = zon.get(u16, "stackSize") orelse 120;
 		const material = zon.getChild("material");
 		if (material == .object) {
 			self.material = Material{};
@@ -296,10 +296,10 @@ pub const BaseItem = struct { // MARK: BaseItem
 			self.material = null;
 		}
 		self.block = blk: {
-			break :blk blocks.getTypeById(zon.get(?[]const u8, "block", null) orelse break :blk null);
+			break :blk blocks.getTypeById(zon.get([]const u8, "block") orelse break :blk null);
 		};
 		self.texture = null;
-		self.foodValue = zon.get(f32, "food", 0);
+		self.foodValue = zon.get(f32, "food") orelse 0;
 
 		var tooltip: main.ListManaged(u8) = .init(allocator);
 		tooltip.appendSlice(self.name);
@@ -760,11 +760,11 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	}
 
 	pub fn initFromZon(zon: ZonElement) *ProceduralItem {
-		const self = initFromCraftingGrid(extractItemsFromZon(zon.getChild("grid")), zon.get(u32, "seed", 0), ProceduralItemTypeIndex.fromId(zon.get([]const u8, "type", "cubyz:pickaxe")) orelse blk: {
-			std.log.err("Couldn't find procedural item with type {s}. Replacing it with cubyz:pickaxe", .{zon.get([]const u8, "type", "cubyz:pickaxe")});
+		const self = initFromCraftingGrid(extractItemsFromZon(zon.getChild("grid")), zon.get(u32, "seed") orelse 0, ProceduralItemTypeIndex.fromId(zon.get([]const u8, "type") orelse "cubyz:pickaxe") orelse blk: {
+			std.log.err("Couldn't find procedural item with type {s}. Replacing it with cubyz:pickaxe", .{zon.get([]const u8, "type") orelse "cubyz:pickaxe"});
 			break :blk ProceduralItemTypeIndex.fromId("cubyz:pickaxe") orelse @panic("cubyz:pickaxe procedural item not found. Did you load the game with the correct assets?");
 		});
-		self.durability = zon.get(u32, "durability", std.math.lossyCast(u32, self.getProperty(.maxDurability)));
+		self.durability = zon.get(u32, "durability") orelse std.math.lossyCast(u32, self.getProperty(.maxDurability));
 		return self;
 	}
 
@@ -943,7 +943,7 @@ pub const Item = union(ItemType) { // MARK: Item
 	null: void,
 
 	pub fn init(zon: ZonElement) !Item {
-		if (BaseItemIndex.fromId(zon.get([]const u8, "item", "null"))) |baseItem| {
+		if (BaseItemIndex.fromId(zon.get([]const u8, "item") orelse "null")) |baseItem| {
 			return Item{.baseItem = baseItem};
 		} else {
 			const proceduralItemZon = zon.getChild("tool");
@@ -1107,7 +1107,7 @@ pub const ItemStack = struct { // MARK: ItemStack
 	pub fn load(zon: ZonElement) !ItemStack {
 		return .{
 			.item = try Item.init(zon),
-			.amount = zon.get(?u16, "amount", null) orelse return error.InvalidAmount,
+			.amount = zon.get(u16, "amount") orelse return error.InvalidAmount,
 		};
 	}
 
@@ -1336,10 +1336,10 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 	defer parameterMatrices.deinit(main.stackAllocator);
 	for (zon.getChild("parameters").toSlice()) |paramZon| {
 		const val = parameterMatrices.addOne(main.stackAllocator);
-		val.source = MaterialProperty.fromString(paramZon.get([]const u8, "source", "not specified"));
-		val.destination = ProceduralItemProperty.fromString(paramZon.get([]const u8, "destination", "not specified"));
-		val.resultScale = paramZon.get(f32, "factor", 1.0);
-		val.method = PropertyMatrix.Method.fromString(paramZon.get([]const u8, "method", "not specified")) orelse .sum;
+		val.source = MaterialProperty.fromString(paramZon.get([]const u8, "source") orelse "not specified");
+		val.destination = ProceduralItemProperty.fromString(paramZon.get([]const u8, "destination") orelse "not specified");
+		val.resultScale = paramZon.get(f32, "factor") orelse 1.0;
+		val.method = PropertyMatrix.Method.fromString(paramZon.get([]const u8, "method") orelse "not specified") orelse .sum;
 		const matrixZon = paramZon.getChild("matrix");
 		var total_weight: f32 = 0.0;
 		for (0..25) |i| {
