@@ -20,6 +20,6 @@ pub fn execute(args: []const u8, source: *User) void {
 
 	_ = args;
 	_ = source;
-	
+
 	main.server.running.store(false, .release);
 }
