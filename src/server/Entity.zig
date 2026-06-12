@@ -20,11 +20,11 @@ id: main.entity.Entity = .noValue,
 
 pub fn loadFrom(self: *@This(), id: main.entity.Entity, zon: ZonElement, comptime side: main.sync.Side) !void {
 	self.id = id;
-	self.pos = zon.get(Vec3d, "position", .{0, 0, 0});
-	self.vel = zon.get(Vec3d, "velocity", .{0, 0, 0});
-	self.rot = zon.get(Vec3f, "rotation", .{0, 0, 0});
-	self.health = zon.get(f32, "health", self.maxHealth);
-	self.energy = zon.get(f32, "energy", self.maxEnergy);
+	self.pos = zon.get(Vec3d, "position") orelse .{0, 0, 0};
+	self.vel = zon.get(Vec3d, "velocity") orelse .{0, 0, 0};
+	self.rot = zon.get(Vec3f, "rotation") orelse .{0, 0, 0};
+	self.health = zon.get(f32, "health") orelse self.maxHealth;
+	self.energy = zon.get(f32, "energy") orelse self.maxEnergy;
 	if (zon.getChildOrNull("components")) |components| {
 		try main.entity.loadComponentsFromBase64(components.as([]const u8) orelse "", self.id, side);
 	}

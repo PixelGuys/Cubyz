@@ -59,7 +59,7 @@ pub const ParticleManager = struct {
 	}
 
 	pub fn register(assetsFolder: []const u8, id: []const u8, zon: ZonElement) void {
-		const textureId = zon.get(?[]const u8, "texture", null) orelse {
+		const textureId = zon.get([]const u8, "texture") orelse {
 			std.log.err("Particle texture id was not specified for {s} ({s})", .{id, assetsFolder});
 			return;
 		};
@@ -374,7 +374,7 @@ pub const EmitterProperties = struct {
 		return EmitterProperties{
 			.speed = RandomRange(f32).fromZon(zon.getChild("speed")) orelse .init(1, 1.5),
 			.lifeTime = RandomRange(f32).fromZon(zon.getChild("lifeTime")) orelse .init(0.75, 1),
-			.randomizeRotation = zon.get(bool, "randomRotate", true),
+			.randomizeRotation = zon.get(bool, "randomRotate") orelse true,
 		};
 	}
 };
@@ -388,10 +388,10 @@ pub const DirectionMode = union(enum) {
 	direction: Vec3f,
 
 	pub fn parse(zon: ZonElement) !DirectionMode {
-		const dirModeName = zon.get([]const u8, "mode", @tagName(DirectionMode.spread));
+		const dirModeName = zon.get([]const u8, "mode") orelse @tagName(DirectionMode.spread);
 		const dirMode = std.meta.stringToEnum(std.meta.Tag(DirectionMode), dirModeName) orelse return error.InvalidDirectionMode;
 		return switch (dirMode) {
-			.direction => .{.direction = zon.get(Vec3f, "direction", .{0, 0, 1})},
+			.direction => .{.direction = zon.get(Vec3f, "direction") orelse .{0, 0, 1}},
 			inline else => |mode| @unionInit(DirectionMode, @tagName(mode), {}),
 		};
 	}
@@ -417,7 +417,7 @@ pub const Emitter = struct {
 		}
 
 		pub fn parse(zon: ZonElement) !SpawnShape {
-			const typeZon = zon.get([]const u8, "shape", @tagName(SpawnShape.point));
+			const typeZon = zon.get([]const u8, "shape") orelse @tagName(SpawnShape.point);
 			const spawnType = std.meta.stringToEnum(std.meta.Tag(SpawnShape), typeZon) orelse return error.InvalidType;
 			return switch (spawnType) {
 				inline else => |shape| @unionInit(SpawnShape, @tagName(shape), try @FieldType(SpawnShape, @tagName(shape)).parse(zon)),
@@ -467,7 +467,7 @@ pub const Emitter = struct {
 
 		pub fn parse(zon: ZonElement) !SpawnSphere {
 			return SpawnSphere{
-				.radius = zon.get(f32, "radius", 1),
+				.radius = zon.get(f32, "radius") orelse 1,
 			};
 		}
 	};
@@ -492,7 +492,7 @@ pub const Emitter = struct {
 
 		pub fn parse(zon: ZonElement) !SpawnCube {
 			return SpawnCube{
-				.size = zon.get(?Vec3f, "size", null) orelse @splat(zon.get(f32, "size", 1)),
+				.size = zon.get(Vec3f, "size") orelse @splat(zon.get(f32, "size") orelse 1),
 			};
 		}
 	};
