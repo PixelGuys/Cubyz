@@ -972,8 +972,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			player.pos = @floatFromInt(self.spawn);
 
 			user.gamemode = .init(self.settings.defaultGamemode);
-
-			main.sync.setGamemode(user, self.settings.defaultGamemode);
 		} else {
 			user.permissions.fromZon(playerData);
 
