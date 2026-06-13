@@ -582,6 +582,9 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 }
 
 fn deinit() void {
+	main.threadPool.clear();
+	main.items.clearRecipeCachedInventories();
+
 	connectionManager.deinit();
 	connectionManager = undefined;
 	users.clearAndFree();
@@ -726,8 +729,7 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 			}
 			update();
 		}
-		main.threadPool.clear();
-		main.items.clearRecipeCachedInventories();
+		
 	}
 }
 
