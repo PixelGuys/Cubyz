@@ -143,8 +143,8 @@ pub fn convertColorToANSI(text: []const u8) []const u8 {
 				list.append(stackAllocator, 'm');
 			},
 			'*' => {
-				list.appendSlice(stackAllocator, "\x1b[");
 				curSlice = unicodeIterator.nextCodepointSlice() orelse break :loop;
+				list.appendSlice(stackAllocator, "\x1b[");
 				var curChar = std.unicode.utf8Decode(curSlice) catch unreachable;
 				if (curChar == '*') {
 					if (!bold) {
