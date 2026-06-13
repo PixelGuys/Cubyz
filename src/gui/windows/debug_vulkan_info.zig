@@ -29,7 +29,6 @@ pub var window = GuiWindow{
 };
 
 pub fn render() void {
-	draw.setColor(0xffffffff);
 	var y: f32 = 0;
 	draw.print("Vulkan Version: {d}.{d}", .{vulkan.version.major, vulkan.version.minor}, 0, y, 8, .left);
 	y += 8;

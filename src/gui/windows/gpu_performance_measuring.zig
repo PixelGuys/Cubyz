@@ -96,7 +96,6 @@ pub var window = GuiWindow{
 
 pub fn render() void {
 	curBuffer +%= 1;
-	draw.setColor(0xffffffff);
 	var sum: isize = 0;
 	var y: f32 = 8;
 	inline for (0..queryObjects[curBuffer].len) |i| {

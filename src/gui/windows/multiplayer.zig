@@ -89,11 +89,11 @@ pub fn onOpen() void {
 	//                                               255.255.255.255:?65536 (longest possible ip address)
 	ipAddressLabel = Label.init(.{0, 0}, width, "                      ", .center);
 	list.add(ipAddressLabel);
-	list.add(Button.initText(.{0, 0}, 100, "Copy IP", .init(copyIp)));
+	list.add(Button.initText(.{0, 0}, 100, "Copy IP", .{.onAction = .init(copyIp)}));
 	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.onNewline = .init(join)});
 	ipAddressEntry.obfuscated = main.settings.streamerMode;
 	list.add(ipAddressEntry);
-	list.add(Button.initText(.{0, 0}, 100, "Join", .init(join)));
+	list.add(Button.initText(.{0, 0}, 100, "Join", .{.onAction = .init(join)}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

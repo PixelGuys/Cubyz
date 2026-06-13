@@ -58,7 +58,7 @@ const Material = struct { // MARK: Material
 		const colors = zon.getChild("colors");
 		self.colorPalette = allocator.alloc(Color, colors.toSlice().len);
 		for (colors.toSlice(), self.colorPalette) |item, *color| {
-			const colorInt: u32 = @intCast(item.as(i64, 0xff000000) & 0xffffffff);
+			const colorInt: u32 = @intCast((item.as(i64) orelse 0xff000000) & 0xffffffff);
 			color.* = Color{
 				.r = @intCast(colorInt >> 16 & 0xff),
 				.g = @intCast(colorInt >> 8 & 0xff),
@@ -1061,14 +1061,20 @@ pub const Item = union(ItemType) { // MARK: Item
 
 			if (durabilityPercentage < 1) {
 				const width = durabilityPercentage*(slotSize[0] - 2*border);
-				graphics.draw.setColorSameAlpha(0x000000);
-				graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{slotSize[0] - 2*border, (slotSize[1] - 2*border)/16.0});
+				{
+					const oldColor = graphics.draw.setColor(0xff000000);
+					defer graphics.draw.restoreColor(oldColor);
+					graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{slotSize[0] - 2*border, (slotSize[1] - 2*border)/16.0});
+				}
 
 				const red = std.math.lossyCast(u8, (2 - durabilityPercentage*2)*255);
 				const green = std.math.lossyCast(u8, durabilityPercentage*2*255);
 
-				graphics.draw.setColorSameAlpha((@as(u24, @intCast(red)) << 16) | (@as(u24, @intCast(green)) << 8));
-				graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{width, (slotSize[1] - 2*border)/16.0});
+				{
+					const oldColor = graphics.draw.setColor(0xff000000 | (@as(u32, red) << 16) | (@as(u32, green) << 8));
+					defer graphics.draw.restoreColor(oldColor);
+					graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{width, (slotSize[1] - 2*border)/16.0});
+				}
 			}
 		}
 	}
@@ -1290,14 +1296,14 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 			std.log.err("disabled array of {s} has too many entries", .{id});
 			break;
 		}
-		slotInfos[i].disabled = zonDisabled.as(usize, 0) != 0;
+		slotInfos[i].disabled = (zonDisabled.as(usize) orelse 0) != 0;
 	}
 	for (zon.getChild("optional").toSlice(), 0..) |zonDisabled, i| {
 		if (i >= 25) {
 			std.log.err("disabled array of {s} has too many entries", .{id});
 			break;
 		}
-		slotInfos[i].optional = zonDisabled.as(usize, 0) != 0;
+		slotInfos[i].optional = (zonDisabled.as(usize) orelse 0) != 0;
 	}
 	var parameterMatrices: main.List(PropertyMatrix) = .empty;
 	defer parameterMatrices.deinit(main.stackAllocator);

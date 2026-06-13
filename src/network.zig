@@ -1520,6 +1520,8 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn send(self: *Connection, comptime channel: ChannelId, protocolIndex: u8, data: []const u8) void {
+		std.debug.assert(self.handShakeState.raw == .complete or protocolIndex == protocols.handShake.id);
+		std.debug.assert(self.handShakeState.raw != .complete or protocolIndex != protocols.handShake.id);
 		_ = protocols.bytesSent[protocolIndex].fetchAdd(data.len, .monotonic);
 		self.mutex.lock();
 		defer self.mutex.unlock();
@@ -1704,6 +1706,7 @@ pub const Connection = struct { // MARK: Connection
 			return;
 		}
 		if (self.connectionState.load(.monotonic) != .connected) return; // Reject all non-handshake packets until the handshake is done.
+		if (self.handShakeState.load(.monotonic) != .complete and (channel == .lossy or channel == .slow)) return; // Reject all non-handshake packets from other channels.
 		switch (channel) {
 			.lossy => {
 				const start = try reader.readInt(SequenceIndex);
@@ -1801,16 +1804,22 @@ pub const Connection = struct { // MARK: Connection
 			self.sendConfirmationPacket(timestamp);
 		}
 
+		var permutation: usize = main.random.nextInt(usize, &main.seed);
 		while (timestamp -% self.nextPacketTimestamp > 0) {
 			// Only attempt to increase the congestion bandwidth if we actual use the bandwidth, to prevent unbounded growth
 			const considerForCongestionControl = @divFloor(self.relativeSendTime, 2) > self.relativeIdleTime;
 			const dataLen = blk: {
 				self.mutex.lock();
 				defer self.mutex.unlock();
-				if (self.lossyChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
-				if (self.secureChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
+				for (0..2) |_| {
+					permutation +%= 1;
+					break :blk switch (permutation%2) {
+						0 => self.lossyChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl),
+						1 => self.secureChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl),
+						else => unreachable,
+					} orelse continue;
+				}
 				if (self.slowChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
-
 				break;
 			};
 			const networkLen: f32 = @floatFromInt(dataLen + headerOverhead);

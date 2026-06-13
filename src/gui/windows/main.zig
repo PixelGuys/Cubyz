@@ -23,10 +23,10 @@ fn exitGame() void {
 }
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	list.add(Button.initText(.{0, 0}, 128, "Singleplayer", gui.openWindowCallback("save_selection")));
-	list.add(Button.initText(.{0, 0}, 128, "Multiplayer", gui.openWindowCallback("multiplayer")));
-	list.add(Button.initText(.{0, 0}, 128, "Settings", gui.openWindowCallback("settings")));
-	list.add(Button.initText(.{0, 0}, 128, "Touch Grass", .init(exitGame)));
+	list.add(Button.initText(.{0, 0}, 128, "Singleplayer", .{.onAction = gui.openWindowCallback("save_selection")}));
+	list.add(Button.initText(.{0, 0}, 128, "Multiplayer", .{.onAction = gui.openWindowCallback("multiplayer")}));
+	list.add(Button.initText(.{0, 0}, 128, "Settings", .{.onAction = gui.openWindowCallback("settings")}));
+	list.add(Button.initText(.{0, 0}, 128, "Touch Grass", .{.onAction = .init(exitGame)}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

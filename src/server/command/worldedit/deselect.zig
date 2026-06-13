@@ -13,7 +13,7 @@ const Args = union(enum) {
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/deselect"});
 
 pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.List(u8) = .{};
+	var errorMessage: main.List(u8) = .empty;
 	defer errorMessage.deinit(main.stackAllocator);
 
 	_ = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {

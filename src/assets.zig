@@ -464,7 +464,7 @@ pub const Palette = struct { // MARK: Palette
 		errdefer self.deinit();
 
 		for (elems) |name| {
-			const stringId = name.as(?[]const u8, null) orelse return error.InvalidPaletteFormat;
+			const stringId = name.as([]const u8) orelse return error.InvalidPaletteFormat;
 			self.palette.appendAssumeCapacity(allocator.dupe(u8, stringId));
 		}
 		return self;
@@ -479,7 +479,7 @@ pub const Palette = struct { // MARK: Palette
 
 		var iterator = zon.object.iterator();
 		while (iterator.next()) |entry| {
-			const numericId = entry.value_ptr.as(?usize, null) orelse return error.InvalidPaletteFormat;
+			const numericId = entry.value_ptr.as(usize) orelse return error.InvalidPaletteFormat;
 			const name = entry.key_ptr.*;
 
 			if (numericId >= translationPalette.len) {
