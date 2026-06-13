@@ -108,19 +108,13 @@ pub const std_options: std.Options = .{ // MARK: std_options
 		}
 	}.logFn,
 };
-// *italic*
-// **bold**
-// __underlined__
-// ~~strike-through~~
 pub fn convertColorToAnis(text: []const u8) []const u8 {
 	var list: List(u8) = .empty;
 
 	var italic: bool = false;
 	var bold: bool = false;
 	var underlined: bool = false;
-	_ = underlined; // autofix
 	var strikeThroughed: bool = false;
-	_ = strikeThroughed; // autofix
 	var i: usize = 0;
 	while (i < text.len) : (i += 1) {
 		switch (text[i]) {
@@ -141,11 +135,11 @@ pub fn convertColorToAnis(text: []const u8) []const u8 {
 				list.append(stackAllocator, 'm');
 				i += shift - 1;
 			},
-			'§' => list.appendSlice(stackAllocator, "\x1b[m"),
+			'§' => list.appendSlice(stackAllocator, "\x1b[0m"),
 			'*' => {
-				list.appendSlice(stackAllocator, '\x1b[');
+				list.appendSlice(stackAllocator, "\x1b[");
 				if (i + 1 < text.len and text[i + 1] == '*') {
-					if (bold) {
+					if (!bold) {
 						list.append(stackAllocator, '1');
 					} else {
 						list.appendSlice(stackAllocator, "22");
@@ -153,20 +147,35 @@ pub fn convertColorToAnis(text: []const u8) []const u8 {
 					bold = !bold;
 					i += 1;
 				} else {
-					if (!italic) list.append(stackAllocator, '2');
+					if (italic) list.append(stackAllocator, '2');
 					list.append(stackAllocator, '3');
 					italic = !italic;
 				}
 				list.append(stackAllocator, 'm');
 			},
 			'_' => {
-				if (!(i + 1 < text.len and text[i + 1] == '_')) list.append(allocator, '_');
-				list.appendSlice(stackAllocator, '\x1b[');
-				if (!underlined) list.append(stackAllocator, '2');
-				list.append(stackAllocator, '4');
+				if (!(i + 1 < text.len and text[i + 1] == '_')) {
+					list.append(stackAllocator, '_');
+					continue;
+				}
+				list.appendSlice(stackAllocator, "\x1b[");
+				if (underlined) list.append(stackAllocator, '2');
+				list.appendSlice(stackAllocator, "4m");
 				underlined = !underlined;
 				i += 1;
 			},
+			'~' => {
+				if (!(i + 1 < text.len and text[i + 1] == '~')) {
+					list.append(stackAllocator, '~');
+					continue;
+				}
+				list.appendSlice(stackAllocator, "\x1b[");
+				if (strikeThroughed) list.append(stackAllocator, '2');
+				list.appendSlice(stackAllocator, "9m");
+				strikeThroughed = !strikeThroughed;
+				i += 1;
+			},
+
 			else => list.append(stackAllocator, text[i]),
 		}
 	}
