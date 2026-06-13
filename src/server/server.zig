@@ -703,6 +703,7 @@ pub fn startFromNewThread(name: []const u8, port: ?u16) void {
 	const _name = main.globalAllocator.dupe(u8, name);
 	defer main.globalAllocator.free(_name);
 	startFromExistingThread(_name, port);
+	main.heap.GarbageCollection.syncPoint();
 }
 
 pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
@@ -727,6 +728,7 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 		}
 		main.threadPool.clear();
 		main.items.clearRecipeCachedInventories();
+
 	}
 }
 

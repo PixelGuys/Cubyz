@@ -464,9 +464,7 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	settings.init();
 	defer settings.deinit();
 
-	threadPool = utils.ThreadPool.init(globalAllocator, settings.cpuThreads orelse @max(1, (std.Thread.getCpuCount() catch 4) -| 1));
-	defer threadPool.deinit();
-
+	
 	file_monitor.init();
 	defer file_monitor.deinit();
 
@@ -481,6 +479,11 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 
 	utils.initDynamicIntArrayStorage();
 	defer utils.deinitDynamicIntArrayStorage();
+
+	defer heap.GarbageCollection.forceAllFreeItemsFromList();
+
+	threadPool = utils.ThreadPool.init(globalAllocator, settings.cpuThreads orelse @max(1, (std.Thread.getCpuCount() catch 4) -| 1));
+	defer threadPool.deinit();
 
 	rotation.init();
 	defer rotation.deinit();
