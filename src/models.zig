@@ -888,8 +888,7 @@ pub fn reset() void {
 }
 
 pub fn deinit(headless: bool) void {
-	if (!headless)
-		quadSSBO.deinit();
+	if (!headless) quadSSBO.deinit();
 	nameToIndex.deinit();
 	for (models.items()) |model| {
 		model.deinit();
