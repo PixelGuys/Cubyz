@@ -1130,8 +1130,8 @@ pub const ItemStack = struct { // MARK: ItemStack
 };
 
 pub const Recipe = struct { // MARK: Recipe
-	sourceItems: []BaseItemIndex,
-	sourceAmounts: []u16,
+	sourceItems: []BaseItemIndex = &.{},
+	sourceAmounts: []u16 = &.{},
 	resultItem: BaseItemIndex,
 	resultAmount: u16,
 
