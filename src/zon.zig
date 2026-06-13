@@ -54,9 +54,6 @@ pub const ZonElement = union(enum) { // MARK: Zon
 	pub fn get(self: *const ZonElement, comptime T: type, key: []const u8) ?T {
 		if (self.* != .object) return null;
 		if (self.object.get(key)) |elem| {
-			if (@typeInfo(T) == .optional) {
-				return elem.as(@typeInfo(T).optional.child);
-			}
 			return elem.as(T);
 		} else {
 			return null;
@@ -166,6 +163,10 @@ pub const ZonElement = union(enum) { // MARK: Zon
 					.float => return @floatCast(self.float),
 					else => return null,
 				}
+			},
+			.optional => |info| {
+				if (self.* == .null) return @as(T, null);
+				return self.as(info.child);
 			},
 			.vector => {
 				const len = typeInfo.vector.len;
