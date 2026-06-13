@@ -14,12 +14,7 @@ const Args = union(enum) {
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/kick"});
 
-pub fn execute(args: []const u8, _source: Source) void {
-	if (_source != .user) {
-		_source.sendMessage("Command doesn't support running from console", .{});
-		return;
-	}
-	const source = _source.user;
+pub fn execute(args: []const u8, source: Source) void {
 	var errorMessage: main.List(u8) = .empty;
 	defer errorMessage.deinit(main.stackAllocator);
 

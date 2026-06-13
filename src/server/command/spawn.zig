@@ -40,12 +40,12 @@ pub fn execute(args: []const u8, _source: Source) void {
 
 	switch (result) {
 		.@"/spawn <playerIndex> <x> <y> <z>" => |params| {
-			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
+			const target = command.Target.fromPlayerIndex(params.playerIndex, _source) catch return;
 			defer target.deinit();
 			target.user.spawnPos = command.resolveCoordinates(params.x, params.y, params.z, source);
 		},
 		.@"/spawn <playerIndex>" => |params| {
-			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
+			const target = command.Target.fromPlayerIndex(params.playerIndex, _source) catch return;
 			defer target.deinit();
 			source.sendMessage("#ffff00{}", .{target.user.getSpawnPos()});
 		},

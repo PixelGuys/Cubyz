@@ -163,9 +163,13 @@ pub const Target = struct {
 		return .{.user = user, .increasedRefCount = increasedRefCount};
 	}
 
-	pub fn fromPlayerIndex(arg: ?PlayerIndex, source: *User) !Target {
+	pub fn fromPlayerIndex(arg: ?PlayerIndex, source: Source) !Target {
+		if (arg == null and source == .server) {
+			source.sendMessage("#ff0000Server is no player, command needs playerIndex to work", .{});
+			return error.InvalidArg;
+		}
 		const playerIndex = arg orelse return .{
-			.user = source,
+			.user = source.user,
 			.increasedRefCount = false,
 		};
 		return .{
