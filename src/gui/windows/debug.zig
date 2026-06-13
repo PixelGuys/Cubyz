@@ -28,7 +28,6 @@ pub var window = GuiWindow{
 };
 
 pub fn render() void {
-	draw.setColor(0xffffffff);
 	var y: f32 = 0;
 	const fpsCapText = if (main.settings.fpsCap) |fpsCap| std.fmt.allocPrint(main.stackAllocator.allocator, " (limit: {d:.0} Hz)", .{fpsCap}) catch unreachable else "";
 	defer main.stackAllocator.allocator.free(fpsCapText);

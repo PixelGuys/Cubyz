@@ -145,18 +145,18 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 		}
 		break :blk normalTextures;
 	};
-	draw.setColor(0xff000000);
-	textures.texture.bindTo(0);
-	pipeline.bind(draw.getScissor());
-	self.hovered = false;
-	draw.customShadedRect(buttonUniforms, self.pos + Vec2f{2, 2}, self.size - Vec2f{4, 4});
+	{
+		textures.texture.bindTo(0);
+		pipeline.bind(draw.getScissor());
+		self.hovered = false;
+		draw.customShadedRect(buttonUniforms, self.pos + Vec2f{2, 2}, self.size - Vec2f{4, 4});
+	}
 	{ // Draw the outline using the 9-slice texture.
 		const cornerSize = (textures.outlineTextureSize - Vec2f{1, 1});
 		const cornerSizeUV = (textures.outlineTextureSize - Vec2f{1, 1})/Vec2f{2, 2}/textures.outlineTextureSize;
 		const lowerTexture = (textures.outlineTextureSize - Vec2f{1, 1})/Vec2f{2, 2}/textures.outlineTextureSize;
 		const upperTexture = (textures.outlineTextureSize + Vec2f{1, 1})/Vec2f{2, 2}/textures.outlineTextureSize;
 		textures.outlineTexture.bindTo(0);
-		draw.setColor(0xffffffff);
 		// Corners:
 		graphics.draw.boundSubImage(self.pos + Vec2f{0, 0}, cornerSize, .{0, 0}, cornerSizeUV);
 		graphics.draw.boundSubImage(self.pos + Vec2f{self.size[0], 0} - Vec2f{cornerSize[0], 0}, cornerSize, .{upperTexture[0], 0}, cornerSizeUV);
