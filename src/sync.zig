@@ -1751,7 +1751,11 @@ pub const Command = struct { // MARK: Command
 			if (ctx.side == .server) {
 				const user = ctx.user orelse return;
 				if (main.server.world.?.settings.allowCheats) {
-					std.log.info("User \"{f}\" executed command \"{s}\"", .{user, self.message}); // TODO use color \033[0;32m
+					const _msg = std.fmt.allocPrint(main.stackAllocator.allocator, "User \"{f}§#ffffff\" executed command \"{s}\"", .{user, self.message}) catch unreachable;
+					defer main.stackAllocator.free(_msg);
+					const msg = main.convertColorToANSI(_msg);
+					defer main.stackAllocator.free(msg);
+					std.log.info("{s}", .{msg});
 					main.server.command.execute(self.message, user);
 				} else {
 					user.sendRawMessage("Commands are not allowed because cheats are disabled");
