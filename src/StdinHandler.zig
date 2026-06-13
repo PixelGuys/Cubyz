@@ -5,9 +5,7 @@ const main = @import("main");
 
 const StdinHandler = @This();
 
-thread: std.Thread = undefined,
-threadId: std.Thread.Id = undefined,
-running: Atomic(bool) = .init(true),
+future: std.Io.Future(void) = undefined,
 stdin: std.Io.File,
 reader: std.Io.File.Reader = undefined,
 buffer: [1024]u8 = undefined,
@@ -20,30 +18,26 @@ pub fn init() !*StdinHandler {
 	};
 	result.reader = result.stdin.reader(main.io, &result.buffer);
 
-	result.thread = try std.Thread.spawn(.{}, run, .{result});
-	result.thread.setName(main.io, "Stdin Thread") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
+	result.future = try main.io.concurrent(run, .{result});
 	return result;
 }
 
 pub fn deinit(self: *StdinHandler) void {
-	self.running.store(false, .monotonic);
-	self.thread.join();
+	self.future.cancel(main.io);
 	main.globalAllocator.destroy(self);
 }
 
 pub fn run(self: *StdinHandler) void {
-	self.threadId = std.Thread.getCurrentId();
 	main.initThreadLocals();
 	defer main.deinitThreadLocals();
 
-	while (self.running.load(.monotonic)) {
-		main.heap.GarbageCollection.syncPoint();
-		const input = self.reader.interface.takeDelimiterExclusive('\n') catch |err| {
-			std.log.err("Reading from stdin failed closing stdin. err: {t}", .{err});
-			self.running.store(false, .monotonic);
+	while (true) {
+		const input = self.reader.interface.takeDelimiterExclusive('\n') catch {
+			if (self.reader.err.? == error.Canceled) break;
+			std.log.err("Reading from stdin failed. Closing stdin. err: {t}", .{self.reader.err.?});
 			break;
 		};
 		self.reader.interface.toss(1);
-		std.debug.print("input: {s}\n", .{input});
+		main.server.sendMessage("{s}", .{input});
 	}
 }
