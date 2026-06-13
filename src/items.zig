@@ -1353,37 +1353,13 @@ fn parseRecipeItem(zon: ZonElement) !ItemStack {
 	return result;
 }
 
-fn parseRecipe(zon: ZonElement) !Recipe {
-	const inputs = zon.getChild("inputs").toSlice();
-	const output = try parseRecipeItem(zon.getChild("output"));
-	const recipe = Recipe{
-		.sourceItems = main.worldArena.alloc(BaseItemIndex, inputs.len),
-		.sourceAmounts = main.worldArena.alloc(u16, inputs.len),
-		.resultItem = output.item.baseItem,
-		.resultAmount = output.amount,
-	};
-	for (inputs, 0..) |inputZon, i| {
-		const input = try parseRecipeItem(inputZon);
-		recipe.sourceItems[i] = input.item.baseItem;
-		recipe.sourceAmounts[i] = input.amount;
-	}
-	return recipe;
-}
-
 pub fn registerRecipes(zon: ZonElement) void {
 	for (zon.toSlice()) |recipeZon| {
-		recipes.parseRecipe(main.globalAllocator, recipeZon, &recipeList) catch |err| {
+		recipes.parseRecipe(recipeZon, &recipeList) catch |err| {
 			const recipeString = recipeZon.toString(main.stackAllocator);
 			defer main.stackAllocator.free(recipeString);
 			std.log.err("Skipping recipe with error {s}:\n{s}", .{@errorName(err), recipeString});
 			continue;
 		};
-	}
-}
-
-pub fn clearRecipeCachedInventories() void {
-	for (recipeList.items) |recipe| {
-		main.globalAllocator.free(recipe.sourceItems);
-		main.globalAllocator.free(recipe.sourceAmounts);
 	}
 }
