@@ -68,7 +68,7 @@ fn none() void {}
 
 fn openCreateAccountWindow() void {
 	gui.closeWindowFromRef(&window);
-	gui.openWindow("authentication/create_account");
+	gui.openWindow("authentication/create_account_general_info");
 }
 
 pub fn onOpen() void {
