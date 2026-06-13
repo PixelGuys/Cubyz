@@ -1,9 +1,6 @@
 const std = @import("std");
-const Atomic = std.atomic.Value;
 
 const main = @import("main");
-
-const StdinHandler = @This();
 
 var stdin: std.Io.File = undefined;
 var readBuffer: [1024]u8 = undefined;
