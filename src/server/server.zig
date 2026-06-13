@@ -826,7 +826,7 @@ fn sendRawMessage(msg: []const u8) void {
 	defer chatMutex.unlock();
 	const result = main.convertColorToAnis(msg);
 	defer main.stackAllocator.free(result);
-	std.log.info("Chat: {s}", .{result}); // TODO use color \033[0;32m
+	std.log.info("Chat: {s}", .{result});
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 	for (userList) |user| {
