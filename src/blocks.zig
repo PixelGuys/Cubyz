@@ -197,7 +197,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_transparent[size] = zon.get(bool, "transparent") orelse false;
 	_collide[size] = zon.get(bool, "collide") orelse true;
 	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough") orelse false;
-	_viewThrough[size] = zon.get(bool, "viewThrough") orelse false or _transparent[size] or _alwaysViewThrough[size];
+	_viewThrough[size] = (zon.get(bool, "viewThrough") orelse false) or _transparent[size] or _alwaysViewThrough[size];
 	_hasBackFace[size] = zon.get(bool, "hasBackFace") orelse false;
 	_friction[size] = zon.get(f32, "friction") orelse 20;
 	_bounciness[size] = zon.get(f32, "bounciness") orelse 0.0;

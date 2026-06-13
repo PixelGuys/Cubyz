@@ -21,8 +21,8 @@ const Instance = struct {
 
 pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
 	const self = main.worldArena.create(@This());
-	self.minRadii = zon.get(Vec3f, "minSideLengths") orelse @as(Vec3f, @splat(32))/@as(Vec3f, @splat(2));
-	self.maxRadii = zon.get(Vec3f, "maxSideLengths") orelse self.minRadii*@as(Vec3f, @splat(2))/@as(Vec3f, @splat(2));
+	self.minRadii = (zon.get(Vec3f, "minSideLengths") orelse @as(Vec3f, @splat(32)))/@as(Vec3f, @splat(2));
+	self.maxRadii = (zon.get(Vec3f, "maxSideLengths") orelse self.minRadii*@as(Vec3f, @splat(2)))/@as(Vec3f, @splat(2));
 
 	return .{.model = self, .maxExtend = .{
 		.min = @floor(-self.maxRadii),
