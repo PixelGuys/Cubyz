@@ -62,6 +62,7 @@ hideIfMouseIsGrabbed: bool = true, // TODO: Allow the user to change this with a
 closeIfMouseIsGrabbed: bool = false,
 closeable: bool = true,
 isHud: bool = false,
+titleBar: ?*GuiComponent.HorizontalList = null,
 
 shiftClickableInventory: ?main.items.Inventory.ClientInventory = null,
 
@@ -153,6 +154,9 @@ pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) main.call
 	const btnPos = self.getButtonPositions();
 	const zoomInPos = btnPos[2]/self.scale;
 	if (scaledMousePos[1] < titleBarHeight and (self.showTitleBar or gui.reorderWindows)) {
+		if (self.titleBar) |titleBar| {
+			if (titleBar.mainButtonPressed(scaledMousePos) == .handled) return .handled;
+		}
 		grabbedWindow = self;
 		grabPosition = mousePosition;
 		selfPositionWhenGrabbed = self.pos;
@@ -215,6 +219,9 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 	}
 	grabPosition = null;
 	grabbedWindow = undefined;
+	if (self.titleBar) |titleBar| {
+		titleBar.mainButtonReleased((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
+	}
 	if (self.rootComponent) |*component| {
 		component.mainButtonReleased((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
 	}
@@ -384,7 +391,10 @@ pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) void {
 
 pub fn updateHovered(self: *GuiWindow, mousePosition: Vec2f) main.callbacks.Result {
 	const scaledMousePos = (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale));
-	if (scaledMousePos[1] < titleBarHeight and (self.showTitleBar or gui.reorderWindows)) return .handled;
+	if (scaledMousePos[1] < titleBarHeight and (self.showTitleBar or gui.reorderWindows)) {
+		_ = if (self.titleBar) |titleBar| titleBar.updateHovered(scaledMousePos);
+		return .handled;
+	}
 	if (self.updateHoveredFn() == .handled) return .handled;
 	if (self.rootComponent) |component| {
 		if (GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
@@ -502,6 +512,7 @@ pub fn drawIcons(self: *const GuiWindow) void {
 	zoomOutTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
 	x -= iconWidth;
 	zoomInTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
+	if (self.titleBar) |titleBar| titleBar.render(.{0, 0});
 }
 
 pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
