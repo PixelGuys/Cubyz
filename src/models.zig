@@ -887,8 +887,9 @@ pub fn reset() void {
 	nameToIndex.put("none", Model.init(&.{})) catch unreachable;
 }
 
-pub fn deinit() void {
-	quadSSBO.deinit();
+pub fn deinit(headless: bool) void {
+	if (!headless)
+		quadSSBO.deinit();
 	nameToIndex.deinit();
 	for (models.items()) |model| {
 		model.deinit();

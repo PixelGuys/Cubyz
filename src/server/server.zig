@@ -538,6 +538,7 @@ var userConnectList: main.utils.ConcurrentQueue(*User) = undefined;
 pub var connectionManager: *ConnectionManager = undefined;
 
 pub var running: std.atomic.Value(bool) = .init(false);
+pub var restart: std.atomic.Value(bool) = .init(true);
 var lastTime: std.Io.Timestamp = undefined;
 
 pub var thread: ?std.Thread = null;
@@ -604,6 +605,8 @@ fn deinit() void {
 	main.sync.server.deinit();
 	main.items.Inventory.server.deinit();
 	main.entity.server.deinit();
+
+	main.entityModel.reset();
 
 	command.deinit();
 	main.heap.allocators.destroyWorldArena();
@@ -702,24 +705,27 @@ pub fn startFromNewThread(name: []const u8, port: ?u16) void {
 
 pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 	std.debug.assert(!running.load(.monotonic)); // There can only be one server.
-	init(name, port);
-	defer deinit();
-	running.store(true, .release);
-	while (running.load(.monotonic)) {
-		main.heap.GarbageCollection.syncPoint();
-		const newTime = main.timestamp();
-		if (lastTime.durationTo(newTime).nanoseconds < updateTime.nanoseconds) {
-			main.io.sleep(newTime.durationTo(lastTime.addDuration(updateTime)), .awake) catch {};
-			lastTime = lastTime.addDuration(updateTime);
-		} else {
-			std.log.warn("The server is lagging behind by {d:.1} ms", .{@as(f32, @floatFromInt(newTime.nanoseconds -% lastTime.nanoseconds -% updateTime.nanoseconds))/1000000.0});
-			lastTime = newTime;
+	while (restart.load(.monotonic)) {
+		restart.store(false, .release);
+		init(name, port);
+		defer deinit();
+		running.store(true, .release);
+		while (running.load(.monotonic)) {
+			main.heap.GarbageCollection.syncPoint();
+			const newTime = main.timestamp();
+			if (lastTime.durationTo(newTime).nanoseconds < updateTime.nanoseconds) {
+				main.io.sleep(newTime.durationTo(lastTime.addDuration(updateTime)), .awake) catch {};
+				lastTime = lastTime.addDuration(updateTime);
+			} else {
+				std.log.warn("The server is lagging behind by {d:.1} ms", .{@as(f32, @floatFromInt(newTime.nanoseconds -% lastTime.nanoseconds -% updateTime.nanoseconds))/1000000.0});
+				lastTime = newTime;
+			}
+			update();
 		}
-		update();
-	}
-	main.threadPool.clear();
+		main.threadPool.clear();
 
-	main.items.clearRecipeCachedInventories();
+		main.items.clearRecipeCachedInventories();
+	}
 }
 
 pub fn stop() void {
