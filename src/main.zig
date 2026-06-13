@@ -30,6 +30,7 @@ pub const physics = @import("physics.zig");
 pub const random = @import("random.zig");
 pub const renderer = @import("renderer.zig");
 pub const rotation = @import("rotation.zig");
+pub const stdin_handler = @import("stdin_handler.zig");
 pub const settings = @import("settings.zig");
 pub const sync = @import("sync.zig");
 pub const particles = @import("particles.zig");
@@ -39,8 +40,6 @@ pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
 const zon = @import("zon.zig");
 pub const ZonElement = zon.ZonElement;
-
-pub const stdinHandler = @import("stdinHandler.zig");
 
 const file_monitor = utils.file_monitor;
 

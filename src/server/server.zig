@@ -19,7 +19,7 @@ const Mask = main.blueprint.Mask;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const CircularBufferQueue = main.utils.CircularBufferQueue;
 const sync = main.sync;
-const stdinHandler = main.stdinHandler;
+const stdin_handler = main.stdin_handler;
 
 pub const BlockUpdateSystem = @import("BlockUpdateSystem.zig");
 pub const world_zig = @import("world.zig");
@@ -556,7 +556,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
 
-	stdinHandler.init();
+	stdin_handler.init();
 	main.entity.server.init();
 	main.items.Inventory.server.init();
 	main.sync.server.init();
@@ -585,7 +585,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 fn deinit() void {
 	connectionManager.deinit();
 	connectionManager = undefined;
-	stdinHandler.deinit();
+	stdin_handler.deinit();
 	users.clearAndFree();
 	while (userDeinitList.popFront()) |user| {
 		user.clearJobQueue();
@@ -646,7 +646,7 @@ fn getInitialEntityList(allocator: main.heap.NeverFailingAllocator) []const u8 {
 fn update() void { // MARK: update()
 	world.?.update();
 	main.entity.server.update();
-	stdinHandler.update();
+	stdin_handler.update();
 
 	while (userConnectList.popFront()) |user| {
 		connectInternal(user);
