@@ -54,11 +54,11 @@ pub fn onOpen() void {
 	{
 		const row = HorizontalList.init();
 		const sortCallback: main.callbacks.SimpleCallback = .{.inner = @ptrCast(&sortItems), .data = &Player.inventory};
-		row.add(Button.initIcon(.{0, 0}, .{32, 32}, sortIcon, true, sortCallback));
 		blk: {
-			row.add(GuiComponent.BagSlot.init(.{32, 0}, main.entity.components.@"cubyz:bag".client.getBag(main.game.Player.id) orelse break :blk));
+			row.add(GuiComponent.BagSlot.init(.{96, 0}, main.entity.components.@"cubyz:bag".client.getBag(main.game.Player.id) orelse break :blk));
 		}
 		row.add(Button.initIcon(.{32, 0}, .{32, 32}, craftingIcon, true, .{.onAction = gui.openWindowCallback("inventory_crafting")}));
+		row.add(Button.initIcon(.{64, 4}, .{24, 24}, sortIcon, true, .{.onAction = sortCallback}));
 		list.add(row);
 	}
 	for (0..2) |y| {
