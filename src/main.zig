@@ -109,6 +109,34 @@ pub const std_options: std.Options = .{ // MARK: std_options
 	}.logFn,
 };
 
+pub fn convertColorToAnis(text: []const u8) []const u8 {
+	var list: List(u8) = .empty;
+	var i: usize = 0;
+	while (i < text.len) : (i += 1) {
+		switch (text[i]) {
+			'#' => {
+				var shift: u5 = 1;
+				list.appendSlice(stackAllocator, "\x1b[38;2");
+				while (shift <= 6) : (shift += 2) {
+					if (i + shift >= text.len) {
+						list.appendSlice(stackAllocator, ";000");
+					} else {
+						const int = std.fmt.parseInt(u8, text[(i + shift)..(i + shift + 2)], 16) catch {
+							list.appendSlice(stackAllocator, ";000");
+							continue;
+						};
+						list.print(stackAllocator, ";{d}", .{int});
+					}
+				}
+				list.append(stackAllocator, 'm');
+				i += shift - 1;
+			},
+			else => list.append(stackAllocator, text[i]),
+		}
+	}
+	return list.toOwnedSlice(stackAllocator);
+}
+
 noinline fn runtimeLogFn(level: std.log.Level, format: []const u8, args: []const fmt.FormatArg) void {
 	var buf: [65536]u8 = undefined;
 	var writer: std.Io.Writer = .fixed(&buf);
