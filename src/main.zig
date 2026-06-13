@@ -153,7 +153,10 @@ pub fn convertColorToANSI(text: []const u8) []const u8 {
 						list.appendSlice(stackAllocator, "22");
 					}
 					bold = !bold;
-					curSlice = unicodeIterator.nextCodepointSlice() orelse break :loop;
+					curSlice = unicodeIterator.nextCodepointSlice() orelse {
+						list.append(stackAllocator, 'm');
+						break :loop;
+					};
 					curChar = std.unicode.utf8Decode(curSlice) catch unreachable;
 				} else {
 					if (italic) list.append(stackAllocator, '2');
