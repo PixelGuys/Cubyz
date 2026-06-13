@@ -5,15 +5,14 @@ const User = main.server.User;
 
 pub const description = "Stop the server.";
 pub const usage =
-	\\/stop
-	\\/stop <restart>
+	\\/server <stop/restart>
 ;
 
 const Args = union(enum) {
-	@"/stop <restart>": struct { restart: ?enum { restart } },
+	@"/server <restart>": struct { restart: enum { stop,restart } },
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/stop"});
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/server"});
 
 pub fn execute(args: []const u8, source: *User) void {
 	var errorMessage: main.List(u8) = .empty;
@@ -23,8 +22,11 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000{s}", .{errorMessage.items});
 		return;
 	};
-	if (result.@"/stop <restart>".restart != null) {
-		main.server.restart.store(true, .release);
+	switch(result.@"/server <restart>".restart) {
+		.stop => {},
+		.restart => {
+			main.server.restart.store(true, .release);
+		}
 	}
 	main.server.running.store(false, .release);
 }
