@@ -571,7 +571,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			if (itemATags.len != itemBTags.len) return itemATags.len < itemBTags.len;
 			if ((itemA == .proceduralItem) and (itemB == .proceduralItem)) {
 				std.log.debug("checking durability", .{});
-				return (itemA.proceduralItem.durability < itemB.proceduralItem.durability);
+				return (itemA.proceduralItem.durability > itemB.proceduralItem.durability);
 			}
 
 			return std.mem.lessThan(u8, itemA.id().?, itemB.id().?);
@@ -586,15 +586,10 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	};
 
 	pub fn getTagsFromItem(givenItem: Item) []const Tag {
-		if (givenItem == .null) {
-			return &[_]Tag{};
-		} else if (givenItem == .proceduralItem) {
-			return givenItem.proceduralItem.type.tags();
-		} else if (givenItem == .baseItem) {
-			return givenItem.baseItem.tags();
-		} else {
-			std.log.err("getSortingTag: Could not find item class {}", .{givenItem});
-			return &[_]Tag{};
+		switch (givenItem) {
+			.null => return &[_]Tag{},
+			.proceduralItem => return givenItem.proceduralItem.type.tags(),
+			.baseItem => return givenItem.baseItem.tags(),
 		}
 	}
 
