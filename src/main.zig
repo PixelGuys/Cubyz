@@ -108,75 +108,91 @@ pub const std_options: std.Options = .{ // MARK: std_options
 		}
 	}.logFn,
 };
-pub fn convertColorToAnis(text: []const u8) []const u8 {
+
+pub fn convertColorToANSI(text: []const u8) []const u8 {
 	var list: List(u8) = .empty;
 
 	var italic: bool = false;
 	var bold: bool = false;
 	var underlined: bool = false;
 	var strikeThroughed: bool = false;
-	var i: usize = 0;
-	while (i < text.len) : (i += 1) {
-		switch (text[i]) {
+	var lastColor: [3]u8 = @splat(0);
+	var unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0};
+	loop: while (true) {
+		var curSlice = unicodeIterator.nextCodepointSlice() orelse break :loop;
+		inner: switch (std.unicode.utf8Decode(curSlice) catch unreachable) {
 			'#' => {
-				var shift: u5 = 1;
 				list.appendSlice(stackAllocator, "\x1b[38;2");
-				while (shift <= 6) : (shift += 2) {
-					if (i + shift >= text.len) {
-						list.appendSlice(stackAllocator, ";000");
-					} else {
-						const int = std.fmt.parseInt(u8, text[(i + shift)..(i + shift + 2)], 16) catch {
-							list.appendSlice(stackAllocator, ";000");
-							continue;
-						};
-						list.print(stackAllocator, ";{d}", .{int});
-					}
+				for (0..3) |i| {
+					curSlice = unicodeIterator.nextCodepointSlice() orelse "";
+					lastColor[i] = std.fmt.parseInt(u8, curSlice, 16) catch 0;
+					curSlice = unicodeIterator.nextCodepointSlice() orelse "";
+					lastColor[i] = lastColor[i]*16 + (std.fmt.parseInt(u8, curSlice, 16) catch 0);
+					list.print(stackAllocator, ";{d}", .{lastColor[i]});
 				}
 				list.append(stackAllocator, 'm');
-				i += shift - 1;
 			},
-			'§' => list.appendSlice(stackAllocator, "\x1b[0m"),
+			'§' => {
+				list.appendSlice(stackAllocator, "\x1b[0m");
+				// set colors back
+				list.appendSlice(stackAllocator, "\x1b[38;2");
+				for (lastColor) |color| {
+					list.print(stackAllocator, ";{d}", .{color});
+				}
+				list.append(stackAllocator, 'm');
+			},
 			'*' => {
 				list.appendSlice(stackAllocator, "\x1b[");
-				if (i + 1 < text.len and text[i + 1] == '*') {
+				curSlice = unicodeIterator.nextCodepointSlice() orelse break :loop;
+				var curChar = std.unicode.utf8Decode(curSlice) catch unreachable;
+				if (curChar == '*') {
 					if (!bold) {
 						list.append(stackAllocator, '1');
 					} else {
 						list.appendSlice(stackAllocator, "22");
 					}
 					bold = !bold;
-					i += 1;
+					curSlice = unicodeIterator.nextCodepointSlice() orelse break :loop;
+					curChar = std.unicode.utf8Decode(curSlice) catch unreachable;
 				} else {
 					if (italic) list.append(stackAllocator, '2');
 					list.append(stackAllocator, '3');
 					italic = !italic;
 				}
 				list.append(stackAllocator, 'm');
+				continue :inner curChar;
 			},
 			'_' => {
-				if (!(i + 1 < text.len and text[i + 1] == '_')) {
+				curSlice = unicodeIterator.nextCodepointSlice() orelse break :loop;
+				const curChar = std.unicode.utf8Decode(curSlice) catch unreachable;
+				if (curChar != '_') {
 					list.append(stackAllocator, '_');
-					continue;
+					continue :inner curChar;
 				}
 				list.appendSlice(stackAllocator, "\x1b[");
 				if (underlined) list.append(stackAllocator, '2');
 				list.appendSlice(stackAllocator, "4m");
 				underlined = !underlined;
-				i += 1;
 			},
 			'~' => {
-				if (!(i + 1 < text.len and text[i + 1] == '~')) {
+				curSlice = unicodeIterator.nextCodepointSlice() orelse break :loop;
+				const curChar = std.unicode.utf8Decode(curSlice) catch unreachable;
+				if (curChar != '~') {
 					list.append(stackAllocator, '~');
-					continue;
+					continue :inner curChar;
 				}
 				list.appendSlice(stackAllocator, "\x1b[");
 				if (strikeThroughed) list.append(stackAllocator, '2');
 				list.appendSlice(stackAllocator, "9m");
 				strikeThroughed = !strikeThroughed;
-				i += 1;
 			},
-
-			else => list.append(stackAllocator, text[i]),
+			'\\' => {
+				const curString = unicodeIterator.nextCodepointSlice() orelse break :loop;
+				list.appendSlice(stackAllocator, curString);
+			},
+			else => {
+				list.appendSlice(stackAllocator, curSlice);
+			},
 		}
 	}
 	return list.toOwnedSlice(stackAllocator);
