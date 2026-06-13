@@ -723,8 +723,10 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 			update();
 		}
 		main.threadPool.clear();
-
 		main.items.clearRecipeCachedInventories();
+		
+		if(!main.settings.launchConfig.headlessServer)
+			return;
 	}
 }
 
