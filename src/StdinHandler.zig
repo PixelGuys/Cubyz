@@ -5,39 +5,37 @@ const main = @import("main");
 
 const StdinHandler = @This();
 
-future: std.Io.Future(void) = undefined,
-stdin: std.Io.File,
-reader: std.Io.File.Reader = undefined,
-buffer: [1024]u8 = undefined,
+var stdin: std.Io.File = undefined;
+var reader: std.Io.File.Reader = undefined;
+var readBuffer: [1024]u8 = undefined;
 
-pub fn init() !*StdinHandler {
-	const result: *StdinHandler = main.globalAllocator.create(StdinHandler);
-	errdefer main.globalAllocator.destroy(result);
-	result.* = .{
-		.stdin = .stdin(),
+var running: bool = true;
+
+pub fn init() void {
+	stdin = .stdin();
+	reader = stdin.reader(main.io, &readBuffer);
+}
+
+pub fn deinit() void {
+	running = false;
+}
+
+pub fn update() void {
+	if (!running) return;
+	const _result = main.io.operateTimeout(.{.file_read_streaming = .{
+		.data = &.{reader.interface.buffer},
+		.file = stdin,
+	}}, .{.duration = .{.raw = .fromMilliseconds(1), .clock = .awake}}) catch |err| {
+		if (err == error.Timeout) return;
+		std.log.err("Error while reading from stdin: {t}", .{err});
+		running = false;
+		return;
 	};
-	result.reader = result.stdin.reader(main.io, &result.buffer);
-
-	result.future = try main.io.concurrent(run, .{result});
-	return result;
-}
-
-pub fn deinit(self: *StdinHandler) void {
-	self.future.cancel(main.io);
-	main.globalAllocator.destroy(self);
-}
-
-pub fn run(self: *StdinHandler) void {
-	main.initThreadLocals();
-	defer main.deinitThreadLocals();
-
-	while (true) {
-		const input = self.reader.interface.takeDelimiterExclusive('\n') catch {
-			if (self.reader.err.? == error.Canceled) break;
-			std.log.err("Reading from stdin failed. Closing stdin. err: {t}", .{self.reader.err.?});
-			break;
-		};
-		self.reader.interface.toss(1);
-		main.server.sendMessage("{s}", .{input});
-	}
+	const result = _result.file_read_streaming catch |err| {
+		std.log.err("Error while reading from stdin: {t}", .{err});
+		running = false;
+		return;
+	};
+	if (result == 0) return;
+	main.server.sendMessage("<Server> {s}", .{reader.interface.buffer[0 .. result - 1]});
 }

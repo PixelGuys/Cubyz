@@ -539,8 +539,6 @@ var userConnectList: main.utils.ConcurrentQueue(*User) = undefined;
 
 pub var connectionManager: *ConnectionManager = undefined;
 
-var stdinHandler: *StdinHandler = undefined;
-
 pub var running: std.atomic.Value(bool) = .init(false);
 var lastTime: std.Io.Timestamp = undefined;
 
@@ -559,11 +557,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
 
-	stdinHandler = StdinHandler.init() catch |err| {
-		std.log.err("Couldn't create stdinHandler: {s}", .{@errorName(err)});
-		@panic("stdinHandler :/.");
-	};
-
+	StdinHandler.init();
 	main.entity.server.init();
 	main.items.Inventory.server.init();
 	main.sync.server.init();
@@ -592,8 +586,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 fn deinit() void {
 	connectionManager.deinit();
 	connectionManager = undefined;
-	stdinHandler.deinit();
-	stdinHandler = undefined;
+	StdinHandler.deinit();
 	users.clearAndFree();
 	while (userDeinitList.popFront()) |user| {
 		user.clearJobQueue();
@@ -654,6 +647,7 @@ fn getInitialEntityList(allocator: main.heap.NeverFailingAllocator) []const u8 {
 fn update() void { // MARK: update()
 	world.?.update();
 	main.entity.server.update();
+	main.StdinHandler.update();
 
 	while (userConnectList.popFront()) |user| {
 		connectInternal(user);
