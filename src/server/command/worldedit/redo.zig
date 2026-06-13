@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const User = main.server.User;
+const Source = main.server.command.Source;
 
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
@@ -9,7 +10,12 @@ const Blueprint = main.blueprint.Blueprint;
 pub const description = "Redo last change done to world with world editing commands.";
 pub const usage = "/redo";
 
-pub fn execute(args: []const u8, source: *User) void {
+pub fn execute(args: []const u8, _source: Source) void {
+	if (_source != .user) {
+		_source.sendMessage("Command doesn't support running from console", .{});
+		return;
+	}
+	const source = _source.user;
 	if (args.len != 0) {
 		source.sendMessage("#ff0000Too many arguments for command /redo. Expected no arguments.", .{});
 		return;

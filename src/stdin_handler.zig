@@ -32,5 +32,9 @@ pub fn update() void {
 		return;
 	};
 	if (result == 0) return;
-	main.server.sendMessage("<Server> {s}", .{readBuffer[0 .. result - 1]});
+	if (readBuffer[0] == '/') {
+		main.server.command.execute(readBuffer[1 .. result - 1], .server);
+	} else {
+		main.server.sendMessage("<Server> {s}", .{readBuffer[0 .. result - 1]});
+	}
 }

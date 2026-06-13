@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
+const Source = command.Source;
 const Vec3i = main.vec.Vec3i;
 const User = main.server.User;
 
@@ -12,7 +13,12 @@ const Pattern = main.blueprint.Pattern;
 pub const description = "Set all blocks within selection to a block.";
 pub const usage = "/set <pattern>";
 
-pub fn execute(args: []const u8, source: *User) void {
+pub fn execute(args: []const u8, _source: Source) void {
+	if (_source != .user) {
+		_source.sendMessage("Command doesn't support running from console", .{});
+		return;
+	}
+	const source = _source.user;
 	if (args.len == 0) {
 		source.sendMessage("#ff0000Missing required <pattern> argument.", .{});
 		return;

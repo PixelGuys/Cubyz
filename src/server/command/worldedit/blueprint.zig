@@ -1,6 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
+const command = main.server.command;
+const Source = command.Source;
 const User = main.server.User;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
@@ -59,7 +61,12 @@ const Args = union(enum) {
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/blueprint"});
 
-pub fn execute(args: []const u8, source: *User) void {
+pub fn execute(args: []const u8, _source: Source) void {
+	if (_source != .user) {
+		_source.sendMessage("Command doesn't support running from console", .{});
+		return;
+	}
+	const source = _source.user;
 	var errorMessage: List(u8) = .empty;
 	defer errorMessage.deinit(main.stackAllocator);
 

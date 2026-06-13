@@ -2,12 +2,18 @@ const std = @import("std");
 
 const main = @import("main");
 const User = main.server.User;
+const Source = main.server.command.Source;
 const Vec3i = main.vec.Vec3i;
 
 pub const description = "Select the player position as position 2.";
 pub const usage = "/pos2";
 
-pub fn execute(args: []const u8, source: *User) void {
+pub fn execute(args: []const u8, _source: Source) void {
+	if (_source != .user) {
+		_source.sendMessage("Command doesn't support running from console", .{});
+		return;
+	}
+	const source = _source.user;
 	if (args.len != 0) {
 		source.sendMessage("#ff0000Too many arguments for command /pos2. Expected no arguments.", .{});
 		return;

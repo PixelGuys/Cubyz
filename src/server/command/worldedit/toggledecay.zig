@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
+const Source = command.Source;
 const Vec3i = main.vec.Vec3i;
 const User = main.server.User;
 
@@ -55,7 +56,12 @@ const Args = struct {
 	}
 };
 
-pub fn execute(argsString: []const u8, source: *User) void {
+pub fn execute(argsString: []const u8, _source: Source) void {
+	if (_source != .user) {
+		_source.sendMessage("Command doesn't support running from console", .{});
+		return;
+	}
+	const source = _source.user;
 	const args = Args.parse(argsString, source) catch return;
 
 	var blueprint: Blueprint = switch (args.target) {
