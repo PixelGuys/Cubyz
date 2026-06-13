@@ -707,6 +707,7 @@ pub fn startFromNewThread(name: []const u8, port: ?u16) void {
 
 pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 	std.debug.assert(!running.load(.monotonic)); // There can only be one server.
+	restart.store(true, .release);
 	while (restart.load(.monotonic)) {
 		restart.store(false, .release);
 		init(name, port);
