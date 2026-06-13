@@ -83,8 +83,8 @@ pub fn onOpen() void {
 	passwordRow.finish(.{0, 0}, .center);
 	list.add(passwordRow);
 	const buttonRow = HorizontalList.init();
-	buttonRow.add(Button.initText(.{0, 0}, 200, "Logout", .init(logout)));
-	buttonRow.add(Button.initText(.{padding, 0}, 200, "Unlock", .init(apply)));
+	buttonRow.add(Button.initText(.{0, 0}, 200, "Logout", .{.onAction = .init(logout)}));
+	buttonRow.add(Button.initText(.{padding, 0}, 200, "Unlock", .{.onAction = .init(apply)}));
 	list.add(buttonRow);
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
