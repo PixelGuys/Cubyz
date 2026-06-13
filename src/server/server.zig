@@ -20,6 +20,8 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const CircularBufferQueue = main.utils.CircularBufferQueue;
 const sync = main.sync;
 
+const StdinHandler = main.StdinHandler;
+
 pub const BlockUpdateSystem = @import("BlockUpdateSystem.zig");
 pub const world_zig = @import("world.zig");
 pub const ServerWorld = world_zig.ServerWorld;
@@ -537,6 +539,8 @@ var userConnectList: main.utils.ConcurrentQueue(*User) = undefined;
 
 pub var connectionManager: *ConnectionManager = undefined;
 
+var stdinHandler: *StdinHandler = undefined;
+
 pub var running: std.atomic.Value(bool) = .init(false);
 var lastTime: std.Io.Timestamp = undefined;
 
@@ -554,6 +558,11 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
+
+	stdinHandler = StdinHandler.init() catch |err| {
+		std.log.err("Couldn't create stdinHandler: {s}", .{@errorName(err)});
+		@panic("stdinHandler :/.");
+	};
 
 	main.entity.server.init();
 	main.items.Inventory.server.init();
@@ -583,6 +592,8 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 fn deinit() void {
 	connectionManager.deinit();
 	connectionManager = undefined;
+	stdinHandler.deinit();
+	stdinHandler = undefined;
 	users.clearAndFree();
 	while (userDeinitList.popFront()) |user| {
 		user.clearJobQueue();
