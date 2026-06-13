@@ -85,7 +85,7 @@ pub fn onOpen() void {
 	list.add(textRow);
 	list.add(Label.init(.{0, 0}, width, "#ff8080**Do not share your Account Code with anyone!**", .left));
 	const createAccountRow = HorizontalList.init();
-	createAccountRow.add(Label.init(.{0, 3}, 240, "Don't have an Account Code yet?", .left));
+	createAccountRow.add(Label.init(.{0, 3}, 280, "Don't have an Account Code yet?", .left));
 	createAccountRow.add(Button.initText(.{0, 0}, 140, "Create Account", .{.onAction = .init(openCreateAccountWindow)}));
 	list.add(createAccountRow);
 	loginButton = Button.initText(.{padding, 0}, 200, "Login", .{.onAction = .init(login)});
