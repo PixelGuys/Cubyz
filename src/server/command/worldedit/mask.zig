@@ -4,7 +4,6 @@ const main = @import("main");
 const command = main.server.command;
 const Source = command.Source;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const User = main.server.User;
 
 pub const description = "Set edit mask. When used with no mask expression it will clear current mask.";
 pub const usage =

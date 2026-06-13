@@ -3,7 +3,6 @@ const std = @import("std");
 const main = @import("main");
 const command = main.server.command;
 const Source = command.Source;
-const User = main.server.User;
 
 pub const description = "Teleport to location.";
 pub const usage =

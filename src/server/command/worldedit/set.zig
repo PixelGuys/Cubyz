@@ -4,7 +4,6 @@ const main = @import("main");
 const command = main.server.command;
 const Source = command.Source;
 const Vec3i = main.vec.Vec3i;
-const User = main.server.User;
 
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;

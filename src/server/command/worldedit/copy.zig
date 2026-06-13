@@ -2,7 +2,6 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
-const User = main.server.User;
 const Source = command.Source;
 
 const Block = main.blocks.Block;

@@ -3,7 +3,6 @@ const std = @import("std");
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const List = main.List;
-const User = main.server.User;
 const permission = main.server.permission;
 const ListType = permission.Permissions.ListType;
 const command = main.server.command;
