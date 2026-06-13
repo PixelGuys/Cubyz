@@ -118,6 +118,7 @@ pub fn convertColorToANSI(text: []const u8) []const u8 {
 	var strikeThroughed: bool = false;
 	var lastColor: [3]u8 = @splat(0);
 	var unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0};
+
 	loop: while (true) {
 		var curSlice = unicodeIterator.nextCodepointSlice() orelse break :loop;
 		inner: switch (std.unicode.utf8Decode(curSlice) catch unreachable) {
