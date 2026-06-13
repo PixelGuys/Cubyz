@@ -728,7 +728,6 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 		}
 		main.threadPool.clear();
 		main.items.clearRecipeCachedInventories();
-
 	}
 }
 

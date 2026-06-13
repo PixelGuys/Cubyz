@@ -679,9 +679,8 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 			freeItemsFromList(list);
 			list.deinit(main.globalAllocator);
 		}
-		
 	}
-	pub fn forceAllFreeItemsFromList()void{
+	pub fn forceAllFreeItemsFromList() void {
 		for (&lists) |*list| {
 			freeItemsFromList(list);
 		}
@@ -724,7 +723,6 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		freeItemsFromList(&lists[threadCycle]);
 		// TODO: Free all the data here and swap lists
 	}
-
 
 	pub fn deferredFree(item: FreeItem) void {
 		lists[threadCycle].append(main.globalAllocator, item);

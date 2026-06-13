@@ -9,7 +9,7 @@ pub const usage =
 ;
 
 const Args = union(enum) {
-	@"/server <restart>": struct { restart: enum { stop,restart } },
+	@"/server <restart>": struct { restart: enum { stop, restart } },
 };
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/server"});
@@ -22,11 +22,15 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000{s}", .{errorMessage.items});
 		return;
 	};
-	switch(result.@"/server <restart>".restart) {
+	switch (result.@"/server <restart>".restart) {
 		.stop => {},
 		.restart => {
+			if (!main.settings.launchConfig.headlessServer) {
+				source.sendMessage("#ff0000You can't restart a headfull Server.", .{});
+				return;
+			}
 			main.server.restart.store(true, .release);
-		}
+		},
 	}
 	main.server.running.store(false, .release);
 }

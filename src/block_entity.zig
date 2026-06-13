@@ -217,7 +217,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 		pub fn init() void {
 			StorageServer.init();
 		}
-		pub fn deinit(headless:bool) void {
+		pub fn deinit(headless: bool) void {
 			_ = headless;
 			StorageServer.deinit();
 		}
@@ -350,12 +350,12 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 				);
 			}
 		}
-		pub fn deinit(headless:bool) void {
+		pub fn deinit(headless: bool) void {
 			while (textureDeinitList.popOrNull()) |texture| {
 				texture.deinit();
 			}
 			textureDeinitList.deinit(main.globalAllocator);
-			if(!headless){
+			if (!headless) {
 				pipeline.deinit();
 			}
 			StorageServer.deinit();
@@ -562,7 +562,7 @@ pub fn reset() void {
 	BlockEntity.reset();
 }
 
-pub fn deinit(headless:bool) void {
+pub fn deinit(headless: bool) void {
 	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
 		@field(BlockEntityTypes, declaration.name).deinit(headless);
 	}
