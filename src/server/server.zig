@@ -19,7 +19,7 @@ const Mask = main.blueprint.Mask;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const CircularBufferQueue = main.utils.CircularBufferQueue;
 const sync = main.sync;
-const sdinHandler = main.stdinHandler;
+const stdinHandler = main.stdinHandler;
 
 pub const BlockUpdateSystem = @import("BlockUpdateSystem.zig");
 pub const world_zig = @import("world.zig");

@@ -40,7 +40,7 @@ pub const vec = @import("vec.zig");
 const zon = @import("zon.zig");
 pub const ZonElement = zon.ZonElement;
 
-pub const StdinHandler = @import("StdinHandler.zig");
+pub const stdinHandler = @import("stdinHandler.zig");
 
 const file_monitor = utils.file_monitor;
 

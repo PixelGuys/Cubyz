@@ -6,14 +6,12 @@ const main = @import("main");
 const StdinHandler = @This();
 
 var stdin: std.Io.File = undefined;
-var reader: std.Io.File.Reader = undefined;
 var readBuffer: [1024]u8 = undefined;
 
 var running: bool = true;
 
 pub fn init() void {
 	stdin = .stdin();
-	reader = stdin.reader(main.io, &readBuffer);
 }
 
 pub fn deinit() void {
@@ -23,7 +21,7 @@ pub fn deinit() void {
 pub fn update() void {
 	if (!running) return;
 	const _result = main.io.operateTimeout(.{.file_read_streaming = .{
-		.data = &.{reader.interface.buffer},
+		.data = &.{&readBuffer},
 		.file = stdin,
 	}}, .{.duration = .{.raw = .fromMilliseconds(1), .clock = .awake}}) catch |err| {
 		if (err == error.Timeout) return;
@@ -37,5 +35,5 @@ pub fn update() void {
 		return;
 	};
 	if (result == 0) return;
-	main.server.sendMessage("<Server> {s}", .{reader.interface.buffer[0 .. result - 1]});
+	main.server.sendMessage("<Server> {s}", .{readBuffer[0 .. result - 1]});
 }
