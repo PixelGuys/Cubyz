@@ -179,6 +179,8 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 		graphics.draw.boundSubImage(self.pos + Vec2f{0, cornerSize[1]}, Vec2f{cornerSize[0], self.size[1] - 2*cornerSize[1]}, .{0, lowerTexture[1]}, .{cornerSizeUV[0], upperTexture[1] - lowerTexture[1]});
 		graphics.draw.boundSubImage(self.pos + Vec2f{self.size[0] - cornerSize[0], cornerSize[1]}, Vec2f{cornerSize[0], self.size[1] - 2*cornerSize[1]}, .{upperTexture[0], lowerTexture[1]}, .{cornerSizeUV[0], upperTexture[1] - lowerTexture[1]});
 	}
+	const oldColor = draw.setColor(if (self.disabled) 0xff808080 else 0xffffffff);
+	defer draw.restoreColor(oldColor);
 	const textPos = self.pos + self.size/@as(Vec2f, @splat(2.0)) - self.child.size()/@as(Vec2f, @splat(2.0));
 	self.child.mutPos().* = textPos;
 	self.child.render(mousePosition - self.pos);
