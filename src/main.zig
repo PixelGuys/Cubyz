@@ -28,7 +28,6 @@ pub const models = @import("models.zig");
 pub const network = @import("network.zig");
 pub const physics = @import("physics.zig");
 pub const random = @import("random.zig");
-pub const reload = @import("reload.zig");
 pub const renderer = @import("renderer.zig");
 pub const rotation = @import("rotation.zig");
 pub const settings = @import("settings.zig");
@@ -466,10 +465,10 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	defer settings.deinit();
 
 	threadPool = utils.ThreadPool.init(globalAllocator, settings.cpuThreads orelse @max(1, (std.Thread.getCpuCount() catch 4) -| 1));
-	defer {
-		threadPool.deinit();
-		globalAllocator.destroy(threadPool);
-	}
+	defer threadPool.deinit();
+	
+	if (!headless) audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
+	defer if (!headless) audio.deinit();
 
 	file_monitor.init();
 	defer file_monitor.deinit();
@@ -482,9 +481,6 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 
 	utils.initDynamicIntArrayStorage();
 	defer utils.deinitDynamicIntArrayStorage();
-
-	if (!headless) audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
-	defer if (!headless) audio.deinit();
 
 	rotation.init();
 	defer rotation.deinit();
@@ -528,8 +524,8 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 
 	server.terrain.globalInit();
 
-	reload.init();
-	defer reload.deinit();
+	server.reload.init();
+	defer server.reload.deinit();
 
 	if (headless) {
 		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null);
@@ -643,7 +639,7 @@ pub fn clientMain() void { // MARK: clientMain()
 				world.deinit();
 				game.world = null;
 				if (weHostTheServer and server.restart) {
-					gui.windowlist.save_selection.openWorld(reload.worldName);
+					gui.windowlist.save_selection.openWorld(server.reload.worldName);
 					continue;
 				}
 			}

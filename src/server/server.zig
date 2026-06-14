@@ -25,6 +25,7 @@ pub const world_zig = @import("world.zig");
 pub const ServerWorld = world_zig.ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
+pub const reload = @import("reload.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
 pub const permission = @import("permission.zig");
@@ -553,13 +554,13 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	userConnectList = .init(main.globalAllocator, 16);
 	lastTime = main.timestamp();
 
-	if (main.reload.connectionManager) |_connManager| {
+	if (reload.connectionManager) |_connManager| {
 		connectionManager = _connManager;
 		connectionManager.@"continue"() catch |err| {
 			std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
 			@panic("Could not open Server.");
 		};
-		main.reload.connectionManager = null;
+		reload.connectionManager = null;
 	} else {
 		connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
 			std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
@@ -593,10 +594,10 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	}
 }
 
-fn deinit(reload: bool) void {
-	if (reload) {
-		main.reload.connectionManager = connectionManager;
-		main.reload.connectionManager.?.pause();
+fn deinit(_reload: bool) void {
+	if (_reload) {
+		reload.connectionManager = connectionManager;
+		reload.connectionManager.?.pause();
 
 		for (connectionManager.connections.items) |conn| {
 			conn.disconnect();
@@ -604,7 +605,7 @@ fn deinit(reload: bool) void {
 	} else {
 		connectionManager.deinit();
 		connectionManager = undefined;
-		main.reload.connectionManager = null;
+		reload.connectionManager = null;
 	}
 	main.threadPool.clear();
 
@@ -728,13 +729,13 @@ pub fn startFromNewThread(name: []const u8, port: ?u16) void {
 
 pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 	std.debug.assert(!running.load(.monotonic)); // There can only be one server.
-	main.reload.storeWorldName(name);
+	main.server.reload.storeWorldName(name);
 	restart = true;
 
 	while (restart) {
 		restart = false;
 
-		init(main.reload.worldName, port);
+		init(main.server.reload.worldName, port);
 		defer deinit(restart);
 		running.store(true, .release);
 		while (running.load(.monotonic)) {

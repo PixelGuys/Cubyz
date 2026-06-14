@@ -2,10 +2,6 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 const main = @import("main");
-const ZonElement = main.ZonElement;
-const Window = @import("graphics/Window.zig");
-
-pub const version = @import("utils/version.zig");
 
 pub var worldName: []const u8 = &.{};
 
