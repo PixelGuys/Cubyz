@@ -9,13 +9,13 @@ pub const usage =
 ;
 
 const Args = union(enum) {
-	@"/server <stop>": struct { action: enum { stop }},
-	@"/server <restart> <worldName>": struct { action: enum { restart }, worldName:?[]const u8 },
+	@"/server <stop>": struct { action: enum { stop } },
+	@"/server <restart> <worldName>": struct { action: enum { restart }, worldName: ?[]const u8 },
 };
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/server"});
 
-pub fn checkIfExist(worldName:[]const u8,source: *User)bool{
+pub fn checkIfExist(worldName: []const u8, source: *User) bool {
 	var dir = main.files.cubyzDir().openIterableDir("saves") catch |err| {
 		source.sendMessage("#ff0000Encountered error while trying to open saves folder:{s}", .{@errorName(err)});
 		return false;
@@ -23,7 +23,7 @@ pub fn checkIfExist(worldName:[]const u8,source: *User)bool{
 	defer dir.close();
 
 	var iterator = dir.iterate();
-	while (iterator.next(main.io) catch |err|{
+	while (iterator.next(main.io) catch |err| {
 		source.sendMessage("#ff0000Encountered error while iterating over saves folder:{s}", .{@errorName(err)});
 		return false;
 	}) |entry| {
@@ -36,7 +36,7 @@ pub fn checkIfExist(worldName:[]const u8,source: *User)bool{
 			};
 			defer worldInfo.deinit(main.stackAllocator);
 
-			if(std.mem.eql(u8, worldName, worldInfo.get([]const u8, "name", entry.name)))
+			if (std.mem.eql(u8, worldName, worldInfo.get([]const u8, "name", entry.name)))
 				return true;
 		}
 	}
@@ -54,14 +54,13 @@ pub fn execute(args: []const u8, source: *User) void {
 	};
 	switch (result) {
 		.@"/server <stop>" => {},
-		.@"/server <restart> <worldName>" =>|param|{
-			if(param.worldName)|worldName|{
-				
-				if(checkIfExist(worldName, source) == false)
+		.@"/server <restart> <worldName>" => |param| {
+			if (param.worldName) |worldName| {
+				if (checkIfExist(worldName, source) == false)
 					return;
 				main.reload.storeWorldName(worldName);
 			}
-			
+
 			main.server.restart.store(true, .release);
 		},
 	}
