@@ -22,6 +22,7 @@ pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
 pub const itemdrop = @import("itemdrop.zig");
 pub const items = @import("items.zig");
+pub const log = @import("log.zig");
 pub const meta = @import("meta.zig");
 pub const migrations = @import("migrations.zig");
 pub const models = @import("models.zig");
@@ -85,186 +86,6 @@ fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
 
 fn cacheString(comptime str: []const u8) []const u8 {
 	return cacheStringImpl(str.len, str[0..].*);
-}
-var logFile: ?std.Io.File = undefined;
-var logFileTs: ?std.Io.File = undefined;
-var supportsANSIColors: bool = undefined;
-var openingErrorWindow: bool = false;
-// overwrite the log function:
-pub const std_options: std.Options = .{ // MARK: std_options
-	.log_level = .debug,
-	.logFn = struct {
-		pub fn logFn(
-			comptime level: std.log.Level,
-			comptime _: @EnumLiteral(),
-			comptime format: []const u8,
-			args: anytype,
-		) void {
-			var runtimeArgs: [args.len]fmt.FormatArg = undefined;
-			inline for (0..args.len) |i| {
-				runtimeArgs[i] = .fromAnytype(@TypeOf(args[i]), &args[i]);
-			}
-			runtimeLogFn(level, format, &runtimeArgs);
-		}
-	}.logFn,
-};
-
-pub fn convertColorToANSI(text: []const u8) []const u8 {
-	var list: List(u8) = .empty;
-
-	var parser = graphics.TextBuffer.Parser{
-		.unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0},
-		.currentFontEffect = .{},
-		.parsedText = .init(stackAllocator),
-		.fontEffects = .init(stackAllocator),
-		.characterIndex = .init(stackAllocator),
-		.showControlCharacters = false,
-	};
-	defer parser.fontEffects.deinit();
-	defer parser.parsedText.deinit();
-	defer parser.characterIndex.deinit();
-	parser.parse();
-
-	parser.currentFontEffect = .{};
-	for (0..parser.parsedText.items.len) |i| {
-		if (parser.fontEffects.items[i].color != parser.currentFontEffect.color) {
-			list.appendSlice(stackAllocator, "\x1b[38;2");
-			var shift: u5 = 16;
-			while (true) : (shift -= 8) {
-				list.print(stackAllocator, ";{d}", .{@as(u8, @truncate(parser.fontEffects.items[i].color >> shift))});
-				if (shift == 0) break;
-			}
-			list.append(stackAllocator, 'm');
-		}
-		if (parser.fontEffects.items[i].bold != parser.currentFontEffect.bold) {
-			list.appendSlice(stackAllocator, "\x1b[");
-			if (!parser.currentFontEffect.bold) {
-				list.append(stackAllocator, '1');
-			} else {
-				list.appendSlice(stackAllocator, "22");
-			}
-			list.append(stackAllocator, 'm');
-		}
-		if (parser.fontEffects.items[i].italic != parser.currentFontEffect.italic) {
-			list.appendSlice(stackAllocator, "\x1b[");
-			if (parser.currentFontEffect.italic) {
-				list.append(stackAllocator, '2');
-			}
-			list.appendSlice(stackAllocator, "3m");
-		}
-		if (parser.fontEffects.items[i].strikethrough != parser.currentFontEffect.strikethrough) {
-			list.appendSlice(stackAllocator, "\x1b[");
-			if (parser.currentFontEffect.strikethrough) {
-				list.append(stackAllocator, '2');
-			}
-			list.appendSlice(stackAllocator, "9m");
-		}
-		if (parser.fontEffects.items[i].underline != parser.currentFontEffect.underline) {
-			list.appendSlice(stackAllocator, "\x1b[");
-			if (parser.currentFontEffect.underline) {
-				list.append(stackAllocator, '2');
-			}
-			list.appendSlice(stackAllocator, "4m");
-		}
-		parser.currentFontEffect = parser.fontEffects.items[i];
-		var testBuff: [3]u8 = undefined;
-		const len = std.unicode.utf8Encode(@truncate(parser.parsedText.items[i]), &testBuff) catch continue;
-		list.appendSlice(stackAllocator, testBuff[0..len]);
-	}
-	return list.toOwnedSlice(stackAllocator);
-}
-
-noinline fn runtimeLogFn(level: std.log.Level, format: []const u8, args: []const fmt.FormatArg) void {
-	var buf: [65536]u8 = undefined;
-	var writer: std.Io.Writer = .fixed(&buf);
-	fmt.format(&writer, format, args) catch {
-		std.log.err("Truncated long log message.", .{});
-	};
-
-	const color: []const u8 = switch (level) {
-		std.log.Level.err => "\x1b[31m",
-		std.log.Level.info => "",
-		std.log.Level.warn => "\x1b[33m",
-		std.log.Level.debug => "\x1b[37;44m",
-	};
-	const colorReset = "\x1b[0m\n";
-	const filePrefix = switch (level) {
-		.err => "error",
-		.warn => "warning",
-		.info => "info",
-		.debug => "debug",
-	};
-	const fileSuffix = "\n";
-
-	logToFile("[{s}]: {s}{s}", .{filePrefix, writer.buffered(), fileSuffix});
-	if (supportsANSIColors) {
-		logToStdErr("{s}{s}{s}", .{color, writer.buffered(), colorReset});
-	} else {
-		logToStdErr("[{s}]: {s}{s}", .{filePrefix, writer.buffered(), fileSuffix});
-	}
-
-	if (level == .err and !openingErrorWindow and !settings.launchConfig.headlessServer) {
-		openingErrorWindow = true;
-		gui.openWindow("error_prompt");
-		openingErrorWindow = false;
-	}
-}
-
-fn initLogging() void {
-	logFile = null;
-	files.cwd().makePath("logs") catch |err| {
-		std.log.err("Couldn't create logs folder: {s}", .{@errorName(err)});
-		return;
-	};
-	logFile = std.Io.Dir.cwd().createFile(io, "logs/latest.log", .{}) catch |err| {
-		std.log.err("Couldn't create logs/latest.log: {s}", .{@errorName(err)});
-		return;
-	};
-
-	const _timestamp = std.Io.Clock.Timestamp.now(io, .real).raw;
-
-	const _path_str = std.fmt.allocPrint(stackAllocator.allocator, "logs/ts_{}.log", .{_timestamp.nanoseconds}) catch unreachable;
-	defer stackAllocator.free(_path_str);
-
-	logFileTs = std.Io.Dir.cwd().createFile(io, _path_str, .{}) catch |err| {
-		std.log.err("Couldn't create {s}: {s}", .{_path_str, @errorName(err)});
-		return;
-	};
-
-	supportsANSIColors = std.Io.File.stdout().supportsAnsiEscapeCodes(io) catch unreachable;
-}
-
-fn deinitLogging() void {
-	if (logFile) |_logFile| {
-		_logFile.close(io);
-		logFile = null;
-	}
-
-	if (logFileTs) |_logFileTs| {
-		_logFileTs.close(io);
-		logFileTs = null;
-	}
-}
-
-fn logToFile(comptime format: []const u8, args: anytype) void {
-	var buf: [65536]u8 = undefined;
-	var fba = std.heap.FixedBufferAllocator.init(&buf);
-	const allocator = fba.allocator();
-
-	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	(logFile orelse return).writeStreamingAll(io, string) catch {};
-	(logFileTs orelse return).writeStreamingAll(io, string) catch {};
-}
-
-fn logToStdErr(comptime format: []const u8, args: anytype) void {
-	var buf: [65536]u8 = undefined;
-	var fba = std.heap.FixedBufferAllocator.init(&buf);
-	const allocator = fba.allocator();
-
-	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	const writer = std.debug.lockStderr(&.{});
-	defer std.debug.unlockStderr();
-	nosuspend writer.file_writer.interface.writeAll(string) catch {};
 }
 
 // MARK: Callbacks
@@ -499,8 +320,8 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	threadedIo = .init(globalAllocator.allocator, .{});
 	defer threadedIo.deinit();
 
-	initLogging();
-	defer deinitLogging();
+	log.init();
+	defer log.deinit();
 
 	std.log.info("Starting game with version {s}", .{settings.version.version});
 
