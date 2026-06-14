@@ -536,12 +536,12 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		result.thread.setName(main.io, "Network Thread") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
 	}
 	pub fn deinit(self: *ConnectionManager) void {
+		self.running.store(false, .monotonic);
+		self.thread.join();
 		for (self.connections.items) |conn| {
 			conn.disconnect();
 		}
 
-		self.running.store(false, .monotonic);
-		self.thread.join();
 		self.socket.deinit();
 		self.connections.deinit(main.globalAllocator);
 		for (self.requests.items) |request| {

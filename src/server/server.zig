@@ -595,11 +595,12 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 
 fn deinit(reload: bool) void {
 	if (reload) {
+		main.reload.connectionManager = connectionManager;
+		main.reload.connectionManager.?.pause();
+
 		for (connectionManager.connections.items) |conn| {
 			conn.disconnect();
 		}
-		main.reload.connectionManager = connectionManager;
-		main.reload.connectionManager.?.pause();
 	} else {
 		connectionManager.deinit();
 		connectionManager = undefined;
