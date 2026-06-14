@@ -19,7 +19,5 @@ pub fn storeWorldName(_worldName: []const u8) void {
 	worldName = main.globalAllocator.dupe(u8, _worldName);
 }
 
-
 // storing stuff for init after restart
-pub var connectionManager:?*main.network.ConnectionManager = null;
-
+pub var connectionManager: ?*main.network.ConnectionManager = null;

@@ -528,7 +528,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 		return result;
 	}
-	pub fn @"continue"(result:* ConnectionManager)!void{
+	pub fn @"continue"(result: *ConnectionManager) !void {
 		std.debug.assert(!result.running.load(.monotonic));
 		result.packetSendRequests = .initContext({});
 		result.running.store(true, .monotonic);
@@ -556,7 +556,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 		main.globalAllocator.destroy(self);
 	}
-	pub fn pause(self:* ConnectionManager) void{
+	pub fn pause(self: *ConnectionManager) void {
 		std.debug.assert(self.running.load(.monotonic));
 		self.running.store(false, .monotonic);
 		self.thread.join();
@@ -570,7 +570,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 		self.packetSendRequests.deinit(main.globalAllocator.allocator);
 	}
-	
+
 	pub fn makeOnline(self: *ConnectionManager) void {
 		if (!self.online.load(.acquire)) {
 			self.externalAddress = stun.requestAddress(self);

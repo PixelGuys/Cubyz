@@ -888,9 +888,9 @@ pub fn reset() void {
 }
 
 pub fn deinit() void {
-	if (quadSSBO)|_quadSSBO|{
-	 	_quadSSBO.deinit();
-	}	
+	if (quadSSBO) |_quadSSBO| {
+		_quadSSBO.deinit();
+	}
 	nameToIndex.deinit();
 	for (models.items()) |model| {
 		model.deinit();

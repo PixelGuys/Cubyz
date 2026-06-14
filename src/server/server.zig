@@ -553,14 +553,14 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	userConnectList = .init(main.globalAllocator, 16);
 	lastTime = main.timestamp();
 
-	if(main.reload.connectionManager)|_connManager|{
+	if (main.reload.connectionManager) |_connManager| {
 		connectionManager = _connManager;
 		connectionManager.@"continue"() catch |err| {
 			std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
 			@panic("Could not open Server.");
 		};
 		main.reload.connectionManager = null;
-	}else{
+	} else {
 		connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
 			std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
 			@panic("Could not open Server.");
@@ -593,21 +593,19 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	}
 }
 
-fn deinit(reload:bool) void {
-	if(reload){
+fn deinit(reload: bool) void {
+	if (reload) {
 		for (connectionManager.connections.items) |conn| {
 			conn.disconnect();
 		}
 		main.reload.connectionManager = connectionManager;
 		main.reload.connectionManager.?.pause();
-	}else{
-		
+	} else {
 		connectionManager.deinit();
 		connectionManager = undefined;
 		main.reload.connectionManager = null;
 	}
 
-	
 	main.threadPool.clear();
 	users.clearAndFree();
 	while (userDeinitList.popFront()) |user| {
@@ -752,8 +750,8 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 	}
 }
 
-pub fn stop(_restart:bool) void {
-	if(_restart){
+pub fn stop(_restart: bool) void {
+	if (_restart) {
 		restart.store(true, .monotonic);
 	}
 	running.store(false, .monotonic);

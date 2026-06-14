@@ -788,7 +788,6 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	main.Tag.resetTags();
 	main.entityModel.reset();
 
-
 	// Remove paths from asset hot reloading:
 	var dir = main.files.cwd().openIterableDir("assets") catch |err| {
 		std.log.err("Can't open asset path {s}: {s}", .{"assets", @errorName(err)});
