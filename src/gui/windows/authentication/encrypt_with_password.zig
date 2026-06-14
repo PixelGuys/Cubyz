@@ -80,7 +80,7 @@ pub fn onOpen() void {
 	const width = 480;
 	list.add(Label.init(.{0, 0}, width, "Your Account Code will be stored in your settings to allow you to stay logged in. Please decide how we should store it:", .left));
 	innerList = VerticalList.init(.{0, 0}, 100, 16);
-	encryptWithPasswordCheckbox = CheckBox.init(.{0, 0}, width, "Encrypt it with a password (recommended)", encryptAccountCode, &encryptAccountCodeCallback);
+	encryptWithPasswordCheckbox = CheckBox.init(.{0, 0}, width, "Encrypt it with a password (recommended)\n(The password needs to be entered every time)", encryptAccountCode, &encryptAccountCodeCallback);
 	innerList.add(encryptWithPasswordCheckbox);
 	passwordRow = HorizontalList.init();
 	passwordRow.add(Label.init(.{0, 0}, 130, "Local Password:", .left));
