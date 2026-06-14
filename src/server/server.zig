@@ -723,9 +723,7 @@ fn update() void { // MARK: update()
 pub fn startFromNewThread(name: []const u8, port: ?u16) void {
 	main.initThreadLocals();
 	defer main.deinitThreadLocals();
-	const _name = main.globalAllocator.dupe(u8, name);
-	defer main.globalAllocator.free(_name);
-	startFromExistingThread(_name, port);
+	startFromExistingThread(name, port);
 	main.heap.GarbageCollection.syncPoint();
 }
 
