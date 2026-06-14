@@ -732,8 +732,7 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 			}
 			update();
 		}
-		if (!main.settings.launchConfig.headlessServer)
-			return;
+		if (!main.settings.launchConfig.headlessServer) return;
 	}
 }
 

@@ -36,8 +36,7 @@ pub fn checkIfExist(worldName: []const u8, source: *User) bool {
 			};
 			defer worldInfo.deinit(main.stackAllocator);
 
-			if (std.mem.eql(u8, worldName, worldInfo.get([]const u8, "name", entry.name)))
-				return true;
+			if (std.mem.eql(u8, worldName, worldInfo.get([]const u8, "name", entry.name))) return true;
 		}
 	}
 	source.sendMessage("#ff0000World with this name doesn't exist", .{});
