@@ -491,10 +491,10 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	callbacks.init();
 
 	block_entity.init();
-	defer block_entity.deinit(headless);
+	defer block_entity.deinit();
 
 	models.init();
-	defer models.deinit(headless);
+	defer models.deinit();
 
 	items.globalInit();
 	defer items.globalDeinit();

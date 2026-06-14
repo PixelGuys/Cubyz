@@ -606,6 +606,8 @@ fn deinit(reload:bool) void {
 		connectionManager = undefined;
 		main.reload.connectionManager = null;
 	}
+
+	
 	main.threadPool.clear();
 	users.clearAndFree();
 	while (userDeinitList.popFront()) |user| {
@@ -628,8 +630,6 @@ fn deinit(reload:bool) void {
 	main.sync.server.deinit();
 	main.items.Inventory.server.deinit();
 	main.entity.server.deinit();
-
-	main.entityModel.reset();
 
 	command.deinit();
 	main.heap.allocators.destroyWorldArena();

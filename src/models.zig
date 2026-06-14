@@ -15,7 +15,7 @@ const FaceData = main.renderer.chunk_meshing.FaceData;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const Box = main.physics.collision.Box;
 
-var quadSSBO: graphics.SSBO = undefined;
+var quadSSBO: ?graphics.SSBO = null;
 
 pub const QuadInfo = extern struct {
 	normal: [3]f32 align(16),
@@ -887,8 +887,10 @@ pub fn reset() void {
 	nameToIndex.put("none", Model.init(&.{})) catch unreachable;
 }
 
-pub fn deinit(headless: bool) void {
-	if (!headless) quadSSBO.deinit();
+pub fn deinit() void {
+	if (quadSSBO)|_quadSSBO|{
+	 	_quadSSBO.deinit();
+	}	
 	nameToIndex.deinit();
 	for (models.items()) |model| {
 		model.deinit();
@@ -901,5 +903,5 @@ pub fn deinit(headless: bool) void {
 
 pub fn uploadModels() void {
 	quadSSBO = graphics.SSBO.initStatic(QuadInfo, quads.items);
-	quadSSBO.bind(4);
+	quadSSBO.?.bind(4);
 }

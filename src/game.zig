@@ -330,7 +330,6 @@ pub const World = struct { // MARK: World
 		self.entityModelPalette.deinit();
 		self.manager.deinit();
 		main.server.stop(false);
-		main.entityModel.reset();
 
 		Player.super.deinit(.client);
 
