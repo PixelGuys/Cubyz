@@ -96,7 +96,7 @@ pub fn onOpen() void {
 			if (storageMethod == .paper) list.add(Label.init(.{0, 0}, width, "We will give you some time to write it down.", .left));
 			if (storageMethod == .passwordManager) list.add(Label.init(.{0, 0}, width, "We will give you some time to copy it to your password manager.", .left));
 			list.add(Label.init(.{0, 0}, width, "Note: Do not give your Account Code to anyone else, only enter it in the login screen inside the game.", .left));
-			button = Button.initText(.{10, 0}, 250, "Return to login (20)", .{.onAction = .init(next), .disabled = true});
+			button = Button.initText(.{10, 0}, 250, "Return to login (15)", .{.onAction = .init(next), .disabled = true});
 		},
 	}
 	const buttonRow = HorizontalList.init();
@@ -108,7 +108,7 @@ pub fn onOpen() void {
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();
-	enableTime = main.timestamp().addDuration(.fromSeconds(20));
+	enableTime = main.timestamp().addDuration(.fromSeconds(15));
 }
 
 pub fn update() void {
