@@ -11,7 +11,7 @@ windowName: []const u8,
 pub fn init(zon: ZonElement) ?*@This() {
 	const result = main.worldArena.create(@This());
 	result.* = .{
-		.windowName = main.worldArena.dupe(u8, zon.get(?[]const u8, "name", null) orelse {
+		.windowName = main.worldArena.dupe(u8, zon.get([]const u8, "name") orelse {
 			std.log.err("Missing field \"name\" for open_window event.", .{});
 			return null;
 		}),

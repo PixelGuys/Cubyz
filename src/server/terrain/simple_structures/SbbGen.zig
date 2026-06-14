@@ -27,7 +27,7 @@ pub fn getHash(self: SbbGen) u64 {
 }
 
 pub fn loadModel(parameters: ZonElement) ?*SbbGen {
-	const structureId = parameters.get(?[]const u8, "structure", null) orelse {
+	const structureId = parameters.get([]const u8, "structure") orelse {
 		std.log.err("Error loading generator 'cubyz:sbb' structure field is mandatory.", .{});
 		return null;
 	};
@@ -46,7 +46,7 @@ pub fn loadModel(parameters: ZonElement) ?*SbbGen {
 	const self = main.worldArena.create(SbbGen);
 	self.* = .{
 		.structureRef = structureRef,
-		.placeMode = std.meta.stringToEnum(Blueprint.PasteMode, parameters.get([]const u8, "placeMode", "degradable")) orelse Blueprint.PasteMode.degradable,
+		.placeMode = std.meta.stringToEnum(Blueprint.PasteMode, parameters.get([]const u8, "placeMode") orelse "degradable") orelse Blueprint.PasteMode.degradable,
 		.rotation = rotation,
 	};
 	return self;

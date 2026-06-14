@@ -133,8 +133,8 @@ pub fn onOpen() void {
 
 				worldList.append(main.globalAllocator, .{
 					.fileName = main.globalAllocator.dupe(u8, entry.name),
-					.lastUsedTime = worldInfo.get(i64, "lastUsedTime", 0),
-					.name = main.globalAllocator.dupe(u8, worldInfo.get([]const u8, "name", entry.name)),
+					.lastUsedTime = worldInfo.get(i64, "lastUsedTime") orelse 0,
+					.name = main.globalAllocator.dupe(u8, worldInfo.get([]const u8, "name") orelse entry.name),
 				});
 			}
 		}
