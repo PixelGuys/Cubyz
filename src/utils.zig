@@ -870,7 +870,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	pub fn reset(self: *ThreadPool) void {
 		const threadCount = self.threads.len;
 
-		self.deinit(false);
+		self.deinit();
 		self.* = ThreadPool.init(self.allocator, threadCount).*;
 	}
 	pub fn closeAllTasksOfType(self: *ThreadPool, vtable: *const VTable) void {
