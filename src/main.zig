@@ -470,7 +470,7 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 		threadPool.deinit();
 		globalAllocator.destroy(threadPool);
 	}
-	
+
 	file_monitor.init();
 	defer file_monitor.deinit();
 
@@ -484,7 +484,6 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	defer utils.deinitDynamicIntArrayStorage();
 
 	defer heap.GarbageCollection.forceAllFreeItemsFromList();
-
 
 	if (!headless) audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
 	defer if (!headless) audio.deinit();
