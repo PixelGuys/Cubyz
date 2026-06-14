@@ -868,7 +868,11 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		self.allocator.free(self.threads);
 		self.allocator.destroy(self);
 	}
-
+	pub fn reset(self:*ThreadPool)void{
+		const threadCount = self.threads.len;
+		self.deinit();
+		self.* = ThreadPool.init(self.allocator,threadCount).*;
+	}
 	pub fn closeAllTasksOfType(self: *ThreadPool, vtable: *const VTable) void {
 		std.debug.assert(vtable.taskType != .chunkgen);
 		self.loadList.mutex.lock();
@@ -1003,9 +1007,11 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		}
 	}
 
+
 	pub fn queueSize(self: *const ThreadPool) usize {
 		return self.trueQueueSize.load(.monotonic);
 	}
+
 };
 
 var dynamicIntArrayAllocator: main.heap.PowerOfTwoPoolAllocator(main.chunk.chunkVolume/@bitSizeOf(u8), main.chunk.chunkVolume*@sizeOf(u16), 64) = undefined;

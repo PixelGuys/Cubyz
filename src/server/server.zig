@@ -605,8 +605,8 @@ fn deinit(reload: bool) void {
 		connectionManager = undefined;
 		main.reload.connectionManager = null;
 	}
+	main.threadPool.reset();
 
-	main.threadPool.clear();
 	users.clearAndFree();
 	while (userDeinitList.popFront()) |user| {
 		user.clearJobQueue();
@@ -617,6 +617,8 @@ fn deinit(reload: bool) void {
 			user.deinit();
 		}
 	}
+	
+	
 	userDeinitList.deinit();
 	userConnectList.deinit();
 
