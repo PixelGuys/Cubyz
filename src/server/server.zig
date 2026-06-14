@@ -717,7 +717,7 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 	restart.store(true, .release);
 	while (restart.load(.monotonic)) {
 		restart.store(false, .release);
-		init(name, port);
+		init(main.reload.worldName, port);
 		defer deinit();
 		running.store(true, .release);
 		while (running.load(.monotonic)) {

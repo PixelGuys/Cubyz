@@ -7,14 +7,14 @@ const Window = @import("graphics/Window.zig");
 
 pub const version = @import("utils/version.zig");
 
-pub var lastWorldName: []const u8 = &.{};
+pub var worldName: []const u8 = &.{};
 
 pub fn init() void {}
 pub fn deinit() void {
-	main.globalAllocator.free(lastWorldName);
+	main.globalAllocator.free(worldName);
 }
-pub fn storeWorldName(worldName: []const u8) void {
-	if (std.mem.eql(u8, lastWorldName, worldName)) return;
-	main.globalAllocator.free(lastWorldName);
-	lastWorldName = main.globalAllocator.dupe(u8, worldName);
+pub fn storeWorldName(_worldName: []const u8) void {
+	if (std.mem.eql(u8, _worldName, worldName)) return;
+	main.globalAllocator.free(worldName);
+	worldName = main.globalAllocator.dupe(u8, _worldName);
 }
