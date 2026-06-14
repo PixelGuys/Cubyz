@@ -9,11 +9,10 @@ pub const usage =
 ;
 
 const Args = union(enum) {
-	@"/server <action>": struct { action: enum { stop,restart } },
+	@"/server <action>": struct { action: enum { stop, restart } },
 };
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/server"});
-
 
 pub fn execute(args: []const u8, source: *User) void {
 	var errorMessage: main.List(u8) = .empty;
