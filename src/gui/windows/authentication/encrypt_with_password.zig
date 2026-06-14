@@ -25,6 +25,8 @@ var encryptWithPasswordCheckbox: *CheckBox = undefined;
 var passwordTextField: *TextInput = undefined;
 var passwordRow: *HorizontalList = undefined;
 
+var confirmButton: *Button = undefined;
+
 var encryptAccountCode: bool = true;
 
 const padding: f32 = 8;
@@ -100,13 +102,18 @@ pub fn onOpen() void {
 	list.add(innerList);
 	const buttonRow = HorizontalList.init();
 	buttonRow.add(Button.initText(.{0, 0}, 70, "Cancel", .{.onAction = .init(cancel)}));
-	buttonRow.add(Button.initText(.{10, 0}, 70, "Confirm", .{.onAction = .init(confirm)}));
+	confirmButton = Button.initText(.{10, 0}, 70, "Confirm", .{.onAction = .init(confirm)});
+	buttonRow.add(confirmButton);
 	buttonRow.finish(.{0, 0}, .center);
 	list.add(buttonRow);
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();
+}
+
+pub fn update() void {
+	confirmButton.disabled = encryptAccountCode and passwordTextField.currentString.items.len == 0;
 }
 
 pub fn onClose() void {
