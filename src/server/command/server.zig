@@ -5,7 +5,7 @@ const User = main.server.User;
 
 pub const description = "Stop the server.";
 pub const usage =
-	\\/server <stop/restart> ?world
+	\\/server <stop/restart>
 ;
 
 const Args = union(enum) {
