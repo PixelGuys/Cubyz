@@ -756,7 +756,10 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 	}
 }
 
-pub fn stop() void {
+pub fn stop(_restart:bool) void {
+	if(_restart){
+		restart.store(true, .monotonic);
+	}
 	running.store(false, .monotonic);
 }
 

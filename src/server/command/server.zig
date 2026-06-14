@@ -23,10 +23,11 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	};
 	switch (result.@"/server <action>".action) {
-		.stop => {},
+		.stop => {
+			main.server.stop(false);
+		},
 		.restart => {
-			main.server.restart.store(true, .release);
+			main.server.stop(true);
 		},
 	}
-	main.server.stop();
 }
