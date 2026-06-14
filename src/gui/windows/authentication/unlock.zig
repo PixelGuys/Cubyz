@@ -23,6 +23,7 @@ pub var window = GuiWindow{
 const padding: f32 = 8;
 
 var textComponent: *TextInput = undefined;
+var logoutButton: *Button = undefined;
 
 var incorrectPasswordLabel: *Label = undefined;
 
@@ -67,6 +68,14 @@ fn logout() void {
 	gui.openWindow("authentication/login");
 }
 
+fn onTextUpdate() void {
+	if (textComponent.currentString.items.len == 0) {
+		logoutButton.disabled = false;
+	} else {
+		logoutButton.disabled = true;
+	}
+}
+
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 320, 8);
 	const width = 420;
@@ -75,7 +84,7 @@ pub fn onOpen() void {
 	incorrectPasswordLabel = Label.init(.{0, 0}, width, "", .left);
 	list.add(incorrectPasswordLabel);
 	const passwordRow = HorizontalList.init();
-	textComponent = TextInput.init(.{0, 0}, width - 80, 22, "", .{.onNewline = .init(apply)});
+	textComponent = TextInput.init(.{0, 0}, width - 80, 22, "", .{.onNewline = .init(apply), .onUpdate = .init(onTextUpdate)});
 	textComponent.obfuscated = true;
 	textComponent.select();
 	passwordRow.add(textComponent);
@@ -83,8 +92,9 @@ pub fn onOpen() void {
 	passwordRow.finish(.{0, 0}, .center);
 	list.add(passwordRow);
 	const buttonRow = HorizontalList.init();
-	buttonRow.add(Button.initText(.{0, 0}, 200, "Logout", .init(logout)));
-	buttonRow.add(Button.initText(.{padding, 0}, 200, "Unlock", .init(apply)));
+	logoutButton = Button.initText(.{0, 0}, 200, "Logout", .{.onAction = .init(logout), .disabled = false});
+	buttonRow.add(logoutButton);
+	buttonRow.add(Button.initText(.{padding, 0}, 200, "Unlock", .{.onAction = .init(apply)}));
 	list.add(buttonRow);
 	list.finish(.center);
 	window.rootComponent = list.toComponent();

@@ -40,7 +40,6 @@ fn renderConnectionData(conn: *main.network.Connection, name: []const u8, y: *f3
 }
 
 pub fn render() void {
-	draw.setColor(0xffffffff);
 	var y: f32 = 0;
 	if (main.game.world != null) {
 		renderConnectionData(main.game.world.?.conn, "Client", &y);

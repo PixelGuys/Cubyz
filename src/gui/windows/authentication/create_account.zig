@@ -43,11 +43,11 @@ pub fn onOpen() void {
 	const row = HorizontalList.init();
 	accountCodeLabel = Label.init(.{0, 0}, 350, accountCode.text, .left);
 	row.add(accountCodeLabel);
-	row.add(Button.initText(.{0, 0}, 70, "Copy", .init(copy)));
+	row.add(Button.initText(.{0, 0}, 70, "Copy", .{.onAction = .init(copy)}));
 	list.add(row);
 	list.add(Label.init(.{0, 0}, width, "Note: Do not give this to anyone else. We will only ask for the Account Code on the start of the game.", .left));
 	list.add(Label.init(.{0, 0}, width, "Note 2: Make sure you store this somewhere safely and securely, there is no recovery option if you lose it. We recommend a password manager.", .left));
-	list.add(Button.initText(.{0, 0}, 300, "Return to login (clears clipboard)", .init(next)));
+	list.add(Button.initText(.{0, 0}, 300, "Return to login (clears clipboard)", .{.onAction = .init(next)}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
