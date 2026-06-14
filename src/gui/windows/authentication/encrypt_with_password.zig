@@ -68,20 +68,11 @@ fn refreshInner() void {
 	}
 }
 
-fn none() void {}
-
-fn openCreateAccountWindow() void {
+fn back() void {
+	gui.windowlist.@"authentication/stay_logged_in".setAccountCode(accountCode);
+	accountCode = .{.text = &.{}};
 	gui.closeWindowFromRef(&window);
-	gui.openWindow("authentication/create_account");
-}
-
-fn cancel() void {
-	gui.closeWindowFromRef(&window);
-	if (settings.playerName.len == 0) {
-		gui.openWindow("change_name");
-	} else {
-		gui.openWindow("main");
-	}
+	gui.openWindow("authentication/stay_logged_in");
 }
 
 pub fn onOpen() void {
@@ -93,7 +84,7 @@ pub fn onOpen() void {
 	innerList.add(encryptWithPasswordCheckbox);
 	passwordRow = HorizontalList.init();
 	passwordRow.add(Label.init(.{0, 0}, 130, "Local Password:", .left));
-	passwordTextField = TextInput.init(.{0, 0}, width - 130, 22, "", .{.onNewline = .init(none)});
+	passwordTextField = TextInput.init(.{0, 0}, width - 130, 22, "", .{.onNewline = .{}});
 	passwordRow.add(passwordTextField);
 	passwordRow.finish(.{0, 0}, .center);
 	innerList.add(passwordRow);
@@ -101,7 +92,7 @@ pub fn onOpen() void {
 	refreshInner();
 	list.add(innerList);
 	const buttonRow = HorizontalList.init();
-	buttonRow.add(Button.initText(.{0, 0}, 70, "Cancel", .{.onAction = .init(cancel)}));
+	buttonRow.add(Button.initText(.{0, 0}, 70, "Back", .{.onAction = .init(back)}));
 	confirmButton = Button.initText(.{10, 0}, 70, "Confirm", .{.onAction = .init(confirm)});
 	buttonRow.add(confirmButton);
 	buttonRow.finish(.{0, 0}, .center);
