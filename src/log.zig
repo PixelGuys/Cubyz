@@ -18,8 +18,14 @@ pub const Level = enum {
 	info,
 	/// Debug: messages only useful for debugging.
 	debug,
-	/// Chat message
+	/// server messages
+	server,
+	/// chat messages
 	chat,
+
+	fn isColorCoded(self: Level) bool {
+		return self == .chat or self == .server;
+	}
 };
 
 var logFile: ?std.Io.File = undefined;
@@ -58,7 +64,8 @@ noinline fn runtimeLogFn(level: Level, format: []const u8, args: []const fmt.For
 		.info => "",
 		.warn => "\x1b[33m",
 		.debug => "\x1b[37;44m",
-		.chat => "",
+		.server => "\x1b[34mserver\x1b[0m: ",
+		.chat => "\x1b[36mchat\x1b[0m: ",
 	};
 	const colorReset = "\x1b[0m\n";
 	const filePrefix = switch (level) {
@@ -66,6 +73,7 @@ noinline fn runtimeLogFn(level: Level, format: []const u8, args: []const fmt.For
 		.warn => "warning",
 		.info => "info",
 		.debug => "debug",
+		.server => "server",
 		.chat => "chat",
 	};
 	const fileSuffix = "\n";
@@ -136,8 +144,8 @@ fn logToStdErr(level: Level, comptime format: []const u8, args: anytype) void {
 	const allocator = fba.allocator();
 
 	const _string = std.fmt.allocPrint(allocator, format, args) catch format;
-	const string = if (level == .chat and supportsANSIColors) convertColorToANSI(_string) else _string;
-	defer if (level == .chat and supportsANSIColors) main.stackAllocator.free(string);
+	const string = if (level.isColorCoded() and supportsANSIColors) convertColorToANSI(_string) else _string;
+	defer if (level.isColorCoded() and supportsANSIColors) main.stackAllocator.free(string);
 
 	const writer = std.debug.lockStderr(&.{});
 	defer std.debug.unlockStderr();
@@ -207,6 +215,14 @@ pub fn convertColorToANSI(text: []const u8) []const u8 {
 		list.appendSlice(main.stackAllocator, testBuff[0..len]);
 	}
 	return list.toOwnedSlice(main.stackAllocator);
+}
+
+pub fn server(comptime format: []const u8, args: anytype) void {
+	var runtimeArgs: [args.len]fmt.FormatArg = undefined;
+	inline for (0..args.len) |i| {
+		runtimeArgs[i] = .fromAnytype(@TypeOf(args[i]), &args[i]);
+	}
+	runtimeLogFn(.server, format, &runtimeArgs);
 }
 
 pub fn chat(comptime format: []const u8, args: anytype) void {
