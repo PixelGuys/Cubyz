@@ -112,92 +112,64 @@ pub const std_options: std.Options = .{ // MARK: std_options
 pub fn convertColorToANSI(text: []const u8) []const u8 {
 	var list: List(u8) = .empty;
 
-	var italic: bool = false;
-	var bold: bool = false;
-	var underlined: bool = false;
-	var strikeThroughed: bool = false;
-	var lastColor: [3]u8 = @splat(0);
-	var unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0};
+	var parser = graphics.TextBuffer.Parser{
+		.unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0},
+		.currentFontEffect = .{},
+		.parsedText = .init(stackAllocator),
+		.fontEffects = .init(stackAllocator),
+		.characterIndex = .init(stackAllocator),
+		.showControlCharacters = false,
+	};
+	defer parser.fontEffects.deinit();
+	defer parser.parsedText.deinit();
+	defer parser.characterIndex.deinit();
+	parser.parse();
 
-	loop: while (true) {
-		var curSlice = unicodeIterator.nextCodepointSlice() orelse break :loop;
-		inner: switch (std.unicode.utf8Decode(curSlice) catch unreachable) {
-			'#' => {
-				list.appendSlice(stackAllocator, "\x1b[38;2");
-				for (0..3) |i| {
-					curSlice = unicodeIterator.nextCodepointSlice() orelse "";
-					lastColor[i] = std.fmt.parseInt(u8, curSlice, 16) catch 0;
-					curSlice = unicodeIterator.nextCodepointSlice() orelse "";
-					lastColor[i] = lastColor[i]*16 + (std.fmt.parseInt(u8, curSlice, 16) catch 0);
-					list.print(stackAllocator, ";{d}", .{lastColor[i]});
-				}
-				list.append(stackAllocator, 'm');
-			},
-			'§' => {
-				list.appendSlice(stackAllocator, "\x1b[0m");
-				// set colors back
-				list.appendSlice(stackAllocator, "\x1b[38;2");
-				for (lastColor) |color| {
-					list.print(stackAllocator, ";{d}", .{color});
-				}
-				list.append(stackAllocator, 'm');
-			},
-			'*' => {
-				curSlice = unicodeIterator.nextCodepointSlice() orelse break :loop;
-				list.appendSlice(stackAllocator, "\x1b[");
-				var curChar = std.unicode.utf8Decode(curSlice) catch unreachable;
-				if (curChar == '*') {
-					if (!bold) {
-						list.append(stackAllocator, '1');
-					} else {
-						list.appendSlice(stackAllocator, "22");
-					}
-					bold = !bold;
-					curSlice = unicodeIterator.nextCodepointSlice() orelse {
-						list.append(stackAllocator, 'm');
-						break :loop;
-					};
-					curChar = std.unicode.utf8Decode(curSlice) catch unreachable;
-				} else {
-					if (italic) list.append(stackAllocator, '2');
-					list.append(stackAllocator, '3');
-					italic = !italic;
-				}
-				list.append(stackAllocator, 'm');
-				continue :inner curChar;
-			},
-			'_' => {
-				curSlice = unicodeIterator.nextCodepointSlice() orelse break :loop;
-				const curChar = std.unicode.utf8Decode(curSlice) catch unreachable;
-				if (curChar != '_') {
-					list.append(stackAllocator, '_');
-					continue :inner curChar;
-				}
-				list.appendSlice(stackAllocator, "\x1b[");
-				if (underlined) list.append(stackAllocator, '2');
-				list.appendSlice(stackAllocator, "4m");
-				underlined = !underlined;
-			},
-			'~' => {
-				curSlice = unicodeIterator.nextCodepointSlice() orelse break :loop;
-				const curChar = std.unicode.utf8Decode(curSlice) catch unreachable;
-				if (curChar != '~') {
-					list.append(stackAllocator, '~');
-					continue :inner curChar;
-				}
-				list.appendSlice(stackAllocator, "\x1b[");
-				if (strikeThroughed) list.append(stackAllocator, '2');
-				list.appendSlice(stackAllocator, "9m");
-				strikeThroughed = !strikeThroughed;
-			},
-			'\\' => {
-				const curString = unicodeIterator.nextCodepointSlice() orelse break :loop;
-				list.appendSlice(stackAllocator, curString);
-			},
-			else => {
-				list.appendSlice(stackAllocator, curSlice);
-			},
+	parser.currentFontEffect = .{};
+	for (0..parser.parsedText.items.len) |i| {
+		if (parser.fontEffects.items[i].color != parser.currentFontEffect.color) {
+			list.appendSlice(stackAllocator, "\x1b[38;2");
+			var shift: u5 = 16;
+			while (true) : (shift -= 8) {
+				list.print(stackAllocator, ";{d}", .{@as(u8, @truncate(parser.fontEffects.items[i].color >> shift))});
+				if (shift == 0) break;
+			}
+			list.append(stackAllocator, 'm');
 		}
+		if (parser.fontEffects.items[i].bold != parser.currentFontEffect.bold) {
+			list.appendSlice(stackAllocator, "\x1b[");
+			if (!parser.currentFontEffect.bold) {
+				list.append(stackAllocator, '1');
+			} else {
+				list.appendSlice(stackAllocator, "22");
+			}
+			list.append(stackAllocator, 'm');
+		}
+		if (parser.fontEffects.items[i].italic != parser.currentFontEffect.italic) {
+			list.appendSlice(stackAllocator, "\x1b[");
+			if (parser.currentFontEffect.italic) {
+				list.append(stackAllocator, '2');
+			}
+			list.appendSlice(stackAllocator, "3m");
+		}
+		if (parser.fontEffects.items[i].strikethrough != parser.currentFontEffect.strikethrough) {
+			list.appendSlice(stackAllocator, "\x1b[");
+			if (parser.currentFontEffect.strikethrough) {
+				list.append(stackAllocator, '2');
+			}
+			list.appendSlice(stackAllocator, "9m");
+		}
+		if (parser.fontEffects.items[i].underline != parser.currentFontEffect.underline) {
+			list.appendSlice(stackAllocator, "\x1b[");
+			if (parser.currentFontEffect.underline) {
+				list.append(stackAllocator, '2');
+			}
+			list.appendSlice(stackAllocator, "4m");
+		}
+		parser.currentFontEffect = parser.fontEffects.items[i];
+		var testBuff: [3]u8 = undefined;
+		const len = std.unicode.utf8Encode(@truncate(parser.parsedText.items[i]), &testBuff) catch continue;
+		list.appendSlice(stackAllocator, testBuff[0..len]);
 	}
 	return list.toOwnedSlice(stackAllocator);
 }
