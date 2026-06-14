@@ -136,5 +136,7 @@ pub fn onClose() void {
 }
 
 pub fn deinit() void {
-	accountCode.?.deinit();
+	if (accountCode != null) {
+		accountCode.?.deinit();
+	}
 }
