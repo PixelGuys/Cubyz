@@ -23,7 +23,7 @@ pub var window = GuiWindow{
 const padding: f32 = 8;
 
 var accountCodeLabel: *Label = undefined;
-var accountCode: main.network.authentication.AccountCode = undefined;
+var accountCode: ?main.network.authentication.AccountCode = null;
 var fileNameEntry: *TextInput = undefined;
 
 pub const StorageMethod = enum(usize) {
@@ -43,7 +43,7 @@ pub fn setStorageMethod(method: StorageMethod) void {
 fn next() void {
 	switch (storageMethod) {
 		.file => {
-			main.files.cwd().write(fileNameEntry.currentString.items, accountCode.text) catch |err| {
+			main.files.cwd().write(fileNameEntry.currentString.items, accountCode.?.text) catch |err| {
 				std.log.err("Failed to write Account Code to file: {s}", .{@errorName(err)});
 				return;
 			};
@@ -52,20 +52,28 @@ fn next() void {
 	}
 	gui.closeWindowFromRef(&window);
 	gui.openWindow("authentication/login");
+	// Make sure there remains no trace of the account code in memory
+	accountCode.?.deinit();
+	accountCode = null;
+}
+
+fn back() void {
+	gui.closeWindowFromRef(&window);
+	gui.openWindow("authentication/create_account_storage_method");
 }
 
 fn copy() void {
-	main.Window.setClipboardString(accountCode.text);
+	main.Window.setClipboardString(accountCode.?.text);
 }
 
 pub fn onOpen() void {
-	accountCode = .initRandomly();
+	if (accountCode == null) accountCode = .initRandomly();
 
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	const width = 420;
 	list.add(Label.init(.{0, 0}, width, "This is your Account Code:", .center));
 	const row = HorizontalList.init();
-	accountCodeLabel = Label.init(.{0, 0}, 350, accountCode.text, .left);
+	accountCodeLabel = Label.init(.{0, 0}, 350, accountCode.?.text, .left);
 	row.add(accountCodeLabel);
 	row.add(Button.initText(.{0, 0}, 70, "Copy", .{.onAction = .init(copy)}));
 	list.add(row);
@@ -74,17 +82,20 @@ pub fn onOpen() void {
 			list.add(Label.init(.{0, 0}, width, "Please enter a file name, we will store it there.", .left));
 			fileNameEntry = TextInput.init(.{0, 0}, width, 22, "", .{.onNewline = .{}});
 			list.add(fileNameEntry);
-			button = Button.initText(.{0, 0}, 300, "Save and return to login", .{.onAction = .init(next), .disabled = true});
-			list.add(button);
+			button = Button.initText(.{10, 0}, 250, "Save and return to login", .{.onAction = .init(next), .disabled = true});
 		},
 		.paper, .passwordManager => {
 			if (storageMethod == .paper) list.add(Label.init(.{0, 0}, width, "We will give you some time to write it down.", .left));
 			if (storageMethod == .passwordManager) list.add(Label.init(.{0, 0}, width, "We will give you some time to copy it to your password manager.", .left));
 			list.add(Label.init(.{0, 0}, width, "Note: Do not give your Account Code to anyone else, only enter it in the login screen inside the game.", .left));
-			button = Button.initText(.{0, 0}, 300, "Return to login (20)", .{.onAction = .init(next), .disabled = true});
-			list.add(button);
+			button = Button.initText(.{10, 0}, 250, "Return to login (20)", .{.onAction = .init(next), .disabled = true});
 		},
 	}
+	const buttonRow = HorizontalList.init();
+	buttonRow.add(Button.initText(.{0, 0}, 50, "Back", .{.onAction = .init(back)}));
+	buttonRow.add(button);
+	buttonRow.finish(.{0, 0}, .center);
+	list.add(buttonRow);
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
@@ -117,9 +128,13 @@ pub fn update() void {
 pub fn onClose() void {
 	// Make sure there remains no trace of the account code in memory
 	std.crypto.secureZero(@TypeOf(accountCodeLabel.text.glyphs[0]), accountCodeLabel.text.glyphs);
-	accountCode.deinit();
+	// The account code is cleared in the next() function, otherwise it's kept in case the user goes back in the dialog
 
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
+}
+
+pub fn deinit() void {
+	accountCode.?.deinit();
 }
