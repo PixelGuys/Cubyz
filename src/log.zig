@@ -32,7 +32,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 	.log_level = .debug,
 	.logFn = struct {
 		pub fn logFn(
-			comptime level: Level,
+			comptime level: std.log.Level,
 			comptime _: @EnumLiteral(),
 			comptime format: []const u8,
 			args: anytype,
