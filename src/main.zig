@@ -480,7 +480,10 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	defer heap.GarbageCollection.forceAllFreeItemsFromList();
 
 	threadPool = utils.ThreadPool.init(globalAllocator, settings.cpuThreads orelse @max(1, (std.Thread.getCpuCount() catch 4) -| 1));
-	defer threadPool.deinit();
+	defer {
+		threadPool.deinit();
+		globalAllocator.destroy(threadPool);
+	}
 
 	if (!headless) audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
 	defer if (!headless) audio.deinit();

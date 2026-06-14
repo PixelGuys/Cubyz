@@ -866,11 +866,11 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 
 		self.allocator.free(self.currentTasks);
 		self.allocator.free(self.threads);
-		self.allocator.destroy(self);
 	}
 	pub fn reset(self: *ThreadPool) void {
 		const threadCount = self.threads.len;
-		self.deinit();
+
+		self.deinit(false);
 		self.* = ThreadPool.init(self.allocator, threadCount).*;
 	}
 	pub fn closeAllTasksOfType(self: *ThreadPool, vtable: *const VTable) void {
