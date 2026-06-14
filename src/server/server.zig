@@ -594,8 +594,6 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 }
 
 fn deinit(reload:bool) void {
-	main.items.clearRecipeCachedInventories();
-
 	if(reload){
 		for (connectionManager.connections.items) |conn| {
 			conn.disconnect();
