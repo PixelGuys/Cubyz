@@ -645,6 +645,7 @@ pub fn clientMain() void { // MARK: clientMain()
 				game.world = null;
 				if (weHostTheServer and server.restart) {
 					gui.windowlist.save_selection.openWorld(reload.worldName);
+					continue;
 				}
 			}
 			gui.openWindow("main");
