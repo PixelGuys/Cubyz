@@ -751,8 +751,9 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 	}
 }
 
-pub fn stop(_restart: bool) void {
-	if (_restart) {
+pub const stopType = enum {stop,restart};
+pub fn stop(_restart: stopType) void {
+	if (_restart == .restart) {
 		restart = true;
 	}
 	running.store(false, .release);

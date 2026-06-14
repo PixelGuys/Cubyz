@@ -9,7 +9,7 @@ pub const usage =
 ;
 
 const Args = union(enum) {
-	@"/server <action>": struct { action: enum { stop, restart } },
+	@"/server <action>": struct { action: main.server.stopType },
 };
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/server"});
@@ -22,12 +22,5 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000{s}", .{errorMessage.items});
 		return;
 	};
-	switch (result.@"/server <action>".action) {
-		.stop => {
-			main.server.stop(false);
-		},
-		.restart => {
-			main.server.stop(true);
-		},
-	}
+	main.server.stop(result.@"/server <action>".action);
 }
