@@ -20,17 +20,6 @@ pub const Level = enum {
 	debug,
 	/// Chat message
 	chat,
-
-	/// Returns a string literal of the given level in full text form.
-	pub fn asText(comptime self: Level) []const u8 {
-		return switch (self) {
-			.err => "error",
-			.warn => "warning",
-			.info => "info",
-			.debug => "debug",
-			.chat => "chat",
-		};
-	}
 };
 
 var logFile: ?std.Io.File = undefined;
