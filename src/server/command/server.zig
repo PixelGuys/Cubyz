@@ -56,8 +56,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		.@"/server <stop>" => {},
 		.@"/server <restart> <worldName>" => |param| {
 			if (param.worldName) |worldName| {
-				if (checkIfExist(worldName, source) == false)
-					return;
+				if (checkIfExist(worldName, source) == false) return;
 				main.reload.storeWorldName(worldName);
 			}
 
