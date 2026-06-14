@@ -538,7 +538,7 @@ var userConnectList: main.utils.ConcurrentQueue(*User) = undefined;
 pub var connectionManager: *ConnectionManager = undefined;
 
 pub var running: std.atomic.Value(bool) = .init(false);
-pub var restart: std.atomic.Value(bool) = .init(true);
+pub var restart: bool = true;
 
 var lastTime: std.Io.Timestamp = undefined;
 
@@ -723,17 +723,17 @@ pub fn startFromNewThread(name: []const u8, port: ?u16) void {
 	main.initThreadLocals();
 	defer main.deinitThreadLocals();
 	startFromExistingThread(name, port);
-	main.heap.GarbageCollection.syncPoint();
+	main.heap.GarbageCollection.waitForFreeCompletion();
 }
 
 pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 	std.debug.assert(!running.load(.monotonic)); // There can only be one server.
 	main.reload.storeWorldName(name);
-	restart.store(true, .release);
-	while (restart.load(.monotonic)) {
-		restart.store(false, .release);
+	restart = true;
+	while (restart) {
+		restart = false;
 		init(main.reload.worldName, port);
-		defer deinit(restart.load(.monotonic));
+		defer deinit(restart);
 		running.store(true, .release);
 		while (running.load(.monotonic)) {
 			main.heap.GarbageCollection.syncPoint();
@@ -753,9 +753,9 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 
 pub fn stop(_restart: bool) void {
 	if (_restart) {
-		restart.store(true, .monotonic);
+		restart = true;
 	}
-	running.store(false, .monotonic);
+	running.store(false, .release);
 }
 
 pub fn disconnect(user: *User) void { // MARK: disconnect()
