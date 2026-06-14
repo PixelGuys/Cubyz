@@ -28,6 +28,7 @@ pub const models = @import("models.zig");
 pub const network = @import("network.zig");
 pub const physics = @import("physics.zig");
 pub const random = @import("random.zig");
+pub const reload = @import("reload.zig");
 pub const renderer = @import("renderer.zig");
 pub const rotation = @import("rotation.zig");
 pub const settings = @import("settings.zig");
@@ -526,6 +527,9 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 
 	server.terrain.globalInit();
 
+	reload.init();
+	defer reload.deinit();
+
 	if (headless) {
 		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null);
 	} else {
@@ -633,8 +637,12 @@ pub fn clientMain() void { // MARK: clientMain()
 			shouldExitToMenu.store(false, .monotonic);
 			Window.setMouseGrabbed(false);
 			if (game.world) |world| {
+				const weHostTheServer = server.thread != null;
 				world.deinit();
 				game.world = null;
+				if (weHostTheServer and server.restart.load(.acquire)) {
+					gui.windowlist.save_selection.openWorld(reload.lastWorldName);
+				}
 			}
 			gui.openWindow("main");
 			audio.setMusic("cubyz:totaldemented/cubyz_remastered");

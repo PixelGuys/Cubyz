@@ -539,6 +539,7 @@ pub var connectionManager: *ConnectionManager = undefined;
 
 pub var running: std.atomic.Value(bool) = .init(false);
 pub var restart: std.atomic.Value(bool) = .init(true);
+
 var lastTime: std.Io.Timestamp = undefined;
 
 pub var thread: ?std.Thread = null;
@@ -564,6 +565,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
 		@panic("Can't create world.");
 	};
+
 	world.?.generate() catch |err| {
 		std.log.err("Failed to generate world: {s}", .{@errorName(err)});
 		@panic("Can't generate world.");
@@ -711,6 +713,7 @@ pub fn startFromNewThread(name: []const u8, port: ?u16) void {
 
 pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 	std.debug.assert(!running.load(.monotonic)); // There can only be one server.
+	main.reload.storeWorldName(name);
 	restart.store(true, .release);
 	while (restart.load(.monotonic)) {
 		restart.store(false, .release);
@@ -729,6 +732,8 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 			}
 			update();
 		}
+		if (!main.settings.launchConfig.headlessServer)
+			return;
 	}
 }
 

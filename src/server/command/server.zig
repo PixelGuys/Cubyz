@@ -25,10 +25,6 @@ pub fn execute(args: []const u8, source: *User) void {
 	switch (result.@"/server <action>".action) {
 		.stop => {},
 		.restart => {
-			if (!main.settings.launchConfig.headlessServer) {
-				source.sendMessage("#ff0000You can't restart a headfull Server.", .{});
-				return;
-			}
 			main.server.restart.store(true, .release);
 		},
 	}
