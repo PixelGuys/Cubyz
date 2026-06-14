@@ -617,8 +617,7 @@ fn deinit(reload: bool) void {
 			user.deinit();
 		}
 	}
-	
-	
+
 	userDeinitList.deinit();
 	userConnectList.deinit();
 
