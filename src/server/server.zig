@@ -723,15 +723,16 @@ pub fn startFromNewThread(name: []const u8, port: ?u16) void {
 	main.initThreadLocals();
 	defer main.deinitThreadLocals();
 	startFromExistingThread(name, port);
-	main.heap.GarbageCollection.waitForFreeCompletion();
 }
 
 pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 	std.debug.assert(!running.load(.monotonic)); // There can only be one server.
 	main.reload.storeWorldName(name);
 	restart = true;
+
 	while (restart) {
 		restart = false;
+
 		init(main.reload.worldName, port);
 		defer deinit(restart);
 		running.store(true, .release);
@@ -751,7 +752,7 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 	}
 }
 
-pub const stopType = enum {stop,restart};
+pub const stopType = enum { stop, restart };
 pub fn stop(_restart: stopType) void {
 	if (_restart == .restart) {
 		restart = true;

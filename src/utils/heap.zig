@@ -680,11 +680,6 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 			list.deinit(main.globalAllocator);
 		}
 	}
-	pub fn forceAllFreeItemsFromList() void {
-		for (&lists) |*list| {
-			freeItemsFromList(list);
-		}
-	}
 
 	pub fn assertAllThreadsStopped() void {
 		std.debug.assert(sharedState.load(.monotonic) & 0x3fffffff == 0);

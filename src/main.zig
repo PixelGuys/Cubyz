@@ -483,8 +483,6 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	utils.initDynamicIntArrayStorage();
 	defer utils.deinitDynamicIntArrayStorage();
 
-	defer heap.GarbageCollection.forceAllFreeItemsFromList();
-
 	if (!headless) audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
 	defer if (!headless) audio.deinit();
 
@@ -535,6 +533,7 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 
 	if (headless) {
 		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null);
+		heap.GarbageCollection.waitForFreeCompletion();
 	} else {
 		clientMain();
 	}
