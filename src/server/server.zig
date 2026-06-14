@@ -552,10 +552,20 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	userDeinitList = .init(main.globalAllocator, 16);
 	userConnectList = .init(main.globalAllocator, 16);
 	lastTime = main.timestamp();
-	connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
-		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
-		@panic("Could not open Server.");
-	}; // TODO Configure the second argument in the server settings.
+
+	if(main.reload.connectionManager)|_connManager|{
+		connectionManager = _connManager;
+		connectionManager.@"continue"() catch |err| {
+			std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
+			@panic("Could not open Server.");
+		};
+		main.reload.connectionManager = null;
+	}else{
+		connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
+			std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
+			@panic("Could not open Server.");
+		}; // TODO Configure the second argument in the server settings.
+	}
 
 	main.entity.server.init();
 	main.items.Inventory.server.init();
@@ -583,12 +593,22 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	}
 }
 
-fn deinit() void {
-	main.threadPool.clear();
+fn deinit(reload:bool) void {
 	main.items.clearRecipeCachedInventories();
 
-	connectionManager.deinit();
-	connectionManager = undefined;
+	if(reload){
+		for (connectionManager.connections.items) |conn| {
+			conn.disconnect();
+		}
+		main.reload.connectionManager = connectionManager;
+		main.reload.connectionManager.?.pause();
+	}else{
+		
+		connectionManager.deinit();
+		connectionManager = undefined;
+		main.reload.connectionManager = null;
+	}
+	main.threadPool.clear();
 	users.clearAndFree();
 	while (userDeinitList.popFront()) |user| {
 		user.clearJobQueue();
@@ -718,7 +738,7 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 	while (restart.load(.monotonic)) {
 		restart.store(false, .release);
 		init(main.reload.worldName, port);
-		defer deinit();
+		defer deinit(restart.load(.monotonic));
 		running.store(true, .release);
 		while (running.load(.monotonic)) {
 			main.heap.GarbageCollection.syncPoint();

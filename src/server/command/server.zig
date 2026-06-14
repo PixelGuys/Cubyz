@@ -28,5 +28,5 @@ pub fn execute(args: []const u8, source: *User) void {
 			main.server.restart.store(true, .release);
 		},
 	}
-	main.server.running.store(false, .release);
+	main.server.stop();
 }
