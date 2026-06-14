@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const main = @import("main");
 const settings = main.settings;
@@ -43,7 +44,14 @@ pub fn setStorageMethod(method: StorageMethod) void {
 fn next() void {
 	switch (storageMethod) {
 		.file => {
-			main.files.cwd().write(fileNameEntry.currentString.items, accountCode.?.text) catch |err| {
+			var fileName = fileNameEntry.currentString.items;
+			if (builtin.os.tag == .windows and !std.mem.endsWith(u8, fileName, ".txt")) { // Windows has very poor ergonomics for files without extensions
+				fileName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}.txt", .{fileNameEntry.currentString.items}) catch unreachable;
+			}
+			defer if (builtin.os.tag == .windows and !std.mem.endsWith(u8, fileNameEntry.currentString.items, ".txt")) {
+				main.stackAllocator.free(fileName);
+			};
+			main.files.cwd().write(fileName, accountCode.?.text) catch |err| {
 				std.log.err("Failed to write Account Code to file: {s}", .{@errorName(err)});
 				return;
 			};
