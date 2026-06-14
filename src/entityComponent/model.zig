@@ -54,17 +54,18 @@ pub const client = struct {
         // }
         components.clear();
     }
-	pub fn load(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
+	pub fn load(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != 0) return error.InvalidComponentVersion;
 
 		const entityModel = reader.readVarInt(u32) catch return error.UnreadableComponentData;
 
 		var ptr: *Component = undefined;
-		if (components.get(@enumFromInt(entity))) |p| {
+		if (components.get(entity)) |p| {
 			ptr = p;
 			ptr.deinit();
 		} else {
-			ptr =  components.add(main.globalAllocator, @enumFromInt(entity));
+			ptr =  components.add(main.globalAllocator, entity);
+			std.log.debug("ELSEEEEEEEEEE {d} {d}", .{@intFromEnum(entity), components.dense.items.len});
 		}
 		ptr.* = Component{
 			.entityModel = .{.index = entityModel},
@@ -75,8 +76,9 @@ pub const client = struct {
 		@memcpy(ptr.nodes, model.nodes);
 		ptr.matrices = main.globalAllocator.alloc(Mat4f, model.nodeCount);
 	}
-	pub fn unload(entity: u32) void {
-		const ptr = components.fetchRemove(@enumFromInt(entity)) catch return;
+	pub fn unload(entity: Entity) void {
+		std.log.debug("UNLOAD {d} {d}", .{@intFromEnum(entity), components.dense.items.len});
+		const ptr = components.fetchRemove(entity) catch return;
 		ptr.deinit();
 	}
 	pub fn get(entity: Entity) ?*Component {

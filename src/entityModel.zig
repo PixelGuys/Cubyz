@@ -98,7 +98,7 @@ pub const EntityModel = struct {
 		self.nodeCount = 0;
 
 		if (zon.getChildOrNull("isPlayerModel")) |isPlayerModel| {
-			if (isPlayerModel.as(bool, false)) {
+			if (isPlayerModel.as(bool) orelse false) {
 				playerEntityModels.append(main.worldArena, index);
 			}
 		}
@@ -199,7 +199,7 @@ pub const EntityModel = struct {
 		defer indices.deinit(main.stackAllocator);
 		var baseVertex: u32 = 0;
 
-		var nodeDepthRemap: main.ListUnmanaged(NodeRemap) = .{};
+		var nodeDepthRemap: main.List(NodeRemap) = .empty;
 		defer nodeDepthRemap.deinit(main.stackAllocator);
 
 		var nodeIdx: u16 = 0;
