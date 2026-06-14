@@ -58,6 +58,7 @@ fn login() void {
 fn updateText() void {
 	loginAnyways = false;
 	loginButton.child.label.updateText("Login");
+	loginButton.disabled = textComponent.currentString.items.len == 0;
 }
 
 fn showTextCallback(showText: bool) void {
@@ -88,7 +89,7 @@ pub fn onOpen() void {
 	createAccountRow.add(Label.init(.{0, 3}, 280, "Don't have an Account Code yet?", .left));
 	createAccountRow.add(Button.initText(.{0, 0}, 140, "Create Account", .{.onAction = .init(openCreateAccountWindow)}));
 	list.add(createAccountRow);
-	loginButton = Button.initText(.{padding, 0}, 200, "Login", .{.onAction = .init(login)});
+	loginButton = Button.initText(.{padding, 0}, 200, "Login", .{.onAction = .init(login), .disabled = true});
 	list.add(loginButton);
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
