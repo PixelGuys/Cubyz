@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const User = main.server.User;
 
-pub const description = "Get the worlds seed.";
+pub const description = "Get the world seed.";
 pub const usage =
 	\\/seed
 ;
