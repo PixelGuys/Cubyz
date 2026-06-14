@@ -24,7 +24,7 @@ pub const InventoryId = enum(u32) { _ };
 
 pub const client = struct { // MARK: client
 	var maxId: InventoryId = @enumFromInt(0);
-	var freeIdList: main.ListUnmanaged(InventoryId) = .{};
+	var freeIdList: main.List(InventoryId) = .empty;
 	var serverToClientMap: std.AutoHashMap(InventoryId, Inventory) = undefined;
 
 	pub fn init() void {
@@ -93,7 +93,7 @@ pub const client = struct { // MARK: client
 pub const server = struct { // MARK: server
 	const ServerInventory = struct {
 		inv: Inventory,
-		users: main.ListUnmanaged(struct { user: *main.server.User, cliendId: InventoryId }),
+		users: main.List(struct { user: *main.server.User, cliendId: InventoryId }),
 		source: Source,
 		managed: Managed,
 
@@ -103,7 +103,7 @@ pub const server = struct { // MARK: server
 			inventoryCreationMutex.assertLocked();
 			return .{
 				.inv = Inventory._init(main.globalAllocator, len, source, .server, callbacks),
-				.users = .{},
+				.users = .empty,
 				.source = source,
 				.managed = managed,
 			};
@@ -158,7 +158,7 @@ pub const server = struct { // MARK: server
 
 	var inventories: main.utils.VirtualList(ServerInventory, 1 << 24) = undefined;
 	var maxId: InventoryId = @enumFromInt(0);
-	var freeIdList: main.ListUnmanaged(InventoryId) = .{};
+	var freeIdList: main.List(InventoryId) = .empty;
 	var inventoryCreationMutex: main.utils.Mutex = .{};
 
 	pub fn init() void {
@@ -172,7 +172,7 @@ pub const server = struct { // MARK: server
 			}
 		}
 		std.debug.assert(freeIdList.items.len == @intFromEnum(maxId)); // leak
-		freeIdList.deinit(main.globalAllocator);
+		freeIdList.clearAndFree(main.globalAllocator);
 		inventories.deinit();
 		maxId = @enumFromInt(0);
 	}
@@ -403,10 +403,10 @@ pub const SourceType = enum(u8) {
 };
 pub const Source = union(SourceType) {
 	alreadyFreed: void,
-	playerInventory: u32,
-	hand: u32,
+	playerInventory: main.entity.Entity,
+	hand: main.entity.Entity,
 	blockInventory: Vec3i,
-	workbench: struct { playerId: u32, proceduralItemIndex: ProceduralItemTypeIndex },
+	workbench: struct { playerId: main.entity.Entity, proceduralItemIndex: ProceduralItemTypeIndex },
 	other: void,
 };
 

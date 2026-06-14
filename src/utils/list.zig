@@ -7,8 +7,7 @@ fn growCapacity(current: usize, minimum: usize) usize {
 	var new = current;
 	while (true) {
 		new +|= new/2 + 8;
-		if (new >= minimum)
-			return new;
+		if (new >= minimum) return new;
 	}
 }
 
@@ -189,9 +188,9 @@ pub fn ListManaged(comptime T: type) type {
 			const after_range = start + len;
 			const range = self.items[start..after_range];
 
-			if (range.len == new_items.len)
-				@memcpy(range[0..new_items.len], new_items)
-			else if (range.len < new_items.len) {
+			if (range.len == new_items.len) {
+				@memcpy(range[0..new_items.len], new_items);
+			} else if (range.len < new_items.len) {
 				const first = new_items[0..range.len];
 				const rest = new_items[range.len..];
 
@@ -218,10 +217,15 @@ pub fn ListManaged(comptime T: type) type {
 	};
 }
 
-pub fn ListUnmanaged(comptime T: type) type {
+pub fn List(comptime T: type) type {
 	return struct {
-		items: []T = &.{},
-		capacity: usize = 0,
+		items: []T,
+		capacity: usize,
+
+		pub const empty: @This() = .{
+			.items = &.{},
+			.capacity = 0,
+		};
 
 		pub fn initCapacity(allocator: NeverFailingAllocator, capacity: usize) @This() {
 			return .{
@@ -238,7 +242,7 @@ pub fn ListUnmanaged(comptime T: type) type {
 
 		pub fn clearAndFree(self: *@This(), allocator: NeverFailingAllocator) void {
 			self.deinit(allocator);
-			self.* = .{};
+			self.* = .empty;
 		}
 
 		pub fn clearRetainingCapacity(self: *@This()) void {
@@ -253,7 +257,7 @@ pub fn ListUnmanaged(comptime T: type) type {
 
 		pub fn toOwnedSlice(self: *@This(), allocator: NeverFailingAllocator) []T {
 			const result = allocator.realloc(self.items.ptr[0..self.capacity], self.items.len);
-			self.* = .{};
+			self.* = .empty;
 			return result;
 		}
 
@@ -387,9 +391,9 @@ pub fn ListUnmanaged(comptime T: type) type {
 			const after_range = start + len;
 			const range = self.items[start..after_range];
 
-			if (range.len == new_items.len)
-				@memcpy(range[0..new_items.len], new_items)
-			else if (range.len < new_items.len) {
+			if (range.len == new_items.len) {
+				@memcpy(range[0..new_items.len], new_items);
+			} else if (range.len < new_items.len) {
 				const first = new_items[0..range.len];
 				const rest = new_items[range.len..];
 
@@ -421,8 +425,8 @@ pub fn ListUnmanaged(comptime T: type) type {
 	};
 }
 
-test "ListUnmanaged.print single call, buffer not preserved" {
-	var list: ListUnmanaged(u8) = .{};
+test "List.print single call, buffer not preserved" {
+	var list: List(u8) = .empty;
 	const oldAddress = list.items.ptr;
 	defer list.deinit(main.stackAllocator);
 
@@ -434,8 +438,8 @@ test "ListUnmanaged.print single call, buffer not preserved" {
 	try std.testing.expect(list.items.len <= list.capacity);
 }
 
-test "ListUnmanaged.print initCapacity, buffer preserved" {
-	var list: ListUnmanaged(u8) = .initCapacity(main.stackAllocator, 6);
+test "List.print initCapacity, buffer preserved" {
+	var list: List(u8) = .initCapacity(main.stackAllocator, 6);
 	const oldAddress = list.items.ptr;
 	defer list.deinit(main.stackAllocator);
 
@@ -447,8 +451,8 @@ test "ListUnmanaged.print initCapacity, buffer preserved" {
 	try std.testing.expect(list.items.len <= list.capacity);
 }
 
-test "ListUnmanaged.print with a string" {
-	var list: ListUnmanaged(u8) = .{};
+test "List.print with a string" {
+	var list: List(u8) = .empty;
 	defer list.deinit(main.stackAllocator);
 
 	list.print(main.stackAllocator, "foo {s}", .{"bar spam BUZZ"});
@@ -457,8 +461,8 @@ test "ListUnmanaged.print with a string" {
 	try std.testing.expect(list.items.len <= list.capacity);
 }
 
-test "ListUnmanaged.print multiple prints" {
-	var list: ListUnmanaged(u8) = .{};
+test "List.print multiple prints" {
+	var list: List(u8) = .empty;
 	const oldAddress = list.items.ptr;
 	defer list.deinit(main.stackAllocator);
 

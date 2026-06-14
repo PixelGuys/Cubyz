@@ -35,6 +35,7 @@ pub fn render() void {
 		gui.closeWindowFromRef(&window);
 		return;
 	}
-	draw.setColor(0xffff8080);
+	const oldColor = draw.setColor(0xffff8080);
+	defer draw.restoreColor(oldColor);
 	draw.print("Your clipboard was cleared.", .{}, 0, 0, 16, .left);
 }

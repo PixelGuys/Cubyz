@@ -27,7 +27,7 @@ const Instance = struct {
 };
 
 pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
-	var list: main.ListUnmanaged(Entry) = .{};
+	var list: main.List(Entry) = .empty;
 	defer list.deinit(main.stackAllocator);
 
 	var maxExtend: vec.Boxi = .{

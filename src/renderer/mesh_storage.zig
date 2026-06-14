@@ -34,9 +34,9 @@ const storageSize = 64;
 const storageMask = storageSize - 1;
 var storageLists: [settings.highestSupportedLod + 1]*[storageSize*storageSize*storageSize]ChunkMeshNode = undefined;
 var mapStorageLists: [settings.highestSupportedLod + 1]*[storageSize*storageSize]Atomic(?*LightMap.LightMapFragment) = undefined;
-var meshList: main.ListUnmanaged(*chunk_meshing.ChunkMesh) = .{};
+var meshList: main.List(*chunk_meshing.ChunkMesh) = .empty;
 var priorityMeshUpdateList: main.utils.ConcurrentQueue(chunk.ChunkPosition) = undefined;
-pub var updatableList: main.ListUnmanaged(chunk.ChunkPosition) = .{};
+pub var updatableList: main.List(chunk.ChunkPosition) = .empty;
 var mapUpdatableList: main.utils.ConcurrentQueue(*LightMap.LightMapFragment) = undefined;
 var lastPx: i32 = 0;
 var lastPy: i32 = 0;
@@ -609,6 +609,8 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 		const relPos: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{pos.wx, pos.wy, pos.wz})) - playerPos;
 		const relPosFloat: Vec3f = @floatCast(relPos);
 
+		const chunkSizeVector: Vec3i = @splat(chunk.chunkSize*pos.voxelSize);
+
 		if (pos.voxelSize == @as(i32, 1) << settings.highestLod) {
 			for (chunk.Neighbor.iterable) |neighbor| {
 				const component = neighbor.extractDirectionComponent(relPosFloat);
@@ -622,8 +624,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 				};
 				const node2 = getNodePointer(neighborPos);
 				if (!node2.active and node2.finishedMeshing) {
-					if (!frustum.testAAB(relPosFloat + @as(Vec3f, @floatFromInt(Vec3i{neighbor.relX()*chunk.chunkSize*pos.voxelSize, neighbor.relY()*chunk.chunkSize*pos.voxelSize, neighbor.relZ()*chunk.chunkSize*pos.voxelSize})), @splat(@floatFromInt(chunk.chunkSize*pos.voxelSize))))
-						continue;
+					if (!frustum.testAAB(relPosFloat + @as(Vec3f, @floatFromInt(neighbor.relPos()*chunkSizeVector)), @floatFromInt(chunkSizeVector))) continue;
 					node2.active = true;
 					node2.rendered = true;
 					searchList.pushBack(node2);
@@ -649,8 +650,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 						if (dz == 1) nextPos.wz ^= lowerLodBit;
 						const node2 = getNodePointer(nextPos);
 						const relNextPos: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{nextPos.wx, nextPos.wy, nextPos.wz})) - playerPos;
-						if (!frustum.testAAB(@floatCast(relNextPos), @splat(@floatFromInt(chunk.chunkSize*nextPos.voxelSize))))
-							continue;
+						if (!frustum.testAAB(@floatCast(relNextPos), @floatFromInt(chunkSizeVector))) continue;
 						std.debug.assert(node2.finishedMeshing);
 						node2.active = true;
 						node2.rendered = true;

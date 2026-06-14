@@ -102,7 +102,7 @@ const SelectionCapabilities = union(enum) {
 
 		const Capability = std.meta.FieldEnum(@TypeOf(result.custom));
 		for (zon.toSlice()) |capabilityZon| {
-			if (capabilityZon.as(?Capability, null)) |capability| {
+			if (capabilityZon.as(Capability)) |capability| {
 				@field(result.custom, @tagName(capability)) = true;
 			} else std.log.err("SelectionCapability is invalid. Ignoring", .{});
 		}
@@ -161,7 +161,7 @@ var reverseIndices: std.StringHashMapUnmanaged(u16) = .{};
 
 var size: u32 = 0;
 
-pub var ores: main.ListUnmanaged(Ore) = .{};
+pub var ores: main.List(Ore) = .empty;
 
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_id[size] = main.worldArena.dupe(u8, id);
@@ -236,10 +236,10 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 
 	for (drops, 0..) |blockDrop, i| {
 		const itemZons = blockDrop.getChild("items").toSlice();
-		var resultItems = main.ListUnmanaged(items.ItemStack).initCapacity(main.worldArena, itemZons.len);
+		var resultItems = main.List(items.ItemStack).initCapacity(main.worldArena, itemZons.len);
 
 		for (itemZons) |itemZon| {
-			var string = itemZon.as([]const u8, "auto");
+			var string = itemZon.as([]const u8) orelse "auto";
 			string = std.mem.trim(u8, string, " ");
 			var iterator = std.mem.splitScalar(u8, string, ' ');
 			var name = iterator.first();
@@ -347,7 +347,7 @@ pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 
 pub fn reset() void {
 	size = 0;
-	ores = .{};
+	ores = .empty;
 	reverseIndices = .{};
 	meshes.reset();
 }
@@ -603,17 +603,17 @@ pub const meshes = struct { // MARK: meshes
 	/// Number of loaded meshes. Used to determine if an update is needed.
 	var loadedMeshes: u32 = 0;
 
-	var textureIds: main.ListUnmanaged([]const u8) = .{};
-	var texturePaths: main.ListUnmanaged([]const u8) = .{};
+	var textureIds: main.List([]const u8) = .empty;
+	var texturePaths: main.List([]const u8) = .empty;
 	var animationData: []AnimationData = &.{};
-	var blockTextures: main.ListUnmanaged(Image) = .{};
-	var emissionTextures: main.ListUnmanaged(Image) = .{};
-	var reflectivityTextures: main.ListUnmanaged(Image) = .{};
-	var absorptionTextures: main.ListUnmanaged(Image) = .{};
-	var textureFogData: main.ListUnmanaged(FogData) = .{};
+	var blockTextures: main.List(Image) = .empty;
+	var emissionTextures: main.List(Image) = .empty;
+	var reflectivityTextures: main.List(Image) = .empty;
+	var absorptionTextures: main.List(Image) = .empty;
+	var textureFogData: main.List(FogData) = .empty;
 	pub var textureOcclusionData: []std.atomic.Value(bool) = &.{};
 
-	pub var blockBreakingTextures: main.ListUnmanaged(u16) = .{};
+	pub var blockBreakingTextures: main.List(u16) = .empty;
 
 	const sideNames = blk: {
 		var names: [6][]const u8 = undefined;
@@ -676,16 +676,16 @@ pub const meshes = struct { // MARK: meshes
 	pub fn reset() void {
 		meshes.size = 0;
 		loadedMeshes = 0;
-		textureIds = .{};
-		texturePaths = .{};
+		textureIds = .empty;
+		texturePaths = .empty;
 		animationData = &.{};
-		blockTextures = .{};
-		emissionTextures = .{};
-		reflectivityTextures = .{};
-		absorptionTextures = .{};
-		textureFogData = .{};
+		blockTextures = .empty;
+		emissionTextures = .empty;
+		reflectivityTextures = .empty;
+		absorptionTextures = .empty;
+		textureFogData = .empty;
 		textureOcclusionData = &.{};
-		blockBreakingTextures = .{};
+		blockBreakingTextures = .empty;
 	}
 
 	pub inline fn model(block: Block) ModelIndex {

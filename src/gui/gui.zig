@@ -558,7 +558,8 @@ pub fn updateAndRenderGui() void {
 	}
 	if (!hideGui) {
 		if (!main.Window.grabbed) {
-			draw.setColor(0x80000000);
+			const oldColor = draw.setColor(0x80000000);
+			defer draw.restoreColor(oldColor);
 			GuiWindow.borderPipeline.bind(draw.getScissor());
 			c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
 			draw.customShadedRect(GuiWindow.borderUniforms, .{0, 0}, main.Window.getWindowSize());
@@ -781,7 +782,8 @@ pub const inventory = struct { // MARK: inventory
 		carriedItemSlot.pos = mousePos - Vec2f{12, 12};
 		carriedItemSlot.render(.{0, 0});
 		// Draw tooltip:
-		if (carried.getAmount(0) == 0) if (hoveredItemSlot) |hovered| {
+		const hovered = hoveredItemSlot orelse return;
+		if (carried.getAmount(0) == 0) {
 			if (hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltip| {
 				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, tooltip, .{}, false, .left);
 				defer textBuffer.deinit();
@@ -803,12 +805,18 @@ pub const inventory = struct { // MARK: inventory
 				}
 				pos[1] = @min(pos[1] - fontSize, windowSize[1] - size[1] - border);
 				pos = @max(pos, Vec2f{border, border});
-				draw.setColor(0xffffff00);
-				draw.rect(pos - @as(Vec2f, @splat(border)), size + @as(Vec2f, @splat(2*border)));
-				draw.setColor(0xff000000);
-				draw.rect(pos - @as(Vec2f, @splat(padding)), size + @as(Vec2f, @splat(2*padding)));
+				{
+					const oldColor = draw.setColor(0xffffff00);
+					defer draw.restoreColor(oldColor);
+					draw.rect(pos - @as(Vec2f, @splat(border)), size + @as(Vec2f, @splat(2*border)));
+				}
+				{
+					const oldColor = draw.setColor(0xff000000);
+					defer draw.restoreColor(oldColor);
+					draw.rect(pos - @as(Vec2f, @splat(padding)), size + @as(Vec2f, @splat(2*padding)));
+				}
 				textBuffer.render(pos[0], pos[1], fontSize);
 			}
-		};
+		}
 	}
 };

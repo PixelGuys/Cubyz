@@ -72,7 +72,7 @@ pub const ChannelChunk = struct {
 
 	const ChunkEntries = struct {
 		mesh: ?*chunk_meshing.ChunkMesh,
-		entries: main.ListUnmanaged(BlockPos),
+		entries: main.List(BlockPos),
 	};
 
 	pub fn getValue(self: *ChannelChunk, pos: BlockPos) LightValue {
@@ -107,7 +107,7 @@ pub const ChannelChunk = struct {
 	}
 
 	fn propagateDirect(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
-		var neighborLists: [6]main.ListUnmanaged(Entry) = @splat(.{});
+		var neighborLists: [6]main.List(Entry) = @splat(.empty);
 		defer {
 			for (&neighborLists) |*list| {
 				list.deinit(main.stackAllocator);
@@ -164,9 +164,9 @@ pub const ChannelChunk = struct {
 		lightRefreshList.append(self.ch.pos);
 	}
 
-	fn propagateDestructive(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), constructiveEntries: *main.ListUnmanaged(ChunkEntries), isFirstBlock: bool, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) main.ListUnmanaged(BlockPos) {
-		var neighborLists: [6]main.ListUnmanaged(Entry) = @splat(.{});
-		var constructiveList: main.ListUnmanaged(BlockPos) = .{};
+	fn propagateDestructive(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), constructiveEntries: *main.List(ChunkEntries), isFirstBlock: bool, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) main.List(BlockPos) {
+		var neighborLists: [6]main.List(Entry) = @splat(.empty);
+		var constructiveList: main.List(BlockPos) = .empty;
 		defer {
 			for (&neighborLists) |*list| {
 				list.deinit(main.stackAllocator);
@@ -255,7 +255,7 @@ pub const ChannelChunk = struct {
 		self.propagateDirect(lightQueue, lightRefreshList);
 	}
 
-	fn propagateDestructiveFromNeighbor(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lights: []const Entry, constructiveEntries: *main.ListUnmanaged(ChunkEntries), lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) main.ListUnmanaged(BlockPos) {
+	fn propagateDestructiveFromNeighbor(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lights: []const Entry, constructiveEntries: *main.List(ChunkEntries), lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) main.List(BlockPos) {
 		std.debug.assert(lightQueue.isEmpty());
 		for (lights) |entry| {
 			var result = entry;
@@ -375,7 +375,7 @@ pub const ChannelChunk = struct {
 		for (lights) |pos| {
 			lightQueue.pushBack(.{.pos = pos, .value = self.data.getValue(pos.toIndex()).toArray(), .sourceDir = 6, .activeValue = 0b111});
 		}
-		var constructiveEntries: main.ListUnmanaged(ChunkEntries) = .{};
+		var constructiveEntries: main.List(ChunkEntries) = .empty;
 		defer constructiveEntries.deinit(main.stackAllocator);
 		constructiveEntries.append(main.stackAllocator, .{
 			.mesh = null,

@@ -27,12 +27,12 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		return .{.array = list};
 	}
 
-	pub fn getAtIndex(self: *const ZonElement, comptime _type: type, index: usize, replacement: _type) _type {
+	pub fn getAtIndex(self: *const ZonElement, comptime T: type, index: usize, replacement: T) T {
 		if (self.* != .array) {
 			return replacement;
 		} else {
 			if (index < self.array.items.len) {
-				return self.array.items[index].as(_type, replacement);
+				return self.array.items[index].as(T) orelse replacement;
 			} else {
 				return replacement;
 			}
@@ -51,12 +51,15 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		}
 	}
 
-	pub fn get(self: *const ZonElement, comptime _type: type, key: []const u8, replacement: _type) _type {
+	pub fn get(self: *const ZonElement, comptime T: type, key: []const u8, replacement: T) T {
 		if (self.* != .object) {
 			return replacement;
 		} else {
 			if (self.object.get(key)) |elem| {
-				return elem.as(_type, replacement);
+				if (@typeInfo(T) == .optional) {
+					return elem.as(@typeInfo(T).optional.child) orelse replacement;
+				}
+				return elem.as(T) orelse replacement;
 			} else {
 				return replacement;
 			}
@@ -150,59 +153,49 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		}
 	}
 
-	pub fn as(self: *const ZonElement, comptime T: type, replacement: T) T {
-		comptime var typeInfo: std.builtin.Type = @typeInfo(T);
-		comptime var InnerType = T;
-		inline while (typeInfo == .optional) {
-			InnerType = typeInfo.optional.child;
-			typeInfo = @typeInfo(InnerType);
-		}
+	pub fn as(self: *const ZonElement, comptime T: type) ?T {
+		const typeInfo: std.builtin.Type = @typeInfo(T);
 		switch (typeInfo) {
 			.int => {
 				switch (self.*) {
-					.int => return std.math.cast(InnerType, self.int) orelse replacement,
-					.float => return std.math.lossyCast(InnerType, std.math.round(self.float)),
-					else => return replacement,
+					.int => return std.math.cast(T, self.int) orelse null,
+					.float => return std.math.lossyCast(T, std.math.round(self.float)),
+					else => return null,
 				}
 			},
 			.float => {
 				switch (self.*) {
 					.int => return @floatFromInt(self.int),
 					.float => return @floatCast(self.float),
-					else => return replacement,
+					else => return null,
 				}
 			},
 			.vector => {
 				const len = typeInfo.vector.len;
 				const elems = self.toSlice();
-				if (elems.len != len) return replacement;
-				var result: InnerType = undefined;
-				if (InnerType == T) result = replacement;
+				if (elems.len != len) return null;
+				var result: T = undefined;
 				inline for (0..len) |i| {
-					if (InnerType == T) {
-						result[i] = elems[i].as(typeInfo.vector.child, result[i]);
-					} else {
-						result[i] = elems[i].as(?typeInfo.vector.child, null) orelse return replacement;
-					}
+					result[i] = elems[i].as(typeInfo.vector.child) orelse return null;
 				}
 				return result;
 			},
 			.@"enum" => {
-				return std.meta.stringToEnum(InnerType, self.as(?[]const u8, null) orelse return replacement) orelse return replacement;
+				return std.meta.stringToEnum(T, self.as([]const u8) orelse return null) orelse return null;
 			},
 			else => {
-				switch (InnerType) {
+				switch (T) {
 					[]const u8 => {
 						switch (self.*) {
 							.string => return self.string,
 							.stringOwned => return self.stringOwned,
-							else => return replacement,
+							else => return null,
 						}
 					},
 					bool => {
 						switch (self.*) {
 							.bool => return self.bool,
-							else => return replacement,
+							else => return null,
 						}
 					},
 					else => {
@@ -583,8 +576,7 @@ const Parser = struct { // MARK: Parser
 				break;
 			} else if (chars[index.*] == '\\') {
 				index.* += 1;
-				if (index.* >= chars.len)
-					break;
+				if (index.* >= chars.len) break;
 				switch (chars[index.*]) {
 					't' => {
 						builder.append('\t');
@@ -907,11 +899,11 @@ test "element parsing" {
 	// String:
 	index = 0;
 	var result: ZonElement = Parser.parseElement(allocator, null, "\"abcd\\\"\\\\ħσ→ ↑Φ∫€ ⌬ ε→Π\"", &index);
-	try std.testing.expectEqualStrings("abcd\"\\ħσ→ ↑Φ∫€ ⌬ ε→Π", result.as([]const u8, ""));
+	try std.testing.expectEqualStrings("abcd\"\\ħσ→ ↑Φ∫€ ⌬ ε→Π", result.as([]const u8).?);
 	result.deinit(allocator);
 	index = 0;
 	result = Parser.parseElement(allocator, null, "\"12345", &index);
-	try std.testing.expectEqualStrings("12345", result.as([]const u8, ""));
+	try std.testing.expectEqualStrings("12345", result.as([]const u8).?);
 	result.deinit(allocator);
 
 	// Object:

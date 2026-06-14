@@ -571,7 +571,7 @@ pub const MenuBackGround = struct {
 		// Otherwise load a random texture from the backgrounds folder. The player may make their own pictures which can be chosen as well.
 		var walker = dir.walk(main.stackAllocator);
 		defer walker.deinit();
-		var fileList: main.ListUnmanaged([]const u8) = .{};
+		var fileList: main.List([]const u8) = .empty;
 		defer {
 			for (fileList.items) |fileName| {
 				main.stackAllocator.free(fileName);

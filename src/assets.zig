@@ -12,7 +12,7 @@ const biomes = main.server.terrain.biomes;
 const sbb = main.server.terrain.sbb;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const NeverFailingArenaAllocator = main.heap.NeverFailingArenaAllocator;
-const ListUnmanaged = main.ListUnmanaged;
+const List = main.List;
 const files = main.files;
 
 var common: Assets = undefined;
@@ -142,7 +142,7 @@ pub const Assets = struct {
 		dir: files.Dir,
 
 		fn discoverAll(allocator: NeverFailingAllocator, assetDir: main.files.Dir, path: []const u8) []Addon {
-			var addons: main.ListUnmanaged(Addon) = .{};
+			var addons: main.List(Addon) = .empty;
 
 			var dir = assetDir.openIterableDir(path) catch |err| {
 				std.log.err("Can't open asset path {s}: {s}", .{path, @errorName(err)});
@@ -433,7 +433,7 @@ fn registerRecipesFromZon(zon: ZonElement) void {
 
 pub const Palette = struct { // MARK: Palette
 	allocator: NeverFailingAllocator,
-	palette: main.ListUnmanaged([]const u8),
+	palette: main.List([]const u8),
 
 	pub fn init(allocator: NeverFailingAllocator, zon: ZonElement, firstElement: ?[]const u8) !*Palette {
 		const self = switch (zon) {
@@ -463,7 +463,7 @@ pub const Palette = struct { // MARK: Palette
 		errdefer self.deinit();
 
 		for (elems) |name| {
-			const stringId = name.as(?[]const u8, null) orelse return error.InvalidPaletteFormat;
+			const stringId = name.as([]const u8) orelse return error.InvalidPaletteFormat;
 			self.palette.appendAssumeCapacity(allocator.dupe(u8, stringId));
 		}
 		return self;
@@ -478,7 +478,7 @@ pub const Palette = struct { // MARK: Palette
 
 		var iterator = zon.object.iterator();
 		while (iterator.next()) |entry| {
-			const numericId = entry.value_ptr.as(?usize, null) orelse return error.InvalidPaletteFormat;
+			const numericId = entry.value_ptr.as(usize) orelse return error.InvalidPaletteFormat;
 			const name = entry.key_ptr.*;
 
 			if (numericId >= translationPalette.len) {

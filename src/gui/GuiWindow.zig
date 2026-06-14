@@ -359,7 +359,8 @@ pub fn update(self: *GuiWindow) void {
 pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) void {
 	self.updateSelectedFn();
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
-	if (self == grabbedWindow and windowMoving and (gui.reorderWindows or self.showTitleBar)) if (grabPosition) |_grabPosition| {
+	if (self == grabbedWindow and windowMoving and (gui.reorderWindows or self.showTitleBar)) blk: {
+		const _grabPosition = grabPosition orelse break :blk;
 		self.relativePosition[0] = .{.ratio = undefined};
 		self.relativePosition[1] = .{.ratio = undefined};
 		self.pos = (mousePosition - _grabPosition) + selfPositionWhenGrabbed;
@@ -375,7 +376,7 @@ pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) void {
 		self.pos = @min(self.pos, windowSize - self.size);
 		gui.updateWindowPositions();
 		gui.save();
-	};
+	}
 	if (self.rootComponent) |*component| {
 		component.updateSelected();
 	}
@@ -451,7 +452,8 @@ pub fn updateWindowPosition(self: *GuiWindow) void {
 }
 
 fn drawOrientationLines(self: *const GuiWindow) void {
-	draw.setColor(0x80000000);
+	const oldColor = draw.setColor(0x80000000);
+	defer draw.restoreColor(oldColor);
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
 	inline for (self.relativePosition, 0..) |relPos, i| _continue: {
 		switch (relPos) {
@@ -491,7 +493,6 @@ fn drawOrientationLines(self: *const GuiWindow) void {
 }
 
 pub fn drawIcons(self: *const GuiWindow) void {
-	draw.setColor(0xffffffff);
 	var x = self.size[0]/self.scale;
 	if (self.closeable) {
 		x -= iconWidth;
@@ -508,7 +509,6 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 	const oldTranslation = draw.setTranslation(self.pos);
 	const oldScale = draw.setScale(self.scale);
 	if (self.hasBackground) {
-		draw.setColor(0xff000000);
 		pipeline.bind(draw.getScissor());
 		backgroundTexture.bindTo(0);
 		draw.customShadedRect(windowUniforms, .{0, 0}, self.size/@as(Vec2f, @splat(self.scale)));
@@ -520,12 +520,12 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 	if (self.showTitleBar or gui.reorderWindows) {
 		pipeline.bind(draw.getScissor());
 		titleTexture.bindTo(0);
-		draw.setColor(0xff000000);
 		draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, titleBarHeight});
 		self.drawIcons();
 	}
 	if (self.hasBackground or (!main.Window.grabbed and gui.reorderWindows)) {
-		draw.setColor(0xff2d2d2d);
+		const oldColor = draw.setColor(0xff2d2d2d);
+		defer draw.restoreColor(oldColor);
 		draw.rectBorder(.{-2, -2}, self.size/@as(Vec2f, @splat(self.scale)) + Vec2f{4, 4}, 2.0);
 	}
 	draw.restoreTranslation(oldTranslation);

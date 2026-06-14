@@ -42,13 +42,13 @@ pub fn onOpen() void {
 		}
 
 		for (main.client.entity_manager.entities.items()) |ent| {
-			if (ent.playerIndex == null) continue;
+			const playerComponent = main.entity.components.@"cubyz:player".client.get(ent.id) orelse continue;
 			const row = HorizontalList.init();
 
 			const string = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{std.fmt.alt(ent, .formatWithPlayerIndex)}) catch unreachable;
 			defer main.stackAllocator.free(string);
 			row.add(Label.init(.{0, 0}, 200, string, .left));
-			row.add(Button.initText(.{0, 0}, 100, "Kick", .initWithInt(kickByPlayerIndex, ent.playerIndex.?)));
+			row.add(Button.initText(.{0, 0}, 100, "Kick", .{.onAction = .initWithInt(kickByPlayerIndex, playerComponent.playerIndex)}));
 			list.add(row);
 		}
 	} else {
@@ -65,12 +65,12 @@ pub fn onOpen() void {
 				const string = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{connection.user.?}) catch unreachable;
 				defer main.stackAllocator.free(string);
 				row.add(Label.init(.{0, 0}, 200, string, .left));
-				row.add(Button.initText(.{0, 0}, 100, "Kick", .initWithPtr(kickbyConnection, connection)));
+				row.add(Button.initText(.{0, 0}, 100, "Kick", .{.onAction = .initWithPtr(kickbyConnection, connection)}));
 			} else {
 				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{connection.remoteAddress}) catch unreachable;
 				defer main.stackAllocator.free(ip);
 				row.add(Label.init(.{0, 0}, 200, ip, .left));
-				row.add(Button.initText(.{0, 0}, 100, "Cancel", .initWithPtr(kickbyConnection, connection)));
+				row.add(Button.initText(.{0, 0}, 100, "Cancel", .{.onAction = .initWithPtr(kickbyConnection, connection)}));
 			}
 			list.add(row);
 		}

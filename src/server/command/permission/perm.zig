@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const ListUnmanaged = main.ListUnmanaged;
+const List = main.List;
 const User = main.server.User;
 const permission = main.server.permission;
 const ListType = permission.Permissions.ListType;
@@ -29,7 +29,7 @@ const Args = union(enum) {
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/perm"});
 
 pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.ListUnmanaged(u8) = .{};
+	var errorMessage: main.List(u8) = .empty;
 	defer errorMessage.deinit(main.stackAllocator);
 
 	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
@@ -72,7 +72,7 @@ pub fn execute(args: []const u8, source: *User) void {
 const Path = struct {
 	path: []const u8,
 
-	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListUnmanaged(u8)) error{ParseError}!Path {
+	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *List(u8)) error{ParseError}!Path {
 		if (arg[0] != '/') {
 			errorMessage.print(allocator, "Permission path for <{s}> doesn't begin with a \"/\", got: {s}", .{name, arg});
 			return error.ParseError;

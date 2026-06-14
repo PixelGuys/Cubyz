@@ -127,7 +127,7 @@ pub fn onOpen() void {
 	list.add(Label.init(.{0, 0}, width, "#ff8080**Do not share your Account Code with anyone!**", .left));
 	const createAccountRow = HorizontalList.init();
 	createAccountRow.add(Label.init(.{0, 3}, 240, "Don't have an Account Code yet?", .left));
-	createAccountRow.add(Button.initText(.{0, 0}, 140, "Create Account", .init(openCreateAccountWindow)));
+	createAccountRow.add(Button.initText(.{0, 0}, 140, "Create Account", .{.onAction = .init(openCreateAccountWindow)}));
 	list.add(createAccountRow);
 	list.add(CheckBox.init(.{0, 0}, width, "Store Account Code on disk", storeAccountCode, &storeAccountCodeCallback));
 	innerList = VerticalList.init(.{0, 0}, 100, 16);
@@ -142,7 +142,7 @@ pub fn onOpen() void {
 	innerList.finish(.center);
 	refreshInner();
 	list.add(innerList);
-	loginButton = Button.initText(.{padding, 0}, 200, "Login", .init(login));
+	loginButton = Button.initText(.{padding, 0}, 200, "Login", .{.onAction = .init(login)});
 	list.add(loginButton);
 	list.finish(.center);
 	window.rootComponent = list.toComponent();

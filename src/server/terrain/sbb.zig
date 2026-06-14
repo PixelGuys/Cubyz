@@ -5,7 +5,7 @@ const Vec3i = main.vec.Vec3i;
 const ZonElement = main.ZonElement;
 const Blueprint = main.blueprint.Blueprint;
 const ListManaged = main.ListManaged;
-const ListUnmanaged = main.ListUnmanaged;
+const List = main.List;
 const AliasTable = main.utils.AliasTable;
 const Neighbor = main.chunk.Neighbor;
 const Block = main.blocks.Block;
@@ -13,10 +13,10 @@ const Degrees = main.rotation.Degrees;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const Assets = main.assets.Assets;
 
-var structureList: ListUnmanaged(StructureBuildingBlock) = .{};
+var structureList: List(StructureBuildingBlock) = .empty;
 var structureMap: std.StringHashMapUnmanaged(StructureIndex) = .{};
 
-var blueprintList: ListUnmanaged([4]BlueprintEntry) = .{};
+var blueprintList: List([4]BlueprintEntry) = .empty;
 var blueprintMap: std.StringHashMapUnmanaged(BlueprintIndex) = .{};
 
 var childrenToResolve: ListManaged(struct { structureId: []const u8, structure: *?*StructureBuildingBlock }) = undefined;
@@ -25,7 +25,7 @@ const originBlockStringId = "cubyz:sbb/origin";
 var originBlockNumericId: u16 = 0;
 
 var childBlockNumericIdMap: std.AutoHashMapUnmanaged(GlobalBlockIndex, LocalBlockIndex) = .{};
-var childBlockName: ListUnmanaged([]const u8) = .{};
+var childBlockName: List([]const u8) = .empty;
 var childBlockNameToLocalIndex: std.StringHashMapUnmanaged(LocalBlockIndex) = .{};
 
 pub const BlueprintIndex = enum(u32) {
@@ -101,7 +101,7 @@ const BlueprintEntry = struct {
 		};
 
 		var hasOrigin = false;
-		var childBlocks: ListUnmanaged(StructureBlock) = .{};
+		var childBlocks: List(StructureBlock) = .empty;
 		defer childBlocks.deinit(main.stackAllocator);
 
 		for (0..blueprint.blocks.width) |x| {
@@ -271,7 +271,7 @@ pub const StructureBuildingBlock = struct {
 		const rotationParam = zon.getChild("rotation");
 		const rotation = Rotation.fromZon(rotationParam) catch |err| blk: {
 			switch (err) {
-				error.UnknownString => std.log.err("['{s}'] specified unknown rotation '{s}'", .{stringId, rotationParam.as([]const u8, "")}),
+				error.UnknownString => std.log.err("['{s}'] specified unknown rotation '{s}'", .{stringId, rotationParam.as([]const u8).?}),
 				error.UnknownType => std.log.err("['{s}'] unsupported type of rotation field '{s}'", .{stringId, @tagName(rotationParam)}),
 			}
 			break :blk .inherit;
@@ -309,7 +309,7 @@ pub const StructureBuildingBlock = struct {
 	}
 	pub fn postResolutionChecks(self: StructureBuildingBlock) void {
 		// Collect all unique child blocks used in blueprints of this SBB.
-		var childBlocksInBlueprints: ListUnmanaged(LocalBlockIndex) = .{};
+		var childBlocksInBlueprints: List(LocalBlockIndex) = .empty;
 		defer childBlocksInBlueprints.deinit(main.stackAllocator);
 
 		for (self.blueprints.items, 0..) |blueprints, blueprintIndex| {
@@ -436,12 +436,12 @@ pub fn list() []const StructureBuildingBlock {
 
 pub fn reset() void {
 	childBlockNumericIdMap = .{};
-	childBlockName = .{};
+	childBlockName = .empty;
 	childBlockNameToLocalIndex = .{};
 
-	structureList = .{};
+	structureList = .empty;
 	structureMap = .{};
 
-	blueprintList = .{};
+	blueprintList = .empty;
 	blueprintMap = .{};
 }
