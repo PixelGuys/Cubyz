@@ -81,7 +81,7 @@ pub fn onOpen() void {
 			if (storageMethod == .paper) list.add(Label.init(.{0, 0}, width, "We will give you some time to write it down.", .left));
 			if (storageMethod == .passwordManager) list.add(Label.init(.{0, 0}, width, "We will give you some time to copy it to your password manager.", .left));
 			list.add(Label.init(.{0, 0}, width, "Note: Do not give your Account Code to anyone else, only enter it in the login screen inside the game.", .left));
-			button = Button.initText(.{0, 0}, 300, "Return to login", .{.onAction = .init(next), .disabled = true});
+			button = Button.initText(.{0, 0}, 300, "Return to login (20)", .{.onAction = .init(next), .disabled = true});
 			list.add(button);
 		},
 	}
@@ -89,12 +89,21 @@ pub fn onOpen() void {
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();
-	enableTime = main.timestamp().addDuration(.fromSeconds(25));
+	enableTime = main.timestamp().addDuration(.fromSeconds(20));
 }
 
 pub fn update() void {
-	if (enableTime.nanoseconds < main.timestamp().nanoseconds) {
-		button.disabled = false;
+	if (button.disabled) {
+		const remainingTime = enableTime.nanoseconds -% main.timestamp().nanoseconds;
+		const remainTimeSeconds = std.math.divCeil(i96, remainingTime, 1e9) catch unreachable;
+		if (remainTimeSeconds <= 0) {
+			button.disabled = false;
+			button.child.label.updateText("Return to login");
+		} else {
+			const newText = std.fmt.allocPrint(main.stackAllocator.allocator, "Return to login ({})", .{remainTimeSeconds}) catch unreachable;
+			defer main.stackAllocator.free(newText);
+			button.child.label.updateText(newText);
+		}
 	}
 }
 

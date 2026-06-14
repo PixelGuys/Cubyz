@@ -34,7 +34,7 @@ pub fn onOpen() void {
 	const width = 420;
 	list.add(Label.init(.{0, 0}, width, "An Account Code acts as a password and identity.", .left));
 	list.add(Label.init(.{0, 0}, width, "If you lose your Account Code, you lose your Account. There are no recovery options, so please store it somewhere safe.", .left));
-	button = Button.initText(.{0, 0}, 300, "Continue", .{.onAction = .init(next), .disabled = true});
+	button = Button.initText(.{0, 0}, 300, "Continue (8)", .{.onAction = .init(next), .disabled = true});
 	list.add(button);
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
@@ -44,8 +44,17 @@ pub fn onOpen() void {
 }
 
 pub fn update() void {
-	if (enableTime.nanoseconds < main.timestamp().nanoseconds) {
-		button.disabled = false;
+	if (button.disabled) {
+		const remainingTime = enableTime.nanoseconds -% main.timestamp().nanoseconds;
+		const remainTimeSeconds = std.math.divCeil(i96, remainingTime, 1e9) catch unreachable;
+		if (remainTimeSeconds <= 0) {
+			button.disabled = false;
+			button.child.label.updateText("Continue");
+		} else {
+			const newText = std.fmt.allocPrint(main.stackAllocator.allocator, "Continue ({})", .{remainTimeSeconds}) catch unreachable;
+			defer main.stackAllocator.free(newText);
+			button.child.label.updateText(newText);
+		}
 	}
 }
 
