@@ -74,7 +74,7 @@ pub fn onOpen() void {
 			list.add(Label.init(.{0, 0}, width, "Please enter a file name, we will store it there.", .left));
 			fileNameEntry = TextInput.init(.{0, 0}, width, 22, "", .{.onNewline = .{}});
 			list.add(fileNameEntry);
-			button = Button.initText(.{0, 0}, 300, "Safe and return to login", .{.onAction = .init(next), .disabled = false});
+			button = Button.initText(.{0, 0}, 300, "Save and return to login", .{.onAction = .init(next), .disabled = true});
 			list.add(button);
 		},
 		.paper, .passwordManager => {
@@ -93,17 +93,24 @@ pub fn onOpen() void {
 }
 
 pub fn update() void {
-	if (button.disabled) {
-		const remainingTime = enableTime.nanoseconds -% main.timestamp().nanoseconds;
-		const remainTimeSeconds = std.math.divCeil(i96, remainingTime, 1e9) catch unreachable;
-		if (remainTimeSeconds <= 0) {
-			button.disabled = false;
-			button.child.label.updateText("Return to login");
-		} else {
-			const newText = std.fmt.allocPrint(main.stackAllocator.allocator, "Return to login ({})", .{remainTimeSeconds}) catch unreachable;
-			defer main.stackAllocator.free(newText);
-			button.child.label.updateText(newText);
-		}
+	switch (storageMethod) {
+		.file => {
+			button.disabled = fileNameEntry.currentString.items.len == 0;
+		},
+		.paper, .passwordManager => {
+			if (button.disabled) {
+				const remainingTime = enableTime.nanoseconds -% main.timestamp().nanoseconds;
+				const remainTimeSeconds = std.math.divCeil(i96, remainingTime, 1e9) catch unreachable;
+				if (remainTimeSeconds <= 0) {
+					button.disabled = false;
+					button.child.label.updateText("Return to login");
+				} else {
+					const newText = std.fmt.allocPrint(main.stackAllocator.allocator, "Return to login ({})", .{remainTimeSeconds}) catch unreachable;
+					defer main.stackAllocator.free(newText);
+					button.child.label.updateText(newText);
+				}
+			}
+		},
 	}
 }
 
