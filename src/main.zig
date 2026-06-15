@@ -54,6 +54,8 @@ pub const ListManaged = utils.list.ListManaged;
 pub const List = utils.list.List;
 pub const MultiArray = utils.list.MultiArray;
 
+pub const std_options = log.std_options;
+
 pub threadlocal var stackAllocator: heap.NeverFailingAllocator = if (builtin.is_test) heap.testingAllocator else undefined;
 pub threadlocal var seed: u64 = undefined;
 threadlocal var stackAllocatorBase: heap.StackAllocator = undefined;
@@ -87,8 +89,6 @@ fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
 fn cacheString(comptime str: []const u8) []const u8 {
 	return cacheStringImpl(str.len, str[0..].*);
 }
-
-pub const std_options = log.std_options;
 
 // MARK: Callbacks
 fn escape(mods: Window.Key.Modifiers) void {
