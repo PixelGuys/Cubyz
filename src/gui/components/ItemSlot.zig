@@ -151,3 +151,8 @@ pub fn render(self: *ItemSlot, currentFrame: *graphics.vulkan.Frame, _: Vec2f) v
 		}
 	}
 }
+
+pub fn getTooltip(self: *ItemSlot, _: Vec2f) ?[]const u8 {
+	if (gui.inventory.carried.getAmount(0) != 0) return null;
+	return self.inventory.getItem(self.itemSlot).getTooltip();
+}

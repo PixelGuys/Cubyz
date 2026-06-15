@@ -174,3 +174,26 @@ pub fn mainButtonReleased(self: *VerticalList, mousePosition: Vec2f) void {
 		child.mainButtonReleased(mousePosition - shiftedPos);
 	}
 }
+
+pub fn getTooltip(self: *VerticalList, mousePosition: Vec2f) ?[]const u8 {
+	var shiftedPos = self.pos;
+	if (self.scrollBarEnabled) {
+		const diff = self.childrenHeight - self.maxHeight;
+		shiftedPos[1] -= diff*self.scrollBar.currentState;
+		self.scrollBar.scroll(-main.Window.scrollOffset*32/diff);
+		main.Window.scrollOffset = 0;
+		if (GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
+			if (self.scrollBar.toComponent().getTooltip(mousePosition - self.pos)) |tooltip| return tooltip;
+		}
+	}
+	// reverse order of rendering, the last-rendered element is the first one that we should try to interact with
+	var i: usize = self.children.items.len;
+	while (i != 0) {
+		i -= 1;
+		const child = &self.children.items[i];
+		if (GuiComponent.contains(child.pos() + shiftedPos, child.size(), mousePosition)) {
+			if (child.getTooltip(mousePosition - shiftedPos)) |tooltip| return tooltip;
+		}
+	}
+	return null;
+}

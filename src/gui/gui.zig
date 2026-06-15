@@ -628,6 +628,21 @@ pub fn updateAndRenderGui(currentFrame: *graphics.vulkan.Frame) void {
 			}
 			window.render(currentFrame, mousePos);
 		}
+		for (openWindows.items) |window| {
+			if (window.renderToolTip(mousePos) == .handled) break;
+		}
+
+		// Draw tooltip
+		// reverse order of rendering, the last-rendered element is the first one that we should try to interact with
+		var i: usize = openWindows.items.len;
+		while (i != 0) {
+			i -= 1;
+			const window: *GuiWindow = openWindows.items[i];
+			if (GuiComponent.contains(window.pos, window.size, mousePos)) {
+				if (window.renderToolTip(mousePos) == .handled) break;
+			}
+		}
+
 		inventory.render(currentFrame, mousePos);
 	}
 	const oldScale = draw.setScale(scale);
