@@ -15,7 +15,7 @@ const c = @import("c");
 
 // TODO: Might want to use SSL or something similar to encode the message
 
-const ms = 1_000;
+pub const ms = 1_000;
 inline fn networkTimestamp() i64 {
 	return @truncate(@divTrunc(main.timestamp().toNanoseconds(), 1000));
 }
@@ -768,7 +768,7 @@ pub const Connection = struct { // MARK: Connection
 	pub var internalHeaderOverhead: Atomic(usize) = .init(0);
 	pub var externalHeaderOverhead: Atomic(usize) = .init(0);
 
-	const SequenceIndex = i32;
+	pub const SequenceIndex = i32;
 
 	const LossStatus = enum {
 		noLoss,
@@ -1422,15 +1422,7 @@ pub const Connection = struct { // MARK: Connection
 		disconnected,
 	};
 
-	pub const HandShakeState = enum(u8) {
-		start = 0,
-		userData = 1,
-		signatureRequest = 2,
-		signatureResponse = 3,
-		assets = 4,
-		serverData = 5,
-		complete = 255,
-	};
+	pub const HandShakeState = enum(u8) { start = 0, userData = 1, signatureRequest = 2, signatureResponse = 3, reload = 4, assets = 5, serverData = 6, complete = 255 };
 
 	// MARK: fields
 

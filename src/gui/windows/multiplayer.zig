@@ -58,7 +58,7 @@ fn join() void {
 		_connection.world = &main.game.testWorld;
 		main.game.world = &main.game.testWorld;
 		std.log.info("Connecting to server: {s}", .{ipAddressEntry.currentString.items});
-		main.game.testWorld.init(ipAddressEntry.currentString.items, _connection) catch |err| {
+		main.game.testWorld.init(ipAddressEntry.currentString.items, _connection, false) catch |err| {
 			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
 			main.gui.windowlist.notification.raiseNotification("Encountered error while opening world: {s}", .{@errorName(err)});
 			main.game.world = null;
