@@ -1422,7 +1422,16 @@ pub const Connection = struct { // MARK: Connection
 		disconnected,
 	};
 
-	pub const HandShakeState = enum(u8) { start = 0, userData = 1, signatureRequest = 2, signatureResponse = 3, reload = 4, assets = 5, serverData = 6, complete = 255 };
+	pub const HandShakeState = enum(u8) {
+		start = 0,
+		userData = 1,
+		signatureRequest = 2,
+		signatureResponse = 3,
+		reload = 4,
+		assets = 5,
+		serverData = 6,
+		complete = 255,
+	};
 
 	// MARK: fields
 
