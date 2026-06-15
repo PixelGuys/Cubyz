@@ -47,19 +47,22 @@ pub fn sortItems(target: main.items.Inventory.ClientInventory) void {
 	target.sortItems(12);
 }
 
+
 pub fn onOpen() void {
+	const sortCallback: main.callbacks.SimpleCallback = .{.inner = @ptrCast(&sortItems), .data = &Player.inventory};
+	window.titleBar = HorizontalList.init();
+	window.titleBar.?.add(Button.initIcon(.{0, 0}, .{9, 9}, sortIcon, false, .{.onAction = sortCallback}));
+
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
 	// Some miscellanious slots and buttons:
 	// TODO: armor slots, backpack slot + stack-based backpack inventory, other items maybe?
 	{
 		const row = HorizontalList.init();
-		const sortCallback: main.callbacks.SimpleCallback = .{.inner = @ptrCast(&sortItems), .data = &Player.inventory};
 		const spacing = 32 + 80;
 		blk: {
 			row.add(GuiComponent.BagSlot.init(.{spacing, 0}, main.entity.components.@"cubyz:bag".client.getBag(main.game.Player.id) orelse break :blk));
 		}
 		row.add(Button.initIcon(.{32, 0}, .{32, 32}, craftingIcon, true, .{.onAction = gui.openWindowCallback("inventory_crafting")}));
-		row.add(Button.initIcon(.{80, 16}, .{16, 16}, sortIcon, true, .{.onAction = sortCallback}));
 		list.add(row);
 	}
 	for (0..2) |y| {
