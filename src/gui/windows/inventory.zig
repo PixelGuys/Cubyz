@@ -41,14 +41,7 @@ pub fn deinit() void {
 
 var itemSlots: [20]*ItemSlot = undefined;
 
-fn sayHello() void {
-	std.log.debug("Hello Titlebar", .{});
-}
-
 pub fn onOpen() void {
-	window.titleBar = HorizontalList.init();
-	window.titleBar.?.add(Button.initIcon(.{0, 0}, .{15, 15}, craftingIcon, false, .{.onAction = .init(sayHello)}));
-	window.titleBar.?.add(GuiComponent.Label.init(.{padding, 0}, 150, "Inventory", .left));
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
 	// Some miscellanious slots and buttons:
 	// TODO: armor slots, backpack slot + stack-based backpack inventory, other items maybe?
@@ -79,8 +72,5 @@ pub fn onOpen() void {
 pub fn onClose() void {
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
-	}
-	if (window.titleBar) |titleBar| {
-		titleBar.deinit();
 	}
 }
