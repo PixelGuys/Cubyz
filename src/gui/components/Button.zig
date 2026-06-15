@@ -191,6 +191,6 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 }
 
 pub fn getTooltip(self: *Button, _: Vec2f) ?[]const u8 {
-	//if (!self.disabled) return null;
+	if (!self.disabled) return null;
 	return self.disabledReason;
 }
