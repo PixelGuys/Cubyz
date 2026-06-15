@@ -148,7 +148,7 @@ fn logToStdErr(level: Level, comptime format: []const u8, args: anytype) void {
 	const allocator = fba.allocator();
 
 	const _string = std.fmt.allocPrint(allocator, format, args) catch format;
-	const string = if (level.isColorCoded() and supportsANSIColors) convertColorToANSI(_string) else _string;
+	const string = if (level.isColorCoded() and supportsANSIColors) convertColorToANSI(main.stackAllocator, _string) else _string;
 	defer if (level.isColorCoded() and supportsANSIColors) main.stackAllocator.free(string);
 
 	const writer = std.debug.lockStderr(&.{});
@@ -156,15 +156,15 @@ fn logToStdErr(level: Level, comptime format: []const u8, args: anytype) void {
 	nosuspend writer.file_writer.interface.writeAll(string) catch {};
 }
 
-fn convertColorToANSI(text: []const u8) []const u8 {
+fn convertColorToANSI(allocator: main.heap.NeverFailingAllocator, text: []const u8) []const u8 {
 	var list: List(u8) = .empty;
 
 	var parser = graphics.TextBuffer.Parser{
 		.unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0},
 		.currentFontEffect = .{},
-		.parsedText = .init(main.stackAllocator),
-		.fontEffects = .init(main.stackAllocator),
-		.characterIndex = .init(main.stackAllocator),
+		.parsedText = .init(allocator),
+		.fontEffects = .init(allocator),
+		.characterIndex = .init(allocator),
 		.showControlCharacters = false,
 	};
 	defer parser.fontEffects.deinit();
@@ -175,50 +175,50 @@ fn convertColorToANSI(text: []const u8) []const u8 {
 	parser.currentFontEffect = .{};
 	for (0..parser.parsedText.items.len) |i| {
 		if (parser.fontEffects.items[i].color != parser.currentFontEffect.color) {
-			list.appendSlice(main.stackAllocator, "\x1b[38;2");
+			list.appendSlice(allocator, "\x1b[38;2");
 			var shift: u5 = 16;
 			while (true) : (shift -= 8) {
-				list.print(main.stackAllocator, ";{d}", .{@as(u8, @truncate(parser.fontEffects.items[i].color >> shift))});
+				list.print(allocator, ";{d}", .{@as(u8, @truncate(parser.fontEffects.items[i].color >> shift))});
 				if (shift == 0) break;
 			}
-			list.append(main.stackAllocator, 'm');
+			list.append(allocator, 'm');
 		}
 		if (parser.fontEffects.items[i].bold != parser.currentFontEffect.bold) {
-			list.appendSlice(main.stackAllocator, "\x1b[");
+			list.appendSlice(allocator, "\x1b[");
 			if (!parser.currentFontEffect.bold) {
-				list.append(main.stackAllocator, '1');
+				list.append(allocator, '1');
 			} else {
-				list.appendSlice(main.stackAllocator, "22");
+				list.appendSlice(allocator, "22");
 			}
-			list.append(main.stackAllocator, 'm');
+			list.append(allocator, 'm');
 		}
 		if (parser.fontEffects.items[i].italic != parser.currentFontEffect.italic) {
-			list.appendSlice(main.stackAllocator, "\x1b[");
+			list.appendSlice(allocator, "\x1b[");
 			if (parser.currentFontEffect.italic) {
-				list.append(main.stackAllocator, '2');
+				list.append(allocator, '2');
 			}
-			list.appendSlice(main.stackAllocator, "3m");
+			list.appendSlice(allocator, "3m");
 		}
 		if (parser.fontEffects.items[i].strikethrough != parser.currentFontEffect.strikethrough) {
-			list.appendSlice(main.stackAllocator, "\x1b[");
+			list.appendSlice(allocator, "\x1b[");
 			if (parser.currentFontEffect.strikethrough) {
-				list.append(main.stackAllocator, '2');
+				list.append(allocator, '2');
 			}
-			list.appendSlice(main.stackAllocator, "9m");
+			list.appendSlice(allocator, "9m");
 		}
 		if (parser.fontEffects.items[i].underline != parser.currentFontEffect.underline) {
-			list.appendSlice(main.stackAllocator, "\x1b[");
+			list.appendSlice(allocator, "\x1b[");
 			if (parser.currentFontEffect.underline) {
-				list.append(main.stackAllocator, '2');
+				list.append(allocator, '2');
 			}
-			list.appendSlice(main.stackAllocator, "4m");
+			list.appendSlice(allocator, "4m");
 		}
 		parser.currentFontEffect = parser.fontEffects.items[i];
 		var testBuff: [3]u8 = undefined;
 		const len = std.unicode.utf8Encode(@intCast(parser.parsedText.items[i]), &testBuff) catch continue;
-		list.appendSlice(main.stackAllocator, testBuff[0..len]);
+		list.appendSlice(allocator, testBuff[0..len]);
 	}
-	return list.toOwnedSlice(main.stackAllocator);
+	return list.toOwnedSlice(allocator);
 }
 
 pub fn server(comptime format: []const u8, args: anytype) void {
