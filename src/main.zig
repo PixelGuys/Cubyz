@@ -467,9 +467,6 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	threadPool = utils.ThreadPool.init(globalAllocator, settings.cpuThreads orelse @max(1, (std.Thread.getCpuCount() catch 4) -| 1));
 	defer threadPool.deinit();
 
-	if (!headless) audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
-	defer if (!headless) audio.deinit();
-
 	file_monitor.init();
 	defer file_monitor.deinit();
 
@@ -479,6 +476,9 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	if (!headless) graphics.init();
 	defer if (!headless) graphics.deinit();
 
+	if (!headless) audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
+	defer if (!headless) audio.deinit();
+	
 	utils.initDynamicIntArrayStorage();
 	defer utils.deinitDynamicIntArrayStorage();
 
