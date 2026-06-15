@@ -642,9 +642,6 @@ pub const meshes = struct { // MARK: meshes
 	pub var ditherTexture: graphics.Texture = undefined;
 
 	const black: Color = Color{.r = 0, .g = 0, .b = 0, .a = 255};
-	const magenta: Color = Color{.r = 255, .g = 0, .b = 255, .a = 255};
-	var undefinedTexture = [_]Color{magenta, black, black, magenta};
-	const undefinedImage = Image{.width = 2, .height = 2, .imageData = undefinedTexture[0..]};
 	var emptyTexture = [_]Color{black};
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
@@ -786,6 +783,9 @@ pub const meshes = struct { // MARK: meshes
 			main.stackAllocator.free(path);
 			path = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
 			break :blk main.files.cwd().openFile(path) catch |err2| {
+				if (err2 != error.FileNotFound) {
+					std.log.err("Could not open file {s}: {s}", .{path, @errorName(err2)});
+				}
 				std.log.err("File not found. Searched in \"{s}\" and also in the assetFolder \"{s}\"", .{path, assetFolder});
 				return err2;
 			};
@@ -800,7 +800,7 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn getTextureIndices(zon: ZonElement, assetFolder: []const u8, textureIndicesRef: *[16]u16) void {
-		const defaultIndex = findTexture(zon.get(?[]const u8, "texture", null), assetFolder) catch 0;
+		const defaultIndex = findTexture(zon.get(?[]const u8, "texture", null), assetFolder) catch findTexture("cubyz:undefined", assetFolder) catch 0;
 		inline for (textureIndicesRef, 0..) |*ref, i| {
 			var textureId = zon.get(?[]const u8, std.fmt.comptimePrint("texture{}", .{i}), null);
 			if (i < sideNames.len) {
