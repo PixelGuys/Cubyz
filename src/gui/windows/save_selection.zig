@@ -26,6 +26,8 @@ var buttonNameArena: main.heap.NeverFailingArenaAllocator = undefined;
 
 pub var needsUpdate: bool = false;
 
+pub var mode: main.server.ServerWorld.Mode = undefined;
+
 var deleteIcon: Texture = undefined;
 var fileExplorerIcon: Texture = undefined;
 
@@ -53,7 +55,7 @@ pub fn openWorld(name: []const u8) void {
 	};
 
 	std.log.info("Opening world {s}", .{name});
-	main.server.thread = std.Thread.spawn(.{}, main.server.startFromNewThread, .{name, clientConnection.localPort}) catch |err| {
+	main.server.thread = std.Thread.spawn(.{}, main.server.startFromNewThread, .{name, clientConnection.localPort, mode}) catch |err| {
 		std.log.err("Encountered error while starting server thread: {s}", .{@errorName(err)});
 		return;
 	};
