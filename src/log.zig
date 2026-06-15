@@ -33,26 +33,7 @@ var logFileTs: ?std.Io.File = undefined;
 var supportsANSIColors: bool = undefined;
 var openingErrorWindow: bool = false;
 
-// overwrite the log function:
-pub const std_options: std.Options = .{ // MARK: std_options
-	.log_level = .debug,
-	.logFn = struct {
-		pub fn logFn(
-			comptime level: std.log.Level,
-			comptime _: @EnumLiteral(),
-			comptime format: []const u8,
-			args: anytype,
-		) void {
-			var runtimeArgs: [args.len]fmt.FormatArg = undefined;
-			inline for (0..args.len) |i| {
-				runtimeArgs[i] = .fromAnytype(@TypeOf(args[i]), &args[i]);
-			}
-			runtimeLogFn(@enumFromInt(@intFromEnum(level)), format, &runtimeArgs);
-		}
-	}.logFn,
-};
-
-noinline fn runtimeLogFn(level: Level, format: []const u8, args: []const fmt.FormatArg) void {
+pub noinline fn runtimeLogFn(level: Level, format: []const u8, args: []const fmt.FormatArg) void {
 	var buf: [65536]u8 = undefined;
 	var writer: std.Io.Writer = .fixed(&buf);
 	fmt.format(&writer, format, args) catch {
