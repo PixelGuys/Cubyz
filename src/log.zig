@@ -47,7 +47,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 			inline for (0..args.len) |i| {
 				runtimeArgs[i] = .fromAnytype(@TypeOf(args[i]), &args[i]);
 			}
-			runtimeLogFn(level, format, &runtimeArgs);
+			runtimeLogFn(@enumFromInt(@intFromEnum(level)), format, &runtimeArgs);
 		}
 	}.logFn,
 };

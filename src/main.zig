@@ -88,6 +88,8 @@ fn cacheString(comptime str: []const u8) []const u8 {
 	return cacheStringImpl(str.len, str[0..].*);
 }
 
+pub const std_options = log.std_options;
+
 // MARK: Callbacks
 fn escape(mods: Window.Key.Modifiers) void {
 	if (gui.selectedTextInput != null) gui.setSelectedTextInput(null);
