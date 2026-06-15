@@ -320,6 +320,7 @@ pub const World = struct { // MARK: World
 		main.sync.client.reset();
 
 		main.threadPool.clear();
+		Player.super.deinit(.client);
 		main.entity.client.clear();
 		self.itemDrops.deinit();
 		self.blockPalette.deinit();
@@ -331,8 +332,6 @@ pub const World = struct { // MARK: World
 		self.manager.deinit();
 		main.server.stop();
 		main.entityModel.reset();
-
-		Player.super.deinit(.client);
 
 		if (main.server.thread) |serverThread| {
 			serverThread.join();
