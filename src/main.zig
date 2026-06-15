@@ -524,9 +524,6 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 
 	server.terrain.globalInit();
 
-	server.reload.init();
-	defer server.reload.deinit();
-
 	if (headless) {
 		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null);
 		heap.GarbageCollection.waitForFreeCompletion();
@@ -635,13 +632,8 @@ pub fn clientMain() void { // MARK: clientMain()
 			shouldExitToMenu.store(false, .monotonic);
 			Window.setMouseGrabbed(false);
 			if (game.world) |world| {
-				const weHostTheServer = server.thread != null;
 				world.deinit();
 				game.world = null;
-				if (weHostTheServer and server.restart) {
-					gui.windowlist.save_selection.openWorld(server.reload.worldName);
-					continue;
-				}
 			}
 			gui.openWindow("main");
 			audio.setMusic("cubyz:totaldemented/cubyz_remastered");

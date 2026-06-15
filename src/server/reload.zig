@@ -5,14 +5,11 @@ const main = @import("main");
 
 pub var worldName: []const u8 = &.{};
 
-pub fn init() void {}
+pub fn init(_worldName:[]const u8) void {
+	worldName = main.globalAllocator.dupe(u8, _worldName);
+}
 pub fn deinit() void {
 	main.globalAllocator.free(worldName);
-}
-pub fn storeWorldName(_worldName: []const u8) void {
-	if (std.mem.eql(u8, _worldName, worldName)) return;
-	main.globalAllocator.free(worldName);
-	worldName = main.globalAllocator.dupe(u8, _worldName);
 }
 
 // storing stuff for init after restart
