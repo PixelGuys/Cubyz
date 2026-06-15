@@ -554,19 +554,10 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	userConnectList = .init(main.globalAllocator, 16);
 	lastTime = main.timestamp();
 
-	if (reload.connectionManager) |_connManager| {
-		connectionManager = _connManager;
-		connectionManager.@"continue"() catch |err| {
-			std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
-			@panic("Could not open Server.");
-		};
-		reload.connectionManager = null;
-	} else {
-		connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
-			std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
-			@panic("Could not open Server.");
-		}; // TODO Configure the second argument in the server settings.
-	}
+	connectionManager.@"continue"() catch |err| {
+		std.log.err("Couldn't create thread: {s}", .{@errorName(err)});
+		@panic("Could not open Server.");
+	};
 
 	main.entity.server.init();
 	main.items.Inventory.server.init();
@@ -594,19 +585,8 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	}
 }
 
-fn deinit(_reload: bool) void {
-	if (_reload) {
-		reload.connectionManager = connectionManager;
-		reload.connectionManager.?.pause();
-
-		for (connectionManager.connections.items) |conn| {
-			conn.disconnect();
-		}
-	} else {
-		connectionManager.deinit();
-		connectionManager = undefined;
-		reload.connectionManager = null;
-	}
+fn deinit() void {
+	connectionManager.pause();
 	main.threadPool.clear();
 
 	users.clearAndFree();
@@ -735,11 +715,20 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 
 	restart = true;
 
+	connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
+		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
+		@panic("Could not open Server.");
+	}; // TODO Configure the second argument in the server settings.
+	defer {
+		connectionManager.deinit();
+		connectionManager = undefined;
+	}
 	while (restart) {
 		restart = false;
-
+		
 		init(main.server.reload.worldName, port);
-		defer deinit(restart);
+		defer deinit();
+
 		running.store(true, .release);
 		while (running.load(.monotonic)) {
 			main.heap.GarbageCollection.syncPoint();
@@ -754,6 +743,7 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 			update();
 		}
 		if (!main.settings.launchConfig.headlessServer) return;
+		
 	}
 }
 

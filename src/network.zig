@@ -506,7 +506,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		errdefer main.globalAllocator.destroy(result);
 		result.* = .{};
 		result.packetSendRequests = .initContext({});
-
+		result.running.store(true, .monotonic);
+		
 		result.localPort = localPort;
 		result.socket = Socket.init(localPort) catch |err| blk: {
 			if (err == error.AddressInUse) {
@@ -529,45 +530,35 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		return result;
 	}
 	pub fn @"continue"(result: *ConnectionManager) !void {
-		std.debug.assert(!result.running.load(.monotonic));
+		if(result.running.load(.monotonic)) return;
 		result.packetSendRequests = .initContext({});
 		result.running.store(true, .monotonic);
 		result.thread = try std.Thread.spawn(.{}, run, .{result});
 		result.thread.setName(main.io, "Network Thread") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
 	}
 	pub fn deinit(self: *ConnectionManager) void {
-		self.running.store(false, .monotonic);
-		self.thread.join();
-		for (self.connections.items) |conn| {
-			conn.disconnect();
-		}
-
+		if(self.running.load(.monotonic)) self.pause();
 		self.socket.deinit();
 		self.connections.deinit(main.globalAllocator);
-		for (self.requests.items) |request| {
-			request.requestNotifier.signal();
-		}
-		self.requests.deinit(main.globalAllocator);
-		while (self.packetSendRequests.pop()) |packet| {
-			main.globalAllocator.free(packet.data);
-		}
-		self.packetSendRequests.deinit(main.globalAllocator.allocator);
-
 		main.globalAllocator.destroy(self);
 	}
 	pub fn pause(self: *ConnectionManager) void {
 		std.debug.assert(self.running.load(.monotonic));
+		
 		self.running.store(false, .monotonic);
 		self.thread.join();
 		for (self.requests.items) |request| {
 			request.requestNotifier.signal();
 		}
 		self.requests.deinit(main.globalAllocator);
-		self.requests = .empty;
 		while (self.packetSendRequests.pop()) |packet| {
 			main.globalAllocator.free(packet.data);
 		}
 		self.packetSendRequests.deinit(main.globalAllocator.allocator);
+
+		for (self.connections.items) |conn| {
+			conn.disconnect();
+		}
 	}
 
 	pub fn makeOnline(self: *ConnectionManager) void {

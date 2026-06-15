@@ -22,10 +22,10 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000{s}", .{errorMessage.items});
 		return;
 	};
-	if(result.@"/server <action>".action == .restart and !main.settings.launchConfig.headlessServer){
+	if (result.@"/server <action>".action == .restart and !main.settings.launchConfig.headlessServer) {
 		source.sendMessage("#ff0000Headfull restart isn't supported yet.", .{});
 		return;
 	}
-		
+	
 	main.server.stop(result.@"/server <action>".action);
 }
