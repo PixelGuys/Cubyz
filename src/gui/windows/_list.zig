@@ -36,6 +36,10 @@ pub const social = @import("social.zig");
 pub const sound = @import("sound.zig");
 pub const workbench = @import("workbench.zig");
 
-pub const @"authentication/create_account" = @import("authentication/create_account.zig");
+pub const @"authentication/create_account_account_code" = @import("authentication/create_account_account_code.zig");
+pub const @"authentication/create_account_general_info" = @import("authentication/create_account_general_info.zig");
+pub const @"authentication/create_account_storage_method" = @import("authentication/create_account_storage_method.zig");
+pub const @"authentication/encrypt_with_password" = @import("authentication/encrypt_with_password.zig");
 pub const @"authentication/login" = @import("authentication/login.zig");
+pub const @"authentication/stay_logged_in" = @import("authentication/stay_logged_in.zig");
 pub const @"authentication/unlock" = @import("authentication/unlock.zig");
