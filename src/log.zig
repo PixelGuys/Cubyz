@@ -192,7 +192,7 @@ fn convertColorToANSI(text: []const u8) []const u8 {
 		}
 		parser.currentFontEffect = parser.fontEffects.items[i];
 		var testBuff: [3]u8 = undefined;
-		const len = std.unicode.utf8Encode(@truncate(parser.parsedText.items[i]), &testBuff) catch continue;
+		const len = std.unicode.utf8Encode(@intCast(parser.parsedText.items[i]), &testBuff) catch continue;
 		list.appendSlice(main.stackAllocator, testBuff[0..len]);
 	}
 	return list.toOwnedSlice(main.stackAllocator);
