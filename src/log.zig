@@ -152,7 +152,7 @@ fn logToStdErr(level: Level, comptime format: []const u8, args: anytype) void {
 	nosuspend writer.file_writer.interface.writeAll(string) catch {};
 }
 
-pub fn convertColorToANSI(text: []const u8) []const u8 {
+fn convertColorToANSI(text: []const u8) []const u8 {
 	var list: List(u8) = .empty;
 
 	var parser = graphics.TextBuffer.Parser{
