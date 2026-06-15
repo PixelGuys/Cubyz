@@ -172,51 +172,63 @@ fn convertColorToANSI(allocator: main.heap.NeverFailingAllocator, text: []const 
 	defer parser.characterIndex.deinit();
 	parser.parse();
 
-	parser.currentFontEffect = .{};
+	var currentFontEffect: graphics.TextBuffer.FontEffect = .{};
 	for (0..parser.parsedText.items.len) |i| {
-		if (parser.fontEffects.items[i].color != parser.currentFontEffect.color) {
-			list.appendSlice(allocator, "\x1b[38;2");
+		// add actual text at then end
+		defer blk: {
+			var testBuff: [3]u8 = undefined;
+			const len = std.unicode.utf8Encode(@intCast(parser.parsedText.items[i]), &testBuff) catch break :blk;
+			list.appendSlice(allocator, testBuff[0..len]);
+		}
+		if (parser.fontEffects.items[i] == currentFontEffect) continue;
+
+		list.appendSlice(allocator, "\x1b[");
+		defer list.append(allocator, 'm');
+
+		var addedEffect: bool = false;
+
+		if (parser.fontEffects.items[i].color != currentFontEffect.color) {
+			list.appendSlice(allocator, "38;2");
 			var shift: u5 = 16;
 			while (true) : (shift -= 8) {
 				list.print(allocator, ";{d}", .{@as(u8, @truncate(parser.fontEffects.items[i].color >> shift))});
 				if (shift == 0) break;
 			}
-			list.append(allocator, 'm');
+			addedEffect = true;
 		}
-		if (parser.fontEffects.items[i].bold != parser.currentFontEffect.bold) {
-			list.appendSlice(allocator, "\x1b[");
+		if (parser.fontEffects.items[i].bold != currentFontEffect.bold) {
+			if (addedEffect) list.append(allocator, ';');
 			if (!parser.currentFontEffect.bold) {
 				list.append(allocator, '1');
 			} else {
 				list.appendSlice(allocator, "22");
 			}
-			list.append(allocator, 'm');
+			addedEffect = true;
 		}
-		if (parser.fontEffects.items[i].italic != parser.currentFontEffect.italic) {
-			list.appendSlice(allocator, "\x1b[");
+		if (parser.fontEffects.items[i].italic != currentFontEffect.italic) {
+			if (addedEffect) list.append(allocator, ';');
 			if (parser.currentFontEffect.italic) {
 				list.append(allocator, '2');
 			}
-			list.appendSlice(allocator, "3m");
+			list.append(allocator, '3');
+			addedEffect = true;
 		}
-		if (parser.fontEffects.items[i].strikethrough != parser.currentFontEffect.strikethrough) {
-			list.appendSlice(allocator, "\x1b[");
+		if (parser.fontEffects.items[i].strikethrough != currentFontEffect.strikethrough) {
+			if (addedEffect) list.append(allocator, ';');
 			if (parser.currentFontEffect.strikethrough) {
 				list.append(allocator, '2');
 			}
-			list.appendSlice(allocator, "9m");
+			list.append(allocator, '9');
+			addedEffect = true;
 		}
-		if (parser.fontEffects.items[i].underline != parser.currentFontEffect.underline) {
-			list.appendSlice(allocator, "\x1b[");
+		if (parser.fontEffects.items[i].underline != currentFontEffect.underline) {
+			if (addedEffect) list.append(allocator, ';');
 			if (parser.currentFontEffect.underline) {
 				list.append(allocator, '2');
 			}
-			list.appendSlice(allocator, "4m");
+			list.append(allocator, '4');
 		}
-		parser.currentFontEffect = parser.fontEffects.items[i];
-		var testBuff: [3]u8 = undefined;
-		const len = std.unicode.utf8Encode(@intCast(parser.parsedText.items[i]), &testBuff) catch continue;
-		list.appendSlice(allocator, testBuff[0..len]);
+		currentFontEffect = parser.fontEffects.items[i];
 	}
 	return list.toOwnedSlice(allocator);
 }
