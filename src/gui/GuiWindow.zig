@@ -513,7 +513,7 @@ pub fn drawIcons(self: *const GuiWindow) void {
 	x -= iconWidth;
 	zoomInTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
 
-	const oldClip = graphics.draw.setClip(.{x, titleBarHeight - 2});
+	const oldClip = graphics.draw.setClip(.{x, titleBarHeight});
 	defer graphics.draw.restoreClip(oldClip);
 	if (self.titleBar) |titleBar| titleBar.render(.{0, 0});
 }
