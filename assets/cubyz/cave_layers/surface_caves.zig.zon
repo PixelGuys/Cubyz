@@ -3,5 +3,5 @@
 	.layerHeight = 250,
 	.depthHint = -1,
 
-	.caveDensity = 0.02,
+	.caveDensity = 0.05,
 }
