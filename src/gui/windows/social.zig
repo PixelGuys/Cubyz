@@ -51,8 +51,8 @@ pub fn onOpen() void {
 	list.add(CheckBox.init(.{0, 0}, 316, "Display players index after their name", main.settings.showPlayerIndexWithName, &toggleNamesWithIndex));
 	list.add(Button.initText(.{0, 0}, 150, "Copy public key", .{.onAction = .init(copy)}));
 	const inGameDisabled = main.game.world != null;
-	list.add(Button.initText(.{0, 0}, 150, "Change Name", .{.onAction = gui.openWindowCallback("change_name"), .disabled = inGameDisabled}));
-	list.add(Button.initText(.{0, 0}, 150, "Logout", .{.onAction = .init(logout), .disabled = inGameDisabled}));
+	list.add(Button.initText(.{0, 0}, 150, "Change Name", .{.onAction = gui.openWindowCallback("change_name"), .disabled = inGameDisabled, .disabledReason = "First leave the world to change your name"}));
+	list.add(Button.initText(.{0, 0}, 150, "Logout", .{.onAction = .init(logout), .disabled = inGameDisabled, .disabledReason = "First leave the world to logout"}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
