@@ -868,6 +868,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		self.allocator.free(self.threads);
 		self.allocator.destroy(self);
 	}
+
 	pub fn closeAllTasksOfType(self: *ThreadPool, vtable: *const VTable) void {
 		std.debug.assert(vtable.taskType != .chunkgen);
 		self.loadList.mutex.lock();
