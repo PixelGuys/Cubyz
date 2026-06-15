@@ -504,6 +504,44 @@ pub fn drawIcons(self: *const GuiWindow) void {
 	zoomInTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
 }
 
+pub fn renderToolTip(self: *const GuiWindow, mousePosition: Vec2f) main.callbacks.Result {
+	const rootComponent = self.rootComponent orelse return .ignored;
+	const tooltip = rootComponent.getTooltip((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale))) orelse return .ignored;
+
+	var textBuffer = graphics.TextBuffer.init(main.stackAllocator, tooltip, .{}, false, .left);
+	defer textBuffer.deinit();
+	const fontSize = 16;
+	var size = textBuffer.calculateLineBreaks(fontSize, 300);
+	size[0] = 0;
+	for (textBuffer.lineBreaks.items) |lineBreak| {
+		size[0] = @max(size[0], lineBreak.width);
+	}
+	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(self.scale));
+	const xOffset = 18;
+	const padding: f32 = 1;
+	const border: f32 = padding + 1;
+	var pos = mousePosition;
+	if (pos[0] + size[0] + border + xOffset >= windowSize[0]) {
+		pos[0] -= size[0] + xOffset;
+	} else {
+		pos[0] += xOffset;
+	}
+	pos[1] = @min(pos[1] - fontSize, windowSize[1] - size[1] - border);
+	pos = @max(pos, Vec2f{border, border});
+	{
+		const oldColor = draw.setColor(0xffffff00);
+		defer draw.restoreColor(oldColor);
+		draw.rect(pos - @as(Vec2f, @splat(border)), size + @as(Vec2f, @splat(2*border)));
+	}
+	{
+		const oldColor = draw.setColor(0xff000000);
+		defer draw.restoreColor(oldColor);
+		draw.rect(pos - @as(Vec2f, @splat(padding)), size + @as(Vec2f, @splat(2*padding)));
+	}
+	textBuffer.render(pos[0], pos[1], fontSize);
+	return .handled;
+}
+
 pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 	if (self.hideIfMouseIsGrabbed and main.Window.grabbed) return;
 	const oldTranslation = draw.setTranslation(self.pos);
