@@ -25,7 +25,6 @@ pub const world_zig = @import("world.zig");
 pub const ServerWorld = world_zig.ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
-pub const reload = @import("reload.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
 pub const permission = @import("permission.zig");
@@ -710,8 +709,8 @@ pub fn startFromNewThread(name: []const u8, port: ?u16) void {
 pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 	std.debug.assert(!running.load(.monotonic)); // There can only be one server.
 
-	reload.init(name);
-	defer reload.deinit();
+	const worldName: []const u8 = main.globalAllocator.dupe(u8, name);
+	defer main.globalAllocator.free(worldName);
 
 	restart = true;
 
@@ -725,8 +724,8 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 	}
 	while (restart) {
 		restart = false;
-		
-		init(main.server.reload.worldName, port);
+
+		init(worldName, port);
 		defer deinit();
 
 		running.store(true, .release);
@@ -743,7 +742,6 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 			update();
 		}
 		if (!main.settings.launchConfig.headlessServer) return;
-		
 	}
 }
 

@@ -507,7 +507,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		result.* = .{};
 		result.packetSendRequests = .initContext({});
 		result.running.store(true, .monotonic);
-		
+
 		result.localPort = localPort;
 		result.socket = Socket.init(localPort) catch |err| blk: {
 			if (err == error.AddressInUse) {
@@ -530,21 +530,21 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		return result;
 	}
 	pub fn @"continue"(result: *ConnectionManager) !void {
-		if(result.running.load(.monotonic)) return;
+		if (result.running.load(.monotonic)) return;
 		result.packetSendRequests = .initContext({});
 		result.running.store(true, .monotonic);
 		result.thread = try std.Thread.spawn(.{}, run, .{result});
 		result.thread.setName(main.io, "Network Thread") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
 	}
 	pub fn deinit(self: *ConnectionManager) void {
-		if(self.running.load(.monotonic)) self.pause();
+		if (self.running.load(.monotonic)) self.pause();
 		self.socket.deinit();
 		self.connections.deinit(main.globalAllocator);
 		main.globalAllocator.destroy(self);
 	}
 	pub fn pause(self: *ConnectionManager) void {
 		std.debug.assert(self.running.load(.monotonic));
-		
+
 		self.running.store(false, .monotonic);
 		self.thread.join();
 		for (self.requests.items) |request| {
