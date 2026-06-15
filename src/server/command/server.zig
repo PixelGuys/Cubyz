@@ -9,7 +9,7 @@ pub const usage =
 ;
 
 const Args = union(enum) {
-	@"/server <action>": struct { action: main.server.stopType },
+	@"/server <action>": struct { action: main.server.StopType },
 };
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/server"});

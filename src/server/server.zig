@@ -538,7 +538,7 @@ var userConnectList: main.utils.ConcurrentQueue(*User) = undefined;
 pub var connectionManager: *ConnectionManager = undefined;
 
 pub var running: std.atomic.Value(bool) = .init(false);
-pub var restart: bool = true;
+var restart: bool = true;
 
 var lastTime: std.Io.Timestamp = undefined;
 
@@ -745,8 +745,8 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 	}
 }
 
-pub const stopType = enum { stop, restart };
-pub fn stop(_restart: stopType) void {
+pub const StopType = enum { stop, restart };
+pub fn stop(_restart: StopType) void {
 	if (_restart == .restart) {
 		restart = true;
 	}

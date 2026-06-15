@@ -474,7 +474,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	threadId: std.Thread.Id = undefined,
 	externalAddress: Address = undefined,
 	online: Atomic(bool) = .init(false),
-	running: Atomic(bool) = .init(true),
+	running: Atomic(bool) = .init(false),
 
 	connections: main.List(*Connection) = .empty,
 	requests: main.List(*Request) = .empty,
@@ -505,8 +505,6 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		const result: *ConnectionManager = main.globalAllocator.create(ConnectionManager);
 		errdefer main.globalAllocator.destroy(result);
 		result.* = .{};
-		result.packetSendRequests = .initContext({});
-		result.running.store(true, .monotonic);
 
 		result.localPort = localPort;
 		result.socket = Socket.init(localPort) catch |err| blk: {
@@ -519,8 +517,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		errdefer result.socket.deinit();
 		if (localPort == 0) result.localPort = try result.socket.getPort();
 
-		result.thread = try std.Thread.spawn(.{}, run, .{result});
-		result.thread.setName(main.io, "Network Thread") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
+		try result.@"continue"();
+
 		if (online) {
 			result.makeOnline();
 		}
