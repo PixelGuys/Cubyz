@@ -26,6 +26,15 @@ pub const Level = enum {
 	fn isColorCoded(self: Level) bool {
 		return self == .chat or self == .server;
 	}
+
+	fn fromStdLevel(level: std.log.Level) Level {
+		return switch (level) {
+			.err => .err,
+			.warn => .warn,
+			.info => .info,
+			.debug => .debug,
+		};
+	}
 };
 
 var logFile: ?std.Io.File = undefined;
@@ -33,7 +42,21 @@ var logFileTs: ?std.Io.File = undefined;
 var supportsANSIColors: bool = undefined;
 var openingErrorWindow: bool = false;
 
-pub noinline fn runtimeLogFn(level: Level, format: []const u8, args: []const fmt.FormatArg) void {
+pub fn logFn(
+	comptime level: std.log.Level,
+	comptime _: @EnumLiteral(),
+	comptime format: []const u8,
+	args: anytype,
+) void {
+	var runtimeArgs: [args.len]fmt.FormatArg = undefined;
+	inline for (0..args.len) |i| {
+		runtimeArgs[i] = .fromAnytype(@TypeOf(args[i]), &args[i]);
+	}
+
+	runtimeLogFn(.fromStdLevel(level), format, &runtimeArgs);
+}
+
+noinline fn runtimeLogFn(level: Level, format: []const u8, args: []const fmt.FormatArg) void {
 	var buf: [65536]u8 = undefined;
 	var writer: std.Io.Writer = .fixed(&buf);
 	fmt.format(&writer, format, args) catch {

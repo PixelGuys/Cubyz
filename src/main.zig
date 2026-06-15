@@ -91,20 +91,7 @@ fn cacheString(comptime str: []const u8) []const u8 {
 // overwrite the log function:
 pub const std_options: std.Options = .{ // MARK: std_options
 	.log_level = .debug,
-	.logFn = struct {
-		pub fn logFn(
-			comptime level: std.log.Level,
-			comptime _: @EnumLiteral(),
-			comptime format: []const u8,
-			args: anytype,
-		) void {
-			var runtimeArgs: [args.len]fmt.FormatArg = undefined;
-			inline for (0..args.len) |i| {
-				runtimeArgs[i] = .fromAnytype(@TypeOf(args[i]), &args[i]);
-			}
-			log.runtimeLogFn(@enumFromInt(@intFromEnum(level)), format, &runtimeArgs);
-		}
-	}.logFn,
+	.logFn = log.logFn,
 };
 
 // MARK: Callbacks
