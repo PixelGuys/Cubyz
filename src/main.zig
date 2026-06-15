@@ -478,7 +478,7 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 
 	if (!headless) audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
 	defer if (!headless) audio.deinit();
-	
+
 	utils.initDynamicIntArrayStorage();
 	defer utils.deinitDynamicIntArrayStorage();
 
