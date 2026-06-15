@@ -532,6 +532,12 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	}
 }
 
+pub var clientState: std.atomic.Value(enum(u8) {
+	running,
+	stopping,
+	stopped,
+}) = .init(.stopped);
+
 pub fn clientMain() void { // MARK: clientMain()
 	switch (settings.storedAccount.typ) {
 		.none => blk: {
@@ -637,6 +643,13 @@ pub fn clientMain() void { // MARK: clientMain()
 			}
 			gui.openWindow("main");
 			audio.setMusic("cubyz:totaldemented/cubyz_remastered");
+		}
+		if (clientState.load(.monotonic) == .stopping) {
+			clientState.store(.stopped, .monotonic);
+			while (clientState.load(.monotonic) != .running) {
+				io.sleep(.fromMilliseconds(1), .awake) catch {};
+				heap.GarbageCollection.syncPoint();
+			}
 		}
 	}
 

@@ -582,6 +582,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		user.isLocal = true;
 		user.permissions.addPermission(.white, "/");
 	}
+	main.clientState.store(.running, .monotonic);
 }
 
 fn deinit() void {
@@ -613,6 +614,14 @@ fn deinit() void {
 
 	command.deinit();
 	main.heap.allocators.destroyWorldArena();
+
+	if (main.clientState.load(.monotonic) == .running) {
+		main.clientState.store(.stopping, .monotonic);
+		while (main.clientState.load(.monotonic) != .stopped) {
+			main.io.sleep(.fromMilliseconds(1), .awake) catch {};
+			main.heap.GarbageCollection.syncPoint();
+		}
+	}
 }
 
 pub fn getUserListAndIncreaseRefCount(allocator: main.heap.NeverFailingAllocator) []*User {
