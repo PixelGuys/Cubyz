@@ -66,6 +66,7 @@ pressed: bool = false,
 hovered: bool = false,
 onAction: main.callbacks.SimpleCallback,
 child: GuiComponent,
+disabledReason: ?[]const u8 = null,
 
 pub fn globalInit() void {
 	pipeline = graphics.Pipeline.init(
@@ -99,6 +100,7 @@ pub fn globalDeinit() void {
 const Options = struct {
 	onAction: main.callbacks.SimpleCallback = .{},
 	disabled: bool = false,
+	disabledReason: ?[]const u8 = null,
 };
 
 pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *Button {
@@ -110,6 +112,7 @@ pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *But
 		.onAction = options.onAction,
 		.child = label.toComponent(),
 		.disabled = options.disabled,
+		.disabledReason = options.disabledReason,
 	};
 	return self;
 }
@@ -123,6 +126,7 @@ pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, options: Opti
 		.onAction = options.onAction,
 		.child = icon.toComponent(),
 		.disabled = options.disabled,
+		.disabledReason = options.disabledReason,
 	};
 	return self;
 }
@@ -188,4 +192,9 @@ pub fn render(self: *Button, currentFrame: *graphics.vulkan.Frame, mousePosition
 	const textPos = self.pos + self.size/@as(Vec2f, @splat(2.0)) - self.child.size()/@as(Vec2f, @splat(2.0));
 	self.child.mutPos().* = textPos;
 	self.child.render(currentFrame, mousePosition - self.pos);
+}
+
+pub fn getTooltip(self: *Button, _: Vec2f) ?[]const u8 {
+	//if (!self.disabled) return null;
+	return self.disabledReason;
 }
