@@ -23,6 +23,7 @@ fn exitGame() void {
 }
 fn singleplayerSelection() void {
 	gui.windowlist.save_selection.mode = .singleplayer;
+	gui.closeWindow("save_selection");
 	gui.openWindow("save_selection");
 }
 pub fn onOpen() void {

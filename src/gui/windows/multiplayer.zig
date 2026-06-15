@@ -16,6 +16,7 @@ const padding: f32 = 8;
 
 fn multiplayerSelection() void {
 	gui.windowlist.save_selection.mode = .multiplayer;
+	gui.closeWindow("save_selection");
 	gui.openWindow("save_selection");
 }
 pub fn onOpen() void {

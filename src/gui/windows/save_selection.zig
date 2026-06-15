@@ -21,7 +21,7 @@ pub var window = GuiWindow{
 };
 
 const padding: f32 = 8;
-const width: f32 = 128;
+const width: f32 = 160;
 var buttonNameArena: main.heap.NeverFailingArenaAllocator = undefined;
 
 pub var needsUpdate: bool = false;
@@ -108,7 +108,7 @@ pub fn update() void {
 pub fn onOpen() void {
 	buttonNameArena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
-	list.add(Label.init(.{0, 0}, width, "**Select World**", .center));
+	list.add(Label.init(.{0, 0}, width, if (mode == .singleplayer) "**Select World**" else "**Select World to Host**", .center));
 	list.add(Button.initText(.{0, 0}, 128, "Create New World", .{.onAction = gui.openWindowCallback("save_creation")}));
 	readingSaves: {
 		var dir = main.files.cubyzDir().openIterableDir("saves") catch |err| {
