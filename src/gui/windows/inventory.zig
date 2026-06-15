@@ -58,9 +58,8 @@ pub fn onOpen() void {
 	// TODO: armor slots, backpack slot + stack-based backpack inventory, other items maybe?
 	{
 		const row = HorizontalList.init();
-		const spacing = 32 + 80;
 		blk: {
-			row.add(GuiComponent.BagSlot.init(.{spacing, 0}, main.entity.components.@"cubyz:bag".client.getBag(main.game.Player.id) orelse break :blk));
+			row.add(GuiComponent.BagSlot.init(.{32, 0}, main.entity.components.@"cubyz:bag".client.getBag(main.game.Player.id) orelse break :blk));
 		}
 		row.add(Button.initIcon(.{32, 0}, .{32, 32}, craftingIcon, true, .{.onAction = gui.openWindowCallback("inventory_crafting")}));
 		list.add(row);
