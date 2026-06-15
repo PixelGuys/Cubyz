@@ -195,6 +195,6 @@ pub fn render(self: *Button, currentFrame: *graphics.vulkan.Frame, mousePosition
 }
 
 pub fn getTooltip(self: *Button, _: Vec2f) ?[]const u8 {
-	//if (!self.disabled) return null;
+	if (!self.disabled) return null;
 	return self.disabledReason;
 }
