@@ -582,7 +582,6 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		user.isLocal = true;
 		user.permissions.addPermission(.white, "/");
 	}
-	main.clientState.store(.running, .monotonic);
 }
 
 fn deinit() void {
