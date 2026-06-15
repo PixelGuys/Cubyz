@@ -77,7 +77,6 @@ pub fn mainButtonReleased(self: *BagSlot, mousePosition: Vec2f) void {
 }
 
 pub fn render(self: *BagSlot, _: Vec2f) void {
-	draw.setColor(0xffffffff);
 	texture.bindTo(0);
 	draw.boundImage(self.pos, @splat(sizeWithBorder));
 
@@ -86,7 +85,8 @@ pub fn render(self: *BagSlot, _: Vec2f) void {
 		const item = self.inventory.peek(i).item;
 		if (item == .null) continue;
 		const opacity: f32 = std.math.pow(f32, 0.5, @as(f32, @floatFromInt(i)));
-		draw.setColor(0xffffff | @as(u32, @trunc(opacity*255)) << 24);
+		const oldColor = draw.setColor(0xffffff | @as(u32, @trunc(opacity*255)) << 24);
+		defer draw.restoreColor(oldColor);
 		item.render(self.pos, @splat(sizeWithBorder), border);
 	}
 
@@ -112,12 +112,12 @@ pub fn render(self: *BagSlot, _: Vec2f) void {
 		text.render(self.pos[0] + sizeWithBorder - textSize[0] - border, self.pos[1] + sizeWithBorder - textSize[1] - border, 8);
 	}
 
-	draw.setColor(0xffffffff);
 	draw.print("{}/{}", .{self.inventory.slots.items.len, self.inventory.sizeLimit}, self.pos[0], self.pos[1] + sizeWithBorder, 8, .left);
 
 	if (self.hovered) {
 		self.hovered = false;
-		draw.setColor(0x300000ff);
+		const oldColor = draw.setColor(0x300000ff);
+		defer draw.restoreColor(oldColor);
 		draw.rect(self.pos, @splat(sizeWithBorder));
 	}
 }

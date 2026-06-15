@@ -61,7 +61,6 @@ pub fn deinit() void {
 
 pub fn render() void {
 	texture.bindTo(0);
-	graphics.draw.setColor(0xffffffff);
 	pipeline.bind(graphics.draw.getScissor());
 	graphics.draw.customShadedImage(&uniforms, .{0, 0}, .{size, size});
 }

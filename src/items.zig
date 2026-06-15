@@ -1061,14 +1061,20 @@ pub const Item = union(ItemType) { // MARK: Item
 
 			if (durabilityPercentage < 1) {
 				const width = durabilityPercentage*(slotSize[0] - 2*border);
-				graphics.draw.setColorSameAlpha(0x000000);
-				graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{slotSize[0] - 2*border, (slotSize[1] - 2*border)/16.0});
+				{
+					const oldColor = graphics.draw.setColor(0xff000000);
+					defer graphics.draw.restoreColor(oldColor);
+					graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{slotSize[0] - 2*border, (slotSize[1] - 2*border)/16.0});
+				}
 
 				const red = std.math.lossyCast(u8, (2 - durabilityPercentage*2)*255);
 				const green = std.math.lossyCast(u8, durabilityPercentage*2*255);
 
-				graphics.draw.setColorSameAlpha((@as(u24, @intCast(red)) << 16) | (@as(u24, @intCast(green)) << 8));
-				graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{width, (slotSize[1] - 2*border)/16.0});
+				{
+					const oldColor = graphics.draw.setColor(0xff000000 | (@as(u32, red) << 16) | (@as(u32, green) << 8));
+					defer graphics.draw.restoreColor(oldColor);
+					graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{width, (slotSize[1] - 2*border)/16.0});
+				}
 			}
 		}
 	}
@@ -1353,37 +1359,13 @@ fn parseRecipeItem(zon: ZonElement) !ItemStack {
 	return result;
 }
 
-fn parseRecipe(zon: ZonElement) !Recipe {
-	const inputs = zon.getChild("inputs").toSlice();
-	const output = try parseRecipeItem(zon.getChild("output"));
-	const recipe = Recipe{
-		.sourceItems = main.worldArena.alloc(BaseItemIndex, inputs.len),
-		.sourceAmounts = main.worldArena.alloc(u16, inputs.len),
-		.resultItem = output.item.baseItem,
-		.resultAmount = output.amount,
-	};
-	for (inputs, 0..) |inputZon, i| {
-		const input = try parseRecipeItem(inputZon);
-		recipe.sourceItems[i] = input.item.baseItem;
-		recipe.sourceAmounts[i] = input.amount;
-	}
-	return recipe;
-}
-
 pub fn registerRecipes(zon: ZonElement) void {
 	for (zon.toSlice()) |recipeZon| {
-		recipes.parseRecipe(main.globalAllocator, recipeZon, &recipeList) catch |err| {
+		recipes.parseRecipe(recipeZon, &recipeList) catch |err| {
 			const recipeString = recipeZon.toString(main.stackAllocator);
 			defer main.stackAllocator.free(recipeString);
 			std.log.err("Skipping recipe with error {s}:\n{s}", .{@errorName(err), recipeString});
 			continue;
 		};
-	}
-}
-
-pub fn clearRecipeCachedInventories() void {
-	for (recipeList.items) |recipe| {
-		main.globalAllocator.free(recipe.sourceItems);
-		main.globalAllocator.free(recipe.sourceAmounts);
 	}
 }

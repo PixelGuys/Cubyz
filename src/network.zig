@@ -1804,16 +1804,22 @@ pub const Connection = struct { // MARK: Connection
 			self.sendConfirmationPacket(timestamp);
 		}
 
+		var permutation: usize = main.random.nextInt(usize, &main.seed);
 		while (timestamp -% self.nextPacketTimestamp > 0) {
 			// Only attempt to increase the congestion bandwidth if we actual use the bandwidth, to prevent unbounded growth
 			const considerForCongestionControl = @divFloor(self.relativeSendTime, 2) > self.relativeIdleTime;
 			const dataLen = blk: {
 				self.mutex.lock();
 				defer self.mutex.unlock();
-				if (self.lossyChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
-				if (self.secureChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
+				for (0..2) |_| {
+					permutation +%= 1;
+					break :blk switch (permutation%2) {
+						0 => self.lossyChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl),
+						1 => self.secureChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl),
+						else => unreachable,
+					} orelse continue;
+				}
 				if (self.slowChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
-
 				break;
 			};
 			const networkLen: f32 = @floatFromInt(dataLen + headerOverhead);

@@ -45,7 +45,6 @@ pub fn deinit() void {
 pub fn render() void {
 	if (main.game.Player.isCreative()) return;
 
-	draw.setColor(0xffffffff);
 	var y: f32 = 0;
 	var x: f32 = 0;
 	var energy: f32 = 0;

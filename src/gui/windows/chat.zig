@@ -242,7 +242,8 @@ pub fn update() void {
 
 pub fn render() void {
 	if (!hideInput) {
-		main.graphics.draw.setColor(0x80000000);
+		const oldColor = main.graphics.draw.setColor(0x80000000);
+		defer main.graphics.draw.restoreColor(oldColor);
 		main.graphics.draw.rect(.{0, 0}, window.contentSize);
 	}
 }

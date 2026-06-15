@@ -11,7 +11,7 @@ const Vec3f = vec.Vec3f;
 const ZonElement = main.ZonElement;
 const server = main.server;
 
-pub fn init(_: ZonElement) ?*@This() {
+pub fn init(_: ZonElement, _: main.callbacks.Creator) ?*@This() {
 	return @as(*@This(), undefined);
 }
 

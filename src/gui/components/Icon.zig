@@ -44,9 +44,9 @@ pub fn updateTexture(self: *Icon, newTexture: Texture) !void {
 
 pub fn render(self: *Icon, _: Vec2f) void {
 	if (self.hasShadow) {
-		draw.setColor(0xff000000);
+		const oldColor = draw.setColor(0xff000000);
+		defer draw.restoreColor(oldColor);
 		self.texture.render(self.pos + Vec2f{1, 1}, self.size);
 	}
-	draw.setColor(0xffffffff);
 	self.texture.render(self.pos, self.size);
 }

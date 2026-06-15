@@ -8,7 +8,7 @@ const ZonElement = main.ZonElement;
 
 windowName: []const u8,
 
-pub fn init(zon: ZonElement) ?*@This() {
+pub fn init(zon: ZonElement, _: main.callbacks.Creator) ?*@This() {
 	const result = main.worldArena.create(@This());
 	result.* = .{
 		.windowName = main.worldArena.dupe(u8, zon.get(?[]const u8, "name", null) orelse {
