@@ -1281,8 +1281,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		for (userList) |user| {
 			main.network.protocols.blockUpdate.send(user.conn, &.{.{.pos = .{wx, wy, wz}, .newBlock = newBlock, .blockEntityData = &.{}}});
 		}
-		if (noUpdate)
-			return null;
 
 		// onBreak event
 		if (oldBlock) |block| {
@@ -1294,8 +1292,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				});
 			}
 		}
-
-		self.triggerNeighborBlockUpdates(wx, wy, wz);
+		if (!noUpdate){
+			self.triggerNeighborBlockUpdates(wx, wy, wz);
+		}
 
 		return null;
 	}
