@@ -193,7 +193,6 @@ pub const User = struct { // MARK: User
 		}
 		EntityManager.removeEntity(self.id);
 
-
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
 		self.jobQueue.deinit();
