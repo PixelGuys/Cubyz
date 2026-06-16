@@ -337,10 +337,15 @@ pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 		registerBlockDrop(i, zonElements.get(_id[i]) orelse continue);
 		registerLodReplacement(i, zonElements.get(_id[i]) orelse continue);
 		registerOpaqueVariant(i, zonElements.get(_id[i]) orelse continue);
-		registerCallbacks(i, zonElements.get(_id[i]) orelse continue);
 	}
 	blueprint.registerVoidBlock(parseBlock("cubyz:void"));
 	meshes.finishTextureLoading();
+}
+pub fn finishBlockCallbacks(zonElements: Assets.ZonHashMap) void {
+	var i: u16 = 0;
+	while (i < size) : (i += 1) {
+		registerCallbacks(i, zonElements.get(_id[i]) orelse continue);
+	}
 }
 
 pub fn reset() void {

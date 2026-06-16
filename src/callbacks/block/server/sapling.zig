@@ -5,36 +5,27 @@ const Vec3i = main.vec.Vec3i;
 const sbbGen = main.server.terrain.structures.simple_structures.SbbGen;
 const SimpleStructureModel = main.server.terrain.biomes.SimpleStructureModel;
 
-structures: main.ZonElement,
-sbb: ?*sbbGen.SbbGen,
-generationMode: SimpleStructureModel.GenerationMode,
+sbb: *sbbGen.SbbGen,
 chance: f32,
 
 pub fn init(zon: main.ZonElement, _: main.callbacks.Creator) ?*@This() {
 	const result = main.worldArena.create(@This());
-	result.structures = zon.getChild("sbb").clone(main.worldArena);
-	result.sbb = null;
-	return result;
-}
-fn initOfSBB(self: *@This()) void {
-	const vtableModel = sbbGen.loadModel(self.structures) orelse {
+
+	const vtableModel = sbbGen.loadModel(zon.getChild("sbb")) orelse {
 		std.log.err("Error occurred while loading structure for saplings", .{});
-		return;
+		return null;
 	};
-	self.sbb = vtableModel;
-	self.generationMode = std.meta.stringToEnum(SimpleStructureModel.GenerationMode, self.structures.get([]const u8, "generationMode", "")) orelse sbbGen.generationMode;
-	self.chance = self.structures.get(f32, "chance", 0.1);
+	result.sbb = vtableModel;
+	result.chance = zon.get(f32, "chance", 0.1);
+	return result;
 }
 
 pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.callbacks.Result {
-	if (self.sbb == null)
-		self.initOfSBB();
 
 	// copied from SimpleStructureGen.generate.
-	if (self.sbb) |sbb| {
-		const randomValue = main.random.nextFloat(&main.seed);
-		if (randomValue < self.chance)
-			sbb.placeSbb(sbb.structureRef, Vec3i{params.blockPos.x, params.blockPos.y, params.blockPos.z}, null, sbb.rotation.getInitialRotation(&main.seed), params.chunk, &main.seed, false);
+	const randomValue = main.random.nextFloat(&main.seed);
+	if (randomValue < self.chance) {
+		self.sbb.placeSbb(self.sbb.structureRef, Vec3i{params.blockPos.x, params.blockPos.y, params.blockPos.z}, null, self.sbb.rotation.getInitialRotation(&main.seed), params.chunk, &main.seed, false);
 	}
 
 	return .handled;
