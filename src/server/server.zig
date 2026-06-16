@@ -192,7 +192,7 @@ pub const User = struct { // MARK: User
 		if (self.player().id != .noValue) {
 			self.player().deinit(.server);
 		}
-		
+
 		EntityManager.removeEntity(self.id);
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);

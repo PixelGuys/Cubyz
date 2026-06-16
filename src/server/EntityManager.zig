@@ -68,7 +68,6 @@ pub fn addEntity() main.entity.Entity {
 	// initialization of the Entity
 	ent.* = server.Entity{};
 	ent.id = entityId;
-	ent.updateMemoryAddress();
 	return entityId;
 }
 
@@ -93,7 +92,6 @@ pub fn removeEntity(entityId: main.entity.Entity) void {
 
 		if (index != entities.len) {
 			idMapping.items[@intFromEnum(entities.items()[index].id)] = index;
-			entities.items()[index].updateMemoryAddress();
 		}
 		freedList.addOne(main.globalAllocator).* = entityId;
 	}
