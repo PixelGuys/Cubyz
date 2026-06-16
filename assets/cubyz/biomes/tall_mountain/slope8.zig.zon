@@ -7,6 +7,8 @@
     .mountains = 60,
     .hills = 10,
     .chance = 0,
+    .minSubBiomeCount = 0,
+    .maxSubBiomeCount = 1,
     .stoneBlock = "cubyz:glacite/base",
     .validPlayerSpawn = false,
     .music = "cubyz:mrmayman/out_of_breath",
@@ -33,7 +35,7 @@
     .parentBiomes = .{
         .{
             .id = "cubyz:tall_mountain/slope7",
-            .chance = 0.75,
+            .chance = 0.4,
         },
     },
 }

@@ -1,7 +1,7 @@
 .{
     .properties = .{.mountain},
     .minHeight = 1040,
-    .maxHeight = 1100,
+    .maxHeight = 1070,
     .smoothBeaches = true,
     .radius = 20,
     .hills = 15,
@@ -25,7 +25,7 @@
     .parentBiomes = .{
         .{
             .id = "cubyz:tall_mountain/slope8",
-            .chance = 0.7,
+            .chance = 0.3,
         },
     },
 }
