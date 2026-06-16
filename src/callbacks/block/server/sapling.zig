@@ -10,7 +10,7 @@ sbb: ?*sbbGen.SbbGen,
 generationMode: SimpleStructureModel.GenerationMode,
 chance: f32,
 
-pub fn init(zon: main.ZonElement) ?*@This() {
+pub fn init(zon: main.ZonElement, _: main.callbacks.Creator) ?*@This() {
 	const result = main.worldArena.create(@This());
 	result.structures = zon.getChild("sbb").clone(main.worldArena);
 	result.sbb = null;
