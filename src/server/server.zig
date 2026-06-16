@@ -104,6 +104,7 @@ pub const User = struct { // MARK: User
 	conn: *Connection = undefined,
 	innerPlayer: Entity = .{},
 	timeDifference: utils.TimeDifference = .{},
+	interpolation: main.utils.GenericInterpolation(3) = undefined,
 	lastTime: i16 = undefined,
 	lastSaveTime: std.Io.Timestamp = .fromNanoseconds(0),
 	name: []const u8 = "",
@@ -191,6 +192,7 @@ pub const User = struct { // MARK: User
 		if (self.player().id != .noValue) {
 			self.player().deinit(.server);
 		}
+		
 		EntityManager.removeEntity(self.id);
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);
@@ -267,7 +269,7 @@ pub const User = struct { // MARK: User
 		if (main.entity.components.@"cubyz:bag".server.get(self.id) == null) {
 			main.entity.components.@"cubyz:bag".server.loadEmpty(self.id);
 		}
-		self.player().updateMemoryAddress();
+		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();
 
 		main.entity.components.@"cubyz:player".server.load(self.id, @truncate(self.playerIndex));
@@ -469,7 +471,7 @@ pub const User = struct { // MARK: User
 		defer self.mutex.unlock();
 		var time = @as(i16, @truncate(main.timestamp().toMilliseconds())) -% main.settings.entityLookback;
 		time -%= self.timeDifference.difference.load(.monotonic);
-		self.player().interpolation.update(time, self.lastTime);
+		self.interpolation.update(time, self.lastTime);
 		self.lastTime = time;
 
 		const saveTime = main.timestamp();
@@ -498,7 +500,7 @@ pub const User = struct { // MARK: User
 		self.player().rot = rotation;
 		const time = try reader.readInt(i16);
 		self.timeDifference.addDataPoint(time);
-		self.player().interpolation.updatePosition(&position, &velocity, time);
+		self.interpolation.updatePosition(&position, &velocity, time);
 	}
 
 	pub fn sendMessage(self: *User, comptime fmt: []const u8, args: anytype) void {
