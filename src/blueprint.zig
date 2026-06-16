@@ -377,7 +377,7 @@ pub const Pattern = struct {
 		var specifiers = std.mem.splitScalar(u8, source, expressionSeparator);
 		var totalWeight: f32 = 0;
 
-		var weightedEntries: List(struct { block: Block, weight: f32 }) = .{};
+		var weightedEntries: List(struct { block: Block, weight: f32 }) = .empty;
 		defer weightedEntries.deinit(main.stackAllocator);
 
 		while (specifiers.next()) |specifier| {
@@ -491,14 +491,14 @@ pub const Mask = struct {
 	};
 
 	pub fn initFromString(allocator: NeverFailingAllocator, source: []const u8) !@This() {
-		var result: @This() = .{.entries = .{}};
+		var result: @This() = .{.entries = .empty};
 		errdefer result.deinit(allocator);
 
 		var oredExpressions = std.mem.splitScalar(u8, source, or_);
 		while (oredExpressions.next()) |subExpression| {
 			if (subExpression.len == 0) return error.MissingExpression;
 
-			var andStorage: AndList = .{};
+			var andStorage: AndList = .empty;
 			errdefer andStorage.deinit(allocator);
 
 			var andedExpressions = std.mem.splitScalar(u8, subExpression, and_);
@@ -522,6 +522,20 @@ pub const Mask = struct {
 			andStorage.deinit(allocator);
 		}
 		self.entries.deinit(allocator);
+	}
+
+	pub fn clone(self: Mask, allocator: NeverFailingAllocator) Mask {
+		var orListCopy: OrList = .initCapacity(allocator, self.entries.items.len);
+
+		for (self.entries.items) |andList| {
+			var andListCopy: AndList = .initCapacity(allocator, andList.items.len);
+			defer orListCopy.appendAssumeCapacity(andListCopy);
+
+			for (andList.items) |entry| {
+				andListCopy.appendAssumeCapacity(entry);
+			}
+		}
+		return .{.entries = orListCopy};
 	}
 
 	pub fn match(self: @This(), block: Block) bool {

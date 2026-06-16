@@ -67,7 +67,7 @@ pub const StructureMapFragment = struct {
 				.allocator = tempAllocator,
 			},
 		};
-		@memset(self.tempData.lists, .{});
+		@memset(self.tempData.lists, .empty);
 	}
 
 	fn privateDeinit(self: *StructureMapFragment) void {

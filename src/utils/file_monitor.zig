@@ -179,7 +179,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 		callbackInfo.* = .{
 			.callback = callback,
 			.userData = userData,
-			.watchDescriptors = .{},
+			.watchDescriptors = .empty,
 			.path = main.globalAllocator.dupe(u8, path),
 			.needsUpdate = false,
 		};
