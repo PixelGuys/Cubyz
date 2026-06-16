@@ -19,11 +19,15 @@ const Instance = struct {
 	radius: f32,
 };
 
-pub fn init(zon: ZonElement) ?*@This() {
-	const result = main.worldArena.create(@This());
-	result.minRadius = zon.get(f32, "minRadius", 16);
-	result.maxRadius = zon.get(f32, "maxRadius", result.minRadius);
-	return result;
+pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
+	const self = main.worldArena.create(@This());
+	self.minRadius = zon.get(f32, "minRadius", 16);
+	self.maxRadius = zon.get(f32, "maxRadius", self.minRadius);
+
+	return .{.model = self, .maxExtend = .{
+		.min = @splat(@floor(-self.maxRadius)),
+		.max = @splat(@ceil(self.maxRadius)),
+	}};
 }
 
 pub fn instantiate(self: *@This(), arena: NeverFailingAllocator, seed: *u64) SdfInstance {

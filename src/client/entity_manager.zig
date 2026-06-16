@@ -4,11 +4,11 @@ const main = @import("main");
 const chunk = main.chunk;
 const game = main.game;
 const graphics = main.graphics;
-const c = graphics.c;
 const ZonElement = main.ZonElement;
 const renderer = main.renderer;
 const settings = main.settings;
 const utils = main.utils;
+const BinaryReader = utils.BinaryReader;
 const vec = main.vec;
 const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
@@ -16,13 +16,13 @@ const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
-const BinaryReader = main.utils.BinaryReader;
+const c = @import("c");
 
 var lastTime: i16 = 0;
 var timeDifference: utils.TimeDifference = utils.TimeDifference{};
 
 pub var entities: main.utils.VirtualList(main.client.Entity, 1 << 20) = undefined;
-pub var idMapping: main.List(?u32) = undefined;
+pub var idMapping: main.ListManaged(?u32) = undefined;
 pub var mutex: main.utils.Mutex = .{};
 
 pub fn init() void {
@@ -67,38 +67,37 @@ pub fn addEntity(zon: ZonElement) !void {
 	const index = entities.len;
 	var ent = entities.addOne();
 
-	if (idMapping.items.len <= id)
+	if (idMapping.items.len <= id) {
 		idMapping.appendNTimes(null, id - idMapping.items.len + 1);
+	}
 	idMapping.items[id] = index;
 
 	try ent.init(zon, main.globalAllocator);
 }
-pub fn getEntity(id: u32) ?*main.client.Entity {
-	main.utils.assertLocked(&mutex);
-	if (id < idMapping.items.len)
-		return &entities.items()[idMapping.items[id] orelse return null];
-	return null;
+pub fn getEntity(entity: main.entity.Entity) ?*main.client.Entity {
+	mutex.assertLocked();
+	if (@intFromEnum(entity) >= idMapping.items.len) return null;
+	return &entities.items()[idMapping.items[@intFromEnum(entity)] orelse return null];
 }
-pub fn removeEntity(id: u32) void {
+pub fn removeEntity(entity: main.entity.Entity) void {
 	mutex.lock();
 	defer mutex.unlock();
 
-	if (idMapping.items.len <= id)
-		return;
-	const index: u32 = idMapping.items[id] orelse return;
+	if (idMapping.items.len <= @intFromEnum(entity)) return;
+	const index: u32 = idMapping.items[@intFromEnum(entity)] orelse return;
 	const ent = entities.items()[index];
 
 	// remove id
-	idMapping.items[id] = null;
+	idMapping.items[@intFromEnum(entity)] = null;
 
 	// remove entity
 	{
-		std.debug.assert(ent.id == id);
+		std.debug.assert(ent.id == entity);
 		ent.deinit(main.globalAllocator);
 		_ = entities.swapRemove(index);
 
 		if (index != entities.len) {
-			idMapping.items[entities.items()[index].id] = index;
+			idMapping.items[@intFromEnum(entities.items()[index].id)] = index;
 			entities.items()[index].interpolatedValues.outPos = &entities.items()[index]._interpolationPos;
 			entities.items()[index].interpolatedValues.outVel = &entities.items()[index]._interpolationVel;
 		}

@@ -19,11 +19,15 @@ const Instance = struct {
 	radii: Vec3f,
 };
 
-pub fn init(zon: ZonElement) ?*@This() {
-	const result = main.worldArena.create(@This());
-	result.minRadii = zon.get(Vec3f, "minSideLengths", @splat(32))/@as(Vec3f, @splat(2));
-	result.maxRadii = zon.get(Vec3f, "maxSideLengths", result.minRadii*@as(Vec3f, @splat(2)))/@as(Vec3f, @splat(2));
-	return result;
+pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
+	const self = main.worldArena.create(@This());
+	self.minRadii = zon.get(Vec3f, "minSideLengths", @splat(32))/@as(Vec3f, @splat(2));
+	self.maxRadii = zon.get(Vec3f, "maxSideLengths", self.minRadii*@as(Vec3f, @splat(2)))/@as(Vec3f, @splat(2));
+
+	return .{.model = self, .maxExtend = .{
+		.min = @floor(-self.maxRadii),
+		.max = @ceil(self.maxRadii),
+	}};
 }
 
 pub fn instantiate(self: *@This(), arena: NeverFailingAllocator, seed: *u64) SdfInstance {

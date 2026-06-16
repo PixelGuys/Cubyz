@@ -6,7 +6,6 @@ const Chunk = main.chunk.Chunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const getIndex = main.chunk.getIndex;
 const graphics = main.graphics;
-const c = graphics.c;
 const server = main.server;
 const User = server.User;
 const mesh_storage = main.renderer.mesh_storage;
@@ -17,6 +16,8 @@ const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
+
+const c = @import("c");
 
 const UpdateEvent = union(enum) {
 	remove: void,
@@ -92,7 +93,7 @@ pub const BlockEntity = enum(u32) { // MARK: BlockEntity
 	noValue = std.math.maxInt(u32),
 	_,
 
-	var freeIndexList: main.ListUnmanaged(BlockEntity) = .{};
+	var freeIndexList: main.List(BlockEntity) = .empty;
 	var nextIndex: BlockEntity = @enumFromInt(0);
 	var mutex: main.utils.Mutex = .{};
 
@@ -140,7 +141,7 @@ fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 			storage.clear();
 		}
 		fn createEntry(pos: Vec3i, chunk: *Chunk) BlockEntity {
-			main.utils.assertLocked(&mutex);
+			mutex.assertLocked();
 			const entity: BlockEntity = .create();
 			const localPos = chunk.getLocalBlockPos(pos);
 
@@ -157,7 +158,7 @@ fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 			storage.set(main.globalAllocator, entity, value);
 		}
 		pub fn removeAtIndex(entity: BlockEntity) ?DataT {
-			main.utils.assertLocked(&mutex);
+			mutex.assertLocked();
 			entity.destroy();
 			return storage.fetchRemove(entity) catch null;
 		}
@@ -177,12 +178,12 @@ fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 			return removeAtIndex(entity);
 		}
 		pub fn getByIndex(entity: BlockEntity) ?*DataT {
-			main.utils.assertLocked(&mutex);
+			mutex.assertLocked();
 
 			return storage.get(entity);
 		}
 		pub fn get(pos: Vec3i, chunk: *Chunk) ?*DataT {
-			main.utils.assertLocked(&mutex);
+			mutex.assertLocked();
 
 			const localPos = chunk.getLocalBlockPos(pos);
 
@@ -197,7 +198,7 @@ fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 			foundExisting: bool,
 		};
 		pub fn getOrPut(pos: Vec3i, chunk: *Chunk) GetOrPutResult {
-			main.utils.assertLocked(&mutex);
+			mutex.assertLocked();
 			if (get(pos, chunk)) |result| return .{.valuePtr = result, .foundExisting = true};
 
 			const entity = createEntry(pos, chunk);
@@ -245,21 +246,21 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 
 			const data = StorageServer.getOrPut(pos, chunk);
 			std.debug.assert(!data.foundExisting);
-			data.valuePtr.invId = main.items.Inventory.ServerSide.createExternallyManagedInventory(inventorySize, .{.blockInventory = pos}, reader, inventoryCallbacks);
+			data.valuePtr.invId = main.items.Inventory.server.createExternallyManagedInventory(inventorySize, .{.blockInventory = pos}, reader, inventoryCallbacks);
 		}
 
 		pub fn onUnloadServer(entity: BlockEntity) void {
 			StorageServer.mutex.lock();
 			const data = StorageServer.removeAtIndex(entity) orelse unreachable;
 			StorageServer.mutex.unlock();
-			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(data.invId);
+			main.items.Inventory.server.destroyExternallyManagedInventory(data.invId);
 		}
 		pub fn onStoreServerToDisk(entity: BlockEntity, writer: *BinaryWriter) void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
 			const data = StorageServer.getByIndex(entity) orelse return;
 
-			const inv = main.items.Inventory.ServerSide.getInventoryFromId(data.invId);
+			const inv = main.items.Inventory.server.getInventoryFromId(data.invId);
 			var isEmpty: bool = true;
 			for (inv._items) |item| {
 				if (item.amount != 0) isEmpty = false;
@@ -274,7 +275,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			switch (event) {
 				.remove => {
 					const chestComponent = StorageServer.remove(pos, chunk) orelse return;
-					main.items.Inventory.ServerSide.destroyAndDropExternallyManagedInventory(chestComponent.invId, pos);
+					main.items.Inventory.server.destroyAndDropExternallyManagedInventory(chestComponent.invId, pos);
 				},
 				.update => {
 					StorageServer.mutex.lock();
@@ -282,7 +283,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 					const data = StorageServer.getOrPut(pos, chunk);
 					if (data.foundExisting) return;
 					var reader = BinaryReader.init(&.{});
-					data.valuePtr.invId = main.items.Inventory.ServerSide.createExternallyManagedInventory(inventorySize, .{.blockInventory = pos}, &reader, inventoryCallbacks);
+					data.valuePtr.invId = main.items.Inventory.server.createExternallyManagedInventory(inventorySize, .{.blockInventory = pos}, &reader, inventoryCallbacks);
 				},
 			}
 		}
@@ -307,11 +308,11 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 				if (self.renderedTexture) |texture| {
 					textureDeinitLock.lock();
 					defer textureDeinitLock.unlock();
-					textureDeinitList.append(texture);
+					textureDeinitList.append(main.globalAllocator, texture);
 				}
 			}
 		});
-		var textureDeinitList: main.List(graphics.Texture) = undefined;
+		var textureDeinitList: main.List(graphics.Texture) = .empty;
 		var textureDeinitLock: main.utils.Mutex = .{};
 		var pipeline: graphics.Pipeline = undefined;
 		var uniforms: struct {
@@ -334,7 +335,6 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 		pub fn init() void {
 			StorageServer.init();
 			StorageClient.init();
-			textureDeinitList = .init(main.globalAllocator);
 			if (!main.settings.launchConfig.headlessServer) {
 				pipeline = graphics.Pipeline.init(
 					"assets/cubyz/shaders/block_entity/sign.vert",
@@ -353,7 +353,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			while (textureDeinitList.popOrNull()) |texture| {
 				texture.deinit();
 			}
-			textureDeinitList.deinit();
+			textureDeinitList.deinit(main.globalAllocator);
 			pipeline.deinit();
 			StorageServer.deinit();
 			StorageClient.deinit();

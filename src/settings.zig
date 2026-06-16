@@ -1,8 +1,8 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
+const ZonElement = main.ZonElement;
 const Window = @import("graphics/Window.zig");
 
 pub const version = @import("utils/version.zig");

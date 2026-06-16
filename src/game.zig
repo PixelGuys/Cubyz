@@ -1,13 +1,13 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
 
+const main = @import("main");
 const assets = @import("assets.zig");
 const itemdrop = @import("itemdrop.zig");
 const ClientItemDropManager = itemdrop.ClientItemDropManager;
 const items = @import("items.zig");
 const ClientInventory = items.Inventory.ClientInventory;
-const ZonElement = @import("zon.zig").ZonElement;
-const main = @import("main");
+const ZonElement = main.ZonElement;
 const network = @import("network.zig");
 const particles = @import("particles.zig");
 const Connection = network.Connection;
@@ -81,7 +81,7 @@ pub const Player = struct { // MARK: Player
 	pub var super: main.server.Entity = .{};
 	pub var eye: EyeData = .{};
 	pub var crouching: bool = false;
-	pub var id: u32 = 0;
+	pub var id: main.entity.Entity = .noValue;
 	pub var gamemode: Atomic(Gamemode) = .init(.creative);
 	pub var isFlying: Atomic(bool) = .init(false);
 	pub var isGhost: Atomic(bool) = .init(false);
@@ -317,8 +317,7 @@ pub const World = struct { // MARK: World
 		main.gui.deinit();
 		main.gui.init();
 		Player.inventory.deinit(main.globalAllocator);
-		main.items.clearRecipeCachedInventories();
-		main.sync.ClientSide.reset();
+		main.sync.client.reset();
 
 		main.threadPool.clear();
 		main.entity.client.clear();
@@ -364,8 +363,9 @@ pub const World = struct { // MARK: World
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/serverAssets", .{main.files.cubyzDirStr()}) catch unreachable;
 		defer main.stackAllocator.free(path);
 		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.proceduralItemPalette, self.biomePalette, self.entityModelPalette, self.entityComponentPalette);
-		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
+		Player.id = @enumFromInt(zon.get(u32, "player_id", @intFromEnum(main.entity.Entity.noValue)));
 		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .serverShared, .{.playerInventory = Player.id}, .{});
+		Player.setGamemode(std.enums.fromInt(Gamemode, zon.get(?u8, "gamemode", null) orelse return error.Invalid) orelse return error.Invalid);
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
 
@@ -495,7 +495,7 @@ pub fn getBlockWithSide(comptime side: main.sync.Side, x: i32, y: i32, z: i32) ?
 }
 
 pub fn update(deltaTime: f64) void { // MARK: update()
-	physics.calculateVolumeProperties(.client, &Player.volumeProperties, Player.super.pos, Player.outerBoundingBox);
+	physics.calculateVolumeProperties(.client, &Player.volumeProperties, Player.super.pos, Player.outerBoundingBox, physics.playerAirTerminalVelocity);
 	if (Player.isFlying.load(.monotonic)) {
 		Player.friction = .{.current = 20, .mobile = 20};
 	} else {
@@ -652,7 +652,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const gravity: f64 = if (Player.isFlying.load(.monotonic)) 0.0 else physics.baseGravity;
 	const jumpHeight: f64 = if (jumping) Player.jumpHeight else 0.0;
 	var motion = physics.calculateMotion(.client, deltaTime, Player.friction, Player.volumeProperties, physics.playerDensity, Player.super.pos, &Player.super.vel, acc, gravity, jumpHeight);
-	physics.calculateEyeMovement(.client, deltaTime, Player.super.pos, &Player.eye);
+
 	{
 		Player.mutex.lock();
 		defer Player.mutex.unlock();
@@ -662,7 +662,30 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			const steppingHeightLimit = Player.eye.pos[2] - Player.eye.box.min[2];
 			stepAmount = physics.calculateWallCollision(.client, &motion, &Player.super.pos, &Player.super.vel, &Player.onGround, Player.friction, Player.outerBoundingBox, Player.steppingHeight()[2], steppingHeightLimit, Player.crouching);
 		}
-		physics.update(.client, deltaTime, motion, stepAmount);
+		physics.calculateEyeMovement(.client, deltaTime, Player.super.pos, Player.super.vel, &Player.eye, stepAmount);
+		var didCollide: bool = false;
+		const wasOnGround = Player.onGround;
+		const prevPos = Player.super.pos;
+		const prevVel = Player.super.vel;
+		if (!Player.isGhost.load(.monotonic)) {
+			const bouncinessMultiplier: f64 = if (Player.isFlying.load(.monotonic)) 0.0 else if (Player.crouching) 0.5 else 1.0;
+			didCollide = physics.calculateVerticalCollision(.client, deltaTime, &Player.super.pos, &Player.super.vel, &Player.jumpCoyote, &Player.onGround, Player.outerBoundingBox, motion, bouncinessMultiplier);
+			if (didCollide) {
+				const velocityChange = @abs(@abs(prevVel[2]) - @abs(Player.super.vel[2]));
+				const damage: f32 = @floatCast(@round(@max((velocityChange*velocityChange)/(2*physics.baseGravity) - 7, 0))/2);
+				if (damage > 0.01) {
+					main.sync.addHealth(-damage, .fall, .client, Player.id);
+				}
+			}
+			physics.calculateVerticalCollisionEyeMovement(deltaTime, &Player.eye, didCollide, Player.onGround, wasOnGround, prevPos, Player.super.pos, prevVel, Player.super.vel, motion, Player.steppingHeight()[2]);
+			physics.collision.touchBlocks(.client, &Player.super, Player.outerBoundingBox, deltaTime);
+		} else {
+			Player.super.pos += motion;
+		}
+
+		Player.eye.pos = @max(Player.eye.box.min, @min(Player.eye.pos, Player.eye.box.max));
+		Player.eye.coyote -= deltaTime;
+		Player.jumpCoyote -= deltaTime;
 	}
 
 	const time = main.timestamp();

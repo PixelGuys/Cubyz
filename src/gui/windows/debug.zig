@@ -28,7 +28,6 @@ pub var window = GuiWindow{
 };
 
 pub fn render() void {
-	draw.setColor(0xffffffff);
 	var y: f32 = 0;
 	const fpsCapText = if (main.settings.fpsCap) |fpsCap| std.fmt.allocPrint(main.stackAllocator.allocator, " (limit: {d:.0} Hz)", .{fpsCap}) catch unreachable else "";
 	defer main.stackAllocator.allocator.free(fpsCapText);
@@ -71,8 +70,9 @@ pub fn render() void {
 		const perf = main.threadPool.performance.read();
 		const values = comptime std.enums.values(TaskType);
 		var totalUtime: i64 = 0;
-		for (values) |task|
+		for (values) |task| {
 			totalUtime += perf.utime[@intFromEnum(task)];
+		}
 		for (values) |t| {
 			const name = @tagName(t);
 			const i = @intFromEnum(t);
@@ -99,7 +99,7 @@ pub fn render() void {
 		}
 		{
 			const biome = main.game.world.?.playerBiome.load(.monotonic);
-			var tags = main.List(u8).init(main.stackAllocator);
+			var tags = main.ListManaged(u8).init(main.stackAllocator);
 			defer tags.deinit();
 			inline for (comptime std.meta.fieldNames(main.server.terrain.biomes.Biome.GenerationProperties)) |name| {
 				if (@field(biome.properties, name)) {

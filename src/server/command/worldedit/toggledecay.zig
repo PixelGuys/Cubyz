@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
+const command = main.server.command;
 const Vec3i = main.vec.Vec3i;
 const User = main.server.User;
 
@@ -59,17 +60,8 @@ pub fn execute(argsString: []const u8, source: *User) void {
 
 	var blueprint: Blueprint = switch (args.target) {
 		.selection => blk: {
-			const pos1 = source.worldEditData.selectionPosition1 orelse {
-				return source.sendMessage("#ff0000Position 1 is not set.", .{});
-			};
-			const pos2 = source.worldEditData.selectionPosition2 orelse {
-				return source.sendMessage("#ff0000Position 2 is not set.", .{});
-			};
-
-			const posStart: Vec3i = @min(pos1, pos2);
-			const posEnd: Vec3i = @max(pos1, pos2);
-
-			const blueprint = switch (Blueprint.capture(main.globalAllocator, posStart, posEnd)) {
+			const selection = command.getCurrentSelection(source) catch return;
+			const blueprint = switch (Blueprint.capture(main.globalAllocator, selection)) {
 				.success => |bp| bp,
 				.failure => |e| {
 					source.sendMessage("#ff0000Error while capturing block {}: {s}. Nothing was modified.", .{e.pos, e.message});
@@ -78,7 +70,7 @@ pub fn execute(argsString: []const u8, source: *User) void {
 				},
 			};
 
-			source.worldEditData.undoHistory.push(.init(blueprint, posStart, "toggledecay"));
+			source.worldEditData.undoHistory.push(.init(blueprint, selection.minPos, "toggledecay"));
 			source.worldEditData.redoHistory.clear();
 
 			break :blk blueprint.clone(main.stackAllocator);
@@ -110,7 +102,7 @@ pub fn execute(argsString: []const u8, source: *User) void {
 
 pub fn toggledecay(decayState: State, current: Block) Block {
 	if (current.mode() == main.rotation.getByID("cubyz:branch")) {
-		var branchData = main.rotation.list.@"cubyz:branch".BranchData.init(current.data);
+		var branchData = main.rotation.rotations.@"cubyz:branch".BranchData.init(current.data);
 		branchData.placedByHuman = decayState == .off;
 		return .{.typ = current.typ, .data = @as(u7, @bitCast(branchData))};
 	}

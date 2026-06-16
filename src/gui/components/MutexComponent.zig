@@ -22,7 +22,7 @@ child: GuiComponent = undefined,
 mutex: main.utils.Mutex = .{},
 
 pub fn updateInner(self: *MutexComponent, _other: anytype) void {
-	main.utils.assertLocked(&self.mutex);
+	self.mutex.assertLocked();
 	var other: GuiComponent = undefined;
 	if (@TypeOf(_other) == GuiComponent) {
 		other = _other;
@@ -35,7 +35,7 @@ pub fn updateInner(self: *MutexComponent, _other: anytype) void {
 }
 
 pub fn deinit(self: *MutexComponent) void {
-	main.utils.assertLocked(&self.mutex);
+	self.mutex.assertLocked();
 	self.child.deinit();
 }
 

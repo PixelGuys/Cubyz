@@ -13,7 +13,7 @@ const Vec3f = vec.Vec3f;
 const Mat4f = vec.Mat4f;
 const ZonElement = main.ZonElement;
 
-pub const list = @import("rotation");
+pub const rotations = @import("rotations");
 
 pub const RayIntersectionResult = struct {
 	distance: f32,
@@ -44,8 +44,11 @@ pub const RotationMode = struct { // MARK: RotationMode
 		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, _: *Block, _: Block, blockPlacing: bool) bool {
 			return blockPlacing;
 		}
-		pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
-			return main.models.getModelIndex(zon.as([]const u8, "cubyz:cube"));
+		pub fn createBlockModel(block: Block, _: *u16, zon: ZonElement) ModelIndex {
+			return main.models.getModelIndex(zon.as([]const u8) orelse blk: {
+				std.log.err("Invalid model data for block {s} found {s}, expected string", .{block.id(), @tagName(zon)});
+				break :blk "cubyz:cube";
+			});
 		}
 		pub fn updateData(_: *Block, _: Neighbor, _: Block) bool {
 			return false;
@@ -60,7 +63,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 			const modelData = modelIndex.model();
 			var minimum: ?f32 = null;
 			var normal: ?Vec3f = null;
-			var quadList: main.List(main.models.QuadInfo) = .init(main.stackAllocator);
+			var quadList: main.ListManaged(main.models.QuadInfo) = .init(main.stackAllocator);
 			defer quadList.deinit();
 			modelData.getRawFaces(&quadList);
 			for (quadList.items) |quad| {
@@ -127,7 +130,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 		pub fn getBlockTags() []const Tag {
 			return &.{};
 		}
-		pub fn formatBlockData(block: Block, _list: *main.List(u8)) void {
+		pub fn formatBlockData(block: Block, _list: *main.ListManaged(u8)) void {
 			_list.print("{}", .{block.data});
 		}
 	};
@@ -171,7 +174,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 
 	getBlockTags: *const fn () []const Tag = DefaultFunctions.getBlockTags,
 
-	formatBlockData: *const fn (block: Block, _list: *main.List(u8)) void = DefaultFunctions.formatBlockData,
+	formatBlockData: *const fn (block: Block, _list: *main.ListManaged(u8)) void = DefaultFunctions.formatBlockData,
 };
 
 var rotationModes: std.StringHashMap(RotationMode) = undefined;
@@ -221,21 +224,21 @@ fn rayTriangleIntersection(origin: Vec3f, direction: Vec3f, triangle: [3]Vec3f) 
 
 pub fn init() void {
 	rotationModes = .init(main.globalAllocator.allocator);
-	inline for (@typeInfo(list).@"struct".decls) |declaration| {
-		register(declaration.name, @field(list, declaration.name));
+	inline for (@typeInfo(rotations).@"struct".decls) |declaration| {
+		register(declaration.name, @field(rotations, declaration.name));
 	}
 }
 
 pub fn reset() void {
-	inline for (@typeInfo(list).@"struct".decls) |declaration| {
-		@field(list, declaration.name).reset();
+	inline for (@typeInfo(rotations).@"struct".decls) |declaration| {
+		@field(rotations, declaration.name).reset();
 	}
 }
 
 pub fn deinit() void {
 	rotationModes.deinit();
-	inline for (@typeInfo(list).@"struct".decls) |declaration| {
-		@field(list, declaration.name).deinit();
+	inline for (@typeInfo(rotations).@"struct".decls) |declaration| {
+		@field(rotations, declaration.name).deinit();
 	}
 }
 

@@ -12,7 +12,7 @@
 	.hills = 8,
 	.chance = 0,
 	.soilCreep = 1,
-	.music = "cubyz:sunrise",
+	.music = "cubyz:sinanimea/sunrise",
 	.validPlayerSpawn = true,
 	.structures = .{
 		.{

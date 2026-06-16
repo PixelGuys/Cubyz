@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
-const ZonElement = @import("zon.zig").ZonElement;
-const Palette = @import("assets.zig").Palette;
+const ZonElement = main.ZonElement;
+const Palette = main.assets.Palette;
 const Assets = main.assets.Assets;
 
 var blockMigrations: std.StringHashMapUnmanaged([]const u8) = .{};
