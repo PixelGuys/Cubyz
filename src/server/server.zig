@@ -544,7 +544,7 @@ var lastTime: std.Io.Timestamp = undefined;
 
 pub var thread: ?std.Thread = null;
 
-fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
+fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void { // MARK: init()
 	main.heap.allocators.createWorldArena();
 	std.debug.assert(world == null); // There can only be one world.
 	command.init();
@@ -562,7 +562,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	main.items.Inventory.server.init();
 	main.sync.server.init();
 
-	world = ServerWorld.init(name) catch |err| {
+	world = ServerWorld.init(name, mode) catch |err| {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
 		@panic("Can't create world.");
 	};
@@ -708,13 +708,13 @@ fn update() void { // MARK: update()
 	}
 }
 
-pub fn startFromNewThread(name: []const u8, port: ?u16) void {
+pub fn startFromNewThread(name: []const u8, port: ?u16, mode: ServerWorld.Mode) void {
 	main.initThreadLocals();
 	defer main.deinitThreadLocals();
-	startFromExistingThread(name, port);
+	startFromExistingThread(name, port, mode);
 }
 
-pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
+pub fn startFromExistingThread(name: []const u8, port: ?u16, mode: ServerWorld.Mode) void {
 	std.debug.assert(!running.load(.monotonic)); // There can only be one server.
 
 	const worldName: []const u8 = main.globalAllocator.dupe(u8, name);
@@ -734,7 +734,7 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
 	while (restart) {
 		restart = false;
 
-		init(worldName, port);
+		init(worldName, port, mode);
 		defer deinit();
 
 		running.store(true, .release);

@@ -525,7 +525,7 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	server.terrain.globalInit();
 
 	if (headless) {
-		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null);
+		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null, .multiplayer);
 		heap.GarbageCollection.waitForFreeCompletion();
 	} else {
 		clientMain();
