@@ -7,7 +7,7 @@
     .maxHeight = 678,
     .smoothBeaches = true,
     .radius = 150,
-    .mountains = 100,
+    .mountains = 90,
     .chance = 0,
     .maxSubBiomeCount = 1,
     .stoneBlock = "cubyz:slate/base",
