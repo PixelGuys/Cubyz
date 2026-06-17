@@ -536,7 +536,8 @@ pub var clientState: std.atomic.Value(enum(u8) {
 	running,
 	stopping,
 	stopped,
-}) = .init(.stopped);
+	worldDeinited,
+}) = .init(.worldDeinited);
 
 pub fn clientMain() void { // MARK: clientMain()
 	switch (settings.storedAccount.typ) {
@@ -633,7 +634,13 @@ pub fn clientMain() void { // MARK: clientMain()
 			gui.updateAndRenderGui();
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 		}
-
+		if (clientState.load(.monotonic) == .stopping) {
+			clientState.store(.stopped, .monotonic);
+			while (clientState.load(.monotonic) == .stopped) {
+				io.sleep(.fromMilliseconds(1), .awake) catch {};
+				heap.GarbageCollection.syncPoint();
+			}
+		}
 		if (shouldExitToMenu.load(.monotonic)) {
 			shouldExitToMenu.store(false, .monotonic);
 			Window.setMouseGrabbed(false);
@@ -643,13 +650,6 @@ pub fn clientMain() void { // MARK: clientMain()
 			}
 			gui.openWindow("main");
 			audio.setMusic("cubyz:totaldemented/cubyz_remastered");
-		}
-		if (clientState.load(.monotonic) == .stopping) {
-			clientState.store(.stopped, .monotonic);
-			while (clientState.load(.monotonic) != .running) {
-				io.sleep(.fromMilliseconds(1), .awake) catch {};
-				heap.GarbageCollection.syncPoint();
-			}
 		}
 	}
 

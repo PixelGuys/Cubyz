@@ -335,7 +335,7 @@ pub const World = struct { // MARK: World
 
 		Player.super.deinit(.client);
 
-		main.clientState.store(.stopped, .monotonic);
+		main.clientState.store(.worldDeinited, .monotonic);
 		if (main.server.thread) |serverThread| {
 			serverThread.join();
 			main.server.thread = null;
