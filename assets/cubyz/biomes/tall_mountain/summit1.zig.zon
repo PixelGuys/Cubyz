@@ -1,17 +1,18 @@
 .{
     .properties = .{.mountain},
-    .minHeight = 1040,
-    .maxHeight = 1070,
+    .minHeight = 815,
+    .maxHeight = 845,
     .smoothBeaches = true,
-    .radius = 20,
-    .hills = 15,
+    .radius = 70,
+    .mountains = 10,
+    .hills = 5,
     .chance = 0,
     .stoneBlock = "cubyz:glacite/base",
     .validPlayerSpawn = false,
     .music = "cubyz:mischol/sunshower",
     .ground_structure = .{
-        "7 to 14 cubyz:snow",
-        "1 to 2 cubyz:permafrost",
+        "6 to 9 cubyz:snow",
+        "2 to 3 cubyz:permafrost",
     },
     .structures = .{
         .{
@@ -24,8 +25,8 @@
     },
     .parentBiomes = .{
         .{
-            .id = "cubyz:tall_mountain/slope8",
-            .chance = 0.3,
+            .id = "cubyz:tall_mountain/slope6",
+            .chance = 1,
         },
     },
 }
