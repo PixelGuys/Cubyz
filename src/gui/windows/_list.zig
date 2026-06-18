@@ -24,6 +24,7 @@ pub const invite = @import("invite.zig");
 pub const main = @import("main.zig");
 pub const players = @import("players.zig");
 pub const multiplayer = @import("multiplayer.zig");
+pub const multiplayer_join = @import("multiplayer_join.zig");
 pub const notification = @import("notification.zig");
 pub const pause = @import("pause.zig");
 pub const pause_gear = @import("pause_gear.zig");

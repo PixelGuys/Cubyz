@@ -442,6 +442,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	settings: Settings = undefined,
 
+	mode: Mode,
+
 	path: []const u8,
 	name: []const u8 = &.{},
 	spawn: Vec3i = undefined,
@@ -466,7 +468,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		milliTimeStamp: i64,
 	};
 
-	pub fn init(path: []const u8) !*ServerWorld { // MARK: init()
+	pub const Mode = enum { singleplayer, multiplayer };
+
+	pub fn init(path: []const u8, mode: Mode) !*ServerWorld { // MARK: init()
 		const self = main.globalAllocator.create(ServerWorld);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = ServerWorld{
@@ -476,6 +480,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			.path = main.globalAllocator.dupe(u8, path),
 			.chunkUpdateQueue = .init(main.globalAllocator, 256),
 			.regionUpdateQueue = .init(main.globalAllocator, 256),
+			.mode = mode,
 		};
 		self.itemDropManager.init(main.globalAllocator, self);
 		errdefer self.itemDropManager.deinit();
