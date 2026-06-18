@@ -25,7 +25,7 @@ pub const world_zig = @import("world.zig");
 pub const ServerWorld = world_zig.ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
-pub const EntityManager = @import("EntityManager.zig");
+pub const EntityManager = @import("entity_manager.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
 pub const permission = @import("permission.zig");
@@ -148,9 +148,7 @@ pub const User = struct { // MARK: User
 	permissions: permission.Permissions = undefined,
 
 	pub fn player(self: *User) *Entity {
-		// A player should always have an entity.
-		std.debug.assert(EntityManager.getEntity(self.id) != null);
-		return EntityManager.getEntity(self.id).?;
+		return EntityManager.getEntity(self.id);
 	}
 
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
@@ -667,6 +665,7 @@ fn update() void { // MARK: update()
 	defer entityData.deinit();
 
 	for (EntityManager.getAll()) |*ent| {
+		if (!ent.used) continue;
 		const id = ent.id; // TODO (why is this todo here?)
 		entityData.append(.{
 			.id = id,
