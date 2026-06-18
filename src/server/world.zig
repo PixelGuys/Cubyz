@@ -1161,14 +1161,14 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			defer self.mutex.lock();
 			updateRequest.ch.save(self);
 			updateRequest.ch.decreaseRefCount();
-			if (updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() <= 0) break;
+			if (updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() >= 0) break;
 		}
 		while (self.regionUpdateQueue.popFront()) |updateRequest| {
 			self.mutex.unlock();
 			defer self.mutex.lock();
 			updateRequest.region.store();
 			updateRequest.region.decreaseRefCount();
-			if (updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() <= 0) break;
+			if (updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() >= 0) break;
 		}
 	}
 
