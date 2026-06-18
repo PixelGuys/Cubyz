@@ -112,7 +112,7 @@ pub const handShake = struct { // MARK: handShake
 		const newState = try reader.readEnum(Connection.HandShakeState);
 		if (@intFromEnum(conn.handShakeState.load(.monotonic)) < @intFromEnum(newState)) {
 			conn.handShakeState.store(newState, .monotonic);
-			switch (newState) {
+			stateSwitch: switch (newState) {
 				.userData => {
 					conn.secureChannel.finishedCollectingClientVerificationData = true;
 					const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
@@ -134,25 +134,33 @@ pub const handShake = struct { // MARK: handShake
 						return error.IncompatibleVersion;
 					}
 
-					const keys = zon.getChild("keys");
-					try conn.user.?.identifyFromKeysAndName(name, keys);
+					if (main.server.world.?.mode != .singleplayer) {
+						const keys = zon.getChild("keys");
+						try conn.user.?.identifyFromKeysAndName(name, keys);
 
-					var writer: utils.BinaryWriter = .init(main.stackAllocator);
-					defer writer.deinit();
-					writer.writeEnum(Connection.HandShakeState, .signatureRequest);
-					conn.handShakeState.store(.signatureRequest, .monotonic);
-					writer.writeVarInt(usize, @tagName(conn.user.?.key).len);
-					writer.writeSlice(@tagName(conn.user.?.key));
-					if (conn.user.?.legacyKey) |legacyKey| {
-						writer.writeVarInt(usize, @tagName(legacyKey).len);
-						writer.writeSlice(@tagName(legacyKey));
+						var writer: utils.BinaryWriter = .init(main.stackAllocator);
+						defer writer.deinit();
+						writer.writeEnum(Connection.HandShakeState, .signatureRequest);
+						conn.handShakeState.store(.signatureRequest, .monotonic);
+						writer.writeVarInt(usize, @tagName(conn.user.?.key).len);
+						writer.writeSlice(@tagName(conn.user.?.key));
+						if (conn.user.?.legacyKey) |legacyKey| {
+							writer.writeVarInt(usize, @tagName(legacyKey).len);
+							writer.writeSlice(@tagName(legacyKey));
+						} else {
+							writer.writeVarInt(usize, 0);
+						}
+						conn.send(.secure, id, writer.data.items);
 					} else {
-						writer.writeVarInt(usize, 0);
+						try conn.user.?.identifyAsLocal(name);
+						continue :stateSwitch .signatureResponse;
 					}
-					conn.send(.secure, id, writer.data.items);
 				},
 				.signatureResponse => {
-					try conn.user.?.verifySignatures(reader);
+					if (main.server.world.?.mode != .singleplayer) {
+						try conn.user.?.verifySignatures(reader);
+					}
+
 					{
 						const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.path}) catch unreachable;
 						defer main.stackAllocator.free(path);

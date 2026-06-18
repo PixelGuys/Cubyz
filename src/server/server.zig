@@ -242,6 +242,12 @@ pub const User = struct { // MARK: User
 		}
 	}
 
+	pub fn identifyAsLocal(self: *User, name: []const u8) !void {
+		std.debug.assert(self.name.len == 0);
+		self.name = main.globalAllocator.dupe(u8, name);
+		self.playerIndex = world.?.localPlayerIndex;
+	}
+
 	pub fn verifySignatures(self: *User, reader: *BinaryReader) !void {
 		try self.key.verifySignature(reader, self.conn.secureChannel.verificationDataForClientSignature.items);
 		if (self.legacyKey) |key| {

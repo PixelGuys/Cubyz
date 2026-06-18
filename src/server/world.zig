@@ -454,6 +454,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	regionUpdateQueue: main.utils.CircularBufferQueue(RegionUpdateRequest),
 
 	playerDatabase: std.StringHashMapUnmanaged(usize) = .{},
+	localPlayerIndex: usize = 0,
 	nextPlayerIndex: std.atomic.Value(usize) = .init(0),
 
 	biomeChecksum: i64 = 0,
@@ -641,6 +642,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.biomeChecksum = worldData.get(i64, "biomeChecksum", 0);
 		self.name = main.globalAllocator.dupe(u8, worldData.get([]const u8, "name", self.path));
 		self.tickSpeed = .init(worldData.get(u32, "tickSpeed", 12));
+		self.localPlayerIndex = worldData.get(usize, "localPlayer", 0);
 	}
 
 	pub fn saveWorldConfig(self: *ServerWorld) !void {
@@ -656,6 +658,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		worldData.put("name", self.name);
 		worldData.put("lastUsedTime", std.Io.Clock.Timestamp.now(main.io, .real).raw.toMilliseconds());
 		worldData.put("tickSpeed", self.tickSpeed.load(.monotonic));
+		worldData.put("localPlayer", self.localPlayerIndex);
 
 		try files.cubyzDir().writeZon(path, worldData);
 	}
@@ -679,6 +682,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				};
 				_ = self.nextPlayerIndex.fetchMax(index + 1, .monotonic);
 				if (zon.get(?[]const u8, "publicKey", null)) |key| {
+					if (key.len == 0) continue; // the local player starts without a key
 					const keyType = key[0 .. std.mem.findScalar(u8, key, ':') orelse {
 						std.log.err("Player file {s} has invalid key entry {s}: Type is missing. Skipping.", .{file.name, key});
 						continue;
