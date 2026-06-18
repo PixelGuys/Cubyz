@@ -30,7 +30,8 @@ pub fn init() void {
 }
 pub fn deinit() void {
 	for (entities.items()) |*ent| {
-		ent.deinit(.server);
+		if (ent.used)
+			ent.deinit(.server);
 	}
 	entities.deinit();
 	freedList.deinit(main.globalAllocator);
