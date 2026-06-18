@@ -81,7 +81,7 @@ pub const Player = struct { // MARK: Player
 	pub var super: main.server.Entity = .{};
 	pub var eye: EyeData = .{};
 	pub var crouching: bool = false;
-	pub var id: u32 = 0;
+	pub var id: main.entity.Entity = .noValue;
 	pub var gamemode: Atomic(Gamemode) = .init(.creative);
 	pub var isFlying: Atomic(bool) = .init(false);
 	pub var isGhost: Atomic(bool) = .init(false);
@@ -315,7 +315,6 @@ pub const World = struct { // MARK: World
 		main.gui.deinit();
 		main.gui.init();
 		Player.inventory.deinit(main.globalAllocator);
-		main.items.clearRecipeCachedInventories();
 		main.sync.client.reset();
 
 		main.threadPool.clear();
@@ -362,8 +361,9 @@ pub const World = struct { // MARK: World
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/serverAssets", .{main.files.cubyzDirStr()}) catch unreachable;
 		defer main.stackAllocator.free(path);
 		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.proceduralItemPalette, self.biomePalette, self.entityModelPalette, self.entityComponentPalette);
-		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
+		Player.id = @enumFromInt(zon.get(u32, "player_id", @intFromEnum(main.entity.Entity.noValue)));
 		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .serverShared, .{.playerInventory = Player.id}, .{});
+		Player.setGamemode(std.enums.fromInt(Gamemode, zon.get(?u8, "gamemode", null) orelse return error.Invalid) orelse return error.Invalid);
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
 

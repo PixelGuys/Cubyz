@@ -27,6 +27,8 @@ pub const sbb = @import("sbb.zig");
 
 pub const sdf = @import("sdf.zig");
 
+pub const chunk_generators = @import("chunkgen/_list.zig");
+
 pub const GeneratorState = enum { enabled, disabled };
 
 /// A generator for setting the actual Blocks in each Chunk.
@@ -39,25 +41,26 @@ pub const BlockGenerator = struct {
 	generatorSeed: u64,
 	defaultState: GeneratorState,
 
-	var generatorRegistry: std.StringHashMapUnmanaged(BlockGenerator) = .{};
+	const generatorRegistry: std.StaticStringMap(BlockGenerator) = .initComptime(blk: {
+		const decls = @typeInfo(chunk_generators).@"struct".decls;
+		var generators: [decls.len]struct { []const u8, BlockGenerator } = undefined;
+		for (0..decls.len) |i| {
+			const Generator = @field(chunk_generators, decls[i].name);
+			generators[i] = .{Generator.id, .{
+				.init = &Generator.init,
+				.generate = &Generator.generate,
+				.priority = Generator.priority,
+				.generatorSeed = Generator.generatorSeed,
+				.defaultState = Generator.defaultState,
+			}};
+		}
+		break :blk generators;
+	});
 
-	pub fn registerGenerator(comptime GeneratorType: type) void {
-		const self = BlockGenerator{
-			.init = &GeneratorType.init,
-			.generate = &GeneratorType.generate,
-			.priority = GeneratorType.priority,
-			.generatorSeed = GeneratorType.generatorSeed,
-			.defaultState = GeneratorType.defaultState,
-		};
-		generatorRegistry.put(main.globalAllocator.allocator, GeneratorType.id, self) catch unreachable;
-	}
-
-	fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []BlockGenerator {
-		var list: main.ListUnmanaged(BlockGenerator) = .initCapacity(allocator, generatorRegistry.size);
-		var iterator = generatorRegistry.iterator();
-		while (iterator.next()) |generatorEntry| {
-			const generator = generatorEntry.value_ptr.*;
-			const generatorSettings = settings.getChild(generatorEntry.key_ptr.*);
+	fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []const BlockGenerator {
+		var list: main.List(BlockGenerator) = .initCapacity(allocator, generatorRegistry.values().len);
+		for (generatorRegistry.keys(), generatorRegistry.values()) |id, generator| {
+			const generatorSettings = settings.getChild(id);
 			if (generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
 			generator.init(generatorSettings);
 			list.appendAssumeCapacity(generator);
@@ -78,10 +81,10 @@ pub const BlockGenerator = struct {
 pub const TerrainGenerationProfile = struct {
 	mapFragmentGenerator: SurfaceMap.MapGenerator = undefined,
 	climateGenerator: ClimateMap.ClimateMapGenerator = undefined,
-	caveBiomeGenerators: []CaveBiomeMap.CaveBiomeGenerator = undefined,
-	caveGenerators: []CaveMap.CaveGenerator = undefined,
-	structureMapGenerators: []StructureMap.StructureMapGenerator = undefined,
-	generators: []BlockGenerator = undefined,
+	caveBiomeGenerators: []const CaveBiomeMap.CaveBiomeGenerator = undefined,
+	caveGenerators: []const CaveMap.CaveGenerator = undefined,
+	structureMapGenerators: []const StructureMap.StructureMapGenerator = undefined,
+	generators: []const BlockGenerator = undefined,
 	climateWavelengths: [5]f32 = undefined,
 	seed: u64,
 
@@ -121,19 +124,9 @@ pub const TerrainGenerationProfile = struct {
 };
 
 pub fn globalInit() void {
-	{
-		const list = @import("chunkgen/_list.zig");
-		inline for (@typeInfo(list).@"struct".decls) |decl| {
-			BlockGenerator.registerGenerator(@field(list, decl.name));
-		}
-	}
 	const t1 = main.timestamp();
 	noise.BlueNoise.load();
 	std.log.info("Blue noise took {} ms to load", .{t1.durationTo(main.timestamp()).toMilliseconds()});
-}
-
-pub fn globalDeinit() void {
-	BlockGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 
 pub fn init(profile: TerrainGenerationProfile) void {

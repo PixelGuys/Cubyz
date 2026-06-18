@@ -40,18 +40,18 @@ pub const vec = @import("vec.zig");
 const zon = @import("zon.zig");
 pub const ZonElement = zon.ZonElement;
 
-pub const Window = @import("graphics/Window.zig");
-
-pub const heap = @import("utils/heap.zig");
-
-pub const List = utils.list.List;
-pub const ListUnmanaged = utils.list.ListUnmanaged;
-pub const MultiArray = utils.list.MultiArray;
-
 const file_monitor = utils.file_monitor;
 
 const Vec2f = vec.Vec2f;
 const Vec3d = vec.Vec3d;
+
+pub const Window = @import("graphics/Window.zig");
+
+pub const heap = @import("utils/heap.zig");
+
+pub const ListManaged = utils.list.ListManaged;
+pub const List = utils.list.List;
+pub const MultiArray = utils.list.MultiArray;
 
 pub threadlocal var stackAllocator: heap.NeverFailingAllocator = if (builtin.is_test) heap.testingAllocator else undefined;
 pub threadlocal var seed: u64 = undefined;
@@ -270,6 +270,9 @@ fn toggleNetworkDebugOverlay(_: Window.Key.Modifiers) void {
 fn toggleAdvancedNetworkDebugOverlay(_: Window.Key.Modifiers) void {
 	gui.toggleWindow("debug_network_advanced");
 }
+fn toggleVulkanDebugOverlay(_: Window.Key.Modifiers) void {
+	gui.toggleWindow("debug_vulkan_info");
+}
 fn cycleHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
 	return &struct {
 		fn set(_: Window.Key.Modifiers) void {
@@ -364,6 +367,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .pressAction = &toggleGPUPerformanceOverlay},
 		.{.name = "networkDebugOverlay", .key = c.GLFW_KEY_F6, .pressAction = &toggleNetworkDebugOverlay},
 		.{.name = "advancedNetworkDebugOverlay", .key = c.GLFW_KEY_F7, .pressAction = &toggleAdvancedNetworkDebugOverlay},
+		.{.name = "vulkanDebugOverlay", .key = c.GLFW_KEY_F8, .pressAction = &toggleVulkanDebugOverlay},
 	};
 
 	fn findKey(name: []const u8) ?*Window.Key { // TODO: Maybe I should use a hashmap here?
@@ -519,10 +523,9 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	defer if (!headless) particles.ParticleManager.deinit();
 
 	server.terrain.globalInit();
-	defer server.terrain.globalDeinit();
 
 	if (headless) {
-		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null);
+		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null, .multiplayer);
 	} else {
 		clientMain();
 	}
@@ -535,7 +538,7 @@ pub fn clientMain() void { // MARK: clientMain()
 				gui.openWindow("authentication/login");
 				break :blk;
 			}
-			var failureText: List(u8) = .init(stackAllocator);
+			var failureText: ListManaged(u8) = .init(stackAllocator);
 			defer failureText.deinit();
 			const accountCode = settings.storedAccount.decryptFromPassword(undefined, &failureText) catch |err| {
 				std.log.err("Got error while loading Account Code: {s}", .{@errorName(err)});

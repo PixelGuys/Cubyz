@@ -75,8 +75,7 @@ pub fn generateFallen(self: *FallenTree, x: i32, y: i32, z: i32, length: u32, ch
 		}
 	}
 
-	if (d == null)
-		return;
+	if (d == null) return;
 
 	const dx: i32 = d.?.relX();
 	const dy: i32 = d.?.relY();

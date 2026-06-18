@@ -23,5 +23,9 @@
 			.id = "cubyz:ocean/temperate/base",
 			.chance = 1,
 		},
+		.{
+			.id = "cubyz:ocean/temperate/archipelago",
+			.chance = 15,
+		},
 	},
 }

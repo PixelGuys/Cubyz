@@ -114,13 +114,11 @@ pub fn AliasTable(comptime T: type) type { // MARK: AliasTable
 			outer: while (true) {
 				while (currentChances[lastOverfullIndex] <= desiredChance) {
 					lastOverfullIndex += 1;
-					if (lastOverfullIndex == self.items.len)
-						break :outer;
+					if (lastOverfullIndex == self.items.len) break :outer;
 				}
 				while (currentChances[lastUnderfullIndex] >= desiredChance) {
 					lastUnderfullIndex += 1;
-					if (lastUnderfullIndex == self.items.len)
-						break :outer;
+					if (lastUnderfullIndex == self.items.len) break :outer;
 				}
 				const delta = desiredChance - currentChances[lastUnderfullIndex];
 				currentChances[lastUnderfullIndex] = desiredChance;
@@ -943,15 +941,15 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 
 			if (id == 0 and lastUpdate.durationTo(main.timestamp()).nanoseconds > refreshTime.nanoseconds) {
 				const start = main.timestamp();
-				var temporaryTaskList = main.List(Task).init(main.stackAllocator);
-				defer temporaryTaskList.deinit();
+				var temporaryTaskList: main.List(Task) = .empty;
+				defer temporaryTaskList.deinit(main.stackAllocator);
 				while (self.loadList.extractAny()) |task| {
 					self.semaphore.timedWait(.zero) catch {};
 					if (!task.vtable.isStillNeeded(task.self)) {
 						task.vtable.clean(task.self);
 						_ = self.trueQueueSize.fetchSub(1, .monotonic);
 					} else {
-						const taskPtr = temporaryTaskList.addOne();
+						const taskPtr = temporaryTaskList.addOne(main.stackAllocator);
 						taskPtr.* = task;
 						taskPtr.cachedPriority = task.vtable.getPriority(task.self);
 					}
@@ -1751,7 +1749,7 @@ pub const BinaryReader = struct { // MARK: BinaryReader
 };
 
 pub const BinaryWriter = struct { // MARK: BinaryWriter
-	data: main.List(u8),
+	data: main.ListManaged(u8),
 
 	pub fn init(allocator: NeverFailingAllocator) BinaryWriter {
 		return .{.data = .init(allocator)};
@@ -2068,9 +2066,9 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 	return struct {
 		const Self = @This();
 
-		dense: main.ListUnmanaged(T) = .{},
-		denseToSparseIndex: main.ListUnmanaged(IdType) = .{},
-		sparseToDenseIndex: main.ListUnmanaged(IdType) = .{},
+		dense: main.List(T) = .empty,
+		denseToSparseIndex: main.List(IdType) = .empty,
+		sparseToDenseIndex: main.List(IdType) = .empty,
 
 		pub fn clear(self: *Self) void {
 			self.dense.clearRetainingCapacity();
@@ -2085,6 +2083,7 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 		}
 
 		pub fn contains(self: *Self, id: IdType) bool {
+			std.debug.assert(id != .noValue);
 			return @intFromEnum(id) < self.sparseToDenseIndex.items.len and self.sparseToDenseIndex.items[@intFromEnum(id)] != .noValue;
 		}
 
@@ -2105,6 +2104,7 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 		}
 
 		pub fn set(self: *Self, allocator: NeverFailingAllocator, id: IdType, value: T) void {
+			std.debug.assert(id != .noValue);
 			self.add(allocator, id).* = value;
 		}
 
@@ -2128,6 +2128,7 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 		}
 
 		pub fn get(self: *Self, id: IdType) ?*T {
+			std.debug.assert(id != .noValue);
 			if (@intFromEnum(id) >= self.sparseToDenseIndex.items.len) return null;
 			const index = self.sparseToDenseIndex.items[@intFromEnum(id)];
 			if (index == .noValue) return null;

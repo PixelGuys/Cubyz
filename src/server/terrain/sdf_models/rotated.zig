@@ -96,7 +96,7 @@ pub fn instantiate(self: *@This(), arena: NeverFailingAllocator, seed: *u64) Sdf
 			const y = if (yi == 0) child.minBounds[1] else child.maxBounds[1];
 			for (0..2) |zi| {
 				const z = if (zi == 0) child.minBounds[2] else child.maxBounds[2];
-				const rotatedCorner = rotate(self.axis, sin, cos, @floatFromInt(Vec3i{x, y, z}));
+				const rotatedCorner = rotate(self.axis, -sin, cos, @floatFromInt(Vec3i{x, y, z}));
 				minBounds = @min(minBounds, @as(Vec3i, @floor(rotatedCorner)));
 				maxBounds = @max(maxBounds, @as(Vec3i, @ceil(rotatedCorner)));
 			}

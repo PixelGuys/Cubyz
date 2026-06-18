@@ -32,8 +32,8 @@ const messageTimeout: i32 = 10000;
 const messageFade = 1000;
 
 var mutexComponent: MutexComponent = .{};
-var history: main.List(*Label) = undefined;
-var expirationTime: main.List(i32) = undefined;
+var history: main.ListManaged(*Label) = undefined;
+var expirationTime: main.ListManaged(i32) = undefined;
 var historyStart: u32 = 0;
 var fadeOutEnd: u32 = 0;
 var input: *TextInput = undefined;
@@ -50,7 +50,7 @@ pub fn deinit() void {
 }
 
 pub fn onOpen() void {
-	const button = Button.initIcon(.{0, 0}, .{64, 64}, pauseIcon, true, gui.openWindowCallback("pause"));
+	const button = Button.initIcon(.{0, 0}, .{64, 64}, pauseIcon, true, .{.onAction = gui.openWindowCallback("pause")});
 	window.contentSize = button.size;
 	window.rootComponent = button.toComponent();
 }

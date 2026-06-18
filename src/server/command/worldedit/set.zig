@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
+const command = main.server.command;
 const Vec3i = main.vec.Vec3i;
 const User = main.server.User;
 
@@ -16,33 +17,26 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Missing required <pattern> argument.", .{});
 		return;
 	}
-	const pos1 = source.worldEditData.selectionPosition1 orelse {
-		return source.sendMessage("#ff0000Position 1 isn't set", .{});
-	};
-	const pos2 = source.worldEditData.selectionPosition2 orelse {
-		return source.sendMessage("#ff0000Position 2 isn't set", .{});
-	};
+	const selection = command.getCurrentSelection(source) catch return;
+
 	const pattern = Pattern.initFromString(main.stackAllocator, args) catch |err| {
 		source.sendMessage("#ff0000Error parsing pattern: {s}", .{@errorName(err)});
 		return;
 	};
 	defer pattern.deinit(main.stackAllocator);
 
-	const posStart: Vec3i = @min(pos1, pos2);
-	const posEnd: Vec3i = @max(pos1, pos2);
+	const result = Blueprint.capture(main.globalAllocator, selection);
 
-	const selection = Blueprint.capture(main.globalAllocator, posStart, posEnd);
-
-	switch (selection) {
+	switch (result) {
 		.success => |blueprint| {
-			source.worldEditData.undoHistory.push(.init(blueprint, posStart, "set"));
+			source.worldEditData.undoHistory.push(.init(blueprint, selection.minPos, "set"));
 			source.worldEditData.redoHistory.clear();
 
 			var modifiedBlueprint = blueprint.clone(main.stackAllocator);
 			defer modifiedBlueprint.deinit(main.stackAllocator);
 
 			modifiedBlueprint.replace(null, source.worldEditData.mask, pattern);
-			modifiedBlueprint.paste(posStart, .{.preserveVoid = true});
+			modifiedBlueprint.paste(selection.minPos, .{.preserveVoid = true});
 		},
 		.failure => |err| {
 			source.sendMessage("#ff0000Error: Could not capture selection. (at {}, {s})", .{err.pos, err.message});

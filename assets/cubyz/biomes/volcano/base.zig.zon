@@ -20,5 +20,20 @@
 
 	.maxSubBiomeCount = 1,
 
+	.soilCreep = 1,
+	.ground_structure = .{
+		"2 to 4 cubyz:ash",
+	},
 	.stoneBlock = "cubyz:basalt/base",
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:basalt/base",
+			.chance = 0.1,
+			.width = 5,
+			.variation = 5,
+			.depth = 4,
+			.smoothness = 0.1,
+		},
+	},
 }

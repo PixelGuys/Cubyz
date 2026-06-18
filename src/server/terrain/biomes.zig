@@ -34,9 +34,9 @@ const Stripe = struct { // MARK: Stripe
 
 		var minDistance: f64 = 0;
 		var maxDistance: f64 = 0;
-		if (parameters.object.get("distance")) |dist| {
-			minDistance = dist.as(f64, 0);
-			maxDistance = dist.as(f64, 0);
+		if (parameters.get(?f64, "distance", null)) |dist| {
+			minDistance = dist;
+			maxDistance = dist;
 		} else {
 			minDistance = parameters.get(f64, "minDistance", 0);
 			maxDistance = parameters.get(f64, "maxDistance", 0);
@@ -44,9 +44,9 @@ const Stripe = struct { // MARK: Stripe
 
 		var minOffset: f64 = 0;
 		var maxOffset: f64 = 0;
-		if (parameters.object.get("offset")) |off| {
-			minOffset = off.as(f64, 0);
-			maxOffset = off.as(f64, 0);
+		if (parameters.get(?f64, "offset", null)) |off| {
+			minOffset = off;
+			maxOffset = off;
 		} else {
 			minOffset = parameters.get(f64, "minOffset", 0);
 			maxOffset = parameters.get(f64, "maxOffset", 0);
@@ -54,9 +54,9 @@ const Stripe = struct { // MARK: Stripe
 
 		var minWidth: f64 = 0;
 		var maxWidth: f64 = 0;
-		if (parameters.object.get("width")) |width| {
-			minWidth = width.as(f64, 0);
-			maxWidth = width.as(f64, 0);
+		if (parameters.get(?f64, "width", null)) |width| {
+			minWidth = width;
+			maxWidth = width;
 		} else {
 			minWidth = parameters.get(f64, "minWidth", 0);
 			maxWidth = parameters.get(f64, "maxWidth", 0);
@@ -195,7 +195,7 @@ pub const Biome = struct { // MARK: Biome
 		pub fn fromZon(zon: ZonElement, initMidValues: bool) GenerationProperties {
 			var result: GenerationProperties = .{};
 			for (zon.toSlice()) |child| {
-				const property = child.as([]const u8, "");
+				const property = child.as([]const u8) orelse "";
 				inline for (@typeInfo(GenerationProperties).@"struct".fields) |field| {
 					if (std.mem.eql(u8, field.name, property)) {
 						@field(result, field.name) = true;
@@ -317,7 +317,7 @@ pub const Biome = struct { // MARK: Biome
 		}
 		const parentBiomeList = zon.getChild("parentBiomes");
 		for (parentBiomeList.toSlice()) |parent| {
-			const result = unfinishedSubBiomes.getOrPutValue(main.globalAllocator.allocator, parent.get([]const u8, "id", ""), .{}) catch unreachable;
+			const result = unfinishedSubBiomes.getOrPutValue(main.globalAllocator.allocator, parent.get([]const u8, "id", ""), .empty) catch unreachable;
 			result.value_ptr.append(main.globalAllocator, .{
 				.biomeId = self.id,
 				.chance = parent.get(f32, "chance", 1),
@@ -347,7 +347,7 @@ pub const Biome = struct { // MARK: Biome
 		self.structure = BlockStructure.init(main.worldArena, zon.getChild("ground_structure"));
 
 		const structures = zon.getChild("structures");
-		var vegetation: main.ListUnmanaged(SimpleStructureModel) = .{};
+		var vegetation: main.List(SimpleStructureModel) = .empty;
 		var totalChance: f32 = 0;
 		defer vegetation.deinit(main.stackAllocator);
 		// Add structures from the biome's internal structure table
@@ -375,7 +375,7 @@ pub const Biome = struct { // MARK: Biome
 		self.vegetationModels = main.worldArena.dupe(SimpleStructureModel, vegetation.items);
 
 		const caves = zon.getChild("caveModels");
-		var caveSdfs: main.ListUnmanaged(terrain.sdf.SdfModel) = .{};
+		var caveSdfs: main.List(terrain.sdf.SdfModel) = .empty;
 		defer caveSdfs.deinit(main.stackAllocator);
 		for (caves.toSlice()) |elem| {
 			const model = terrain.sdf.SdfModel.initModel(elem) orelse continue;
@@ -440,8 +440,12 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 			.structure = allocator.alloc(BlockStack, blockStackDescriptions.len),
 		};
 		for (blockStackDescriptions, self.structure) |zonString, *blockStack| {
-			blockStack.init(zonString.as([]const u8, "That's not a zon string.")) catch |err| {
-				std.log.err("Couldn't parse blockStack '{s}': {s} Removing it.", .{zonString.as([]const u8, "(not a zon string)"), @errorName(err)});
+			blockStack.init(zonString.as([]const u8) orelse {
+				std.log.err("Couldn't parse blockStack zon: Expected string type found {s}", .{@tagName(zonString)});
+				blockStack.* = .{};
+				continue;
+			}) catch |err| {
+				std.log.err("Couldn't parse blockStack '{s}': {s} Removing it.", .{zonString.as([]const u8).?, @errorName(err)});
 				blockStack.* = .{};
 			};
 		}
@@ -466,8 +470,9 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 					chunk.updateBlockInGeneration(x, y, depth, blockStack.block);
 				}
 				depth -%= chunk.super.pos.voxelSize;
-				if (depth -% minDepth <= 0)
+				if (depth -% minDepth <= 0) {
 					return depth +% chunk.super.pos.voxelSize;
+				}
 			}
 		}
 		return depth +% chunk.super.pos.voxelSize;
@@ -525,7 +530,7 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 		var lowerIndex: usize = undefined;
 		var upperIndex: usize = undefined;
 		{
-			var lists: [3]main.ListUnmanaged(Biome) = .{
+			var lists: [3]main.List(Biome) = .{
 				.initCapacity(main.stackAllocator, currentSlice.len),
 				.initCapacity(main.stackAllocator, currentSlice.len),
 				.initCapacity(main.stackAllocator, currentSlice.len),
@@ -579,10 +584,10 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 
 // MARK: init/register
 var finishedLoading: bool = false;
-var biomes: main.ListUnmanaged(Biome) = .{};
-var caveBiomes: main.ListUnmanaged(Biome) = .{};
+var biomes: main.List(Biome) = .empty;
+var caveBiomes: main.List(Biome) = .empty;
 var biomesById: std.StringHashMapUnmanaged(*Biome) = .{};
-var biomesByIndex: main.ListUnmanaged(*Biome) = .{};
+var biomesByIndex: main.List(*Biome) = .empty;
 pub var byTypeBiomes: *TreeNode = undefined;
 
 const SubBiomeData = struct {
@@ -598,7 +603,7 @@ const UnfinishedSubBiomeData = struct {
 		return .{.biome = getById(self.biomeId), .parentEdgeDistance = self.parentEdgeDistance};
 	}
 };
-var unfinishedSubBiomes: std.StringHashMapUnmanaged(main.ListUnmanaged(UnfinishedSubBiomeData)) = .{};
+var unfinishedSubBiomes: std.StringHashMapUnmanaged(main.List(UnfinishedSubBiomeData)) = .{};
 
 const UnfinishedTransitionBiomeData = struct {
 	biomeId: []const u8,
@@ -616,10 +621,10 @@ var unfinishedTransitionBiomes: std.StringHashMapUnmanaged([]UnfinishedTransitio
 
 pub fn reset() void {
 	finishedLoading = false;
-	biomes = .{};
-	caveBiomes = .{};
+	biomes = .empty;
+	caveBiomes = .empty;
 	biomesById = .{};
-	biomesByIndex = .{};
+	biomesByIndex = .empty;
 	byTypeBiomes = undefined;
 }
 
