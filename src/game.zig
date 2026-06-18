@@ -270,7 +270,7 @@ pub const World = struct { // MARK: World
 	name: []const u8,
 	milliTime: i64,
 	gameTime: Atomic(i64) = .init(0),
-	dayCycle: DayCycle = .{},
+	dayTime: DayTime = .{},
 	connected: bool = true,
 	blockPalette: *assets.Palette = undefined,
 	itemPalette: *assets.Palette = undefined,
@@ -380,27 +380,24 @@ pub const World = struct { // MARK: World
 			}
 		}
 		network.protocols.playerPosition.send(self.conn, Player.getPosBlocking(), Player.getVelBlocking(), @intCast(newTime & 65535));
-		self.dayCycle.update(deltaTime);
+		self.dayTime.update(deltaTime);
 	}
 
-	pub const DayCycle = struct { // MARK: DayCycle
-		const dayCycleLength: u63 = 12000; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
+	pub const DayTime = struct { // MARK: DayCycle
+		const dayCycleLength = 12000; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
 		const minimumAmbientLight: f32 = 0.1;
+		pub const nightStart = dayCycleLength/2;
 
 		biomeFog: Fog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .density = 1.0/15.0/128.0, .fogLower = 100, .fogHigher = 1000},
 		fog: Fog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .density = 1.0/15.0/128.0, .fogLower = 100, .fogHigher = 1000},
 		ambientLight: f32 = 0,
 		dayTime: i64 = 0,
 
-		pub fn getNightStart() u63 {
-			return dayCycleLength/2;
-		}
-
-		pub fn getDayProgress(self: *DayCycle) f32 {
+		pub fn getDayProgress(self: *DayTime) f32 {
 			return @as(f32, @floatFromInt(self.dayTime))/@as(f32, @floatFromInt(dayCycleLength));
 		}
 
-		pub fn getStarOpacity(self: *DayCycle) f32 {
+		pub fn getStarOpacity(self: *DayTime) f32 {
 			const dayTime = @abs(self.dayTime - dayCycleLength/2);
 			if (dayTime < dayCycleLength/4 - dayCycleLength/16) {
 				return 1;
@@ -412,7 +409,7 @@ pub const World = struct { // MARK: World
 			return 1 - @as(f32, @floatFromInt(dayTime - (dayCycleLength/4 - dayCycleLength/16)))/@as(f32, @floatFromInt(dayCycleLength/8));
 		}
 
-		fn updateAmbientLight(self: *DayCycle) void {
+		fn updateAmbientLight(self: *DayTime) void {
 			const dayTime = @abs(self.dayTime - dayCycleLength/2);
 			if (dayTime < dayCycleLength/4 - dayCycleLength/16) {
 				self.ambientLight = 0.1;
@@ -426,11 +423,11 @@ pub const World = struct { // MARK: World
 			self.ambientLight = minimumAmbientLight + (1 - minimumAmbientLight)*@as(f32, @floatFromInt(dayTime - (dayCycleLength/4 - dayCycleLength/16)))/@as(f32, @floatFromInt(dayCycleLength/8));
 		}
 
-		fn updateTimeOfDay(self: *DayCycle) void {
+		fn updateTimeOfDay(self: *DayTime) void {
 			self.dayTime = @intCast(@mod(world.?.gameTime.load(.monotonic), dayCycleLength));
 		}
 
-		fn getSkyColorFactor(self: *DayCycle) Vec3f {
+		fn getSkyColorFactor(self: *DayTime) Vec3f {
 			const dayTime = @abs(self.dayTime - dayCycleLength/2);
 			if (dayTime < dayCycleLength/4 - dayCycleLength/16) {
 				return @splat(0);
@@ -463,7 +460,7 @@ pub const World = struct { // MARK: World
 			return skyColorFactor;
 		}
 
-		pub fn update(self: *DayCycle, deltaTime: f64) void {
+		pub fn update(self: *DayTime, deltaTime: f64) void {
 			self.updateTimeOfDay();
 			const biome = world.?.playerBiome.load(.monotonic);
 
@@ -474,16 +471,15 @@ pub const World = struct { // MARK: World
 			self.biomeFog.density += (biome.fogDensity - self.biomeFog.density)*t;
 			self.biomeFog.fogLower += (biome.fogLower - self.biomeFog.fogLower)*t;
 			self.biomeFog.fogHigher += (biome.fogHigher - self.biomeFog.fogHigher)*t;
-			// Ambient light:
-			{
-				const skyColorFactor = self.getSkyColorFactor();
-				self.updateAmbientLight();
-				self.fog.fogColor = self.biomeFog.fogColor*skyColorFactor;
-				self.fog.skyColor = self.biomeFog.skyColor*skyColorFactor;
-				self.fog.density = self.biomeFog.density;
-				self.fog.fogLower = self.biomeFog.fogLower;
-				self.fog.fogHigher = self.biomeFog.fogHigher;
-			}
+
+			const skyColorFactor = self.getSkyColorFactor();
+			self.updateAmbientLight();
+
+			self.fog.fogColor = self.biomeFog.fogColor*skyColorFactor;
+			self.fog.skyColor = self.biomeFog.skyColor*skyColorFactor;
+			self.fog.density = self.biomeFog.density;
+			self.fog.fogLower = self.biomeFog.fogLower;
+			self.fog.fogHigher = self.biomeFog.fogHigher;
 		}
 	};
 };
