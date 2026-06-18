@@ -1297,7 +1297,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				});
 			}
 		}
-		if (!noUpdate){
+		if (!noUpdate) {
 			self.triggerNeighborBlockUpdates(wx, wy, wz);
 		}
 
