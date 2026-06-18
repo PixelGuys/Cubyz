@@ -236,9 +236,14 @@ pub const User = struct { // MARK: User
 			break;
 		}
 		if (!foundKey) {
-			const nameEntry = std.fmt.allocPrint(main.stackAllocator.allocator, "name:{s}", .{name}) catch unreachable;
-			defer main.stackAllocator.free(nameEntry);
-			self.playerIndex = world.?.playerDatabase.get(nameEntry) orelse world.?.nextPlayerIndex.fetchAdd(1, .monotonic);
+			if (world.?.playerDatabase.size == 0) { // Claim the local player
+				std.log.info("Here", .{});
+				self.playerIndex = world.?.localPlayerIndex;
+			} else {
+				const nameEntry = std.fmt.allocPrint(main.stackAllocator.allocator, "name:{s}", .{name}) catch unreachable;
+				defer main.stackAllocator.free(nameEntry);
+				self.playerIndex = world.?.playerDatabase.get(nameEntry) orelse world.?.nextPlayerIndex.fetchAdd(1, .monotonic);
+			}
 		}
 	}
 

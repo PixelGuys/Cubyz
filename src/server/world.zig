@@ -957,7 +957,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer playerData.deinit(main.stackAllocator);
 		if (playerData.get(?[]const u8, "publicKey", null)) |publicKey| {
 			if (!std.mem.eql(u8, publicKey, user.newKeyString)) {
-				std.debug.assert(self.playerDatabase.remove(publicKey));
+				_ = self.playerDatabase.remove(publicKey);
 				self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, user.newKeyString), user.playerIndex) catch unreachable;
 			}
 		} else {
