@@ -211,7 +211,9 @@ pub const handShake = struct { // MARK: handShake
 		defer zonObject.deinit(main.stackAllocator);
 		zonObject.putOwnedString("version", settings.version.version);
 		zonObject.putOwnedString("name", name);
-		zonObject.put("keys", main.network.authentication.KeyCollection.getPublicKeys(main.stackAllocator));
+		if (main.network.authentication.KeyCollection.initialized) {
+			zonObject.put("keys", main.network.authentication.KeyCollection.getPublicKeys(main.stackAllocator));
+		}
 		const prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
 		const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
 		defer main.stackAllocator.free(data);

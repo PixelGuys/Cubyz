@@ -37,11 +37,7 @@ fn stayLoggedIn() void {
 
 fn dontStayLoggedIn() void {
 	gui.closeWindowFromRef(&window);
-	if (settings.playerName.len == 0) {
-		gui.openWindow("change_name");
-	} else {
-		gui.openWindow("main");
-	}
+	gui.openWindow("multiplayer");
 }
 
 pub fn onOpen() void {

@@ -75,6 +75,7 @@ fn openCreateAccountWindow() void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 320, 8);
 	const width = 480;
+	list.add(Label.init(.{0, 0}, width, "You need to login to play Multiplayer", .left));
 	list.add(Label.init(.{0, 0}, width, "Please enter your Account Code:", .left));
 	const textRow = HorizontalList.init();
 	textComponent = TextInput.init(.{0, 0}, 400, 38, "", .{.onNewline = .init(none), .onUpdate = .init(updateText)});

@@ -128,7 +128,7 @@ pub const User = struct { // MARK: User
 
 	lastSentBiomeId: u32 = 0xffffffff,
 
-	newKeyString: []const u8 = &.{},
+	newKeyString: ?[]const u8 = null,
 	key: network.authentication.PublicKey = undefined,
 	legacyKey: ?network.authentication.PublicKey = null,
 
@@ -194,7 +194,7 @@ pub const User = struct { // MARK: User
 		self.conn.deinit();
 		self.jobQueue.deinit();
 		main.globalAllocator.free(self.name);
-		main.globalAllocator.free(self.newKeyString);
+		if (self.newKeyString) |str| main.globalAllocator.free(str);
 		for (self.inventoryCommands.items) |commandData| {
 			main.globalAllocator.free(commandData);
 		}
