@@ -532,13 +532,6 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	}
 }
 
-pub var clientState: std.atomic.Value(enum(u8) {
-	running,
-	stopping,
-	stopped,
-	worldDeinited,
-}) = .init(.worldDeinited);
-
 pub fn clientMain() void { // MARK: clientMain()
 	switch (settings.storedAccount.typ) {
 		.none => blk: {
@@ -633,13 +626,6 @@ pub fn clientMain() void { // MARK: clientMain()
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			gui.updateAndRenderGui();
 			gui.windowlist.gpu_performance_measuring.stopQuery();
-		}
-		if (clientState.load(.monotonic) == .stopping) {
-			clientState.store(.stopped, .monotonic);
-			while (clientState.load(.monotonic) == .stopped) {
-				io.sleep(.fromMilliseconds(1), .awake) catch {};
-				heap.GarbageCollection.syncPoint();
-			}
 		}
 		if (shouldExitToMenu.load(.monotonic)) {
 			shouldExitToMenu.store(false, .monotonic);

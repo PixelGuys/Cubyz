@@ -537,8 +537,11 @@ pub const Palette = struct { // MARK: Palette
 
 var loadedAssets: bool = false;
 pub var worldAssetFolder: []const u8 = undefined;
+var refCount: std.atomic.Value(u8) = .init(0);
 
 pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, proceduralItemPalette: *Palette, biomePalette: *Palette, entityModelPalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
+	_ = refCount.fetchAdd(1, .monotonic);
+
 	if (loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
@@ -771,6 +774,9 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 }
 
 pub fn unloadAssets() void { // MARK: unloadAssets()
+	const prevVal = refCount.fetchSub(1, .monotonic);
+	std.debug.assert(prevVal != 0);
+	if (prevVal != 1) return;
 	if (!loadedAssets) return;
 	loadedAssets = false;
 

@@ -294,8 +294,6 @@ pub const World = struct { // MARK: World
 		};
 		errdefer self.conn.deinit();
 
-		main.clientState.store(.running, .monotonic);
-
 		self.itemDrops.init(main.globalAllocator);
 		errdefer self.itemDrops.deinit();
 
@@ -335,7 +333,6 @@ pub const World = struct { // MARK: World
 
 		Player.super.deinit(.client);
 
-		main.clientState.store(.worldDeinited, .monotonic);
 		if (main.server.thread) |serverThread| {
 			serverThread.join();
 			main.server.thread = null;

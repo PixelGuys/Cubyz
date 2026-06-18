@@ -585,14 +585,6 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 }
 
 fn deinit() void {
-	if (main.clientState.load(.monotonic) == .running) {
-		main.clientState.store(.stopping, .monotonic);
-		while (main.clientState.load(.monotonic) != .stopped) {
-			main.io.sleep(.fromMilliseconds(1), .awake) catch {};
-			main.heap.GarbageCollection.syncPoint();
-		}
-	}
-
 	connectionManager.pause();
 	main.threadPool.clear();
 
@@ -620,6 +612,7 @@ fn deinit() void {
 	main.entity.server.deinit();
 
 	command.deinit();
+
 	main.heap.allocators.destroyWorldArena();
 }
 
@@ -721,7 +714,6 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16, mode: ServerWorld.M
 	defer main.globalAllocator.free(worldName);
 
 	restart = true;
-	defer _ = main.clientState.cmpxchgStrong(.stopped, .running, .monotonic, .monotonic);
 
 	connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
 		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
