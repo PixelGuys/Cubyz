@@ -986,6 +986,42 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		// TODO: Test entities
 	}
 
+	pub fn keyPress(key: main.game.GameKeys, inventory: main.items.Inventory.ClientInventory, slot: u32, deltaTime: f64, mods: main.Window.Key.Modifiers) void {
+		switch (key) {
+			.leftClick => {
+				if (!inventory.getItem(slot).onLeftClick().isNoop()) {
+					main.sync.client.executeCommand(.{.keyPress = .{
+						.lastDir = lastDir,
+						.selectedBlockPos = selectedBlockPos,
+						.key = key,
+						.mod = mods,
+						.source = .{.inv = inventory.super, .slot = slot},
+					}});
+					return;
+				}
+				breakBlock(inventory, slot, deltaTime, mods);
+			},
+			.rightClick => {
+				if (selectedBlockPos) |blockPos| blk: {
+					if (mods.shift) break :blk;
+					const mesh = mesh_storage.getMesh(.initFromWorldPos(blockPos, 1)) orelse break :blk;
+					const block = mesh.chunk.getBlock(blockPos[0] - mesh.pos.wx, blockPos[1] - mesh.pos.wy, blockPos[2] - mesh.pos.wz);
+					if (!block.onInteract().isNoop()) {
+						main.sync.client.executeCommand(.{.keyPress = .{
+							.lastDir = lastDir,
+							.selectedBlockPos = selectedBlockPos,
+							.key = key,
+							.mod = mods,
+							.source = .{.inv = inventory.super, .slot = slot},
+						}});
+						return;
+					}
+				}
+				placeBlock(inventory, slot);
+			},
+		}
+	}
+
 	fn canPlaceBlock(pos: Vec3i, block: main.blocks.Block) bool {
 		if (main.physics.collision.collideWithBlock(block, pos[0], pos[1], pos[2], main.game.Player.getPosBlocking() + main.game.Player.outerBoundingBox.center(), main.game.Player.outerBoundingBox.extent(), .{0, 0, 0}) != null) {
 			return false;
@@ -993,7 +1029,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		return true; // TODO: Check other entities
 	}
 
-	pub fn placeBlock(inventory: main.items.Inventory.ClientInventory, slot: u32) void {
+	fn placeBlock(inventory: main.items.Inventory.ClientInventory, slot: u32) void {
 		if (selectedBlockPos) |selectedPos| {
 			var oldBlock = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			var block = oldBlock;
@@ -1055,16 +1091,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		}
 	}
 
-	pub fn breakBlock(inventory: main.items.Inventory.ClientInventory, slot: u32, deltaTime: f64) void {
+	fn breakBlock(inventory: main.items.Inventory.ClientInventory, slot: u32, deltaTime: f64, _: main.Window.Key.Modifiers) void {
 		if (selectedBlockPos) |selectedPos| {
-			const stack = inventory.getStack(slot);
-			const isSelectionWand = stack.item == .baseItem and std.mem.eql(u8, stack.item.baseItem.id(), "cubyz:selection_wand");
-			if (isSelectionWand) {
-				game.Player.selectionPosition1 = selectedPos;
-				main.network.protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selectedPos);
-				return;
-			}
-
 			if (@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
 				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 				currentSwingProgress = 0;
@@ -1072,6 +1100,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				lastSelectedBlockPos = selectedPos;
 				currentBlockProgress = 0;
 			}
+
+			const stack = inventory.getStack(slot);
 			const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			const holdingTargetedBlock = stack.item == .baseItem and stack.item.baseItem.block() == block.typ;
 			if ((block.hasTag(.fluid) or block.hasTag(.air)) and !holdingTargetedBlock) return;

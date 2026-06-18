@@ -187,19 +187,6 @@ pub const Player = struct { // MARK: Player
 		}
 	}
 
-	pub fn placeBlock(mods: main.Window.Key.Modifiers) void {
-		if (main.renderer.MeshSelection.selectedBlockPos) |blockPos| blk: {
-			const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(blockPos, 1)) orelse break :blk;
-			const block = mesh.chunk.getBlock(blockPos[0] - mesh.pos.wx, blockPos[1] - mesh.pos.wy, blockPos[2] - mesh.pos.wz);
-			const onInteract = block.onInteract();
-			if (!mods.shift) {
-				if (onInteract.run(.{.blockPos = blockPos, .block = block, .chunk = mesh.chunk}) == .handled) return;
-			}
-		}
-
-		inventory.placeBlock(selectedSlot);
-	}
-
 	pub fn kill(spawnPos: Vec3d) void {
 		Player.super.pos = spawnPos;
 		Player.super.vel = .{0, 0, 0};
@@ -219,8 +206,8 @@ pub const Player = struct { // MARK: Player
 		}
 	}
 
-	pub fn breakBlock(deltaTime: f64) void {
-		inventory.breakBlock(selectedSlot, deltaTime);
+	pub fn keyPress(key: GameKeys, deltaTime: f64, mods: main.Window.Key.Modifiers) void {
+		inventory.keyPress(key, selectedSlot, deltaTime, mods);
 	}
 
 	pub fn acquireSelectedBlock() void {
@@ -435,28 +422,40 @@ pub var projectionMatrix: Mat4f = Mat4f.identity();
 var biomeFog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .density = 1.0/15.0/128.0, .fogLower = 100, .fogHigher = 1000};
 pub var fog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .density = 1.0/15.0/128.0, .fogLower = 100, .fogHigher = 1000};
 
-var nextBlockPlaceTime: ?std.Io.Timestamp = null;
-var nextBlockBreakTime: ?std.Io.Timestamp = null;
+pub const GameKeys = enum {
+	var nextLeftClickTime: ?std.Io.Timestamp = null;
+	var nextRightClickTime: ?std.Io.Timestamp = null;
 
-pub fn pressPlace(mods: main.Window.Key.Modifiers) void {
-	const time = main.timestamp();
-	nextBlockPlaceTime = time.addDuration(main.settings.updateRepeatDelay);
-	Player.placeBlock(mods);
-}
+	leftClick,
+	rightClick,
 
-pub fn releasePlace(_: main.Window.Key.Modifiers) void {
-	nextBlockPlaceTime = null;
-}
+	pub fn press(key: GameKeys, mods: main.Window.Key.Modifiers) void {
+		const time = main.timestamp();
+		switch (key) {
+			.leftClick => nextLeftClickTime = time.addDuration(main.settings.updateRepeatDelay),
+			.rightClick => nextRightClickTime = time.addDuration(main.settings.updateRepeatDelay),
+		}
+		Player.keyPress(key, 0, mods);
+	}
 
-pub fn pressBreak(_: main.Window.Key.Modifiers) void {
-	const time = main.timestamp();
-	nextBlockBreakTime = time.addDuration(main.settings.updateRepeatDelay);
-	Player.breakBlock(0);
-}
+	pub fn release(key: GameKeys, _: main.Window.Key.Modifiers) void {
+		switch (key) {
+			.leftClick => nextLeftClickTime = null,
+			.rightClick => nextRightClickTime = null,
+		}
+	}
 
-pub fn releaseBreak(_: main.Window.Key.Modifiers) void {
-	nextBlockBreakTime = null;
-}
+	pub fn actions(comptime key: GameKeys) type {
+		return struct {
+			pub fn press(mods: main.Window.Key.Modifiers) void {
+				GameKeys.press(key, mods);
+			}
+			pub fn release(mods: main.Window.Key.Modifiers) void {
+				GameKeys.release(key, mods);
+			}
+		};
+	}
+};
 
 pub fn pressAcquireSelectedBlock(_: main.Window.Key.Modifiers) void {
 	Player.acquireSelectedBlock();
@@ -689,16 +688,16 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	}
 
 	const time = main.timestamp();
-	if (nextBlockPlaceTime) |*placeTime| {
+	if (GameKeys.nextRightClickTime) |*placeTime| {
 		if (placeTime.durationTo(time).nanoseconds >= 0) {
 			placeTime.* = placeTime.addDuration(main.settings.updateRepeatSpeed);
-			Player.placeBlock(main.KeyBoard.key("placeBlock").modsOnPress);
+			Player.keyPress(.rightClick, deltaTime, main.KeyBoard.key("placeBlock").modsOnPress);
 		}
 	}
-	if (nextBlockBreakTime) |*breakTime| {
+	if (GameKeys.nextLeftClickTime) |*breakTime| {
 		if (breakTime.durationTo(time).nanoseconds >= 0 or !Player.isCreative()) {
 			breakTime.* = breakTime.addDuration(main.settings.updateRepeatSpeed);
-			Player.breakBlock(deltaTime);
+			Player.keyPress(.leftClick, deltaTime, main.KeyBoard.key("breakBlock").modsOnPress);
 		}
 	}
 
