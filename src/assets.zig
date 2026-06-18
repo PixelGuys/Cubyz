@@ -12,7 +12,7 @@ const biomes = main.server.terrain.biomes;
 const sbb = main.server.terrain.sbb;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const NeverFailingArenaAllocator = main.heap.NeverFailingArenaAllocator;
-const ListUnmanaged = main.ListUnmanaged;
+const List = main.List;
 const files = main.files;
 
 var common: Assets = undefined;
@@ -111,10 +111,10 @@ pub const Assets = struct {
 	}
 	fn read(self: *Assets, allocator: NeverFailingAllocator, assetDir: main.files.Dir, assetPath: []const u8) void {
 		const addons = Addon.discoverAll(main.stackAllocator, assetDir, assetPath);
-		defer addons.deinit(main.stackAllocator);
-		defer for (addons.items) |*addon| addon.deinit(main.stackAllocator);
+		defer main.stackAllocator.free(addons);
+		defer for (addons) |*addon| addon.deinit(main.stackAllocator);
 
-		for (addons.items) |addon| {
+		for (addons) |addon| {
 			addon.readAllZon(allocator, "blocks", true, &self.blocks, &self.blockMigrations);
 			addon.readAllZon(allocator, "items", true, &self.items, &self.itemMigrations);
 			addon.readAllZon(allocator, "tools", true, &self.proceduralItems, null);
@@ -141,12 +141,12 @@ pub const Assets = struct {
 		name: []const u8,
 		dir: files.Dir,
 
-		fn discoverAll(allocator: NeverFailingAllocator, assetDir: main.files.Dir, path: []const u8) main.ListUnmanaged(Addon) {
-			var addons: main.ListUnmanaged(Addon) = .{};
+		fn discoverAll(allocator: NeverFailingAllocator, assetDir: main.files.Dir, path: []const u8) []Addon {
+			var addons: main.List(Addon) = .empty;
 
 			var dir = assetDir.openIterableDir(path) catch |err| {
 				std.log.err("Can't open asset path {s}: {s}", .{path, @errorName(err)});
-				return addons;
+				return &.{};
 			};
 			defer dir.close();
 
@@ -173,7 +173,7 @@ pub const Assets = struct {
 				};
 				addons.append(allocator, .{.name = allocator.dupe(u8, addon.name), .dir = directory});
 			}
-			return addons;
+			return addons.toOwnedSlice(allocator);
 		}
 
 		fn deinit(self: *Addon, allocator: NeverFailingAllocator) void {
@@ -432,6 +432,7 @@ fn registerRecipesFromZon(zon: ZonElement) void {
 }
 
 pub const Palette = struct { // MARK: Palette
+	allocator: NeverFailingAllocator,
 	palette: main.List([]const u8),
 
 	pub fn init(allocator: NeverFailingAllocator, zon: ZonElement, firstElement: ?[]const u8) !*Palette {
@@ -443,7 +444,7 @@ pub const Palette = struct { // MARK: Palette
 
 		if (firstElement) |elem| {
 			if (self.palette.items.len == 0) {
-				self.palette.append(allocator.dupe(u8, elem));
+				self.palette.append(allocator, allocator.dupe(u8, elem));
 			}
 			if (!std.mem.eql(u8, self.palette.items[0], elem)) {
 				return error.FistItemMismatch;
@@ -457,11 +458,12 @@ pub const Palette = struct { // MARK: Palette
 		const self = allocator.create(Palette);
 		self.* = Palette{
 			.palette = .initCapacity(allocator, elems.len),
+			.allocator = allocator,
 		};
 		errdefer self.deinit();
 
 		for (elems) |name| {
-			const stringId = name.as(?[]const u8, null) orelse return error.InvalidPaletteFormat;
+			const stringId = name.as([]const u8) orelse return error.InvalidPaletteFormat;
 			self.palette.appendAssumeCapacity(allocator.dupe(u8, stringId));
 		}
 		return self;
@@ -476,7 +478,7 @@ pub const Palette = struct { // MARK: Palette
 
 		var iterator = zon.object.iterator();
 		while (iterator.next()) |entry| {
-			const numericId = entry.value_ptr.as(?usize, null) orelse return error.InvalidPaletteFormat;
+			const numericId = entry.value_ptr.as(usize) orelse return error.InvalidPaletteFormat;
 			const name = entry.key_ptr.*;
 
 			if (numericId >= translationPalette.len) {
@@ -489,6 +491,7 @@ pub const Palette = struct { // MARK: Palette
 		const self = allocator.create(Palette);
 		self.* = Palette{
 			.palette = .initCapacity(allocator, paletteLength),
+			.allocator = allocator,
 		};
 		errdefer self.deinit();
 
@@ -501,15 +504,14 @@ pub const Palette = struct { // MARK: Palette
 
 	pub fn deinit(self: *Palette) void {
 		for (self.palette.items) |item| {
-			self.palette.allocator.free(item);
+			self.allocator.free(item);
 		}
-		const allocator = self.palette.allocator;
-		self.palette.deinit();
-		allocator.destroy(self);
+		self.palette.deinit(self.allocator);
+		self.allocator.destroy(self);
 	}
 
 	pub fn add(self: *Palette, id: []const u8) void {
-		self.palette.append(self.palette.allocator.dupe(u8, id));
+		self.palette.append(self.allocator, self.allocator.dupe(u8, id));
 	}
 
 	pub fn storeToZon(self: *Palette, allocator: NeverFailingAllocator) ZonElement {
@@ -528,8 +530,8 @@ pub const Palette = struct { // MARK: Palette
 	}
 
 	pub fn replaceEntry(self: *Palette, entryIndex: usize, newEntry: []const u8) void {
-		self.palette.allocator.free(self.palette.items[entryIndex]);
-		self.palette.items[entryIndex] = self.palette.allocator.dupe(u8, newEntry);
+		self.allocator.free(self.palette.items[entryIndex]);
+		self.palette.items[entryIndex] = self.allocator.dupe(u8, newEntry);
 	}
 };
 

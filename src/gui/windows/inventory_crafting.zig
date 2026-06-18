@@ -32,9 +32,9 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 
-var availableItems: main.List(BaseItemIndex) = undefined;
-var itemAmount: main.List(u32) = undefined;
-var inventories: main.List(ClientInventory) = undefined;
+var availableItems: main.ListManaged(BaseItemIndex) = undefined;
+var itemAmount: main.ListManaged(u32) = undefined;
+var inventories: main.ListManaged(ClientInventory) = undefined;
 
 pub var arrowTexture: Texture = undefined;
 

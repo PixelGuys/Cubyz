@@ -637,7 +637,7 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		ptr: *anyopaque,
 		freeFunction: *const fn (*anyopaque) void,
 	};
-	threadlocal var lists: [4]main.ListUnmanaged(FreeItem) = undefined;
+	threadlocal var lists: [4]main.List(FreeItem) = undefined;
 
 	const State = packed struct {
 		waitingThreads: u15 = 0,
@@ -658,7 +658,7 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		}
 	}
 
-	fn freeItemsFromList(list: *main.ListUnmanaged(FreeItem)) void {
+	fn freeItemsFromList(list: *main.List(FreeItem)) void {
 		while (list.popOrNull()) |item| {
 			item.freeFunction(item.ptr);
 		}

@@ -70,12 +70,12 @@ pub const client = struct { // MARK: client
 	pub fn receiveFailure() void {
 		mutex.lock();
 		defer mutex.unlock();
-		var tempData = main.List(Command).init(main.stackAllocator);
-		defer tempData.deinit();
+		var tempData: main.List(Command) = .empty;
+		defer tempData.deinit(main.stackAllocator);
 		while (commands.popBack()) |_cmd| {
 			var cmd = _cmd;
 			cmd.undo();
-			tempData.append(cmd);
+			tempData.append(main.stackAllocator, cmd);
 		}
 		if (tempData.popOrNull()) |_cmd| {
 			var cmd = _cmd;
@@ -94,12 +94,12 @@ pub const client = struct { // MARK: client
 	pub fn receiveSyncOperation(reader: *BinaryReader) !void {
 		mutex.lock();
 		defer mutex.unlock();
-		var tempData = main.List(Command).init(main.stackAllocator);
-		defer tempData.deinit();
+		var tempData: main.List(Command) = .empty;
+		defer tempData.deinit(main.stackAllocator);
 		while (commands.popBack()) |_cmd| {
 			var cmd = _cmd;
 			cmd.undo();
-			tempData.append(cmd);
+			tempData.append(main.stackAllocator, cmd);
 		}
 		try Command.SyncOperation.executeFromData(reader);
 		while (tempData.popOrNull()) |_cmd| {
@@ -113,12 +113,12 @@ pub const client = struct { // MARK: client
 		mutex.lock();
 		defer mutex.unlock();
 		main.game.Player.setGamemode(gamemode);
-		var tempData = main.List(Command).init(main.stackAllocator);
-		defer tempData.deinit();
+		var tempData: main.List(Command) = .empty;
+		defer tempData.deinit(main.stackAllocator);
 		while (commands.popBack()) |_cmd| {
 			var cmd = _cmd;
 			cmd.undo();
-			tempData.append(cmd);
+			tempData.append(main.stackAllocator, cmd);
 		}
 		while (tempData.popOrNull()) |_cmd| {
 			var cmd = _cmd;
@@ -205,12 +205,12 @@ pub const server = struct { // MARK: server
 	}
 };
 
-pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, userId: u32) void {
+pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, entity: main.entity.Entity) void {
 	threadContext.assertCorrectContext(side);
 	if (side == .client) {
-		client.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}});
+		client.executeCommand(.{.addHealth = .{.target = entity, .health = health, .cause = cause}});
 	} else {
-		server.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}}, null);
+		server.executeCommand(.{.addHealth = .{.target = entity, .health = health, .cause = cause}}, null);
 	}
 }
 
@@ -517,8 +517,8 @@ pub const Command = struct { // MARK: Command
 	};
 
 	payload: Payload,
-	baseOperations: main.ListUnmanaged(BaseOperation) = .{},
-	syncOperations: main.ListUnmanaged(SyncOperation) = .{},
+	baseOperations: main.List(BaseOperation) = .empty,
+	syncOperations: main.List(SyncOperation) = .empty,
 
 	fn serializePayload(self: *Command, allocator: NeverFailingAllocator) []const u8 {
 		var writer = BinaryWriter.init(allocator);
@@ -876,13 +876,13 @@ pub const Command = struct { // MARK: Command
 			writer.writeEnum(Inventory.SourceType, self.source);
 			switch (self.source) {
 				.playerInventory, .hand => |val| {
-					writer.writeInt(u32, val);
+					writer.writeEnum(main.entity.Entity, val);
 				},
 				.blockInventory => |val| {
 					writer.writeVec(Vec3i, val);
 				},
 				.workbench => |val| {
-					writer.writeInt(u32, val.playerId);
+					writer.writeEnum(main.entity.Entity, val.playerId);
 					writer.writeEnum(main.items.ProceduralItemTypeIndex, val.proceduralItemIndex);
 				},
 				.other => {},
@@ -896,10 +896,10 @@ pub const Command = struct { // MARK: Command
 			const len = try reader.readInt(u64);
 			const sourceType = try reader.readEnum(Inventory.SourceType);
 			const source: Inventory.Source = switch (sourceType) {
-				.playerInventory => .{.playerInventory = try reader.readInt(u32)},
-				.hand => .{.hand = try reader.readInt(u32)},
+				.playerInventory => .{.playerInventory = try reader.readEnum(main.entity.Entity)},
+				.hand => .{.hand = try reader.readEnum(main.entity.Entity)},
 				.blockInventory => .{.blockInventory = try reader.readVec(Vec3i)},
-				.workbench => .{.workbench = .{.playerId = try reader.readInt(u32), .proceduralItemIndex = try reader.readEnum(main.items.ProceduralItemTypeIndex)}},
+				.workbench => .{.workbench = .{.playerId = try reader.readEnum(main.entity.Entity), .proceduralItemIndex = try reader.readEnum(main.items.ProceduralItemTypeIndex)}},
 				.other => .{.other = {}},
 				.alreadyFreed => return error.Invalid,
 			};
@@ -1691,7 +1691,7 @@ pub const Command = struct { // MARK: Command
 	};
 
 	const AddHealth = struct { // MARK: AddHealth
-		target: u32,
+		target: main.entity.Entity,
 		health: f32,
 		cause: main.game.DamageType,
 
@@ -1724,14 +1724,14 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn serialize(self: AddHealth, writer: *BinaryWriter) void {
-			writer.writeInt(u32, self.target);
+			writer.writeEnum(main.entity.Entity, self.target);
 			writer.writeInt(u32, @bitCast(self.health));
 			writer.writeEnum(main.game.DamageType, self.cause);
 		}
 
 		fn deserialize(reader: *BinaryReader, _: Side, user: ?*main.server.User) !AddHealth {
 			const result: AddHealth = .{
-				.target = try reader.readInt(u32),
+				.target = try reader.readEnum(main.entity.Entity),
 				.health = @bitCast(try reader.readInt(u32)),
 				.cause = try reader.readEnum(main.game.DamageType),
 			};

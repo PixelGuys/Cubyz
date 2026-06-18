@@ -19,6 +19,6 @@ pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Dat
 	proceduralItem.setProperty(.maxDurability, proceduralItem.getProperty(.maxDurability)*(1 - data.strength));
 }
 
-pub fn printTooltip(outString: *main.List(u8), data: Data) void {
+pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
 	outString.print("#ccddff**Fragile**#808080 *Decreases durability by **{d:.0}%", .{data.strength*100});
 }

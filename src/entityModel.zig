@@ -14,6 +14,7 @@ const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
+const Quat = vec.Quat;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const c = @import("c");
@@ -22,6 +23,7 @@ pub const EntityModel = struct {
 	height: f32,
 	texturePath: []const u8,
 	modelId: ?[]const u8,
+	entityModelId: []const u8,
 
 	vao: ?graphics.VertexArray = null,
 	indexCount: c_int,
@@ -59,14 +61,15 @@ pub const EntityModel = struct {
 		};
 	};
 
-	pub fn init(assetFolder: []const u8, index: EntityModelIndex, zon: ZonElement) EntityModel {
+	pub fn init(assetFolder: []const u8, entityModelId: []const u8, index: EntityModelIndex, zon: ZonElement) EntityModel {
 		var self: EntityModel = undefined;
 		if (zon.get(?[]const u8, "model", null)) |modelId| {
 			self.modelId = main.worldArena.dupe(u8, modelId);
 		} else {
 			self.modelId = null;
 		}
-		self.height = zon.getChild("height").as(f32, 1);
+		self.entityModelId = main.worldArena.dupe(u8, entityModelId);
+		self.height = zon.get(f32, "height", 1);
 		self.defaultTexture = null;
 		self.vao = null;
 		self.indexCount = 0;
@@ -116,6 +119,7 @@ pub const EntityModel = struct {
 			.height = self.height,
 			.texturePath = main.worldArena.dupe(u8, self.texturePath),
 			.modelId = if (self.modelId) |modelId| main.worldArena.dupe(u8, modelId) else null,
+			.entityModelId = main.worldArena.dupe(u8, self.entityModelId),
 			.vao = null,
 			.indexCount = 0,
 			.defaultTexture = null,
@@ -125,8 +129,7 @@ pub const EntityModel = struct {
 
 	fn loadModelAndTexture(self: *EntityModel) !void {
 		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
-		if (self.modelId == null)
-			return error.NoModelSpecified;
+		if (self.modelId == null) return error.NoModelSpecified;
 
 		const file = try main.assets.readAsset(main.stackAllocator, "entityModels/models", self.modelId.?, ".glb");
 		defer main.stackAllocator.free(file);
@@ -154,10 +157,10 @@ pub const EntityModel = struct {
 			return getGltfError(result);
 		}
 
-		var vertices = main.List(Vertex).init(main.stackAllocator);
-		defer vertices.deinit();
-		var indices = main.List(u32).init(main.stackAllocator);
-		defer indices.deinit();
+		var vertices: main.List(Vertex) = .empty;
+		defer vertices.deinit(main.stackAllocator);
+		var indices: main.List(u32) = .empty;
+		defer indices.deinit(main.stackAllocator);
 		var baseVertex: u32 = 0;
 
 		for (data.nodes[0..data.nodes_count]) |node| {
@@ -173,9 +176,9 @@ pub const EntityModel = struct {
 
 					const indicesAccessor = primitive.indices.*;
 					const vertCount = primitive.attributes[0].data.*.count;
-					var indicesSlice = indices.addMany(indicesAccessor.count);
+					var indicesSlice = indices.addMany(main.stackAllocator, indicesAccessor.count);
 					baseVertex = @intCast(vertices.items.len);
-					const vertSlice: []Vertex = vertices.addMany(vertCount);
+					const vertSlice: []Vertex = vertices.addMany(main.stackAllocator, vertCount);
 
 					for (0..indicesAccessor.count) |i| {
 						const idx = indicesAccessor.read_index(i);
@@ -219,7 +222,7 @@ pub const EntityModel = struct {
 		self.indexCount = @intCast(indices.items.len);
 	}
 
-	fn convertCoordinateSystemVec(v: Vec3f, sys: CoordinateSystem) Vec3f {
+	fn convertCoordinateSystemVec(v: [3]c.cgltf_float, sys: CoordinateSystem) Vec3f {
 		return switch (sys) {
 			.right_handed_z_up => Vec3f{v[0], v[1], v[2]},
 			.right_handed_y_up => Vec3f{v[0], v[2], -v[1]},
@@ -228,16 +231,16 @@ pub const EntityModel = struct {
 		};
 	}
 
-	fn convertCoordinateSystemQuat(q: Vec4f, sys: CoordinateSystem) Vec4f {
+	fn convertCoordinateSystemQuat(q: [4]c.cgltf_float, sys: CoordinateSystem) Quat {
 		return switch (sys) {
-			.right_handed_z_up => Vec4f{q[0], q[1], q[2], q[3]},
-			.right_handed_y_up => Vec4f{q[0], q[2], -q[1], q[3]},
-			.left_handed_z_up => Vec4f{-q[0], q[1], q[2], q[3]},
-			.left_handed_y_up => Vec4f{-q[0], q[2], q[1], q[3]},
+			.right_handed_z_up => Quat{.q = Vec4f{q[0], q[1], q[2], q[3]}},
+			.right_handed_y_up => Quat{.q = Vec4f{q[0], q[2], -q[1], q[3]}},
+			.left_handed_z_up => Quat{.q = Vec4f{-q[0], q[1], q[2], q[3]}},
+			.left_handed_y_up => Quat{.q = Vec4f{-q[0], q[2], q[1], q[3]}},
 		};
 	}
 
-	fn convertCoordinateSystemScale(s: Vec3f, sys: CoordinateSystem) Vec3f {
+	fn convertCoordinateSystemScale(s: [3]c.cgltf_float, sys: CoordinateSystem) Vec3f {
 		return switch (sys) {
 			.right_handed_z_up, .left_handed_z_up => Vec3f{s[0], s[1], s[2]},
 			.right_handed_y_up, .left_handed_y_up => Vec3f{s[0], s[2], s[1]},
@@ -285,14 +288,14 @@ pub const EntityModelIndex = struct {
 	}
 };
 
-pub var playerEntityModels: main.ListUnmanaged(EntityModelIndex) = .{};
+pub var playerEntityModels: main.List(EntityModelIndex) = .empty;
 
 pub var reverseIndices: std.StringHashMapUnmanaged(EntityModelIndex) = .{};
-pub var entityModels: main.ListUnmanaged(EntityModel) = .{};
+pub var entityModels: main.List(EntityModel) = .empty;
 
 pub fn register(assetFolder: []const u8, entityModelId: []const u8, zon: ZonElement) EntityModelIndex {
 	const index = EntityModelIndex{.index = @intCast(entityModels.items.len)};
-	entityModels.append(main.worldArena, EntityModel.init(assetFolder, index, zon));
+	entityModels.append(main.worldArena, EntityModel.init(assetFolder, entityModelId, index, zon));
 	reverseIndices.put(main.worldArena.allocator, entityModelId, index) catch unreachable;
 	return index;
 }
@@ -300,9 +303,9 @@ pub fn reset() void {
 	for (entityModels.items) |*model| {
 		model.deinit();
 	}
-	entityModels = .{};
+	entityModels = .empty;
 	reverseIndices = .{};
-	playerEntityModels = .{};
+	playerEntityModels = .empty;
 }
 
 pub fn getById(id: []const u8) ?EntityModelIndex {

@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const chunk = main.chunk;
+const Entity = main.entity.Entity;
 const game = main.game;
 const graphics = main.graphics;
 const ZonElement = main.ZonElement;
@@ -17,6 +18,7 @@ const Vec4f = vec.Vec4f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const c = @import("c");
+const Self = @This();
 
 pub var entityComponentID: main.entity.EntityComponentId = undefined;
 pub const entityComponentVersion = 0;
@@ -26,7 +28,7 @@ pub const client = struct {
 	const Component = struct {
 		entityModel: main.entityModel.EntityModelIndex,
 	};
-	pub var components: main.utils.SparseSet(Component, main.entity.Entity) = .{};
+	pub var components: main.utils.SparseSet(Component, Entity) = .{};
 
 	pub fn init() void {}
 	pub fn deinit() void {
@@ -35,22 +37,21 @@ pub const client = struct {
 	pub fn clear() void {
 		components.clear();
 	}
-	pub fn load(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
-		if (version != 0)
-			return error.InvalidComponentVersion;
+	pub fn load(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
+		if (version != 0) return error.InvalidComponentVersion;
 
 		const entityModel = reader.readVarInt(u32) catch return error.UnreadableComponentData;
 
-		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
+		const ptr = components.get(entity) orelse components.add(main.globalAllocator, entity);
 		ptr.* = Component{
 			.entityModel = .{.index = entityModel},
 		};
 	}
-	pub fn unload(entity: u32) void {
-		components.remove(@enumFromInt(entity)) catch {};
+	pub fn unload(entity: Entity) void {
+		components.remove(entity) catch {};
 	}
-	pub fn get(entity: u32) ?*Component {
-		return components.get(@enumFromInt(entity));
+	pub fn get(entity: Entity) ?*Component {
+		return components.get(entity);
 	}
 };
 
@@ -65,37 +66,30 @@ pub const server = struct {
 			return .save;
 		}
 	};
-	var components: main.utils.SparseSet(Component, main.entity.Entity) = undefined;
+	var components: main.utils.SparseSet(Component, Entity) = undefined;
 	pub fn init() void {
 		components = .{};
 	}
 	pub fn deinit() void {
 		components.deinit(main.globalAllocator);
 	}
-	pub fn loadFromData(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
-		if (version != 0)
-			return error.InvalidComponentVersion;
+	pub fn loadFromData(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
+		if (version != 0) return error.InvalidComponentVersion;
 		const entityModel = reader.readVarInt(u32) catch return error.UnreadableComponentData;
 
-		try loadByIndex(entity, .{.index = entityModel});
+		put(entity, Component{
+			.entityModel = .{.index = entityModel},
+		});
 	}
-	pub fn loadByID(entity: u32, entityModelID: []const u8) main.entity.EntityComponentLoadError!void {
-		try loadByIndex(entity, main.entityModel.getById(entityModelID) orelse main.entityModel.default());
+	pub fn unload(entity: Entity) void {
+		components.remove(entity) catch {};
 	}
-	pub fn loadByIndex(entity: u32, entityModel: main.entityModel.EntityModelIndex) main.entity.EntityComponentLoadError!void {
-		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
-		ptr.* = Component{
-			.entityModel = entityModel,
-		};
-	}
-	pub fn unload(entity: u32) void {
-		components.remove(@enumFromInt(entity)) catch {};
-	}
-	pub fn put(entity: u32, renderComponent: Component) void {
-		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
+	pub fn put(entity: Entity, renderComponent: Component) void {
+		const ptr = components.get(entity) orelse components.add(main.globalAllocator, entity);
 		ptr.* = renderComponent;
+		main.entity.server.transmitChange(Self, entity);
 	}
-	pub fn get(entity: u32) ?*Component {
-		return components.get(@enumFromInt(entity));
+	pub fn get(entity: Entity) ?*const Component {
+		return components.get(entity);
 	}
 };

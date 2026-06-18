@@ -7,7 +7,7 @@ const graphics = @import("graphics.zig");
 const Color = graphics.Color;
 const Tag = main.Tag;
 const ZonElement = main.ZonElement;
-const ListUnmanaged = main.ListUnmanaged;
+const List = main.List;
 const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
@@ -58,7 +58,7 @@ const Material = struct { // MARK: Material
 		const colors = zon.getChild("colors");
 		self.colorPalette = allocator.alloc(Color, colors.toSlice().len);
 		for (colors.toSlice(), self.colorPalette) |item, *color| {
-			const colorInt: u32 = @intCast(item.as(i64, 0xff000000) & 0xffffffff);
+			const colorInt: u32 = @intCast((item.as(i64) orelse 0xff000000) & 0xffffffff);
 			color.* = Color{
 				.r = @intCast(colorInt >> 16 & 0xff),
 				.g = @intCast(colorInt >> 8 & 0xff),
@@ -99,7 +99,7 @@ const Material = struct { // MARK: Material
 		}
 	}
 
-	pub fn printTooltip(self: Material, outString: *main.List(u8)) void {
+	pub fn printTooltip(self: Material, outString: *main.ListManaged(u8)) void {
 		if (self.modifiers.len == 0) {
 			outString.appendSlice("§#808080Material\n");
 		}
@@ -125,7 +125,7 @@ pub const ModifierRestriction = struct {
 	pub const VTable = struct {
 		satisfied: *const fn (data: *anyopaque, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool,
 		loadFromZon: *const fn (allocator: NeverFailingAllocator, zon: ZonElement) *anyopaque,
-		printTooltip: *const fn (data: *anyopaque, outString: *main.List(u8)) void,
+		printTooltip: *const fn (data: *anyopaque, outString: *main.ListManaged(u8)) void,
 	};
 
 	pub fn satisfied(self: ModifierRestriction, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
@@ -144,7 +144,7 @@ pub const ModifierRestriction = struct {
 		};
 	}
 
-	pub fn printTooltip(self: ModifierRestriction, outString: *main.List(u8)) void {
+	pub fn printTooltip(self: ModifierRestriction, outString: *main.ListManaged(u8)) void {
 		self.vTable.printTooltip(self.data, outString);
 	}
 };
@@ -159,7 +159,7 @@ const Modifier = struct {
 		combineModifiers: *const fn (data1: Data, data2: Data) ?Data,
 		changeProceduralItemParameters: *const fn (proceduralItem: *ProceduralItem, data: Data) void,
 		changeBlockDamage: *const fn (damage: f32, block: Block, data: Data) f32,
-		printTooltip: *const fn (outString: *main.List(u8), data: Data) void,
+		printTooltip: *const fn (outString: *main.ListManaged(u8), data: Data) void,
 		loadData: *const fn (zon: ZonElement) Data,
 		priority: f32,
 
@@ -199,7 +199,7 @@ const Modifier = struct {
 		return self.vTable.changeBlockDamage(damage, block, self.data);
 	}
 
-	pub fn printTooltip(self: Modifier, outString: *main.List(u8)) void {
+	pub fn printTooltip(self: Modifier, outString: *main.ListManaged(u8)) void {
 		self.vTable.printTooltip(outString, self.data);
 	}
 };
@@ -280,7 +280,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 		if (texturePath.len == 0) {
 			self.image = graphics.Image.defaultImage;
 		} else {
-			self.image = graphics.Image.readFromFile(allocator, texturePath) catch graphics.Image.readFromFile(allocator, replacementTexturePath) catch blk: {
+			self.image = graphics.Image.readFromFile(allocator, texturePath, .{.orientation = .openGl}) catch graphics.Image.readFromFile(allocator, replacementTexturePath, .{.orientation = .openGl}) catch blk: {
 				std.log.err("Item texture not found in {s} and {s}.", .{texturePath, replacementTexturePath});
 				break :blk graphics.Image.defaultImage;
 			};
@@ -301,7 +301,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 		self.texture = null;
 		self.foodValue = zon.get(f32, "food", 0);
 
-		var tooltip: main.List(u8) = .init(allocator);
+		var tooltip: main.ListManaged(u8) = .init(allocator);
 		tooltip.appendSlice(self.name);
 		tooltip.append('\n');
 		if (self.material) |mat| {
@@ -459,8 +459,8 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 	/// Determines all the basic properties of the proceduralItem.
 	pub fn evaluateProceduralItem(proceduralItem: *ProceduralItem) void {
 		proceduralItem.properties = @splat(0);
-		var tempModifiers: main.List(Modifier) = .init(main.stackAllocator);
-		defer tempModifiers.deinit();
+		var tempModifiers: main.List(Modifier) = .empty;
+		defer tempModifiers.deinit(main.stackAllocator);
 		for (proceduralItem.type.properties()) |property| {
 			if (property.destination == null) continue;
 			var sum: f32 = 0;
@@ -492,7 +492,7 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 						continue :outer;
 					}
 				}
-				tempModifiers.append(newMod);
+				tempModifiers.append(main.stackAllocator, newMod);
 			}
 		}
 		std.sort.insertion(Modifier, tempModifiers.items, {}, struct {
@@ -649,7 +649,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	craftingGrid: [craftingGridSize]?BaseItemIndex,
 	materialGrid: [16][16]?BaseItemIndex,
 	modifiers: []Modifier,
-	tooltip: main.List(u8),
+	tooltip: main.ListManaged(u8),
 	image: graphics.Image,
 	texture: ?graphics.Texture,
 	seed: u32,
@@ -1061,14 +1061,20 @@ pub const Item = union(ItemType) { // MARK: Item
 
 			if (durabilityPercentage < 1) {
 				const width = durabilityPercentage*(slotSize[0] - 2*border);
-				graphics.draw.setColorSameAlpha(0x000000);
-				graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{slotSize[0] - 2*border, (slotSize[1] - 2*border)/16.0});
+				{
+					const oldColor = graphics.draw.setColor(0xff000000);
+					defer graphics.draw.restoreColor(oldColor);
+					graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{slotSize[0] - 2*border, (slotSize[1] - 2*border)/16.0});
+				}
 
 				const red = std.math.lossyCast(u8, (2 - durabilityPercentage*2)*255);
 				const green = std.math.lossyCast(u8, durabilityPercentage*2*255);
 
-				graphics.draw.setColorSameAlpha((@as(u24, @intCast(red)) << 16) | (@as(u24, @intCast(green)) << 8));
-				graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{width, (slotSize[1] - 2*border)/16.0});
+				{
+					const oldColor = graphics.draw.setColor(0xff000000 | (@as(u32, red) << 16) | (@as(u32, green) << 8));
+					defer graphics.draw.restoreColor(oldColor);
+					graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{width, (slotSize[1] - 2*border)/16.0});
+				}
 			}
 		}
 	}
@@ -1165,20 +1171,20 @@ pub const Recipe = struct { // MARK: Recipe
 		const sourceCount = try reader.readVarInt(usize);
 
 		var sourceItems: main.List(BaseItemIndex) = .initCapacity(main.stackAllocator, @min(256, sourceCount));
-		defer sourceItems.deinit();
+		defer sourceItems.deinit(main.stackAllocator);
 		var sourceAmounts: main.List(u16) = .initCapacity(main.stackAllocator, @min(256, sourceCount));
-		defer sourceAmounts.deinit();
+		defer sourceAmounts.deinit(main.stackAllocator);
 
 		while (reader.remaining.len > 0 and sourceItems.items.len < sourceCount) {
-			sourceItems.append(try reader.readEnum(BaseItemIndex));
-			sourceAmounts.append(try reader.readVarInt(u16));
+			sourceItems.append(main.stackAllocator, try reader.readEnum(BaseItemIndex));
+			sourceAmounts.append(main.stackAllocator, try reader.readVarInt(u16));
 		}
 
 		return getValidRecipe(.{.sourceItems = sourceItems.items, .sourceAmounts = sourceAmounts.items, .resultItem = resultItem, .resultAmount = resultAmount});
 	}
 };
 
-var proceduralItemTypeList: ListUnmanaged(ProceduralItemType) = .{};
+var proceduralItemTypeList: List(ProceduralItemType) = .empty;
 var proceduralItemTypeIdToIndex: std.StringHashMapUnmanaged(ProceduralItemTypeIndex) = .{};
 
 var reverseIndices: std.StringHashMapUnmanaged(BaseItemIndex) = .{};
@@ -1187,7 +1193,7 @@ var modifierRestrictions: std.StringHashMapUnmanaged(*const ModifierRestriction.
 pub var itemList: [65536]BaseItem = undefined;
 pub var itemListSize: u16 = 0;
 
-var recipeList: main.List(Recipe) = undefined;
+var recipeList: main.ListManaged(Recipe) = .init(main.worldArena);
 
 pub fn hasRegistered(id: []const u8) bool {
 	return reverseIndices.contains(id);
@@ -1208,7 +1214,6 @@ pub fn getRecipes() []Recipe {
 pub fn globalInit() void {
 	proceduralItemTypeIdToIndex = .{};
 
-	recipeList = .init(main.worldArena);
 	itemListSize = 0;
 	inline for (@typeInfo(modifierList).@"struct".decls) |decl| {
 		const ModifierStruct: type = @field(modifierList, decl.name);
@@ -1230,7 +1235,7 @@ pub fn globalDeinit() void {
 }
 
 pub fn reset() void {
-	proceduralItemTypeList = .{};
+	proceduralItemTypeList = .empty;
 	proceduralItemTypeIdToIndex = .{};
 	reverseIndices = .{};
 	recipeList.clearAndFree();
@@ -1254,15 +1259,16 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 	const proceduralItem = split.rest();
 	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/tools/{s}{s}.png", .{assetFolder, mod, proceduralItem, layerPostfix}) catch unreachable;
 	defer main.stackAllocator.free(path);
-	const image = main.graphics.Image.readFromFile(main.stackAllocator, path) catch |err| blk: {
+	const image = main.graphics.Image.readFromFile(main.stackAllocator, path, .{.orientation = .openGl}) catch |err| blk: {
 		if (err != error.FileNotFound) {
 			std.log.err("Error while reading procedural item image '{s}': {s}", .{path, @errorName(err)});
 		}
 		const replacementPath = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/tools/{s}{s}.png", .{mod, proceduralItem, layerPostfix}) catch unreachable;
 		defer main.stackAllocator.free(replacementPath);
-		break :blk main.graphics.Image.readFromFile(main.stackAllocator, replacementPath) catch |err2| {
-			if (layerPostfix.len == 0 or err2 != error.FileNotFound)
+		break :blk main.graphics.Image.readFromFile(main.stackAllocator, replacementPath, .{.orientation = .openGl}) catch |err2| {
+			if (layerPostfix.len == 0 or err2 != error.FileNotFound) {
 				std.log.err("Error while reading procedural item image. Tried '{s}' and '{s}': {s}", .{path, replacementPath, @errorName(err2)});
+			}
 			break :blk main.graphics.Image.emptyImage;
 		};
 	};
@@ -1290,18 +1296,19 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 			std.log.err("disabled array of {s} has too many entries", .{id});
 			break;
 		}
-		slotInfos[i].disabled = zonDisabled.as(usize, 0) != 0;
+		slotInfos[i].disabled = (zonDisabled.as(usize) orelse 0) != 0;
 	}
 	for (zon.getChild("optional").toSlice(), 0..) |zonDisabled, i| {
 		if (i >= 25) {
 			std.log.err("disabled array of {s} has too many entries", .{id});
 			break;
 		}
-		slotInfos[i].optional = zonDisabled.as(usize, 0) != 0;
+		slotInfos[i].optional = (zonDisabled.as(usize) orelse 0) != 0;
 	}
-	var parameterMatrices: main.List(PropertyMatrix) = .init(main.worldArena);
+	var parameterMatrices: main.List(PropertyMatrix) = .empty;
+	defer parameterMatrices.deinit(main.stackAllocator);
 	for (zon.getChild("parameters").toSlice()) |paramZon| {
-		const val = parameterMatrices.addOne();
+		const val = parameterMatrices.addOne(main.stackAllocator);
 		val.source = MaterialProperty.fromString(paramZon.get([]const u8, "source", "not specified"));
 		val.destination = ProceduralItemProperty.fromString(paramZon.get([]const u8, "destination", "not specified"));
 		val.resultScale = paramZon.get(f32, "factor", 1.0);
@@ -1330,7 +1337,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 		.id = idDupe,
 		.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
 		.slotInfos = slotInfos,
-		.properties = parameterMatrices.toOwnedSlice(),
+		.properties = main.worldArena.dupe(PropertyMatrix, parameterMatrices.items),
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
 	});
@@ -1352,37 +1359,13 @@ fn parseRecipeItem(zon: ZonElement) !ItemStack {
 	return result;
 }
 
-fn parseRecipe(zon: ZonElement) !Recipe {
-	const inputs = zon.getChild("inputs").toSlice();
-	const output = try parseRecipeItem(zon.getChild("output"));
-	const recipe = Recipe{
-		.sourceItems = main.worldArena.alloc(BaseItemIndex, inputs.len),
-		.sourceAmounts = main.worldArena.alloc(u16, inputs.len),
-		.resultItem = output.item.baseItem,
-		.resultAmount = output.amount,
-	};
-	for (inputs, 0..) |inputZon, i| {
-		const input = try parseRecipeItem(inputZon);
-		recipe.sourceItems[i] = input.item.baseItem;
-		recipe.sourceAmounts[i] = input.amount;
-	}
-	return recipe;
-}
-
 pub fn registerRecipes(zon: ZonElement) void {
 	for (zon.toSlice()) |recipeZon| {
-		recipes.parseRecipe(main.globalAllocator, recipeZon, &recipeList) catch |err| {
+		recipes.parseRecipe(recipeZon, &recipeList) catch |err| {
 			const recipeString = recipeZon.toString(main.stackAllocator);
 			defer main.stackAllocator.free(recipeString);
 			std.log.err("Skipping recipe with error {s}:\n{s}", .{@errorName(err), recipeString});
 			continue;
 		};
-	}
-}
-
-pub fn clearRecipeCachedInventories() void {
-	for (recipeList.items) |recipe| {
-		main.globalAllocator.free(recipe.sourceItems);
-		main.globalAllocator.free(recipe.sourceAmounts);
 	}
 }
