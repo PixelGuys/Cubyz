@@ -102,7 +102,7 @@ const SelectionCapabilities = union(enum) {
 
 		const Capability = std.meta.FieldEnum(@TypeOf(result.custom));
 		for (zon.toSlice()) |capabilityZon| {
-			if (capabilityZon.as(?Capability, null)) |capability| {
+			if (capabilityZon.as(Capability)) |capability| {
 				@field(result.custom, @tagName(capability)) = true;
 			} else std.log.err("SelectionCapability is invalid. Ignoring", .{});
 		}
@@ -161,7 +161,7 @@ var reverseIndices: std.StringHashMapUnmanaged(u16) = .{};
 
 var size: u32 = 0;
 
-pub var ores: main.List(Ore) = .{};
+pub var ores: main.List(Ore) = .empty;
 
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_id[size] = main.worldArena.dupe(u8, id);
@@ -230,7 +230,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	return @intCast(size);
 }
 
-pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
+pub fn loadBlockDrop(blockId: []const u8, zon: ZonElement) []const BlockDrop {
 	const drops = zon.getChild("drops").toSlice();
 	const blockDrops = main.worldArena.alloc(BlockDrop, drops.len);
 
@@ -239,7 +239,7 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 		var resultItems = main.List(items.ItemStack).initCapacity(main.worldArena, itemZons.len);
 
 		for (itemZons) |itemZon| {
-			var string = itemZon.as([]const u8, "auto");
+			var string = itemZon.as([]const u8) orelse "auto";
 			string = std.mem.trim(u8, string, " ");
 			var iterator = std.mem.splitScalar(u8, string, ' ');
 			var name = iterator.first();
@@ -252,9 +252,7 @@ pub fn loadBlockDrop(blockId: ?[]const u8, zon: ZonElement) []const BlockDrop {
 			}
 
 			if (std.mem.eql(u8, name, "auto")) {
-				if (blockId) |id| {
-					name = id;
-				} else std.log.err("Cannot use 'auto' in this context", .{});
+				name = blockId;
 			}
 
 			const item = items.BaseItemIndex.fromId(name) orelse continue;
@@ -302,31 +300,31 @@ fn registerOpaqueVariant(typ: u16, zon: ZonElement) void {
 
 fn registerCallbacks(typ: u16, zon: ZonElement) void {
 	_onInteract[typ] = blk: {
-		break :blk ClientBlockCallback.init(zon.getChildOrNull("onInteract") orelse break :blk .noop) orelse {
+		break :blk ClientBlockCallback.init(zon.getChildOrNull("onInteract") orelse break :blk .noop, .{.block = .{.typ = typ, .data = 0}}) orelse {
 			std.log.err("Failed to load onInteract event for block {s}", .{_id[typ]});
 			break :blk .noop;
 		};
 	};
 	_onBreak[typ] = blk: {
-		break :blk ServerBlockCallback.init(zon.getChildOrNull("onBreak") orelse break :blk .noop) orelse {
+		break :blk ServerBlockCallback.init(zon.getChildOrNull("onBreak") orelse break :blk .noop, .{.block = .{.typ = typ, .data = 0}}) orelse {
 			std.log.err("Failed to load onBreak event for block {s}", .{_id[typ]});
 			break :blk .noop;
 		};
 	};
 	_onUpdate[typ] = blk: {
-		break :blk ServerBlockCallback.init(zon.getChildOrNull("onUpdate") orelse break :blk .noop) orelse {
+		break :blk ServerBlockCallback.init(zon.getChildOrNull("onUpdate") orelse break :blk .noop, .{.block = .{.typ = typ, .data = 0}}) orelse {
 			std.log.err("Failed to load onUpdate event for block {s}", .{_id[typ]});
 			break :blk .noop;
 		};
 	};
 	_onTick[typ] = blk: {
-		break :blk ServerBlockCallback.init(zon.getChildOrNull("onTick") orelse break :blk .noop) orelse {
+		break :blk ServerBlockCallback.init(zon.getChildOrNull("onTick") orelse break :blk .noop, .{.block = .{.typ = typ, .data = 0}}) orelse {
 			std.log.err("Failed to load onTick event for block {s}", .{_id[typ]});
 			break :blk .noop;
 		};
 	};
 	_onTouch[typ] = blk: {
-		break :blk BlockTouchCallback.init(zon.getChildOrNull("onTouch") orelse break :blk .noop) orelse {
+		break :blk BlockTouchCallback.init(zon.getChildOrNull("onTouch") orelse break :blk .noop, .{.block = .{.typ = typ, .data = 0}}) orelse {
 			std.log.err("Failed to load onTouch event for block {s}", .{_id[typ]});
 			break :blk .noop;
 		};
@@ -347,7 +345,7 @@ pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 
 pub fn reset() void {
 	size = 0;
-	ores = .{};
+	ores = .empty;
 	reverseIndices = .{};
 	meshes.reset();
 }
@@ -603,17 +601,17 @@ pub const meshes = struct { // MARK: meshes
 	/// Number of loaded meshes. Used to determine if an update is needed.
 	var loadedMeshes: u32 = 0;
 
-	var textureIds: main.List([]const u8) = .{};
-	var texturePaths: main.List([]const u8) = .{};
+	var textureIds: main.List([]const u8) = .empty;
+	var texturePaths: main.List([]const u8) = .empty;
 	var animationData: []AnimationData = &.{};
-	var blockTextures: main.List(Image) = .{};
-	var emissionTextures: main.List(Image) = .{};
-	var reflectivityTextures: main.List(Image) = .{};
-	var absorptionTextures: main.List(Image) = .{};
-	var textureFogData: main.List(FogData) = .{};
+	var blockTextures: main.List(Image) = .empty;
+	var emissionTextures: main.List(Image) = .empty;
+	var reflectivityTextures: main.List(Image) = .empty;
+	var absorptionTextures: main.List(Image) = .empty;
+	var textureFogData: main.List(FogData) = .empty;
 	pub var textureOcclusionData: []std.atomic.Value(bool) = &.{};
 
-	pub var blockBreakingTextures: main.List(u16) = .{};
+	pub var blockBreakingTextures: main.List(u16) = .empty;
 
 	const sideNames = blk: {
 		var names: [6][]const u8 = undefined;
@@ -642,9 +640,6 @@ pub const meshes = struct { // MARK: meshes
 	pub var ditherTexture: graphics.Texture = undefined;
 
 	const black: Color = Color{.r = 0, .g = 0, .b = 0, .a = 255};
-	const magenta: Color = Color{.r = 255, .g = 0, .b = 255, .a = 255};
-	var undefinedTexture = [_]Color{magenta, black, black, magenta};
-	const undefinedImage = Image{.width = 2, .height = 2, .imageData = undefinedTexture[0..]};
 	var emptyTexture = [_]Color{black};
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
@@ -676,16 +671,16 @@ pub const meshes = struct { // MARK: meshes
 	pub fn reset() void {
 		meshes.size = 0;
 		loadedMeshes = 0;
-		textureIds = .{};
-		texturePaths = .{};
+		textureIds = .empty;
+		texturePaths = .empty;
 		animationData = &.{};
-		blockTextures = .{};
-		emissionTextures = .{};
-		reflectivityTextures = .{};
-		absorptionTextures = .{};
-		textureFogData = .{};
+		blockTextures = .empty;
+		emissionTextures = .empty;
+		reflectivityTextures = .empty;
+		absorptionTextures = .empty;
+		textureFogData = .empty;
 		textureOcclusionData = &.{};
-		blockBreakingTextures = .{};
+		blockBreakingTextures = .empty;
 	}
 
 	pub inline fn model(block: Block) ModelIndex {
@@ -786,6 +781,9 @@ pub const meshes = struct { // MARK: meshes
 			main.stackAllocator.free(path);
 			path = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
 			break :blk main.files.cwd().openFile(path) catch |err2| {
+				if (err2 != error.FileNotFound) {
+					std.log.err("Could not open file {s}: {s}", .{path, @errorName(err2)});
+				}
 				std.log.err("File not found. Searched in \"{s}\" and also in the assetFolder \"{s}\"", .{path, assetFolder});
 				return err2;
 			};
@@ -800,7 +798,7 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn getTextureIndices(zon: ZonElement, assetFolder: []const u8, textureIndicesRef: *[16]u16) void {
-		const defaultIndex = findTexture(zon.get(?[]const u8, "texture", null), assetFolder) catch 0;
+		const defaultIndex = findTexture(zon.get(?[]const u8, "texture", null), assetFolder) catch findTexture("cubyz:undefined", assetFolder) catch 0;
 		inline for (textureIndicesRef, 0..) |*ref, i| {
 			var textureId = zon.get(?[]const u8, std.fmt.comptimePrint("texture{}", .{i}), null);
 			if (i < sideNames.len) {

@@ -941,7 +941,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 
 			if (id == 0 and lastUpdate.durationTo(main.timestamp()).nanoseconds > refreshTime.nanoseconds) {
 				const start = main.timestamp();
-				var temporaryTaskList: main.List(Task) = .{};
+				var temporaryTaskList: main.List(Task) = .empty;
 				defer temporaryTaskList.deinit(main.stackAllocator);
 				while (self.loadList.extractAny()) |task| {
 					self.semaphore.timedWait(.zero) catch {};
@@ -2066,9 +2066,9 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 	return struct {
 		const Self = @This();
 
-		dense: main.List(T) = .{},
-		denseToSparseIndex: main.List(IdType) = .{},
-		sparseToDenseIndex: main.List(IdType) = .{},
+		dense: main.List(T) = .empty,
+		denseToSparseIndex: main.List(IdType) = .empty,
+		sparseToDenseIndex: main.List(IdType) = .empty,
 
 		pub fn clear(self: *Self) void {
 			self.dense.clearRetainingCapacity();
@@ -2083,6 +2083,7 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 		}
 
 		pub fn contains(self: *Self, id: IdType) bool {
+			std.debug.assert(id != .noValue);
 			return @intFromEnum(id) < self.sparseToDenseIndex.items.len and self.sparseToDenseIndex.items[@intFromEnum(id)] != .noValue;
 		}
 
@@ -2103,6 +2104,7 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 		}
 
 		pub fn set(self: *Self, allocator: NeverFailingAllocator, id: IdType, value: T) void {
+			std.debug.assert(id != .noValue);
 			self.add(allocator, id).* = value;
 		}
 
@@ -2126,6 +2128,7 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 		}
 
 		pub fn get(self: *Self, id: IdType) ?*T {
+			std.debug.assert(id != .noValue);
 			if (@intFromEnum(id) >= self.sparseToDenseIndex.items.len) return null;
 			const index = self.sparseToDenseIndex.items[@intFromEnum(id)];
 			if (index == .noValue) return null;

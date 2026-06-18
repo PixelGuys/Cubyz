@@ -69,7 +69,7 @@ pub const EntityModel = struct {
 			self.modelId = null;
 		}
 		self.entityModelId = main.worldArena.dupe(u8, entityModelId);
-		self.height = zon.getChild("height").as(f32, 1);
+		self.height = zon.get(f32, "height", 1);
 		self.defaultTexture = null;
 		self.vao = null;
 		self.indexCount = 0;
@@ -157,9 +157,9 @@ pub const EntityModel = struct {
 			return getGltfError(result);
 		}
 
-		var vertices: main.List(Vertex) = .{};
+		var vertices: main.List(Vertex) = .empty;
 		defer vertices.deinit(main.stackAllocator);
-		var indices: main.List(u32) = .{};
+		var indices: main.List(u32) = .empty;
 		defer indices.deinit(main.stackAllocator);
 		var baseVertex: u32 = 0;
 
@@ -288,10 +288,10 @@ pub const EntityModelIndex = struct {
 	}
 };
 
-pub var playerEntityModels: main.List(EntityModelIndex) = .{};
+pub var playerEntityModels: main.List(EntityModelIndex) = .empty;
 
 pub var reverseIndices: std.StringHashMapUnmanaged(EntityModelIndex) = .{};
-pub var entityModels: main.List(EntityModel) = .{};
+pub var entityModels: main.List(EntityModel) = .empty;
 
 pub fn register(assetFolder: []const u8, entityModelId: []const u8, zon: ZonElement) EntityModelIndex {
 	const index = EntityModelIndex{.index = @intCast(entityModels.items.len)};
@@ -303,9 +303,9 @@ pub fn reset() void {
 	for (entityModels.items) |*model| {
 		model.deinit();
 	}
-	entityModels = .{};
+	entityModels = .empty;
 	reverseIndices = .{};
-	playerEntityModels = .{};
+	playerEntityModels = .empty;
 }
 
 pub fn getById(id: []const u8) ?EntityModelIndex {

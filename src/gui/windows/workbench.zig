@@ -82,7 +82,7 @@ fn openInventory() void {
 		list.add(grid);
 	}
 	const verticalThing = VerticalList.init(.{0, 0}, 300, padding);
-	proceduralItemButton = Button.initText(.{8, 0}, 116, proceduralItemTypes.items[currentProceduralItemType].id(), .init(toggleProceduralItem));
+	proceduralItemButton = Button.initText(.{8, 0}, 116, proceduralItemTypes.items[currentProceduralItemType].id(), .{.onAction = .init(toggleProceduralItem)});
 	verticalThing.add(proceduralItemButton);
 	const buttonHeight = verticalThing.size[1];
 	const craftingResultList = HorizontalList.init();
@@ -132,7 +132,7 @@ pub fn render() void {
 pub fn onOpen() void {
 	currentProceduralItemType = 0;
 
-	proceduralItemTypes = .{};
+	proceduralItemTypes = .empty;
 	var iterator = ProceduralItemTypeIndex.iterator();
 	while (iterator.next()) |proceduralItemType| {
 		proceduralItemTypes.append(main.globalAllocator, proceduralItemType);

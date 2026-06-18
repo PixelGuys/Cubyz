@@ -13,9 +13,17 @@ const branch = main.rotation.rotations.@"cubyz:branch";
 
 decayReplacement: blocks.Block,
 prevention: []const main.Tag,
-blockDrops: ?[]const blocks.BlockDrop,
+blockDrops: []const blocks.BlockDrop,
 
-pub fn init(zon: ZonElement) ?*@This() {
+pub fn init(zon: ZonElement, creator: main.callbacks.Creator) ?*@This() {
+	const block = switch (creator) {
+		.block => |b| b,
+		// TODO: Add when a new creator type exists
+		// else => {
+		// std.log.err("decay callback can only be used for blocks", .{});
+		// return null;
+		// },
+	};
 	const result = main.worldArena.create(@This());
 	// replacement
 	if (zon.get(?[]const u8, "replacement", null)) |blockname| {
@@ -23,15 +31,15 @@ pub fn init(zon: ZonElement) ?*@This() {
 	} else result.decayReplacement = main.blocks.Block.air;
 	// custom drop
 	if (zon.getChildOrNull("drops")) |_| {
-		result.blockDrops = blocks.loadBlockDrop(null, zon);
-	} else result.blockDrops = null;
+		result.blockDrops = blocks.loadBlockDrop(block.id(), zon);
+	} else result.blockDrops = block.blockDrops();
 	// prevention
 	result.prevention = &.{};
 	if (zon.getChildOrNull("prevention")) |tagNames| {
 		if (tagNames == .array) {
 			var prevention = main.List(main.Tag).initCapacity(main.worldArena, tagNames.array.items.len);
 			for (tagNames.array.items) |value| {
-				const tagName = value.as(?[]const u8, null) orelse {
+				const tagName = value.as([]const u8) orelse {
 					std.log.err("Invalid TagName for decay prevention.", .{});
 					continue;
 				};
@@ -126,8 +134,7 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 
 			// no, there is no log in proximity
 			if (world.cmpxchgBlock(wx, wy, wz, leaf, self.decayReplacement) == null) {
-				const drops = if (self.blockDrops) |blockDrops| blockDrops else params.block.blockDrops();
-				for (drops) |drop| {
+				for (self.blockDrops) |drop| {
 					if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
 						for (drop.items) |stack| {
 							var dir = main.vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));

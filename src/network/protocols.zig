@@ -46,6 +46,7 @@ pub fn init() void { // MARK: init()
 }
 
 pub fn onReceive(conn: *Connection, protocolIndex: u8, data: []const u8) !void { // MARK: onReceive()
+	if (conn.handShakeState.raw != .complete and protocolIndex != handShake.id) return error.HandshakeIncomplete;
 	const protocolReceive = blk: {
 		if (conn.isServerSide()) break :blk serverReceiveList[protocolIndex] orelse return error.Invalid;
 		break :blk clientReceiveList[protocolIndex] orelse return error.Invalid;
@@ -96,8 +97,8 @@ pub const handShake = struct { // MARK: handShake
 				.serverData => {
 					const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 					defer zon.deinit(main.stackAllocator);
-					try conn.manager.world.?.finishHandshake(zon);
 					conn.handShakeState.store(.complete, .monotonic);
+					try conn.manager.world.?.finishHandshake(zon);
 					conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
 				},
 				.start, .complete => {},
@@ -183,7 +184,8 @@ pub const handShake = struct { // MARK: handShake
 		const zonObject = ZonElement.initObject(main.stackAllocator);
 		defer zonObject.deinit(main.stackAllocator);
 		zonObject.put("player", conn.user.?.player().save(main.stackAllocator, .playerHimself));
-		zonObject.put("player_id", conn.user.?.id);
+		zonObject.put("player_id", @intFromEnum(conn.user.?.id));
+		zonObject.put("gamemode", @intFromEnum(conn.user.?.gamemode.raw));
 		zonObject.put("blockPalette", main.server.world.?.blockPalette.storeToZon(main.stackAllocator));
 		zonObject.put("itemPalette", main.server.world.?.itemPalette.storeToZon(main.stackAllocator));
 		zonObject.put("toolPalette", main.server.world.?.proceduralItemPalette.storeToZon(main.stackAllocator));
@@ -217,7 +219,7 @@ pub const handShake = struct { // MARK: handShake
 			};
 			break;
 		}
-		if (conn.connectionState.load(.monotonic) == .disconnectDesired) return error.DisconnectedByServer;
+		if (conn.connectionState.load(.monotonic) == .disconnected) return error.DisconnectedByServer;
 		conn.mutex.unlock();
 	}
 };
@@ -405,7 +407,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 								.f32VelocityEntity => @floatCast(try reader.readVec(@Vector(3, f32))),
 								else => unreachable,
 							},
-							.id = try reader.readInt(u32),
+							.id = try reader.readEnum(main.entity.Entity),
 							.pos = playerPos + try reader.readVec(Vec3f),
 							.rot = try reader.readVec(Vec3f),
 						});
@@ -445,7 +447,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 				writer.writeEnum(Type, .f16VelocityEntity);
 				writer.writeVec(@Vector(3, f16), @floatCast(data.vel));
 			}
-			writer.writeInt(u32, data.id);
+			writer.writeEnum(main.entity.Entity, data.id);
 			writer.writeVec(Vec3f, @floatCast(data.pos - playerPos));
 			writer.writeVec(Vec3f, data.rot);
 		}
@@ -504,7 +506,7 @@ pub const entity = struct { // MARK: entity
 			const elem = zonArray.array.items[i];
 			switch (elem) {
 				.int => {
-					main.client.entity_manager.removeEntity(elem.as(u32, 0));
+					main.client.entity_manager.removeEntity(@enumFromInt(elem.as(u32) orelse return error.Invalid));
 				},
 				.object => {
 					try main.client.entity_manager.addEntity(elem);
@@ -521,7 +523,7 @@ pub const entity = struct { // MARK: entity
 		while (i < zonArray.array.items.len) : (i += 1) {
 			const elem: ZonElement = zonArray.array.items[i];
 			if (elem == .int) {
-				conn.manager.world.?.itemDrops.remove(elem.as(u16, 0));
+				conn.manager.world.?.itemDrops.remove(elem.as(u16) orelse return error.Invalid);
 			} else if (!elem.getChild("array").isNull()) {
 				conn.manager.world.?.itemDrops.loadFrom(elem);
 			} else {
@@ -1009,7 +1011,7 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 	};
 
 	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
-		const entityId = try reader.readVarInt(u32);
+		const entityId: main.entity.Entity = @enumFromInt(try reader.readVarInt(u32));
 		const componentId = try reader.readVarInt(u32);
 		const actionType: ActionType = try reader.readEnum(ActionType);
 
@@ -1020,21 +1022,21 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 			try main.entity.unloadComponent(.client, componentId, entityId);
 		}
 	}
-	pub fn unload(conn: *Connection, entityId: u32, componentId: u32) void {
+	pub fn unload(conn: *Connection, entityId: main.entity.Entity, componentId: u32) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
-		writer.writeVarInt(u32, entityId);
+		writer.writeVarInt(u32, @intFromEnum(entityId));
 		writer.writeVarInt(u32, componentId);
 		writer.writeEnum(ActionType, ActionType.unload);
 
 		conn.send(.secure, id, writer.data.items);
 	}
-	pub fn load(conn: *Connection, entityId: u32, componentId: u32, version: u32, componentData: []const u8) void {
+	pub fn load(conn: *Connection, entityId: main.entity.Entity, componentId: u32, version: u32, componentData: []const u8) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
-		writer.writeVarInt(u32, entityId);
+		writer.writeVarInt(u32, @intFromEnum(entityId));
 		writer.writeVarInt(u32, componentId);
 		writer.writeEnum(ActionType, ActionType.load);
 		// specific to `load`

@@ -24,10 +24,10 @@ const c = @import("c");
 
 pub const ParticleManager = struct {
 	var particleTypesSSBO: SSBO = undefined;
-	var types: main.List(ParticleType) = .{};
-	var typesLocal: main.List(ParticleTypeLocal) = .{};
-	var textures: main.List(Image) = .{};
-	var emissionTextures: main.List(Image) = .{};
+	var types: main.List(ParticleType) = .empty;
+	var typesLocal: main.List(ParticleTypeLocal) = .empty;
+	var textures: main.List(Image) = .empty;
+	var emissionTextures: main.List(Image) = .empty;
 
 	var textureArray: TextureArray = undefined;
 	var emissionTextureArray: TextureArray = undefined;
@@ -50,10 +50,10 @@ pub const ParticleManager = struct {
 	}
 
 	pub fn reset() void {
-		types = .{};
-		typesLocal = .{};
-		textures = .{};
-		emissionTextures = .{};
+		types = .empty;
+		typesLocal = .empty;
+		textures = .empty;
+		emissionTextures = .empty;
 		particleTypeHashmap = .{};
 		ParticleSystem.reset();
 	}
@@ -167,7 +167,7 @@ pub const ParticleSystem = struct {
 	var previousPlayerPos: Vec3d = undefined;
 
 	var mutex: main.utils.Mutex = .{};
-	var networkCreationQueue: main.List(struct { emitter: Emitter, pos: Vec3d, count: u32 }) = .{};
+	var networkCreationQueue: main.List(struct { emitter: Emitter, pos: Vec3d, count: u32 }) = .empty;
 
 	var particlesSSBO: SSBO = undefined;
 
@@ -203,7 +203,7 @@ pub const ParticleSystem = struct {
 	}
 
 	fn reset() void {
-		networkCreationQueue = .{};
+		networkCreationQueue = .empty;
 	}
 
 	pub fn update(deltaTime: f32) void {

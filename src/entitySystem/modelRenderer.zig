@@ -93,7 +93,8 @@ pub const client = struct {
 
 			const transparency = 38.0*std.math.log10(vec.lengthSquare(pos3d) + 1) - 80.0;
 			const alpha: u32 = @trunc(std.math.clamp(0xff - transparency, 0, 0xff));
-			graphics.draw.setColor(alpha << 24);
+			const oldColor = graphics.draw.setColor(alpha << 24 | 0xffffff);
+			defer graphics.draw.restoreColor(oldColor);
 
 			const renderedName = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{ent}) catch unreachable;
 			defer main.stackAllocator.free(renderedName);
@@ -116,10 +117,10 @@ pub const client = struct {
 		c.glUniform1f(uniforms.contrast, 0.12);
 
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |component, id| {
-			if (@intFromEnum(id) == game.Player.id) continue; // don't render local player
+			if (id == game.Player.id) continue; // don't render local player
 
 			const entModel = component.entityModel.get();
-			const ent = main.client.entity_manager.getEntity(@intFromEnum(id)) orelse continue;
+			const ent = main.client.entity_manager.getEntity(id) orelse continue;
 
 			entModel.bind();
 			const entTexture = entModel.defaultTexture;

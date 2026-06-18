@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const chunk = main.chunk;
+const Entity = main.entity.Entity;
 const game = main.game;
 const graphics = main.graphics;
 const c = graphics.c;
@@ -26,7 +27,7 @@ pub const client = struct {
 	const Component = struct {
 		playerIndex: u32,
 	};
-	pub var components: main.utils.SparseSet(Component, main.entity.Entity) = .{};
+	pub var components: main.utils.SparseSet(Component, Entity) = .{};
 
 	pub fn init() void {}
 	pub fn deinit() void {
@@ -35,21 +36,20 @@ pub const client = struct {
 	pub fn clear() void {
 		components.clear();
 	}
-	pub fn load(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
-		if (version != 0)
-			return error.InvalidComponentVersion;
+	pub fn load(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
+		if (version != 0) return error.InvalidComponentVersion;
 		const playerIndex = reader.readVarInt(u32) catch return error.UnreadableComponentData;
 
-		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
+		const ptr = components.get(entity) orelse components.add(main.globalAllocator, entity);
 		ptr.* = Component{
 			.playerIndex = playerIndex,
 		};
 	}
-	pub fn unload(entity: u32) void {
-		components.remove(@enumFromInt(entity)) catch {};
+	pub fn unload(entity: Entity) void {
+		components.remove(entity) catch {};
 	}
-	pub fn get(entity: u32) ?*Component {
-		return components.get(@enumFromInt(entity));
+	pub fn get(entity: Entity) ?*Component {
+		return components.get(entity);
 	}
 };
 
@@ -60,38 +60,36 @@ pub const server = struct {
 		playerIndex: u32, // model
 		pub fn save(self: Component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			writer.writeVarInt(u32, self.playerIndex);
-			if (audience == .disk)
-				return .discard;
+			if (audience == .disk) return .discard;
 			return .save;
 		}
 	};
-	var components: main.utils.SparseSet(Component, main.entity.Entity) = undefined;
+	var components: main.utils.SparseSet(Component, Entity) = undefined;
 	pub fn init() void {
 		components = .{};
 	}
 	pub fn deinit() void {
 		components.deinit(main.globalAllocator);
 	}
-	pub fn loadFromData(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
-		if (version != 0)
-			return error.InvalidComponentVersion;
+	pub fn loadFromData(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
+		if (version != 0) return error.InvalidComponentVersion;
 		const playerIndex = reader.readVarInt(u32) catch return error.UnreadableComponentData;
 
 		load(entity, playerIndex);
 	}
-	pub fn load(entity: u32, playerIndex: u32) void {
+	pub fn load(entity: Entity, playerIndex: u32) void {
 		put(entity, Component{
 			.playerIndex = playerIndex,
 		});
 	}
-	pub fn unload(entity: u32) void {
-		components.remove(@enumFromInt(entity)) catch {};
+	pub fn unload(entity: Entity) void {
+		components.remove(entity) catch {};
 	}
-	pub fn put(entity: u32, renderComponent: Component) void {
-		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
+	pub fn put(entity: Entity, renderComponent: Component) void {
+		const ptr = components.get(entity) orelse components.add(main.globalAllocator, entity);
 		ptr.* = renderComponent;
 	}
-	pub fn get(entity: u32) ?*Component {
-		return components.get(@enumFromInt(entity));
+	pub fn get(entity: Entity) ?*Component {
+		return components.get(entity);
 	}
 };

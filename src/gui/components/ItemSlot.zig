@@ -131,7 +131,6 @@ pub fn mainButtonReleased(self: *ItemSlot, _: Vec2f) void {
 
 pub fn render(self: *ItemSlot, _: Vec2f) void {
 	self.refreshText();
-	draw.setColor(0xffffffff);
 	if (self.renderFrame and self.texture != null) {
 		self.texture.?.bindTo(0);
 		draw.boundImage(self.pos, self.size);
@@ -147,7 +146,8 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 	if (self.mode != .immutable) {
 		if (self.hovered) {
 			self.hovered = false;
-			draw.setColor(0x300000ff);
+			const oldColor = draw.setColor(0x300000ff);
+			defer draw.restoreColor(oldColor);
 			draw.rect(self.pos, self.size);
 		}
 	}
