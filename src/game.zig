@@ -283,21 +283,27 @@ pub const World = struct { // MARK: World
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
 
-	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
+	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager, reload: bool) !void {
 		main.heap.allocators.createWorldArena();
 		errdefer main.heap.allocators.destroyWorldArena();
-		self.* = .{
-			.conn = try Connection.init(manager, ip, null),
-			.manager = manager,
-			.name = "client",
-			.milliTime = main.timestamp().toMilliseconds(),
-		};
+
+		if (!reload) {
+			self.* = .{
+				.conn = try Connection.init(manager, ip, null),
+				.manager = manager,
+				.name = "client",
+				.milliTime = main.timestamp().toMilliseconds(),
+			};
+		}
 		errdefer self.conn.deinit();
+		self.connected = true;
+
+		main.clientState.store(.running, .monotonic);
 
 		self.itemDrops.init(main.globalAllocator);
 		errdefer self.itemDrops.deinit();
 
-		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
+		try network.protocols.handShake.clientSide(self.conn, settings.playerName, reload);
 
 		main.Window.setMouseGrabbed(true);
 
@@ -307,9 +313,10 @@ pub const World = struct { // MARK: World
 		main.entityModel.loadModelsAndTexture();
 	}
 
-	pub fn deinit(self: *World) void {
-		self.conn.deinit();
-
+	pub fn deinit(self: *World, reload: bool) void {
+		if (!reload) {
+			self.conn.deinit();
+		}
 		self.connected = false;
 
 		// TODO: Close all world related guis.
@@ -329,13 +336,19 @@ pub const World = struct { // MARK: World
 		self.biomePalette.deinit();
 		self.entityComponentPalette.deinit();
 		self.entityModelPalette.deinit();
-		self.manager.deinit();
+		if (!reload) {
+			self.manager.deinit();
+		}
 		main.server.stop(.stop);
 
+		Player.super.deinit(.client);
+
+		main.clientState.store(.stopped, .monotonic);
 		if (main.server.thread) |serverThread| {
 			serverThread.join();
 			main.server.thread = null;
 		}
+
 		main.threadPool.clear();
 		renderer.mesh_storage.deinit();
 		renderer.mesh_storage.init();

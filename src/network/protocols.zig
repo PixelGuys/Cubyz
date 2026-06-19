@@ -46,7 +46,7 @@ pub fn init() void { // MARK: init()
 }
 
 pub fn onReceive(conn: *Connection, protocolIndex: u8, data: []const u8) !void { // MARK: onReceive()
-	if (conn.handShakeState.raw != .complete and protocolIndex != handShake.id) return error.HandshakeIncomplete;
+	if (conn.handShakeState.raw != .complete and protocolIndex != handShake.id) return; // error.HandshakeIncomplete;
 	const protocolReceive = blk: {
 		if (conn.isServerSide()) break :blk serverReceiveList[protocolIndex] orelse return error.Invalid;
 		break :blk clientReceiveList[protocolIndex] orelse return error.Invalid;
@@ -69,7 +69,7 @@ pub const handShake = struct { // MARK: handShake
 		if (@intFromEnum(conn.handShakeState.load(.monotonic)) < @intFromEnum(newState)) {
 			conn.handShakeState.store(newState, .monotonic);
 			switch (newState) {
-				.userData, .signatureResponse => return error.InvalidSide,
+				.userData, .signatureResponse, .reload => return error.InvalidSide,
 				.signatureRequest => {
 					const signature1Len = try reader.readVarInt(usize);
 					const signature1 = try reader.readSlice(signature1Len);
@@ -151,8 +151,15 @@ pub const handShake = struct { // MARK: handShake
 					}
 					conn.send(.secure, id, writer.data.items);
 				},
-				.signatureResponse => {
-					try conn.user.?.verifySignatures(reader);
+				.signatureResponse, .reload => {
+					if (newState != .reload) {
+						try conn.user.?.verifySignatures(reader);
+						conn.user.?.keysVerified = true;
+					} else {
+						// check if player is already logged in.
+						if (!conn.user.?.keysVerified) return error.keysNotVerified;
+					}
+
 					{
 						const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.path}) catch unreachable;
 						defer main.stackAllocator.free(path);
@@ -198,18 +205,25 @@ pub const handShake = struct { // MARK: handShake
 		conn.send(.secure, id, outData);
 	}
 
-	pub fn clientSide(conn: *Connection, name: []const u8) !void {
+	pub fn clientSide(conn: *Connection, name: []const u8, reload: bool) !void {
 		const zonObject = ZonElement.initObject(main.stackAllocator);
 		defer zonObject.deinit(main.stackAllocator);
-		zonObject.putOwnedString("version", settings.version.version);
-		zonObject.putOwnedString("name", name);
-		zonObject.put("keys", main.network.authentication.KeyCollection.getPublicKeys(main.stackAllocator));
-		const prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
-		const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
-		defer main.stackAllocator.free(data);
-		try conn.secureChannel.startTlsHandshake();
-		conn.secureChannel.finishedCollectingClientVerificationData = true;
-		conn.send(.secure, id, data);
+		if (!reload) {
+			zonObject.putOwnedString("version", settings.version.version);
+			zonObject.putOwnedString("name", name);
+			zonObject.put("keys", main.network.authentication.KeyCollection.getPublicKeys(main.stackAllocator));
+			const prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
+			const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
+			defer main.stackAllocator.free(data);
+			try conn.secureChannel.startTlsHandshake();
+			conn.secureChannel.finishedCollectingClientVerificationData = true;
+			conn.send(.secure, id, data);
+		} else {
+			const prefix = [1]u8{@intFromEnum(Connection.HandShakeState.reload)};
+			const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
+			defer main.stackAllocator.free(data);
+			conn.send(.secure, id, data);
+		}
 
 		conn.mutex.lock();
 		while (true) {
@@ -1042,6 +1056,36 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 		// specific to `load`
 		writer.writeVarInt(u32, version);
 		writer.writeSlice(componentData);
+
+		conn.send(.secure, id, writer.data.items);
+	}
+};
+
+pub const Reload = struct { // MARK: Reload
+	pub const id: u8 = 16;
+
+	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+		const SequenceIndex = main.network.Connection.SequenceIndex;
+
+		main.clientReload.store(true, .monotonic);
+
+		main.ClientReloadData.lossyStart = try reader.readInt(SequenceIndex);
+		main.ClientReloadData.secureStart = try reader.readInt(SequenceIndex);
+		main.ClientReloadData.slowStart = try reader.readInt(SequenceIndex);
+
+		// conn.lossyChannel .connect(lossyStart);
+		// conn.secureChannel.connect(secureStart);
+		// conn.slowChannel  .connect(slowStart);
+	}
+	pub fn send(conn: *Connection, newLossyStart: i32, newSecureStart: i32, newSlowStart: i32) void {
+		const SequenceIndex = main.network.Connection.SequenceIndex;
+
+		var writer = utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
+
+		writer.writeInt(SequenceIndex, newLossyStart);
+		writer.writeInt(SequenceIndex, newSecureStart);
+		writer.writeInt(SequenceIndex, newSlowStart);
 
 		conn.send(.secure, id, writer.data.items);
 	}

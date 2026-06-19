@@ -48,11 +48,16 @@ pub fn deinit() void {
 	fileExplorerIcon.deinit();
 }
 
-pub fn openWorld(name: []const u8) void {
-	const clientConnection = ConnectionManager.init(0, false) catch |err| {
-		std.log.err("Encountered error while opening connection: {s}", .{@errorName(err)});
-		return;
-	};
+pub fn openWorld(name: []const u8, reload: bool) void {
+	var clientConnection: *main.network.ConnectionManager = undefined;
+	if (!reload) {
+		clientConnection = ConnectionManager.init(0, false) catch |err| {
+			std.log.err("Encountered error while opening connection: {s}", .{@errorName(err)});
+			return;
+		};
+	} else {
+		clientConnection = main.game.testWorld.manager;
+	}
 
 	std.log.info("Opening world {s}", .{name});
 	main.server.thread = std.Thread.spawn(.{}, main.server.startFromNewThread, .{name, clientConnection.localPort, mode}) catch |err| {
@@ -71,7 +76,7 @@ pub fn openWorld(name: []const u8) void {
 	const ipPort = std.fmt.allocPrint(main.stackAllocator.allocator, "127.0.0.1:{}", .{main.server.connectionManager.localPort}) catch unreachable;
 	defer main.stackAllocator.free(ipPort);
 	main.game.world = &main.game.testWorld;
-	main.game.testWorld.init(ipPort, clientConnection) catch |err| {
+	main.game.testWorld.init(ipPort, clientConnection, reload) catch |err| {
 		std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
 	};
 	for (gui.openWindows.items) |openWindow| {
@@ -81,7 +86,7 @@ pub fn openWorld(name: []const u8) void {
 }
 
 fn openWorldWrap(index: usize) void { // TODO: Improve this situation. Maybe it makes sense to always use 2 arguments in the Callback.
-	openWorld(worldList.items[index].fileName);
+	openWorld(worldList.items[index].fileName, false);
 }
 
 fn deleteWorld(index: usize) void {

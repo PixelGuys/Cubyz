@@ -15,7 +15,7 @@ const c = @import("c");
 
 // TODO: Might want to use SSL or something similar to encode the message
 
-const ms = 1_000;
+pub const ms = 1_000;
 inline fn networkTimestamp() i64 {
 	return @truncate(@divTrunc(main.timestamp().toNanoseconds(), 1000));
 }
@@ -1427,8 +1427,9 @@ pub const Connection = struct { // MARK: Connection
 		userData = 1,
 		signatureRequest = 2,
 		signatureResponse = 3,
-		assets = 4,
-		serverData = 5,
+		reload = 4,
+		assets = 5,
+		serverData = 6,
 		complete = 255,
 	};
 

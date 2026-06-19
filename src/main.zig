@@ -531,6 +531,20 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 		clientMain();
 	}
 }
+pub var clientReload: std.atomic.Value(bool) = .init(false);
+pub var freezeClient: std.atomic.Value(enum(u8) { running, freezing, froze }) = .init(.running);
+
+pub const ClientReloadData = struct {
+	pub var lossyStart: i32 = undefined;
+	pub var secureStart: i32 = undefined;
+	pub var slowStart: i32 = undefined;
+};
+
+pub var clientState: std.atomic.Value(enum(u8) {
+	running,
+	stopping,
+	stopped,
+}) = .init(.stopped);
 
 pub fn clientMain() void { // MARK: clientMain()
 	switch (settings.storedAccount.typ) {
@@ -557,7 +571,7 @@ pub fn clientMain() void { // MARK: clientMain()
 				gui.openWindow("main");
 			} else {
 				// Speed up the dev process by entering the world directly.
-				gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
+				gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld, false);
 			}
 		},
 		else => {
@@ -637,10 +651,17 @@ pub fn clientMain() void { // MARK: clientMain()
 			gui.openWindow("main");
 			audio.setMusic("cubyz:totaldemented/cubyz_remastered");
 		}
+		if (clientState.load(.monotonic) == .stopping) {
+			clientState.store(.stopped, .monotonic);
+			while (clientState.load(.monotonic) != .running) {
+				io.sleep(.fromMilliseconds(1), .awake) catch {};
+				heap.GarbageCollection.syncPoint();
+			}
+		}
 	}
 
 	if (game.world) |world| {
-		world.deinit();
+		world.deinit(false);
 		game.world = null;
 	}
 }
