@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
+const Source = command.Source;
 const User = main.server.User;
 
 pub const description = "Kicks a player";
@@ -13,7 +14,7 @@ const Args = union(enum) {
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/kick"});
 
-pub fn execute(args: []const u8, source: *User) void {
+pub fn execute(args: []const u8, source: Source) void {
 	var errorMessage: main.List(u8) = .empty;
 	defer errorMessage.deinit(main.stackAllocator);
 

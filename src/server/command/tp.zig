@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
-const User = main.server.User;
+const Source = command.Source;
 
 pub const description = "Teleport to location.";
 pub const usage =
@@ -23,7 +23,12 @@ const Args = union(enum) {
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/tp"});
 
-pub fn execute(args: []const u8, source: *User) void {
+pub fn execute(args: []const u8, _source: Source) void {
+	if (_source != .user) {
+		_source.sendMessage("Command doesn't support running from console", .{});
+		return;
+	}
+	const source = _source.user;
 	var errorMessage: main.List(u8) = .empty;
 	defer errorMessage.deinit(main.stackAllocator);
 
@@ -89,7 +94,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source);
 		},
 		.@"/tp <playerIndex>" => |index| {
-			const target = command.Target.fromPlayerIndex(index.playerIndex, source) catch return;
+			const target = command.Target.fromPlayerIndex(index.playerIndex, _source) catch return;
 			defer target.deinit();
 			break :blk target.user.player().pos;
 		},

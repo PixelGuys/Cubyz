@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
-const User = main.server.User;
+const Source = command.Source;
 
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
@@ -16,7 +16,12 @@ const Args = union(enum) {
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/copy"});
 
-pub fn execute(args: []const u8, source: *User) void {
+pub fn execute(args: []const u8, _source: Source) void {
+	if (_source != .user) {
+		_source.sendMessage("Command doesn't support running from console", .{});
+		return;
+	}
+	const source = _source.user;
 	var errorMessage: main.List(u8) = .empty;
 	defer errorMessage.deinit(main.stackAllocator);
 

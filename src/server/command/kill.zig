@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
-const User = main.server.User;
+const Source = command.Source;
 
 pub const description = "Kills the player";
 pub const usage =
@@ -16,7 +16,7 @@ const Args = union(enum) {
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/kill"});
 
-pub fn execute(args: []const u8, source: *User) void {
+pub fn execute(args: []const u8, source: Source) void {
 	var errorMessage: main.List(u8) = .empty;
 	defer errorMessage.deinit(main.stackAllocator);
 

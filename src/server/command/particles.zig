@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
+const Source = command.Source;
 const particles = main.particles;
 const User = main.server.User;
 
@@ -24,7 +25,12 @@ pub const usage =
 	\\}
 ;
 
-pub fn execute(args: []const u8, source: *User) void {
+pub fn execute(args: []const u8, _source: Source) void {
+	if (_source != .user) {
+		_source.sendMessage("Command doesn't support running from console", .{});
+		return;
+	}
+	const source = _source.user;
 	parseArguments(source, args) catch |err| {
 		switch (err) {
 			error.TooFewArguments => source.sendMessage("#ff0000Too few arguments for command /particles", .{}),

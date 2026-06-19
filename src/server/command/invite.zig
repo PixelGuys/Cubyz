@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
-const User = main.server.User;
 const command = main.server.command;
+const Source = command.Source;
 
 pub const description = "Invite a player";
 pub const usage = "/invite <ip>";
@@ -13,7 +13,7 @@ const Args = union(enum) {
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/invite"});
 
-pub fn execute(args: []const u8, source: *User) void {
+pub fn execute(args: []const u8, source: Source) void {
 	var errorMessage: main.List(u8) = .empty;
 	defer errorMessage.deinit(main.stackAllocator);
 

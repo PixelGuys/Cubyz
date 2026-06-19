@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
-const User = main.server.User;
+const Source = command.Source;
 
 pub const description = "Get or set a player's gamemode.";
 pub const usage =
@@ -18,7 +18,7 @@ const Args = union(enum) {
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/gamemode"});
 
-pub fn execute(args: []const u8, source: *User) void {
+pub fn execute(args: []const u8, source: Source) void {
 	var errorMessage: main.List(u8) = .empty;
 	defer errorMessage.deinit(main.stackAllocator);
 

@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
-const User = main.server.User;
 const Degrees = main.rotation.Degrees;
+const Source = main.server.command.Source;
 
 pub const description = "rotate clipboard content around Z axis counterclockwise.";
 pub const usage =
@@ -10,7 +10,12 @@ pub const usage =
 	\\/rotate <0/90/180/270>
 ;
 
-pub fn execute(args: []const u8, source: *User) void {
+pub fn execute(args: []const u8, _source: Source) void {
+	if (_source != .user) {
+		_source.sendMessage("Command doesn't support running from console", .{});
+		return;
+	}
+	const source = _source.user;
 	var angle: Degrees = .@"90";
 	if (args.len != 0) {
 		angle = std.meta.stringToEnum(Degrees, args) orelse {

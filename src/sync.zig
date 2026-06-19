@@ -1752,7 +1752,7 @@ pub const Command = struct { // MARK: Command
 				const user = ctx.user orelse return;
 				if (main.server.world.?.settings.allowCheats) {
 					std.log.info("User \"{f}\" executed command \"{s}\"", .{user, self.message}); // TODO use color \033[0;32m
-					main.server.command.execute(self.message, user);
+					main.server.command.execute(self.message, .{.user = user});
 				} else {
 					user.sendRawMessage("Commands are not allowed because cheats are disabled");
 				}

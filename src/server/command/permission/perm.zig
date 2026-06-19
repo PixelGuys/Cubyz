@@ -3,10 +3,10 @@ const std = @import("std");
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const List = main.List;
-const User = main.server.User;
 const permission = main.server.permission;
 const ListType = permission.Permissions.ListType;
 const command = main.server.command;
+const Source = command.Source;
 
 pub const description = "Performs changes on the permissions of the player or shows the if has permission for a specific permission path";
 pub const usage =
@@ -28,7 +28,7 @@ const Args = union(enum) {
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/perm"});
 
-pub fn execute(args: []const u8, source: *User) void {
+pub fn execute(args: []const u8, source: Source) void {
 	var errorMessage: main.List(u8) = .empty;
 	defer errorMessage.deinit(main.stackAllocator);
 

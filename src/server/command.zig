@@ -8,8 +8,20 @@ const List = main.List;
 const User = main.server.User;
 pub const commandList = @import("command/_list.zig");
 
+pub const Source = union(enum) {
+	user: *User,
+	server: void,
+
+	pub fn sendMessage(self: Source, comptime fmt: []const u8, args: anytype) void {
+		switch (self) {
+			.user => |user| user.sendMessage(fmt, args),
+			.server => std.log.info(fmt, args),
+		}
+	}
+};
+
 pub const Command = struct {
-	exec: *const fn (args: []const u8, source: *User) void,
+	exec: *const fn (args: []const u8, source: Source) void,
 	name: []const u8,
 	description: []const u8,
 	usage: []const u8,
@@ -36,11 +48,11 @@ pub fn deinit() void {
 	commands.deinit();
 }
 
-pub fn execute(msg: []const u8, source: *User) void {
+pub fn execute(msg: []const u8, source: Source) void {
 	const end = std.mem.indexOfScalar(u8, msg, ' ') orelse msg.len;
 	const command = msg[0..end];
 	if (commands.get(command)) |cmd| {
-		if (!source.hasPermission(cmd.permissionPath)) {
+		if (source == .user and !source.user.hasPermission(cmd.permissionPath)) {
 			source.sendMessage("#ff0000No permission to use Command \"{s}\"", .{command});
 			return;
 		}
@@ -151,9 +163,13 @@ pub const Target = struct {
 		return .{.user = user, .increasedRefCount = increasedRefCount};
 	}
 
-	pub fn fromPlayerIndex(arg: ?PlayerIndex, source: *User) !Target {
+	pub fn fromPlayerIndex(arg: ?PlayerIndex, source: Source) !Target {
+		if (arg == null and source == .server) {
+			source.sendMessage("#ff0000Server is no player, command needs playerIndex to work", .{});
+			return error.InvalidArg;
+		}
 		const playerIndex = arg orelse return .{
-			.user = source,
+			.user = source.user,
 			.increasedRefCount = false,
 		};
 		return .{

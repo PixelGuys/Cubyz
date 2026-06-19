@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
+const Source = command.Source;
 const User = main.server.User;
 
 pub const description = "Get or set a player's / the world spawn point";
@@ -23,7 +24,12 @@ const Args = union(enum) {
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/spawn"});
 
-pub fn execute(args: []const u8, source: *User) void {
+pub fn execute(args: []const u8, _source: Source) void {
+	if (_source != .user) {
+		_source.sendMessage("Command doesn't support running from console", .{});
+		return;
+	}
+	const source = _source.user;
 	var errorMessage: main.List(u8) = .empty;
 	defer errorMessage.deinit(main.stackAllocator);
 
@@ -34,12 +40,12 @@ pub fn execute(args: []const u8, source: *User) void {
 
 	switch (result) {
 		.@"/spawn <playerIndex> <x> <y> <z>" => |params| {
-			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
+			const target = command.Target.fromPlayerIndex(params.playerIndex, _source) catch return;
 			defer target.deinit();
 			target.user.spawnPos = command.resolveCoordinates(params.x, params.y, params.z, source);
 		},
 		.@"/spawn <playerIndex>" => |params| {
-			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
+			const target = command.Target.fromPlayerIndex(params.playerIndex, _source) catch return;
 			defer target.deinit();
 			source.sendMessage("#ffff00{}", .{target.user.getSpawnPos()});
 		},

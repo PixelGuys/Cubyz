@@ -2,8 +2,8 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
+const Source = command.Source;
 const Vec3i = main.vec.Vec3i;
-const User = main.server.User;
 
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
@@ -13,7 +13,12 @@ const Mask = main.blueprint.Mask;
 pub const description = "Replace blocks in the world edit selection.";
 pub const usage = "/replace <old mask> <new pattern>";
 
-pub fn execute(args: []const u8, source: *User) void {
+pub fn execute(args: []const u8, _source: Source) void {
+	if (_source != .user) {
+		_source.sendMessage("Command doesn't support running from console", .{});
+		return;
+	}
+	const source = _source.user;
 	var argsSplit = std.mem.splitScalar(u8, args, ' ');
 	const oldMaskString = argsSplit.next() orelse {
 		return source.sendMessage("#ff0000Missing required <old> argument.", .{});
