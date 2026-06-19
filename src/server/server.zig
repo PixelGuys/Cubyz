@@ -131,12 +131,14 @@ pub const User = struct { // MARK: User
 	newKeyString: []const u8 = &.{},
 	key: network.authentication.PublicKey = undefined,
 	legacyKey: ?network.authentication.PublicKey = null,
+	keysVerified: bool = false,
 
 	inventoryClientToServerIdMap: std.AutoHashMap(InventoryId, InventoryId) = undefined,
 	inventory: ?InventoryId = null,
 	handInventory: ?InventoryId = null,
 
 	connected: Atomic(bool) = .init(true),
+	wokeup: bool = false,
 
 	refCount: Atomic(u32) = .init(1),
 
@@ -154,19 +156,54 @@ pub const User = struct { // MARK: User
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
-		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
+		self.conn = try Connection.init(manager, ipPort, self);
 		self.jobQueue = .init(main.globalAllocator);
 		errdefer self.jobQueue.deinit();
-		self.conn = try Connection.init(manager, ipPort, self);
+		self.wakeup();
 		self.increaseRefCount();
-		self.worldEditData = .init();
-		self.permissions = .init(main.globalAllocator);
 		network.protocols.handShake.serverSide(self.conn);
 		return self;
 	}
+	pub fn wakeup(self: *User) void {
+		if(self.wokeup) return;
+		
+		// persistent data
+		const jobQueue = self.jobQueue;
+		const conn = self.conn;
+		const name = self.name;
+		const newKeyString = self.newKeyString;
+		const playerIndex = self.playerIndex;
+		const keysVerified = self.keysVerified;
 
+		// reset
+		self.* = .{};
+
+		self.jobQueue = jobQueue;
+		self.conn = conn;
+		self.name = name;
+		self.newKeyString = newKeyString;
+		self.playerIndex = playerIndex;
+		self.keysVerified = keysVerified;
+		self.wokeup = true;
+
+		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
+		self.worldEditData = .init();
+		self.permissions = .init(main.globalAllocator);
+	}
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
+
+		self.wakedown();
+
+		self.conn.deinit();
+		self.jobQueue.deinit();//TODO: ask quantum if this should be in wakedown, and if yes how to prevent it freezing.//TODO: ask quantum if this should be in wakedown, and if yes how to prevent it freezing.
+		main.globalAllocator.free(self.name);
+		main.globalAllocator.free(self.newKeyString);
+		main.globalAllocator.destroy(self);
+	}
+	pub fn wakedown(self: *User) void {
+		if(!self.wokeup) return;
+		self.wokeup = false;
 
 		main.items.Inventory.server.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
@@ -191,17 +228,12 @@ pub const User = struct { // MARK: User
 		}
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);
-		self.conn.deinit();
-		self.jobQueue.deinit();
-		main.globalAllocator.free(self.name);
-		main.globalAllocator.free(self.newKeyString);
+
 		for (self.inventoryCommands.items) |commandData| {
 			main.globalAllocator.free(commandData);
 		}
 		self.inventoryCommands.deinit(main.globalAllocator);
-		main.globalAllocator.destroy(self);
 	}
-
 	pub fn increaseRefCount(self: *User) void {
 		const prevVal = self.refCount.fetchAdd(1, .monotonic);
 		std.debug.assert(prevVal != 0);
@@ -549,8 +581,6 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 	std.debug.assert(world == null); // There can only be one world.
 	command.init();
 	users = .init(main.globalAllocator);
-	userDeinitList = .init(main.globalAllocator, 16);
-	userConnectList = .init(main.globalAllocator, 16);
 	lastTime = main.timestamp();
 
 	connectionManager.@"continue"() catch |err| {
@@ -588,19 +618,9 @@ fn deinit() void {
 	connectionManager.pause();
 	main.threadPool.clear();
 
+	
 	users.clearAndFree();
-	while (userDeinitList.popFront()) |user| {
-		user.clearJobQueue();
-		if (user.refCount.load(.monotonic) == 1) {
-			user.decreaseRefCount();
-		} else {
-			std.log.err("Leaked user {f}", .{user});
-			user.deinit();
-		}
-	}
-
-	userDeinitList.deinit();
-	userConnectList.deinit();
+	
 
 	if (world) |_world| {
 		_world.deinit();
@@ -713,16 +733,34 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16, mode: ServerWorld.M
 	const worldName: []const u8 = main.globalAllocator.dupe(u8, name);
 	defer main.globalAllocator.free(worldName);
 
-	restart = true;
 
 	connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
 		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
+	userDeinitList = .init(main.globalAllocator, 16);
+	userConnectList = .init(main.globalAllocator, 16);
+	
 	defer {
 		connectionManager.deinit();
 		connectionManager = undefined;
+
+		while (userDeinitList.popFront()) |user| {
+			user.clearJobQueue();
+			if (user.refCount.load(.monotonic) == 1) {
+				user.decreaseRefCount();
+			} else {
+				std.log.err("Leaked user {f}", .{user});
+				user.deinit();
+			}
+		}
+
+		userDeinitList.deinit();
+		userConnectList.deinit();
+		
 	}
+
+	restart = true;
 	while (restart) {
 		restart = false;
 
