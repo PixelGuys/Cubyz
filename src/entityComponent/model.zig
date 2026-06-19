@@ -65,7 +65,6 @@ pub const client = struct {
 			ptr.deinit();
 		} else {
 			ptr =  components.add(main.globalAllocator, entity);
-			std.log.debug("ELSEEEEEEEEEE {d} {d}", .{@intFromEnum(entity), components.dense.items.len});
 		}
 		ptr.* = Component{
 			.entityModel = .{.index = entityModel},
