@@ -535,12 +535,12 @@ pub const Palette = struct { // MARK: Palette
 	}
 };
 
-var loadedAssets: bool = false;
 pub var worldAssetFolder: []const u8 = undefined;
+var refCount: std.atomic.Value(u8) = .init(0);
 
 pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, proceduralItemPalette: *Palette, biomePalette: *Palette, entityModelPalette: *Palette, entityComponentPalette: *Palette) !void { // MARK: loadWorldAssets()
-	if (loadedAssets) return; // The assets already got loaded by the server.
-	loadedAssets = true;
+	const prevVal = refCount.fetchAdd(1, .monotonic);
+	if (prevVal != 0) return; // The assets already got loaded by the server.
 
 	worldAssetFolder = main.worldArena.dupe(u8, assetFolder);
 
@@ -771,8 +771,9 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 }
 
 pub fn unloadAssets() void { // MARK: unloadAssets()
-	if (!loadedAssets) return;
-	loadedAssets = false;
+	const prevVal = refCount.fetchSub(1, .monotonic);
+	std.debug.assert(prevVal != 0);
+	if (prevVal != 1) return;
 
 	main.entity.deinitComponents();
 	sbb.reset();
@@ -786,6 +787,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	main.particles.ParticleManager.reset();
 	main.rotation.reset();
 	main.Tag.resetTags();
+	main.entityModel.reset();
 
 	// Remove paths from asset hot reloading:
 	var dir = main.files.cwd().openIterableDir("assets") catch |err| {
