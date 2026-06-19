@@ -525,7 +525,7 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	server.terrain.globalInit();
 
 	if (headless) {
-		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null);
+		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null, .multiplayer);
 		heap.GarbageCollection.waitForFreeCompletion();
 	} else {
 		clientMain();
@@ -641,7 +641,6 @@ pub fn clientMain() void { // MARK: clientMain()
 			gui.updateAndRenderGui();
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 		}
-
 		if (shouldExitToMenu.load(.monotonic)) {
 			shouldExitToMenu.store(false, .monotonic);
 			Window.setMouseGrabbed(false);

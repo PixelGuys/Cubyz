@@ -327,6 +327,7 @@ pub const World = struct { // MARK: World
 		main.sync.client.reset();
 
 		main.threadPool.clear();
+		Player.super.deinit(.client);
 		main.entity.client.clear();
 		self.itemDrops.deinit();
 		self.blockPalette.deinit();
