@@ -538,6 +538,8 @@ var userConnectList: main.utils.ConcurrentQueue(*User) = undefined;
 pub var connectionManager: *ConnectionManager = undefined;
 
 pub var running: std.atomic.Value(bool) = .init(false);
+var restart: bool = true;
+
 var lastTime: std.Io.Timestamp = undefined;
 
 pub var thread: ?std.Thread = null;
@@ -550,10 +552,11 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 	userDeinitList = .init(main.globalAllocator, 16);
 	userConnectList = .init(main.globalAllocator, 16);
 	lastTime = main.timestamp();
-	connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
-		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
+
+	connectionManager.@"continue"() catch |err| {
+		std.log.err("Couldn't create thread: {s}", .{@errorName(err)});
 		@panic("Could not open Server.");
-	}; // TODO Configure the second argument in the server settings.
+	};
 
 	main.entity.server.init();
 	main.items.Inventory.server.init();
@@ -563,6 +566,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
 		@panic("Can't create world.");
 	};
+
 	world.?.generate() catch |err| {
 		std.log.err("Failed to generate world: {s}", .{@errorName(err)});
 		@panic("Can't generate world.");
@@ -581,8 +585,9 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 }
 
 fn deinit() void {
-	connectionManager.deinit();
-	connectionManager = undefined;
+	connectionManager.pause();
+	main.threadPool.clear();
+
 	users.clearAndFree();
 	while (userDeinitList.popFront()) |user| {
 		user.clearJobQueue();
@@ -593,6 +598,7 @@ fn deinit() void {
 			user.deinit();
 		}
 	}
+
 	userDeinitList.deinit();
 	userConnectList.deinit();
 
@@ -606,6 +612,7 @@ fn deinit() void {
 	main.entity.server.deinit();
 
 	command.deinit();
+
 	main.heap.allocators.destroyWorldArena();
 }
 
@@ -702,25 +709,48 @@ pub fn startFromNewThread(name: []const u8, port: ?u16, mode: ServerWorld.Mode) 
 
 pub fn startFromExistingThread(name: []const u8, port: ?u16, mode: ServerWorld.Mode) void {
 	std.debug.assert(!running.load(.monotonic)); // There can only be one server.
-	init(name, port, mode);
-	defer deinit();
-	running.store(true, .release);
-	while (running.load(.monotonic)) {
-		main.heap.GarbageCollection.syncPoint();
-		const newTime = main.timestamp();
-		if (lastTime.durationTo(newTime).nanoseconds < updateTime.nanoseconds) {
-			main.io.sleep(newTime.durationTo(lastTime.addDuration(updateTime)), .awake) catch {};
-			lastTime = lastTime.addDuration(updateTime);
-		} else {
-			std.log.warn("The server is lagging behind by {d:.1} ms", .{@as(f32, @floatFromInt(newTime.nanoseconds -% lastTime.nanoseconds -% updateTime.nanoseconds))/1000000.0});
-			lastTime = newTime;
+
+	const worldName: []const u8 = main.globalAllocator.dupe(u8, name);
+	defer main.globalAllocator.free(worldName);
+
+	restart = true;
+
+	connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
+		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
+		@panic("Could not open Server.");
+	}; // TODO Configure the second argument in the server settings.
+	defer {
+		connectionManager.deinit();
+		connectionManager = undefined;
+	}
+	while (restart) {
+		restart = false;
+
+		init(worldName, port, mode);
+		defer deinit();
+
+		running.store(true, .release);
+		while (running.load(.monotonic)) {
+			main.heap.GarbageCollection.syncPoint();
+			const newTime = main.timestamp();
+			if (lastTime.durationTo(newTime).nanoseconds < updateTime.nanoseconds) {
+				main.io.sleep(newTime.durationTo(lastTime.addDuration(updateTime)), .awake) catch {};
+				lastTime = lastTime.addDuration(updateTime);
+			} else {
+				std.log.warn("The server is lagging behind by {d:.1} ms", .{@as(f32, @floatFromInt(newTime.nanoseconds -% lastTime.nanoseconds -% updateTime.nanoseconds))/1000000.0});
+				lastTime = newTime;
+			}
+			update();
 		}
-		update();
 	}
 }
 
-pub fn stop() void {
-	running.store(false, .monotonic);
+pub const StopType = enum { stop, restart };
+pub fn stop(_restart: StopType) void {
+	if (_restart == .restart) {
+		restart = true;
+	}
+	running.store(false, .release);
 }
 
 pub fn disconnect(user: *User) void { // MARK: disconnect()
