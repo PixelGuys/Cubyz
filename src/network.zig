@@ -768,7 +768,7 @@ pub const Connection = struct { // MARK: Connection
 	pub var internalHeaderOverhead: Atomic(usize) = .init(0);
 	pub var externalHeaderOverhead: Atomic(usize) = .init(0);
 
-	pub const SequenceIndex = i32;
+	const SequenceIndex = i32;
 
 	const LossStatus = enum {
 		noLoss,
