@@ -666,7 +666,7 @@ fn update() void { // MARK: update()
 
 	for (entity_manager.getAll()) |*ent| {
 		if (!ent.used) continue;
-		const id = ent.id; // TODO (why is this todo here?)
+		const id = ent.id;
 		entityData.append(.{
 			.id = id,
 			.pos = ent.pos,
