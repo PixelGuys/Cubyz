@@ -17,7 +17,6 @@ const VerticalList = GuiComponent.VerticalList;
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
 	.closeIfMouseIsGrabbed = true,
-	.closeable = false,
 };
 
 const padding: f32 = 8;
