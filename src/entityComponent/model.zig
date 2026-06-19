@@ -49,7 +49,7 @@ pub const client = struct {
         components.deinit(main.globalAllocator);
     }
     pub fn clear() void {
-        // for (components.dense.items) |comp| {
+		// for (components.dense.items) |comp| {
         //     comp.deinit();
         // }
         components.clear();
@@ -77,7 +77,6 @@ pub const client = struct {
 		ptr.matrices = main.globalAllocator.alloc(Mat4f, model.nodeCount);
 	}
 	pub fn unload(entity: Entity) void {
-		std.log.debug("UNLOAD {d} {d}", .{@intFromEnum(entity), components.dense.items.len});
 		const ptr = components.fetchRemove(entity) catch return;
 		ptr.deinit();
 	}
