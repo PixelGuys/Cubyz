@@ -99,19 +99,38 @@ pub fn makeModFeature(io: std.Io, step: *std.Build.Step, name: []const u8) !void
 		var mod = try modDir.openDir(io, modEntry.name, .{});
 		defer mod.close(io);
 
-		var featureFile = mod.openFile(io, step.owner.fmt("{s}.zig", .{name}), .{}) catch continue;
-		featureFile.close(io);
+		var featureDir = mod.openDir(io, name, .{.iterate = true}) catch continue;
+		defer featureDir.close(io);
 
 		try featureList.appendSlice(step.owner.allocator, step.owner.fmt(
-			\\pub const {s} = @import("{s}/{s}.zig");
+			\\pub const {s} = struct {{
 			\\
 		,
-			.{
-				modEntry.name,
-				modEntry.name,
-				name,
-			},
+			.{modEntry.name},
 		));
+
+		var featureIterator = featureDir.iterate();
+		while (try featureIterator.next(io)) |featureEntry| {
+			if (featureEntry.kind != .file) continue;
+			if (!std.mem.endsWith(u8, featureEntry.name, ".zig")) continue;
+
+			try featureList.appendSlice(step.owner.allocator, step.owner.fmt(
+				\\    pub const {s} = @import("{s}/{s}/{s}");
+				\\
+			,
+				.{
+					featureEntry.name[0 .. featureEntry.name.len - 4],
+					modEntry.name,
+					name,
+					featureEntry.name,
+				},
+			));
+		}
+
+		try featureList.appendSlice(step.owner.allocator,
+			\\};
+			\\
+		);
 	}
 
 	const file_path = step.owner.fmt("mods/{s}.zig", .{name});
