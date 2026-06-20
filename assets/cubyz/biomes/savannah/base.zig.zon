@@ -16,7 +16,7 @@
 	.maxRadius = 320,
 	.hills = 6,
 	.validPlayerSpawn = true,
-	.music = "cubyz:totaldemented/cubyz",
+	.music = "cubyz:mischol/desert_firefly",
 	.ground_structure = .{
 		"7 to 8 cubyz:limestone/base",
 	},

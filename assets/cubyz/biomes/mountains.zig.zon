@@ -10,12 +10,10 @@
 	.minHeight = 60,
 	.maxHeight = 256,
 	.smoothBeaches = true,
-
 	.roughness = 10,
 	.mountains = 100,
-
 	.rivers = true,
-
+	.music = "cubyz:totaldemented/adventurous",
 	.ground_structure = .{
 		"cubyz:grass",
 		"1 to 2 cubyz:soil",
