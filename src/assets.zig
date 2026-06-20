@@ -41,6 +41,7 @@ pub const Assets = struct {
 	worldPresets: ZonHashMap,
 	entityModelDescriptions: ZonHashMap,
 	entityModelMigrations: ZonHashMap,
+	blockModelsZon: ZonHashMap,
 
 	fn init() Assets {
 		return .{
@@ -63,6 +64,7 @@ pub const Assets = struct {
 			.worldPresets = .{},
 			.entityModelDescriptions = .{},
 			.entityModelMigrations = .{},
+			.blockModelsZon = .{},
 		};
 	}
 	fn deinit(self: *Assets, allocator: NeverFailingAllocator) void {
@@ -85,6 +87,7 @@ pub const Assets = struct {
 		self.worldPresets.deinit(allocator.allocator);
 		self.entityModelDescriptions.deinit(allocator.allocator);
 		self.entityModelMigrations.deinit(allocator.allocator);
+		self.blockModelsZon.deinit(allocator.allocator);
 	}
 	fn clone(self: Assets, allocator: NeverFailingAllocator) Assets {
 		return .{
@@ -107,6 +110,7 @@ pub const Assets = struct {
 			.worldPresets = .{}, // Not accessible inside the world
 			.entityModelDescriptions = self.entityModelDescriptions.clone(allocator.allocator) catch unreachable,
 			.entityModelMigrations = self.entityModelMigrations.clone(allocator.allocator) catch unreachable,
+			.blockModelsZon = self.blockModelsZon.clone(allocator.allocator) catch unreachable,
 		};
 	}
 	fn read(self: *Assets, allocator: NeverFailingAllocator, assetDir: main.files.Dir, assetPath: []const u8) void {
@@ -128,12 +132,13 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
 			addon.readAllZon(allocator, "entityModels", true, &self.entityModelDescriptions, &self.entityModelMigrations);
+			addon.readAllZon(allocator, "models", true, &self.blockModelsZon, null);
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks, {} items, {} procedural items, {} biomes, {} cave layers, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, and {} world presets",
-			.{@tagName(typ), self.blocks.count(), self.items.count(), self.proceduralItems.count(), self.biomes.count(), self.caveLayers.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count()},
+			"Finished {s} assets reading with {} blocks, {} items, {} procedural items, {} biomes, {} cave layers, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, {} world presets, and {} block models ZONs",
+			.{@tagName(typ), self.blocks.count(), self.items.count(), self.proceduralItems.count(), self.biomes.count(), self.caveLayers.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count(), self.blockModelsZon.count()},
 		);
 	}
 
@@ -573,7 +578,8 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	{
 		var modelIterator = worldAssets.blockModels.iterator();
 		while (modelIterator.next()) |entry| {
-			_ = main.models.registerModel(entry.key_ptr.*, entry.value_ptr.*);
+			const zon = worldAssets.blockModelsZon.get(entry.key_ptr.*);
+			_ = main.models.registerModel(entry.key_ptr.*, entry.value_ptr.*, zon);
 		}
 	}
 

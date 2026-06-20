@@ -114,6 +114,47 @@ pub fn rotate2d(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child, cen
 	} + center;
 }
 
+pub const CoordinateSystem = enum {
+	right_handed_z_up,
+	right_handed_y_up,
+	left_handed_z_up,
+	left_handed_y_up,
+};
+
+pub fn convertCoordinateSystemVec0to1(v: [3]f32, sys: CoordinateSystem) Vec3f {
+	return switch (sys) {
+		.right_handed_z_up => Vec3f{v[0], v[1], v[2]},
+		.right_handed_y_up => Vec3f{v[0], v[2], 1 - v[1]},
+		.left_handed_z_up => Vec3f{1 - v[0], v[1], v[2]},
+		.left_handed_y_up => Vec3f{1 - v[0], v[2], v[1]},
+	};
+}
+
+pub fn convertCoordinateSystemVec(v: [3]f32, sys: CoordinateSystem) Vec3f {
+	return switch (sys) {
+		.right_handed_z_up => Vec3f{v[0], v[1], v[2]},
+		.right_handed_y_up => Vec3f{v[0], v[2], -v[1]},
+		.left_handed_z_up => Vec3f{-v[0], v[1], v[2]},
+		.left_handed_y_up => Vec3f{-v[0], v[2], v[1]},
+	};
+}
+
+pub fn convertCoordinateSystemQuat(q: [4]f32, sys: CoordinateSystem) Quat {
+	return switch (sys) {
+		.right_handed_z_up => Quat{.q = Vec4f{q[0], q[1], q[2], q[3]}},
+		.right_handed_y_up => Quat{.q = Vec4f{q[0], q[2], -q[1], q[3]}},
+		.left_handed_z_up => Quat{.q = Vec4f{-q[0], q[1], q[2], q[3]}},
+		.left_handed_y_up => Quat{.q = Vec4f{-q[0], q[2], q[1], q[3]}},
+	};
+}
+
+pub fn convertCoordinateSystemScale(s: [3]f32, sys: CoordinateSystem) Vec3f {
+	return switch (sys) {
+		.right_handed_z_up, .left_handed_z_up => Vec3f{s[0], s[1], s[2]},
+		.right_handed_y_up, .left_handed_y_up => Vec3f{s[0], s[2], s[1]},
+	};
+}
+
 // MARK: Quaternion
 pub const Quat = struct {
 	q: Vec4f = Vec4f{0, 0, 0, 1},

@@ -439,8 +439,8 @@ pub const Model = struct {
 		return ind;
 	}
 
-	pub fn loadModel(data: []const u8) ModelIndex {
-		const quadInfos = loadRawModelDataFromObj(main.stackAllocator, data);
+	pub fn loadModel(data: []const u8, coordinateSystem: vec.CoordinateSystem) ModelIndex {
+		const quadInfos = loadRawModelDataFromObj(main.stackAllocator, data, coordinateSystem);
 		defer main.stackAllocator.free(quadInfos);
 		for (quadInfos) |*quad| {
 			var minUv: Vec2f = @splat(std.math.inf(f32));
@@ -462,7 +462,7 @@ pub const Model = struct {
 		return Model.init(quadInfos);
 	}
 
-	pub fn loadRawModelDataFromObj(allocator: main.heap.NeverFailingAllocator, data: []const u8) []QuadInfo {
+	pub fn loadRawModelDataFromObj(allocator: main.heap.NeverFailingAllocator, data: []const u8, coordinateSystem: vec.CoordinateSystem) []QuadInfo {
 		var vertices: main.ListManaged(Vec3f) = .init(main.stackAllocator);
 		defer vertices.deinit();
 
@@ -499,7 +499,7 @@ pub const Model = struct {
 						break :blk 0;
 					};
 				}
-				vertices.append(coords);
+				vertices.append(vec.convertCoordinateSystemVec0to1(coords, coordinateSystem));
 			} else if (std.mem.eql(u8, line[0..3], "vn ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[3..], ' ');
 				var norm: [3]f32 = undefined;
@@ -510,7 +510,7 @@ pub const Model = struct {
 						break :blk 0;
 					};
 				}
-				normals.append(norm);
+				normals.append(vec.convertCoordinateSystemVec(norm, coordinateSystem));
 			} else if (std.mem.eql(u8, line[0..3], "vt ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[3..], ' ');
 				var uv: [2]f32 = undefined;
@@ -859,8 +859,9 @@ fn openBox(min: Vec3f, max: Vec3f, uvOffset: Vec2f, openSide: enum { x, y, z }) 
 	}
 }
 
-pub fn registerModel(id: []const u8, data: []const u8) ModelIndex {
-	const model = Model.loadModel(data);
+pub fn registerModel(id: []const u8, data: []const u8, zon: ?main.ZonElement) ModelIndex {
+	const coordinateSystem: vec.CoordinateSystem = if (zon) |z| z.get(vec.CoordinateSystem, "coordinateSystem", .right_handed_z_up) else .right_handed_z_up;
+	const model = Model.loadModel(data, coordinateSystem);
 	nameToIndex.put(id, model) catch unreachable;
 	return model;
 }
