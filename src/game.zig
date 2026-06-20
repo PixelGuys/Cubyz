@@ -296,10 +296,8 @@ pub const World = struct { // MARK: World
 		errdefer self.itemDrops.deinit();
 
 		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
-		const zon = ZonElement.parseFromString(main.stackAllocator, null, main.network.protocols.handShake.handshakeData);
-		defer zon.deinit(main.stackAllocator);
 
-		try self.finishHandshake(zon);
+		try self.finishHandshake(main.network.protocols.handShake.handshakeZon);
 		main.network.protocols.handShake.assetsLoadedCondition.signal();
 		main.network.protocols.handShake.hasFinishedLoadingAssets = true;
 	}
