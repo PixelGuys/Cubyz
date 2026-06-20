@@ -1,18 +1,18 @@
 .{
 	.properties = .{ .mountain, .cold, .pine },
-	.minHeight = 458,
-	.maxHeight = 458,
+	.minHeight = 348,
+	.maxHeight = 348,
 	.smoothBeaches = true,
-	.radius = 230,
-	.mountains = 110,
+	.radius = 270,
+	.mountains = 130,
 	.chance = 0,
 	.maxSubBiomeCount = 1,
 	.stoneBlock = "cubyz:glacite/base",
 	.validPlayerSpawn = false,
 	.music = "cubyz:mrmayman/out_of_breath",
 	.ground_structure = .{
-		"1 to 3 cubyz:snow",
-		"3 to 5 cubyz:permafrost",
+		"1 to 2 cubyz:snow",
+		"4 to 5 cubyz:permafrost",
 	},
 	.structures = .{
 		.{
@@ -49,7 +49,7 @@
 	},
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:tall_mountain_cold/slope2",
+			.id = "cubyz:tall_mountain/tall_mountain_cold/slope1",
 			.chance = 1,
 		},
 	},
