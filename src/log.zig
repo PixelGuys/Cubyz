@@ -187,10 +187,8 @@ fn convertColorToANSI(allocator: main.heap.NeverFailingAllocator, text: []const 
 
 		if (fontEffect.color != currentFontEffect.color) {
 			list.appendSlice(allocator, "38;2;");
-			var shift: u5 = 16;
-			while (true) : (shift -= 8) {
+			for ([3]u5{16, 8, 0}) |shift| {
 				list.print(allocator, "{d};", .{@as(u8, @truncate(fontEffect.color >> shift))});
-				if (shift == 0) break;
 			}
 		}
 		if (fontEffect.bold != currentFontEffect.bold) {
