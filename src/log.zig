@@ -173,7 +173,7 @@ fn convertColorToANSI(allocator: main.heap.NeverFailingAllocator, text: []const 
 	parser.parse();
 
 	var currentFontEffect: graphics.TextBuffer.FontEffect = .{};
-	for (0..parser.parsedText.items.len) |i| {
+	for (parser.parsedText.items, parser.fontEffects.items) |unicodeChar, fontEffect| {
 		// add actual text at the end
 		defer blk: {
 			var testBuff: [4]u8 = undefined;
