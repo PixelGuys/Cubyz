@@ -175,28 +175,28 @@ fn convertColorToANSI(allocator: main.heap.NeverFailingAllocator, text: []const 
 	var currentFontEffect: graphics.TextBuffer.FontEffect = .{};
 	for (parser.parsedText.items, parser.fontEffects.items) |unicodeChar, fontEffect| {
 		// add actual text at the end
-		defer blk: {
+		defer {
 			var testBuff: [4]u8 = undefined;
-			const len = std.unicode.utf8Encode(@intCast(parser.parsedText.items[i]), &testBuff) catch unreachable;
+			const len = std.unicode.utf8Encode(@intCast(unicodeChar), &testBuff) catch unreachable;
 			list.appendSlice(allocator, testBuff[0..len]);
 		}
-		if (parser.fontEffects.items[i] == currentFontEffect) continue;
+		if (fontEffect == currentFontEffect) continue;
 
 		list.appendSlice(allocator, "\x1b[");
 		defer list.append(allocator, 'm');
 
 		var addedEffect: bool = false;
 
-		if (parser.fontEffects.items[i].color != currentFontEffect.color) {
+		if (fontEffect.color != currentFontEffect.color) {
 			list.appendSlice(allocator, "38;2");
 			var shift: u5 = 16;
 			while (true) : (shift -= 8) {
-				list.print(allocator, ";{d}", .{@as(u8, @truncate(parser.fontEffects.items[i].color >> shift))});
+				list.print(allocator, ";{d}", .{@as(u8, @truncate(fontEffect.color >> shift))});
 				if (shift == 0) break;
 			}
 			addedEffect = true;
 		}
-		if (parser.fontEffects.items[i].bold != currentFontEffect.bold) {
+		if (fontEffect.bold != currentFontEffect.bold) {
 			if (addedEffect) list.append(allocator, ';');
 			if (!parser.currentFontEffect.bold) {
 				list.append(allocator, '1');
@@ -205,7 +205,7 @@ fn convertColorToANSI(allocator: main.heap.NeverFailingAllocator, text: []const 
 			}
 			addedEffect = true;
 		}
-		if (parser.fontEffects.items[i].italic != currentFontEffect.italic) {
+		if (fontEffect.italic != currentFontEffect.italic) {
 			if (addedEffect) list.append(allocator, ';');
 			if (parser.currentFontEffect.italic) {
 				list.append(allocator, '2');
@@ -213,7 +213,7 @@ fn convertColorToANSI(allocator: main.heap.NeverFailingAllocator, text: []const 
 			list.append(allocator, '3');
 			addedEffect = true;
 		}
-		if (parser.fontEffects.items[i].strikethrough != currentFontEffect.strikethrough) {
+		if (fontEffect.strikethrough != currentFontEffect.strikethrough) {
 			if (addedEffect) list.append(allocator, ';');
 			if (parser.currentFontEffect.strikethrough) {
 				list.append(allocator, '2');
@@ -221,14 +221,14 @@ fn convertColorToANSI(allocator: main.heap.NeverFailingAllocator, text: []const 
 			list.append(allocator, '9');
 			addedEffect = true;
 		}
-		if (parser.fontEffects.items[i].underline != currentFontEffect.underline) {
+		if (fontEffect.underline != currentFontEffect.underline) {
 			if (addedEffect) list.append(allocator, ';');
 			if (parser.currentFontEffect.underline) {
 				list.append(allocator, '2');
 			}
 			list.append(allocator, '4');
 		}
-		currentFontEffect = parser.fontEffects.items[i];
+		currentFontEffect = fontEffect;
 	}
 	return list.toOwnedSlice(allocator);
 }
