@@ -499,7 +499,7 @@ pub const Model = struct {
 						break :blk 0;
 					};
 				}
-				vertices.append(coordinateSystem.convertVec(coords, Vec3f{0.5, 0.5, 0}));
+				vertices.append(coordinateSystem.convertVec(coords, @splat(0.5)));
 			} else if (std.mem.eql(u8, line[0..3], "vn ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[3..], ' ');
 				var norm: [3]f32 = undefined;
