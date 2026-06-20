@@ -865,7 +865,7 @@ pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
 fn sendRawMessage(msg: []const u8) void {
 	chatMutex.lock();
 	defer chatMutex.unlock();
-	std.log.info("Chat: {s}", .{msg}); // TODO use color \033[0;32m
+	main.log.chat("{s}", .{msg});
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 	for (userList) |user| {
