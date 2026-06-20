@@ -14,6 +14,7 @@ const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
+const CoordinateSystem = vec.CoordinateSystem;
 const Quat = vec.Quat;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
@@ -37,13 +38,6 @@ pub const EntityModel = struct {
 
 	pub const Node = struct {
 		parent: ?u16 = null,
-	};
-
-	pub const CoordinateSystem = enum {
-		right_handed_z_up,
-		right_handed_y_up,
-		left_handed_z_up,
-		left_handed_y_up,
 	};
 
 	pub const Vertex = extern struct {
@@ -227,9 +221,9 @@ pub const EntityModel = struct {
 			@memcpy(name, nameC);
 			self.nodeIndexMap.put(name, @intCast(i)) catch unreachable;
 
-			var pivotMat = Mat4f.translation(convertCoordinateSystemVec(node.translation, self.coordinateSystem));
-			pivotMat = pivotMat.mul(Mat4f.rotationQuat(convertCoordinateSystemQuat(node.rotation, self.coordinateSystem)));
-			pivotMat = pivotMat.mul(Mat4f.scale(convertCoordinateSystemScale(node.scale, self.coordinateSystem)));
+			var pivotMat = Mat4f.translation(self.coordinateSystem.convertVec(node.translation, @splat(0)));
+			pivotMat = pivotMat.mul(Mat4f.rotationQuat(self.coordinateSystem.convertQuat(node.rotation)));
+			pivotMat = pivotMat.mul(Mat4f.scale(self.coordinateSystem.convertScale(node.scale)));
 
 			self.nodes[i] = Node{};
 			self.nodePivots[i] = pivotMat;
@@ -244,9 +238,9 @@ pub const EntityModel = struct {
 
 		for (data.nodes[0..data.nodes_count]) |node| {
 			if (node.mesh != null) {
-				var finalMat = Mat4f.translation(convertCoordinateSystemVec(node.translation, self.coordinateSystem));
-				finalMat = finalMat.mul(Mat4f.rotationQuat(convertCoordinateSystemQuat(node.rotation, self.coordinateSystem)));
-				finalMat = finalMat.mul(Mat4f.scale(convertCoordinateSystemScale(node.scale, self.coordinateSystem)));
+				var finalMat = Mat4f.translation(self.coordinateSystem.convertVec(node.translation, @splat(0)));
+				finalMat = finalMat.mul(Mat4f.rotationQuat(self.coordinateSystem.convertQuat(node.rotation)));
+				finalMat = finalMat.mul(Mat4f.scale(self.coordinateSystem.convertScale(node.scale)));
 
 				const parentNodeID = if (node.parent) |p| self.nodeIndexMap.get(std.mem.span(p.*.name)).? else 0;
 
@@ -285,13 +279,13 @@ pub const EntityModel = struct {
 					for (0..positionAttr.count) |v| {
 						var p: [3]f32 = undefined;
 						_ = positionAttr.read_float(v, @ptrCast(&p), 3);
-						const p2 = convertCoordinateSystemVec(p, self.coordinateSystem);
+						const p2 = self.coordinateSystem.convertVec(p, @splat(0));
 						const pos: vec.Vec4f = finalMat.mulVec(.{p2[0], p2[1], p2[2], 1});
 						vertSlice[v].pos = vec.xyz(pos);
 
 						var normal: [3]f32 = undefined;
 						_ = normalAttr.read_float(v, @ptrCast(&normal), 3);
-						vertSlice[v].normal = convertCoordinateSystemVec(normal, self.coordinateSystem);
+						vertSlice[v].normal = self.coordinateSystem.convertVec(normal, @splat(0));
 
 						var uv: [2]f32 = undefined;
 						_ = uvAttr.read_float(v, @ptrCast(&uv), 2);
@@ -320,32 +314,7 @@ pub const EntityModel = struct {
 		return getHierarchyDepth(node.parent.*, depth + 1);
 	}
 
-	fn convertCoordinateSystemVec(v: [3]c.cgltf_float, sys: CoordinateSystem) Vec3f {
-		return switch (sys) {
-			.right_handed_z_up => Vec3f{v[0], v[1], v[2]},
-			.right_handed_y_up => Vec3f{v[0], v[2], -v[1]},
-			.left_handed_z_up => Vec3f{-v[0], v[1], v[2]},
-			.left_handed_y_up => Vec3f{-v[0], v[2], v[1]},
-		};
-	}
-
-	fn convertCoordinateSystemQuat(q: [4]c.cgltf_float, sys: CoordinateSystem) Quat {
-		return switch (sys) {
-			.right_handed_z_up => Quat{.q = Vec4f{q[0], q[1], q[2], q[3]}},
-			.right_handed_y_up => Quat{.q = Vec4f{q[0], q[2], -q[1], q[3]}},
-			.left_handed_z_up => Quat{.q = Vec4f{q[0], q[1], q[2], q[3]}},
-			.left_handed_y_up => Quat{.q = Vec4f{q[0], q[2], q[1], q[3]}},
-		};
-	}
-
-	fn convertCoordinateSystemScale(s: [3]c.cgltf_float, sys: CoordinateSystem) Vec3f {
-		return switch (sys) {
-			.right_handed_z_up, .left_handed_z_up => Vec3f{s[0], s[1], s[2]},
-			.right_handed_y_up, .left_handed_y_up => Vec3f{s[0], s[2], s[1]},
-		};
-	}
-
-	fn getGltfError(result: c.cgltf_result) anyerror {
+	fn getGltfError(result: c.cgltf_result) error{ DataTooShort, UnknownFormat, InvalidJson, InvalidGltf, InvalidOptions, FileNotFound, IoError, OutOfMemory, LegacyGltf } {
 		return switch (result) {
 			c.cgltf_result_data_too_short => error.DataTooShort,
 			c.cgltf_result_unknown_format => error.UnknownFormat,
