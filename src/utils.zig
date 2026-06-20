@@ -15,6 +15,8 @@ pub const Condition = @import("utils/Condition.zig");
 pub const Futex = @import("utils/Futex.zig");
 pub const Semaphore = @import("utils/Semaphore.zig");
 
+pub const modding = @import("utils/modding.zig");
+
 pub const Compression = struct { // MARK: Compression
 	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8, level: std.compress.flate.Compress.Options) []u8 {
 		var result = std.Io.Writer.Allocating.initCapacity(allocator.allocator, 16) catch unreachable;
