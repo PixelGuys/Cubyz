@@ -2,8 +2,10 @@
 	.tags = .{.cuttable},
 	.blockHealth = 0.2,
 	.drops = .{
-		.{.items = .{.auto}},
+		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
 	},
+	.selectionCapabilities = .{.toolEffective},
+	.replaceable = true,
 	.degradable = true,
 	.viewThrough = true,
 	.absorbedLight = 0x000000,
@@ -13,9 +15,8 @@
 	.item = .{
 		.texture = "dry_grass.png",
 	},
-	.replaceable = true,
 	.lodReplacement = "cubyz:air",
 	.onUpdate = .{
-		.type = .checkSupportBlocks,
+		.type = .check_support_blocks,
 	},
 }

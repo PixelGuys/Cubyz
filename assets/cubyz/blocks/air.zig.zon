@@ -11,5 +11,6 @@
 	.collide = false,
 
 	.drops = .{},
+	.selectionCapabilities = .{},
 	.model = .none,
 }

@@ -63,7 +63,7 @@ pub fn globalInit() void {
 	craftingResultTexture = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_result_slot.png");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	defaultTexture.deinit();
 	immutableTexture.deinit();
 	craftingResultTexture.deinit();
@@ -131,42 +131,23 @@ pub fn mainButtonReleased(self: *ItemSlot, _: Vec2f) void {
 
 pub fn render(self: *ItemSlot, _: Vec2f) void {
 	self.refreshText();
-	draw.setColor(0xffffffff);
 	if (self.renderFrame and self.texture != null) {
 		self.texture.?.bindTo(0);
 		draw.boundImage(self.pos, self.size);
 	}
 	const item = self.inventory.getItem(self.itemSlot);
 	if (item != .null) {
-		const itemTexture = item.getTexture();
-		itemTexture.bindTo(0);
-		draw.setColor(0xffffffff);
-		draw.boundImage(self.pos + @as(Vec2f, @splat(border)), self.size - @as(Vec2f, @splat(2*border)));
+		item.render(self.pos, self.size, border);
 		const shouldRenderStackSizeText = item.stackSize() > 1 and self.inventory.type != .creative;
 		if (shouldRenderStackSizeText) {
 			self.text.render(self.pos[0] + self.size[0] - self.textSize[0] - border, self.pos[1] + self.size[1] - self.textSize[1] - border, 8);
-		}
-		if (item == .proceduralItem) {
-			const proceduralItem = item.proceduralItem;
-			const durabilityPercentage = @as(f32, @floatFromInt(proceduralItem.durability))/proceduralItem.maxDurability;
-
-			if (durabilityPercentage < 1) {
-				const width = durabilityPercentage*(self.size[0] - 2*border);
-				draw.setColor(0xff000000);
-				draw.rect(self.pos + Vec2f{border, 15*(self.size[1] - border)/16.0}, .{self.size[0] - 2*border, (self.size[1] - 2*border)/16.0});
-
-				const red = std.math.lossyCast(u8, (2 - durabilityPercentage*2)*255);
-				const green = std.math.lossyCast(u8, durabilityPercentage*2*255);
-
-				draw.setColor(0xff000000 | (@as(u32, @intCast(red)) << 16) | (@as(u32, @intCast(green)) << 8));
-				draw.rect(self.pos + Vec2f{border, 15*(self.size[1] - border)/16.0}, .{width, (self.size[1] - 2*border)/16.0});
-			}
 		}
 	}
 	if (self.mode != .immutable) {
 		if (self.hovered) {
 			self.hovered = false;
-			draw.setColor(0x300000ff);
+			const oldColor = draw.setColor(0x300000ff);
+			defer draw.restoreColor(oldColor);
 			draw.rect(self.pos, self.size);
 		}
 	}

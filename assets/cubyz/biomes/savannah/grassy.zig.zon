@@ -3,6 +3,9 @@
 		.hot,
 		.dry,
 	},
+	.tags = .{
+		.baobab,
+	},
 	.chance = 0,
 	.keepOriginalTerrain = 0.6,
 	.minHeightLimit = 7,
@@ -14,7 +17,7 @@
 	.maxRadius = 128,
 	.hills = 10,
 	.validPlayerSpawn = true,
-	.music = "cubyz:EasternThought",
+	.music = "cubyz:totaldemented/cubyz",
 	.ground_structure = .{
 		"cubyz:dry_grass",
 		"7 to 8 cubyz:limestone/base",

@@ -16,9 +16,9 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 }
 
 pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Data) void {
-	proceduralItem.damage *= 1 + data.strength;
+	proceduralItem.setProperty(.damage, proceduralItem.getProperty(.damage)*(1 + data.strength));
 }
 
-pub fn printTooltip(outString: *main.List(u8), data: Data) void {
+pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
 	outString.print("#f84a00**Powerful**#808080 *Increases damage by **{d:.0}%", .{data.strength*100});
 }

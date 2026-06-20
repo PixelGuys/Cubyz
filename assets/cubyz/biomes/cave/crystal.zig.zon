@@ -6,7 +6,7 @@
 	.chance = 0.2,
 	.crystals = 32,
 
-	.music = "cubyz:la_kubisa_caverna",
+	.music = "cubyz:ikabod/chimes",
 	.stoneBlock = "cubyz:slate/base",
 	.structures = .{
 		.{

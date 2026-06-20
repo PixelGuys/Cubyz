@@ -225,7 +225,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 				.user => |user| {
 					const minDistSquare = self.pos.getMinDistanceSquared(user.clientUpdatePos);
 					//                                                                              ↓ Margin for error. (diagonal of 1 chunk)
-					var targetRenderDistance: i64 = @as(i64, user.renderDistance)*chunk.chunkSize + @as(i64, @intFromFloat(@as(comptime_int, chunk.chunkSize)*@sqrt(3.0)));
+					var targetRenderDistance: i64 = @as(i64, user.renderDistance)*chunk.chunkSize + @as(i64, @ceil(@as(comptime_int, chunk.chunkSize)*@sqrt(3.0)));
 					targetRenderDistance *= self.pos.voxelSize;
 					return minDistSquare <= targetRenderDistance*targetRenderDistance;
 				},
@@ -353,13 +353,15 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 	}
 
 	fn chunkInitFunctionForCacheAndIncreaseRefCount(pos: ChunkPosition) *ServerChunk {
-		if (pos.voxelSize == 1) if (getSimulationChunkAndIncreaseRefCount(pos)) |simulationChunk| { // Check if we already have it in memory.
-			defer simulationChunk.decreaseRefCount();
-			if (simulationChunk.getChunk()) |ch| {
-				ch.increaseRefCount();
-				return ch;
+		if (pos.voxelSize == 1) {
+			if (getSimulationChunkAndIncreaseRefCount(pos)) |simulationChunk| { // Check if we already have it in memory.
+				defer simulationChunk.decreaseRefCount();
+				if (simulationChunk.getChunk()) |ch| {
+					ch.increaseRefCount();
+					return ch;
+				}
 			}
-		};
+		}
 		const regionSize = pos.voxelSize*chunk.chunkSize*storage.RegionFile.regionSize;
 		const regionMask: i32 = regionSize - 1;
 		const region = storage.loadRegionFileAndIncreaseRefCount(pos.wx & ~regionMask, pos.wy & ~regionMask, pos.wz & ~regionMask, pos.voxelSize);
@@ -440,6 +442,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	settings: Settings = undefined,
 
+	mode: Mode,
+
 	path: []const u8,
 	name: []const u8 = &.{},
 	spawn: Vec3i = undefined,
@@ -450,6 +454,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	regionUpdateQueue: main.utils.CircularBufferQueue(RegionUpdateRequest),
 
 	playerDatabase: std.StringHashMapUnmanaged(usize) = .{},
+	localPlayerIndex: usize = 0,
 	nextPlayerIndex: std.atomic.Value(usize) = .init(0),
 
 	biomeChecksum: i64 = 0,
@@ -464,7 +469,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		milliTimeStamp: i64,
 	};
 
-	pub fn init(path: []const u8) !*ServerWorld { // MARK: init()
+	pub const Mode = enum { singleplayer, multiplayer };
+
+	pub fn init(path: []const u8, mode: Mode) !*ServerWorld { // MARK: init()
 		const self = main.globalAllocator.create(ServerWorld);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = ServerWorld{
@@ -474,6 +481,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			.path = main.globalAllocator.dupe(u8, path),
 			.chunkUpdateQueue = .init(main.globalAllocator, 256),
 			.regionUpdateQueue = .init(main.globalAllocator, 256),
+			.mode = mode,
 		};
 		self.itemDropManager.init(main.globalAllocator, self);
 		errdefer self.itemDropManager.deinit();
@@ -519,6 +527,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));
 		errdefer self.chunkManager.deinit();
+
+		std.debug.assert(main.entityModel.getById("cubyz:missing") != null);
 
 		return self;
 	}
@@ -601,13 +611,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		if (worldData.get(u32, "version", 0) == 4) { // TODO: #2458
 			std.log.info("Migrating old world with world version 4 to version 5", .{});
 			// Player file names are now numerical instead of based on the name.
-			var fileNames: main.List([]const u8) = .init(arena);
+			var fileNames: main.List([]const u8) = .empty;
 			var playerDir = try dir.openIterableDir("players");
 			defer playerDir.close();
 			var iterator = playerDir.iterate();
 			while (try iterator.next(main.io)) |file| {
 				if (file.kind == .file and std.mem.endsWith(u8, file.name, ".zon")) {
-					fileNames.append(arena.dupe(u8, file.name));
+					fileNames.append(arena, arena.dupe(u8, file.name));
 				}
 			}
 
@@ -632,6 +642,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.biomeChecksum = worldData.get(i64, "biomeChecksum", 0);
 		self.name = main.globalAllocator.dupe(u8, worldData.get([]const u8, "name", self.path));
 		self.tickSpeed = .init(worldData.get(u32, "tickSpeed", 12));
+		self.localPlayerIndex = worldData.get(usize, "localPlayer", 0);
 	}
 
 	pub fn saveWorldConfig(self: *ServerWorld) !void {
@@ -647,6 +658,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		worldData.put("name", self.name);
 		worldData.put("lastUsedTime", std.Io.Clock.Timestamp.now(main.io, .real).raw.toMilliseconds());
 		worldData.put("tickSpeed", self.tickSpeed.load(.monotonic));
+		worldData.put("localPlayer", self.localPlayerIndex);
 
 		try files.cubyzDir().writeZon(path, worldData);
 	}
@@ -679,7 +691,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 						continue;
 					};
 					self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, key), index) catch unreachable;
-				} else {
+				} else if (index != self.localPlayerIndex) {
 					const name = zon.get(?[]const u8, "name", null) orelse {
 						std.log.err("Couldn't read player file {s}. Skipping.", .{file.name});
 						continue;
@@ -781,8 +793,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			};
 		}
 		// Find all the stored chunks:
-		var chunkPositions = main.List(ChunkPosition).init(main.stackAllocator);
-		defer chunkPositions.deinit();
+		var chunkPositions: main.List(ChunkPosition) = .empty;
+		defer chunkPositions.deinit(main.stackAllocator);
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks/1", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(path);
 		blk: {
@@ -808,7 +820,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 						if (entryZ.kind != .file) continue;
 						const nameZ = entryZ.name[0 .. std.mem.indexOfScalar(u8, entryZ.name, '.') orelse entryZ.name.len];
 						const wz = std.fmt.parseInt(i32, nameZ, 0) catch continue;
-						chunkPositions.append(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1});
+						chunkPositions.append(main.stackAllocator, .{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1});
 					}
 				}
 			}
@@ -942,34 +954,44 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		const playerData = files.cubyzDir().readToZon(main.stackAllocator, path) catch .null;
 		defer playerData.deinit(main.stackAllocator);
-		if (playerData.get(?[]const u8, "publicKey", null)) |publicKey| {
-			if (!std.mem.eql(u8, publicKey, user.newKeyString)) {
-				std.debug.assert(self.playerDatabase.remove(publicKey));
-				self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, user.newKeyString), user.playerIndex) catch unreachable;
+		if (user.newKeyString) |userKey| {
+			if (playerData.get(?[]const u8, "publicKey", null)) |publicKey| {
+				if (!std.mem.eql(u8, publicKey, userKey)) {
+					std.debug.assert(self.playerDatabase.remove(publicKey));
+					self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, userKey), user.playerIndex) catch unreachable;
+				}
+			} else {
+				removeOld: {
+					const nameEntry = std.fmt.allocPrint(main.stackAllocator.allocator, "name:{s}", .{playerData.get(?[]const u8, "name", null) orelse break :removeOld}) catch unreachable;
+					defer main.stackAllocator.free(nameEntry);
+					_ = self.playerDatabase.remove(nameEntry);
+				}
+				self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, userKey), user.playerIndex) catch unreachable;
 			}
-		} else {
-			removeOld: {
-				const nameEntry = std.fmt.allocPrint(main.stackAllocator.allocator, "name:{s}", .{playerData.get(?[]const u8, "name", null) orelse break :removeOld}) catch unreachable;
-				defer main.stackAllocator.free(nameEntry);
-				std.debug.assert(self.playerDatabase.remove(nameEntry));
-			}
-			self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, user.newKeyString), user.playerIndex) catch unreachable;
 		}
 		const player = user.player();
 		const loadingError = player.loadFrom(user.id, playerData.getChild("entity"), .server);
+
+		// override the name for players.
+		if (player.name) |name| {
+			main.globalAllocator.free(name);
+		}
+		player.name = main.globalAllocator.dupe(u8, user.name);
+
 		if (playerData == .null) {
 			player.pos = @floatFromInt(self.spawn);
 
-			main.sync.setGamemode(user, self.settings.defaultGamemode);
+			user.gamemode = .init(self.settings.defaultGamemode);
 		} else {
 			user.permissions.fromZon(playerData);
 
-			main.sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.settings.defaultGamemode))) orelse self.settings.defaultGamemode);
+			user.gamemode = .init(std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.settings.defaultGamemode))) orelse self.settings.defaultGamemode);
 		}
 		user.inventory = loadPlayerInventory(main.game.Player.inventorySize, playerData.get([]const u8, "playerInventory", ""), .{.playerInventory = user.id}, path);
 		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand", ""), .{.hand = user.id}, path);
 
 		user.spawnPos = playerData.get(?Vec3d, "playerSpawnPos", null);
+
 		return loadingError;
 	}
 
@@ -989,7 +1011,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			readerInput = "";
 		};
 		var reader: main.utils.BinaryReader = .init(readerInput);
-		return main.items.Inventory.ServerSide.createExternallyManagedInventory(size, source, &reader, .{});
+		return main.items.Inventory.server.createExternallyManagedInventory(size, source, &reader, .{});
 	}
 
 	fn savePlayerInventory(allocator: NeverFailingAllocator, inv: main.items.Inventory) []const u8 {
@@ -1015,7 +1037,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 
 		playerZon.put("name", user.name);
-		playerZon.put("publicKey", user.newKeyString);
+		if (user.newKeyString) |key| {
+			playerZon.put("publicKey", key);
+		}
 
 		playerZon.put("entity", user.player().save(main.stackAllocator, .disk));
 		user.permissions.toZon(main.stackAllocator, &playerZon);
@@ -1023,11 +1047,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		{
 			main.sync.threadContext.assertCorrectContext(.server);
-			if (main.items.Inventory.ServerSide.getInventoryFromSource(.{.playerInventory = user.id})) |inv| {
+			if (main.items.Inventory.server.getInventoryFromSource(.{.playerInventory = user.id})) |inv| {
 				playerZon.put("playerInventory", ZonElement{.stringOwned = savePlayerInventory(main.stackAllocator, inv)});
 			} else @panic("The player inventory wasn't found. Cannot save player data.");
 
-			if (main.items.Inventory.ServerSide.getInventoryFromSource(.{.hand = user.id})) |inv| {
+			if (main.items.Inventory.server.getInventoryFromSource(.{.hand = user.id})) |inv| {
 				playerZon.put("hand", ZonElement{.stringOwned = savePlayerInventory(main.stackAllocator, inv)});
 			} else @panic("The player hand inventory wasn't found. Cannot save player data.");
 		}
@@ -1085,7 +1109,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	fn tick(self: *ServerWorld) void {
 		ChunkManager.mutex.lock();
 		var iter = ChunkManager.simulationChunkHashMap.valueIterator();
-		var currentChunks: main.ListUnmanaged(*SimulationChunk) = .initCapacity(main.stackAllocator, iter.len);
+		var currentChunks: main.List(*SimulationChunk) = .initCapacity(main.stackAllocator, iter.len);
 		defer currentChunks.deinit(main.stackAllocator);
 		while (iter.next()) |simulationChunk| {
 			simulationChunk.*.increaseRefCount();
@@ -1144,14 +1168,14 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			defer self.mutex.lock();
 			updateRequest.ch.save(self);
 			updateRequest.ch.decreaseRefCount();
-			if (updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() <= 0) break;
+			if (updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() >= 0) break;
 		}
 		while (self.regionUpdateQueue.popFront()) |updateRequest| {
 			self.mutex.unlock();
 			defer self.mutex.lock();
 			updateRequest.region.store();
 			updateRequest.region.decreaseRefCount();
-			if (updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() <= 0) break;
+			if (updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() >= 0) break;
 		}
 	}
 
@@ -1255,9 +1279,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer baseChunk.mutex.unlock();
 
 		if (currentBlock != _newBlock) {
-			if (currentBlock.blockEntity()) |blockEntity| blockEntity.updateServerData(.{wx, wy, wz}, &baseChunk.super, .remove) catch |err| {
-				std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{wx, wy, wz}, currentBlock.id()});
-			};
+			if (currentBlock.blockEntity()) |blockEntity| {
+				blockEntity.updateServerData(.{wx, wy, wz}, &baseChunk.super, .remove) catch |err| {
+					std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{wx, wy, wz}, currentBlock.id()});
+				};
+			}
 		}
 		baseChunk.updateBlockAndSetChanged(pos.x, pos.y, pos.z, newBlock);
 

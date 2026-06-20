@@ -3,6 +3,7 @@
 		.cold,
 	},
 	.tags = .{
+		.birch,
 		.oak,
 	},
 	.chance = 0.5,
@@ -15,7 +16,7 @@
 	.maxRadius = 320,
 	.roughness = 10,
 	.hills = 10,
-	.music = "cubyz:leaves",
+	.music = "cubyz:totaldemented/leaves",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"cubyz:grass",
@@ -25,8 +26,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:air",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.log = "cubyz:log/oak",
 			.chance = 0.015,
 			.type = .round,
 			.height = 8,
@@ -37,8 +37,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:air",
-			.log = "cubyz:birch_log",
-			.top = "cubyz:birch_top",
+			.log = "cubyz:log/birch",
 			.chance = 0.015,
 			.type = .round,
 			.height = 10,
@@ -49,8 +48,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:leaves/yellow",
-			.log = "cubyz:birch_log",
-			.top = "cubyz:birch_top",
+			.log = "cubyz:log/birch",
 			.chance = 0.15,
 			.type = .round,
 			.height = 10,
@@ -63,8 +61,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:leaves/red",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.log = "cubyz:log/oak",
 			.chance = 0.15,
 			.type = .round,
 			.height = 8,
@@ -75,8 +72,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:leaves/birch",
-			.log = "cubyz:birch_log",
-			.top = "cubyz:birch_top",
+			.log = "cubyz:log/birch",
 			.chance = 0.03,
 			.type = .round,
 			.height = 10,
@@ -89,8 +85,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:leaves/oak",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.log = "cubyz:log/oak",
 			.chance = 0.015,
 			.type = .round,
 			.height = 8,
@@ -100,16 +95,14 @@
 		},
 		.{
 			.id = "cubyz:fallen_tree",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_log",
+			.log = "cubyz:log/oak",
 			.chance = 0.005,
 			.height = 6,
 			.height_variation = 3,
 		},
 		.{
 			.id = "cubyz:fallen_tree",
-			.log = "cubyz:birch_log",
-			.top = "cubyz:birch_log",
+			.log = "cubyz:log/birch",
 			.chance = 0.002,
 			.height = 6,
 			.height_variation = 3,
