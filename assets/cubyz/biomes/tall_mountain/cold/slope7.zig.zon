@@ -39,7 +39,7 @@
 	},
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:tall_mountain/tall_mountain_cold/slope6",
+			.id = "cubyz:tall_mountain/cold/slope6",
 			.chance = 1,
 		},
 	},
