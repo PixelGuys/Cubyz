@@ -43,15 +43,9 @@ pub const client = struct {
 
 	pub fn init() void {}
 	pub fn deinit() void {
-        // for (components.dense.items) |comp| {
-        //     comp.deinit();
-        // }
         components.deinit(main.globalAllocator);
     }
     pub fn clear() void {
-		// for (components.dense.items) |comp| {
-        //     comp.deinit();
-        // }
         components.clear();
     }
 	pub fn load(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
