@@ -382,10 +382,17 @@ pub const World = struct { // MARK: World
 	}
 
 	pub const DayTime = struct { // MARK: DayTime
-		const dayCycleLength = 12000; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
+		// Lengths of parts of the in-game day cycle in 100ms
+		const dayDuration = 7200; // 12 minutes
+		const duskDuration = 1200; // 2 minutes
+		const nightDuration = 4800; // 8 minutes
+		const dawnDuration = 1200; // 2 minutes
+		const dayCycleLength = dayDuration + duskDuration + nightDuration + dawnDuration; // 24 minutes or 14400 ticks
+		pub const dayStart = 0;
+		pub const duskStart = dayStart + dayDuration;
+		pub const nightStart = duskStart + duskDuration;
+		pub const dawnStart = nightStart + nightDuration;
 		const minimumAmbientLight: f32 = 0.1;
-		pub const nightStart = dayCycleLength/4 + dayCycleLength/16;
-		pub const dayStart = dayCycleLength/2 + dayCycleLength/4 + dayCycleLength/16;
 
 		biomeFog: Fog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .density = 1.0/15.0/128.0, .fogLower = 100, .fogHigher = 1000},
 		fog: Fog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .density = 1.0/15.0/128.0, .fogLower = 100, .fogHigher = 1000},
@@ -397,29 +404,52 @@ pub const World = struct { // MARK: World
 		}
 
 		pub fn getStarOpacity(self: *DayTime) f32 {
-			const dayTime = @abs(self.dayTime - dayCycleLength/2);
-			if (dayTime < dayCycleLength/4 - dayCycleLength/16) {
-				return 1;
-			}
-			if (dayTime > dayCycleLength/4 + dayCycleLength/16) {
+			var periodTime = self.dayTime;
+			if (periodTime < dayDuration) {
 				return 0;
 			}
 
-			return 1 - @as(f32, @floatFromInt(dayTime - (dayCycleLength/4 - dayCycleLength/16)))/@as(f32, @floatFromInt(dayCycleLength/8));
+			periodTime -= dayDuration;
+
+			if (periodTime < duskDuration) {
+				return 1 - @as(f32, @floatFromInt(duskDuration - periodTime))/@as(f32, @floatFromInt(duskDuration));
+			}
+
+			periodTime -= duskDuration;
+
+			if (periodTime < nightDuration) {
+				return 1;
+			}
+
+			periodTime -= nightDuration;
+
+			return @as(f32, @floatFromInt(dawnDuration - periodTime))/@as(f32, @floatFromInt(dawnDuration));
 		}
 
 		fn updateAmbientLight(self: *DayTime) void {
-			const dayTime = @abs(self.dayTime - dayCycleLength/2);
-			if (dayTime < dayCycleLength/4 - dayCycleLength/16) {
-				self.ambientLight = 0.1;
-				return;
-			}
-			if (dayTime > dayCycleLength/4 + dayCycleLength/16) {
+			var periodTime = self.dayTime;
+			if (periodTime < dayDuration) {
 				self.ambientLight = 1;
 				return;
 			}
 
-			self.ambientLight = minimumAmbientLight + (1 - minimumAmbientLight)*@as(f32, @floatFromInt(dayTime - (dayCycleLength/4 - dayCycleLength/16)))/@as(f32, @floatFromInt(dayCycleLength/8));
+			periodTime -= dayDuration;
+
+			if (periodTime < duskDuration) {
+				self.ambientLight = minimumAmbientLight + (1 - minimumAmbientLight)*@as(f32, @floatFromInt(duskDuration - periodTime))/@as(f32, @floatFromInt(duskDuration));
+				return;
+			}
+
+			periodTime -= duskDuration;
+
+			if (periodTime < nightDuration) {
+				self.ambientLight = minimumAmbientLight;
+				return;
+			}
+
+			periodTime -= nightDuration;
+
+			self.ambientLight = minimumAmbientLight + (1 - minimumAmbientLight)*@as(f32, @floatFromInt(periodTime))/@as(f32, @floatFromInt(dawnDuration));
 		}
 
 		fn updateTimeOfDay(self: *DayTime) void {
@@ -427,33 +457,67 @@ pub const World = struct { // MARK: World
 		}
 
 		fn getSkyColorFactor(self: *DayTime) Vec3f {
-			const dayTime = @abs(self.dayTime - dayCycleLength/2);
-			if (dayTime < dayCycleLength/4 - dayCycleLength/16) {
-				return @splat(0);
-			}
-			if (dayTime > dayCycleLength/4 + dayCycleLength/16) {
+			var periodTime = self.dayTime;
+			if (periodTime < dayDuration) {
 				return @splat(1);
 			}
+
+			periodTime -= dayDuration;
+
+			if (periodTime < duskDuration) {
+				var skyColorFactor: Vec3f = undefined;
+				// b:
+				if (periodTime < duskDuration/2) {
+					skyColorFactor[2] = @as(f32, @floatFromInt(duskDuration/2 - periodTime))/@as(f32, @floatFromInt(duskDuration/2));
+				} else {
+					skyColorFactor[2] = 0;
+				}
+				// g:
+				if (periodTime < duskDuration/4) {
+					skyColorFactor[1] = 1;
+				} else if (periodTime < 3*duskDuration/4) {
+					skyColorFactor[1] = @as(f32, @floatFromInt(3*duskDuration/4 - periodTime))/@as(f32, @floatFromInt(duskDuration/2));
+				} else {
+					skyColorFactor[1] = 0;
+				}
+				// r:
+				if (periodTime < duskDuration/2) {
+					skyColorFactor[0] = 1;
+				} else {
+					skyColorFactor[0] = @as(f32, @floatFromInt(duskDuration - periodTime))/@as(f32, @floatFromInt(duskDuration/2));
+				}
+
+				return skyColorFactor;
+			}
+
+			periodTime -= duskDuration;
+
+			if (periodTime < nightDuration) {
+				return @splat(0);
+			}
+
+			periodTime -= nightDuration;
+
 			var skyColorFactor: Vec3f = undefined;
 			// b:
-			if (dayTime > dayCycleLength/4) {
-				skyColorFactor[2] = @as(f32, @floatFromInt(dayTime - dayCycleLength/4))/@as(f32, @floatFromInt(dayCycleLength/16));
-			} else {
+			if (periodTime < dawnDuration/2) {
 				skyColorFactor[2] = 0;
+			} else {
+				skyColorFactor[2] = @as(f32, @floatFromInt(periodTime - dawnDuration/2))/@as(f32, @floatFromInt(dawnDuration/2));
 			}
 			// g:
-			if (dayTime > dayCycleLength/4 + dayCycleLength/32) {
-				skyColorFactor[1] = 1;
-			} else if (dayTime > dayCycleLength/4 - dayCycleLength/32) {
-				skyColorFactor[1] = 1 - @as(f32, @floatFromInt(dayCycleLength/4 + dayCycleLength/32 - dayTime))/@as(f32, @floatFromInt(dayCycleLength/16));
-			} else {
+			if (periodTime < dawnDuration/4) {
 				skyColorFactor[1] = 0;
+			} else if (periodTime < 3*dawnDuration/4) {
+				skyColorFactor[1] = @as(f32, @floatFromInt(periodTime - dawnDuration/4))/@as(f32, @floatFromInt(dawnDuration/2));
+			} else {
+				skyColorFactor[1] = 1;
 			}
 			// r:
-			if (dayTime > dayCycleLength/4) {
-				skyColorFactor[0] = 1;
+			if (periodTime < dawnDuration/2) {
+				skyColorFactor[0] = @as(f32, @floatFromInt(periodTime))/@as(f32, @floatFromInt(dawnDuration/2));
 			} else {
-				skyColorFactor[0] = 1 - @as(f32, @floatFromInt(dayCycleLength/4 - dayTime))/@as(f32, @floatFromInt(dayCycleLength/16));
+				skyColorFactor[0] = 1;
 			}
 
 			return skyColorFactor;
