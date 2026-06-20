@@ -224,21 +224,21 @@ fn rayTriangleIntersection(origin: Vec3f, direction: Vec3f, triangle: [3]Vec3f) 
 
 pub fn init() void {
 	rotationModes = .init(main.globalAllocator.allocator);
-	inline for (comptime main.utils.modding.getFeatures(rotations)) |feature| {
-		register(feature.id, feature.field);
+	inline for (@typeInfo(rotations).@"struct".decls) |declaration| {
+		register(declaration.name, @field(rotations, declaration.name));
 	}
 }
 
 pub fn reset() void {
-	inline for (comptime main.utils.modding.getFeatures(rotations)) |feature| {
-		feature.field.reset();
+	inline for (@typeInfo(rotations).@"struct".decls) |declaration| {
+		@field(rotations, declaration.name).reset();
 	}
 }
 
 pub fn deinit() void {
 	rotationModes.deinit();
-	inline for (comptime main.utils.modding.getFeatures(rotations)) |feature| {
-		feature.field.deinit();
+	inline for (@typeInfo(rotations).@"struct".decls) |declaration| {
+		@field(rotations, declaration.name).deinit();
 	}
 }
 
