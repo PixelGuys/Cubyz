@@ -247,11 +247,11 @@ pub const ParticleSystem = struct {
 			if (particleLocal.collides) {
 				var v3Pos = playerPos + @as(Vec3d, @floatCast(pos + prevPlayerPosDifference));
 				const size = @as(f64, @floatCast(ParticleManager.types.items[particle.typ].size))*0.5;
-				const hitBox: game.collision.Box = .{.min = @splat(-size), .max = @splat(size)};
+				const hitBox: physics.collision.Box = .{.min = @splat(-size), .max = @splat(size)};
 
 				inline for (0..3) |j| {
 					const move = particleLocal.velAndRotationVel[j]*deltaTime;
-					if (main.game.collision.collides(.client, @enumFromInt(j), move, v3Pos, hitBox)) |box| {
+					if (physics.collision.collides(.client, @enumFromInt(j), move, v3Pos, hitBox)) |box| {
 						const skin = 0.0001;
 						v3Pos[j] = if (move < 0)
 							box.max[j] + (size + skin)
