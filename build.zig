@@ -1,4 +1,5 @@
 const std = @import("std");
+const modding = @import("src/utils/modding.zig");
 
 fn libName(b: *std.Build, name: []const u8, target: std.Target) []const u8 {
 	return switch (target.os.tag) {
@@ -109,20 +110,24 @@ pub fn makeModFeature(io: std.Io, step: *std.Build.Step, name: []const u8) !void
 			.{modEntry.name},
 		));
 
-		var featureIterator = featureDir.iterate();
-		while (try featureIterator.next(io)) |featureEntry| {
+		var featureWalker = try modding.walk(featureDir, step.owner, &featureList);
+		defer featureWalker.deinit();
+
+		while (try featureWalker.next(io)) |featureEntry| {
 			if (featureEntry.kind != .file) continue;
-			if (!std.mem.endsWith(u8, featureEntry.name, ".zig")) continue;
+			if (!std.mem.endsWith(u8, featureEntry.basename, ".zig")) continue;
+
+			for (0..featureEntry.depth()) |_| {
+				try featureList.appendSlice(step.owner.allocator, "    ");
+			}
 
 			try featureList.appendSlice(step.owner.allocator, step.owner.fmt(
-				\\    pub const {s} = @import("{s}/{s}/{s}");
-				\\
-			,
+				"pub const {s} = @import(\"{s}/{s}/{s}\");\n",
 				.{
-					featureEntry.name[0 .. featureEntry.name.len - 4],
+					featureEntry.basename[0 .. featureEntry.basename.len - 4],
 					modEntry.name,
 					name,
-					featureEntry.name,
+					featureEntry.path,
 				},
 			));
 		}
