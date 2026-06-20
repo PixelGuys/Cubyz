@@ -43,11 +43,11 @@ pub const client = struct {
 
 	pub fn init() void {}
 	pub fn deinit() void {
-        components.deinit(main.globalAllocator);
-    }
-    pub fn clear() void {
-        components.clear();
-    }
+		components.deinit(main.globalAllocator);
+	}
+	pub fn clear() void {
+		components.clear();
+	}
 	pub fn load(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != 0) return error.InvalidComponentVersion;
 
@@ -58,7 +58,7 @@ pub const client = struct {
 			ptr = p;
 			ptr.deinit();
 		} else {
-			ptr =  components.add(main.globalAllocator, entity);
+			ptr = components.add(main.globalAllocator, entity);
 		}
 		ptr.* = Component{
 			.entityModel = .{.index = entityModel},
