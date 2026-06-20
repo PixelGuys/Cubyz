@@ -64,7 +64,7 @@ pub fn onReceive(conn: *Connection, protocolIndex: u8, data: []const u8) !void {
 pub const handShake = struct { // MARK: handShake
 	pub const id: u8 = 1;
 	pub var assetsLoadedCondition: main.utils.Condition = .{};
-	pub var handshakeData: []const u8 = undefined;
+	pub var handshakeZon: ZonElement = undefined;
 	pub var hasFinishedLoadingAssets: bool = false;
 
 	fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
@@ -98,7 +98,8 @@ pub const handShake = struct { // MARK: handShake
 					try utils.Compression.unpack(dir, reader.remaining);
 				},
 				.serverData => {
-					handshakeData = reader.remaining;
+					handshakeZon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
+					defer handshakeZon.deinit(main.stackAllocator);
 					conn.handShakeState.store(.complete, .monotonic);
 					conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
 					conn.mutex.lock();
