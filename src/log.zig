@@ -177,7 +177,7 @@ fn convertColorToANSI(allocator: main.heap.NeverFailingAllocator, text: []const 
 		// add actual text at the end
 		defer blk: {
 			var testBuff: [4]u8 = undefined;
-			const len = std.unicode.utf8Encode(@intCast(parser.parsedText.items[i]), &testBuff) catch break :blk;
+			const len = std.unicode.utf8Encode(@intCast(parser.parsedText.items[i]), &testBuff) catch unreachable;
 			list.appendSlice(allocator, testBuff[0..len]);
 		}
 		if (parser.fontEffects.items[i] == currentFontEffect) continue;
