@@ -23,6 +23,20 @@
 			.size = 5,
 			.size_variance = 1,
 		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:ice",
+			.chance = 0.09,
+			.size = 3,
+			.size_variation = 5,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:snow",
+			.chance = 0.12,
+			.size = 3,
+			.size_variation = 4,
+		},
 	},
 	.parentBiomes = .{
 		.{

@@ -28,6 +28,20 @@
 			.placeMode = .degradable,
 			.chance = 0.02,
 		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:ice",
+			.chance = 0.06,
+			.size = 3,
+			.size_variation = 7,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:snow",
+			.chance = 0.08,
+			.size = 3,
+			.size_variation = 5,
+		},
 	},
 	.parentBiomes = .{
 		.{
