@@ -9,7 +9,7 @@
 	.maxSubBiomeCount = 1,
 	.stoneBlock = "cubyz:glacite/base",
 	.validPlayerSpawn = false,
-	.music = "cubyz:mrmayman/out_of_breath",
+	.music = "cubyz:chrythm/cubyz_more",
 	.ground_structure = .{
 		"2 to 3 cubyz:snow",
 		"3 to 4 cubyz:permafrost",
