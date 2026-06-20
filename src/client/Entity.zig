@@ -39,7 +39,6 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) !
 		.height = zon.get(f64, "height", 1),
 		.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
 	};
-
 	self._interpolationPos = [_]f64{
 		self.pos[0],
 		self.pos[1],
