@@ -252,7 +252,7 @@ pub const ParticleSystem = struct {
 				inline for (0..3) |j| {
 					const move = particleLocal.velAndRotationVel[j]*deltaTime;
 					if (physics.collision.collides(.client, @enumFromInt(j), move, v3Pos, hitBox)) |box| {
-						const skin = 0.0001;
+						const skin = 0.001;
 						v3Pos[j] = if (move < 0)
 							box.max[j] + (size + skin)
 						else
