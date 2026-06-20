@@ -147,7 +147,6 @@ pub const CoordinateSystem = enum {
 	}
 };
 
-
 // MARK: Quaternion
 pub const Quat = struct {
 	q: Vec4f = Vec4f{0, 0, 0, 1},
