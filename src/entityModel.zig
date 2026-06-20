@@ -215,7 +215,7 @@ pub const EntityModel = struct {
 		self.vao = .init(Vertex, vertices.items, indices.items);
 		self.indexCount = @intCast(indices.items.len);
 	}
-	
+
 	fn getHierarchyMatrix(node: c.cgltf_node, sys: CoordinateSystem) Mat4f {
 		var currentMat = Mat4f.translation(vec.convertCoordinateSystemVec(node.translation, sys));
 		currentMat = currentMat.mul(Mat4f.rotationQuat(vec.convertCoordinateSystemQuat(node.rotation, sys)));
