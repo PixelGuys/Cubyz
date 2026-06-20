@@ -128,7 +128,7 @@ pub const User = struct { // MARK: User
 
 	lastSentBiomeId: u32 = 0xffffffff,
 
-	newKeyString: []const u8 = &.{},
+	newKeyString: ?[]const u8 = null,
 	key: network.authentication.PublicKey = undefined,
 	legacyKey: ?network.authentication.PublicKey = null,
 
@@ -194,7 +194,7 @@ pub const User = struct { // MARK: User
 		self.conn.deinit();
 		self.jobQueue.deinit();
 		main.globalAllocator.free(self.name);
-		main.globalAllocator.free(self.newKeyString);
+		if (self.newKeyString) |str| main.globalAllocator.free(str);
 		for (self.inventoryCommands.items) |commandData| {
 			main.globalAllocator.free(commandData);
 		}
@@ -236,10 +236,21 @@ pub const User = struct { // MARK: User
 			break;
 		}
 		if (!foundKey) {
-			const nameEntry = std.fmt.allocPrint(main.stackAllocator.allocator, "name:{s}", .{name}) catch unreachable;
-			defer main.stackAllocator.free(nameEntry);
-			self.playerIndex = world.?.playerDatabase.get(nameEntry) orelse world.?.nextPlayerIndex.fetchAdd(1, .monotonic);
+			if (world.?.playerDatabase.size == 0) { // Claim the local player
+				std.log.info("Here", .{});
+				self.playerIndex = world.?.localPlayerIndex;
+			} else {
+				const nameEntry = std.fmt.allocPrint(main.stackAllocator.allocator, "name:{s}", .{name}) catch unreachable;
+				defer main.stackAllocator.free(nameEntry);
+				self.playerIndex = world.?.playerDatabase.get(nameEntry) orelse world.?.nextPlayerIndex.fetchAdd(1, .monotonic);
+			}
 		}
+	}
+
+	pub fn identifyAsLocal(self: *User, name: []const u8) !void {
+		std.debug.assert(self.name.len == 0);
+		self.name = main.globalAllocator.dupe(u8, name);
+		self.playerIndex = world.?.localPlayerIndex;
 	}
 
 	pub fn verifySignatures(self: *User, reader: *BinaryReader) !void {

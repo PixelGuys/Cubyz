@@ -63,6 +63,9 @@ pub fn onReceive(conn: *Connection, protocolIndex: u8, data: []const u8) !void {
 
 pub const handShake = struct { // MARK: handShake
 	pub const id: u8 = 1;
+	pub var assetsLoadedCondition: main.utils.Condition = .{};
+	pub var handshakeData: []const u8 = undefined;
+	pub var hasFinishedLoadingAssets: bool = false;
 
 	fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const newState = try reader.readEnum(Connection.HandShakeState);
@@ -95,11 +98,14 @@ pub const handShake = struct { // MARK: handShake
 					try utils.Compression.unpack(dir, reader.remaining);
 				},
 				.serverData => {
-					const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
-					defer zon.deinit(main.stackAllocator);
+					handshakeData = reader.remaining;
 					conn.handShakeState.store(.complete, .monotonic);
-					try conn.manager.world.?.finishHandshake(zon);
 					conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
+					conn.mutex.lock();
+					while (!hasFinishedLoadingAssets) {
+						assetsLoadedCondition.wait(&conn.mutex);
+					}
+					conn.mutex.unlock();
 				},
 				.start, .complete => {},
 			}
@@ -112,7 +118,7 @@ pub const handShake = struct { // MARK: handShake
 		const newState = try reader.readEnum(Connection.HandShakeState);
 		if (@intFromEnum(conn.handShakeState.load(.monotonic)) < @intFromEnum(newState)) {
 			conn.handShakeState.store(newState, .monotonic);
-			switch (newState) {
+			stateSwitch: switch (newState) {
 				.userData => {
 					conn.secureChannel.finishedCollectingClientVerificationData = true;
 					const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
@@ -134,25 +140,33 @@ pub const handShake = struct { // MARK: handShake
 						return error.IncompatibleVersion;
 					}
 
-					const keys = zon.getChild("keys");
-					try conn.user.?.identifyFromKeysAndName(name, keys);
+					if (main.server.world.?.mode != .singleplayer) {
+						const keys = zon.getChild("keys");
+						try conn.user.?.identifyFromKeysAndName(name, keys);
 
-					var writer: utils.BinaryWriter = .init(main.stackAllocator);
-					defer writer.deinit();
-					writer.writeEnum(Connection.HandShakeState, .signatureRequest);
-					conn.handShakeState.store(.signatureRequest, .monotonic);
-					writer.writeVarInt(usize, @tagName(conn.user.?.key).len);
-					writer.writeSlice(@tagName(conn.user.?.key));
-					if (conn.user.?.legacyKey) |legacyKey| {
-						writer.writeVarInt(usize, @tagName(legacyKey).len);
-						writer.writeSlice(@tagName(legacyKey));
+						var writer: utils.BinaryWriter = .init(main.stackAllocator);
+						defer writer.deinit();
+						writer.writeEnum(Connection.HandShakeState, .signatureRequest);
+						conn.handShakeState.store(.signatureRequest, .monotonic);
+						writer.writeVarInt(usize, @tagName(conn.user.?.key).len);
+						writer.writeSlice(@tagName(conn.user.?.key));
+						if (conn.user.?.legacyKey) |legacyKey| {
+							writer.writeVarInt(usize, @tagName(legacyKey).len);
+							writer.writeSlice(@tagName(legacyKey));
+						} else {
+							writer.writeVarInt(usize, 0);
+						}
+						conn.send(.secure, id, writer.data.items);
 					} else {
-						writer.writeVarInt(usize, 0);
+						try conn.user.?.identifyAsLocal(name);
+						continue :stateSwitch .signatureResponse;
 					}
-					conn.send(.secure, id, writer.data.items);
 				},
 				.signatureResponse => {
-					try conn.user.?.verifySignatures(reader);
+					if (main.server.world.?.mode != .singleplayer) {
+						try conn.user.?.verifySignatures(reader);
+					}
+
 					{
 						const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.path}) catch unreachable;
 						defer main.stackAllocator.free(path);
@@ -203,7 +217,9 @@ pub const handShake = struct { // MARK: handShake
 		defer zonObject.deinit(main.stackAllocator);
 		zonObject.putOwnedString("version", settings.version.version);
 		zonObject.putOwnedString("name", name);
-		zonObject.put("keys", main.network.authentication.KeyCollection.getPublicKeys(main.stackAllocator));
+		if (main.network.authentication.KeyCollection.initialized) {
+			zonObject.put("keys", main.network.authentication.KeyCollection.getPublicKeys(main.stackAllocator));
+		}
 		const prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
 		const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
 		defer main.stackAllocator.free(data);

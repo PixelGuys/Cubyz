@@ -298,15 +298,12 @@ pub const World = struct { // MARK: World
 		errdefer self.itemDrops.deinit();
 
 		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
-		self.conn.mutex.lock();
+		const zon = ZonElement.parseFromString(main.stackAllocator, null, main.network.protocols.handShake.handshakeData);
+		defer zon.deinit(main.stackAllocator);
 
-		main.Window.setMouseGrabbed(true);
-		main.blocks.meshes.generateTextureArray();
-		main.particles.ParticleManager.generateTextureArray();
-		main.models.uploadModels();
-		main.entityModel.loadModelsAndTexture();
-
-		self.conn.mutex.unlock();
+		try self.finishHandshake(zon);
+		main.network.protocols.handShake.assetsLoadedCondition.signal();
+		main.network.protocols.handShake.hasFinishedLoadingAssets = true;
 	}
 
 	pub fn deinit(self: *World) void {
@@ -368,6 +365,12 @@ pub const World = struct { // MARK: World
 		Player.setGamemode(std.enums.fromInt(Gamemode, zon.get(?u8, "gamemode", null) orelse return error.Invalid) orelse return error.Invalid);
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
+
+		main.Window.setMouseGrabbed(true);
+		main.blocks.meshes.generateTextureArray();
+		main.particles.ParticleManager.generateTextureArray();
+		main.models.uploadModels();
+		main.entityModel.loadModelsAndTexture();
 
 		try Player.loadFrom(zon.getChild("player"));
 	}
