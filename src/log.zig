@@ -194,28 +194,28 @@ fn convertColorToANSI(allocator: main.heap.NeverFailingAllocator, text: []const 
 			}
 		}
 		if (fontEffect.bold != currentFontEffect.bold) {
-			if (!parser.currentFontEffect.bold) {
+			if (!currentFontEffect.bold) {
 				list.appendSlice(allocator, "1;");
 			} else {
 				list.appendSlice(allocator, "22;");
 			}
 		}
 		if (fontEffect.italic != currentFontEffect.italic) {
-			if (parser.currentFontEffect.italic) {
+			if (currentFontEffect.italic) {
 				list.appendSlice(allocator, "23;");
 			} else {
 				list.appendSlice(allocator, "3;");
 			}
 		}
 		if (fontEffect.strikethrough != currentFontEffect.strikethrough) {
-			if (parser.currentFontEffect.strikethrough) {
+			if (currentFontEffect.strikethrough) {
 				list.appendSlice(allocator, "29;");
 			} else {
 				list.appendSlice(allocator, "9;");
 			}
 		}
 		if (fontEffect.underline != currentFontEffect.underline) {
-			if (parser.currentFontEffect.underline) {
+			if (currentFontEffect.underline) {
 				list.appendSlice(allocator, "24;");
 			} else {
 				list.appendSlice(allocator, "4;");
