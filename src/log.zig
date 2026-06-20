@@ -183,50 +183,43 @@ fn convertColorToANSI(allocator: main.heap.NeverFailingAllocator, text: []const 
 		if (fontEffect == currentFontEffect) continue;
 
 		list.appendSlice(allocator, "\x1b[");
-		defer list.append(allocator, 'm');
-
-		var addedEffect: bool = false;
+		defer list.items[list.items.len - 1] = 'm';
 
 		if (fontEffect.color != currentFontEffect.color) {
-			list.appendSlice(allocator, "38;2");
+			list.appendSlice(allocator, "38;2;");
 			var shift: u5 = 16;
 			while (true) : (shift -= 8) {
-				list.print(allocator, ";{d}", .{@as(u8, @truncate(fontEffect.color >> shift))});
+				list.print(allocator, "{d};", .{@as(u8, @truncate(fontEffect.color >> shift))});
 				if (shift == 0) break;
 			}
-			addedEffect = true;
 		}
 		if (fontEffect.bold != currentFontEffect.bold) {
-			if (addedEffect) list.append(allocator, ';');
 			if (!parser.currentFontEffect.bold) {
-				list.append(allocator, '1');
+				list.appendSlice(allocator, "1;");
 			} else {
-				list.appendSlice(allocator, "22");
+				list.appendSlice(allocator, "22;");
 			}
-			addedEffect = true;
 		}
 		if (fontEffect.italic != currentFontEffect.italic) {
-			if (addedEffect) list.append(allocator, ';');
 			if (parser.currentFontEffect.italic) {
-				list.append(allocator, '2');
+				list.appendSlice(allocator, "23;");
+			} else {
+				list.appendSlice(allocator, "3;");
 			}
-			list.append(allocator, '3');
-			addedEffect = true;
 		}
 		if (fontEffect.strikethrough != currentFontEffect.strikethrough) {
-			if (addedEffect) list.append(allocator, ';');
 			if (parser.currentFontEffect.strikethrough) {
-				list.append(allocator, '2');
+				list.appendSlice(allocator, "29;");
+			} else {
+				list.appendSlice(allocator, "9;");
 			}
-			list.append(allocator, '9');
-			addedEffect = true;
 		}
 		if (fontEffect.underline != currentFontEffect.underline) {
-			if (addedEffect) list.append(allocator, ';');
 			if (parser.currentFontEffect.underline) {
-				list.append(allocator, '2');
+				list.appendSlice(allocator, "24;");
+			} else {
+				list.appendSlice(allocator, "4;");
 			}
-			list.append(allocator, '4');
 		}
 		currentFontEffect = fontEffect;
 	}
