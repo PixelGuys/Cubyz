@@ -118,8 +118,7 @@ pub const client = struct {
 
 		// TODO: move to a separate system after we get custom system ordering
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |*component, id| {
-			if (id == game.Player.id) // don't process local player
-				continue;
+			if (id == game.Player.id) continue; // don't process local player
 
 			const entModel = component.entityModel.get();
 
