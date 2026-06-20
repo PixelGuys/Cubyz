@@ -1,33 +1,33 @@
 .{
-    .properties = .{ .mountain, .cold },
-    .minHeight = 1000,
-    .maxHeight = 1000,
-    .smoothBeaches = true,
-    .radius = 50,
-    .mountains = 50,
-    .hills = 10,
-    .chance = 0,
-    .maxSubBiomeCount = 1,
-    .stoneBlock = "cubyz:glacite/base",
-    .validPlayerSpawn = false,
-    .music = "cubyz:mrmayman/out_of_breath",
-    .ground_structure = .{
-        "6 to 10 cubyz:snow",
-        "1 to 3 cubyz:permafrost",
-    },
-    .structures = .{
-        .{
-            .id = "cubyz:boulder",
-            .chance = 0.002,
-            .block = "cubyz:snow",
-            .size = 5,
-            .size_variance = 1,
-        },
-    },
-    .parentBiomes = .{
-        .{
-            .id = "cubyz:tall_mountain_cold/slope7",
-            .chance = 1,
-        },
-    },
+	.properties = .{ .mountain, .cold },
+	.minHeight = 1000,
+	.maxHeight = 1000,
+	.smoothBeaches = true,
+	.radius = 50,
+	.mountains = 50,
+	.hills = 10,
+	.chance = 0,
+	.maxSubBiomeCount = 1,
+	.stoneBlock = "cubyz:glacite/base",
+	.validPlayerSpawn = false,
+	.music = "cubyz:mrmayman/out_of_breath",
+	.ground_structure = .{
+		"6 to 10 cubyz:snow",
+		"1 to 3 cubyz:permafrost",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.002,
+			.block = "cubyz:snow",
+			.size = 5,
+			.size_variance = 1,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:tall_mountain_cold/slope7",
+			.chance = 1,
+		},
+	},
 }
