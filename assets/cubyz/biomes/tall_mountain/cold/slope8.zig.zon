@@ -34,7 +34,7 @@
 			.id = "cubyz:stalagmite",
 			.block = "cubyz:snow",
 			.chance = 0.12,
-			.size = 3,
+			.size = 6,
 			.size_variation = 4,
 		},
 	},
