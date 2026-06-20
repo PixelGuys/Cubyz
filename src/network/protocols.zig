@@ -1046,3 +1046,21 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 		conn.send(.secure, id, writer.data.items);
 	}
 };
+
+pub const Reload = struct { // MARK: Reload
+	pub const id: u8 = 16;
+
+	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+		_ = reader;
+		main.shouldRestart.store(true, .monotonic);
+	}
+	pub fn informClientOfRestart(conn: *Connection) void {
+		var writer = utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
+
+		writer.writeInt(u8, 0);
+
+		conn.send(.secure, id, writer.data.items);
+	}
+};
+

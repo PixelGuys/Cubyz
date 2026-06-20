@@ -583,11 +583,6 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 	users = .init(main.globalAllocator);
 	lastTime = main.timestamp();
 
-	connectionManager.@"continue"() catch |err| {
-		std.log.err("Couldn't create thread: {s}", .{@errorName(err)});
-		@panic("Could not open Server.");
-	};
-
 	main.entity.server.init();
 	main.items.Inventory.server.init();
 	main.sync.server.init();
@@ -601,6 +596,15 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 		std.log.err("Failed to generate world: {s}", .{@errorName(err)});
 		@panic("Can't generate world.");
 	};
+
+	connectionManager.@"continue"() catch |err| {
+		std.log.err("Couldn't create thread: {s}", .{@errorName(err)});
+		@panic("Could not open Server.");
+	};
+	for(connectionManager.connections.items)|conn|{
+		main.network.protocols.Reload.informClientOfRestart(conn);
+	}
+
 	if (singlePlayerPort) |port| blk: {
 		const ipString = std.fmt.allocPrint(main.stackAllocator.allocator, "127.0.0.1:{}", .{port}) catch unreachable;
 		defer main.stackAllocator.free(ipString);

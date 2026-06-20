@@ -534,7 +534,6 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			if(conn.user)|user|{
 				user.wakeup();
 			}
-			conn.disconnect(); //TODO: Only temporary
 		}
 		
 		result.packetSendRequests = .initContext({});
