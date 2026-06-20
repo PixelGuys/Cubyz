@@ -30,12 +30,16 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 
 	var newBlock: Block = params.block;
 
-	inline for (comptime std.meta.declarations(main.rotation.rotations)) |rotationMode| {
-		if (params.block.mode() == main.rotation.getByID(rotationMode.name)) {
-			if (@hasDecl(@field(main.rotation.rotations, rotationMode.name), "updateBlockFromNeighborConnectivity")) {
-				@field(main.rotation.rotations, rotationMode.name).updateBlockFromNeighborConnectivity(&newBlock, neighborSupportive);
-			} else {
-				std.log.err("Rotation mode {s} has no updateBlockFromNeighborConnectivity function and cannot be used for {s} callback", .{rotationMode.name, @typeName(@This())});
+	inline for (comptime @typeInfo(main.rotation.rotations).@"struct".decls) |mod| {
+		const mod_struct = @field(main.rotation.rotations, mod.name);
+		inline for (comptime std.meta.declarations(mod_struct)) |rotationMode| {
+			const name = mod.name ++ ":" ++ rotationMode.name;
+			if (params.block.mode() == main.rotation.getByID(name)) {
+				if (@hasDecl(@field(mod_struct, rotationMode.name), "updateBlockFromNeighborConnectivity")) {
+					@field(mod_struct, rotationMode.name).updateBlockFromNeighborConnectivity(&newBlock, neighborSupportive);
+				} else {
+					std.log.err("Rotation mode {s} has no updateBlockFromNeighborConnectivity function and cannot be used for {s} callback", .{name, @typeName(@This())});
+				}
 			}
 		}
 	}
