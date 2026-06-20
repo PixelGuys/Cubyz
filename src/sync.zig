@@ -830,14 +830,6 @@ pub const Command = struct { // MARK: Command
 		}
 	}
 
-	pub fn canPutIntoWorkbench(item: Item) bool {
-		return switch (item) {
-			.null => true,
-			.baseItem => |baseItem| baseItem.material() != null,
-			.proceduralItem => false,
-		};
-	}
-
 	pub const Context = struct {
 		allocator: NeverFailingAllocator,
 		cmd: *Command,
@@ -940,8 +932,7 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 
 		fn run(self: DepositOrSwap, ctx: Context) error{serverFailure}!void {
-			if (self.dest.inv.source == .workbench and self.dest.inv.source.workbench.proceduralItemIndex.slotInfos()[self.dest.slot].disabled) return;
-			if (self.dest.inv.source == .workbench and !canPutIntoWorkbench(self.source.ref().item)) return;
+			if (self.dest.inv.callbacks.canPutInto) |c| if (!c(self.dest.inv.source, self.source.ref().item, self.dest.slot)) return;
 
 			const itemDest = self.dest.ref().item;
 			const itemSource = self.source.ref().item;
@@ -957,8 +948,8 @@ pub const Command = struct { // MARK: Command
 					return;
 				}
 			}
-			if (self.source.inv.source == .workbench and self.source.inv.source.workbench.proceduralItemIndex.slotInfos()[self.source.slot].disabled) return;
-			if (self.source.inv.source == .workbench and !canPutIntoWorkbench(self.dest.ref().item)) return;
+
+			if (self.source.inv.callbacks.canPutInto) |c| if (!c(self.source.inv.source, self.dest.ref().item, self.source.slot)) return;
 			ctx.execute(.{.swap = .{
 				.dest = self.dest,
 				.source = self.source,
@@ -984,8 +975,7 @@ pub const Command = struct { // MARK: Command
 		amount: u16,
 
 		fn run(self: Deposit, ctx: Context) error{serverFailure}!void {
-			if (self.dest.inv.source == .workbench and self.dest.inv.source.workbench.proceduralItemIndex.slotInfos()[self.dest.slot].disabled) return;
-			if (self.dest.inv.source == .workbench and !canPutIntoWorkbench(self.source.ref().item)) return;
+			if (self.dest.inv.callbacks.canPutInto) |c| if (!c(self.dest.inv.source, self.source.ref().item, self.dest.slot)) return;
 			const itemSource = self.source.ref().item;
 			if (itemSource == .null) return;
 			const itemDest = self.dest.ref().item;
@@ -1029,7 +1019,7 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 
 		fn run(self: TakeHalf, ctx: Context) error{serverFailure}!void {
-			if (self.dest.inv.source == .workbench and (self.dest.inv.source.workbench.proceduralItemIndex.slotInfos()[self.dest.slot].disabled or !canPutIntoWorkbench(self.source.ref().item))) return;
+			if (self.dest.inv.callbacks.canPutInto) |c| if (!c(self.dest.inv.source, self.source.ref().item, self.dest.slot)) return;
 
 			const itemSource = self.source.ref().item;
 			if (itemSource == .null) return;
@@ -1106,7 +1096,7 @@ pub const Command = struct { // MARK: Command
 		amount: u16 = 0,
 
 		fn run(self: FillFromCreative, ctx: Context) error{serverFailure}!void {
-			if (self.dest.inv.source == .workbench and (self.dest.inv.source.workbench.proceduralItemIndex.slotInfos()[self.dest.slot].disabled or !canPutIntoWorkbench(self.item))) return;
+			if (self.dest.inv.callbacks.canPutInto) |c| if (!c(self.dest.inv.source, self.item, self.dest.slot)) return;
 			if (ctx.gamemode != .creative) return;
 
 			if (!self.dest.ref().empty()) {
