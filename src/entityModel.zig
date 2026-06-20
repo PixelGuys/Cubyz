@@ -196,13 +196,13 @@ pub const EntityModel = struct {
 					for (0..positionAttr.count) |v| {
 						var p: [3]f32 = undefined;
 						_ = positionAttr.read_float(v, @ptrCast(&p), 3);
-						const p2 = vec.convertCoordinateSystemVec(p, self.coordinateSystem);
+						const p2 = self.coordinateSystem.convertVec(p, @splat(0));
 						const pos: vec.Vec4f = finalMat.mulVec(.{p2[0], p2[1], p2[2], 1});
 						vertSlice[v].pos = vec.xyz(pos);
 
 						var normal: [3]f32 = undefined;
 						_ = normalAttr.read_float(v, @ptrCast(&normal), 3);
-						vertSlice[v].normal = vec.convertCoordinateSystemVec(normal, self.coordinateSystem);
+						vertSlice[v].normal = self.coordinateSystem.convertVec(normal, @splat(0));
 
 						var uv: [2]f32 = undefined;
 						_ = uvAttr.read_float(v, @ptrCast(&uv), 2);
@@ -217,9 +217,9 @@ pub const EntityModel = struct {
 	}
 
 	fn getHierarchyMatrix(node: c.cgltf_node, sys: CoordinateSystem) Mat4f {
-		var currentMat = Mat4f.translation(vec.convertCoordinateSystemVec(node.translation, sys));
-		currentMat = currentMat.mul(Mat4f.rotationQuat(vec.convertCoordinateSystemQuat(node.rotation, sys)));
-		currentMat = currentMat.mul(Mat4f.scale(vec.convertCoordinateSystemScale(node.scale, sys)));
+		var currentMat = Mat4f.translation(sys.convertVec(node.translation, @splat(0)));
+		currentMat = currentMat.mul(Mat4f.rotationQuat(sys.convertQuat(node.rotation)));
+		currentMat = currentMat.mul(Mat4f.scale(sys.convertScale(node.scale)));
 
 		if (node.parent == null) {
 			return currentMat;

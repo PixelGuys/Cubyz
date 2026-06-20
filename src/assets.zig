@@ -35,13 +35,13 @@ pub const Assets = struct {
 	structureTables: ZonHashMap,
 	recipes: ZonHashMap,
 	blockModels: BytesHashMap,
+	blockModelsZon: ZonHashMap,
 	structureBuildingBlocks: ZonHashMap,
 	blueprints: BytesHashMap,
 	particles: ZonHashMap,
 	worldPresets: ZonHashMap,
 	entityModelDescriptions: ZonHashMap,
 	entityModelMigrations: ZonHashMap,
-	blockModelsZon: ZonHashMap,
 
 	fn init() Assets {
 		return .{
@@ -58,13 +58,13 @@ pub const Assets = struct {
 			.structureTables = .{},
 			.recipes = .{},
 			.blockModels = .{},
+			.blockModelsZon = .{},
 			.structureBuildingBlocks = .{},
 			.blueprints = .{},
 			.particles = .{},
 			.worldPresets = .{},
 			.entityModelDescriptions = .{},
 			.entityModelMigrations = .{},
-			.blockModelsZon = .{},
 		};
 	}
 	fn deinit(self: *Assets, allocator: NeverFailingAllocator) void {
@@ -81,13 +81,13 @@ pub const Assets = struct {
 		self.structureTables.deinit(allocator.allocator);
 		self.recipes.deinit(allocator.allocator);
 		self.blockModels.deinit(allocator.allocator);
+		self.blockModelsZon.deinit(allocator.allocator);
 		self.structureBuildingBlocks.deinit(allocator.allocator);
 		self.blueprints.deinit(allocator.allocator);
 		self.particles.deinit(allocator.allocator);
 		self.worldPresets.deinit(allocator.allocator);
 		self.entityModelDescriptions.deinit(allocator.allocator);
 		self.entityModelMigrations.deinit(allocator.allocator);
-		self.blockModelsZon.deinit(allocator.allocator);
 	}
 	fn clone(self: Assets, allocator: NeverFailingAllocator) Assets {
 		return .{
@@ -104,13 +104,13 @@ pub const Assets = struct {
 			.structureTables = self.structureTables.clone(allocator.allocator) catch unreachable,
 			.recipes = self.recipes.clone(allocator.allocator) catch unreachable,
 			.blockModels = self.blockModels.clone(allocator.allocator) catch unreachable,
+			.blockModelsZon = self.blockModelsZon.clone(allocator.allocator) catch unreachable,
 			.structureBuildingBlocks = self.structureBuildingBlocks.clone(allocator.allocator) catch unreachable,
 			.blueprints = self.blueprints.clone(allocator.allocator) catch unreachable,
 			.particles = self.particles.clone(allocator.allocator) catch unreachable,
 			.worldPresets = .{}, // Not accessible inside the world
 			.entityModelDescriptions = self.entityModelDescriptions.clone(allocator.allocator) catch unreachable,
 			.entityModelMigrations = self.entityModelMigrations.clone(allocator.allocator) catch unreachable,
-			.blockModelsZon = self.blockModelsZon.clone(allocator.allocator) catch unreachable,
 		};
 	}
 	fn read(self: *Assets, allocator: NeverFailingAllocator, assetDir: main.files.Dir, assetPath: []const u8) void {
@@ -129,16 +129,16 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "sbb", true, &self.structureBuildingBlocks, null);
 			addon.readAllBlueprints(allocator, "sbb", &self.blueprints);
 			addon.readAllModels(allocator, "models", ".obj", &self.blockModels);
+			addon.readAllZon(allocator, "models", true, &self.blockModelsZon, null);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
 			addon.readAllZon(allocator, "entityModels", true, &self.entityModelDescriptions, &self.entityModelMigrations);
-			addon.readAllZon(allocator, "models", true, &self.blockModelsZon, null);
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks, {} items, {} procedural items, {} biomes, {} cave layers, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, {} world presets, and {} block models ZONs",
-			.{@tagName(typ), self.blocks.count(), self.items.count(), self.proceduralItems.count(), self.biomes.count(), self.caveLayers.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count(), self.blockModelsZon.count()},
+			"Finished {s} assets reading with {} blocks, {} items, {} procedural items, {} biomes, {} cave layers, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, {} world presets, block models {}, and {} block models ZONs",
+			.{@tagName(typ), self.blocks.count(), self.items.count(), self.proceduralItems.count(), self.biomes.count(), self.caveLayers.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count(), self.blockModels.count(), self.blockModelsZon.count()},
 		);
 	}
 
