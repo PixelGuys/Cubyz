@@ -183,7 +183,10 @@ fn convertColorToANSI(allocator: main.heap.NeverFailingAllocator, text: []const 
 		if (fontEffect == currentFontEffect) continue;
 
 		list.appendSlice(allocator, "\x1b[");
-		defer list.items[list.items.len - 1] = 'm';
+		defer {
+			std.debug.assert(list.items[list.items.len - 1] == ';');
+			list.items[list.items.len - 1] = 'm';
+		}
 
 		if (fontEffect.color != currentFontEffect.color) {
 			list.appendSlice(allocator, "38;2;");
@@ -192,10 +195,10 @@ fn convertColorToANSI(allocator: main.heap.NeverFailingAllocator, text: []const 
 			}
 		}
 		if (fontEffect.bold != currentFontEffect.bold) {
-			if (!currentFontEffect.bold) {
-				list.appendSlice(allocator, "1;");
-			} else {
+			if (currentFontEffect.bold) {
 				list.appendSlice(allocator, "22;");
+			} else {
+				list.appendSlice(allocator, "1;");
 			}
 		}
 		if (fontEffect.italic != currentFontEffect.italic) {
