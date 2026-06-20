@@ -57,7 +57,7 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:cold_mountains",
-			.chance = 0.75,
+			.chance = 0.65,
 		},
 	},
 }
