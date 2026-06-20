@@ -34,6 +34,8 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 		if (params.block.mode() == main.rotation.getByID(rotationMode.name)) {
 			if (@hasDecl(@field(main.rotation.rotations, rotationMode.name), "updateBlockFromNeighborConnectivity")) {
 				@field(main.rotation.rotations, rotationMode.name).updateBlockFromNeighborConnectivity(&newBlock, neighborSupportive);
+			} else {
+				std.log.err("Rotation mode {s} has no updateBlockFromNeighborConnectivity function and cannot be used for {s} callback", .{rotationMode.name, @typeName(@This())});
 			}
 		}
 	}
