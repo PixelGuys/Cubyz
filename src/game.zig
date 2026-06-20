@@ -298,7 +298,7 @@ pub const World = struct { // MARK: World
 		errdefer self.itemDrops.deinit();
 
 		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
-		
+
 		try self.finishHandshake(main.network.protocols.handShake.handshakeZon);
 		main.network.protocols.handShake.assetsLoadedCondition.signal();
 		main.network.protocols.handShake.hasFinishedLoadingAssets = true;
