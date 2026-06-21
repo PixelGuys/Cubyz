@@ -16,7 +16,7 @@ pub const playerAirTerminalVelocity = 90.0;
 pub const airDensity = 0.001;
 pub const playerDensity = 1.2;
 
-const epsilon: f64 = 1.0/@as(comptime_float, 1 << (std.math.floatMantissaBits(f64) - 31)); // Should be the last bit when at the integer limit
+pub const epsilon: f64 = 1.0/@as(comptime_float, 1 << (std.math.floatMantissaBits(f64) - 31)); // Should be the last bit when at the integer limit
 
 pub const collision = struct {
 	pub const Box = struct {
