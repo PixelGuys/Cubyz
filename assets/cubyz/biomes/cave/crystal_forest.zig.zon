@@ -11,7 +11,7 @@
 
 	.music = "cubyz:totaldemented/midnight_melody",
 
-	.stoneBlock = "cubyz:slate/base",
+	.stoneBlock = "cubyz:slate/smooth",
 	.ground_structure = .{
 		"cubyz:grass",
 		"2 to 3 cubyz:soil",

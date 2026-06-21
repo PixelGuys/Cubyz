@@ -20,7 +20,7 @@
 	.music = "cubyz:totaldemented/cubyz",
 	.ground_structure = .{
 		"cubyz:dry_grass",
-		"7 to 8 cubyz:limestone/base",
+		"7 to 8 cubyz:limestone/smooth",
 	},
 	.structures = .{
 		.{
@@ -63,7 +63,7 @@
 			.priority = 0.1,
 		},
 	},
-	.stoneBlock = "cubyz:sandstone/base",
+	.stoneBlock = "cubyz:sandstone/rough",
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:savannah/base",

@@ -15,7 +15,7 @@
 
 	.roughness = 10,
 	.mountains = 100,
-	.stoneBlock = "cubyz:limestone/base",
+	.stoneBlock = "cubyz:limestone/smooth",
 	.ground_structure = .{
 		"cubyz:dry_grass",
 		"0 to 3 cubyz:dirt",

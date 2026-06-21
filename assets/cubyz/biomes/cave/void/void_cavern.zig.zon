@@ -6,7 +6,7 @@
 	.fogColor = 0x272334,
 
 	.music = "cubyz:ikabod/xeric",
-	.stoneBlock = "cubyz:voidstone/base",
+	.stoneBlock = "cubyz:voidstone/smooth",
 
 	.caveModels = .{
 		.{

@@ -13,7 +13,7 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.015,
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.size = 3,
 			.size_variance = 1,
 		},
@@ -28,7 +28,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.chance = 0.015,
 			.width = 8,
 			.variation = 4,
