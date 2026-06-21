@@ -61,7 +61,7 @@ fn updateResult(_: main.items.Inventory.Source) void {
 }
 
 fn openInventory() void {
-	craftingGridInv = ClientInventory.init(main.globalAllocator, 25, .serverShared, .{.workbench = .{.playerId = main.game.Player.id, .proceduralItemIndex = proceduralItemTypes.items[currentProceduralItemType]}}, .{.onUpdateCallback = &updateResult});
+	craftingGridInv = ClientInventory.init(main.globalAllocator, 25, .serverShared, .{.workbench = .{.playerId = main.game.Player.id, .proceduralItemIndex = proceduralItemTypes.items[currentProceduralItemType]}}, .{.onUpdateCallback = &updateResult, .canPutInto = items.ProceduralItem.canPutIntoWorkbenchCallback});
 	craftingResultInv = ClientInventory.init(main.globalAllocator, 1, .{.workbenchResult = craftingGridInv.super.id}, .other, .{});
 	const list = HorizontalList.init();
 	{ // crafting grid

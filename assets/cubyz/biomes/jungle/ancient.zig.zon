@@ -7,6 +7,8 @@
 	.radius = 48,
 	.keepOriginalTerrain = 0.5,
 	.hills = 2,
+	.fogDensity = 35,
+	.fogColor = 0xf1fbf7,
 
 	.ground_structure = .{"4 to 5 cubyz:mud"},
 

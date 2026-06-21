@@ -36,8 +36,8 @@ pub fn execute(args: []const u8, source: *User) void {
 		},
 		.@"/time <number>" => |params| params.number,
 		.@"/time <phase>" => |params| switch (params.phase) {
-			.day => 0,
-			.night => main.server.ServerWorld.dayCycle/2,
+			.day => main.game.World.DayTime.dayStart,
+			.night => main.game.World.DayTime.nightStart,
 		},
 		.@"/time <subcommand>" => |params| {
 			switch (params.subcommand) {

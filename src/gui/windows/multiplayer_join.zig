@@ -29,11 +29,12 @@ var thread: ?std.Thread = null;
 const width: f32 = 420;
 
 fn discoverIpAddress() void {
-	connection = ConnectionManager.init(main.settings.defaultPort, true) catch |err| {
+	connection = ConnectionManager.init(main.settings.defaultPort, .{}) catch |err| {
 		std.log.err("Could not open Connection: {s}", .{@errorName(err)});
 		ipAddress = main.globalAllocator.dupe(u8, @errorName(err));
 		return;
 	};
+	connection.?.makeOnline();
 	ipAddress = std.fmt.allocPrint(main.globalAllocator.allocator, "{f}", .{connection.?.externalAddress}) catch unreachable;
 	gotIpAddress.store(true, .release);
 }

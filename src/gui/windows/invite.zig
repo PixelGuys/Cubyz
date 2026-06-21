@@ -59,10 +59,6 @@ fn copyIp() void {
 	main.Window.setClipboardString(ipAddress);
 }
 
-fn makePublic(public: bool) void {
-	main.server.connectionManager.allowNewConnections.store(public, .monotonic);
-}
-
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 260, 16);
 	list.add(Label.init(.{0, 0}, width, "Please send your IP to the player who wants to join and enter their IP below.", .center));
@@ -74,7 +70,6 @@ pub fn onOpen() void {
 	ipAddressEntry.obfuscated = main.settings.streamerMode;
 	list.add(ipAddressEntry);
 	list.add(Button.initText(.{0, 0}, 100, "Invite", .{.onAction = .init(invite)}));
-	list.add(CheckBox.init(.{0, 0}, width, "Allow anyone to join (requires a publicly visible IP address+port which may need some configuration in your router)", main.server.connectionManager.allowNewConnections.load(.monotonic), &makePublic));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

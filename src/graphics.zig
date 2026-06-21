@@ -647,7 +647,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 			return next[0];
 		}
 
-		fn parse(self: *Parser) void {
+		pub fn parse(self: *Parser) void {
 			self.curIndex = @intCast(self.unicodeIterator.i);
 			self.curChar = self.unicodeIterator.nextCodepoint() orelse return;
 			while (true) {

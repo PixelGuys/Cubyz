@@ -19,11 +19,19 @@
 	},
 	.caveModels = .{
 		.{
-			.id = "cubyz:partial_sphere",
-			.minAmount = 10,
-			.maxAmount = 20,
-			.minRadius = 8,
-			.maxRadius = 16,
+			.id = "cubyz:cluster",
+			.minAmount = 1,
+			.maxAmount = 2,
+			.children = .{
+				.{
+					.id = "cubyz:partial_sphere",
+					.minAmount = 4,
+					.maxAmount = 6,
+					.minRadius = 8,
+					.maxRadius = 16,
+					.randomOffset = .{25, 25, 20},
+				},
+			},
 		},
 	},
 }

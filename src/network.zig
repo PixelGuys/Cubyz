@@ -474,14 +474,14 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	threadId: std.Thread.Id = undefined,
 	externalAddress: Address = undefined,
 	online: Atomic(bool) = .init(false),
-	running: Atomic(bool) = .init(true),
+	running: Atomic(bool) = .init(false),
 
 	connections: main.List(*Connection) = .empty,
 	requests: main.List(*Request) = .empty,
 
 	mutex: main.utils.Mutex = .{},
 	waitingToFinishReceive: main.utils.Condition = .{},
-	allowNewConnections: Atomic(bool) = .init(false),
+	allowNewConnections: bool,
 
 	receiveBuffer: [Connection.maxMtu]u8 = undefined,
 
@@ -501,11 +501,12 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 	};
 
-	pub fn init(localPort: u16, online: bool) !*ConnectionManager {
+	pub fn init(localPort: u16, options: struct { allowNewConnections: bool = false }) !*ConnectionManager {
 		const result: *ConnectionManager = main.globalAllocator.create(ConnectionManager);
 		errdefer main.globalAllocator.destroy(result);
-		result.* = .{};
-		result.packetSendRequests = .initContext({});
+		result.* = .{
+			.allowNewConnections = options.allowNewConnections,
+		};
 
 		result.localPort = localPort;
 		result.socket = Socket.init(localPort) catch |err| blk: {
@@ -518,26 +519,28 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		errdefer result.socket.deinit();
 		if (localPort == 0) result.localPort = try result.socket.getPort();
 
-		result.thread = try std.Thread.spawn(.{}, run, .{result});
-		result.thread.setName(main.io, "Network Thread") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
-		if (online) {
-			result.makeOnline();
-		}
-		if (main.settings.launchConfig.headlessServer) {
-			result.allowNewConnections.store(true, .monotonic);
-		}
+		try result.@"continue"();
+
 		return result;
 	}
-
+	pub fn @"continue"(result: *ConnectionManager) !void {
+		if (result.running.load(.monotonic)) return;
+		result.packetSendRequests = .initContext({});
+		result.running.store(true, .monotonic);
+		result.thread = try std.Thread.spawn(.{}, run, .{result});
+		result.thread.setName(main.io, "Network Thread") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
+	}
 	pub fn deinit(self: *ConnectionManager) void {
-		for (self.connections.items) |conn| {
-			conn.disconnect();
-		}
+		if (self.running.load(.monotonic)) self.pause();
+		self.socket.deinit();
+		self.connections.deinit(main.globalAllocator);
+		main.globalAllocator.destroy(self);
+	}
+	pub fn pause(self: *ConnectionManager) void {
+		std.debug.assert(self.running.load(.monotonic));
 
 		self.running.store(false, .monotonic);
 		self.thread.join();
-		self.socket.deinit();
-		self.connections.deinit(main.globalAllocator);
 		for (self.requests.items) |request| {
 			request.requestNotifier.signal();
 		}
@@ -547,7 +550,9 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 		self.packetSendRequests.deinit(main.globalAllocator.allocator);
 
-		main.globalAllocator.destroy(self);
+		for (self.connections.items) |conn| {
+			conn.disconnect();
+		}
 	}
 
 	pub fn makeOnline(self: *ConnectionManager) void {
@@ -660,7 +665,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			}
 			if (self.online.load(.acquire) and source.ip == self.externalAddress.ip and source.port == self.externalAddress.port) return;
 		}
-		if (self.allowNewConnections.load(.monotonic) or source.ip == Address.localHost) {
+		if (self.allowNewConnections or source.ip == Address.localHost) {
 			if (data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
 				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{source}) catch unreachable;
 				defer main.stackAllocator.free(ip);
