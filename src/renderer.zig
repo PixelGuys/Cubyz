@@ -819,7 +819,7 @@ pub const Skybox = struct {
 		if (starOpacity != 0) {
 			starPipeline.bind(null);
 
-			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationX(2*std.math.pi*game.world.?.dayTime.getDayProgress())));
+			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationY(game.World.DayTime.celestialTilt).mul(Mat4f.rotationX(2*std.math.pi*game.world.?.dayTime.getDayProgress()))));
 
 			starSsbo.bind(12);
 
