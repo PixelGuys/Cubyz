@@ -1,6 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
+const vec = main.vec;
+const Vec3f = vec.Vec3f;
 const utils = main.utils;
 const ZonElement = @import("zon.zig").ZonElement;
 
@@ -241,7 +243,7 @@ pub fn deinit() void {
 }
 
 pub fn reset() void {
-	soundIDReverse.clearRetainingCapacity();
+	soundIdMap.clearRetainingCapacity();
 	for (sounds.items) |s| {
 		s.deinit();
 	}
@@ -297,15 +299,18 @@ pub fn setMusic(music: []const u8) void {
 }
 
 const Sound = struct { // MARK: SOUNDS
+	pos: Vec3f = @splat(0),
 	soundIndex: u32,
-	pos: u32 = 0,
+	bufPos: u32 = 0,
 
-	volume: f32 = 0,
+	volume: f32 = 1,
+	maxDistance: f32 = 10,
+	isSpatial: bool = false,
 };
 
-var soundIDReverse: std.StringHashMapUnmanaged(u32) = .{};
+var soundIdMap: std.StringHashMapUnmanaged(u32) = .{};
 var sounds: main.List(*AudioData) = .empty;
-var activeSounds: main.List(Sound) = .empty;
+var activeSounds: main.List(Sound) = .empty; // TODO: USE SPARSE SET
 
 pub fn getActiveSoundCount() u32 {
 	return @intCast(activeSounds.items.len);
@@ -315,15 +320,28 @@ pub fn registerSound(_: []const u8, id: []const u8, zon: ZonElement) void {
 	const sound = AudioData.init(id, "sounds/audio");
 	sound.volume = zon.get(f32, "volume", 1.0);
 
-	soundIDReverse.put(main.worldArena.allocator, id, @intCast(sounds.items.len)) catch unreachable;
+	soundIdMap.put(main.worldArena.allocator, id, @intCast(sounds.items.len)) catch unreachable;
 	sounds.append(main.globalAllocator, sound);
 
 	std.log.debug("Registered sound: {s}", .{id});
 }
 
+fn addSound(id: []const u8, pos: Vec3f, maxDistance: f32, isSpatial: bool) void {
+	const idx = soundIdMap.get(id) orelse return;
+	activeSounds.append(main.globalAllocator, Sound{
+		.soundIndex = idx,
+		.pos = pos,
+		.isSpatial = isSpatial,
+		.maxDistance = maxDistance,
+	});
+}
+
 pub fn playSound(id: []const u8) void {
-	const idx = soundIDReverse.get(id) orelse return;
-	activeSounds.append(main.globalAllocator, Sound{.soundIndex = idx});
+	addSound(id, @splat(0), 0, false);
+}
+
+pub fn playSpatialSound(id: []const u8, pos: Vec3f, maxDistance: f32) void {
+	addSound(id, pos, maxDistance, true);
 }
 
 fn mixMusic(buffer: []f32) void {
@@ -379,6 +397,10 @@ fn mixSound(buffer: []f32) void {
 	
 	if (activeSounds.items.len == 0) return;
 
+	const playerPos: Vec3f = @floatCast(main.game.Player.getPosBlocking());
+	const playerForward = main.game.camera.direction;
+	const playerRight = vec.normalize(vec.cross(playerForward, Vec3f{0, 0, 1}));
+
 	var i: u32 = 0;
 	var soundCount = activeSounds.items.len;
 	main: while (i < soundCount) {
@@ -388,15 +410,35 @@ fn mixSound(buffer: []f32) void {
 
 		const notMonoInt: u32 = @intFromBool(!soundData.isMono);
 		const bufferStep: u32 = 1 + notMonoInt;
+
+		var leftVol: f32 = 1;
+		var rightVol: f32 = 1;
+
+		if (sound.isSpatial) {
+			const toSound = sound.pos - playerPos;
+			const distance: f32 = vec.length(toSound);
+			const pan: f32 = vec.dot(toSound/@as(Vec3f, @splat(distance)), playerRight);
+
+			const angle = (pan + 1)*0.25*std.math.pi;
+			leftVol = @cos(angle);
+			rightVol = @sin(angle);
+
+			var volume: f32 = 1 - distance / sound.maxDistance;
+
+			volume = if (volume < 0) 0 else volume;
+			leftVol *= volume;
+			rightVol *= volume;
+		}
+
 		var j: usize = 0;
 		while (j < buffer.len) : (j += 2) {
 			const amplitude: f32 = main.settings.soundVolume;
 
-			buffer[j] += soundBuffer[sound.pos]*amplitude*soundData.volume;
-			buffer[j + 1] += soundBuffer[sound.pos + notMonoInt]*amplitude*soundData.volume;
-			sound.pos += bufferStep;
+			buffer[j] += soundBuffer[sound.bufPos]*amplitude*soundData.volume*leftVol;
+			buffer[j + 1] += soundBuffer[sound.bufPos + notMonoInt]*amplitude*soundData.volume*rightVol;
+			sound.bufPos += bufferStep;
 
-			if (sound.pos >= soundBuffer.len) {
+			if (sound.bufPos >= soundBuffer.len) {
 				soundCount -= 1;
 				activeSounds.items[i] = activeSounds.items[soundCount];
 				continue :main;

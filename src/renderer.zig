@@ -1128,7 +1128,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			main.sync.client.mutex.unlock();
 
 			if (newBlock != block) {
-				main.audio.playSound("cubyz:block_break");
+				main.audio.playSpatialSound("cubyz:block_break", @floatFromInt(selectedPos), 13);
 				updateBlockAndSendUpdate(inventory, slot, selectedPos, block, newBlock);
 			}
 		}
