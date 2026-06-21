@@ -107,6 +107,7 @@ pub const handShake = struct { // MARK: handShake
 						assetsLoadedCondition.wait(&conn.mutex);
 					}
 					conn.mutex.unlock();
+					hasFinishedLoadingAssets = false;
 				},
 				.start, .complete => {},
 			}
