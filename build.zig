@@ -105,6 +105,11 @@ pub fn makeModFeature(io: std.Io, step: *std.Build.Step, name: []const u8) !void
 		var featureWalker = try std.Io.Dir.walk(featureDir, step.owner.allocator);
 		defer featureWalker.deinit();
 
+		try featureList.append(step.owner.allocator, step.owner.fmt(
+			\\
+			\\// MARK: {s}
+		, .{modEntry.name}));
+
 		while (try featureWalker.next(io)) |featureEntry| {
 			if (featureEntry.kind != .file) continue;
 			if (!std.mem.endsWith(u8, featureEntry.basename, ".zig")) continue;
@@ -122,9 +127,10 @@ pub fn makeModFeature(io: std.Io, step: *std.Build.Step, name: []const u8) !void
 			));
 		}
 	}
-
 	std.mem.sort([]const u8, featureList.items, {}, struct {
-		fn lessThanFn(_: void, lhs: []const u8, rhs: []const u8) bool {
+		fn lessThanFn(_: void, _lhs: []const u8, _rhs: []const u8) bool {
+			const lhs = if (std.mem.startsWith(u8, _lhs, "\n// MARK: ")) _lhs[10..] else _lhs[12..];
+			const rhs = if (std.mem.startsWith(u8, _rhs, "\n// MARK: ")) _rhs[10..] else _rhs[12..];
 			return std.mem.lessThan(u8, lhs, rhs);
 		}
 	}.lessThanFn);
