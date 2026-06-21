@@ -5,7 +5,7 @@
 	.smoothBeaches = true,
 	.radius = 70,
 	.mountains = 10,
-	.hills = 5,
+	.hills = 10,
 	.chance = 0,
 	.stoneBlock = "cubyz:glacite/base",
 	.validPlayerSpawn = false,
