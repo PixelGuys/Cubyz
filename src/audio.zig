@@ -136,8 +136,8 @@ const Sound = struct {
 };
 
 var soundIDReverse: std.StringHashMapUnmanaged(u32) = .{};
-var sounds: main.List(*SoundData) = undefined;
-var activeSounds: main.List(Sound) = undefined;
+var sounds: main.List(*SoundData) = .empty;
+var activeSounds: main.List(Sound) = .empty;
 
 pub fn getActiveSoundCount() u32 {
 	return @intCast(activeSounds.items.len);
@@ -149,14 +149,14 @@ pub fn registerSound(_: []const u8, id: []const u8, zon: ZonElement) void {
 	// std.debug.print("\n AAAAAAAAA {d}", .{});
 
 	soundIDReverse.put(main.worldArena.allocator, id, @intCast(sounds.items.len)) catch unreachable;
-	sounds.append(sound);
+	sounds.append(main.globalAllocator, sound);
 
 	std.log.debug("Registered sound: {s}", .{id});
 }
 
 pub fn playSound(id: []const u8) void {
 	const idx = soundIDReverse.get(id) orelse return;
-	activeSounds.append(Sound{.soundIndex = idx});
+	activeSounds.append(main.globalAllocator, Sound{.soundIndex = idx});
 }
 
 const AudioData = struct { // MARK: MUSIC
@@ -336,9 +336,6 @@ pub fn init() error{miniaudioError}!void {
 	try handleError(c.ma_device_start(&device));
 
 	sampleRate = 44100;
-
-	sounds = .init(main.globalAllocator);
-	activeSounds = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
@@ -354,8 +351,8 @@ pub fn deinit() void {
 	main.globalAllocator.free(activeMusicId);
 	activeMusicId.len = 0;
 
-	sounds.deinit();
-	activeSounds.deinit();
+	sounds.deinit(main.globalAllocator);
+	activeSounds.deinit(main.globalAllocator);
 }
 
 pub fn reset() void {
