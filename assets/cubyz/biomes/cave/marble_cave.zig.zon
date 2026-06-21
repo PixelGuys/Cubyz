@@ -1,11 +1,13 @@
 .{
 	.isCave = true,
+	.tags = .{.shallow_cave_layer},
 	.caveNoiseStrength = 5,
-	.maxHeight = -64,
 	.minHeight = -512,
 	.chance = 0.2,
 
 	.fogDensity = 10,
+
+	.music = "cubyz:totaldemented/vitreous",
 
 	.stoneBlock = "cubyz:marble/base",
 	.structures = .{

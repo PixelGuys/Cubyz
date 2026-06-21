@@ -4,6 +4,9 @@
 		.dry,
 		.barren,
 	},
+
+	.music = "cubyz:totaldemented/hypoxia",
+
 	.fogDensity = 1.5,
 	.fogColor = 0xe9f2e2,
 	.stripes = .{

@@ -1,10 +1,11 @@
 .{
 	.isCave = true,
+	.tags = .{.cave_layer},
 	.maxHeight = -1500,
-	.minHeight = -48250,
 	.fogDensity = 20,
 	.chance = 0.1,
 	.fogColor = 0x51240c,
+	.music = "cubyz:totaldemented/scoria",
 	.stoneBlock = "cubyz:obsidian",
 	.stripes = .{
 		.{

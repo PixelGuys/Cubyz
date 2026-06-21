@@ -1,13 +1,13 @@
 .{
 	.isCave = true,
+	.tags = .{.cave_layer},
 	.maxHeight = -512,
-	.minHeight = -48250,
 
 	.fogDensity = 2,
 
 	.chance = 0.01,
 
-	.music = "cubyz:heart-of-the-beast",
+	.music = "cubyz:ikabod/live",
 
 	.structures = .{
 		.{

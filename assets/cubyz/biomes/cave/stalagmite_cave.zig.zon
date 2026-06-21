@@ -1,14 +1,14 @@
 .{
 	.isCave = true,
+	.tags = .{.cave_layer},
 	.caveNoiseStrength = 10,
 	.maxHeight = -256,
-	.minHeight = -48250,
 	.chance = 0.2,
 
 	.fogDensity = 10,
 	.fogColor = 0x57575e,
 
-	.music = "cubyz:heart-of-the-beast",
+	.music = "cubyz:totaldemented/vitreous",
 
 	.structures = .{
 		.{

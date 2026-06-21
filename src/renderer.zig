@@ -6,18 +6,17 @@ const chunk = @import("chunk.zig");
 const entity = @import("entity.zig");
 const graphics = @import("graphics.zig");
 const particles = @import("particles.zig");
-const c = graphics.c;
 const game = @import("game.zig");
 const World = game.World;
 const itemdrop = @import("itemdrop.zig");
 const main = @import("main");
+const gpu_performance_measuring = main.gui.windowlist.gpu_performance_measuring;
+const crosshair = main.gui.windowlist.crosshair;
 const Window = main.Window;
 const models = @import("models.zig");
 const network = @import("network.zig");
 const settings = @import("settings.zig");
 const vec = @import("vec.zig");
-const gpu_performance_measuring = main.gui.windowlist.gpu_performance_measuring;
-const crosshair = main.gui.windowlist.crosshair;
 const Vec2f = vec.Vec2f;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
@@ -25,7 +24,10 @@ const Vec3d = vec.Vec3d;
 const Vec4f = vec.Vec4f;
 const Mat4f = vec.Mat4f;
 
+const c = @import("c");
+
 pub const chunk_meshing = @import("renderer/chunk_meshing.zig");
+pub const lighting = @import("renderer/lighting.zig");
 pub const mesh_storage = @import("renderer/mesh_storage.zig");
 
 /// Time after which no more chunk meshes are created. This allows the game to run smoother on movement.
@@ -66,6 +68,8 @@ pub fn init() void {
 		"assets/cubyz/shaders/deferred_render_pass.frag",
 		"",
 		&deferredUniforms,
+		graphics.draw.SimpleVertex2D,
+		&.{},
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.noBlending}},
@@ -75,6 +79,8 @@ pub fn init() void {
 		"assets/cubyz/shaders/fake_reflection.frag",
 		"",
 		&fakeReflectionUniforms,
+		graphics.draw.SimpleVertex2D,
+		&.{},
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.noBlending}},
@@ -136,8 +142,8 @@ pub fn updateFov(fov: f32) void {
 	}
 }
 pub fn updateViewport(width: u31, height: u31) void {
-	lastWidth = @intFromFloat(@as(f32, @floatFromInt(width))*main.settings.resolutionScale);
-	lastHeight = @intFromFloat(@as(f32, @floatFromInt(height))*main.settings.resolutionScale);
+	lastWidth = @trunc(@as(f32, @floatFromInt(width))*main.settings.resolutionScale);
+	lastHeight = @trunc(@as(f32, @floatFromInt(height))*main.settings.resolutionScale);
 	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(lastFov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
 	worldFrameBuffer.updateSize(lastWidth, lastHeight, c.GL_RGB16F);
 	worldFrameBuffer.unbind();
@@ -149,10 +155,10 @@ pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 	std.debug.assert(game.world != null);
 
 	const nightColor: Vec3f = .{0.3, 0.4, 0.5};
-	const ambient = @max(nightColor*@as(Vec3f, @splat(settings.nightBrightness)), @as(Vec3f, @splat(game.world.?.ambientLight)));
+	const ambient = @max(nightColor*@as(Vec3f, @splat(settings.nightBrightness)), @as(Vec3f, @splat(game.world.?.dayTime.ambientLight)));
 
 	itemdrop.ItemDisplayManager.update(deltaTime);
-	renderWorld(game.world.?, ambient, game.fog.skyColor, playerPosition);
+	renderWorld(game.world.?, ambient, game.world.?.dayTime.fog.skyColor, playerPosition);
 	const startTime = main.timestamp();
 	mesh_storage.updateMeshes(startTime.addDuration(maximumMeshTime));
 }
@@ -224,7 +230,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	chunk_meshing.beginRender();
 
-	var chunkLists: [main.settings.highestSupportedLod + 1]main.List(u32) = @splat(main.List(u32).init(main.stackAllocator));
+	var chunkLists: [main.settings.highestSupportedLod + 1]main.ListManaged(u32) = @splat(main.ListManaged(u32).init(main.stackAllocator));
 	defer for (chunkLists) |list| list.deinit();
 	for (meshes) |mesh| {
 		mesh.prepareRendering(&chunkLists);
@@ -235,7 +241,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
-	main.client.entity_manager.render(game.projectionMatrix, ambientLight, playerPos);
+	main.entity.client.render(game.projectionMatrix, ambientLight, playerPos, main.lastDeltaTime.load(.monotonic));
 
 	itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
@@ -284,7 +290,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 
-	const playerBlock = mesh_storage.getBlockFromAnyLodFromRenderThread(@intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+	const playerBlock = mesh_storage.getBlockFromAnyLodFromRenderThread(@floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 
 	if (settings.bloom) {
 		Bloom.render(lastWidth, lastHeight, playerBlock, playerPos, game.camera.viewMatrix);
@@ -298,10 +304,10 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	worldFrameBuffer.unbind();
 	deferredRenderPassPipeline.bind(null);
 	if (!blocks.meshes.hasFog(playerBlock)) {
-		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
-		c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
-		c.glUniform1f(deferredUniforms.@"fog.fogLower", game.fog.fogLower);
-		c.glUniform1f(deferredUniforms.@"fog.fogHigher", game.fog.fogHigher);
+		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.world.?.dayTime.fog.fogColor));
+		c.glUniform1f(deferredUniforms.@"fog.density", game.world.?.dayTime.fog.density);
+		c.glUniform1f(deferredUniforms.@"fog.fogLower", game.world.?.dayTime.fog.fogLower);
+		c.glUniform1f(deferredUniforms.@"fog.fogHigher", game.world.?.dayTime.fog.fogHigher);
 	} else {
 		const fogColor = blocks.meshes.fogColor(playerBlock);
 		c.glUniform3f(deferredUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
@@ -310,7 +316,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		c.glUniform1f(deferredUniforms.@"fog.fogHigher", 1e10);
 	}
 	c.glUniformMatrix4fv(deferredUniforms.invViewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix.transpose()));
-	c.glUniform3i(deferredUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+	c.glUniform3i(deferredUniforms.playerPositionInteger, @floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 	c.glUniform3f(deferredUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 	c.glUniform1f(deferredUniforms.zNear, zNear);
 	c.glUniform1f(deferredUniforms.zFar, zFar);
@@ -323,7 +329,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-	if (!main.gui.hideGui) main.client.entity_manager.renderNames(game.projectionMatrix, playerPos);
+	if (!main.gui.hideGui) main.entity.client.renderHud(game.projectionMatrix, ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
 }
 
@@ -359,6 +365,8 @@ const Bloom = struct { // MARK: Bloom
 			"assets/cubyz/shaders/bloom/first_pass.frag",
 			"",
 			null,
+			graphics.draw.SimpleVertex2D,
+			&.{.{.binding = 3, .count = 1, .type = .combinedImageSampler, .stageFlags = .{.fragment = true}}},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.noBlending}},
@@ -368,6 +376,8 @@ const Bloom = struct { // MARK: Bloom
 			"assets/cubyz/shaders/bloom/second_pass.frag",
 			"",
 			null,
+			graphics.draw.SimpleVertex2D,
+			&.{.{.binding = 3, .count = 1, .type = .combinedImageSampler, .stageFlags = .{.fragment = true}}},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.noBlending}},
@@ -377,6 +387,8 @@ const Bloom = struct { // MARK: Bloom
 			"assets/cubyz/shaders/bloom/color_extractor_downsample.frag",
 			"",
 			&colorExtractUniforms,
+			graphics.draw.SimpleVertex2D,
+			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.noBlending}},
@@ -397,10 +409,10 @@ const Bloom = struct { // MARK: Bloom
 		worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 		buffer1.bind();
 		if (!blocks.meshes.hasFog(playerBlock)) {
-			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
-			c.glUniform1f(colorExtractUniforms.@"fog.density", game.fog.density);
-			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", game.fog.fogLower);
-			c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", game.fog.fogHigher);
+			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.world.?.dayTime.fog.fogColor));
+			c.glUniform1f(colorExtractUniforms.@"fog.density", game.world.?.dayTime.fog.density);
+			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", game.world.?.dayTime.fog.fogLower);
+			c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", game.world.?.dayTime.fog.fogHigher);
 		} else {
 			const fogColor = blocks.meshes.fogColor(playerBlock);
 			c.glUniform3f(colorExtractUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
@@ -410,7 +422,7 @@ const Bloom = struct { // MARK: Bloom
 		}
 
 		c.glUniformMatrix4fv(colorExtractUniforms.invViewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix.transpose()));
-		c.glUniform3i(colorExtractUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+		c.glUniform3i(colorExtractUniforms.playerPositionInteger, @floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 		c.glUniform3f(colorExtractUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 		c.glUniform1f(colorExtractUniforms.zNear, zNear);
 		c.glUniform1f(colorExtractUniforms.zFar, zFar);
@@ -479,15 +491,6 @@ pub const MenuBackGround = struct {
 	var angle: f32 = 0;
 
 	fn init() void {
-		pipeline = graphics.Pipeline.init(
-			"assets/cubyz/shaders/background/vertex.vert",
-			"assets/cubyz/shaders/background/fragment.frag",
-			"",
-			&uniforms,
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.noBlending}},
-		);
 		const MenuBackgroundVertex = struct {
 			pos: [3]f32,
 			uv: [2]f32,
@@ -505,6 +508,17 @@ pub const MenuBackGround = struct {
 				},
 			};
 		};
+		pipeline = graphics.Pipeline.init(
+			"assets/cubyz/shaders/background/vertex.vert",
+			"assets/cubyz/shaders/background/fragment.frag",
+			"",
+			&uniforms,
+			MenuBackgroundVertex,
+			&.{},
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.noBlending}},
+		);
 		// 4 sides of a simple cube with some panorama texture on it.
 		const rawData = [_]MenuBackgroundVertex{
 			.{.pos = .{-1, 1, -1}, .uv = .{1, 1}},
@@ -557,17 +571,17 @@ pub const MenuBackGround = struct {
 		// Otherwise load a random texture from the backgrounds folder. The player may make their own pictures which can be chosen as well.
 		var walker = dir.walk(main.stackAllocator);
 		defer walker.deinit();
-		var fileList = main.List([]const u8).init(main.stackAllocator);
+		var fileList: main.List([]const u8) = .empty;
 		defer {
 			for (fileList.items) |fileName| {
 				main.stackAllocator.free(fileName);
 			}
-			fileList.deinit();
+			fileList.deinit(main.stackAllocator);
 		}
 
-		while (try walker.next()) |entry| {
+		while (try walker.next(main.io)) |entry| {
 			if (entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".png")) {
-				fileList.append(main.stackAllocator.dupe(u8, entry.path));
+				fileList.append(main.stackAllocator, main.stackAllocator.dupe(u8, entry.path));
 			}
 		}
 		if (fileList.items.len == 0) {
@@ -691,7 +705,7 @@ pub const Skybox = struct {
 	}
 
 	fn getStarColor(temperature: f32, light: f32, image: graphics.Image) Vec3f {
-		const rgbCol = image.getRGB(@intFromFloat(std.math.clamp(temperature/15000.0*@as(f32, @floatFromInt(image.width)), 0.0, @as(f32, @floatFromInt(image.width - 1)))), 0);
+		const rgbCol = image.getRGB(@trunc(std.math.clamp(temperature/15000.0*@as(f32, @floatFromInt(image.width)), 0.0, @as(f32, @floatFromInt(image.width - 1)))), 0);
 		var rgb: Vec3f = @floatFromInt(Vec3i{rgbCol.r, rgbCol.g, rgbCol.b});
 		rgb /= @splat(255.0);
 
@@ -706,7 +720,7 @@ pub const Skybox = struct {
 	}
 
 	fn init() void {
-		const starColorImage = graphics.Image.readFromFile(main.stackAllocator, "assets/cubyz/star.png") catch |err| {
+		const starColorImage = graphics.Image.readFromFile(main.stackAllocator, "assets/cubyz/star.png", .{.orientation = .openGl}) catch |err| {
 			std.log.err("Failed to load star image: {s}", .{@errorName(err)});
 			return;
 		};
@@ -717,6 +731,8 @@ pub const Skybox = struct {
 			"assets/cubyz/shaders/skybox/star.frag",
 			"",
 			&starUniforms,
+			graphics.VertexArray.EmptyVertex,
+			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.{
@@ -798,22 +814,12 @@ pub const Skybox = struct {
 	pub fn render() void {
 		const viewMatrix = game.camera.viewMatrix;
 
-		const time = game.world.?.gameTime.load(.monotonic);
-
-		var starOpacity: f32 = 0;
-		const dayTime = @abs(@mod(time, game.World.dayCycle) -% game.World.dayCycle/2);
-		if (dayTime < game.World.dayCycle/4 - game.World.dayCycle/16) {
-			starOpacity = 1;
-		} else if (dayTime > game.World.dayCycle/4 + game.World.dayCycle/16) {
-			starOpacity = 0;
-		} else {
-			starOpacity = 1 - @as(f32, @floatFromInt(dayTime - (game.World.dayCycle/4 - game.World.dayCycle/16)))/@as(f32, @floatFromInt(game.World.dayCycle/8));
-		}
+		const starOpacity: f32 = game.world.?.dayTime.getStarOpacity();
 
 		if (starOpacity != 0) {
 			starPipeline.bind(null);
 
-			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationX(@as(f32, @floatFromInt(time))/@as(f32, @floatFromInt(main.game.World.dayCycle)))));
+			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationX(2*std.math.pi*game.world.?.dayTime.getDayProgress())));
 
 			starSsbo.bind(12);
 
@@ -880,6 +886,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			"assets/cubyz/shaders/block_selection_fragment.frag",
 			"",
 			&uniforms,
+			graphics.VertexArray.EmptyVertex,
+			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = true, .depthWrite = true},
 			.{.attachments = &.{.alphaBlending}},
@@ -899,7 +907,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var currentSwingTime: f32 = 0;
 	var selectionMin: Vec3f = undefined;
 	var selectionMax: Vec3f = undefined;
-	var selectionFace: chunk.Neighbor = undefined;
+	var selectionNormal: Vec3f = undefined;
 	var lastPos: Vec3d = undefined;
 	var lastDir: Vec3f = undefined;
 	pub fn select(pos: Vec3d, _dir: Vec3f, item: main.items.Item) void {
@@ -910,13 +918,13 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		// Test blocks:
 		const closestDistance: f64 = 6.0; // selection now limited
 		// Implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
-		const step: Vec3i = @intFromFloat(std.math.sign(dir));
+		const step: Vec3i = std.math.sign(dir);
 		const invDir = @as(Vec3d, @splat(1))/dir;
 		const tDelta = @abs(invDir);
 		var tMax = (@floor(pos) - pos)*invDir;
 		tMax = @max(tMax, tMax + tDelta*@as(Vec3f, @floatFromInt(step)));
 		tMax = @select(f64, dir == @as(Vec3d, @splat(0)), @as(Vec3d, @splat(std.math.inf(f64))), tMax);
-		var voxelPos: Vec3i = @intFromFloat(@floor(pos));
+		var voxelPos: Vec3i = @floor(pos);
 
 		var total_tMax: f64 = 0;
 
@@ -925,17 +933,15 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		while (total_tMax < closestDistance) {
 			const block = mesh_storage.getBlockFromRenderThread(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
 			if (block.typ != 0) blk: {
-				const fluidPlaceable = item == .baseItem and item.baseItem.hasTag(.fluidPlaceable);
-				const holdingTargetedBlock = item == .baseItem and item.baseItem.block() == block.typ;
-				if (block.hasTag(.air) and !holdingTargetedBlock) break :blk;
-				if (block.hasTag(.fluid) and !fluidPlaceable and !holdingTargetedBlock) break :blk; // TODO: Buckets could select fluids
+				if (!block.isSelectableByItem(item)) break :blk;
+
 				const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
 				if (block.mode().rayIntersection(block, item, relativePlayerPos, _dir)) |intersection| {
 					if (intersection.distance <= closestDistance) {
 						selectedBlockPos = voxelPos;
 						selectionMin = intersection.min;
 						selectionMax = intersection.max;
-						selectionFace = intersection.face;
+						selectionNormal = intersection.normal;
 						break;
 					}
 				}
@@ -971,7 +977,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	fn canPlaceBlock(pos: Vec3i, block: main.blocks.Block) bool {
-		if (main.game.collision.collideWithBlock(block, pos[0], pos[1], pos[2], main.game.Player.getPosBlocking() + main.game.Player.outerBoundingBox.center(), main.game.Player.outerBoundingBox.extent(), .{0, 0, 0}) != null) {
+		if (main.physics.collision.collideWithBlock(block, pos[0], pos[1], pos[2], main.game.Player.getPosBlocking() + main.game.Player.outerBoundingBox.center(), main.game.Player.outerBoundingBox.extent(), .{0, 0, 0}) != null) {
 			return false;
 		}
 		return true; // TODO: Check other entities
@@ -991,13 +997,13 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 							const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
 							if (rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, null, &block, .{.typ = 0, .data = 0}, false)) {
 								if (!canPlaceBlock(selectedPos, block)) return;
-								updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], oldBlock, block);
+								updateBlockAndSendUpdate(inventory, slot, selectedPos, oldBlock, block);
 								return;
 							}
 						} else {
 							if (rotationMode.modifyBlock(&block, itemBlock)) {
 								if (!canPlaceBlock(selectedPos, block)) return;
-								updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], oldBlock, block);
+								updateBlockAndSendUpdate(inventory, slot, selectedPos, oldBlock, block);
 								return;
 							}
 						}
@@ -1011,16 +1017,16 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						if (block.typ == itemBlock) {
 							if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, false)) {
 								if (!canPlaceBlock(neighborPos, block)) return;
-								updateBlockAndSendUpdate(inventory, slot, neighborPos[0], neighborPos[1], neighborPos[2], oldBlock, block);
+								updateBlockAndSendUpdate(inventory, slot, neighborPos, oldBlock, block);
 								return;
 							}
 						} else {
-							if (!block.replacable()) return;
+							if (!block.replaceable()) return;
 							block.typ = itemBlock;
 							block.data = 0;
 							if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, true)) {
 								if (!canPlaceBlock(neighborPos, block)) return;
-								updateBlockAndSendUpdate(inventory, slot, neighborPos[0], neighborPos[1], neighborPos[2], oldBlock, block);
+								updateBlockAndSendUpdate(inventory, slot, neighborPos, oldBlock, block);
 								return;
 							}
 						}
@@ -1031,8 +1037,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						return;
 					}
 				},
-				.tool => |tool| {
-					_ = tool; // TODO: Tools might change existing blocks.
+				.proceduralItem => |proceduralItem| {
+					_ = proceduralItem; // TODO: Tools might change existing blocks.
 				},
 				.null => {},
 			}
@@ -1062,16 +1068,16 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
 
-			main.sync.ClientSide.mutex.lock();
+			main.sync.client.mutex.lock();
 			if (!game.Player.isCreative()) {
 				var damage: f32 = main.game.Player.defaultBlockDamage;
-				const isTool = stack.item == .tool;
-				if (isTool) {
-					damage = stack.item.tool.getBlockDamage(block);
+				const isProceduralItem = stack.item == .proceduralItem;
+				if (isProceduralItem) {
+					damage = stack.item.proceduralItem.getBlockDamage(block);
 				}
 				damage -= block.blockResistance();
 				if (damage > 0) {
-					const swingTime = if (isTool and stack.item.tool.isEffectiveOn(block)) 1.0/stack.item.tool.swingSpeed else 0.5;
+					const swingTime = if (isProceduralItem and stack.item.proceduralItem.isEffectiveOn(block)) 1.0/stack.item.proceduralItem.getProperty(.swingSpeed) else 0.5;
 					if (currentSwingTime > swingTime) {
 						currentSwingProgress = 0;
 						currentSwingTime = 0;
@@ -1100,7 +1106,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 							}
 							mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
 						}
-						main.sync.ClientSide.mutex.unlock();
+						main.sync.client.mutex.unlock();
 
 						return;
 					} else {
@@ -1110,7 +1116,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						currentSwingTime = 0;
 					}
 				} else {
-					main.sync.ClientSide.mutex.unlock();
+					main.sync.client.mutex.unlock();
 					return;
 				}
 			} else {
@@ -1119,22 +1125,22 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 			var newBlock = block;
 			block.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
-			main.sync.ClientSide.mutex.unlock();
+			main.sync.client.mutex.unlock();
 
 			if (newBlock != block) {
 				main.audio.playSound("cubyz:block_break");
-				updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], block, newBlock);
+				updateBlockAndSendUpdate(inventory, slot, selectedPos, block, newBlock);
 			}
 		}
 	}
 
-	fn updateBlockAndSendUpdate(source: main.items.Inventory.ClientInventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
-		main.sync.ClientSide.executeCommand(.{
+	fn updateBlockAndSendUpdate(source: main.items.Inventory.ClientInventory, slot: u32, pos: Vec3i, oldBlock: blocks.Block, newBlock: blocks.Block) void {
+		main.sync.client.executeCommand(.{
 			.updateBlock = .{
 				.source = .{.inv = source.super, .slot = slot},
-				.pos = .{x, y, z},
+				.pos = pos,
 				.dropLocation = .{
-					.dir = selectionFace,
+					.normalDir = selectionNormal,
 					.min = selectionMin,
 					.max = selectionMax,
 				},
@@ -1142,7 +1148,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				.newBlock = newBlock,
 			},
 		});
-		mesh_storage.updateBlock(.{.x = x, .y = y, .z = z, .newBlock = newBlock, .blockEntityData = &.{}});
+		mesh_storage.updateBlock(.{.pos = pos, .newBlock = newBlock, .blockEntityData = &.{}});
 	}
 
 	pub fn drawCube(projectionMatrix: Mat4f, viewMatrix: Mat4f, relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {

@@ -4,12 +4,7 @@ const main = @import("main");
 const utils = main.utils;
 const ZonElement = @import("zon.zig").ZonElement;
 
-const c = @cImport({
-	@cDefine("_BITS_STDIO2_H", ""); // TODO: Zig fails to include this header file
-	@cInclude("miniaudio.h");
-	@cDefine("STB_VORBIS_HEADER_ONLY", "");
-	@cInclude("stb/stb_vorbis.h");
-});
+const c = @import("c");
 
 fn handleError(miniaudioError: c.ma_result) !void {
 	if (miniaudioError != c.MA_SUCCESS) {
@@ -201,12 +196,12 @@ const AudioData = struct { // MARK: MUSIC
 				defer main.stackAllocator.free(tempData);
 				_ = c.stb_vorbis_get_samples_float_interleaved(ogg_stream, channels, tempData.ptr, @as(c_int, @intCast(samples))*ogg_info.channels);
 				var stepWidth = @as(f32, @floatFromInt(ogg_info.sample_rate))/sampleRate;
-				const newSamples: usize = @intFromFloat(@as(f32, @floatFromInt(tempData.len/2))/stepWidth);
+				const newSamples: usize = @trunc(@as(f32, @floatFromInt(tempData.len/2))/stepWidth);
 				stepWidth = @as(f32, @floatFromInt(samples))/@as(f32, @floatFromInt(newSamples));
 				self.data = main.globalAllocator.alloc(f32, newSamples*channels);
 				for (0..newSamples) |s| {
 					const samplePosition = @as(f32, @floatFromInt(s))*stepWidth;
-					const firstSample: usize = @intFromFloat(@floor(samplePosition));
+					const firstSample: usize = @floor(samplePosition);
 					const interpolation = samplePosition - @floor(samplePosition);
 					for (0..channels) |ch| {
 						if (firstSample >= samples - 1) {
@@ -248,8 +243,8 @@ const AudioData = struct { // MARK: MUSIC
 	}
 };
 
-var activeTasks: main.ListUnmanaged([]const u8) = .{};
-var taskMutex: std.Thread.Mutex = .{};
+var activeTasks: main.List([]const u8) = .empty;
+var taskMutex: main.utils.Mutex = .{};
 
 var musicCache: utils.Cache(AudioData, 4, 4, AudioData.deinit) = .{};
 
@@ -408,7 +403,7 @@ const animationLengthInSeconds = 5.0;
 var curIndex: u16 = 0;
 var curEndIndex: std.atomic.Value(u16) = .{.value = sampleRate/60 & ~@as(u16, 1)};
 
-var mutex: std.Thread.Mutex = .{};
+var mutex: main.utils.Mutex = .{};
 var preferredMusic: []const u8 = "";
 
 pub fn setMusic(music: []const u8) void {

@@ -1,11 +1,12 @@
 .{
 	.isCave = true,
+	.tags = .{.cave_layer, .snowy},
 	.caveNoiseStrength = 10,
 	.maxHeight = -256,
-	.minHeight = -48250,
 	.chance = 0.2,
 	.fogDensity = 20,
 	.fogColor = 0xbabfbf,
+	.music = "cubyz:sebastiansoundz/the_deepest_ascent",
 	.stoneBlock = "cubyz:glacite/base",
 	.ground_structure = .{
 		"cubyz:ice",

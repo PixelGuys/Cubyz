@@ -28,7 +28,7 @@ pressed: bool = false,
 obfuscated: bool = false,
 cursor: ?u32 = null,
 selectionStart: ?u32 = null,
-currentString: main.List(u8),
+currentString: main.ListManaged(u8),
 textBuffer: TextBuffer,
 maxWidth: f32,
 maxHeight: f32,
@@ -38,11 +38,11 @@ callbacks: Callbacks,
 lastBlinkTime: std.Io.Timestamp = .fromNanoseconds(0),
 showCusor: bool = true,
 
-pub fn __init() void {
+pub fn globalInit() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/text_input.png");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	texture.deinit();
 }
 
@@ -153,8 +153,9 @@ pub fn select(self: *TextInput) void {
 	gui.setSelectedTextInput(self);
 	self.pressed = false;
 	self.selectionStart = null;
-	if (self.cursor == null)
+	if (self.cursor == null) {
 		self.cursor = @intCast(self.currentString.items.len);
+	}
 }
 
 pub fn deselect(self: *TextInput) void {
@@ -169,18 +170,27 @@ fn reloadText(self: *TextInput) void {
 	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, self.maxWidth - 2*border - scrollBarWidth);
 }
 
+fn characterType(char: u8) enum { literal, symbol, whitespace } {
+	if (std.ascii.isAlphanumeric(char)) return .literal;
+	if (!std.ascii.isAscii(char)) return .literal;
+	if (char == '_') return .literal;
+	if (std.ascii.isWhitespace(char)) return .whitespace;
+	return .symbol;
+}
+
 fn moveCursorLeft(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if (mods.control) {
 		const text = self.currentString.items;
 		if (self.cursor.? == 0) return;
 		self.cursor.? -= 1;
 		// Find end of previous "word":
-		while (!std.ascii.isAlphabetic(text[self.cursor.?]) and std.ascii.isAscii(text[self.cursor.?])) {
+		while (characterType(text[self.cursor.?]) == .whitespace) {
 			if (self.cursor.? == 0) return;
 			self.cursor.? -= 1;
 		}
 		// Find the start of the previous "word":
-		while (std.ascii.isAlphabetic(text[self.cursor.?]) or !std.ascii.isAscii(text[self.cursor.?])) {
+		const wordType = characterType(text[self.cursor.?]);
+		while (characterType(text[self.cursor.?]) == wordType) {
 			if (self.cursor.? == 0) return;
 			self.cursor.? -= 1;
 		}
@@ -220,12 +230,13 @@ fn moveCursorRight(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 		if (mods.control) {
 			const text = self.currentString.items;
 			// Find start of next "word":
-			while (!std.ascii.isAlphabetic(text[self.cursor.?]) and std.ascii.isAscii(text[self.cursor.?])) {
+			while (characterType(text[self.cursor.?]) == .whitespace) {
 				self.cursor.? += 1;
 				if (self.cursor.? >= self.currentString.items.len) return;
 			}
 			// Find the end of the next "word":
-			while (std.ascii.isAlphabetic(text[self.cursor.?]) or !std.ascii.isAscii(text[self.cursor.?])) {
+			const wordType = characterType(text[self.cursor.?]);
+			while (characterType(text[self.cursor.?]) == wordType) {
 				self.cursor.? += 1;
 				if (self.cursor.? >= self.currentString.items.len) return;
 			}
@@ -505,7 +516,6 @@ fn getRenderCursorPos(self: *const TextInput, pos: u32) u32 {
 pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 	texture.bindTo(0);
 	Button.pipeline.bind(draw.getScissor());
-	draw.setColor(0xff000000);
 	draw.customShadedRect(Button.buttonUniforms, self.pos, self.size);
 	const oldTranslation = draw.setTranslation(self.pos);
 	defer draw.restoreTranslation(oldTranslation);
@@ -539,7 +549,8 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 		const cursorPos = textPos + textBuffer.indexToCursorPos(cursor);
 		if (self.selectionStart) |_selectionStart| {
 			const selectionStart = self.getRenderCursorPos(_selectionStart);
-			draw.setColor(0x440000ff);
+			const oldColor = draw.setColor(0x440000ff);
+			defer draw.restoreColor(oldColor);
 			textBuffer.drawSelection(textPos, @min(selectionStart, cursor), @max(selectionStart, cursor));
 		}
 
@@ -550,7 +561,8 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 		}
 
 		if (self.showCusor) {
-			draw.setColor(0xff000000);
+			const oldColor = draw.setColor(0xff000000);
+			defer draw.restoreColor(oldColor);
 			const thickness = @min(@ceil(fontSize/8), 1);
 			draw.rect(cursorPos, Vec2f{thickness, fontSize});
 		}

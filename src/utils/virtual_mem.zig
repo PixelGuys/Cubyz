@@ -5,14 +5,17 @@ const page_size_min = std.heap.page_size_min;
 const page_size_max = std.heap.page_size_max;
 const pageSize = std.heap.pageSize;
 
+const c = @import("c");
+
 fn reserveMemory(len: usize) [*]align(page_size_min) u8 {
 	if (builtin.os.tag == .windows) {
-		return @ptrCast(@alignCast(std.os.windows.VirtualAlloc(null, len, std.os.windows.MEM_RESERVE, std.os.windows.PAGE_READWRITE) catch |err| {
-			std.log.err("Got error while reserving virtual memory of size {}: {s}", .{len, @errorName(err)});
+		return @ptrCast(@alignCast(c.VirtualAlloc(null, len, c.MEM_RESERVE, c.PAGE_READWRITE) orelse {
+			const err = std.os.windows.GetLastError();
+			std.log.err("Got error while reserving virtual memory of size {}: {s}", .{len, @tagName(err)});
 			@panic("Out of Memory");
 		}));
 	} else {
-		return (std.posix.mmap(null, len, std.posix.PROT.NONE, .{.TYPE = .PRIVATE, .ANONYMOUS = true, .NORESERVE = true}, -1, 0) catch |err| {
+		return (std.posix.mmap(null, len, .{}, .{.TYPE = .PRIVATE, .ANONYMOUS = true, .NORESERVE = true}, -1, 0) catch |err| {
 			std.log.err("Got error while reserving virtual memory of size {}: {s}", .{len, @errorName(err)});
 			@panic("Out of Memory");
 		}).ptr;
@@ -21,21 +24,27 @@ fn reserveMemory(len: usize) [*]align(page_size_min) u8 {
 
 fn commitMemory(start: [*]align(page_size_min) u8, len: usize) void {
 	if (builtin.os.tag == .windows) {
-		_ = std.os.windows.VirtualAlloc(start, len, std.os.windows.MEM_COMMIT, std.os.windows.PAGE_READWRITE) catch |err| {
-			std.log.err("Got error while committing virtual memory of size {}: {s}.", .{len, @errorName(err)});
+		_ = c.VirtualAlloc(start, len, c.MEM_COMMIT, c.PAGE_READWRITE) orelse {
+			const err = std.os.windows.GetLastError();
+			std.log.err("Got error while committing virtual memory of size {}: {s}.", .{len, @tagName(err)});
 			@panic("Out of Memory");
 		};
 	} else {
-		std.posix.mprotect(start[0..len], std.posix.PROT.READ | std.posix.PROT.WRITE) catch |err| {
-			std.log.err("Got error while committing virtual memory of size {}: {s}.", .{len, @errorName(err)});
+		const err = std.posix.errno(std.os.linux.mprotect(start, len, .{.READ = true, .WRITE = true}));
+		if (err != .SUCCESS) {
+			std.log.err("Got error while committing virtual memory of size {}: {s}", .{len, @tagName(err)});
 			@panic("Out of Memory");
-		};
+		}
 	}
 }
 
 fn releaseMemory(start: [*]align(page_size_min) u8, len: usize) void {
 	if (builtin.os.tag == .windows) {
-		std.os.windows.VirtualFree(start, 0, std.os.windows.MEM_RELEASE);
+		const result = c.VirtualFree(start, 0, c.MEM_RELEASE);
+		if (result == 0) {
+			const err = std.os.windows.GetLastError();
+			std.log.err("Got error while freeing virtual memory of size {}: {s}", .{len, @tagName(err)});
+		}
 	} else {
 		std.posix.munmap(start[0..len]);
 	}
@@ -206,9 +215,9 @@ pub fn VirtualList(T: type, maxSize: u32) type {
 			const after_range = start + len;
 			const range = self.items()[start..after_range];
 
-			if (range.len == new_items.len)
-				@memcpy(range[0..new_items.len], new_items)
-			else if (range.len < new_items.len) {
+			if (range.len == new_items.len) {
+				@memcpy(range[0..new_items.len], new_items);
+			} else if (range.len < new_items.len) {
 				const first = new_items[0..range.len];
 				const rest = new_items[range.len..];
 
@@ -224,16 +233,6 @@ pub fn VirtualList(T: type, maxSize: u32) type {
 
 				self.len -= len - new_items.len;
 			}
-		}
-
-		pub const Writer = if (T != u8)
-			@compileError("The Writer interface is only defined for ArrayList(u8) " ++
-				"but the given type is ArrayList(" ++ @typeName(T) ++ ")")
-		else
-			std.io.Writer(*@This(), error{}, appendWrite);
-
-		pub fn writer(self: *@This()) Writer {
-			return .{.context = self};
 		}
 
 		fn appendWrite(self: *@This(), m: []const u8) !usize {

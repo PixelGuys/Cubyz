@@ -5,7 +5,7 @@ const Block = main.blocks.Block;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
-pub const ClientBlockCallback = Callback(struct { block: Block, blockPos: Vec3i }, @import("block/client/_list.zig"));
+pub const ClientBlockCallback = Callback(struct { block: Block, chunk: *main.chunk.Chunk, blockPos: Vec3i }, @import("block/client/_list.zig"));
 pub const ServerBlockCallback = Callback(struct { block: Block, chunk: *main.chunk.ServerChunk, blockPos: main.chunk.BlockPos }, @import("block/server/_list.zig"));
 
 pub const BlockTouchCallback = Callback(struct { entity: *main.server.Entity, source: Block, blockPos: Vec3i, deltaTime: f64 }, @import("block/touch/_list.zig"));
@@ -18,6 +18,10 @@ pub fn init() void {
 	BlockTouchCallback.globalInit();
 }
 
+pub const Creator = union(enum) {
+	block: main.blocks.Block,
+};
+
 fn Callback(_Params: type, list: type) type {
 	return struct {
 		data: *anyopaque,
@@ -26,7 +30,7 @@ fn Callback(_Params: type, list: type) type {
 		pub const Params = _Params;
 
 		const VTable = struct {
-			init: *const fn (zon: main.ZonElement) ?*anyopaque,
+			init: *const fn (zon: main.ZonElement, creator: Creator) ?*anyopaque,
 			run: *const fn (self: *anyopaque, params: Params) Result,
 		};
 
@@ -42,7 +46,7 @@ fn Callback(_Params: type, list: type) type {
 			}
 		}
 
-		pub fn init(zon: main.ZonElement) ?@This() {
+		pub fn init(zon: main.ZonElement, creator: Creator) ?@This() {
 			const typ = zon.get(?[]const u8, "type", null) orelse {
 				std.log.err("Missing field \"type\"", .{});
 				return null;
@@ -52,7 +56,7 @@ fn Callback(_Params: type, list: type) type {
 				return null;
 			};
 			return .{
-				.data = vtable.init(zon) orelse return null,
+				.data = vtable.init(zon, creator) orelse return null,
 				.inner = vtable.run,
 			};
 		}

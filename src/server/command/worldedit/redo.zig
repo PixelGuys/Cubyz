@@ -15,11 +15,9 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	}
 	if (source.worldEditData.redoHistory.pop()) |action| {
-		const undo = Blueprint.capture(main.globalAllocator, action.position, .{
-			action.position[0] + @as(i32, @intCast(action.blueprint.blocks.width)) - 1,
-			action.position[1] + @as(i32, @intCast(action.blueprint.blocks.depth)) - 1,
-			action.position[2] + @as(i32, @intCast(action.blueprint.blocks.height)) - 1,
-		});
+		defer action.deinit();
+
+		const undo = Blueprint.capture(main.globalAllocator, action.selection());
 		action.blueprint.paste(action.position, .{.preserveVoid = true});
 
 		switch (undo) {

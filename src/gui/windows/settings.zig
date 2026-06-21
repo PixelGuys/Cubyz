@@ -18,11 +18,11 @@ const padding: f32 = 8;
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	list.add(Button.initText(.{0, 0}, 128, "Graphics", gui.openWindowCallback("graphics")));
-	list.add(Button.initText(.{0, 0}, 128, "Audio", gui.openWindowCallback("audio")));
-	list.add(Button.initText(.{0, 0}, 128, "Controls", gui.openWindowCallback("controls")));
-	list.add(Button.initText(.{0, 0}, 128, "Advanced Controls", gui.openWindowCallback("advanced_controls")));
-	list.add(Button.initText(.{0, 0}, 128, "Social", gui.openWindowCallback("social")));
+	list.add(Button.initText(.{0, 0}, 128, "Graphics", .{.onAction = gui.openWindowCallback("graphics")}));
+	list.add(Button.initText(.{0, 0}, 128, "Audio", .{.onAction = gui.openWindowCallback("audio")}));
+	list.add(Button.initText(.{0, 0}, 128, "Controls", .{.onAction = gui.openWindowCallback("controls")}));
+	list.add(Button.initText(.{0, 0}, 128, "Advanced Controls", .{.onAction = gui.openWindowCallback("advanced_controls")}));
+	list.add(Button.initText(.{0, 0}, 128, "Social", .{.onAction = gui.openWindowCallback("social")}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

@@ -1,7 +1,8 @@
 .{
 	.isCave = true,
+	.tags = .{.shallow_cave_layer},
 	.fogDensity = 2,
-	.music = "cubyz:heart-of-the-beast",
+	.music = "cubyz:totaldemented/vitreous",
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",

@@ -19,7 +19,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 
 	chunks: [regionVolume][]u8 = @splat(&.{}),
 	pos: chunk.ChunkPosition,
-	mutex: std.Thread.Mutex = .{},
+	mutex: main.utils.Mutex = .{},
 	modified: bool = false,
 	refCount: Atomic(u16) = .init(1),
 	storedInHashMap: bool = false,
@@ -48,7 +48,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 		defer main.stackAllocator.free(data);
 		self.load(path, data) catch {
 			std.log.err("Corrupted region file: {s}", .{path});
-			if (@errorReturnTrace()) |trace| std.log.info("{f}", .{std.debug.FormatStackTrace{.stack_trace = trace.*, .tty_config = .no_color}});
+			if (@errorReturnTrace()) |trace| std.log.info("{f}", .{main.fmt.FormatErrorTrace{.stackTrace = trace.*}});
 		};
 		return self;
 	}
@@ -194,7 +194,7 @@ const HashContext = struct {
 	}
 };
 var stillUsedHashMap: std.HashMap(chunk.ChunkPosition, *RegionFile, HashContext, 50) = undefined;
-var hashMapMutex: std.Thread.Mutex = .{};
+var hashMapMutex: main.utils.Mutex = .{};
 
 fn cacheDeinit(region: *RegionFile) void {
 	if (region.refCount.load(.monotonic) != 1) { // Someone else might still use it, so we store it in the hashmap.
@@ -275,7 +275,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		return writer.data.toOwnedSlice();
 	}
 
-	pub fn loadChunk(ch: *chunk.Chunk, comptime side: main.utils.Side, data: []const u8) !void {
+	pub fn loadChunk(ch: *chunk.Chunk, comptime side: main.sync.Side, data: []const u8) !void {
 		var reader = BinaryReader.init(data);
 		try decompressBlockData(ch, &reader);
 		try decompressBlockEntityData(ch, side, &reader);
@@ -429,7 +429,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		}
 	}
 
-	pub fn decompressBlockEntityData(ch: *chunk.Chunk, comptime side: main.utils.Side, reader: *BinaryReader) !void {
+	pub fn decompressBlockEntityData(ch: *chunk.Chunk, comptime side: main.sync.Side, reader: *BinaryReader) !void {
 		if (reader.remaining.len == 0) return;
 
 		const compressionAlgo = try reader.readEnum(BlockEntityCompressionAlgo);

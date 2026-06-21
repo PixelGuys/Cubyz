@@ -5,6 +5,7 @@
 		.barren,
 		.wet,
 	},
+	.tags = .{.snowy},
 	.minHeightLimit = 7,
 	.minHeight = 120,
 	.maxHeight = 256,
@@ -13,7 +14,7 @@
 	.fogColor = 0xe2f2ff,
 	.mountains = 125,
 
-	.music = "cubyz:DarkTimes",
+	.music = "cubyz:totaldemented/frigid_feeling",
 
 	.soilCreep = 1.0,
 

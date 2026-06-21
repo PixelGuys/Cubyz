@@ -6,7 +6,7 @@ const Vec3i = main.vec.Vec3i;
 const GenerationMode = terrain.structures.SimpleStructureModel.GenerationMode;
 const CaveMapView = terrain.CaveMap.CaveMapView;
 const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
-const sbb = terrain.structure_building_blocks;
+const sbb = terrain.sbb;
 const Blueprint = main.blueprint.Blueprint;
 const ZonElement = main.ZonElement;
 const Neighbor = main.chunk.Neighbor;
@@ -38,7 +38,7 @@ pub fn loadModel(parameters: ZonElement) ?*SbbGen {
 	const rotationParam = parameters.getChild("rotation");
 	const rotation = sbb.Rotation.fromZon(rotationParam) catch |err| blk: {
 		switch (err) {
-			error.UnknownString => std.log.err("Error loading generator 'cubyz:sbb' structure '{s}': Specified unknown rotation '{s}'", .{structureId, rotationParam.as([]const u8, "")}),
+			error.UnknownString => std.log.err("Error loading generator 'cubyz:sbb' structure '{s}': Specified unknown rotation '{s}'", .{structureId, rotationParam.as([]const u8).?}),
 			error.UnknownType => std.log.err("Error loading generator 'cubyz:sbb' structure '{s}': Unsupported type of rotation field '{s}'", .{structureId, @tagName(rotationParam)}),
 		}
 		break :blk .random;

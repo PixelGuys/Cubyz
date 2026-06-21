@@ -49,7 +49,7 @@ fn chooseSeed(seedStr: []const u8) u64 {
 }
 
 fn gamemodeCallback() void {
-	worldSettings.defaultGamemode = std.meta.intToEnum(main.game.Gamemode, @intFromEnum(worldSettings.defaultGamemode) + 1) catch @enumFromInt(0);
+	worldSettings.defaultGamemode = std.enums.fromInt(main.game.Gamemode, @intFromEnum(worldSettings.defaultGamemode) + 1) orelse @enumFromInt(0);
 	gamemodeInput.child.label.updateText(@tagName(worldSettings.defaultGamemode));
 }
 
@@ -84,7 +84,7 @@ pub fn onOpen() void {
 
 	if (worldPresets.len == 0) {
 		var presetMap = main.assets.worldPresets();
-		var entryList: main.ListUnmanaged(ZonMapEntry) = .initCapacity(main.globalArena, presetMap.count());
+		var entryList: main.List(ZonMapEntry) = .initCapacity(main.globalArena, presetMap.count());
 		var iterator = presetMap.iterator();
 		while (iterator.next()) |entry| {
 			entryList.appendAssumeCapacity(entry);
@@ -116,7 +116,7 @@ pub fn onOpen() void {
 	nameInput = TextInput.init(.{0, 0}, 128, 22, name, .{.onNewline = .init(createWorld)});
 	list.add(nameInput);
 
-	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(worldSettings.defaultGamemode), .init(gamemodeCallback));
+	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(worldSettings.defaultGamemode), .{.onAction = .init(gamemodeCallback)});
 	list.add(gamemodeInput);
 
 	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", worldSettings.allowCheats, &allowCheatsCallback));
@@ -125,7 +125,7 @@ pub fn onOpen() void {
 		list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", worldSettings.testingMode, &testingModeCallback));
 	}
 
-	presetButton = Button.initText(.{0, 0}, 128, worldPresets[selectedPreset].key_ptr.*, .init(worldPresetCallback));
+	presetButton = Button.initText(.{0, 0}, 128, worldPresets[selectedPreset].key_ptr.*, .{.onAction = .init(worldPresetCallback)});
 	list.add(presetButton);
 
 	const seedLabel = Label.init(.{0, 0}, 48, "Seed:", .left);
@@ -136,7 +136,7 @@ pub fn onOpen() void {
 	seedRow.finish(.{0, 0}, .center);
 	list.add(seedRow);
 
-	list.add(Button.initText(.{0, 0}, 128, "Create World", .init(createWorld)));
+	list.add(Button.initText(.{0, 0}, 128, "Create World", .{.onAction = .init(createWorld)}));
 
 	list.finish(.center);
 	window.rootComponent = list.toComponent();

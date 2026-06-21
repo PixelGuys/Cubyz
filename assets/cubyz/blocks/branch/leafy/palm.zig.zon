@@ -11,7 +11,8 @@
 		},
 	},
 	.drops = .{
-		.{.items = .{"cubyz:leaves/palm", "cubyz:branch/palm"}},
+		.{.items = .{"cubyz:branch/palm"}},
+		.{.items = .{"cubyz:leaves/palm"}, .allowedToolTags = .{.cuttable}},
 	},
 	.texture = "cubyz:leaves/palm",
 	.texture12 = "cubyz:leaves/palm_hanging",
