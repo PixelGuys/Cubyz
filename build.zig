@@ -86,7 +86,7 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 }
 
 pub fn makeModFeature(io: std.Io, step: *std.Build.Step, name: []const u8) !void {
-	var featureList: std.ArrayListUnmanaged(u8) = .empty;
+	var featureList: std.ArrayListUnmanaged([]const u8) = .empty;
 	defer featureList.deinit(step.owner.allocator);
 
 	var modDir = try std.Io.Dir.cwd().openDir(io, "mods", .{.iterate = true});
@@ -109,9 +109,8 @@ pub fn makeModFeature(io: std.Io, step: *std.Build.Step, name: []const u8) !void
 			if (featureEntry.kind != .file) continue;
 			if (!std.mem.endsWith(u8, featureEntry.basename, ".zig")) continue;
 
-			try featureList.appendSlice(step.owner.allocator, step.owner.fmt(
+			try featureList.append(step.owner.allocator, step.owner.fmt(
 				\\pub const @"{s}:{s}" = @import("{s}/{s}/{s}");
-				\\
 			,
 				.{
 					modEntry.name,
@@ -124,8 +123,14 @@ pub fn makeModFeature(io: std.Io, step: *std.Build.Step, name: []const u8) !void
 		}
 	}
 
+	std.mem.sort([]const u8, featureList.items, {}, struct {
+		fn lessThanFn(_: void, lhs: []const u8, rhs: []const u8) bool {
+			return std.mem.lessThan(u8, lhs, rhs);
+		}
+	}.lessThanFn);
+
 	const file_path = step.owner.fmt("mods/{s}.zig", .{name});
-	try std.Io.Dir.cwd().writeFile(io, .{.data = featureList.items, .sub_path = file_path});
+	try std.Io.Dir.cwd().writeFile(io, .{.data = try std.mem.join(step.owner.allocator, "\n", featureList.items), .sub_path = file_path});
 }
 
 pub fn addModFeatureModule(b: *std.Build, exe: *std.Build.Step.Compile, name: []const u8) !void {
