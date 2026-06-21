@@ -326,7 +326,7 @@ pub fn playSound(id: []const u8) void {
 	activeSounds.append(main.globalAllocator, Sound{.soundIndex = idx});
 }
 
-fn addMusic(buffer: []f32) void {
+fn mixMusic(buffer: []f32) void {
 	mutex.lock();
 	defer mutex.unlock();
 	if (!std.mem.eql(u8, preferredMusic, activeMusicId)) {
@@ -373,7 +373,7 @@ fn addMusic(buffer: []f32) void {
 	}
 }
 
-fn addSound(buffer: []f32) void {
+fn mixSound(buffer: []f32) void {
 	mutex.lock();
 	defer mutex.unlock();
 	
@@ -420,6 +420,6 @@ fn miniaudioCallback(
 	const valuesPerBuffer = 2*frameCount; // Stereo
 	const buffer = @as([*]f32, @ptrCast(@alignCast(output)))[0..valuesPerBuffer];
 	@memset(buffer, 0);
-	addMusic(buffer);
-	addSound(buffer);
+	mixMusic(buffer);
+	mixSound(buffer);
 }
