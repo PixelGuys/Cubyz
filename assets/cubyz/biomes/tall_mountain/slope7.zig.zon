@@ -9,7 +9,6 @@
 	.radius = 60,
 	.mountains = 60,
 	.chance = 0,
-	.minSubBiomeCount = 0,
 	.maxSubBiomeCount = 1,
 	.stoneBlock = "cubyz:glacite/base",
 	.validPlayerSpawn = false,

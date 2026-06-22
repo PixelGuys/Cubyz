@@ -7,7 +7,6 @@
 	.mountains = 50,
 	.hills = 10,
 	.chance = 0,
-	.minSubBiomeCount = 0,
 	.maxSubBiomeCount = 1,
 	.stoneBlock = "cubyz:glacite/base",
 	.validPlayerSpawn = false,
