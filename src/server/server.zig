@@ -157,8 +157,6 @@ pub const User = struct { // MARK: User
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
 		self.conn = try Connection.init(manager, ipPort, self);
-		self.jobQueue = .init(main.globalAllocator);
-		errdefer self.jobQueue.deinit();
 		self.wakeup();
 		self.increaseRefCount();
 		network.protocols.handShake.serverSide(self.conn);
@@ -168,7 +166,6 @@ pub const User = struct { // MARK: User
 		if(self.wokeup) return;
 		
 		// persistent data
-		const jobQueue = self.jobQueue;
 		const conn = self.conn;
 		const name = self.name;
 		const newKeyString = self.newKeyString;
@@ -178,7 +175,6 @@ pub const User = struct { // MARK: User
 		// reset
 		self.* = .{};
 
-		self.jobQueue = jobQueue;
 		self.conn = conn;
 		self.name = name;
 		self.newKeyString = newKeyString;
@@ -189,6 +185,7 @@ pub const User = struct { // MARK: User
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
 		self.worldEditData = .init();
 		self.permissions = .init(main.globalAllocator);
+		self.jobQueue = .init(main.globalAllocator);
 	}
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
@@ -196,7 +193,6 @@ pub const User = struct { // MARK: User
 		self.wakedown();
 
 		self.conn.deinit();
-		self.jobQueue.deinit();//TODO: ask quantum if this should be in wakedown, and if yes how to prevent it freezing.//TODO: ask quantum if this should be in wakedown, and if yes how to prevent it freezing.
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.free(self.newKeyString);
 		main.globalAllocator.destroy(self);
@@ -204,6 +200,7 @@ pub const User = struct { // MARK: User
 	pub fn wakedown(self: *User) void {
 		if(!self.wokeup) return;
 		self.wokeup = false;
+
 
 		main.items.Inventory.server.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
@@ -233,6 +230,10 @@ pub const User = struct { // MARK: User
 			main.globalAllocator.free(commandData);
 		}
 		self.inventoryCommands.deinit(main.globalAllocator);
+
+		self.clearJobQueue();
+		self.jobQueue.deinit();
+
 	}
 	pub fn increaseRefCount(self: *User) void {
 		const prevVal = self.refCount.fetchAdd(1, .monotonic);
@@ -603,6 +604,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 	};
 	for(connectionManager.connections.items)|conn|{
 		main.network.protocols.Reload.informClientOfRestart(conn);
+		conn.handShakeState.store(.signatureResponse, .monotonic);
 	}
 
 	if (singlePlayerPort) |port| blk: {
@@ -619,9 +621,8 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 }
 
 fn deinit() void {
-	connectionManager.pause();
 	main.threadPool.clear();
-
+	connectionManager.pause();
 	
 	users.clearAndFree();
 	
@@ -750,7 +751,6 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16, mode: ServerWorld.M
 		connectionManager = undefined;
 
 		while (userDeinitList.popFront()) |user| {
-			user.clearJobQueue();
 			if (user.refCount.load(.monotonic) == 1) {
 				user.decreaseRefCount();
 			} else {

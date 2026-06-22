@@ -283,21 +283,24 @@ pub const World = struct { // MARK: World
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
 
-	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
+	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager, restart:bool) !void {
 		main.heap.allocators.createWorldArena();
 		errdefer main.heap.allocators.destroyWorldArena();
-		self.* = .{
-			.conn = try Connection.init(manager, ip, null),
-			.manager = manager,
-			.name = "client",
-			.milliTime = main.timestamp().toMilliseconds(),
-		};
+
+		if(!restart){
+			self.* = .{
+				.conn = try Connection.init(manager, ip, null),
+				.manager = manager,
+				.name = "client",
+				.milliTime = main.timestamp().toMilliseconds(),
+			};
+		}
 		errdefer self.conn.deinit();
 
 		self.itemDrops.init(main.globalAllocator);
 		errdefer self.itemDrops.deinit();
 
-		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
+		try network.protocols.handShake.clientSide(self.conn, settings.playerName,restart);
 
 		main.Window.setMouseGrabbed(true);
 
@@ -307,10 +310,11 @@ pub const World = struct { // MARK: World
 		main.entityModel.loadModelsAndTexture();
 	}
 
-	pub fn deinit(self: *World) void {
-		self.conn.deinit();
-
-		self.connected = false;
+	pub fn deinit(self: *World, restart:bool) void {
+		if(!restart){
+			self.conn.deinit();
+			self.connected = false;
+		}
 
 		// TODO: Close all world related guis.
 		main.gui.inventory.deinit();
@@ -328,7 +332,10 @@ pub const World = struct { // MARK: World
 		self.biomePalette.deinit();
 		self.entityComponentPalette.deinit();
 		self.entityModelPalette.deinit();
-		self.manager.deinit();
+		
+		if(!restart){
+			self.manager.deinit();
+		}
 		main.server.stop(.stop);
 
 		Player.super.deinit(.client);

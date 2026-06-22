@@ -1441,8 +1441,9 @@ pub const Connection = struct { // MARK: Connection
 		userData = 1,
 		signatureRequest = 2,
 		signatureResponse = 3,
-		assets = 4,
-		serverData = 5,
+		reload = 4,
+		assets = 5,
+		serverData = 6,
 		complete = 255,
 	};
 

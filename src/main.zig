@@ -632,15 +632,29 @@ pub fn clientMain() void { // MARK: clientMain()
 		if(shouldRestart.load(.monotonic)) {
 			shouldRestart.store(false, .monotonic);
 			if (game.world) |world| {
-				world.deinit();
-				game.world = null;
+				world.deinit(true);
+				std.debug.assert(game.world == &game.testWorld);
+				
+				world.conn.handShakeState.store(.start, .monotonic);
+				game.testWorld.init(&.{}, game.testWorld.manager,true) catch |err| {
+					std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
+					gui.windowlist.notification.raiseNotification("Encountered error while opening world: {s}", .{@errorName(err)});
+					game.world = null;
+					continue;
+				};
+				settings.save();
+				
+				for (gui.openWindows.items) |openWindow| {
+					gui.closeWindowFromRef(openWindow);
+				}
+				gui.openHud();
 			}
 		}
 		if (shouldExitToMenu.load(.monotonic)) {
 			shouldExitToMenu.store(false, .monotonic);
 			Window.setMouseGrabbed(false);
 			if (game.world) |world| {
-				world.deinit();
+				world.deinit(false);
 				game.world = null;
 			}
 			gui.openWindow("main");
@@ -649,7 +663,7 @@ pub fn clientMain() void { // MARK: clientMain()
 	}
 
 	if (game.world) |world| {
-		world.deinit();
+		world.deinit(false);
 		game.world = null;
 	}
 }
