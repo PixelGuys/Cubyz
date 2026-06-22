@@ -910,6 +910,15 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		self.durability -|= 1;
 		return self.durability == 0;
 	}
+
+	pub fn canPutIntoWorkbenchCallback(source: Inventory.Source, item: Item, slot: usize) bool {
+		if (source.workbench.proceduralItemIndex.slotInfos()[slot].disabled) return false;
+		return switch (item) {
+			.null => true,
+			.baseItem => |baseItem| baseItem.material() != null,
+			.proceduralItem => false,
+		};
+	}
 };
 
 const ItemType = enum(u7) {
