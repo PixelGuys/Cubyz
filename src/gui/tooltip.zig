@@ -41,11 +41,6 @@ pub fn render(guicomponent: *GuiComponent, pos: Vec2f, alignment: graphics.TextB
 
 	draw.bound9SliceImage(renderpos, size + Vec2f{tooltipSliceCenter[0] + tooltipSliceCenter[1], tooltipSliceCenter[2] + tooltipSliceCenter[3]}, @floatFromInt(tooltipTexture.size()), tooltipSliceCenter, 1);
 
-	// for a future cubyz contributor: there was no pos setter and im lazy
-	switch (guicomponent.*) {
-		inline else => |impl| {
-			impl.pos = renderpos + Vec2f{tooltipSliceCenter[0], tooltipSliceCenter[2]};
-		},
-	}
+	guicomponent.mutPos().* = renderpos + Vec2f{tooltipSliceCenter[0], tooltipSliceCenter[2]};
 	guicomponent.render(pos);
 }
