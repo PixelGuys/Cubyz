@@ -9,7 +9,6 @@ const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
 const Button = @import("../components/Button.zig");
-const CheckBox = @import("../components/CheckBox.zig");
 const Label = @import("../components/Label.zig");
 const TextInput = @import("../components/TextInput.zig");
 const VerticalList = @import("../components/VerticalList.zig");
@@ -23,14 +22,20 @@ var ipAddressEntry: *TextInput = undefined;
 
 const padding: f32 = 8;
 
+var connection: ?*ConnectionManager = null;
 var ipAddress: []const u8 = "";
 var gotIpAddress: std.atomic.Value(bool) = .init(false);
 var thread: ?std.Thread = null;
 const width: f32 = 420;
 
 fn discoverIpAddress() void {
-	main.server.connectionManager.makeOnline();
-	ipAddress = std.fmt.allocPrint(main.globalAllocator.allocator, "{f}", .{main.server.connectionManager.externalAddress}) catch unreachable;
+	connection = ConnectionManager.init(main.settings.defaultPort, .{}) catch |err| {
+		std.log.err("Could not open Connection: {s}", .{@errorName(err)});
+		ipAddress = main.globalAllocator.dupe(u8, @errorName(err));
+		return;
+	};
+	connection.?.makeOnline();
+	ipAddress = std.fmt.allocPrint(main.globalAllocator.allocator, "{f}", .{connection.?.externalAddress}) catch unreachable;
 	gotIpAddress.store(true, .release);
 }
 
@@ -41,18 +46,38 @@ fn discoverIpAddressFromNewThread() void {
 	discoverIpAddress();
 }
 
-fn invite() void {
+fn join() void {
 	if (thread) |_thread| {
 		_thread.join();
 		thread = null;
 	}
-	const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ipAddressEntry.currentString.items) catch |err| {
-		if (err != error.AlreadyConnected) {
-			std.log.err("Cannot connect user: {s}", .{@errorName(err)});
-		}
-		return;
-	};
-	user.decreaseRefCount();
+	if (ipAddress.len != 0) {
+		main.globalAllocator.free(ipAddress);
+		ipAddress = "";
+	}
+	if (connection) |_connection| {
+		_connection.world = &main.game.testWorld;
+		main.game.world = &main.game.testWorld;
+		std.log.info("Connecting to server: {s}", .{ipAddressEntry.currentString.items});
+		main.game.testWorld.init(ipAddressEntry.currentString.items, _connection) catch |err| {
+			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
+			main.gui.windowlist.notification.raiseNotification("Encountered error while opening world: {s}", .{@errorName(err)});
+			main.game.world = null;
+			_connection.world = null;
+			return;
+		};
+		main.globalAllocator.free(settings.lastUsedIPAddress);
+		settings.lastUsedIPAddress = main.globalAllocator.dupe(u8, ipAddressEntry.currentString.items);
+		settings.save();
+		connection = null;
+	} else {
+		std.log.err("No connection found. Cannot connect.", .{});
+		main.gui.windowlist.notification.raiseNotification("No connection found. Cannot connect.", .{});
+	}
+	for (gui.openWindows.items) |openWindow| {
+		gui.closeWindowFromRef(openWindow);
+	}
+	gui.openHud();
 }
 
 fn copyIp() void {
@@ -60,16 +85,16 @@ fn copyIp() void {
 }
 
 pub fn onOpen() void {
-	const list = VerticalList.init(.{padding, 16 + padding}, 260, 16);
-	list.add(Label.init(.{0, 0}, width, "Please send your IP to the player who wants to join and enter their IP below.", .center));
-	//                                           255.255.255.255:?65536 (longest possible ip address)
+	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	list.add(Label.init(.{0, 0}, width, "Please send your IP to the host of the game and enter the host's IP below.", .center));
+	//                                               255.255.255.255:?65536 (longest possible ip address)
 	ipAddressLabel = Label.init(.{0, 0}, width, "                      ", .center);
 	list.add(ipAddressLabel);
 	list.add(Button.initText(.{0, 0}, 100, "Copy IP", .{.onAction = .init(copyIp)}));
-	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.onNewline = .init(invite)});
+	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.onNewline = .init(join)});
 	ipAddressEntry.obfuscated = main.settings.streamerMode;
 	list.add(ipAddressEntry);
-	list.add(Button.initText(.{0, 0}, 100, "Invite", .{.onAction = .init(invite)}));
+	list.add(Button.initText(.{0, 0}, 100, "Join", .{.onAction = .init(join)}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
@@ -86,6 +111,10 @@ pub fn onClose() void {
 	if (thread) |_thread| {
 		_thread.join();
 		thread = null;
+	}
+	if (connection) |_connection| {
+		_connection.deinit();
+		connection = null;
 	}
 	if (ipAddress.len != 0) {
 		main.globalAllocator.free(ipAddress);

@@ -19,6 +19,9 @@ pub var window: GuiWindow = GuiWindow{
 
 const padding: f32 = 8;
 
+var logoutButton: *Button = undefined;
+var inGameDisabled: bool = undefined;
+
 fn toggleStreamerMode(value: bool) void {
 	main.settings.streamerMode = value;
 	main.settings.save();
@@ -30,13 +33,19 @@ fn toggleNamesWithIndex(value: bool) void {
 }
 
 fn logout() void {
+	main.network.authentication.KeyCollection.initialized = false;
 	main.settings.storedAccount.deinit(main.globalAllocator);
 	main.settings.storedAccount = .empty;
 	main.settings.save();
 	for (gui.openWindows.items) |openWindow| {
-		gui.closeWindowFromRef(openWindow);
+		if (std.mem.containsAtLeast(u8, openWindow.id, 1, "multiplayer")) {
+			gui.closeWindowFromRef(openWindow);
+		}
+		if (openWindow == &gui.windowlist.save_selection.window and gui.windowlist.save_selection.mode == .multiplayer) {
+			gui.closeWindowFromRef(openWindow);
+		}
 	}
-	gui.openWindow("authentication/login");
+	logoutButton.disabled = true;
 }
 
 fn copy() void {
@@ -50,9 +59,11 @@ pub fn onOpen() void {
 	list.add(CheckBox.init(.{0, 0}, 316, "Streamer Mode (hides sensitive data)", main.settings.streamerMode, &toggleStreamerMode));
 	list.add(CheckBox.init(.{0, 0}, 316, "Display players index after their name", main.settings.showPlayerIndexWithName, &toggleNamesWithIndex));
 	list.add(Button.initText(.{0, 0}, 150, "Copy public key", .{.onAction = .init(copy)}));
-	const inGameDisabled = main.game.world != null;
+
+	inGameDisabled = main.game.world != null;
 	list.add(Button.initText(.{0, 0}, 150, "Change Name", .{.onAction = gui.openWindowCallback("change_name"), .disabled = inGameDisabled, .disabledReason = "First leave the world to change your name"}));
-	list.add(Button.initText(.{0, 0}, 150, "Logout", .{.onAction = .init(logout), .disabled = inGameDisabled, .disabledReason = "First leave the world to logout"}));
+	logoutButton = Button.initText(.{0, 0}, 150, "Logout", .{.onAction = .init(logout), .disabled = inGameDisabled or !main.network.authentication.KeyCollection.initialized, .disabledReason = "First leave the world to logout"});
+	list.add(logoutButton);
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
@@ -63,4 +74,8 @@ pub fn onClose() void {
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
+}
+
+pub fn update() void {
+	logoutButton.disabled = inGameDisabled or !main.network.authentication.KeyCollection.initialized;
 }

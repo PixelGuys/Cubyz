@@ -164,7 +164,7 @@ pub const ParticleSystem = struct {
 	var particleCount: u32 = 0;
 	var particles: [maxCapacity]Particle = undefined;
 	var particlesLocal: [maxCapacity]ParticleLocal = undefined;
-	var previousPlayerPos: Vec3d = undefined;
+	var previousPlayerPos: Vec3i = undefined;
 
 	var mutex: main.utils.Mutex = .{};
 	var networkCreationQueue: main.List(struct { emitter: Emitter, pos: Vec3d, count: u32 }) = .empty;
@@ -217,8 +217,9 @@ pub const ParticleSystem = struct {
 		mutex.unlock();
 
 		const vecDeltaTime: Vec4f = @as(Vec4f, @splat(deltaTime));
-		const playerPos = game.Player.getEyePosBlocking();
-		const prevPlayerPosDifference: Vec3f = @floatCast(previousPlayerPos - playerPos);
+		const playerPosInt: Vec3i = @intFromFloat(game.Player.getEyePosBlocking());
+		const playerPos: Vec3d = @floatFromInt(playerPosInt);
+		const prevPlayerPosDifference: Vec3f = @floatFromInt(previousPlayerPos -% playerPosInt);
 
 		var i: u32 = 0;
 		while (i < particleCount) {
@@ -245,7 +246,7 @@ pub const ParticleSystem = struct {
 			particleLocal.velAndRotationVel *= @splat(@exp(-frictionCoefficient*deltaTime));
 
 			if (particleLocal.collides) {
-				var v3Pos = playerPos + @as(Vec3d, @floatCast(pos + prevPlayerPosDifference));
+				var v3Pos = playerPos + (pos + prevPlayerPosDifference);
 				const size = ParticleManager.types.items[particle.typ].size;
 				const hitBox: physics.collision.Box = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
 
@@ -254,25 +255,25 @@ pub const ParticleSystem = struct {
 				v3Pos[0] += posDelta[0];
 				if (physics.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
 					if (posDelta[0] < 0) {
-						v3Pos[0] = box.max[0] - hitBox.min[0];
+						v3Pos[0] = box.max[0] - hitBox.min[0] + physics.epsilon;
 					} else {
-						v3Pos[0] = box.min[0] - hitBox.max[0];
+						v3Pos[0] = box.min[0] - hitBox.max[0] - physics.epsilon;
 					}
 				}
 				v3Pos[1] += posDelta[1];
 				if (physics.collision.collides(.client, .y, -posDelta[1], v3Pos, hitBox)) |box| {
 					if (posDelta[1] < 0) {
-						v3Pos[1] = box.max[1] - hitBox.min[1];
+						v3Pos[1] = box.max[1] - hitBox.min[1] + physics.epsilon;
 					} else {
-						v3Pos[1] = box.min[1] - hitBox.max[1];
+						v3Pos[1] = box.min[1] - hitBox.max[1] - physics.epsilon;
 					}
 				}
 				v3Pos[2] += posDelta[2];
 				if (physics.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
 					if (posDelta[2] < 0) {
-						v3Pos[2] = box.max[2] - hitBox.min[2];
+						v3Pos[2] = box.max[2] - hitBox.min[2] + physics.epsilon;
 					} else {
-						v3Pos[2] = box.min[2] - hitBox.max[2];
+						v3Pos[2] = box.min[2] - hitBox.max[2] - physics.epsilon;
 					}
 				}
 				pos = @as(Vec3f, @floatCast(v3Pos - playerPos));
@@ -300,7 +301,7 @@ pub const ParticleSystem = struct {
 
 			i += 1;
 		}
-		previousPlayerPos = playerPos;
+		previousPlayerPos = playerPosInt;
 	}
 
 	fn addParticle(typ: u32, particleType: ParticleTypeLocal, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties) void {
@@ -311,7 +312,7 @@ pub const ParticleSystem = struct {
 		const dragCoeff = particleType.dragCoefficient.get(&main.seed);
 
 		particles[particleCount] = Particle{
-			.pos = @as(Vec3f, @floatCast(pos - previousPlayerPos)),
+			.pos = @as(Vec3f, @floatCast(pos - @as(Vec3d, @floatFromInt(previousPlayerPos)))),
 			.rot = rot,
 			.typ = typ,
 		};
@@ -330,7 +331,7 @@ pub const ParticleSystem = struct {
 
 		pipeline.bind(null);
 
-		const projectionAndViewMatrix = Mat4f.mul(projectionMatrix, viewMatrix);
+		const projectionAndViewMatrix = Mat4f.mul(projectionMatrix, viewMatrix.mul(.translation(@floatCast(-game.Player.getEyePosBlocking() + @as(Vec3d, @floatFromInt(previousPlayerPos))))));
 		c.glUniformMatrix4fv(uniforms.projectionAndViewMatrix, 1, c.GL_TRUE, @ptrCast(&projectionAndViewMatrix));
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 
