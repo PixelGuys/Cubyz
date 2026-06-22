@@ -791,7 +791,7 @@ pub const inventory = struct { // MARK: inventory
 				var label = GuiComponent.Label.init(Vec2f{0, 0}, 300, tooltip, .left);
 				var size = label.text.calculateLineBreaks(GuiComponent.Label.fontSize, 300);
 				size[0] = 0;
-				for(label.text.lineBreaks.items) |lineBreak| {
+				for (label.text.lineBreaks.items) |lineBreak| {
 					size[0] = @max(size[0], lineBreak.width);
 				}
 				label.size = size;
@@ -799,7 +799,7 @@ pub const inventory = struct { // MARK: inventory
 				const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(scale));
 				var pos = mousePos;
 				var alignment: graphics.TextBuffer.Alignment = .right;
-				if(pos[0] + size[0] + Tooltip.tooltipSliceCenter[0] * 2 + Tooltip.tooltipSliceCenter[1] >= windowSize[0]) {
+				if (pos[0] + size[0] + Tooltip.tooltipSliceCenter[0]*2 + Tooltip.tooltipSliceCenter[1] >= windowSize[0]) {
 					alignment = .left;
 				}
 				pos[1] = @min(pos[1] - GuiComponent.Label.fontSize, windowSize[1] - size[1] - Tooltip.tooltipSliceCenter[2] - Tooltip.tooltipSliceCenter[3]);

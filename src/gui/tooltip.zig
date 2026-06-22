@@ -32,11 +32,11 @@ pub fn render(guicomponent: *GuiComponent, pos: Vec2f, alignment: graphics.TextB
 			renderpos = pos + Vec2f{tooltipSliceCenter[0], 0};
 		},
 		.left => {
-			renderpos = pos - Vec2f{size[0] + tooltipSliceCenter[0] * 2 + tooltipSliceCenter[1], 0};
+			renderpos = pos - Vec2f{size[0] + tooltipSliceCenter[0]*2 + tooltipSliceCenter[1], 0};
 		},
 		.center => {
-			renderpos = pos - Vec2f{size[0] / 2, 0};
-		}
+			renderpos = pos - Vec2f{size[0]/2, 0};
+		},
 	}
 
 	draw.bound9SliceImage(renderpos, size + Vec2f{tooltipSliceCenter[0] + tooltipSliceCenter[1], tooltipSliceCenter[2] + tooltipSliceCenter[3]}, @floatFromInt(tooltipTexture.size()), tooltipSliceCenter, 1);

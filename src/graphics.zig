@@ -470,20 +470,15 @@ pub const draw = struct { // MARK: draw
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
-	pub fn drawSlice(_destMin : Vec2f, _destMax : Vec2f, _uvMin : Vec2f, _uvMax : Vec2f) void {
-		boundSubImage(
-			_destMin,
-			_destMax - _destMin,
-			_uvMin,
-			_uvMax - _uvMin
-		);
+	pub fn drawSlice(_destMin: Vec2f, _destMax: Vec2f, _uvMin: Vec2f, _uvMax: Vec2f) void {
+		boundSubImage(_destMin, _destMax - _destMin, _uvMin, _uvMax - _uvMin);
 	}
 
-	pub fn bound9SliceImage(_pos : Vec2f, _dim : Vec2f, _textureSize : Vec2f, _sliceCenter : Vec4f, _sliceScale : f32) void {
-		const leftSlice = _sliceCenter[0] * _sliceScale;
-		const rightSlice = _sliceCenter[1] * _sliceScale;
-		const topSlice = _sliceCenter[2] * _sliceScale;
-		const bottomSlice = _sliceCenter[3] * _sliceScale;
+	pub fn bound9SliceImage(_pos: Vec2f, _dim: Vec2f, _textureSize: Vec2f, _sliceCenter: Vec4f, _sliceScale: f32) void {
+		const leftSlice = _sliceCenter[0]*_sliceScale;
+		const rightSlice = _sliceCenter[1]*_sliceScale;
+		const topSlice = _sliceCenter[2]*_sliceScale;
+		const bottomSlice = _sliceCenter[3]*_sliceScale;
 
 		// Construct 9-Slice Rectangle Cordinates
 		const _x1 = _pos[0] + leftSlice;
@@ -494,21 +489,21 @@ pub const draw = struct { // MARK: draw
 		const _y3 = _pos[1] + _dim[1];
 
 		// Construct UV Boundaries
-		const _u1 = _sliceCenter[0] / _textureSize[0];
-		const _u2 = (_textureSize[0] - _sliceCenter[1]) / _textureSize[0];
-		const _v1 = _sliceCenter[2] / _textureSize[1];
-		const _v2 = (_textureSize[1] - _sliceCenter[3]) / _textureSize[1];
+		const _u1 = _sliceCenter[0]/_textureSize[0];
+		const _u2 = (_textureSize[0] - _sliceCenter[1])/_textureSize[0];
+		const _v1 = _sliceCenter[2]/_textureSize[1];
+		const _v2 = (_textureSize[1] - _sliceCenter[3])/_textureSize[1];
 
 		// Draw all Slices
-		drawSlice(.{_pos[0],_pos[1]},.{_x1,_y1},.{0,0},.{_u1,_v1});
-		drawSlice(.{_x1,_pos[1]},.{_x2,_y1},.{_u1,0},.{_u2,_v1});
-		drawSlice(.{_x2,_pos[1]},.{_x3,_y1},.{_u2,0},.{1,_v1});
-		drawSlice(.{_pos[0],_y1},.{_x1,_y2},.{0,_v1},.{_u1,_v2});
-		drawSlice(.{_x1,_y1},.{_x2,_y2},.{_u1,_v1},.{_u2,_v2});
-		drawSlice(.{_x2,_y1},.{_x3,_y2},.{_u2,_v1},.{1,_v2});
-		drawSlice(.{_pos[0],_y2},.{_x1,_y3},.{0,_v2},.{_u1,1});
-		drawSlice(.{_x1,_y2},.{_x2,_y3},.{_u1,_v2},.{_u2,1});
-		drawSlice(.{_x2,_y2},.{_x3,_y3},.{_u2,_v2},.{1,1});
+		drawSlice(.{_pos[0], _pos[1]}, .{_x1, _y1}, .{0, 0}, .{_u1, _v1});
+		drawSlice(.{_x1, _pos[1]}, .{_x2, _y1}, .{_u1, 0}, .{_u2, _v1});
+		drawSlice(.{_x2, _pos[1]}, .{_x3, _y1}, .{_u2, 0}, .{1, _v1});
+		drawSlice(.{_pos[0], _y1}, .{_x1, _y2}, .{0, _v1}, .{_u1, _v2});
+		drawSlice(.{_x1, _y1}, .{_x2, _y2}, .{_u1, _v1}, .{_u2, _v2});
+		drawSlice(.{_x2, _y1}, .{_x3, _y2}, .{_u2, _v1}, .{1, _v2});
+		drawSlice(.{_pos[0], _y2}, .{_x1, _y3}, .{0, _v2}, .{_u1, 1});
+		drawSlice(.{_x1, _y2}, .{_x2, _y3}, .{_u1, _v2}, .{_u2, 1});
+		drawSlice(.{_x2, _y2}, .{_x3, _y3}, .{_u2, _v2}, .{1, 1});
 	}
 
 	pub fn customShadedImage(uniforms: anytype, _pos: Vec2f, _dim: Vec2f) void {
