@@ -3,7 +3,7 @@
 	.minHeight = 1000,
 	.maxHeight = 1000,
 	.smoothBeaches = true,
-	.radius = 50,
+	.radius = 40,
 	.mountains = 50,
 	.hills = 10,
 	.chance = 0,
