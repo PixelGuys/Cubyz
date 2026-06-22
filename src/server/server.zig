@@ -163,8 +163,8 @@ pub const User = struct { // MARK: User
 		return self;
 	}
 	pub fn wakeup(self: *User) void {
-		if(self.wokeup) return;
-		
+		if (self.wokeup) return;
+
 		// persistent data
 		const conn = self.conn;
 		const name = self.name;
@@ -198,9 +198,8 @@ pub const User = struct { // MARK: User
 		main.globalAllocator.destroy(self);
 	}
 	pub fn wakedown(self: *User) void {
-		if(!self.wokeup) return;
+		if (!self.wokeup) return;
 		self.wokeup = false;
-
 
 		main.items.Inventory.server.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
@@ -232,7 +231,6 @@ pub const User = struct { // MARK: User
 
 		self.clearJobQueue();
 		self.jobQueue.deinit();
-
 	}
 	pub fn increaseRefCount(self: *User) void {
 		const prevVal = self.refCount.fetchAdd(1, .monotonic);
@@ -612,7 +610,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 		std.log.err("Couldn't create thread: {s}", .{@errorName(err)});
 		@panic("Could not open Server.");
 	};
-	for(connectionManager.connections.items)|conn|{
+	for (connectionManager.connections.items) |conn| {
 		main.network.protocols.Reload.informClientOfRestart(conn);
 		conn.handShakeState.store(.signatureResponse, .monotonic);
 	}
@@ -633,9 +631,8 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 fn deinit() void {
 	main.threadPool.clear();
 	connectionManager.pause();
-	
+
 	users.clearAndFree();
-	
 
 	if (world) |_world| {
 		_world.deinit();
@@ -748,14 +745,13 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16, mode: ServerWorld.M
 	const worldName: []const u8 = main.globalAllocator.dupe(u8, name);
 	defer main.globalAllocator.free(worldName);
 
-
 	connectionManager = ConnectionManager.init(main.settings.defaultPort, .{.allowNewConnections = mode == .multiplayer}) catch |err| {
 		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
 	userDeinitList = .init(main.globalAllocator, 16);
 	userConnectList = .init(main.globalAllocator, 16);
-	
+
 	defer {
 		connectionManager.deinit();
 		connectionManager = undefined;
@@ -771,7 +767,6 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16, mode: ServerWorld.M
 
 		userDeinitList.deinit();
 		userConnectList.deinit();
-		
 	}
 
 	restart = true;

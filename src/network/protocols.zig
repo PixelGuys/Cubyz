@@ -70,7 +70,7 @@ pub const handShake = struct { // MARK: handShake
 		if (@intFromEnum(conn.handShakeState.load(.monotonic)) < @intFromEnum(newState)) {
 			conn.handShakeState.store(newState, .monotonic);
 			switch (newState) {
-				.userData, .signatureResponse,.reload => return error.InvalidSide,
+				.userData, .signatureResponse, .reload => return error.InvalidSide,
 				.signatureRequest => {
 					const signature1Len = try reader.readVarInt(usize);
 					const signature1 = try reader.readSlice(signature1Len);
@@ -157,7 +157,7 @@ pub const handShake = struct { // MARK: handShake
 						continue :stateSwitch .signatureResponse;
 					}
 				},
-				.signatureResponse,.reload => {
+				.signatureResponse, .reload => {
 					if (newState != .reload) {
 						if (main.server.world.?.mode != .singleplayer) {
 							try conn.user.?.verifySignatures(reader);
@@ -212,12 +212,12 @@ pub const handShake = struct { // MARK: handShake
 		conn.send(.secure, id, outData);
 	}
 
-	pub fn clientSide(conn: *Connection, name: []const u8, restart:bool) !void {
+	pub fn clientSide(conn: *Connection, name: []const u8, restart: bool) !void {
 		const zonObject = ZonElement.initObject(main.stackAllocator);
 		defer zonObject.deinit(main.stackAllocator);
-		var prefix:[1]u8 = undefined;
-		
-		if(!restart){
+		var prefix: [1]u8 = undefined;
+
+		if (!restart) {
 			zonObject.putOwnedString("version", settings.version.version);
 			zonObject.putOwnedString("name", name);
 			if (main.network.authentication.KeyCollection.initialized) {
@@ -231,7 +231,7 @@ pub const handShake = struct { // MARK: handShake
 		}
 		const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
 		defer main.stackAllocator.free(data);
-		conn.send(.secure, id, data);			
+		conn.send(.secure, id, data);
 
 		conn.mutex.lock();
 		while (true) {
@@ -1085,4 +1085,3 @@ pub const Reload = struct { // MARK: Reload
 		conn.send(.secure, id, writer.data.items);
 	}
 };
-

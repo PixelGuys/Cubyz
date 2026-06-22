@@ -525,13 +525,13 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	}
 	pub fn @"continue"(result: *ConnectionManager) !void {
 		if (result.running.load(.monotonic)) return;
-		
+
 		for (result.connections.items) |conn| {
-			if(conn.user)|user|{
+			if (conn.user) |user| {
 				user.wakeup();
 			}
 		}
-		
+
 		result.packetSendRequests = .initContext({});
 		result.running.store(true, .monotonic);
 		result.thread = try std.Thread.spawn(.{}, run, .{result});
@@ -543,7 +543,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		for (self.connections.items) |conn| {
 			conn.disconnect();
 		}
-		
+
 		self.socket.deinit();
 		self.connections.deinit(main.globalAllocator);
 		main.globalAllocator.destroy(self);
@@ -563,7 +563,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		self.packetSendRequests.deinit(main.globalAllocator.allocator);
 
 		for (self.connections.items) |conn| {
-			if(conn.user)|user|{
+			if (conn.user) |user| {
 				user.wakedown();
 			}
 		}
