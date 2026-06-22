@@ -19,6 +19,7 @@ const ScrollBar = @import("components/ScrollBar.zig");
 const ContinuousSlider = @import("components/ContinuousSlider.zig");
 const DiscreteSlider = @import("components/DiscreteSlider.zig");
 const TextInput = @import("components/TextInput.zig");
+const Tooltip = @import("tooltip.zig");
 const gui_component = @import("gui_component.zig");
 pub const GuiComponent = gui_component.GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
@@ -147,6 +148,7 @@ pub fn init() void { // MARK: init()
 	ContinuousSlider.globalInit();
 	DiscreteSlider.globalInit();
 	TextInput.globalInit();
+	Tooltip.globalInit();
 	load();
 	gamepad_cursor.init();
 }
@@ -167,6 +169,7 @@ pub fn deinit() void {
 	ContinuousSlider.globalDeinit();
 	DiscreteSlider.globalDeinit();
 	TextInput.globalDeinit();
+	Tooltip.globalDeinit();
 	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
 		const WindowStruct = @field(windowlist, decl.name);
 		if (@hasDecl(WindowStruct, "deinit")) {
@@ -785,37 +788,28 @@ pub const inventory = struct { // MARK: inventory
 		const hovered = hoveredItemSlot orelse return;
 		if (carried.getAmount(0) == 0) {
 			if (hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltip| {
-				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, tooltip, .{}, false, .left);
-				defer textBuffer.deinit();
-				const fontSize = 16;
-				var size = textBuffer.calculateLineBreaks(fontSize, 300);
+				var label = GuiComponent.Label.init(Vec2f{0, 0}, 300, tooltip, .left);
+				var size = label.text.calculateLineBreaks(GuiComponent.Label.fontSize, 300);
 				size[0] = 0;
-				for (textBuffer.lineBreaks.items) |lineBreak| {
+				for(label.text.lineBreaks.items) |lineBreak| {
 					size[0] = @max(size[0], lineBreak.width);
 				}
+				label.size = size;
+
 				const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(scale));
-				const xOffset = 18;
-				const padding: f32 = 1;
-				const border: f32 = padding + 1;
 				var pos = mousePos;
-				if (pos[0] + size[0] + border + xOffset >= windowSize[0]) {
-					pos[0] -= size[0] + xOffset;
-				} else {
-					pos[0] += xOffset;
+				var alignment: graphics.TextBuffer.Alignment = .right;
+				if(pos[0] + size[0] + Tooltip.tooltipSliceCenter[0] * 2 + Tooltip.tooltipSliceCenter[1] >= windowSize[0]) {
+					alignment = .left;
 				}
-				pos[1] = @min(pos[1] - fontSize, windowSize[1] - size[1] - border);
-				pos = @max(pos, Vec2f{border, border});
-				{
-					const oldColor = draw.setColor(0xffffff00);
-					defer draw.restoreColor(oldColor);
-					draw.rect(pos - @as(Vec2f, @splat(border)), size + @as(Vec2f, @splat(2*border)));
-				}
-				{
-					const oldColor = draw.setColor(0xff000000);
-					defer draw.restoreColor(oldColor);
-					draw.rect(pos - @as(Vec2f, @splat(padding)), size + @as(Vec2f, @splat(2*padding)));
-				}
-				textBuffer.render(pos[0], pos[1], fontSize);
+				pos[1] = @min(pos[1] - GuiComponent.Label.fontSize, windowSize[1] - size[1] - Tooltip.tooltipSliceCenter[2] - Tooltip.tooltipSliceCenter[3]);
+
+				var list = GuiComponent.VerticalList.init(Vec2f{0, 0}, 360, Tooltip.tooltipSliceCenter[2]);
+				list.add(label);
+				list.finish(.left);
+				var component: GuiComponent = .{.verticalList = list};
+				defer component.deinit();
+				Tooltip.render(&component, pos, alignment);
 			}
 		}
 	}
