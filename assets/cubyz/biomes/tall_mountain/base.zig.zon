@@ -6,7 +6,7 @@
 	},
 	.minHeight = 128,
 	.maxHeight = 128,
-	.keepOriginalTerrain= 0.8,
+	.keepOriginalTerrain = 0.8,
 	.smoothBeaches = true,
 	.radius = 380,
 	.mountains = 120,
