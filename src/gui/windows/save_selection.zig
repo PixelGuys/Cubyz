@@ -49,7 +49,7 @@ pub fn deinit() void {
 }
 
 pub fn openWorld(name: []const u8) void {
-	const clientConnection = ConnectionManager.init(0, false) catch |err| {
+	const clientConnection = ConnectionManager.init(0, .{}) catch |err| {
 		std.log.err("Encountered error while opening connection: {s}", .{@errorName(err)});
 		return;
 	};

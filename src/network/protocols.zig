@@ -113,7 +113,7 @@ pub const handShake = struct { // MARK: handShake
 		const newState = try reader.readEnum(Connection.HandShakeState);
 		if (@intFromEnum(conn.handShakeState.load(.monotonic)) < @intFromEnum(newState)) {
 			conn.handShakeState.store(newState, .monotonic);
-			switch (newState) {
+			stateSwitch: switch (newState) {
 				.userData => {
 					conn.secureChannel.finishedCollectingClientVerificationData = true;
 					const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
@@ -135,26 +135,33 @@ pub const handShake = struct { // MARK: handShake
 						return error.IncompatibleVersion;
 					}
 
-					const keys = zon.getChild("keys");
-					try conn.user.?.identifyFromKeysAndName(name, keys);
+					if (main.server.world.?.mode != .singleplayer) {
+						const keys = zon.getChild("keys");
+						try conn.user.?.identifyFromKeysAndName(name, keys);
 
-					var writer: utils.BinaryWriter = .init(main.stackAllocator);
-					defer writer.deinit();
-					writer.writeEnum(Connection.HandShakeState, .signatureRequest);
-					conn.handShakeState.store(.signatureRequest, .monotonic);
-					writer.writeVarInt(usize, @tagName(conn.user.?.key).len);
-					writer.writeSlice(@tagName(conn.user.?.key));
-					if (conn.user.?.legacyKey) |legacyKey| {
-						writer.writeVarInt(usize, @tagName(legacyKey).len);
-						writer.writeSlice(@tagName(legacyKey));
+						var writer: utils.BinaryWriter = .init(main.stackAllocator);
+						defer writer.deinit();
+						writer.writeEnum(Connection.HandShakeState, .signatureRequest);
+						conn.handShakeState.store(.signatureRequest, .monotonic);
+						writer.writeVarInt(usize, @tagName(conn.user.?.key).len);
+						writer.writeSlice(@tagName(conn.user.?.key));
+						if (conn.user.?.legacyKey) |legacyKey| {
+							writer.writeVarInt(usize, @tagName(legacyKey).len);
+							writer.writeSlice(@tagName(legacyKey));
+						} else {
+							writer.writeVarInt(usize, 0);
+						}
+						conn.send(.secure, id, writer.data.items);
 					} else {
-						writer.writeVarInt(usize, 0);
+						try conn.user.?.identifyAsLocal(name);
+						continue :stateSwitch .signatureResponse;
 					}
-					conn.send(.secure, id, writer.data.items);
 				},
 				.signatureResponse,.reload => {
 					if (newState != .reload) {
-						try conn.user.?.verifySignatures(reader);
+						if (main.server.world.?.mode != .singleplayer) {
+							try conn.user.?.verifySignatures(reader);
+						}
 						conn.user.?.keysVerified = true;
 					} else {
 						// check if player is already logged in.
@@ -213,7 +220,9 @@ pub const handShake = struct { // MARK: handShake
 		if(!restart){
 			zonObject.putOwnedString("version", settings.version.version);
 			zonObject.putOwnedString("name", name);
-			zonObject.put("keys", main.network.authentication.KeyCollection.getPublicKeys(main.stackAllocator));
+			if (main.network.authentication.KeyCollection.initialized) {
+				zonObject.put("keys", main.network.authentication.KeyCollection.getPublicKeys(main.stackAllocator));
+			}
 			prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
 			try conn.secureChannel.startTlsHandshake();
 			conn.secureChannel.finishedCollectingClientVerificationData = true;

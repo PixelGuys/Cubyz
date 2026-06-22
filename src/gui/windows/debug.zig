@@ -63,7 +63,7 @@ pub fn render() void {
 		y += 8;
 		draw.print("EyePos: {d:.1} EyeVelocity: {d:.1} EyeCoyote: {d:.3}", .{player.getEyePosBlocking(), player.getEyeVelBlocking(), @max(0, player.getEyeCoyoteBlocking())}, 0, y, 8, .left);
 		y += 8;
-		draw.print("Game Time: {}", .{main.game.world.?.gameTime.load(.monotonic)}, 0, y, 8, .left);
+		draw.print("Game Time: {} Day Time: {}", .{main.game.world.?.gameTime.load(.monotonic), main.game.world.?.dayTime.dayTime}, 0, y, 8, .left);
 		y += 8;
 		draw.print("Queue size: {}", .{main.threadPool.queueSize()}, 0, y, 8, .left);
 		y += 8;

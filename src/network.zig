@@ -481,7 +481,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 	mutex: main.utils.Mutex = .{},
 	waitingToFinishReceive: main.utils.Condition = .{},
-	allowNewConnections: Atomic(bool) = .init(false),
+	allowNewConnections: bool,
 
 	receiveBuffer: [Connection.maxMtu]u8 = undefined,
 
@@ -501,10 +501,12 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 	};
 
-	pub fn init(localPort: u16, online: bool) !*ConnectionManager {
+	pub fn init(localPort: u16, options: struct { allowNewConnections: bool = false }) !*ConnectionManager {
 		const result: *ConnectionManager = main.globalAllocator.create(ConnectionManager);
 		errdefer main.globalAllocator.destroy(result);
-		result.* = .{};
+		result.* = .{
+			.allowNewConnections = options.allowNewConnections,
+		};
 
 		result.localPort = localPort;
 		result.socket = Socket.init(localPort) catch |err| blk: {
@@ -519,12 +521,6 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 		try result.@"continue"();
 
-		if (online) {
-			result.makeOnline();
-		}
-		if (main.settings.launchConfig.headlessServer) {
-			result.allowNewConnections.store(true, .monotonic);
-		}
 		return result;
 	}
 	pub fn @"continue"(result: *ConnectionManager) !void {
@@ -683,7 +679,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			}
 			if (self.online.load(.acquire) and source.ip == self.externalAddress.ip and source.port == self.externalAddress.port) return;
 		}
-		if (self.allowNewConnections.load(.monotonic) or source.ip == Address.localHost) {
+		if (self.allowNewConnections or source.ip == Address.localHost) {
 			if (data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
 				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{source}) catch unreachable;
 				defer main.stackAllocator.free(ip);

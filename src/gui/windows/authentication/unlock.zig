@@ -49,11 +49,7 @@ fn apply() void {
 	main.network.authentication.KeyCollection.init(accountCode);
 
 	gui.closeWindowFromRef(&window);
-	if (settings.playerName.len == 0) {
-		gui.openWindow("change_name");
-	} else {
-		gui.openWindow("main");
-	}
+	gui.openWindow("multiplayer");
 }
 
 fn showTextCallback(showText: bool) void {
@@ -79,7 +75,7 @@ fn onTextUpdate() void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 320, 8);
 	const width = 420;
-	list.add(Label.init(.{0, 0}, width, "Please enter your local password!", .left));
+	list.add(Label.init(.{0, 0}, width, "Please enter your local password to decrypt your Multiplayer Account.", .left));
 	list.add(Label.init(.{0, 0}, width, "If you lost your password you can also log out and reenter your Account Code.", .left));
 	incorrectPasswordLabel = Label.init(.{0, 0}, width, "", .left);
 	list.add(incorrectPasswordLabel);
@@ -94,7 +90,7 @@ pub fn onOpen() void {
 	const buttonRow = HorizontalList.init();
 	logoutButton = Button.initText(.{0, 0}, 200, "Logout", .{.onAction = .init(logout), .disabled = false});
 	buttonRow.add(logoutButton);
-	buttonRow.add(Button.initText(.{padding, 0}, 200, "Unlock", .{.onAction = .init(apply)}));
+	buttonRow.add(Button.initText(.{padding, 0}, 200, "Decrypt", .{.onAction = .init(apply)}));
 	list.add(buttonRow);
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
