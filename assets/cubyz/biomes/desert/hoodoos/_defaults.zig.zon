@@ -5,7 +5,7 @@
 		.barren,
 	},
 
-	.music = "cubyz:totaldemented/hypoxia",
+	.music = "cubyz:mischol/desert_firefly",
 
 	.fogDensity = 1.5,
 	.fogColor = 0xe9f2e2,

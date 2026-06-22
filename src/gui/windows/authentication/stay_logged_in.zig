@@ -17,7 +17,6 @@ const VerticalList = GuiComponent.VerticalList;
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
 	.closeIfMouseIsGrabbed = true,
-	.closeable = false,
 };
 
 const padding: f32 = 8;
@@ -37,11 +36,7 @@ fn stayLoggedIn() void {
 
 fn dontStayLoggedIn() void {
 	gui.closeWindowFromRef(&window);
-	if (settings.playerName.len == 0) {
-		gui.openWindow("change_name");
-	} else {
-		gui.openWindow("main");
-	}
+	gui.openWindow("multiplayer");
 }
 
 pub fn onOpen() void {
