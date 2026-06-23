@@ -34,7 +34,7 @@ pub const GuiComponent = union(enum) {
 	textInput: *TextInput,
 	verticalList: *VerticalList,
 	entityModelFrame: *EntityModelFrame,
-	
+
 	pub fn deinit(self: GuiComponent) void {
 		switch (self) {
 			inline else => |impl| {

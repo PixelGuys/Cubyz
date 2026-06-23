@@ -23,9 +23,8 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 
-fn apply(modelIndex:usize) void {
-	
-	const emi :main.entityModel.EntityModelIndex = .{.index = @intCast(modelIndex)};
+fn apply(modelIndex: usize) void {
+	const emi: main.entityModel.EntityModelIndex = .{.index = @intCast(modelIndex)};
 	std.log.debug("picked model {s}", .{emi.get().entityModelId});
 
 	const command = std.fmt.allocPrint(main.globalAllocator.allocator, "avatar {s}", .{emi.get().entityModelId}) catch unreachable;
@@ -33,18 +32,17 @@ fn apply(modelIndex:usize) void {
 	gui.closeWindowFromRef(&window);
 }
 
-
 pub fn onOpen() void {
-    const list = HorizontalList.init();
-    //TODO: use scrollbar
-    for (main.entityModel.playerEntityModels.items) |index| { 
-	    const verticalList = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	    verticalList.add(EntityModelFrame.init(.{0, 0}, .{100, 100},index));
-	    verticalList.add(Button.initText(.{0, 0}, 100, "Use", .{.onAction = .initWithInt(apply,index.index)}));
-	    verticalList.finish(.center);
-        list.add(verticalList);
-    }
-    list.finish(.{padding, 16 + padding}, .left);
+	const list = HorizontalList.init();
+	//TODO: use scrollbar
+	for (main.entityModel.playerEntityModels.items) |index| {
+		const verticalList = VerticalList.init(.{padding, 16 + padding}, 300, 16);
+		verticalList.add(EntityModelFrame.init(.{0, 0}, .{100, 100}, index));
+		verticalList.add(Button.initText(.{0, 0}, 100, "Use", .{.onAction = .initWithInt(apply, index.index)}));
+		verticalList.finish(.center);
+		list.add(verticalList);
+	}
+	list.finish(.{padding, 16 + padding}, .left);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();

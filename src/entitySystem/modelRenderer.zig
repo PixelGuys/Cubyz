@@ -108,13 +108,11 @@ pub const client = struct {
 	}
 	pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
 		_ = deltaTime;
+
 		main.client.entity_manager.mutex.lock();
 		defer main.client.entity_manager.mutex.unlock();
-		pipeline.bind(null);
 
-		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
-		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
-		c.glUniform1f(uniforms.contrast, 0.12);
+		setupDrawing(projMatrix, ambientLight);
 
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |component, id| {
 			if (id == game.Player.id) continue; // don't render local player
@@ -122,51 +120,25 @@ pub const client = struct {
 			const entModel = component.entityModel.get();
 			const ent = main.client.entity_manager.getEntity(id) orelse continue;
 
-			entModel.bind();
-			const entTexture = entModel.defaultTexture;
-
-			entTexture.?.bindTo(0);
 			const blockPos: vec.Vec3i = @floor(ent.pos);
 			const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
-			const light = (@as(u32, lightVals[0] >> 3) << 25 |
-				@as(u32, lightVals[1] >> 3) << 20 |
-				@as(u32, lightVals[2] >> 3) << 15 |
-				@as(u32, lightVals[3] >> 3) << 10 |
-				@as(u32, lightVals[4] >> 3) << 5 |
-				@as(u32, lightVals[5] >> 3) << 0);
 
-			c.glUniform1ui(uniforms.light, @bitCast(@as(u32, light)));
-
-			const pos: Vec3d = ent.getRenderPosition() - playerPos;
-			const modelMatrix = (Mat4f.identity()
-				.mul(Mat4f.translation(Vec3f{
-					@floatCast(pos[0]),
-					@floatCast(pos[1]),
-					@floatCast(pos[2] - entModel.height/2),
-				}))
-				.mul(Mat4f.rotationZ(-ent.rot[2])));
-			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
-			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
-			c.glDrawElements(c.GL_TRIANGLES, entModel.indexCount, c.GL_UNSIGNED_INT, null);
+			drawing(entModel, lightVals, ent.getRenderPosition() - playerPos, game.camera.viewMatrix, -ent.rot[2]);
 		}
 	}
 
-
-	pub fn drawModel(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, pModel: *main.entityModel.EntityModel,rotation:f64) !void {
-		_= playerPos;
-
-		main.client.entity_manager.mutex.lock();
-		defer main.client.entity_manager.mutex.unlock();
-
+	fn setupDrawing(projMatrix: Mat4f, ambientLight: Vec3f) void {
 		pipeline.bind(null);
 
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
+	}
+	fn drawing(entModel: *main.entityModel.EntityModel, lightVals: [6]u8, pos: Vec3d, viewMatrix: Mat4f, rotation: f64) void {
+		entModel.bind();
+		const entTexture = entModel.defaultTexture;
+		entTexture.?.bindTo(0);
 
-		pModel.bind();
-		const defaultHeight:f32 = 2;
-		const lightVals: [6]u8 = @splat(255);
 		const light = (@as(u32, lightVals[0] >> 3) << 25 |
 			@as(u32, lightVals[1] >> 3) << 20 |
 			@as(u32, lightVals[2] >> 3) << 15 |
@@ -176,19 +148,24 @@ pub const client = struct {
 
 		c.glUniform1ui(uniforms.light, @bitCast(@as(u32, light)));
 
-		const pos: Vec3d = .{0,defaultHeight/2/std.math.tan(std.math.degreesToRadians(20/2)),0};
 		const modelMatrix = (Mat4f.identity()
 			.mul(Mat4f.translation(Vec3f{
 				@floatCast(pos[0]),
 				@floatCast(pos[1]),
-				@floatCast(pos[2] - defaultHeight/2),
+				@floatCast(pos[2] - entModel.height/2),
 			}))
 			.mul(Mat4f.rotationZ(@floatCast(rotation))));
-		const viewMatrix = Mat4f.identity();
-		//const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 		const modelViewMatrix = viewMatrix.mul(modelMatrix);
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
-		c.glDrawElements(c.GL_TRIANGLES, pModel.indexCount, c.GL_UNSIGNED_INT, null);
+		c.glDrawElements(c.GL_TRIANGLES, entModel.indexCount, c.GL_UNSIGNED_INT, null);
+	}
+	pub fn drawModelInGui(projMatrix: Mat4f, ambientLight: Vec3f, pModel: *main.entityModel.EntityModel, rotation: f64) !void {
+		const lightVals: [6]u8 = @splat(255);
+		const pos: Vec3d = .{0, 1.0/std.math.tan(std.math.degreesToRadians(20/2)), 0};
+		const viewMatrix = Mat4f.identity();
+
+		setupDrawing(projMatrix, ambientLight);
+		drawing(pModel, lightVals, pos, viewMatrix, rotation);
 	}
 };
 // ############################# Server only stuff ################################
