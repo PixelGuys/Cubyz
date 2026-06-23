@@ -164,7 +164,10 @@ pub const Blueprint = struct {
 		}
 	}
 
-	pub const PasteFlags = struct { preserveVoid: bool = false };
+	pub const PasteFlags = struct { 
+		preserveVoid: bool = false,
+		replaceUndegradable: bool = true,
+	};
 
 	pub fn paste(self: Blueprint, pos: Vec3i, flags: PasteFlags) void {
 		const startX = pos[0];
@@ -181,9 +184,17 @@ pub const Blueprint = struct {
 					const worldZ = startZ +% @as(i32, @intCast(z));
 
 					const block = self.blocks.get(x, y, z);
-					if (block.typ != voidType or flags.preserveVoid) {
-						_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block, true);
+					if (block.typ == voidType and !flags.preserveVoid) continue;
+
+					while(true){
+						const oldBlock = main.server.world.?.getBlock(@intCast(worldX),@intCast(worldY),@intCast(worldZ));
+						if(oldBlock)|_oldBlock|{
+							if (!_oldBlock.degradable() and !flags.replaceUndegradable) break;
+						}
+						if(main.server.world.?.cmpxchgBlock(worldX, worldY, worldZ, oldBlock, block, true) == null)
+							break;
 					}
+
 				}
 			}
 		}
