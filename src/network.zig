@@ -891,12 +891,14 @@ pub const Connection = struct { // MARK: Connection
 		buffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
 		header: ?Header = null,
 		protocolBuffer: main.List(u8) = .empty,
+		channelId: ChannelId = undefined,
 
-		pub fn init() ReceiveBuffer {
+		pub fn init(channelId: ChannelId) ReceiveBuffer {
 			return .{
 				.ranges = .init(),
 				.decryptedBuffer = .init(main.globalAllocator),
 				.buffer = .init(main.globalAllocator),
+				.channelId = channelId,
 			};
 		}
 
@@ -954,7 +956,7 @@ pub const Connection = struct { // MARK: Connection
 
 				const protocolIndex = self.header.?.protocolIndex;
 				self.header = null;
-				try protocols.onReceive(conn, protocolIndex, self.protocolBuffer.items);
+				try protocols.onReceive(conn, protocolIndex, self.protocolBuffer.items, self.channelId);
 				self.protocolBuffer.clearRetainingCapacity();
 				if (self.protocolBuffer.items.len > 1 << 24) {
 					self.protocolBuffer.shrinkAndFree(main.globalAllocator, 1 << 24);
@@ -1162,7 +1164,7 @@ pub const Connection = struct { // MARK: Connection
 
 		pub fn init(sequenceIndex: SequenceIndex, delay: i64, id: ChannelId) Channel {
 			return .{
-				.receiveBuffer = .init(),
+				.receiveBuffer = .init(id),
 				.sendBuffer = .init(sequenceIndex),
 				.allowedDelay = delay,
 				.channelId = id,
@@ -1414,7 +1416,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 	};
 
-	const ChannelId = enum(u8) { // MARK: ChannelId
+	pub const ChannelId = enum(u8) { // MARK: ChannelId
 		lossy = 0,
 		secure = 1,
 		slow = 2,
