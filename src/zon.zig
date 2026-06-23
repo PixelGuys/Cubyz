@@ -27,30 +27,6 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		return .{.array = list};
 	}
 
-	pub fn getAtIndex(self: *const ZonElement, comptime T: type, index: usize, replacement: T) T {
-		if (self.* != .array) {
-			return replacement;
-		} else {
-			if (index < self.array.items.len) {
-				return self.array.items[index].as(T) orelse replacement;
-			} else {
-				return replacement;
-			}
-		}
-	}
-
-	pub fn getChildAtIndex(self: *const ZonElement, index: usize) ZonElement {
-		if (self.* != .array) {
-			return .null;
-		} else {
-			if (index < self.array.items.len) {
-				return self.array.items[index];
-			} else {
-				return .null;
-			}
-		}
-	}
-
 	pub fn get(self: *const ZonElement, comptime T: type, key: []const u8, replacement: T) T {
 		if (self.* != .object) {
 			return replacement;
