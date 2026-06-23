@@ -35,6 +35,6 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 }
 
 fn decay(x: i32, y: i32, z: i32, current: Block) main.callbacks.Result {
-	if (server.world.?.cmpxchgBlock(x, y, z, current, blocks.Block.air) == null) return .handled;
+	if (server.world.?.cmpxchgBlock(x, y, z, current, blocks.Block.air, false) == null) return .handled;
 	return .ignored;
 }

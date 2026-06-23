@@ -773,6 +773,8 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		}
 	}
 
+	blocks.finishBlockCallbacks(worldAssets.blocks);
+
 	worldAssets.log(.world);
 }
 
