@@ -22,6 +22,14 @@
 					.id = "durable",
 					.strength = 0.50,
 				},
+				.{
+					.id = "fragile",
+					.strength = 0.2,
+					.restriction = .{
+						.id = .on_top_of,
+						.tag = .head,
+					},
+				},
 			},
 		},
 		.texture = "branch/glimmergill.png",
