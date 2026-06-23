@@ -527,6 +527,10 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		if (result.running.load(.monotonic)) return;
 
 		for (result.connections.items) |conn| {
+			conn.dehibernate();
+		}
+
+		for (result.connections.items) |conn| {
 			if (conn.user) |user| {
 				user.wakeup();
 			}
@@ -539,6 +543,10 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	}
 	pub fn deinit(self: *ConnectionManager) void {
 		if (self.running.load(.monotonic)) self.pause();
+
+		for (self.connections.items) |conn| {
+			conn.dehibernate();
+		}
 
 		for (self.connections.items) |conn| {
 			conn.disconnect();
@@ -563,9 +571,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		self.packetSendRequests.deinit(main.globalAllocator.allocator);
 
 		for (self.connections.items) |conn| {
-			if (conn.user) |user| {
-				user.wakedown();
-			}
+			conn.hibernate();
 		}
 	}
 
@@ -1430,6 +1436,7 @@ pub const Connection = struct { // MARK: Connection
 		awaitingClientAcknowledgement,
 		connected,
 		disconnected,
+		hibernating,
 	};
 
 	pub const HandShakeState = enum(u8) {
@@ -1539,6 +1546,23 @@ pub const Connection = struct { // MARK: Connection
 		main.globalAllocator.destroy(self);
 	}
 
+	// pretending the connection is closed
+	pub fn hibernate(self: *Connection) void {
+		if (self.connectionState.load(.monotonic) == .connected) {
+			self.connectionState.store(.hibernating, .monotonic);
+			if (self.user) |user| {
+				user.connected.store(false, .monotonic);
+			}
+		}
+	}
+	pub fn dehibernate(self: *Connection) void {
+		if (self.connectionState.load(.monotonic) == .hibernating) {
+			self.connectionState.store(.connected, .monotonic);
+			if (self.user) |user| {
+				user.connected.store(true, .monotonic);
+			}
+		}
+	}
 	pub fn send(self: *Connection, comptime channel: ChannelId, protocolIndex: u8, data: []const u8) void {
 		std.debug.assert(self.handShakeState.raw == .complete or protocolIndex == protocols.handShake.id);
 		std.debug.assert(self.handShakeState.raw != .complete or protocolIndex != protocols.handShake.id);
@@ -1710,7 +1734,7 @@ pub const Connection = struct { // MARK: Connection
 						return;
 					}
 				},
-				.disconnected => {},
+				.disconnected, .hibernating => {},
 			}
 			// Acknowledge the packet on the client:
 			if (self.user == null) {
@@ -1802,7 +1826,7 @@ pub const Connection = struct { // MARK: Connection
 				return;
 			},
 			.connected => {},
-			.disconnected => return,
+			.disconnected, .hibernating => return,
 		}
 
 		self.handlePacketLoss(self.lossyChannel.checkForLosses(self, timestamp));

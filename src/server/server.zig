@@ -201,6 +201,8 @@ pub const User = struct { // MARK: User
 		if (!self.wokeup) return;
 		self.wokeup = false;
 
+		self.clearJobQueue();
+
 		main.items.Inventory.server.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
 		self.inventoryClientToServerIdMap.deinit();
@@ -229,7 +231,6 @@ pub const User = struct { // MARK: User
 		}
 		self.inventoryCommands.deinit(main.globalAllocator);
 
-		self.clearJobQueue();
 		self.jobQueue.deinit();
 	}
 	pub fn increaseRefCount(self: *User) void {
@@ -629,10 +630,26 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 }
 
 fn deinit() void {
-	main.threadPool.clear();
 	connectionManager.pause();
+	main.threadPool.clear();
 
 	users.clearAndFree();
+
+	for (connectionManager.connections.items) |conn| {
+		if (conn.user) |user| {
+			user.wakedown();
+		}
+	}
+
+	while (userDeinitList.popFront()) |user| {
+		user.clearJobQueue();
+		if (user.refCount.load(.monotonic) == 1) {
+			user.decreaseRefCount();
+		} else {
+			std.log.err("Leaked user {f}", .{user});
+			user.deinit();
+		}
+	}
 
 	if (world) |_world| {
 		_world.deinit();
