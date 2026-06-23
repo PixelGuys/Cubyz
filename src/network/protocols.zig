@@ -1072,16 +1072,36 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 pub const Reload = struct { // MARK: Reload
 	pub const id: u8 = 16;
 
+	const ActionType = enum(u8) {
+		restart = 0,
+		unlock = 1,
+	};
+
 	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		_ = reader;
 		main.shouldRestart.store(true, .monotonic);
 	}
-	pub fn informClientOfRestart(conn: *Connection) void {
-		var writer = utils.BinaryWriter.init(main.stackAllocator);
-		defer writer.deinit();
+	pub fn informClientOfRestart(conn: *Connection,restartCounter:u32) void {
+		// restart!
+		{
+			var writer = utils.BinaryWriter.init(main.stackAllocator);
+			defer writer.deinit();
 
-		writer.writeInt(u8, 0);
+			writer.writeEnum(ActionType, ActionType.restart);
+			writer.writeInt(u32, restartCounter);
+			conn.send(.secure, id, writer.data.items);
+		}
+		// unlock!
+		{
+			var writer = utils.BinaryWriter.init(main.stackAllocator);
+			defer writer.deinit();
 
-		conn.send(.secure, id, writer.data.items);
+			writer.writeEnum(ActionType, ActionType.unlock);
+			writer.writeInt(u32, restartCounter);
+			conn.send(.secure, id, writer.data.items);
+			conn.send(.lossy, id, writer.data.items);
+			conn.send(.slow, id, writer.data.items);
+		}
+		
 	}
 };

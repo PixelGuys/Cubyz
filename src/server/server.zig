@@ -581,6 +581,7 @@ pub var connectionManager: *ConnectionManager = undefined;
 
 pub var running: std.atomic.Value(bool) = .init(false);
 var restart: bool = true;
+var restartCounter: u32 = 0;
 
 var lastTime: std.Io.Timestamp = undefined;
 
@@ -612,9 +613,10 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 		@panic("Could not open Server.");
 	};
 	for (connectionManager.connections.items) |conn| {
-		main.network.protocols.Reload.informClientOfRestart(conn);
+		main.network.protocols.Reload.informClientOfRestart(conn,restartCounter);
 		conn.handShakeState.store(.signatureResponse, .monotonic);
 	}
+	restartCounter += 1;
 
 	if (singlePlayerPort) |port| blk: {
 		const ipString = std.fmt.allocPrint(main.stackAllocator.allocator, "127.0.0.1:{}", .{port}) catch unreachable;
