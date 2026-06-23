@@ -12,7 +12,7 @@ const gui = @import("gui.zig");
 const GuiComponent = gui.GuiComponent;
 
 var tooltipTexture: Texture = undefined;
-pub const tooltipSliceCenter: Vec4f = .{4, 4, 4, 4};
+pub const tooltipSliceCenter: Vec4f = .{3, 3, 3, 3};
 
 pub fn globalInit() void {
 	tooltipTexture = Texture.initFromFile("assets/cubyz/ui/tooltip_background.png");
