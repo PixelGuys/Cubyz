@@ -214,6 +214,10 @@ pub const launchConfig = struct {
 
 	pub var vulkanTestingMode: bool = false;
 
+	pub var createIfMissing: bool = false;
+	pub var worldSeed: ?u64 = null;
+	pub var worldPreset: []const u8 = "cubyz:default";
+
 	pub fn init() void {
 		const zon: ZonElement = main.files.cwd().readToZon(main.stackAllocator, "launchConfig.zon") catch |err| blk: {
 			std.log.err("Could not read launchConfig.zon: {s}", .{@errorName(err)});
@@ -226,6 +230,9 @@ pub const launchConfig = struct {
 		autoEnterWorld = main.globalArena.dupe(u8, zon.get([]const u8, "autoEnterWorld", autoEnterWorld));
 		preferredAuthenticationAlgorithm = zon.get(main.network.authentication.KeyTypeEnum, "preferredAuthenticationAlgorithm", preferredAuthenticationAlgorithm);
 		vulkanTestingMode = zon.get(bool, "vulkanTestingMode", false);
+		createIfMissing = zon.get(bool, "createIfMissing", createIfMissing);
+		worldSeed = zon.get(?u64, "worldSeed", null);
+		worldPreset = main.globalArena.dupe(u8, zon.get([]const u8, "worldPreset", worldPreset));
 	}
 };
 
