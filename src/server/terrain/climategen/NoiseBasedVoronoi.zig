@@ -28,8 +28,11 @@ pub fn init(parameters: ZonElement) void {
 pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) void {
 	var seed: u64 = worldSeed;
 
-	const generator = GenerationStructure.init(main.stackAllocator, map.pos.wx, map.pos.wy, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, terrain.biomes.byTypeBiomes, seed);
-	defer generator.deinit(main.stackAllocator);
+	const arena = main.globalAllocator.createArena();
+	defer main.globalAllocator.destroyArena(arena);
+
+	const generator = GenerationStructure.init(arena, map.pos.wx, map.pos.wy, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, terrain.biomes.byTypeBiomes, seed);
+	defer generator.deinit(arena);
 
 	generator.toMap(map, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, worldSeed);
 
@@ -156,12 +159,44 @@ const Chunk = struct {
 	}
 };
 
+const ChunkGenerationContext = struct {
+	chunks: Array2D(*Chunk),
+	resultAllocator: NeverFailingAllocator,
+	wx: i32,
+	wy: i32,
+	tree: *TreeNode,
+	worldSeed: u64,
+	offset: [2]u31 = undefined,
+	neighborOffsets: []const [2]i32 = undefined,
+
+	pub fn run(self: *ChunkGenerationContext, taskIndex: usize) void {
+		const x = self.offset[0] + @as(u31, @intCast(taskIndex))/(@as(u31, @intCast(self.chunks.width))/2)*2;
+		const y = self.offset[1] + @as(u31, @intCast(taskIndex))%(@as(u31, @intCast(self.chunks.width))/2)*2;
+		var neighbors: [8]*const Chunk = undefined;
+		var j: usize = 0;
+		for (self.neighborOffsets) |neighborOffset| {
+			const nx = x + neighborOffset[0];
+			if (nx < 0 or @as(usize, @intCast(nx)) >= self.chunks.width) continue;
+			const ny = y + neighborOffset[1];
+			if (ny < 0 or @as(usize, @intCast(ny)) >= self.chunks.height) continue;
+			neighbors[j] = self.chunks.get(@intCast(nx), @intCast(ny));
+			j += 1;
+		}
+		self.chunks.ptr(x, y).* = Chunk.init(self.resultAllocator, self.tree, self.worldSeed, self.wx +% x*chunkSize -% 4*chunkSize, self.wy +% y*chunkSize -% 4*chunkSize, neighbors[0..j]);
+	}
+};
+
 const GenerationStructure = struct {
 	chunks: Array2D(*Chunk) = undefined, // Implemented as slices into the original array!
 
 	pub fn init(allocator: NeverFailingAllocator, wx: i32, wy: i32, width: u31, height: u31, tree: *TreeNode, worldSeed: u64) GenerationStructure {
-		const self: GenerationStructure = .{
+		var generationContext: ChunkGenerationContext = .{
 			.chunks = Array2D(*Chunk).init(allocator, 8 + @divExact(width, chunkSize), 8 + @divExact(height, chunkSize)),
+			.resultAllocator = allocator,
+			.wx = wx,
+			.wy = wy,
+			.tree = tree,
+			.worldSeed = worldSeed,
 		};
 		// Generate chunks in an interleaved pattern:
 		const offset: [4][2]u31 = .{
@@ -177,25 +212,16 @@ const GenerationStructure = struct {
 			&.{.{0, -1}, .{0, 1}, .{-1, 0}, .{1, 0}, .{-1, -1}, .{1, -1}, .{-1, 1}, .{1, 1}},
 		};
 		for (0..4) |i| {
-			var x: u31 = offset[i][0];
-			while (x < self.chunks.width) : (x += 2) {
-				var y: u31 = offset[i][1];
-				while (y < self.chunks.height) : (y += 2) {
-					var neighbors: [8]*const Chunk = undefined;
-					var j: usize = 0;
-					for (neighborOffsets[i]) |neighborOffset| {
-						const nx = x + neighborOffset[0];
-						if (nx < 0 or @as(usize, @intCast(nx)) >= self.chunks.width) continue;
-						const ny = y + neighborOffset[1];
-						if (ny < 0 or @as(usize, @intCast(ny)) >= self.chunks.height) continue;
-						neighbors[j] = self.chunks.get(@intCast(nx), @intCast(ny));
-						j += 1;
-					}
-					self.chunks.ptr(x, y).* = Chunk.init(allocator, tree, worldSeed, wx +% x*chunkSize -% 4*chunkSize, wy +% y*chunkSize -% 4*chunkSize, neighbors[0..j]);
-				}
-			}
+			generationContext.offset = offset[i];
+			generationContext.neighborOffsets = neighborOffsets[i];
+			const taskCount = ((generationContext.chunks.width - offset[i][0] + 1)/2)*((generationContext.chunks.height - offset[i][1] + 1)/2);
+			const supportTask = main.utils.ThreadPool.GenericSupportTask(*ChunkGenerationContext).init(&generationContext, taskCount);
+			supportTask.runAndSchedule();
+			supportTask.waitForCompletionAndDeinit();
 		}
-		return self;
+		return .{
+			.chunks = generationContext.chunks,
+		};
 	}
 
 	pub fn deinit(self: GenerationStructure, allocator: NeverFailingAllocator) void {
@@ -481,6 +507,23 @@ const GenerationStructure = struct {
 		}
 	}
 
+	const MapPlacementContext = struct {
+		preMap: *[preMapSize][preMapSize]BiomeSample,
+		wx: i32,
+		wy: i32,
+		worldSeed: u64,
+		biomeCandidates: []*BiomePoint,
+
+		const taskCountPerAxis = 16;
+		const taskSize = @divExact(preMapSize, taskCountPerAxis);
+
+		pub fn run(self: *const MapPlacementContext, taskIndex: usize) void {
+			const relX = @as(i32, @intCast(taskIndex%taskCountPerAxis*taskSize)) - margin;
+			const relY = @as(i32, @intCast(taskIndex/taskCountPerAxis*taskSize)) - margin;
+			fillRecursively(self.wx, self.wy, self.preMap, self.biomeCandidates, self.worldSeed, relX, relY, taskSize, taskSize);
+		}
+	};
+
 	pub fn toMap(self: GenerationStructure, map: *ClimateMapFragment, width: u31, height: u31, worldSeed: u64) void {
 		var preMap: [preMapSize][preMapSize]BiomeSample = undefined;
 		var allCandidates: main.List(*BiomePoint) = .initCapacity(main.stackAllocator, 1024);
@@ -490,7 +533,16 @@ const GenerationStructure = struct {
 				allCandidates.append(main.stackAllocator, candidate);
 			}
 		}
-		fillRecursively(map.pos.wx, map.pos.wy, &preMap, allCandidates.items, worldSeed, -margin, -margin, preMapSize, preMapSize);
+		var mapPlacementContext: MapPlacementContext = .{
+			.preMap = &preMap,
+			.wx = map.pos.wx,
+			.wy = map.pos.wy,
+			.worldSeed = worldSeed,
+			.biomeCandidates = allCandidates.items,
+		};
+		const supportTask = main.utils.ThreadPool.GenericSupportTask(*const MapPlacementContext).init(&mapPlacementContext, MapPlacementContext.taskCountPerAxis*MapPlacementContext.taskCountPerAxis);
+		supportTask.runAndSchedule();
+		supportTask.waitForCompletionAndDeinit();
 		addTransitionBiomes(&preMap);
 		for (0..ClimateMapFragment.mapEntrysSize) |_x| {
 			@memcpy(&map.map[_x], preMap[_x + margin][margin..][0..ClimateMapFragment.mapEntrysSize]);

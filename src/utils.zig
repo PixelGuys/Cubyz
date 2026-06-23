@@ -781,6 +781,56 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		clean: *const fn (*anyopaque) void,
 		taskType: TaskType = .misc,
 	};
+	/// State data must assume that other threads access it after it is finished!
+	/// State must be freed externally!
+	pub const SupportTask = struct {
+		self: *anyopaque,
+		run: *const fn (*anyopaque) void,
+	};
+	pub fn GenericSupportTask(T: type) type {
+		return struct {
+			data: T,
+
+			remainingTasks: std.atomic.Value(isize),
+			remainingIncompleteTasks: std.atomic.Value(isize),
+
+			pub fn init(data: T, taskCount: isize) *@This() {
+				const self = main.globalAllocator.create(@This());
+				self.* = .{
+					.data = data,
+					.remainingTasks = .init(taskCount),
+					.remainingIncompleteTasks = .init(taskCount),
+				};
+				return self;
+			}
+
+			fn privateDeinit(self: *@This()) void {
+				main.globalAllocator.destroy(self);
+			}
+
+			pub fn runAndSchedule(self: *@This()) void {
+				if (self.remainingTasks.load(.monotonic) > 0) {
+					main.threadPool.addSupportTask(.{
+						.run = main.meta.castFunctionSelfToAnyopaque(runAndSchedule),
+						.self = self,
+					});
+				}
+
+				while (true) {
+					const taskIndex = self.remainingTasks.fetchSub(1, .monotonic) - 1;
+					if (taskIndex < 0) return;
+					defer _ = self.remainingIncompleteTasks.fetchSub(1, .release);
+
+					self.data.run(@intCast(taskIndex));
+				}
+			}
+
+			pub fn waitForCompletionAndDeinit(self: *@This()) void {
+				while (self.remainingIncompleteTasks.load(.acquire) != 0) {}
+				main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
+			}
+		};
+	}
 	pub const Performance = struct {
 		mutex: main.utils.Mutex = .{},
 		tasks: [taskTypes]u32 = undefined,
@@ -818,6 +868,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	semaphore: main.utils.Semaphore = .{},
 	allocator: NeverFailingAllocator,
 	running: Atomic(bool) = .init(true),
+	supportTasks: ConcurrentQueue(SupportTask),
 
 	performance: Performance,
 
@@ -830,6 +881,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			.currentTasks = allocator.alloc(Atomic(?*const VTable), threadCount),
 			.loadList = .init(allocator),
 			.playerJobQueue = .init(allocator, 1024),
+			.supportTasks = .init(allocator, 1024),
 			.performance = .{},
 			.allocator = allocator,
 		};
@@ -863,6 +915,8 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		self.loadList.deinit();
 
 		self.playerJobQueue.deinit();
+
+		self.supportTasks.deinit();
 
 		self.allocator.free(self.currentTasks);
 		self.allocator.free(self.threads);
@@ -918,12 +972,20 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		return null;
 	}
 
+	pub fn getSupportTask(self: *ThreadPool) ?SupportTask {
+		return self.supportTasks.popFront();
+	}
+
 	fn run(self: *ThreadPool, id: usize) void {
 		main.initThreadLocals();
 		defer main.deinitThreadLocals();
 
 		var lastUpdate = main.timestamp();
 		outer: while (self.running.load(.monotonic)) {
+			while (self.supportTasks.popFront()) |task| {
+				task.run(task.self);
+			}
+
 			main.heap.GarbageCollection.syncPoint();
 
 			self.semaphore.timedWait(.fromMilliseconds(10)) catch continue :outer;
@@ -973,6 +1035,10 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		});
 		self.semaphore.post();
 		_ = self.trueQueueSize.fetchAdd(1, .monotonic);
+	}
+
+	pub fn addSupportTask(self: *ThreadPool, task: SupportTask) void {
+		self.supportTasks.pushBack(task);
 	}
 
 	pub fn addPlayer(self: *ThreadPool, player: *main.server.User) void {
@@ -1450,7 +1516,13 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 
 		pub fn findOrCreate(self: *@This(), compareAndHash: anytype, comptime initFunction: fn (@TypeOf(compareAndHash)) *T, comptime postGetFunction: ?fn (*T) void) *T {
 			const index: u32 = compareAndHash.hashCode() & hashMask;
-			self.buckets[index].mutex.lock();
+			while (!self.buckets[index].mutex.tryLock()) {
+				const task = main.threadPool.getSupportTask() orelse {
+					self.buckets[index].mutex.lock();
+					break;
+				};
+				task.run(task.self);
+			}
 			defer self.buckets[index].mutex.unlock();
 			const result = self.buckets[index].findOrCreate(compareAndHash, initFunction);
 			if (postGetFunction) |fun| fun(result);
