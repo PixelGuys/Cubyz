@@ -546,6 +546,20 @@ pub fn getBlockWithSide(comptime side: main.sync.Side, x: i32, y: i32, z: i32) ?
 	}
 }
 
+pub fn getOtherAirFrictionSources(givenFriction: f32) f32 {
+	const extraItemFriction = if ((Player.inventory.getItem(Player.selectedSlot)) == .baseItem) Player.inventory.getItem(Player.selectedSlot).baseItem.physicsProperties().extraAirFriction else 0;
+
+	const calculatedFriction = givenFriction + extraItemFriction;
+	return calculatedFriction;
+}
+
+pub fn getOtherMoveSpeedSources(givenSpeed: f32) f32 {
+	const extraItemSpeedMult = if (((Player.inventory.getItem(Player.selectedSlot)) == .baseItem) and (!Player.onGround)) Player.inventory.getItem(Player.selectedSlot).baseItem.physicsProperties().airSpeedmult else 1;
+
+	const calculatedSpeed = givenSpeed*extraItemSpeedMult;
+	return calculatedSpeed;
+}
+
 pub fn update(deltaTime: f64) void { // MARK: update()
 	physics.calculateVolumeProperties(.client, &Player.volumeProperties, Player.super.pos, Player.outerBoundingBox, physics.playerAirTerminalVelocity);
 	if (Player.isFlying.load(.monotonic)) {
@@ -553,8 +567,11 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	} else {
 		physics.calculateFriction(.client, &Player.volumeProperties, &Player.friction, Player.super.pos, Player.outerBoundingBox, Player.onGround);
 	}
+	Player.friction.current = getOtherAirFrictionSources(Player.friction.current);
+
 	var acc = Vec3d{0, 0, 0};
-	const speedMultiplier: f32 = if (Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
+	var speedMultiplier: f32 = if (Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
+	speedMultiplier = getOtherMoveSpeedSources(speedMultiplier);
 
 	const density = if (Player.isFlying.load(.monotonic)) 0.0 else Player.volumeProperties.density;
 	const maxDensity = if (Player.isFlying.load(.monotonic)) 0.0 else Player.volumeProperties.maxDensity;

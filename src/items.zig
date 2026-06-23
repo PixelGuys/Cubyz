@@ -248,6 +248,9 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	pub fn block(self: BaseItemIndex) ?u16 {
 		return itemList[@intFromEnum(self)].block;
 	}
+	pub fn physicsProperties(self: BaseItemIndex) PhysicsProperties {
+		return itemList[@intFromEnum(self)].physicsProperties;
+	}
 	pub fn hasTag(self: BaseItemIndex, tag: Tag) bool {
 		return itemList[@intFromEnum(self)].hasTag(tag);
 	}
@@ -262,6 +265,11 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	}
 };
 
+const PhysicsProperties = packed struct { // MARK: SlotInfo
+	extraAirFriction: f32 = 0,
+	airSpeedmult: f32 = 1,
+};
+
 pub const BaseItem = struct { // MARK: BaseItem
 	image: graphics.Image,
 	texture: ?graphics.Texture, // TODO: Properly deinit
@@ -274,6 +282,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	material: ?Material,
 	block: ?u16,
 	foodValue: f32, // TODO: Effects.
+	physicsProperties: PhysicsProperties,
 
 	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
 		self.id = allocator.dupe(u8, id);
@@ -300,6 +309,8 @@ pub const BaseItem = struct { // MARK: BaseItem
 		};
 		self.texture = null;
 		self.foodValue = zon.get(f32, "food", 0);
+		self.physicsProperties.extraAirFriction = zon.getChild("physicsProperties").get(f32, "extraAirFriction", 0);
+		self.physicsProperties.airSpeedmult = zon.getChild("physicsProperties").get(f32, "airSpeedmult", 1);
 
 		var tooltip: main.ListManaged(u8) = .init(allocator);
 		tooltip.appendSlice(self.name);

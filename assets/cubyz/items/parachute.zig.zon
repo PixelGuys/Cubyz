@@ -1,0 +1,8 @@
+.{
+	.texture = "parachute.png",
+	.stackSize = 1,
+	.physicsProperties = .{
+		.extraAirFriction = 5,
+		.airSpeedmult = 12,
+	},
+}
