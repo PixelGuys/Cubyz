@@ -112,7 +112,7 @@ pub const client = struct {
 		main.client.entity_manager.mutex.lock();
 		defer main.client.entity_manager.mutex.unlock();
 
-		setupDrawing(projMatrix, ambientLight,null);
+		setupDrawing(projMatrix, ambientLight, null);
 
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |component, id| {
 			if (id == game.Player.id) continue; // don't render local player
@@ -127,7 +127,7 @@ pub const client = struct {
 		}
 	}
 
-	fn setupDrawing(projMatrix: Mat4f, ambientLight: Vec3f,scissor: ?c.VkRect2D) void {
+	fn setupDrawing(projMatrix: Mat4f, ambientLight: Vec3f, scissor: ?c.VkRect2D) void {
 		pipeline.bind(scissor);
 
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
@@ -159,12 +159,12 @@ pub const client = struct {
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
 		c.glDrawElements(c.GL_TRIANGLES, entModel.indexCount, c.GL_UNSIGNED_INT, null);
 	}
-	pub fn drawModelInGui(projMatrix: Mat4f, ambientLight: Vec3f,fovY:f32, pModel: *main.entityModel.EntityModel,scissor: ?c.VkRect2D, rotation: f64) !void {
+	pub fn drawModelInGui(projMatrix: Mat4f, ambientLight: Vec3f, fovY: f32, pModel: *main.entityModel.EntityModel, scissor: ?c.VkRect2D, rotation: f64) !void {
 		const lightVals: [6]u8 = @splat(255);
 		const pos: Vec3d = .{0, 1.0/std.math.tan(fovY/2), 0};
 		const viewMatrix = Mat4f.identity();
 
-		setupDrawing(projMatrix, ambientLight,scissor);
+		setupDrawing(projMatrix, ambientLight, scissor);
 		drawing(pModel, lightVals, pos, viewMatrix, rotation);
 	}
 };

@@ -21,7 +21,7 @@ size: Vec2f,
 texture: Texture,
 index: main.entityModel.EntityModelIndex,
 rotation: f64,
-fovY:f32 = std.math.degreesToRadians(20),
+fovY: f32 = std.math.degreesToRadians(20),
 
 pub fn init(pos: Vec2f, size: Vec2f, index: main.entityModel.EntityModelIndex) *EntityModelFrame {
 	const self = main.globalAllocator.create(EntityModelFrame);
@@ -67,5 +67,5 @@ pub fn render(self: *EntityModelFrame, _: Vec2f) void {
 	c.glViewport(@intFromFloat(pos[0]), oldViewport[3] + @as(c_int, @intFromFloat(-pos[1] - _size[1])), @intFromFloat(_size[0]), @intFromFloat(_size[1]));
 	const proj = main.vec.Mat4f.perspective(self.fovY, _size[0]/_size[1], main.renderer.zNear, main.renderer.zFar);
 	self.rotation += main.lastDeltaTime.raw;
-	main.entity.systems.modelRenderer.client.drawModelInGui(proj, .{1, 0, 0}, self.fovY,self.index.get(), draw.getScissor(),self.rotation) catch {};
+	main.entity.systems.modelRenderer.client.drawModelInGui(proj, .{1, 0, 0}, self.fovY, self.index.get(), draw.getScissor(), self.rotation) catch {};
 }

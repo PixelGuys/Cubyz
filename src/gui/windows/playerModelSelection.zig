@@ -31,28 +31,27 @@ fn apply(modelIndex: usize) void {
 	gui.closeWindowFromRef(&window);
 }
 
-pub fn onOpen() void { 
-	const rows = VerticalList.init(.{0,0}, 400, padding);
+pub fn onOpen() void {
+	const rows = VerticalList.init(.{0, 0}, 400, padding);
 	var row = HorizontalList.init();
-
 
 	for (main.entityModel.playerEntityModels.items) |index| {
 		const verticalList = VerticalList.init(.{padding, padding}, 300, padding);
-		verticalList.add(Label.init(.{0,0}, 100, index.get().entityModelId, .center));
+		verticalList.add(Label.init(.{0, 0}, 100, index.get().entityModelId, .center));
 		verticalList.add(EntityModelFrame.init(.{0, 0}, .{100, 100}, index));
 		verticalList.add(Button.initText(.{0, 0}, 100, "Use", .{.onAction = .initWithInt(apply, index.index)}));
 		verticalList.finish(.center);
 		row.add(verticalList);
-		if(row.children.items.len >= 5){
+		if (row.children.items.len >= 5) {
 			row.finish(.{padding, 16 + padding}, .left);
 			rows.add(row);
- 			row = HorizontalList.init();
+			row = HorizontalList.init();
 		}
 	}
 	row.finish(.{padding, 16 + padding}, .left);
-	if(row.children.items.len != 0)	rows.add(row);
+	if (row.children.items.len != 0) rows.add(row);
 	rows.finish(.center);
-	
+
 	window.rootComponent = rows.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();
