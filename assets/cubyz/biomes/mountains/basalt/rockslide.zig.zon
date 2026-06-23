@@ -1,0 +1,27 @@
+.{
+	.radius = 32,
+	.chance = 0,
+	.keepOriginalTerrain = 1,
+	.structures = .{
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:basalt/base",
+			.chance = 0.1,
+			.size = 4,
+			.size_variation = 3,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.15,
+			.block = "cubyz:basalt/base",
+			.size = 4,
+			.size_variance = 4,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:mountains/basalt/base",
+			.chance = 12,
+		},
+	},
+}
