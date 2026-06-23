@@ -42,7 +42,7 @@ pub fn deinit() void {
 
 pub fn addEntity() main.entity.Entity {
 	sync.threadContext.assertCorrectContext(.server);
-	
+
 	// get a free Id
 	var entityId: main.entity.Entity = undefined;
 	var ent: *server.Entity = undefined;
@@ -63,7 +63,7 @@ pub fn addEntity() main.entity.Entity {
 
 pub fn getEntity(entityId: main.entity.Entity) *server.Entity {
 	sync.threadContext.assertCorrectContext(.server);
-	
+
 	std.debug.assert(@intFromEnum(entityId) < entities.len);
 	std.debug.assert(entities.items()[@intFromEnum(entityId)].used);
 
@@ -72,7 +72,7 @@ pub fn getEntity(entityId: main.entity.Entity) *server.Entity {
 
 pub fn removeEntity(entityId: main.entity.Entity) void {
 	sync.threadContext.assertCorrectContext(.server);
-	
+
 	if (@intFromEnum(entityId) >= entities.len) return;
 	if (!entities.items()[@intFromEnum(entityId)].used) return;
 
@@ -90,7 +90,7 @@ pub fn removeEntity(entityId: main.entity.Entity) void {
 
 pub fn getEntitiesNearbyInfo(allocator: main.heap.NeverFailingAllocator) main.ZonElement {
 	sync.threadContext.assertCorrectContext(.server);
-	
+
 	const zonArray = main.ZonElement.initArray(allocator);
 	for (entities.items()) |*entity| {
 		if (!entity.used) continue;
@@ -101,14 +101,14 @@ pub fn getEntitiesNearbyInfo(allocator: main.heap.NeverFailingAllocator) main.Zo
 }
 pub fn getEntityNearbyInfo(entityId: main.entity.Entity, allocator: main.heap.NeverFailingAllocator) ?main.ZonElement {
 	sync.threadContext.assertCorrectContext(.server);
-	
+
 	const entity = getEntity(entityId);
 	return entity.save(allocator, .playerNearby);
 }
 
 pub fn getEntityNetworkData(allocator: main.heap.NeverFailingAllocator) main.ListManaged(main.entity.EntityNetworkData) {
 	sync.threadContext.assertCorrectContext(.server);
-	
+
 	var entityData: main.ListManaged(main.entity.EntityNetworkData) = .init(allocator);
 
 	for (entities.items()) |*ent| {
