@@ -11,7 +11,6 @@
 	.mountains = 40,
 	.soilCreep = 1.5,
 	.chance = 0.2,
-	.music = "cubyz:sinanimea/sunrise",
 	.validPlayerSpawn = true,
 	.structures = .{
 		.{
