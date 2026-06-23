@@ -19,7 +19,7 @@ const ScrollBar = @import("components/ScrollBar.zig");
 const ContinuousSlider = @import("components/ContinuousSlider.zig");
 const DiscreteSlider = @import("components/DiscreteSlider.zig");
 const TextInput = @import("components/TextInput.zig");
-const Tooltip = @import("Tooltip.zig");
+const tooltip = @import("tooltip.zig");
 const gui_component = @import("gui_component.zig");
 pub const GuiComponent = gui_component.GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
@@ -148,7 +148,7 @@ pub fn init() void { // MARK: init()
 	ContinuousSlider.globalInit();
 	DiscreteSlider.globalInit();
 	TextInput.globalInit();
-	Tooltip.globalInit();
+	tooltip.globalInit();
 	load();
 	gamepad_cursor.init();
 }
@@ -169,7 +169,7 @@ pub fn deinit() void {
 	ContinuousSlider.globalDeinit();
 	DiscreteSlider.globalDeinit();
 	TextInput.globalDeinit();
-	Tooltip.globalDeinit();
+	tooltip.globalDeinit();
 	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
 		const WindowStruct = @field(windowlist, decl.name);
 		if (@hasDecl(WindowStruct, "deinit")) {
@@ -787,8 +787,8 @@ pub const inventory = struct { // MARK: inventory
 		// Draw tooltip:
 		const hovered = hoveredItemSlot orelse return;
 		if (carried.getAmount(0) == 0) {
-			if (hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltip| {
-				var label = GuiComponent.Label.init(Vec2f{0, 0}, 300, tooltip, .left);
+			if (hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltipContent| {
+				var label = GuiComponent.Label.init(Vec2f{0, 0}, 300, tooltipContent, .left);
 				var size = label.text.calculateLineBreaks(GuiComponent.Label.fontSize, 300);
 				size[0] = 0;
 				for (label.text.lineBreaks.items) |lineBreak| {
@@ -799,17 +799,17 @@ pub const inventory = struct { // MARK: inventory
 				const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(scale));
 				var pos = mousePos;
 				var alignment: graphics.TextBuffer.Alignment = .right;
-				if (pos[0] + size[0] + Tooltip.tooltipSliceCenter[0]*2 + Tooltip.tooltipSliceCenter[1] >= windowSize[0]) {
+				if (pos[0] + size[0] + tooltip.tooltipSliceCenter[0]*2 + tooltip.tooltipSliceCenter[1] >= windowSize[0]) {
 					alignment = .left;
 				}
-				pos[1] = @min(pos[1] - GuiComponent.Label.fontSize, windowSize[1] - size[1] - Tooltip.tooltipSliceCenter[2] - Tooltip.tooltipSliceCenter[3]);
+				pos[1] = @min(pos[1] - GuiComponent.Label.fontSize, windowSize[1] - size[1] - tooltip.tooltipSliceCenter[2] - tooltip.tooltipSliceCenter[3]);
 
-				var list = GuiComponent.VerticalList.init(Vec2f{0, 0}, 360, Tooltip.tooltipSliceCenter[2]);
+				var list = GuiComponent.VerticalList.init(Vec2f{0, 0}, 360, tooltip.tooltipSliceCenter[2]);
 				list.add(label);
 				list.finish(.left);
 				var component: GuiComponent = .{.verticalList = list};
 				defer component.deinit();
-				Tooltip.render(&component, pos, alignment);
+				tooltip.render(&component, pos, alignment);
 			}
 		}
 	}

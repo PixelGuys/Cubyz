@@ -7,7 +7,6 @@ const Texture = graphics.Texture;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 const Vec4f = vec.Vec4f;
-
 const gui = @import("gui.zig");
 const GuiComponent = gui.GuiComponent;
 
