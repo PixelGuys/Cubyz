@@ -164,7 +164,7 @@ pub const Blueprint = struct {
 		}
 	}
 
-	pub const PasteFlags = struct { 
+	pub const PasteFlags = struct {
 		preserveVoid: bool = false,
 		replaceUndegradable: bool = true,
 	};
@@ -186,15 +186,14 @@ pub const Blueprint = struct {
 					const block = self.blocks.get(x, y, z);
 					if (block.typ == voidType and !flags.preserveVoid) continue;
 
-					while(true){
-						const oldBlock = main.server.world.?.getBlock(@intCast(worldX),@intCast(worldY),@intCast(worldZ));
-						if(oldBlock)|_oldBlock|{
+					while (true) {
+						const oldBlock = main.server.world.?.getBlock(@intCast(worldX), @intCast(worldY), @intCast(worldZ));
+						if (oldBlock) |_oldBlock| {
 							if (!_oldBlock.degradable() and !flags.replaceUndegradable) break;
 						}
-						if(main.server.world.?.cmpxchgBlock(worldX, worldY, worldZ, oldBlock, block, true) == null)
+						if (main.server.world.?.cmpxchgBlock(worldX, worldY, worldZ, oldBlock, block, true) == null)
 							break;
 					}
-
 				}
 			}
 		}
