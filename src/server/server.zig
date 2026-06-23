@@ -102,7 +102,6 @@ pub const User = struct { // MARK: User
 	const simulationSize = 2*maxSimulationDistance;
 	const simulationMask = simulationSize - 1;
 	conn: *Connection = undefined,
-	innerPlayer: Entity = .{},
 	timeDifference: utils.TimeDifference = .{},
 	interpolation: utils.GenericInterpolation(3) = undefined,
 	lastTime: i16 = undefined,
@@ -555,10 +554,10 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
 
+	main.sync.server.init();
 	entity_manager.init();
 	main.entity.server.init();
 	main.items.Inventory.server.init();
-	main.sync.server.init();
 
 	world = ServerWorld.init(name) catch |err| {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
@@ -602,10 +601,10 @@ fn deinit() void {
 	}
 	world = null;
 
-	main.sync.server.deinit();
+	entity_manager.deinit();
 	main.items.Inventory.server.deinit();
 	main.entity.server.deinit();
-	entity_manager.deinit();
+	main.sync.server.deinit();
 
 	command.deinit();
 	main.heap.allocators.destroyWorldArena();
@@ -661,19 +660,9 @@ fn update() void { // MARK: update()
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
 	defer main.stackAllocator.free(itemData);
 
-	var entityData: main.ListManaged(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+	var entityData = entity_manager.getEntityNetworkData(main.stackAllocator);
 	defer entityData.deinit();
 
-	for (entity_manager.getAll()) |*ent| {
-		if (!ent.used) continue;
-		const id = ent.id;
-		entityData.append(.{
-			.id = id,
-			.pos = ent.pos,
-			.vel = ent.vel,
-			.rot = ent.rot,
-		});
-	}
 	for (userList) |user| {
 		main.network.protocols.entityPosition.send(user.conn, user.player().pos, entityData.items, itemData);
 	}
