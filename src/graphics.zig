@@ -480,30 +480,22 @@ pub const draw = struct { // MARK: draw
 		const topSlice = _sliceCenter[2]*_sliceScale;
 		const bottomSlice = _sliceCenter[3]*_sliceScale;
 
-		// Construct 9-Slice Rectangle Cordinates
-		const _x1 = _pos[0] + leftSlice;
-		const _x2 = _pos[0] + _dim[0] - rightSlice;
-		const _x3 = _pos[0] + _dim[0];
-		const _y1 = _pos[1] + topSlice;
-		const _y2 = _pos[1] + _dim[1] - bottomSlice;
-		const _y3 = _pos[1] + _dim[1];
-
-		// Construct UV Boundaries
+		// Construct UV
 		const _u1 = _sliceCenter[0]/_textureSize[0];
 		const _u2 = (_textureSize[0] - _sliceCenter[1])/_textureSize[0];
 		const _v1 = _sliceCenter[2]/_textureSize[1];
 		const _v2 = (_textureSize[1] - _sliceCenter[3])/_textureSize[1];
 
 		// Draw all Slices
-		drawSlice(.{_pos[0], _pos[1]}, .{_x1, _y1}, .{0, 0}, .{_u1, _v1});
-		drawSlice(.{_x1, _pos[1]}, .{_x2, _y1}, .{_u1, 0}, .{_u2, _v1});
-		drawSlice(.{_x2, _pos[1]}, .{_x3, _y1}, .{_u2, 0}, .{1, _v1});
-		drawSlice(.{_pos[0], _y1}, .{_x1, _y2}, .{0, _v1}, .{_u1, _v2});
-		drawSlice(.{_x1, _y1}, .{_x2, _y2}, .{_u1, _v1}, .{_u2, _v2});
-		drawSlice(.{_x2, _y1}, .{_x3, _y2}, .{_u2, _v1}, .{1, _v2});
-		drawSlice(.{_pos[0], _y2}, .{_x1, _y3}, .{0, _v2}, .{_u1, 1});
-		drawSlice(.{_x1, _y2}, .{_x2, _y3}, .{_u1, _v2}, .{_u2, 1});
-		drawSlice(.{_x2, _y2}, .{_x3, _y3}, .{_u2, _v2}, .{1, 1});
+		drawSlice(.{_pos[0], _pos[1]}, .{_pos[0] + leftSlice, _pos[1] + topSlice}, .{0, 0}, .{_u1, _v1});
+		drawSlice(.{_pos[0] + leftSlice, _pos[1]}, .{_pos[0] + _dim[0] - rightSlice, _pos[1] + topSlice}, .{_u1, 0}, .{_u2, _v1});
+		drawSlice(.{_pos[0] + _dim[0] - rightSlice, _pos[1]}, .{_pos[0] + _dim[0], _pos[1] + topSlice}, .{_u2, 0}, .{1, _v1});
+		drawSlice(.{_pos[0], _pos[1] + topSlice}, .{_pos[0] + leftSlice, _pos[1] + _dim[1] - bottomSlice}, .{0, _v1}, .{_u1, _v2});
+		drawSlice(.{_pos[0] + leftSlice, _pos[1] + topSlice}, .{_pos[0] + _dim[0] - rightSlice, _pos[1] + _dim[1] - bottomSlice}, .{_u1, _v1}, .{_u2, _v2});
+		drawSlice(.{_pos[0] + _dim[0] - rightSlice, _pos[1] + topSlice}, .{_pos[0] + _dim[0], _pos[1] + _dim[1] - bottomSlice}, .{_u2, _v1}, .{1, _v2});
+		drawSlice(.{_pos[0], _pos[1] + _dim[1] - bottomSlice}, .{_pos[0] + leftSlice, _pos[1] + _dim[1]}, .{0, _v2}, .{_u1, 1});
+		drawSlice(.{_pos[0] + leftSlice, _pos[1] + _dim[1] - bottomSlice}, .{_pos[0] + _dim[0] - rightSlice, _pos[1] + _dim[1]}, .{_u1, _v2}, .{_u2, 1});
+		drawSlice(.{_pos[0] + _dim[0] - rightSlice, _pos[1] + _dim[1] - bottomSlice}, .{_pos[0] + _dim[0], _pos[1] + _dim[1]}, .{_u2, _v2}, .{1, 1});
 	}
 
 	pub fn customShadedImage(uniforms: anytype, _pos: Vec2f, _dim: Vec2f) void {
