@@ -498,12 +498,13 @@ pub fn clientMain() void { // MARK: clientMain()
 			gui.updateAndRenderGui();
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 		}
-		if (shouldRestart.load(.monotonic)) {
+		if (shouldRestart.load(.acquire)) {
 			shouldRestart.store(false, .monotonic);
 			if (game.world) |world| {
 				world.deinit(true);
 				std.debug.assert(game.world == &game.testWorld);
 
+				network.protocols.Reload.informServerOfRestart(world.conn);
 				world.conn.handShakeState.store(.start, .monotonic);
 				game.testWorld.init(&.{}, game.testWorld.manager, true) catch |err| {
 					std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
