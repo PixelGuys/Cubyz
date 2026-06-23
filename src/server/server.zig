@@ -615,7 +615,6 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 		main.network.protocols.Reload.informClientOfRestart(conn);
 		conn.handShakeState.store(.signatureResponse, .monotonic);
 	}
-	
 
 	if (singlePlayerPort) |port| blk: {
 		const ipString = std.fmt.allocPrint(main.stackAllocator.allocator, "127.0.0.1:{}", .{port}) catch unreachable;
@@ -638,7 +637,7 @@ fn deinit() void {
 
 	for (connectionManager.connections.items) |conn| {
 		conn.restartCounter += 1;
-		
+
 		if (conn.user) |user| {
 			user.wakedown();
 		}

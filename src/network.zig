@@ -1465,8 +1465,8 @@ pub const Connection = struct { // MARK: Connection
 	secureChannel: SecureChannel,
 	slowChannel: Channel,
 
-	restartChannelCounter:[3]u32 = .{0,0,0},
-	restartCounter:u32 = 0,
+	restartChannelCounter: [3]u32 = .{0, 0, 0},
+	restartCounter: u32 = 0,
 
 	hasRttEstimate: bool = false,
 	rttEstimate: f32 = 1000*ms,
