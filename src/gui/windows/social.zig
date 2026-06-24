@@ -58,7 +58,7 @@ pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 400, 16);
 	list.add(CheckBox.init(.{0, 0}, 316, "Streamer Mode (hides sensitive data)", main.settings.streamerMode, &toggleStreamerMode));
 	list.add(CheckBox.init(.{0, 0}, 316, "Display players index after their name", main.settings.showPlayerIndexWithName, &toggleNamesWithIndex));
-	list.add(Button.initText(.{0, 0}, 150, "Copy public key", .{.onAction = .init(copy)}));
+	list.add(Button.initText(.{0, 0}, 150, "Copy public key", .{.onAction = .init(copy), .disabled = !main.network.authentication.KeyCollection.initialized}));
 	inGameDisabled = main.game.world != null;
 	list.add(Button.initText(.{0, 0}, 150, "Change Name", .{.onAction = gui.openWindowCallback("change_name"), .disabled = inGameDisabled}));
 	logoutButton = Button.initText(.{0, 0}, 150, "Logout", .{.onAction = .init(logout), .disabled = inGameDisabled or !main.network.authentication.KeyCollection.initialized});

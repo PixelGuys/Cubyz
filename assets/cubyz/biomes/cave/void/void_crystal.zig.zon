@@ -7,7 +7,7 @@
 	.caveRadiusFactor = -1,
 	.crystals = 32,
 
-	.music = "cubyz:sebastiansoundz/the_deepest_ascent",
+	.music = "cubyz:totaldemented/root",
 	.stoneBlock = "cubyz:slate/base",
 	.structures = .{
 		.{
