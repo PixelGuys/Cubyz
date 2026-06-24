@@ -238,6 +238,7 @@ pub fn deinit() void {
 	main.globalAllocator.free(activeMusicId);
 	activeMusicId.len = 0;
 
+	soundIdMap.deinit(main.globalAllocator.allocator);
 	sounds.deinit(main.globalAllocator);
 	activeSounds.deinit(main.globalAllocator);
 }
@@ -320,7 +321,7 @@ pub fn registerSound(_: []const u8, id: []const u8, zon: ZonElement) void {
 	const sound = AudioData.init(id, "sounds/audio");
 	sound.volume = zon.get(f32, "volume", 1.0);
 
-	soundIdMap.put(main.worldArena.allocator, id, @intCast(sounds.items.len)) catch unreachable;
+	soundIdMap.put(main.globalAllocator.allocator, id, @intCast(sounds.items.len)) catch unreachable;
 	sounds.append(main.globalAllocator, sound);
 
 	std.log.debug("Registered sound: {s}", .{id});
