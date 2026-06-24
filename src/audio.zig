@@ -395,7 +395,7 @@ fn mixMusic(buffer: []f32) void {
 fn mixSound(buffer: []f32) void {
 	mutex.lock();
 	defer mutex.unlock();
-	
+
 	if (activeSounds.items.len == 0) return;
 
 	const playerPos: Vec3f = @floatCast(main.game.Player.getPosBlocking());
@@ -424,7 +424,7 @@ fn mixSound(buffer: []f32) void {
 			leftVol = @cos(angle);
 			rightVol = @sin(angle);
 
-			var volume: f32 = 1 - distance / sound.maxDistance;
+			var volume: f32 = 1 - distance/sound.maxDistance;
 
 			volume = if (volume < 0) 0 else volume;
 			leftVol *= volume;
