@@ -113,3 +113,16 @@ pub fn mainButtonReleased(self: *HorizontalList, mousePosition: Vec2f) void {
 		child.mainButtonReleased(mousePosition - self.pos);
 	}
 }
+
+pub fn getTooltip(self: *HorizontalList, mousePosition: Vec2f) ?[]const u8 {
+	// reverse order of rendering, the last-rendered element is the first one that we should try to interact with
+	var i: usize = self.children.items.len;
+	while (i != 0) {
+		i -= 1;
+		const child = &self.children.items[i];
+		if (GuiComponent.contains(child.pos() + self.pos, child.size(), mousePosition)) {
+			if (child.getTooltip(mousePosition - self.pos)) |tooltip| return tooltip;
+		}
+	}
+	return null;
+}
