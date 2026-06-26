@@ -24,8 +24,13 @@ fn getIndexInCheckArray(relativePosition: Vec2i, gridsize: comptime_int) usize {
 
 pub fn satisfied(self: *const Arbritrary, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
 	var count: usize = 0;
+<<<<<<< Updated upstream
 	const arraySizeSideLength = @sqrt(self.checkArray.len);
 	if (arraySizeSideLength%1 != 0) {
+=======
+	const arraySizeLength = @sqrt(self.checkArray.len);
+	if (arraySizeLength%1 != 0) {
+>>>>>>> Stashed changes
 		std.log.err("array size is not a perfect square: not counting arbitrary restriction: {}", .{self.tag});
 		return false;
 	}
@@ -35,6 +40,7 @@ pub fn satisfied(self: *const Arbritrary, proceduralItem: *const ProceduralItem,
 		slotInfos[i] = (zonDisabled.as(usize) orelse 0) != 0;
 	}
 	
+<<<<<<< Updated upstream
 	var dx = -arraySizeSideLength;
 	var dy = -arraySizeSideLength;
 
@@ -42,6 +48,12 @@ pub fn satisfied(self: *const Arbritrary, proceduralItem: *const ProceduralItem,
 		while (dy < arraySizeSideLength) : (dy += 1) {
 			const relativePosition: Vec2i = .{x + dx, y + dy};
 			if (!slotInfos[getIndexInCheckArray(relativePosition, arraySizeSideLength)]) continue;
+=======
+	for ([_]i32{-1, 0, 1}) |dx| {
+		for ([_]i32{-1, 0, 1}) |dy| {
+			const relativePosition: Vec2i = .{dx, dy};
+			if (!slotInfos[getIndexInCheckArray(relativePosition, arraySizeLength)]) continue;
+>>>>>>> Stashed changes
 			if ((proceduralItem.getItemAt(x + dx, y + dy) orelse continue).hasTag(self.tag)) count += 1;
 		}
 	}
