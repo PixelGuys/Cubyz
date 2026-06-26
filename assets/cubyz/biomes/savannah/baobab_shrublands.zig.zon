@@ -19,7 +19,7 @@
 	.rivers = true,
 	.chance = 0.5,
 
-	.music = "cubyz:totaldemented/cubyz",
+	.music = "cubyz:mischol/desert_firefly",
 
 	.stoneBlock = "cubyz:limestone/smooth",
 

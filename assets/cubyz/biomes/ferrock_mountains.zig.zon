@@ -9,7 +9,7 @@
 		.cactus,
 	},
 
-	.music = "cubyz:totaldemented/hypoxia",
+	.music = "cubyz:mischol/desert_firefly",
 
 	.minHeightLimit = 7,
 	.minHeight = 80,

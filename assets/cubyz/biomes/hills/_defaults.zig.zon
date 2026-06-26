@@ -9,7 +9,6 @@
 	.roughness = 1,
 	.hills = 20,
 	.chance = 0.6,
-	.music = "cubyz:sinanimea/sunrise",
 	.validPlayerSpawn = true,
 	.structures = .{
 		.{
