@@ -281,24 +281,25 @@ pub const World = struct { // MARK: World
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
 
-	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager, _restart: bool) !void {
+	pub fn initNew(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
+		const conn = try Connection.init(manager, ip, null);
+		try self.init(conn, manager);
+	}
+	pub fn init(self: *World, conn: *Connection, manager: *ConnectionManager) !void {
 		main.heap.allocators.createWorldArena();
 		errdefer main.heap.allocators.destroyWorldArena();
 
-		if (!_restart) {
-			self.* = .{
-				.conn = try Connection.init(manager, ip, null),
-				.manager = manager,
-				.name = "client",
-				.milliTime = main.timestamp().toMilliseconds(),
-			};
-		}
+		self.manager = manager;
+		self.conn = conn;
+		self.name = "client";
+		self.milliTime = main.timestamp().toMilliseconds();
+
 		errdefer self.conn.deinit();
 
 		self.itemDrops.init(main.globalAllocator);
 		errdefer self.itemDrops.deinit();
 
-		try network.protocols.handShake.clientSide(self.conn, settings.playerName, _restart);
+		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
 
 		main.Window.setMouseGrabbed(true);
 
@@ -771,7 +772,7 @@ pub fn restart() void {
 
 		network.protocols.Reload.informServerOfRestart(_world.conn);
 		_world.conn.handShakeState.store(.reload, .monotonic);
-		testWorld.init(&.{}, testWorld.manager, true) catch |err| {
+		testWorld.init(testWorld.conn, testWorld.manager) catch |err| {
 			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
 			main.gui.windowlist.notification.raiseNotification("Encountered error while opening world: {s}", .{@errorName(err)});
 			world = null;

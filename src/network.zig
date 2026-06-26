@@ -1588,12 +1588,12 @@ pub const Connection = struct { // MARK: Connection
 			if (conn.restartChannelCounter[@intFromEnum(channelId)] < restartCounter) {
 				conn.restartChannelCounter[@intFromEnum(channelId)] = restartCounter;
 			}
-			return true;
+			return false;
 		}
 
 		// Throw away everything from before the restart
-		if (conn.restartChannelCounter[@intFromEnum(channelId)] != conn.restartCounter) return true;
-		return false;
+		if (conn.restartChannelCounter[@intFromEnum(channelId)] != conn.restartCounter) return false;
+		return true;
 	}
 
 	pub fn send(self: *Connection, comptime channel: ChannelId, protocolIndex: u8, data: []const u8) void {

@@ -71,7 +71,7 @@ pub fn openWorld(name: []const u8) void {
 	const ipPort = std.fmt.allocPrint(main.stackAllocator.allocator, "127.0.0.1:{}", .{main.server.connectionManager.localPort}) catch unreachable;
 	defer main.stackAllocator.free(ipPort);
 	main.game.world = &main.game.testWorld;
-	main.game.testWorld.init(ipPort, clientConnection, false) catch |err| {
+	main.game.testWorld.initNew(ipPort,clientConnection) catch |err| {
 		std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
 	};
 	for (gui.openWindows.items) |openWindow| {

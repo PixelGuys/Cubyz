@@ -210,12 +210,12 @@ pub const handShake = struct { // MARK: handShake
 		conn.send(.secure, id, outData);
 	}
 
-	pub fn clientSide(conn: *Connection, name: []const u8, restart: bool) !void {
+	pub fn clientSide(conn: *Connection, name: []const u8) !void {
 		const zonObject = ZonElement.initObject(main.stackAllocator);
 		defer zonObject.deinit(main.stackAllocator);
 		var prefix: [1]u8 = undefined;
 
-		if (!restart) {
+		if (conn.handShakeState.load(.monotonic) == .start) {
 			zonObject.putOwnedString("version", settings.version.version);
 			zonObject.putOwnedString("name", name);
 			if (main.network.authentication.KeyCollection.initialized) {
@@ -224,7 +224,9 @@ pub const handShake = struct { // MARK: handShake
 			prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
 			try conn.secureChannel.startTlsHandshake();
 			conn.secureChannel.finishedCollectingClientVerificationData = true;
-		} else {
+		}
+		if(conn.handShakeState.load(.monotonic) == .reload) 
+		{
 			prefix = [1]u8{@intFromEnum(Connection.HandShakeState.reload)};
 		}
 		const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
