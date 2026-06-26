@@ -21,8 +21,6 @@ const BlockUpdate = renderer.mesh_storage.BlockUpdate;
 const network = main.network;
 const Connection = network.Connection;
 
-const ChannelId = main.network.Connection.ChannelId;
-
 var clientReceiveList: [256]?*const fn (*Connection, *utils.BinaryReader) anyerror!void = @splat(null);
 var serverReceiveList: [256]?*const fn (*Connection, *utils.BinaryReader) anyerror!void = @splat(null);
 pub var bytesReceived: [256]Atomic(usize) = @splat(.init(0));
@@ -46,24 +44,7 @@ pub fn init() void { // MARK: init()
 		}
 	}
 }
-
-pub fn onReceive(conn: *Connection, protocolIndex: u8, data: []const u8, channelId: ChannelId) !void { // MARK: onReceive()
-	// Reload protocol bypasses everything else
-	if (protocolIndex == Reload.id) {
-		var reader = utils.BinaryReader.init(data);
-		if (conn.isServerSide()) {
-			try Reload.serverReceiveWithChannelId(conn, &reader, channelId);
-		} else {
-			try Reload.clientReceiveWithChannelId(conn, &reader, channelId);
-		}
-		return;
-	}
-	std.debug.assert(@intFromEnum(channelId) < 3);
-	std.debug.assert(channelId == ChannelId.lossy or channelId == ChannelId.secure or channelId == ChannelId.slow);
-
-	// Throw away everything from before the restart
-	if (conn.restartChannelCounter[@intFromEnum(channelId)] != conn.restartCounter) return;
-
+pub fn onReceive(conn: *Connection, protocolIndex: u8, data: []const u8) !void { // MARK: onReceive()
 	if (conn.handShakeState.raw != .complete and protocolIndex != handShake.id) return error.HandshakeIncomplete;
 	const protocolReceive = blk: {
 		if (conn.isServerSide()) break :blk serverReceiveList[protocolIndex] orelse return error.Invalid;
@@ -1089,31 +1070,6 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 pub const Reload = struct { // MARK: Reload
 	pub const id: u8 = 16;
 
-	fn clientReceiveWithChannelId(conn: *Connection, reader: *utils.BinaryReader, channelId: main.network.Connection.ChannelId) !void {
-		const restartCounter = try reader.readInt(u32);
-
-		std.debug.assert(@intFromEnum(channelId) < 3);
-		std.debug.assert(channelId == ChannelId.lossy or channelId == ChannelId.secure or channelId == ChannelId.slow);
-
-		if (conn.restartCounter < restartCounter) {
-			conn.restartCounter = restartCounter;
-			main.shouldRestart.store(true, .release);
-		}
-
-		if (conn.restartChannelCounter[@intFromEnum(channelId)] < restartCounter) {
-			conn.restartChannelCounter[@intFromEnum(channelId)] = restartCounter;
-		}
-	}
-	fn serverReceiveWithChannelId(conn: *Connection, reader: *utils.BinaryReader, channelId: main.network.Connection.ChannelId) !void {
-		const restartCounter = try reader.readInt(u32);
-
-		std.debug.assert(@intFromEnum(channelId) < 3);
-		std.debug.assert(channelId == ChannelId.lossy or channelId == ChannelId.secure or channelId == ChannelId.slow);
-
-		if (conn.restartChannelCounter[@intFromEnum(channelId)] < restartCounter) {
-			conn.restartChannelCounter[@intFromEnum(channelId)] = restartCounter;
-		}
-	}
 	pub fn informClientOfRestart(conn: *Connection) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();

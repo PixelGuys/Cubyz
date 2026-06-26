@@ -528,12 +528,11 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 		for (result.connections.items) |conn| {
 			conn.@"continue"();
-		}
-
-		for (result.connections.items) |conn| {
 			if (conn.user) |user| {
 				user.@"continue"();
 			}
+			main.network.protocols.Reload.informClientOfRestart(conn);
+			conn.handShakeState.store(.signatureResponse, .monotonic);
 		}
 
 		result.packetSendRequests = .initContext({});
@@ -956,7 +955,9 @@ pub const Connection = struct { // MARK: Connection
 
 				const protocolIndex = self.header.?.protocolIndex;
 				self.header = null;
-				try protocols.onReceive(conn, protocolIndex, self.protocolBuffer.items, self.channelId);
+				if (try conn.checkRestartCounter(protocolIndex, self.protocolBuffer.items, self.channelId)) {
+					try protocols.onReceive(conn, protocolIndex, self.protocolBuffer.items);
+				}
 				self.protocolBuffer.clearRetainingCapacity();
 				if (self.protocolBuffer.items.len > 1 << 24) {
 					self.protocolBuffer.shrinkAndFree(main.globalAllocator, 1 << 24);
@@ -1568,6 +1569,33 @@ pub const Connection = struct { // MARK: Connection
 			}
 		}
 	}
+	pub fn checkRestartCounter(conn: *Connection, protocolIndex: u8, data: []const u8, channelId: ChannelId) !bool { // MARK: onReceive()
+		// Reload protocol bypasses everything else
+		std.debug.assert(@intFromEnum(channelId) < 3);
+		std.debug.assert(channelId == ChannelId.lossy or channelId == ChannelId.secure or channelId == ChannelId.slow);
+
+		if (protocolIndex == protocols.Reload.id) {
+			var reader = utils.BinaryReader.init(data);
+
+			const restartCounter = try reader.readInt(u32);
+
+			if (!conn.isServerSide()) {
+				if (conn.restartCounter < restartCounter) {
+					conn.restartCounter = restartCounter;
+					main.shouldRestart.store(true, .release);
+				}
+			}
+			if (conn.restartChannelCounter[@intFromEnum(channelId)] < restartCounter) {
+				conn.restartChannelCounter[@intFromEnum(channelId)] = restartCounter;
+			}
+			return true;
+		}
+
+		// Throw away everything from before the restart
+		if (conn.restartChannelCounter[@intFromEnum(channelId)] != conn.restartCounter) return true;
+		return false;
+	}
+
 	pub fn send(self: *Connection, comptime channel: ChannelId, protocolIndex: u8, data: []const u8) void {
 		std.debug.assert(self.handShakeState.raw == .complete or protocolIndex == protocols.handShake.id);
 		std.debug.assert(self.handShakeState.raw != .complete or protocolIndex != protocols.handShake.id);
