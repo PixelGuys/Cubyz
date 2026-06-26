@@ -770,7 +770,7 @@ pub fn restart() void {
 		std.debug.assert(_world == &testWorld);
 
 		network.protocols.Reload.informServerOfRestart(_world.conn);
-		_world.conn.handShakeState.store(.start, .monotonic);
+		_world.conn.handShakeState.store(.reload, .monotonic);
 		testWorld.init(&.{}, testWorld.manager, true) catch |err| {
 			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
 			main.gui.windowlist.notification.raiseNotification("Encountered error while opening world: {s}", .{@errorName(err)});
