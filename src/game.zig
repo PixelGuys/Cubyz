@@ -309,7 +309,6 @@ pub const World = struct { // MARK: World
 		main.entityModel.loadModelsAndTexture();
 	}
 
-	
 	pub fn deinit(self: *World) void {
 		self.conn.deinit();
 		self.connected = false;

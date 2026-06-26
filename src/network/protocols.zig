@@ -225,8 +225,7 @@ pub const handShake = struct { // MARK: handShake
 			try conn.secureChannel.startTlsHandshake();
 			conn.secureChannel.finishedCollectingClientVerificationData = true;
 		}
-		if(conn.handShakeState.load(.monotonic) == .reload) 
-		{
+		if (conn.handShakeState.load(.monotonic) == .reload) {
 			prefix = [1]u8{@intFromEnum(Connection.HandShakeState.reload)};
 		}
 		const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
