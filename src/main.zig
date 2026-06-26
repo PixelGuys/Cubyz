@@ -500,25 +500,7 @@ pub fn clientMain() void { // MARK: clientMain()
 		}
 		if (shouldRestart.load(.acquire)) {
 			shouldRestart.store(false, .monotonic);
-			if (game.world) |world| {
-				world.deinit(true);
-				std.debug.assert(game.world == &game.testWorld);
-
-				network.protocols.Reload.informServerOfRestart(world.conn);
-				world.conn.handShakeState.store(.start, .monotonic);
-				game.testWorld.init(&.{}, game.testWorld.manager, true) catch |err| {
-					std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
-					gui.windowlist.notification.raiseNotification("Encountered error while opening world: {s}", .{@errorName(err)});
-					game.world = null;
-					continue;
-				};
-				settings.save();
-
-				for (gui.openWindows.items) |openWindow| {
-					gui.closeWindowFromRef(openWindow);
-				}
-				gui.openHud();
-			}
+			game.restart();
 		}
 		if (shouldExitToMenu.load(.monotonic)) {
 			shouldExitToMenu.store(false, .monotonic);

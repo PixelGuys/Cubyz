@@ -281,11 +281,11 @@ pub const World = struct { // MARK: World
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
 
-	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager, restart: bool) !void {
+	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager, _restart: bool) !void {
 		main.heap.allocators.createWorldArena();
 		errdefer main.heap.allocators.destroyWorldArena();
 
-		if (!restart) {
+		if (!_restart) {
 			self.* = .{
 				.conn = try Connection.init(manager, ip, null),
 				.manager = manager,
@@ -298,7 +298,7 @@ pub const World = struct { // MARK: World
 		self.itemDrops.init(main.globalAllocator);
 		errdefer self.itemDrops.deinit();
 
-		try network.protocols.handShake.clientSide(self.conn, settings.playerName, restart);
+		try network.protocols.handShake.clientSide(self.conn, settings.playerName, _restart);
 
 		main.Window.setMouseGrabbed(true);
 
@@ -308,8 +308,8 @@ pub const World = struct { // MARK: World
 		main.entityModel.loadModelsAndTexture();
 	}
 
-	pub fn deinit(self: *World, restart: bool) void {
-		if (!restart) {
+	pub fn deinit(self: *World, _restart: bool) void {
+		if (!_restart) {
 			self.conn.deinit();
 			self.connected = false;
 		}
@@ -332,7 +332,7 @@ pub const World = struct { // MARK: World
 		self.entityComponentPalette.deinit();
 		self.entityModelPalette.deinit();
 
-		if (!restart) {
+		if (!_restart) {
 			self.manager.deinit();
 		}
 		main.server.stop(.stop);
@@ -763,4 +763,22 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	world.?.update(deltaTime);
 	particles.ParticleSystem.update(@floatCast(deltaTime));
+}
+pub fn restart() void {
+	if (world) |_world| {
+		_world.deinit(true);
+		std.debug.assert(_world == &testWorld);
+
+		network.protocols.Reload.informServerOfRestart(_world.conn);
+		_world.conn.handShakeState.store(.start, .monotonic);
+		testWorld.init(&.{}, testWorld.manager, true) catch |err| {
+			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
+			main.gui.windowlist.notification.raiseNotification("Encountered error while opening world: {s}", .{@errorName(err)});
+			world = null;
+
+			main.gui.openWindow("main");
+			return;
+		};
+		main.gui.openHud();
+	}
 }

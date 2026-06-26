@@ -527,12 +527,12 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		if (result.running.load(.monotonic)) return;
 
 		for (result.connections.items) |conn| {
-			conn.dehibernate();
+			conn.@"continue"();
 		}
 
 		for (result.connections.items) |conn| {
 			if (conn.user) |user| {
-				user.wakeup();
+				user.@"continue"();
 			}
 		}
 
@@ -545,7 +545,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		if (self.running.load(.monotonic)) self.pause();
 
 		for (self.connections.items) |conn| {
-			conn.dehibernate();
+			conn.@"continue"();
 		}
 
 		for (self.connections.items) |conn| {
@@ -571,7 +571,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		self.packetSendRequests.deinit(main.globalAllocator.allocator);
 
 		for (self.connections.items) |conn| {
-			conn.hibernate();
+			conn.pause();
 		}
 	}
 
@@ -1438,7 +1438,7 @@ pub const Connection = struct { // MARK: Connection
 		awaitingClientAcknowledgement,
 		connected,
 		disconnected,
-		hibernating,
+		paused,
 	};
 
 	pub const HandShakeState = enum(u8) {
@@ -1552,16 +1552,16 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	// pretending the connection is closed
-	pub fn hibernate(self: *Connection) void {
+	pub fn pause(self: *Connection) void {
 		if (self.connectionState.load(.monotonic) == .connected) {
-			self.connectionState.store(.hibernating, .monotonic);
+			self.connectionState.store(.paused, .monotonic);
 			if (self.user) |user| {
 				user.connected.store(false, .monotonic);
 			}
 		}
 	}
-	pub fn dehibernate(self: *Connection) void {
-		if (self.connectionState.load(.monotonic) == .hibernating) {
+	pub fn @"continue"(self: *Connection) void {
+		if (self.connectionState.load(.monotonic) == .paused) {
 			self.connectionState.store(.connected, .monotonic);
 			if (self.user) |user| {
 				user.connected.store(true, .monotonic);
@@ -1739,7 +1739,7 @@ pub const Connection = struct { // MARK: Connection
 						return;
 					}
 				},
-				.disconnected, .hibernating => {},
+				.disconnected, .paused => {},
 			}
 			// Acknowledge the packet on the client:
 			if (self.user == null) {
@@ -1831,7 +1831,7 @@ pub const Connection = struct { // MARK: Connection
 				return;
 			},
 			.connected => {},
-			.disconnected, .hibernating => return,
+			.disconnected, .paused => return,
 		}
 
 		self.handlePacketLoss(self.lossyChannel.checkForLosses(self, timestamp));

@@ -157,12 +157,12 @@ pub const User = struct { // MARK: User
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
 		self.conn = try Connection.init(manager, ipPort, self);
-		self.wakeup();
+		self.@"continue"();
 		self.increaseRefCount();
 		network.protocols.handShake.serverSide(self.conn);
 		return self;
 	}
-	pub fn wakeup(self: *User) void {
+	pub fn @"continue"(self: *User) void {
 		if (self.wokeup) return;
 
 		// persistent data
@@ -190,14 +190,14 @@ pub const User = struct { // MARK: User
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
 
-		self.wakedown();
+		self.pause();
 
 		self.conn.deinit();
 		main.globalAllocator.free(self.name);
 		if (self.newKeyString) |str| main.globalAllocator.free(str);
 		main.globalAllocator.destroy(self);
 	}
-	pub fn wakedown(self: *User) void {
+	pub fn pause(self: *User) void {
 		if (!self.wokeup) return;
 		self.wokeup = false;
 
@@ -639,7 +639,7 @@ fn deinit() void {
 		conn.restartCounter += 1;
 
 		if (conn.user) |user| {
-			user.wakedown();
+			user.pause();
 		}
 	}
 
