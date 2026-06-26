@@ -506,7 +506,7 @@ pub fn clientMain() void { // MARK: clientMain()
 			shouldExitToMenu.store(false, .monotonic);
 			Window.setMouseGrabbed(false);
 			if (game.world) |world| {
-				world.deinit(false);
+				world.deinit();
 				game.world = null;
 			}
 			gui.openWindow("main");
@@ -515,7 +515,7 @@ pub fn clientMain() void { // MARK: clientMain()
 	}
 
 	if (game.world) |world| {
-		world.deinit(false);
+		world.deinit();
 		game.world = null;
 	}
 }

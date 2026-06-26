@@ -283,18 +283,16 @@ pub const World = struct { // MARK: World
 
 	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
 		const conn = try Connection.init(manager, ip, null);
-		try self.@"continue"(conn, manager);
+		self.conn = conn;
+		self.manager = manager;
+		try self.@"continue"();
 	}
-	pub fn @"continue"(self: *World, conn: *Connection, manager: *ConnectionManager) !void {
+	pub fn @"continue"(self: *World) !void {
 		main.heap.allocators.createWorldArena();
 		errdefer main.heap.allocators.destroyWorldArena();
 
-		self.manager = manager;
-		self.conn = conn;
 		self.name = "client";
 		self.milliTime = main.timestamp().toMilliseconds();
-
-		self.manager.@"continue"();
 
 		errdefer self.conn.deinit();
 
@@ -337,8 +335,6 @@ pub const World = struct { // MARK: World
 		self.biomePalette.deinit();
 		self.entityComponentPalette.deinit();
 		self.entityModelPalette.deinit();
-
-		self.manager.pause();
 
 		main.server.stop(.stop);
 
@@ -776,7 +772,7 @@ pub fn restart() void {
 
 		network.protocols.Reload.informServerOfRestart(_world.conn);
 		_world.conn.handShakeState.store(.reload, .monotonic);
-		testWorld.@"continue"(testWorld.conn, testWorld.manager) catch |err| {
+		testWorld.@"continue"() catch |err| {
 			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
 			main.gui.windowlist.notification.raiseNotification("Encountered error while opening world: {s}", .{@errorName(err)});
 			world = null;

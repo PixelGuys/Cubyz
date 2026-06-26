@@ -533,6 +533,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			}
 		}
 
+		result.requests = .empty;
 		result.packetSendRequests = .initContext({});
 		result.running.store(true, .monotonic);
 		result.thread = try std.Thread.spawn(.{}, run, .{result});
@@ -543,9 +544,6 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 		for (self.connections.items) |conn| {
 			conn.@"continue"();
-		}
-
-		for (self.connections.items) |conn| {
 			conn.disconnect();
 		}
 
@@ -562,6 +560,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			request.requestNotifier.signal();
 		}
 		self.requests.deinit(main.globalAllocator);
+
 		while (self.packetSendRequests.pop()) |packet| {
 			main.globalAllocator.free(packet.data);
 		}
