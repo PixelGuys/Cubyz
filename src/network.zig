@@ -531,8 +531,6 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			if (conn.user) |user| {
 				user.@"continue"();
 			}
-			main.network.protocols.Reload.informClientOfRestart(conn);
-			conn.handShakeState.store(.signatureResponse, .monotonic);
 		}
 
 		result.packetSendRequests = .initContext({});

@@ -281,11 +281,11 @@ pub const World = struct { // MARK: World
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
 
-	pub fn initNew(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
+	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
 		const conn = try Connection.init(manager, ip, null);
-		try self.init(conn, manager);
+		try self.@"continue"(conn, manager);
 	}
-	pub fn init(self: *World, conn: *Connection, manager: *ConnectionManager) !void {
+	pub fn @"continue"(self: *World, conn: *Connection, manager: *ConnectionManager) !void {
 		main.heap.allocators.createWorldArena();
 		errdefer main.heap.allocators.destroyWorldArena();
 
@@ -293,6 +293,8 @@ pub const World = struct { // MARK: World
 		self.conn = conn;
 		self.name = "client";
 		self.milliTime = main.timestamp().toMilliseconds();
+
+		self.manager.@"continue"();
 
 		errdefer self.conn.deinit();
 
@@ -309,11 +311,14 @@ pub const World = struct { // MARK: World
 		main.entityModel.loadModelsAndTexture();
 	}
 
-	pub fn deinit(self: *World, _restart: bool) void {
-		if (!_restart) {
-			self.conn.deinit();
-			self.connected = false;
-		}
+	
+	pub fn deinit(self: *World) void {
+		self.conn.deinit();
+		self.connected = false;
+		self.pause();
+		self.manager.deinit();
+	}
+	pub fn pause(self: *World) void {
 
 		// TODO: Close all world related guis.
 		main.gui.inventory.deinit();
@@ -333,9 +338,8 @@ pub const World = struct { // MARK: World
 		self.entityComponentPalette.deinit();
 		self.entityModelPalette.deinit();
 
-		if (!_restart) {
-			self.manager.deinit();
-		}
+		self.manager.pause();
+
 		main.server.stop(.stop);
 
 		if (main.server.thread) |serverThread| {
@@ -767,12 +771,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 }
 pub fn restart() void {
 	if (world) |_world| {
-		_world.deinit(true);
+		_world.pause();
 		std.debug.assert(_world == &testWorld);
 
 		network.protocols.Reload.informServerOfRestart(_world.conn);
 		_world.conn.handShakeState.store(.reload, .monotonic);
-		testWorld.init(testWorld.conn, testWorld.manager) catch |err| {
+		testWorld.@"continue"(testWorld.conn, testWorld.manager) catch |err| {
 			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
 			main.gui.windowlist.notification.raiseNotification("Encountered error while opening world: {s}", .{@errorName(err)});
 			world = null;
