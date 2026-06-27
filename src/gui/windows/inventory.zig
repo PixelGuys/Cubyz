@@ -30,13 +30,16 @@ pub var window = GuiWindow{
 const padding: f32 = 8;
 
 var craftingIcon: Texture = undefined;
+var avatarIcon: Texture = undefined;
 
 pub fn init() void {
 	craftingIcon = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_icon.png");
+	avatarIcon = Texture.initFromFile("assets/cubyz/ui/inventory/avatar_icon.png");
 }
 
 pub fn deinit() void {
 	craftingIcon.deinit();
+	avatarIcon.deinit();
 }
 
 var itemSlots: [20]*ItemSlot = undefined;
@@ -51,6 +54,7 @@ pub fn onOpen() void {
 			row.add(GuiComponent.BagSlot.init(.{0, 0}, main.entity.components.@"cubyz:bag".client.getBag(main.game.Player.id) orelse break :blk));
 		}
 		row.add(Button.initIcon(.{32, 0}, .{32, 32}, craftingIcon, true, .{.onAction = gui.openWindowCallback("inventory_crafting")}));
+		row.add(Button.initIcon(.{32, 0}, .{32, 32}, avatarIcon, true, .{.onAction = gui.openWindowCallback("playerModelSelection")}));
 		list.add(row);
 	}
 	for (0..2) |y| {
