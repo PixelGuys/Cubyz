@@ -12,7 +12,7 @@ const Arbritrary = struct {
 	tag: main.Tag,
 	amount: usize,
 	checkArray: ZonElement,
-	outputString: []const u8
+	outputString: []const u8,
 };
 
 fn getIndexInCheckArray(relativePosition: Vec2i, gridsize: i32) usize {
