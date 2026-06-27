@@ -910,6 +910,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var selectionNormal: Vec3f = undefined;
 	var lastPos: Vec3d = undefined;
 	var lastDir: Vec3f = undefined;
+
+	pub var selectedEntity: ?u32 = null; 
+	
 	pub fn select(pos: Vec3d, _dir: Vec3f, item: main.items.Item) void {
 		lastPos = pos;
 		const dir: Vec3d = @floatCast(_dir);
@@ -929,6 +932,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		var total_tMax: f64 = 0;
 
 		selectedBlockPos = null;
+		var blockIntersectionDistance = std.math.floatMax(f64);
 
 		while (total_tMax < closestDistance) {
 			const block = mesh_storage.getBlockFromRenderThread(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
@@ -942,6 +946,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						selectionMin = intersection.min;
 						selectionMax = intersection.max;
 						selectionNormal = intersection.normal;
+						blockIntersectionDistance = intersection.distance;
 						break;
 					}
 				}
@@ -973,7 +978,77 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				}
 			}
 		}
-		// TODO: Test entities
+		// Test entities
+		selectedEntity = null;
+		var entDistance = std.math.floatMax(f64);
+
+		
+		entityLoop: for(main.client.entity_manager.entities.items())|ent|{
+			const entModelComp = main.entity.components.@"cubyz:model".client.get(ent.id) orelse continue;
+			const distance:main.vec.Vec3d = ent.getRenderPosition()-pos;
+			// distance[2] -= entModelComp.entityModel.get().height/2;
+			// distance[2] += 1;
+			
+			// skip the obvious ones
+			if(main.vec.lengthSquare(distance) > closestDistance*closestDistance){
+				continue;
+			}
+			// ray intersection
+			const box:main.vec.Vec3d = .{1,1,entModelComp.entityModel.get().height};
+			var t:main.vec.Vec3d = .{0,0,0};
+			var max:f64 = 0;
+			var maxComponent:u3 = 0;
+
+			inline for(0..3)|i|{
+				if(distance[i]+box[i]/2 >= 0 and distance[i]-box[i]/2 <= 0){
+					t[i] = 0;
+				}else{
+					if(dir[i]>0){
+						t[i] = (distance[i]-box[i]/2)/dir[i];	
+					}else if(dir[i]<0){
+						t[i] = (distance[i]+box[i]/2)/dir[i];	
+					}
+					else {
+						if(distance[i]+box[i]/2 >= 0 and distance[i]-box[i]/2 <= 0){
+							t[i] = 0;
+						}else{
+							t[i] = std.math.floatMax(f64);
+						}
+					}
+					if(t[i] < 0)
+						t[i] = std.math.floatMax(f64);
+				}
+				if(t[i] > max){
+					max = t[i];
+					maxComponent = i;
+				}
+			}
+
+			// range check
+			if(max > closestDistance){
+				continue;
+			}
+			if(max > blockIntersectionDistance){
+				continue;
+			}
+			// check if it didn't miss the hithox
+			inline for(0..3)|i|{
+				if(i != maxComponent){
+					if(distance[i]-dir[i]*max+box[i]/2 < 0 or distance[i]-dir[i]*max-box[i]/2 > 0){
+						continue :entityLoop;
+					}
+				}
+			}
+
+			if(max < entDistance){
+				entDistance = max;
+				selectedEntity = ent.id; 
+			}
+		}
+		if(selectedEntity != null){
+			selectedBlockPos = null;
+		}
+
 	}
 
 	fn canPlaceBlock(pos: Vec3i, block: main.blocks.Block) bool {
@@ -1128,6 +1203,10 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		}
 	}
 
+		
+	
+
+	
 	fn updateBlockAndSendUpdate(source: main.items.Inventory.ClientInventory, slot: u32, pos: Vec3i, oldBlock: blocks.Block, newBlock: blocks.Block) void {
 		main.sync.client.executeCommand(.{
 			.updateBlock = .{
@@ -1144,6 +1223,40 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		});
 		mesh_storage.updateBlock(.{.pos = pos, .newBlock = newBlock, .blockEntityData = &.{}});
 	}
+
+	pub fn clickEntity(inventory: main.items.Inventory.ClientInventory, slot: u32, button:main.sync.Command.PlayerClickEntity.Button) void {
+		//TODO: do some animation
+		const ent = main.renderer.MeshSelection.selectedEntity orelse return;
+		//const stack = inventory.getStack(slot);
+
+		playerHitEntityAndSendUpdate(inventory, slot, lastPos, lastDir, ent, button);
+		// switch (inventory.getItem(slot)) {
+		// .baseItem => |baseItem| {
+		// if (baseItem.block()) |itemBlock| {
+		// _ = itemBlock;
+		// }
+		// },
+		// .proceduralItem => |proceduralItem| {
+		// _ = proceduralItem; 
+		// },
+		// .null => {},
+		// }
+		
+	}
+
+	fn playerHitEntityAndSendUpdate(source: main.items.Inventory.ClientInventory, slot: u32, pos: Vec3d, dir: Vec3d, entityId:u32, button:main.sync.Command.PlayerClickEntity.Button) void {
+		main.sync.client.executeCommand(.{
+			.playerClickEntity = .{
+				.source = .{.inv = source.super, .slot = slot},
+				.pos = pos,
+				.dir = dir,
+				.entityId = entityId,
+				.button = button
+			},
+		});
+		//TODO: play some clientside predicted stuff for that specific entity. maybe some animation
+	}
+
 
 	pub fn drawCube(projectionMatrix: Mat4f, viewMatrix: Mat4f, relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
 		pipeline.bind(null);
