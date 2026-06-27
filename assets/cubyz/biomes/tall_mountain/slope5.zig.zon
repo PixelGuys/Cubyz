@@ -1,10 +1,8 @@
 .{
 	.properties = .{
 		.mountain,
-		.pine,
 	},
 	.tags = .{
-		.mountain,
 		.pine,
 	},
 	.minHeight = 678,

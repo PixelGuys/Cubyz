@@ -1,11 +1,8 @@
 .{
 	.properties = .{
 		.mountain,
-		.oak,
-		.pine,
 	},
 	.tags = .{
-		.mountain,
 		.oak,
 		.pine,
 	},
