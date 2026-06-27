@@ -3,6 +3,10 @@
 		.mountain,
 		.snowy,
 	},
+	.tags = .{
+		.mountain,
+		.snowy,
+	},
 	.minHeight = 925,
 	.maxHeight = 955,
 	.smoothBeaches = true,

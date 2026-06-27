@@ -3,6 +3,10 @@
 		.mountain,
 		.pine,
 	},
+	.tags = .{
+		.mountain,
+		.pine,
+	},
 	.minHeight = 568,
 	.maxHeight = 568,
 	.smoothBeaches = true,

@@ -4,6 +4,11 @@
 		.oak,
 		.birch,
 	},
+	.tags = .{
+		.mountain,
+		.oak,
+		.birch,
+	},
 	.minHeight = 348,
 	.maxHeight = 348,
 	.smoothBeaches = true,
