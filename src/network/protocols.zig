@@ -1081,6 +1081,8 @@ pub const reload = struct { // MARK: Reload
 		defer writer.deinit();
 
 		writer.writeInt(u32, conn.restartCounter);
+		writer.writeEnum(main.server.User.State, conn.user.?.state);
+		
 		conn.send(.secure, id, writer.data.items);
 		conn.send(.lossy, id, writer.data.items);
 		conn.send(.slow, id, writer.data.items);

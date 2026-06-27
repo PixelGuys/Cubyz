@@ -769,7 +769,8 @@ pub fn restart() void {
 		_world.pause();
 
 		network.protocols.reload.informServerOfRestart(_world.conn);
-		_world.conn.handShakeState.store(.reload, .monotonic);
+
+		_world.conn.handShakeState.store(if(main.shouldReload).reload else .start, .monotonic);
 		_world.@"continue"() catch |err| {
 			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
 			main.gui.windowlist.notification.raiseNotification("Encountered error while opening world: {s}", .{@errorName(err)});

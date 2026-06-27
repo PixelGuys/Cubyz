@@ -138,7 +138,8 @@ pub const User = struct { // MARK: User
 	handInventory: ?InventoryId = null,
 
 	connected: Atomic(bool) = .init(true),
-	wokeup: bool = false,
+	paused: bool = true,
+	state: State = .awaitingKeyVerification,
 
 	refCount: Atomic(u32) = .init(1),
 
@@ -147,6 +148,8 @@ pub const User = struct { // MARK: User
 	inventoryCommands: main.List([]const u8) = .empty,
 
 	permissions: permission.Permissions = undefined,
+
+	pub const State = enum {awaitingKeyVerification, connected, awaitingReload};
 
 	pub fn player(self: *User) *Entity {
 		return &self.innerPlayer;
@@ -163,7 +166,7 @@ pub const User = struct { // MARK: User
 		return self;
 	}
 	pub fn @"continue"(self: *User) void {
-		if (self.wokeup) return;
+		if (!self.paused) return;
 
 		// persistent data
 		const conn = self.conn;
@@ -180,7 +183,7 @@ pub const User = struct { // MARK: User
 		self.newKeyString = newKeyString;
 		self.playerIndex = playerIndex;
 		self.keysVerified = keysVerified;
-		self.wokeup = true;
+		self.paused = false;
 
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
 		self.worldEditData = .init();
@@ -198,8 +201,14 @@ pub const User = struct { // MARK: User
 		main.globalAllocator.destroy(self);
 	}
 	pub fn pause(self: *User) void {
-		if (!self.wokeup) return;
-		self.wokeup = false;
+		if (self.paused) return;
+		self.paused = true;
+
+		self.state = switch (self.state) {
+			.awaitingKeyVerification => .awaitingKeyVerification,
+			.connected => .awaitingReload,
+			.awaitingReload => .awaitingReload,
+		};
 
 		self.clearJobQueue();
 

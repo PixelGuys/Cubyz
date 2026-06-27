@@ -1576,8 +1576,14 @@ pub const Connection = struct { // MARK: Connection
 			const restartCounter = try reader.readInt(u32);
 
 			if (!conn.isServerSide()) {
+				const state = try reader.readEnum(main.server.User.State);
+
 				if (conn.restartCounter < restartCounter) {
 					conn.restartCounter = restartCounter;
+					switch (state) {
+						.awaitingKeyVerification => main.shouldReload = false,
+						.connected,.awaitingReload => main.shouldReload = true,
+					}
 					main.shouldRestart.store(true, .release);
 				}
 			}
