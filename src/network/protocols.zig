@@ -1069,7 +1069,7 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 	}
 };
 
-pub const Reload = struct { // MARK: Reload
+pub const reload = struct { // MARK: Reload
 	pub const id: u8 = 16;
 
 	pub fn informClientOfRestart(conn: *Connection) void {

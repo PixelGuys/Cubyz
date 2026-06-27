@@ -768,7 +768,7 @@ pub fn restart() void {
 	if (world) |_world| {
 		_world.pause();
 
-		network.protocols.Reload.informServerOfRestart(_world.conn);
+		network.protocols.reload.informServerOfRestart(_world.conn);
 		_world.conn.handShakeState.store(.reload, .monotonic);
 		_world.@"continue"() catch |err| {
 			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});

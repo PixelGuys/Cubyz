@@ -1570,7 +1570,7 @@ pub const Connection = struct { // MARK: Connection
 		// Reload protocol bypasses everything else
 		std.debug.assert(channelId == .lossy or channelId == .secure or channelId == .slow);
 
-		if (protocolIndex == protocols.Reload.id) {
+		if (protocolIndex == protocols.reload.id) {
 			var reader = utils.BinaryReader.init(data);
 
 			const restartCounter = try reader.readInt(u32);

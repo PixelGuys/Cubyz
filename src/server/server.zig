@@ -612,7 +612,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 		@panic("Could not open Server.");
 	};
 	for (connectionManager.connections.items) |conn| {
-		main.network.protocols.Reload.informClientOfRestart(conn);
+		main.network.protocols.reload.informClientOfRestart(conn);
 		conn.handShakeState.store(.signatureResponse, .monotonic);
 	}
 	if (singlePlayerPort) |port| blk: {
