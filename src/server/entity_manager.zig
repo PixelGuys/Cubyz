@@ -113,7 +113,7 @@ pub fn getEntityNearbyInfo(entityId: main.entity.Entity, allocator: main.heap.Ne
 pub fn getEntityNetworkData(allocator: main.heap.NeverFailingAllocator) main.ListManaged(main.entity.EntityNetworkData) {
 	mutex.lock();
 	defer mutex.unlock();
-	
+
 	var entityData: main.ListManaged(main.entity.EntityNetworkData) = .init(allocator);
 
 	for (entities.items()) |*ent| {
