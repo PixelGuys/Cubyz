@@ -525,6 +525,15 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	}
 	pub fn @"continue"(result: *ConnectionManager) !void {
 		if (result.running.load(.monotonic)) return;
+
+		for (result.connections.items) |conn| {
+			conn.@"continue"();
+			if (conn.user) |user| {
+				user.@"continue"();
+			}
+		}
+
+		result.requests = .empty;
 		result.packetSendRequests = .initContext({});
 		result.running.store(true, .monotonic);
 		result.thread = try std.Thread.spawn(.{}, run, .{result});
@@ -532,6 +541,12 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	}
 	pub fn deinit(self: *ConnectionManager) void {
 		if (self.running.load(.monotonic)) self.pause();
+
+		for (self.connections.items) |conn| {
+			conn.@"continue"();
+			conn.disconnect();
+		}
+
 		self.socket.deinit();
 		self.connections.deinit(main.globalAllocator);
 		main.globalAllocator.destroy(self);
@@ -545,13 +560,14 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			request.requestNotifier.signal();
 		}
 		self.requests.deinit(main.globalAllocator);
+
 		while (self.packetSendRequests.pop()) |packet| {
 			main.globalAllocator.free(packet.data);
 		}
 		self.packetSendRequests.deinit(main.globalAllocator.allocator);
 
 		for (self.connections.items) |conn| {
-			conn.disconnect();
+			conn.pause();
 		}
 	}
 
@@ -871,12 +887,14 @@ pub const Connection = struct { // MARK: Connection
 		buffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
 		header: ?Header = null,
 		protocolBuffer: main.List(u8) = .empty,
+		channelId: ChannelId = undefined,
 
-		pub fn init() ReceiveBuffer {
+		pub fn init(channelId: ChannelId) ReceiveBuffer {
 			return .{
 				.ranges = .init(),
 				.decryptedBuffer = .init(main.globalAllocator),
 				.buffer = .init(main.globalAllocator),
+				.channelId = channelId,
 			};
 		}
 
@@ -934,7 +952,9 @@ pub const Connection = struct { // MARK: Connection
 
 				const protocolIndex = self.header.?.protocolIndex;
 				self.header = null;
-				try protocols.onReceive(conn, protocolIndex, self.protocolBuffer.items);
+				if (try conn.checkRestartCounter(protocolIndex, self.protocolBuffer.items, self.channelId)) {
+					try protocols.onReceive(conn, protocolIndex, self.protocolBuffer.items);
+				}
 				self.protocolBuffer.clearRetainingCapacity();
 				if (self.protocolBuffer.items.len > 1 << 24) {
 					self.protocolBuffer.shrinkAndFree(main.globalAllocator, 1 << 24);
@@ -1142,7 +1162,7 @@ pub const Connection = struct { // MARK: Connection
 
 		pub fn init(sequenceIndex: SequenceIndex, delay: i64, id: ChannelId) Channel {
 			return .{
-				.receiveBuffer = .init(),
+				.receiveBuffer = .init(id),
 				.sendBuffer = .init(sequenceIndex),
 				.allowedDelay = delay,
 				.channelId = id,
@@ -1394,7 +1414,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 	};
 
-	const ChannelId = enum(u8) { // MARK: ChannelId
+	pub const ChannelId = enum(u8) { // MARK: ChannelId
 		lossy = 0,
 		secure = 1,
 		slow = 2,
@@ -1416,6 +1436,7 @@ pub const Connection = struct { // MARK: Connection
 		awaitingClientAcknowledgement,
 		connected,
 		disconnected,
+		paused,
 	};
 
 	pub const HandShakeState = enum(u8) {
@@ -1423,8 +1444,9 @@ pub const Connection = struct { // MARK: Connection
 		userData = 1,
 		signatureRequest = 2,
 		signatureResponse = 3,
-		assets = 4,
-		serverData = 5,
+		reload = 4,
+		assets = 5,
+		serverData = 6,
 		complete = 255,
 	};
 
@@ -1440,6 +1462,9 @@ pub const Connection = struct { // MARK: Connection
 	lossyChannel: Channel, // TODO: Actually allow it to be lossy
 	secureChannel: SecureChannel,
 	slowChannel: Channel,
+
+	restartChannelCounter: [3]u32 = .{0, 0, 0},
+	restartCounter: u32 = 0,
 
 	hasRttEstimate: bool = false,
 	rttEstimate: f32 = 1000*ms,
@@ -1522,6 +1547,55 @@ pub const Connection = struct { // MARK: Connection
 		self.slowChannel.deinit();
 		self.queuedConfirmations.deinit();
 		main.globalAllocator.destroy(self);
+	}
+
+	// pretending the connection is closed
+	pub fn pause(self: *Connection) void {
+		if (self.connectionState.load(.monotonic) == .connected) {
+			self.connectionState.store(.paused, .monotonic);
+			if (self.user) |user| {
+				user.connected.store(false, .monotonic);
+			}
+		}
+	}
+	pub fn @"continue"(self: *Connection) void {
+		if (self.connectionState.load(.monotonic) == .paused) {
+			self.connectionState.store(.connected, .monotonic);
+			if (self.user) |user| {
+				user.connected.store(true, .monotonic);
+			}
+		}
+	}
+	pub fn checkRestartCounter(conn: *Connection, protocolIndex: u8, data: []const u8, channelId: ChannelId) !bool { // MARK: checkRestartCounter()
+		// Reload protocol bypasses everything else
+		std.debug.assert(channelId == .lossy or channelId == .secure or channelId == .slow);
+
+		if (protocolIndex == protocols.reload.id) {
+			var reader = utils.BinaryReader.init(data);
+
+			const restartCounter = try reader.readInt(u32);
+
+			if (!conn.isServerSide()) {
+				const state = try reader.readEnum(main.server.User.State);
+
+				if (conn.restartCounter < restartCounter) {
+					conn.restartCounter = restartCounter;
+					switch (state) {
+						.awaitingKeyVerification => main.shouldReload = false,
+						.connected, .awaitingReload => main.shouldReload = true,
+					}
+					main.shouldRestart.store(true, .release);
+				}
+			}
+			if (conn.restartChannelCounter[@intFromEnum(channelId)] < restartCounter) {
+				conn.restartChannelCounter[@intFromEnum(channelId)] = restartCounter;
+			}
+			return false;
+		}
+
+		// Throw away everything from before the restart
+		if (conn.restartChannelCounter[@intFromEnum(channelId)] != conn.restartCounter) return false;
+		return true;
 	}
 
 	pub fn send(self: *Connection, comptime channel: ChannelId, protocolIndex: u8, data: []const u8) void {
@@ -1695,7 +1769,7 @@ pub const Connection = struct { // MARK: Connection
 						return;
 					}
 				},
-				.disconnected => {},
+				.disconnected, .paused => {},
 			}
 			// Acknowledge the packet on the client:
 			if (self.user == null) {
@@ -1787,7 +1861,7 @@ pub const Connection = struct { // MARK: Connection
 				return;
 			},
 			.connected => {},
-			.disconnected => return,
+			.disconnected, .paused => return,
 		}
 
 		self.handlePacketLoss(self.lossyChannel.checkForLosses(self, timestamp));

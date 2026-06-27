@@ -282,14 +282,18 @@ pub const World = struct { // MARK: World
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
 
 	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
+		const conn = try Connection.init(manager, ip, null);
+		self.conn = conn;
+		self.manager = manager;
+		try self.@"continue"();
+	}
+	pub fn @"continue"(self: *World) !void {
 		main.heap.allocators.createWorldArena();
 		errdefer main.heap.allocators.destroyWorldArena();
-		self.* = .{
-			.conn = try Connection.init(manager, ip, null),
-			.manager = manager,
-			.name = "client",
-			.milliTime = main.timestamp().toMilliseconds(),
-		};
+
+		self.name = "client";
+		self.milliTime = main.timestamp().toMilliseconds();
+
 		errdefer self.conn.deinit();
 
 		self.itemDrops.init(main.globalAllocator);
@@ -307,8 +311,11 @@ pub const World = struct { // MARK: World
 
 	pub fn deinit(self: *World) void {
 		self.conn.deinit();
-
 		self.connected = false;
+		self.pause();
+		self.manager.deinit();
+	}
+	pub fn pause(self: *World) void {
 
 		// TODO: Close all world related guis.
 		main.gui.inventory.deinit();
@@ -327,7 +334,7 @@ pub const World = struct { // MARK: World
 		self.biomePalette.deinit();
 		self.entityComponentPalette.deinit();
 		self.entityModelPalette.deinit();
-		self.manager.deinit();
+
 		main.server.stop(.stop);
 
 		if (main.server.thread) |serverThread| {
@@ -756,4 +763,22 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	world.?.update(deltaTime);
 	particles.ParticleSystem.update(@floatCast(deltaTime));
+}
+pub fn restart() void {
+	if (world) |_world| {
+		_world.pause();
+
+		network.protocols.reload.informServerOfRestart(_world.conn);
+
+		_world.conn.handShakeState.store(if (main.shouldReload) .reload else .start, .monotonic);
+		_world.@"continue"() catch |err| {
+			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
+			main.gui.windowlist.notification.raiseNotification("Encountered error while opening world: {s}", .{@errorName(err)});
+			world = null;
+
+			main.gui.openWindow("main");
+			return;
+		};
+		main.gui.openHud();
+	}
 }
