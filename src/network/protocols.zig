@@ -44,6 +44,7 @@ pub fn init() void { // MARK: init()
 		}
 	}
 }
+
 pub fn onReceive(conn: *Connection, protocolIndex: u8, data: []const u8) !void { // MARK: onReceive()
 	if (conn.handShakeState.raw != .complete and protocolIndex != handShake.id) return error.HandshakeIncomplete;
 	const protocolReceive = blk: {

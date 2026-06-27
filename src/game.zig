@@ -767,11 +767,10 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 pub fn restart() void {
 	if (world) |_world| {
 		_world.pause();
-		std.debug.assert(_world == &testWorld);
 
 		network.protocols.Reload.informServerOfRestart(_world.conn);
 		_world.conn.handShakeState.store(.reload, .monotonic);
-		testWorld.@"continue"() catch |err| {
+		_world.@"continue"() catch |err| {
 			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
 			main.gui.windowlist.notification.raiseNotification("Encountered error while opening world: {s}", .{@errorName(err)});
 			world = null;

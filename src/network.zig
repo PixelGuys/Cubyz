@@ -1568,8 +1568,7 @@ pub const Connection = struct { // MARK: Connection
 	}
 	pub fn checkRestartCounter(conn: *Connection, protocolIndex: u8, data: []const u8, channelId: ChannelId) !bool { // MARK: checkRestartCounter()
 		// Reload protocol bypasses everything else
-		std.debug.assert(@intFromEnum(channelId) < 3);
-		std.debug.assert(channelId == ChannelId.lossy or channelId == ChannelId.secure or channelId == ChannelId.slow);
+		std.debug.assert(channelId == .lossy or channelId == .secure or channelId == .slow);
 
 		if (protocolIndex == protocols.Reload.id) {
 			var reader = utils.BinaryReader.init(data);
