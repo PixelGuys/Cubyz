@@ -3,7 +3,7 @@
 	.minHeight = 788,
 	.maxHeight = 788,
 	.smoothBeaches = true,
-	.radius = 110,
+	.radius = 90,
 	.mountains = 70,
 	.chance = 0,
 	.maxSubBiomeCount = 1,
