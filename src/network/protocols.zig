@@ -212,27 +212,28 @@ pub const handShake = struct { // MARK: handShake
 	}
 
 	pub fn clientSide(conn: *Connection, name: []const u8) !void {
-		
-		if (conn.handShakeState.load(.monotonic) == .start) {
-			const zonObject = ZonElement.initObject(main.stackAllocator);
-			defer zonObject.deinit(main.stackAllocator);
+		switch (conn.handShakeState.load(.monotonic)) {
+			.start => {
+				const zonObject = ZonElement.initObject(main.stackAllocator);
+				defer zonObject.deinit(main.stackAllocator);
 
-			zonObject.putOwnedString("version", settings.version.version);
-			zonObject.putOwnedString("name", name);
-			if (main.network.authentication.KeyCollection.initialized) {
-				zonObject.put("keys", main.network.authentication.KeyCollection.getPublicKeys(main.stackAllocator));
+				zonObject.putOwnedString("version", settings.version.version);
+				zonObject.putOwnedString("name", name);
+				if (main.network.authentication.KeyCollection.initialized) {
+					zonObject.put("keys", main.network.authentication.KeyCollection.getPublicKeys(main.stackAllocator));
+				}
+				try conn.secureChannel.startTlsHandshake();
+				conn.secureChannel.finishedCollectingClientVerificationData = true;
+
+				const prefix: [1]u8 = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
+				const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
+				defer main.stackAllocator.free(data);
+				
+				conn.send(.secure, id, data);
+			},
+			.reload => {
+				conn.send(.secure, id, [1]u8{@intFromEnum(Connection.HandShakeState.reload)});
 			}
-			try conn.secureChannel.startTlsHandshake();
-			conn.secureChannel.finishedCollectingClientVerificationData = true;
-
-			const prefix: [1]u8 = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
-			const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
-			defer main.stackAllocator.free(data);
-			
-			conn.send(.secure, id, data);
-		}
-		if (conn.handShakeState.load(.monotonic) == .reload) {
-			conn.send(.secure, id, [1]u8{@intFromEnum(Connection.HandShakeState.reload)});
 		}
 
 		conn.mutex.lock();
