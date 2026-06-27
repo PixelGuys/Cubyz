@@ -138,7 +138,6 @@ pub const User = struct { // MARK: User
 	handInventory: ?InventoryId = null,
 
 	connected: Atomic(bool) = .init(true),
-	paused: bool = true,
 	state: State = .awaitingKeyVerification,
 
 	refCount: Atomic(u32) = .init(1),
@@ -166,8 +165,6 @@ pub const User = struct { // MARK: User
 		return self;
 	}
 	pub fn @"continue"(self: *User) void {
-		if (!self.paused) return;
-
 		// persistent data
 		const conn = self.conn;
 		const name = self.name;
@@ -185,7 +182,6 @@ pub const User = struct { // MARK: User
 		self.playerIndex = playerIndex;
 		self.keysVerified = keysVerified;
 		self.state = state;
-		self.paused = false;
 
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
 		self.worldEditData = .init();
@@ -195,17 +191,12 @@ pub const User = struct { // MARK: User
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
 
-		self.pause();
-
 		self.conn.deinit();
 		main.globalAllocator.free(self.name);
 		if (self.newKeyString) |str| main.globalAllocator.free(str);
 		main.globalAllocator.destroy(self);
 	}
 	pub fn pause(self: *User) void {
-		if (self.paused) return;
-		self.paused = true;
-
 		self.state = switch (self.state) {
 			.awaitingKeyVerification => .awaitingKeyVerification,
 			.connected => .awaitingReload,
@@ -253,6 +244,7 @@ pub const User = struct { // MARK: User
 		const prevVal = self.refCount.fetchSub(1, .monotonic);
 		std.debug.assert(prevVal != 0);
 		if (prevVal == 1) {
+			self.pause();
 			self.deinit();
 		}
 	}
@@ -659,6 +651,7 @@ fn deinit() void {
 			user.decreaseRefCount();
 		} else {
 			std.log.err("Leaked user {f}", .{user});
+			user.pause();
 			user.deinit();
 		}
 	}
@@ -787,7 +780,8 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16, mode: ServerWorld.M
 
 		while (userDeinitList.popFront()) |user| {
 			if (user.refCount.load(.monotonic) == 1) {
-				user.decreaseRefCount();
+				_ = user.refCount.fetchSub(1, .monotonic);
+				user.deinit();
 			} else {
 				std.log.err("Leaked user {f}", .{user});
 				user.deinit();
