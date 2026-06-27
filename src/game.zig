@@ -297,12 +297,9 @@ pub const World = struct { // MARK: World
 
 		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
 
-		main.Window.setMouseGrabbed(true);
-
-		main.blocks.meshes.generateTextureArray();
-		main.particles.ParticleManager.generateTextureArray();
-		main.models.uploadModels();
-		main.entityModel.loadModelsAndTexture();
+		try self.finishHandshake(main.network.protocols.handShake.handshakeZon);
+		main.network.protocols.handShake.assetsLoadedCondition.signal();
+		main.network.protocols.handShake.hasFinishedLoadingAssets = true;
 	}
 
 	pub fn deinit(self: *World) void {
@@ -364,6 +361,12 @@ pub const World = struct { // MARK: World
 		Player.setGamemode(std.enums.fromInt(Gamemode, zon.get(?u8, "gamemode", null) orelse return error.Invalid) orelse return error.Invalid);
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
+
+		main.Window.setMouseGrabbed(true);
+		main.blocks.meshes.generateTextureArray();
+		main.particles.ParticleManager.generateTextureArray();
+		main.models.uploadModels();
+		main.entityModel.loadModelsAndTexture();
 
 		try Player.loadFrom(zon.getChild("player"));
 	}
