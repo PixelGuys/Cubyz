@@ -174,6 +174,7 @@ pub const User = struct { // MARK: User
 		const newKeyString = self.newKeyString;
 		const playerIndex = self.playerIndex;
 		const keysVerified = self.keysVerified;
+		const state = self.state;
 
 		// reset
 		self.* = .{};
@@ -183,6 +184,7 @@ pub const User = struct { // MARK: User
 		self.newKeyString = newKeyString;
 		self.playerIndex = playerIndex;
 		self.keysVerified = keysVerified;
+		self.state = state;
 		self.paused = false;
 
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
@@ -828,7 +830,7 @@ pub fn stop(_restart: StopType) void {
 }
 
 pub fn disconnect(user: *User) void { // MARK: disconnect()
-	if (!user.connected.load(.monotonic) or user.conn.connectionState.load(.monotonic) == .paused) return;
+	if (!user.connected.load(.monotonic)) return;
 	removePlayer(user);
 	userDeinitList.pushBack(user);
 	user.connected.store(false, .monotonic);
