@@ -828,7 +828,7 @@ pub fn stop(_restart: StopType) void {
 }
 
 pub fn disconnect(user: *User) void { // MARK: disconnect()
-	if (!user.connected.load(.monotonic)) return;
+	if (!user.connected.load(.monotonic) or user.conn.connectionState.load(.monotonic) == .paused) return;
 	removePlayer(user);
 	userDeinitList.pushBack(user);
 	user.connected.store(false, .monotonic);

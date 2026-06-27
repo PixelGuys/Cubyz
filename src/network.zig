@@ -543,7 +543,6 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		if (self.running.load(.monotonic)) self.pause();
 
 		for (self.connections.items) |conn| {
-			conn.@"continue"();
 			conn.disconnect();
 		}
 
