@@ -104,24 +104,41 @@ pub fn makeModFeature(io: std.Io, step: *std.Build.Step, name: []const u8) !void
 		var featureDir = mod.openDir(io, name, .{.iterate = true}) catch continue;
 		defer featureDir.close(io);
 
-		var featureIterator = featureDir.iterate();
-		while (try featureIterator.next(io)) |featureEntry| {
-			if (featureEntry.kind != .file) continue;
-			if (!std.mem.endsWith(u8, featureEntry.name, ".zig")) continue;
+		var featureWalker = try std.Io.Dir.walk(featureDir, step.owner.allocator);
+		defer featureWalker.deinit();
 
-			try featureList.appendSlice(step.owner.allocator, step.owner.fmt(
+		var modFeatureList: std.ArrayListUnmanaged([]const u8) = .empty;
+		defer modFeatureList.deinit(step.owner.allocator);
+
+		while (try featureWalker.next(io)) |featureEntry| {
+			if (featureEntry.kind != .file) continue;
+			if (!std.mem.endsWith(u8, featureEntry.basename, ".zig")) continue;
+
+			try modFeatureList.append(step.owner.allocator, step.owner.fmt(
 				\\pub const @"{s}:{s}" = @import("{s}/{s}/{s}");
-				\\
 			,
 				.{
 					modEntry.name,
-					featureEntry.name[0 .. featureEntry.name.len - 4],
+					featureEntry.path[0 .. featureEntry.path.len - 4],
 					modEntry.name,
 					name,
-					featureEntry.name,
+					featureEntry.path,
 				},
 			));
 		}
+		std.mem.sort([]const u8, modFeatureList.items, {}, struct {
+			fn lessThanFn(_: void, lhs: []const u8, rhs: []const u8) bool {
+				return std.mem.lessThan(u8, lhs, rhs);
+			}
+		}.lessThanFn);
+
+		try featureList.appendSlice(step.owner.allocator, step.owner.fmt(
+			\\
+			\\// MARK: {s}
+			\\
+		, .{modEntry.name}));
+		try featureList.appendSlice(step.owner.allocator, try std.mem.join(step.owner.allocator, "\n", modFeatureList.items));
+		try featureList.append(step.owner.allocator, '\n');
 	}
 
 	const file_path = step.owner.fmt("mods/{s}.zig", .{name});
