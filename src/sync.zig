@@ -874,7 +874,6 @@ pub const Command = struct { // MARK: Command
 					writer.writeVec(Vec3i, val);
 				},
 				.workbench => |val| {
-
 					writer.writeEnum(main.entity.Entity, val.playerId);
 					val.proceduralItemIndex.toBytes(writer);
 				},
