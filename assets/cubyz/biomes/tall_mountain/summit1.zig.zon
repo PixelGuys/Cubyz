@@ -14,7 +14,7 @@
 	.mountains = 10,
 	.hills = 10,
 	.chance = 0,
-	.stoneBlock = "cubyz:glacite/base",
+	.stoneBlock = "cubyz:glacite/smooth",
 	.validPlayerSpawn = false,
 	.music = "cubyz:mischol/sunshower",
 	.ground_structure = .{

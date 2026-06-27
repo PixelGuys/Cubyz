@@ -13,7 +13,7 @@
 	.radius = 22,
 	.hills = 15,
 	.chance = 0,
-	.stoneBlock = "cubyz:glacite/base",
+	.stoneBlock = "cubyz:glacite/smooth",
 	.validPlayerSpawn = false,
 	.music = "cubyz:mischol/sunshower",
 	.ground_structure = .{
