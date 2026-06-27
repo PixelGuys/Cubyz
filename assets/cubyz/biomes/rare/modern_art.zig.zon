@@ -10,7 +10,7 @@
 	.roughness = 10,
 	.hills = 10,
 
-	.music = "cubyz:totaldemented/adventurous",
+	.music = "cubyz:bytepop/pixel_wires",
 
 	.validPlayerSpawn = false,
 

@@ -7,6 +7,7 @@
 		"cubyz:grass",
 		"1 to 2 cubyz:soil",
 	},
+	.music = "cubyz:mischol/sunshower",
 	.structures = .{
 		.{
 			.id = "cubyz:fallen_tree",
