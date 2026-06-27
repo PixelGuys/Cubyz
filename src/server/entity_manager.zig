@@ -23,13 +23,14 @@ const server = main.server;
 
 var entities: main.utils.VirtualList(server.Entity, 1 << 24) = undefined;
 var freeIdList: main.List(main.entity.Entity) = undefined;
-pub var mutex: main.utils.Mutex = .{};
 
 pub fn init() void {
+	sync.threadContext.assertCorrectContext(.server);
 	entities = .init();
 	freeIdList = .empty;
 }
 pub fn deinit() void {
+	sync.threadContext.assertCorrectContext(.server);
 	for (entities.items()) |*ent| {
 		if (ent.used) {
 			ent.deinit(.server);
@@ -40,8 +41,7 @@ pub fn deinit() void {
 }
 
 pub fn addEntity() main.entity.Entity {
-	mutex.lock();
-	defer mutex.unlock();
+	sync.threadContext.assertCorrectContext(.server);
 
 	// get a free Id
 	var entityId: main.entity.Entity = undefined;
@@ -62,8 +62,7 @@ pub fn addEntity() main.entity.Entity {
 }
 
 pub fn getEntity(entityId: main.entity.Entity) *server.Entity {
-	mutex.lock();
-	defer mutex.unlock();
+	sync.threadContext.assertCorrectContext(.server);
 
 	std.debug.assert(@intFromEnum(entityId) < entities.len);
 	std.debug.assert(entities.items()[@intFromEnum(entityId)].used);
@@ -72,8 +71,7 @@ pub fn getEntity(entityId: main.entity.Entity) *server.Entity {
 }
 
 pub fn removeEntity(entityId: main.entity.Entity) void {
-	mutex.lock();
-	defer mutex.unlock();
+	sync.threadContext.assertCorrectContext(.server);
 
 	if (@intFromEnum(entityId) >= entities.len) return;
 	if (!entities.items()[@intFromEnum(entityId)].used) return;
@@ -91,8 +89,7 @@ pub fn removeEntity(entityId: main.entity.Entity) void {
 }
 
 pub fn getEntitiesNearbyInfo(allocator: main.heap.NeverFailingAllocator) main.ZonElement {
-	mutex.lock();
-	defer mutex.unlock();
+	sync.threadContext.assertCorrectContext(.server);
 
 	const zonArray = main.ZonElement.initArray(allocator);
 	for (entities.items()) |*entity| {
@@ -103,16 +100,14 @@ pub fn getEntitiesNearbyInfo(allocator: main.heap.NeverFailingAllocator) main.Zo
 	return zonArray;
 }
 pub fn getEntityNearbyInfo(entityId: main.entity.Entity, allocator: main.heap.NeverFailingAllocator) ?main.ZonElement {
-	mutex.lock();
-	defer mutex.unlock();
+	sync.threadContext.assertCorrectContext(.server);
 
 	const entity = getEntity(entityId);
 	return entity.save(allocator, .playerNearby);
 }
 
 pub fn getEntityNetworkData(allocator: main.heap.NeverFailingAllocator) main.ListManaged(main.entity.EntityNetworkData) {
-	mutex.lock();
-	defer mutex.unlock();
+	sync.threadContext.assertCorrectContext(.server);
 
 	var entityData: main.ListManaged(main.entity.EntityNetworkData) = .init(allocator);
 
