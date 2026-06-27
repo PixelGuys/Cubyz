@@ -7,7 +7,7 @@
 	.fogHigher = 1e10,
 
 	.music = "cubyz:mischol/sunshower",
-	.stoneBlock = "cubyz:nimbusite/base",
+	.stoneBlock = "cubyz:nimbusite/smooth",
 	.ground_structure = .{
 		"cubyz:grass/sky",
 		"2 to 3 cubyz:aerosoil",
@@ -63,7 +63,7 @@
 		},
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:nimbusite/base",
+			.block = "cubyz:nimbusite/smooth",
 			.generationMode = .ceiling,
 			.chance = 0.048,
 			.size = 4,

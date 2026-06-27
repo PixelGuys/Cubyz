@@ -421,8 +421,6 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 pub const worldDataVersion: u32 = 5;
 
 pub const ServerWorld = struct { // MARK: ServerWorld
-	pub const dayCycle: u31 = 12000; // Length of one in-game day in units of 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
-
 	itemDropManager: ItemDropManager = undefined,
 	blockPalette: *main.assets.Palette = undefined,
 	itemPalette: *main.assets.Palette = undefined,
@@ -454,6 +452,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	regionUpdateQueue: main.utils.CircularBufferQueue(RegionUpdateRequest),
 
 	playerDatabase: std.StringHashMapUnmanaged(usize) = .{},
+	localPlayerIndex: usize = 0,
 	nextPlayerIndex: std.atomic.Value(usize) = .init(0),
 
 	biomeChecksum: i64 = 0,
@@ -641,6 +640,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.biomeChecksum = worldData.get(i64, "biomeChecksum", 0);
 		self.name = main.globalAllocator.dupe(u8, worldData.get([]const u8, "name", self.path));
 		self.tickSpeed = .init(worldData.get(u32, "tickSpeed", 12));
+		self.localPlayerIndex = worldData.get(usize, "localPlayer", 0);
 	}
 
 	pub fn saveWorldConfig(self: *ServerWorld) !void {
@@ -656,6 +656,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		worldData.put("name", self.name);
 		worldData.put("lastUsedTime", std.Io.Clock.Timestamp.now(main.io, .real).raw.toMilliseconds());
 		worldData.put("tickSpeed", self.tickSpeed.load(.monotonic));
+		worldData.put("localPlayer", self.localPlayerIndex);
 
 		try files.cubyzDir().writeZon(path, worldData);
 	}
@@ -688,7 +689,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 						continue;
 					};
 					self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, key), index) catch unreachable;
-				} else {
+				} else if (index != self.localPlayerIndex) {
 					const name = zon.get(?[]const u8, "name", null) orelse {
 						std.log.err("Couldn't read player file {s}. Skipping.", .{file.name});
 						continue;
@@ -951,18 +952,20 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		const playerData = files.cubyzDir().readToZon(main.stackAllocator, path) catch .null;
 		defer playerData.deinit(main.stackAllocator);
-		if (playerData.get(?[]const u8, "publicKey", null)) |publicKey| {
-			if (!std.mem.eql(u8, publicKey, user.newKeyString)) {
-				std.debug.assert(self.playerDatabase.remove(publicKey));
-				self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, user.newKeyString), user.playerIndex) catch unreachable;
+		if (user.newKeyString) |userKey| {
+			if (playerData.get(?[]const u8, "publicKey", null)) |publicKey| {
+				if (!std.mem.eql(u8, publicKey, userKey)) {
+					std.debug.assert(self.playerDatabase.remove(publicKey));
+					self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, userKey), user.playerIndex) catch unreachable;
+				}
+			} else {
+				removeOld: {
+					const nameEntry = std.fmt.allocPrint(main.stackAllocator.allocator, "name:{s}", .{playerData.get(?[]const u8, "name", null) orelse break :removeOld}) catch unreachable;
+					defer main.stackAllocator.free(nameEntry);
+					_ = self.playerDatabase.remove(nameEntry);
+				}
+				self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, userKey), user.playerIndex) catch unreachable;
 			}
-		} else {
-			removeOld: {
-				const nameEntry = std.fmt.allocPrint(main.stackAllocator.allocator, "name:{s}", .{playerData.get(?[]const u8, "name", null) orelse break :removeOld}) catch unreachable;
-				defer main.stackAllocator.free(nameEntry);
-				std.debug.assert(self.playerDatabase.remove(nameEntry));
-			}
-			self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, user.newKeyString), user.playerIndex) catch unreachable;
 		}
 		const player = user.player();
 		const loadingError = player.loadFrom(user.id, playerData.getChild("entity"), .server);
@@ -1032,7 +1035,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 
 		playerZon.put("name", user.name);
-		playerZon.put("publicKey", user.newKeyString);
+		if (user.newKeyString) |key| {
+			playerZon.put("publicKey", key);
+		}
 
 		playerZon.put("entity", user.player().save(main.stackAllocator, .disk));
 		user.permissions.toZon(main.stackAllocator, &playerZon);
@@ -1161,14 +1166,14 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			defer self.mutex.lock();
 			updateRequest.ch.save(self);
 			updateRequest.ch.decreaseRefCount();
-			if (updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() <= 0) break;
+			if (updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() >= 0) break;
 		}
 		while (self.regionUpdateQueue.popFront()) |updateRequest| {
 			self.mutex.unlock();
 			defer self.mutex.lock();
 			updateRequest.region.store();
 			updateRequest.region.decreaseRefCount();
-			if (updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() <= 0) break;
+			if (updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() >= 0) break;
 		}
 	}
 
