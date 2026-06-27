@@ -22,12 +22,12 @@ const sync = main.sync;
 const server = main.server;
 
 var entities: main.utils.VirtualList(server.Entity, 1 << 24) = undefined;
-var freedList: main.List(main.entity.Entity) = undefined;
+var freeIdList: main.List(main.entity.Entity) = undefined;
 
 pub fn init() void {
 	sync.threadContext.assertCorrectContext(.server);
 	entities = .init();
-	freedList = .empty;
+	freeIdList = .empty;
 }
 pub fn deinit() void {
 	sync.threadContext.assertCorrectContext(.server);
@@ -37,7 +37,7 @@ pub fn deinit() void {
 		}
 	}
 	entities.deinit();
-	freedList.deinit(main.globalAllocator);
+	freeIdList.deinit(main.globalAllocator);
 }
 
 pub fn addEntity() main.entity.Entity {
@@ -46,8 +46,8 @@ pub fn addEntity() main.entity.Entity {
 	// get a free Id
 	var entityId: main.entity.Entity = undefined;
 	var ent: *server.Entity = undefined;
-	if (freedList.items.len > 0) {
-		entityId = freedList.swapRemove(0);
+	if (freeIdList.items.len > 0) {
+		entityId = freeIdList.swapRemove(0);
 		ent = &entities.items()[@intFromEnum(entityId)];
 	} else {
 		entityId = @enumFromInt(entities.len);
@@ -84,7 +84,7 @@ pub fn removeEntity(entityId: main.entity.Entity) void {
 		ent.deinit(.server);
 		ent.used = false;
 
-		freedList.addOne(main.globalAllocator).* = entityId;
+		freeIdList.addOne(main.globalAllocator).* = entityId;
 	}
 }
 
