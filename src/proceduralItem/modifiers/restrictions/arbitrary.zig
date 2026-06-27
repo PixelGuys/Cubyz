@@ -25,7 +25,7 @@ fn getIndexInCheckArray(relativePosition: Vec2i, gridsize: i32) usize {
 
 pub fn satisfied(self: *const Arbritrary, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
 	var count: usize = 0;
-	std.log.err("AAAAAAAAAAAAAAAA: side length is {}", .{self.checkArray.toSlice().len});
+	std.log.default_level("AAAAAAAAAAAAAAAA: total array size is {}", .{self.checkArray.toSlice().len});
 	const arraySizeCheck: f32 = @sqrt(@floatFromInt(self.checkArray.toSlice().len));
 	if (@mod(arraySizeCheck, 1.0) != 0) {
 		std.log.err("array size is not a perfect square: not counting arbitrary restriction: side length is {}", .{arraySizeCheck});
@@ -47,13 +47,13 @@ pub fn satisfied(self: *const Arbritrary, proceduralItem: *const ProceduralItem,
 	const arrayBounds = @divFloor(arraySizeSideLength, 2);
 	var dx = -arrayBounds;
 	var dy = arrayBounds; // writen like this so that the array is read in reading order left to right, top to bottom
-	std.log.err("full item test | {}", .{arrayBounds});
+	std.log.default_level("full item test | {}", .{arrayBounds});
 	while (dx <= arrayBounds) : (dx += 1) {
 		while (dy >= -arrayBounds) : (dy -= 1) {
 			if (!(slotInfos.popFront() orelse false)) continue;
-			std.log.err("Starting tag test {} | {}", .{dx, dy});
+			std.log.default_level("Starting tag test {} | {}", .{dx, dy});
 			if ((proceduralItem.getItemAt(x + dx, y + dy) orelse continue).hasTag(self.tag)) continue;
-			std.log.err("counted item {} | {}", .{dx, dy});
+			std.log.default_level("counted item {} | {}", .{dx, dy});
 			count += 1;
 		}
 	}
@@ -63,7 +63,7 @@ pub fn satisfied(self: *const Arbritrary, proceduralItem: *const ProceduralItem,
 
 pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Arbritrary {
 	const result = allocator.create(Arbritrary);
-	std.log.err("what the hell is this even right {}", .{zon.getChild("checkArray").toSlice().len});
+	std.log.default_level("loaded array size {}", .{zon.getChild("checkArray").toSlice().len});
 	result.* = .{
 		.tag = main.Tag.find(zon.get(?[]const u8, "tag", null) orelse blk: {
 			std.log.err("Missing tag field for encased restriction.", .{});
