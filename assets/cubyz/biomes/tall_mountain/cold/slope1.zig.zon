@@ -10,7 +10,7 @@
 	.maxSubBiomeCount = 1,
 	.stoneBlock = "cubyz:glacite/smooth",
 	.validPlayerSpawn = false,
-	.music = "cubyz:chrythm/cubyz_more",
+	.music = "cubyz:totaldemented/frigid_feeling",
 	.ground_structure = .{
 		"cubyz:snow",
 		"4 to 6 cubyz:permafrost",
