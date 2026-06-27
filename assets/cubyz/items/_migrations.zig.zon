@@ -97,7 +97,7 @@
 	.{.old = "marble/base", .new = "marble/smooth"},
 	.{.old = "glacite/base", .new = "glacite/smooth"},
 	.{.old = "basalt/base", .new = "basalt/smooth"},
-	.{.old = "voistone/base", .new = "voidstone/smooth"},
+	.{.old = "voidstone/base", .new = "voidstone/smooth"},
 	.{.old = "pyrolite/base", .new = "pyrolite/rough"},
 	.{.old = "terracotta/base", .new = "terracotta/smooth"},
 	.{.old = "sandstone/base", .new = "sandstone/rough"},
