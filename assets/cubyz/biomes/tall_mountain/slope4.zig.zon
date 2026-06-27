@@ -1,7 +1,6 @@
 .{
 	.properties = .{
 		.mountain,
-		.oak,
 		.pine,
 	},
 	.minHeight = 568,
