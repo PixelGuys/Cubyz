@@ -10,12 +10,12 @@
 	.roughness = 10,
 	.hills = 10,
 
-	.music = "cubyz:totaldemented/adventurous",
+	.music = "cubyz:bytepop/pixel_wires",
 
 	.validPlayerSpawn = false,
 
 	.ground_structure = .{
-		"0 to 1 cubyz:slate/cobble",
+		"0 to 1 cubyz:slate/rough",
 	},
 	.structures = .{
 		.{

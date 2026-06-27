@@ -4,24 +4,24 @@
 
 	.chance = 0.01,
 
-	.music = "cubyz:ikabod/live",
+	.music = "cubyz:totaldemented/midnight_melody",
 
 	.ground_structure = .{
 		"0 to 1 cubyz:gravel",
-		"cubyz:slate/base",
+		"cubyz:slate/smooth",
 	},
 	.structures = .{
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.016,
-			.block = "cubyz:slate/cobble",
+			.block = "cubyz:slate/rough",
 			.size = 5,
 			.size_variance = 3,
 		},
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.016,
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.size = 4,
 			.size_variance = 2,
 		},
@@ -34,8 +34,8 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:slate/cobble",
-			.log = "cubyz:slate/base",
+			.leaves = "cubyz:slate/rough",
+			.log = "cubyz:slate/smooth",
 			.chance = 0.16,
 			.type = .round,
 			.height = 3,
@@ -43,8 +43,8 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:slate/base",
-			.log = "cubyz:slate/base",
+			.leaves = "cubyz:slate/smooth",
+			.log = "cubyz:slate/smooth",
 			.chance = 0.48,
 			.type = .round,
 			.height = 3,

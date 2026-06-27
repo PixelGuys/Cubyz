@@ -1,6 +1,5 @@
 .{
-	.allowOres = true,
 	.model = "cubyz:cube",
+	.texture = "cubyz:slate/rough",
 	.rotation = "cubyz:stairs",
-	.texture = "cubyz:ferrock/base",
 }

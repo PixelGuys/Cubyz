@@ -19,9 +19,9 @@
 	.rivers = true,
 	.chance = 0.5,
 
-	.music = "cubyz:totaldemented/cubyz",
+	.music = "cubyz:mischol/desert_firefly",
 
-	.stoneBlock = "cubyz:limestone/base",
+	.stoneBlock = "cubyz:limestone/smooth",
 
 	.ground_structure = .{
 		"cubyz:grass",

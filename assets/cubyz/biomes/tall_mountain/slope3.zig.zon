@@ -27,6 +27,6 @@
 
 	.ground_structure = .{
 		"2 to 3 cubyz:snow",
-		"cubyz:slate/cobble",
+		"cubyz:slate/rough",
 	},
 }

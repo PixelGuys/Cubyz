@@ -17,7 +17,7 @@
 	.hills = 10,
 	.music = "cubyz:totaldemented/leaves",
 	.validPlayerSpawn = true,
-	.stoneBlock = "cubyz:limestone/base",
+	.stoneBlock = "cubyz:limestone/smooth",
 	.structures = .{
 		.{
 			.id = "cubyz:flower_patch",

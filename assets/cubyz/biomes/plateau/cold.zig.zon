@@ -9,6 +9,7 @@
 		"cubyz:cold_grass",
 		"1 to 2 cubyz:soil",
 	},
+	.music = "cubyz:totaldemented/hypoxia",
 	.structures = .{
 		.{
 			.id = "cubyz:fallen_tree",
