@@ -555,9 +555,9 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	}; // TODO Configure the second argument in the server settings.
 
 	main.sync.server.init();
-	entity_manager.init();
 	main.entity.server.init();
 	main.items.Inventory.server.init();
+	entity_manager.init();
 
 	world = ServerWorld.init(name) catch |err| {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
