@@ -14,7 +14,7 @@
 	.mountains = 90,
 	.chance = 0,
 	.maxSubBiomeCount = 1,
-	.stoneBlock = "cubyz:glacite/smooth",
+	.stoneBlock = "cubyz:slate/smooth",
 	.validPlayerSpawn = false,
 	.music = "cubyz:mrmayman/out_of_breath",
 	.ground_structure = .{
