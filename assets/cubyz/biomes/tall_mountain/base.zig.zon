@@ -1,26 +1,107 @@
 .{
-	.properties = .{.mountain},
-	.radius = 320,
+	.properties = .{
+		.mountain,
+	},
+	.tags = .{
+		.oak,
+		.birch,
+	},
 	.minHeight = 128,
 	.maxHeight = 128,
-
-	.interpolation = .linear,
-	.mountains = 150,
-
+	.keepOriginalTerrain = 0.8,
+	.smoothBeaches = true,
+	.radius = 380,
+	.mountains = 120,
 	.chance = 0,
-
+	.maxSubBiomeCount = 1,
+	.stoneBlock = "cubyz:slate/smooth",
 	.music = "cubyz:mrmayman/out_of_breath",
-
+	.validPlayerSpawn = false,
+	.ground_structure = .{
+		"cubyz:grass",
+		"4 to 6 cubyz:soil",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/young",
+			.placeMode = .degradable,
+			.chance = 0.1,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/birch/silver/1",
+			.placeMode = .degradable,
+			.chance = 0.025,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/birch/silver/2",
+			.placeMode = .degradable,
+			.chance = 0.025,
+		},
+		.{
+			.id = "cubyz:fallen_tree",
+			.log = "cubyz:oak_log",
+			.top = "cubyz:oak_log",
+			.chance = 0.0025,
+			.height = 6,
+			.height_variation = 3,
+		},
+		.{
+			.id = "cubyz:fallen_tree",
+			.log = "cubyz:birch_log",
+			.top = "cubyz:birch_log",
+			.chance = 0.001,
+			.height = 6,
+			.height_variation = 3,
+		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:grass_vegetation",
+			.chance = 0.4,
+			.height = 1,
+			.height_variation = 0,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:daisies"},
+			.chance = 0.008,
+			.width = 6,
+			.variation = 3,
+			.density = 0.3,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:daffodil"},
+			.chance = 0.01,
+			.width = 6,
+			.variation = 3,
+			.density = 0.1,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:castilleja"},
+			.chance = 0.006,
+			.width = 8,
+			.variation = 3,
+			.density = 0.1,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.032,
+			.block = "cubyz:slate/smooth",
+			.size = 4,
+			.size_variance = 5,
+		},
+	},
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:mountains",
-			.chance = 0.2,
+			.chance = 0.75,
 		},
-	},
-
-	.maxSubBiomeCount = 1,
-
-	.ground_structure = .{
-		"cubyz:slate/rough",
 	},
 }
