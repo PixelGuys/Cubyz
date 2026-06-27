@@ -875,7 +875,7 @@ pub const Command = struct { // MARK: Command
 				},
 				.workbench => |val| {
 					writer.writeEnum(main.entity.Entity, val.playerId);
-					writer.writeEnum(main.items.ProceduralItemTypeIndex, val.proceduralItemIndex);
+					val.proceduralItemIndex.toBytes(writer);
 				},
 				.other => {},
 				.alreadyFreed => unreachable,
@@ -891,7 +891,7 @@ pub const Command = struct { // MARK: Command
 				.playerInventory => .{.playerInventory = try reader.readEnum(main.entity.Entity)},
 				.hand => .{.hand = try reader.readEnum(main.entity.Entity)},
 				.blockInventory => .{.blockInventory = try reader.readVec(Vec3i)},
-				.workbench => .{.workbench = .{.playerId = try reader.readEnum(main.entity.Entity), .proceduralItemIndex = try reader.readEnum(main.items.ProceduralItemTypeIndex)}},
+				.workbench => .{.workbench = .{.playerId = try reader.readEnum(main.entity.Entity), .proceduralItemIndex = try .fromBytes(reader)}},
 				.other => .{.other = {}},
 				.alreadyFreed => return error.Invalid,
 			};

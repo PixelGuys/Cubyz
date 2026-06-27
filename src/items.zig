@@ -593,6 +593,16 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 		}
 	};
 
+	pub fn toBytes(self: ProceduralItemTypeIndex, writer: *BinaryWriter) void {
+		writer.writeEnum(ProceduralItemTypeIndex, self);
+	}
+
+	pub fn fromBytes(reader: *BinaryReader) !ProceduralItemTypeIndex {
+		const result = try reader.readEnum(ProceduralItemTypeIndex);
+		if (@intFromEnum(result) >= proceduralItemTypeList.items.len) return error.InvalidEnumTag;
+		return result;
+	}
+
 	pub fn iterator() ProceduralItemTypeIterator {
 		return .{};
 	}
