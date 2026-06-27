@@ -7,6 +7,7 @@ const Item = main.items.Item;
 const ItemStack = main.items.ItemStack;
 const ProceduralItem = main.items.ProceduralItem;
 const utils = main.utils;
+const Tag = main.Tag;
 const BinaryWriter = utils.BinaryWriter;
 const BinaryReader = utils.BinaryReader;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
@@ -531,6 +532,67 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		} orelse return;
 
 		main.sync.client.executeCommand(.{.craftProceduralItem = .init(destinations, workbenchInv)});
+	}
+
+	pub fn sortItems(source: ClientInventory, ignoredSlotCount: usize) void {
+		compressItems(source);
+		const ctx: SortContext = .{.inv = source};
+		std.sort.insertionContext(ignoredSlotCount, source.super._items.len, ctx);
+	}
+
+	pub fn compressItems(source: ClientInventory) void {
+		for (source.super._items, 0..) |invStack, slot| {
+			for (source.super._items, 0..) |checkedInvStack, checkedSlot| {
+				if (checkedSlot < slot) continue;
+				if (std.meta.eql(invStack.item, checkedInvStack.item)) {
+					main.sync.client.executeCommand(.{.deposit = .{.dest = .{.inv = source.super, .slot = @intCast(checkedSlot)}, .source = .{.inv = source.super, .slot = @intCast(slot)}, .amount = checkedInvStack.amount}});
+				}
+			}
+		}
+	}
+
+	const SortContext = struct {
+		inv: ClientInventory,
+
+		pub fn lessThan(ctx: @This(), a: usize, b: usize) bool {
+			const itemA: Item = ctx.inv.getItem(a);
+			const itemB: Item = ctx.inv.getItem(b);
+
+			if (itemA == .null) return false;
+			if (itemB == .null) return true;
+			if ((itemA != .proceduralItem) and (itemB == .proceduralItem)) return false;
+			if ((itemA == .proceduralItem) and (itemB != .proceduralItem)) return true;
+
+			const itemATags = getTagsFromItem(itemA);
+			const itemBTags = getTagsFromItem(itemB);
+
+			for (0..@min(itemATags.len, itemBTags.len)) |i| {
+				if (itemATags[i] == itemBTags[i]) continue;
+				return std.mem.lessThan(u8, itemATags[i].getName(), itemBTags[i].getName());
+			}
+			if (itemATags.len != itemBTags.len) return itemATags.len < itemBTags.len;
+			if ((itemA == .proceduralItem) and (itemB == .proceduralItem)) {
+				std.log.debug("checking durability", .{});
+				return (itemA.proceduralItem.durability > itemB.proceduralItem.durability);
+			}
+
+			return std.mem.lessThan(u8, itemA.id().?, itemB.id().?);
+		}
+
+		pub fn swap(ctx: @This(), a: usize, b: usize) void {
+			main.sync.client.executeCommand(.{.depositOrSwap = .{
+				.dest = .{.inv = ctx.inv.super, .slot = @intCast(a)},
+				.source = .{.inv = ctx.inv.super, .slot = @intCast(b)},
+			}});
+		}
+	};
+
+	pub fn getTagsFromItem(givenItem: Item) []const Tag {
+		switch (givenItem) {
+			.null => return &[_]Tag{},
+			.proceduralItem => return givenItem.proceduralItem.type.tags(),
+			.baseItem => return givenItem.baseItem.tags(),
+		}
 	}
 
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {
