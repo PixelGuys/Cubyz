@@ -149,7 +149,7 @@ pub const User = struct { // MARK: User
 
 	permissions: permission.Permissions = undefined,
 
-	pub const State = enum {awaitingKeyVerification, connected, awaitingReload};
+	pub const State = enum { awaitingKeyVerification, connected, awaitingReload };
 
 	pub fn player(self: *User) *Entity {
 		return &self.innerPlayer;

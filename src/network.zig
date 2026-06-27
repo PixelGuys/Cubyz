@@ -1582,7 +1582,7 @@ pub const Connection = struct { // MARK: Connection
 					conn.restartCounter = restartCounter;
 					switch (state) {
 						.awaitingKeyVerification => main.shouldReload = false,
-						.connected,.awaitingReload => main.shouldReload = true,
+						.connected, .awaitingReload => main.shouldReload = true,
 					}
 					main.shouldRestart.store(true, .release);
 				}
