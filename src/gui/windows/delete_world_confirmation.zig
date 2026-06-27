@@ -50,7 +50,7 @@ pub fn onOpen() void {
 	const text = std.fmt.allocPrint(main.stackAllocator.allocator, "Are you sure you want to delete the world **{s}**?", .{deleteWorldName}) catch unreachable;
 	defer main.stackAllocator.free(text);
 	list.add(Label.init(.{0, 0}, 128, text, .center));
-	list.add(Button.initText(.{0, 0}, 128, "Yes", .init(deleteWorld)));
+	list.add(Button.initText(.{0, 0}, 128, "Yes", .{.onAction = .init(deleteWorld)}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

@@ -30,7 +30,7 @@ const padding: f32 = 8;
 var itemSlots: main.List(*ItemSlot) = .empty;
 
 pub fn deinit() void {
-	itemSlots.deinit(main.globalAllocator);
+	itemSlots.clearAndFree(main.globalAllocator);
 }
 
 pub var openInventory: main.items.Inventory.ClientInventory = undefined;

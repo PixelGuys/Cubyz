@@ -34,9 +34,9 @@ const Stripe = struct { // MARK: Stripe
 
 		var minDistance: f64 = 0;
 		var maxDistance: f64 = 0;
-		if (parameters.object.get("distance")) |dist| {
-			minDistance = dist.as(f64, 0);
-			maxDistance = dist.as(f64, 0);
+		if (parameters.get(?f64, "distance", null)) |dist| {
+			minDistance = dist;
+			maxDistance = dist;
 		} else {
 			minDistance = parameters.get(f64, "minDistance", 0);
 			maxDistance = parameters.get(f64, "maxDistance", 0);
@@ -44,9 +44,9 @@ const Stripe = struct { // MARK: Stripe
 
 		var minOffset: f64 = 0;
 		var maxOffset: f64 = 0;
-		if (parameters.object.get("offset")) |off| {
-			minOffset = off.as(f64, 0);
-			maxOffset = off.as(f64, 0);
+		if (parameters.get(?f64, "offset", null)) |off| {
+			minOffset = off;
+			maxOffset = off;
 		} else {
 			minOffset = parameters.get(f64, "minOffset", 0);
 			maxOffset = parameters.get(f64, "maxOffset", 0);
@@ -54,9 +54,9 @@ const Stripe = struct { // MARK: Stripe
 
 		var minWidth: f64 = 0;
 		var maxWidth: f64 = 0;
-		if (parameters.object.get("width")) |width| {
-			minWidth = width.as(f64, 0);
-			maxWidth = width.as(f64, 0);
+		if (parameters.get(?f64, "width", null)) |width| {
+			minWidth = width;
+			maxWidth = width;
 		} else {
 			minWidth = parameters.get(f64, "minWidth", 0);
 			maxWidth = parameters.get(f64, "maxWidth", 0);
@@ -195,7 +195,7 @@ pub const Biome = struct { // MARK: Biome
 		pub fn fromZon(zon: ZonElement, initMidValues: bool) GenerationProperties {
 			var result: GenerationProperties = .{};
 			for (zon.toSlice()) |child| {
-				const property = child.as([]const u8, "");
+				const property = child.as([]const u8) orelse "";
 				inline for (@typeInfo(GenerationProperties).@"struct".fields) |field| {
 					if (std.mem.eql(u8, field.name, property)) {
 						@field(result, field.name) = true;
@@ -268,7 +268,7 @@ pub const Biome = struct { // MARK: Biome
 			.isCave = zon.get(bool, "isCave", false),
 			.radius = (maxRadius + minRadius)/2,
 			.radiusVariation = (maxRadius - minRadius)/2,
-			.stoneBlock = blocks.parseBlock(zon.get([]const u8, "stoneBlock", "cubyz:slate/base")),
+			.stoneBlock = blocks.parseBlock(zon.get([]const u8, "stoneBlock", "cubyz:slate/smooth")),
 			.fogColor = u32ToVec3(zon.get(u32, "fogColor", 0xffbfe2ff)),
 			.skyColor = blk: {
 				break :blk u32ToVec3(zon.get(?u32, "skyColor", null) orelse break :blk .{0.46, 0.7, 1.0});
@@ -440,8 +440,12 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 			.structure = allocator.alloc(BlockStack, blockStackDescriptions.len),
 		};
 		for (blockStackDescriptions, self.structure) |zonString, *blockStack| {
-			blockStack.init(zonString.as([]const u8, "That's not a zon string.")) catch |err| {
-				std.log.err("Couldn't parse blockStack '{s}': {s} Removing it.", .{zonString.as([]const u8, "(not a zon string)"), @errorName(err)});
+			blockStack.init(zonString.as([]const u8) orelse {
+				std.log.err("Couldn't parse blockStack zon: Expected string type found {s}", .{@tagName(zonString)});
+				blockStack.* = .{};
+				continue;
+			}) catch |err| {
+				std.log.err("Couldn't parse blockStack '{s}': {s} Removing it.", .{zonString.as([]const u8).?, @errorName(err)});
 				blockStack.* = .{};
 			};
 		}

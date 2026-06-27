@@ -2,5 +2,5 @@
 	.allowOres = true,
 	.rotation = "cubyz:stairs",
 	.model = "cubyz:cube",
-	.texture = "cubyz:glacite/base",
+	.texture = "cubyz:glacite/rough",
 }

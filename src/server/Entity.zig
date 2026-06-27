@@ -16,9 +16,9 @@ maxHealth: f32 = 8,
 energy: f32 = 8,
 maxEnergy: f32 = 8,
 name: ?[]const u8 = null,
-id: u32 = 0,
+id: main.entity.Entity = .noValue,
 
-pub fn loadFrom(self: *@This(), id: u32, zon: ZonElement, comptime side: main.sync.Side) !void {
+pub fn loadFrom(self: *@This(), id: main.entity.Entity, zon: ZonElement, comptime side: main.sync.Side) !void {
 	self.id = id;
 	self.pos = zon.get(Vec3d, "position", .{0, 0, 0});
 	self.vel = zon.get(Vec3d, "velocity", .{0, 0, 0});
@@ -26,14 +26,14 @@ pub fn loadFrom(self: *@This(), id: u32, zon: ZonElement, comptime side: main.sy
 	self.health = zon.get(f32, "health", self.maxHealth);
 	self.energy = zon.get(f32, "energy", self.maxEnergy);
 	if (zon.getChildOrNull("components")) |components| {
-		try main.entity.loadComponentsFromBase64(components.as([]const u8, ""), self.id, side);
+		try main.entity.loadComponentsFromBase64(components.as([]const u8) orelse "", self.id, side);
 	}
 
 	if (zon.getChildOrNull("name")) |name| {
 		if (self.name) |oldname| {
 			main.globalAllocator.free(oldname);
 		}
-		self.name = main.globalAllocator.dupe(u8, name.as([]const u8, "invalid name"));
+		self.name = main.globalAllocator.dupe(u8, name.as([]const u8) orelse "invalid name");
 	}
 }
 pub fn clone(self: *@This(), copy: *@This()) void {
@@ -51,7 +51,7 @@ pub fn save(self: *const @This(), allocator: NeverFailingAllocator, audience: ma
 	zon.put("rotation", self.rot);
 	zon.put("health", self.health);
 	zon.put("energy", self.energy);
-	zon.put("id", self.id);
+	zon.put("id", @intFromEnum(self.id));
 
 	var base64 = main.entity.server.componentsToBase64(allocator, self.id, audience);
 	defer base64.deinit(allocator);
@@ -69,5 +69,7 @@ pub fn deinit(self: *@This(), comptime side: main.sync.Side) void {
 	}
 	if (side == .server) {
 		main.entity.server.removeAllComponents(self.id);
+	} else {
+		main.entity.client.removeAllComponents(self.id);
 	}
 }

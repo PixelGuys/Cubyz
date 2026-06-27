@@ -61,7 +61,7 @@ fn updateResult(_: main.items.Inventory.Source) void {
 }
 
 fn openInventory() void {
-	craftingGridInv = ClientInventory.init(main.globalAllocator, 25, .serverShared, .{.workbench = .{.playerId = main.game.Player.id, .proceduralItemIndex = proceduralItemTypes.items[currentProceduralItemType]}}, .{.onUpdateCallback = &updateResult});
+	craftingGridInv = ClientInventory.init(main.globalAllocator, 25, .serverShared, .{.workbench = .{.playerId = main.game.Player.id, .proceduralItemIndex = proceduralItemTypes.items[currentProceduralItemType]}}, .{.onUpdateCallback = &updateResult, .canPutInto = items.ProceduralItem.canPutIntoWorkbenchCallback});
 	craftingResultInv = ClientInventory.init(main.globalAllocator, 1, .{.workbenchResult = craftingGridInv.super.id}, .other, .{});
 	const list = HorizontalList.init();
 	{ // crafting grid
@@ -82,7 +82,7 @@ fn openInventory() void {
 		list.add(grid);
 	}
 	const verticalThing = VerticalList.init(.{0, 0}, 300, padding);
-	proceduralItemButton = Button.initText(.{8, 0}, 116, proceduralItemTypes.items[currentProceduralItemType].id(), .init(toggleProceduralItem));
+	proceduralItemButton = Button.initText(.{8, 0}, 116, proceduralItemTypes.items[currentProceduralItemType].id(), .{.onAction = .init(toggleProceduralItem)});
 	verticalThing.add(proceduralItemButton);
 	const buttonHeight = verticalThing.size[1];
 	const craftingResultList = HorizontalList.init();

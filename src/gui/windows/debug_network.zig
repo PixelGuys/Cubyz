@@ -24,7 +24,6 @@ pub var window = GuiWindow{
 };
 
 pub fn render() void {
-	draw.setColor(0xffffffff);
 	var y: f32 = 0;
 	if (main.game.world != null) {
 		if (main.server.world != null) {
