@@ -7,7 +7,7 @@
 	.mountains = 150,
 	.chance = 0,
 	.maxSubBiomeCount = 1,
-	.stoneBlock = "cubyz:glacite/base",
+	.stoneBlock = "cubyz:glacite/smooth",
 	.validPlayerSpawn = false,
 	.music = "cubyz:chrythm/cubyz_more",
 	.ground_structure = .{

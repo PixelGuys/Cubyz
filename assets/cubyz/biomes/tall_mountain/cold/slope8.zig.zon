@@ -8,7 +8,7 @@
 	.hills = 10,
 	.chance = 0,
 	.maxSubBiomeCount = 1,
-	.stoneBlock = "cubyz:glacite/base",
+	.stoneBlock = "cubyz:glacite/smooth",
 	.validPlayerSpawn = false,
 	.music = "cubyz:totaldemented/frigid_feeling",
 	.ground_structure = .{
