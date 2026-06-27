@@ -43,7 +43,7 @@ pub fn satisfied(self: *const Arbritrary, proceduralItem: *const ProceduralItem,
 		if (zonValue.as(usize) == null) continue;
 		slotInfos.pushBack(((zonValue.as(usize) orelse 0) != 0));
 	}
-	
+
 	const arrayBounds = @divFloor(arraySizeSideLength, 2);
 	var dx = -arrayBounds;
 	var dy = arrayBounds; // writen like this so that the array is read in reading order left to right, top to bottom
