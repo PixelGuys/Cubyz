@@ -54,14 +54,14 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:slate/cobble",
+			.block = "cubyz:slate/rough",
 			.chance = 0.0015,
 			.height = 2,
 			.height_variation = 15,
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.chance = 0.0015,
 			.height = 2,
 			.height_variation = 15,
@@ -109,7 +109,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:slate/base"},
+			.blocks = .{"cubyz:slate/smooth"},
 			.chance = 0.001,
 			.width = 10,
 			.variation = 3,
@@ -118,7 +118,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:slate/cobble"},
+			.blocks = .{"cubyz:slate/rough"},
 			.chance = 0.003,
 			.width = 10,
 			.variation = 3,
