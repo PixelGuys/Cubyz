@@ -22,7 +22,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:moss:cubyz:slate/cobble",
+			.block = "cubyz:moss:cubyz:slate/rough",
 			.chance = 0.032,
 			.width = 6,
 			.variation = 2,

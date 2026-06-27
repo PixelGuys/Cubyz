@@ -1239,7 +1239,7 @@ const TextRendering = struct { // MARK: TextRendering
 			glyphMapping.appendNTimes(0, index - glyphMapping.items.len + 1);
 		}
 		if (glyphMapping.items[index] == 0) { // glyph was not initialized yet.
-			try ftError(c.FT_Load_Glyph(freetypeFace, index, c.FT_LOAD_RENDER));
+			try ftError(c.FT_Load_Glyph(freetypeFace, index, c.FT_LOAD_RENDER | c.FT_LOAD_NO_AUTOHINT));
 			const glyph = freetypeFace.*.glyph;
 			const bitmap = glyph.*.bitmap;
 			const width = bitmap.width;
