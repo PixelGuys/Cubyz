@@ -883,7 +883,7 @@ pub const Command = struct { // MARK: Command
 				},
 				.workbench => |val| {
 					writer.writeInt(u32, val.playerId);
-					writer.writeEnum(main.items.ProceduralItemTypeIndex, val.proceduralItemIndex);
+					val.proceduralItemIndex.toBytes(writer);
 				},
 				.other => {},
 				.alreadyFreed => unreachable,
@@ -899,11 +899,10 @@ pub const Command = struct { // MARK: Command
 				.playerInventory => .{.playerInventory = try reader.readInt(u32)},
 				.hand => .{.hand = try reader.readInt(u32)},
 				.blockInventory => .{.blockInventory = try reader.readVec(Vec3i)},
-				.workbench => .{.workbench = .{.playerId = try reader.readInt(u32), .proceduralItemIndex = try reader.readEnum(main.items.ProceduralItemTypeIndex)}},
+				.workbench => .{.workbench = .{.playerId = try reader.readInt(u32), .proceduralItemIndex = try .fromBytes(reader)}},
 				.other => .{.other = {}},
 				.alreadyFreed => return error.Invalid,
 			};
-			if (source == .workbench and !source.workbench.proceduralItemIndex.check()) return error.Invalid;
 			try Inventory.server.createInventory(user.?, id, len, source);
 			return .{
 				.inv = Inventory.server.getInventory(user.?, id) orelse return error.InventoryNotFound,
