@@ -212,26 +212,28 @@ pub const handShake = struct { // MARK: handShake
 	}
 
 	pub fn clientSide(conn: *Connection, name: []const u8) !void {
-		const zonObject = ZonElement.initObject(main.stackAllocator);
-		defer zonObject.deinit(main.stackAllocator);
-		var prefix: [1]u8 = undefined;
-
+		
 		if (conn.handShakeState.load(.monotonic) == .start) {
+			const zonObject = ZonElement.initObject(main.stackAllocator);
+			defer zonObject.deinit(main.stackAllocator);
+
 			zonObject.putOwnedString("version", settings.version.version);
 			zonObject.putOwnedString("name", name);
 			if (main.network.authentication.KeyCollection.initialized) {
 				zonObject.put("keys", main.network.authentication.KeyCollection.getPublicKeys(main.stackAllocator));
 			}
-			prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
 			try conn.secureChannel.startTlsHandshake();
 			conn.secureChannel.finishedCollectingClientVerificationData = true;
+
+			const prefix: [1]u8 = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
+			const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
+			defer main.stackAllocator.free(data);
+			
+			conn.send(.secure, id, data);
 		}
 		if (conn.handShakeState.load(.monotonic) == .reload) {
-			prefix = [1]u8{@intFromEnum(Connection.HandShakeState.reload)};
+			conn.send(.secure, id, [1]u8{@intFromEnum(Connection.HandShakeState.reload)});
 		}
-		const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
-		defer main.stackAllocator.free(data);
-		conn.send(.secure, id, data);
 
 		conn.mutex.lock();
 		while (true) {
