@@ -382,85 +382,152 @@ pub const World = struct { // MARK: World
 	}
 
 	pub const DayTime = struct { // MARK: DayTime
-		const dayCycleLength = 12000; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
+		// Lengths of parts of the in-game day cycle in 100ms
+		const dayDuration = 7200; // 12 minutes
+		const duskDuration = 1200; // 2 minutes
+		const nightDuration = 4800; // 8 minutes
+		const dawnDuration = 1200; // 2 minutes
+
+		pub const dayStart = 0;
+		pub const duskStart = dayStart + dayDuration;
+		pub const nightStart = duskStart + duskDuration;
+		pub const dawnStart = nightStart + nightDuration;
+
+		const dayCycleLength = dawnStart + dawnDuration; // 24 minutes or 14400 ticks
+
+		const lightFraction = @as(f32, @floatFromInt(dawnDuration/2 + dayDuration + duskDuration/2))/@as(f32, @floatFromInt(dayCycleLength));
+		const halfDayArc: f32 = std.math.pi*lightFraction;
+		const axialTilt = 0.409106; // same as earth
+		pub const celestialTilt = std.math.atan(-@cos(halfDayArc)/@tan(axialTilt));
+
 		const minimumAmbientLight: f32 = 0.1;
-		pub const nightStart = dayCycleLength/4 + dayCycleLength/16;
-		pub const dayStart = dayCycleLength/2 + dayCycleLength/4 + dayCycleLength/16;
 
 		biomeFog: Fog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .density = 1.0/15.0/128.0, .fogLower = 100, .fogHigher = 1000},
 		fog: Fog = Fog{.skyColor = .{0.8, 0.8, 1}, .fogColor = .{0.8, 0.8, 1}, .density = 1.0/15.0/128.0, .fogLower = 100, .fogHigher = 1000},
 		ambientLight: f32 = 0,
 		dayTime: i64 = 0,
+		dayPhase: DayPhase = .{.day = 0},
+
+		const DayPhase = union(enum) {
+			day: f32,
+			dusk: f32,
+			night: f32,
+			dawn: f32,
+		};
+
+		fn updateTimeOfDay(self: *DayTime) void {
+			self.dayTime = @intCast(@mod(world.?.gameTime.load(.monotonic), dayCycleLength));
+		}
+
+		fn updatePhaseOfDay(self: *DayTime) void {
+			var periodTime = self.dayTime;
+
+			if (periodTime < dayDuration) {
+				self.dayPhase = .{.day = 1 - @as(f32, @floatFromInt(dayDuration - periodTime))/@as(f32, @floatFromInt(dayDuration))};
+				return;
+			}
+
+			periodTime -= dayDuration;
+
+			if (periodTime < duskDuration) {
+				self.dayPhase = .{.dusk = 1 - @as(f32, @floatFromInt(duskDuration - periodTime))/@as(f32, @floatFromInt(duskDuration))};
+				return;
+			}
+
+			periodTime -= duskDuration;
+
+			if (periodTime < nightDuration) {
+				self.dayPhase = .{.night = 1 - @as(f32, @floatFromInt(nightDuration - periodTime))/@as(f32, @floatFromInt(nightDuration))};
+				return;
+			}
+
+			periodTime -= nightDuration;
+
+			self.dayPhase = .{.dawn = 1 - @as(f32, @floatFromInt(dawnDuration - periodTime))/@as(f32, @floatFromInt(dawnDuration))};
+		}
 
 		pub fn getDayProgress(self: *DayTime) f32 {
 			return @as(f32, @floatFromInt(self.dayTime))/@as(f32, @floatFromInt(dayCycleLength));
 		}
 
 		pub fn getStarOpacity(self: *DayTime) f32 {
-			const dayTime = @abs(self.dayTime - dayCycleLength/2);
-			if (dayTime < dayCycleLength/4 - dayCycleLength/16) {
-				return 1;
-			}
-			if (dayTime > dayCycleLength/4 + dayCycleLength/16) {
-				return 0;
-			}
-
-			return 1 - @as(f32, @floatFromInt(dayTime - (dayCycleLength/4 - dayCycleLength/16)))/@as(f32, @floatFromInt(dayCycleLength/8));
+			return switch (self.dayPhase) {
+				.day => 0,
+				.dusk => |dusk| dusk,
+				.night => 1,
+				.dawn => |dawn| 1 - dawn,
+			};
 		}
 
 		fn updateAmbientLight(self: *DayTime) void {
-			const dayTime = @abs(self.dayTime - dayCycleLength/2);
-			if (dayTime < dayCycleLength/4 - dayCycleLength/16) {
-				self.ambientLight = 0.1;
-				return;
-			}
-			if (dayTime > dayCycleLength/4 + dayCycleLength/16) {
-				self.ambientLight = 1;
-				return;
-			}
-
-			self.ambientLight = minimumAmbientLight + (1 - minimumAmbientLight)*@as(f32, @floatFromInt(dayTime - (dayCycleLength/4 - dayCycleLength/16)))/@as(f32, @floatFromInt(dayCycleLength/8));
-		}
-
-		fn updateTimeOfDay(self: *DayTime) void {
-			self.dayTime = @intCast(@mod(world.?.gameTime.load(.monotonic), dayCycleLength));
+			self.ambientLight = switch (self.dayPhase) {
+				.day => 1,
+				.dusk => |dusk| 1 - dusk*(1 - minimumAmbientLight),
+				.night => minimumAmbientLight,
+				.dawn => |dawn| minimumAmbientLight + dawn*(1 - minimumAmbientLight),
+			};
 		}
 
 		fn getSkyColorFactor(self: *DayTime) Vec3f {
-			const dayTime = @abs(self.dayTime - dayCycleLength/2);
-			if (dayTime < dayCycleLength/4 - dayCycleLength/16) {
-				return @splat(0);
-			}
-			if (dayTime > dayCycleLength/4 + dayCycleLength/16) {
-				return @splat(1);
-			}
-			var skyColorFactor: Vec3f = undefined;
-			// b:
-			if (dayTime > dayCycleLength/4) {
-				skyColorFactor[2] = @as(f32, @floatFromInt(dayTime - dayCycleLength/4))/@as(f32, @floatFromInt(dayCycleLength/16));
-			} else {
-				skyColorFactor[2] = 0;
-			}
-			// g:
-			if (dayTime > dayCycleLength/4 + dayCycleLength/32) {
-				skyColorFactor[1] = 1;
-			} else if (dayTime > dayCycleLength/4 - dayCycleLength/32) {
-				skyColorFactor[1] = 1 - @as(f32, @floatFromInt(dayCycleLength/4 + dayCycleLength/32 - dayTime))/@as(f32, @floatFromInt(dayCycleLength/16));
-			} else {
-				skyColorFactor[1] = 0;
-			}
-			// r:
-			if (dayTime > dayCycleLength/4) {
-				skyColorFactor[0] = 1;
-			} else {
-				skyColorFactor[0] = 1 - @as(f32, @floatFromInt(dayCycleLength/4 - dayTime))/@as(f32, @floatFromInt(dayCycleLength/16));
-			}
+			return switch (self.dayPhase) {
+				.day => @splat(1),
+				.dusk => |dusk| {
+					var skyColorFactor: Vec3f = undefined;
+					// b:
+					if (dusk < 0.5) {
+						skyColorFactor[2] = (0.5 - dusk)/0.5;
+					} else {
+						skyColorFactor[2] = 0;
+					}
+					// g:
+					if (dusk < 0.25) {
+						skyColorFactor[1] = 1;
+					} else if (dusk < 0.75) {
+						skyColorFactor[1] = (0.75 - dusk)/0.5;
+					} else {
+						skyColorFactor[1] = 0;
+					}
+					// r:
+					if (dusk < 0.5) {
+						skyColorFactor[0] = 1;
+					} else {
+						skyColorFactor[0] = (1 - dusk)/0.5;
+					}
 
-			return skyColorFactor;
+					return skyColorFactor;
+				},
+				.night => @splat(0),
+				.dawn => |dawn| {
+					var skyColorFactor: Vec3f = undefined;
+					// b:
+					if (dawn < 0.5) {
+						skyColorFactor[2] = 0;
+					} else {
+						skyColorFactor[2] = (dawn - 0.5)/0.5;
+					}
+					// g:
+					if (dawn < 0.25) {
+						skyColorFactor[1] = 0;
+					} else if (dawn < 0.75) {
+						skyColorFactor[1] = (dawn - 0.25)/0.5;
+					} else {
+						skyColorFactor[1] = 1;
+					}
+					// r:
+					if (dawn < 0.5) {
+						skyColorFactor[0] = dawn/0.5;
+					} else {
+						skyColorFactor[0] = 1;
+					}
+
+					return skyColorFactor;
+				},
+			};
 		}
 
 		pub fn update(self: *DayTime, deltaTime: f64) void {
 			self.updateTimeOfDay();
+			self.updatePhaseOfDay();
 			const biome = world.?.playerBiome.load(.monotonic);
 
 			const t = 1 - @as(f32, @floatCast(@exp(-2*deltaTime)));
