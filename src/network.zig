@@ -543,7 +543,6 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		if (self.running.load(.monotonic)) self.pause();
 
 		for (self.connections.items) |conn| {
-			conn.@"continue"();
 			conn.disconnect();
 		}
 
@@ -1553,17 +1552,11 @@ pub const Connection = struct { // MARK: Connection
 	pub fn pause(self: *Connection) void {
 		if (self.connectionState.load(.monotonic) == .connected) {
 			self.connectionState.store(.paused, .monotonic);
-			if (self.user) |user| {
-				user.connected.store(false, .monotonic);
-			}
 		}
 	}
 	pub fn @"continue"(self: *Connection) void {
 		if (self.connectionState.load(.monotonic) == .paused) {
 			self.connectionState.store(.connected, .monotonic);
-			if (self.user) |user| {
-				user.connected.store(true, .monotonic);
-			}
 		}
 	}
 	pub fn checkRestartCounter(conn: *Connection, protocolIndex: u8, data: []const u8, channelId: ChannelId) !bool { // MARK: checkRestartCounter()
