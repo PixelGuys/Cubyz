@@ -39,9 +39,7 @@ pub fn render(guicomponent: *GuiComponent, pos: Vec2f, alignment: graphics.TextB
 
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
 	var renderpos = posFromAlignment(pos, size, alignment);
-	if (alignment == .center and renderpos[0] + size[0]/2 > windowSize[0]) {
-		renderpos = posFromAlignment(pos, size, .left);
-	} else if (renderpos[0] + size[0] > windowSize[0]) {
+	if ((alignment == .center and renderpos[0] + size[0]/2 > windowSize[0]) or renderpos[0] + size[0] > windowSize[0]) {
 		renderpos = posFromAlignment(pos, size, .left);
 	} else if (renderpos[0] < 0) {
 		renderpos = posFromAlignment(pos, size, .right);
