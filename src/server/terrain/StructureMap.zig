@@ -47,7 +47,7 @@ pub const StructureMapFragment = struct {
 	allocator: main.heap.NeverFailingAllocator,
 
 	tempData: struct {
-		lists: *[chunkedSize*chunkedSize*chunkedSize]main.ListUnmanaged(Structure),
+		lists: *[chunkedSize*chunkedSize*chunkedSize]main.List(Structure),
 		allocator: NeverFailingAllocator,
 	},
 
@@ -63,11 +63,11 @@ pub const StructureMapFragment = struct {
 			.arena = .init(main.globalAllocator),
 			.allocator = self.arena.allocator(),
 			.tempData = .{
-				.lists = tempAllocator.create([chunkedSize*chunkedSize*chunkedSize]main.ListUnmanaged(Structure)),
+				.lists = tempAllocator.create([chunkedSize*chunkedSize*chunkedSize]main.List(Structure)),
 				.allocator = tempAllocator,
 			},
 		};
-		@memset(self.tempData.lists, .{});
+		@memset(self.tempData.lists, .empty);
 	}
 
 	fn privateDeinit(self: *StructureMapFragment) void {
@@ -150,10 +150,10 @@ pub const StructureMapGenerator = struct {
 	});
 
 	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []StructureMapGenerator {
-		var list: main.ListUnmanaged(StructureMapGenerator) = .initCapacity(allocator, generatorRegistry.values().len);
+		var list: main.List(StructureMapGenerator) = .initCapacity(allocator, generatorRegistry.values().len);
 		for (generatorRegistry.keys(), generatorRegistry.values()) |id, generator| {
 			const generatorSettings = settings.getChild(id);
-			if (generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
+			if ((generatorSettings.get(GeneratorState, "state") orelse generator.defaultState) == .disabled) continue;
 			generator.init(generatorSettings);
 			list.appendAssumeCapacity(generator);
 		}

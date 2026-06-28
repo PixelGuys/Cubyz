@@ -3,7 +3,7 @@ const builtin = @import("builtin");
 
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const List = main.List;
+const ListManaged = main.ListManaged;
 
 pub const ZonElement = union(enum) { // MARK: Zon
 	int: i128,
@@ -12,7 +12,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 	stringOwned: []const u8,
 	bool: bool,
 	null: void,
-	array: *List(ZonElement),
+	array: *ListManaged(ZonElement),
 	object: *std.StringHashMap(ZonElement),
 
 	pub fn initObject(allocator: NeverFailingAllocator) ZonElement {
@@ -22,17 +22,17 @@ pub const ZonElement = union(enum) { // MARK: Zon
 	}
 
 	pub fn initArray(allocator: NeverFailingAllocator) ZonElement {
-		const list = allocator.create(List(ZonElement));
+		const list = allocator.create(ListManaged(ZonElement));
 		list.* = .init(allocator);
 		return .{.array = list};
 	}
 
-	pub fn getAtIndex(self: *const ZonElement, comptime _type: type, index: usize, replacement: _type) _type {
+	pub fn getAtIndex(self: *const ZonElement, comptime T: type, index: usize, replacement: T) T {
 		if (self.* != .array) {
 			return replacement;
 		} else {
 			if (index < self.array.items.len) {
-				return self.array.items[index].as(_type, replacement);
+				return self.array.items[index].as(T) orelse replacement;
 			} else {
 				return replacement;
 			}
@@ -51,15 +51,12 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		}
 	}
 
-	pub fn get(self: *const ZonElement, comptime _type: type, key: []const u8, replacement: _type) _type {
-		if (self.* != .object) {
-			return replacement;
+	pub fn get(self: *const ZonElement, comptime T: type, key: []const u8) ?T {
+		if (self.* != .object) return null;
+		if (self.object.get(key)) |elem| {
+			return elem.as(T);
 		} else {
-			if (self.object.get(key)) |elem| {
-				return elem.as(_type, replacement);
-			} else {
-				return replacement;
-			}
+			return null;
 		}
 	}
 
@@ -150,59 +147,49 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		}
 	}
 
-	pub fn as(self: *const ZonElement, comptime T: type, replacement: T) T {
-		comptime var typeInfo: std.builtin.Type = @typeInfo(T);
-		comptime var InnerType = T;
-		inline while (typeInfo == .optional) {
-			InnerType = typeInfo.optional.child;
-			typeInfo = @typeInfo(InnerType);
-		}
+	pub fn as(self: *const ZonElement, comptime T: type) ?T {
+		const typeInfo: std.builtin.Type = @typeInfo(T);
 		switch (typeInfo) {
 			.int => {
 				switch (self.*) {
-					.int => return std.math.cast(InnerType, self.int) orelse replacement,
-					.float => return std.math.lossyCast(InnerType, std.math.round(self.float)),
-					else => return replacement,
+					.int => return std.math.cast(T, self.int),
+					.float => return std.math.lossyCast(T, std.math.round(self.float)),
+					else => return null,
 				}
 			},
 			.float => {
 				switch (self.*) {
 					.int => return @floatFromInt(self.int),
 					.float => return @floatCast(self.float),
-					else => return replacement,
+					else => return null,
 				}
 			},
 			.vector => {
 				const len = typeInfo.vector.len;
 				const elems = self.toSlice();
-				if (elems.len != len) return replacement;
-				var result: InnerType = undefined;
-				if (InnerType == T) result = replacement;
+				if (elems.len != len) return null;
+				var result: T = undefined;
 				inline for (0..len) |i| {
-					if (InnerType == T) {
-						result[i] = elems[i].as(typeInfo.vector.child, result[i]);
-					} else {
-						result[i] = elems[i].as(?typeInfo.vector.child, null) orelse return replacement;
-					}
+					result[i] = elems[i].as(typeInfo.vector.child) orelse return null;
 				}
 				return result;
 			},
 			.@"enum" => {
-				return std.meta.stringToEnum(InnerType, self.as(?[]const u8, null) orelse return replacement) orelse return replacement;
+				return std.meta.stringToEnum(T, self.as([]const u8) orelse return null);
 			},
 			else => {
-				switch (InnerType) {
+				switch (T) {
 					[]const u8 => {
 						switch (self.*) {
 							.string => return self.string,
 							.stringOwned => return self.stringOwned,
-							else => return replacement,
+							else => return null,
 						}
 					},
 					bool => {
 						switch (self.*) {
 							.bool => return self.bool,
-							else => return replacement,
+							else => return null,
 						}
 					},
 					else => {
@@ -337,7 +324,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		return self.* == .null;
 	}
 
-	fn escape(list: *List(u8), string: []const u8) void {
+	fn escape(list: *ListManaged(u8), string: []const u8) void {
 		for (string) |char| {
 			switch (char) {
 				'\\' => list.appendSlice("\\\\"),
@@ -348,7 +335,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 			}
 		}
 	}
-	fn writeTabs(list: *List(u8), tabs: u32) void {
+	fn writeTabs(list: *ListManaged(u8), tabs: u32) void {
 		for (0..tabs) |_| {
 			list.append('\t');
 		}
@@ -361,7 +348,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		}
 		return true;
 	}
-	fn recurseToString(zon: ZonElement, list: *List(u8), tabs: u32, comptime visualCharacters: bool) void {
+	fn recurseToString(zon: ZonElement, list: *ListManaged(u8), tabs: u32, comptime visualCharacters: bool) void {
 		switch (zon) {
 			.int => |value| {
 				list.print("{d}", .{value});
@@ -442,14 +429,14 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		}
 	}
 	pub fn toString(zon: ZonElement, allocator: NeverFailingAllocator) []const u8 {
-		var string = List(u8).init(allocator);
+		var string: ListManaged(u8) = .init(allocator);
 		recurseToString(zon, &string, 0, true);
 		return string.toOwnedSlice();
 	}
 
 	/// Ignores all the visual characters(spaces, tabs and newlines) and allows adding a custom prefix(which is for example required by networking).
 	pub fn toStringEfficient(zon: ZonElement, allocator: NeverFailingAllocator, prefix: []const u8) []const u8 {
-		var string = List(u8).init(allocator);
+		var string: ListManaged(u8) = .init(allocator);
 		string.appendSlice(prefix);
 		recurseToString(zon, &string, 0, false);
 		return string.toOwnedSlice();
@@ -576,15 +563,14 @@ const Parser = struct { // MARK: Parser
 	}
 
 	fn parseString(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) []const u8 {
-		var builder = List(u8).init(allocator);
+		var builder: ListManaged(u8) = .init(allocator);
 		while (index.* < chars.len) : (index.* += 1) {
 			if (chars[index.*] == '\"') {
 				index.* += 1;
 				break;
 			} else if (chars[index.*] == '\\') {
 				index.* += 1;
-				if (index.* >= chars.len)
-					break;
+				if (index.* >= chars.len) break;
 				switch (chars[index.*]) {
 					't' => {
 						builder.append('\t');
@@ -607,7 +593,7 @@ const Parser = struct { // MARK: Parser
 	}
 
 	fn parseIdentifierOrStringOrEnumLiteral(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) []const u8 {
-		var builder = List(u8).init(allocator);
+		var builder: ListManaged(u8) = .init(allocator);
 		if (index.* == chars.len) return &.{};
 		if (chars[index.*] == '@') {
 			index.* += 1;
@@ -627,7 +613,7 @@ const Parser = struct { // MARK: Parser
 	}
 
 	fn parseArray(allocator: NeverFailingAllocator, filePath: ?[]const u8, chars: []const u8, index: *u32) ZonElement {
-		const list = allocator.create(List(ZonElement));
+		const list = allocator.create(ListManaged(ZonElement));
 		list.* = .init(allocator);
 		while (index.* < chars.len) {
 			skipWhitespaceAndComments(chars, index);
@@ -907,11 +893,11 @@ test "element parsing" {
 	// String:
 	index = 0;
 	var result: ZonElement = Parser.parseElement(allocator, null, "\"abcd\\\"\\\\ħσ→ ↑Φ∫€ ⌬ ε→Π\"", &index);
-	try std.testing.expectEqualStrings("abcd\"\\ħσ→ ↑Φ∫€ ⌬ ε→Π", result.as([]const u8, ""));
+	try std.testing.expectEqualStrings("abcd\"\\ħσ→ ↑Φ∫€ ⌬ ε→Π", result.as([]const u8).?);
 	result.deinit(allocator);
 	index = 0;
 	result = Parser.parseElement(allocator, null, "\"12345", &index);
-	try std.testing.expectEqualStrings("12345", result.as([]const u8, ""));
+	try std.testing.expectEqualStrings("12345", result.as([]const u8).?);
 	result.deinit(allocator);
 
 	// Object:
@@ -1001,18 +987,18 @@ test "merging" {
 	const zon10 = ZonElement.parseFromString(allocator, null, ".{.c = \"foo\", .b = .{.a = \"bar\"}}");
 	defer zon10.deinit(allocator);
 	zon9.join(.preferLeft, zon10);
-	try std.testing.expectEqual(zon9.get(?i32, "a", null), 1);
-	try std.testing.expectEqualSlices(u8, zon9.get(?[]const u8, "c", null).?, "foo");
-	try std.testing.expectEqual(zon9.getChild("b").get(?i32, "a", null), 2);
-	try std.testing.expectEqual(zon9.getChild("b").get(?i32, "b", null), 3);
+	try std.testing.expectEqual(zon9.get(i32, "a"), 1);
+	try std.testing.expectEqualSlices(u8, zon9.get([]const u8, "c").?, "foo");
+	try std.testing.expectEqual(zon9.getChild("b").get(i32, "a"), 2);
+	try std.testing.expectEqual(zon9.getChild("b").get(i32, "b"), 3);
 
 	const zon11 = ZonElement.parseFromString(allocator, null, ".{.a = 1, .b = .{.a = 2, .b = 3}}");
 	defer zon11.deinit(allocator);
 	const zon12 = ZonElement.parseFromString(allocator, null, ".{.c = \"foo\", .b = .{.a = \"bar\"}}");
 	defer zon12.deinit(allocator);
 	zon11.join(.preferRight, zon12);
-	try std.testing.expectEqual(zon11.get(?i32, "a", null), 1);
-	try std.testing.expectEqualSlices(u8, zon11.get(?[]const u8, "c", null).?, "foo");
-	try std.testing.expectEqualSlices(u8, zon11.getChild("b").get(?[]const u8, "a", null).?, "bar");
-	try std.testing.expectEqual(zon11.getChild("b").get(?i32, "b", null), 3);
+	try std.testing.expectEqual(zon11.get(i32, "a"), 1);
+	try std.testing.expectEqualSlices(u8, zon11.get([]const u8, "c").?, "foo");
+	try std.testing.expectEqualSlices(u8, zon11.getChild("b").get([]const u8, "a").?, "bar");
+	try std.testing.expectEqual(zon11.getChild("b").get(i32, "b"), 3);
 }

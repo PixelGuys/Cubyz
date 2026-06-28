@@ -64,8 +64,11 @@ pub fn reset() void {
 	rotatedModels.clearRetainingCapacity();
 }
 
-pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
-	const modelId = zon.as([]const u8, "cubyz:cube");
+pub fn createBlockModel(block: Block, _: *u16, zon: ZonElement) ModelIndex {
+	const modelId = zon.as([]const u8) orelse blk: {
+		std.log.err("Invalid model data for block {s} found {s}, expected string", .{block.id(), @tagName(zon)});
+		break :blk "cubyz:cube";
+	};
 	if (rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
 	const baseModel = main.models.getModelIndex(modelId).model();

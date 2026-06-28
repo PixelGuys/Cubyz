@@ -30,5 +30,6 @@
 	.{.old = "island", .new = "ocean/temperate/island/base"},
 	.{.old = "island_shelf", .new = "ocean/temperate/island/shelf"},
 	.{.old = "cave/cave", .new = "cave/slate/base"},
+	.{.old = "tall_mountain/peak", .new = "tall_mountain/summit1"},
 	.{.old = "bush_lands", .new = "bushlands/base"},
 }

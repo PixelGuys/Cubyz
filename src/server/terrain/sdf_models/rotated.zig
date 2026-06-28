@@ -36,12 +36,12 @@ pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
 	const child = sdf.SdfModel.initModel(zon.getChild("child")) orelse return null;
 	const self = main.worldArena.create(@This());
 	self.child = child.model;
-	self.axis = zon.get(?Axis, "axis", null) orelse {
+	self.axis = zon.get(Axis, "axis") orelse {
 		std.log.err("Missing parameter axis for cubyz:rotated SDF.", .{});
 		return null;
 	};
-	self.minAngle = std.math.degreesToRadians(zon.get(f32, "minAngle", 0));
-	self.maxAngle = std.math.degreesToRadians(zon.get(f32, "maxAngle", 360));
+	self.minAngle = std.math.degreesToRadians(zon.get(f32, "minAngle") orelse 0);
+	self.maxAngle = std.math.degreesToRadians(zon.get(f32, "maxAngle") orelse 360);
 
 	const axisVector: Vec3f = switch (self.axis) {
 		.x => .{1, 0, 0},
@@ -96,7 +96,7 @@ pub fn instantiate(self: *@This(), arena: NeverFailingAllocator, seed: *u64) Sdf
 			const y = if (yi == 0) child.minBounds[1] else child.maxBounds[1];
 			for (0..2) |zi| {
 				const z = if (zi == 0) child.minBounds[2] else child.maxBounds[2];
-				const rotatedCorner = rotate(self.axis, sin, cos, @floatFromInt(Vec3i{x, y, z}));
+				const rotatedCorner = rotate(self.axis, -sin, cos, @floatFromInt(Vec3i{x, y, z}));
 				minBounds = @min(minBounds, @as(Vec3i, @floor(rotatedCorner)));
 				maxBounds = @max(maxBounds, @as(Vec3i, @ceil(rotatedCorner)));
 			}

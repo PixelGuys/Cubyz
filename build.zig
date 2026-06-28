@@ -71,8 +71,10 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 
 	if (t.os.tag == .windows) {
 		exe.root_module.linkSystemLibrary("bcrypt", .{});
+		exe.root_module.linkSystemLibrary("comdlg32", .{});
 		exe.root_module.linkSystemLibrary("crypt32", .{});
 		exe.root_module.linkSystemLibrary("gdi32", .{});
+		exe.root_module.linkSystemLibrary("ole32", .{});
 		exe.root_module.linkSystemLibrary("opengl32", .{});
 		exe.root_module.linkSystemLibrary("ws2_32", .{});
 	} else if (t.os.tag == .macos) {

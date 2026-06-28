@@ -660,8 +660,9 @@ fn updateCursor() void {
 		// Behavior seems much more intended without this line on MacOS.
 		// Perhaps this is an inconsistency in GLFW due to its fresh XQuartz support?
 		if (@import("builtin").target.os.tag != .macos) {
-			if (c.glfwRawMouseMotionSupported() != 0)
+			if (c.glfwRawMouseMotionSupported() != 0) {
 				c.glfwSetInputMode(window, c.GLFW_RAW_MOUSE_MOTION, c.GLFW_TRUE);
+			}
 		}
 		GLFWCallbacks.ignoreDataAfterRecentGrab = true;
 	} else {
@@ -753,7 +754,7 @@ pub fn init() void { // MARK: init()
 
 	window = c.glfwCreateWindow(width, height, windowTitle, null, null) orelse @panic("Failed to create GLFW window");
 	iconBlock: {
-		const image = main.graphics.Image.readUnflippedFromFile(main.stackAllocator, "assets/cubyz/logo.png") catch |err| {
+		const image = main.graphics.Image.readFromFile(main.stackAllocator, "assets/cubyz/logo.png", .{.orientation = .asIs}) catch |err| {
 			std.log.err("Error loading logo: {s}", .{@errorName(err)});
 			break :iconBlock;
 		};

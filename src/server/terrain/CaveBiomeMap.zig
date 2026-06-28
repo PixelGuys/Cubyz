@@ -121,10 +121,10 @@ pub const CaveBiomeGenerator = struct { // MARK: CaveBiomeGenerator
 	});
 
 	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []CaveBiomeGenerator {
-		var list: main.ListUnmanaged(CaveBiomeGenerator) = .initCapacity(allocator, generatorRegistry.values().len);
+		var list: main.List(CaveBiomeGenerator) = .initCapacity(allocator, generatorRegistry.values().len);
 		for (generatorRegistry.keys(), generatorRegistry.values()) |id, generator| {
 			const generatorSettings = settings.getChild(id);
-			if (generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
+			if ((generatorSettings.get(GeneratorState, "state") orelse generator.defaultState) == .disabled) continue;
 			generator.init(generatorSettings);
 			list.appendAssumeCapacity(generator);
 		}
@@ -245,7 +245,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 	const CaveBiomesResult = struct { worldPos: Vec3i, biome: *const Biome };
 
 	pub fn getCaveBiomesInRange(self: CaveBiomeMapView, allocator: NeverFailingAllocator, min: Vec3i, max: Vec3i) []CaveBiomesResult {
-		var list: main.ListUnmanaged(CaveBiomesResult) = .{};
+		var list: main.List(CaveBiomesResult) = .empty;
 
 		var minRotated: Vec3i = CaveBiomeMapFragment.rotate(min);
 		var maxRotated: Vec3i = min;

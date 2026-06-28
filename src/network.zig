@@ -474,14 +474,14 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	threadId: std.Thread.Id = undefined,
 	externalAddress: Address = undefined,
 	online: Atomic(bool) = .init(false),
-	running: Atomic(bool) = .init(true),
+	running: Atomic(bool) = .init(false),
 
-	connections: main.List(*Connection) = undefined,
-	requests: main.List(*Request) = undefined,
+	connections: main.List(*Connection) = .empty,
+	requests: main.List(*Request) = .empty,
 
 	mutex: main.utils.Mutex = .{},
 	waitingToFinishReceive: main.utils.Condition = .{},
-	allowNewConnections: Atomic(bool) = .init(false),
+	allowNewConnections: bool,
 
 	receiveBuffer: [Connection.maxMtu]u8 = undefined,
 
@@ -501,13 +501,12 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 	};
 
-	pub fn init(localPort: u16, online: bool) !*ConnectionManager {
+	pub fn init(localPort: u16, options: struct { allowNewConnections: bool = false }) !*ConnectionManager {
 		const result: *ConnectionManager = main.globalAllocator.create(ConnectionManager);
 		errdefer main.globalAllocator.destroy(result);
-		result.* = .{};
-		result.connections = .init(main.globalAllocator);
-		result.requests = .init(main.globalAllocator);
-		result.packetSendRequests = .initContext({});
+		result.* = .{
+			.allowNewConnections = options.allowNewConnections,
+		};
 
 		result.localPort = localPort;
 		result.socket = Socket.init(localPort) catch |err| blk: {
@@ -520,36 +519,40 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		errdefer result.socket.deinit();
 		if (localPort == 0) result.localPort = try result.socket.getPort();
 
-		result.thread = try std.Thread.spawn(.{}, run, .{result});
-		result.thread.setName(main.io, "Network Thread") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
-		if (online) {
-			result.makeOnline();
-		}
-		if (main.settings.launchConfig.headlessServer) {
-			result.allowNewConnections.store(true, .monotonic);
-		}
+		try result.@"continue"();
+
 		return result;
 	}
-
+	pub fn @"continue"(result: *ConnectionManager) !void {
+		if (result.running.load(.monotonic)) return;
+		result.packetSendRequests = .initContext({});
+		result.running.store(true, .monotonic);
+		result.thread = try std.Thread.spawn(.{}, run, .{result});
+		result.thread.setName(main.io, "Network Thread") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
+	}
 	pub fn deinit(self: *ConnectionManager) void {
-		for (self.connections.items) |conn| {
-			conn.disconnect();
-		}
+		if (self.running.load(.monotonic)) self.pause();
+		self.socket.deinit();
+		self.connections.deinit(main.globalAllocator);
+		main.globalAllocator.destroy(self);
+	}
+	pub fn pause(self: *ConnectionManager) void {
+		std.debug.assert(self.running.load(.monotonic));
 
 		self.running.store(false, .monotonic);
 		self.thread.join();
-		self.socket.deinit();
-		self.connections.deinit();
 		for (self.requests.items) |request| {
 			request.requestNotifier.signal();
 		}
-		self.requests.deinit();
+		self.requests.deinit(main.globalAllocator);
 		while (self.packetSendRequests.pop()) |packet| {
 			main.globalAllocator.free(packet.data);
 		}
 		self.packetSendRequests.deinit(main.globalAllocator.allocator);
 
-		main.globalAllocator.destroy(self);
+		for (self.connections.items) |conn| {
+			conn.disconnect();
+		}
 	}
 
 	pub fn makeOnline(self: *ConnectionManager) void {
@@ -579,7 +582,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		{
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			self.requests.append(&request);
+			self.requests.append(main.globalAllocator, &request);
 
 			request.requestNotifier.timedWait(&self.mutex, timeout) catch {};
 
@@ -611,7 +614,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		for (self.connections.items) |other| {
 			if (other.remoteAddress.ip == conn.remoteAddress.ip and other.remoteAddress.port == conn.remoteAddress.port) return error.AlreadyConnected;
 		}
-		self.connections.append(conn);
+		self.connections.append(main.globalAllocator, conn);
 	}
 
 	pub fn finishCurrentReceive(self: *ConnectionManager) void {
@@ -662,7 +665,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			}
 			if (self.online.load(.acquire) and source.ip == self.externalAddress.ip and source.port == self.externalAddress.port) return;
 		}
-		if (self.allowNewConnections.load(.monotonic) or source.ip == Address.localHost) {
+		if (self.allowNewConnections or source.ip == Address.localHost) {
 			if (data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
 				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{source}) catch unreachable;
 				defer main.stackAllocator.free(ip);
@@ -778,11 +781,11 @@ pub const Connection = struct { // MARK: Connection
 				return self.start +% self.len;
 			}
 		};
-		ranges: main.ListUnmanaged(Range),
+		ranges: main.List(Range),
 
 		pub fn init() RangeBuffer {
 			return .{
-				.ranges = .{},
+				.ranges = .empty,
 			};
 		}
 
@@ -867,7 +870,7 @@ pub const Connection = struct { // MARK: Connection
 		decryptedBuffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
 		buffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
 		header: ?Header = null,
-		protocolBuffer: main.ListUnmanaged(u8) = .{},
+		protocolBuffer: main.List(u8) = .empty,
 
 		pub fn init() ReceiveBuffer {
 			return .{
@@ -1009,7 +1012,7 @@ pub const Connection = struct { // MARK: Connection
 			if (self.highestSentIndex == self.fullyConfirmedIndex) {
 				self.lastUnsentTime = time;
 			}
-			var fullData: main.List(u8) = .init(main.stackAllocator);
+			var fullData: main.ListManaged(u8) = .init(main.stackAllocator);
 			defer fullData.deinit();
 			if (data.len + self.buffer.len > std.math.maxInt(SequenceIndex)) return error.OutOfMemory;
 			fullData.append(protocolIndex);
@@ -1211,7 +1214,7 @@ pub const Connection = struct { // MARK: Connection
 
 		side: main.sync.Side,
 		finishedCollectingClientVerificationData: bool = false,
-		verificationDataForClientSignature: main.ListUnmanaged(u8) = .{},
+		verificationDataForClientSignature: main.List(u8) = .empty,
 
 		pub fn init(self: *SecureChannel, sequenceIndex: SequenceIndex, delay: i64, id: ChannelId, side: main.sync.Side) !void {
 			self.* = .{
@@ -1412,7 +1415,7 @@ pub const Connection = struct { // MARK: Connection
 		awaitingServerResponse,
 		awaitingClientAcknowledgement,
 		connected,
-		disconnectDesired,
+		disconnected,
 	};
 
 	pub const HandShakeState = enum(u8) {
@@ -1510,8 +1513,10 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn deinit(self: *Connection) void {
-		self.disconnect();
-		self.manager.finishCurrentReceive(); // Wait until all currently received packets are done.
+		if (self.connectionState.load(.monotonic) != .disconnected) {
+			self.disconnect();
+			self.manager.finishCurrentReceive(); // Wait until all currently received packets are done.
+		}
 		self.lossyChannel.deinit();
 		self.secureChannel.deinit();
 		self.slowChannel.deinit();
@@ -1520,6 +1525,8 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn send(self: *Connection, comptime channel: ChannelId, protocolIndex: u8, data: []const u8) void {
+		std.debug.assert(self.handShakeState.raw == .complete or protocolIndex == protocols.handShake.id);
+		std.debug.assert(self.handShakeState.raw != .complete or protocolIndex != protocols.handShake.id);
 		_ = protocols.bytesSent[protocolIndex].fetchAdd(data.len, .monotonic);
 		self.mutex.lock();
 		defer self.mutex.unlock();
@@ -1688,7 +1695,7 @@ pub const Connection = struct { // MARK: Connection
 						return;
 					}
 				},
-				.disconnectDesired => {},
+				.disconnected => {},
 			}
 			// Acknowledge the packet on the client:
 			if (self.user == null) {
@@ -1704,6 +1711,7 @@ pub const Connection = struct { // MARK: Connection
 			return;
 		}
 		if (self.connectionState.load(.monotonic) != .connected) return; // Reject all non-handshake packets until the handshake is done.
+		if (self.handShakeState.load(.monotonic) != .complete and (channel == .lossy or channel == .slow)) return; // Reject all non-handshake packets from other channels.
 		switch (channel) {
 			.lossy => {
 				const start = try reader.readInt(SequenceIndex);
@@ -1779,7 +1787,7 @@ pub const Connection = struct { // MARK: Connection
 				return;
 			},
 			.connected => {},
-			.disconnectDesired => return,
+			.disconnected => return,
 		}
 
 		self.handlePacketLoss(self.lossyChannel.checkForLosses(self, timestamp));
@@ -1801,16 +1809,22 @@ pub const Connection = struct { // MARK: Connection
 			self.sendConfirmationPacket(timestamp);
 		}
 
+		var permutation: usize = main.random.nextInt(usize, &main.seed);
 		while (timestamp -% self.nextPacketTimestamp > 0) {
 			// Only attempt to increase the congestion bandwidth if we actual use the bandwidth, to prevent unbounded growth
 			const considerForCongestionControl = @divFloor(self.relativeSendTime, 2) > self.relativeIdleTime;
 			const dataLen = blk: {
 				self.mutex.lock();
 				defer self.mutex.unlock();
-				if (self.lossyChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
-				if (self.secureChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
+				for (0..2) |_| {
+					permutation +%= 1;
+					break :blk switch (permutation%2) {
+						0 => self.lossyChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl),
+						1 => self.secureChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl),
+						else => unreachable,
+					} orelse continue;
+				}
 				if (self.slowChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
-
 				break;
 			};
 			const networkLen: f32 = @floatFromInt(dataLen + headerOverhead);
@@ -1822,7 +1836,7 @@ pub const Connection = struct { // MARK: Connection
 
 	pub fn disconnect(self: *Connection) void {
 		self.manager.send(&.{@intFromEnum(ChannelId.disconnect)}, self.remoteAddress, null);
-		self.connectionState.store(.disconnectDesired, .monotonic);
+		self.connectionState.store(.disconnected, .monotonic);
 		if (builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
 			main.io.sleep(.fromMilliseconds(10), .awake) catch {}; // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
 		}
