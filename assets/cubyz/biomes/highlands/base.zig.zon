@@ -88,13 +88,13 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.03,
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.size = 3,
 			.size_variance = 3,
 		},
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.chance = 0.003,
 			.size = 9,
 			.size_variation = 6,

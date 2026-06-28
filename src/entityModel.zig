@@ -57,17 +57,17 @@ pub const EntityModel = struct {
 
 	pub fn init(assetFolder: []const u8, entityModelId: []const u8, index: EntityModelIndex, zon: ZonElement) EntityModel {
 		var self: EntityModel = undefined;
-		if (zon.get(?[]const u8, "model", null)) |modelId| {
+		if (zon.get([]const u8, "model")) |modelId| {
 			self.modelId = main.worldArena.dupe(u8, modelId);
 		} else {
 			self.modelId = null;
 		}
 		self.entityModelId = main.worldArena.dupe(u8, entityModelId);
-		self.height = zon.get(f32, "height", 1);
+		self.height = zon.get(f32, "height") orelse 1;
 		self.defaultTexture = null;
 		self.vao = null;
 		self.indexCount = 0;
-		self.coordinateSystem = zon.get(CoordinateSystem, "coordinateSystem", .right_handed_z_up);
+		self.coordinateSystem = zon.get(CoordinateSystem, "coordinateSystem") orelse .right_handed_z_up;
 
 		var isPlayerModel = false;
 		const tags = main.Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags"));
@@ -85,7 +85,7 @@ pub const EntityModel = struct {
 		{
 			self.texturePath = &.{};
 			const fileEnding = ".png";
-			if (zon.get(?[]const u8, "defaultTexture", null)) |texture| {
+			if (zon.get([]const u8, "defaultTexture")) |texture| {
 				var split = std.mem.splitScalar(u8, texture, ':');
 				const mod = split.first();
 				const textureName = split.next() orelse unreachable;
