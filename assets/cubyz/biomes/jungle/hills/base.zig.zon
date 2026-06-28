@@ -1,0 +1,60 @@
+.{
+	.soilCreep = 1.0,
+	.ground_structure = .{
+		"cubyz:grass/dew",
+		"2 to 3 cubyz:clay",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/mahogany/khaya_ivorensis/medium",
+			.placeMode = .degradable,
+			.chance = 0.02,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/mahogany/khaya_ivorensis/small",
+			.placeMode = .degradable,
+			.chance = 0.02,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/mahogany/sapele/large",
+			.placeMode = .degradable,
+			.chance = 0.01,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/mahogany/sapele/medium",
+			.placeMode = .degradable,
+			.chance = 0.03,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/mahogany/sapele/small",
+			.placeMode = .degradable,
+			.chance = 0.05,
+		},
+		.{
+			.id = "cubyz:simple_tree",
+			.leaves = "cubyz:leaves/mahogany",
+			.log = "cubyz:log/mahogany",
+			.chance = 0.07,
+			.type = .round,
+			.height = 1,
+			.height_variation = 1,
+			.leafRadius = 2,
+			.leafRadius_variation = 1,
+			.leafElongation = 0.8,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:soil",
+			.chance = 0.03,
+			.width = 8,
+			.variation = 4,
+			.depth = 2,
+			.smoothness = 0.3,
+		},
+	},
+}
