@@ -40,12 +40,12 @@ pub fn render(guicomponent: *GuiComponent, pos: Vec2f) void {
 
 	draw.bound9SliceImage(renderpos, size, @floatFromInt(tooltipTexture.size()), cornerSize, 1);
 
-	const adjustment = Vec2f{cornerSize[0], cornerSize[1]};
-	const oldTranslation = draw.setTranslation(renderpos + adjustment);
+	const adjustment = renderpos - guicomponent.pos() + Vec2f{cornerSize[0], cornerSize[1]};
+	const oldTranslation = draw.setTranslation(adjustment);
 	defer draw.restoreTranslation(oldTranslation);
 	const oldClip = draw.setClip(guicomponent.size());
 	defer draw.restoreClip(oldClip);
-	guicomponent.render(guicomponent.pos() + adjustment);
+	guicomponent.render(guicomponent.pos());
 }
 
 pub fn renderFromText(text: []const u8, pos: Vec2f) void {
