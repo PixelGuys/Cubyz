@@ -85,7 +85,10 @@ pub fn init() void {
 	inline for (@typeInfo(@This()).@"struct".decls) |decl| runtimeContinueInsideOfComptimeBlock: {
 		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
 		if (!is_const) {
-			const DeclType = @TypeOf(@field(@This(), decl.name));
+			comptime var DeclType = @TypeOf(@field(@This(), decl.name));
+			if (@typeInfo(DeclType) == .optional) {
+				DeclType = @typeInfo(DeclType).optional.child;
+			}
 			if (@typeInfo(DeclType) == .@"struct") {
 				if (DeclType == std.Io.Duration) {
 					const defaultMilli = @as(f64, @floatFromInt(@field(@This(), decl.name).toNanoseconds()))/1.0e6;

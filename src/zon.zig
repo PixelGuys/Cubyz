@@ -164,10 +164,6 @@ pub const ZonElement = union(enum) { // MARK: Zon
 					else => return null,
 				}
 			},
-			.optional => |info| {
-				if (self.* == .null) return @as(T, null);
-				return self.as(info.child) orelse null;
-			},
 			.vector => {
 				const len = typeInfo.vector.len;
 				const elems = self.toSlice();
