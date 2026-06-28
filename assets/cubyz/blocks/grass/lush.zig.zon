@@ -6,7 +6,6 @@
 	},
 	.model = "cubyz:cube",
 	.rotation = "cubyz:stairs",
-	.texture = "cubyz:lush_grass_top",
-	.texture_top = "cubyz:lush_grass_top",
+	.texture = "cubyz:grass/lush",
 	.texture_bottom = "cubyz:mud",
 }

@@ -11,9 +11,9 @@
 	.absorbedLight = 0x000000,
 	.collide = false,
 	.model = "cubyz:cross",
-	.texture = "cubyz:cold_grass_vegetation",
+	.texture = "cubyz:grass/vegetation/dry",
 	.item = .{
-		.texture = "cold_grass.png",
+		.texture = "grass_vegetation/dry.png",
 	},
 	.lodReplacement = "cubyz:air",
 	.onUpdate = .{

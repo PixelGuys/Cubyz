@@ -13,7 +13,7 @@
 
 	.stoneBlock = "cubyz:slate/smooth",
 	.ground_structure = .{
-		"cubyz:grass",
+		"cubyz:grass/temperate",
 		"2 to 3 cubyz:soil",
 	},
 	.structures = .{
