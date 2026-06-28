@@ -1,4 +1,7 @@
 .{
+	.properties = .{
+		.dry,
+	},
 	.chance = 0,
 	.keepOriginalTerrain = 1,
 	.minRadius = 20,
@@ -7,6 +10,12 @@
 		"1 to 2 cubyz:dirt",
 	},
 	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:cactus/saguaro",
+			.placeMode = .degradable,
+			.chance = 0.006,
+		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/oak/bush",

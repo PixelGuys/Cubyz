@@ -12,7 +12,7 @@
 	.roughness = 6,
 	.hills = 10,
 	.rivers = true,
-	.music = "cubyz:sinanimea/sunrise",
+	.music = "cubyz:mischol/desert_firefly",
 
-	.stoneBlock = "cubyz:limestone/base",
+	.stoneBlock = "cubyz:limestone/smooth",
 }
