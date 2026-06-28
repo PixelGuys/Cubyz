@@ -31,7 +31,7 @@ pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) void {
 	const generator = GenerationStructure.init(main.stackAllocator, map.pos.wx, map.pos.wy, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, terrain.biomes.byTypeBiomes, seed);
 	defer generator.deinit(main.stackAllocator);
 
-	generator.toMap(map, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, worldSeed);
+	generator.toMap(map, worldSeed);
 
 	// TODO: Remove debug image:
 	if (!build_options.isTaggedRelease) {
@@ -296,7 +296,7 @@ const GenerationStructure = struct {
 		};
 	}
 
-	fn drawCircleOnTheMap(map: *ClimateMapFragment, biome: *const Biome, biomeRadius: f32, wx: i32, wy: i32, width: u31, height: u31, pos: Vec2i, comptime skipMismatched: bool, parentBiome: *const Biome) !void {
+	fn drawCircleOnTheMap(preMap: *[preMapSize][preMapSize]BiomeSample, biome: *const Biome, biomeRadius: f32, wx: i32, wy: i32, width: u31, height: u31, pos: Vec2i, comptime skipMismatched: bool, parentBiome: *const Biome) !void {
 		const relPos = @as(Vec2f, @floatFromInt(pos -% Vec2i{wx, wy}))/@as(Vec2f, @splat(terrain.SurfaceMap.MapFragment.biomeSize));
 		const relRadius = biomeRadius/terrain.SurfaceMap.MapFragment.biomeSize;
 		const min = @floor(@max(Vec2f{0, 0}, relPos - @as(Vec2f, @splat(relRadius))));
@@ -309,7 +309,7 @@ const GenerationStructure = struct {
 				while (y < max[1]) : (y += 1) {
 					const distSquare = vec.lengthSquare(Vec2f{x, y} - relPos);
 					if (distSquare < relRadius*relRadius) {
-						if (map.map[@trunc(x)][@trunc(y)].biome != parentBiome) {
+						if (preMap[@trunc(x)][@trunc(y)].biome != parentBiome) {
 							return error.biomeMismatch;
 						}
 					}
@@ -323,7 +323,7 @@ const GenerationStructure = struct {
 			while (y < max[1]) : (y += 1) {
 				const distSquare = vec.lengthSquare(Vec2f{x, y} - relPos);
 				if (distSquare < relRadius*relRadius) {
-					const entry = &map.map[@trunc(x)][@trunc(y)];
+					const entry = &preMap[@trunc(x)][@trunc(y)];
 					var seed = entry.seed;
 					const newHeight = @as(f32, @floatFromInt(biome.minHeight)) + @as(f32, @floatFromInt(biome.maxHeight - biome.minHeight))*random.nextFloat(&seed);
 					entry.* = .{
@@ -339,7 +339,7 @@ const GenerationStructure = struct {
 		}
 	}
 
-	fn addSubBiomesOf(biome: BiomePoint, map: *ClimateMapFragment, extraBiomes: *main.ListManaged(BiomePoint), wx: i32, wy: i32, width: u31, height: u31, worldSeed: u64, comptime radius: enum { known, unknown }) void {
+	fn addSubBiomesOf(biome: BiomePoint, preMap: *[preMapSize][preMapSize]BiomeSample, extraBiomes: *main.ListManaged(BiomePoint), wx: i32, wy: i32, width: u31, height: u31, worldSeed: u64, comptime radius: enum { known, unknown }) void {
 		var seed = random.initSeed2D(worldSeed, @bitCast(biome.pos));
 		var biomeCount: f32 = undefined;
 		if (biome.biome.subBiomeTotalChance > biome.biome.maxSubBiomeCount) {
@@ -367,7 +367,7 @@ const GenerationStructure = struct {
 				maxCenterOffset = 0;
 			}
 			const point = biome.pos +% @as(Vec2i, @trunc(random.nextPointInUnitCircle(&seed)*@as(Vec2f, @splat(maxCenterOffset))));
-			drawCircleOnTheMap(map, subBiome, subRadius, wx, wy, width, height, point, radius == .unknown, biome.biome) catch if (radius == .unknown) {
+			drawCircleOnTheMap(preMap, subBiome, subRadius, wx, wy, width, height, point, radius == .unknown, biome.biome) catch if (radius == .unknown) {
 				fails += 1;
 				if (fails < @as(usize, @trunc(biomeCount))) {
 					i -= 1;
@@ -481,7 +481,7 @@ const GenerationStructure = struct {
 		}
 	}
 
-	pub fn toMap(self: GenerationStructure, map: *ClimateMapFragment, width: u31, height: u31, worldSeed: u64) void {
+	pub fn toMap(self: GenerationStructure, map: *ClimateMapFragment, worldSeed: u64) void {
 		var preMap: [preMapSize][preMapSize]BiomeSample = undefined;
 		var allCandidates: main.List(*BiomePoint) = .initCapacity(main.stackAllocator, 1024);
 		defer allCandidates.deinit(main.stackAllocator);
@@ -492,21 +492,21 @@ const GenerationStructure = struct {
 		}
 		fillRecursively(map.pos.wx, map.pos.wy, &preMap, allCandidates.items, worldSeed, -margin, -margin, preMapSize, preMapSize);
 		addTransitionBiomes(&preMap);
-		for (0..ClimateMapFragment.mapEntrysSize) |_x| {
-			@memcpy(&map.map[_x], preMap[_x + margin][margin..][0..ClimateMapFragment.mapEntrysSize]);
-		}
 
 		// Add some sub-biomes:
 		var extraBiomes: main.ListManaged(BiomePoint) = .init(main.stackAllocator);
 		defer extraBiomes.deinit();
 		for (self.chunks.mem) |chunk| {
 			for (chunk.biomesSortedByX) |biome| {
-				addSubBiomesOf(biome, map, &extraBiomes, map.pos.wx, map.pos.wy, width, height, worldSeed, .unknown);
+				addSubBiomesOf(biome, &preMap, &extraBiomes, map.pos.wx -% margin, map.pos.wy -% margin, preMapSize*terrain.SurfaceMap.MapFragment.biomeSize, preMapSize*terrain.SurfaceMap.MapFragment.biomeSize, worldSeed, .unknown);
 			}
 		}
 		// Add some sub-sub(-sub)*-biomes
 		while (extraBiomes.popOrNull()) |biomePoint| {
-			addSubBiomesOf(biomePoint, map, &extraBiomes, map.pos.wx, map.pos.wy, width, height, worldSeed, .known);
+			addSubBiomesOf(biomePoint, &preMap, &extraBiomes, map.pos.wx -% margin, map.pos.wy -% margin, preMapSize*terrain.SurfaceMap.MapFragment.biomeSize, preMapSize*terrain.SurfaceMap.MapFragment.biomeSize, worldSeed, .known);
+		}
+		for (0..ClimateMapFragment.mapEntrysSize) |_x| {
+			@memcpy(&map.map[_x], preMap[_x + margin][margin..][0..ClimateMapFragment.mapEntrysSize]);
 		}
 	}
 };
