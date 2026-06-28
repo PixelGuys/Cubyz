@@ -470,28 +470,28 @@ pub const draw = struct { // MARK: draw
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
-	pub fn drawSlice(_destMin: Vec2f, _destMax: Vec2f, _uvMin: Vec2f, _uvMax: Vec2f) void {
-		boundSubImage(_destMin, _destMax - _destMin, _uvMin, _uvMax - _uvMin);
+	pub fn drawSlice(destMin: Vec2f, destMax: Vec2f, uvMin: Vec2f, uvMax: Vec2f) void {
+		boundSubImage(destMin, destMax - destMin, uvMin, uvMax - uvMin);
 	}
 
-	pub fn bound9SliceImage(_pos: Vec2f, _dim: Vec2f, _textureSize: Vec2f, _slices: Vec2f, _sliceScale: f32) void {
-		const widthSlice = _slices[0]*_sliceScale;
-		const heightSlice = _slices[1]*_sliceScale;
+	pub fn bound9SliceImage(pos: Vec2f, dim: Vec2f, textureSize: Vec2f, slices: Vec2f, sliceScale: f32) void {
+		const widthSlice = slices[0]*sliceScale;
+		const heightSlice = slices[1]*sliceScale;
 
 		// Construct UV
-		const u: Vec2f = .{_slices[0]/_textureSize[0], (_textureSize[0] - _slices[0])/_textureSize[0]};
-		const v: Vec2f = .{_slices[1]/_textureSize[1], (_textureSize[1] - _slices[1])/_textureSize[1]};
+		const u: Vec2f = .{slices[0]/textureSize[0], (textureSize[0] - slices[0])/textureSize[0]};
+		const v: Vec2f = .{slices[1]/textureSize[1], (textureSize[1] - slices[1])/textureSize[1]};
 
 		// Draw all Slices
-		drawSlice(.{_pos[0], _pos[1]}, .{_pos[0] + widthSlice, _pos[1] + heightSlice}, .{0, 0}, .{u[0], v[0]});
-		drawSlice(.{_pos[0] + widthSlice, _pos[1]}, .{_pos[0] + _dim[0] - widthSlice, _pos[1] + heightSlice}, .{u[0], 0}, .{u[1], v[0]});
-		drawSlice(.{_pos[0] + _dim[0] - widthSlice, _pos[1]}, .{_pos[0] + _dim[0], _pos[1] + heightSlice}, .{u[1], 0}, .{1, v[0]});
-		drawSlice(.{_pos[0], _pos[1] + heightSlice}, .{_pos[0] + widthSlice, _pos[1] + _dim[1] - heightSlice}, .{0, v[0]}, .{u[0], v[1]});
-		drawSlice(.{_pos[0] + widthSlice, _pos[1] + heightSlice}, .{_pos[0] + _dim[0] - widthSlice, _pos[1] + _dim[1] - heightSlice}, .{u[0], v[0]}, .{u[1], v[1]});
-		drawSlice(.{_pos[0] + _dim[0] - widthSlice, _pos[1] + heightSlice}, .{_pos[0] + _dim[0], _pos[1] + _dim[1] - heightSlice}, .{u[1], v[0]}, .{1, v[1]});
-		drawSlice(.{_pos[0], _pos[1] + _dim[1] - heightSlice}, .{_pos[0] + widthSlice, _pos[1] + _dim[1]}, .{0, v[1]}, .{u[0], 1});
-		drawSlice(.{_pos[0] + widthSlice, _pos[1] + _dim[1] - heightSlice}, .{_pos[0] + _dim[0] - widthSlice, _pos[1] + _dim[1]}, .{u[0], v[1]}, .{u[1], 1});
-		drawSlice(.{_pos[0] + _dim[0] - widthSlice, _pos[1] + _dim[1] - heightSlice}, .{_pos[0] + _dim[0], _pos[1] + _dim[1]}, .{u[1], v[1]}, .{1, 1});
+		drawSlice(.{pos[0], pos[1]}, .{pos[0] + widthSlice, pos[1] + heightSlice}, .{0, 0}, .{u[0], v[0]});
+		drawSlice(.{pos[0] + widthSlice, pos[1]}, .{pos[0] + dim[0] - widthSlice, pos[1] + heightSlice}, .{u[0], 0}, .{u[1], v[0]});
+		drawSlice(.{pos[0] + dim[0] - widthSlice, pos[1]}, .{pos[0] + dim[0], pos[1] + heightSlice}, .{u[1], 0}, .{1, v[0]});
+		drawSlice(.{pos[0], pos[1] + heightSlice}, .{pos[0] + widthSlice, pos[1] + dim[1] - heightSlice}, .{0, v[0]}, .{u[0], v[1]});
+		drawSlice(.{pos[0] + widthSlice, pos[1] + heightSlice}, .{pos[0] + dim[0] - widthSlice, pos[1] + dim[1] - heightSlice}, .{u[0], v[0]}, .{u[1], v[1]});
+		drawSlice(.{pos[0] + dim[0] - widthSlice, pos[1] + heightSlice}, .{pos[0] + dim[0], pos[1] + dim[1] - heightSlice}, .{u[1], v[0]}, .{1, v[1]});
+		drawSlice(.{pos[0], pos[1] + dim[1] - heightSlice}, .{pos[0] + widthSlice, pos[1] + dim[1]}, .{0, v[1]}, .{u[0], 1});
+		drawSlice(.{pos[0] + widthSlice, pos[1] + dim[1] - heightSlice}, .{pos[0] + dim[0] - widthSlice, pos[1] + dim[1]}, .{u[0], v[1]}, .{u[1], 1});
+		drawSlice(.{pos[0] + dim[0] - widthSlice, pos[1] + dim[1] - heightSlice}, .{pos[0] + dim[0], pos[1] + dim[1]}, .{u[1], v[1]}, .{1, 1});
 	}
 
 	pub fn customShadedImage(uniforms: anytype, _pos: Vec2f, _dim: Vec2f) void {

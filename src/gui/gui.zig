@@ -19,11 +19,11 @@ const ScrollBar = @import("components/ScrollBar.zig");
 const ContinuousSlider = @import("components/ContinuousSlider.zig");
 const DiscreteSlider = @import("components/DiscreteSlider.zig");
 const TextInput = @import("components/TextInput.zig");
-const tooltip = @import("tooltip.zig");
 const gui_component = @import("gui_component.zig");
 pub const GuiComponent = gui_component.GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
 
+pub const tooltip = @import("tooltip.zig");
 pub const windowlist = @import("windows/_list.zig");
 const gamepad_cursor = @import("gamepad_cursor.zig");
 
@@ -788,7 +788,7 @@ pub const inventory = struct { // MARK: inventory
 		const hovered = hoveredItemSlot orelse return;
 		if (carried.getAmount(0) == 0) {
 			if (hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltipContent| {
-				tooltip.renderFromText(tooltipContent, mousePos, .right);
+				tooltip.renderFromText(tooltipContent, mousePos);
 			}
 		}
 	}
