@@ -315,7 +315,7 @@ pub const ParticleSystem = struct {
 			.pos = @as(Vec3f, @floatCast(pos - previousPlayerPos)),
 			.rot = rot,
 			.typ = typ,
-			.loopRatio = lifeTime / if (particleType.loopTime) |l| l.get(&main.seed) else 1,
+			.loopRatio = lifeTime/if (particleType.loopTime) |l| l.get(&main.seed) else 1,
 		};
 		particlesLocal[particleCount] = ParticleLocal{
 			.velAndRotationVel = vec.combine(vel, rotVel),
