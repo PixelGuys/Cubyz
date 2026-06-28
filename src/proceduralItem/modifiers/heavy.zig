@@ -8,7 +8,7 @@ pub const Data = packed struct(u128) { strength: f32, pad: u96 = undefined };
 pub const priority = 1;
 
 pub fn loadData(zon: main.ZonElement) Data {
-	return .{.strength = @max(0, zon.get(f32, "strength", 0))};
+	return .{.strength = @max(0, zon.get(f32, "strength") orelse 0)};
 }
 
 pub fn combineModifiers(data1: Data, data2: Data) ?Data {
