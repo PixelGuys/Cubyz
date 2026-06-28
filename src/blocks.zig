@@ -167,9 +167,9 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_id[size] = main.worldArena.dupe(u8, id);
 	reverseIndices.put(main.worldArena.allocator, _id[size], @intCast(size)) catch unreachable;
 
-	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "cubyz:no_rotation"));
-	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
-	_blockResistance[size] = zon.get(f32, "blockResistance", 0);
+	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation") orelse "cubyz:no_rotation");
+	_blockHealth[size] = zon.get(f32, "blockHealth") orelse 1;
+	_blockResistance[size] = zon.get(f32, "blockResistance") orelse 0;
 	const rotation_tags = _mode[size].getBlockTags();
 	const block_tags = Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("tags"));
 	defer main.stackAllocator.free(block_tags);
@@ -183,9 +183,9 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 		}
 	}
 
-	_light[size] = zon.get(u32, "emittedLight", 0);
-	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
-	_degradable[size] = zon.get(bool, "degradable", false);
+	_light[size] = zon.get(u32, "emittedLight") orelse 0;
+	_absorption[size] = zon.get(u32, "absorbedLight") orelse 0xffffff;
+	_degradable[size] = zon.get(bool, "degradable") orelse false;
 
 	if (zon.getChildOrNull("selectionCapabilities")) |capabilitiesZon| {
 		_selectionCapabilities[size] = .loadFromZon(capabilitiesZon);
@@ -193,33 +193,33 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 		_selectionCapabilities[size] = .always;
 	}
 
-	_replaceable[size] = zon.get(bool, "replaceable", false);
-	_transparent[size] = zon.get(bool, "transparent", false);
-	_collide[size] = zon.get(bool, "collide", true);
-	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
-	_viewThrough[size] = zon.get(bool, "viewThrough", false) or _transparent[size] or _alwaysViewThrough[size];
-	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
-	_friction[size] = zon.get(f32, "friction", 20);
-	_bounciness[size] = zon.get(f32, "bounciness", 0.0);
-	_density[size] = zon.get(f32, "density", main.physics.airDensity);
-	_terminalVelocity[size] = zon.get(f32, "terminalVelocity", 90);
-	_mobility[size] = zon.get(f32, "mobility", 1.0);
-	_allowOres[size] = zon.get(bool, "allowOres", false);
+	_replaceable[size] = zon.get(bool, "replaceable") orelse false;
+	_transparent[size] = zon.get(bool, "transparent") orelse false;
+	_collide[size] = zon.get(bool, "collide") orelse true;
+	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough") orelse false;
+	_viewThrough[size] = (zon.get(bool, "viewThrough") orelse false) or _transparent[size] or _alwaysViewThrough[size];
+	_hasBackFace[size] = zon.get(bool, "hasBackFace") orelse false;
+	_friction[size] = zon.get(f32, "friction") orelse 20;
+	_bounciness[size] = zon.get(f32, "bounciness") orelse 0.0;
+	_density[size] = zon.get(f32, "density") orelse main.physics.airDensity;
+	_terminalVelocity[size] = zon.get(f32, "terminalVelocity") orelse 90;
+	_mobility[size] = zon.get(f32, "mobility") orelse 1.0;
+	_allowOres[size] = zon.get(bool, "allowOres") orelse false;
 
-	_blockEntity[size] = block_entity.getByID(zon.get(?[]const u8, "blockEntity", null));
+	_blockEntity[size] = block_entity.getByID(zon.get([]const u8, "blockEntity"));
 
 	const oreProperties = zon.getChild("ore");
 	if (oreProperties != .null) blk: {
-		if (!std.mem.eql(u8, zon.get([]const u8, "rotation", "cubyz:no_rotation"), "cubyz:ore")) {
+		if (!std.mem.eql(u8, zon.get([]const u8, "rotation") orelse "", "cubyz:ore")) {
 			std.log.err("Ore must have rotation mode \"cubyz:ore\"!", .{});
 			break :blk;
 		}
 		ores.append(main.worldArena, .{
-			.veins = oreProperties.get(f32, "veins", 0),
-			.size = oreProperties.get(f32, "size", 0),
-			.maxHeight = oreProperties.get(i32, "maxHeight", std.math.maxInt(i32)),
-			.minHeight = oreProperties.get(i32, "minHeight", std.math.minInt(i32)),
-			.density = oreProperties.get(f32, "density", 0.5),
+			.veins = oreProperties.get(f32, "veins") orelse 0,
+			.size = oreProperties.get(f32, "size") orelse 0,
+			.maxHeight = oreProperties.get(i32, "maxHeight") orelse std.math.maxInt(i32),
+			.minHeight = oreProperties.get(i32, "minHeight") orelse std.math.minInt(i32),
+			.density = oreProperties.get(f32, "density") orelse 0.5,
 			.blockType = @intCast(size),
 			.seed = std.hash.Wyhash.hash(0, id),
 		});
@@ -270,7 +270,7 @@ pub fn loadBlockDrop(blockId: []const u8, zon: ZonElement) []const BlockDrop {
 
 		blockDrops[i] = .{
 			.items = resultItems.items,
-			.chance = blockDrop.get(f32, "chance", 1),
+			.chance = blockDrop.get(f32, "chance") orelse 1,
 			.forbiddenToolTags = Tag.loadTagsFromZon(main.worldArena, blockDrop.getChild("forbiddenToolTags")),
 			.allowedToolTags = allowedToolTags,
 		};
@@ -283,7 +283,7 @@ fn registerBlockDrop(typ: u16, zon: ZonElement) void {
 }
 
 fn registerLodReplacement(typ: u16, zon: ZonElement) void {
-	if (zon.get(?[]const u8, "lodReplacement", null)) |replacement| {
+	if (zon.get([]const u8, "lodReplacement")) |replacement| {
 		_lodReplacement[typ] = getTypeById(replacement);
 	} else {
 		_lodReplacement[typ] = typ;
@@ -291,7 +291,7 @@ fn registerLodReplacement(typ: u16, zon: ZonElement) void {
 }
 
 fn registerOpaqueVariant(typ: u16, zon: ZonElement) void {
-	if (zon.get(?[]const u8, "opaqueVariant", null)) |replacement| {
+	if (zon.get([]const u8, "opaqueVariant")) |replacement| {
 		_opaqueVariant[typ] = getTypeById(replacement);
 	} else {
 		_opaqueVariant[typ] = typ;
@@ -739,8 +739,8 @@ pub const meshes = struct { // MARK: meshes
 		defer main.stackAllocator.free(textureInfoPath);
 		const textureInfoZon = main.files.cwd().readToZon(main.stackAllocator, textureInfoPath) catch .null;
 		defer textureInfoZon.deinit(main.stackAllocator);
-		const animationFrames = textureInfoZon.get(u32, "frames", 1);
-		const animationTime = textureInfoZon.get(u32, "time", 1);
+		const animationFrames = textureInfoZon.get(u32, "frames") orelse 1;
+		const animationTime = textureInfoZon.get(u32, "time") orelse 1;
 		animationData[index] = .{.startFrame = @intCast(blockTextures.items.len), .frames = animationFrames, .time = animationTime};
 		const base = readTextureFile(path, ".png", Image.defaultImage);
 		const emission = readTextureFile(path, "_emission.png", Image.emptyImage);
@@ -752,11 +752,11 @@ pub const meshes = struct { // MARK: meshes
 			reflectivityTextures.append(main.worldArena, extractAnimationSlice(reflectivity, i, animationFrames));
 			absorptionTextures.append(main.worldArena, extractAnimationSlice(absorption, i, animationFrames));
 			textureFogData.append(main.worldArena, .{
-				.fogDensity = textureInfoZon.get(f32, "fogDensity", 0.0),
-				.fogColor = textureInfoZon.get(u32, "fogColor", 0xffffff),
+				.fogDensity = textureInfoZon.get(f32, "fogDensity") orelse 0.0,
+				.fogColor = textureInfoZon.get(u32, "fogColor") orelse 0xffffff,
 			});
 		}
-		textureOcclusionData[index].store(textureInfoZon.get(bool, "hasOcclusion", true), .monotonic);
+		textureOcclusionData[index].store(textureInfoZon.get(bool, "hasOcclusion") orelse true, .monotonic);
 	}
 
 	pub fn findTexture(_textureId: ?[]const u8, assetFolder: []const u8) !u16 {
@@ -798,11 +798,11 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn getTextureIndices(zon: ZonElement, assetFolder: []const u8, textureIndicesRef: *[16]u16) void {
-		const defaultIndex = findTexture(zon.get(?[]const u8, "texture", null), assetFolder) catch findTexture("cubyz:undefined", assetFolder) catch 0;
+		const defaultIndex = findTexture(zon.get([]const u8, "texture"), assetFolder) catch findTexture("cubyz:undefined", assetFolder) catch 0;
 		inline for (textureIndicesRef, 0..) |*ref, i| {
-			var textureId = zon.get(?[]const u8, std.fmt.comptimePrint("texture{}", .{i}), null);
+			var textureId = zon.get([]const u8, std.fmt.comptimePrint("texture{}", .{i}));
 			if (i < sideNames.len) {
-				textureId = zon.get(?[]const u8, sideNames[i], textureId);
+				textureId = zon.get([]const u8, sideNames[i]) orelse textureId;
 			}
 			ref.* = findTexture(textureId, assetFolder) catch defaultIndex;
 		}

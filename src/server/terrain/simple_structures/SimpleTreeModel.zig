@@ -48,30 +48,30 @@ branched: bool,
 
 pub fn loadModel(parameters: ZonElement) ?*SimpleTreeModel {
 	const self = main.worldArena.create(SimpleTreeModel);
-	const woodBlock = main.blocks.parseBlock(parameters.get(?[]const u8, "log", null) orelse {
+	const woodBlock = main.blocks.parseBlock(parameters.get([]const u8, "log") orelse {
 		std.log.err("Missing required 'log' field for cubyz:simple_tree rotation", .{});
 		return null;
 	});
 	self.* = .{
-		.typ = std.meta.stringToEnum(Type, parameters.get([]const u8, "type", "")) orelse blk: {
-			if (parameters.get(?[]const u8, "type", null)) |typ| std.log.err("Unknown tree type \"{s}\"", .{typ});
+		.typ = std.meta.stringToEnum(Type, parameters.get([]const u8, "type") orelse "") orelse blk: {
+			if (parameters.get([]const u8, "type")) |typ| std.log.err("Unknown tree type \"{s}\"", .{typ});
 			break :blk .round;
 		},
-		.leavesBlock = main.blocks.parseBlock(parameters.get(?[]const u8, "leaves", null) orelse {
+		.leavesBlock = main.blocks.parseBlock(parameters.get([]const u8, "leaves") orelse {
 			std.log.err("Missing required 'leaves' field for cubyz:simple_tree rotation", .{});
 			return null;
 		}),
 		.woodBlock = woodBlock,
 		.topWoodBlock = blk: {
-			break :blk main.blocks.parseBlock(parameters.get(?[]const u8, "top", null) orelse break :blk woodBlock);
+			break :blk main.blocks.parseBlock(parameters.get([]const u8, "top") orelse break :blk woodBlock);
 		},
-		.height0 = parameters.get(i32, "height", 6),
-		.deltaHeight = parameters.get(u31, "height_variation", 3),
-		.leafRadius = parameters.get(f32, "leafRadius", (1 + parameters.get(f32, "height", 6))/2),
-		.deltaLeafRadius = parameters.get(f32, "leafRadius_variation", parameters.get(f32, "height_variation", 3)/2),
-		.leafElongation = parameters.get(f32, "leafElongation", 1),
-		.deltaLeafElongation = parameters.get(f32, "deltaLeafElongation", 0),
-		.branched = parameters.get(bool, "branched", true),
+		.height0 = parameters.get(i32, "height") orelse 6,
+		.deltaHeight = parameters.get(u31, "height_variation") orelse 3,
+		.leafRadius = parameters.get(f32, "leafRadius") orelse ((1 + (parameters.get(f32, "height") orelse 6))/2),
+		.deltaLeafRadius = parameters.get(f32, "leafRadius_variation") orelse ((parameters.get(f32, "height_variation") orelse 3)/2),
+		.leafElongation = parameters.get(f32, "leafElongation") orelse 1,
+		.deltaLeafElongation = parameters.get(f32, "deltaLeafElongation") orelse 0,
+		.branched = parameters.get(bool, "branched") orelse true,
 	};
 	if (self.woodBlock.mode() == main.rotation.getByID("cubyz:branch")) self.woodRotationModeType = .branch;
 	if (self.woodBlock.mode() == main.rotation.getByID("cubyz:log")) self.woodRotationModeType = .log;

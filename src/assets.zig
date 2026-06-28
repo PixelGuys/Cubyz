@@ -401,7 +401,7 @@ fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void 
 	defer main.stackAllocator.free(texturePath);
 	var replacementTexturePath: []const u8 = &.{};
 	defer main.stackAllocator.free(replacementTexturePath);
-	if (zon.get(?[]const u8, "texture", null)) |texture| {
+	if (zon.get([]const u8, "texture")) |texture| {
 		texturePath = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/items/textures/{s}", .{assetFolder, mod, texture});
 		replacementTexturePath = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/items/textures/{s}", .{mod, texture});
 	}
@@ -629,7 +629,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	for (itemPalette.palette.items) |stringId| {
 		// Some items are created automatically from blocks.
 		if (worldAssets.blocks.get(stringId)) |zon| {
-			if (!zon.get(bool, "hasItem", true)) continue;
+			if (!(zon.get(bool, "hasItem") orelse true)) continue;
 			try registerItem(assetFolder, stringId, zon.getChild("item"));
 			if (worldAssets.items.get(stringId) != null) {
 				std.log.err("Item {s} appears as standalone item and as block item.", .{stringId});
@@ -649,7 +649,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	for (blockPalette.palette.items) |stringId| {
 		const zon = worldAssets.blocks.get(stringId) orelse .null;
 
-		if (!zon.get(bool, "hasItem", true)) continue;
+		if (!(zon.get(bool, "hasItem") orelse true)) continue;
 		if (items.hasRegistered(stringId)) continue;
 
 		try registerItem(assetFolder, stringId, zon.getChild("item"));
@@ -673,7 +673,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	for (blockPalette.palette.items) |stringId| {
 		const zon = worldAssets.blocks.get(stringId) orelse .null;
 
-		if (!zon.get(bool, "hasItem", true)) continue;
+		if (!(zon.get(bool, "hasItem") orelse true)) continue;
 		std.debug.assert(items.hasRegistered(stringId));
 
 		try assignBlockItem(stringId);

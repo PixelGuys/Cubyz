@@ -242,32 +242,32 @@ fn load() void {
 		if (windowZon == .null) continue;
 		for (&window.relativePosition, 0..) |*relPos, i| {
 			const relPosZon = windowZon.getChild(([_][]const u8{"relPos0", "relPos1"})[i]);
-			const typ = relPosZon.get([]const u8, "type", "ratio");
+			const typ = relPosZon.get([]const u8, "type") orelse "ratio";
 			if (std.mem.eql(u8, typ, "ratio")) {
-				relPos.* = .{.ratio = relPosZon.get(f32, "ratio", 0.5)};
+				relPos.* = .{.ratio = relPosZon.get(f32, "ratio") orelse 0.5};
 			} else if (std.mem.eql(u8, typ, "attachedToFrame")) {
 				relPos.* = .{.attachedToFrame = .{
-					.selfAttachmentPoint = @enumFromInt(relPosZon.get(u8, "selfAttachmentPoint", 0)),
-					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint", 0)),
+					.selfAttachmentPoint = @enumFromInt(relPosZon.get(u8, "selfAttachmentPoint") orelse 0),
+					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint") orelse 0),
 				}};
 			} else if (std.mem.eql(u8, typ, "relativeToWindow")) {
-				const reference = getWindowById(relPosZon.get([]const u8, "reference", "")) orelse continue;
+				const reference = getWindowById(relPosZon.get([]const u8, "reference") orelse "") orelse continue;
 				relPos.* = .{.relativeToWindow = .{
 					.reference = reference,
-					.ratio = relPosZon.get(f32, "ratio", 0.5),
+					.ratio = relPosZon.get(f32, "ratio") orelse 0.5,
 				}};
 			} else if (std.mem.eql(u8, typ, "attachedToWindow")) {
-				const reference = getWindowById(relPosZon.get([]const u8, "reference", "")) orelse continue;
+				const reference = getWindowById(relPosZon.get([]const u8, "reference") orelse "") orelse continue;
 				relPos.* = .{.attachedToWindow = .{
 					.reference = reference,
-					.selfAttachmentPoint = @enumFromInt(relPosZon.get(u8, "selfAttachmentPoint", 0)),
-					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint", 0)),
+					.selfAttachmentPoint = @enumFromInt(relPosZon.get(u8, "selfAttachmentPoint") orelse 0),
+					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint") orelse 0),
 				}};
 			} else {
 				std.log.err("Unknown window attachment type: {s}", .{typ});
 			}
 		}
-		window.scale = windowZon.get(f32, "scale", 1);
+		window.scale = windowZon.get(f32, "scale") orelse 1;
 	}
 }
 

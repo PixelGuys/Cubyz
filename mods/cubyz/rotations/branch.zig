@@ -260,12 +260,12 @@ pub fn getPattern(data: BranchData, side: Neighbor) ?Pattern {
 }
 
 pub fn createBlockModel(_: Block, modeData: *u16, zon: ZonElement) ModelIndex {
-	var radius = zon.get(f32, "radius", 4);
+	var radius = zon.get(f32, "radius") orelse 4;
 	const radiusForComparisons = std.math.lossyCast(u16, @round(radius*65536.0/16.0));
 	radius = @as(f32, @floatFromInt(radiusForComparisons))*16.0/65536.0;
 	modeData.* = radiusForComparisons;
-	const shellModelId = zon.get([]const u8, "shellModel", "");
-	const textureSlotOffset = zon.get(u32, "textureSlotOffset", 0);
+	const shellModelId = zon.get([]const u8, "shellModel") orelse "";
+	const textureSlotOffset = zon.get(u32, "textureSlotOffset") orelse 0;
 	if (branchModels.get(.{.radius = radiusForComparisons, .shellModelId = shellModelId, .textureSlotOffset = textureSlotOffset})) |modelIndex| return modelIndex;
 
 	var shellQuads = main.ListManaged(main.models.QuadInfo).init(main.stackAllocator);

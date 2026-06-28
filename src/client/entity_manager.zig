@@ -63,7 +63,7 @@ pub fn addEntity(zon: ZonElement) !void {
 	mutex.lock();
 	defer mutex.unlock();
 
-	const id = zon.get(?u32, "id", null) orelse return error.entityIdMissing;
+	const id = zon.get(u32, "id") orelse return error.entityIdMissing;
 	const index = entities.len;
 	var ent = entities.addOne();
 

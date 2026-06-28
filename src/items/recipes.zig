@@ -213,7 +213,7 @@ pub fn parseRecipe(zon: ZonElement, list: *main.ListManaged(Recipe)) !void {
 	const inputs = zon.getChild("inputs").toSlice();
 	const recipeItems = std.mem.concat(arena.allocator, ZonElement, &.{inputs, &.{zon.getChild("output")}}) catch unreachable;
 
-	const reversible = zon.get(bool, "reversible", false);
+	const reversible = zon.get(bool, "reversible") orelse false;
 	if (reversible and recipeItems.len != 2) {
 		return error.InvalidReversibleRecipe;
 	}
