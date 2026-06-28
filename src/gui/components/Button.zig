@@ -163,8 +163,10 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 		draw.customShadedRect(buttonUniforms, self.pos + Vec2f{2, 2}, self.size - Vec2f{4, 4});
 	}
 
+	const cornerSize = (textures.outlineTextureSize - Vec2f{1, 1})/Vec2f{2, 2};
+
 	textures.outlineTexture.bindTo(0);
-	graphics.draw.bound9SliceImage(self.pos, self.size, textures.outlineTextureSize, .{2, 2, 2, 2}, 2);
+	graphics.draw.bound9SliceImage(self.pos, self.size, textures.outlineTextureSize, cornerSize, 2);
 
 	const oldColor = draw.setColor(if (self.disabled) 0xff808080 else 0xffffffff);
 	defer draw.restoreColor(oldColor);

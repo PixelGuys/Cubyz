@@ -12,7 +12,7 @@ const GuiComponent = gui.GuiComponent;
 
 const Label = @This();
 
-pub const fontSize: f32 = 16;
+const fontSize: f32 = 16;
 
 pos: Vec2f,
 size: Vec2f,

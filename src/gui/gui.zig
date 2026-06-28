@@ -788,28 +788,7 @@ pub const inventory = struct { // MARK: inventory
 		const hovered = hoveredItemSlot orelse return;
 		if (carried.getAmount(0) == 0) {
 			if (hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltipContent| {
-				var label = GuiComponent.Label.init(Vec2f{0, 0}, 300, tooltipContent, .left);
-				var size = label.text.calculateLineBreaks(GuiComponent.Label.fontSize, 300);
-				size[0] = 0;
-				for (label.text.lineBreaks.items) |lineBreak| {
-					size[0] = @max(size[0], lineBreak.width);
-				}
-				label.size = size;
-
-				const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(scale));
-				var pos = mousePos;
-				var alignment: graphics.TextBuffer.Alignment = .right;
-				if (pos[0] + size[0] + tooltip.tooltipSliceCenter[0]*2 + tooltip.tooltipSliceCenter[1] >= windowSize[0]) {
-					alignment = .left;
-				}
-				pos[1] = @min(pos[1] - GuiComponent.Label.fontSize, windowSize[1] - size[1] - tooltip.tooltipSliceCenter[2] - tooltip.tooltipSliceCenter[3]);
-
-				var list = GuiComponent.VerticalList.init(Vec2f{0, 0}, 360, tooltip.tooltipSliceCenter[2]);
-				list.add(label);
-				list.finish(.left);
-				var component: GuiComponent = .{.verticalList = list};
-				defer component.deinit();
-				tooltip.render(&component, pos, alignment);
+				tooltip.renderFromText(tooltipContent, mousePos, .right);
 			}
 		}
 	}
