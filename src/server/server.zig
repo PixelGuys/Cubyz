@@ -608,10 +608,6 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 		std.log.err("Couldn't create thread: {s}", .{@errorName(err)});
 		@panic("Could not open Server.");
 	};
-	for (connectionManager.connections.items) |conn| {
-		main.network.protocols.reload.informClientOfRestart(conn);
-		conn.handShakeState.store(.signatureResponse, .monotonic);
-	}
 	if (singlePlayerPort) |port| blk: {
 		const ipString = std.fmt.allocPrint(main.stackAllocator.allocator, "127.0.0.1:{}", .{port}) catch unreachable;
 		defer main.stackAllocator.free(ipString);

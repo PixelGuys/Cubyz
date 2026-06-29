@@ -526,6 +526,10 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	pub fn @"continue"(result: *ConnectionManager) !void {
 		if (result.running.load(.monotonic)) return;
 
+		result.mutex.lock();
+		defer result.mutex.unlock();
+
+
 		for (result.connections.items) |conn| {
 			conn.@"continue"();
 			if (conn.user) |user| {
@@ -555,6 +559,10 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 		self.running.store(false, .monotonic);
 		self.thread.join();
+
+		self.mutex.lock();
+		defer self.mutex.unlock();
+
 		for (self.requests.items) |request| {
 			request.requestNotifier.signal();
 		}
@@ -1558,6 +1566,8 @@ pub const Connection = struct { // MARK: Connection
 		if (self.connectionState.load(.monotonic) == .paused) {
 			self.connectionState.store(.connected, .monotonic);
 		}
+		main.network.protocols.reload.informClientOfRestart(self);
+		self.handShakeState.store(.signatureResponse, .monotonic);
 	}
 	pub fn checkRestartCounter(conn: *Connection, protocolIndex: u8, data: []const u8, channelId: ChannelId) !bool { // MARK: checkRestartCounter()
 		// Reload protocol bypasses everything else
