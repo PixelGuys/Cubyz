@@ -226,14 +226,14 @@ pub const handShake = struct { // MARK: handShake
 				try conn.secureChannel.startTlsHandshake();
 				conn.secureChannel.finishedCollectingClientVerificationData = true;
 
-				const prefix: [1]u8 = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
+				const prefix: [1]u8 = .{@intFromEnum(Connection.HandShakeState.userData)};
 				const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
 				defer main.stackAllocator.free(data);
 
 				conn.send(.secure, id, data);
 			},
 			.reload => {
-				conn.send(.secure, id, &[1]u8{@intFromEnum(Connection.HandShakeState.reload)});
+				conn.send(.secure, id, &.{@intFromEnum(Connection.HandShakeState.reload)});
 			},
 			else => unreachable,
 		}
