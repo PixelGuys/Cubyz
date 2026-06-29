@@ -290,8 +290,13 @@ pub const World = struct { // MARK: World
 		main.heap.allocators.createWorldArena();
 		errdefer main.heap.allocators.destroyWorldArena();
 
-		self.name = "client";
-		self.milliTime = main.timestamp().toMilliseconds();
+		self.* = .{
+			.conn = self.conn,
+			.manager = self.manager,
+			.name = "client",
+			.milliTime = main.timestamp().toMilliseconds(),
+		};
+
 
 		errdefer self.conn.deinit();
 
