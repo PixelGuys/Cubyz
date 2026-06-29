@@ -574,6 +574,10 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 		for (self.connections.items) |conn| {
 			conn.pause();
+			conn.restartCounter += 1;
+			if (conn.user) |user| {
+				user.pause();
+			}
 		}
 	}
 
