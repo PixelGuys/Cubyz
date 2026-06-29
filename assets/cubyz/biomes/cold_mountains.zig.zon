@@ -6,7 +6,7 @@
 	.radius = 420,
 	.mountains = 150,
 	.maxSubBiomeCount = 1,
-	.stoneBlock = "cubyz:glacite/base",
+	.stoneBlock = "cubyz:glacite/smooth",
 	.music = "cubyz:sunrise",
 	.ground_structure = .{
 		"cubyz:snow",
