@@ -233,7 +233,7 @@ pub const handShake = struct { // MARK: handShake
 				conn.send(.secure, id, data);
 			},
 			.reload => {
-				conn.send(.secure, id, &[1]u8{@intFromEnum(Connection.HandShakeState.reload)});
+				conn.send(.secure, id, &.{@intFromEnum(Connection.HandShakeState.reload)});
 			},
 			else => unreachable,
 		}
