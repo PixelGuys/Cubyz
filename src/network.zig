@@ -529,7 +529,6 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		result.mutex.lock();
 		defer result.mutex.unlock();
 
-
 		for (result.connections.items) |conn| {
 			conn.@"continue"();
 			if (conn.user) |user| {

@@ -284,7 +284,6 @@ pub const World = struct { // MARK: World
 	shouldRestart: std.atomic.Value(bool) = .init(false),
 	shouldReload: bool = false,
 
-
 	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
 		self.conn = try Connection.init(manager, ip, null);
 		self.manager = manager;
@@ -295,14 +294,13 @@ pub const World = struct { // MARK: World
 		errdefer main.heap.allocators.destroyWorldArena();
 
 		self.conn.handShakeState.store(if (self.shouldReload) .reload else .start, .monotonic);
-		
+
 		self.* = .{
 			.conn = self.conn,
 			.manager = self.manager,
 			.name = "client",
 			.milliTime = main.timestamp().toMilliseconds(),
 		};
-
 
 		errdefer self.conn.deinit();
 
@@ -564,7 +562,7 @@ pub fn getBlockWithSide(comptime side: main.sync.Side, x: i32, y: i32, z: i32) ?
 }
 
 pub fn update(deltaTime: f64) void { // MARK: update()
-	if(world.?.shouldRestart.load(.monotonic)){
+	if (world.?.shouldRestart.load(.monotonic)) {
 		restart();
 	}
 
