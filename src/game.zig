@@ -281,6 +281,10 @@ pub const World = struct { // MARK: World
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
 
+	shouldRestart: std.atomic.Value(bool) = .init(false),
+	shouldReload: bool = false,
+
+
 	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
 		self.conn = try Connection.init(manager, ip, null);
 		self.manager = manager;
@@ -290,6 +294,8 @@ pub const World = struct { // MARK: World
 		main.heap.allocators.createWorldArena();
 		errdefer main.heap.allocators.destroyWorldArena();
 
+		self.conn.handShakeState.store(if (self.shouldReload) .reload else .start, .monotonic);
+		
 		self.* = .{
 			.conn = self.conn,
 			.manager = self.manager,
@@ -558,6 +564,10 @@ pub fn getBlockWithSide(comptime side: main.sync.Side, x: i32, y: i32, z: i32) ?
 }
 
 pub fn update(deltaTime: f64) void { // MARK: update()
+	if(world.?.shouldRestart.load(.monotonic)){
+		restart();
+	}
+
 	physics.calculateVolumeProperties(.client, &Player.volumeProperties, Player.super.pos, Player.outerBoundingBox, physics.playerAirTerminalVelocity);
 	if (Player.isFlying.load(.monotonic)) {
 		Player.friction = .{.current = 20, .mobile = 20};
@@ -774,7 +784,6 @@ pub fn restart() void {
 
 		network.protocols.reload.informServerOfRestart(_world.conn);
 
-		_world.conn.handShakeState.store(if (main.shouldReload) .reload else .start, .monotonic);
 		_world.@"continue"() catch |err| {
 			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
 			main.gui.windowlist.notification.raiseNotification("Encountered error while opening world: {s}", .{@errorName(err)});

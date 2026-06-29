@@ -1584,10 +1584,10 @@ pub const Connection = struct { // MARK: Connection
 				if (conn.restartCounter < restartCounter) {
 					conn.restartCounter = restartCounter;
 					switch (state) {
-						.awaitingKeyVerification => main.shouldReload = false,
-						.connected, .awaitingReload => main.shouldReload = true,
+						.awaitingKeyVerification => main.game.world.?.shouldReload = false,
+						.connected, .awaitingReload => main.game.world.?.shouldReload = true,
 					}
-					main.shouldRestart.store(true, .release);
+					main.game.world.?.shouldRestart.store(true, .release);
 				}
 			}
 			if (conn.restartChannelCounter[@intFromEnum(channelId)] < restartCounter) {

@@ -298,8 +298,6 @@ pub var lastFrameTime = std.atomic.Value(f64).init(0);
 pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 
 var shouldExitToMenu = std.atomic.Value(bool).init(false);
-pub var shouldRestart = std.atomic.Value(bool).init(false);
-pub var shouldReload: bool = false;
 
 pub fn exitToMenu() void {
 	shouldExitToMenu.store(true, .monotonic);
@@ -499,10 +497,7 @@ pub fn clientMain() void { // MARK: clientMain()
 			gui.updateAndRenderGui();
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 		}
-		if (shouldRestart.load(.acquire)) {
-			shouldRestart.store(false, .monotonic);
-			game.restart();
-		}
+		
 		if (shouldExitToMenu.load(.monotonic)) {
 			shouldExitToMenu.store(false, .monotonic);
 			Window.setMouseGrabbed(false);
