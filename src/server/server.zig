@@ -165,8 +165,6 @@ pub const User = struct { // MARK: User
 		return self;
 	}
 	pub fn @"continue"(self: *User) void {
-		// persistent data
-
 		// reset
 		self.* = .{
 			.conn = self.conn,
