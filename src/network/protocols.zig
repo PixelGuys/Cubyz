@@ -1089,8 +1089,6 @@ pub const reload = struct { // MARK: Reload
 		conn.send(.slow, id, writer.data.items);
 	}
 	pub fn informServerOfRestart(conn: *Connection) void {
-		// unlock!
-
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 

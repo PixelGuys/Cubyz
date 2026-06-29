@@ -282,8 +282,7 @@ pub const World = struct { // MARK: World
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
 
 	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
-		const conn = try Connection.init(manager, ip, null);
-		self.conn = conn;
+		self.conn = try Connection.init(manager, ip, null);
 		self.manager = manager;
 		try self.@"continue"();
 	}

@@ -166,22 +166,16 @@ pub const User = struct { // MARK: User
 	}
 	pub fn @"continue"(self: *User) void {
 		// persistent data
-		const conn = self.conn;
-		const name = self.name;
-		const newKeyString = self.newKeyString;
-		const playerIndex = self.playerIndex;
-		const keysVerified = self.keysVerified;
-		const state = self.state;
 
 		// reset
-		self.* = .{};
-
-		self.conn = conn;
-		self.name = name;
-		self.newKeyString = newKeyString;
-		self.playerIndex = playerIndex;
-		self.keysVerified = keysVerified;
-		self.state = state;
+		self.* = .{
+			.conn = self.conn,
+			.name = self.name,
+			.newKeyString = self.newKeyString,
+			.playerIndex = self.playerIndex,
+			.keysVerified = self.keysVerified,
+			.state = self.state,
+		};
 
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
 		self.worldEditData = .init();
