@@ -571,7 +571,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			main.globalAllocator.free(packet.data);
 		}
 		self.packetSendRequests.deinit(main.globalAllocator.allocator);
-	
+
 		main.threadPool.clear();
 
 		for (self.connections.items) |conn| {
