@@ -1561,11 +1561,13 @@ pub const Connection = struct { // MARK: Connection
 
 	// pretending the connection is closed
 	pub fn pause(self: *Connection) void {
+		std.debug.assert(self.connectionState.load(.monotonic) != .paused);
 		if (self.connectionState.load(.monotonic) == .connected) {
 			self.connectionState.store(.paused, .monotonic);
 		}
 	}
 	pub fn @"continue"(self: *Connection) void {
+		std.debug.assert(self.connectionState.load(.monotonic) != .connected);
 		if (self.connectionState.load(.monotonic) == .paused) {
 			self.connectionState.store(.connected, .monotonic);
 		}
