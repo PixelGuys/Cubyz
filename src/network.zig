@@ -886,7 +886,7 @@ pub const Connection = struct { // MARK: Connection
 		buffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
 		header: ?Header = null,
 		protocolBuffer: main.List(u8) = .empty,
-		channelId: ChannelId = undefined,
+		channelId: ChannelId,
 
 		pub fn init(channelId: ChannelId) ReceiveBuffer {
 			return .{
