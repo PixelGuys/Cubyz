@@ -1,0 +1,7 @@
+.{
+	.texture = "cubyz:grass/vegetation/cold",
+	.item = .{
+		.texture = "grass_vegetation/cold.png",
+	},
+	.lodReplacement = "cubyz:air",
+}
