@@ -620,9 +620,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 }
 
 fn deinit() void {
-	main.threadPool.clear();
 	connectionManager.pause();
-	main.threadPool.clear();
 	users.clearAndFree();
 
 	while (userDeinitList.popFront()) |user| {
