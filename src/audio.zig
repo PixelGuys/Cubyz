@@ -1,7 +1,10 @@
 const std = @import("std");
 
 const main = @import("main");
+const vec = main.vec;
+const Vec3f = vec.Vec3f;
 const utils = main.utils;
+const ZonElement = @import("zon.zig").ZonElement;
 
 const c = @import("c");
 
@@ -12,40 +15,72 @@ fn handleError(miniaudioError: c.ma_result) !void {
 	}
 }
 
-const AudioData = struct {
-	musicId: []const u8,
-	data: []f32 = &.{},
+fn getMaError(err: c_int) anyerror {
+	return switch (err) {
+		0 => error.VORBIS__no_error,
+		1 => error.VORBIS_need_more_data,
+		2 => error.VORBIS_invalid_api_mixing,
+		3 => error.VORBIS_outofmem,
+		4 => error.VORBIS_feature_not_supported,
+		5 => error.VORBIS_too_many_channels,
+		6 => error.VORBIS_file_open_failure,
+		7 => error.VORBIS_seek_without_length,
+		10 => error.VORBIS_unexpected_eof,
+		11 => error.VORBIS_seek_invalid,
+		20 => error.VORBIS_invalid_setup,
+		21 => error.VORBIS_invalid_stream,
+		30 => error.VORBIS_missing_capture_pattern,
+		31 => error.VORBIS_invalid_stream_structure_version,
+		32 => error.VORBIS_continued_packet_flag_invalid,
+		33 => error.VORBIS_incorrect_stream_serial_number,
+		34 => error.VORBIS_invalid_first_page,
+		35 => error.VORBIS_bad_packet_type,
+		36 => error.VORBIS_cant_find_last_page,
+		37 => error.VORBIS_seek_failed,
+		38 => error.VORBIS_ogg_skeleton_not_supported,
+		else => unreachable,
+	};
+}
 
-	fn open_vorbis_file_by_id(id: []const u8) ?*c.stb_vorbis {
+const AudioData = struct {
+	audioId: []const u8,
+	data: []f32 = &.{},
+	isMono: bool = false,
+
+	volume: f32 = 1,
+
+	fn open_vorbis_file_by_id(id: []const u8, subPath: []const u8) ?*c.stb_vorbis {
 		const colonIndex = std.mem.indexOfScalar(u8, id, ':') orelse {
 			std.log.err("Invalid music id: {s}. Must be addon:file_name", .{id});
 			return null;
 		};
 		const addon = id[0..colonIndex];
 		const fileName = id[colonIndex + 1 ..];
-		const path1 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/music/{s}.ogg", .{addon, fileName}, 0) catch unreachable;
+		// FIXME: IF THERE IS SOME PROBLEM WITH THE FILE ITSELF IT JUST SAYS THAT IT COULD NOT FIND THE FILE RATHER THAN THE ACTUAL ISSUE
+		const path1 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/{s}/{s}.ogg", .{addon, subPath, fileName}, 0) catch unreachable;
 		defer main.stackAllocator.free(path1);
 		var err: c_int = 0;
 		if (c.stb_vorbis_open_filename(path1.ptr, &err, null)) |ogg_stream| return ogg_stream;
-		const path2 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "{s}/serverAssets/{s}/music/{s}.ogg", .{main.files.cubyzDirStr(), addon, fileName}, 0) catch unreachable;
+		const path2 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "{s}/serverAssets/{s}/{s}/{s}.ogg", .{main.files.cubyzDirStr(), addon, subPath, fileName}, 0) catch unreachable;
 		defer main.stackAllocator.free(path2);
 		if (c.stb_vorbis_open_filename(path2.ptr, &err, null)) |ogg_stream| return ogg_stream;
-		std.log.err("Couldn't find music with id \"{s}\". Searched path \"{s}\" and \"{s}\"", .{id, path1, path2});
+		std.log.err("Couldn't handle audio file. Error: {s}. ID: \"{s}\". Searched path: \"{s}\" and \"{s}\"", .{@errorName(getMaError(err)), id, path1, path2});
 		return null;
 	}
 
-	fn init(musicId: []const u8) *AudioData {
+	fn init(musicId: []const u8, subPath: []const u8) *AudioData {
 		const self = main.globalAllocator.create(AudioData);
-		self.* = .{.musicId = main.globalAllocator.dupe(u8, musicId)};
+		self.* = .{.audioId = main.globalAllocator.dupe(u8, musicId)};
 
 		const channels = 2;
-		if (open_vorbis_file_by_id(musicId)) |ogg_stream| {
+		if (open_vorbis_file_by_id(musicId, subPath)) |ogg_stream| {
 			defer c.stb_vorbis_close(ogg_stream);
 			const ogg_info: c.stb_vorbis_info = c.stb_vorbis_get_info(ogg_stream);
 			const samples = c.stb_vorbis_stream_length_in_samples(ogg_stream);
 			if (sampleRate != @as(f32, @floatFromInt(ogg_info.sample_rate))) {
 				const tempData = main.stackAllocator.alloc(f32, samples*channels);
 				defer main.stackAllocator.free(tempData);
+				self.isMono = ogg_info.channels == 1;
 				_ = c.stb_vorbis_get_samples_float_interleaved(ogg_stream, channels, tempData.ptr, @as(c_int, @intCast(samples))*ogg_info.channels);
 				var stepWidth = @as(f32, @floatFromInt(ogg_info.sample_rate))/sampleRate;
 				const newSamples: usize = @trunc(@as(f32, @floatFromInt(tempData.len/2))/stepWidth);
@@ -76,13 +111,13 @@ const AudioData = struct {
 
 	fn deinit(self: *const AudioData) void {
 		main.globalAllocator.free(self.data);
-		main.globalAllocator.free(self.musicId);
+		main.globalAllocator.free(self.audioId);
 		main.globalAllocator.destroy(self);
 	}
 
 	pub fn hashCode(self: *const AudioData) u32 {
 		var result: u32 = 0;
-		for (self.musicId) |char| {
+		for (self.audioId) |char| {
 			result = result + char;
 		}
 		return result;
@@ -90,12 +125,12 @@ const AudioData = struct {
 
 	pub fn equals(self: *const AudioData, _other: ?*const AudioData) bool {
 		if (_other) |other| {
-			return std.mem.eql(u8, self.musicId, other.musicId);
+			return std.mem.eql(u8, self.audioId, other.audioId);
 		} else return false;
 	}
 };
 
-var activeTasks: main.List([]const u8) = .empty;
+var activeTasks: main.List([]const u8) = .empty; // MARK: MUSIC
 var taskMutex: main.utils.Mutex = .{};
 
 var musicCache: utils.Cache(AudioData, 4, 4, AudioData.deinit) = .{};
@@ -104,7 +139,7 @@ fn findMusic(musicId: []const u8) ?[]f32 {
 	{
 		taskMutex.lock();
 		defer taskMutex.unlock();
-		if (musicCache.find(AudioData{.musicId = musicId}, null)) |musicData| {
+		if (musicCache.find(AudioData{.audioId = musicId}, null)) |musicData| {
 			return musicData.data;
 		}
 		for (activeTasks.items) |taskFileName| {
@@ -149,7 +184,7 @@ const MusicLoadTask = struct {
 
 	pub fn run(self: *MusicLoadTask) void {
 		defer self.clean();
-		const data = AudioData.init(self.musicId);
+		const data = AudioData.init(self.musicId, "music");
 		const hasOld = musicCache.addToCache(data, data.hashCode());
 		if (hasOld) |old| {
 			old.deinit();
@@ -202,6 +237,19 @@ pub fn deinit() void {
 	preferredMusic.len = 0;
 	main.globalAllocator.free(activeMusicId);
 	activeMusicId.len = 0;
+
+	soundIdMap.deinit(main.globalAllocator.allocator);
+	sounds.deinit(main.globalAllocator);
+	activeSounds.deinit(main.globalAllocator);
+}
+
+pub fn reset() void {
+	soundIdMap.clearRetainingCapacity();
+	for (sounds.items) |s| {
+		s.deinit();
+	}
+	sounds.clearRetainingCapacity();
+	activeSounds.clearRetainingCapacity();
 }
 
 const currentMusic = struct {
@@ -251,7 +299,53 @@ pub fn setMusic(music: []const u8) void {
 	preferredMusic = main.globalAllocator.dupe(u8, music);
 }
 
-fn addMusic(buffer: []f32) void {
+const Sound = struct { // MARK: SOUNDS
+	pos: Vec3f = @splat(0),
+	soundIndex: u32,
+	bufPos: u32 = 0,
+
+	volume: f32 = 1,
+	maxDistance: f32 = 10,
+	isSpatial: bool = false,
+};
+
+var soundIdMap: std.StringHashMapUnmanaged(u32) = .{};
+var sounds: main.List(*AudioData) = .empty;
+var activeSounds: main.List(Sound) = .empty; // TODO: USE SPARSE SET
+
+pub fn getActiveSoundCount() u32 {
+	return @intCast(activeSounds.items.len);
+}
+
+pub fn registerSound(_: []const u8, id: []const u8, zon: ZonElement) void {
+	const sound = AudioData.init(id, "sounds/audio");
+	sound.volume = zon.get(f32, "volume", 1.0);
+
+	soundIdMap.put(main.globalAllocator.allocator, id, @intCast(sounds.items.len)) catch unreachable;
+	sounds.append(main.globalAllocator, sound);
+
+	std.log.debug("Registered sound: {s}", .{id});
+}
+
+fn addSound(id: []const u8, pos: Vec3f, maxDistance: f32, isSpatial: bool) void {
+	const idx = soundIdMap.get(id) orelse return;
+	activeSounds.append(main.globalAllocator, Sound{
+		.soundIndex = idx,
+		.pos = pos,
+		.isSpatial = isSpatial,
+		.maxDistance = maxDistance,
+	});
+}
+
+pub fn playSound(id: []const u8) void {
+	addSound(id, @splat(0), 0, false);
+}
+
+pub fn playSpatialSound(id: []const u8, pos: Vec3f, maxDistance: f32) void {
+	addSound(id, pos, maxDistance, true);
+}
+
+fn mixMusic(buffer: []f32) void {
 	mutex.lock();
 	defer mutex.unlock();
 	if (!std.mem.eql(u8, preferredMusic, activeMusicId)) {
@@ -298,6 +392,66 @@ fn addMusic(buffer: []f32) void {
 	}
 }
 
+fn mixSound(buffer: []f32) void {
+	mutex.lock();
+	defer mutex.unlock();
+
+	if (activeSounds.items.len == 0) return;
+
+	const playerPos: Vec3f = @floatCast(main.game.Player.getPosBlocking());
+	const playerForward = main.game.camera.direction;
+	const playerRight = vec.normalize(vec.cross(playerForward, Vec3f{0, 0, 1}));
+
+	var i: u32 = 0;
+	var soundCount = activeSounds.items.len;
+	main: while (i < soundCount) {
+		var sound = activeSounds.items[i];
+		const soundData = sounds.items[sound.soundIndex];
+		const soundBuffer = soundData.data;
+
+		const notMonoInt: u32 = @intFromBool(!soundData.isMono);
+		const bufferStep: u32 = 1 + notMonoInt;
+
+		var leftVol: f32 = 1;
+		var rightVol: f32 = 1;
+
+		if (sound.isSpatial) {
+			const toSound = sound.pos - playerPos;
+			const distance: f32 = vec.length(toSound);
+			const pan: f32 = vec.dot(toSound/@as(Vec3f, @splat(distance)), playerRight);
+
+			const angle = (pan + 1)*0.25*std.math.pi;
+			leftVol = @cos(angle);
+			rightVol = @sin(angle);
+
+			var volume: f32 = 1 - distance/sound.maxDistance;
+
+			volume = if (volume < 0) 0 else volume;
+			leftVol *= volume;
+			rightVol *= volume;
+		}
+
+		var j: usize = 0;
+		while (j < buffer.len) : (j += 2) {
+			const amplitude: f32 = main.settings.soundVolume;
+
+			buffer[j] += soundBuffer[sound.bufPos]*amplitude*soundData.volume*leftVol;
+			buffer[j + 1] += soundBuffer[sound.bufPos + notMonoInt]*amplitude*soundData.volume*rightVol;
+			sound.bufPos += bufferStep;
+
+			if (sound.bufPos >= soundBuffer.len) {
+				soundCount -= 1;
+				activeSounds.items[i] = activeSounds.items[soundCount];
+				continue :main;
+			}
+		}
+		activeSounds.items[i] = sound;
+		i += 1;
+	}
+
+	activeSounds.items.len = soundCount;
+}
+
 fn miniaudioCallback(
 	maDevice: ?*anyopaque,
 	output: ?*anyopaque,
@@ -309,5 +463,6 @@ fn miniaudioCallback(
 	const valuesPerBuffer = 2*frameCount; // Stereo
 	const buffer = @as([*]f32, @ptrCast(@alignCast(output)))[0..valuesPerBuffer];
 	@memset(buffer, 0);
-	addMusic(buffer);
+	mixMusic(buffer);
+	mixSound(buffer);
 }

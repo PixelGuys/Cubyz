@@ -22,6 +22,11 @@ fn musicCallback(newValue: f32) void {
 	settings.save();
 }
 
+fn soundCallback(newValue: f32) void {
+	settings.soundVolume = deziBelToLinear(newValue);
+	settings.save();
+}
+
 fn deziBelToLinear(x: f32) f32 {
 	if (x < -59.95) return 0;
 	return std.math.pow(f32, 10, x/20);
@@ -39,11 +44,18 @@ fn musicFormatter(allocator: NeverFailingAllocator, value: f32) []const u8 {
 	return std.fmt.allocPrint(allocator.allocator, "Music volume:", .{}) catch unreachable;
 }
 
+fn soundFormatter(allocator: NeverFailingAllocator, value: f32) []const u8 {
+	const percentage = 100*deziBelToLinear(value);
+	if (percentage == 0) return allocator.dupe(u8, "Sound volume: Off");
+	return std.fmt.allocPrint(allocator.allocator, "Sound volume:", .{}) catch unreachable;
+}
+
 const padding: f32 = 8;
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(ContinuousSlider.init(.{0, 0}, 128, -60, 0, linearToDezibel(settings.musicVolume), &musicCallback, &musicFormatter));
+	list.add(ContinuousSlider.init(.{0, 0}, 128, -60, 0, linearToDezibel(settings.soundVolume), &soundCallback, &soundFormatter));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
