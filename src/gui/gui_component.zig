@@ -130,4 +130,15 @@ pub const GuiComponent = union(enum) {
 	pub fn contains(_pos: Vec2f, _size: Vec2f, point: Vec2f) bool {
 		return @reduce(.And, point >= _pos) and @reduce(.And, point < _pos + _size);
 	}
+
+	pub fn getTooltip(self: GuiComponent, mousePosition: Vec2f) ?[]const u8 {
+		switch (self) {
+			inline else => |impl| {
+				if (@hasDecl(@TypeOf(impl.*), "getTooltip")) {
+					return impl.getTooltip(mousePosition);
+				}
+			},
+		}
+		return null;
+	}
 };
