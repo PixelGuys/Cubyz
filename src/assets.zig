@@ -425,6 +425,7 @@ fn assignBlockItem(stringId: []const u8) !void {
 	const index = items.BaseItemIndex.fromId(stringId) orelse unreachable;
 	const item = &items.itemList[@intFromEnum(index)];
 	item.block = block;
+	item.tags = blocks.parseBlock(stringId).tags();
 }
 
 fn registerBiome(numericId: u32, stringId: []const u8, zon: ZonElement) void {
