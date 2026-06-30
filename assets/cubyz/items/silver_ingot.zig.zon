@@ -2,7 +2,7 @@
 	.tags = .{.metal, .precious},
 	.texture = "silver_ingot.png",
 	.material = .{
-		.durability = 800,
+		.durability = 600,
 		.massDamage = 8.0,
 		.hardnessDamage = 3.0,
 		.swingSpeed = 2.1,
