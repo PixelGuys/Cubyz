@@ -72,6 +72,7 @@ pub const ParticleManager = struct {
 			.density = RandomRange(f32).fromZon(zon.getChild("density")) orelse .init(2, 3),
 			.rotVel = rotVel,
 			.dragCoefficient = RandomRange(f32).fromZon(zon.getChild("dragCoefficient")) orelse .init(0.5, 0.6),
+			.loopTime = RandomRange(f32).fromZon(zon.getChild("loopTime")),
 		};
 
 		particleTypeHashmap.put(main.worldArena.allocator, id, @intCast(types.items.len)) catch unreachable;
@@ -315,6 +316,7 @@ pub const ParticleSystem = struct {
 			.pos = @as(Vec3f, @floatCast(pos - @as(Vec3d, @floatFromInt(previousPlayerPos)))),
 			.rot = rot,
 			.typ = typ,
+			.loopRatio = lifeTime/if (particleType.loopTime) |l| l.get(&main.seed) else 1,
 		};
 		particlesLocal[particleCount] = ParticleLocal{
 			.velAndRotationVel = vec.combine(vel, rotVel),
@@ -552,15 +554,16 @@ pub const ParticleTypeLocal = struct {
 	density: RandomRange(f32),
 	rotVel: RandomRange(f32),
 	dragCoefficient: RandomRange(f32),
+	loopTime: ?RandomRange(f32),
 };
 
 pub const Particle = extern struct {
 	pos: [3]f32 align(16),
 	rot: f32 = 0,
 	lifeRatio: f32 = 1,
+	loopRatio: f32 = 1,
 	light: u32 = 0,
 	typ: u32,
-	// 4 bytes left for use
 };
 
 pub const ParticleLocal = struct {
