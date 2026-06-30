@@ -25,6 +25,7 @@ pub const copy = @import("worldedit/copy.zig");
 pub const paste = @import("worldedit/paste.zig");
 pub const blueprint = @import("worldedit/blueprint.zig");
 pub const rotate = @import("worldedit/rotate.zig");
+pub const selection = @import("worldedit/selection.zig");
 pub const set = @import("worldedit/set.zig");
 pub const mask = @import("worldedit/mask.zig");
 pub const replace = @import("worldedit/replace.zig");
