@@ -18,6 +18,7 @@ pub const GuiComponent = union(enum) {
 	pub const DiscreteSlider = @import("components/DiscreteSlider.zig");
 	pub const TextInput = @import("components/TextInput.zig");
 	pub const VerticalList = @import("components/VerticalList.zig");
+	pub const EntityModelFrame = @import("components/EntityModelFrame.zig");
 
 	bagSlot: *BagSlot,
 	button: *Button,
@@ -32,6 +33,7 @@ pub const GuiComponent = union(enum) {
 	discreteSlider: *DiscreteSlider,
 	textInput: *TextInput,
 	verticalList: *VerticalList,
+	entityModelFrame: *EntityModelFrame,
 
 	pub fn deinit(self: GuiComponent) void {
 		switch (self) {
