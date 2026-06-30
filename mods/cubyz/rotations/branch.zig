@@ -270,9 +270,11 @@ pub fn createBlockModel(_: Block, modeData: *u16, zon: ZonElement) ModelIndex {
 
 	var shellQuads = main.ListManaged(main.models.QuadInfo).init(main.stackAllocator);
 	defer shellQuads.deinit();
+	var shellCollisions: []const main.physics.collision.Box = &.{};
 	if (shellModelId.len != 0) {
 		const shellModel = main.models.getModelIndex(shellModelId).model();
 		shellModel.getRawFaces(&shellQuads);
+		shellCollisions = shellModel.collision;
 	}
 
 	const innerBox: main.physics.collision.Box = .{
@@ -295,8 +297,9 @@ pub fn createBlockModel(_: Block, modeData: *u16, zon: ZonElement) ModelIndex {
 			}
 		}
 
-		var boxes: main.List(main.physics.collision.Box) = .initCapacity(main.stackAllocator, 3);
+		var boxes: main.List(main.physics.collision.Box) = .initCapacity(main.stackAllocator, 3 + shellCollisions.len);
 		defer boxes.deinit(main.stackAllocator);
+		boxes.appendSliceAssumeCapacity(shellCollisions);
 		if (data.enabledConnections & Neighbor.dirNegX.bitMask() != 0 or data.enabledConnections & Neighbor.dirPosX.bitMask() != 0) {
 			var boxX = innerBox;
 			if (data.enabledConnections & Neighbor.dirNegX.bitMask() != 0) boxX.min[0] = 0;
