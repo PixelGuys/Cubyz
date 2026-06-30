@@ -45,8 +45,8 @@ pub fn execute(args: []const u8, source: *User) void {
 	switch (result) {
 		.@"/selection query <info/blocks>" => |cmd| query(source, cmd.mode),
 		.@"/selection edit <direction> <amount>" => |cmd| edit(source, cmd.direction, cmd.amount),
-		.@"/selection shrink <limit>" => |cmd| shrink(source, cmd.limit orelse 32),
-		.@"/selection grow <limit>" => |cmd| autoGrow(source, cmd.limit orelse 32),
+		.@"/selection shrink <limit>" => |cmd| shrink(source, @intCast(@as(u31, @truncate(cmd.limit orelse 32)))),
+		.@"/selection grow <limit>" => |cmd| autoGrow(source, @intCast(@as(u31, @truncate(cmd.limit orelse 32)))),
 	}
 }
 
@@ -61,7 +61,9 @@ fn edit(source: *User, direction: Direction, amount: i32) void {
 	_ = amount;
 }
 
-fn shrink(source: *User, limit: u32) void {
+fn shrink(source: *User, limit: i32) void {
+	if (limit <= 1) return; // This is a noop.
+
 	const current = command.getCurrentSelection(source) catch return;
 
 	updateWorldEditPos(source, current.minPos, current.maxPos);
@@ -69,21 +71,17 @@ fn shrink(source: *User, limit: u32) void {
 	const minX, const minY, const minZ = current.minPos;
 	const maxX, const maxY, const maxZ = current.maxPos;
 
-	const xRange: Range = .init2(minX, maxX);
-	const yRange: Range = .init2(minY, maxY);
-	const zRange: Range = .init2(minZ, maxZ);
+	const xRange: Range = .init(minX, maxX, 1);
+	const yRange: Range = .init(minY, maxY, 1);
+	const zRange: Range = .init(minZ, maxZ, 1);
 
-	const newMinX = Search(.xyz).search3D(xRange, yRange, zRange, limit) orelse minX;
-	const newMinY = Search(.yxz).search3D(yRange, xRange, zRange, limit) orelse minY;
-	const newMinZ = Search(.zyx).search3D(zRange, yRange, xRange, limit) orelse minZ;
+	const newMinX = Search(.xyz).search3D(.init(minX, @min(minX + limit, maxX), 1), yRange, zRange, limit) orelse minX;
+	const newMinY = Search(.yxz).search3D(.init(minY, @min(minY + limit, maxY), 1), xRange, zRange, limit) orelse minY;
+	const newMinZ = Search(.zyx).search3D(.init(minZ, @min(minZ + limit, maxZ), 1), yRange, xRange, limit) orelse minZ;
 
-	const xRangeReverse: Range = xRange.reverse();
-	const yRangeReverse: Range = yRange.reverse();
-	const zRangeReverse: Range = zRange.reverse();
-
-	const newMaxX = Search(.xyz).search3D(xRangeReverse, yRange, zRange, limit) orelse maxX;
-	const newMaxY = Search(.yxz).search3D(yRangeReverse, xRange, zRange, limit) orelse maxY;
-	const newMaxZ = Search(.zyx).search3D(zRangeReverse, yRange, xRange, limit) orelse maxZ;
+	const newMaxX = Search(.xyz).search3D(.init(maxX, @max(minX, maxX - limit), -1), yRange, zRange, limit) orelse maxX;
+	const newMaxY = Search(.yxz).search3D(.init(maxY, @max(minY, maxY - limit), -1), xRange, zRange, limit) orelse maxY;
+	const newMaxZ = Search(.zyx).search3D(.init(maxZ, @max(minZ, maxZ - limit), -1), yRange, xRange, limit) orelse maxZ;
 
 	updateWorldEditPos(source, .{newMinX, newMinY, newMinZ}, .{newMaxX, newMaxY, newMaxZ});
 }
@@ -101,16 +99,16 @@ fn Search(comptime orientation: enum{xyz, yxz, zyx}) type {
 	return struct {
 		const Self = @This();
 
-		fn search3D(iRange: Range, jRange: Range, kRange: Range, limit: u32) ?i32 {
+		fn search3D(iRange: Range, jRange: Range, kRange: Range, limit: i32) ?i32 {
 			std.log.debug("{s} {} {} {}", .{@tagName(orientation), iRange, jRange, kRange});
-			var iLimit = 0;
+			var iLimit: i32 = 0;
 			var iIterator = iRange.iter();
 			while (iIterator.next()) |i| {
-				var jLimit = 0;
+				var jLimit: i32 = 0;
 
 				var jIterator = jRange.iter();
 				while (jIterator.next()) |j| {
-					var kLimit = 0;
+					var kLimit: i32 = 0;
 
 					var kIterator = kRange.iter();
 					while (kIterator.next()) |k| {
@@ -152,8 +150,15 @@ const Range = struct {
 	stop: i32,
 	step: i32,
 
-	pub fn init2(start: i32, stop: i32) Range {
-		const step: i32 = if (start < stop) 1 else -1;
+	/// Initialize a range.
+	/// Start and stop are not allowed to be equal.
+	/// When start is smaller than stop, step has to be positive, negative otherwise.
+	/// Step is not allowed to be equal to 0.
+	pub fn init(start: i32, stop: i32, step: i32) Range {
+		std.debug.assert(start != stop);
+		std.debug.assert(step != 0);
+		std.debug.assert(if (start < stop) step > 0 else step < 0);
+
 		return .{.start = start, .stop = stop, .step = step};
 	}
 
@@ -174,14 +179,10 @@ const Range = struct {
 	pub fn iter(self: Range) Iterator {
 		return .{.current = self.start, .range = self};
 	}
-
-	pub fn reverse(self: Range) Range {
-		return .{.start = self.stop, .stop = self.start, .step = -self.step};
-	}
 };
 
 
-fn autoGrow(source: *User, limit: ?u32) void {
+fn autoGrow(source: *User, limit: ?i32) void {
 	_ = source;
 	_ = limit;
 }
