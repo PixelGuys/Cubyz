@@ -12,7 +12,7 @@ pub const usage =
 ;
 
 const Args = union(enum) {
-	@"/time <phase>": struct { phase: enum { day, night } },
+	@"/time <phase>": struct { phase: enum { day, dusk, night, dawn } },
 	@"/time <subcommand>": struct { subcommand: enum { start, stop } },
 	@"/time <number>": struct { number: i64 },
 	@"/time": struct {},
@@ -37,7 +37,9 @@ pub fn execute(args: []const u8, source: *User) void {
 		.@"/time <number>" => |params| params.number,
 		.@"/time <phase>" => |params| switch (params.phase) {
 			.day => main.game.World.DayTime.dayStart,
+			.dusk => main.game.World.DayTime.duskStart,
 			.night => main.game.World.DayTime.nightStart,
+			.dawn => main.game.World.DayTime.dawnStart,
 		},
 		.@"/time <subcommand>" => |params| {
 			switch (params.subcommand) {
