@@ -131,12 +131,14 @@ pub const User = struct { // MARK: User
 	newKeyString: ?[]const u8 = null,
 	key: network.authentication.PublicKey = undefined,
 	legacyKey: ?network.authentication.PublicKey = null,
+	keysVerified: bool = false,
 
 	inventoryClientToServerIdMap: std.AutoHashMap(InventoryId, InventoryId) = undefined,
 	inventory: ?InventoryId = null,
 	handInventory: ?InventoryId = null,
 
 	connected: Atomic(bool) = .init(true),
+	state: State = .awaitingKeyVerification,
 
 	refCount: Atomic(u32) = .init(1),
 
@@ -146,6 +148,8 @@ pub const User = struct { // MARK: User
 
 	permissions: permission.Permissions = undefined,
 
+	pub const State = enum { awaitingKeyVerification, connected, awaitingReload };
+
 	pub fn player(self: *User) *Entity {
 		return &self.innerPlayer;
 	}
@@ -154,19 +158,44 @@ pub const User = struct { // MARK: User
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
-		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
-		self.jobQueue = .init(main.globalAllocator);
-		errdefer self.jobQueue.deinit();
 		self.conn = try Connection.init(manager, ipPort, self);
+		self.@"continue"();
 		self.increaseRefCount();
-		self.worldEditData = .init();
-		self.permissions = .init(main.globalAllocator);
 		network.protocols.handShake.serverSide(self.conn);
 		return self;
 	}
+	pub fn @"continue"(self: *User) void {
+		// reset
+		self.* = .{
+			.conn = self.conn,
+			.name = self.name,
+			.newKeyString = self.newKeyString,
+			.playerIndex = self.playerIndex,
+			.keysVerified = self.keysVerified,
+			.state = self.state,
+		};
 
+		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
+		self.worldEditData = .init();
+		self.permissions = .init(main.globalAllocator);
+		self.jobQueue = .init(main.globalAllocator);
+	}
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
+
+		self.conn.deinit();
+		main.globalAllocator.free(self.name);
+		if (self.newKeyString) |str| main.globalAllocator.free(str);
+		main.globalAllocator.destroy(self);
+	}
+	pub fn pause(self: *User) void {
+		self.state = switch (self.state) {
+			.awaitingKeyVerification => .awaitingKeyVerification,
+			.connected => .awaitingReload,
+			.awaitingReload => .awaitingReload,
+		};
+
+		self.clearJobQueue();
 
 		main.items.Inventory.server.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
@@ -191,17 +220,13 @@ pub const User = struct { // MARK: User
 		}
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);
-		self.conn.deinit();
-		self.jobQueue.deinit();
-		main.globalAllocator.free(self.name);
-		if (self.newKeyString) |str| main.globalAllocator.free(str);
 		for (self.inventoryCommands.items) |commandData| {
 			main.globalAllocator.free(commandData);
 		}
 		self.inventoryCommands.deinit(main.globalAllocator);
-		main.globalAllocator.destroy(self);
-	}
 
+		self.jobQueue.deinit();
+	}
 	pub fn increaseRefCount(self: *User) void {
 		const prevVal = self.refCount.fetchAdd(1, .monotonic);
 		std.debug.assert(prevVal != 0);
@@ -211,6 +236,7 @@ pub const User = struct { // MARK: User
 		const prevVal = self.refCount.fetchSub(1, .monotonic);
 		std.debug.assert(prevVal != 0);
 		if (prevVal == 1) {
+			self.pause();
 			self.deinit();
 		}
 	}
@@ -560,14 +586,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 	std.debug.assert(world == null); // There can only be one world.
 	command.init();
 	users = .init(main.globalAllocator);
-	userDeinitList = .init(main.globalAllocator, 16);
-	userConnectList = .init(main.globalAllocator, 16);
 	lastTime = main.timestamp();
-
-	connectionManager.@"continue"() catch |err| {
-		std.log.err("Couldn't create thread: {s}", .{@errorName(err)});
-		@panic("Could not open Server.");
-	};
 
 	main.entity.server.init();
 	main.items.Inventory.server.init();
@@ -581,6 +600,11 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 	world.?.generate() catch |err| {
 		std.log.err("Failed to generate world: {s}", .{@errorName(err)});
 		@panic("Can't generate world.");
+	};
+
+	connectionManager.@"continue"() catch |err| {
+		std.log.err("Couldn't create thread: {s}", .{@errorName(err)});
+		@panic("Could not open Server.");
 	};
 	if (singlePlayerPort) |port| blk: {
 		const ipString = std.fmt.allocPrint(main.stackAllocator.allocator, "127.0.0.1:{}", .{port}) catch unreachable;
@@ -597,21 +621,18 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 
 fn deinit() void {
 	connectionManager.pause();
-	main.threadPool.clear();
-
 	users.clearAndFree();
+
 	while (userDeinitList.popFront()) |user| {
 		user.clearJobQueue();
 		if (user.refCount.load(.monotonic) == 1) {
 			user.decreaseRefCount();
 		} else {
 			std.log.err("Leaked user {f}", .{user});
+			user.pause();
 			user.deinit();
 		}
 	}
-
-	userDeinitList.deinit();
-	userConnectList.deinit();
 
 	if (world) |_world| {
 		_world.deinit();
@@ -724,16 +745,32 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16, mode: ServerWorld.M
 	const worldName: []const u8 = main.globalAllocator.dupe(u8, name);
 	defer main.globalAllocator.free(worldName);
 
-	restart = true;
-
 	connectionManager = ConnectionManager.init(main.settings.defaultPort, .{.allowNewConnections = mode == .multiplayer}) catch |err| {
 		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
+	userDeinitList = .init(main.globalAllocator, 16);
+	userConnectList = .init(main.globalAllocator, 16);
+
 	defer {
 		connectionManager.deinit();
 		connectionManager = undefined;
+
+		while (userDeinitList.popFront()) |user| {
+			if (user.refCount.load(.monotonic) == 1) {
+				_ = user.refCount.fetchSub(1, .monotonic);
+				user.deinit();
+			} else {
+				std.log.err("Leaked user {f}", .{user});
+				user.deinit();
+			}
+		}
+
+		userDeinitList.deinit();
+		userConnectList.deinit();
 	}
+
+	restart = true;
 	while (restart) {
 		restart = false;
 

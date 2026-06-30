@@ -69,7 +69,7 @@ pub const handShake = struct { // MARK: handShake
 		if (@intFromEnum(conn.handShakeState.load(.monotonic)) < @intFromEnum(newState)) {
 			conn.handShakeState.store(newState, .monotonic);
 			switch (newState) {
-				.userData, .signatureResponse => return error.InvalidSide,
+				.userData, .signatureResponse, .reload => return error.InvalidSide,
 				.signatureRequest => {
 					const signature1Len = try reader.readVarInt(usize);
 					const signature1 = try reader.readSlice(signature1Len);
@@ -156,11 +156,17 @@ pub const handShake = struct { // MARK: handShake
 						continue :stateSwitch .signatureResponse;
 					}
 				},
-				.signatureResponse => {
-					if (main.server.world.?.mode != .singleplayer) {
-						try conn.user.?.verifySignatures(reader);
+				.signatureResponse, .reload => {
+					if (newState != .reload) {
+						if (main.server.world.?.mode != .singleplayer) {
+							try conn.user.?.verifySignatures(reader);
+						}
+						conn.user.?.keysVerified = true;
+						conn.user.?.state = .connected;
+					} else {
+						// check if player is already logged in.
+						if (!conn.user.?.keysVerified) return error.keysNotVerified;
 					}
-
 					{
 						const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.path}) catch unreachable;
 						defer main.stackAllocator.free(path);
@@ -207,19 +213,30 @@ pub const handShake = struct { // MARK: handShake
 	}
 
 	pub fn clientSide(conn: *Connection, name: []const u8) !void {
-		const zonObject = ZonElement.initObject(main.stackAllocator);
-		defer zonObject.deinit(main.stackAllocator);
-		zonObject.putOwnedString("version", settings.version.version);
-		zonObject.putOwnedString("name", name);
-		if (main.network.authentication.KeyCollection.initialized) {
-			zonObject.put("keys", main.network.authentication.KeyCollection.getPublicKeys(main.stackAllocator));
+		switch (conn.handShakeState.load(.monotonic)) {
+			.start => {
+				const zonObject = ZonElement.initObject(main.stackAllocator);
+				defer zonObject.deinit(main.stackAllocator);
+
+				zonObject.putOwnedString("version", settings.version.version);
+				zonObject.putOwnedString("name", name);
+				if (main.network.authentication.KeyCollection.initialized) {
+					zonObject.put("keys", main.network.authentication.KeyCollection.getPublicKeys(main.stackAllocator));
+				}
+				try conn.secureChannel.startTlsHandshake();
+				conn.secureChannel.finishedCollectingClientVerificationData = true;
+
+				const prefix: [1]u8 = .{@intFromEnum(Connection.HandShakeState.userData)};
+				const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
+				defer main.stackAllocator.free(data);
+
+				conn.send(.secure, id, data);
+			},
+			.reload => {
+				conn.send(.secure, id, &.{@intFromEnum(Connection.HandShakeState.reload)});
+			},
+			else => unreachable,
 		}
-		const prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
-		const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
-		defer main.stackAllocator.free(data);
-		try conn.secureChannel.startTlsHandshake();
-		conn.secureChannel.finishedCollectingClientVerificationData = true;
-		conn.send(.secure, id, data);
 
 		conn.mutex.lock();
 		while (true) {
@@ -1054,5 +1071,30 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 		writer.writeSlice(componentData);
 
 		conn.send(.secure, id, writer.data.items);
+	}
+};
+
+pub const reload = struct { // MARK: Reload
+	pub const id: u8 = 16;
+
+	pub fn informClientOfRestart(conn: *Connection) void {
+		var writer = utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
+
+		writer.writeInt(u32, conn.restartCounter);
+		writer.writeEnum(main.server.User.State, conn.user.?.state);
+
+		conn.send(.secure, id, writer.data.items);
+		conn.send(.lossy, id, writer.data.items);
+		conn.send(.slow, id, writer.data.items);
+	}
+	pub fn informServerOfRestart(conn: *Connection) void {
+		var writer = utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
+
+		writer.writeInt(u32, conn.restartCounter);
+		conn.send(.secure, id, writer.data.items);
+		conn.send(.lossy, id, writer.data.items);
+		conn.send(.slow, id, writer.data.items);
 	}
 };
