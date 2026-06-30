@@ -25,6 +25,14 @@
 					.id = "light",
 					.strength = 0.15,
 				},
+				.{
+					.id = "fragile",
+					.strength = 0.1,
+					.restriction = .{
+						.id = .on_top_of,
+						.tag = .head,
+					},
+				},
 			},
 		},
 		.texture = "branch/cirrus.png",
