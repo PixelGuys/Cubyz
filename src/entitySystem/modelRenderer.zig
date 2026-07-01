@@ -127,7 +127,14 @@ pub const client = struct {
 
 			entTexture.?.bindTo(0);
 			const blockPos: vec.Vec3i = @floor(ent.pos);
-			const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
+
+			//TODO: this is only temporary to test the selection.
+			var lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
+			if(main.renderer.MeshSelection.selectedEntity)|selectedEntity|{
+				if(selectedEntity == @intFromEnum(id)){
+					lightVals = @splat(0);
+				}
+			}
 			const light = (@as(u32, lightVals[0] >> 3) << 25 |
 				@as(u32, lightVals[1] >> 3) << 20 |
 				@as(u32, lightVals[2] >> 3) << 15 |
