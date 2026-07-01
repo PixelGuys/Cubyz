@@ -10,7 +10,11 @@
 	.viewThrough = true,
 	.absorbedLight = 0x000000,
 	.collide = false,
-	.model = "cubyz:cross",
+	.model = .{
+		.model = "cubyz:cross",
+		.states = 2,
+	},
+	.rotation = "cubyz:texture_pile",
 	.lodReplacement = "cubyz:air",
 	.onUpdate = .{
 		.type = .check_support_blocks,

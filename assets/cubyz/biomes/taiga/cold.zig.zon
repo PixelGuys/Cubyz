@@ -62,7 +62,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:grass/vegetation/cold"},
+			.blocks = .{"cubyz:grass/vegetation/cold:1"},
 			.chance = 0.1,
 			.width = 5,
 			.variation = 8,

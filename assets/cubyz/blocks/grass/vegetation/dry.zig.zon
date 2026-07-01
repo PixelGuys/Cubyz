@@ -1,5 +1,6 @@
 .{
-	.texture = "cubyz:grass/vegetation/dry",
+	.texture0 = "cubyz:grass/vegetation/dry/0",
+	.texture1 = "cubyz:grass/vegetation/dry/1",
 	.item = .{
 		.texture = "grass_vegetation/dry.png",
 	},

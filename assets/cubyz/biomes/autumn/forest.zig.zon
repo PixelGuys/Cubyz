@@ -109,7 +109,7 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:grass/vegetation/temperate",
+			.block = "cubyz:grass/vegetation/temperate:1",
 			.chance = 0.4,
 			.height = 1,
 			.height_variation = 0,

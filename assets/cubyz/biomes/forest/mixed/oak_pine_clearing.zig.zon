@@ -76,14 +76,14 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:grass/vegetation/temperate",
+			.block = "cubyz:grass/vegetation/temperate:1",
 			.chance = 0.6,
 			.height = 1,
 			.height_variation = 0,
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:grass/vegetation/temperate"},
+			.blocks = .{"cubyz:grass/vegetation/temperate:1"},
 			.chance = 0.1,
 			.width = 3,
 			.variation = 6,
