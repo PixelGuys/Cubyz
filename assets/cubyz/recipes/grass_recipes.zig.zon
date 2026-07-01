@@ -1,7 +1,7 @@
 .{
 	.{
 		.inputs = .{"cubyz:grass/vegetation/{type}"},
-		.output = "5 cubyz:grass_seeds",
+		.output = "3 cubyz:grass_seeds",
 	},
 	.{
 		.inputs = .{"cubyz:soil", "cubyz:grass_seeds"},
