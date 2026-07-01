@@ -15,7 +15,6 @@
 const std = @import("std");
 const main = @import("main");
 const builtin = @import("builtin");
-const Futex = @This();
 const windows = std.os.windows;
 const linux = std.os.linux;
 const c = std.c;
@@ -23,6 +22,8 @@ const c = std.c;
 const assert = std.debug.assert;
 const testing = std.testing;
 const atomic = std.atomic;
+
+const Futex = @This();
 
 /// Checks if `ptr` still contains the value `expect` and, if so, blocks the caller until either:
 /// - The value at `ptr` is no longer equal to `expect`.
@@ -71,24 +72,7 @@ pub fn wake(ptr: *const atomic.Value(u32), max_waiters: u32) void {
 	Impl.wake(ptr, max_waiters);
 }
 
-const Impl = if (builtin.single_threaded)
-	SingleThreadedImpl
-else if (builtin.os.tag == .windows)
-	WindowsImpl
-else if (builtin.os.tag.isDarwin())
-	DarwinImpl
-else if (builtin.os.tag == .linux)
-	LinuxImpl
-else if (builtin.os.tag == .freebsd)
-	FreebsdImpl
-else if (builtin.os.tag == .openbsd)
-	OpenbsdImpl
-else if (builtin.target.cpu.arch.isWasm())
-	WasmImpl
-else if (std.Thread.use_pthreads)
-	PosixImpl
-else
-	UnsupportedImpl;
+const Impl = if (builtin.single_threaded) SingleThreadedImpl else if (builtin.os.tag == .windows) WindowsImpl else if (builtin.os.tag.isDarwin()) DarwinImpl else if (builtin.os.tag == .linux) LinuxImpl else if (builtin.os.tag == .freebsd) FreebsdImpl else if (builtin.os.tag == .openbsd) OpenbsdImpl else if (builtin.target.cpu.arch.isWasm()) WasmImpl else if (std.Thread.use_pthreads) PosixImpl else UnsupportedImpl;
 
 /// We can't do @compileError() in the `Impl` switch statement above as its eagerly evaluated.
 /// So instead, we @compileError() on the methods themselves for platforms which don't support futex.

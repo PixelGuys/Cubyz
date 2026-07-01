@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 
-var tagList: main.ListUnmanaged([]const u8) = .{};
+var tagList: main.List([]const u8) = .empty;
 var tagIds: std.StringHashMapUnmanaged(Tag) = .{};
 
 pub const Tag = enum(u32) {
@@ -11,6 +11,7 @@ pub const Tag = enum(u32) {
 	sbbChild = 2,
 	fluidPlaceable = 3,
 	chiselable = 4,
+	playerModel = 5,
 	_,
 
 	pub fn initTags() void {
@@ -20,7 +21,7 @@ pub const Tag = enum(u32) {
 	}
 
 	pub fn resetTags() void {
-		tagList = .{};
+		tagList = .empty;
 		tagIds = .{};
 	}
 
@@ -40,7 +41,10 @@ pub const Tag = enum(u32) {
 	pub fn loadTagsFromZon(_allocator: main.heap.NeverFailingAllocator, zon: main.ZonElement) []Tag {
 		const result = _allocator.alloc(Tag, zon.toSlice().len);
 		for (zon.toSlice(), 0..) |tagZon, i| {
-			result[i] = Tag.find(tagZon.as([]const u8, "incorrect"));
+			result[i] = Tag.find(tagZon.as([]const u8) orelse blk: {
+				std.log.err("Tag array field {s} has incorrect type, expected string", .{@tagName(tagZon)});
+				break :blk "incorrect";
+			});
 		}
 		return result;
 	}

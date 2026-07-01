@@ -4,6 +4,7 @@
 		.dry,
 	},
 	.tags = .{
+		.baobab,
 		.cactus,
 	},
 	.minHeight = 64,
@@ -17,7 +18,7 @@
 	.ground_structure = .{
 		"cubyz:grass",
 	},
-	.stoneBlock = "cubyz:limestone/base",
+	.stoneBlock = "cubyz:limestone/smooth",
 	.structures = .{
 		.{
 			.id = "cubyz:flower_patch",

@@ -9,18 +9,7 @@ const Vec2f = vec.Vec2f;
 
 const vulkan = @import("vulkan.zig");
 
-pub const c = @cImport({
-	@cInclude("glad/gl.h");
-
-	// NOTE(blackedout): glad is currently not used on macOS, so use Vulkan header from the Vulkan-Headers repository instead
-	if (builtin.target.os.tag == .macos) {
-		@cInclude("vulkan/vulkan.h");
-		@cInclude("vulkan/vulkan_beta.h");
-	} else {
-		@cInclude("glad/vulkan.h");
-	}
-	@cInclude("GLFW/glfw3.h");
-});
+const c = @import("c");
 
 var isFullscreen: bool = false;
 pub var lastUsedMouse: bool = true;
@@ -91,7 +80,7 @@ pub const Gamepad = struct {
 					if ((newState.buttons[btn] == 0) and (oldState.buttons[btn] != 0)) {
 						nextGamepadListener.?(null, @intCast(btn));
 						nextGamepadListener = null;
-						break;
+						return;
 					}
 				}
 			}
@@ -102,7 +91,7 @@ pub const Gamepad = struct {
 					if (newAxis != 0 and oldAxis == 0) {
 						nextGamepadListener.?(.{.axis = @intCast(axis), .positive = newState.axes[axis] > 0}, -1);
 						nextGamepadListener = null;
-						break;
+						return;
 					}
 				}
 			}
@@ -521,17 +510,18 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		const textKeyPressedInTextField = main.gui.selectedTextInput != null and c.glfwGetKeyName(glfw_key, scancode) != null;
 		const isGrabbed = grabbed;
 		if (action == c.GLFW_PRESS or action == c.GLFW_RELEASE) {
+			if (action == c.GLFW_PRESS) {
+				if (nextKeypressListener) |listener| {
+					listener(glfw_key, -1, scancode);
+					nextKeypressListener = null;
+					return;
+				}
+			}
 			for (&main.KeyBoard.keys) |*key| {
 				if (glfw_key == key.key) {
 					if (glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
 						key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, textKeyPressedInTextField);
 					}
-				}
-			}
-			if (action == c.GLFW_PRESS) {
-				if (nextKeypressListener) |listener| {
-					listener(glfw_key, -1, scancode);
-					nextKeypressListener = null;
 				}
 			}
 		} else if (action == c.GLFW_REPEAT) {
@@ -594,15 +584,16 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
 		const isGrabbed = grabbed;
 		if (action == c.GLFW_PRESS or action == c.GLFW_RELEASE) {
-			for (&main.KeyBoard.keys) |*key| {
-				if (button == key.mouseButton) {
-					key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, false);
-				}
-			}
 			if (action == c.GLFW_PRESS) {
 				if (nextKeypressListener) |listener| {
 					listener(c.GLFW_KEY_UNKNOWN, button, 0);
 					nextKeypressListener = null;
+					return;
+				}
+			}
+			for (&main.KeyBoard.keys) |*key| {
+				if (button == key.mouseButton) {
+					key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, false);
 				}
 			}
 		}
@@ -611,7 +602,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		_ = xOffset;
 		scrollOffset += @floatCast(yOffset);
 		scrollOffsetFraction += @floatCast(yOffset);
-		scrollOffsetInteger += @intFromFloat(@round(scrollOffsetFraction));
+		scrollOffsetInteger += @round(scrollOffsetFraction);
 		scrollOffsetFraction -= @round(scrollOffsetFraction);
 	}
 	fn glDebugOutput(source: c_uint, typ: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.c) void {
@@ -658,14 +649,20 @@ pub fn setNextGamepadListener(listener: ?*const fn (?GamepadAxis, c_int) void) !
 	nextGamepadListener = listener;
 }
 
+pub fn resetNextInputListenters() void {
+	nextGamepadListener = null;
+	nextKeypressListener = null;
+}
+
 fn updateCursor() void {
 	if (grabbed) {
 		c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_DISABLED);
 		// Behavior seems much more intended without this line on MacOS.
 		// Perhaps this is an inconsistency in GLFW due to its fresh XQuartz support?
 		if (@import("builtin").target.os.tag != .macos) {
-			if (c.glfwRawMouseMotionSupported() != 0)
+			if (c.glfwRawMouseMotionSupported() != 0) {
 				c.glfwSetInputMode(window, c.GLFW_RAW_MOUSE_MOTION, c.GLFW_TRUE);
+			}
 		}
 		GLFWCallbacks.ignoreDataAfterRecentGrab = true;
 	} else {
@@ -743,6 +740,10 @@ pub fn init() void { // MARK: init()
 		vulkan.init(vulkanWindow) catch |err| {
 			std.log.err("Error while initializing Vulkan: {s}", .{@errorName(err)});
 		};
+		if (!settings.launchConfig.vulkanTestingMode) {
+			c.glfwDestroyWindow(vulkanWindow);
+			vulkan.deinit();
+		}
 	}
 
 	c.glfwWindowHint(c.GLFW_CLIENT_API, c.GLFW_OPENGL_API);
@@ -753,7 +754,7 @@ pub fn init() void { // MARK: init()
 
 	window = c.glfwCreateWindow(width, height, windowTitle, null, null) orelse @panic("Failed to create GLFW window");
 	iconBlock: {
-		const image = main.graphics.Image.readUnflippedFromFile(main.stackAllocator, "assets/cubyz/logo.png") catch |err| {
+		const image = main.graphics.Image.readFromFile(main.stackAllocator, "assets/cubyz/logo.png", .{.orientation = .asIs}) catch |err| {
 			std.log.err("Error loading logo: {s}", .{@errorName(err)});
 			break :iconBlock;
 		};
@@ -790,8 +791,10 @@ pub fn init() void { // MARK: init()
 pub fn deinit() void {
 	Gamepad.deinit();
 	c.glfwDestroyWindow(window);
-	c.glfwDestroyWindow(vulkanWindow);
-	vulkan.deinit();
+	if (settings.launchConfig.vulkanTestingMode) {
+		c.glfwDestroyWindow(vulkanWindow);
+		vulkan.deinit();
+	}
 	c.glfwTerminate();
 }
 var cursorVisible: bool = true;

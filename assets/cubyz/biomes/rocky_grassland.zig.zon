@@ -13,7 +13,7 @@
 	.maxRadius = 320,
 	.mountains = 30,
 
-	.music = "cubyz:sunrise",
+	.music = "cubyz:sinanimea/sunrise",
 
 	.ground_structure = .{
 		"cubyz:grass",
@@ -23,17 +23,22 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:leaves/oak",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
-			.chance = 0.016,
+			.log = "cubyz:log/oak",
+			.chance = 0.014,
 			.type = .round,
 			.height = 6,
 			.height_variation = 3,
 		},
 		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/young",
+			.placeMode = .degradable,
+			.chance = 0.002,
+		},
+		.{
 			.id = "cubyz:boulder",
 			.chance = 0.016,
-			.block = "cubyz:slate/cobble",
+			.block = "cubyz:slate/rough",
 			.size = 5,
 			.size_variance = 4,
 		},

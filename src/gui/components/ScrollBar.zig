@@ -30,7 +30,7 @@ pub fn globalInit() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/scrollbar.png");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	texture.deinit();
 }
 
@@ -99,7 +99,6 @@ pub fn mainButtonReleased(self: *ScrollBar, mousePosition: Vec2f) void {
 pub fn render(self: *ScrollBar, mousePosition: Vec2f) void {
 	texture.bindTo(0);
 	Button.pipeline.bind(draw.getScissor());
-	draw.setColor(0xff000000);
 	draw.customShadedRect(Button.buttonUniforms, self.pos, self.size);
 
 	const range: f32 = self.size[1] - self.button.size[1];

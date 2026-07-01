@@ -18,8 +18,14 @@ pub fn openDirInWindow(path: []const u8) void {
 		.macos => .{"open", newPath},
 		else => .{"xdg-open", newPath},
 	};
+	var envMap = main.settings.environment.env.createMap(main.stackAllocator.allocator) catch |err| blk: {
+		std.log.err("Failed to get environment map: {s}", .{@errorName(err)});
+		break :blk std.process.Environ.Map.init(main.stackAllocator.allocator);
+	};
+	defer envMap.deinit();
 	const result = std.process.run(main.stackAllocator.allocator, main.io, .{
 		.argv = &command,
+		.environ_map = &envMap,
 	}) catch |err| {
 		std.log.err("Got error while trying to open file explorer: {s}", .{@errorName(err)});
 		return;

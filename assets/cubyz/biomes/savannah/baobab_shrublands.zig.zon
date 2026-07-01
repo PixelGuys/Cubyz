@@ -3,6 +3,10 @@
 		.hot,
 		.dry,
 	},
+	.tags = .{
+		.oak,
+		.baobab,
+	},
 	.minHeightLimit = 30,
 	.minHeight = 24,
 	.maxHeight = 60,
@@ -15,9 +19,9 @@
 	.rivers = true,
 	.chance = 0.5,
 
-	.music = "cubyz:EasternThought",
+	.music = "cubyz:mischol/desert_firefly",
 
-	.stoneBlock = "cubyz:limestone/base",
+	.stoneBlock = "cubyz:limestone/smooth",
 
 	.ground_structure = .{
 		"cubyz:grass",
@@ -39,8 +43,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:leaves/oak",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.log = "cubyz:log/oak",
 			.chance = 0.08,
 			.type = .round,
 			.height = 1,

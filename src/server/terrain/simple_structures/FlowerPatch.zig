@@ -35,13 +35,16 @@ pub fn loadModel(parameters: ZonElement) ?*FlowerPatch {
 			}
 			const output = main.worldArena.alloc(main.blocks.Block, blockZons.len);
 			for (blockZons, output) |zon, *block| {
-				block.* = main.blocks.parseBlock(zon.as([]const u8, ""));
+				block.* = main.blocks.parseBlock(zon.as([]const u8) orelse {
+					std.log.err("Got unknown entry in flowerpatch block list: found {s}, expected string", .{@tagName(zon)});
+					return null;
+				});
 			}
 			break :blk output;
 		},
-		.width = parameters.get(f32, "width", 5),
-		.variation = parameters.get(f32, "variation", 1),
-		.density = parameters.get(f32, "density", 0.5),
+		.width = parameters.get(f32, "width") orelse 5,
+		.variation = parameters.get(f32, "variation") orelse 1,
+		.density = parameters.get(f32, "density") orelse 0.5,
 	};
 	return self;
 }
@@ -58,10 +61,10 @@ pub fn generate(self: *FlowerPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 	const xSecn = ellipseParam*@cos(orientation)/width;
 	const ySecn = -ellipseParam*@sin(orientation)/width;
 
-	const xMin = @max(0, x - @as(i32, @intFromFloat(@ceil(width))));
-	const xMax = @min(chunk.super.width, x + @as(i32, @intFromFloat(@ceil(width))));
-	const yMin = @max(0, y - @as(i32, @intFromFloat(@ceil(width))));
-	const yMax = @min(chunk.super.width, y + @as(i32, @intFromFloat(@ceil(width))));
+	const xMin = @max(0, x - @as(i32, @ceil(width)));
+	const xMax = @min(chunk.super.width, x + @as(i32, @ceil(width)));
+	const yMin = @max(0, y - @as(i32, @ceil(width)));
+	const yMax = @min(chunk.super.width, y + @as(i32, @ceil(width)));
 
 	var baseHeight = z;
 	if (mode != .water_surface) {

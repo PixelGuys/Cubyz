@@ -10,12 +10,12 @@
 	.smoothBeaches = true,
 	.roughness = 1,
 	.hills = 6,
-	.music = "cubyz:sunrise",
+	.music = "cubyz:mischol/simmer",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"1 cubyz:dry_grass",
 		"1 to 2 cubyz:dirt",
-		"3 to 4 cubyz:limestone/base",
+		"3 to 4 cubyz:limestone/smooth",
 	},
 	.structures = .{
 		.{
@@ -45,14 +45,14 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.05,
-			.block = "cubyz:limestone/base",
+			.block = "cubyz:limestone/smooth",
 			.size = 3,
 			.size_variance = 6,
 		},
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.01,
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.size = 3,
 			.size_variance = 4,
 		},

@@ -28,13 +28,13 @@ baseSlope: f32,
 
 pub fn loadModel(parameters: ZonElement) ?*Stalagmite {
 	const self = main.worldArena.create(Stalagmite);
-	const baseSlope = parameters.get(f32, "baseSlope", 4.0);
+	const baseSlope = parameters.get(f32, "baseSlope") orelse 4.0;
 	self.* = .{
-		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "cubyz:stalagmite")),
-		.size = parameters.get(f32, "size", 12),
-		.sizeVariation = parameters.get(f32, "size_variation", 8),
+		.block = main.blocks.parseBlock(parameters.get([]const u8, "block") orelse "cubyz:stalagmite"),
+		.size = parameters.get(f32, "size") orelse 12,
+		.sizeVariation = parameters.get(f32, "size_variation") orelse 8,
 		.baseSlope = baseSlope,
-		.topSlope = parameters.get(f32, "topSlope", baseSlope),
+		.topSlope = parameters.get(f32, "topSlope") orelse baseSlope,
 	};
 	return self;
 }
@@ -74,10 +74,10 @@ pub fn generate(self: *Stalagmite, _: GenerationMode, x: i32, y: i32, z: i32, ch
 		a = (-self.baseSlope - b)/(2*baseRadius);
 	}
 
-	const xMin: i32 = @intFromFloat(@floor(relX - baseRadius));
-	const xMax: i32 = @intFromFloat(@ceil(relX + baseRadius));
-	const yMin: i32 = @intFromFloat(@floor(relY - baseRadius));
-	const yMax: i32 = @intFromFloat(@ceil(relY + baseRadius));
+	const xMin: i32 = @floor(relX - baseRadius);
+	const xMax: i32 = @ceil(relX + baseRadius);
+	const yMin: i32 = @floor(relY - baseRadius);
+	const yMax: i32 = @ceil(relY + baseRadius);
 	var x3: i32 = xMin;
 	while (x3 <= xMax) : (x3 += 1) {
 		var y3: i32 = yMin;
@@ -87,8 +87,8 @@ pub fn generate(self: *Stalagmite, _: GenerationMode, x: i32, y: i32, z: i32, ch
 			const r = @sqrt(distSquare);
 			const columnHeight = a*r*r + b*r + c;
 			if (x3 >= 0 and x3 < chunk.super.width and y3 >= 0 and y3 < chunk.super.width) {
-				const zMin: i32 = @intFromFloat(@round(relZ - columnHeight));
-				const zMax: i32 = @intFromFloat(@round(relZ + columnHeight));
+				const zMin: i32 = @round(relZ - columnHeight);
+				const zMax: i32 = @round(relZ + columnHeight);
 				var z3: i32 = zMin;
 				while (z3 <= zMax) : (z3 += 1) {
 					if (z3 >= 0 and z3 < chunk.super.width) {

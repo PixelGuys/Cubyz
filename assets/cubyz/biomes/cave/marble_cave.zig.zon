@@ -1,17 +1,19 @@
 .{
 	.isCave = true,
-	.tags = .{.cave_layer},
+	.tags = .{.shallow_cave_layer},
 	.caveNoiseStrength = 5,
 	.minHeight = -512,
 	.chance = 0.2,
 
 	.fogDensity = 10,
 
-	.stoneBlock = "cubyz:marble/base",
+	.music = "cubyz:totaldemented/vitreous",
+
+	.stoneBlock = "cubyz:marble/smooth",
 	.structures = .{
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:marble/base",
+			.block = "cubyz:marble/smooth",
 			.chance = 0.112,
 			.size = 4,
 			.size_variation = 10,

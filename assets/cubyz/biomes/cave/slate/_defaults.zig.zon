@@ -1,0 +1,24 @@
+.{
+	.isCave = true,
+	.tags = .{.cave_layer},
+	.fogDensity = 2,
+	.caveNoiseStrength = 10,
+	.music = "cubyz:totaldemented/vitreous",
+
+	.structures = .{
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.016,
+			.block = "cubyz:slate/rough",
+			.size = 4,
+			.size_variance = 3,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.016,
+			.block = "cubyz:slate/smooth",
+			.size = 4,
+			.size_variance = 4,
+		},
+	},
+}

@@ -114,6 +114,53 @@ pub fn rotate2d(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child, cen
 	} + center;
 }
 
+pub const CoordinateSystem = enum {
+	right_handed_z_up,
+	right_handed_y_up,
+	left_handed_z_up,
+	left_handed_y_up,
+
+	pub fn convertVec(self: CoordinateSystem, pos: [3]f32, centerOfRotation: Vec3f) Vec3f {
+		const v = pos - centerOfRotation;
+		return centerOfRotation + switch (self) {
+			.right_handed_z_up => Vec3f{v[0], v[1], v[2]},
+			.right_handed_y_up => Vec3f{v[0], v[2], -v[1]},
+			.left_handed_z_up => Vec3f{-v[0], v[1], v[2]},
+			.left_handed_y_up => Vec3f{-v[0], v[2], v[1]},
+		};
+	}
+
+	pub fn convertQuat(self: CoordinateSystem, q: [4]f32) Quat {
+		return switch (self) {
+			.right_handed_z_up => Quat{.q = Vec4f{q[0], q[1], q[2], q[3]}},
+			.right_handed_y_up => Quat{.q = Vec4f{q[0], q[2], -q[1], q[3]}},
+			.left_handed_z_up => Quat{.q = Vec4f{-q[0], q[1], q[2], q[3]}},
+			.left_handed_y_up => Quat{.q = Vec4f{-q[0], q[2], q[1], q[3]}},
+		};
+	}
+
+	pub fn convertScale(self: CoordinateSystem, s: [3]f32) Vec3f {
+		return switch (self) {
+			.right_handed_z_up, .left_handed_z_up => Vec3f{s[0], s[1], s[2]},
+			.right_handed_y_up, .left_handed_y_up => Vec3f{s[0], s[2], s[1]},
+		};
+	}
+};
+
+// MARK: Quaternion
+pub const Quat = struct {
+	q: Vec4f = Vec4f{0, 0, 0, 1},
+
+	// copied from zmath library (MIT Liscence) :  https://github.com/zig-gamedev/zmath/blob/9f7beb0753bd5cf885285dda8b00361c87c5b6b3/src/root.zig#L2985
+	pub fn quatFromAxisAngle(axis: Vec3f, angle: f32) Quat {
+		const normal = normalize(axis);
+		const n = Vec4f{normal[0], normal[1], normal[2], 1.0};
+		const a = angle*0.5;
+		const sc: [2]f32 = .{@sin(a), @cos(a)};
+		return .{.q = n*Vec4f{sc[0], sc[0], sc[0], sc[1]}};
+	}
+};
+
 pub const Mat4f = struct { // MARK: Mat4f
 	rows: [4]Vec4f,
 	pub fn identity() Mat4f {
@@ -198,15 +245,16 @@ pub const Mat4f = struct { // MARK: Mat4f
 	}
 
 	// copied from zmath library (MIT Liscence) : https://github.com/zig-gamedev/zmath/blob/3a5955b2b72cd081563fbb084eff05bffd1e3fbb/src/root.zig#L2726
-	pub fn rotationQuat(quat: Vec4f) Mat4f {
+	pub fn rotationQuat(quat: Quat) Mat4f {
 		const f32x4_mask3: Vec4f = Vec4f{
 			@as(f32, @bitCast(@as(u32, 0xffff_ffff))),
 			@as(f32, @bitCast(@as(u32, 0xffff_ffff))),
 			@as(f32, @bitCast(@as(u32, 0xffff_ffff))),
 			0,
 		};
-		const q0 = quat + quat;
-		var q1 = quat*q0;
+		const quatv = quat.q;
+		const q0 = quatv + quatv;
+		var q1 = quatv*q0;
 
 		var v0 = swizzle(q1, .y, .x, .x, .w);
 		v0 = andInt(v0, f32x4_mask3);
@@ -216,11 +264,11 @@ pub const Mat4f = struct { // MARK: Mat4f
 
 		const r0 = (Vec4f{1.0, 1.0, 1.0, 0.0} - v0) - v1;
 
-		v0 = swizzle(quat, .x, .x, .y, .w);
+		v0 = swizzle(quatv, .x, .x, .y, .w);
 		v1 = swizzle(q0, .z, .y, .z, .w);
 		v0 = v0*v1;
 
-		v1 = swizzle(quat, .w, .w, .w, .w);
+		v1 = swizzle(quatv, .w, .w, .w, .w);
 		const v2 = swizzle(q0, .y, .z, .x, .w);
 		v1 = v1*v2;
 
@@ -356,5 +404,16 @@ pub const Complex = struct { // MARK: Complex
 		const realFactor = @exp(a.val[0]);
 		const complexFactor: Complex = .{.val = .{@cos(a.val[1]), @sin(a.val[1])}};
 		return complexFactor.mulScalar(realFactor);
+	}
+};
+
+// MARK: Box
+
+pub const Boxi = struct {
+	min: Vec3i,
+	max: Vec3i,
+
+	pub fn merge(self: Boxi, other: Boxi) Boxi {
+		return .{.min = @min(self.min, other.min), .max = @max(self.max, other.max)};
 	}
 };

@@ -10,7 +10,7 @@
 	.roughness = 1,
 	.hills = 15,
 	.chance = 0.01,
-	.music = "cubyz:sunrise",
+	.music = "cubyz:ikabod/chimes",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"cubyz:grass",
@@ -20,7 +20,7 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.00016,
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.size = 5,
 			.size_variance = 1,
 		},

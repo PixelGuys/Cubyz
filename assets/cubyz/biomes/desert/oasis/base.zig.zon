@@ -1,5 +1,7 @@
 .{
 	.tags = .{
+		.palm,
+		.baobab,
 		.cactus,
 	},
 	.minHeightLimit = 1,
@@ -80,8 +82,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:leaves/baobab",
-			.log = "cubyz:baobab_log",
-			.top = "cubyz:baobab_top",
+			.log = "cubyz:log/baobab",
 			.chance = 0.08,
 			.type = .round,
 			.height = 1,
