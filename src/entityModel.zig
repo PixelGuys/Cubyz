@@ -26,15 +26,25 @@ pub const EntityModel = struct {
 	modelId: ?[]const u8,
 	entityModelId: []const u8,
 
+	nodeIndexMap: std.StringHashMap(u16) = undefined,
+	nodes: []Node = undefined,
+	nodePivots: []Mat4f = undefined,
+	nodeCount: u16,
+
 	vao: ?graphics.VertexArray = null,
 	indexCount: c_int,
 	defaultTexture: ?main.graphics.Texture,
 	coordinateSystem: CoordinateSystem,
 
+	pub const Node = struct {
+		parent: ?u16 = null,
+	};
+
 	pub const Vertex = extern struct {
 		pos: [3]f32,
 		normal: [3]f32,
 		uv: [2]f32,
+		nodeId: c_uint,
 
 		pub const attributeDescriptions: []const c.VkVertexInputAttributeDescription = &.{
 			.{
@@ -52,8 +62,15 @@ pub const EntityModel = struct {
 				.format = c.VK_FORMAT_R32G32_SFLOAT,
 				.offset = @offsetOf(@This(), "uv"),
 			},
+			.{
+				.location = 3,
+				.format = c.VK_FORMAT_R32_UINT,
+				.offset = @offsetOf(@This(), "nodeId"),
+			},
 		};
 	};
+
+	const NodeRemap = struct { depth: u16, gltfNodeIdx: u32 };
 
 	pub fn init(assetFolder: []const u8, entityModelId: []const u8, index: EntityModelIndex, zon: ZonElement) EntityModel {
 		var self: EntityModel = undefined;
@@ -68,6 +85,17 @@ pub const EntityModel = struct {
 		self.vao = null;
 		self.indexCount = 0;
 		self.coordinateSystem = zon.get(CoordinateSystem, "coordinateSystem") orelse .right_handed_z_up;
+
+		self.nodeIndexMap = .init(main.worldArena.allocator);
+		self.nodes = main.worldArena.alloc(Node, 0);
+		self.nodePivots = main.worldArena.alloc(Mat4f, 0);
+		self.nodeCount = 0;
+
+		if (zon.getChildOrNull("isPlayerModel")) |isPlayerModel| {
+			if (isPlayerModel.as(bool) orelse false) {
+				playerEntityModels.append(main.worldArena, index);
+			}
+		}
 
 		var isPlayerModel = false;
 		const tags = main.Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags"));
@@ -109,6 +137,10 @@ pub const EntityModel = struct {
 	}
 
 	fn cloneMetaData(self: *EntityModel) EntityModel {
+		const newNodes = main.worldArena.alloc(Node, self.nodes.len);
+		@memcpy(newNodes, self.nodes);
+		const newNodePivots = main.worldArena.alloc(Mat4f, self.nodePivots.len);
+		@memcpy(newNodePivots, self.nodePivots);
 		return .{
 			.height = self.height,
 			.texturePath = main.worldArena.dupe(u8, self.texturePath),
@@ -118,6 +150,10 @@ pub const EntityModel = struct {
 			.indexCount = 0,
 			.defaultTexture = null,
 			.coordinateSystem = self.coordinateSystem,
+			.nodeIndexMap = self.nodeIndexMap.clone() catch unreachable,
+			.nodes = newNodes,
+			.nodePivots = newNodePivots,
+			.nodeCount = self.nodeCount,
 		};
 	}
 
@@ -157,9 +193,56 @@ pub const EntityModel = struct {
 		defer indices.deinit(main.stackAllocator);
 		var baseVertex: u32 = 0;
 
+		var nodeDepthRemap: main.List(NodeRemap) = .empty;
+		defer nodeDepthRemap.deinit(main.stackAllocator);
+
+		var nodeIdx: u16 = 0;
+		for (data.nodes, 0..data.nodes_count) |node, gltfNodeIdx| {
+			if (node.children_count == 0) continue;
+			nodeDepthRemap.append(main.stackAllocator, .{
+				.depth = getHierarchyDepth(node, 0),
+				.gltfNodeIdx = @intCast(gltfNodeIdx),
+			});
+
+			nodeIdx += 1;
+		}
+		const nodeCount = nodeIdx;
+
+		std.mem.sort(NodeRemap, nodeDepthRemap.items, {}, compareDepth);
+
+		self.nodes = main.worldArena.alloc(Node, nodeCount);
+		self.nodePivots = main.worldArena.alloc(Mat4f, nodeCount);
+
+		for (nodeDepthRemap.items, 0..) |nodeRemap, i| {
+			const node = data.nodes[nodeRemap.gltfNodeIdx];
+
+			const nameC = std.mem.span(node.name);
+			const name = main.globalArena.alloc(u8, nameC.len);
+			@memcpy(name, nameC);
+			self.nodeIndexMap.put(name, @intCast(i)) catch unreachable;
+
+			var pivotMat = Mat4f.translation(self.coordinateSystem.convertVec(node.translation, @splat(0)));
+			pivotMat = pivotMat.mul(Mat4f.rotationQuat(self.coordinateSystem.convertQuat(node.rotation)));
+			pivotMat = pivotMat.mul(Mat4f.scale(self.coordinateSystem.convertScale(node.scale)));
+
+			self.nodes[i] = Node{};
+			self.nodePivots[i] = pivotMat;
+		}
+
+		for (nodeDepthRemap.items, 0..) |nodeRemap, i| {
+			const node = data.nodes[nodeRemap.gltfNodeIdx];
+			if (node.parent == null) continue;
+
+			self.nodes[i].parent = self.nodeIndexMap.get(std.mem.span(node.parent.*.name)).?;
+		}
+
 		for (data.nodes[0..data.nodes_count]) |node| {
 			if (node.mesh != null) {
-				const finalMat = getHierarchyMatrix(node, self.coordinateSystem);
+				var finalMat = Mat4f.translation(self.coordinateSystem.convertVec(node.translation, @splat(0)));
+				finalMat = finalMat.mul(Mat4f.rotationQuat(self.coordinateSystem.convertQuat(node.rotation)));
+				finalMat = finalMat.mul(Mat4f.scale(self.coordinateSystem.convertScale(node.scale)));
+
+				const parentNodeID = if (node.parent) |p| self.nodeIndexMap.get(std.mem.span(p.*.name)).? else 0;
 
 				const primitives = node.mesh.*.primitives;
 				for (primitives[0..node.mesh.*.primitives_count]) |primitive| {
@@ -207,6 +290,8 @@ pub const EntityModel = struct {
 						var uv: [2]f32 = undefined;
 						_ = uvAttr.read_float(v, @ptrCast(&uv), 2);
 						vertSlice[v].uv = .{uv[0], 1 - uv[1]};
+
+						vertSlice[v].nodeId = @intCast(parentNodeID);
 					}
 				}
 			}
@@ -214,18 +299,19 @@ pub const EntityModel = struct {
 
 		self.vao = .init(Vertex, vertices.items, indices.items);
 		self.indexCount = @intCast(indices.items.len);
+		self.nodeCount = nodeIdx;
 	}
 
-	fn getHierarchyMatrix(node: c.cgltf_node, sys: CoordinateSystem) Mat4f {
-		var currentMat = Mat4f.translation(sys.convertVec(node.translation, @splat(0)));
-		currentMat = currentMat.mul(Mat4f.rotationQuat(sys.convertQuat(node.rotation)));
-		currentMat = currentMat.mul(Mat4f.scale(sys.convertScale(node.scale)));
+	fn compareDepth(_: void, lhs: NodeRemap, rhs: NodeRemap) bool {
+		return lhs.depth < rhs.depth;
+	}
 
+	fn getHierarchyDepth(node: c.cgltf_node, depth: u16) u16 {
 		if (node.parent == null) {
-			return currentMat;
+			return depth;
 		}
 
-		return getHierarchyMatrix(node.parent.*, sys).mul(currentMat);
+		return getHierarchyDepth(node.parent.*, depth + 1);
 	}
 
 	fn getGltfError(result: c.cgltf_result) error{ DataTooShort, UnknownFormat, InvalidJson, InvalidGltf, InvalidOptions, FileNotFound, IoError, OutOfMemory, LegacyGltf } {
