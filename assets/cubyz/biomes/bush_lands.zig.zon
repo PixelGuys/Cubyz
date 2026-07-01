@@ -19,7 +19,7 @@
 	.music = "cubyz:sinanimea/sunrise",
 
 	.ground_structure = .{
-		"cubyz:grass",
+		"cubyz:grass/temperate",
 		"2 cubyz:soil",
 	},
 	.structures = .{
@@ -45,7 +45,7 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:grass_vegetation",
+			.block = "cubyz:grass/vegetation/temperate:1",
 			.chance = 0.8,
 			.height = 1,
 			.height_variation = 0,

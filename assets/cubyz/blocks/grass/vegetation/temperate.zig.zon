@@ -1,0 +1,7 @@
+.{
+	.texture0 = "cubyz:grass/vegetation/temperate/0",
+	.texture1 = "cubyz:grass/vegetation/temperate/1",
+	.item = .{
+		.texture = "grass_vegetation/temperate.png",
+	},
+}

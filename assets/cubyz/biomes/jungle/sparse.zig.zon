@@ -8,7 +8,7 @@
 	.hills = 12,
 	.smoothBeaches = true,
 
-	.ground_structure = .{"cubyz:lush_grass", "3 to 4 cubyz:mud"},
+	.ground_structure = .{"cubyz:grass/lush", "3 to 4 cubyz:mud"},
 
 	.structures = .{
 		.{
@@ -52,7 +52,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:lush_grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/lush:1"},
 			.chance = 0.2,
 			.width = 15,
 			.variation = 3,

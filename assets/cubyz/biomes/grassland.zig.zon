@@ -16,7 +16,7 @@
 	.music = "cubyz:sinanimea/sunrise",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
-		"cubyz:grass",
+		"cubyz:grass/temperate",
 		"2 to 3 cubyz:soil",
 	},
 	.structures = .{
@@ -54,16 +54,16 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:grass_vegetation"},
-			.chance = 0.1,
-			.width = 5,
+			.blocks = .{"cubyz:grass/vegetation/temperate:0", "cubyz:grass/vegetation/temperate:1"},
+			.chance = 0.25,
+			.width = 6,
 			.variation = 8,
 			.density = 0.5,
 			.priority = 0.2,
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:grass_vegetation",
+			.block = "cubyz:grass/vegetation/temperate:0",
 			.chance = 0.4,
 			.height = 1,
 			.height_variation = 0,

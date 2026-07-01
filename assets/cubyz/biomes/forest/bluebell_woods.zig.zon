@@ -17,7 +17,7 @@
 	.music = "cubyz:totaldemented/leaves",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
-		"cubyz:grass",
+		"cubyz:grass/temperate",
 		"2 to 3 cubyz:soil",
 	},
 	.structures = .{
@@ -55,7 +55,7 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:grass_vegetation",
+			.block = "cubyz:grass/vegetation/temperate:1",
 			.chance = 0.4,
 			.height = 1,
 			.height_variation = 0,
@@ -80,7 +80,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/temperate:1"},
 			.chance = 0.2,
 			.width = 6,
 			.variation = 3,

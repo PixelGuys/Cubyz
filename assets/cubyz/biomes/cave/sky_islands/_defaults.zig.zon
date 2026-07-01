@@ -39,7 +39,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:grass/vegetation/sky"},
+			.blocks = .{"cubyz:grass/vegetation/sky:1"},
 			.chance = 0.1,
 			.width = 5,
 			.variation = 8,
@@ -48,7 +48,7 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:grass/vegetation/sky",
+			.block = "cubyz:grass/vegetation/sky:1",
 			.chance = 0.4,
 			.height = 1,
 			.height_variation = 0,
