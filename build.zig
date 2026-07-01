@@ -140,7 +140,7 @@ pub fn makeModFeature(io: std.Io, step: *std.Build.Step, name: []const u8) !void
 	}
 
 	const file_path = step.owner.fmt("mods/{s}.zig", .{name});
-	try std.Io.Dir.cwd().writeFile(io, .{.data = featureList.items[1..], .sub_path = file_path});
+	try std.Io.Dir.cwd().writeFile(io, .{.data = if (featureList.items.len > 0) featureList.items[1..] else featureList.items, .sub_path = file_path});
 }
 
 pub fn addModFeatureModule(b: *std.Build, exe: *std.Build.Step.Compile, name: []const u8) !void {
