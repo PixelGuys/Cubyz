@@ -4,12 +4,12 @@
 	.drops = .{
 		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
 	},
-	.selectionRule = .toolEffective,
+	.selectionCapabilities = .{.toolEffective},
 	.replaceable = true,
 	.degradable = true,
-	.collide = false,
-	.alwaysViewThrough = true,
+	.viewThrough = true,
 	.absorbedLight = 0x121012,
+	.collide = false,
 	.model = "cubyz:ocotillo",
 	.texture_top = "cubyz:ocotillo/top",
 	.texture_bottom = "cubyz:ocotillo/bottom",
@@ -18,7 +18,7 @@
 	},
 	.lodReplacement = "cubyz:air",
 	.onUpdate = .{
-		.type = .checkSupportBlocks,
+		.type = .check_support_blocks,
 	},
 	.onTouch = .{
 		.type = .hurt,
