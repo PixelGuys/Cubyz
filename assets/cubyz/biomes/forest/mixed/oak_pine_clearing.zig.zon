@@ -7,6 +7,7 @@
 	.tags = .{
 		.oak,
 		.pine,
+		.oak_landmarks,
 	},
 	.minRadius = 20,
 	.maxRadius = 32,
@@ -17,36 +18,6 @@
 		"2 to 3 cubyz:soil",
 	},
 	.structures = .{
-		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/oak/white",
-			.placeMode = .degradable,
-			.chance = 0.004,
-		},
-		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/oak/young",
-			.placeMode = .degradable,
-			.chance = 0.001,
-		},
-		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/coniferous/pine/loblolly",
-			.placeMode = .degradable,
-			.chance = 0.001,
-		},
-		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/coniferous/pine/eastern_white",
-			.placeMode = .degradable,
-			.chance = 0.001,
-		},
-		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/coniferous/pine/young_tree",
-			.placeMode = .degradable,
-			.chance = 0.001,
-		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/coniferous/standalone_roots",

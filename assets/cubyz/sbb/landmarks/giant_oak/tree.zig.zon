@@ -1,0 +1,11 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:landmarks/giant_oak/tree"},
+	},
+	.children = .{
+		.yellow = "cubyz:landmarks/giant_oak/deco/outside/small",
+		.green = "cubyz:landmarks/giant_oak/deco/outside/large",
+		.red = "cubyz:landmarks/giant_oak/deco/inside/small",
+		.blue = "cubyz:landmarks/giant_oak/deco/inside/large",
+	},
+}
