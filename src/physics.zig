@@ -132,7 +132,7 @@ pub const collision = struct {
 
 	pub fn calculateSurfaceProperties(comptime side: main.sync.Side, pos: Vec3d, hitBox: Box, defaultFriction: f32) SurfaceProperties {
 		const boundingBox: Box = .{
-			.min = pos + hitBox.min,
+			.min = pos + hitBox.min - Vec3d{0, 0, 0.01},
 			.max = pos + hitBox.max,
 		};
 		const minX: i32 = @floor(boundingBox.min[0]);
@@ -140,7 +140,7 @@ pub const collision = struct {
 		const minY: i32 = @floor(boundingBox.min[1]);
 		const maxY: i32 = @floor(boundingBox.max[1]);
 
-		const z: i32 = @floor(boundingBox.min[2] - 0.01);
+		const z: i32 = @floor(boundingBox.min[2]);
 
 		var friction: f64 = 0;
 		var bounciness: f64 = 0;
