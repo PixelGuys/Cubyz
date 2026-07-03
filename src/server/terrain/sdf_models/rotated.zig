@@ -36,12 +36,12 @@ pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
 	const child = sdf.SdfModel.initModel(zon.getChild("child")) orelse return null;
 	const self = main.worldArena.create(@This());
 	self.child = child.model;
-	self.axis = zon.get(?Axis, "axis", null) orelse {
+	self.axis = zon.get(Axis, "axis") orelse {
 		std.log.err("Missing parameter axis for cubyz:rotated SDF.", .{});
 		return null;
 	};
-	self.minAngle = std.math.degreesToRadians(zon.get(f32, "minAngle", 0));
-	self.maxAngle = std.math.degreesToRadians(zon.get(f32, "maxAngle", 360));
+	self.minAngle = std.math.degreesToRadians(zon.get(f32, "minAngle") orelse 0);
+	self.maxAngle = std.math.degreesToRadians(zon.get(f32, "maxAngle") orelse 360);
 
 	const axisVector: Vec3f = switch (self.axis) {
 		.x => .{1, 0, 0},

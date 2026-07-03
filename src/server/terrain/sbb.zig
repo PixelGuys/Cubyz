@@ -248,7 +248,7 @@ pub const StructureBuildingBlock = struct {
 				std.log.err("['{s}'->'{}'] Invalid blueprint configuration (object expected, got {s}).", .{stringId, index, @tagName(zonBlueprintConfig)});
 				return error.InvalidBlueprintConfig;
 			}
-			const chance = zonBlueprintConfig.get(f32, "chance", 1.0);
+			const chance = zonBlueprintConfig.get(f32, "chance") orelse 1.0;
 
 			if (!zonBlueprintConfig.object.contains("id")) {
 				std.log.err("['{s}'] Blueprint configuration ({}): Missing 'id' field. Use null for empty entry.", .{stringId, index});

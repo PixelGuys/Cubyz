@@ -42,9 +42,9 @@ pub fn loadModel(parameters: ZonElement) ?*FlowerPatch {
 			}
 			break :blk output;
 		},
-		.width = parameters.get(f32, "width", 5),
-		.variation = parameters.get(f32, "variation", 1),
-		.density = parameters.get(f32, "density", 0.5),
+		.width = parameters.get(f32, "width") orelse 5,
+		.variation = parameters.get(f32, "variation") orelse 1,
+		.density = parameters.get(f32, "density") orelse 0.5,
 	};
 	return self;
 }
