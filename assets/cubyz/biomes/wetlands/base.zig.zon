@@ -14,7 +14,7 @@
 	.hills = 7.5,
 	.minRadius = 256,
 	.maxRadius = 320,
-	.music = "cubyz:sunrise",
+	.music = "cubyz:sinanimea/sunrise",
 	.ground_structure = .{
 		"cubyz:lush_grass",
 		"5 to 7 cubyz:mud",
@@ -33,8 +33,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:leaves/willow",
-			.log = "cubyz:willow_log",
-			.top = "cubyz:willow_top",
+			.log = "cubyz:log/willow",
 			.chance = 0.02,
 			.type = .round,
 			.height = 12,
@@ -48,8 +47,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:leaves/willow",
-			.log = "cubyz:willow_log",
-			.top = "cubyz:willow_top",
+			.log = "cubyz:log/willow",
 			.chance = 0.02,
 			.type = .round,
 			.height = 10,

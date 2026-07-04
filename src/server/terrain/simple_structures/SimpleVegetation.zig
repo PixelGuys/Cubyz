@@ -26,9 +26,9 @@ deltaHeight: u31,
 pub fn loadModel(parameters: ZonElement) ?*SimpleVegetation {
 	const self = main.worldArena.create(SimpleVegetation);
 	self.* = .{
-		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "")),
-		.height0 = parameters.get(u31, "height", 1),
-		.deltaHeight = parameters.get(u31, "height_variation", 0),
+		.block = main.blocks.parseBlock(parameters.get([]const u8, "block") orelse ""),
+		.height0 = parameters.get(u31, "height") orelse 1,
+		.deltaHeight = parameters.get(u31, "height_variation") orelse 0,
 	};
 	return self;
 }

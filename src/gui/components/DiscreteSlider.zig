@@ -36,7 +36,7 @@ pub fn globalInit() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/slider.png");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	texture.deinit();
 }
 
@@ -155,11 +155,13 @@ pub fn mainButtonReleased(self: *DiscreteSlider, _: Vec2f) void {
 pub fn render(self: *DiscreteSlider, mousePosition: Vec2f) void {
 	texture.bindTo(0);
 	Button.pipeline.bind(draw.getScissor());
-	draw.setColor(0xff000000);
 	draw.customShadedRect(Button.buttonUniforms, self.pos, self.size);
 
-	draw.setColor(0x80000000);
-	draw.rect(self.pos + self.getBarPos(), self.getBarSize());
+	{
+		const oldColor = draw.setColor(0x80000000);
+		defer draw.restoreColor(oldColor);
+		draw.rect(self.pos + self.getBarPos(), self.getBarSize());
+	}
 
 	self.label.pos = self.pos + @as(Vec2f, @splat(1.5*border));
 	self.label.render(mousePosition);

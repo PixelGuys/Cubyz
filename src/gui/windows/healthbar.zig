@@ -43,10 +43,8 @@ pub fn deinit() void {
 }
 
 pub fn render() void {
-	if (main.game.Player.isCreative())
-		return;
+	if (main.game.Player.isCreative()) return;
 
-	draw.setColor(0xffffffff);
 	const displayHealth = @max(0, main.game.Player.super.health);
 	const halfHeartUnits: usize = @ceil(displayHealth*2);
 	const wholeHearts = halfHeartUnits/2;

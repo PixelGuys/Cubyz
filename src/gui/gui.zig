@@ -7,9 +7,10 @@ const ZonElement = main.ZonElement;
 const settings = main.settings;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
-const List = main.List;
-
+const ListManaged = main.ListManaged;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+
+const c = @import("c");
 
 const Button = @import("components/Button.zig");
 const CheckBox = @import("components/CheckBox.zig");
@@ -18,15 +19,16 @@ const ScrollBar = @import("components/ScrollBar.zig");
 const ContinuousSlider = @import("components/ContinuousSlider.zig");
 const DiscreteSlider = @import("components/DiscreteSlider.zig");
 const TextInput = @import("components/TextInput.zig");
-pub const GuiComponent = @import("gui_component.zig").GuiComponent;
+const gui_component = @import("gui_component.zig");
+pub const GuiComponent = gui_component.GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
 
-pub const windowlist = @import("windows/_windowlist.zig");
-const GamepadCursor = @import("gamepad_cursor.zig");
+pub const windowlist = @import("windows/_list.zig");
+const gamepad_cursor = @import("gamepad_cursor.zig");
 
-var windowList: List(*GuiWindow) = undefined;
-var hudWindows: List(*GuiWindow) = undefined;
-pub var openWindows: List(*GuiWindow) = undefined;
+var windowList: ListManaged(*GuiWindow) = undefined;
+var hudWindows: ListManaged(*GuiWindow) = undefined;
+pub var openWindows: ListManaged(*GuiWindow) = undefined;
 var selectedWindow: ?*GuiWindow = null;
 pub var selectedTextInput: ?*TextInput = null;
 var hoveredAWindow: bool = false;
@@ -146,25 +148,25 @@ pub fn init() void { // MARK: init()
 	DiscreteSlider.globalInit();
 	TextInput.globalInit();
 	load();
-	GamepadCursor.init();
+	gamepad_cursor.init();
 }
 
 pub fn deinit() void {
 	save();
-	GamepadCursor.deinit();
+	gamepad_cursor.deinit();
 	for (openWindows.items) |window| {
 		window.onCloseFn();
 	}
 	openWindows.clearRetainingCapacity();
-	GuiWindow.__deinit();
-	GuiComponent.BagSlot.__deinit();
-	Button.__deinit();
-	CheckBox.__deinit();
-	ItemSlot.__deinit();
-	ScrollBar.__deinit();
-	ContinuousSlider.__deinit();
-	DiscreteSlider.__deinit();
-	TextInput.__deinit();
+	GuiWindow.globalDeinit();
+	GuiComponent.BagSlot.globalDeinit();
+	Button.globalDeinit();
+	CheckBox.globalDeinit();
+	ItemSlot.globalDeinit();
+	ScrollBar.globalDeinit();
+	ContinuousSlider.globalDeinit();
+	DiscreteSlider.globalDeinit();
+	TextInput.globalDeinit();
 	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
 		const WindowStruct = @field(windowlist, decl.name);
 		if (@hasDecl(WindowStruct, "deinit")) {
@@ -240,32 +242,32 @@ fn load() void {
 		if (windowZon == .null) continue;
 		for (&window.relativePosition, 0..) |*relPos, i| {
 			const relPosZon = windowZon.getChild(([_][]const u8{"relPos0", "relPos1"})[i]);
-			const typ = relPosZon.get([]const u8, "type", "ratio");
+			const typ = relPosZon.get([]const u8, "type") orelse "ratio";
 			if (std.mem.eql(u8, typ, "ratio")) {
-				relPos.* = .{.ratio = relPosZon.get(f32, "ratio", 0.5)};
+				relPos.* = .{.ratio = relPosZon.get(f32, "ratio") orelse 0.5};
 			} else if (std.mem.eql(u8, typ, "attachedToFrame")) {
 				relPos.* = .{.attachedToFrame = .{
-					.selfAttachmentPoint = @enumFromInt(relPosZon.get(u8, "selfAttachmentPoint", 0)),
-					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint", 0)),
+					.selfAttachmentPoint = @enumFromInt(relPosZon.get(u8, "selfAttachmentPoint") orelse 0),
+					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint") orelse 0),
 				}};
 			} else if (std.mem.eql(u8, typ, "relativeToWindow")) {
-				const reference = getWindowById(relPosZon.get([]const u8, "reference", "")) orelse continue;
+				const reference = getWindowById(relPosZon.get([]const u8, "reference") orelse "") orelse continue;
 				relPos.* = .{.relativeToWindow = .{
 					.reference = reference,
-					.ratio = relPosZon.get(f32, "ratio", 0.5),
+					.ratio = relPosZon.get(f32, "ratio") orelse 0.5,
 				}};
 			} else if (std.mem.eql(u8, typ, "attachedToWindow")) {
-				const reference = getWindowById(relPosZon.get([]const u8, "reference", "")) orelse continue;
+				const reference = getWindowById(relPosZon.get([]const u8, "reference") orelse "") orelse continue;
 				relPos.* = .{.attachedToWindow = .{
 					.reference = reference,
-					.selfAttachmentPoint = @enumFromInt(relPosZon.get(u8, "selfAttachmentPoint", 0)),
-					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint", 0)),
+					.selfAttachmentPoint = @enumFromInt(relPosZon.get(u8, "selfAttachmentPoint") orelse 0),
+					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint") orelse 0),
 				}};
 			} else {
 				std.log.err("Unknown window attachment type: {s}", .{typ});
 			}
 		}
-		window.scale = windowZon.get(f32, "scale", 1);
+		window.scale = windowZon.get(f32, "scale") orelse 1;
 	}
 }
 
@@ -556,9 +558,10 @@ pub fn updateAndRenderGui() void {
 	}
 	if (!hideGui) {
 		if (!main.Window.grabbed) {
-			draw.setColor(0x80000000);
+			const oldColor = draw.setColor(0x80000000);
+			defer draw.restoreColor(oldColor);
 			GuiWindow.borderPipeline.bind(draw.getScissor());
-			graphics.c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
+			c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
 			draw.customShadedRect(GuiWindow.borderUniforms, .{0, 0}, main.Window.getWindowSize());
 		}
 		const oldScale = draw.setScale(scale);
@@ -570,7 +573,7 @@ pub fn updateAndRenderGui() void {
 	}
 	const oldScale = draw.setScale(scale);
 	defer draw.restoreScale(oldScale);
-	GamepadCursor.render();
+	gamepad_cursor.render();
 }
 
 pub fn toggleGameMenu() void {
@@ -600,8 +603,8 @@ pub const inventory = struct { // MARK: inventory
 	const ClientInventory = main.items.Inventory.ClientInventory;
 	pub var carried: ClientInventory = undefined;
 	var carriedItemSlot: *ItemSlot = undefined;
-	var leftClickSlots: List(*ItemSlot) = .init(main.globalAllocator);
-	var rightClickSlots: List(*ItemSlot) = .init(main.globalAllocator);
+	var leftClickSlots: ListManaged(*ItemSlot) = .init(main.globalAllocator);
+	var rightClickSlots: ListManaged(*ItemSlot) = .init(main.globalAllocator);
 	var recipeItem: main.items.Item = .null;
 	var initialized: bool = false;
 	const minCraftingCooldown: std.Io.Duration = .fromMilliseconds(20);
@@ -779,7 +782,8 @@ pub const inventory = struct { // MARK: inventory
 		carriedItemSlot.pos = mousePos - Vec2f{12, 12};
 		carriedItemSlot.render(.{0, 0});
 		// Draw tooltip:
-		if (carried.getAmount(0) == 0) if (hoveredItemSlot) |hovered| {
+		const hovered = hoveredItemSlot orelse return;
+		if (carried.getAmount(0) == 0) {
 			if (hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltip| {
 				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, tooltip, .{}, false, .left);
 				defer textBuffer.deinit();
@@ -801,12 +805,18 @@ pub const inventory = struct { // MARK: inventory
 				}
 				pos[1] = @min(pos[1] - fontSize, windowSize[1] - size[1] - border);
 				pos = @max(pos, Vec2f{border, border});
-				draw.setColor(0xffffff00);
-				draw.rect(pos - @as(Vec2f, @splat(border)), size + @as(Vec2f, @splat(2*border)));
-				draw.setColor(0xff000000);
-				draw.rect(pos - @as(Vec2f, @splat(padding)), size + @as(Vec2f, @splat(2*padding)));
+				{
+					const oldColor = draw.setColor(0xffffff00);
+					defer draw.restoreColor(oldColor);
+					draw.rect(pos - @as(Vec2f, @splat(border)), size + @as(Vec2f, @splat(2*border)));
+				}
+				{
+					const oldColor = draw.setColor(0xff000000);
+					defer draw.restoreColor(oldColor);
+					draw.rect(pos - @as(Vec2f, @splat(padding)), size + @as(Vec2f, @splat(2*padding)));
+				}
 				textBuffer.render(pos[0], pos[1], fontSize);
 			}
-		};
+		}
 	}
 };

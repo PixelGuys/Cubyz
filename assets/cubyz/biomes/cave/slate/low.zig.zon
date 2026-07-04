@@ -4,7 +4,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:slate/cobble",
+			.block = "cubyz:slate/rough",
 			.chance = 0.064,
 			.width = 5,
 			.variation = 5,
@@ -13,7 +13,7 @@
 		},
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.chance = 0.03,
 			.size = 3,
 			.size_variation = 6,
