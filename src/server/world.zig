@@ -520,7 +520,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));
 		errdefer self.chunkManager.deinit();
 
-		try self.loadPermissionGroups(dir);
+		try permission.loadGroups(try dir.openIterableDir("groups"));
 		std.debug.assert(main.entityModel.getById("cubyz:missing") != null);
 
 		return self;
@@ -653,16 +653,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		worldData.put("tickSpeed", self.tickSpeed.load(.monotonic));
 
 		try files.cubyzDir().writeZon(path, worldData);
-	}
-
-	pub fn loadPermissionGroups(_: *ServerWorld, dir: main.files.Dir) !void {
-		try permission.loadGroups(try dir.openIterableDir("groups"));
-	}
-
-	pub fn savePermissionGroups(self: *ServerWorld) !void {
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/groups/", .{self.path}) catch unreachable;
-		defer main.stackAllocator.free(path);
-		try permission.saveGroups(main.stackAllocator, path);
 	}
 
 	pub fn loadPlayerLoginInfo(self: *ServerWorld, dir: main.files.Dir) !void {
@@ -1073,7 +1063,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try self.saveWorldConfig();
 
 		try self.saveAllPlayers();
-		try self.savePermissionGroups();
+		try permission.saveGroups(main.stackAllocator, self.path);
 
 		var itemDropData = main.utils.BinaryWriter.init(main.stackAllocator);
 		defer itemDropData.deinit();

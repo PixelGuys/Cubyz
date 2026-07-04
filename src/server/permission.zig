@@ -226,8 +226,11 @@ pub fn loadGroups(dir: main.files.Dir) !void {
 	}
 }
 
-pub fn saveGroups(allocator: NeverFailingAllocator, groupsPath: []const u8) !void {
+pub fn saveGroups(allocator: NeverFailingAllocator, _path: []const u8) !void {
 	sync.threadContext.assertCorrectContext(.server);
+
+	const groupsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/groups/", .{_path}) catch unreachable;
+	defer main.stackAllocator.free(_path);
 
 	try saveMetaData(allocator, groupsPath);
 
