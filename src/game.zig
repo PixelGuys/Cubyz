@@ -306,7 +306,16 @@ pub const World = struct { // MARK: World
 	}
 
 	pub fn deinit(self: *World) void {
+		main.server.stop(.stop);
+
+		if (main.server.thread) |serverThread| {
+			serverThread.join();
+			main.server.thread = null;
+		}
+
 		self.conn.deinit();
+		main.threadPool.pause();
+		defer main.threadPool.@"continue"();
 
 		self.connected = false;
 
@@ -317,7 +326,6 @@ pub const World = struct { // MARK: World
 		Player.inventory.deinit(main.globalAllocator);
 		main.sync.client.reset();
 
-		main.threadPool.clear();
 		Player.super.deinit(.client);
 		main.entity.client.clear();
 		self.itemDrops.deinit();
@@ -328,13 +336,6 @@ pub const World = struct { // MARK: World
 		self.entityComponentPalette.deinit();
 		self.entityModelPalette.deinit();
 		self.manager.deinit();
-		main.server.stop(.stop);
-
-		if (main.server.thread) |serverThread| {
-			serverThread.join();
-			main.server.thread = null;
-		}
-		main.threadPool.clear();
 		renderer.mesh_storage.deinit();
 		renderer.mesh_storage.init();
 		assets.unloadAssets();

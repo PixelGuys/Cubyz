@@ -320,6 +320,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 	}
 
 	pub fn deinit(_: ChunkManager) void {
+		main.threadPool.updateTaskPriority();
 		for (0..main.settings.highestSupportedLod) |_| {
 			chunkCache.clear();
 		}
