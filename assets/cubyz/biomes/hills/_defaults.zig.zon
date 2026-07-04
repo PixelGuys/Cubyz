@@ -14,7 +14,7 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.003,
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.size = 5,
 			.size_variance = 1,
 		},

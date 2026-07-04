@@ -34,9 +34,9 @@ const centerRotations = 8;
 const sideRotations = 4;
 
 pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
-	const floorModelId: []const u8 = zon.get([]const u8, "floor", "cubyz:cube");
-	const sideModelId: []const u8 = zon.get([]const u8, "side", "cubyz:cube");
-	const ceilingModelId: []const u8 = zon.get([]const u8, "ceiling", "cubyz:cube");
+	const floorModelId: []const u8 = zon.get([]const u8, "floor") orelse "cubyz:cube";
+	const sideModelId: []const u8 = zon.get([]const u8, "side") orelse "cubyz:cube";
+	const ceilingModelId: []const u8 = zon.get([]const u8, "ceiling") orelse "cubyz:cube";
 	const key: []const u8 = std.mem.concat(main.stackAllocator.allocator, u8, &.{floorModelId, sideModelId, ceilingModelId}) catch unreachable;
 	defer main.stackAllocator.free(key);
 

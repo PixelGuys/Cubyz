@@ -112,7 +112,7 @@ pub fn render(self: *BagSlot, _: Vec2f) void {
 		text.render(self.pos[0] + sizeWithBorder - textSize[0] - border, self.pos[1] + sizeWithBorder - textSize[1] - border, 8);
 	}
 
-	draw.print("{}/{}", .{self.inventory.slots.items.len, self.inventory.sizeLimit}, self.pos[0], self.pos[1] + sizeWithBorder, 8, .left);
+	draw.print("{}/{}", .{self.inventory.slots.items.len, self.inventory.sizeLimit}, self.pos[0], self.pos[1] + sizeWithBorder, 8);
 
 	if (self.hovered) {
 		self.hovered = false;
