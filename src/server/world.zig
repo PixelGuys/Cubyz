@@ -1180,7 +1180,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 
 		// Save changes in permission groups
-		permission.saveGroups(main.stackAllocator, self.path);
+		permission.saveGroups(main.stackAllocator, self.path) catch |err| {
+			std.log.warn("Failed to save permission groups: {t}", .{err});
+		};
 	}
 
 	pub fn queueChunkAndDecreaseRefCount(self: *ServerWorld, pos: ChunkPosition, source: *User) void {
