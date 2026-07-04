@@ -192,7 +192,7 @@ pub fn deinit() void {
 }
 
 pub fn addGroupFromZon(id: u32, zon: ZonElement) void {
-	const name = zon.get(?[]const u8, "name", null) orelse {
+	const name = zon.get([]const u8, "name") orelse {
 		std.log.err("Group with id {d} has invalid content skipping", .{id});
 		return;
 	};
@@ -203,7 +203,7 @@ pub fn loadGroups(dir: main.files.Dir) !void {
 	const metaDataZon: ZonElement = dir.readToZon(main.stackAllocator, "metadata.zon") catch .initObject(main.stackAllocator);
 	defer metaDataZon.deinit(main.stackAllocator);
 
-	init(main.globalAllocator, metaDataZon.get(u32, "currentId", 0));
+	init(main.globalAllocator, metaDataZon.get(u32, "currentId") orelse 0);
 
 	var iterator = dir.iterate();
 	while (try iterator.next(main.io)) |file| {
@@ -230,7 +230,7 @@ pub fn saveGroups(allocator: NeverFailingAllocator, _path: []const u8) !void {
 	sync.threadContext.assertCorrectContext(.server);
 
 	const groupsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/groups/", .{_path}) catch unreachable;
-	defer main.stackAllocator.free(_path);
+	defer main.stackAllocator.free(groupsPath);
 
 	try saveMetaData(allocator, groupsPath);
 
