@@ -526,6 +526,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));
 		errdefer self.chunkManager.deinit();
 
+		try permission.loadGroups(try dir.openIterableDir("groups"));
 		std.debug.assert(main.entityModel.getById("cubyz:missing") != null);
 
 		return self;
@@ -568,6 +569,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.biomePalette.deinit();
 		self.entityModelPalette.deinit();
 		self.entityComponentPalette.deinit();
+		permission.deinit();
 		main.globalAllocator.free(self.path);
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
