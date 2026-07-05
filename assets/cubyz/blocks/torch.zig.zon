@@ -5,7 +5,7 @@
 		.{.items = .{.auto}},
 	},
 	.replaceable = true,
-	.emittedLight = 0xa58d73,
+	.emittedLight = 0x917c66,
 	.viewThrough = true,
 	.absorbedLight = 0x010101,
 	.collide = false,
