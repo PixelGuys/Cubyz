@@ -6,7 +6,7 @@
 	},
 	.onInteract = .{
 		.type = .open_window,
-		.name = "workbench",
+		.name = "cubyz:workbench",
 	},
 	.model = "cubyz:cube",
 	.rotation = "cubyz:planar",
