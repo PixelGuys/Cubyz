@@ -263,7 +263,7 @@ pub fn createGroup(name: []const u8) error{AlreadyExists}!void {
 
 pub fn getGroup(name: []const u8) error{GroupNotFound}!*Group {
 	sync.threadContext.assertCorrectContext(.server);
-	return (groups.getPtr(name) orelse return error.GroupNotFound).*;
+	return groups.get(name) orelse return error.GroupNotFound;
 }
 
 pub fn deleteGroup(allocator: NeverFailingAllocator, name: []const u8) bool {
