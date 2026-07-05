@@ -141,7 +141,7 @@ pub const Group = struct { // MARK: Group
 		allocator.destroy(self);
 	}
 
-	pub fn fromZon(allocator: NeverFailingAllocator, zon: ZonElement, id: u32, name: []const u8) *Group {
+	fn fromZon(allocator: NeverFailingAllocator, zon: ZonElement, id: u32, name: []const u8) *Group {
 		sync.threadContext.assertCorrectContext(.server);
 		const self = allocator.create(Group);
 		self.* = .{
