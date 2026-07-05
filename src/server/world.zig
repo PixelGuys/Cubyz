@@ -1050,6 +1050,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		playerZon.put("entity", user.player().save(main.stackAllocator, .disk));
 		user.permissions.toZon(main.stackAllocator, &playerZon);
+		playerZon.put("permissionGroups", user.groupListToZon(main.stackAllocator));
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 
 		{
