@@ -292,9 +292,9 @@ pub const ParticleSystem = struct {
 				const friction = @exp(-particleLocal.friction*deltaTime);
 
 				particleLocal.velAndRotationVel *= Vec4f{
-					friction*@intFromBool(addFrictionX) + 1*@intFromBool(!addFrictionX),
-					friction*@intFromBool(addFrictionY) + 1*@intFromBool(!addFrictionY),
-					friction*@intFromBool(addFrictionZ) + 1*@intFromBool(!addFrictionZ),
+					friction*@intFromBool(addFrictionX) + @intFromBool(!addFrictionX),
+					friction*@intFromBool(addFrictionY) + @intFromBool(!addFrictionY),
+					friction*@intFromBool(addFrictionZ) + @intFromBool(!addFrictionZ),
 					1,
 				};
 				pos = @as(Vec3f, @floatCast(v3Pos - playerPos));
