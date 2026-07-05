@@ -63,9 +63,9 @@ pub fn onReceive(conn: *Connection, protocolIndex: u8, data: []const u8) !void {
 
 pub const handShake = struct { // MARK: handShake
 	pub const id: u8 = 1;
-	pub var assetsLoadedCondition: main.utils.Condition = .{};
-	pub var handshakeZon: ZonElement = undefined;
-	pub var hasFinishedLoadingAssets: bool = false;
+	var assetsLoadedCondition: main.utils.Condition = .{};
+	var hasFinishedLoadingAssets: bool = false;
+	var handshakeZon: ZonElement = undefined;
 
 	fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const newState = try reader.readEnum(Connection.HandShakeState);
@@ -214,7 +214,7 @@ pub const handShake = struct { // MARK: handShake
 		conn.send(.secure, id, outData);
 	}
 
-	pub fn clientSide(conn: *Connection, name: []const u8) !void {
+	pub fn clientSide(conn: *Connection, name: []const u8) !ZonElement {
 		const zonObject = ZonElement.initObject(main.stackAllocator);
 		defer zonObject.deinit(main.stackAllocator);
 		zonObject.putOwnedString("version", settings.version.version);
@@ -239,6 +239,13 @@ pub const handShake = struct { // MARK: handShake
 		}
 		if (conn.connectionState.load(.monotonic) == .disconnected) return error.DisconnectedByServer;
 		conn.mutex.unlock();
+
+		return handshakeZon;
+	}
+
+	pub fn signalLoadedAssets() void {
+		main.network.protocols.handShake.hasFinishedLoadingAssets = true;
+		main.network.protocols.handShake.assetsLoadedCondition.signal();
 	}
 };
 

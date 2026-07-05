@@ -295,11 +295,10 @@ pub const World = struct { // MARK: World
 		self.itemDrops.init(main.globalAllocator);
 		errdefer self.itemDrops.deinit();
 
-		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
+		const handshakeZon = try network.protocols.handShake.clientSide(self.conn, settings.playerName);
 
-		try self.finishHandshake(main.network.protocols.handShake.handshakeZon);
-		main.network.protocols.handShake.assetsLoadedCondition.signal();
-		main.network.protocols.handShake.hasFinishedLoadingAssets = true;
+		try self.finishHandshake(handshakeZon);
+		main.network.protocols.handShake.signalLoadedAssets();
 	}
 
 	pub fn deinit(self: *World) void {
@@ -338,7 +337,7 @@ pub const World = struct { // MARK: World
 		main.heap.allocators.destroyWorldArena();
 	}
 
-	pub fn finishHandshake(self: *World, zon: ZonElement) !void {
+	fn finishHandshake(self: *World, zon: ZonElement) !void {
 		// TODO: Consider using a per-world allocator.
 		self.blockPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("blockPalette"), "cubyz:air");
 		errdefer self.blockPalette.deinit();
