@@ -130,17 +130,21 @@ pub fn makeModFeature(io: std.Io, step: *std.Build.Step, name: []const u8) !void
 			}
 		}.lessThanFn);
 
+		if (featureList.items.len != 0) try featureList.append(step.owner.allocator, '\n');
 		try featureList.appendSlice(step.owner.allocator, step.owner.fmt(
-			\\
 			\\// MARK: {s}
 			\\
 		, .{modEntry.name}));
-		try featureList.appendSlice(step.owner.allocator, try std.mem.join(step.owner.allocator, "\n", modFeatureList.items));
+
+		for (modFeatureList.items, 0..) |item, i| {
+			if (i != 0) try featureList.append(step.owner.allocator, '\n');
+			try featureList.appendSlice(step.owner.allocator, item);
+		}
 		try featureList.append(step.owner.allocator, '\n');
 	}
 
 	const file_path = step.owner.fmt("mods/{s}.zig", .{name});
-	try std.Io.Dir.cwd().writeFile(io, .{.data = if (featureList.items.len > 0) featureList.items[1..] else featureList.items, .sub_path = file_path});
+	try std.Io.Dir.cwd().writeFile(io, .{.data = featureList.items, .sub_path = file_path});
 }
 
 pub fn addModFeatureModule(b: *std.Build, exe: *std.Build.Step.Compile, name: []const u8) !void {
