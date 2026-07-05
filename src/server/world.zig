@@ -1082,7 +1082,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try self.saveWorldConfig();
 
 		try self.saveAllPlayers();
-		try permission.saveGroups(main.stackAllocator, self.path);
 
 		var itemDropData = main.utils.BinaryWriter.init(main.stackAllocator);
 		defer itemDropData.deinit();
@@ -1178,11 +1177,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			updateRequest.region.decreaseRefCount();
 			if (updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() >= 0) break;
 		}
-
-		// Save changes in permission groups
-		permission.saveGroups(main.stackAllocator, self.path) catch |err| {
-			std.log.warn("Failed to save permission groups: {t}", .{err});
-		};
 	}
 
 	pub fn queueChunkAndDecreaseRefCount(self: *ServerWorld, pos: ChunkPosition, source: *User) void {
