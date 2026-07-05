@@ -101,8 +101,8 @@ fn escape(mods: Window.Key.Modifiers) void {
 }
 fn inventory(_: Window.Key.Modifiers) void {
 	if (game.world == null) return;
-	gui.openWindow("inventory");
-	gui.openWindow("hotbar");
+	gui.openWindow("cubyz:inventory");
+	gui.openWindow("cubyz:hotbar");
 	gui.toggleGameMenu();
 }
 fn ungrabMouse(_: Window.Key.Modifiers) void {
@@ -114,19 +114,19 @@ fn openCreativeInventory(mods: Window.Key.Modifiers) void {
 	if (game.world == null) return;
 	if (!game.Player.isCreative()) return;
 	ungrabMouse(mods);
-	gui.openWindow("creative_inventory");
+	gui.openWindow("cubyz:creative_inventory");
 }
 fn openChat(mods: Window.Key.Modifiers) void {
 	if (!gui.isWindowOpen("chat")) return;
 	ungrabMouse(mods);
-	gui.openWindow("chat");
-	gui.windowlist.chat.input.select();
+	gui.openWindow("cubyz:chat");
+	gui.windowlist.@"cubyz:chat".input.select();
 }
 fn openCommand(mods: Window.Key.Modifiers) void {
 	if (!gui.isWindowOpen("chat")) return;
 	openChat(mods);
-	gui.windowlist.chat.input.clear();
-	gui.windowlist.chat.input.inputCharacter('/');
+	gui.windowlist.@"cubyz:chat".input.clear();
+	gui.windowlist.@"cubyz:chat".input.inputCharacter('/');
 }
 fn takeBackgroundImageFn(_: Window.Key.Modifiers) void {
 	if (game.world == null) return;
@@ -148,22 +148,22 @@ fn toggleHideDisplayItem(_: Window.Key.Modifiers) void {
 	itemdrop.ItemDisplayManager.showItem = !itemdrop.ItemDisplayManager.showItem;
 }
 fn toggleDebugOverlay(_: Window.Key.Modifiers) void {
-	gui.toggleWindow("debug");
+	gui.toggleWindow("cubyz:debug");
 }
 fn togglePerformanceOverlay(_: Window.Key.Modifiers) void {
-	gui.toggleWindow("performance_graph");
+	gui.toggleWindow("cubyz:performance_graph");
 }
 fn toggleGPUPerformanceOverlay(_: Window.Key.Modifiers) void {
-	gui.toggleWindow("gpu_performance_measuring");
+	gui.toggleWindow("cubyz:gpu_performance_measuring");
 }
 fn toggleNetworkDebugOverlay(_: Window.Key.Modifiers) void {
-	gui.toggleWindow("debug_network");
+	gui.toggleWindow("cubyz:debug_network");
 }
 fn toggleAdvancedNetworkDebugOverlay(_: Window.Key.Modifiers) void {
-	gui.toggleWindow("debug_network_advanced");
+	gui.toggleWindow("cubyz:debug_network_advanced");
 }
 fn toggleVulkanDebugOverlay(_: Window.Key.Modifiers) void {
-	gui.toggleWindow("debug_vulkan_info");
+	gui.toggleWindow("cubyz:debug_vulkan_info");
 }
 fn cycleHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
 	return &struct {
@@ -426,12 +426,12 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 
 pub fn clientMain() void { // MARK: clientMain()
 	if (settings.playerName.len == 0) {
-		gui.openWindow("change_name");
+		gui.openWindow("cubyz:change_name");
 	} else if (settings.launchConfig.autoEnterWorld.len == 0) {
-		gui.openWindow("main");
+		gui.openWindow("cubyz:main");
 	} else {
 		// Speed up the dev process by entering the world directly.
-		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
+		gui.windowlist.@"cubyz:save_selection".openWorld(settings.launchConfig.autoEnterWorld);
 	}
 
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
@@ -445,13 +445,13 @@ pub fn clientMain() void { // MARK: clientMain()
 		if (!isHidden) {
 			c.glfwSwapBuffers(Window.window);
 			// Clear may also wait on vsync, so it's done before handling events:
-			gui.windowlist.gpu_performance_measuring.startQuery(.screenbuffer_clear);
+			gui.windowlist.@"cubyz:gpu_performance_measuring".startQuery(.screenbuffer_clear);
 			c.glDepthFunc(c.GL_LESS);
 			c.glDepthMask(c.GL_TRUE);
 			c.glDisable(c.GL_SCISSOR_TEST);
 			c.glClearColor(0.5, 1, 1, 1);
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-			gui.windowlist.gpu_performance_measuring.stopQuery();
+			gui.windowlist.@"cubyz:gpu_performance_measuring".stopQuery();
 		} else {
 			io.sleep(.fromMilliseconds(16), .awake) catch {};
 		}
@@ -492,9 +492,9 @@ pub fn clientMain() void { // MARK: clientMain()
 				renderer.MenuBackGround.render(deltaTime);
 			}
 			// Render the GUI
-			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
+			gui.windowlist.@"cubyz:gpu_performance_measuring".startQuery(.gui);
 			gui.updateAndRenderGui();
-			gui.windowlist.gpu_performance_measuring.stopQuery();
+			gui.windowlist.@"cubyz:gpu_performance_measuring".stopQuery();
 		}
 		if (shouldExitToMenu.load(.monotonic)) {
 			shouldExitToMenu.store(false, .monotonic);
@@ -503,7 +503,7 @@ pub fn clientMain() void { // MARK: clientMain()
 				world.deinit();
 				game.world = null;
 			}
-			gui.openWindow("main");
+			gui.openWindow("cubyz:main");
 			audio.setMusic("cubyz:totaldemented/cubyz_remastered");
 		}
 	}

@@ -24,7 +24,7 @@ pub const GuiComponent = gui_component.GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
 
 pub const tooltip = @import("tooltip.zig");
-pub const windowlist = @import("windows/_list.zig");
+pub const windowlist = @import("windows");
 const gamepad_cursor = @import("gamepad_cursor.zig");
 
 var windowList: ListManaged(*GuiWindow) = undefined;

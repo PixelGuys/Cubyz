@@ -160,6 +160,8 @@ pub fn addModFeatureModule(b: *std.Build, exe: *std.Build.Step.Compile, name: []
 		.optimize = exe.root_module.optimize,
 	});
 	module.addImport("main", exe.root_module);
+	module.addImport("c", exe.root_module.import_table.get("c").?);
+	module.addImport("build_options", exe.root_module.import_table.get("build_options").?);
 	exe.root_module.addImport(name, module);
 }
 
@@ -174,6 +176,7 @@ fn addModFeatures(b: *std.Build, exe: *std.Build.Step.Compile) !void {
 	exe.step.dependOn(step);
 
 	try addModFeatureModule(b, exe, "rotations");
+	try addModFeatureModule(b, exe, "windows");
 }
 
 pub fn makeModFeaturesStep(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
@@ -181,6 +184,7 @@ pub fn makeModFeaturesStep(step: *std.Build.Step, options: std.Build.Step.MakeOp
 	defer io.deinit();
 
 	try makeModFeature(io.io(), step, "rotations");
+	try makeModFeature(io.io(), step, "windows");
 }
 
 fn createLaunchConfig(b: *std.Build) !void {
@@ -260,13 +264,14 @@ pub fn build(b: *std.Build) !void {
 	});
 	exe.root_module.addOptions("build_options", options);
 	exe.root_module.addImport("main", mainModule);
-	try addModFeatures(b, exe);
 
 	if (isRelease and target.result.os.tag == .windows) {
 		exe.subsystem = .windows;
 	}
 
 	linkLibraries(b, exe, useLocalDeps);
+
+	try addModFeatures(b, exe);
 
 	var exeInstallOptions: std.Build.Step.InstallArtifact.Options = .{};
 	if (target.result.os.tag == .macos) {
