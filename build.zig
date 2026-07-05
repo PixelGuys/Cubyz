@@ -112,15 +112,19 @@ pub fn makeModFeature(io: std.Io, step: *std.Build.Step, name: []const u8) !void
 			if (featureEntry.kind != .file) continue;
 			if (!std.mem.endsWith(u8, featureEntry.basename, ".zig")) continue;
 
+			const normalizedPath = step.owner.dupe(featureEntry.path);
+			defer step.owner.allocator.free(normalizedPath);
+			if (std.Io.Dir.path.sep != '/') std.mem.replaceScalar(u8, normalizedPath, std.Io.Dir.path.sep, '/');
+
 			try modFeatureList.append(step.owner.allocator, step.owner.fmt(
 				\\pub const @"{s}:{s}" = @import("{s}/{s}/{s}");
 			,
 				.{
 					modEntry.name,
-					featureEntry.path[0 .. featureEntry.path.len - 4],
+					normalizedPath[0 .. normalizedPath.len - 4],
 					modEntry.name,
 					name,
-					featureEntry.path,
+					normalizedPath,
 				},
 			));
 		}
