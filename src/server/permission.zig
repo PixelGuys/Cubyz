@@ -273,11 +273,9 @@ pub fn deleteGroup(allocator: NeverFailingAllocator, name: []const u8) bool {
 
 	const path = std.fmt.allocPrint(allocator.allocator, "saves/{s}/groups/{d}.zon", .{main.server.world.?.path, group.value.id}) catch unreachable;
 	defer allocator.free(path);
-	if (main.files.cubyzDir().hasFile(path)) {
-		main.files.cubyzDir().deleteFile(path) catch |err| {
-			std.log.err("Couldn't delete group file even though it exits: {t}", .{err});
-		};
-	}
+	main.files.cubyzDir().deleteFile(path) catch |err| {
+		std.log.err("Couldn't delete group file even though it exits: {t}", .{err});
+	};
 	return true;
 }
 
