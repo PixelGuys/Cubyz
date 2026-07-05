@@ -14,12 +14,12 @@
 	.mountains = 20,
 	.chance = 0.5,
 	.ground_structure = .{
-		"0 to 1 cubyz:cold_grass",
+		"0 to 1 cubyz:grass/cold",
 	},
 	.structures = .{
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:dry_grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/dry"},
 			.chance = 0.03,
 			.width = 5,
 			.variation = 8,
@@ -28,7 +28,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:cold_grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/cold:1"},
 			.chance = 0.04,
 			.width = 5,
 			.variation = 8,
@@ -46,7 +46,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:cold_grass",
+			.block = "cubyz:grass/cold",
 			.chance = 0.1,
 			.width = 5,
 			.variation = 4,
@@ -55,7 +55,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:dry_grass",
+			.block = "cubyz:grass/dry",
 			.chance = 0.09,
 			.width = 6,
 			.variation = 5,

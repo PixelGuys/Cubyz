@@ -8,7 +8,7 @@
 		.oak,
 	},
 	.ground_structure = .{
-		"cubyz:grass",
+		"cubyz:grass/temperate",
 		"1 to 2 cubyz:soil",
 	},
 	.structures = .{
@@ -25,7 +25,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/temperate:1"},
 			.chance = 0.08,
 			.width = 3,
 			.variation = 2,

@@ -16,7 +16,7 @@
 	.validPlayerSpawn = false,
 	.music = "cubyz:mrmayman/out_of_breath",
 	.ground_structure = .{
-		"cubyz:cold_grass",
+		"cubyz:grass/cold",
 		"2 to 4 cubyz:permafrost",
 	},
 	.structures = .{
@@ -73,7 +73,7 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:cold_grass_vegetation",
+			.block = "cubyz:grass/vegetation/cold:1",
 			.chance = 0.2,
 			.height = 1,
 			.height_variation = 0,

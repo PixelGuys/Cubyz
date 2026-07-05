@@ -13,7 +13,7 @@
 	.music = "cubyz:mischol/simmer",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
-		"1 cubyz:dry_grass",
+		"1 cubyz:grass/dry",
 		"1 to 2 cubyz:dirt",
 		"3 to 4 cubyz:limestone/smooth",
 	},
@@ -29,7 +29,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:grass",
+			.block = "cubyz:grass/temperate",
 			.chance = 0.015,
 			.width = 9,
 			.variation = 7,
@@ -58,7 +58,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:dry_grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/dry"},
 			.chance = 0.15,
 			.width = 6,
 			.variation = 6,
@@ -67,14 +67,14 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:dry_grass_vegetation",
+			.block = "cubyz:grass/vegetation/dry",
 			.chance = 0.4,
 			.height = 1,
 			.height_variation = 0,
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/temperate:1"},
 			.chance = 0.06,
 			.width = 6,
 			.variation = 6,

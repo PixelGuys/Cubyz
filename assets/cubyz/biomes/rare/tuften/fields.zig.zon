@@ -13,7 +13,7 @@
 	.music = "cubyz:ikabod/chimes",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
-		"cubyz:grass",
+		"cubyz:grass/temperate",
 		"2 to 3 cubyz:soil",
 	},
 	.structures = .{
@@ -56,7 +56,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/temperate:1"},
 			.chance = 0.1,
 			.width = 5,
 			.variation = 8,
