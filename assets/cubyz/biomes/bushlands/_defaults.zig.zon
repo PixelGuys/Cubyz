@@ -2,6 +2,10 @@
 	.properties = .{
 		.hot,
 	},
+	.tags = .{
+		.oak,
+		.baobab,
+	},
 	.minHeightLimit = 7,
 	.minHeight = 24,
 	.maxHeight = 60,
