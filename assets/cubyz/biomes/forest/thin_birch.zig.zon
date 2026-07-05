@@ -15,7 +15,7 @@
 	.music = "cubyz:totaldemented/leaves",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
-		"cubyz:grass",
+		"cubyz:grass/temperate",
 		"1 to 2 cubyz:soil",
 	},
 	.structures = .{
@@ -30,7 +30,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:moss:cubyz:slate/cobble",
+			.block = "cubyz:moss:cubyz:slate/rough",
 			.chance = 0.05,
 			.width = 2,
 			.variation = 9,
@@ -69,13 +69,13 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.01,
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.size = 3,
 			.size_variance = 5,
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/temperate"},
 			.chance = 0.25,
 			.width = 15,
 			.variation = 8,

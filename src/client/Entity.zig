@@ -34,10 +34,10 @@ name: []const u8,
 
 pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) !void {
 	self.* = @This(){
-		.id = @enumFromInt(zon.get(u32, "id", std.math.maxInt(u32))),
-		.width = zon.get(f64, "width", 1),
-		.height = zon.get(f64, "height", 1),
-		.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
+		.id = @enumFromInt(zon.get(u32, "id") orelse std.math.maxInt(u32)),
+		.width = zon.get(f64, "width") orelse 1,
+		.height = zon.get(f64, "height") orelse 1,
+		.name = allocator.dupe(u8, zon.get([]const u8, "name") orelse ""),
 	};
 	self._interpolationPos = [_]f64{
 		self.pos[0],

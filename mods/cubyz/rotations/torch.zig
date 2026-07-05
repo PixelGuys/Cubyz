@@ -38,8 +38,8 @@ pub fn reset() void {
 }
 
 pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
-	const baseModelId: []const u8 = zon.get([]const u8, "base", "cubyz:cube");
-	const sideModelId: []const u8 = zon.get([]const u8, "side", "cubyz:cube");
+	const baseModelId: []const u8 = zon.get([]const u8, "base") orelse "cubyz:cube";
+	const sideModelId: []const u8 = zon.get([]const u8, "side") orelse "cubyz:cube";
 	const key: []const u8 = std.mem.concat(main.stackAllocator.allocator, u8, &.{baseModelId, sideModelId}) catch unreachable;
 	defer main.stackAllocator.free(key);
 

@@ -15,7 +15,7 @@
 	.validPlayerSpawn = false,
 
 	.ground_structure = .{
-		"0 to 1 cubyz:slate/cobble",
+		"0 to 1 cubyz:slate/rough",
 	},
 	.structures = .{
 		.{

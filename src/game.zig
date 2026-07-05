@@ -295,11 +295,10 @@ pub const World = struct { // MARK: World
 		self.itemDrops.init(main.globalAllocator);
 		errdefer self.itemDrops.deinit();
 
-		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
+		const handshakeZon = try network.protocols.handShake.clientSide(self.conn, settings.playerName);
 
-		try self.finishHandshake(main.network.protocols.handShake.handshakeZon);
-		main.network.protocols.handShake.assetsLoadedCondition.signal();
-		main.network.protocols.handShake.hasFinishedLoadingAssets = true;
+		try self.finishHandshake(handshakeZon);
+		main.network.protocols.handShake.signalLoadedAssets();
 	}
 
 	pub fn deinit(self: *World) void {
@@ -338,7 +337,7 @@ pub const World = struct { // MARK: World
 		main.heap.allocators.destroyWorldArena();
 	}
 
-	pub fn finishHandshake(self: *World, zon: ZonElement) !void {
+	fn finishHandshake(self: *World, zon: ZonElement) !void {
 		// TODO: Consider using a per-world allocator.
 		self.blockPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("blockPalette"), "cubyz:air");
 		errdefer self.blockPalette.deinit();
@@ -356,9 +355,9 @@ pub const World = struct { // MARK: World
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/serverAssets", .{main.files.cubyzDirStr()}) catch unreachable;
 		defer main.stackAllocator.free(path);
 		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.proceduralItemPalette, self.biomePalette, self.entityModelPalette, self.entityComponentPalette);
-		Player.id = @enumFromInt(zon.get(u32, "player_id", @intFromEnum(main.entity.Entity.noValue)));
+		Player.id = @enumFromInt(zon.get(u32, "player_id") orelse @intFromEnum(main.entity.Entity.noValue));
 		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .serverShared, .{.playerInventory = Player.id}, .{});
-		Player.setGamemode(std.enums.fromInt(Gamemode, zon.get(?u8, "gamemode", null) orelse return error.Invalid) orelse return error.Invalid);
+		Player.setGamemode(std.enums.fromInt(Gamemode, zon.get(u8, "gamemode") orelse return error.Invalid) orelse return error.Invalid);
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
 

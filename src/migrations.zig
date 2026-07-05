@@ -75,8 +75,8 @@ fn register(
 	}
 
 	for (migrationZon.array.items) |migration| {
-		const oldZonOpt = migration.get(?[]const u8, "old", null);
-		const newZonOpt = migration.get(?[]const u8, "new", null);
+		const oldZonOpt = migration.get([]const u8, "old");
+		const newZonOpt = migration.get([]const u8, "new");
 
 		if (oldZonOpt == null or newZonOpt == null) {
 			std.log.err("Skipping incomplete migration in {s} migrations: '{s}:{s}' -> '{s}:{s}'", .{@tagName(typ), addonName, oldZonOpt orelse "<null>", addonName, newZonOpt orelse "<null>"});
