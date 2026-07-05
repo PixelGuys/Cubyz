@@ -295,14 +295,10 @@ pub const World = struct { // MARK: World
 		self.itemDrops.init(main.globalAllocator);
 		errdefer self.itemDrops.deinit();
 
-		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
+		const handshakeZon = try network.protocols.handShake.clientSide(self.conn, settings.playerName);
 
-		main.Window.setMouseGrabbed(true);
-
-		main.blocks.meshes.generateTextureArray();
-		main.particles.ParticleManager.generateTextureArray();
-		main.models.uploadModels();
-		main.entityModel.loadModelsAndTexture();
+		try self.finishHandshake(handshakeZon);
+		main.network.protocols.handShake.signalLoadedAssets();
 	}
 
 	pub fn deinit(self: *World) void {
@@ -341,7 +337,7 @@ pub const World = struct { // MARK: World
 		main.heap.allocators.destroyWorldArena();
 	}
 
-	pub fn finishHandshake(self: *World, zon: ZonElement) !void {
+	fn finishHandshake(self: *World, zon: ZonElement) !void {
 		// TODO: Consider using a per-world allocator.
 		self.blockPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("blockPalette"), "cubyz:air");
 		errdefer self.blockPalette.deinit();
@@ -364,6 +360,12 @@ pub const World = struct { // MARK: World
 		Player.setGamemode(std.enums.fromInt(Gamemode, zon.get(u8, "gamemode") orelse return error.Invalid) orelse return error.Invalid);
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
+
+		main.Window.setMouseGrabbed(true);
+		main.blocks.meshes.generateTextureArray();
+		main.particles.ParticleManager.generateTextureArray();
+		main.models.uploadModels();
+		main.entityModel.loadModelsAndTexture();
 
 		try Player.loadFrom(zon.getChild("player"));
 	}
