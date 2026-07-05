@@ -158,7 +158,7 @@ pub const Group = struct { // MARK: Group
 		self.permissions.toZon(allocator, zon);
 	}
 
-	pub fn save(self: *Group, allocator: NeverFailingAllocator) void {
+	fn save(self: *Group, allocator: NeverFailingAllocator) void {
 		if (builtin.is_test) return;
 		sync.threadContext.assertCorrectContext(.server);
 		const path = std.fmt.allocPrint(allocator.allocator, "saves/{s}/groups/{d}.zon", .{main.server.world.?.path, self.id}) catch unreachable;
