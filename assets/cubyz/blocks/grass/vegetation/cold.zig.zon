@@ -3,5 +3,4 @@
 	.item = .{
 		.texture = "grass_vegetation/cold.png",
 	},
-	.lodReplacement = "cubyz:air",
 }
