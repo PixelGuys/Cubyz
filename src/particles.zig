@@ -59,7 +59,7 @@ pub const ParticleManager = struct {
 	}
 
 	pub fn register(assetsFolder: []const u8, id: []const u8, zon: ZonElement) void {
-		const textureId = zon.get(?[]const u8, "texture", null) orelse {
+		const textureId = zon.get([]const u8, "texture") orelse {
 			std.log.err("Particle texture id was not specified for {s} ({s})", .{id, assetsFolder});
 			return;
 		};
@@ -164,7 +164,7 @@ pub const ParticleSystem = struct {
 	var particleCount: u32 = 0;
 	var particles: [maxCapacity]Particle = undefined;
 	var particlesLocal: [maxCapacity]ParticleLocal = undefined;
-	var previousPlayerPos: Vec3d = undefined;
+	var previousPlayerPos: Vec3i = undefined;
 
 	var mutex: main.utils.Mutex = .{};
 	var networkCreationQueue: main.List(struct { emitter: Emitter, pos: Vec3d, count: u32 }) = .empty;
@@ -217,8 +217,9 @@ pub const ParticleSystem = struct {
 		mutex.unlock();
 
 		const vecDeltaTime: Vec4f = @as(Vec4f, @splat(deltaTime));
-		const playerPos = game.Player.getEyePosBlocking();
-		const prevPlayerPosDifference: Vec3f = @floatCast(previousPlayerPos - playerPos);
+		const playerPosInt: Vec3i = @intFromFloat(game.Player.getEyePosBlocking());
+		const playerPos: Vec3d = @floatFromInt(playerPosInt);
+		const prevPlayerPosDifference: Vec3f = @floatFromInt(previousPlayerPos -% playerPosInt);
 
 		var i: u32 = 0;
 		while (i < particleCount) {
@@ -245,7 +246,7 @@ pub const ParticleSystem = struct {
 			particleLocal.velAndRotationVel *= @splat(@exp(-frictionCoefficient*deltaTime));
 
 			if (particleLocal.collides) {
-				var v3Pos = playerPos + @as(Vec3d, @floatCast(pos + prevPlayerPosDifference));
+				var v3Pos = playerPos + (pos + prevPlayerPosDifference);
 				const size = ParticleManager.types.items[particle.typ].size;
 				const hitBox: physics.collision.Box = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
 
@@ -254,25 +255,25 @@ pub const ParticleSystem = struct {
 				v3Pos[0] += posDelta[0];
 				if (physics.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
 					if (posDelta[0] < 0) {
-						v3Pos[0] = box.max[0] - hitBox.min[0];
+						v3Pos[0] = box.max[0] - hitBox.min[0] + physics.epsilon;
 					} else {
-						v3Pos[0] = box.min[0] - hitBox.max[0];
+						v3Pos[0] = box.min[0] - hitBox.max[0] - physics.epsilon;
 					}
 				}
 				v3Pos[1] += posDelta[1];
 				if (physics.collision.collides(.client, .y, -posDelta[1], v3Pos, hitBox)) |box| {
 					if (posDelta[1] < 0) {
-						v3Pos[1] = box.max[1] - hitBox.min[1];
+						v3Pos[1] = box.max[1] - hitBox.min[1] + physics.epsilon;
 					} else {
-						v3Pos[1] = box.min[1] - hitBox.max[1];
+						v3Pos[1] = box.min[1] - hitBox.max[1] - physics.epsilon;
 					}
 				}
 				v3Pos[2] += posDelta[2];
 				if (physics.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
 					if (posDelta[2] < 0) {
-						v3Pos[2] = box.max[2] - hitBox.min[2];
+						v3Pos[2] = box.max[2] - hitBox.min[2] + physics.epsilon;
 					} else {
-						v3Pos[2] = box.min[2] - hitBox.max[2];
+						v3Pos[2] = box.min[2] - hitBox.max[2] - physics.epsilon;
 					}
 				}
 				pos = @as(Vec3f, @floatCast(v3Pos - playerPos));
@@ -300,7 +301,7 @@ pub const ParticleSystem = struct {
 
 			i += 1;
 		}
-		previousPlayerPos = playerPos;
+		previousPlayerPos = playerPosInt;
 	}
 
 	fn addParticle(typ: u32, particleType: ParticleTypeLocal, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties) void {
@@ -311,7 +312,7 @@ pub const ParticleSystem = struct {
 		const dragCoeff = particleType.dragCoefficient.get(&main.seed);
 
 		particles[particleCount] = Particle{
-			.pos = @as(Vec3f, @floatCast(pos - previousPlayerPos)),
+			.pos = @as(Vec3f, @floatCast(pos - @as(Vec3d, @floatFromInt(previousPlayerPos)))),
 			.rot = rot,
 			.typ = typ,
 		};
@@ -330,7 +331,7 @@ pub const ParticleSystem = struct {
 
 		pipeline.bind(null);
 
-		const projectionAndViewMatrix = Mat4f.mul(projectionMatrix, viewMatrix);
+		const projectionAndViewMatrix = Mat4f.mul(projectionMatrix, viewMatrix.mul(.translation(@floatCast(-game.Player.getEyePosBlocking() + @as(Vec3d, @floatFromInt(previousPlayerPos))))));
 		c.glUniformMatrix4fv(uniforms.projectionAndViewMatrix, 1, c.GL_TRUE, @ptrCast(&projectionAndViewMatrix));
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 
@@ -374,7 +375,7 @@ pub const EmitterProperties = struct {
 		return EmitterProperties{
 			.speed = RandomRange(f32).fromZon(zon.getChild("speed")) orelse .init(1, 1.5),
 			.lifeTime = RandomRange(f32).fromZon(zon.getChild("lifeTime")) orelse .init(0.75, 1),
-			.randomizeRotation = zon.get(bool, "randomRotate", true),
+			.randomizeRotation = zon.get(bool, "randomRotate") orelse true,
 		};
 	}
 };
@@ -388,10 +389,10 @@ pub const DirectionMode = union(enum) {
 	direction: Vec3f,
 
 	pub fn parse(zon: ZonElement) !DirectionMode {
-		const dirModeName = zon.get([]const u8, "mode", @tagName(DirectionMode.spread));
+		const dirModeName = zon.get([]const u8, "mode") orelse @tagName(DirectionMode.spread);
 		const dirMode = std.meta.stringToEnum(std.meta.Tag(DirectionMode), dirModeName) orelse return error.InvalidDirectionMode;
 		return switch (dirMode) {
-			.direction => .{.direction = zon.get(Vec3f, "direction", .{0, 0, 1})},
+			.direction => .{.direction = zon.get(Vec3f, "direction") orelse .{0, 0, 1}},
 			inline else => |mode| @unionInit(DirectionMode, @tagName(mode), {}),
 		};
 	}
@@ -417,7 +418,7 @@ pub const Emitter = struct {
 		}
 
 		pub fn parse(zon: ZonElement) !SpawnShape {
-			const typeZon = zon.get([]const u8, "shape", @tagName(SpawnShape.point));
+			const typeZon = zon.get([]const u8, "shape") orelse @tagName(SpawnShape.point);
 			const spawnType = std.meta.stringToEnum(std.meta.Tag(SpawnShape), typeZon) orelse return error.InvalidType;
 			return switch (spawnType) {
 				inline else => |shape| @unionInit(SpawnShape, @tagName(shape), try @FieldType(SpawnShape, @tagName(shape)).parse(zon)),
@@ -467,7 +468,7 @@ pub const Emitter = struct {
 
 		pub fn parse(zon: ZonElement) !SpawnSphere {
 			return SpawnSphere{
-				.radius = zon.get(f32, "radius", 1),
+				.radius = zon.get(f32, "radius") orelse 1,
 			};
 		}
 	};
@@ -492,7 +493,7 @@ pub const Emitter = struct {
 
 		pub fn parse(zon: ZonElement) !SpawnCube {
 			return SpawnCube{
-				.size = zon.get(?Vec3f, "size", null) orelse @splat(zon.get(f32, "size", 1)),
+				.size = zon.get(Vec3f, "size") orelse @splat(zon.get(f32, "size") orelse 1),
 			};
 		}
 	};

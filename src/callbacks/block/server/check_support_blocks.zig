@@ -47,6 +47,7 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 		const drops = params.block.blockDrops();
 		for (0..dropAmount) |_| {
 			for (drops) |drop| {
+				if (!drop.isDroppedWhenBrokenWithItem(.null)) continue;
 				if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
 					for (drop.items) |stack| {
 						var dir = main.vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));
