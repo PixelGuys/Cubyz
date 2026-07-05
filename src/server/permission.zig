@@ -153,7 +153,7 @@ pub const Group = struct { // MARK: Group
 		return self;
 	}
 
-	pub fn toZon(self: *Group, allocator: NeverFailingAllocator, zon: *ZonElement) void {
+	fn toZon(self: *Group, allocator: NeverFailingAllocator, zon: *ZonElement) void {
 		sync.threadContext.assertCorrectContext(.server);
 		self.permissions.toZon(allocator, zon);
 	}
