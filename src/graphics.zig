@@ -470,7 +470,7 @@ pub const draw = struct { // MARK: draw
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
-	pub fn drawSlice(destMin: Vec2f, destMax: Vec2f, uvMin: Vec2f, uvMax: Vec2f) void {
+	fn drawSlice(destMin: Vec2f, destMax: Vec2f, uvMin: Vec2f, uvMax: Vec2f) void {
 		boundSubImage(destMin, destMax - destMin, uvMin, uvMax - uvMin);
 	}
 
