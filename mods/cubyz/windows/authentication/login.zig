@@ -31,14 +31,14 @@ fn login() void {
 	defer accountCode.deinit();
 
 	if (accountCode.text.len == 0) {
-		main.gui.windowlist.@"cubyz:notification".raiseNotification("Account Code is empty. Please enter a valid Account Code.", .{});
+		main.gui.windows.@"cubyz:notification".raiseNotification("Account Code is empty. Please enter a valid Account Code.", .{});
 		return;
 	}
 
 	if (failureText.items.len != 0 and !loginAnyways) {
 		failureText.insertSlice(0, "Encountered errors while verifying your Account. This may happen if you created your account in a future version, in which case it's fine to continue.\n\n");
 
-		main.gui.windowlist.@"cubyz:notification".raiseNotification("{s}", .{failureText.items});
+		main.gui.windows.@"cubyz:notification".raiseNotification("{s}", .{failureText.items});
 
 		loginAnyways = true;
 		loginButton.child.label.updateText("Login anyways");
@@ -49,7 +49,7 @@ fn login() void {
 	main.network.authentication.KeyCollection.init(accountCode);
 
 	gui.closeWindowFromRef(&window);
-	gui.windowlist.@"cubyz:authentication/stay_logged_in".setAccountCode(accountCode);
+	gui.windows.@"cubyz:authentication/stay_logged_in".setAccountCode(accountCode);
 	accountCode = .{.text = &.{}};
 	gui.openWindow("cubyz:authentication/stay_logged_in");
 }

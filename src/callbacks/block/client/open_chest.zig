@@ -19,7 +19,7 @@ pub fn run(_: *anyopaque, params: main.callbacks.ClientBlockCallback.Params) mai
 
 	const inventory = main.items.Inventory.ClientInventory.init(main.globalAllocator, main.block_entity.BlockEntityTypes.@"cubyz:chest".inventorySize, .serverShared, .{.blockInventory = params.blockPos}, .{});
 
-	main.gui.windowlist.@"cubyz:chest".setInventory(inventory);
+	main.gui.windows.@"cubyz:chest".setInventory(inventory);
 	main.gui.openWindow("cubyz:chest");
 	main.Window.setMouseGrabbed(false);
 

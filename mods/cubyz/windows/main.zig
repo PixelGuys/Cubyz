@@ -22,7 +22,7 @@ fn exitGame() void {
 	c.glfwSetWindowShouldClose(main.Window.window, c.GLFW_TRUE);
 }
 fn singleplayerSelection() void {
-	gui.windowlist.@"cubyz:save_selection".mode = .singleplayer;
+	gui.windows.@"cubyz:save_selection".mode = .singleplayer;
 	gui.closeWindow("cubyz:save_selection");
 	gui.openWindow("cubyz:save_selection");
 }

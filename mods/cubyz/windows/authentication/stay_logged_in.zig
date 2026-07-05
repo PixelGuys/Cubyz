@@ -28,7 +28,7 @@ pub fn setAccountCode(accountCode_: main.network.authentication.AccountCode) voi
 }
 
 fn stayLoggedIn() void {
-	gui.windowlist.@"cubyz:authentication/encrypt_with_password".setAccountCode(accountCode);
+	gui.windows.@"cubyz:authentication/encrypt_with_password".setAccountCode(accountCode);
 	accountCode = .{.text = &.{}};
 	gui.closeWindowFromRef(&window);
 	gui.openWindow("cubyz:authentication/encrypt_with_password");

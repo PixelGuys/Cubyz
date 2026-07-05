@@ -13,7 +13,7 @@ const HorizontalList = GuiComponent.HorizontalList;
 const Label = GuiComponent.Label;
 const TextInput = GuiComponent.TextInput;
 const VerticalList = GuiComponent.VerticalList;
-const StorageMethod = gui.windowlist.@"cubyz:authentication/create_account_account_code".StorageMethod;
+const StorageMethod = gui.windows.@"cubyz:authentication/create_account_account_code".StorageMethod;
 
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
@@ -25,7 +25,7 @@ const padding: f32 = 8;
 
 fn next(storageMethod: usize) void {
 	gui.closeWindowFromRef(&window);
-	gui.windowlist.@"cubyz:authentication/create_account_account_code".setStorageMethod(@enumFromInt(storageMethod));
+	gui.windows.@"cubyz:authentication/create_account_account_code".setStorageMethod(@enumFromInt(storageMethod));
 	gui.openWindow("cubyz:authentication/create_account_account_code");
 }
 

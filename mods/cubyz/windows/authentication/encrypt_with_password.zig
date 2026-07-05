@@ -65,7 +65,7 @@ fn refreshInner() void {
 }
 
 fn back() void {
-	gui.windowlist.@"cubyz:authentication/stay_logged_in".setAccountCode(accountCode);
+	gui.windows.@"cubyz:authentication/stay_logged_in".setAccountCode(accountCode);
 	accountCode = .{.text = &.{}};
 	gui.closeWindowFromRef(&window);
 	gui.openWindow("cubyz:authentication/stay_logged_in");

@@ -120,13 +120,13 @@ fn openChat(mods: Window.Key.Modifiers) void {
 	if (!gui.isWindowOpen("chat")) return;
 	ungrabMouse(mods);
 	gui.openWindow("cubyz:chat");
-	gui.windowlist.@"cubyz:chat".input.select();
+	gui.windows.@"cubyz:chat".input.select();
 }
 fn openCommand(mods: Window.Key.Modifiers) void {
 	if (!gui.isWindowOpen("chat")) return;
 	openChat(mods);
-	gui.windowlist.@"cubyz:chat".input.clear();
-	gui.windowlist.@"cubyz:chat".input.inputCharacter('/');
+	gui.windows.@"cubyz:chat".input.clear();
+	gui.windows.@"cubyz:chat".input.inputCharacter('/');
 }
 fn takeBackgroundImageFn(_: Window.Key.Modifiers) void {
 	if (game.world == null) return;
@@ -431,7 +431,7 @@ pub fn clientMain() void { // MARK: clientMain()
 		gui.openWindow("cubyz:main");
 	} else {
 		// Speed up the dev process by entering the world directly.
-		gui.windowlist.@"cubyz:save_selection".openWorld(settings.launchConfig.autoEnterWorld);
+		gui.windows.@"cubyz:save_selection".openWorld(settings.launchConfig.autoEnterWorld);
 	}
 
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
@@ -445,13 +445,13 @@ pub fn clientMain() void { // MARK: clientMain()
 		if (!isHidden) {
 			c.glfwSwapBuffers(Window.window);
 			// Clear may also wait on vsync, so it's done before handling events:
-			gui.windowlist.@"cubyz:gpu_performance_measuring".startQuery(.screenbuffer_clear);
+			gui.windows.@"cubyz:gpu_performance_measuring".startQuery(.screenbuffer_clear);
 			c.glDepthFunc(c.GL_LESS);
 			c.glDepthMask(c.GL_TRUE);
 			c.glDisable(c.GL_SCISSOR_TEST);
 			c.glClearColor(0.5, 1, 1, 1);
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-			gui.windowlist.@"cubyz:gpu_performance_measuring".stopQuery();
+			gui.windows.@"cubyz:gpu_performance_measuring".stopQuery();
 		} else {
 			io.sleep(.fromMilliseconds(16), .awake) catch {};
 		}
@@ -492,9 +492,9 @@ pub fn clientMain() void { // MARK: clientMain()
 				renderer.MenuBackGround.render(deltaTime);
 			}
 			// Render the GUI
-			gui.windowlist.@"cubyz:gpu_performance_measuring".startQuery(.gui);
+			gui.windows.@"cubyz:gpu_performance_measuring".startQuery(.gui);
 			gui.updateAndRenderGui();
-			gui.windowlist.@"cubyz:gpu_performance_measuring".stopQuery();
+			gui.windows.@"cubyz:gpu_performance_measuring".stopQuery();
 		}
 		if (shouldExitToMenu.load(.monotonic)) {
 			shouldExitToMenu.store(false, .monotonic);

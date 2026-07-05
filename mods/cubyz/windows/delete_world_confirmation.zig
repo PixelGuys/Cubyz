@@ -35,7 +35,7 @@ fn flawedDeleteWorld(name: []const u8) !void {
 	const path = std.mem.concat(main.stackAllocator.allocator, u8, &.{"saves/", name}) catch unreachable;
 	defer main.stackAllocator.free(path);
 	try main.files.cubyzDir().deleteTree(path);
-	gui.windowlist.@"cubyz:save_selection".needsUpdate = true;
+	gui.windows.@"cubyz:save_selection".needsUpdate = true;
 }
 
 fn deleteWorld() void {

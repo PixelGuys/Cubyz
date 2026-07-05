@@ -15,7 +15,7 @@ pub var window = GuiWindow{
 const padding: f32 = 8;
 
 fn multiplayerSelection() void {
-	gui.windowlist.@"cubyz:save_selection".mode = .multiplayer;
+	gui.windows.@"cubyz:save_selection".mode = .multiplayer;
 	gui.closeWindow("cubyz:save_selection");
 	gui.openWindow("cubyz:save_selection");
 }

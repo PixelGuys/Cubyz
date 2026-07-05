@@ -42,7 +42,7 @@ fn logout() void {
 		if (std.mem.containsAtLeast(u8, openWindow.id, 1, "multiplayer")) {
 			gui.closeWindowFromRef(openWindow);
 		}
-		if (openWindow == &gui.windowlist.@"cubyz:save_selection".window and gui.windowlist.@"cubyz:save_selection".mode == .multiplayer) {
+		if (openWindow == &gui.windows.@"cubyz:save_selection".window and gui.windows.@"cubyz:save_selection".mode == .multiplayer) {
 			gui.closeWindowFromRef(openWindow);
 		}
 	}
