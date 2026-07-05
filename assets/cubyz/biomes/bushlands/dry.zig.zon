@@ -30,7 +30,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:dry_grass",
+			.block = "cubyz:grass/dry",
 			.chance = 0.02,
 			.width = 14,
 			.variation = 4,
@@ -48,7 +48,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:dry_grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/dry"},
 			.chance = 0.08,
 			.width = 5,
 			.variation = 6,
@@ -57,7 +57,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/temperate"},
 			.chance = 0.05,
 			.width = 5,
 			.variation = 6,
