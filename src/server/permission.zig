@@ -154,7 +154,8 @@ pub const Group = struct { // MARK: Group
 
 	pub fn save(self: *Group, allocator: NeverFailingAllocator) void {
 		if (builtin.is_test) return;
-		const path = std.fmt.allocPrint(allocator.allocator, "{s}/{d}.zon", .{main.server.world.?.path, self.id}) catch unreachable;
+		sync.threadContext.assertCorrectContext(.server);
+		const path = std.fmt.allocPrint(allocator.allocator, "saves/{s}/groups/{d}.zon", .{main.server.world.?.path, self.id}) catch unreachable;
 		defer allocator.free(path);
 		var groupZon: ZonElement = .initObject(allocator);
 		defer groupZon.deinit(allocator);
@@ -244,7 +245,7 @@ pub fn loadGroups(dir: main.files.Dir) !void {
 
 fn saveMetaData(allocator: NeverFailingAllocator) !void {
 	if (builtin.is_test) return;
-	const metadatPath = std.fmt.allocPrint(allocator.allocator, "{s}/metadata.zon", .{main.server.world.?.path}) catch unreachable;
+	const metadatPath = std.fmt.allocPrint(allocator.allocator, "saves/{s}/groups/metadata.zon", .{main.server.world.?.path}) catch unreachable;
 	defer allocator.free(metadatPath);
 	var metadataZon: ZonElement = .initObject(main.stackAllocator);
 	defer metadataZon.deinit(main.stackAllocator);
@@ -270,7 +271,7 @@ pub fn deleteGroup(allocator: NeverFailingAllocator, name: []const u8) bool {
 	sync.threadContext.assertCorrectContext(.server);
 	const group = groups.fetchRemove(name) orelse return false;
 
-	const path = std.fmt.allocPrint(allocator.allocator, "{s}/{d}.zon", .{main.server.world.?.path, group.value.id}) catch unreachable;
+	const path = std.fmt.allocPrint(allocator.allocator, "saves/{s}/groups/{d}.zon", .{main.server.world.?.path, group.value.id}) catch unreachable;
 	defer allocator.free(path);
 	if (main.files.cubyzDir().hasFile(path)) {
 		main.files.cubyzDir().deleteFile(path) catch |err| {
