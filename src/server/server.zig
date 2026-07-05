@@ -539,7 +539,7 @@ pub const User = struct { // MARK: User
 
 	pub fn removeFromGroup(self: *User, groupName: []const u8) bool {
 		sync.threadContext.assertCorrectContext(.server);
-		const groupNamePtr = (self.permissionGroups.getKeyPtr(groupName) orelse return false).*;
+		const groupNamePtr = self.permissionGroups.getKey(groupName) orelse return false;
 		_ = self.permissionGroups.remove(groupName);
 		main.globalAllocator.free(groupNamePtr);
 		return true;
