@@ -119,7 +119,7 @@ pub const Group = struct { // MARK: Group
 	// not owned by the group, instead owned by the groups StringHashMap
 	name: []const u8,
 
-	pub fn init(allocator: NeverFailingAllocator, name: []const u8) *Group {
+	fn init(allocator: NeverFailingAllocator, name: []const u8) *Group {
 		sync.threadContext.assertCorrectContext(.server);
 		currentId += 1;
 		saveMetaData(allocator) catch |err| {
@@ -133,6 +133,12 @@ pub const Group = struct { // MARK: Group
 		};
 		self.save(allocator);
 		return self;
+	}
+
+	fn deinit(self: *Group, allocator: NeverFailingAllocator) void {
+		sync.threadContext.assertCorrectContext(.server);
+		self.permissions.deinit();
+		allocator.destroy(self);
 	}
 
 	pub fn fromZon(allocator: NeverFailingAllocator, zon: ZonElement, id: u32, name: []const u8) *Group {
@@ -164,12 +170,6 @@ pub const Group = struct { // MARK: Group
 		main.files.cubyzDir().writeZon(path, groupZon) catch |err| {
 			std.log.err("Couldn't save permission group: {s} {t}", .{self.name, err});
 		};
-	}
-
-	pub fn deinit(self: *Group, allocator: NeverFailingAllocator) void {
-		sync.threadContext.assertCorrectContext(.server);
-		self.permissions.deinit();
-		allocator.destroy(self);
 	}
 
 	pub fn addPermission(self: *Group, allocator: NeverFailingAllocator, listType: Permissions.ListType, permissionPath: []const u8) void {
@@ -430,5 +430,30 @@ test "permissionListToFromZon" {
 	var it = testPermissions.whitelist.map.keyIterator();
 	while (it.next()) |item| {
 		try std.testing.expectEqual(true, permissions.whitelist.map.contains(item.*));
+	}
+}
+
+test "permissionGroupToFromZon" {
+	init(main.heap.testingAllocator, 0);
+	defer deinit();
+
+	try createGroup("test");
+	const group = try getGroup("test");
+
+	group.addPermission(main.heap.testingAllocator, .white, "/command/test");
+	group.addPermission(main.heap.testingAllocator, .white, "/command/spawn");
+
+	var zon: ZonElement = .initObject(main.heap.testingAllocator);
+	defer zon.deinit(main.heap.testingAllocator);
+	group.toZon(main.heap.testingAllocator, &zon);
+
+	var testGroup: *Group = .fromZon(main.heap.testingAllocator, zon, 0, "test2");
+	defer testGroup.deinit(main.heap.testingAllocator);
+
+	try std.testing.expectEqual(2, testGroup.permissions.whitelist.map.size);
+
+	var it = testGroup.permissions.whitelist.map.keyIterator();
+	while (it.next()) |item| {
+		try std.testing.expectEqual(true, group.permissions.whitelist.map.contains(item.*));
 	}
 }
