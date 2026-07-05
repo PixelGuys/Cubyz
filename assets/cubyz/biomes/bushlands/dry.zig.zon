@@ -2,6 +2,9 @@
 	.properties = .{
 		.dry,
 	},
+	.tags = .{
+		.cactus,
+	},
 	.chance = 0,
 	.keepOriginalTerrain = 1,
 	.minRadius = 20,
