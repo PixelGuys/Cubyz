@@ -990,6 +990,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			user.gamemode = .init(self.settings.defaultGamemode);
 		} else {
 			user.permissions.fromZon(playerData);
+			user.groupListFromZon(playerData.getChild("permissionGroups"));
 
 			user.gamemode = .init(std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode") orelse @tagName(self.settings.defaultGamemode)) orelse self.settings.defaultGamemode);
 		}
