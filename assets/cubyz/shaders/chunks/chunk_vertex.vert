@@ -11,10 +11,14 @@ layout(location = 7) flat out float distanceForLodCheck;
 layout(location = 8) flat out int opaqueInLod;
 
 layout(location = 0) uniform vec3 ambientLight;
-layout(location = 1) uniform mat4 projectionMatrix;
-layout(location = 2) uniform mat4 viewMatrix;
-layout(location = 3) uniform ivec3 playerPositionInteger;
-layout(location = 4) uniform vec3 playerPositionFraction;
+
+layout (std140, binding = 0) uniform _frameData
+{
+	mat4 projectionMatrix;
+	mat4 viewMatrix;
+	ivec3 playerPositionInteger;
+	vec3 playerPositionFraction;
+};
 
 #ifdef ENTITY
 layout(location = 14) uniform mat4 modelMatrix;

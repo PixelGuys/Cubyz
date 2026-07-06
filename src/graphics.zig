@@ -1293,9 +1293,11 @@ pub fn init() void { // MARK: init()
 	block_texture.init();
 	pipelines.init();
 	RenderPass.initRenderPasses() catch @panic("Failed to create render passes");
+	frame_uniforms.init();
 }
 
 pub fn deinit() void {
+	frame_uniforms.deinit();
 	RenderPass.deinitRenderPasses();
 	draw.deinitCircle();
 	draw.deinitImage();
@@ -2166,6 +2168,49 @@ pub const Image = struct { // MARK: Image
 	}
 };
 
+pub const frame_uniforms = struct { // MARK: frame_uniforms
+	const Data = extern struct {
+		projectionMatrix: [4][4]f32,
+		viewMatrix: [4][4]f32,
+		playerPositionInteger: [3]i32 align(16),
+		playerPositionFraction: [3]f32 align(16),
+	};
+
+	var buffers: [3]c_uint = undefined;
+	var fences: [3]c.GLsync = undefined;
+	var currentFrame: usize = 0;
+
+	fn init() void {
+		c.glGenBuffers(buffers.len, &buffers);
+		for (buffers) |buffer| {
+			c.glBindBuffer(c.GL_UNIFORM_BUFFER, buffer);
+			c.glBufferStorage(c.GL_UNIFORM_BUFFER, @sizeOf(Data), null, c.GL_DYNAMIC_STORAGE_BIT);
+		}
+		for (&fences) |*fence| {
+			fence.* = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+		}
+		c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
+	}
+
+	fn deinit() void {
+		c.glDeleteBuffers(buffers.len, &buffers);
+		for (fences) |fence| {
+			c.glDeleteSync(fence);
+		}
+	}
+
+	pub fn uploadFrameData(data: Data) void {
+		c.glDeleteSync(fences[currentFrame]);
+		fences[currentFrame] = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+		currentFrame = (currentFrame + 1)%buffers.len;
+		_ = c.glClientWaitSync(fences[currentFrame], 0, c.GL_TIMEOUT_IGNORED); // Make sure the render calls that accessed these parts of the buffer have finished.
+		c.glBindBuffer(c.GL_UNIFORM_BUFFER, buffers[currentFrame]);
+		c.glBufferSubData(c.GL_UNIFORM_BUFFER, 0, @sizeOf(Data), &data);
+		c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
+		c.glBindBufferBase(c.GL_UNIFORM_BUFFER, 0, buffers[currentFrame]);
+	}
+};
+
 pub const Fog = struct { // MARK: Fog
 	fogColor: Vec3f,
 	skyColor: Vec3f,
@@ -2234,9 +2279,7 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	}
 
 	const projMatrix = Mat4f.perspective(0.013, 1, 64, 256);
-	const oldViewMatrix = main.game.camera.viewMatrix;
-	main.game.camera.viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(std.math.pi/4.0)).mul(Mat4f.rotationZ(1.0*std.math.pi/4.0));
-	defer main.game.camera.viewMatrix = oldViewMatrix;
+	const viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(std.math.pi/4.0)).mul(Mat4f.rotationZ(1.0*std.math.pi/4.0));
 	const uniforms = if (block.transparent()) &main.renderer.chunk_meshing.transparentUniforms else &main.renderer.chunk_meshing.uniforms;
 
 	var faceData: main.ListManaged(main.renderer.chunk_meshing.FaceData) = .init(main.stackAllocator);
@@ -2266,9 +2309,9 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 
 	{
 		const i = 4; // Easily switch between the 8 diagonal coordinates.
-		var x: f64 = -65.5 + 1.5;
-		var y: f64 = -65.5 + 1.5;
-		var z: f64 = -92.631 + 1.5;
+		var x: f32 = -65.5 + 1.5;
+		var y: f32 = -65.5 + 1.5;
+		var z: f32 = -92.631 + 1.5;
 		if (i & 1 != 0) x = -x + 3;
 		if (i & 2 != 0) y = -y + 3;
 		if (i & 4 != 0) z = -z + 3;
@@ -2290,10 +2333,27 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 		if (block.transparent()) {
 			c.glBlendEquation(c.GL_FUNC_ADD);
 			c.glBlendFunc(c.GL_ONE, c.GL_SRC1_COLOR);
-			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(projMatrix, .{1, 1, 1}, .{x, y, z});
+			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(.{1, 1, 1});
 		} else {
-			main.renderer.chunk_meshing.bindShaderAndUniforms(projMatrix, .{1, 1, 1}, .{x, y, z});
+			main.renderer.chunk_meshing.bindShaderAndUniforms(.{1, 1, 1});
 		}
+
+		var uniformData: frame_uniforms.Data = .{
+			.projectionMatrix = projMatrix.toGl(),
+			.viewMatrix = viewMatrix.toGl(),
+			.playerPositionInteger = @splat(0),
+			.playerPositionFraction = .{x, y, z},
+		};
+
+		var tempUniformBuffer: c_uint = undefined;
+		c.glGenBuffers(1, &tempUniformBuffer);
+		defer c.glDeleteBuffers(1, &tempUniformBuffer);
+		c.glBindBuffer(c.GL_UNIFORM_BUFFER, tempUniformBuffer);
+		c.glBufferData(c.GL_UNIFORM_BUFFER, @sizeOf(frame_uniforms.Data), &uniformData, c.GL_STATIC_DRAW);
+		c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
+		c.glBindBufferBase(c.GL_UNIFORM_BUFFER, 0, tempUniformBuffer);
+		defer c.glBindBufferBase(c.GL_UNIFORM_BUFFER, 0, frame_uniforms.buffers[frame_uniforms.currentFrame]);
+
 		c.glUniform1f(uniforms.contrast, 0.25);
 		c.glActiveTexture(c.GL_TEXTURE0);
 		main.blocks.meshes.blockTextureArray.bind();

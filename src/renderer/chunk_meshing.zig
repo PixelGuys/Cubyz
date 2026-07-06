@@ -29,10 +29,6 @@ const mesh_storage = @import("mesh_storage.zig");
 var pipeline: graphics.Pipeline = undefined;
 var transparentPipeline: graphics.Pipeline = undefined;
 const UniformStruct = struct {
-	projectionMatrix: c_int,
-	viewMatrix: c_int,
-	playerPositionInteger: c_int,
-	playerPositionFraction: c_int,
 	screenSize: c_int,
 	ambientLight: c_int,
 	contrast: c_int,
@@ -178,35 +174,28 @@ pub fn endRender() void {
 	chunkIDBuffer.endRender();
 }
 
-fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
-	c.glUniformMatrix4fv(locations.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
-
+fn bindCommonUniforms(locations: *UniformStruct, ambient: Vec3f) void {
 	c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
 
 	c.glUniform1f(locations.contrast, main.settings.blockContrast);
 
 	c.glUniform1f(locations.lodDistance, main.settings.@"lod0.5Distance");
 
-	c.glUniformMatrix4fv(locations.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
-
 	c.glUniform3f(locations.ambientLight, ambient[0], ambient[1], ambient[2]);
 
 	c.glUniform1f(locations.zNear, renderer.zNear);
 	c.glUniform1f(locations.zFar, renderer.zFar);
-
-	c.glUniform3i(locations.playerPositionInteger, @floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
-	c.glUniform3f(locations.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 }
 
-pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
+pub fn bindShaderAndUniforms(ambient: Vec3f) void {
 	pipeline.bind(null);
 
-	bindCommonUniforms(&uniforms, projMatrix, ambient, playerPos);
+	bindCommonUniforms(&uniforms, ambient);
 
 	vao.bind();
 }
 
-pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
+pub fn bindTransparentShaderAndUniforms(ambient: Vec3f) void {
 	transparentPipeline.bind(null);
 
 	c.glUniform3fv(transparentUniforms.@"fog.color", 1, @ptrCast(&game.world.?.dayTime.fog.fogColor));
@@ -214,7 +203,7 @@ pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playe
 	c.glUniform1f(transparentUniforms.@"fog.fogLower", game.world.?.dayTime.fog.fogLower);
 	c.glUniform1f(transparentUniforms.@"fog.fogHigher", game.world.?.dayTime.fog.fogHigher);
 
-	bindCommonUniforms(&transparentUniforms, projMatrix, ambient, playerPos);
+	bindCommonUniforms(&transparentUniforms, ambient);
 
 	vao.bind();
 }
@@ -253,9 +242,9 @@ fn drawChunksOfLod(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec3f, pla
 		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
 		if (transparent) {
-			bindTransparentShaderAndUniforms(projMatrix, ambient, playerPos);
+			bindTransparentShaderAndUniforms(ambient);
 		} else {
-			bindShaderAndUniforms(projMatrix, ambient, playerPos);
+			bindShaderAndUniforms(ambient);
 		}
 		c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 		c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
@@ -278,9 +267,9 @@ fn drawChunksOfLod(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec3f, pla
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
 	if (transparent) {
-		bindTransparentShaderAndUniforms(projMatrix, ambient, playerPos);
+		bindTransparentShaderAndUniforms(ambient);
 	} else {
-		bindShaderAndUniforms(projMatrix, ambient, playerPos);
+		bindShaderAndUniforms(ambient);
 	}
 	c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 	c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
