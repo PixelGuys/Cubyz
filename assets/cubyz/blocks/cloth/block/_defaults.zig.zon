@@ -1,5 +1,5 @@
 .{
-	.tags = .{.cloth, .cuttable},
+	.tags = .{.cloth, .cuttable, .sliceable},
 	.blockHealth = 4,
 	.drops = .{
 		.{.items = .{.auto}},
