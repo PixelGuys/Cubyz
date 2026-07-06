@@ -9,11 +9,11 @@
 
 	.crystals = 32,
 
-	.music = "cubyz:leaves",
+	.music = "cubyz:mischol/crystals",
 
-	.stoneBlock = "cubyz:slate/base",
+	.stoneBlock = "cubyz:slate/smooth",
 	.ground_structure = .{
-		"cubyz:grass",
+		"cubyz:grass/temperate",
 		"2 to 3 cubyz:soil",
 	},
 	.structures = .{

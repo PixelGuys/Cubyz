@@ -11,16 +11,16 @@
 	.roughness = 3,
 	.hills = 1,
 	.chance = 0,
-	.music = "cubyz:leaves",
+	.music = "cubyz:totaldemented/leaves",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
-		"cubyz:lush_grass",
+		"cubyz:grass/lush",
 		"4 to 5 cubyz:mud",
 	},
 	.structures = .{
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:lush_grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/lush"},
 			.chance = 0.25,
 			.width = 10,
 			.variation = 6,

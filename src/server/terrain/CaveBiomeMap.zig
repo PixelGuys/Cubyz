@@ -17,6 +17,8 @@ const MapFragment = terrain.SurfaceMap.MapFragment;
 const Biome = terrain.biomes.Biome;
 const SurfaceMap = terrain.SurfaceMap;
 
+const cave_biome_generators = @import("cavebiomegen/_list.zig");
+
 /// Cave biome data from a big chunk of the world.
 pub const CaveBiomeMapFragment = struct { // MARK: caveBiomeMapFragment
 	pub const caveBiomeShift = 7;
@@ -102,26 +104,27 @@ pub const CaveBiomeGenerator = struct { // MARK: CaveBiomeGenerator
 	generatorSeed: u64,
 	defaultState: GeneratorState,
 
-	var generatorRegistry: std.StringHashMapUnmanaged(CaveBiomeGenerator) = .{};
-
-	pub fn registerGenerator(comptime Generator: type) void {
-		const self = CaveBiomeGenerator{
-			.init = &Generator.init,
-			.generate = &Generator.generate,
-			.priority = Generator.priority,
-			.generatorSeed = Generator.generatorSeed,
-			.defaultState = Generator.defaultState,
-		};
-		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
-	}
+	const generatorRegistry: std.StaticStringMap(CaveBiomeGenerator) = .initComptime(blk: {
+		const decls = @typeInfo(cave_biome_generators).@"struct".decls;
+		var generators: [decls.len]struct { []const u8, CaveBiomeGenerator } = undefined;
+		for (0..decls.len) |i| {
+			const Generator = @field(cave_biome_generators, decls[i].name);
+			generators[i] = .{Generator.id, .{
+				.init = &Generator.init,
+				.generate = &Generator.generate,
+				.priority = Generator.priority,
+				.generatorSeed = Generator.generatorSeed,
+				.defaultState = Generator.defaultState,
+			}};
+		}
+		break :blk generators;
+	});
 
 	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []CaveBiomeGenerator {
-		var list: main.ListUnmanaged(CaveBiomeGenerator) = .initCapacity(allocator, generatorRegistry.size);
-		var iterator = generatorRegistry.iterator();
-		while (iterator.next()) |generatorEntry| {
-			const generator = generatorEntry.value_ptr.*;
-			const generatorSettings = settings.getChild(generatorEntry.key_ptr.*);
-			if (generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
+		var list: main.List(CaveBiomeGenerator) = .initCapacity(allocator, generatorRegistry.values().len);
+		for (generatorRegistry.keys(), generatorRegistry.values()) |id, generator| {
+			const generatorSettings = settings.getChild(id);
+			if ((generatorSettings.get(GeneratorState, "state") orelse generator.defaultState) == .disabled) continue;
 			generator.init(generatorSettings);
 			list.appendAssumeCapacity(generator);
 		}
@@ -242,7 +245,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 	const CaveBiomesResult = struct { worldPos: Vec3i, biome: *const Biome };
 
 	pub fn getCaveBiomesInRange(self: CaveBiomeMapView, allocator: NeverFailingAllocator, min: Vec3i, max: Vec3i) []CaveBiomesResult {
-		var list: main.ListUnmanaged(CaveBiomesResult) = .{};
+		var list: main.List(CaveBiomesResult) = .empty;
 
 		var minRotated: Vec3i = CaveBiomeMapFragment.rotate(min);
 		var maxRotated: Vec3i = min;
@@ -532,20 +535,7 @@ var cache: Cache(CaveBiomeMapFragment, cacheSize, associativity, CaveBiomeMapFra
 
 var profile: TerrainGenerationProfile = undefined;
 
-var memoryPool: main.heap.MemoryPool(CaveBiomeMapFragment) = undefined;
-
-pub fn globalInit() void {
-	const list = @import("cavebiomegen/_list.zig");
-	inline for (@typeInfo(list).@"struct".decls) |decl| {
-		CaveBiomeGenerator.registerGenerator(@field(list, decl.name));
-	}
-	memoryPool = .init(main.globalAllocator);
-}
-
-pub fn globalDeinit() void {
-	CaveBiomeGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
-	memoryPool.deinit();
-}
+var memoryPool: main.heap.MemoryPool(CaveBiomeMapFragment) = .init(main.globalArena);
 
 pub fn init(_profile: TerrainGenerationProfile) void {
 	profile = _profile;

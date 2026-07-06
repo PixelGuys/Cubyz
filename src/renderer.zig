@@ -6,24 +6,25 @@ const chunk = @import("chunk.zig");
 const entity = @import("entity.zig");
 const graphics = @import("graphics.zig");
 const particles = @import("particles.zig");
-const c = graphics.c;
 const game = @import("game.zig");
 const World = game.World;
 const itemdrop = @import("itemdrop.zig");
 const main = @import("main");
+const gpu_performance_measuring = main.gui.windowlist.gpu_performance_measuring;
+const crosshair = main.gui.windowlist.crosshair;
 const Window = main.Window;
 const models = @import("models.zig");
 const network = @import("network.zig");
 const settings = @import("settings.zig");
 const vec = @import("vec.zig");
-const gpu_performance_measuring = main.gui.windowlist.gpu_performance_measuring;
-const crosshair = main.gui.windowlist.crosshair;
 const Vec2f = vec.Vec2f;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Vec4f = vec.Vec4f;
 const Mat4f = vec.Mat4f;
+
+const c = @import("c");
 
 pub const chunk_meshing = @import("renderer/chunk_meshing.zig");
 pub const lighting = @import("renderer/lighting.zig");
@@ -154,10 +155,10 @@ pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 	std.debug.assert(game.world != null);
 
 	const nightColor: Vec3f = .{0.3, 0.4, 0.5};
-	const ambient = @max(nightColor*@as(Vec3f, @splat(settings.nightBrightness)), @as(Vec3f, @splat(game.world.?.ambientLight)));
+	const ambient = @max(nightColor*@as(Vec3f, @splat(settings.nightBrightness)), @as(Vec3f, @splat(game.world.?.dayTime.ambientLight)));
 
 	itemdrop.ItemDisplayManager.update(deltaTime);
-	renderWorld(game.world.?, ambient, game.fog.skyColor, playerPosition);
+	renderWorld(game.world.?, ambient, game.world.?.dayTime.fog.skyColor, playerPosition);
 	const startTime = main.timestamp();
 	mesh_storage.updateMeshes(startTime.addDuration(maximumMeshTime));
 }
@@ -229,7 +230,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	chunk_meshing.beginRender();
 
-	var chunkLists: [main.settings.highestSupportedLod + 1]main.List(u32) = @splat(main.List(u32).init(main.stackAllocator));
+	var chunkLists: [main.settings.highestSupportedLod + 1]main.ListManaged(u32) = @splat(main.ListManaged(u32).init(main.stackAllocator));
 	defer for (chunkLists) |list| list.deinit();
 	for (meshes) |mesh| {
 		mesh.prepareRendering(&chunkLists);
@@ -303,10 +304,10 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	worldFrameBuffer.unbind();
 	deferredRenderPassPipeline.bind(null);
 	if (!blocks.meshes.hasFog(playerBlock)) {
-		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
-		c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
-		c.glUniform1f(deferredUniforms.@"fog.fogLower", game.fog.fogLower);
-		c.glUniform1f(deferredUniforms.@"fog.fogHigher", game.fog.fogHigher);
+		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.world.?.dayTime.fog.fogColor));
+		c.glUniform1f(deferredUniforms.@"fog.density", game.world.?.dayTime.fog.density);
+		c.glUniform1f(deferredUniforms.@"fog.fogLower", game.world.?.dayTime.fog.fogLower);
+		c.glUniform1f(deferredUniforms.@"fog.fogHigher", game.world.?.dayTime.fog.fogHigher);
 	} else {
 		const fogColor = blocks.meshes.fogColor(playerBlock);
 		c.glUniform3f(deferredUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
@@ -408,10 +409,10 @@ const Bloom = struct { // MARK: Bloom
 		worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 		buffer1.bind();
 		if (!blocks.meshes.hasFog(playerBlock)) {
-			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
-			c.glUniform1f(colorExtractUniforms.@"fog.density", game.fog.density);
-			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", game.fog.fogLower);
-			c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", game.fog.fogHigher);
+			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.world.?.dayTime.fog.fogColor));
+			c.glUniform1f(colorExtractUniforms.@"fog.density", game.world.?.dayTime.fog.density);
+			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", game.world.?.dayTime.fog.fogLower);
+			c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", game.world.?.dayTime.fog.fogHigher);
 		} else {
 			const fogColor = blocks.meshes.fogColor(playerBlock);
 			c.glUniform3f(colorExtractUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
@@ -570,17 +571,17 @@ pub const MenuBackGround = struct {
 		// Otherwise load a random texture from the backgrounds folder. The player may make their own pictures which can be chosen as well.
 		var walker = dir.walk(main.stackAllocator);
 		defer walker.deinit();
-		var fileList = main.List([]const u8).init(main.stackAllocator);
+		var fileList: main.List([]const u8) = .empty;
 		defer {
 			for (fileList.items) |fileName| {
 				main.stackAllocator.free(fileName);
 			}
-			fileList.deinit();
+			fileList.deinit(main.stackAllocator);
 		}
 
 		while (try walker.next(main.io)) |entry| {
 			if (entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".png")) {
-				fileList.append(main.stackAllocator.dupe(u8, entry.path));
+				fileList.append(main.stackAllocator, main.stackAllocator.dupe(u8, entry.path));
 			}
 		}
 		if (fileList.items.len == 0) {
@@ -719,7 +720,7 @@ pub const Skybox = struct {
 	}
 
 	fn init() void {
-		const starColorImage = graphics.Image.readFromFile(main.stackAllocator, "assets/cubyz/star.png") catch |err| {
+		const starColorImage = graphics.Image.readFromFile(main.stackAllocator, "assets/cubyz/star.png", .{.orientation = .openGl}) catch |err| {
 			std.log.err("Failed to load star image: {s}", .{@errorName(err)});
 			return;
 		};
@@ -813,22 +814,12 @@ pub const Skybox = struct {
 	pub fn render() void {
 		const viewMatrix = game.camera.viewMatrix;
 
-		const time = game.world.?.gameTime.load(.monotonic);
-
-		var starOpacity: f32 = 0;
-		const dayTime = @abs(@mod(time, game.World.dayCycle) -% game.World.dayCycle/2);
-		if (dayTime < game.World.dayCycle/4 - game.World.dayCycle/16) {
-			starOpacity = 1;
-		} else if (dayTime > game.World.dayCycle/4 + game.World.dayCycle/16) {
-			starOpacity = 0;
-		} else {
-			starOpacity = 1 - @as(f32, @floatFromInt(dayTime - (game.World.dayCycle/4 - game.World.dayCycle/16)))/@as(f32, @floatFromInt(game.World.dayCycle/8));
-		}
+		const starOpacity: f32 = game.world.?.dayTime.getStarOpacity();
 
 		if (starOpacity != 0) {
 			starPipeline.bind(null);
 
-			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationX(@as(f32, @floatFromInt(time))/@as(f32, @floatFromInt(main.game.World.dayCycle)))));
+			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationX(2*std.math.pi*game.world.?.dayTime.getDayProgress())));
 
 			starSsbo.bind(12);
 
@@ -1077,7 +1068,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
 
-			main.sync.ClientSide.mutex.lock();
+			main.sync.client.mutex.lock();
 			if (!game.Player.isCreative()) {
 				var damage: f32 = main.game.Player.defaultBlockDamage;
 				const isProceduralItem = stack.item == .proceduralItem;
@@ -1110,7 +1101,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						if (currentBlockProgress != 0) {
 							mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
 						}
-						main.sync.ClientSide.mutex.unlock();
+						main.sync.client.mutex.unlock();
 
 						return;
 					} else {
@@ -1120,7 +1111,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						currentSwingTime = 0;
 					}
 				} else {
-					main.sync.ClientSide.mutex.unlock();
+					main.sync.client.mutex.unlock();
 					return;
 				}
 			} else {
@@ -1129,7 +1120,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 			var newBlock = block;
 			block.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
-			main.sync.ClientSide.mutex.unlock();
+			main.sync.client.mutex.unlock();
 
 			if (newBlock != block) {
 				updateBlockAndSendUpdate(inventory, slot, selectedPos, block, newBlock);
@@ -1138,7 +1129,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	fn updateBlockAndSendUpdate(source: main.items.Inventory.ClientInventory, slot: u32, pos: Vec3i, oldBlock: blocks.Block, newBlock: blocks.Block) void {
-		main.sync.ClientSide.executeCommand(.{
+		main.sync.client.executeCommand(.{
 			.updateBlock = .{
 				.source = .{.inv = source.super, .slot = slot},
 				.pos = pos,

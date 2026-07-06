@@ -8,15 +8,14 @@
 		.oak,
 	},
 	.ground_structure = .{
-		"cubyz:grass",
+		"cubyz:grass/temperate",
 		"1 to 2 cubyz:soil",
 	},
 	.structures = .{
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:leaves/oak",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.log = "cubyz:log/oak",
 			.chance = 0.016,
 			.type = .round,
 			.height = 12,
@@ -26,7 +25,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/temperate"},
 			.chance = 0.08,
 			.width = 3,
 			.variation = 2,
@@ -52,7 +51,7 @@
 		.{
 			.id = "cubyz:ocean/temperate/island/shelf",
 			.chance = 1,
-			.parentEdgeDistance = 45,
+			.parentEdgeDistance = 37,
 		},
 	},
 }

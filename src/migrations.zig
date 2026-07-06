@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
-const ZonElement = @import("zon.zig").ZonElement;
-const Palette = @import("assets.zig").Palette;
+const ZonElement = main.ZonElement;
+const Palette = main.assets.Palette;
 const Assets = main.assets.Assets;
 
 var blockMigrations: std.StringHashMapUnmanaged([]const u8) = .{};
@@ -32,6 +32,27 @@ pub fn registerAll(comptime typ: MigrationType, migrations: *Assets.AddonNameToZ
 	while (migrationIterator.next()) |migration| {
 		register(typ, collection, migration.key_ptr.*, migration.value_ptr.*);
 	}
+
+	// apply transitive migrations
+	var iterator = collection.iterator();
+	var entries: main.List([]const u8) = .empty;
+	defer entries.deinit(main.stackAllocator);
+	while (iterator.next()) |migrationEntry| {
+		defer entries.clearRetainingCapacity();
+		entries.append(main.stackAllocator, migrationEntry.key_ptr.*);
+		entries.append(main.stackAllocator, migrationEntry.value_ptr.*);
+		transitiveChain: while (collection.get(migrationEntry.value_ptr.*)) |transitive| {
+			std.log.info("Collapsing transitive {s} migration: '{s}' -> {s} -> '{s}'", .{@tagName(typ), migrationEntry.key_ptr.*, migrationEntry.value_ptr.*, transitive});
+			for (entries.items) |entry| {
+				if (std.mem.eql(u8, transitive, entry)) {
+					std.log.err("Found circular migration for {s}. Circular migrations are not allowed", .{transitive});
+					break :transitiveChain;
+				}
+			}
+			migrationEntry.value_ptr.* = transitive;
+			entries.append(main.stackAllocator, transitive);
+		}
+	}
 }
 
 fn register(
@@ -54,8 +75,8 @@ fn register(
 	}
 
 	for (migrationZon.array.items) |migration| {
-		const oldZonOpt = migration.get(?[]const u8, "old", null);
-		const newZonOpt = migration.get(?[]const u8, "new", null);
+		const oldZonOpt = migration.get([]const u8, "old");
+		const newZonOpt = migration.get([]const u8, "new");
 
 		if (oldZonOpt == null or newZonOpt == null) {
 			std.log.err("Skipping incomplete migration in {s} migrations: '{s}:{s}' -> '{s}:{s}'", .{@tagName(typ), addonName, oldZonOpt orelse "<null>", addonName, newZonOpt orelse "<null>"});

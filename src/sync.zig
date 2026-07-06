@@ -23,7 +23,7 @@ const @"cubyz:bag" = main.entity.components.@"cubyz:bag";
 
 pub const Side = enum { client, server };
 
-pub const ClientSide = struct {
+pub const client = struct { // MARK: client
 	pub var mutex: main.utils.Mutex = .{};
 	var commands: utils.CircularBufferQueue(Command) = undefined;
 
@@ -70,12 +70,12 @@ pub const ClientSide = struct {
 	pub fn receiveFailure() void {
 		mutex.lock();
 		defer mutex.unlock();
-		var tempData = main.List(Command).init(main.stackAllocator);
-		defer tempData.deinit();
+		var tempData: main.List(Command) = .empty;
+		defer tempData.deinit(main.stackAllocator);
 		while (commands.popBack()) |_cmd| {
 			var cmd = _cmd;
 			cmd.undo();
-			tempData.append(cmd);
+			tempData.append(main.stackAllocator, cmd);
 		}
 		if (tempData.popOrNull()) |_cmd| {
 			var cmd = _cmd;
@@ -94,12 +94,12 @@ pub const ClientSide = struct {
 	pub fn receiveSyncOperation(reader: *BinaryReader) !void {
 		mutex.lock();
 		defer mutex.unlock();
-		var tempData = main.List(Command).init(main.stackAllocator);
-		defer tempData.deinit();
+		var tempData: main.List(Command) = .empty;
+		defer tempData.deinit(main.stackAllocator);
 		while (commands.popBack()) |_cmd| {
 			var cmd = _cmd;
 			cmd.undo();
-			tempData.append(cmd);
+			tempData.append(main.stackAllocator, cmd);
 		}
 		try Command.SyncOperation.executeFromData(reader);
 		while (tempData.popOrNull()) |_cmd| {
@@ -113,12 +113,12 @@ pub const ClientSide = struct {
 		mutex.lock();
 		defer mutex.unlock();
 		main.game.Player.setGamemode(gamemode);
-		var tempData = main.List(Command).init(main.stackAllocator);
-		defer tempData.deinit();
+		var tempData: main.List(Command) = .empty;
+		defer tempData.deinit(main.stackAllocator);
 		while (commands.popBack()) |_cmd| {
 			var cmd = _cmd;
 			cmd.undo();
-			tempData.append(cmd);
+			tempData.append(main.stackAllocator, cmd);
 		}
 		while (tempData.popOrNull()) |_cmd| {
 			var cmd = _cmd;
@@ -128,7 +128,7 @@ pub const ClientSide = struct {
 	}
 };
 
-pub const ServerSide = struct { // MARK: ServerSide
+pub const server = struct { // MARK: server
 
 	pub fn init() void {
 		threadContext = .server;
@@ -205,20 +205,20 @@ pub const ServerSide = struct { // MARK: ServerSide
 	}
 };
 
-pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, userId: u32) void {
+pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, entity: main.entity.Entity) void {
 	threadContext.assertCorrectContext(side);
 	if (side == .client) {
-		ClientSide.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}});
+		client.executeCommand(.{.addHealth = .{.target = entity, .health = health, .cause = cause}});
 	} else {
-		ServerSide.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}}, null);
+		server.executeCommand(.{.addHealth = .{.target = entity, .health = health, .cause = cause}}, null);
 	}
 }
 
 pub fn setGamemode(user: ?*main.server.User, gamemode: Gamemode) void {
 	if (user == null) {
-		ClientSide.setGamemode(gamemode);
+		client.setGamemode(gamemode);
 	} else {
-		ServerSide.setGamemode(user.?, gamemode);
+		server.setGamemode(user.?, gamemode);
 	}
 }
 pub const Command = struct { // MARK: Command
@@ -412,7 +412,7 @@ pub const Command = struct { // MARK: Command
 		pub fn getUsers(self: SyncOperation, allocator: NeverFailingAllocator) []*main.server.User {
 			switch (self) {
 				inline .create, .delete, .useDurability => |data| {
-					const users = Inventory.ServerSide.getServerInventory(data.inv.inv.id).users.items;
+					const users = Inventory.server.getServerInventory(data.inv.inv.id).users.items;
 					const result = allocator.alloc(*main.server.User, users.len);
 					for (0..users.len) |i| {
 						result[i] = users[i].user;
@@ -517,8 +517,8 @@ pub const Command = struct { // MARK: Command
 	};
 
 	payload: Payload,
-	baseOperations: main.ListUnmanaged(BaseOperation) = .{},
-	syncOperations: main.ListUnmanaged(SyncOperation) = .{},
+	baseOperations: main.List(BaseOperation) = .empty,
+	syncOperations: main.List(SyncOperation) = .empty,
 
 	fn serializePayload(self: *Command, allocator: NeverFailingAllocator) []const u8 {
 		var writer = BinaryWriter.init(allocator);
@@ -830,14 +830,6 @@ pub const Command = struct { // MARK: Command
 		}
 	}
 
-	pub fn canPutIntoWorkbench(item: Item) bool {
-		return switch (item) {
-			.null => true,
-			.baseItem => |baseItem| baseItem.material() != null,
-			.proceduralItem => false,
-		};
-	}
-
 	pub const Context = struct {
 		allocator: NeverFailingAllocator,
 		cmd: *Command,
@@ -860,7 +852,7 @@ pub const Command = struct { // MARK: Command
 			if (side != .client) return;
 			if (reader.remaining.len != 0) {
 				const serverId = try reader.readEnum(InventoryId);
-				Inventory.ClientSide.mapServerId(serverId, self.inv);
+				Inventory.client.mapServerId(serverId, self.inv);
 			}
 		}
 
@@ -876,14 +868,14 @@ pub const Command = struct { // MARK: Command
 			writer.writeEnum(Inventory.SourceType, self.source);
 			switch (self.source) {
 				.playerInventory, .hand => |val| {
-					writer.writeInt(u32, val);
+					writer.writeEnum(main.entity.Entity, val);
 				},
 				.blockInventory => |val| {
 					writer.writeVec(Vec3i, val);
 				},
 				.workbench => |val| {
-					writer.writeInt(u32, val.playerId);
-					writer.writeEnum(main.items.ProceduralItemTypeIndex, val.proceduralItemIndex);
+					writer.writeEnum(main.entity.Entity, val.playerId);
+					val.proceduralItemIndex.toBytes(writer);
 				},
 				.other => {},
 				.alreadyFreed => unreachable,
@@ -896,16 +888,16 @@ pub const Command = struct { // MARK: Command
 			const len = try reader.readInt(u64);
 			const sourceType = try reader.readEnum(Inventory.SourceType);
 			const source: Inventory.Source = switch (sourceType) {
-				.playerInventory => .{.playerInventory = try reader.readInt(u32)},
-				.hand => .{.hand = try reader.readInt(u32)},
+				.playerInventory => .{.playerInventory = try reader.readEnum(main.entity.Entity)},
+				.hand => .{.hand = try reader.readEnum(main.entity.Entity)},
 				.blockInventory => .{.blockInventory = try reader.readVec(Vec3i)},
-				.workbench => .{.workbench = .{.playerId = try reader.readInt(u32), .proceduralItemIndex = try reader.readEnum(main.items.ProceduralItemTypeIndex)}},
+				.workbench => .{.workbench = .{.playerId = try reader.readEnum(main.entity.Entity), .proceduralItemIndex = try .fromBytes(reader)}},
 				.other => .{.other = {}},
 				.alreadyFreed => return error.Invalid,
 			};
-			try Inventory.ServerSide.createInventory(user.?, id, len, source);
+			try Inventory.server.createInventory(user.?, id, len, source);
 			return .{
-				.inv = Inventory.ServerSide.getInventory(user.?, id) orelse return error.InventoryNotFound,
+				.inv = Inventory.server.getInventory(user.?, id) orelse return error.InventoryNotFound,
 				.source = source,
 			};
 		}
@@ -920,7 +912,7 @@ pub const Command = struct { // MARK: Command
 		fn finalize(self: Close, side: Side, _: *BinaryReader) !void {
 			if (side != .client) return;
 			self.inv._deinit(self.allocator, .client);
-			Inventory.ClientSide.unmapServerIdByClientId(self.inv.id);
+			Inventory.client.unmapServerIdByClientId(self.inv.id);
 		}
 
 		fn serialize(self: Close, writer: *BinaryWriter) void {
@@ -930,7 +922,7 @@ pub const Command = struct { // MARK: Command
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !Close {
 			if (side != .server or user == null) return error.Invalid;
 			const id = try reader.readEnum(InventoryId);
-			try Inventory.ServerSide.closeInventory(user.?, id);
+			try Inventory.server.closeInventory(user.?, id);
 			return undefined;
 		}
 	};
@@ -940,8 +932,7 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 
 		fn run(self: DepositOrSwap, ctx: Context) error{serverFailure}!void {
-			if (self.dest.inv.source == .workbench and self.dest.inv.source.workbench.proceduralItemIndex.slotInfos()[self.dest.slot].disabled) return;
-			if (self.dest.inv.source == .workbench and !canPutIntoWorkbench(self.source.ref().item)) return;
+			if (self.dest.inv.callbacks.canPutInto) |c| if (!c(self.dest.inv.source, self.source.ref().item, self.dest.slot)) return;
 
 			const itemDest = self.dest.ref().item;
 			const itemSource = self.source.ref().item;
@@ -957,8 +948,8 @@ pub const Command = struct { // MARK: Command
 					return;
 				}
 			}
-			if (self.source.inv.source == .workbench and self.source.inv.source.workbench.proceduralItemIndex.slotInfos()[self.source.slot].disabled) return;
-			if (self.source.inv.source == .workbench and !canPutIntoWorkbench(self.dest.ref().item)) return;
+
+			if (self.source.inv.callbacks.canPutInto) |c| if (!c(self.source.inv.source, self.dest.ref().item, self.source.slot)) return;
 			ctx.execute(.{.swap = .{
 				.dest = self.dest,
 				.source = self.source,
@@ -984,8 +975,7 @@ pub const Command = struct { // MARK: Command
 		amount: u16,
 
 		fn run(self: Deposit, ctx: Context) error{serverFailure}!void {
-			if (self.dest.inv.source == .workbench and self.dest.inv.source.workbench.proceduralItemIndex.slotInfos()[self.dest.slot].disabled) return;
-			if (self.dest.inv.source == .workbench and !canPutIntoWorkbench(self.source.ref().item)) return;
+			if (self.dest.inv.callbacks.canPutInto) |c| if (!c(self.dest.inv.source, self.source.ref().item, self.dest.slot)) return;
 			const itemSource = self.source.ref().item;
 			if (itemSource == .null) return;
 			const itemDest = self.dest.ref().item;
@@ -1029,7 +1019,7 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 
 		fn run(self: TakeHalf, ctx: Context) error{serverFailure}!void {
-			if (self.dest.inv.source == .workbench and (self.dest.inv.source.workbench.proceduralItemIndex.slotInfos()[self.dest.slot].disabled or !canPutIntoWorkbench(self.source.ref().item))) return;
+			if (self.dest.inv.callbacks.canPutInto) |c| if (!c(self.dest.inv.source, self.source.ref().item, self.dest.slot)) return;
 
 			const itemSource = self.source.ref().item;
 			if (itemSource == .null) return;
@@ -1106,9 +1096,8 @@ pub const Command = struct { // MARK: Command
 		amount: u16 = 0,
 
 		fn run(self: FillFromCreative, ctx: Context) error{serverFailure}!void {
-			if (self.dest.inv.source == .workbench and (self.dest.inv.source.workbench.proceduralItemIndex.slotInfos()[self.dest.slot].disabled or !canPutIntoWorkbench(self.item))) return;
-			if (ctx.side == .server and ctx.user != null and ctx.gamemode != .creative) return;
-			if (ctx.side == .client and ctx.gamemode != .creative) return;
+			if (self.dest.inv.callbacks.canPutInto) |c| if (!c(self.dest.inv.source, self.item, self.dest.slot)) return;
+			if (ctx.gamemode != .creative) return;
 
 			if (!self.dest.ref().empty()) {
 				ctx.execute(.{.delete = .{
@@ -1173,6 +1162,7 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn run(self: FillAnyFromCreative, ctx: Context) error{serverFailure}!void {
+			if (ctx.gamemode != .creative) return;
 			_ = self.destinations.putItemsInto(ctx, self.amount, .{.create = self.item});
 		}
 
@@ -1691,7 +1681,7 @@ pub const Command = struct { // MARK: Command
 	};
 
 	const AddHealth = struct { // MARK: AddHealth
-		target: u32,
+		target: main.entity.Entity,
 		health: f32,
 		cause: main.game.DamageType,
 
@@ -1724,14 +1714,14 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn serialize(self: AddHealth, writer: *BinaryWriter) void {
-			writer.writeInt(u32, self.target);
+			writer.writeEnum(main.entity.Entity, self.target);
 			writer.writeInt(u32, @bitCast(self.health));
 			writer.writeEnum(main.game.DamageType, self.cause);
 		}
 
 		fn deserialize(reader: *BinaryReader, _: Side, user: ?*main.server.User) !AddHealth {
 			const result: AddHealth = .{
-				.target = try reader.readInt(u32),
+				.target = try reader.readEnum(main.entity.Entity),
 				.health = @bitCast(try reader.readInt(u32)),
 				.cause = try reader.readEnum(main.game.DamageType),
 			};
@@ -1751,7 +1741,7 @@ pub const Command = struct { // MARK: Command
 			if (ctx.side == .server) {
 				const user = ctx.user orelse return;
 				if (main.server.world.?.settings.allowCheats) {
-					std.log.info("User \"{f}\" executed command \"{s}\"", .{user, self.message}); // TODO use color \033[0;32m
+					main.log.server("User \"{f}§#ffffff\" executed command \"{s}\"", .{user, self.message});
 					main.server.command.execute(self.message, user);
 				} else {
 					user.sendRawMessage("Commands are not allowed because cheats are disabled");

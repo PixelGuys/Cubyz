@@ -1,8 +1,8 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
+const ZonElement = main.ZonElement;
 const Window = @import("graphics/Window.zig");
 
 pub const version = @import("utils/version.zig");
@@ -85,11 +85,14 @@ pub fn init() void {
 	inline for (@typeInfo(@This()).@"struct".decls) |decl| runtimeContinueInsideOfComptimeBlock: {
 		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
 		if (!is_const) {
-			const DeclType = @TypeOf(@field(@This(), decl.name));
+			comptime var DeclType = @TypeOf(@field(@This(), decl.name));
+			if (@typeInfo(DeclType) == .optional) {
+				DeclType = @typeInfo(DeclType).optional.child;
+			}
 			if (@typeInfo(DeclType) == .@"struct") {
 				if (DeclType == std.Io.Duration) {
 					const defaultMilli = @as(f64, @floatFromInt(@field(@This(), decl.name).toNanoseconds()))/1.0e6;
-					@field(@This(), decl.name) = .fromNanoseconds(@trunc(zon.get(f64, decl.name, defaultMilli)*1.0e6));
+					@field(@This(), decl.name) = .fromNanoseconds(@trunc((zon.get(f64, decl.name) orelse defaultMilli)*1.0e6));
 					continue;
 				}
 				@field(@This(), decl.name) = DeclType.fromZon(main.globalAllocator, zon.getChild(decl.name)) catch |err| {
@@ -98,7 +101,7 @@ pub fn init() void {
 				};
 				continue;
 			}
-			@field(@This(), decl.name) = zon.get(DeclType, decl.name, @field(@This(), decl.name));
+			@field(@This(), decl.name) = zon.get(DeclType, decl.name) orelse @field(@This(), decl.name);
 			if (@typeInfo(DeclType) == .pointer) {
 				if (@typeInfo(DeclType).pointer.size == .slice) {
 					@field(@This(), decl.name) = main.globalAllocator.dupe(@typeInfo(DeclType).pointer.child, @field(@This(), decl.name));
@@ -115,11 +118,11 @@ pub fn init() void {
 	const keyboard = zon.getChild("keyboard");
 	for (&main.KeyBoard.keys) |*key| {
 		const keyZon = keyboard.getChild(key.name);
-		key.key = keyZon.get(c_int, "key", key.key);
-		key.mouseButton = keyZon.get(c_int, "mouseButton", key.mouseButton);
-		key.scancode = keyZon.get(c_int, "scancode", key.scancode);
+		key.key = keyZon.get(c_int, "key") orelse key.key;
+		key.mouseButton = keyZon.get(c_int, "mouseButton") orelse key.mouseButton;
+		key.scancode = keyZon.get(c_int, "scancode") orelse key.scancode;
 		if (key.isToggling != .never) {
-			key.isToggling = std.meta.stringToEnum(Window.Key.IsToggling, keyZon.get([]const u8, "isToggling", "")) orelse key.isToggling;
+			key.isToggling = std.meta.stringToEnum(Window.Key.IsToggling, keyZon.get([]const u8, "isToggling") orelse "") orelse key.isToggling;
 		}
 	}
 }
@@ -221,11 +224,11 @@ pub const launchConfig = struct {
 		};
 		defer zon.deinit(main.stackAllocator);
 
-		cubyzDir = main.globalArena.dupe(u8, zon.get([]const u8, "cubyzDir", cubyzDir));
-		headlessServer = zon.get(bool, "headlessServer", headlessServer);
-		autoEnterWorld = main.globalArena.dupe(u8, zon.get([]const u8, "autoEnterWorld", autoEnterWorld));
-		preferredAuthenticationAlgorithm = zon.get(main.network.authentication.KeyTypeEnum, "preferredAuthenticationAlgorithm", preferredAuthenticationAlgorithm);
-		vulkanTestingMode = zon.get(bool, "vulkanTestingMode", false);
+		cubyzDir = main.globalArena.dupe(u8, zon.get([]const u8, "cubyzDir") orelse cubyzDir);
+		headlessServer = zon.get(bool, "headlessServer") orelse headlessServer;
+		autoEnterWorld = main.globalArena.dupe(u8, zon.get([]const u8, "autoEnterWorld") orelse autoEnterWorld);
+		preferredAuthenticationAlgorithm = zon.get(main.network.authentication.KeyTypeEnum, "preferredAuthenticationAlgorithm") orelse preferredAuthenticationAlgorithm;
+		vulkanTestingMode = zon.get(bool, "vulkanTestingMode") orelse false;
 	}
 };
 

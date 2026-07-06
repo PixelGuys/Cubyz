@@ -6,8 +6,10 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ServerChunk = main.chunk.ServerChunk;
 const terrain = main.server.terrain;
 const Assets = main.assets.Assets;
-const Biome = main.server.terrain.biomes;
+const biomes = main.server.terrain.biomes;
 const Tag = main.Tag;
+
+pub const simple_structures = @import("simple_structures/_list.zig");
 
 pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	pub const GenerationMode = enum {
@@ -32,7 +34,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	generationMode: GenerationMode,
 
 	pub fn initModel(parameters: ZonElement) ?SimpleStructureModel {
-		const id = parameters.get([]const u8, "id", "");
+		const id = parameters.get([]const u8, "id") orelse "";
 		const vtable = modelRegistry.get(id) orelse {
 			std.log.err("Couldn't find structure model with id {s}", .{id});
 			return null;
@@ -44,9 +46,9 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		return SimpleStructureModel{
 			.vtable = vtable,
 			.data = vtableModel,
-			.chance = parameters.get(f32, "chance", 0.1),
-			.priority = parameters.get(f32, "priority", 1),
-			.generationMode = std.meta.stringToEnum(GenerationMode, parameters.get([]const u8, "generationMode", "")) orelse vtable.generationMode,
+			.chance = parameters.get(f32, "chance") orelse 0.1,
+			.priority = parameters.get(f32, "priority") orelse 1,
+			.generationMode = std.meta.stringToEnum(GenerationMode, parameters.get([]const u8, "generationMode") orelse "") orelse vtable.generationMode,
 		};
 	}
 
@@ -54,20 +56,24 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		self.vtable.generate(self.data, self.generationMode, x, y, z, chunk, caveMap, biomeMap, seed, isCeiling);
 	}
 
-	var modelRegistry: std.StringHashMapUnmanaged(VTable) = .{};
-
-	pub fn registerGenerator(comptime Generator: type) void {
-		var self: VTable = undefined;
-		self.loadModel = main.meta.castFunctionReturnToOptionalAnyopaque(Generator.loadModel);
-		self.generate = main.meta.castFunctionSelfToAnyopaque(Generator.generate);
-		self.hashFunction = main.meta.castFunctionSelfToAnyopaque(struct {
-			fn hash(ptr: *Generator) u64 {
-				return Biome.hashGeneric(ptr.*);
-			}
-		}.hash);
-		self.generationMode = Generator.generationMode;
-		modelRegistry.put(main.globalArena.allocator, Generator.id, self) catch unreachable;
-	}
+	const modelRegistry: std.StaticStringMap(VTable) = .initComptime(blk: {
+		const decls = @typeInfo(simple_structures).@"struct".decls;
+		var generators: [decls.len]struct { []const u8, VTable } = undefined;
+		for (0..decls.len) |i| {
+			const Generator = @field(simple_structures, decls[i].name);
+			generators[i] = .{Generator.id, .{
+				.loadModel = main.meta.castFunctionReturnToOptionalAnyopaque(Generator.loadModel),
+				.generate = main.meta.castFunctionSelfToAnyopaque(Generator.generate),
+				.hashFunction = main.meta.castFunctionSelfToAnyopaque(struct {
+					fn hash(ptr: *Generator) u64 {
+						return biomes.hashGeneric(ptr.*);
+					}
+				}.hash),
+				.generationMode = Generator.generationMode,
+			}};
+		}
+		break :blk generators;
+	});
 
 	fn getHash(self: SimpleStructureModel) u64 {
 		return self.vtable.hashFunction(self.data);
@@ -83,8 +89,8 @@ pub const StructureTable = struct {
 			.id = main.worldArena.dupe(u8, id),
 			.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
 		};
-		const tableChance: ?f32 = zon.get(?f32, "chance", null);
-		var structureList = main.ListUnmanaged(SimpleStructureModel){};
+		const tableChance: ?f32 = zon.get(f32, "chance");
+		var structureList: main.List(SimpleStructureModel) = .empty;
 		defer structureList.deinit(main.stackAllocator);
 
 		const structures = zon.getChild("structures");
@@ -114,7 +120,7 @@ pub const StructureTable = struct {
 };
 
 var finishedLoading: bool = false;
-var structureTables: main.ListUnmanaged(StructureTable) = .{};
+var structureTables: main.List(StructureTable) = .empty;
 var structureTablesById: std.StringHashMapUnmanaged(*StructureTable) = .{};
 
 fn register(id: []const u8, zon: ZonElement) void {
@@ -156,6 +162,6 @@ pub fn getSlice() []StructureTable {
 
 pub fn reset() void {
 	finishedLoading = false;
-	structureTables = .{};
+	structureTables = .empty;
 	structureTablesById = .{};
 }
