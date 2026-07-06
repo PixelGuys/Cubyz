@@ -17,13 +17,13 @@
 	.mountains = 100,
 	.stoneBlock = "cubyz:limestone/smooth",
 	.ground_structure = .{
-		"cubyz:dry_grass",
+		"cubyz:grass/dry",
 		"0 to 3 cubyz:dirt",
 	},
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:grass",
+			.block = "cubyz:grass/temperate",
 			.chance = 0.025,
 			.width = 16,
 			.variation = 4,

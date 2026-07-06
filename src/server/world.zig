@@ -527,6 +527,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));
 		errdefer self.chunkManager.deinit();
 
+		try permission.loadGroups(try dir.openIterableDir("groups"));
 		std.debug.assert(main.entityModel.getById("cubyz:missing") != null);
 
 		return self;
@@ -542,8 +543,14 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn deinit(self: *ServerWorld) void {
-		self.forceSave() catch |err| {
-			std.log.err("Error while saving the world: {s}", .{@errorName(err)});
+		self.saveWorldConfig() catch |err| {
+			std.log.err("Error while saving world config: {s}", .{@errorName(err)});
+		};
+		self.saveAllPlayers() catch |err| {
+			std.log.err("Error while saving player data: {s}", .{@errorName(err)});
+		};
+		self.saveItemdrops() catch |err| {
+			std.log.err("Error while saving item data: {s}", .{@errorName(err)});
 		};
 		while (self.chunkUpdateQueue.popFront()) |updateRequest| {
 			updateRequest.ch.save(self);
@@ -563,6 +570,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.biomePalette.deinit();
 		self.entityModelPalette.deinit();
 		self.entityComponentPalette.deinit();
+		permission.deinit();
 		main.globalAllocator.free(self.path);
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
@@ -1076,12 +1084,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 	}
 
-	pub fn forceSave(self: *ServerWorld) !void {
-		// TODO: Save chunks and player data
-		try self.saveWorldConfig();
-
-		try self.saveAllPlayers();
-
+	fn saveItemdrops(self: *ServerWorld) !void {
 		var itemDropData = main.utils.BinaryWriter.init(main.stackAllocator);
 		defer itemDropData.deinit();
 		self.itemDropManager.storeToBytes(&itemDropData);

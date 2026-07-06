@@ -11,10 +11,6 @@
 	.absorbedLight = 0x000000,
 	.collide = false,
 	.model = "cubyz:cross",
-	.texture = "cubyz:lush_grass_vegetation",
-	.item = .{
-		.texture = "lush_grass.png",
-	},
 	.lodReplacement = "cubyz:air",
 	.onUpdate = .{
 		.type = .check_support_blocks,
