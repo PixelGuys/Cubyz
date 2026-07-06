@@ -220,7 +220,7 @@ pub const handShake = struct { // MARK: handShake
 		conn.send(.secure, id, outData);
 	}
 
-	pub fn clientSide(conn: *Connection, name: []const u8) !void {
+	pub fn clientSide(conn: *Connection, name: []const u8) !ZonElement {
 		switch (conn.handShakeState.load(.monotonic)) {
 			.start => {
 				const zonObject = ZonElement.initObject(main.stackAllocator);
