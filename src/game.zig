@@ -318,7 +318,17 @@ pub const World = struct { // MARK: World
 	}
 
 	pub fn deinit(self: *World) void {
+		main.server.stop(.stop);
+
+		if (main.server.thread) |serverThread| {
+			serverThread.join();
+			main.server.thread = null;
+		}
+
 		self.conn.deinit();
+		main.threadPool.pause();
+		defer main.threadPool.@"continue"();
+
 		self.connected = false;
 		self.pause();
 		self.manager.deinit();
@@ -332,7 +342,6 @@ pub const World = struct { // MARK: World
 		Player.inventory.deinit(main.globalAllocator);
 		main.sync.client.reset();
 
-		main.threadPool.clear();
 		Player.super.deinit(.client);
 		main.entity.client.clear();
 		self.itemDrops.deinit();
@@ -342,14 +351,6 @@ pub const World = struct { // MARK: World
 		self.biomePalette.deinit();
 		self.entityComponentPalette.deinit();
 		self.entityModelPalette.deinit();
-
-		main.server.stop(.stop);
-
-		if (main.server.thread) |serverThread| {
-			serverThread.join();
-			main.server.thread = null;
-		}
-		main.threadPool.clear();
 		renderer.mesh_storage.deinit();
 		renderer.mesh_storage.init();
 		assets.unloadAssets();
@@ -374,9 +375,9 @@ pub const World = struct { // MARK: World
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/serverAssets", .{main.files.cubyzDirStr()}) catch unreachable;
 		defer main.stackAllocator.free(path);
 		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.proceduralItemPalette, self.biomePalette, self.entityModelPalette, self.entityComponentPalette);
-		Player.id = @enumFromInt(zon.get(u32, "player_id", @intFromEnum(main.entity.Entity.noValue)));
+		Player.id = @enumFromInt(zon.get(u32, "player_id") orelse @intFromEnum(main.entity.Entity.noValue));
 		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .serverShared, .{.playerInventory = Player.id}, .{});
-		Player.setGamemode(std.enums.fromInt(Gamemode, zon.get(?u8, "gamemode", null) orelse return error.Invalid) orelse return error.Invalid);
+		Player.setGamemode(std.enums.fromInt(Gamemode, zon.get(u8, "gamemode") orelse return error.Invalid) orelse return error.Invalid);
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
 

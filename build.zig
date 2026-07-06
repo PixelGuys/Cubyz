@@ -71,8 +71,10 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 
 	if (t.os.tag == .windows) {
 		exe.root_module.linkSystemLibrary("bcrypt", .{});
+		exe.root_module.linkSystemLibrary("comdlg32", .{});
 		exe.root_module.linkSystemLibrary("crypt32", .{});
 		exe.root_module.linkSystemLibrary("gdi32", .{});
+		exe.root_module.linkSystemLibrary("ole32", .{});
 		exe.root_module.linkSystemLibrary("opengl32", .{});
 		exe.root_module.linkSystemLibrary("ws2_32", .{});
 	} else if (t.os.tag == .macos) {
@@ -190,7 +192,7 @@ pub fn build(b: *std.Build) !void {
 
 	const options = b.addOptions();
 	const isRelease = b.option(bool, "release", "Removes the -dev flag from the version") orelse false;
-	const version = b.fmt("0.3.0{s}", .{if (isRelease) "" else "-dev"});
+	const version = b.fmt("0.4.0{s}", .{if (isRelease) "" else "-dev"});
 	if (b.option([]const u8, "version", "used by the CI to check if the git tag and game version match")) |tagVersion| {
 		const tagVersionUpperbound: usize = std.mem.indexOfScalar(u8, tagVersion, '-') orelse tagVersion.len;
 		const versionUpperbound: usize = std.mem.indexOfScalar(u8, version, '-') orelse version.len;

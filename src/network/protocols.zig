@@ -117,7 +117,7 @@ pub const handShake = struct { // MARK: handShake
 					conn.secureChannel.finishedCollectingClientVerificationData = true;
 					const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 					defer zon.deinit(main.stackAllocator);
-					const name = zon.get([]const u8, "name", "unnamed");
+					const name = zon.get([]const u8, "name") orelse "unnamed";
 					if (!std.unicode.utf8ValidateSlice(name)) {
 						std.log.err("Received player name with invalid UTF-8 characters.", .{});
 						return error.Invalid;
@@ -126,7 +126,7 @@ pub const handShake = struct { // MARK: handShake
 						std.log.err("Player has too long name with {}/{} characters.", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(name), name.len});
 						return error.Invalid;
 					}
-					const version = zon.get([]const u8, "version", "unknown");
+					const version = zon.get([]const u8, "version") orelse "unknown";
 					std.log.info("User {s} joined using version {s}", .{name, version});
 
 					if (!try settings.version.isCompatibleClientVersion(version)) {

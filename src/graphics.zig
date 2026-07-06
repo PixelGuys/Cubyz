@@ -519,14 +519,14 @@ pub const draw = struct { // MARK: draw
 	// ----------------------------------------------------------------------------
 	// MARK: text()
 
-	pub fn text(_text: []const u8, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) void {
-		TextRendering.renderText(_text, x, y, fontSize, .{}, alignment);
+	pub fn text(_text: []const u8, x: f32, y: f32, fontSize: f32) void {
+		TextRendering.renderText(_text, x, y, fontSize, .{});
 	}
 
-	pub inline fn print(comptime format: []const u8, args: anytype, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) void {
+	pub inline fn print(comptime format: []const u8, args: anytype, x: f32, y: f32, fontSize: f32) void {
 		const string = std.fmt.allocPrint(main.stackAllocator.allocator, format, args) catch unreachable;
 		defer main.stackAllocator.free(string);
-		text(string, x, y, fontSize, alignment);
+		text(string, x, y, fontSize);
 	}
 };
 
@@ -1249,8 +1249,8 @@ const TextRendering = struct { // MARK: TextRendering
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
-	fn renderText(text: []const u8, x: f32, y: f32, fontSize: f32, initialFontEffect: TextBuffer.FontEffect, alignment: TextBuffer.Alignment) void {
-		const buf = TextBuffer.init(main.stackAllocator, text, initialFontEffect, false, alignment);
+	fn renderText(text: []const u8, x: f32, y: f32, fontSize: f32, initialFontEffect: TextBuffer.FontEffect) void {
+		const buf = TextBuffer.init(main.stackAllocator, text, initialFontEffect, false, .left);
 		defer buf.deinit();
 
 		buf.render(x, y, fontSize);

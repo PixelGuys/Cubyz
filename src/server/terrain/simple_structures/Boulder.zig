@@ -26,9 +26,9 @@ sizeVariation: f32,
 pub fn loadModel(parameters: ZonElement) ?*Boulder {
 	const self = main.worldArena.create(Boulder);
 	self.* = .{
-		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "cubyz:slate/base")),
-		.size = parameters.get(f32, "size", 4),
-		.sizeVariation = parameters.get(f32, "size_variation", 1),
+		.block = main.blocks.parseBlock(parameters.get([]const u8, "block") orelse "cubyz:slate/smooth"),
+		.size = parameters.get(f32, "size") orelse 4,
+		.sizeVariation = parameters.get(f32, "size_variation") orelse 1,
 	};
 	return self;
 }

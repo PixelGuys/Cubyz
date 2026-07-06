@@ -18,7 +18,7 @@
 	.validPlayerSpawn = true,
 	.music = "cubyz:mischol/desert_firefly",
 	.ground_structure = .{
-		"7 to 8 cubyz:limestone/base",
+		"7 to 8 cubyz:limestone/smooth",
 	},
 	.structures = .{
 		.{
@@ -68,5 +68,5 @@
 			.height_variation = 3,
 		},
 	},
-	.stoneBlock = "cubyz:sandstone/base",
+	.stoneBlock = "cubyz:sandstone/rough",
 }
