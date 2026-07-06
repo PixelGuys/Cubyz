@@ -572,8 +572,6 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 		self.packetSendRequests.deinit(main.globalAllocator.allocator);
 
-		main.threadPool.clear();
-
 		for (self.connections.items) |conn| {
 			conn.pause();
 			conn.restartCounter += 1;
