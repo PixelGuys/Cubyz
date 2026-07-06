@@ -41,10 +41,13 @@ vec3 vertexBuffer[24] = vec3[24](
 	vec3(0, 0, 1)
 );
 
-layout(location = 0) uniform mat4 projectionMatrix;
-layout(location = 1) uniform mat4 viewMatrix;
-layout(location = 2) uniform ivec3 playerPositionInteger;
-layout(location = 3) uniform vec3 playerPositionFraction;
+layout (std140, binding = 0) uniform _frameData
+{
+	mat4 projectionMatrix;
+	mat4 viewMatrix;
+	ivec3 playerPositionInteger;
+	vec3 playerPositionFraction;
+};
 
 void main() {
 	uint chunkIDID = uint(gl_VertexID)/24u;
