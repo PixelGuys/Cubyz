@@ -194,7 +194,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 	game.camera.updateViewMatrix();
 
-	main.graphics.frame_uniforms.uploadFrameData(.{
+	main.graphics.frame_uniforms.uploadNewFrame(.{
 		.playerPositionInteger = @as(Vec3i, @floor(playerPos)),
 		.playerPositionFraction = @as(Vec3f, @floatCast(@mod(playerPos, Vec3d{1, 1, 1}))),
 		.projectionMatrix = game.projectionMatrix.toGl(),
