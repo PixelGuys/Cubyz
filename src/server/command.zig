@@ -6,11 +6,12 @@ const Mask = main.blueprint.Mask;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const List = main.List;
 const User = main.server.User;
-pub const commandList = @import("command/_list.zig");
+pub const commandList = @import("commands");
 
 pub const Command = struct {
 	exec: *const fn (args: []const u8, source: *User) void,
 	name: []const u8,
+	fullName: []const u8,
 	description: []const u8,
 	usage: []const u8,
 	permissionPath: []const u8,
@@ -21,14 +22,22 @@ pub var commands: std.StringHashMap(Command) = undefined;
 pub fn init() void {
 	commands = .init(main.globalAllocator.allocator);
 	inline for (@typeInfo(commandList).@"struct".decls) |decl| {
-		commands.put(decl.name, .{
-			.name = decl.name,
+		const commandName = comptime if (std.mem.indexOfScalar(u8, decl.name, ':')) |idx| decl.name[idx + 1 ..] else decl.name;
+
+		const result = commands.getOrPut(commandName) catch unreachable;
+		if (result.found_existing) {
+			std.log.err("Command \"/{s}\" ({s}) has been overwritten by {s}", .{commandName, result.value_ptr.fullName, decl.name});
+		}
+
+		result.value_ptr.* = .{
+			.name = commandName,
+			.fullName = decl.name,
 			.description = @field(commandList, decl.name).description,
 			.usage = @field(commandList, decl.name).usage,
 			.exec = &@field(commandList, decl.name).execute,
-			.permissionPath = "/command/" ++ decl.name,
-		}) catch unreachable;
-		std.log.debug("Registered command: '/{s}'", .{decl.name});
+			.permissionPath = "/command/" ++ commandName,
+		};
+		std.log.debug("Registered command: '/{s}' ({s})", .{commandName, decl.name});
 	}
 }
 
