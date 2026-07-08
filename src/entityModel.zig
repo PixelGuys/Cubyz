@@ -219,7 +219,7 @@ pub const EntityModel = struct {
 			const node = data.nodes[nodeRemap.gltfNodeIndex];
 
 			const name = main.globalArena.dupe(u8, std.mem.span(node.name));
-			self.nodeIndexMap.put(name, @intCast(i)) catch unreachable;
+			self.nodeIndexMap.put(name, @intCast(i)) catch return error.EntityModelNodeWithTheSameName;
 
 			var pivotMat = Mat4f.translation(self.coordinateSystem.convertVec(node.translation, @splat(0)));
 			pivotMat = pivotMat.mul(Mat4f.rotationQuat(self.coordinateSystem.convertQuat(node.rotation)));
@@ -242,7 +242,7 @@ pub const EntityModel = struct {
 				finalMat = finalMat.mul(Mat4f.rotationQuat(self.coordinateSystem.convertQuat(node.rotation)));
 				finalMat = finalMat.mul(Mat4f.scale(self.coordinateSystem.convertScale(node.scale)));
 
-				const parentNodeID = if (node.parent) |p| self.nodeIndexMap.get(std.mem.span(p.*.name)).? else 0;
+				const parentNodeID = if (node.parent) |p| self.nodeIndexMap.get(std.mem.span(p.*.name)).? else return error.EntityModelPrimitiveHasNoParent;
 
 				const primitives = node.mesh.*.primitives;
 				for (primitives[0..node.mesh.*.primitives_count]) |primitive| {
