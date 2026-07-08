@@ -14,7 +14,6 @@ const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
-const EntityModel = main.entityModel.EntityModel;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const c = @import("c");
