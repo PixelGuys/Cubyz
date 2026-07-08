@@ -85,8 +85,8 @@ pub const EntityModel = struct {
 		self.coordinateSystem = zon.get(CoordinateSystem, "coordinateSystem") orelse .right_handed_z_up;
 
 		self.nodeIndexMap = .init(main.worldArena.allocator);
-		self.nodes = main.worldArena.alloc(Node, 0);
-		self.nodePivots = main.worldArena.alloc(Mat4f, 0);
+		self.nodes = &.{};
+		self.nodePivots = &.{};
 		self.nodeCount = 0;
 
 		if (zon.get(bool, "isPlayerModel") orelse false) {
