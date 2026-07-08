@@ -70,8 +70,6 @@ pub const EntityModel = struct {
 		};
 	};
 
-	const NodeRemap = struct { depth: u16, gltfNodeIdx: u32 };
-
 	pub fn init(assetFolder: []const u8, entityModelId: []const u8, index: EntityModelIndex, zon: ZonElement) EntityModel {
 		var self: EntityModel = undefined;
 		if (zon.get([]const u8, "model")) |modelId| {
@@ -193,6 +191,14 @@ pub const EntityModel = struct {
 		defer indices.deinit(main.stackAllocator);
 		var baseVertex: u32 = 0;
 
+		const NodeRemap = struct { 
+			depth: u16, 
+			gltfNodeIdx: u32,
+
+			pub fn compareDepth(_: void, lhs: @This(), rhs: @This()) bool {
+				return lhs.depth < rhs.depth;
+			}
+		};
 		var nodeDepthRemap: main.List(NodeRemap) = .empty;
 		defer nodeDepthRemap.deinit(main.stackAllocator);
 
@@ -208,7 +214,7 @@ pub const EntityModel = struct {
 		}
 		const nodeCount = nodeIdx;
 
-		std.mem.sort(NodeRemap, nodeDepthRemap.items, {}, compareDepth);
+		std.mem.sort(NodeRemap, nodeDepthRemap.items, {}, NodeRemap.compareDepth);
 
 		self.nodes = main.worldArena.alloc(Node, nodeCount);
 		self.nodePivots = main.worldArena.alloc(Mat4f, nodeCount);
@@ -301,11 +307,7 @@ pub const EntityModel = struct {
 		self.indexCount = @intCast(indices.items.len);
 		self.nodeCount = nodeIdx;
 	}
-
-	fn compareDepth(_: void, lhs: NodeRemap, rhs: NodeRemap) bool {
-		return lhs.depth < rhs.depth;
-	}
-
+	
 	fn getHierarchyDepth(node: c.cgltf_node, depth: u16) u16 {
 		if (node.parent == null) {
 			return depth;
