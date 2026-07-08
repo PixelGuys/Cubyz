@@ -89,10 +89,8 @@ pub const EntityModel = struct {
 		self.nodePivots = main.worldArena.alloc(Mat4f, 0);
 		self.nodeCount = 0;
 
-		if (zon.getChildOrNull("isPlayerModel")) |isPlayerModel| {
-			if (isPlayerModel.as(bool) orelse false) {
-				playerEntityModels.append(main.worldArena, index);
-			}
+		if (zon.get(bool, "isPlayerModel") orelse false) {
+			playerEntityModels.append(main.worldArena, index);
 		}
 
 		var isPlayerModel = false;
