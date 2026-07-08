@@ -133,10 +133,8 @@ pub const EntityModel = struct {
 	}
 
 	fn cloneMetaData(self: *EntityModel) EntityModel {
-		const newNodes = main.worldArena.alloc(Node, self.nodes.len);
-		@memcpy(newNodes, self.nodes);
-		const newNodePivots = main.worldArena.alloc(Mat4f, self.nodePivots.len);
-		@memcpy(newNodePivots, self.nodePivots);
+		const newNodes = main.worldArena.dupe(Node, self.nodes);
+		const newNodePivots = main.worldArena.dupe(Mat4f, self.nodePivots);
 		return .{
 			.height = self.height,
 			.texturePath = main.worldArena.dupe(u8, self.texturePath),
@@ -220,9 +218,7 @@ pub const EntityModel = struct {
 		for (nodeDepthRemap.items, 0..) |nodeRemap, i| {
 			const node = data.nodes[nodeRemap.gltfNodeIndex];
 
-			const nameC = std.mem.span(node.name);
-			const name = main.globalArena.alloc(u8, nameC.len);
-			@memcpy(name, nameC);
+			const name = main.globalArena.dupe(u8, std.mem.span(node.name));
 			self.nodeIndexMap.put(name, @intCast(i)) catch unreachable;
 
 			var pivotMat = Mat4f.translation(self.coordinateSystem.convertVec(node.translation, @splat(0)));
