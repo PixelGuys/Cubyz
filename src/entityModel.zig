@@ -191,7 +191,7 @@ pub const EntityModel = struct {
 
 		const NodeRemap = struct { 
 			depth: u16, 
-			gltfNodeIdx: u32,
+			gltfNodeIndex: u32,
 
 			pub fn compareDepth(_: void, lhs: @This(), rhs: @This()) bool {
 				return lhs.depth < rhs.depth;
@@ -205,7 +205,7 @@ pub const EntityModel = struct {
 			if (node.children_count == 0) continue;
 			nodeDepthRemap.append(main.stackAllocator, .{
 				.depth = getHierarchyDepth(node, 0),
-				.gltfNodeIdx = @intCast(gltfNodeIdx),
+				.gltfNodeIndex = @intCast(gltfNodeIdx),
 			});
 
 			nodeIdx += 1;
@@ -218,7 +218,7 @@ pub const EntityModel = struct {
 		self.nodePivots = main.worldArena.alloc(Mat4f, nodeCount);
 
 		for (nodeDepthRemap.items, 0..) |nodeRemap, i| {
-			const node = data.nodes[nodeRemap.gltfNodeIdx];
+			const node = data.nodes[nodeRemap.gltfNodeIndex];
 
 			const nameC = std.mem.span(node.name);
 			const name = main.globalArena.alloc(u8, nameC.len);
@@ -234,7 +234,7 @@ pub const EntityModel = struct {
 		}
 
 		for (nodeDepthRemap.items, 0..) |nodeRemap, i| {
-			const node = data.nodes[nodeRemap.gltfNodeIdx];
+			const node = data.nodes[nodeRemap.gltfNodeIndex];
 			if (node.parent == null) continue;
 
 			self.nodes[i].parent = self.nodeIndexMap.get(std.mem.span(node.parent.*.name)).?;
