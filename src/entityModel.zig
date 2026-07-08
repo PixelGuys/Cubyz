@@ -117,10 +117,10 @@ pub const EntityModel = struct {
 				var split = std.mem.splitScalar(u8, texture, ':');
 				const mod = split.first();
 				const textureName = split.next() orelse unreachable;
-				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entityModels/textures/{s}{s}", .{assetFolder, mod, textureName, fileEnding}) catch unreachable;
+				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entity_models/textures/{s}{s}", .{assetFolder, mod, textureName, fileEnding}) catch unreachable;
 				main.files.cubyzDir().dir.access(main.io, self.texturePath, .{}) catch {
 					main.worldArena.free(self.texturePath);
-					self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "assets/{s}/entityModels/textures/{s}{s}", .{mod, textureName, fileEnding}) catch unreachable;
+					self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "assets/{s}/entity_models/textures/{s}{s}", .{mod, textureName, fileEnding}) catch unreachable;
 				};
 			}
 		}
@@ -161,7 +161,7 @@ pub const EntityModel = struct {
 		self.defaultTexture = main.graphics.Texture.initFromFile(self.texturePath);
 		if (self.modelId == null) return error.NoModelSpecified;
 
-		const file = try main.assets.readAsset(main.stackAllocator, "entityModels/models", self.modelId.?, ".glb");
+		const file = try main.assets.readAsset(main.stackAllocator, "entity_models/models", self.modelId.?, ".glb");
 		defer main.stackAllocator.free(file);
 
 		var options: c.cgltf_options = .{};
