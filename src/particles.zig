@@ -72,6 +72,7 @@ pub const ParticleManager = struct {
 			.density = RandomRange(f32).fromZon(zon.getChild("density")) orelse .init(2, 3),
 			.rotVel = rotVel,
 			.dragCoefficient = RandomRange(f32).fromZon(zon.getChild("dragCoefficient")) orelse .init(0.5, 0.6),
+			.bounciness = RandomRange(f32).fromZon(zon.getChild("bounciness")) orelse .init(0.025, 0.05),
 		};
 
 		particleTypeHashmap.put(main.worldArena.allocator, id, @intCast(types.items.len)) catch unreachable;
@@ -259,6 +260,7 @@ pub const ParticleSystem = struct {
 					} else {
 						v3Pos[0] = box.min[0] - hitBox.max[0] - physics.epsilon;
 					}
+					particleLocal.velAndRotationVel[0] = -particleLocal.velAndRotationVel[0]*particleLocal.bounciness;
 				}
 				v3Pos[1] += posDelta[1];
 				if (physics.collision.collides(.client, .y, -posDelta[1], v3Pos, hitBox)) |box| {
@@ -267,6 +269,7 @@ pub const ParticleSystem = struct {
 					} else {
 						v3Pos[1] = box.min[1] - hitBox.max[1] - physics.epsilon;
 					}
+					particleLocal.velAndRotationVel[1] = -particleLocal.velAndRotationVel[1]*particleLocal.bounciness;
 				}
 				v3Pos[2] += posDelta[2];
 				if (physics.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
@@ -275,6 +278,7 @@ pub const ParticleSystem = struct {
 					} else {
 						v3Pos[2] = box.min[2] - hitBox.max[2] - physics.epsilon;
 					}
+					particleLocal.velAndRotationVel[2] = -particleLocal.velAndRotationVel[2]*particleLocal.bounciness;
 				}
 				pos = @as(Vec3f, @floatCast(v3Pos - playerPos));
 			} else {
@@ -310,6 +314,7 @@ pub const ParticleSystem = struct {
 		const rot = if (properties.randomizeRotation) random.nextFloat(&main.seed)*std.math.pi*2 else 0;
 		const rotVel = particleType.rotVel.get(&main.seed);
 		const dragCoeff = particleType.dragCoefficient.get(&main.seed);
+		const bounciness = particleType.bounciness.get(&main.seed);
 
 		particles[particleCount] = Particle{
 			.pos = @as(Vec3f, @floatCast(pos - @as(Vec3d, @floatFromInt(previousPlayerPos)))),
@@ -322,6 +327,7 @@ pub const ParticleSystem = struct {
 			.density = density,
 			.dragCoefficient = dragCoeff,
 			.collides = collides,
+			.bounciness = bounciness,
 		};
 		particleCount += 1;
 	}
@@ -552,6 +558,7 @@ pub const ParticleTypeLocal = struct {
 	density: RandomRange(f32),
 	rotVel: RandomRange(f32),
 	dragCoefficient: RandomRange(f32),
+	bounciness: RandomRange(f32),
 };
 
 pub const Particle = extern struct {
@@ -568,5 +575,6 @@ pub const ParticleLocal = struct {
 	lifeVelocity: f32,
 	density: f32,
 	dragCoefficient: f32,
+	bounciness: f32,
 	collides: bool,
 };
