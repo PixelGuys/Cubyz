@@ -24,7 +24,7 @@ pub const GuiComponent = gui_component.GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
 
 pub const tooltip = @import("tooltip.zig");
-pub const windowlist = @import("windows/_list.zig");
+pub const windows = @import("windows");
 const gamepad_cursor = @import("gamepad_cursor.zig");
 
 var windowList: ListManaged(*GuiWindow) = undefined;
@@ -112,8 +112,8 @@ pub fn initWindowList() void {
 	windowList = .init(main.globalAllocator);
 	hudWindows = .init(main.globalAllocator);
 	openWindows = .init(main.globalAllocator);
-	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
-		const windowStruct = @field(windowlist, decl.name);
+	inline for (@typeInfo(windows).@"struct".decls) |decl| {
+		const windowStruct = @field(windows, decl.name);
 		windowStruct.window.id = decl.name;
 		addWindow(&windowStruct.window);
 		const functionNames = [_][]const u8{"render", "update", "updateSelected", "updateHovered", "onOpen", "onClose"};
@@ -133,8 +133,8 @@ pub fn deinitWindowList() void {
 }
 
 pub fn init() void { // MARK: init()
-	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
-		const windowStruct = @field(windowlist, decl.name);
+	inline for (@typeInfo(windows).@"struct".decls) |decl| {
+		const windowStruct = @field(windows, decl.name);
 		if (@hasDecl(windowStruct, "init")) {
 			windowStruct.init();
 		}
@@ -170,8 +170,8 @@ pub fn deinit() void {
 	DiscreteSlider.globalDeinit();
 	TextInput.globalDeinit();
 	tooltip.globalDeinit();
-	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
-		const WindowStruct = @field(windowlist, decl.name);
+	inline for (@typeInfo(windows).@"struct".decls) |decl| {
+		const WindowStruct = @field(windows, decl.name);
 		if (@hasDecl(WindowStruct, "deinit")) {
 			WindowStruct.deinit();
 		}
@@ -359,7 +359,7 @@ pub fn openHud() void {
 }
 
 pub fn openWindowCallback(comptime id: []const u8) main.callbacks.SimpleCallback {
-	return .initWithPtr(openWindowFromRef, &@field(windowlist, id).window);
+	return .initWithPtr(openWindowFromRef, &@field(windows, id).window);
 }
 
 pub fn closeWindowFromRef(window: *GuiWindow) void {

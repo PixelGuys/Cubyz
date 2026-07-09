@@ -662,7 +662,7 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 			.clear => {
 				const typ = try reader.readEnum(ClearType);
 				switch (typ) {
-					.chat => main.gui.windowlist.chat.clearChat(),
+					.chat => main.gui.windows.@"cubyz:chat".clearChat(),
 				}
 			},
 		}
@@ -767,7 +767,7 @@ pub const chat = struct { // MARK: chat
 			std.log.err("Received chat message with invalid UTF-8 characters.", .{});
 			return error.Invalid;
 		}
-		main.gui.windowlist.chat.addMessage(msg);
+		main.gui.windows.@"cubyz:chat".addMessage(msg);
 	}
 	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const msg = reader.remaining;

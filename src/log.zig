@@ -91,7 +91,7 @@ noinline fn runtimeLogFn(level: Level, format: []const u8, args: []const fmt.For
 
 	if (level == .err and !openingErrorWindow and !settings.launchConfig.headlessServer) {
 		openingErrorWindow = true;
-		gui.openWindow("error_prompt");
+		gui.openWindow("cubyz:error_prompt");
 		openingErrorWindow = false;
 	}
 }
