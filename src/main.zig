@@ -335,22 +335,17 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 		std.log.warn("Cubyz detected it's running on Windows. For optimal performance and reduced power usage please install Linux.", .{});
 	}
 
-	{
+	argCheck: {
 		var argIterator = args.args.iterateAllocator(stackAllocator.allocator) catch |err| {
 			std.log.err("Failed to read command line arguments: {s}", .{@errorName(err)});
-			@panic("Failed to read command line arguments");
+			break :argCheck;
 		};
 		defer argIterator.deinit();
 		_ = argIterator.skip();
 		if (argIterator.next() != null) {
 			std.debug.print(
 				\\Cubyz does not accept any command line arguments.
-				\\All launch-time configuration is done through the "launchConfig.zon" file in the game's working directory. Supported fields:
-				\\  cubyzDir - Directory used to store game data and world saves.
-				\\  autoEnterWorld - Name of a world to automatically enter on startup.
-				\\  headlessServer - Set to true to run as a headless server.
-				\\  preferredAuthenticationAlgorithm - Key algorithm used for server authentication (e.g. ed25519).
-				\\  vulkanTestingMode - Set to true to enable experimental Vulkan testing mode.
+				\\All launch-time configuration is done through the "launchConfig.zon" file in the game's working directory. See that file for the available options.
 				\\
 			, .{});
 			return;
