@@ -2,6 +2,9 @@
 	.tags = .{.choppable, .cuttable, .sliceable, .branch},
 	.onUpdate = .{
 		.type = .decay,
+		.drops = .{
+			.{.chance = 0.8, .items = .{"cubyz:branch/cactus"}},
+		},
 	},
 	.blockHealth = 2.5,
 	.texture0 = "cubyz:branch/cactus/dot",
