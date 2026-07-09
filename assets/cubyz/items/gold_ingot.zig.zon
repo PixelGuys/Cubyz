@@ -2,13 +2,27 @@
 	.tags = .{.metal, .precious},
 	.texture = "gold_ingot.png",
 	.material = .{
-		.durability = 400,
+		.durability = 800,
 		.massDamage = 14.0,
 		.hardnessDamage = 1.0,
-		.swingSpeed = 0.25,
+		.swingSpeed = 0.33,
 		.textureRoughness = 0.05,
 		.colors = .{
 			0xffbc7132, 0xffda972b, 0xfff2cd53, 0xfff2cd53, 0xfffae39e,
+		},
+		.modifiers = .{
+			.{
+				.id = "fragile",
+				.strength = 0.15,
+				.restriction = .{
+					.id = .not,
+					.child = .{
+						.id = .encased,
+						.tag = .copper,
+						.amount = 1,
+					},
+				},
+			},
 		},
 	},
 }

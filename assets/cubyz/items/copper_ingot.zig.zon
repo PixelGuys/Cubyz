@@ -1,8 +1,8 @@
 .{
-	.tags = .{.metal},
+	.tags = .{.metal, .copper},
 	.texture = "copper_ingot.png",
 	.material = .{
-		.durability = 300,
+		.durability = 400,
 		.massDamage = 1.0,
 		.hardnessDamage = 5.1,
 		.swingSpeed = 7.1,
