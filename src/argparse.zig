@@ -106,10 +106,20 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				};
 			}
 
-			const arg = argument orelse {
+			var arg = argument orelse {
 				errorMessage.print(main.stackAllocator, "Missing argument at position <{s}>", .{name});
 				return error.ParseError;
 			};
+
+			if (arg[0] == '.') {
+				var split = std.mem.splitScalar(u8, arg[1..], '=');
+				const arg_name = split.first();
+				if (!std.mem.eql(u8, arg_name, name)) {
+					errorMessage.print(main.stackAllocator, "Wrong argument, got: {s}, required: {s}", .{arg_name, name});
+					return error.ParseError;
+				}
+				arg = split.rest();
+			}
 
 			if (Field == []const u8) {
 				return arg;
