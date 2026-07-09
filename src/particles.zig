@@ -72,6 +72,7 @@ pub const ParticleManager = struct {
 			.density = RandomRange(f32).fromZon(zon.getChild("density")) orelse .init(2, 3),
 			.rotVel = rotVel,
 			.dragCoefficient = RandomRange(f32).fromZon(zon.getChild("dragCoefficient")) orelse .init(0.5, 0.6),
+			.friction = RandomRange(f32).fromZon(zon.getChild("friction")) orelse .init(0.6, 0.8),
 		};
 
 		particleTypeHashmap.put(main.worldArena.allocator, id, @intCast(types.items.len)) catch unreachable;
@@ -251,31 +252,51 @@ pub const ParticleSystem = struct {
 				const hitBox: physics.collision.Box = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
 
 				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
+				var addFrictionX = false;
+				var addFrictionY = false;
+				var addFrictionZ = false;
 
 				v3Pos[0] += posDelta[0];
 				if (physics.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
+					addFrictionY = true;
+					addFrictionZ = true;
 					if (posDelta[0] < 0) {
 						v3Pos[0] = box.max[0] - hitBox.min[0] + physics.epsilon;
 					} else {
 						v3Pos[0] = box.min[0] - hitBox.max[0] - physics.epsilon;
 					}
 				}
+
 				v3Pos[1] += posDelta[1];
 				if (physics.collision.collides(.client, .y, -posDelta[1], v3Pos, hitBox)) |box| {
+					addFrictionX = true;
+					addFrictionZ = true;
 					if (posDelta[1] < 0) {
 						v3Pos[1] = box.max[1] - hitBox.min[1] + physics.epsilon;
 					} else {
 						v3Pos[1] = box.min[1] - hitBox.max[1] - physics.epsilon;
 					}
 				}
+
 				v3Pos[2] += posDelta[2];
 				if (physics.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
+					addFrictionX = true;
+					addFrictionY = true;
 					if (posDelta[2] < 0) {
 						v3Pos[2] = box.max[2] - hitBox.min[2] + physics.epsilon;
 					} else {
 						v3Pos[2] = box.min[2] - hitBox.max[2] - physics.epsilon;
 					}
 				}
+
+				const friction = @exp(-particleLocal.friction*deltaTime);
+
+				particleLocal.velAndRotationVel *= Vec4f{
+					friction*@intFromBool(addFrictionX) + @intFromBool(!addFrictionX),
+					friction*@intFromBool(addFrictionY) + @intFromBool(!addFrictionY),
+					friction*@intFromBool(addFrictionZ) + @intFromBool(!addFrictionZ),
+					1,
+				};
 				pos = @as(Vec3f, @floatCast(v3Pos - playerPos));
 			} else {
 				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
@@ -310,6 +331,7 @@ pub const ParticleSystem = struct {
 		const rot = if (properties.randomizeRotation) random.nextFloat(&main.seed)*std.math.pi*2 else 0;
 		const rotVel = particleType.rotVel.get(&main.seed);
 		const dragCoeff = particleType.dragCoefficient.get(&main.seed);
+		const friction = particleType.friction.get(&main.seed);
 
 		particles[particleCount] = Particle{
 			.pos = @as(Vec3f, @floatCast(pos - @as(Vec3d, @floatFromInt(previousPlayerPos)))),
@@ -322,6 +344,7 @@ pub const ParticleSystem = struct {
 			.density = density,
 			.dragCoefficient = dragCoeff,
 			.collides = collides,
+			.friction = friction,
 		};
 		particleCount += 1;
 	}
@@ -552,6 +575,7 @@ pub const ParticleTypeLocal = struct {
 	density: RandomRange(f32),
 	rotVel: RandomRange(f32),
 	dragCoefficient: RandomRange(f32),
+	friction: RandomRange(f32),
 };
 
 pub const Particle = extern struct {
@@ -568,5 +592,6 @@ pub const ParticleLocal = struct {
 	lifeVelocity: f32,
 	density: f32,
 	dragCoefficient: f32,
+	friction: f32,
 	collides: bool,
 };
