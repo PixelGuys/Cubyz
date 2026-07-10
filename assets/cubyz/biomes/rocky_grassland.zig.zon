@@ -16,7 +16,7 @@
 	.music = "cubyz:sinanimea/sunrise",
 
 	.ground_structure = .{
-		"cubyz:grass",
+		"cubyz:grass/temperate",
 		"0 to 1 cubyz:soil",
 	},
 	.structures = .{
