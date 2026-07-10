@@ -1,0 +1,56 @@
+.{
+	.chance = 2,
+	.minHeight = -100,
+	.structures = .{
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:cave_sprouts"},
+			.chance = 0.2,
+			.width = 6,
+			.variation = 3,
+			.density = 0.06,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:cave_sprouts:1",
+			.generationMode = .ceiling,
+			.chance = 0.5,
+			.height = 0,
+			.height_variation = 0,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:gravel",
+			.chance = 0.064,
+			.width = 5,
+			.variation = 5,
+			.depth = 3,
+			.smoothness = 0.1,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:slate/smooth",
+			.chance = 0.048,
+			.size = 3,
+			.size_variation = 6,
+		},
+	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:cluster",
+			.minAmount = 1,
+			.maxAmount = 2,
+			.children = .{
+				.{
+					.id = "cubyz:partial_sphere",
+					.minAmount = 4,
+					.maxAmount = 6,
+					.minRadius = 8,
+					.maxRadius = 16,
+					.randomOffset = .{25, 25, 20},
+				},
+			},
+		},
+	},
+}
