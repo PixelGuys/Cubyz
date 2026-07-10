@@ -1,9 +1,9 @@
 .{
 	.rotation = "cubyz:fence",
 	.model = "cubyz:wall",
-	.texture = "cubyz:magma/rough/wall",
-	.texture_top = "cubyz:magma/rough/wall_top",
-	.texture_bottom = "cubyz:magma/rough/wall_top",
+	.texture = "cubyz:magma/wall",
+	.texture_top = "cubyz:magma/wall_top",
+	.texture_bottom = "cubyz:magma/wall_top",
 	.item = .{
 		.texture = "wall/magma.png",
 	},
