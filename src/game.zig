@@ -518,6 +518,13 @@ pub const World = struct { // MARK: World
 pub var testWorld: World = undefined; // TODO:
 pub var world: ?*World = null;
 
+pub var zoom: f32 = 1.0;
+pub var zoomStartTime: ?std.Io.Timestamp = null;
+pub var zoomNeededDuration: f32 = 0.0;
+pub var zoomNeededDurationTime: std.Io.Timestamp = std.Io.Timestamp.zero;
+pub var zoomStart: f32 = 1.0;
+pub var zoomEnd: f32 = 1.0;
+pub var zoomSScaled: f32 = 0.0;
 pub var projectionMatrix: Mat4f = Mat4f.identity();
 
 var nextBlockPlaceTime: ?std.Io.Timestamp = null;
@@ -696,6 +703,42 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 		const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% main.Window.scrollOffsetInteger;
 		Player.selectedSlot = @intCast(@mod(newSlot, 12));
+
+		zoom: {
+			const rho = std.math.sqrt2;
+			const speed = 5;
+			const currentTime = main.timestamp();
+			var startTime = currentTime;
+			const newZoomEnd: f32 = if (KeyBoard.key("zoom").pressed)
+				3.0
+			else
+				1.0;
+			if (zoomEnd != newZoomEnd) { // interrupting zoom
+				zoomEnd = newZoomEnd;
+				zoomStartTime = currentTime;
+				zoomStart = zoom;
+				const zoomS = @log(zoomEnd/zoomStart)/rho;
+				zoomSScaled = rho * zoomS;
+				zoomNeededDuration = @abs(zoomS)/speed;
+				zoomNeededDurationTime = std.Io.Timestamp.fromNanoseconds(@as(i96, @trunc(zoomNeededDuration * 1e9)));
+				std.log.debug("zoom: start: zoomNeededDuration = {}", .{zoomNeededDuration});
+			} else if (zoomStartTime) |time| { // zooming in without interruptions
+				startTime = time;
+			} else { // ended zooming in
+				break :zoom;
+			}
+			const zoomDuration = startTime.durationTo(currentTime);
+			if (zoomDuration.nanoseconds < zoomNeededDurationTime.nanoseconds) {
+				const zoomSeconds = @as(f32, @floatFromInt(zoomDuration.toNanoseconds()))/1.0e9;
+				const t = std.math.clamp(zoomSeconds/zoomNeededDuration, 0, 1);
+				zoom = zoomStart * std.math.exp(zoomSScaled * t);
+			} else {
+				zoom = zoomEnd;
+				zoomStartTime = null;
+				std.log.debug("zoom: end: zoomDuration = {}", .{zoomDuration.toMilliseconds()});
+			}
+			renderer.updateZoom(zoom);
+		}
 
 		const newPos = Vec2f{
 			@floatCast(main.KeyBoard.key("cameraRight").value - main.KeyBoard.key("cameraLeft").value),

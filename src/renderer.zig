@@ -135,16 +135,31 @@ var worldFrameBuffer: graphics.FrameBuffer = undefined;
 pub var lastWidth: u31 = 0;
 pub var lastHeight: u31 = 0;
 var lastFov: f32 = 0;
+var lastZoom: f32 = 1;
+pub fn updateProjectionMatrix() void {
+	game.projectionMatrix = 
+		Mat4f.scale(Vec3f{lastZoom, lastZoom, 1})
+		.mul(Mat4f.perspective(
+			std.math.degreesToRadians(lastFov),
+			@as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)),
+			zNear, zFar));
+}
 pub fn updateFov(fov: f32) void {
 	if (lastFov != fov) {
 		lastFov = fov;
-		game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(fov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
+		updateProjectionMatrix();
+	}
+}
+pub fn updateZoom(zoom: f32) void {
+	if (lastZoom != zoom) {
+		lastZoom = zoom;
+		updateProjectionMatrix();
 	}
 }
 pub fn updateViewport(width: u31, height: u31) void {
 	lastWidth = @trunc(@as(f32, @floatFromInt(width))*main.settings.resolutionScale);
 	lastHeight = @trunc(@as(f32, @floatFromInt(height))*main.settings.resolutionScale);
-	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(lastFov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
+	updateProjectionMatrix();
 	worldFrameBuffer.updateSize(lastWidth, lastHeight, c.GL_RGB16F);
 	worldFrameBuffer.unbind();
 }
@@ -633,6 +648,9 @@ pub const MenuBackGround = struct {
 		updateViewport(size, size);
 		updateFov(90.0);
 		defer updateFov(main.settings.fov);
+		const prevZoom = lastZoom;
+		updateZoom(1.0);
+		defer updateZoom(prevZoom);
 		main.settings.resolutionScale = oldResolutionScale;
 		defer updateViewport(Window.width, Window.height);
 
