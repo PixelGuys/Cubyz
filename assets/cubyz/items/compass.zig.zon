@@ -1,0 +1,4 @@
+.{
+	.texture = "compass.png",
+	.stackSize = 1,
+}

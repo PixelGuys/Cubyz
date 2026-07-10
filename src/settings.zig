@@ -39,6 +39,9 @@ pub var resolutionScale: f32 = 1;
 
 pub var bloom: bool = true;
 
+pub var compassEnabled: bool = true;
+pub var compassStyle: u16 = 0;
+
 pub var vsync: bool = true;
 
 pub var playerName: []const u8 = "";
