@@ -6,8 +6,8 @@ const command = main.server.command;
 
 pub const description = "Manually assign or remove a short alias for a full command ID.";
 pub const usage =
-\\/cubyz:alias <shortName> <fullCommandId>
-\\/cubyz:alias remove <shortName>
+    \\/alias <shortName> <fullCommandId>
+    \\/alias remove <shortName>
 ;
 
 const Args = union(enum) {

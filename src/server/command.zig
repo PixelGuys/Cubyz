@@ -47,7 +47,6 @@ const aliasIsUnique: [allDecls.len]bool = blk: {
 	break :blk result;
 };
 
-
 pub fn init() void {
 	registeredCommands = .init(main.globalAllocator.allocator);
 	aliases = .init(main.globalAllocator.allocator);
