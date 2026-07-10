@@ -56,7 +56,6 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	applyName();
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
