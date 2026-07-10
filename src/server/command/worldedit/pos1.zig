@@ -7,11 +7,20 @@ const Vec3i = main.vec.Vec3i;
 pub const description = "Select the player position as position 1.";
 pub const usage = "/pos1";
 
+const Args = union(enum) {
+	@"/pos1": struct {},
+};
+
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/pos1"});
+
 pub fn execute(args: []const u8, source: *User) void {
-	if (args.len != 0) {
-		source.sendMessage("#ff0000Too many arguments for command /pos1. Expected no arguments.", .{});
+	var errorMessage: main.List(u8) = .empty;
+	defer errorMessage.deinit(main.stackAllocator);
+
+	_ = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
+		source.sendMessage("#ff0000{s}", .{errorMessage.items});
 		return;
-	}
+	};
 
 	const pos: Vec3i = @floor(source.player().pos);
 

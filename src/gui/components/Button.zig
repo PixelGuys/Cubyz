@@ -162,23 +162,12 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 		self.hovered = false;
 		draw.customShadedRect(buttonUniforms, self.pos + Vec2f{2, 2}, self.size - Vec2f{4, 4});
 	}
-	{ // Draw the outline using the 9-slice texture.
-		const cornerSize = (textures.outlineTextureSize - Vec2f{1, 1});
-		const cornerSizeUV = (textures.outlineTextureSize - Vec2f{1, 1})/Vec2f{2, 2}/textures.outlineTextureSize;
-		const lowerTexture = (textures.outlineTextureSize - Vec2f{1, 1})/Vec2f{2, 2}/textures.outlineTextureSize;
-		const upperTexture = (textures.outlineTextureSize + Vec2f{1, 1})/Vec2f{2, 2}/textures.outlineTextureSize;
-		textures.outlineTexture.bindTo(0);
-		// Corners:
-		graphics.draw.boundSubImage(self.pos + Vec2f{0, 0}, cornerSize, .{0, 0}, cornerSizeUV);
-		graphics.draw.boundSubImage(self.pos + Vec2f{self.size[0], 0} - Vec2f{cornerSize[0], 0}, cornerSize, .{upperTexture[0], 0}, cornerSizeUV);
-		graphics.draw.boundSubImage(self.pos + Vec2f{0, self.size[1]} - Vec2f{0, cornerSize[1]}, cornerSize, .{0, upperTexture[1]}, cornerSizeUV);
-		graphics.draw.boundSubImage(self.pos + self.size - cornerSize, cornerSize, upperTexture, cornerSizeUV);
-		// Edges:
-		graphics.draw.boundSubImage(self.pos + Vec2f{cornerSize[0], 0}, Vec2f{self.size[0] - 2*cornerSize[0], cornerSize[1]}, .{lowerTexture[0], 0}, .{upperTexture[0] - lowerTexture[0], cornerSizeUV[1]});
-		graphics.draw.boundSubImage(self.pos + Vec2f{cornerSize[0], self.size[1] - cornerSize[1]}, Vec2f{self.size[0] - 2*cornerSize[0], cornerSize[1]}, .{lowerTexture[0], upperTexture[1]}, .{upperTexture[0] - lowerTexture[0], cornerSizeUV[1]});
-		graphics.draw.boundSubImage(self.pos + Vec2f{0, cornerSize[1]}, Vec2f{cornerSize[0], self.size[1] - 2*cornerSize[1]}, .{0, lowerTexture[1]}, .{cornerSizeUV[0], upperTexture[1] - lowerTexture[1]});
-		graphics.draw.boundSubImage(self.pos + Vec2f{self.size[0] - cornerSize[0], cornerSize[1]}, Vec2f{cornerSize[0], self.size[1] - 2*cornerSize[1]}, .{upperTexture[0], lowerTexture[1]}, .{cornerSizeUV[0], upperTexture[1] - lowerTexture[1]});
-	}
+
+	const cornerSize = (textures.outlineTextureSize - Vec2f{1, 1})/Vec2f{2, 2};
+
+	textures.outlineTexture.bindTo(0);
+	graphics.draw.bound9SliceImage(self.pos, self.size, textures.outlineTextureSize, cornerSize, 2);
+
 	const oldColor = draw.setColor(if (self.disabled) 0xff808080 else 0xffffffff);
 	defer draw.restoreColor(oldColor);
 	const textPos = self.pos + self.size/@as(Vec2f, @splat(2.0)) - self.child.size()/@as(Vec2f, @splat(2.0));
