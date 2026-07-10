@@ -31,7 +31,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	msg.appendSlice("#ffff00");
 	switch (result) {
 		.@"/help" => {
-			var iterator = command.commands.valueIterator();
+			var iterator = command.registeredCommands.valueIterator();
 			while (iterator.next()) |cmd| {
 				msg.append('/');
 				msg.appendSlice(cmd.name);
@@ -64,7 +64,7 @@ const Cmd = struct {
 
 	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorList: *List(u8)) error{ParseError}!Cmd {
 		return .{
-			.cmd = command.commands.get(arg) orelse {
+			.cmd = command.registeredCommands.get(arg) orelse {
 				errorList.print(allocator, "Unrecognized command name for <{s}>, got {s}", .{name, arg});
 				return error.ParseError;
 			},
