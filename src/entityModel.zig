@@ -37,7 +37,7 @@ pub const EntityModel = struct {
 	defaultTexture: ?main.graphics.Texture,
 	coordinateSystem: CoordinateSystem,
 
-	// will be filled and used in future 
+	// will be filled and used in future
 	pub const Node = struct {};
 
 	pub const Vertex = extern struct {
@@ -148,7 +148,7 @@ pub const EntityModel = struct {
 			.coordinateSystem = self.coordinateSystem,
 			.nodeIndexMap = self.nodeIndexMap.clone() catch unreachable,
 			.nodes = newNodes,
-			.nodeParents = newNodeParents, 
+			.nodeParents = newNodeParents,
 			.nodePivots = newNodePivots,
 			.nodeCount = self.nodeCount,
 		};
@@ -190,8 +190,8 @@ pub const EntityModel = struct {
 		defer indices.deinit(main.stackAllocator);
 		var baseVertex: u32 = 0;
 
-		const NodeRemap = struct { 
-			depth: u16, 
+		const NodeRemap = struct {
+			depth: u16,
 			gltfNodeIndex: u32,
 
 			pub fn compareDepth(_: void, lhs: @This(), rhs: @This()) bool {
@@ -306,7 +306,7 @@ pub const EntityModel = struct {
 		self.indexCount = @intCast(indices.items.len);
 		self.nodeCount = nodeIdx;
 	}
-	
+
 	fn getHierarchyDepth(node: c.cgltf_node, depth: u16) u16 {
 		if (node.parent == null) {
 			return depth;
