@@ -122,8 +122,8 @@ pub const client = struct {
 
 			const entModel = component.entityModel.get();
 
-			for (component.nodes, 0..) |*node, i| {
-				const parentMat = if (node.parent) |p| component.matrices[p].transpose() else Mat4f.identity();
+			for (entModel.nodeParents, 0..) |parent, i| {
+				const parentMat = if (parent) |p| component.matrices[p].transpose() else Mat4f.identity();
 
 				component.matrices[i] = parentMat.mul(entModel.nodePivots[i]).transpose();
 			}

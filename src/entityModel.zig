@@ -28,6 +28,7 @@ pub const EntityModel = struct {
 
 	nodeIndexMap: std.StringHashMap(u16) = undefined,
 	nodes: []Node = undefined,
+	nodeParents: []?u16 = undefined,
 	nodePivots: []Mat4f = undefined,
 	nodeCount: u16,
 
@@ -36,9 +37,8 @@ pub const EntityModel = struct {
 	defaultTexture: ?main.graphics.Texture,
 	coordinateSystem: CoordinateSystem,
 
-	pub const Node = struct {
-		parent: ?u16 = null,
-	};
+	// will be filled and used in future 
+	pub const Node = struct {};
 
 	pub const Vertex = extern struct {
 		pos: [3]f32,
@@ -86,6 +86,7 @@ pub const EntityModel = struct {
 
 		self.nodeIndexMap = .init(main.worldArena.allocator);
 		self.nodes = &.{};
+		self.nodeParents = &.{};
 		self.nodePivots = &.{};
 		self.nodeCount = 0;
 
@@ -134,6 +135,7 @@ pub const EntityModel = struct {
 
 	fn cloneMetaData(self: *EntityModel) EntityModel {
 		const newNodes = main.worldArena.dupe(Node, self.nodes);
+		const newNodeParents = main.worldArena.dupe(?u16, self.nodeParents);
 		const newNodePivots = main.worldArena.dupe(Mat4f, self.nodePivots);
 		return .{
 			.height = self.height,
@@ -146,6 +148,7 @@ pub const EntityModel = struct {
 			.coordinateSystem = self.coordinateSystem,
 			.nodeIndexMap = self.nodeIndexMap.clone() catch unreachable,
 			.nodes = newNodes,
+			.nodeParents = newNodeParents, 
 			.nodePivots = newNodePivots,
 			.nodeCount = self.nodeCount,
 		};
@@ -213,6 +216,8 @@ pub const EntityModel = struct {
 		std.mem.sort(NodeRemap, nodeDepthRemap.items, {}, NodeRemap.compareDepth);
 
 		self.nodes = main.worldArena.alloc(Node, nodeCount);
+		self.nodeParents = main.worldArena.alloc(?u16, nodeCount);
+		@memset(self.nodeParents, null);
 		self.nodePivots = main.worldArena.alloc(Mat4f, nodeCount);
 
 		for (nodeDepthRemap.items, 0..) |nodeRemap, i| {
@@ -233,7 +238,7 @@ pub const EntityModel = struct {
 			const node = data.nodes[nodeRemap.gltfNodeIndex];
 			if (node.parent == null) continue;
 
-			self.nodes[i].parent = self.nodeIndexMap.get(std.mem.span(node.parent.*.name)).?;
+			self.nodeParents[i] = self.nodeIndexMap.get(std.mem.span(node.parent.*.name)).?;
 		}
 
 		for (data.nodes[0..data.nodes_count]) |node| {
