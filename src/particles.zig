@@ -307,20 +307,22 @@ pub const ParticleSystem = struct {
 
 	fn addParticle(typ: u32, particleType: ParticleTypeLocal, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties) void {
 		const lifeTime = properties.lifeTime.get(&main.seed);
+		if (lifeTime == 0) return;
 		const density = particleType.density.get(&main.seed);
 		const rot = if (properties.randomizeRotation) random.nextFloat(&main.seed)*std.math.pi*2 else 0;
 		const rotVel = particleType.rotVel.get(&main.seed);
 		const dragCoeff = particleType.dragCoefficient.get(&main.seed);
 
+		const loopTime = lifeTime/if (particleType.loopTime) |l| l.get(&main.seed) else lifeTime;
 		particles[particleCount] = Particle{
 			.pos = @as(Vec3f, @floatCast(pos - @as(Vec3d, @floatFromInt(previousPlayerPos)))),
 			.rot = rot,
 			.typ = typ,
-			.loopRatio = lifeTime/if (particleType.loopTime) |l| l.get(&main.seed) else 1,
+			.lifeRatio = loopTime,
 		};
 		particlesLocal[particleCount] = ParticleLocal{
 			.velAndRotationVel = vec.combine(vel, rotVel),
-			.lifeVelocity = 1/lifeTime,
+			.lifeVelocity = 1/lifeTime*loopTime,
 			.density = density,
 			.dragCoefficient = dragCoeff,
 			.collides = collides,
@@ -561,7 +563,6 @@ pub const Particle = extern struct {
 	pos: [3]f32 align(16),
 	rot: f32 = 0,
 	lifeRatio: f32 = 1,
-	loopRatio: f32 = 1,
 	light: u32 = 0,
 	typ: u32,
 };
