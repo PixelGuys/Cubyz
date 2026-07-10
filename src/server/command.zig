@@ -8,51 +8,94 @@ const List = main.List;
 const User = main.server.User;
 
 pub const commands = @import("commands");
+const allDecls = @typeInfo(commands).@"struct".decls;
 
 pub const Command = struct {
 	exec: *const fn (args: []const u8, source: *User) void,
 	name: []const u8,
-	fullName: []const u8,
 	description: []const u8,
 	usage: []const u8,
 	permissionPath: []const u8,
 };
 
 pub var registeredCommands: std.StringHashMap(Command) = undefined;
+var aliases: std.StringHashMap([]const u8) = undefined;
+pub var userAliases: std.StringHashMap([]const u8) = undefined;
+
+fn shortAliasOf(comptime fullName: []const u8) []const u8 {
+	const afterSlash = if (std.mem.lastIndexOfScalar(u8, fullName, '/')) |idx| fullName[idx + 1 ..] else fullName;
+	return if (std.mem.indexOfScalar(u8, afterSlash, ':')) |idx| afterSlash[idx + 1 ..] else afterSlash;
+}
+
+const commandAliases: [allDecls.len][]const u8 = blk: {
+	@setEvalBranchQuota(1_000_000);
+	var result: [allDecls.len][]const u8 = undefined;
+	for (allDecls, 0..) |decl, i| result[i] = shortAliasOf(decl.name);
+	break :blk result;
+};
+
+const aliasIsUnique: [allDecls.len]bool = blk: {
+	@setEvalBranchQuota(1_000_000);
+	var result: [allDecls.len]bool = undefined;
+	for (commandAliases, 0..) |alias, i| {
+		var count: usize = 0;
+		for (commandAliases) |other| {
+			if (std.mem.eql(u8, alias, other)) count += 1;
+		}
+		result[i] = count == 1;
+	}
+	break :blk result;
+};
+
 
 pub fn init() void {
 	registeredCommands = .init(main.globalAllocator.allocator);
-	inline for (@typeInfo(commands).@"struct".decls) |decl| {
-		const commandName = comptime blk: {
-			const afterSlash = if (std.mem.lastIndexOfScalar(u8, decl.name, '/')) |idx| decl.name[idx + 1 ..] else decl.name;
-			break :blk if (std.mem.indexOfScalar(u8, afterSlash, ':')) |idx| afterSlash[idx + 1 ..] else afterSlash;
-		};
+	aliases = .init(main.globalAllocator.allocator);
+	userAliases = .init(main.globalAllocator.allocator);
 
-		const result = registeredCommands.getOrPut(commandName) catch unreachable;
-		if (result.found_existing) {
-			std.log.err("Command \"/{s}\" ({s}) has been overwritten by {s}", .{commandName, result.value_ptr.fullName, decl.name});
-		}
+	inline for (allDecls, 0..) |decl, i| {
+		const commandAlias = commandAliases[i];
+		const isUniqueAlias = aliasIsUnique[i];
 
-		result.value_ptr.* = .{
-			.name = commandName,
-			.fullName = decl.name,
+		registeredCommands.put(decl.name, .{
+			.name = decl.name,
 			.description = @field(commands, decl.name).description,
 			.usage = @field(commands, decl.name).usage,
 			.exec = &@field(commands, decl.name).execute,
-			.permissionPath = "/command/" ++ commandName,
-		};
-		std.log.debug("Registered command: '/{s}' ({s})", .{commandName, decl.name});
+			.permissionPath = "/command/" ++ decl.name,
+		}) catch unreachable;
+
+		if (isUniqueAlias) {
+			aliases.put(commandAlias, decl.name) catch unreachable;
+			std.log.debug("Registered command '/{s}' (alias '/{s}')", .{decl.name, commandAlias});
+		} else {
+			std.log.debug("Registered command '/{s}' (no alias, conflicts with another mod)", .{decl.name});
+		}
 	}
 }
 
 pub fn deinit() void {
 	registeredCommands.deinit();
+	aliases.deinit();
+	var it = userAliases.iterator();
+	while (it.next()) |entry| {
+		main.globalAllocator.free(entry.key_ptr.*);
+		main.globalAllocator.free(entry.value_ptr.*);
+	}
+	userAliases.deinit();
+}
+
+fn resolveCommand(command: []const u8) ?Command {
+	if (registeredCommands.get(command)) |cmd| return cmd;
+	if (userAliases.get(command)) |fullId| return registeredCommands.get(fullId);
+	if (aliases.get(command)) |fullId| return registeredCommands.get(fullId);
+	return null;
 }
 
 pub fn execute(msg: []const u8, source: *User) void {
 	const end = std.mem.indexOfScalar(u8, msg, ' ') orelse msg.len;
 	const command = msg[0..end];
-	if (registeredCommands.get(command)) |cmd| {
+	if (resolveCommand(command)) |cmd| {
 		if (!source.hasPermission(cmd.permissionPath)) {
 			source.sendMessage("#ff0000No permission to use Command \"{s}\"", .{command});
 			return;
