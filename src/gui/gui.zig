@@ -27,6 +27,8 @@ pub const tooltip = @import("tooltip.zig");
 pub const windowlist = @import("windows/_list.zig");
 const gamepad_cursor = @import("gamepad_cursor.zig");
 
+const @"cubyz:bag" = main.entity.components.@"cubyz:bag";
+
 var windowList: ListManaged(*GuiWindow) = undefined;
 var hudWindows: ListManaged(*GuiWindow) = undefined;
 pub var openWindows: ListManaged(*GuiWindow) = undefined;
@@ -706,6 +708,11 @@ pub const inventory = struct { // MARK: inventory
 					if (window.shiftClickableInventory) |inv| {
 						itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{inv}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 						break;
+					}
+				}
+				if (@"cubyz:bag".client.getBag(main.game.Player.id)) |bag| {
+					if (bag.slots.items.len < bag.sizeLimit) {
+						itemSlot.inventory.depositToBag(itemSlot.itemSlot, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 					}
 				}
 			} else {
