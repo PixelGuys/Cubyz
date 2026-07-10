@@ -293,6 +293,91 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {}
 	};
 
+	pub const @"cubyz:autocrafter" = struct { // MARK: cubyz:autocrafter
+		pub const inventorySize = 2;
+		const StorageServer = BlockEntityDataStorage(struct {
+			invId: main.items.Inventory.InventoryId,
+		});
+
+		pub fn init() void {
+			StorageServer.init();
+		}
+		pub fn deinit() void {
+			StorageServer.deinit();
+		}
+		pub fn reset() void {
+			StorageServer.reset();
+		}
+
+		fn onInventoryUpdateCallback(source: main.items.Inventory.Source) void {
+			const pos = source.blockInventory;
+			const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
+			defer simChunk.decreaseRefCount();
+			const ch = simChunk.getChunk() orelse return;
+			ch.mutex.lock();
+			defer ch.mutex.unlock();
+			ch.setChanged();
+		}
+
+		const inventoryCallbacks = main.items.Inventory.Callbacks{
+			.onUpdateCallback = &onInventoryUpdateCallback,
+		};
+
+		pub fn onLoadClient(_: Vec3i, _: *Chunk, _: *BinaryReader) ErrorSet!void {}
+		pub fn onUnloadClient(_: BlockEntity) void {}
+		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+
+			const data = StorageServer.getOrPut(pos, chunk);
+			std.debug.assert(!data.foundExisting);
+			data.valuePtr.invId = main.items.Inventory.server.createExternallyManagedInventory(inventorySize, .{.blockInventory = pos}, reader, inventoryCallbacks);
+		}
+
+		pub fn onUnloadServer(entity: BlockEntity) void {
+			StorageServer.mutex.lock();
+			const data = StorageServer.removeAtIndex(entity) orelse unreachable;
+			StorageServer.mutex.unlock();
+			main.items.Inventory.server.destroyExternallyManagedInventory(data.invId);
+		}
+		pub fn onStoreServerToDisk(entity: BlockEntity, writer: *BinaryWriter) void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+			const data = StorageServer.getByIndex(entity) orelse return;
+
+			const inv = main.items.Inventory.server.getInventoryFromId(data.invId);
+			var isEmpty: bool = true;
+			for (inv._items) |item| {
+				if (item.amount != 0) isEmpty = false;
+			}
+			if (isEmpty) return;
+			inv.toBytes(writer);
+		}
+		pub fn onStoreServerToClient(_: BlockEntity, _: *BinaryWriter) void {}
+
+		pub fn updateClientData(_: Vec3i, _: *Chunk, _: UpdateEvent) ErrorSet!void {}
+		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
+			switch (event) {
+				.remove => {
+					const chestComponent = StorageServer.remove(pos, chunk) orelse return;
+					main.items.Inventory.server.destroyAndDropExternallyManagedInventory(chestComponent.invId, pos);
+				},
+				.update => {
+					StorageServer.mutex.lock();
+					defer StorageServer.mutex.unlock();
+					const data = StorageServer.getOrPut(pos, chunk);
+					if (data.foundExisting) return;
+					var reader = BinaryReader.init(&.{});
+					data.valuePtr.invId = main.items.Inventory.server.createExternallyManagedInventory(inventorySize, .{.blockInventory = pos}, &reader, inventoryCallbacks);
+				},
+			}
+		}
+		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
+		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
+
+		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {}
+	};
+
 	pub const @"cubyz:sign" = struct { // MARK: cubyz:sign
 		const StorageServer = BlockEntityDataStorage(struct {
 			text: []const u8,
