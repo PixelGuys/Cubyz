@@ -48,9 +48,9 @@ pub fn execute(args: []const u8, source: *User) void {
 			};
 
 			switch (params.action) {
-				.add => target.user.permissions.addPermission(listType, params.permissionPath.path),
+				.add => main.entity.components.@"cubyz:permissions".server.getPermissions(target.user.id).?.addPermission(listType, params.permissionPath.path),
 				.remove => {
-					if (!target.user.permissions.removePermission(listType, params.permissionPath.path)) {
+					if (!main.entity.components.@"cubyz:permissions".server.getPermissions(target.user.id).?.removePermission(listType, params.permissionPath.path)) {
 						source.sendMessage("#ff0000Permission path {s} is not present inside users permission {s}list", .{params.permissionPath.path, @tagName(listType)});
 					}
 				},

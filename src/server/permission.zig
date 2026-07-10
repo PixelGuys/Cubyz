@@ -20,15 +20,20 @@ const PermissionMap = struct { // MARK: PermissionMap
 		}
 	}
 
-	pub fn toZon(self: *PermissionMap, arena: NeverFailingAllocator) ZonElement {
+	pub fn fromBytes(self: *PermissionMap, arena: NeverFailingAllocator, reader: *main.utils.BinaryReader) void {
 		sync.threadContext.assertCorrectContext(.server);
-		const zon: ZonElement = .initArray(arena);
+		while (reader.readSliceWithSize()) |slice| {
+			self.put(arena, slice);
+		} else |_| return;
+	}
+
+	pub fn toBytes(self: PermissionMap, writer: *main.utils.BinaryWriter) void {
+		sync.threadContext.assertCorrectContext(.server);
 
 		var it = self.map.keyIterator();
 		while (it.next()) |key| {
-			zon.append(key.*);
+			writer.writeSliceWithSize(key.*);
 		}
-		return zon;
 	}
 
 	pub fn put(self: *PermissionMap, arena: NeverFailingAllocator, key: []const u8) void {
@@ -53,7 +58,7 @@ pub const Permissions = struct { // MARK: Permissions
 		};
 	}
 
-	pub fn deinit(self: *Permissions) void {
+	pub fn deinit(self: Permissions) void {
 		sync.threadContext.assertCorrectContext(.server);
 		self.arena.deinit();
 	}
@@ -77,10 +82,22 @@ pub const Permissions = struct { // MARK: Permissions
 		self.list(.black).fromZon(self.arena.allocator(), zon.getChild("permissionBlacklist"));
 	}
 
-	pub fn toZon(self: *Permissions, allocator: NeverFailingAllocator, zon: *ZonElement) void {
+	pub fn fromBytes(self: *Permissions, reader: *main.utils.BinaryReader) !void {
+                std.debug.print("Remaining: {s}\n", .{reader.remaining});
 		sync.threadContext.assertCorrectContext(.server);
-		zon.put("permissionWhitelist", self.list(.white).toZon(allocator));
-		zon.put("permissionBlacklist", self.list(.black).toZon(allocator));
+		_ = try reader.readEnum(ListType);
+		self.list(.white).fromBytes(self.arena.allocator(), reader);
+		_ = try reader.readEnum(ListType);
+		self.list(.black).fromBytes(self.arena.allocator(), reader);
+	}
+
+	pub fn toBytes(self: Permissions, writer: *main.utils.BinaryWriter) void {
+		sync.threadContext.assertCorrectContext(.server);
+		writer.writeEnum(ListType, .white);
+		self.whitelist.toBytes(writer);
+		writer.writeEnum(ListType, .black);
+		self.blacklist.toBytes(writer);
+                std.debug.print("writin: {s}\n", .{writer.data.items});
 	}
 
 	pub fn addPermission(self: *Permissions, listType: ListType, permissionPath: []const u8) void {

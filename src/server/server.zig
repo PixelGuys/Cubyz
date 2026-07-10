@@ -144,8 +144,6 @@ pub const User = struct { // MARK: User
 
 	inventoryCommands: main.List([]const u8) = .empty,
 
-	permissions: permission.Permissions = undefined,
-
 	pub fn player(self: *User) *Entity {
 		return &self.innerPlayer;
 	}
@@ -160,7 +158,6 @@ pub const User = struct { // MARK: User
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
-		self.permissions = .init(main.globalAllocator);
 		network.protocols.handShake.serverSide(self.conn);
 		return self;
 	}
@@ -181,8 +178,6 @@ pub const User = struct { // MARK: User
 			main.items.Inventory.server.destroyExternallyManagedInventory(self.inventory.?);
 			main.items.Inventory.server.destroyExternallyManagedInventory(self.handInventory.?);
 		}
-
-		self.permissions.deinit();
 
 		self.worldEditData.deinit();
 
@@ -276,6 +271,10 @@ pub const User = struct { // MARK: User
 		}
 		if (main.entity.components.@"cubyz:bag".server.get(self.id) == null) {
 			main.entity.components.@"cubyz:bag".server.loadEmpty(self.id);
+		}
+		if (main.entity.components.@"cubyz:permissions".server.get(self.id) == null) {
+			main.entity.components.@"cubyz:permissions".server.loadEmpty(self.id);
+			main.entity.components.@"cubyz:permissions".server.getPermissions(self.id).?.addPermission(.white, "/");
 		}
 
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
@@ -522,7 +521,7 @@ pub const User = struct { // MARK: User
 	}
 
 	pub fn hasPermission(user: *User, permissionPath: []const u8) bool {
-		return switch (user.permissions.hasPermission(permissionPath)) {
+		return switch (main.entity.components.@"cubyz:permissions".server.getPermissions(user.id).?.hasPermission(permissionPath)) {
 			.yes => true,
 			.no, .neutral => false,
 		};
@@ -591,7 +590,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 		};
 		defer user.decreaseRefCount();
 		user.isLocal = true;
-		user.permissions.addPermission(.white, "/");
+		//main.entity.components.@"cubyz:permissions".server.getPermissions(user.id).?.addPermission(.white, "/");
 	}
 }
 
@@ -854,7 +853,7 @@ pub fn connectInternal(user: *User) void {
 	main.network.protocols.entity.send(user.conn, initialList);
 	main.stackAllocator.free(initialList);
 	sendMessage("{s}§#ffff00 joined", .{user.name});
-	user.permissions.addPermission(.white, "/command/avatar");
+	main.entity.components.@"cubyz:permissions".server.getPermissions(user.id).?.addPermission(.white, "/command/avatar");
 
 	userMutex.lock();
 	users.append(user);
