@@ -340,9 +340,8 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 			std.log.info(
 				\\Cubyz does not accept any command line arguments.
 				\\All launch-time configuration is done through the "launchConfig.zon" file in the game's working directory. See that file for the available options.
-				\\
 			, .{});
-			return;
+			std.process.exit(0);
 		}
 	}
 
