@@ -23,7 +23,10 @@ pub var registeredCommands: std.StringHashMap(Command) = undefined;
 pub fn init() void {
 	registeredCommands = .init(main.globalAllocator.allocator);
 	inline for (@typeInfo(commands).@"struct".decls) |decl| {
-		const commandName = comptime if (std.mem.indexOfScalar(u8, decl.name, ':')) |idx| decl.name[idx + 1 ..] else decl.name;
+		const commandName = comptime blk: {
+			const afterSlash = if (std.mem.lastIndexOfScalar(u8, decl.name, '/')) |idx| decl.name[idx + 1 ..] else decl.name;
+			break :blk if (std.mem.indexOfScalar(u8, afterSlash, ':')) |idx| afterSlash[idx + 1 ..] else afterSlash;
+		};
 
 		const result = registeredCommands.getOrPut(commandName) catch unreachable;
 		if (result.found_existing) {
