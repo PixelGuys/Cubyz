@@ -28,9 +28,15 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 var itemSlots: main.List(*ItemSlot) = .empty;
+var craftingIcon: Texture = undefined;
+
+pub fn init() void {
+	craftingIcon = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_icon.png");
+}
 
 pub fn deinit() void {
 	itemSlots.clearAndFree(main.globalAllocator);
+	craftingIcon.deinit();
 }
 
 pub var openInventory: main.items.Inventory.ClientInventory = undefined;
@@ -41,16 +47,22 @@ pub fn setInventory(selectedInventory: main.items.Inventory.ClientInventory) voi
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
+	
+	{
+		const row = HorizontalList.init();
+		row.add(Button.initIcon(.{32, 0}, .{32, 32}, craftingIcon, true, .{.onAction = gui.openWindowCallback("autocrafter_recipie_select")}));
+		list.add(row);
+	}
 
 	const row = HorizontalList.init();
-	for (0..2) |x| {
+	for (0..1) |x| {
 		const index: usize = x;
 		const slot = ItemSlot.init(.{0, 0}, openInventory, @intCast(index), .default, .normal);
 		itemSlots.append(main.globalAllocator, slot);
 		row.add(slot);
 	}
 	
-	const outputSlot: comptime_int = 3;
+	const outputSlot: comptime_int = 2;
 	const slot = ItemSlot.init(.{32, 0}, openInventory, outputSlot, .default, .takeOnly);
 	row.add(slot);
 	itemSlots.append(main.globalAllocator, slot);
