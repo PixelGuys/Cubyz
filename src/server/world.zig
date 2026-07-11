@@ -1047,6 +1047,16 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			playerZon = ZonElement.initObject(main.stackAllocator);
 		}
 
+		// remove old permission data
+		if (playerZon.object.fetchRemove("permissionWhitelist")) |entry| {
+			main.stackAllocator.free(entry.key);
+			entry.value.deinit(main.stackAllocator);
+		}
+		if (playerZon.object.fetchRemove("permissionBlacklist")) |entry| {
+			main.stackAllocator.free(entry.key);
+			entry.value.deinit(main.stackAllocator);
+		}
+
 		playerZon.put("name", user.name);
 		if (user.newKeyString) |key| {
 			playerZon.put("publicKey", key);
