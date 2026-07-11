@@ -519,6 +519,7 @@ pub var testWorld: World = undefined; // TODO:
 pub var world: ?*World = null;
 
 pub var zoom: f32 = 1.0;
+pub var zoomPressed: bool = false;
 pub var zoomStartTime: ?std.Io.Timestamp = null;
 pub var zoomNeededDuration: f32 = 0.0;
 pub var zoomNeededDurationTime: std.Io.Timestamp = std.Io.Timestamp.zero;
@@ -701,27 +702,38 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			acc += movementDir*@as(Vec3d, @splat(movementSpeed*fricMul));
 		}
 
-		const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% main.Window.scrollOffsetInteger;
-		Player.selectedSlot = @intCast(@mod(newSlot, 12));
-
 		zoom: {
-			const rho = std.math.sqrt2;
-			const speed = 5;
+			const zoomEndInitial: f32 = 3.0;
+			const zoomScrollIncrease: f32 = 1.5;
+			const zoomSpeed: f32 = 5;
+			const rho: f32 = std.math.sqrt2;
+
 			const currentTime = main.timestamp();
 			var startTime = currentTime;
-			const newZoomEnd: f32 = if (KeyBoard.key("zoom").pressed)
-				3.0
-			else
-				1.0;
+			var newZoomEnd: f32 = 1.0;
+			if (KeyBoard.key("zoom").pressed) {
+				if (zoomPressed) { // key already held
+					newZoomEnd = zoomEnd;
+				} else { // key just pressed
+					newZoomEnd = zoomEndInitial;
+				}
+				const change = @as(f32, @floatFromInt(main.Window.scrollOffsetInteger));
+				newZoomEnd *= std.math.pow(f32, zoomScrollIncrease, change);
+				newZoomEnd = @max(newZoomEnd, 1.0);
+				zoomPressed = true;
+			} else {
+				newZoomEnd = 1.0;
+				zoomPressed = false;
+			}
 			if (zoomEnd != newZoomEnd) { // interrupting zoom
 				zoomEnd = newZoomEnd;
 				zoomStartTime = currentTime;
 				zoomStart = zoom;
+				// https://vanwijk.win.tue.nl/zoompan.pdf
 				const zoomS = @log(zoomEnd/zoomStart)/rho;
 				zoomSScaled = rho * zoomS;
-				zoomNeededDuration = @abs(zoomS)/speed;
+				zoomNeededDuration = @abs(zoomS)/zoomSpeed;
 				zoomNeededDurationTime = std.Io.Timestamp.fromNanoseconds(@as(i96, @trunc(zoomNeededDuration * 1e9)));
-				std.log.debug("zoom: start: zoomNeededDuration = {}", .{zoomNeededDuration});
 			} else if (zoomStartTime) |time| { // zooming in without interruptions
 				startTime = time;
 			} else { // ended zooming in
@@ -735,9 +747,13 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			} else {
 				zoom = zoomEnd;
 				zoomStartTime = null;
-				std.log.debug("zoom: end: zoomDuration = {}", .{zoomDuration.toMilliseconds()});
 			}
 			renderer.updateZoom(zoom);
+		}
+
+		if (!zoomPressed) {
+			const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% main.Window.scrollOffsetInteger;
+			Player.selectedSlot = @intCast(@mod(newSlot, 12));
 		}
 
 		const newPos = Vec2f{
