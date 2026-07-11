@@ -17,6 +17,7 @@ pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
 };
 
+var nameEntry: *TextInput = undefined;
 var ipAddressLabel: *Label = undefined;
 var ipAddressEntry: *TextInput = undefined;
 
@@ -46,7 +47,19 @@ fn discoverIpAddressFromNewThread() void {
 	discoverIpAddress();
 }
 
+fn applyName() void {
+	if (nameEntry.currentString.items.len > 500 or main.graphics.TextBuffer.Parser.countVisibleCharacters(nameEntry.currentString.items) > 50) {
+		std.log.err("Name is too long with {}/{} characters. Limits are 50/500", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(nameEntry.currentString.items), nameEntry.currentString.items.len});
+		return;
+	}
+	if (std.mem.eql(u8, nameEntry.currentString.items, settings.playerName)) return;
+	main.globalAllocator.free(settings.playerName);
+	settings.playerName = main.globalAllocator.dupe(u8, nameEntry.currentString.items);
+	settings.save();
+}
+
 fn join() void {
+	applyName();
 	if (thread) |_thread| {
 		_thread.join();
 		thread = null;
@@ -75,6 +88,9 @@ fn copyIp() void {
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	list.add(Label.init(.{0, 0}, width, "Name:", .center));
+	nameEntry = TextInput.init(.{0, 0}, width, 32, settings.playerName, .{.onNewline = .init(applyName)});
+	list.add(nameEntry);
 	list.add(Label.init(.{0, 0}, width, "Please send your IP to the host of the game and enter the host's IP below.", .center));
 	//                                               255.255.255.255:?65536 (longest possible ip address)
 	ipAddressLabel = Label.init(.{0, 0}, width, "                      ", .center);
