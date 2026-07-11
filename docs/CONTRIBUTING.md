@@ -156,3 +156,28 @@ With a more thorough review of your changes you can sometimes catch small mistak
 
 And of course make sure to check the CI results, you should also get an e-mail notification if the CI fails. **I will not review a PR if the CI failed!**
 
+# Participate in the review process
+
+After you are done we will review your submission and suggest changes. Don't feel overwhelmed if you get many change requests.
+It does not mean that you messed up. And it does not mean that we are criticizing you personally.
+It means that we are perfectionists, we have high standards for ourselves, and in extension for other contributors.
+This is one of the things that made Cubyz into the stable and efficient engine that it is today.
+
+So please apply the requested changes and try to learn from them for future PRs.
+
+# Seek help when you get stuck
+
+When you don't know how to fix some issue or how to make a difficult design decision, then it's best if you ask for other people's opinions and ideas.
+Other people can often see the things that you are blind to.
+
+The right please to do this is on our [discord server](https://discord.gg/XtqCRRG) where we coordinate most things.
+
+# Take care of yourself
+
+Cubyz is not your job, and shouldn't feel like one. You can take a break whenever you want, and for however long you want.
+
+If you feel like you are obligated to finish your work (or if you took over more work than you can chew), then reevaluate.
+Who are you doing this for? Does it really need to be done now? Can someone else do this?
+
+Cubyz is a long-term project. Whether your features arrive a few months late makes little difference in the grand scheme of things.
+What's important is that you are enjoying the process, that you are learning things and becoming a better programmer, and that you stay healthy.
