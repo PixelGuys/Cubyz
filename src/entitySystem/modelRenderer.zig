@@ -119,15 +119,27 @@ pub const client = struct {
 		// TODO: #3342
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |*component, id| {
 			if (id == game.Player.id) continue; // don't process local player
-
+			
 			const entModel = component.entityModel.get();
+			const ent = main.client.entity_manager.getEntity(id) orelse continue;
 
-			for (entModel.nodeParents, 0..) |parent, i| {
-				const parentMat = if (parent) |p| component.matrices[p].transpose() else Mat4f.identity();
+			const head = entModel.nodeIndexMap.get("Head");
+			if (entModel.nodeIndexMap.get("Eyestalks")) |eyestalksId| {
+				const stalkRot = ent.rot[0]*0.25;
+				const headRot = ent.rot[0]*0.75;
+				component.nodes[eyestalksId].rot = vec.Quat.quatFromAxisAngle(Vec3f{1, 0, 0}, stalkRot);
 
-				component.matrices[i] = parentMat.mul(entModel.nodePivots[i]).transpose();
+				const headId = head.?;
+				component.nodes[headId].rot = vec.Quat.quatFromAxisAngle(Vec3f{1, 0, 0}, headRot);
+			} else if (head) |headId| {
+				component.nodes[headId].rot = vec.Quat.quatFromAxisAngle(Vec3f{1, 0, 0}, ent.rot[0]);
 			}
 
+			for (component.nodes, 0..) |*node, i| {
+				const parentMat = if (entModel.nodeParents[i]) |p| component.matrices[p].transpose() else Mat4f.identity();
+
+				component.matrices[i] = parentMat.mul(node.recalc(entModel.nodePivots[i])).transpose();
+			}
 			main.entity.systems.modelRenderer.client.nodeBuffer.uploadData(component.matrices, &component.bufferAllocation);
 		}
 
