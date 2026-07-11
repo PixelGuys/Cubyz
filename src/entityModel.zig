@@ -90,10 +90,6 @@ pub const EntityModel = struct {
 		self.nodePivots = &.{};
 		self.nodeCount = 0;
 
-		if (zon.get(bool, "isPlayerModel") orelse false) {
-			playerEntityModels.append(main.worldArena, index);
-		}
-
 		var isPlayerModel = false;
 		const tags = main.Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags"));
 		for (tags) |tag| {
@@ -192,7 +188,7 @@ pub const EntityModel = struct {
 
 		const NodeRemap = struct {
 			depth: u16,
-			gltfNodeIndex: u32,
+			gltfNodeIndex: u16,
 
 			pub fn compareDepth(_: void, lhs: @This(), rhs: @This()) bool {
 				return lhs.depth < rhs.depth;
