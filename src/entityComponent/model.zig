@@ -30,9 +30,11 @@ pub const client = struct {
 
 		bufferAllocation: graphics.SubAllocation = .{.len = 0, .start = 0},
 		matrices: []Mat4f = undefined,
+		nodes: []EntityModel.Node = undefined,
 
 		pub fn deinit(self: Component) void {
 			main.globalAllocator.free(self.matrices);
+			main.globalAllocator.free(self.nodes);
 
 			main.entity.systems.modelRenderer.client.nodeBuffer.free(self.bufferAllocation);
 		}
@@ -64,6 +66,7 @@ pub const client = struct {
 		const model = ptr.entityModel.get();
 
 		ptr.matrices = main.globalAllocator.alloc(Mat4f, model.nodeCount);
+		ptr.nodes = main.globalAllocator.dupe(EntityModel.Node, model.nodes);
 	}
 	pub fn unload(entity: Entity) void {
 		const ptr = components.fetchRemove(entity) catch return;

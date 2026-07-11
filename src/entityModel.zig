@@ -37,8 +37,19 @@ pub const EntityModel = struct {
 	defaultTexture: ?main.graphics.Texture,
 	coordinateSystem: CoordinateSystem,
 
-	// will be filled and used in future
-	pub const Node = struct {};
+	pub const Node = struct {
+		pos: Vec3f = @splat(0),
+		rot: vec.Quat = vec.Quat{},
+		scale: Vec3f = @splat(1),
+
+		pub fn recalc(self: Node, pivotMat: Mat4f) Mat4f {
+			var newMat = pivotMat.mul(Mat4f.translation(self.pos));
+			newMat = newMat.mul(Mat4f.rotationQuat(self.rot));
+			newMat = newMat.mul(Mat4f.scale(self.scale));
+
+			return newMat;
+		}
+	};
 
 	pub const Vertex = extern struct {
 		pos: [3]f32,
