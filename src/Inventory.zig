@@ -496,6 +496,11 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		main.sync.client.executeCommand(.{.drop = .{.source = .{.inv = source.super, .slot = sourceSlot}}});
 	}
 
+	pub fn depositToBag(source: ClientInventory, sourseSlot: u32, amount: u16) void {
+		std.debug.assert(source.type == .serverShared);
+		main.sync.client.executeCommand(.{.moveToPlayerBag = .{.amount = amount, .source = .{.inv = source.super, .slot = sourseSlot}}});
+	}
+
 	pub fn dropOne(source: ClientInventory, sourceSlot: u32) void {
 		if (source.type != .serverShared) return;
 		main.sync.client.executeCommand(.{.drop = .{.source = .{.inv = source.super, .slot = sourceSlot}, .desiredAmount = 1}});
