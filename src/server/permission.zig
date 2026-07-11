@@ -22,8 +22,8 @@ const PermissionMap = struct { // MARK: PermissionMap
 
 	pub fn fromBytes(self: *PermissionMap, arena: NeverFailingAllocator, reader: *main.utils.BinaryReader) !void {
 		sync.threadContext.assertCorrectContext(.server);
-		var len = try reader.readVarInt(usize);
-		while (len > 0) : (len -= 1) {
+		const len = try reader.readVarInt(usize);
+		for (0..len) |_| {
 			self.put(arena, try reader.readSliceWithSize());
 		}
 	}
