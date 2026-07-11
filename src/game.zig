@@ -32,12 +32,15 @@ pub const camera = struct { // MARK: camera
 	pub var direction: Vec3f = Vec3f{0, 0, 0};
 	pub var viewMatrix: Mat4f = Mat4f.identity();
 	pub fn moveRotation(mouseX: f32, mouseY: f32) void {
+		const scale = std.math.lerp(1.0, zoom, settings.zoomRelativeSensitivity);
+		const scaledMouseX = mouseX/scale;
+		const scaledMouseY = mouseY/scale;
 		// Mouse movement along the y-axis rotates the image along the x-axis.
-		rotation[0] += mouseY;
+		rotation[0] += scaledMouseY;
 		const bound = std.math.pi/2.0 - 0.001;
 		rotation[0] = std.math.clamp(rotation[0], -bound, bound);
 		// Mouse movement along the x-axis rotates the image along the z-axis.
-		rotation[2] += mouseX;
+		rotation[2] += scaledMouseX;
 	}
 
 	pub fn updateViewMatrix() void {
@@ -742,6 +745,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				zoom = zoomEnd;
 				zoomStartTime = null;
 			}
+			zoom = @max(zoom, 1);
 			renderer.updateZoom(zoom);
 		}
 
