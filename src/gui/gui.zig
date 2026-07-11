@@ -27,8 +27,6 @@ pub const tooltip = @import("tooltip.zig");
 pub const windowlist = @import("windows/_list.zig");
 const gamepad_cursor = @import("gamepad_cursor.zig");
 
-const @"cubyz:bag" = main.entity.components.@"cubyz:bag";
-
 var windowList: ListManaged(*GuiWindow) = undefined;
 var hudWindows: ListManaged(*GuiWindow) = undefined;
 pub var openWindows: ListManaged(*GuiWindow) = undefined;
