@@ -703,15 +703,14 @@ pub const inventory = struct { // MARK: inventory
 
 		if (mainGuiButton.pressed and mainGuiButton.modsOnPress.shift) {
 			if (itemSlot.inventory.super.id == main.game.Player.inventory.super.id) {
-				var iterator = std.mem.reverseIterator(openWindows.items);
-				const deposited = while (iterator.next()) |window| {
-					if (window.shiftClickableInventory) |inv| {
-						itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{inv}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
-						break true;
+				blk: {
+					var iterator = std.mem.reverseIterator(openWindows.items);
+					while (iterator.next()) |window| {
+						if (window.shiftClickableInventory) |inv| {
+							itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{inv}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+							break :blk;
+						}
 					}
-				} else false;
-
-				if (!deposited) {
 					itemSlot.inventory.depositToBag(itemSlot.itemSlot, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 				}
 			} else {
