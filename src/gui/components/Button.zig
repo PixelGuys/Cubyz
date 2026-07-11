@@ -92,6 +92,7 @@ fn defaultOnAction(_: usize) void {}
 const Options = struct {
 	onAction: main.callbacks.SimpleCallback = .{},
 	disabled: bool = false,
+	hidden: bool = false,
 };
 
 pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *Button {
@@ -103,6 +104,7 @@ pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *But
 		.onAction = options.onAction,
 		.child = label.toComponent(),
 		.disabled = options.disabled,
+		.hidden = options.hidden,
 	};
 	return self;
 }
@@ -116,6 +118,7 @@ pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, options: Opti
 		.onAction = options.onAction,
 		.child = icon.toComponent(),
 		.disabled = options.disabled,
+		.hidden = options.hidden,
 	};
 	return self;
 }
@@ -149,12 +152,13 @@ pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 }
 
 pub fn render(self: *Button, mousePosition: Vec2f) void {
-	if (!self.hidden) renderButton(mousePosition);
+	if (!self.hidden) renderButton(self, mousePosition);
 
 	const oldColor = draw.setColor(if (self.disabled) 0xff808080 else 0xffffffff);
 	defer draw.restoreColor(oldColor);
 	const textPos = self.pos + self.size/@as(Vec2f, @splat(2.0)) - self.child.size()/@as(Vec2f, @splat(2.0));
 	self.child.mutPos().* = textPos;
+	if (self.hidden) self.child.mutSize().* = self.size;
 	self.child.render(mousePosition - self.pos);
 }
 
