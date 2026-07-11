@@ -106,8 +106,8 @@ pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *But
 	return self;
 }
 
-pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, hasShadow: bool, options: Options) *Button {
-	const icon = Icon.init(undefined, iconSize, iconTexture, hasShadow);
+pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, options: Options) *Button {
+	const icon = Icon.init(undefined, iconSize, iconTexture);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
