@@ -63,6 +63,9 @@ pub fn onReceive(conn: *Connection, protocolIndex: u8, data: []const u8) !void {
 
 pub const handShake = struct { // MARK: handShake
 	pub const id: u8 = 1;
+	var assetsLoadedCondition: main.utils.Condition = .{};
+	var hasFinishedLoadingAssets: bool = false;
+	var handshakeZon: ZonElement = undefined;
 
 	fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const newState = try reader.readEnum(Connection.HandShakeState);
@@ -95,11 +98,16 @@ pub const handShake = struct { // MARK: handShake
 					try utils.Compression.unpack(dir, reader.remaining);
 				},
 				.serverData => {
-					const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
-					defer zon.deinit(main.stackAllocator);
+					handshakeZon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
+					defer handshakeZon.deinit(main.stackAllocator);
 					conn.handShakeState.store(.complete, .monotonic);
-					try conn.manager.world.?.finishHandshake(zon);
 					conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
+					conn.mutex.lock();
+					while (!hasFinishedLoadingAssets) {
+						assetsLoadedCondition.wait(&conn.mutex);
+					}
+					conn.mutex.unlock();
+					hasFinishedLoadingAssets = false;
 				},
 				.start, .complete => {},
 			}
@@ -117,7 +125,7 @@ pub const handShake = struct { // MARK: handShake
 					conn.secureChannel.finishedCollectingClientVerificationData = true;
 					const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 					defer zon.deinit(main.stackAllocator);
-					const name = zon.get([]const u8, "name", "unnamed");
+					const name = zon.get([]const u8, "name") orelse "unnamed";
 					if (!std.unicode.utf8ValidateSlice(name)) {
 						std.log.err("Received player name with invalid UTF-8 characters.", .{});
 						return error.Invalid;
@@ -126,7 +134,7 @@ pub const handShake = struct { // MARK: handShake
 						std.log.err("Player has too long name with {}/{} characters.", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(name), name.len});
 						return error.Invalid;
 					}
-					const version = zon.get([]const u8, "version", "unknown");
+					const version = zon.get([]const u8, "version") orelse "unknown";
 					std.log.info("User {s} joined using version {s}", .{name, version});
 
 					if (!try settings.version.isCompatibleClientVersion(version)) {
@@ -206,7 +214,7 @@ pub const handShake = struct { // MARK: handShake
 		conn.send(.secure, id, outData);
 	}
 
-	pub fn clientSide(conn: *Connection, name: []const u8) !void {
+	pub fn clientSide(conn: *Connection, name: []const u8) !ZonElement {
 		const zonObject = ZonElement.initObject(main.stackAllocator);
 		defer zonObject.deinit(main.stackAllocator);
 		zonObject.putOwnedString("version", settings.version.version);
@@ -231,6 +239,13 @@ pub const handShake = struct { // MARK: handShake
 		}
 		if (conn.connectionState.load(.monotonic) == .disconnected) return error.DisconnectedByServer;
 		conn.mutex.unlock();
+
+		return handshakeZon;
+	}
+
+	pub fn signalLoadedAssets() void {
+		main.network.protocols.handShake.hasFinishedLoadingAssets = true;
+		main.network.protocols.handShake.assetsLoadedCondition.signal();
 	}
 };
 

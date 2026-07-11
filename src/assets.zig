@@ -132,7 +132,7 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "models", true, &self.blockModelsZon, null);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
-			addon.readAllZon(allocator, "entityModels", true, &self.entityModelDescriptions, &self.entityModelMigrations);
+			addon.readAllZon(allocator, "entity_models", true, &self.entityModelDescriptions, &self.entityModelMigrations);
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
@@ -401,7 +401,7 @@ fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void 
 	defer main.stackAllocator.free(texturePath);
 	var replacementTexturePath: []const u8 = &.{};
 	defer main.stackAllocator.free(replacementTexturePath);
-	if (zon.get(?[]const u8, "texture", null)) |texture| {
+	if (zon.get([]const u8, "texture")) |texture| {
 		texturePath = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/items/textures/{s}", .{assetFolder, mod, texture});
 		replacementTexturePath = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/items/textures/{s}", .{mod, texture});
 	}
@@ -422,7 +422,7 @@ fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void
 fn assignBlockItem(stringId: []const u8) !void {
 	const block = blocks.getTypeById(stringId);
 	// TODO: This must be gone in PixelGuys/Cubyz#1205
-	const index = items.BaseItemIndex.fromId(stringId) orelse unreachable;
+	const index = items.BaseItemIndex.fromId(stringId).?;
 	const item = &items.itemList[@intFromEnum(index)];
 	item.block = block;
 }
@@ -629,7 +629,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	for (itemPalette.palette.items) |stringId| {
 		// Some items are created automatically from blocks.
 		if (worldAssets.blocks.get(stringId)) |zon| {
-			if (!zon.get(bool, "hasItem", true)) continue;
+			if (!(zon.get(bool, "hasItem") orelse true)) continue;
 			try registerItem(assetFolder, stringId, zon.getChild("item"));
 			if (worldAssets.items.get(stringId) != null) {
 				std.log.err("Item {s} appears as standalone item and as block item.", .{stringId});
@@ -649,7 +649,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	for (blockPalette.palette.items) |stringId| {
 		const zon = worldAssets.blocks.get(stringId) orelse .null;
 
-		if (!zon.get(bool, "hasItem", true)) continue;
+		if (!(zon.get(bool, "hasItem") orelse true)) continue;
 		if (items.hasRegistered(stringId)) continue;
 
 		try registerItem(assetFolder, stringId, zon.getChild("item"));
@@ -673,7 +673,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	for (blockPalette.palette.items) |stringId| {
 		const zon = worldAssets.blocks.get(stringId) orelse .null;
 
-		if (!zon.get(bool, "hasItem", true)) continue;
+		if (!(zon.get(bool, "hasItem") orelse true)) continue;
 		std.debug.assert(items.hasRegistered(stringId));
 
 		try assignBlockItem(stringId);
@@ -819,7 +819,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 pub fn readAsset(allocator: NeverFailingAllocator, subPath: []const u8, id: []const u8, fileEnding: []const u8) ![]const u8 {
 	var split = std.mem.splitScalar(u8, id, ':');
 	const mod = split.first();
-	const name = split.next() orelse unreachable;
+	const name = split.next().?;
 
 	var path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/{s}/{s}{s}", .{worldAssetFolder, mod, subPath, name, fileEnding}) catch unreachable;
 	defer main.stackAllocator.free(path);

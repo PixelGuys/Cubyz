@@ -63,9 +63,9 @@ pub fn deinit() void {
 pub fn render() void {
 	lastFrameTime[index] = @floatCast(main.lastFrameTime.load(.monotonic)*1000.0);
 	index = (index + 1)%@as(u31, @intCast(lastFrameTime.len));
-	draw.text("32 ms", 0, 16, 8, .left);
-	draw.text("16 ms", 0, 32, 8, .left);
-	draw.text("00 ms", 0, 48, 8, .left);
+	draw.text("32 ms", 0, 16, 8);
+	draw.text("16 ms", 0, 32, 8);
+	draw.text("00 ms", 0, 48, 8);
 	{
 		const oldColor = draw.setColor(0x80ffffff);
 		defer draw.restoreColor(oldColor);

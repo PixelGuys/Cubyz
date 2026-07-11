@@ -9,11 +9,19 @@ const Blueprint = main.blueprint.Blueprint;
 pub const description = "Redo last change done to world with world editing commands.";
 pub const usage = "/redo";
 
+const Args = struct {};
+
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/redo"});
+
 pub fn execute(args: []const u8, source: *User) void {
-	if (args.len != 0) {
-		source.sendMessage("#ff0000Too many arguments for command /redo. Expected no arguments.", .{});
+	var errorMessage: main.List(u8) = .empty;
+	defer errorMessage.deinit(main.stackAllocator);
+
+	_ = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
+		source.sendMessage("#ff0000{s}", .{errorMessage.items});
 		return;
-	}
+	};
+
 	if (source.worldEditData.redoHistory.pop()) |action| {
 		defer action.deinit();
 

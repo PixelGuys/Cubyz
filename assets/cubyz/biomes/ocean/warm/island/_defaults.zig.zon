@@ -5,7 +5,7 @@
 		.hot,
 	},
 	.music = "cubyz:totaldemented/tides",
-	.stoneBlock = "cubyz:sandstone/base",
+	.stoneBlock = "cubyz:sandstone/rough",
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",

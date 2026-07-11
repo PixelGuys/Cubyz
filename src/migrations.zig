@@ -75,16 +75,16 @@ fn register(
 	}
 
 	for (migrationZon.array.items) |migration| {
-		const oldZonOpt = migration.get(?[]const u8, "old", null);
-		const newZonOpt = migration.get(?[]const u8, "new", null);
+		const oldZonOpt = migration.get([]const u8, "old");
+		const newZonOpt = migration.get([]const u8, "new");
 
 		if (oldZonOpt == null or newZonOpt == null) {
 			std.log.err("Skipping incomplete migration in {s} migrations: '{s}:{s}' -> '{s}:{s}'", .{@tagName(typ), addonName, oldZonOpt orelse "<null>", addonName, newZonOpt orelse "<null>"});
 			continue;
 		}
 
-		const oldZon = oldZonOpt orelse unreachable;
-		const newZon = newZonOpt orelse unreachable;
+		const oldZon = oldZonOpt.?;
+		const newZon = newZonOpt.?;
 
 		if (std.mem.eql(u8, oldZon, newZon)) {
 			std.log.err("Skipping identity migration in {s} migrations: '{s}:{s}' -> '{s}:{s}'", .{@tagName(typ), addonName, oldZon, addonName, newZon});
@@ -96,7 +96,7 @@ fn register(
 
 		if (result.found_existing) {
 			std.log.err("Skipping name collision in {s} migration: '{s}' -> '{s}:{s}'", .{@tagName(typ), oldAssetId, addonName, newZon});
-			const existingMigration = collection.get(oldAssetId) orelse unreachable;
+			const existingMigration = collection.get(oldAssetId).?;
 			std.log.err("Already mapped to '{s}'", .{existingMigration});
 
 			main.worldArena.free(oldAssetId);

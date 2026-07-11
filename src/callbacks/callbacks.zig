@@ -47,7 +47,7 @@ fn Callback(_Params: type, list: type) type {
 		}
 
 		pub fn init(zon: main.ZonElement, creator: Creator) ?@This() {
-			const typ = zon.get(?[]const u8, "type", null) orelse {
+			const typ = zon.get([]const u8, "type") orelse {
 				std.log.err("Missing field \"type\"", .{});
 				return null;
 			};
