@@ -119,7 +119,7 @@ pub const client = struct {
 		// TODO: #3342
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |*component, id| {
 			if (id == game.Player.id) continue; // don't process local player
-			
+
 			const entModel = component.entityModel.get();
 			const ent = main.client.entity_manager.getEntity(id) orelse continue;
 
