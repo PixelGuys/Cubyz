@@ -23,12 +23,12 @@
 			.modifiers = .{
 				.{
 					.id = "good_at",
-					.strength = 0.5,
-					.tag = .hot,
+					.strength = 0.2,
+					.tag = .stone,
 					.restriction = .{
 						.id = .encased,
 						.tag = .precious,
-						.amount = 2,
+						.amount = 3,
 					},
 				},
 			},
