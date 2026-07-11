@@ -84,16 +84,8 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 	}
 	inventories.clearRetainingCapacity();
 	// Find all recipes the player can make:
-	outer: for (items.getRecipes()) |*recipe| {
-		middle: for (recipe.sourceItems, recipe.sourceAmounts) |sourceItem, sourceAmount| {
-			for (availableItems.items, itemAmount.items) |availableItem, availableAmount| {
-				if (availableItem == sourceItem and availableAmount >= sourceAmount) {
-					continue :middle;
-				}
-			}
-			continue :outer; // Ingredient not found.
-		}
-		// All ingredients found: Add it to the list.
+	for (items.getRecipes()) |*recipe| {
+
 		const inv = ClientInventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .{.crafting = recipe}, .other, .{});
 
 		for (0..recipe.sourceAmounts.len) |index| {
@@ -114,14 +106,14 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 			if (col < remainder) itemsThisColumn += 1;
 			const columnList = VerticalList.init(.{0, 0}, std.math.inf(f32), 0);
 			for (0..itemsThisColumn) |_| {
-				columnList.add(ItemSlot.init(.{0, 0}, inv, i, .immutable, .takeOnly));
+				columnList.add(ItemSlot.init(.{0, 0}, inv, i, .immutable, .immutable));
 				i += 1;
 			}
 			columnList.finish(.center);
 			rowList.add(columnList);
 		}
 		rowList.add(Icon.init(.{8, 0}, .{32, 32}, arrowTexture, false));
-		const itemSlot = ItemSlot.init(.{8, 0}, inv, @intCast(recipe.sourceItems.len), .craftingResult, .takeOnly);
+		const itemSlot = ItemSlot.init(.{8, 0}, inv, @intCast(recipe.sourceItems.len), .craftingResult, .immutable);
 		rowList.add(itemSlot);
 		rowList.finish(.{0, 0}, .center);
 		list.add(rowList);
