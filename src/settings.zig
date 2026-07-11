@@ -26,6 +26,10 @@ pub var fpsCap: ?u32 = null;
 
 pub var fov: f32 = 70;
 
+pub var zoomSpeed: f32 = 5;
+pub var zoomInitial: f32 = 3;
+pub var zoomIncrease: f32 = 1.5;
+
 pub var mouseSensitivity: f32 = 1;
 pub var controllerSensitivity: f32 = 1;
 

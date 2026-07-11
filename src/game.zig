@@ -703,11 +703,6 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}
 
 		zoom: {
-			const zoomEndInitial: f32 = 3.0;
-			const zoomScrollIncrease: f32 = 1.5;
-			const zoomSpeed: f32 = 5;
-			const rho: f32 = std.math.sqrt2;
-
 			const currentTime = main.timestamp();
 			var startTime = currentTime;
 			var newZoomEnd: f32 = 1.0;
@@ -715,10 +710,10 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				if (zoomPressed) { // key already held
 					newZoomEnd = zoomEnd;
 				} else { // key just pressed
-					newZoomEnd = zoomEndInitial;
+					newZoomEnd = settings.zoomInitial;
 				}
 				const change = @as(f32, @floatFromInt(main.Window.scrollOffsetInteger));
-				newZoomEnd *= std.math.pow(f32, zoomScrollIncrease, change);
+				newZoomEnd *= std.math.pow(f32, settings.zoomIncrease, change);
 				newZoomEnd = @max(newZoomEnd, 1.0);
 				zoomPressed = true;
 			} else {
@@ -730,9 +725,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				zoomStartTime = currentTime;
 				zoomStart = zoom;
 				// https://vanwijk.win.tue.nl/zoompan.pdf
-				const zoomS = @log(zoomEnd/zoomStart)/rho;
-				zoomSScaled = rho * zoomS;
-				zoomNeededDuration = @abs(zoomS)/zoomSpeed;
+				zoomSScaled = @log(zoomEnd/zoomStart);
+				zoomNeededDuration = @abs(zoomSScaled)/settings.zoomSpeed;
 				zoomNeededDurationTime = std.Io.Timestamp.fromNanoseconds(@as(i96, @trunc(zoomNeededDuration * 1e9)));
 			} else if (zoomStartTime) |time| { // zooming in without interruptions
 				startTime = time;
