@@ -47,7 +47,6 @@ pub fn sortItems(target: main.items.Inventory.ClientInventory) void {
 	target.sortItems(12);
 }
 
-
 pub fn onOpen() void {
 	const sortCallback: main.callbacks.SimpleCallback = .{.inner = @ptrCast(&sortItems), .data = &Player.inventory};
 	window.titleBar = HorizontalList.init();
