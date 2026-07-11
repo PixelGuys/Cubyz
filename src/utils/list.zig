@@ -181,7 +181,7 @@ pub fn ListManaged(comptime T: type) type {
 		}
 
 		pub fn pop(self: *@This()) T {
-			return self.popOrNull() orelse unreachable;
+			return self.popOrNull().?;
 		}
 
 		pub fn replaceRange(self: *@This(), start: usize, len: usize, new_items: []const T) void {
@@ -384,7 +384,7 @@ pub fn List(comptime T: type) type {
 		}
 
 		pub fn pop(self: *@This()) T {
-			return self.popOrNull() orelse unreachable;
+			return self.popOrNull().?;
 		}
 
 		pub fn replaceRange(self: *@This(), start: usize, len: usize, new_items: []const T) void {

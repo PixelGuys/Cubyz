@@ -88,7 +88,7 @@ pub const EntityModel = struct {
 			if (zon.get([]const u8, "defaultTexture")) |texture| {
 				var split = std.mem.splitScalar(u8, texture, ':');
 				const mod = split.first();
-				const textureName = split.next() orelse unreachable;
+				const textureName = split.next().?;
 				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entity_models/textures/{s}{s}", .{assetFolder, mod, textureName, fileEnding}) catch unreachable;
 				main.files.cubyzDir().dir.access(main.io, self.texturePath, .{}) catch {
 					main.worldArena.free(self.texturePath);

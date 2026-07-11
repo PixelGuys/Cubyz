@@ -408,7 +408,7 @@ pub const Chunk = struct { // MARK: Chunk
 			const pos = elem.key_ptr.*;
 			const entity = elem.value_ptr.*;
 			const block = self.data.getValue(pos.toIndex());
-			const blockEntity = block.blockEntity() orelse unreachable;
+			const blockEntity = block.blockEntity().?;
 			switch (side) {
 				.client => {
 					blockEntity.onUnloadClient(entity);
