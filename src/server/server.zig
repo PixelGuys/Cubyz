@@ -589,7 +589,6 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 		};
 		defer user.decreaseRefCount();
 		user.isLocal = true;
-		//main.entity.components.@"cubyz:permissions".server.getPermissions(user.id).?.addPermission(.white, "/");
 	}
 }
 
