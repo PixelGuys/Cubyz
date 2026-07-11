@@ -422,7 +422,7 @@ fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void
 fn assignBlockItem(stringId: []const u8) !void {
 	const block = blocks.getTypeById(stringId);
 	// TODO: This must be gone in PixelGuys/Cubyz#1205
-	const index = items.BaseItemIndex.fromId(stringId) orelse unreachable;
+	const index = items.BaseItemIndex.fromId(stringId).?;
 	const item = &items.itemList[@intFromEnum(index)];
 	item.block = block;
 }
@@ -819,7 +819,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 pub fn readAsset(allocator: NeverFailingAllocator, subPath: []const u8, id: []const u8, fileEnding: []const u8) ![]const u8 {
 	var split = std.mem.splitScalar(u8, id, ':');
 	const mod = split.first();
-	const name = split.next() orelse unreachable;
+	const name = split.next().?;
 
 	var path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/{s}/{s}{s}", .{worldAssetFolder, mod, subPath, name, fileEnding}) catch unreachable;
 	defer main.stackAllocator.free(path);
