@@ -20,6 +20,17 @@ const PermissionMap = struct { // MARK: PermissionMap
 		}
 	}
 
+	pub fn toZon(self: *PermissionMap, arena: NeverFailingAllocator) ZonElement {
+		sync.threadContext.assertCorrectContext(.server);
+		const zon: ZonElement = .initArray(arena);
+
+		var it = self.map.keyIterator();
+		while (it.next()) |key| {
+			zon.append(key.*);
+		}
+		return zon;
+	}
+
 	pub fn fromBytes(self: *PermissionMap, arena: NeverFailingAllocator, reader: *main.utils.BinaryReader) !void {
 		sync.threadContext.assertCorrectContext(.server);
 		const len = try reader.readVarInt(usize);
@@ -82,6 +93,12 @@ pub const Permissions = struct { // MARK: Permissions
 		sync.threadContext.assertCorrectContext(.server);
 		self.list(.white).fromZon(self.arena.allocator(), zon.getChild("permissionWhitelist"));
 		self.list(.black).fromZon(self.arena.allocator(), zon.getChild("permissionBlacklist"));
+	}
+
+	pub fn toZon(self: *Permissions, allocator: NeverFailingAllocator, zon: *ZonElement) void {
+		sync.threadContext.assertCorrectContext(.server);
+		zon.put("permissionWhitelist", self.list(.white).toZon(allocator));
+		zon.put("permissionBlacklist", self.list(.black).toZon(allocator));
 	}
 
 	pub fn fromBytes(self: *Permissions, reader: *main.utils.BinaryReader) !void {
@@ -419,6 +436,31 @@ test "invalidGroupCreation" {
 
 	try createGroup("test");
 	try std.testing.expectError(error.AlreadyExists, createGroup("test"));
+}
+
+test "permissionListToFromBytes" {
+	var permissions: Permissions = .init(main.heap.testingAllocator);
+	defer permissions.deinit();
+
+	permissions.addPermission(.white, "/command/test");
+	permissions.addPermission(.white, "/command/spawn");
+
+	var writer = main.utils.BinaryWriter.init(main.heap.testingAllocator);
+	defer writer.deinit();
+	permissions.toBytes(&writer);
+
+	var testPermissions: Permissions = .init(main.heap.testingAllocator);
+	defer testPermissions.deinit();
+
+	var reader: main.utils.BinaryReader = .init(writer.data.items);
+	try testPermissions.fromBytes(&reader);
+
+	try std.testing.expectEqual(2, testPermissions.whitelist.map.size);
+
+	var it = testPermissions.whitelist.map.keyIterator();
+	while (it.next()) |item| {
+		try std.testing.expectEqual(true, permissions.whitelist.map.contains(item.*));
+	}
 }
 
 test "permissionListToFromZon" {
