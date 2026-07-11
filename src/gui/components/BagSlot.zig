@@ -67,6 +67,10 @@ pub fn mainButtonReleased(self: *BagSlot, mousePosition: Vec2f) void {
 		self.pressed = false;
 		if (GuiComponent.contains(self.pos, self.size, mousePosition)) {
 			const carried = gui.inventory.carried;
+			if (main.KeyBoard.key("mainGuiButton").modsOnPress.shift) {
+				main.sync.client.executeCommand(.{.takeFromPlayerBag = .init(&.{main.game.Player.inventory}, std.math.maxInt(u16))});
+				return;
+			}
 			if (carried.getAmount(0) != 0) {
 				main.sync.client.executeCommand(.{.moveToPlayerBag = .{.amount = carried.getAmount(0), .source = .{.inv = carried.super, .slot = 0}}});
 			} else {
@@ -112,7 +116,7 @@ pub fn render(self: *BagSlot, _: Vec2f) void {
 		text.render(self.pos[0] + sizeWithBorder - textSize[0] - border, self.pos[1] + sizeWithBorder - textSize[1] - border, 8);
 	}
 
-	draw.print("{}/{}", .{self.inventory.slots.items.len, self.inventory.sizeLimit}, self.pos[0], self.pos[1] + sizeWithBorder, 8, .left);
+	draw.print("{}/{}", .{self.inventory.slots.items.len, self.inventory.sizeLimit}, self.pos[0], self.pos[1] + sizeWithBorder, 8);
 
 	if (self.hovered) {
 		self.hovered = false;

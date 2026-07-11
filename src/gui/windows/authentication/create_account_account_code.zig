@@ -15,6 +15,8 @@ const Label = GuiComponent.Label;
 const TextInput = GuiComponent.TextInput;
 const VerticalList = GuiComponent.VerticalList;
 
+const c = @import("c");
+
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
 	.closeIfMouseIsGrabbed = true,
@@ -25,7 +27,8 @@ const padding: f32 = 8;
 
 var accountCodeLabel: *Label = undefined;
 var accountCode: ?main.network.authentication.AccountCode = null;
-var fileNameEntry: *TextInput = undefined;
+var fileNameEntry: *Label = undefined;
+var fileName: []const u8 = undefined;
 
 pub const StorageMethod = enum(usize) {
 	file = 0,
@@ -44,13 +47,6 @@ pub fn setStorageMethod(method: StorageMethod) void {
 fn next() void {
 	switch (storageMethod) {
 		.file => {
-			var fileName = fileNameEntry.currentString.items;
-			if (builtin.os.tag == .windows and !std.mem.endsWith(u8, fileName, ".txt")) { // Windows has very poor ergonomics for files without extensions
-				fileName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}.txt", .{fileNameEntry.currentString.items}) catch unreachable;
-			}
-			defer if (builtin.os.tag == .windows and !std.mem.endsWith(u8, fileNameEntry.currentString.items, ".txt")) {
-				main.stackAllocator.free(fileName);
-			};
 			main.files.cwd().write(fileName, accountCode.?.text) catch |err| {
 				std.log.err("Failed to write Account Code to file: {s}", .{@errorName(err)});
 				return;
@@ -74,6 +70,12 @@ fn copy() void {
 	main.Window.setClipboardString(accountCode.?.text);
 }
 
+fn selectFile() void {
+	const result: [*:0]const u8 = c.tinyfd_saveFileDialog("Select File to save Account Code", "Cubyz Account.txt", 1, @as([*]const [*:0]const u8, &.{"*.txt"}), "Text Files") orelse return;
+	fileName = std.mem.span(result);
+	fileNameEntry.updateText(fileName);
+}
+
 pub fn onOpen() void {
 	if (accountCode == null) accountCode = .initRandomly();
 
@@ -88,15 +90,16 @@ pub fn onOpen() void {
 	switch (storageMethod) {
 		.file => {
 			list.add(Label.init(.{0, 0}, width, "Please enter a file name, we will store it there.", .left));
-			fileNameEntry = TextInput.init(.{0, 0}, width, 22, "", .{.onNewline = .{}});
+			list.add(Button.initText(.{0, 0}, 250, "Select File", .{.onAction = .init(selectFile)}));
+			fileNameEntry = Label.init(.{0, 0}, width, "", .center);
 			list.add(fileNameEntry);
-			button = Button.initText(.{10, 0}, 250, "Save and return to login", .{.onAction = .init(next), .disabled = true});
+			button = Button.initText(.{0, 0}, 250, "Save and return to login", .{.onAction = .init(next), .disabled = true});
 		},
 		.paper, .passwordManager => {
 			if (storageMethod == .paper) list.add(Label.init(.{0, 0}, width, "We will give you some time to write it down.", .left));
 			if (storageMethod == .passwordManager) list.add(Label.init(.{0, 0}, width, "We will give you some time to copy it to your password manager.", .left));
 			list.add(Label.init(.{0, 0}, width, "Note: Do not give your Account Code to anyone else, only enter it in the login screen inside the game.", .left));
-			button = Button.initText(.{10, 0}, 250, "Return to login (15)", .{.onAction = .init(next), .disabled = true});
+			button = Button.initText(.{0, 0}, 250, "Return to login (15)", .{.onAction = .init(next), .disabled = true});
 		},
 	}
 	const buttonRow = HorizontalList.init();
@@ -114,7 +117,7 @@ pub fn onOpen() void {
 pub fn update() void {
 	switch (storageMethod) {
 		.file => {
-			button.disabled = fileNameEntry.currentString.items.len == 0;
+			button.disabled = fileName.len == 0;
 		},
 		.paper, .passwordManager => {
 			if (button.disabled) {

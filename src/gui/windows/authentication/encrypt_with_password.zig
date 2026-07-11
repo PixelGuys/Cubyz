@@ -48,11 +48,7 @@ fn confirm() void {
 	settings.save();
 
 	gui.closeWindowFromRef(&window);
-	if (settings.playerName.len == 0) {
-		gui.openWindow("change_name");
-	} else {
-		gui.openWindow("main");
-	}
+	gui.openWindow("multiplayer");
 }
 
 fn encryptAccountCodeCallback(encryptAccountCode_: bool) void {

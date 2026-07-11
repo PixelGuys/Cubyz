@@ -7,7 +7,7 @@
 	.soilCreep = 1,
 	.fogDensity = 15,
 	.fogColor = 0x3d1a11,
-	.stoneBlock = "cubyz:pyrolite/base",
+	.stoneBlock = "cubyz:pyrolite/rough",
 	.ground_structure = .{
 		"2 to 3 cubyz:lava",
 		"1 to 2 cubyz:magma",
@@ -15,7 +15,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:pyrolite/base",
+			.block = "cubyz:pyrolite/rough",
 			.chance = 0.05,
 			.width = 5,
 			.variation = 2,
@@ -24,7 +24,7 @@
 		},
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:pyrolite/base",
+			.block = "cubyz:pyrolite/rough",
 			.chance = 0.05,
 			.size = 12,
 			.size_variation = 4,
@@ -34,7 +34,7 @@
 		},
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:pyrolite/base",
+			.block = "cubyz:pyrolite/rough",
 			.chance = 0.1,
 			.size = 4,
 			.size_variation = 6,

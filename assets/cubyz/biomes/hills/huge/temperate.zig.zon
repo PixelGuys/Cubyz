@@ -4,9 +4,10 @@
 		.oak,
 	},
 	.ground_structure = .{
-		"cubyz:grass",
+		"cubyz:grass/temperate",
 		"cubyz:soil",
 	},
+	.music = "cubyz:mischol/sunshower",
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
@@ -19,7 +20,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:pebbles:cubyz:grass",
+			.block = "cubyz:pebbles:cubyz:grass/temperate",
 			.chance = 0.015,
 			.width = 3,
 			.variation = 3,
@@ -35,7 +36,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/temperate"},
 			.chance = 0.1,
 			.width = 5,
 			.variation = 8,
@@ -44,7 +45,7 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:grass_vegetation",
+			.block = "cubyz:grass/vegetation/temperate",
 			.chance = 0.4,
 			.height = 1,
 			.height_variation = 0,

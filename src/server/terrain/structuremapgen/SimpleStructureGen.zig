@@ -47,9 +47,9 @@ fn adjustToCaveMap(biomeMap: CaveBiomeMapView, caveMap: CaveMapView, wx: i32, wy
 		.ceiling => {
 			isCeiling = true;
 			if (caveMap.isSolid(relX, relY, relZ)) {
-				relZ = caveMap.findTerrainChangeBelow(relX, relY, relZ) - caveMap.pos.voxelSize;
+				relZ = caveMap.findTerrainChangeBelow(relX, relY, relZ);
 			} else {
-				relZ = caveMap.findTerrainChangeAbove(relX, relY, relZ);
+				relZ = caveMap.findTerrainChangeAbove(relX, relY, relZ) - caveMap.pos.voxelSize;
 			}
 			if (relZ & ~@as(i32, 31) != wz -% caveMap.pos.wz & ~@as(i32, 31)) return null; // Too far from the surface.
 		},
@@ -63,9 +63,9 @@ fn adjustToCaveMap(biomeMap: CaveBiomeMapView, caveMap: CaveMapView, wx: i32, wy
 			} else {
 				isCeiling = true;
 				if (caveMap.isSolid(relX, relY, relZ)) {
-					relZ = caveMap.findTerrainChangeBelow(relX, relY, relZ) - caveMap.pos.voxelSize;
+					relZ = caveMap.findTerrainChangeBelow(relX, relY, relZ);
 				} else {
-					relZ = caveMap.findTerrainChangeAbove(relX, relY, relZ);
+					relZ = caveMap.findTerrainChangeAbove(relX, relY, relZ) - caveMap.pos.voxelSize;
 				}
 			}
 			if (relZ & ~@as(i32, 31) != wz -% caveMap.pos.wz & ~@as(i32, 31)) return null; // Too far from the surface.
