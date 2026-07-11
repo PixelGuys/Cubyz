@@ -990,7 +990,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 			user.gamemode = .init(self.settings.defaultGamemode);
 		} else {
-			//user.permissions.fromZon(playerData);
+			// load old permissions from zon.
+			if (main.entity.components.@"cubyz:permissions".server.get(player.id) == null) {
+				main.entity.components.@"cubyz:permissions".server.loadEmpty(player.id);
+			}
+			main.entity.components.@"cubyz:permissions".server.getPermissions(player.id).?.fromZon(playerData);
 
 			user.gamemode = .init(std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode") orelse @tagName(self.settings.defaultGamemode)) orelse self.settings.defaultGamemode);
 		}
