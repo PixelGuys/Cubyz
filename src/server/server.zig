@@ -230,7 +230,7 @@ pub const User = struct { // MARK: User
 			defer main.stackAllocator.free(keyWithType);
 			self.playerIndex = world.?.playerDatabase.get(keyWithType) orelse continue;
 			foundKey = true;
-			const keyType = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, keyTypeName) orelse unreachable;
+			const keyType = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, keyTypeName).?;
 			if (keyType == self.key) break;
 			self.legacyKey = try .initFromBase64(keyBase64, keyType);
 			break;
