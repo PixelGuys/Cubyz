@@ -50,7 +50,7 @@ pub fn onOpen() void {
 		blk: {
 			row.add(GuiComponent.BagSlot.init(.{0, 0}, main.entity.components.@"cubyz:bag".client.getBag(main.game.Player.id) orelse break :blk));
 		}
-		row.add(Button.initIcon(.{32, 0}, .{32, 32}, craftingIcon, false, .{.onAction = gui.openWindowCallback("inventory_crafting")}));
+		row.add(Button.initIcon(.{32, 0}, .{32, 32}, craftingIcon, .{.onAction = gui.openWindowCallback("inventory_crafting")}));
 		list.add(row);
 	}
 	for (0..2) |y| {

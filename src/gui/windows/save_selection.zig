@@ -151,8 +151,8 @@ pub fn onOpen() void {
 	for (worldList.items, 0..) |worldInfo, i| {
 		const row = HorizontalList.init();
 		row.add(Button.initText(.{0, 0}, 128, worldInfo.name, .{.onAction = .initWithInt(openWorldWrap, i)}));
-		row.add(Button.initIcon(.{8, 0}, .{16, 16}, fileExplorerIcon, false, .{.onAction = .initWithInt(openFolder, i)}));
-		row.add(Button.initIcon(.{8, 0}, .{16, 16}, deleteIcon, false, .{.onAction = .initWithInt(deleteWorld, i)}));
+		row.add(Button.initIcon(.{8, 0}, .{16, 16}, fileExplorerIcon, .{.onAction = .initWithInt(openFolder, i)}));
+		row.add(Button.initIcon(.{8, 0}, .{16, 16}, deleteIcon, .{.onAction = .initWithInt(deleteWorld, i)}));
 		row.finish(.{0, 0}, .center);
 		list.add(row);
 	}
