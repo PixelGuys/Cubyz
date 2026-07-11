@@ -379,6 +379,30 @@ pub const World = struct { // MARK: World
 		}
 		network.protocols.playerPosition.send(self.conn, Player.getPosBlocking(), Player.getVelBlocking(), @intCast(newTime & 65535));
 		self.dayTime.update(deltaTime);
+		updateRandomTickBlocks(self, deltaTime);
+	}
+
+	pub fn updateRandomTickBlocks(_: *World, _: f64) void {
+		const chunkRadius = 3;
+		const blockPos: Vec3i = @intFromFloat(@floor(Player.getPosBlocking()));
+		const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(blockPos, 1)) orelse return;
+		for (0..chunkRadius) |cx| {
+			for (0..chunkRadius) |cy| {
+				for (0..chunkRadius) |cz| {
+				
+				}
+			}
+		}
+		for (0..20) |_| {
+			const curBlockPos = Vec3i{
+				main.random.nextIntBounded(i32, &main.seed, 32), 
+				main.random.nextIntBounded(i32, &main.seed, 32), 
+				main.random.nextIntBounded(i32, &main.seed, 32)
+			};
+			const block = mesh.chunk.getBlock(curBlockPos[0], curBlockPos[1], curBlockPos[2]);
+			const onClientUpdate = block.onClientUpdate();
+			if (onClientUpdate.run(.{.blockPos = curBlockPos + Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, .block = block, .chunk = mesh.chunk}) == .handled) continue;
+		}
 	}
 
 	pub const DayTime = struct { // MARK: DayTime
