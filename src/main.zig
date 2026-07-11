@@ -329,6 +329,22 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	log.init();
 	defer log.deinit();
 
+	argCheck: {
+		var argIterator = args.args.iterateAllocator(stackAllocator.allocator) catch |err| {
+			std.log.err("Failed to read command line arguments: {s}", .{@errorName(err)});
+			break :argCheck;
+		};
+		defer argIterator.deinit();
+		_ = argIterator.skip();
+		if (argIterator.next() != null) {
+			std.log.info(
+				\\Cubyz does not accept any command line arguments.
+				\\All launch-time configuration is done through the "launchConfig.zon" file in the game's working directory. See that file for the available options.
+			, .{});
+			std.process.exit(0);
+		}
+	}
+
 	std.log.info("Starting game with version {s}", .{settings.version.version});
 
 	if (builtin.os.tag == .windows) {
