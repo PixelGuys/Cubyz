@@ -702,17 +702,15 @@ pub const inventory = struct { // MARK: inventory
 		if (itemSlot.mode != .normal) return;
 
 		if (mainGuiButton.pressed and mainGuiButton.modsOnPress.shift) {
-			if (itemSlot.inventory.super.id == main.game.Player.inventory.super.id) {
-				blk: {
-					var iterator = std.mem.reverseIterator(openWindows.items);
-					while (iterator.next()) |window| {
-						if (window.shiftClickableInventory) |inv| {
-							itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{inv}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
-							break :blk;
-						}
+			if (itemSlot.inventory.super.id == main.game.Player.inventory.super.id) blk: {
+				var iterator = std.mem.reverseIterator(openWindows.items);
+				while (iterator.next()) |window| {
+					if (window.shiftClickableInventory) |inv| {
+						itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{inv}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+						break :blk;
 					}
-					itemSlot.inventory.depositToBag(itemSlot.itemSlot, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 				}
+				itemSlot.inventory.depositToBag(itemSlot.itemSlot, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 			} else {
 				itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{main.game.Player.inventory}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 			}
