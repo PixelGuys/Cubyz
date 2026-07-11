@@ -14,8 +14,8 @@ const vec = main.vec;
 const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
-const Vec4f = vec.Vec4f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const EntityModel = main.entityModel.EntityModel;
 
 const c = @import("c");
 const Self = @This();
@@ -27,6 +27,15 @@ pub const entityComponentVersion = 0;
 pub const client = struct {
 	const Component = struct {
 		entityModel: main.entityModel.EntityModelIndex,
+
+		bufferAllocation: graphics.SubAllocation = .{.len = 0, .start = 0},
+		matrices: []Mat4f = undefined,
+
+		pub fn deinit(self: Component) void {
+			main.globalAllocator.free(self.matrices);
+
+			main.entity.systems.modelRenderer.client.nodeBuffer.free(self.bufferAllocation);
+		}
 	};
 	pub var components: main.utils.SparseSet(Component, Entity) = .{};
 
@@ -42,13 +51,23 @@ pub const client = struct {
 
 		const entityModel = reader.readVarInt(u32) catch return error.UnreadableComponentData;
 
-		const ptr = components.get(entity) orelse components.add(main.globalAllocator, entity);
+		var ptr: *Component = undefined;
+		if (components.get(entity)) |p| {
+			ptr = p;
+			ptr.deinit();
+		} else {
+			ptr = components.add(main.globalAllocator, entity);
+		}
 		ptr.* = Component{
 			.entityModel = .{.index = entityModel},
 		};
+		const model = ptr.entityModel.get();
+
+		ptr.matrices = main.globalAllocator.alloc(Mat4f, model.nodeCount);
 	}
 	pub fn unload(entity: Entity) void {
-		components.remove(entity) catch {};
+		const ptr = components.fetchRemove(entity) catch return;
+		ptr.deinit();
 	}
 	pub fn get(entity: Entity) ?*Component {
 		return components.get(entity);
