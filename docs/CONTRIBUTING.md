@@ -170,7 +170,7 @@ So please apply the requested changes and try to learn from them for future PRs.
 When you don't know how to fix some issue or how to make a difficult design decision, then it's best if you ask for other people's opinions and ideas.
 Other people can often see the things that you are blind to.
 
-The right please to do this is on our [discord server](https://discord.gg/XtqCRRG) where we coordinate most things.
+The right place to do this is on our [discord server](https://discord.gg/XtqCRRG) where we coordinate most things.
 
 # Take care of yourself
 
