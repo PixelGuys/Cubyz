@@ -125,7 +125,7 @@ pub const client = struct {
 
 			const head = entModel.nodeIndexMap.get("Head");
 			if (head) |headId| {
-				var headRot: f32 = 1.0;
+				var headRot: f32 = ent.rot[0];
 				if (entModel.nodeIndexMap.get("Eyestalks")) |eyestalksId| {
 					const stalkRot = ent.rot[0]*0.25;
 					headRot = ent.rot[0]*0.75;
