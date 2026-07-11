@@ -58,6 +58,7 @@ size: Vec2f,
 disabled: bool = false,
 pressed: bool = false,
 hovered: bool = false,
+hidden: bool = false,
 onAction: main.callbacks.SimpleCallback,
 child: GuiComponent,
 
@@ -148,6 +149,16 @@ pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 }
 
 pub fn render(self: *Button, mousePosition: Vec2f) void {
+	if (!self.hidden) renderButton(mousePosition);
+
+	const oldColor = draw.setColor(if (self.disabled) 0xff808080 else 0xffffffff);
+	defer draw.restoreColor(oldColor);
+	const textPos = self.pos + self.size/@as(Vec2f, @splat(2.0)) - self.child.size()/@as(Vec2f, @splat(2.0));
+	self.child.mutPos().* = textPos;
+	self.child.render(mousePosition - self.pos);
+}
+
+pub fn renderButton(self: *Button, mousePosition: Vec2f) void {
 	const textures = blk: {
 		if (self.disabled) break :blk disabledTextures;
 		if (self.pressed) break :blk pressedTextures;
@@ -179,9 +190,4 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 		graphics.draw.boundSubImage(self.pos + Vec2f{0, cornerSize[1]}, Vec2f{cornerSize[0], self.size[1] - 2*cornerSize[1]}, .{0, lowerTexture[1]}, .{cornerSizeUV[0], upperTexture[1] - lowerTexture[1]});
 		graphics.draw.boundSubImage(self.pos + Vec2f{self.size[0] - cornerSize[0], cornerSize[1]}, Vec2f{cornerSize[0], self.size[1] - 2*cornerSize[1]}, .{upperTexture[0], lowerTexture[1]}, .{cornerSizeUV[0], upperTexture[1] - lowerTexture[1]});
 	}
-	const oldColor = draw.setColor(if (self.disabled) 0xff808080 else 0xffffffff);
-	defer draw.restoreColor(oldColor);
-	const textPos = self.pos + self.size/@as(Vec2f, @splat(2.0)) - self.child.size()/@as(Vec2f, @splat(2.0));
-	self.child.mutPos().* = textPos;
-	self.child.render(mousePosition - self.pos);
 }
