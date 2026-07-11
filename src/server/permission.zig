@@ -20,15 +20,17 @@ const PermissionMap = struct { // MARK: PermissionMap
 		}
 	}
 
-	pub fn fromBytes(self: *PermissionMap, arena: NeverFailingAllocator, reader: *main.utils.BinaryReader) void {
+	pub fn fromBytes(self: *PermissionMap, arena: NeverFailingAllocator, reader: *main.utils.BinaryReader) !void {
 		sync.threadContext.assertCorrectContext(.server);
-		while (reader.readSliceWithSize()) |slice| {
-			self.put(arena, slice);
-		} else |_| return;
+		var len = try reader.readVarInt(usize);
+		while (len > 0) : (len -= 1) {
+			self.put(arena, try reader.readSliceWithSize());
+		}
 	}
 
 	pub fn toBytes(self: PermissionMap, writer: *main.utils.BinaryWriter) void {
 		sync.threadContext.assertCorrectContext(.server);
+		writer.writeVarInt(usize, self.map.count());
 
 		var it = self.map.keyIterator();
 		while (it.next()) |key| {
@@ -83,21 +85,15 @@ pub const Permissions = struct { // MARK: Permissions
 	}
 
 	pub fn fromBytes(self: *Permissions, reader: *main.utils.BinaryReader) !void {
-                std.debug.print("Remaining: {s}\n", .{reader.remaining});
 		sync.threadContext.assertCorrectContext(.server);
-		_ = try reader.readEnum(ListType);
-		self.list(.white).fromBytes(self.arena.allocator(), reader);
-		_ = try reader.readEnum(ListType);
-		self.list(.black).fromBytes(self.arena.allocator(), reader);
+		try self.list(.white).fromBytes(self.arena.allocator(), reader);
+		try self.list(.black).fromBytes(self.arena.allocator(), reader);
 	}
 
 	pub fn toBytes(self: Permissions, writer: *main.utils.BinaryWriter) void {
 		sync.threadContext.assertCorrectContext(.server);
-		writer.writeEnum(ListType, .white);
 		self.whitelist.toBytes(writer);
-		writer.writeEnum(ListType, .black);
 		self.blacklist.toBytes(writer);
-                std.debug.print("writin: {s}\n", .{writer.data.items});
 	}
 
 	pub fn addPermission(self: *Permissions, listType: ListType, permissionPath: []const u8) void {
