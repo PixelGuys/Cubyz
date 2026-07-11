@@ -10,7 +10,7 @@ layout(location = 2) uniform mat4 billboardMatrix;
 struct ParticleData {
 	vec3 pos;
 	float rotation;
-	float lifeRatio;
+	float currentFrame;
 	uint light;
 	uint type;
 };
@@ -81,6 +81,6 @@ void main() {
 	const vec3 vertexPos = (billboardMatrix*vec4(particleType.size*vertexRotationPos, 1)).xyz + particle.pos;
 	gl_Position = projectionAndViewMatrix*vec4(vertexPos, 1);
 
-	float textureIndex = floor(mod(particle.lifeRatio*particleType.frameCount, particleType.frameCount) + particleType.startFrame);
+	float textureIndex = floor(mod(particle.currentFrame, particleType.frameCount) + particleType.startFrame);
 	textureCoords = vec3(uvPositions[vertexID], textureIndex);
 }
