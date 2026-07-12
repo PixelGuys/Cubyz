@@ -31,6 +31,7 @@ var windowList: ListManaged(*GuiWindow) = undefined;
 var hudWindows: ListManaged(*GuiWindow) = undefined;
 pub var openWindows: ListManaged(*GuiWindow) = undefined;
 var selectedWindow: ?*GuiWindow = null;
+var modalWindow: ?*GuiWindow = null;
 pub var selectedTextInput: ?*TextInput = null;
 var hoveredAWindow: bool = false;
 pub var reorderWindows: bool = false;
@@ -43,6 +44,7 @@ pub var hoveredItemSlot: ?*ItemSlot = null;
 const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	const Action = enum {
 		open,
+		openModal,
 		close,
 	};
 	const Command = struct {
@@ -70,6 +72,9 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 				.open => {
 					executeOpenWindowCommand(command.window);
 				},
+				.openModal => {
+					executeOpenModalWindowCommand(command.window);
+				},
 				.close => {
 					executeCloseWindowCommand(command.window);
 				},
@@ -92,10 +97,20 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 		selectedWindow = null;
 	}
 
+	fn executeOpenModalWindowCommand(window: *GuiWindow) void {
+		const alreadyOpen = std.mem.containsAtLeastScalar(*GuiWindow, openWindows.items, 1, window);
+		if (!alreadyOpen) setSelectedTextInput(null);
+		modalWindow = window;
+		executeOpenWindowCommand(window);
+	}
+
 	fn executeCloseWindowCommand(window: *GuiWindow) void {
 		defer updateWindowPositions();
 		if (selectedWindow == window) {
 			selectedWindow = null;
+		}
+		if (modalWindow == window) {
+			modalWindow = null;
 		}
 		for (openWindows.items, 0..) |_openWindow, i| {
 			if (_openWindow == window) {
@@ -327,6 +342,20 @@ pub fn openWindowFromRef(window: *GuiWindow) void {
 	GuiCommandQueue.scheduleCommand(.{.action = .open, .window = window});
 }
 
+pub fn openModalWindow(id: []const u8) void {
+	for (windowList.items) |window| {
+		if (std.mem.eql(u8, window.id, id)) {
+			openModalWindowFromRef(window);
+			return;
+		}
+	}
+	std.log.err("Could not find window with id {s}.", .{id});
+}
+
+pub fn openModalWindowFromRef(window: *GuiWindow) void {
+	GuiCommandQueue.scheduleCommand(.{.action = .openModal, .window = window});
+}
+
 pub fn toggleWindow(id: []const u8) void {
 	defer updateWindowPositions();
 	for (windowList.items) |window| {
@@ -471,6 +500,15 @@ pub fn mainButtonPressed(_: main.Window.Key.Modifiers) void {
 	setSelectedTextInput(null);
 	const mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 
+	if (modalWindow) |modal| {
+		if (@reduce(.And, mousePosition >= modal.pos) and @reduce(.And, mousePosition < modal.pos + modal.size)) {
+			if (modal.mainButtonPressed(mousePosition) == .handled) {
+				selectedWindow = modal;
+			}
+		}
+		return;
+	}
+
 	// reverse order of rendering, the last-rendered element is the first one that we should try to interact with
 	var i: usize = openWindows.items.len;
 	while (i > 0) {
@@ -495,6 +533,9 @@ pub fn mainButtonReleased(_: main.Window.Key.Modifiers) void {
 	const oldWindow = selectedWindow;
 	selectedWindow = null;
 	for (openWindows.items) |window| {
+		if (modalWindow) |modal| {
+			if (window != modal) continue;
+		}
 		var mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 		mousePosition -= window.pos;
 		if (@reduce(.And, mousePosition >= Vec2f{0, 0}) and @reduce(.And, mousePosition < window.size)) {
@@ -547,6 +588,9 @@ pub fn updateAndRenderGui() void {
 		while (i != 0) {
 			i -= 1;
 			const window: *GuiWindow = openWindows.items[i];
+			if (modalWindow) |modal| {
+				if (window != modal) continue;
+			}
 			if (GuiComponent.contains(window.pos, window.size, mousePos)) {
 				if (window.updateHovered(mousePos) == .handled) {
 					hoveredAWindow = true;
@@ -570,6 +614,11 @@ pub fn updateAndRenderGui() void {
 		const oldScale = draw.setScale(scale);
 		defer draw.restoreScale(oldScale);
 		for (openWindows.items) |window| {
+			if (modalWindow == window) {
+				const modalOldColor = draw.setColor(0x80000000);
+				draw.rect(.{0, 0}, main.Window.getWindowSize());
+				draw.restoreColor(modalOldColor);
+			}
 			window.render(mousePos);
 		}
 		inventory.render(mousePos);

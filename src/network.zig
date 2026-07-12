@@ -1322,7 +1322,8 @@ pub const Connection = struct { // MARK: Connection
 				const result = c.mbedtls_ssl_handshake(&self.sslContext);
 				self.mutex.unlock();
 				if (result == c.MBEDTLS_ERR_SSL_WANT_READ) {
-					main.io.sleep(.fromMilliseconds(10), .awake) catch {};
+					main.heap.GarbageCollection.syncPoint();
+					try main.io.sleep(.fromMilliseconds(10), .awake);
 					continue;
 				}
 				try checkResult(result, "mbedtls_ssl_handshake");
@@ -1927,7 +1928,9 @@ pub const Connection = struct { // MARK: Connection
 			main.server.disconnect(user);
 		} else {
 			self.handShakeWaiting.broadcast();
-			main.exitToMenu();
+			if (self.handShakeState.load(.monotonic) == .complete) {
+				main.exitToMenu();
+			}
 		}
 		std.log.info("Disconnected", .{});
 	}

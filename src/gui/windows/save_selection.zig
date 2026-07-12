@@ -67,13 +67,18 @@ pub fn openWorld(name: []const u8) void {
 		main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 		main.heap.GarbageCollection.syncPoint();
 	}
-	clientConnection.world = &main.game.testWorld;
 	const ipPort = std.fmt.allocPrint(main.stackAllocator.allocator, "127.0.0.1:{}", .{main.server.connectionManager.localPort}) catch unreachable;
 	defer main.stackAllocator.free(ipPort);
-	main.game.world = &main.game.testWorld;
-	main.game.testWorld.init(ipPort, clientConnection) catch |err| {
+	const zon = main.game.testWorld.init(ipPort, clientConnection) catch |err| {
 		std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
+		return;
 	};
+	main.game.testWorld.finishHandshake(zon) catch |err| {
+		std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
+		return;
+	};
+	clientConnection.world = &main.game.testWorld;
+	main.game.world = &main.game.testWorld;
 	for (gui.openWindows.items) |openWindow| {
 		gui.closeWindowFromRef(openWindow);
 	}
