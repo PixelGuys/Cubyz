@@ -44,7 +44,8 @@ pub fn deinit() void {
 var itemSlots: [20]*ItemSlot = undefined;
 
 pub fn sortItems(target: main.items.Inventory.ClientInventory) void {
-	target.sortItems(12);
+	const ignoredSlotCount = 12;
+	target.sortItems(ignoredSlotCount);
 }
 
 pub fn onOpen() void {

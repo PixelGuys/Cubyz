@@ -29,6 +29,12 @@ pub var window = GuiWindow{
 const padding: f32 = 8;
 var itemSlots: main.List(*ItemSlot) = .empty;
 
+var sortIcon: Texture = undefined;
+
+pub fn init() void {
+	sortIcon = Texture.initFromFile("assets/cubyz/ui/inventory/sort_icon.png");
+}
+
 pub fn deinit() void {
 	itemSlots.clearAndFree(main.globalAllocator);
 }
@@ -39,7 +45,16 @@ pub fn setInventory(selectedInventory: main.items.Inventory.ClientInventory) voi
 	openInventory = selectedInventory;
 }
 
+pub fn sortItems(target: main.items.Inventory.ClientInventory) void {
+	const ignoredSlotCount = 0;
+	target.sortItems(ignoredSlotCount);
+}
+
 pub fn onOpen() void {
+	const sortCallback: main.callbacks.SimpleCallback = .{.inner = @ptrCast(&sortItems), .data = &openInventory};
+	window.titleBar = HorizontalList.init();
+	window.titleBar.?.add(Button.initIcon(.{0, 0}, .{9, 9}, sortIcon, .{.onAction = sortCallback, .hidden = true}));
+
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
 
 	for (0..2) |y| {
