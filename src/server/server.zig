@@ -131,7 +131,6 @@ pub const User = struct { // MARK: User
 	newKeyString: ?[]const u8 = null,
 	key: network.authentication.PublicKey = undefined,
 	legacyKey: ?network.authentication.PublicKey = null,
-	keysVerified: bool = false,
 
 	inventoryClientToServerIdMap: std.AutoHashMap(InventoryId, InventoryId) = undefined,
 	inventory: ?InventoryId = null,
@@ -148,7 +147,7 @@ pub const User = struct { // MARK: User
 
 	permissions: permission.Permissions = undefined,
 
-	pub const State = enum { awaitingKeyVerification, connected, awaitingReload };
+	pub const State = enum { awaitingKeyVerification, connectedVerified, awaitingReloadVerified };
 
 	pub fn player(self: *User) *Entity {
 		return &self.innerPlayer;
@@ -171,14 +170,13 @@ pub const User = struct { // MARK: User
 			.name = self.name,
 			.newKeyString = self.newKeyString,
 			.playerIndex = self.playerIndex,
-			.keysVerified = self.keysVerified,
 			.state = self.state,
-		};
 
-		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
-		self.worldEditData = .init();
-		self.permissions = .init(main.globalAllocator);
-		self.jobQueue = .init(main.globalAllocator);
+			.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator),
+			.worldEditData = .init(),
+			.permissions = .init(main.globalAllocator),
+			.jobQueue = .init(main.globalAllocator),
+		};
 	}
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
@@ -191,8 +189,8 @@ pub const User = struct { // MARK: User
 	pub fn pause(self: *User) void {
 		self.state = switch (self.state) {
 			.awaitingKeyVerification => .awaitingKeyVerification,
-			.connected => .awaitingReload,
-			.awaitingReload => .awaitingReload,
+			.connectedVerified => .awaitingReloadVerified,
+			.awaitingReloadVerified => .awaitingReloadVerified,
 		};
 
 		self.clearJobQueue();

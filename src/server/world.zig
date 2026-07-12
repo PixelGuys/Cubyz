@@ -218,7 +218,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn isStillNeeded(self: *ChunkLoadTask) bool {
 			switch (self.source) { // Remove the task if the player disconnected
-				.user => |user| if (!user.connected.load(.monotonic) or user.conn.connectionState.load(.monotonic) == .paused) return false,
+				.user => |user| if (!user.connected.load(.monotonic)) return false,
 				.simulationChunk => |ch| if (ch.refCount.load(.monotonic) == 2) return false,
 			}
 			switch (self.source) { // Remove the task if it's far enough away from the player:

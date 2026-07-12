@@ -531,9 +531,6 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 		for (result.connections.items) |conn| {
 			conn.@"continue"();
-			if (conn.user) |user| {
-				user.@"continue"();
-			}
 		}
 
 		result.requests = .empty;
@@ -574,10 +571,6 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 		for (self.connections.items) |conn| {
 			conn.pause();
-			conn.restartCounter += 1;
-			if (conn.user) |user| {
-				user.pause();
-			}
 		}
 	}
 
@@ -962,7 +955,7 @@ pub const Connection = struct { // MARK: Connection
 
 				const protocolIndex = self.header.?.protocolIndex;
 				self.header = null;
-				if (try conn.checkRestartCounter(protocolIndex, self.protocolBuffer.items, self.channelId)) {
+				if (try conn.checkRestartCounter(protocolIndex, self.protocolBuffer.items, self.channelId) != .discard) {
 					try protocols.onReceive(conn, protocolIndex, self.protocolBuffer.items);
 				}
 				self.protocolBuffer.clearRetainingCapacity();
@@ -1560,50 +1553,57 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	// pretending the connection is closed
-	pub fn pause(self: *Connection) void {
+	fn pause(self: *Connection) void {
 		std.debug.assert(self.connectionState.load(.monotonic) != .paused);
 		if (self.connectionState.load(.monotonic) == .connected) {
 			self.connectionState.store(.paused, .monotonic);
 		}
+		self.restartCounter += 1;
+		if (self.user) |user| {
+			user.pause();
+		}
 	}
-	pub fn @"continue"(self: *Connection) void {
+	fn @"continue"(self: *Connection) void {
 		std.debug.assert(self.connectionState.load(.monotonic) != .connected);
 		if (self.connectionState.load(.monotonic) == .paused) {
 			self.connectionState.store(.connected, .monotonic);
 		}
 		main.network.protocols.reload.informClientOfRestart(self);
 		self.handShakeState.store(.signatureResponse, .monotonic);
+		if (self.user) |user| {
+			user.@"continue"();
+		}
 	}
-	pub fn checkRestartCounter(conn: *Connection, protocolIndex: u8, data: []const u8, channelId: ChannelId) !bool { // MARK: checkRestartCounter()
+	fn checkRestartCounter(conn: *Connection, protocolIndex: u8, data: []const u8, channelId: ChannelId) !enum {discard, evaluate} { // MARK: checkRestartCounter()
 		// Reload protocol bypasses everything else
 		std.debug.assert(channelId == .lossy or channelId == .secure or channelId == .slow);
 
-		if (protocolIndex == protocols.reload.id) {
-			var reader = utils.BinaryReader.init(data);
-
-			const restartCounter = try reader.readInt(u32);
-
-			if (!conn.isServerSide()) {
-				const state = try reader.readEnum(main.server.User.State);
-
-				if (conn.restartCounter < restartCounter) {
-					conn.restartCounter = restartCounter;
-					switch (state) {
-						.awaitingKeyVerification => main.game.world.?.shouldReload = false,
-						.connected, .awaitingReload => main.game.world.?.shouldReload = true,
-					}
-					main.game.world.?.shouldRestart.store(true, .release);
-				}
-			}
-			if (conn.restartChannelCounter[@intFromEnum(channelId)] < restartCounter) {
-				conn.restartChannelCounter[@intFromEnum(channelId)] = restartCounter;
-			}
-			return false;
+		if (protocolIndex != protocols.reload.id) {
+			// Throw away everything from before the restart
+			if (conn.restartChannelCounter[@intFromEnum(channelId)] != conn.restartCounter) return .discard;
+			return .evaluate;
 		}
 
-		// Throw away everything from before the restart
-		if (conn.restartChannelCounter[@intFromEnum(channelId)] != conn.restartCounter) return false;
-		return true;
+		var reader = utils.BinaryReader.init(data);
+
+		const restartCounter = try reader.readInt(u32);
+
+		if (!conn.isServerSide()) {
+			const state = try reader.readEnum(main.server.User.State);
+
+			if (conn.restartCounter < restartCounter) {
+				conn.restartCounter = restartCounter;
+				switch (state) {
+					.awaitingKeyVerification => main.game.world.?.shouldReload = false,
+					.connectedVerified, .awaitingReloadVerified => main.game.world.?.shouldReload = true,
+				}
+				main.game.world.?.shouldRestart.store(true, .release);
+			}
+		}
+		if (conn.restartChannelCounter[@intFromEnum(channelId)] < restartCounter) {
+			conn.restartChannelCounter[@intFromEnum(channelId)] = restartCounter;
+		}
+		return .discard;
 	}
 
 	pub fn send(self: *Connection, comptime channel: ChannelId, protocolIndex: u8, data: []const u8) void {

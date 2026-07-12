@@ -194,11 +194,10 @@ pub const handShake = struct { // MARK: handShake
 						if (main.server.world.?.mode != .singleplayer) {
 							try conn.user.?.verifySignatures(reader);
 						}
-						conn.user.?.keysVerified = true;
-						conn.user.?.state = .connected;
+						conn.user.?.state = .connectedVerified;
 					} else {
-						// check if player is already logged in.
-						if (!conn.user.?.keysVerified) return error.keysNotVerified;
+						// check if player is attempting to reload without logging in (or in an otherwise unexpected state).
+						if (conn.user.?.state != .awaitingReloadVerified) return error.KeysNotVerified;
 					}
 					{
 						const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.path}) catch unreachable;
