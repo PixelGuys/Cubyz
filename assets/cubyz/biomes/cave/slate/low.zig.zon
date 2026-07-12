@@ -1,4 +1,5 @@
 .{
+	.tags = .{.cave_layer},
 	.chance = 0.8,
 	.maxHeight = -100,
 	.structures = .{

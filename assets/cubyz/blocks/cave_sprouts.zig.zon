@@ -14,7 +14,7 @@
 	.rotation = "cubyz:direction",
 	.texture = "cubyz:cave_sprouts",
 	.item = .{
-		.texture = "cactus_flower.png",
+		.texture = "cave_sprouts.png",
 	},
 	.lodReplacement = "cubyz:air",
 	.onUpdate = .{
