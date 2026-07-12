@@ -185,7 +185,4 @@ pub fn renderButton(self: *Button, mousePosition: Vec2f) void {
 
 	const oldColor = draw.setColor(if (self.disabled) 0xff808080 else 0xffffffff);
 	defer draw.restoreColor(oldColor);
-	const textPos = self.pos + self.size/@as(Vec2f, @splat(2.0)) - self.child.size()/@as(Vec2f, @splat(2.0));
-	self.child.mutPos().* = textPos;
-	self.child.render(mousePosition - self.pos);
 }
