@@ -1574,7 +1574,7 @@ pub const Connection = struct { // MARK: Connection
 			user.@"continue"();
 		}
 	}
-	fn checkRestartCounter(conn: *Connection, protocolIndex: u8, data: []const u8, channelId: ChannelId) !enum {discard, evaluate} { // MARK: checkRestartCounter()
+	fn checkRestartCounter(conn: *Connection, protocolIndex: u8, data: []const u8, channelId: ChannelId) !enum { discard, evaluate } { // MARK: checkRestartCounter()
 		// Reload protocol bypasses everything else
 		std.debug.assert(channelId == .lossy or channelId == .secure or channelId == .slow);
 
