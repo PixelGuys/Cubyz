@@ -360,6 +360,7 @@ pub const chunkTransmission = struct { // MARK: chunkTransmission
 		}
 
 		pub fn isStillNeeded(self: *MeshGenerationTask) bool {
+			if (main.game.world == null or main.game.world.?.paused) return false;
 			const distanceSqr = self.pos.getMinDistanceSquared(@trunc(game.Player.getPosBlocking())); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 			var maxRenderDistance = settings.renderDistance*chunk.chunkSize*self.pos.voxelSize;
 			maxRenderDistance += 2*self.pos.voxelSize*chunk.chunkSize;
@@ -885,6 +886,7 @@ pub const lightMapTransmission = struct { // MARK: lightMapTransmission
 		}
 
 		pub fn isStillNeeded(_: *LightMapTask) bool {
+			if (main.game.world == null or main.game.world.?.paused) return false;
 			return true;
 		}
 

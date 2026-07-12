@@ -272,6 +272,7 @@ pub const World = struct { // MARK: World
 	gameTime: Atomic(i64) = .init(0),
 	dayTime: DayTime = .{},
 	connected: bool = true,
+	paused: bool = true,
 	blockPalette: *assets.Palette = undefined,
 	itemPalette: *assets.Palette = undefined,
 	proceduralItemPalette: *assets.Palette = undefined,
@@ -311,6 +312,8 @@ pub const World = struct { // MARK: World
 
 		try self.finishHandshake(handshakeZon);
 		main.network.protocols.handShake.signalLoadedAssets();
+
+		self.paused = false;
 	}
 
 	pub fn deinit(self: *World) void {
@@ -322,14 +325,17 @@ pub const World = struct { // MARK: World
 		}
 
 		self.conn.deinit();
-		main.threadPool.pause();
-		defer main.threadPool.@"continue"();
 
 		self.connected = false;
 		self.pause();
 		self.manager.deinit();
 	}
 	pub fn pause(self: *World) void {
+		main.threadPool.pause();
+		defer main.threadPool.@"continue"();
+		defer main.threadPool.updateTaskPriority();
+
+		self.paused = true;
 
 		// TODO: Close all world related guis.
 		main.gui.inventory.deinit();

@@ -1607,7 +1607,7 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn send(self: *Connection, comptime channel: ChannelId, protocolIndex: u8, data: []const u8) void {
-		std.debug.assert(self.handShakeState.raw == .complete or protocolIndex == protocols.handShake.id);
+		std.debug.assert(self.handShakeState.raw == .complete or protocolIndex == protocols.handShake.id or protocolIndex == protocols.reload.id);
 		std.debug.assert(self.handShakeState.raw != .complete or protocolIndex != protocols.handShake.id);
 		_ = protocols.bytesSent[protocolIndex].fetchAdd(data.len, .monotonic);
 		self.mutex.lock();
