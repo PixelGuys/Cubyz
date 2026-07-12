@@ -568,8 +568,8 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			if ((itemA != .proceduralItem) and (itemB == .proceduralItem)) return false;
 			if ((itemA == .proceduralItem) and (itemB != .proceduralItem)) return true;
 
-			const itemATags = getTagsFromItem(itemA);
-			const itemBTags = getTagsFromItem(itemB);
+			const itemATags = itemA.getTags();
+			const itemBTags = itemB.getTags();
 
 			for (0..@min(itemATags.len, itemBTags.len)) |i| {
 				if (itemATags[i] == itemBTags[i]) continue;
@@ -577,7 +577,6 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			}
 			if (itemATags.len != itemBTags.len) return itemATags.len < itemBTags.len;
 			if ((itemA == .proceduralItem) and (itemB == .proceduralItem)) {
-				std.log.debug("checking durability", .{});
 				return (itemA.proceduralItem.durability > itemB.proceduralItem.durability);
 			}
 
@@ -591,14 +590,6 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			}});
 		}
 	};
-
-	pub fn getTagsFromItem(givenItem: Item) []const Tag {
-		switch (givenItem) {
-			.null => return &[_]Tag{},
-			.proceduralItem => return givenItem.proceduralItem.type.tags(),
-			.baseItem => return givenItem.baseItem.tags(),
-		}
-	}
 
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {
 		std.debug.assert(self.type == .serverShared);
