@@ -8,6 +8,6 @@ const runType = union(enum) {
 	world: []const u8,
 };
 
-//pub const runMode: runType = .normal;
-pub const runMode: runType = .first;
+pub const runMode: runType = .normal;
+//pub const runMode: runType = .first;
 //pub const runMode: runType = .{.world = "insert world name here"};
