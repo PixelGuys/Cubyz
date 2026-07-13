@@ -1303,6 +1303,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 
 		pub fn isStillNeeded(_: *BlockUpdateTask) bool {
+			if (main.game.world == null or main.game.world.?.paused) return false;
 			return true;
 		}
 
@@ -1379,6 +1380,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 
 		pub fn isStillNeeded(_: *LightRefreshTask) bool {
+			if (main.game.world == null or main.game.world.?.paused) return false;
 			return true;
 		}
 

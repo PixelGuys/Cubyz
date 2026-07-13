@@ -61,6 +61,31 @@ pub fn onReceive(conn: *Connection, protocolIndex: u8, data: []const u8) !void {
 	_ = bytesReceived[protocolIndex].fetchAdd(data.len, .monotonic);
 }
 
+pub const reload = struct { // MARK: reload
+	pub const id: u8 = 0;
+
+	pub fn informClientOfRestart(conn: *Connection) void {
+		var writer = utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
+
+		writer.writeInt(u32, conn.restartCounter);
+		writer.writeEnum(main.server.User.State, conn.user.?.state);
+
+		conn.send(.secure, id, writer.data.items);
+		conn.send(.lossy, id, writer.data.items);
+		conn.send(.slow, id, writer.data.items);
+	}
+	pub fn informServerOfRestart(conn: *Connection) void {
+		var writer = utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
+
+		writer.writeInt(u32, conn.restartCounter);
+		conn.send(.secure, id, writer.data.items);
+		conn.send(.lossy, id, writer.data.items);
+		conn.send(.slow, id, writer.data.items);
+	}
+};
+
 pub const handShake = struct { // MARK: handShake
 	pub const id: u8 = 1;
 	var assetsLoadedCondition: main.utils.Condition = .{};
@@ -72,7 +97,7 @@ pub const handShake = struct { // MARK: handShake
 		if (@intFromEnum(conn.handShakeState.load(.monotonic)) < @intFromEnum(newState)) {
 			conn.handShakeState.store(newState, .monotonic);
 			switch (newState) {
-				.userData, .signatureResponse => return error.InvalidSide,
+				.userData, .signatureResponse, .reload => return error.InvalidSide,
 				.signatureRequest => {
 					const signature1Len = try reader.readVarInt(usize);
 					const signature1 = try reader.readSlice(signature1Len);
@@ -164,11 +189,16 @@ pub const handShake = struct { // MARK: handShake
 						continue :stateSwitch .signatureResponse;
 					}
 				},
-				.signatureResponse => {
-					if (main.server.world.?.mode != .singleplayer) {
-						try conn.user.?.verifySignatures(reader);
+				.signatureResponse, .reload => {
+					if (newState != .reload) {
+						if (main.server.world.?.mode != .singleplayer) {
+							try conn.user.?.verifySignatures(reader);
+						}
+						conn.user.?.state = .connectedVerified;
+					} else {
+						// check if player is attempting to reload without logging in (or in an otherwise unexpected state).
+						if (conn.user.?.state != .awaitingReloadVerified) return error.KeysNotVerified;
 					}
-
 					{
 						const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.path}) catch unreachable;
 						defer main.stackAllocator.free(path);
@@ -215,19 +245,30 @@ pub const handShake = struct { // MARK: handShake
 	}
 
 	pub fn clientSide(conn: *Connection, name: []const u8) !ZonElement {
-		const zonObject = ZonElement.initObject(main.stackAllocator);
-		defer zonObject.deinit(main.stackAllocator);
-		zonObject.putOwnedString("version", settings.version.version);
-		zonObject.putOwnedString("name", name);
-		if (main.network.authentication.KeyCollection.initialized) {
-			zonObject.put("keys", main.network.authentication.KeyCollection.getPublicKeys(main.stackAllocator));
+		switch (conn.handShakeState.load(.monotonic)) {
+			.start => {
+				const zonObject = ZonElement.initObject(main.stackAllocator);
+				defer zonObject.deinit(main.stackAllocator);
+
+				zonObject.putOwnedString("version", settings.version.version);
+				zonObject.putOwnedString("name", name);
+				if (main.network.authentication.KeyCollection.initialized) {
+					zonObject.put("keys", main.network.authentication.KeyCollection.getPublicKeys(main.stackAllocator));
+				}
+				try conn.secureChannel.startTlsHandshake();
+				conn.secureChannel.finishedCollectingClientVerificationData = true;
+
+				const prefix: [1]u8 = .{@intFromEnum(Connection.HandShakeState.userData)};
+				const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
+				defer main.stackAllocator.free(data);
+
+				conn.send(.secure, id, data);
+			},
+			.reload => {
+				conn.send(.secure, id, &.{@intFromEnum(Connection.HandShakeState.reload)});
+			},
+			else => unreachable,
 		}
-		const prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
-		const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
-		defer main.stackAllocator.free(data);
-		try conn.secureChannel.startTlsHandshake();
-		conn.secureChannel.finishedCollectingClientVerificationData = true;
-		conn.send(.secure, id, data);
 
 		conn.mutex.lock();
 		while (true) {
@@ -318,6 +359,7 @@ pub const chunkTransmission = struct { // MARK: chunkTransmission
 		}
 
 		pub fn isStillNeeded(self: *MeshGenerationTask) bool {
+			if (main.game.world == null or main.game.world.?.paused) return false;
 			const distanceSqr = self.pos.getMinDistanceSquared(@trunc(game.Player.getPosBlocking())); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 			var maxRenderDistance = settings.renderDistance*chunk.chunkSize*self.pos.voxelSize;
 			maxRenderDistance += 2*self.pos.voxelSize*chunk.chunkSize;
@@ -843,6 +885,7 @@ pub const lightMapTransmission = struct { // MARK: lightMapTransmission
 		}
 
 		pub fn isStillNeeded(_: *LightMapTask) bool {
+			if (main.game.world == null or main.game.world.?.paused) return false;
 			return true;
 		}
 
