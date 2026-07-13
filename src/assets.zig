@@ -426,7 +426,7 @@ fn assignBlockItem(stringId: []const u8) !void {
 	const index = items.BaseItemIndex.fromId(stringId).?;
 	const item = &items.itemList[@intFromEnum(index)];
 	item.block = block;
-	const combinedTags = std.mem.concat(main.stackAllocator.allocator, Tag,&.{blocks.parseBlock(stringId).tags(), item.tags}) catch unreachable;
+	const combinedTags = std.mem.concat(main.stackAllocator.allocator, Tag, &.{blocks.parseBlock(stringId).tags(), item.tags}) catch unreachable;
 	item.tags = combinedTags;
 }
 

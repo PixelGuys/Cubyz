@@ -44,15 +44,15 @@ pub fn deinit() void {
 
 var itemSlots: [20]*ItemSlot = undefined;
 
-pub fn sortItems(target: main.items.Inventory.ClientInventory) void {
+pub fn sortItems() void {
+	const target = Player.inventory;
 	const ignoredSlotCount = 12;
 	target.sortItems(ignoredSlotCount);
 }
 
 pub fn onOpen() void {
-	const sortCallback: main.callbacks.SimpleCallback = .{.inner = @ptrCast(&sortItems), .data = &Player.inventory};
 	window.titleBar = HorizontalList.init();
-	window.titleBar.?.add(Button.initIcon(.{0, 0}, .{9, 9}, sortIcon, .{.onAction = sortCallback, .hidden = true}));
+	window.titleBar.?.add(Button.initIcon(.{0, 0}, .{9, 9}, sortIcon, .{.onAction = .init(sortItems), .hidden = true}));
 
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
 	// Some miscellanious slots and buttons:
