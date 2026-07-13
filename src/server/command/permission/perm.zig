@@ -21,9 +21,9 @@ const Args = union(enum) {
 		action: enum { add, remove },
 		list: enum { whitelist, blacklist },
 		playerIndex: ?command.PlayerIndex,
-		permissionPath: Path,
+		permissionPath: command.PermissionPath,
 	},
-	@"/perm <playerIndex> <permissionPath>": struct { playerIndex: ?command.PlayerIndex, permissionPath: Path },
+	@"/perm <playerIndex> <permissionPath>": struct { playerIndex: ?command.PlayerIndex, permissionPath: command.PermissionPath },
 };
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/perm"});
@@ -68,15 +68,3 @@ pub fn execute(args: []const u8, source: *User) void {
 		},
 	}
 }
-
-const Path = struct {
-	path: []const u8,
-
-	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *List(u8)) error{ParseError}!Path {
-		if (arg[0] != '/') {
-			errorMessage.print(allocator, "Permission path for <{s}> doesn't begin with a \"/\", got: {s}", .{name, arg});
-			return error.ParseError;
-		}
-		return .{.path = arg};
-	}
-};
