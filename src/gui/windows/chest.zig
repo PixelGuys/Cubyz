@@ -36,6 +36,7 @@ pub fn init() void {
 }
 
 pub fn deinit() void {
+	sortIcon.deinit();
 	itemSlots.clearAndFree(main.globalAllocator);
 }
 
