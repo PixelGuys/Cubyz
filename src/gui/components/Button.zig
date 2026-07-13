@@ -162,7 +162,7 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 	self.child.render(mousePosition - self.pos);
 }
 
-pub fn renderButton(self: *Button, mousePosition: Vec2f) void {
+fn renderBackground(self: *Button, mousePosition: Vec2f) void {
 	const textures = blk: {
 		if (self.disabled) break :blk disabledTextures;
 		if (self.pressed) break :blk pressedTextures;
