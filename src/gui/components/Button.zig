@@ -152,7 +152,7 @@ pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 }
 
 pub fn render(self: *Button, mousePosition: Vec2f) void {
-	if (!self.hidden) renderButton(self, mousePosition);
+	if (!self.hidden) renderBackground(self, mousePosition);
 
 	const oldColor = draw.setColor(if (self.disabled) 0xff808080 else 0xffffffff);
 	defer draw.restoreColor(oldColor);
