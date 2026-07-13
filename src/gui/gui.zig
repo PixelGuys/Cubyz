@@ -616,8 +616,8 @@ pub fn updateAndRenderGui() void {
 		for (openWindows.items) |window| {
 			if (modalWindow == window) {
 				const modalOldColor = draw.setColor(0x80000000);
+				defer draw.restoreColor(modalOldColor);
 				draw.rect(.{0, 0}, main.Window.getWindowSize());
-				draw.restoreColor(modalOldColor);
 			}
 			window.render(mousePos);
 		}

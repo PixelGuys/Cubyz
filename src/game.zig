@@ -285,7 +285,7 @@ pub const World = struct { // MARK: World
 	shouldRestart: std.atomic.Value(bool) = .init(false),
 	shouldReload: bool = false,
 
-	pub fn connect(self: *World) !ZonElement {
+	fn connect(self: *World) !ZonElement {
 		main.heap.allocators.createWorldArena();
 		errdefer main.heap.allocators.destroyWorldArena();
 
@@ -360,6 +360,8 @@ pub const World = struct { // MARK: World
 	}
 
 	pub fn finishHandshake(self: *World, zon: ZonElement) !void {
+		self.conn.manager.world = self;
+		main.game.world = self;
 		errdefer main.heap.allocators.destroyWorldArena();
 		errdefer self.conn.deinit();
 		errdefer self.itemDrops.deinit();

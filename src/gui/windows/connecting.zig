@@ -28,7 +28,6 @@ var connectFuture: ?std.Io.Future(void) = null;
 var handshakeZon: main.ZonElement = undefined;
 var state: std.atomic.Value(State) = .init(.connecting);
 var errorMessage: []const u8 = "";
-var statusLabel: *Label = undefined;
 
 fn connectFromNewThread() void {
 	main.initThreadLocals();
@@ -50,7 +49,7 @@ pub fn start(_ip: []const u8, manager: *ConnectionManager) void {
 	ip = main.globalAllocator.dupe(u8, _ip);
 	connectionManager = manager;
 	state = .init(.connecting);
-	gui.openModalWindow("connecting");
+	gui.openModalWindowFromRef(&window);
 	connectFuture = main.io.concurrent(connectFromNewThread, .{}) catch |err| blk: {
 		std.log.err("Error spawning connect task: {s}. Doing it in the current thread instead.", .{@errorName(err)});
 		connectFromNewThread();
@@ -67,8 +66,7 @@ fn cancel() void {
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, width, 16);
-	statusLabel = Label.init(.{0, 0}, width, "Connecting...", .center);
-	list.add(statusLabel);
+	list.add(Label.init(.{0, 0}, width, "Connecting...", .center));
 	list.add(Button.initText(.{0, 0}, 100, "Cancel", .{.onAction = .init(cancel)}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
@@ -100,9 +98,7 @@ pub fn update() void {
 				state.store(.failed, .release);
 				continue :stateSwitch .failed;
 			};
-			connectionManager.?.world = &main.game.testWorld;
 			gui.closeWindowFromRef(&window);
-			main.game.world = &main.game.testWorld;
 			main.globalAllocator.free(settings.lastUsedIPAddress);
 			settings.lastUsedIPAddress = main.globalAllocator.dupe(u8, ip);
 			settings.save();

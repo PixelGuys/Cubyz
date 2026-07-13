@@ -77,8 +77,6 @@ pub fn openWorld(name: []const u8) void {
 		std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
 		return;
 	};
-	clientConnection.world = &main.game.testWorld;
-	main.game.world = &main.game.testWorld;
 	for (gui.openWindows.items) |openWindow| {
 		gui.closeWindowFromRef(openWindow);
 	}
