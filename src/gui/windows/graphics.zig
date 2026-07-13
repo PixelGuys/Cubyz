@@ -108,6 +108,18 @@ fn bloomCallback(newValue: bool) void {
 	settings.save();
 }
 
+const compassStyleNames = [_][]const u8{"Classic", "Parchment", "Forest", "Stone", "Iron", "Minimal"};
+
+fn compassEnabledCallback(newValue: bool) void {
+	settings.compassEnabled = newValue;
+	settings.save();
+}
+
+fn compassStyleCallback(newValue: u16) void {
+	settings.compassStyle = newValue;
+	settings.save();
+}
+
 fn vsyncCallback(newValue: bool) void {
 	settings.vsync = newValue;
 	settings.save();
@@ -141,6 +153,8 @@ pub fn onOpen() void {
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 0.0, 1.0, settings.nightBrightness, &nightBrightnessCallback, &nightBrightnessFormatter));
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 40.0, 120.0, settings.fov, &fovCallback, &fovFormatter));
 	list.add(CheckBox.init(.{0, 0}, 128, "Bloom", settings.bloom, &bloomCallback));
+	list.add(CheckBox.init(.{0, 0}, 128, "Compass", settings.compassEnabled, &compassEnabledCallback));
+	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffCompass Style: ", "{s}", &compassStyleNames, @min(settings.compassStyle, compassStyleNames.len - 1), &compassStyleCallback));
 	list.add(CheckBox.init(.{0, 0}, 128, "Vertical Synchronization", settings.vsync, &vsyncCallback));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffAnisotropic Filtering: ", "{}x", &anisotropy, switch (settings.anisotropicFiltering) {
 		1 => 0,

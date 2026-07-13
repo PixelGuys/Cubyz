@@ -3,6 +3,7 @@ pub const change_name = @import("change_name.zig");
 pub const chat = @import("chat.zig");
 pub const chest = @import("chest.zig");
 pub const clipboard_deleted = @import("clipboard_deleted.zig");
+pub const compass = @import("compass.zig");
 pub const controls = @import("controls.zig");
 pub const creative_inventory = @import("creative_inventory.zig");
 pub const crosshair = @import("crosshair.zig");
