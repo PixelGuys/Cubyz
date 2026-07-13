@@ -10,6 +10,7 @@ const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
 const Button = @import("../components/Button.zig");
 const VerticalList = @import("../components/VerticalList.zig");
+const run_settings = @import("../../run_settings.zig");
 
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
@@ -18,6 +19,13 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 
+fn checkRunMode() void {
+	switch (run_settings.runMode) {
+		.normal => return,
+		.first => singleplayerSelection(),
+		.world => singleplayerSelection(),
+	}
+}
 fn exitGame() void {
 	c.glfwSetWindowShouldClose(main.Window.window, c.GLFW_TRUE);
 }
@@ -57,6 +65,7 @@ fn multiplayer() void {
 	}
 }
 pub fn onOpen() void {
+	checkRunMode();
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(Button.initText(.{0, 0}, 128, "Singleplayer", .{.onAction = .init(singleplayerSelection)}));
 	list.add(Button.initText(.{0, 0}, 128, "Multiplayer", .{.onAction = .init(multiplayer)}));

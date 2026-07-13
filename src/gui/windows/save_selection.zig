@@ -15,6 +15,7 @@ const HorizontalList = @import("../components/HorizontalList.zig");
 const Label = @import("../components/Label.zig");
 const TextInput = @import("../components/TextInput.zig");
 const VerticalList = @import("../components/VerticalList.zig");
+const run_settings = @import("../../run_settings.zig");
 
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
@@ -46,6 +47,14 @@ pub fn init() void {
 pub fn deinit() void {
 	deleteIcon.deinit();
 	fileExplorerIcon.deinit();
+}
+
+fn checkRunMode() void {
+	switch (run_settings.runMode) {
+		.normal => return,
+		.first => openWorld(worldList.items[0].fileName),
+		.world => openWorld(run_settings.runMode.world),
+	}
 }
 
 pub fn openWorld(name: []const u8) void {
@@ -161,6 +170,7 @@ pub fn onOpen() void {
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();
+	checkRunMode();
 }
 
 pub fn onClose() void {
