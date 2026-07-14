@@ -319,7 +319,7 @@ pub fn getActiveSoundCount() u32 {
 
 pub fn registerSound(_: []const u8, id: []const u8, zon: ZonElement) void {
 	const sound = AudioData.init(id, "sounds/audio");
-	sound.volume = zon.get(f32, "volume", 1.0);
+	sound.volume = zon.get(f32, "volume") orelse 1.0;
 
 	soundIdMap.put(main.globalAllocator.allocator, id, @intCast(sounds.items.len)) catch unreachable;
 	sounds.append(main.globalAllocator, sound);
@@ -418,6 +418,16 @@ fn mixSound(buffer: []f32) void {
 		if (sound.isSpatial) {
 			const toSound = sound.pos - playerPos;
 			const distance: f32 = vec.length(toSound);
+
+			if (distance > sound.maxDistance) {
+				sound.bufPos += @intCast(if (soundData.isMono) @divFloor(buffer.len, 2) else buffer.len);
+				if (sound.bufPos >= soundBuffer.len) {
+					soundCount -= 1;
+					activeSounds.items[i] = activeSounds.items[soundCount];
+					continue :main;
+				}
+			}
+
 			const pan: f32 = vec.dot(toSound/@as(Vec3f, @splat(distance)), playerRight);
 
 			const angle = (pan + 1)*0.25*std.math.pi;
@@ -430,6 +440,7 @@ fn mixSound(buffer: []f32) void {
 			leftVol *= volume;
 			rightVol *= volume;
 		}
+
 
 		var j: usize = 0;
 		while (j < buffer.len) : (j += 2) {
