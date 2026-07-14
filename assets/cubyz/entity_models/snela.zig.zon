@@ -2,8 +2,8 @@
 	.tags = .{
 		.playerModel,
 	},
-	.model = "cubyz:cubert",
-	.defaultTexture = "cubyz:cubert",
+	.model = "cubyz:snela",
+	.defaultTexture = "cubyz:snela",
 	.height = 2,
 	.coordinateSystem = .left_handed_y_up,
 }

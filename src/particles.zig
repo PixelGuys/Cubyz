@@ -72,6 +72,7 @@ pub const ParticleManager = struct {
 			.density = RandomRange(f32).fromZon(zon.getChild("density")) orelse .init(2, 3),
 			.rotVel = rotVel,
 			.dragCoefficient = RandomRange(f32).fromZon(zon.getChild("dragCoefficient")) orelse .init(0.5, 0.6),
+			.loopTime = RandomRange(f32).fromZon(zon.getChild("loopTime")),
 		};
 
 		particleTypeHashmap.put(main.worldArena.allocator, id, @intCast(types.items.len)) catch unreachable;
@@ -225,8 +226,8 @@ pub const ParticleSystem = struct {
 		while (i < particleCount) {
 			const particle = &particles[i];
 			const particleLocal = &particlesLocal[i];
-			particle.lifeRatio -= particleLocal.lifeVelocity*deltaTime;
-			if (particle.lifeRatio < 0) {
+			particle.currentFrame -= particleLocal.frameRate*deltaTime;
+			if (particle.currentFrame < 0) {
 				particleCount -= 1;
 				particles[i] = particles[particleCount];
 				particlesLocal[i] = particlesLocal[particleCount];
@@ -304,21 +305,24 @@ pub const ParticleSystem = struct {
 		previousPlayerPos = playerPosInt;
 	}
 
-	fn addParticle(typ: u32, particleType: ParticleTypeLocal, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties) void {
+	fn addParticle(typ: u32, particleTypeLocal: ParticleTypeLocal, particleType: ParticleType, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties) void {
 		const lifeTime = properties.lifeTime.get(&main.seed);
-		const density = particleType.density.get(&main.seed);
+		if (lifeTime == 0) return;
+		const density = particleTypeLocal.density.get(&main.seed);
 		const rot = if (properties.randomizeRotation) random.nextFloat(&main.seed)*std.math.pi*2 else 0;
-		const rotVel = particleType.rotVel.get(&main.seed);
-		const dragCoeff = particleType.dragCoefficient.get(&main.seed);
+		const rotVel = particleTypeLocal.rotVel.get(&main.seed);
+		const dragCoeff = particleTypeLocal.dragCoefficient.get(&main.seed);
 
+		const loopTime = lifeTime/if (particleTypeLocal.loopTime) |l| l.get(&main.seed) else lifeTime;
 		particles[particleCount] = Particle{
 			.pos = @as(Vec3f, @floatCast(pos - @as(Vec3d, @floatFromInt(previousPlayerPos)))),
 			.rot = rot,
 			.typ = typ,
+			.currentFrame = loopTime*particleType.frameCount,
 		};
 		particlesLocal[particleCount] = ParticleLocal{
 			.velAndRotationVel = vec.combine(vel, rotVel),
-			.lifeVelocity = 1/lifeTime,
+			.frameRate = 1/lifeTime*loopTime*particleType.frameCount,
 			.density = density,
 			.dragCoefficient = dragCoeff,
 			.collides = collides,
@@ -400,7 +404,6 @@ pub const DirectionMode = union(enum) {
 
 pub const Emitter = struct {
 	typ: u16 = 0,
-	particleType: ParticleTypeLocal,
 	collides: bool,
 	spawnShape: SpawnShape,
 	properties: EmitterProperties,
@@ -503,7 +506,6 @@ pub const Emitter = struct {
 
 		return Emitter{
 			.typ = typ,
-			.particleType = ParticleManager.typesLocal.items[typ],
 			.collides = collides,
 			.spawnShape = spawnShape,
 			.properties = properties,
@@ -524,7 +526,6 @@ pub const Emitter = struct {
 
 		return Emitter{
 			.typ = typ,
-			.particleType = ParticleManager.typesLocal.items[typ],
 			.collides = collides,
 			.spawnShape = spawnShape,
 			.properties = EmitterProperties.parse(zon),
@@ -537,7 +538,9 @@ pub const Emitter = struct {
 		for (0..count) |_| {
 			const particlePos, const particleVel = self.spawnShape.spawn(pos, self.properties, self.mode);
 
-			ParticleSystem.addParticle(self.typ, self.particleType, particlePos, particleVel, self.collides, self.properties);
+			const particleTypeLocal = ParticleManager.typesLocal.items[self.typ];
+			const particleType = ParticleManager.types.items[self.typ];
+			ParticleSystem.addParticle(self.typ, particleTypeLocal, particleType, particlePos, particleVel, self.collides, self.properties);
 		}
 	}
 };
@@ -552,12 +555,13 @@ pub const ParticleTypeLocal = struct {
 	density: RandomRange(f32),
 	rotVel: RandomRange(f32),
 	dragCoefficient: RandomRange(f32),
+	loopTime: ?RandomRange(f32),
 };
 
 pub const Particle = extern struct {
 	pos: [3]f32 align(16),
 	rot: f32 = 0,
-	lifeRatio: f32 = 1,
+	currentFrame: f32 = 1,
 	light: u32 = 0,
 	typ: u32,
 	// 4 bytes left for use
@@ -565,7 +569,7 @@ pub const Particle = extern struct {
 
 pub const ParticleLocal = struct {
 	velAndRotationVel: Vec4f,
-	lifeVelocity: f32,
+	frameRate: f32,
 	density: f32,
 	dragCoefficient: f32,
 	collides: bool,
