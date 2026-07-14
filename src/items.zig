@@ -35,7 +35,27 @@ const Material = struct { // MARK: Material
 
 	textureRoughness: f32 = undefined,
 	colorPalette: []Color = undefined,
+	outlineColorLight: Color = undefined,
+	outlineColorShadow: Color = undefined,
 	modifiers: []Modifier = undefined,
+
+	fn colorFromInt(colorInt: u32) Color {
+		return Color{
+			.r = @intCast(colorInt >> 16 & 0xff),
+			.g = @intCast(colorInt >> 8 & 0xff),
+			.b = @intCast(colorInt >> 0 & 0xff),
+			.a = @intCast(colorInt >> 24 & 0xff),
+		};
+	}
+
+	fn darken(color: Color, factor: f32) Color {
+		return Color{
+			.r = @intFromFloat(@as(f32, @floatFromInt(color.r))*factor),
+			.g = @intFromFloat(@as(f32, @floatFromInt(color.g))*factor),
+			.b = @intFromFloat(@as(f32, @floatFromInt(color.b))*factor),
+			.a = color.a,
+		};
+	}
 
 	pub fn init(self: *Material, allocator: NeverFailingAllocator, zon: ZonElement) void {
 		self.massDamage = zon.get(f32, "massDamage") orelse blk: {
@@ -59,12 +79,17 @@ const Material = struct { // MARK: Material
 		self.colorPalette = allocator.alloc(Color, colors.toSlice().len);
 		for (colors.toSlice(), self.colorPalette) |item, *color| {
 			const colorInt: u32 = @intCast((item.as(i64) orelse 0xff000000) & 0xffffffff);
-			color.* = Color{
-				.r = @intCast(colorInt >> 16 & 0xff),
-				.g = @intCast(colorInt >> 8 & 0xff),
-				.b = @intCast(colorInt >> 0 & 0xff),
-				.a = @intCast(colorInt >> 24 & 0xff),
-			};
+			color.* = colorFromInt(colorInt);
+		}
+		if (zon.get(i64, "outlineColorLight")) |colorInt| {
+			self.outlineColorLight = colorFromInt(@intCast(colorInt & 0xffffffff));
+		} else {
+			self.outlineColorLight = darken(self.colorPalette[self.colorPalette.len - 1], 0.7);
+		}
+		if (zon.get(i64, "outlineColorShadow")) |colorInt| {
+			self.outlineColorShadow = colorFromInt(@intCast(colorInt & 0xffffffff));
+		} else {
+			self.outlineColorShadow = darken(self.colorPalette[0], 0.5);
 		}
 		const modifiersZon = zon.getChild("modifiers");
 		self.modifiers = allocator.alloc(Modifier, modifiersZon.toSlice().len);
@@ -407,6 +432,30 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 		return heightMap;
 	}
 
+	fn calculateLight(heightMap: *const [17][17]f32, x: u8, y: u8) f32 {
+		const lightTL = heightMap[x + 1][y + 1] - heightMap[x][y];
+		const lightTR = heightMap[x][y + 1] - heightMap[x + 1][y];
+		var light = (lightTL*2 + lightTR)/3; // value of this typically ranges from -7 to 5
+		light += 4; // illuminate everything by an amount
+		light /= 8; // near-normalize the light value
+		return @max(@min(light, 1), 0);
+	}
+
+	fn findNeighborMaterial(materialGrid: *const [16][16]?BaseItemIndex, x: u8, y: u8) ?Material {
+		const offsets = [_][2]i8{.{0, -1}, .{-1, 0}, .{1, 0}, .{0, 1}};
+		for (offsets) |offset| {
+			const nx = @as(i32, x) + offset[0];
+			const ny = @as(i32, y) + offset[1];
+			if (nx < 0 or nx >= 16 or ny < 0 or ny >= 16) continue;
+			if (materialGrid[@intCast(nx)][@intCast(ny)]) |neighborItem| {
+				if (neighborItem.material()) |material| {
+					return material;
+				}
+			}
+		}
+		return null;
+	}
+
 	pub fn generate(proceduralItem: *ProceduralItem) void {
 		const img = proceduralItem.image;
 		for (0..16) |x| {
@@ -435,17 +484,15 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 				if (proceduralItem.materialGrid[x][y]) |item| {
 					if (item.material()) |material| {
 						// Calculate the lighting based on the nearest free space:
-						const lightTL = heightMap[x + 1][y + 1] - heightMap[x][y];
-						const lightTR = heightMap[x][y + 1] - heightMap[x + 1][y];
-						var light = (lightTL*2 + lightTR)/3; // value of this typically ranges from -7 to 5
-						light += 4; // illuminate everything by an amount
-						light /= 8; // near-normalize the light value
-						light = @max(@min(light, 1), 0);
+						const light = calculateLight(&heightMap, x, y);
 						const colorIndex: usize = @round(light*@as(f32, @floatFromInt(material.colorPalette.len - 1)));
 						img.setRGB(x, 15 - y, material.colorPalette[colorIndex]);
 					} else {
 						img.setRGB(x, 15 - y, if ((x ^ y) & 1 == 0) Color{.r = 255, .g = 0, .b = 255, .a = 255} else Color{.r = 0, .g = 0, .b = 0, .a = 255});
 					}
+				} else if (findNeighborMaterial(&proceduralItem.materialGrid, x, y)) |material| {
+					const light = calculateLight(&heightMap, x, y);
+					img.setRGB(x, 15 - y, if (light > 0.5) material.outlineColorLight else material.outlineColorShadow);
 				} else {
 					img.setRGB(x, 15 - y, Color{.r = 0, .g = 0, .b = 0, .a = 0});
 				}
