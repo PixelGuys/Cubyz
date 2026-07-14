@@ -129,7 +129,7 @@ fn getRotationFromDir(dir: Vec3f) u16 {
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
 	if (neighbor == null) return false;
 	if (!blockPlacing) return false;
-	currentData.data = switch (Neighbor.fromRelPos(relativeDir) orelse unreachable) {
+	currentData.data = switch (Neighbor.fromRelPos(relativeDir).?) {
 		.dirNegX => 2*centerRotations,
 		.dirNegY => 2*centerRotations + 1,
 		.dirPosX => 2*centerRotations + 2,

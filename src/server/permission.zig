@@ -260,7 +260,7 @@ pub fn loadGroups(dir: main.files.Dir) !void {
 		const zon = try dir.readToZon(main.stackAllocator, file.name);
 		defer zon.deinit(main.stackAllocator);
 		if (std.mem.eql(u8, file.name, "metadata.zon")) continue;
-		const fileNameBase = file.name[0 .. std.mem.findScalar(u8, file.name, '.') orelse unreachable];
+		const fileNameBase = file.name[0..std.mem.findScalar(u8, file.name, '.').?];
 		if (fileNameBase[0] == '0' and fileNameBase.len != 1) {
 			std.log.err("Group file {s} contains leading zeroes. Skipping.", .{file.name});
 			continue;

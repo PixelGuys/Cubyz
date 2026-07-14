@@ -678,7 +678,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			if (file.kind == .file and std.mem.endsWith(u8, file.name, ".zon")) {
 				const zon = try playerDir.readToZon(main.stackAllocator, file.name);
 				defer zon.deinit(main.stackAllocator);
-				const fileNameBase = file.name[0 .. std.mem.findScalar(u8, file.name, '.') orelse unreachable];
+				const fileNameBase = file.name[0..std.mem.findScalar(u8, file.name, '.').?];
 				if (fileNameBase[0] == '0' and fileNameBase.len != 1) {
 					std.log.err("Player file {s} contains leading zeroes. Skipping.", .{file.name});
 					continue;
