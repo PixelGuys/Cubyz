@@ -54,7 +54,7 @@ fn sortItems() void {
 
 pub fn onOpen() void {
 	window.titleBar = HorizontalList.init();
-	window.titleBar.?.add(Button.initIcon(.{0, 0}, .{9, 9}, sortIcon, .{.onAction = .init(sortItems), .hidden = true}));
+	window.titleBar.?.add(Button.initIcon(.{0, 0}, .{9, 9}, sortIcon, .{.onAction = .init(sortItems), .hideBackground = true}));
 
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
 

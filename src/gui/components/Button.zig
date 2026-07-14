@@ -92,7 +92,7 @@ fn defaultOnAction(_: usize) void {}
 const Options = struct {
 	onAction: main.callbacks.SimpleCallback = .{},
 	disabled: bool = false,
-	hidden: bool = false,
+	hideBackground: bool = false,
 };
 
 pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *Button {
@@ -104,7 +104,7 @@ pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *But
 		.onAction = options.onAction,
 		.child = label.toComponent(),
 		.disabled = options.disabled,
-		.hideBackground = options.hidden,
+		.hideBackground = options.hideBackground,
 	};
 	return self;
 }
@@ -118,7 +118,7 @@ pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, options: Opti
 		.onAction = options.onAction,
 		.child = icon.toComponent(),
 		.disabled = options.disabled,
-		.hideBackground = options.hidden,
+		.hideBackground = options.hideBackground,
 	};
 	return self;
 }
