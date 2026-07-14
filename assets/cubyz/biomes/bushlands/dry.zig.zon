@@ -1,0 +1,77 @@
+.{
+	.properties = .{
+		.dry,
+	},
+	.tags = .{
+		.cactus,
+	},
+	.chance = 0,
+	.keepOriginalTerrain = 1,
+	.minRadius = 20,
+	.maxRadius = 64,
+	.ground_structure = .{
+		"1 to 2 cubyz:dirt",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:cactus/saguaro",
+			.placeMode = .degradable,
+			.chance = 0.006,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/bush",
+			.placeMode = .degradable,
+			.chance = 0.07,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/baobab/bush",
+			.placeMode = .degradable,
+			.chance = 0.14,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:grass/dry",
+			.chance = 0.02,
+			.width = 14,
+			.variation = 4,
+			.depth = 2,
+			.smoothness = 0.2,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:tussock"},
+			.chance = 0.07,
+			.width = 5,
+			.variation = 3,
+			.density = 0.5,
+			.priority = 0.2,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:grass/vegetation/dry"},
+			.chance = 0.08,
+			.width = 5,
+			.variation = 6,
+			.density = 0.2,
+			.priority = 0.2,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:grass/vegetation/temperate"},
+			.chance = 0.05,
+			.width = 5,
+			.variation = 6,
+			.density = 0.2,
+			.priority = 0.2,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:bushlands/base",
+			.chance = 5,
+		},
+	},
+}

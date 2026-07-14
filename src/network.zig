@@ -888,7 +888,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		fn applyRanges(self: *ReceiveBuffer, secureChannel: ?*SecureChannel) !void {
-			const range = self.ranges.extractFirstRange() orelse unreachable;
+			const range = self.ranges.extractFirstRange().?;
 			std.debug.assert(range.start == self.availablePosition);
 			self.availablePosition = range.end();
 			const data = main.stackAllocator.alloc(u8, @intCast(range.len));
@@ -904,13 +904,13 @@ pub const Connection = struct { // MARK: Connection
 		fn getHeaderInformation(self: *ReceiveBuffer) !?Header {
 			if (self.decryptedBuffer.len == 0) return null;
 			var header: Header = .{
-				.protocolIndex = self.decryptedBuffer.getAtOffset(0) orelse unreachable,
+				.protocolIndex = self.decryptedBuffer.getAtOffset(0).?,
 				.size = 0,
 			};
 			var i: u8 = 1;
 			while (true) : (i += 1) {
 				if (i == self.decryptedBuffer.len) return null;
-				const nextByte = self.decryptedBuffer.getAtOffset(i) orelse unreachable;
+				const nextByte = self.decryptedBuffer.getAtOffset(i).?;
 				header.size = header.size << 7 | (nextByte & 0x7f);
 				if (nextByte & 0x80 == 0) break;
 				if (header.size > std.math.maxInt(@TypeOf(header.size)) >> 7) return error.Invalid;

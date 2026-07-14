@@ -23,6 +23,7 @@ const gui_component = @import("gui_component.zig");
 pub const GuiComponent = gui_component.GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
 
+pub const tooltip = @import("tooltip.zig");
 pub const windowlist = @import("windows/_list.zig");
 const gamepad_cursor = @import("gamepad_cursor.zig");
 
@@ -147,6 +148,7 @@ pub fn init() void { // MARK: init()
 	ContinuousSlider.globalInit();
 	DiscreteSlider.globalInit();
 	TextInput.globalInit();
+	tooltip.globalInit();
 	load();
 	gamepad_cursor.init();
 }
@@ -167,6 +169,7 @@ pub fn deinit() void {
 	ContinuousSlider.globalDeinit();
 	DiscreteSlider.globalDeinit();
 	TextInput.globalDeinit();
+	tooltip.globalDeinit();
 	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
 		const WindowStruct = @field(windowlist, decl.name);
 		if (@hasDecl(WindowStruct, "deinit")) {
@@ -697,14 +700,15 @@ pub const inventory = struct { // MARK: inventory
 		if (itemSlot.mode != .normal) return;
 
 		if (mainGuiButton.pressed and mainGuiButton.modsOnPress.shift) {
-			if (itemSlot.inventory.super.id == main.game.Player.inventory.super.id) {
+			if (itemSlot.inventory.super.id == main.game.Player.inventory.super.id) blk: {
 				var iterator = std.mem.reverseIterator(openWindows.items);
 				while (iterator.next()) |window| {
 					if (window.shiftClickableInventory) |inv| {
 						itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{inv}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
-						break;
+						break :blk;
 					}
 				}
+				itemSlot.inventory.depositToBag(itemSlot.itemSlot, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 			} else {
 				itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{main.game.Player.inventory}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 			}
@@ -784,38 +788,8 @@ pub const inventory = struct { // MARK: inventory
 		// Draw tooltip:
 		const hovered = hoveredItemSlot orelse return;
 		if (carried.getAmount(0) == 0) {
-			if (hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltip| {
-				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, tooltip, .{}, false, .left);
-				defer textBuffer.deinit();
-				const fontSize = 16;
-				var size = textBuffer.calculateLineBreaks(fontSize, 300);
-				size[0] = 0;
-				for (textBuffer.lineBreaks.items) |lineBreak| {
-					size[0] = @max(size[0], lineBreak.width);
-				}
-				const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(scale));
-				const xOffset = 18;
-				const padding: f32 = 1;
-				const border: f32 = padding + 1;
-				var pos = mousePos;
-				if (pos[0] + size[0] + border + xOffset >= windowSize[0]) {
-					pos[0] -= size[0] + xOffset;
-				} else {
-					pos[0] += xOffset;
-				}
-				pos[1] = @min(pos[1] - fontSize, windowSize[1] - size[1] - border);
-				pos = @max(pos, Vec2f{border, border});
-				{
-					const oldColor = draw.setColor(0xffffff00);
-					defer draw.restoreColor(oldColor);
-					draw.rect(pos - @as(Vec2f, @splat(border)), size + @as(Vec2f, @splat(2*border)));
-				}
-				{
-					const oldColor = draw.setColor(0xff000000);
-					defer draw.restoreColor(oldColor);
-					draw.rect(pos - @as(Vec2f, @splat(padding)), size + @as(Vec2f, @splat(2*padding)));
-				}
-				textBuffer.render(pos[0], pos[1], fontSize);
+			if (hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltipContent| {
+				tooltip.renderFromText(tooltipContent, mousePos);
 			}
 		}
 	}

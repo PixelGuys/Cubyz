@@ -230,7 +230,7 @@ pub const User = struct { // MARK: User
 			defer main.stackAllocator.free(keyWithType);
 			self.playerIndex = world.?.playerDatabase.get(keyWithType) orelse continue;
 			foundKey = true;
-			const keyType = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, keyTypeName) orelse unreachable;
+			const keyType = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, keyTypeName).?;
 			if (keyType == self.key) break;
 			self.legacyKey = try .initFromBase64(keyBase64, keyType);
 			break;
@@ -597,7 +597,10 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 
 fn deinit() void {
 	connectionManager.pause();
-	main.threadPool.clear();
+	main.threadPool.pause();
+	defer main.threadPool.@"continue"();
+
+	main.threadPool.unschedulePlayers();
 
 	users.clearAndFree();
 	while (userDeinitList.popFront()) |user| {

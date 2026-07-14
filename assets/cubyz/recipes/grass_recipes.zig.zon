@@ -1,31 +1,23 @@
 .{
 	.{
-		.inputs = .{"cubyz:grass_vegetation"},
-		.output = "5 cubyz:grass_seeds",
-	},
-	.{
-		.inputs = .{"cubyz:{type}_grass_vegetation"},
-		.output = "5 cubyz:grass_seeds",
-	},
-	.{
 		.inputs = .{"cubyz:grass/vegetation/{type}"},
 		.output = "5 cubyz:grass_seeds",
 	},
 	.{
 		.inputs = .{"cubyz:soil", "cubyz:grass_seeds"},
-		.output = "cubyz:grass",
+		.output = "cubyz:grass/temperate",
 	},
 	.{
 		.inputs = .{"cubyz:dirt", "cubyz:grass_seeds"},
-		.output = "cubyz:dry_grass",
+		.output = "cubyz:grass/dry",
 	},
 	.{
 		.inputs = .{"cubyz:permafrost", "cubyz:grass_seeds"},
-		.output = "cubyz:cold_grass",
+		.output = "cubyz:grass/cold",
 	},
 	.{
 		.inputs = .{"cubyz:mud", "cubyz:grass_seeds"},
-		.output = "cubyz:lush_grass",
+		.output = "cubyz:grass/lush",
 	},
 	.{
 		.inputs = .{"cubyz:clay", "cubyz:grass_seeds"},

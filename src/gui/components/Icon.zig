@@ -17,15 +17,13 @@ const fontSize: f32 = 16;
 pos: Vec2f,
 size: Vec2f,
 texture: Texture,
-hasShadow: bool,
 
-pub fn init(pos: Vec2f, size: Vec2f, texture: Texture, hasShadow: bool) *Icon {
+pub fn init(pos: Vec2f, size: Vec2f, texture: Texture) *Icon {
 	const self = main.globalAllocator.create(Icon);
 	self.* = Icon{
 		.texture = texture,
 		.pos = pos,
 		.size = size,
-		.hasShadow = hasShadow,
 	};
 	return self;
 }
@@ -43,10 +41,5 @@ pub fn updateTexture(self: *Icon, newTexture: Texture) !void {
 }
 
 pub fn render(self: *Icon, _: Vec2f) void {
-	if (self.hasShadow) {
-		const oldColor = draw.setColor(0xff000000);
-		defer draw.restoreColor(oldColor);
-		self.texture.render(self.pos + Vec2f{1, 1}, self.size);
-	}
 	self.texture.render(self.pos, self.size);
 }

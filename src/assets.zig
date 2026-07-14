@@ -137,8 +137,8 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "models", true, &self.blockModelsZon, null);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
+			addon.readAllZon(allocator, "entity_models", true, &self.entityModelDescriptions, &self.entityModelMigrations);
 			addon.readAllZon(allocator, "sounds", true, &self.sounds, null);
-			addon.readAllZon(allocator, "entityModels", true, &self.entityModelDescriptions, &self.entityModelMigrations);
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
@@ -428,7 +428,7 @@ fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void
 fn assignBlockItem(stringId: []const u8) !void {
 	const block = blocks.getTypeById(stringId);
 	// TODO: This must be gone in PixelGuys/Cubyz#1205
-	const index = items.BaseItemIndex.fromId(stringId) orelse unreachable;
+	const index = items.BaseItemIndex.fromId(stringId).?;
 	const item = &items.itemList[@intFromEnum(index)];
 	item.block = block;
 }
@@ -831,7 +831,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 pub fn readAsset(allocator: NeverFailingAllocator, subPath: []const u8, id: []const u8, fileEnding: []const u8) ![]const u8 {
 	var split = std.mem.splitScalar(u8, id, ':');
 	const mod = split.first();
-	const name = split.next() orelse unreachable;
+	const name = split.next().?;
 
 	var path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/{s}/{s}{s}", .{worldAssetFolder, mod, subPath, name, fileEnding}) catch unreachable;
 	defer main.stackAllocator.free(path);
