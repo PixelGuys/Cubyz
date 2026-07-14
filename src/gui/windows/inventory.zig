@@ -85,4 +85,5 @@ pub fn onClose() void {
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
+	window.titleBar.?.deinit();
 }
