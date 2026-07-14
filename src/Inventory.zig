@@ -542,8 +542,8 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	pub fn sortItems(source: ClientInventory, ignoredSlotCount: usize) void {
 		compressItems(source, ignoredSlotCount);
 		const InventorySize: usize = source.super.size() - ignoredSlotCount;
-		var SortList = main.ListManaged(usize).init(main.globalAllocator);
-		var iteratorList = main.ListManaged(usize).init(main.globalAllocator);
+		var SortList = main.ListManaged(usize).init(main.stackAllocator);
+		var iteratorList = main.ListManaged(usize).init(main.stackAllocator);
 		defer SortList.deinit();
 		defer iteratorList.deinit();
 		for (0..InventorySize) |i| {
