@@ -453,6 +453,17 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		main.sync.client.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = dest.super, .slot = destSlot}, .source = .{.inv = carried.super, .slot = 0}}});
 	}
 
+	pub fn swap(dest: ClientInventory, destSlot: u32, source: ClientInventory, sourceSlot: u32) void {
+		if (dest.type == .creative) {
+			source.fillFromCreative(0, dest.getItem(destSlot));
+			return;
+		}
+		if (dest.type != .serverShared or source.type != .serverShared) {
+			return;
+		}
+		main.sync.client.executeCommand(.{.swap = .{.dest = .{.inv = dest.super, .slot = destSlot}, .source = .{.inv = source.super, .slot = sourceSlot}}});
+	}
+
 	pub fn deposit(dest: ClientInventory, destSlot: u32, source: ClientInventory, sourceSlot: u32, amount: u16) void {
 		if (source.type == .creative) {
 			std.debug.assert(dest.type == .serverShared);
