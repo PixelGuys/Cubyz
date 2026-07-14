@@ -46,8 +46,7 @@ var itemSlots: [20]*ItemSlot = undefined;
 
 fn sortItems() void {
 	const target = Player.inventory;
-	const ignoredSlotCount = 12;
-	target.sortItems(ignoredSlotCount);
+	target.sortItems(.{.ignoredSlotCount = 12});
 }
 
 pub fn onOpen() void {
@@ -85,5 +84,4 @@ pub fn onClose() void {
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
-	window.titleBar.?.deinit();
 }

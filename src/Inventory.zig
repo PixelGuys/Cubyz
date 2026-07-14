@@ -539,50 +539,54 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		main.sync.client.executeCommand(.{.craftProceduralItem = .init(destinations, workbenchInv)});
 	}
 
-	pub fn sortItems(source: ClientInventory, ignoredSlotCount: usize) void {
-		compressItems(source, ignoredSlotCount);
-		const InventorySize: usize = source.super.size() - ignoredSlotCount;
+	pub const SortOptions = struct {
+		ignoredSlotCount: usize,
+	};
+
+	pub fn sortItems(source: ClientInventory, options: SortOptions) void {
+		compressItems(source, options);
+		const InventorySize: usize = source.super.size() - options.ignoredSlotCount;
 		var SortList = main.ListManaged(usize).init(main.stackAllocator);
 		var iteratorList = main.ListManaged(usize).init(main.stackAllocator);
 		defer SortList.deinit();
 		defer iteratorList.deinit();
 		for (0..InventorySize) |i| {
-			SortList.append(i + ignoredSlotCount);
-			iteratorList.append(i + ignoredSlotCount);
+			SortList.append(i + options.ignoredSlotCount);
+			iteratorList.append(i + options.ignoredSlotCount);
 		}
 		const ctx: SortContext = .{.inv = source, .sortlist = SortList};
 		std.sort.insertion(usize, SortList.items, ctx, SortContext.lessThan);
 		for (0..InventorySize) |i| {
 			if (SortList.items[i] == iteratorList.items[i]) continue;
 			var previousIndex: usize = i;
-			var checkedIndex = SortList.items[i] - ignoredSlotCount;
+			var checkedIndex = SortList.items[i] - options.ignoredSlotCount;
 			while (checkedIndex != i) {
 				main.sync.client.executeCommand(.{.depositOrSwap = .{
-					.dest = .{.inv = source.super, .slot = @intCast(previousIndex + ignoredSlotCount)},
-					.source = .{.inv = source.super, .slot = @intCast(checkedIndex + ignoredSlotCount)},
+					.dest = .{.inv = source.super, .slot = @intCast(previousIndex + options.ignoredSlotCount)},
+					.source = .{.inv = source.super, .slot = @intCast(checkedIndex + options.ignoredSlotCount)},
 				}});
 				std.mem.swap(usize, &iteratorList.items[previousIndex], &iteratorList.items[checkedIndex]);
 				previousIndex = checkedIndex;
-				checkedIndex = SortList.items[checkedIndex] - ignoredSlotCount;
+				checkedIndex = SortList.items[checkedIndex] - options.ignoredSlotCount;
 			}
 		}
 	}
 
-	pub fn compressItems(source: ClientInventory, ignoredSlotCount: usize) void {
+	pub fn compressItems(source: ClientInventory, options: SortOptions) void {
 		for (source.super._items, 0..) |invStack, slot| {
 			if (invStack.item == .null) continue;
-			if (slot < ignoredSlotCount) continue;
+			if (slot < options.ignoredSlotCount) continue;
 			for (source.super._items, 0..) |checkedInvStack, checkedSlot| {
 				if (checkedInvStack.item == .null) continue;
 				if (checkedSlot < slot) continue;
-				if (checkedSlot < ignoredSlotCount) continue;
+				if (checkedSlot < options.ignoredSlotCount) continue;
 				if (std.meta.eql(invStack.item, checkedInvStack.item)) {
 					main.sync.client.executeCommand(.{.deposit = .{.dest = .{.inv = source.super, .slot = @intCast(checkedSlot)}, .source = .{.inv = source.super, .slot = @intCast(slot)}, .amount = checkedInvStack.amount}});
 				}
 			}
 		}
 	}
-	
+
 	const SortContext = struct {
 		inv: ClientInventory,
 		sortlist: main.ListManaged(usize),
