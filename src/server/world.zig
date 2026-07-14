@@ -22,6 +22,7 @@ const server = @import("server.zig");
 const User = server.User;
 const Entity = server.Entity;
 const permission = server.permission;
+const whitelist = server.whitelist;
 const Palette = main.assets.Palette;
 
 const storage = @import("storage.zig");
@@ -528,6 +529,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		errdefer self.chunkManager.deinit();
 
 		try permission.loadGroups(try dir.openIterableDir("groups"));
+		whitelist.load(dir);
 		std.debug.assert(main.entityModel.getById("cubyz:missing") != null);
 
 		return self;
@@ -571,6 +573,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.entityModelPalette.deinit();
 		self.entityComponentPalette.deinit();
 		permission.deinit();
+		whitelist.deinit();
 		main.globalAllocator.free(self.path);
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);

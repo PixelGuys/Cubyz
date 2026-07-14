@@ -28,6 +28,7 @@ pub const Entity = @import("Entity.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
 pub const permission = @import("permission.zig");
+pub const whitelist = @import("whitelist.zig");
 
 pub const command = @import("command.zig");
 
