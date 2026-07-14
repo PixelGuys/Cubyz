@@ -13,6 +13,7 @@ const Button = GuiComponent.Button;
 const HorizontalList = GuiComponent.HorizontalList;
 const VerticalList = GuiComponent.VerticalList;
 const ItemSlot = GuiComponent.ItemSlot;
+const ProgressBar = GuiComponent.ProgressBar;
 
 const inventory = @import("inventory.zig");
 
@@ -29,6 +30,7 @@ pub var window = GuiWindow{
 const padding: f32 = 8;
 var itemSlots: main.List(*ItemSlot) = .empty;
 var craftingIcon: Texture = undefined;
+var progressBar: *ProgressBar = undefined;
 
 pub fn init() void {
 	craftingIcon = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_icon.png");
@@ -43,6 +45,14 @@ pub var openInventory: main.items.Inventory.ClientInventory = undefined;
 
 pub fn setInventory(selectedInventory: main.items.Inventory.ClientInventory) void {
 	openInventory = selectedInventory;
+}
+
+fn delayCallback(newValue: f32) void {
+	std.log.debug("hahe {}", .{newValue});
+}
+
+fn delayFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
+	return std.fmt.allocPrint(allocator.allocator, "#ffffffhelp me figure this out: {d:.0} ms", .{value/1.0e6}) catch unreachable;
 }
 
 pub fn onOpen() void {
@@ -67,7 +77,10 @@ pub fn onOpen() void {
 	row.add(slot);
 	itemSlots.append(main.globalAllocator, slot);
 	list.add(row);
-	
+
+	progressBar = ProgressBar.init(.{0, 0}, 128, &delayCallback, &delayFormatter);
+	list.add(progressBar);
+
 	list.finish(.center);
 	window.shiftClickableInventory = openInventory;
 	window.rootComponent = list.toComponent();
@@ -83,4 +96,8 @@ pub fn onClose() void {
 		comp.deinit();
 		window.rootComponent = null;
 	}
+}
+
+pub fn update() void {
+	progressBar.currentValue += 1;
 }

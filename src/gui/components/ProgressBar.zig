@@ -15,7 +15,7 @@ const GuiComponent = gui.GuiComponent;
 const Button = GuiComponent.Button;
 const Label = GuiComponent.Label;
 
-const ContinuousSlider = @This();
+const ProgressBar = @This();
 
 const border: f32 = 3;
 const fontSize: f32 = 16;
@@ -31,7 +31,6 @@ formatter: *const fn (NeverFailingAllocator, f32) []const u8,
 currentValue: f32,
 currentText: []const u8,
 label: *Label,
-button: *Button,
 mouseAnchor: f32 = undefined,
 
 pub fn globalInit() void {
@@ -42,12 +41,14 @@ pub fn globalDeinit() void {
 	texture.deinit();
 }
 
-pub fn init(pos: Vec2f, width: f32, minValue: f32, maxValue: f32, initialValue: f32, callback: *const fn (f32) void, formatter: *const fn (NeverFailingAllocator, f32) []const u8) *ContinuousSlider {
+pub fn init(pos: Vec2f, width: f32, callback: *const fn (f32) void, formatter: *const fn (NeverFailingAllocator, f32) []const u8) *ProgressBar {
+	const minValue = 0;
+	const maxValue = 100;
+	const initialValue = 0;
 	const initialText = formatter(main.globalAllocator, initialValue);
 	const label = Label.init(undefined, width - 3*border, initialText, .center);
-	const button = Button.initText(.{0, 0}, undefined, "", .{});
-	const self = main.globalAllocator.create(ContinuousSlider);
-	self.* = ContinuousSlider{
+	const self = main.globalAllocator.create(ProgressBar);
+	self.* = ProgressBar{
 		.pos = pos,
 		.size = undefined,
 		.minValue = minValue,
@@ -57,35 +58,17 @@ pub fn init(pos: Vec2f, width: f32, minValue: f32, maxValue: f32, initialValue: 
 		.currentValue = initialValue,
 		.currentText = initialText,
 		.label = label,
-		.button = button,
 	};
-	self.button.size = .{16, 16};
-	self.button.pos[1] = self.label.size[1] + 3.5*border;
-	self.size = Vec2f{@max(width, self.label.size[0] + 3*border), self.label.size[1] + self.button.size[1] + 5*border};
-	self.setButtonPosFromValue();
+	self.size = Vec2f{@max(width, self.label.size[0] + 3*border), self.label.size[1] + 5*border};
+	self.updateLabel(self.currentValue, self.size[0]);
 	return self;
 }
 
-pub fn deinit(self: *const ContinuousSlider) void {
-	self.label.deinit();
-	self.button.deinit();
-	main.globalAllocator.free(self.currentText);
-	main.globalAllocator.destroy(self);
+pub fn toComponent(self: *ProgressBar) GuiComponent {
+	return .{.progressBar = self};
 }
 
-pub fn toComponent(self: *ContinuousSlider) GuiComponent {
-	return .{.continuousSlider = self};
-}
-
-fn setButtonPosFromValue(self: *ContinuousSlider) void {
-	const range: f32 = self.size[0] - 3*border - self.button.size[0];
-	const len: f32 = self.maxValue - self.minValue;
-	const val = std.math.clamp(self.currentValue, self.minValue, self.maxValue);
-	self.button.pos[0] = 1.5*border + range*(val - self.minValue)/len;
-	self.updateLabel(self.currentValue, self.size[0]);
-}
-
-fn updateLabel(self: *ContinuousSlider, newValue: f32, width: f32) void {
+fn updateLabel(self: *ProgressBar, newValue: f32, width: f32) void {
 	main.globalAllocator.free(self.currentText);
 	self.currentText = self.formatter(main.globalAllocator, newValue);
 	const label = Label.init(undefined, width - 3*border, self.currentText, .center);
@@ -93,54 +76,18 @@ fn updateLabel(self: *ContinuousSlider, newValue: f32, width: f32) void {
 	self.label = label;
 }
 
-fn updateValueFromButtonPos(self: *ContinuousSlider) void {
-	const range: f32 = self.size[0] - 3*border - self.button.size[0];
-	const len: f32 = self.maxValue - self.minValue;
-	const value: f32 = (self.button.pos[0] - 1.5*border)/range*len + self.minValue;
-	if (value != self.currentValue) {
-		self.currentValue = value;
-		self.updateLabel(value, self.size[0]);
-		self.callback(value);
-	}
-}
-
-pub fn updateHovered(self: *ContinuousSlider, mousePosition: Vec2f) main.callbacks.Result {
-	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
-		if (self.button.updateHovered(mousePosition - self.pos) == .handled) return .handled;
-	}
-	return .ignored;
-}
-
-inline fn getBarPos(self: *ContinuousSlider) Vec2f {
-	return Vec2f{1.5*border + self.button.size[0]/2, self.button.pos[1] + self.button.size[1]/2 - border};
-}
-
-inline fn getBarSize(self: *ContinuousSlider) Vec2f {
-	const range: f32 = self.size[0] - 3*border - self.button.size[0];
+inline fn getBarSize(self: *ProgressBar) Vec2f {
+	const range: f32 = self.size[0] - 3*border;
 	return .{range, 2*border};
 }
 
-pub fn mainButtonPressed(self: *ContinuousSlider, mousePosition: Vec2f) main.callbacks.Result {
-	const mousePositionRelativeToSelf = mousePosition - self.pos;
-
-	if (GuiComponent.contains(self.button.pos, self.button.size, mousePositionRelativeToSelf)) {
-		if (self.button.mainButtonPressed(mousePositionRelativeToSelf) == .handled) {
-			self.mouseAnchor = mousePosition[0] - self.button.pos[0];
-			return .handled;
-		}
-	} else if (GuiComponent.contains(self.getBarPos(), self.getBarSize(), mousePositionRelativeToSelf)) {
-		self.mouseAnchor = self.pos[0] + self.button.size[0]/2;
-		self.button.pos[0] = mousePositionRelativeToSelf[0] - self.mouseAnchor;
-		return self.button.mainButtonPressed(mousePositionRelativeToSelf);
-	}
-	return .ignored;
+pub fn deinit(self: *const ProgressBar) void {
+	self.label.deinit();
+	main.globalAllocator.free(self.currentText);
+	main.globalAllocator.destroy(self);
 }
 
-pub fn mainButtonReleased(self: *ContinuousSlider, _: Vec2f) void {
-	self.button.mainButtonReleased(undefined);
-}
-
-pub fn render(self: *ContinuousSlider, mousePosition: Vec2f) void {
+pub fn render(self: *ProgressBar, mousePosition: Vec2f) void {
 	texture.bindTo(0);
 	Button.pipeline.bind(draw.getScissor());
 	draw.customShadedRect(Button.buttonUniforms, self.pos, self.size);
@@ -148,33 +95,27 @@ pub fn render(self: *ContinuousSlider, mousePosition: Vec2f) void {
 	{
 		const oldColor = draw.setColor(0x80000000);
 		defer draw.restoreColor(oldColor);
-		draw.rect(self.pos + self.getBarPos(), self.getBarSize());
+		draw.rect(self.pos, self.getBarSize());
 	}
 
 	self.label.pos = self.pos + @as(Vec2f, @splat(1.5*border));
 	self.label.render(mousePosition);
 
-	if (self.button.pressed) {
-		self.button.pos[0] = mousePosition[0] - self.mouseAnchor;
-		self.button.pos[0] = @min(@max(self.button.pos[0], 1.5*border), 1.5*border + self.getBarSize()[0] - 0.001);
-		self.updateValueFromButtonPos();
-	}
+	drawBar(self);
+
 	const oldTranslation = draw.setTranslation(self.pos);
 	defer draw.restoreTranslation(oldTranslation);
-	self.button.render(mousePosition - self.pos);
-
-	
 }
 
-fn drawBar(self: *ContinuousSlider) void {
+fn drawBar(self: *ProgressBar) void {
 	const oldColor = draw.setColor(0x300000ff);
 	defer draw.restoreColor(oldColor);
-	const range: f32 = self.size[0] - 3*border - self.button.size[0];
+	const range: f32 = self.size[0] - 3*border;
 	const len: f32 = self.maxValue - self.minValue;
 	const val = std.math.clamp(self.currentValue, self.minValue, self.maxValue);
 	const horizontalProgress = 1.5*border + range*(val - self.minValue)/len;
 	var newPos: Vec2f = self.pos;
-	newPos[0] = (newPos[0] + horizontalProgress)/2;
+	newPos[0] = newPos[0];
 	var newSize: Vec2f = self.size;
 	newSize[0] = horizontalProgress;
 	draw.rect(newPos, newSize);
