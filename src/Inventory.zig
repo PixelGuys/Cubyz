@@ -552,7 +552,6 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		}
 		var ctx: SortContext = .{.inv = source, .sortlist = SortList};
 		std.sort.insertionContext(0, InventorySize, &ctx);
-		// we sort the default (12..inventorysize) array into a sorted array
 		for (0..InventorySize) |i| {
 			if (SortList.items[i] == iteratorList.items[i]) continue;
 			var previousIndex: usize = i;
@@ -569,12 +568,14 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		}
 	}
 
-	pub fn compressItems(source: ClientInventory) void {
+	pub fn compressItems(source: ClientInventory, ignoredSlotCount: usize) void {
 		for (source.super._items, 0..) |invStack, slot| {
 			if (invStack.item == .null) continue;
+			if (slot < ignoredSlotCount) continue;
 			for (source.super._items, 0..) |checkedInvStack, checkedSlot| {
 				if (checkedInvStack.item == .null) continue;
 				if (checkedSlot < slot) continue;
+				if (checkedSlot < ignoredSlotCount) continue;
 				if (std.meta.eql(invStack.item, checkedInvStack.item)) {
 					main.sync.client.executeCommand(.{.deposit = .{.dest = .{.inv = source.super, .slot = @intCast(checkedSlot)}, .source = .{.inv = source.super, .slot = @intCast(slot)}, .amount = checkedInvStack.amount}});
 				}
