@@ -46,7 +46,7 @@ pub fn setInventory(selectedInventory: main.items.Inventory.ClientInventory) voi
 	openInventory = selectedInventory;
 }
 
-pub fn sortItems() void {
+fn sortItems() void {
 	const target = Player.inventory;
 	const ignoredSlotCount = 0;
 	target.sortItems(ignoredSlotCount);
