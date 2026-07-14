@@ -162,4 +162,20 @@ pub fn render(self: *ContinuousSlider, mousePosition: Vec2f) void {
 	const oldTranslation = draw.setTranslation(self.pos);
 	defer draw.restoreTranslation(oldTranslation);
 	self.button.render(mousePosition - self.pos);
+
+	
+}
+
+fn drawBar(self: *ContinuousSlider) void {
+	const oldColor = draw.setColor(0x300000ff);
+	defer draw.restoreColor(oldColor);
+	const range: f32 = self.size[0] - 3*border - self.button.size[0];
+	const len: f32 = self.maxValue - self.minValue;
+	const val = std.math.clamp(self.currentValue, self.minValue, self.maxValue);
+	const horizontalProgress = 1.5*border + range*(val - self.minValue)/len;
+	var newPos: Vec2f = self.pos;
+	newPos[0] = (newPos[0] + horizontalProgress)/2;
+	var newSize: Vec2f = self.size;
+	newSize[0] = horizontalProgress;
+	draw.rect(newPos, newSize);
 }
