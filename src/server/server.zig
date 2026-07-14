@@ -172,7 +172,6 @@ pub const User = struct { // MARK: User
 
 			.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator),
 			.worldEditData = .init(),
-			.permissions = .init(main.globalAllocator),
 			.jobQueue = .init(main.globalAllocator),
 		};
 	}
