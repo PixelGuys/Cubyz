@@ -561,7 +561,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 					.dest = .{.inv = source.super, .slot = @intCast(previousIndex + ignoredSlotCount)},
 					.source = .{.inv = source.super, .slot = @intCast(checkedIndex + ignoredSlotCount)},
 				}});
-				iteratorList.swap(previousIndex, checkedIndex);
+				std.mem.swap(iteratorList.items[previousIndex], iteratorList.items[checkedIndex]);
 				previousIndex = checkedIndex;
 				checkedIndex = SortList.items[checkedIndex] - ignoredSlotCount;
 			}
@@ -612,7 +612,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		}
 
 		pub fn swap(ctx: *@This(), a: usize, b: usize) void {
-			ctx.sortlist.swap(a, b);
+			std.mem.swap(ctx.sortlist[a], ctx.sortlist[b]);
 		}
 	};
 
