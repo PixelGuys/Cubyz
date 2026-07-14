@@ -285,12 +285,7 @@ pub const World = struct { // MARK: World
 	shouldRestart: std.atomic.Value(bool) = .init(false),
 	shouldReload: bool = false,
 
-	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
-		self.conn = try Connection.init(manager, ip, null);
-		self.manager = manager;
-		try self.@"continue"();
-	}
-	pub fn @"continue"(self: *World) !void {
+	fn connect(self: *World) !ZonElement {
 		main.heap.allocators.createWorldArena();
 		errdefer main.heap.allocators.destroyWorldArena();
 
@@ -308,12 +303,17 @@ pub const World = struct { // MARK: World
 		self.itemDrops.init(main.globalAllocator);
 		errdefer self.itemDrops.deinit();
 
-		const handshakeZon = try network.protocols.handShake.clientSide(self.conn, settings.playerName);
+		return try network.protocols.handShake.clientSide(self.conn, settings.playerName);
+	}
 
-		try self.finishHandshake(handshakeZon);
-		main.network.protocols.handShake.signalLoadedAssets();
+	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !ZonElement {
+		self.conn = try Connection.init(manager, ip, null);
+		self.manager = manager;
+		return try self.connect();
+	}
 
-		self.paused = false;
+	pub fn @"continue"(self: *World) !void {
+		try self.finishHandshake(try self.connect());
 	}
 
 	pub fn deinit(self: *World) void {
@@ -359,7 +359,13 @@ pub const World = struct { // MARK: World
 		main.heap.allocators.destroyWorldArena();
 	}
 
-	fn finishHandshake(self: *World, zon: ZonElement) !void {
+	pub fn finishHandshake(self: *World, zon: ZonElement) !void {
+		self.conn.manager.world = self;
+		main.game.world = self;
+		errdefer main.heap.allocators.destroyWorldArena();
+		errdefer self.conn.deinit();
+		errdefer self.itemDrops.deinit();
+
 		// TODO: Consider using a per-world allocator.
 		self.blockPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("blockPalette"), "cubyz:air");
 		errdefer self.blockPalette.deinit();
@@ -390,6 +396,9 @@ pub const World = struct { // MARK: World
 		main.entityModel.loadModelsAndTexture();
 
 		try Player.loadFrom(zon.getChild("player"));
+		main.network.protocols.handShake.signalLoadedAssets();
+
+		self.paused = false;
 	}
 
 	pub fn update(self: *World, deltaTime: f64) void {

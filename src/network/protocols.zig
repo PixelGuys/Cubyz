@@ -270,16 +270,19 @@ pub const handShake = struct { // MARK: handShake
 			else => unreachable,
 		}
 
-		conn.mutex.lock();
-		while (true) {
-			conn.handShakeWaiting.timedWait(&conn.mutex, .fromMilliseconds(16)) catch {
-				main.heap.GarbageCollection.syncPoint();
-				continue;
-			};
-			break;
+		{
+			conn.mutex.lock();
+			defer conn.mutex.unlock();
+			while (true) {
+				try main.io.checkCancel();
+				conn.handShakeWaiting.timedWait(&conn.mutex, .fromMilliseconds(16)) catch {
+					main.heap.GarbageCollection.syncPoint();
+					continue;
+				};
+				break;
+			}
+			if (conn.connectionState.load(.monotonic) == .disconnected) return error.DisconnectedByServer;
 		}
-		if (conn.connectionState.load(.monotonic) == .disconnected) return error.DisconnectedByServer;
-		conn.mutex.unlock();
 
 		return handshakeZon;
 	}
