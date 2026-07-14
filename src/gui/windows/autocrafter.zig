@@ -60,12 +60,12 @@ pub fn onOpen() void {
 	
 	{
 		const row = HorizontalList.init();
-		row.add(Button.initIcon(.{32, 0}, .{32, 32}, craftingIcon, true, .{.onAction = gui.openWindowCallback("autocrafter_recipie_select")}));
+		row.add(Button.initIcon(.{32, 0}, .{32, 32}, craftingIcon, .{.onAction = gui.openWindowCallback("autocrafter_recipie_select")}));
 		list.add(row);
 	}
 
 	const row = HorizontalList.init();
-	for (0..1) |x| {
+	for (0..2) |x| {
 		const index: usize = x;
 		const slot = ItemSlot.init(.{0, 0}, openInventory, @intCast(index), .default, .normal);
 		itemSlots.append(main.globalAllocator, slot);

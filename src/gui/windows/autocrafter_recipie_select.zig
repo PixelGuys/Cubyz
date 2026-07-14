@@ -37,13 +37,16 @@ var itemAmount: main.ListManaged(u32) = undefined;
 var inventories: main.ListManaged(ClientInventory) = undefined;
 
 pub var arrowTexture: Texture = undefined;
+var craftingIcon: Texture = undefined;
 
 pub fn init() void {
 	arrowTexture = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_arrow.png");
+	craftingIcon = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_icon.png");
 }
 
 pub fn deinit() void {
 	arrowTexture.deinit();
+	craftingIcon.deinit();
 }
 
 fn addItemStackToAvailable(itemStack: ItemStack) void {
@@ -100,6 +103,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 		const maxColumns: u32 = 4;
 		const itemsPerColumn = recipe.sourceItems.len/maxColumns;
 		const remainder = recipe.sourceItems.len%maxColumns;
+		rowList.add(Button.initIcon(.{0, 0}, .{32, 32}, craftingIcon, .{.onAction = gui.openWindowCallback("autocrafter_recipie_select")}));
 		i = 0;
 		for (0..maxColumns) |col| {
 			var itemsThisColumn = itemsPerColumn;
@@ -112,7 +116,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 			columnList.finish(.center);
 			rowList.add(columnList);
 		}
-		rowList.add(Icon.init(.{8, 0}, .{32, 32}, arrowTexture, false));
+		rowList.add(Icon.init(.{8, 0}, .{32, 32}, arrowTexture));
 		const itemSlot = ItemSlot.init(.{8, 0}, inv, @intCast(recipe.sourceItems.len), .craftingResult, .immutable);
 		rowList.add(itemSlot);
 		rowList.finish(.{0, 0}, .center);
