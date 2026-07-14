@@ -550,8 +550,8 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			SortList.append(i + ignoredSlotCount);
 			iteratorList.append(i + ignoredSlotCount);
 		}
-		var ctx: SortContext = .{.inv = source, .sortlist = SortList};
-		std.sort.insertionContext(0, InventorySize, &ctx);
+		const ctx: SortContext = .{.inv = source, .sortlist = SortList};
+		std.sort.insertion(usize, SortList.items, ctx, SortContext.lessThan);
 		for (0..InventorySize) |i| {
 			if (SortList.items[i] == iteratorList.items[i]) continue;
 			var previousIndex: usize = i;
@@ -561,7 +561,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 					.dest = .{.inv = source.super, .slot = @intCast(previousIndex + ignoredSlotCount)},
 					.source = .{.inv = source.super, .slot = @intCast(checkedIndex + ignoredSlotCount)},
 				}});
-				std.mem.swap(iteratorList.items[previousIndex], iteratorList.items[checkedIndex]);
+				std.mem.swap(usize, &iteratorList.items[previousIndex], &iteratorList.items[checkedIndex]);
 				previousIndex = checkedIndex;
 				checkedIndex = SortList.items[checkedIndex] - ignoredSlotCount;
 			}
@@ -582,14 +582,14 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			}
 		}
 	}
-
+	
 	const SortContext = struct {
 		inv: ClientInventory,
 		sortlist: main.ListManaged(usize),
 
 		pub fn lessThan(ctx: @This(), a: usize, b: usize) bool {
-			const itemA: Item = ctx.inv.getItem(ctx.sortlist.items[a]);
-			const itemB: Item = ctx.inv.getItem(ctx.sortlist.items[b]);
+			const itemA: Item = ctx.inv.getItem(a);
+			const itemB: Item = ctx.inv.getItem(b);
 
 			if (itemA == .null) return false;
 			if (itemB == .null) return true;
@@ -612,7 +612,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		}
 
 		pub fn swap(ctx: *@This(), a: usize, b: usize) void {
-			std.mem.swap(ctx.sortlist[a], ctx.sortlist[b]);
+			std.mem.swap(usize, ctx.sortlist[a], ctx.sortlist[b]);
 		}
 	};
 
