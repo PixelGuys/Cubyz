@@ -552,17 +552,12 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		}
 		var ctx: SortContext = .{.inv = source, .sortlist = SortList};
 		std.sort.insertionContext(0, InventorySize, &ctx);
-		std.log.debug("Starting list {}", .{iteratorList.items});
-		std.log.debug("ending list {}", .{SortList.items});
 		// we sort the default (12..inventorysize) array into a sorted array
 		for (0..InventorySize) |i| {
 			if (SortList.items[i] == iteratorList.items[i]) continue;
 			var previousIndex: usize = i;
 			var checkedIndex = SortList.items[i] - ignoredSlotCount;
 			while (checkedIndex != i) {
-				std.log.debug("Swapping {} and {}", .{previousIndex, checkedIndex});
-				std.log.debug("lists {}", .{iteratorList.items});
-				std.log.debug("indexes {} {}", .{previousIndex, checkedIndex});
 				main.sync.client.executeCommand(.{.depositOrSwap = .{
 					.dest = .{.inv = source.super, .slot = @intCast(previousIndex + ignoredSlotCount)},
 					.source = .{.inv = source.super, .slot = @intCast(checkedIndex + ignoredSlotCount)},
@@ -571,7 +566,6 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 				previousIndex = checkedIndex;
 				checkedIndex = SortList.items[checkedIndex] - ignoredSlotCount;
 			}
-			std.log.debug("lists {}", .{iteratorList.items});
 		}
 	}
 
