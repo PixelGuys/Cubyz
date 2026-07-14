@@ -186,7 +186,6 @@ pub fn block(key: []const u8) BlockResult {
 }
 
 pub fn isAllowedToJoin(key: []const u8) bool {
-	sync.threadContext.assertCorrectContext(.server);
 	mutex.lock();
 	defer mutex.unlock();
 	const entry = playerDatabase.get(key) orelse return false;
