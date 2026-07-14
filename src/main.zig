@@ -176,6 +176,7 @@ fn setHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
 	return &struct {
 		fn set(_: Window.Key.Modifiers) void {
 			if (gui.hoveredItemSlot) |hovered| {
+				if (hovered.inventory.type == .crafting or hovered.inventory.type == .workbenchResult) return;
 				hovered.inventory.swap(hovered.itemSlot, game.Player.inventory, i - 1);
 				return;
 			}
