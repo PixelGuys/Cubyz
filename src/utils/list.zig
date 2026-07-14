@@ -165,6 +165,12 @@ pub fn ListManaged(comptime T: type) type {
 			return old;
 		}
 
+		pub fn swap(self: *@This(), a: usize, b: usize) void {
+			const oldValue = self.items[a];
+			self.items[a] = self.items[b];
+			self.items[b] = oldValue;
+		}
+
 		pub fn orderedRemove(self: *@This(), i: usize) T {
 			const newlen = self.items.len - 1;
 			const old = self.items[i];

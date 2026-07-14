@@ -541,13 +541,45 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 
 	pub fn sortItems(source: ClientInventory, ignoredSlotCount: usize) void {
 		compressItems(source);
-		const ctx: SortContext = .{.inv = source};
-		std.sort.insertionContext(ignoredSlotCount, source.super._items.len, ctx);
+		const InventorySize: usize = source.super.size() - ignoredSlotCount;
+		var SortList = main.ListManaged(usize).init(main.globalAllocator);
+		var iteratorList = main.ListManaged(usize).init(main.globalAllocator);
+		defer SortList.deinit();
+		defer iteratorList.deinit();
+		for (0..InventorySize) |i| {
+			SortList.append(i + ignoredSlotCount);
+			iteratorList.append(i + ignoredSlotCount);
+		}
+		var ctx: SortContext = .{.inv = source, .sortlist = SortList};
+		std.sort.insertionContext(0, InventorySize, &ctx);
+		std.log.debug("Starting list {}", .{iteratorList.items});
+		std.log.debug("ending list {}", .{SortList.items});
+		// we sort the default (12..inventorysize) array into a sorted array
+		for (0..InventorySize) |i| {
+			if (SortList.items[i] == iteratorList.items[i]) continue;
+			var previousIndex: usize = i;
+			var checkedIndex = SortList.items[i] - ignoredSlotCount;
+			while (checkedIndex != i) {
+				std.log.debug("Swapping {} and {}", .{previousIndex, checkedIndex});
+				std.log.debug("lists {}", .{iteratorList.items});
+				std.log.debug("indexes {} {}", .{previousIndex, checkedIndex});
+				main.sync.client.executeCommand(.{.depositOrSwap = .{
+					.dest = .{.inv = source.super, .slot = @intCast(previousIndex + ignoredSlotCount)},
+					.source = .{.inv = source.super, .slot = @intCast(checkedIndex + ignoredSlotCount)},
+				}});
+				iteratorList.swap(previousIndex, checkedIndex);
+				previousIndex = checkedIndex;
+				checkedIndex = SortList.items[checkedIndex] - ignoredSlotCount;
+			}
+			std.log.debug("lists {}", .{iteratorList.items});
+		}
 	}
 
 	pub fn compressItems(source: ClientInventory) void {
 		for (source.super._items, 0..) |invStack, slot| {
+			if (invStack.item == .null) continue;
 			for (source.super._items, 0..) |checkedInvStack, checkedSlot| {
+				if (checkedInvStack.item == .null) continue;
 				if (checkedSlot < slot) continue;
 				if (std.meta.eql(invStack.item, checkedInvStack.item)) {
 					main.sync.client.executeCommand(.{.deposit = .{.dest = .{.inv = source.super, .slot = @intCast(checkedSlot)}, .source = .{.inv = source.super, .slot = @intCast(slot)}, .amount = checkedInvStack.amount}});
@@ -558,10 +590,11 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 
 	const SortContext = struct {
 		inv: ClientInventory,
+		sortlist: main.ListManaged(usize),
 
 		pub fn lessThan(ctx: @This(), a: usize, b: usize) bool {
-			const itemA: Item = ctx.inv.getItem(a);
-			const itemB: Item = ctx.inv.getItem(b);
+			const itemA: Item = ctx.inv.getItem(ctx.sortlist.items[a]);
+			const itemB: Item = ctx.inv.getItem(ctx.sortlist.items[b]);
 
 			if (itemA == .null) return false;
 			if (itemB == .null) return true;
@@ -583,11 +616,8 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			return std.mem.lessThan(u8, itemA.id().?, itemB.id().?);
 		}
 
-		pub fn swap(ctx: @This(), a: usize, b: usize) void {
-			main.sync.client.executeCommand(.{.depositOrSwap = .{
-				.dest = .{.inv = ctx.inv.super, .slot = @intCast(a)},
-				.source = .{.inv = ctx.inv.super, .slot = @intCast(b)},
-			}});
+		pub fn swap(ctx: *@This(), a: usize, b: usize) void {
+			ctx.sortlist.swap(a, b);
 		}
 	};
 
