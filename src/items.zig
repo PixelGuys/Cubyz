@@ -647,14 +647,14 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 			}
 		}
 		while (floodfillQueue.popFront()) |pos| {
-			for ([4]Vec2i{.{-1, 0}, .{1, 0}, .{0, -1}, .{0, 1}}) |delta| {
+			for ([8]Vec2i{.{-1, 0}, .{1, 0}, .{0, -1}, .{0, 1}, .{-1, -1}, .{1, -1}, .{-1, 1}, .{1, 1}}) |delta| {
 				const newPos = pos + delta;
 				if (newPos[0] < 0 or newPos[0] >= gridCellsReached.len) continue;
 				if (newPos[1] < 0 or newPos[1] >= gridCellsReached.len) continue;
 				const x: usize = @intCast(newPos[0]);
 				const y: usize = @intCast(newPos[1]);
 				if (gridCellsReached[x][y]) continue;
-				if (proceduralItem.materialGrid[x][y] == null and TextureGenerator.findNeighborMaterial(&proceduralItem.materialGrid, @intCast(x), @intCast(y)) == null) continue;
+				if (proceduralItem.materialGrid[x][y] == null) continue;
 				gridCellsReached[x][y] = true;
 				floodfillQueue.pushBack(newPos);
 			}
