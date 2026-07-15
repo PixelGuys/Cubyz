@@ -252,6 +252,8 @@ pub fn reset() void {
 	}
 	audios.clearRetainingCapacity();
 	activeSounds.clearRetainingCapacity();
+	soundDataIdMap.clearRetainingCapacity();
+	soundDatas.clearRetainingCapacity();
 }
 
 const currentMusic = struct {
