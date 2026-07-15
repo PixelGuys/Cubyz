@@ -238,17 +238,19 @@ pub fn deinit() void {
 	main.globalAllocator.free(activeMusicId);
 	activeMusicId.len = 0;
 
-	soundIdMap.deinit(main.globalAllocator.allocator);
-	sounds.deinit(main.globalAllocator);
+	audioIdMap.deinit(main.globalAllocator.allocator);
+	audios.deinit(main.globalAllocator);
+	soundDataIdMap.deinit(main.globalAllocator.allocator);
+	soundDatas.deinit(main.globalAllocator);
 	activeSounds.deinit(main.globalAllocator);
 }
 
 pub fn reset() void {
-	soundIdMap.clearRetainingCapacity();
-	for (sounds.items) |s| {
+	audioIdMap.clearRetainingCapacity();
+	for (audios.items) |s| {
 		s.deinit();
 	}
-	sounds.clearRetainingCapacity();
+	audios.clearRetainingCapacity();
 	activeSounds.clearRetainingCapacity();
 }
 
@@ -299,9 +301,14 @@ pub fn setMusic(music: []const u8) void {
 	preferredMusic = main.globalAllocator.dupe(u8, music);
 }
 
-const Sound = struct { // MARK: SOUNDS
+const SoundData = struct { // MARK: SOUNDS
+	audioIndex: u32,
+	volume: f32 = 1,
+};
+
+const PlayingSound = struct {
 	pos: Vec3f = @splat(0),
-	soundIndex: u32,
+	audioIndex: u32,
 	bufPos: u32 = 0,
 
 	volume: f32 = 1,
@@ -309,28 +316,47 @@ const Sound = struct { // MARK: SOUNDS
 	isSpatial: bool = false,
 };
 
-var soundIdMap: std.StringHashMapUnmanaged(u32) = .{};
-var sounds: main.List(*AudioData) = .empty;
-var activeSounds: main.List(Sound) = .empty; // TODO: USE SPARSE SET
+var audioIdMap: std.StringHashMapUnmanaged(u32) = .{};
+var audios: main.List(*AudioData) = .empty;
+var soundDataIdMap: std.StringHashMapUnmanaged(u32) = .{};
+var soundDatas: main.List(SoundData) = .empty;
+var activeSounds: main.List(PlayingSound) = .empty;
 
 pub fn getActiveSoundCount() u32 {
 	return @intCast(activeSounds.items.len);
 }
 
-pub fn registerSound(_: []const u8, id: []const u8, zon: ZonElement) void {
-	const sound = AudioData.init(id, "sounds/audio");
-	sound.volume = zon.get(f32, "volume") orelse 1.0;
+pub fn registerAudioData(_: []const u8, id: []const u8) void {
+	const audio = AudioData.init(id, "sounds/audio");
+	audioIdMap.put(main.globalAllocator.allocator, id, @intCast(audios.items.len)) catch unreachable;
+	audios.append(main.globalAllocator, audio);
+	std.log.debug("Registered sound audio: {s}", .{id});
+}
 
-	soundIdMap.put(main.globalAllocator.allocator, id, @intCast(sounds.items.len)) catch unreachable;
-	sounds.append(main.globalAllocator, sound);
+pub fn registerSound(assetsFolder: []const u8, id: []const u8, zon: ZonElement) void {
+	const audioId = zon.get([]const u8, "audio") orelse {
+		std.log.err("Sound Data audio was not specified: {s} ({s})", .{id, assetsFolder});
+		return;
+	};
+	
+	soundDataIdMap.put(main.globalAllocator.allocator, id, @intCast(soundDatas.items.len)) catch unreachable;
+	soundDatas.append(main.globalAllocator, SoundData{
+		.audioIndex = audioIdMap.get(audioId) orelse {
+			std.log.err("Sound Data audio could not be found: {s} ({s}) audio ID: {s}", .{id, assetsFolder, audioId});
+			return;
+		},
+		.volume = zon.get(f32, "volume") orelse 1.0,
+	});
 
-	std.log.debug("Registered sound: {s}", .{id});
+	std.log.debug("Registered sound data: {s}", .{id});
 }
 
 fn addSound(id: []const u8, pos: Vec3f, maxDistance: f32, isSpatial: bool) void {
-	const idx = soundIdMap.get(id) orelse return;
-	activeSounds.append(main.globalAllocator, Sound{
-		.soundIndex = idx,
+	const idx = soundDataIdMap.get(id) orelse return;
+	const soundData = soundDatas.items[idx];
+	activeSounds.append(main.globalAllocator, PlayingSound{
+		.audioIndex = soundData.audioIndex,
+		.volume = soundData.volume,
 		.pos = pos,
 		.isSpatial = isSpatial,
 		.maxDistance = maxDistance,
@@ -406,7 +432,7 @@ fn mixSound(buffer: []f32) void {
 	var soundCount = activeSounds.items.len;
 	main: while (i < soundCount) {
 		var sound = activeSounds.items[i];
-		const soundData = sounds.items[sound.soundIndex];
+		const soundData = audios.items[sound.audioIndex];
 		const soundBuffer = soundData.data;
 
 		const notMonoInt: u32 = @intFromBool(!soundData.isMono);
@@ -440,7 +466,6 @@ fn mixSound(buffer: []f32) void {
 			leftVol *= volume;
 			rightVol *= volume;
 		}
-
 
 		var j: usize = 0;
 		while (j < buffer.len) : (j += 2) {
