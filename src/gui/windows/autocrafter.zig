@@ -31,6 +31,7 @@ const padding: f32 = 8;
 var itemSlots: main.List(*ItemSlot) = .empty;
 var craftingIcon: Texture = undefined;
 var progressBar: *ProgressBar = undefined;
+var currentSetRecipe: ?main.items.Recipe = undefined;
 
 pub fn init() void {
 	craftingIcon = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_icon.png");
@@ -60,7 +61,7 @@ pub fn onOpen() void {
 	
 	{
 		const row = HorizontalList.init();
-		row.add(Button.initIcon(.{32, 0}, .{32, 32}, craftingIcon, .{.onAction = gui.openWindowCallback("autocrafter_recipie_select")}));
+		row.add(Button.initIcon(.{32, 0}, .{32, 32}, craftingIcon, .{.onAction = gui.openWindowCallback("autocrafter_recipe_select")}));
 		list.add(row);
 	}
 
@@ -73,12 +74,12 @@ pub fn onOpen() void {
 	}
 	
 	const outputSlot: comptime_int = 2;
-	const slot = ItemSlot.init(.{32, 0}, openInventory, outputSlot, .default, .takeOnly);
+	const slot = ItemSlot.init(.{32, 0}, openInventory, @intCast(outputSlot), .default, .takeOnly);
 	row.add(slot);
 	itemSlots.append(main.globalAllocator, slot);
 	list.add(row);
 
-	progressBar = ProgressBar.init(.{0, 0}, 128, &delayCallback, &delayFormatter);
+	progressBar = ProgressBar.init(.{0, 0}, 128, &delayCallback, &delayFormatter, .{.onAction = .init(craft)});
 	list.add(progressBar);
 
 	list.finish(.center);
@@ -99,5 +100,13 @@ pub fn onClose() void {
 }
 
 pub fn update() void {
-	progressBar.currentValue += 1;
+	if (currentSetRecipe != null) progressBar.currentValue += 1;
+}
+
+pub fn setRecipe(recipe: main.items.Recipe) void {
+	currentSetRecipe = recipe;
+}
+
+fn craft() void {
+	main.sync.client.executeCommand(.{.craftFrom = .init(&.{openInventory}, &.{openInventory}, &(currentSetRecipe orelse return))});
 }

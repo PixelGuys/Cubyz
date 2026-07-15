@@ -38,7 +38,7 @@ pub const social = @import("social.zig");
 pub const sound = @import("sound.zig");
 pub const workbench = @import("workbench.zig");
 pub const autocrafter = @import("autocrafter.zig");
-pub const autocrafter_recipie_select = @import("autocrafter_recipie_select.zig");
+pub const autocrafter_recipe_select = @import("autocrafter_recipe_select.zig");
 
 
 pub const @"authentication/create_account_account_code" = @import("authentication/create_account_account_code.zig");

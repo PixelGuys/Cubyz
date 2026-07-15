@@ -87,7 +87,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 	}
 	inventories.clearRetainingCapacity();
 	// Find all recipes the player can make:
-	for (items.getRecipes()) |*recipe| {
+	for (items.getRecipes(), 0..) |*recipe, recipeIndex| {
 
 		const inv = ClientInventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .{.crafting = recipe}, .other, .{});
 
@@ -103,7 +103,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 		const maxColumns: u32 = 4;
 		const itemsPerColumn = recipe.sourceItems.len/maxColumns;
 		const remainder = recipe.sourceItems.len%maxColumns;
-		rowList.add(Button.initIcon(.{0, 0}, .{32, 32}, craftingIcon, .{.onAction = gui.openWindowCallback("autocrafter_recipie_select")}));
+		rowList.add(Button.initIcon(.{0, 0}, .{32, 32}, craftingIcon, .{.onAction = .initWithInt(selectAutocrafterRecipe, recipeIndex)}));
 		i = 0;
 		for (0..maxColumns) |col| {
 			var itemsThisColumn = itemsPerColumn;
@@ -169,4 +169,12 @@ pub fn onClose() void {
 
 pub fn update() void {
 	refresh();
+}
+
+fn selectAutocrafterRecipe(givenIndex: usize) void {
+	if (!gui.isWindowOpen("autocrafter")) return;
+	for (gui.openWindows.items) |foundWindow| {
+		if (!std.mem.eql(u8, foundWindow.id, "autocrafter")) continue;
+		foundWindow.setRecipe(items.getRecipes()[givenIndex]);
+	}
 }

@@ -32,6 +32,11 @@ currentValue: f32,
 currentText: []const u8,
 label: *Label,
 mouseAnchor: f32 = undefined,
+onAction: main.callbacks.SimpleCallback,
+
+const Options = struct {
+	onAction: main.callbacks.SimpleCallback = .{},
+};
 
 pub fn globalInit() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/slider.png");
@@ -41,7 +46,7 @@ pub fn globalDeinit() void {
 	texture.deinit();
 }
 
-pub fn init(pos: Vec2f, width: f32, callback: *const fn (f32) void, formatter: *const fn (NeverFailingAllocator, f32) []const u8) *ProgressBar {
+pub fn init(pos: Vec2f, width: f32, callback: *const fn (f32) void, formatter: *const fn (NeverFailingAllocator, f32) []const u8, options: Options) *ProgressBar {
 	const minValue = 0;
 	const maxValue = 100;
 	const initialValue = 0;
@@ -58,6 +63,7 @@ pub fn init(pos: Vec2f, width: f32, callback: *const fn (f32) void, formatter: *
 		.currentValue = initialValue,
 		.currentText = initialText,
 		.label = label,
+		.onAction = options.onAction,
 	};
 	self.size = Vec2f{@max(width, self.label.size[0] + 3*border), self.label.size[1] + 5*border};
 	self.updateLabel(self.currentValue, self.size[0]);
@@ -88,6 +94,8 @@ pub fn deinit(self: *const ProgressBar) void {
 }
 
 pub fn render(self: *ProgressBar, mousePosition: Vec2f) void {
+	checkIfProgressComplete(self);
+
 	texture.bindTo(0);
 	Button.pipeline.bind(draw.getScissor());
 	draw.customShadedRect(Button.buttonUniforms, self.pos, self.size);
@@ -119,4 +127,11 @@ fn drawBar(self: *ProgressBar) void {
 	var newSize: Vec2f = self.size;
 	newSize[0] = horizontalProgress;
 	draw.rect(newPos, newSize);
+}
+
+fn checkIfProgressComplete(self: *ProgressBar) void {
+	while (self.currentValue > self.maxValue) {
+		self.onAction.run();
+		self.currentValue -= self.maxValue;
+	}
 }
