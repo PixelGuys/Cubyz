@@ -32,7 +32,6 @@ fn getMaError(err: c_int) anyerror {
 	};
 }
 
-
 fn handleError(miniaudioError: c.ma_result) !void {
 	if (miniaudioError != c.MA_SUCCESS) {
 		std.log.err("miniaudio error: {s}", .{c.ma_result_description(miniaudioError)});
@@ -125,7 +124,7 @@ const AudioData = struct {
 	}
 };
 
-var activeTasks: main.List([]const u8) = .empty;  // MARK: MUSIC
+var activeTasks: main.List([]const u8) = .empty; // MARK: MUSIC
 var taskMutex: main.utils.Mutex = .{};
 
 var musicCache: utils.Cache(AudioData, 4, 4, AudioData.deinit) = .{};
