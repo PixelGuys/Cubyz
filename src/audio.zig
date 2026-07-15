@@ -56,7 +56,6 @@ const AudioData = struct {
 		};
 		const addon = id[0..colonIndex];
 		const fileName = id[colonIndex + 1 ..];
-		// FIXME: IF THERE IS SOME PROBLEM WITH THE FILE ITSELF IT JUST SAYS THAT IT COULD NOT FIND THE FILE RATHER THAN THE ACTUAL ISSUE
 		const path1 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/{s}/{s}.ogg", .{addon, subPath, fileName}, 0) catch unreachable;
 		defer main.stackAllocator.free(path1);
 		var err: c_int = 0;
