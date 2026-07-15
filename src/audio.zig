@@ -338,7 +338,7 @@ pub fn registerSound(assetsFolder: []const u8, id: []const u8, zon: ZonElement) 
 		std.log.err("Sound Data audio was not specified: {s} ({s})", .{id, assetsFolder});
 		return;
 	};
-	
+
 	soundDataIdMap.put(main.globalAllocator.allocator, id, @intCast(soundDatas.items.len)) catch unreachable;
 	soundDatas.append(main.globalAllocator, SoundData{
 		.audioIndex = audioIdMap.get(audioId) orelse {
