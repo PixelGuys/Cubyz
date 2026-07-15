@@ -469,10 +469,10 @@ fn mixSound(buffer: []f32) void {
 
 		var j: usize = 0;
 		while (j < buffer.len) : (j += 2) {
-			const amplitude: f32 = main.settings.soundVolume;
+			const amplitude: f32 = main.settings.soundVolume*soundData.volume;
 
-			buffer[j] += soundBuffer[sound.bufPos]*amplitude*soundData.volume*leftVol;
-			buffer[j + 1] += soundBuffer[sound.bufPos + notMonoInt]*amplitude*soundData.volume*rightVol;
+			buffer[j] += soundBuffer[sound.bufPos]*amplitude*leftVol;
+			buffer[j + 1] += soundBuffer[sound.bufPos + notMonoInt]*amplitude*rightVol;
 			sound.bufPos += bufferStep;
 
 			if (sound.bufPos >= soundBuffer.len) {
