@@ -32,6 +32,10 @@ var itemSlots: main.List(*ItemSlot) = .empty;
 var craftingIcon: Texture = undefined;
 var progressBar: *ProgressBar = undefined;
 var currentSetRecipe: ?main.items.Recipe = undefined;
+var blockEntityPos: main.vec.Vec3i = undefined;
+pub var openInventory: main.items.Inventory.ClientInventory = undefined;
+pub var lastUpdatedTime: i64 = undefined;
+var oflineCraftsLeft: i64 = undefined; // MARK: fix this later we need to properly save recipies
 
 pub fn init() void {
 	craftingIcon = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_icon.png");
@@ -42,10 +46,17 @@ pub fn deinit() void {
 	craftingIcon.deinit();
 }
 
-pub var openInventory: main.items.Inventory.ClientInventory = undefined;
-
 pub fn setInventory(selectedInventory: main.items.Inventory.ClientInventory) void {
 	openInventory = selectedInventory;
+}
+
+pub fn setblockEntityPos(entitypos: main.vec.Vec3i) void {
+	blockEntityPos = entitypos;
+}
+
+pub fn setLastUpdatedTime(givenLastUpdatedTime: []const u8) void {
+	std.log.debug("help", .{});
+	lastUpdatedTime = std.fmt.parseInt(i64, givenLastUpdatedTime, 10) catch unreachable;
 }
 
 fn delayCallback(newValue: f32) void {
@@ -58,7 +69,10 @@ fn delayFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []cons
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
-	
+	const timePassed: i64 = main.server.world.?.gameTime - lastUpdatedTime;
+	std.log.debug("hahe {}", .{timePassed});
+	oflineCraftsLeft = @divFloor(timePassed, 30);
+
 	{
 		const row = HorizontalList.init();
 		row.add(Button.initIcon(.{32, 0}, .{32, 32}, craftingIcon, .{.onAction = gui.openWindowCallback("autocrafter_recipe_select")}));
@@ -97,10 +111,15 @@ pub fn onClose() void {
 		comp.deinit();
 		window.rootComponent = null;
 	}
+	const currentTime = std.fmt.allocPrint(main.globalAllocator.allocator, "{}", .{main.server.world.?.gameTime}) catch unreachable;
+	main.block_entity.BlockEntityTypes.@"cubyz:sign".updateTextFromClient(blockEntityPos, currentTime);
 }
 
 pub fn update() void {
-	if (currentSetRecipe != null) progressBar.currentValue += 1;
+	if (currentSetRecipe != null) {
+		progressBar.currentValue += 1;
+		progressBar.currentValue += @floatFromInt(oflineCraftsLeft*100);
+	}
 }
 
 pub fn setRecipe(recipe: main.items.Recipe) void {

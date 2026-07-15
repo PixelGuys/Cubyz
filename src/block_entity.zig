@@ -294,19 +294,28 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 	};
 
 	pub const @"cubyz:autocrafter" = struct { // MARK: cubyz:autocrafter
-		pub const inventorySize = 2;
+		pub const inventorySize = 3;
 		const StorageServer = BlockEntityDataStorage(struct {
 			invId: main.items.Inventory.InventoryId,
+			text: []const u8,
+		});
+		pub const StorageClient = BlockEntityDataStorage(struct {
+			text: []const u8,
+			blockPos: Vec3i,
+			block: main.blocks.Block,
 		});
 
 		pub fn init() void {
 			StorageServer.init();
+			StorageClient.init();
 		}
 		pub fn deinit() void {
 			StorageServer.deinit();
+			StorageClient.deinit();
 		}
 		pub fn reset() void {
 			StorageServer.reset();
+			StorageClient.reset();
 		}
 
 		fn onInventoryUpdateCallback(source: main.items.Inventory.Source) void {
@@ -323,7 +332,6 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			.onUpdateCallback = &onInventoryUpdateCallback,
 		};
 
-		pub fn onLoadClient(_: Vec3i, _: *Chunk, _: *BinaryReader) ErrorSet!void {}
 		pub fn onUnloadClient(_: BlockEntity) void {}
 		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
 			StorageServer.mutex.lock();
@@ -353,9 +361,28 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			if (isEmpty) return;
 			inv.toBytes(writer);
 		}
-		pub fn onStoreServerToClient(_: BlockEntity, _: *BinaryWriter) void {}
+		pub const onStoreServerToClient = onStoreServerToDisk;
 
-		pub fn updateClientData(_: Vec3i, _: *Chunk, _: UpdateEvent) ErrorSet!void {}
+		pub fn onLoadClient(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
+			return updateClientData(pos, chunk, .{.update = reader});
+		}
+		pub fn updateClientData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
+			if (event == .remove or event.update.remaining.len == 0) {
+				return;
+			}
+
+			StorageClient.mutex.lock();
+			defer StorageClient.mutex.unlock();
+
+			const data = StorageClient.getOrPut(pos, chunk);
+
+			data.valuePtr.* = .{
+				.blockPos = pos,
+				.block = chunk.data.getValue(chunk.getLocalBlockPos(pos).toIndex()),
+				.text = main.globalAllocator.dupe(u8, event.update.remaining),
+			};
+		}
+
 		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
 			switch (event) {
 				.remove => {
@@ -372,10 +399,50 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 				},
 			}
 		}
-		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
-		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
+		pub fn getServerToClientData(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+
+			const data = StorageServer.get(pos, chunk) orelse return;
+			writer.writeSlice(data.text);
+		}
+
+		pub fn getClientToServerData(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
+			StorageClient.mutex.lock();
+			defer StorageClient.mutex.unlock();
+
+			const data = StorageClient.get(pos, chunk) orelse return;
+			writer.writeSlice(data.text);
+		}
 
 		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {}
+
+		pub fn updateTextFromClient(pos: Vec3i, newText: []const u8) void {
+			{
+				const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(pos, 1)) orelse return;
+				mesh.mutex.lock();
+				defer mesh.mutex.unlock();
+				const localPos = mesh.chunk.getLocalBlockPos(pos);
+				const block = mesh.chunk.data.getValue(localPos.toIndex());
+				const blockEntity = block.blockEntity() orelse return;
+				if (!std.mem.eql(u8, blockEntity.id, "cubyz:sign")) return;
+
+				StorageClient.mutex.lock();
+				defer StorageClient.mutex.unlock();
+
+				const data = StorageClient.getOrPut(pos, mesh.chunk);
+				if (data.foundExisting) {
+					data.valuePtr.deinit();
+				}
+				data.valuePtr.* = .{
+					.blockPos = pos,
+					.block = mesh.chunk.data.getValue(localPos.toIndex()),
+					.text = main.globalAllocator.dupe(u8, newText),
+				};
+			}
+
+			main.network.protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
+		}
 	};
 
 	pub const @"cubyz:sign" = struct { // MARK: cubyz:sign
