@@ -443,6 +443,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	milliTime: std.Io.Timestamp,
 	lastUpdateTime: std.Io.Timestamp,
 	lastUnimportantDataSent: std.Io.Timestamp,
+	lastItemDropSaveTime: std.Io.Timestamp,
 	doGameTimeCycle: bool = true,
 
 	tickSpeed: std.atomic.Value(u32) = .init(12),
@@ -481,6 +482,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			.lastUpdateTime = main.timestamp(),
 			.milliTime = main.timestamp(),
 			.lastUnimportantDataSent = main.timestamp(),
+			.lastItemDropSaveTime = main.timestamp(),
 			.path = main.globalAllocator.dupe(u8, path),
 			.chunkUpdateQueue = .init(main.globalAllocator, 256),
 			.regionUpdateQueue = .init(main.globalAllocator, 256),
@@ -1107,6 +1109,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			for (userList) |user| {
 				self.itemDropManager.checkEntity(user);
 			}
+		}
+		if (self.lastItemDropSaveTime.durationTo(newTime).toSeconds() > 5) {
+			self.lastItemDropSaveTime = newTime;
+			self.saveItemdrops() catch |err| {
+				std.log.err("Error while saving item data: {s}", .{@errorName(err)});
+			};
 		}
 
 		// Store chunks and regions.
