@@ -8,13 +8,6 @@ const ZonElement = @import("zon.zig").ZonElement;
 
 const c = @import("c");
 
-fn handleError(miniaudioError: c.ma_result) !void {
-	if (miniaudioError != c.MA_SUCCESS) {
-		std.log.err("miniaudio error: {s}", .{c.ma_result_description(miniaudioError)});
-		return error.miniaudioError;
-	}
-}
-
 fn getMaError(err: c_int) anyerror {
 	return switch (err) {
 		0 => error.VORBIS__no_error,
@@ -42,12 +35,17 @@ fn getMaError(err: c_int) anyerror {
 	};
 }
 
+fn handleError(miniaudioError: c.ma_result) !void {
+	if (miniaudioError != c.MA_SUCCESS) {
+		std.log.err("miniaudio error: {s}", .{c.ma_result_description(miniaudioError)});
+		return error.miniaudioError;
+	}
+}
+
 const AudioData = struct {
 	audioId: []const u8,
 	data: []f32 = &.{},
 	isMono: bool = false,
-
-	volume: f32 = 1,
 
 	fn open_vorbis_file_by_id(id: []const u8, subPath: []const u8) ?*c.stb_vorbis {
 		const colonIndex = std.mem.indexOfScalar(u8, id, ':') orelse {
@@ -63,7 +61,7 @@ const AudioData = struct {
 		const path2 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "{s}/serverAssets/{s}/{s}/{s}.ogg", .{main.files.cubyzDirStr(), addon, subPath, fileName}, 0) catch unreachable;
 		defer main.stackAllocator.free(path2);
 		if (c.stb_vorbis_open_filename(path2.ptr, &err, null)) |ogg_stream| return ogg_stream;
-		std.log.err("Couldn't handle audio file. Error: {s}. ID: \"{s}\". Searched path: \"{s}\" and \"{s}\"", .{@errorName(getMaError(err)), id, path1, path2});
+		std.log.err("Couldn't handle audio file. Error: {s}. ID: \"{s}\". Searched path: \"{s}\" and \"{s}\"", .{getMaError(err), id, path1, path2});
 		return null;
 	}
 
@@ -433,10 +431,10 @@ fn mixSound(buffer: []f32) void {
 	var soundCount = activeSounds.items.len;
 	main: while (i < soundCount) {
 		var sound = activeSounds.items[i];
-		const soundData = audios.items[sound.audioIndex];
-		const soundBuffer = soundData.data;
+		const audioData = audios.items[sound.audioIndex];
+		const soundBuffer = audioData.data;
 
-		const notMonoInt: u32 = @intFromBool(!soundData.isMono);
+		const notMonoInt: u32 = @intFromBool(!audioData.isMono);
 		const bufferStep: u32 = 1 + notMonoInt;
 
 		var leftVol: f32 = 1;
@@ -447,7 +445,7 @@ fn mixSound(buffer: []f32) void {
 			const distance: f32 = vec.length(toSound);
 
 			if (distance > sound.maxDistance) {
-				sound.bufPos += @intCast(if (soundData.isMono) @divFloor(buffer.len, 2) else buffer.len);
+				sound.bufPos += @intCast(if (audioData.isMono) @divFloor(buffer.len, 2) else buffer.len);
 				if (sound.bufPos >= soundBuffer.len) {
 					soundCount -= 1;
 					activeSounds.items[i] = activeSounds.items[soundCount];
@@ -470,7 +468,7 @@ fn mixSound(buffer: []f32) void {
 
 		var j: usize = 0;
 		while (j < buffer.len) : (j += 2) {
-			const amplitude: f32 = main.settings.soundVolume*soundData.volume;
+			const amplitude: f32 = main.settings.soundVolume*sound.volume;
 
 			buffer[j] += soundBuffer[sound.bufPos]*amplitude*leftVol;
 			buffer[j + 1] += soundBuffer[sound.bufPos + notMonoInt]*amplitude*rightVol;
