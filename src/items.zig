@@ -441,17 +441,85 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 		return @max(@min(light, 1), 0);
 	}
 
-	fn findNeighborMaterial(materialGrid: *const [16][16]?BaseItemIndex, x: u8, y: u8) ?Material {
-		const offsets = [_][2]i8{.{0, -1}, .{-1, 0}, .{1, 0}, .{0, 1}};
-		for (offsets) |offset| {
-			const nx = @as(i32, x) + offset[0];
-			const ny = @as(i32, y) + offset[1];
-			if (nx < 0 or nx >= 16 or ny < 0 or ny >= 16) continue;
-			if (materialGrid[@intCast(nx)][@intCast(ny)]) |neighborItem| {
-				if (neighborItem.material()) |material| {
-					return material;
-				}
+	const eightOffsets = [_][2]i8{.{-1, -1}, .{0, -1}, .{1, -1}, .{-1, 0}, .{1, 0}, .{-1, 1}, .{0, 1}, .{1, 1}};
+	const diagonalOffsets = [_][2]i8{.{-1, -1}, .{1, -1}, .{-1, 1}, .{1, 1}};
+	const maxTipWalkSteps = 5;
+
+	fn materialAt(materialGrid: *const [16][16]?BaseItemIndex, x: u8, y: u8, offset: [2]i8) ?Material {
+		const nx = @as(i32, x) + offset[0];
+		const ny = @as(i32, y) + offset[1];
+		if (nx < 0 or nx >= 16 or ny < 0 or ny >= 16) return null;
+		const item = materialGrid[@intCast(nx)][@intCast(ny)] orelse return null;
+		return item.material();
+	}
+
+	fn neighborCoord(pos: [2]u8, offset: [2]i8) ?[2]u8 {
+		const nx = @as(i32, pos[0]) + offset[0];
+		const ny = @as(i32, pos[1]) + offset[1];
+		if (nx < 0 or nx >= 16 or ny < 0 or ny >= 16) return null;
+		return .{@intCast(nx), @intCast(ny)};
+	}
+
+	fn tipNeighborOffset(materialGrid: *const [16][16]?BaseItemIndex, x: u8, y: u8) ?[2]i8 {
+		var found: ?[2]i8 = null;
+		var count: u32 = 0;
+		for (eightOffsets) |offset| {
+			if (materialAt(materialGrid, x, y, offset) != null) {
+				count += 1;
+				found = offset;
 			}
+		}
+		if (count != 1) return null;
+		return found;
+	}
+
+	fn estimateTipDirection(materialGrid: *const [16][16]?BaseItemIndex, tip: [2]u8, firstStep: [2]i8) Vec2f {
+		var previous = tip;
+		var current = neighborCoord(tip, firstStep).?;
+		var steps: u32 = 1;
+		while (steps < maxTipWalkSteps) : (steps += 1) {
+			var next: ?[2]u8 = null;
+			var count: u32 = 0;
+			for (eightOffsets) |offset| {
+				const candidate = neighborCoord(current, offset) orelse continue;
+				if (candidate[0] == previous[0] and candidate[1] == previous[1]) continue;
+				if (materialGrid[candidate[0]][candidate[1]] == null) continue;
+				count += 1;
+				next = candidate;
+			}
+			if (count != 1) break;
+			previous = current;
+			current = next.?;
+		}
+		return Vec2f{@floatFromInt(@as(i32, tip[0]) - @as(i32, current[0])), @floatFromInt(@as(i32, tip[1]) - @as(i32, current[1]))};
+	}
+
+	fn closestDiagonalOffset(direction: Vec2f) [2]i8 {
+		var best = diagonalOffsets[0];
+		var bestDot: f32 = -std.math.inf(f32);
+		for (diagonalOffsets) |offset| {
+			const d = vec.dot(direction, Vec2f{@floatFromInt(offset[0]), @floatFromInt(offset[1])});
+			if (d > bestDot) {
+				bestDot = d;
+				best = offset;
+			}
+		}
+		return best;
+	}
+
+	fn findNeighborMaterial(materialGrid: *const [16][16]?BaseItemIndex, x: u8, y: u8) ?Material {
+		const orthogonalOffsets = [_][2]i8{.{0, -1}, .{-1, 0}, .{1, 0}, .{0, 1}};
+		for (orthogonalOffsets) |offset| {
+			if (materialAt(materialGrid, x, y, offset)) |material| return material;
+		}
+		for (diagonalOffsets) |offset| {
+			const m = neighborCoord(.{x, y}, offset) orelse continue;
+			const item = materialGrid[m[0]][m[1]] orelse continue;
+			const material = item.material() orelse continue;
+			const firstStep = tipNeighborOffset(materialGrid, m[0], m[1]) orelse continue;
+			const direction = estimateTipDirection(materialGrid, m, firstStep);
+			const chosen = closestDiagonalOffset(direction);
+			if (chosen[0] == -offset[0] and chosen[1] == -offset[1]) return material;
 		}
 		return null;
 	}
@@ -586,7 +654,7 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 				const x: usize = @intCast(newPos[0]);
 				const y: usize = @intCast(newPos[1]);
 				if (gridCellsReached[x][y]) continue;
-				if (proceduralItem.materialGrid[x][y] == null) continue;
+				if (proceduralItem.materialGrid[x][y] == null and TextureGenerator.findNeighborMaterial(&proceduralItem.materialGrid, @intCast(x), @intCast(y)) == null) continue;
 				gridCellsReached[x][y] = true;
 				floodfillQueue.pushBack(newPos);
 			}
