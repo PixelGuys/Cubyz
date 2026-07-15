@@ -1,0 +1,18 @@
+.{
+	.fogColor = 0xb0e9d2,
+	.properties = .{
+		.mountain,
+		.wet,
+		.hot,
+		.overgrown,
+	},
+	.minHeightLimit = 7,
+	.minHeight = 120,
+	.maxHeight = 256,
+	.smoothBeaches = true,
+	.soilCreep = 1,
+
+	.mountains = 75,
+	.hills = 10,
+	.stoneBlock = "cubyz:basalt/base",
+}
