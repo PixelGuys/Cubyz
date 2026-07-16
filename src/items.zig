@@ -1160,15 +1160,20 @@ pub const Recipe = struct { // MARK: Recipe
 	sourceAmounts: []u16,
 	resultItem: BaseItemIndex,
 	resultAmount: u16,
+	craftingTags: []Tag,
 
 	fn getValidRecipe(self: Recipe) error{Invalid}!*Recipe {
 		outer: for (main.items.getRecipes()) |*recipe| {
 			if (recipe.resultItem != self.resultItem) continue;
 			if (recipe.resultAmount != self.resultAmount) continue;
 			if (recipe.sourceItems.len != self.sourceItems.len) continue;
+			if (recipe.craftingTags.len != self.craftingTags.len) continue;
 			for (recipe.sourceItems, recipe.sourceAmounts, self.sourceItems, self.sourceAmounts) |recipeItem, recipeAmount, selfItem, selfAmount| {
 				if (recipeItem != selfItem) continue :outer;
 				if (recipeAmount != selfAmount) continue :outer;
+			}
+			for (recipe.craftingTags, self.craftingTags) |recipeCraftingTag, selfCraftingTag| {
+				if (recipeCraftingTag != selfCraftingTag) continue :outer;
 			}
 			return recipe;
 		}
@@ -1178,10 +1183,15 @@ pub const Recipe = struct { // MARK: Recipe
 	pub fn toBytes(self: *const Recipe, writer: *BinaryWriter) void {
 		writer.writeEnum(BaseItemIndex, self.resultItem);
 		writer.writeVarInt(u16, self.resultAmount);
+		writer.writeVarInt(u16, self.resultAmount);
 		writer.writeVarInt(usize, self.sourceItems.len);
 		for (self.sourceItems, self.sourceAmounts) |item, amount| {
 			writer.writeEnum(BaseItemIndex, item);
 			writer.writeVarInt(u16, amount);
+		}
+		writer.writeVarInt(usize, self.craftingTags.len);
+		for (self.craftingTags) |tag| {
+			writer.writeEnum(Tag, tag);
 		}
 	}
 
@@ -1200,7 +1210,15 @@ pub const Recipe = struct { // MARK: Recipe
 			sourceAmounts.append(main.stackAllocator, try reader.readVarInt(u16));
 		}
 
-		return getValidRecipe(.{.sourceItems = sourceItems.items, .sourceAmounts = sourceAmounts.items, .resultItem = resultItem, .resultAmount = resultAmount});
+		const tagCount = try reader.readVarInt(usize);
+		var craftingTagTypes: main.List(Tag) = .initCapacity(main.stackAllocator, @min(256, tagCount));
+		defer craftingTagTypes.deinit(main.stackAllocator);
+
+		while (reader.remaining.len > 0 and craftingTagTypes.items.len < tagCount) {
+			craftingTagTypes.append(main.stackAllocator, try reader.readEnum(Tag));
+		}
+
+		return getValidRecipe(.{.sourceItems = sourceItems.items, .sourceAmounts = sourceAmounts.items, .resultItem = resultItem, .resultAmount = resultAmount, .craftingTags = craftingTagTypes.items});
 	}
 };
 
