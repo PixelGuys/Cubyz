@@ -43,6 +43,7 @@ pub fn init() void {
 	arrowTexture = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_arrow.png");
 	craftableFromTags = main.stackAllocator.alloc(main.Tag, 1);
 	craftableFromTags[0] = main.Tag.handCraftable;
+	main.stackAllocator.free(craftableFromTags);
 }
 
 pub fn deinit() void {
