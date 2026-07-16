@@ -9,6 +9,6 @@
 	.texture = "cubyz:aerosoil",
 	.onInteract = .{
 		.type = .open_crafting_window,
-		.craftingTags = .{.alchemy}
+		.craftingTags = .{.alchemy},
 	},
 }
