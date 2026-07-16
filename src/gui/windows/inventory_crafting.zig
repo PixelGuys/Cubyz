@@ -43,7 +43,6 @@ pub fn init() void {
 	arrowTexture = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_arrow.png");
 	craftableFromTags = main.stackAllocator.alloc(main.Tag, 1);
 	craftableFromTags[0] = main.Tag.handCraftable;
-	main.stackAllocator.free(craftableFromTags);
 }
 
 pub fn deinit() void {
@@ -111,7 +110,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 					continue :middle;
 				}
 			}
-			continue :outer; // Ingredient not found or not craftable by this.
+			continue :outer; // Recipe not craftable by this.
 		}
 		// All ingredients found: Add it to the list.
 		const inv = ClientInventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .{.crafting = recipe}, .other, .{});
