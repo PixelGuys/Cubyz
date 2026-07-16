@@ -198,7 +198,7 @@ pub fn addRecipe(itemCombo: []const ItemWithAmount, list: *main.ListManaged(Reci
 		.sourceAmounts = main.worldArena.alloc(u16, inputs.len),
 		.resultItem = output.item,
 		.resultAmount = output.amount,
-		.craftingTags = main.worldArena.alloc(Tag, craftingTags.len)
+		.craftingTags = main.worldArena.alloc(Tag, craftingTags.len),
 	};
 	for (inputs, 0..) |input, i| {
 		recipe.sourceItems[i] = input.item;
@@ -226,6 +226,9 @@ pub fn parseRecipe(zon: ZonElement, list: *main.ListManaged(Recipe)) !void {
 	defaultCraftingTags[0] = main.Tag.handCraftable;
 	const foundCraftingTags = Tag.loadTagsFromZon(arena, zon.getChild("craftingTags"));
 	const craftingTags = if (foundCraftingTags.len != 0) foundCraftingTags else defaultCraftingTags;
+	defer arena.free(foundCraftingTags);
+	defer arena.free(defaultCraftingTags);
+	defer arena.free(craftingTags);
 
 	const itemCombos = try generateItemCombos(arena, recipeItems);
 	for (itemCombos) |itemCombo| {
