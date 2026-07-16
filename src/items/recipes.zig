@@ -226,9 +226,6 @@ pub fn parseRecipe(zon: ZonElement, list: *main.ListManaged(Recipe)) !void {
 	defaultCraftingTags[0] = main.Tag.handCraftable;
 	const foundCraftingTags = Tag.loadTagsFromZon(arena, zon.getChild("craftingTags"));
 	const craftingTags = if (foundCraftingTags.len != 0) foundCraftingTags else defaultCraftingTags;
-	defer arena.free(defaultCraftingTags);
-	defer arena.free(foundCraftingTags);
-	defer arena.free(craftingTags);
 
 	const itemCombos = try generateItemCombos(arena, recipeItems);
 	for (itemCombos) |itemCombo| {

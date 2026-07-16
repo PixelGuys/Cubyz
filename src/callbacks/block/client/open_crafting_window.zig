@@ -10,7 +10,7 @@ craftingTags: []main.Tag,
 
 pub fn init(zon: ZonElement, _: main.callbacks.Creator) ?*@This() {
 	const result = main.worldArena.create(@This());
-	const craftingTags = main.Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("craftingTags"));
+	const craftingTags = main.Tag.loadTagsFromZon(main.worldArena, zon.getChild("craftingTags"));
 	if (craftingTags.len == 0) std.log.err("Error: Missing craftingTags \"name\" for open_crafting_window event.", .{});
 	result.* = .{
 		.craftingTags = craftingTags,
@@ -21,6 +21,6 @@ pub fn init(zon: ZonElement, _: main.callbacks.Creator) ?*@This() {
 pub fn run(self: *@This(), _: main.callbacks.ClientBlockCallback.Params) main.callbacks.Result {
 	main.gui.windowlist.inventory_crafting.openFromCallback(self.craftingTags);
 	main.Window.setMouseGrabbed(false);
-	defer main.stackAllocator.free(self.craftingTags);
+	defer main.worldArena.free(self.craftingTags);
 	return .handled;
 }
