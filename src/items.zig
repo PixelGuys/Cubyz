@@ -469,8 +469,19 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 				found = offset;
 			}
 		}
-		if (count != 1) return null;
-		return found;
+		if (count == 1) return found;
+
+		if (count == 3) {
+			for (diagonalOffsets) |d| {
+				if (materialAt(materialGrid, x, y, d) != null and
+					materialAt(materialGrid, x, y, .{d[0], 0}) != null and
+					materialAt(materialGrid, x, y, .{0, d[1]}) != null)
+				{
+					return d;
+				}
+			}
+		}
+		return null;
 	}
 
 	fn estimateTipDirection(materialGrid: *const [16][16]?BaseItemIndex, tip: [2]u8, firstStep: [2]i8) Vec2f {
