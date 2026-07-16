@@ -27,7 +27,7 @@ const Instance = struct {
 };
 
 pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
-	var list: main.ListUnmanaged(Entry) = .{};
+	var list: main.List(Entry) = .empty;
 	defer list.deinit(main.stackAllocator);
 
 	var maxExtend: vec.Boxi = .{
@@ -39,8 +39,8 @@ pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
 		const childModelAndExtend = sdf.SdfModel.initModel(child) orelse return null;
 		const childEntry: Entry = .{
 			.model = childModelAndExtend.model,
-			.positionOffset = child.get(Vec3f, "positionOffset", @splat(0)),
-			.randomOffset = child.get(Vec3f, "randomOffset", @splat(0)),
+			.positionOffset = child.get(Vec3f, "positionOffset") orelse @splat(0),
+			.randomOffset = child.get(Vec3f, "randomOffset") orelse @splat(0),
 		};
 		maxExtend.min = @min(maxExtend.min, @as(Vec3i, @floor(@as(Vec3f, @floatFromInt(childModelAndExtend.maxExtend.min)) + childEntry.positionOffset - childEntry.randomOffset)));
 		maxExtend.max = @max(maxExtend.max, @as(Vec3i, @ceil(@as(Vec3f, @floatFromInt(childModelAndExtend.maxExtend.max)) + childEntry.positionOffset + childEntry.randomOffset)));
@@ -54,26 +54,32 @@ pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
 
 	const self = main.worldArena.create(@This());
 	self.children = main.worldArena.dupe(Entry, list.items);
-	self.smoothness = zon.get(f32, "smothness", 4);
+	self.smoothness = zon.get(f32, "smothness") orelse 4;
 	return .{.model = self, .maxExtend = maxExtend};
 }
 
 pub fn instantiate(self: *@This(), arena: NeverFailingAllocator, seed: *u64) SdfInstance {
-	const instance = arena.create(Instance);
-	instance.* = .{
-		.children = arena.alloc(SdfInstance, self.children.len),
-		.smoothness = self.smoothness,
-	};
 	var minPos: Vec3i = @splat(1e9);
 	var maxPos: Vec3i = @splat(-1e9);
-	for (self.children, instance.children) |entry, *result| {
-		result.* = entry.model.instantiate(arena, seed);
-		const offset = entry.positionOffset + entry.randomOffset*main.random.nextFloatVectorSigned(3, seed);
-		result.minBounds +%= @trunc(offset);
-		result.maxBounds +%= @trunc(offset);
-		minPos = @min(minPos, result.minBounds);
-		maxPos = @max(maxPos, result.maxBounds);
+	var children: main.List(SdfInstance) = .empty;
+	defer children.deinit(main.stackAllocator);
+	for (self.children) |entry| {
+		const amount: usize = @floor(entry.model.minAmount + main.random.nextFloat(seed)*(entry.model.maxAmount - entry.model.minAmount) + main.random.nextFloat(seed));
+		for (0..amount) |_| {
+			var result = entry.model.instantiate(arena, seed);
+			const offset = entry.positionOffset + entry.randomOffset*main.random.nextFloatVectorSigned(3, seed);
+			result.minBounds +%= @trunc(offset);
+			result.maxBounds +%= @trunc(offset);
+			minPos = @min(minPos, result.minBounds);
+			maxPos = @max(maxPos, result.maxBounds);
+			children.append(main.stackAllocator, result);
+		}
 	}
+	const instance = arena.create(Instance);
+	instance.* = .{
+		.children = arena.dupe(SdfInstance, children.items),
+		.smoothness = self.smoothness,
+	};
 	return .{
 		.data = instance,
 		.generateFn = main.meta.castFunctionSelfToAnyopaque(generate),

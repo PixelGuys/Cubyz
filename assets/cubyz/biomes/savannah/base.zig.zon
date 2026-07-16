@@ -16,9 +16,9 @@
 	.maxRadius = 320,
 	.hills = 6,
 	.validPlayerSpawn = true,
-	.music = "cubyz:totaldemented/cubyz",
+	.music = "cubyz:mischol/desert_firefly",
 	.ground_structure = .{
-		"7 to 8 cubyz:limestone/base",
+		"7 to 8 cubyz:limestone/smooth",
 	},
 	.structures = .{
 		.{
@@ -32,7 +32,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:dry_grass",
+			.block = "cubyz:grass/dry",
 			.chance = 0.33,
 			.width = 5,
 			.variation = 4,
@@ -53,7 +53,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:dry_grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/dry"},
 			.chance = 0.2,
 			.width = 5,
 			.variation = 8,
@@ -68,5 +68,5 @@
 			.height_variation = 3,
 		},
 	},
-	.stoneBlock = "cubyz:sandstone/base",
+	.stoneBlock = "cubyz:sandstone/rough",
 }

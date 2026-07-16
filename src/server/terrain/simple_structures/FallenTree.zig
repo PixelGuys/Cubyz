@@ -30,12 +30,12 @@ deltaHeight: u31,
 pub fn loadModel(parameters: ZonElement) ?*FallenTree {
 	const self = main.worldArena.create(FallenTree);
 	self.* = .{
-		.woodBlock = main.blocks.parseBlock(parameters.get(?[]const u8, "log", null) orelse {
+		.woodBlock = main.blocks.parseBlock(parameters.get([]const u8, "log") orelse {
 			std.log.err("Missing required 'log' field for cubyz:simple_tree rotation", .{});
 			return null;
 		}),
-		.height0 = parameters.get(u32, "height", 6),
-		.deltaHeight = parameters.get(u31, "height_variation", 3),
+		.height0 = parameters.get(u32, "height") orelse 6,
+		.deltaHeight = parameters.get(u31, "height_variation") orelse 3,
 	};
 	if (self.woodBlock.mode() == main.rotation.getByID("cubyz:branch")) self.woodRotationModeType = .branch;
 	if (self.woodBlock.mode() == main.rotation.getByID("cubyz:log")) self.woodRotationModeType = .log;
@@ -75,8 +75,7 @@ pub fn generateFallen(self: *FallenTree, x: i32, y: i32, z: i32, length: u32, ch
 		}
 	}
 
-	if (d == null)
-		return;
+	if (d == null) return;
 
 	const dx: i32 = d.?.relX();
 	const dy: i32 = d.?.relY();

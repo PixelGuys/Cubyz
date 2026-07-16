@@ -70,7 +70,8 @@ void main() {
 	uint vertexID = uint(gl_VertexID)%24u;
 	chunkID = chunkIDs[chunkIDID];
 	vec3 modelPosition = vec3(chunks[chunkID].position.xyz - playerPositionInteger) - playerPositionFraction;
-	if(all(lessThan(modelPosition + chunks[chunkID].minPos.xyz*chunks[chunkID].voxelSize, vec3(0, 0, 0))) && all(greaterThan(modelPosition + chunks[chunkID].maxPos.xyz*chunks[chunkID].voxelSize, vec3(0, 0, 0)))) {
+	vec3 margin = vec3(1); // Avoid near plane clipping when the player is at the edge of chunks
+	if(all(lessThan(modelPosition + chunks[chunkID].minPos.xyz*chunks[chunkID].voxelSize, margin)) && all(greaterThan(modelPosition + chunks[chunkID].maxPos.xyz*chunks[chunkID].voxelSize, -margin))) {
 		if(isDepth) {
 			chunks[chunkID].visibilityStateDepth = 1;
 		} else {

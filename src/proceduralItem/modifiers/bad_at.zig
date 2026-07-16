@@ -8,7 +8,7 @@ pub const Data = packed struct(u128) { strength: f32, tag: main.Tag, pad: u64 = 
 pub const priority = 1;
 
 pub fn loadData(zon: main.ZonElement) Data {
-	return .{.strength = std.math.clamp(zon.get(f32, "strength", 0), 0, 1), .tag = .find(zon.get([]const u8, "tag", "incorrect"))};
+	return .{.strength = std.math.clamp(zon.get(f32, "strength") orelse 0, 0, 1), .tag = .find(zon.get([]const u8, "tag") orelse "incorrect")};
 }
 
 pub fn combineModifiers(data1: Data, data2: Data) ?Data {

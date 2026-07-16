@@ -102,15 +102,14 @@ pub var window = GuiWindow{
 
 pub fn render() void {
 	curBuffer +%= 1;
-	draw.setColor(0xffffffff);
 	var sum: isize = 0;
 	var y: f32 = 8;
 	inline for (0..queryObjects[curBuffer].len) |i| {
 		var result: u32 = undefined;
 		c.glGetQueryObjectuiv(queryObjects[curBuffer][i], c.GL_QUERY_RESULT, &result);
-		draw.print("{s}: {} µs", .{names[i], @divTrunc(result, 1000)}, 0, y, 8, .left);
+		draw.print("{s}: {} µs", .{names[i], @divTrunc(result, 1000)}, 0, y, 8);
 		sum += result;
 		y += 8;
 	}
-	draw.print("Total: {} µs", .{@divTrunc(sum, 1000)}, 0, 0, 8, .left);
+	draw.print("Total: {} µs", .{@divTrunc(sum, 1000)}, 0, 0, 8);
 }

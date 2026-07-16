@@ -5,14 +5,14 @@ const main = @import("main");
 dps: f32,
 damageType: main.game.DamageType,
 
-pub fn init(zon: main.ZonElement) ?*@This() {
+pub fn init(zon: main.ZonElement, _: main.callbacks.Creator) ?*@This() {
 	const result = main.worldArena.create(@This());
 	result.* = .{
-		.dps = zon.get(?f32, "dps", null) orelse {
+		.dps = zon.get(f32, "dps") orelse {
 			std.log.err("Missing field \"dps\" for hurt event", .{});
 			return null;
 		},
-		.damageType = std.meta.stringToEnum(main.game.DamageType, zon.get(?[]const u8, "damageType", null) orelse {
+		.damageType = std.meta.stringToEnum(main.game.DamageType, zon.get([]const u8, "damageType") orelse {
 			std.log.err("Missing field \"damageType\" for hurt event", .{});
 			return null;
 		}) orelse {

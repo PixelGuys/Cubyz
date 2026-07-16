@@ -24,17 +24,30 @@ pub const Pipeline = pipelines.Pipeline;
 pub const vulkan = @import("graphics/vulkan.zig");
 
 pub const draw = struct { // MARK: draw
-	var color: u32 = 0;
+	var color: Vec4f = @splat(1);
 	var clip: ?Vec4i = null;
 	var translation: Vec2f = Vec2f{0, 0};
 	var scale: f32 = 1;
 
-	pub fn setColor(newColor: u32) void {
-		color = newColor;
+	pub fn setColor(newColorRgba: u32) Vec4f {
+		const newColor: Color = @bitCast(newColorRgba);
+		const oldColor = color;
+		color[0] *= @as(f32, @floatFromInt(newColor.r))/255.0;
+		color[1] *= @as(f32, @floatFromInt(newColor.g))/255.0;
+		color[2] *= @as(f32, @floatFromInt(newColor.b))/255.0;
+		color[3] *= @as(f32, @floatFromInt(newColor.a))/255.0;
+		return oldColor;
 	}
-
-	pub fn setColorSameAlpha(newColor: u24) void {
-		color = (color & 0xff000000) | newColor;
+	pub fn restoreColor(oldColor: Vec4f) void {
+		color = oldColor;
+	}
+	pub fn getColor() Color {
+		return .{
+			.r = @round(color[0]*255.0),
+			.g = @round(color[1]*255.0),
+			.b = @round(color[2]*255.0),
+			.a = @round(color[3]*255.0),
+		};
 	}
 
 	/// Returns the previous translation.
@@ -177,7 +190,7 @@ pub const draw = struct { // MARK: draw
 		c.glUniform2f(rectUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(rectUniforms.start, pos[0], pos[1]);
 		c.glUniform2f(rectUniforms.size, dim[0], dim[1]);
-		c.glUniform1i(rectUniforms.rectColor, @bitCast(color));
+		c.glUniform1i(rectUniforms.rectColor, @bitCast(getColor()));
 
 		rectVao.bind();
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
@@ -255,7 +268,7 @@ pub const draw = struct { // MARK: draw
 		c.glUniform2f(rectBorderUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(rectBorderUniforms.start, pos[0], pos[1]);
 		c.glUniform2f(rectBorderUniforms.size, dim[0], dim[1]);
-		c.glUniform1i(rectBorderUniforms.rectColor, @bitCast(color));
+		c.glUniform1i(rectBorderUniforms.rectColor, @bitCast(getColor()));
 		c.glUniform1f(rectBorderUniforms.lineWidth, width);
 
 		rectBorderVao.bind();
@@ -313,7 +326,7 @@ pub const draw = struct { // MARK: draw
 		c.glUniform2f(lineUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(lineUniforms.start, pos1[0], pos1[1]);
 		c.glUniform2f(lineUniforms.direction, pos2[0] - pos1[0], pos2[1] - pos1[1]);
-		c.glUniform1i(lineUniforms.lineColor, @bitCast(color));
+		c.glUniform1i(lineUniforms.lineColor, @bitCast(getColor()));
 
 		lineVao.bind();
 		c.glDrawArrays(c.GL_LINE_STRIP, 0, 2);
@@ -333,7 +346,7 @@ pub const draw = struct { // MARK: draw
 		c.glUniform2f(lineUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(lineUniforms.start, pos[0], pos[1]); // Move the coordinates, so they are in the center of a pixel.
 		c.glUniform2f(lineUniforms.direction, dim[0] - 1, dim[1] - 1); // The height is a lot smaller because the inner edge of the rect is drawn.
-		c.glUniform1i(lineUniforms.lineColor, @bitCast(color));
+		c.glUniform1i(lineUniforms.lineColor, @bitCast(getColor()));
 
 		lineVao.bind();
 		c.glDrawArrays(c.GL_LINE_LOOP, 0, 5);
@@ -390,7 +403,7 @@ pub const draw = struct { // MARK: draw
 		c.glUniform2f(circleUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(circleUniforms.center, center[0], center[1]); // Move the coordinates, so they are in the center of a pixel.
 		c.glUniform1f(circleUniforms.radius, radius); // The height is a lot smaller because the inner edge of the rect is drawn.
-		c.glUniform1i(circleUniforms.circleColor, @bitCast(color));
+		c.glUniform1i(circleUniforms.circleColor, @bitCast(getColor()));
 
 		circleVao.bind();
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
@@ -449,12 +462,36 @@ pub const draw = struct { // MARK: draw
 		c.glUniform2f(imageUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
 		c.glUniform2f(imageUniforms.size, dim[0], dim[1]);
-		c.glUniform1i(imageUniforms.color, @bitCast(color));
+		c.glUniform1i(imageUniforms.color, @bitCast(getColor()));
 		c.glUniform2f(imageUniforms.uvOffset, uvOffset[0], 1 - uvOffset[1] - uvDim[1]);
 		c.glUniform2f(imageUniforms.uvDim, uvDim[0], uvDim[1]);
 
 		rectVao.bind();
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+	}
+
+	fn drawSlice(destMin: Vec2f, destMax: Vec2f, uvMin: Vec2f, uvMax: Vec2f) void {
+		boundSubImage(destMin, destMax - destMin, uvMin, uvMax - uvMin);
+	}
+
+	pub fn bound9SliceImage(pos: Vec2f, dim: Vec2f, textureSize: Vec2f, slices: Vec2f, sliceScale: f32) void {
+		const widthSlice = slices[0]*sliceScale;
+		const heightSlice = slices[1]*sliceScale;
+
+		// Construct UV
+		const u: Vec2f = .{slices[0]/textureSize[0], (textureSize[0] - slices[0])/textureSize[0]};
+		const v: Vec2f = .{slices[1]/textureSize[1], (textureSize[1] - slices[1])/textureSize[1]};
+
+		// Draw all Slices
+		drawSlice(.{pos[0], pos[1]}, .{pos[0] + widthSlice, pos[1] + heightSlice}, .{0, 0}, .{u[0], v[0]});
+		drawSlice(.{pos[0] + widthSlice, pos[1]}, .{pos[0] + dim[0] - widthSlice, pos[1] + heightSlice}, .{u[0], 0}, .{u[1], v[0]});
+		drawSlice(.{pos[0] + dim[0] - widthSlice, pos[1]}, .{pos[0] + dim[0], pos[1] + heightSlice}, .{u[1], 0}, .{1, v[0]});
+		drawSlice(.{pos[0], pos[1] + heightSlice}, .{pos[0] + widthSlice, pos[1] + dim[1] - heightSlice}, .{0, v[0]}, .{u[0], v[1]});
+		drawSlice(.{pos[0] + widthSlice, pos[1] + heightSlice}, .{pos[0] + dim[0] - widthSlice, pos[1] + dim[1] - heightSlice}, .{u[0], v[0]}, .{u[1], v[1]});
+		drawSlice(.{pos[0] + dim[0] - widthSlice, pos[1] + heightSlice}, .{pos[0] + dim[0], pos[1] + dim[1] - heightSlice}, .{u[1], v[0]}, .{1, v[1]});
+		drawSlice(.{pos[0], pos[1] + dim[1] - heightSlice}, .{pos[0] + widthSlice, pos[1] + dim[1]}, .{0, v[1]}, .{u[0], 1});
+		drawSlice(.{pos[0] + widthSlice, pos[1] + dim[1] - heightSlice}, .{pos[0] + dim[0] - widthSlice, pos[1] + dim[1]}, .{u[0], v[1]}, .{u[1], 1});
+		drawSlice(.{pos[0] + dim[0] - widthSlice, pos[1] + dim[1] - heightSlice}, .{pos[0] + dim[0], pos[1] + dim[1]}, .{u[1], v[1]}, .{1, 1});
 	}
 
 	pub fn customShadedImage(uniforms: anytype, _pos: Vec2f, _dim: Vec2f) void {
@@ -471,7 +508,7 @@ pub const draw = struct { // MARK: draw
 		c.glUniform2f(uniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(uniforms.start, pos[0], pos[1]);
 		c.glUniform2f(uniforms.size, dim[0], dim[1]);
-		c.glUniform1i(uniforms.color, @bitCast(color));
+		c.glUniform1i(uniforms.color, @bitCast(getColor()));
 		c.glUniform2f(uniforms.uvOffset, 0, 0);
 		c.glUniform2f(uniforms.uvDim, 1, 1);
 
@@ -496,7 +533,7 @@ pub const draw = struct { // MARK: draw
 		c.glUniform2f(uniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(uniforms.start, pos[0], pos[1]);
 		c.glUniform2f(uniforms.size, dim[0], dim[1]);
-		c.glUniform1i(uniforms.color, @bitCast(color));
+		c.glUniform1i(uniforms.color, @bitCast(getColor()));
 		c.glUniform1f(uniforms.scale, scale);
 
 		rectVao.bind();
@@ -506,14 +543,14 @@ pub const draw = struct { // MARK: draw
 	// ----------------------------------------------------------------------------
 	// MARK: text()
 
-	pub fn text(_text: []const u8, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) void {
-		TextRendering.renderText(_text, x, y, fontSize, .{.color = @truncate(@as(u32, @bitCast(color)))}, alignment);
+	pub fn text(_text: []const u8, x: f32, y: f32, fontSize: f32) void {
+		TextRendering.renderText(_text, x, y, fontSize, .{});
 	}
 
-	pub inline fn print(comptime format: []const u8, args: anytype, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) void {
+	pub inline fn print(comptime format: []const u8, args: anytype, x: f32, y: f32, fontSize: f32) void {
 		const string = std.fmt.allocPrint(main.stackAllocator.allocator, format, args) catch unreachable;
 		defer main.stackAllocator.free(string);
-		text(string, x, y, fontSize, alignment);
+		text(string, x, y, fontSize);
 	}
 };
 
@@ -634,105 +671,109 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 			return next[0];
 		}
 
-		fn parse(self: *Parser) void {
+		pub fn parse(self: *Parser) void {
 			self.curIndex = @intCast(self.unicodeIterator.i);
 			self.curChar = self.unicodeIterator.nextCodepoint() orelse return;
-			while (true) switch (self.curChar) {
-				'*' => {
-					self.appendControlGetNext() orelse return;
-					if (self.curChar == '*') {
+			while (true) {
+				switch (self.curChar) {
+					'*' => {
 						self.appendControlGetNext() orelse return;
-						self.currentFontEffect.bold = !self.currentFontEffect.bold;
-					} else {
-						self.currentFontEffect.italic = !self.currentFontEffect.italic;
-					}
-				},
-				'_' => {
-					if (self.peekNextByte() == '_') {
+						if (self.curChar == '*') {
+							self.appendControlGetNext() orelse return;
+							self.currentFontEffect.bold = !self.currentFontEffect.bold;
+						} else {
+							self.currentFontEffect.italic = !self.currentFontEffect.italic;
+						}
+					},
+					'_' => {
+						if (self.peekNextByte() == '_') {
+							self.appendControlGetNext() orelse return;
+							self.appendControlGetNext() orelse return;
+							self.currentFontEffect.underline = !self.currentFontEffect.underline;
+						} else {
+							self.appendGetNext() orelse return;
+						}
+					},
+					'~' => {
+						if (self.peekNextByte() == '~') {
+							self.appendControlGetNext() orelse return;
+							self.appendControlGetNext() orelse return;
+							self.currentFontEffect.strikethrough = !self.currentFontEffect.strikethrough;
+						} else {
+							self.appendGetNext() orelse return;
+						}
+					},
+					'\\' => {
 						self.appendControlGetNext() orelse return;
-						self.appendControlGetNext() orelse return;
-						self.currentFontEffect.underline = !self.currentFontEffect.underline;
-					} else {
 						self.appendGetNext() orelse return;
-					}
-				},
-				'~' => {
-					if (self.peekNextByte() == '~') {
+					},
+					'#' => {
 						self.appendControlGetNext() orelse return;
+						var shift: u5 = 20;
+						while (true) : (shift -= 4) {
+							self.currentFontEffect.color = (self.currentFontEffect.color & ~(@as(u24, 0xf) << shift)) | @as(u24, switch (self.curChar) {
+								'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => self.curChar - '0',
+								'a', 'b', 'c', 'd', 'e', 'f' => self.curChar - 'a' + 10,
+								'A', 'B', 'C', 'D', 'E', 'F' => self.curChar - 'A' + 10,
+								else => 0,
+							}) << shift;
+							self.appendControlGetNext() orelse return;
+							if (shift == 0) break;
+						}
+					},
+					'§' => {
+						self.currentFontEffect = .{.color = self.currentFontEffect.color};
 						self.appendControlGetNext() orelse return;
-						self.currentFontEffect.strikethrough = !self.currentFontEffect.strikethrough;
-					} else {
+					},
+					else => {
 						self.appendGetNext() orelse return;
-					}
-				},
-				'\\' => {
-					self.appendControlGetNext() orelse return;
-					self.appendGetNext() orelse return;
-				},
-				'#' => {
-					self.appendControlGetNext() orelse return;
-					var shift: u5 = 20;
-					while (true) : (shift -= 4) {
-						self.currentFontEffect.color = (self.currentFontEffect.color & ~(@as(u24, 0xf) << shift)) | @as(u24, switch (self.curChar) {
-							'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => self.curChar - '0',
-							'a', 'b', 'c', 'd', 'e', 'f' => self.curChar - 'a' + 10,
-							'A', 'B', 'C', 'D', 'E', 'F' => self.curChar - 'A' + 10,
-							else => 0,
-						}) << shift;
-						self.appendControlGetNext() orelse return;
-						if (shift == 0) break;
-					}
-				},
-				'§' => {
-					self.currentFontEffect = .{.color = self.currentFontEffect.color};
-					self.appendControlGetNext() orelse return;
-				},
-				else => {
-					self.appendGetNext() orelse return;
-				},
-			};
+					},
+				}
+			}
 		}
 
 		pub fn countVisibleCharacters(text: []const u8) usize {
 			var unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0};
 			var count: usize = 0;
 			var curChar = unicodeIterator.nextCodepoint() orelse return count;
-			outer: while (true) switch (curChar) {
-				'*' => {
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-				},
-				'_' => {
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-					if (curChar == '_') {
+			outer: while (true) {
+				switch (curChar) {
+					'*' => {
 						curChar = unicodeIterator.nextCodepoint() orelse break;
-					} else {
-						count += 1;
-					}
-				},
-				'~' => {
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-					if (curChar == '~') {
+					},
+					'_' => {
 						curChar = unicodeIterator.nextCodepoint() orelse break;
-					} else {
+						if (curChar == '_') {
+							curChar = unicodeIterator.nextCodepoint() orelse break;
+						} else {
+							count += 1;
+						}
+					},
+					'~' => {
+						curChar = unicodeIterator.nextCodepoint() orelse break;
+						if (curChar == '~') {
+							curChar = unicodeIterator.nextCodepoint() orelse break;
+						} else {
+							count += 1;
+						}
+					},
+					'\\' => {
+						curChar = unicodeIterator.nextCodepoint() orelse break;
+						curChar = unicodeIterator.nextCodepoint() orelse break;
 						count += 1;
-					}
-				},
-				'\\' => {
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-					count += 1;
-				},
-				'#' => {
-					for (0..7) |_| curChar = unicodeIterator.nextCodepoint() orelse break :outer;
-				},
-				'§' => {
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-				},
-				else => {
-					count += 1;
-					curChar = unicodeIterator.nextCodepoint() orelse break;
-				},
-			};
+					},
+					'#' => {
+						for (0..7) |_| curChar = unicodeIterator.nextCodepoint() orelse break :outer;
+					},
+					'§' => {
+						curChar = unicodeIterator.nextCodepoint() orelse break;
+					},
+					else => {
+						count += 1;
+						curChar = unicodeIterator.nextCodepoint() orelse break;
+					},
+				}
+			}
 			return count;
 		}
 	};
@@ -965,7 +1006,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 		c.glUniform2f(TextRendering.uniforms.scene, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform1f(TextRendering.uniforms.ratio, draw.scale);
-		c.glUniform1f(TextRendering.uniforms.alpha, @as(f32, @floatFromInt(draw.color >> 24))/255.0);
+		c.glUniform1ui(TextRendering.uniforms.inColor, @bitCast(draw.getColor()));
 		c.glActiveTexture(c.GL_TEXTURE0);
 		c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0]);
 		draw.rectVao.bind();
@@ -991,9 +1032,8 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 			var line: Line = _line;
 			y = 0;
 			y += if (line.isUnderline) 15 else 8;
-			const oldColor = draw.color;
-			draw.setColor(line.color | (@as(u32, 0xff000000) & draw.color));
-			defer draw.setColor(oldColor);
+			const oldColor = draw.setColor(line.color | (@as(u32, 0xff000000)));
+			defer draw.restoreColor(oldColor);
 			for (lineWraps, 0..) |lineWrap, j| {
 				const lineStart = @max(0, line.start);
 				const lineEnd = @min(lineWrap, line.end);
@@ -1033,7 +1073,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 		c.glUniform2f(TextRendering.uniforms.scene, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform1f(TextRendering.uniforms.ratio, draw.scale);
-		c.glUniform1f(TextRendering.uniforms.alpha, @as(f32, @floatFromInt(draw.color >> 24))/255.0);
+		c.glUniform1ui(TextRendering.uniforms.inColor, @bitCast(draw.getColor()));
 		c.glActiveTexture(c.GL_TEXTURE0);
 		c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0]);
 		draw.rectVao.bind();
@@ -1061,9 +1101,8 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 			var line: Line = _line;
 			y = 0;
 			y += if (line.isUnderline) 15 else 8;
-			const oldColor = draw.color;
-			draw.setColor(shadowColor(line.color) | (@as(u32, 0xff000000) & draw.color));
-			defer draw.setColor(oldColor);
+			const oldColor = draw.setColor(shadowColor(line.color) | (@as(u32, 0xff000000)));
+			defer draw.restoreColor(oldColor);
 			for (lineWraps, 0..) |lineWrap, j| {
 				const lineStart = @max(0, line.start);
 				const lineEnd = @min(lineWrap, line.end);
@@ -1095,8 +1134,8 @@ const TextRendering = struct { // MARK: TextRendering
 		offset: c_int,
 		ratio: c_int,
 		fontEffects: c_int,
+		inColor: c_int,
 		fontSize: c_int,
-		alpha: c_int,
 	} = undefined;
 
 	var freetypeLib: c.FT_Library = undefined;
@@ -1132,7 +1171,6 @@ const TextRendering = struct { // MARK: TextRendering
 		);
 		pipeline.bind(null);
 		errdefer pipeline.deinit();
-		c.glUniform1f(uniforms.alpha, 1.0);
 		c.glUniform2f(uniforms.fontSize, @floatFromInt(textureWidth), @floatFromInt(textureHeight));
 		try ftError(c.FT_Init_FreeType(&freetypeLib));
 		try ftError(c.FT_New_Face(freetypeLib, "assets/cubyz/fonts/unscii-16-full.ttf", 0, &freetypeFace));
@@ -1197,7 +1235,7 @@ const TextRendering = struct { // MARK: TextRendering
 			glyphMapping.appendNTimes(0, index - glyphMapping.items.len + 1);
 		}
 		if (glyphMapping.items[index] == 0) { // glyph was not initialized yet.
-			try ftError(c.FT_Load_Glyph(freetypeFace, index, c.FT_LOAD_RENDER));
+			try ftError(c.FT_Load_Glyph(freetypeFace, index, c.FT_LOAD_RENDER | c.FT_LOAD_NO_AUTOHINT));
 			const glyph = freetypeFace.*.glyph;
 			const bitmap = glyph.*.bitmap;
 			const width = bitmap.width;
@@ -1235,8 +1273,8 @@ const TextRendering = struct { // MARK: TextRendering
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
-	fn renderText(text: []const u8, x: f32, y: f32, fontSize: f32, initialFontEffect: TextBuffer.FontEffect, alignment: TextBuffer.Alignment) void {
-		const buf = TextBuffer.init(main.stackAllocator, text, initialFontEffect, false, alignment);
+	fn renderText(text: []const u8, x: f32, y: f32, fontSize: f32, initialFontEffect: TextBuffer.FontEffect) void {
+		const buf = TextBuffer.init(main.stackAllocator, text, initialFontEffect, false, .left);
 		defer buf.deinit();
 
 		buf.render(x, y, fontSize);
@@ -1368,6 +1406,7 @@ pub const VertexArray = struct { // MARK: VertexArray
 				c.VK_FORMAT_R32G32_SFLOAT => c.GL_FLOAT,
 				c.VK_FORMAT_R32G32B32_SFLOAT => c.GL_FLOAT,
 				c.VK_FORMAT_R32G32B32A32_SFLOAT => c.GL_FLOAT,
+				c.VK_FORMAT_R32_UINT => c.GL_UNSIGNED_INT,
 				else => @compileError("Unrecognized format"),
 			};
 			const size = comptime switch (desc.format) {
@@ -1375,9 +1414,14 @@ pub const VertexArray = struct { // MARK: VertexArray
 				c.VK_FORMAT_R32G32_SFLOAT => 2,
 				c.VK_FORMAT_R32G32B32_SFLOAT => 3,
 				c.VK_FORMAT_R32G32B32A32_SFLOAT => 4,
+				c.VK_FORMAT_R32_UINT => 1,
 				else => @compileError("Unrecognized format"),
 			};
-			c.glVertexAttribPointer(desc.location, size, glType, c.GL_FALSE, @sizeOf(T), @ptrFromInt(desc.offset));
+			switch (glType) {
+				c.GL_UNSIGNED_INT => c.glVertexAttribIPointer(desc.location, size, glType, @sizeOf(T), @ptrFromInt(desc.offset)),
+				c.GL_FLOAT => c.glVertexAttribPointer(desc.location, size, glType, c.GL_FALSE, @sizeOf(T), @ptrFromInt(desc.offset)),
+				else => unreachable,
+			}
 		}
 
 		c.glBindVertexArray(0);
@@ -2043,13 +2087,13 @@ pub const CubeMapTexture = struct { // MARK: CubeMapTexture
 	}
 };
 
-pub const Color = extern struct { // MARK: Color
+pub const Color = packed struct(u32) { // MARK: Color
 	r: u8,
 	g: u8,
 	b: u8,
 	a: u8,
 
-	pub fn toARBG(self: Color) u32 {
+	pub fn toArgb(self: Color) u32 {
 		return @as(u32, self.a) << 24 | @as(u32, self.r) << 16 | @as(u32, self.g) << 8 | @as(u32, self.b);
 	}
 };
@@ -2109,7 +2153,8 @@ pub const Image = struct { // MARK: Image
 			return error.FileNotFound;
 		};
 		main.stackAllocator.free(nullTerminatedPath);
-		result.imageData = allocator.dupe(Color, @as([*]Color, @ptrCast(data))[0 .. result.width*result.height]);
+		result.imageData = allocator.alloc(Color, result.width*result.height);
+		@memcpy(result.imageData, @as([*]align(1) Color, @ptrCast(data))[0 .. result.width*result.height]);
 		c.stbi_image_free(data);
 		return result;
 	}

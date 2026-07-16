@@ -15,7 +15,7 @@ const FaceData = main.renderer.chunk_meshing.FaceData;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const Box = main.physics.collision.Box;
 
-var quadSSBO: graphics.SSBO = undefined;
+var quadSSBO: ?graphics.SSBO = null;
 
 pub const QuadInfo = extern struct {
 	normal: [3]f32 align(16),
@@ -134,7 +134,7 @@ pub const Model = struct {
 		return @popCount(@as(u3, @bitCast(hasTwoOnes))) == 2 and @popCount(@as(u3, @bitCast(hasTwoZeroes))) == 2;
 	}
 
-	pub fn init(quadInfos: []const QuadInfo) ModelIndex {
+	pub fn initWithCollisionModel(quadInfos: []const QuadInfo, collisionModel: ?[]const Box) ModelIndex {
 		const adjustedQuads = main.stackAllocator.alloc(QuadInfo, quadInfos.len);
 		defer main.stackAllocator.free(adjustedQuads);
 		for (adjustedQuads, quadInfos) |*dest, *src| {
@@ -207,8 +207,16 @@ pub const Model = struct {
 			self.allNeighborsOccluded = self.allNeighborsOccluded and self.isNeighborOccluded[neighbor];
 			self.noNeighborsOccluded = self.noNeighborsOccluded and !self.isNeighborOccluded[neighbor];
 		}
-		generateCollision(self, adjustedQuads);
+		if (collisionModel) |collision| {
+			self.collision = main.globalAllocator.dupe(Box, collision);
+		} else {
+			generateCollision(self, adjustedQuads);
+		}
 		return modelIndex;
+	}
+
+	pub fn init(quadInfos: []const QuadInfo) ModelIndex {
+		return initWithCollisionModel(quadInfos, null);
 	}
 
 	fn edgeInterp(y: f32, x0: f32, y0: f32, x1: f32, y1: f32) f32 {
@@ -363,7 +371,7 @@ pub const Model = struct {
 			floodfillQueue.pushBack(.{.x = elem.x, .y = elem.y, .val = ~newValue << 1 | ~newValue >> 1});
 		}
 
-		var collision: main.ListUnmanaged(Box) = .{};
+		var collision: main.List(Box) = .empty;
 
 		for (0..collisionGridSize) |x| {
 			for (0..collisionGridSize) |y| {
@@ -431,8 +439,8 @@ pub const Model = struct {
 		return ind;
 	}
 
-	pub fn loadModel(data: []const u8) ModelIndex {
-		const quadInfos = loadRawModelDataFromObj(main.stackAllocator, data);
+	pub fn loadModel(data: []const u8, coordinateSystem: vec.CoordinateSystem) ModelIndex {
+		const quadInfos = loadRawModelDataFromObj(main.stackAllocator, data, coordinateSystem);
 		defer main.stackAllocator.free(quadInfos);
 		for (quadInfos) |*quad| {
 			var minUv: Vec2f = @splat(std.math.inf(f32));
@@ -454,7 +462,7 @@ pub const Model = struct {
 		return Model.init(quadInfos);
 	}
 
-	pub fn loadRawModelDataFromObj(allocator: main.heap.NeverFailingAllocator, data: []const u8) []QuadInfo {
+	pub fn loadRawModelDataFromObj(allocator: main.heap.NeverFailingAllocator, data: []const u8, coordinateSystem: vec.CoordinateSystem) []QuadInfo {
 		var vertices: main.ListManaged(Vec3f) = .init(main.stackAllocator);
 		defer vertices.deinit();
 
@@ -472,16 +480,14 @@ pub const Model = struct {
 
 		var splitIterator = std.mem.splitScalar(u8, data, '\n');
 		while (splitIterator.next()) |lineUntrimmed| {
-			if (lineUntrimmed.len < 3)
-				continue;
+			if (lineUntrimmed.len < 3) continue;
 
 			var line = lineUntrimmed;
 			if (line[line.len - 1] == '\r') {
 				line = line[0 .. line.len - 1];
 			}
 
-			if (line[0] == '#')
-				continue;
+			if (line[0] == '#') continue;
 
 			if (std.mem.eql(u8, line[0..2], "v ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[2..], ' ');
@@ -493,7 +499,7 @@ pub const Model = struct {
 						break :blk 0;
 					};
 				}
-				vertices.append(coords);
+				vertices.append(coordinateSystem.convertVec(coords, @splat(0.5)));
 			} else if (std.mem.eql(u8, line[0..3], "vn ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[3..], ' ');
 				var norm: [3]f32 = undefined;
@@ -504,7 +510,7 @@ pub const Model = struct {
 						break :blk 0;
 					};
 				}
-				normals.append(norm);
+				normals.append(coordinateSystem.convertVec(norm, @splat(0)));
 			} else if (std.mem.eql(u8, line[0..3], "vt ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[3..], ' ');
 				var uv: [2]f32 = undefined;
@@ -669,8 +675,8 @@ pub fn getModelIndex(string: []const u8) ModelIndex {
 	};
 }
 
-var quads: main.ListUnmanaged(QuadInfo) = .{};
-var extraQuadInfos: main.ListUnmanaged(ExtraQuadInfo) = .{};
+var quads: main.List(QuadInfo) = .empty;
+var extraQuadInfos: main.List(ExtraQuadInfo) = .empty;
 var models: main.utils.VirtualList(Model, 1 << 20) = undefined;
 
 var quadDeduplication: std.AutoHashMap([@sizeOf(QuadInfo)]u8, QuadIndex) = undefined;
@@ -721,7 +727,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 	}
 
 	if (extraQuadInfo.alignedNormalDirection) |normal| {
-		var lightSamples: main.ListUnmanaged(LightSample) = .initCapacity(main.stackAllocator, 4*8*4);
+		var lightSamples: main.List(LightSample) = .initCapacity(main.stackAllocator, 4*8*4);
 		defer lightSamples.deinit(main.stackAllocator);
 
 		for (0..4) |i| {
@@ -761,7 +767,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 			}
 		}.lessThan);
 
-		var deduplicatedList: main.ListUnmanaged(LightSample) = .initCapacity(main.stackAllocator, lightSamples.items.len);
+		var deduplicatedList: main.List(LightSample) = .initCapacity(main.stackAllocator, lightSamples.items.len);
 		defer deduplicatedList.deinit(main.stackAllocator);
 
 		for (lightSamples.items) |sample| {
@@ -781,7 +787,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 	return index;
 }
 
-fn addCornerLightSamples(lightSamples: *main.ListUnmanaged(LightSample), pos: Vec3i, direction: chunk.Neighbor, weights: [4]u16) void {
+fn addCornerLightSamples(lightSamples: *main.List(LightSample), pos: Vec3i, direction: chunk.Neighbor, weights: [4]u16) void {
 	const normal: Vec3f = @floatFromInt(Vec3i{direction.relX(), direction.relY(), direction.relZ()});
 	const lightPos = @as(Vec3f, @floatFromInt(pos)) + normal*@as(Vec3f, @splat(0.5)) - @as(Vec3f, @splat(0.5));
 	const startPos: Vec3i = @floor(lightPos);
@@ -853,8 +859,9 @@ fn openBox(min: Vec3f, max: Vec3f, uvOffset: Vec2f, openSide: enum { x, y, z }) 
 	}
 }
 
-pub fn registerModel(id: []const u8, data: []const u8) ModelIndex {
-	const model = Model.loadModel(data);
+pub fn registerModel(id: []const u8, data: []const u8, zon: ?main.ZonElement) ModelIndex {
+	const coordinateSystem: vec.CoordinateSystem = if (zon) |z| z.get(vec.CoordinateSystem, "coordinateSystem") orelse .right_handed_z_up else .right_handed_z_up;
+	const model = Model.loadModel(data, coordinateSystem);
 	nameToIndex.put(id, model) catch unreachable;
 	return model;
 }
@@ -882,7 +889,9 @@ pub fn reset() void {
 }
 
 pub fn deinit() void {
-	quadSSBO.deinit();
+	if (quadSSBO) |_quadSSBO| {
+		_quadSSBO.deinit();
+	}
 	nameToIndex.deinit();
 	for (models.items()) |model| {
 		model.deinit();
@@ -895,5 +904,5 @@ pub fn deinit() void {
 
 pub fn uploadModels() void {
 	quadSSBO = graphics.SSBO.initStatic(QuadInfo, quads.items);
-	quadSSBO.bind(4);
+	quadSSBO.?.bind(4);
 }

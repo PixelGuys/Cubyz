@@ -35,13 +35,16 @@ pub fn loadModel(parameters: ZonElement) ?*FlowerPatch {
 			}
 			const output = main.worldArena.alloc(main.blocks.Block, blockZons.len);
 			for (blockZons, output) |zon, *block| {
-				block.* = main.blocks.parseBlock(zon.as([]const u8, ""));
+				block.* = main.blocks.parseBlock(zon.as([]const u8) orelse {
+					std.log.err("Got unknown entry in flowerpatch block list: found {s}, expected string", .{@tagName(zon)});
+					return null;
+				});
 			}
 			break :blk output;
 		},
-		.width = parameters.get(f32, "width", 5),
-		.variation = parameters.get(f32, "variation", 1),
-		.density = parameters.get(f32, "density", 0.5),
+		.width = parameters.get(f32, "width") orelse 5,
+		.variation = parameters.get(f32, "variation") orelse 1,
+		.density = parameters.get(f32, "density") orelse 0.5,
 	};
 	return self;
 }

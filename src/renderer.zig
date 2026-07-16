@@ -161,10 +161,10 @@ pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 	std.debug.assert(game.world != null);
 
 	const nightColor: Vec3f = .{0.3, 0.4, 0.5};
-	const ambient = @max(nightColor*@as(Vec3f, @splat(settings.nightBrightness)), @as(Vec3f, @splat(game.world.?.ambientLight)));
+	const ambient = @max(nightColor*@as(Vec3f, @splat(settings.nightBrightness)), @as(Vec3f, @splat(game.world.?.dayTime.ambientLight)));
 
 	itemdrop.ItemDisplayManager.update(deltaTime);
-	renderWorld(game.world.?, ambient, game.fog.skyColor, playerPosition);
+	renderWorld(game.world.?, ambient, game.world.?.dayTime.fog.skyColor, playerPosition);
 	const startTime = main.timestamp();
 	mesh_storage.updateMeshes(startTime.addDuration(maximumMeshTime));
 }
@@ -371,10 +371,10 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	worldFrameBuffer.unbind();
 	deferredRenderPassPipeline.bind(null);
 	if (!blocks.meshes.hasFog(playerBlock)) {
-		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
-		c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
-		c.glUniform1f(deferredUniforms.@"fog.fogLower", game.fog.fogLower);
-		c.glUniform1f(deferredUniforms.@"fog.fogHigher", game.fog.fogHigher);
+		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.world.?.dayTime.fog.fogColor));
+		c.glUniform1f(deferredUniforms.@"fog.density", game.world.?.dayTime.fog.density);
+		c.glUniform1f(deferredUniforms.@"fog.fogLower", game.world.?.dayTime.fog.fogLower);
+		c.glUniform1f(deferredUniforms.@"fog.fogHigher", game.world.?.dayTime.fog.fogHigher);
 	} else {
 		const fogColor = blocks.meshes.fogColor(playerBlock);
 		c.glUniform3f(deferredUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
@@ -476,10 +476,10 @@ const Bloom = struct { // MARK: Bloom
 		worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 		buffer1.bind();
 		if (!blocks.meshes.hasFog(playerBlock)) {
-			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
-			c.glUniform1f(colorExtractUniforms.@"fog.density", game.fog.density);
-			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", game.fog.fogLower);
-			c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", game.fog.fogHigher);
+			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.world.?.dayTime.fog.fogColor));
+			c.glUniform1f(colorExtractUniforms.@"fog.density", game.world.?.dayTime.fog.density);
+			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", game.world.?.dayTime.fog.fogLower);
+			c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", game.world.?.dayTime.fog.fogHigher);
 		} else {
 			const fogColor = blocks.meshes.fogColor(playerBlock);
 			c.glUniform3f(colorExtractUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
@@ -638,7 +638,7 @@ pub const MenuBackGround = struct {
 		// Otherwise load a random texture from the backgrounds folder. The player may make their own pictures which can be chosen as well.
 		var walker = dir.walk(main.stackAllocator);
 		defer walker.deinit();
-		var fileList: main.ListUnmanaged([]const u8) = .{};
+		var fileList: main.List([]const u8) = .empty;
 		defer {
 			for (fileList.items) |fileName| {
 				main.stackAllocator.free(fileName);
@@ -881,22 +881,12 @@ pub const Skybox = struct {
 	pub fn render() void {
 		const viewMatrix = game.camera.viewMatrix;
 
-		const time = game.world.?.gameTime.load(.monotonic);
-
-		var starOpacity: f32 = 0;
-		const dayTime = @abs(@mod(time, game.World.dayCycle) -% game.World.dayCycle/2);
-		if (dayTime < game.World.dayCycle/4 - game.World.dayCycle/16) {
-			starOpacity = 1;
-		} else if (dayTime > game.World.dayCycle/4 + game.World.dayCycle/16) {
-			starOpacity = 0;
-		} else {
-			starOpacity = 1 - @as(f32, @floatFromInt(dayTime - (game.World.dayCycle/4 - game.World.dayCycle/16)))/@as(f32, @floatFromInt(game.World.dayCycle/8));
-		}
+		const starOpacity: f32 = game.world.?.dayTime.getStarOpacity();
 
 		if (starOpacity != 0) {
 			starPipeline.bind(null);
 
-			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationX(@as(f32, @floatFromInt(time))/@as(f32, @floatFromInt(main.game.World.dayCycle)))));
+			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationX(2*std.math.pi*game.world.?.dayTime.getDayProgress())));
 
 			starSsbo.bind(12);
 

@@ -21,7 +21,7 @@ const Args = union(enum) {
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/time"});
 
 pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.ListUnmanaged(u8) = .{};
+	var errorMessage: main.List(u8) = .empty;
 	defer errorMessage.deinit(main.stackAllocator);
 
 	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
@@ -36,8 +36,8 @@ pub fn execute(args: []const u8, source: *User) void {
 		},
 		.@"/time <number>" => |params| params.number,
 		.@"/time <phase>" => |params| switch (params.phase) {
-			.day => 0,
-			.night => main.server.ServerWorld.dayCycle/2,
+			.day => main.game.World.DayTime.dayStart,
+			.night => main.game.World.DayTime.nightStart,
 		},
 		.@"/time <subcommand>" => |params| {
 			switch (params.subcommand) {

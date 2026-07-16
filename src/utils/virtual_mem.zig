@@ -208,16 +208,16 @@ pub fn VirtualList(T: type, maxSize: u32) type {
 		}
 
 		pub fn pop(self: *@This()) T {
-			return self.popOrNull() orelse unreachable;
+			return self.popOrNull().?;
 		}
 
 		pub fn replaceRange(self: *@This(), start: usize, len: usize, new_items: []const T) void {
 			const after_range = start + len;
 			const range = self.items()[start..after_range];
 
-			if (range.len == new_items.len)
-				@memcpy(range[0..new_items.len], new_items)
-			else if (range.len < new_items.len) {
+			if (range.len == new_items.len) {
+				@memcpy(range[0..new_items.len], new_items);
+			} else if (range.len < new_items.len) {
 				const first = new_items[0..range.len];
 				const rest = new_items[range.len..];
 
@@ -233,16 +233,6 @@ pub fn VirtualList(T: type, maxSize: u32) type {
 
 				self.len -= len - new_items.len;
 			}
-		}
-
-		pub const Writer = if (T != u8)
-			@compileError("The Writer interface is only defined for ArrayList(u8) " ++
-				"but the given type is ArrayList(" ++ @typeName(T) ++ ")")
-		else
-			std.io.Writer(*@This(), error{}, appendWrite);
-
-		pub fn writer(self: *@This()) Writer {
-			return .{.context = self};
 		}
 
 		fn appendWrite(self: *@This(), m: []const u8) !usize {

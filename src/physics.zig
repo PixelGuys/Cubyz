@@ -16,6 +16,8 @@ pub const playerAirTerminalVelocity = 90.0;
 pub const airDensity = 0.001;
 pub const playerDensity = 1.2;
 
+pub const epsilon: f64 = 1.0/@as(comptime_float, 1 << (std.math.floatMantissaBits(f64) - 31)); // Should be the last bit when at the integer limit
+
 pub const collision = struct {
 	pub const Box = struct {
 		min: Vec3d,
@@ -130,7 +132,7 @@ pub const collision = struct {
 
 	pub fn calculateSurfaceProperties(comptime side: main.sync.Side, pos: Vec3d, hitBox: Box, defaultFriction: f32) SurfaceProperties {
 		const boundingBox: Box = .{
-			.min = pos + hitBox.min,
+			.min = pos + hitBox.min - Vec3d{0, 0, 0.01},
 			.max = pos + hitBox.max,
 		};
 		const minX: i32 = @floor(boundingBox.min[0]);
@@ -138,7 +140,7 @@ pub const collision = struct {
 		const minY: i32 = @floor(boundingBox.min[1]);
 		const maxY: i32 = @floor(boundingBox.max[1]);
 
-		const z: i32 = @floor(boundingBox.min[2] - 0.01);
+		const z: i32 = @floor(boundingBox.min[2]);
 
 		var friction: f64 = 0;
 		var bounciness: f64 = 0;
@@ -274,7 +276,7 @@ pub const collision = struct {
 		checkPos[index] += amount;
 
 		if (collision.collides(side, dir, -amount, checkPos, hitBox)) |box| {
-			const newFloor = box.max[2] + hitBox.max[2];
+			const newFloor = box.max[2] + hitBox.max[2] + epsilon;
 			const heightDifference = newFloor - checkPos[2];
 			if (heightDifference <= steppingHeight) {
 				// If we collide but might be able to step up
@@ -288,9 +290,9 @@ pub const collision = struct {
 
 			// Otherwise move as close to the container as possible
 			if (amount < 0) {
-				resultingMovement[index] = box.max[index] - hitBox.min[index] - pos[index];
+				resultingMovement[index] = box.max[index] - hitBox.min[index] - pos[index] + epsilon;
 			} else {
-				resultingMovement[index] = box.min[index] - hitBox.max[index] - pos[index];
+				resultingMovement[index] = box.min[index] - hitBox.max[index] - pos[index] - epsilon;
 			}
 		}
 
@@ -335,8 +337,7 @@ pub const collision = struct {
 				var posZ: i32 = minZ;
 				while (posZ <= maxZ) : (posZ += 1) {
 					const block = main.game.getBlockWithSide(side, posX, posY, posZ);
-					if (block == null or block.?.onTouch().isNoop())
-						continue;
+					if (block == null or block.?.onTouch().isNoop()) continue;
 					const touchX: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentX);
 					const touchY: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentY);
 					const touchZ: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentZ);
@@ -561,9 +562,9 @@ pub fn calculateVerticalCollision(comptime side: main.sync.Side, deltaTime: f64,
 	if (collision.collides(side, .z, -motion[2], pos.*, hitBox)) |box| {
 		if (motion[2] < 0) {
 			onGround.* = true;
-			pos[2] = box.max[2] - hitBox.min[2];
+			pos[2] = box.max[2] - hitBox.min[2] + epsilon;
 		} else {
-			pos[2] = box.min[2] - hitBox.max[2];
+			pos[2] = box.min[2] - hitBox.max[2] - epsilon;
 		}
 		const bounciness = if (bouncinessMultiplier == 0) 0 else collision.calculateSurfaceProperties(side, pos.*, hitBox, 0.0).bounciness*bouncinessMultiplier;
 
