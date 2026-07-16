@@ -39,4 +39,4 @@ jobs:
       - run: zig build -Dtarget=aarch64-linux-gnu
       - run: zig build -Dtarget=aarch64-windows-gnu
       - run: zig build test
-      - run: find assets/cubyz/shaders -type f | xargs -L1 glslangValidator -G100
+      - run: find assets/cubyz/shaders -type f ! -name "*.glsl" | xargs -L1 glslangValidator -G100 -P"#extension GL_GOOGLE_include_directive : enable" -Iassets/cubyz/shaders/include
