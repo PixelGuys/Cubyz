@@ -650,7 +650,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: ?*c
                         if (dz == 1) nextPos.wz ^= lowerLodBit;
                         const node2 = getNodePointer(nextPos);
                         const relNextPos: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{ nextPos.wx, nextPos.wy, nextPos.wz })) - playerPos;
-                        if (!frustum.testAAB(@floatCast(relNextPos), @splat(@floatFromInt(chunk.chunkSize * nextPos.voxelSize))))
+                        if (frustum != null and !frustum.?.testAAB(@floatCast(relNextPos), @splat(@floatFromInt(chunk.chunkSize * nextPos.voxelSize))))
                             continue;
                         std.debug.assert(node2.finishedMeshing);
                         node2.active = true;
