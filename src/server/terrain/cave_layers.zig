@@ -10,154 +10,154 @@ const Assets = main.assets.Assets;
 const Tag = main.Tag;
 
 pub const CaveLayer = struct {
-    minHeight: i32,
-    maxHeight: i32,
-    layerHeight: i32,
-    depthHint: i32,
-    caveDensity: f32,
+	minHeight: i32,
+	maxHeight: i32,
+	layerHeight: i32,
+	depthHint: i32,
+	caveDensity: f32,
 
-    biomes: main.utils.AliasTable(*const Biome),
-    layerBiomes: main.utils.AliasTable(*const Biome),
-    id: []const u8,
+	biomes: main.utils.AliasTable(*const Biome),
+	layerBiomes: main.utils.AliasTable(*const Biome),
+	id: []const u8,
 
-    pub fn init(id: []const u8, zon: ZonElement) ?CaveLayer {
-        var result: CaveLayer = undefined;
-        result.depthHint = zon.get(i32, "depthHint") orelse {
-            std.log.err("Cave layer with id {s} is missing depthHint field. Skipping", .{id});
-            return null;
-        };
-        result.layerHeight = zon.get(i32, "layerHeight") orelse {
-            std.log.err("Cave layer with id {s} is missing layerHeight field. Skipping", .{id});
-            return null;
-        };
-        result.caveDensity = zon.get(f32, "caveDensity") orelse 1.0 / 32.0;
-        result.id = main.worldArena.dupe(u8, id);
+	pub fn init(id: []const u8, zon: ZonElement) ?CaveLayer {
+		var result: CaveLayer = undefined;
+		result.depthHint = zon.get(i32, "depthHint") orelse {
+			std.log.err("Cave layer with id {s} is missing depthHint field. Skipping", .{id});
+			return null;
+		};
+		result.layerHeight = zon.get(i32, "layerHeight") orelse {
+			std.log.err("Cave layer with id {s} is missing layerHeight field. Skipping", .{id});
+			return null;
+		};
+		result.caveDensity = zon.get(f32, "caveDensity") orelse 1.0/32.0;
+		result.id = main.worldArena.dupe(u8, id);
 
-        const tags = Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("tags"));
-        defer main.stackAllocator.free(tags);
-        if (tags.len == 0) {
-            std.log.err("Cave layer with id {s} is missing tags. Skipping", .{id});
-            return null;
-        }
-        for (tags) |tag| {
-            if (!std.mem.endsWith(u8, tag.getName(), "_layer")) {
-                std.log.err("Cave layer tags must end with '_layer'. Tag {s} defined in cave layer with id {s} does not. Skipping", .{ tag.getName(), id });
-                return null;
-            }
-        }
-        var biomes: main.List(*const Biome) = .empty;
-        defer biomes.deinit(main.stackAllocator);
-        outer: for (terrain.biomes.getCaveBiomes()) |*biome| {
-            for (tags) |tag| {
-                if (biome.hasTag(tag)) {
-                    biomes.append(main.stackAllocator, biome);
-                    continue :outer;
-                }
-            }
-        }
+		const tags = Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("tags"));
+		defer main.stackAllocator.free(tags);
+		if (tags.len == 0) {
+			std.log.err("Cave layer with id {s} is missing tags. Skipping", .{id});
+			return null;
+		}
+		for (tags) |tag| {
+			if (!std.mem.endsWith(u8, tag.getName(), "_layer")) {
+				std.log.err("Cave layer tags must end with '_layer'. Tag {s} defined in cave layer with id {s} does not. Skipping", .{tag.getName(), id});
+				return null;
+			}
+		}
+		var biomes: main.List(*const Biome) = .empty;
+		defer biomes.deinit(main.stackAllocator);
+		outer: for (terrain.biomes.getCaveBiomes()) |*biome| {
+			for (tags) |tag| {
+				if (biome.hasTag(tag)) {
+					biomes.append(main.stackAllocator, biome);
+					continue :outer;
+				}
+			}
+		}
 
-        var layerBiomes: main.List(*const Biome) = .empty;
-        defer layerBiomes.deinit(main.stackAllocator);
+		var layerBiomes: main.List(*const Biome) = .empty;
+		defer layerBiomes.deinit(main.stackAllocator);
 
-        for (biomes.items) |biome| {
-            if (biome.maxHeight > result.minHeight and biome.minHeight < result.maxHeight) {
-                layerBiomes.append(main.stackAllocator, biome);
-                std.log.debug("Layer {s} contains {s}", .{ result.id, biome.id });
-            }
-        }
-        if (biomes.items.len == 0) {
-            std.log.err("Cave layer with id {s} has no biomes that match the provided tags. Skipping", .{id});
-            return null;
-        }
-        for (biomes.items) |biome| {
-            if (biome.minHeight == std.math.minInt(i32) and biome.maxHeight == std.math.maxInt(i32) and biome.chance != 0) break;
-        } else {
-            std.log.err("Cave layer with id {s} has no biomes with unbounded height. At least one biome with unbounded height must exist to ensure compatibility with other addons. Skipping", .{id});
-            return null;
-        }
+		for (biomes.items) |biome| {
+			if (biome.maxHeight > result.minHeight and biome.minHeight < result.maxHeight) {
+				layerBiomes.append(main.stackAllocator, biome);
+				std.log.debug("Layer {s} contains {s}", .{result.id, biome.id});
+			}
+		}
+		if (biomes.items.len == 0) {
+			std.log.err("Cave layer with id {s} has no biomes that match the provided tags. Skipping", .{id});
+			return null;
+		}
+		for (biomes.items) |biome| {
+			if (biome.minHeight == std.math.minInt(i32) and biome.maxHeight == std.math.maxInt(i32) and biome.chance != 0) break;
+		} else {
+			std.log.err("Cave layer with id {s} has no biomes with unbounded height. At least one biome with unbounded height must exist to ensure compatibility with other addons. Skipping", .{id});
+			return null;
+		}
 
-        result.biomes = .init(main.worldArena, main.worldArena.dupe(*const Biome, biomes.items));
-        result.layerBiomes = .init(main.worldArena, main.worldArena.dupe(*const Biome, layerBiomes.items));
-        return result;
-    }
+		result.biomes = .init(main.worldArena, main.worldArena.dupe(*const Biome, biomes.items));
+		result.layerBiomes = .init(main.worldArena, main.worldArena.dupe(*const Biome, layerBiomes.items));
+		return result;
+	}
 };
 
 var finishedLoading: bool = false;
 var caveLayers: main.List(CaveLayer) = .empty;
 
 fn register(id: []const u8, zon: ZonElement) void {
-    const caveLayer = CaveLayer.init(id, zon) orelse return;
-    caveLayers.append(main.worldArena, caveLayer);
+	const caveLayer = CaveLayer.init(id, zon) orelse return;
+	caveLayers.append(main.worldArena, caveLayer);
 }
 
 pub fn registerCaveLayers(caveLayerMap: *Assets.ZonHashMap) !void {
-    var iterator = caveLayerMap.iterator();
-    while (iterator.next()) |entry| {
-        register(entry.key_ptr.*, entry.value_ptr.*);
-    }
+	var iterator = caveLayerMap.iterator();
+	while (iterator.next()) |entry| {
+		register(entry.key_ptr.*, entry.value_ptr.*);
+	}
 
-    std.debug.assert(!finishedLoading);
-    finishedLoading = true;
+	std.debug.assert(!finishedLoading);
+	finishedLoading = true;
 
-    std.mem.sort(CaveLayer, caveLayers.items, {}, lessThan);
+	std.mem.sort(CaveLayer, caveLayers.items, {}, lessThan);
 
-    var i: usize = 0;
-    while (i + 1 < caveLayers.items.len and caveLayers.items[i].depthHint < 0) {
-        i += 1;
-    }
-    var height = caveLayers.items[i].depthHint;
-    for (caveLayers.items[i..]) |*caveLayer| {
-        caveLayer.minHeight = height;
-        height += caveLayer.layerHeight;
-        caveLayer.maxHeight = height;
-    }
-    height = caveLayers.items[i].depthHint;
-    while (i != 0) {
-        i -= 1;
-        caveLayers.items[i].maxHeight = height;
-        height -= caveLayers.items[i].layerHeight;
-        caveLayers.items[i].minHeight = height;
-    }
-    std.log.debug("Registered cave layers:", .{});
-    for (caveLayers.items) |caveLayer| {
-        std.log.debug("{s}: {} to {}", .{ caveLayer.id, caveLayer.minHeight, caveLayer.maxHeight });
-    }
+	var i: usize = 0;
+	while (i + 1 < caveLayers.items.len and caveLayers.items[i].depthHint < 0) {
+		i += 1;
+	}
+	var height = caveLayers.items[i].depthHint;
+	for (caveLayers.items[i..]) |*caveLayer| {
+		caveLayer.minHeight = height;
+		height += caveLayer.layerHeight;
+		caveLayer.maxHeight = height;
+	}
+	height = caveLayers.items[i].depthHint;
+	while (i != 0) {
+		i -= 1;
+		caveLayers.items[i].maxHeight = height;
+		height -= caveLayers.items[i].layerHeight;
+		caveLayers.items[i].minHeight = height;
+	}
+	std.log.debug("Registered cave layers:", .{});
+	for (caveLayers.items) |caveLayer| {
+		std.log.debug("{s}: {} to {}", .{caveLayer.id, caveLayer.minHeight, caveLayer.maxHeight});
+	}
 }
 
 fn lessThan(_: void, lhs: CaveLayer, rhs: CaveLayer) bool {
-    if (lhs.depthHint < rhs.depthHint) return true;
-    if (lhs.depthHint > rhs.depthHint) return false;
-    return std.ascii.orderIgnoreCase(lhs.id, rhs.id) == .gt;
+	if (lhs.depthHint < rhs.depthHint) return true;
+	if (lhs.depthHint > rhs.depthHint) return false;
+	return std.ascii.orderIgnoreCase(lhs.id, rhs.id) == .gt;
 }
 
 pub fn getLayer(height: i32) CaveLayer {
-    var minIndex: usize = 0;
-    var maxIndex = caveLayers.items.len - 1;
-    while (minIndex != maxIndex) {
-        const centerIndex = (minIndex + maxIndex) / 2;
-        if (caveLayers.items[centerIndex].minHeight > height) {
-            maxIndex = centerIndex;
-        } else if (caveLayers.items[centerIndex].maxHeight <= height) {
-            minIndex = centerIndex + 1;
-        } else return caveLayers.items[centerIndex];
-    }
-    return caveLayers.items[minIndex];
+	var minIndex: usize = 0;
+	var maxIndex = caveLayers.items.len - 1;
+	while (minIndex != maxIndex) {
+		const centerIndex = (minIndex + maxIndex)/2;
+		if (caveLayers.items[centerIndex].minHeight > height) {
+			maxIndex = centerIndex;
+		} else if (caveLayers.items[centerIndex].maxHeight <= height) {
+			minIndex = centerIndex + 1;
+		} else return caveLayers.items[centerIndex];
+	}
+	return caveLayers.items[minIndex];
 }
 
 pub fn getLayerGuess(height: i32, i: *usize) CaveLayer {
-    if (height < caveLayers.items[i.*].minHeight) {
-        while (i.* > 0 and height < caveLayers.items[i.*].minHeight) {
-            i.* -= 1;
-        }
-    } else {
-        while (i.* + 1 < caveLayers.items.len and height >= caveLayers.items[i.*].maxHeight) {
-            i.* += 1;
-        }
-    }
-    return caveLayers.items[i.*];
+	if (height < caveLayers.items[i.*].minHeight) {
+		while (i.* > 0 and height < caveLayers.items[i.*].minHeight) {
+			i.* -= 1;
+		}
+	} else {
+		while (i.* + 1 < caveLayers.items.len and height >= caveLayers.items[i.*].maxHeight) {
+			i.* += 1;
+		}
+	}
+	return caveLayers.items[i.*];
 }
 
 pub fn reset() void {
-    finishedLoading = false;
-    caveLayers = .empty;
+	finishedLoading = false;
+	caveLayers = .empty;
 }
