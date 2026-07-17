@@ -19,6 +19,7 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	if (data1.tag != data2.tag) return null;
 	return .{
 		.multStrength = 1.0 - 1.0/(1.0 + std.math.hypot(1.0/(1.0 - data1.multStrength) - 1.0, 1.0/(1.0 - data2.multStrength) - 1.0)),
+		.tag = data1.tag,
 		.flatStrength = 1.0 - 1.0/(1.0 + std.math.hypot(1.0/(1.0 - data1.flatStrength) - 1.0, 1.0/(1.0 - data2.flatStrength) - 1.0)),
 		};
 }
