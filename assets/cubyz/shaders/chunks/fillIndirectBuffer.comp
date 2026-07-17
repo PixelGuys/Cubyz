@@ -1,13 +1,14 @@
 #version 460
 
+#include "chunk_data.glsl"
+#include "frame_uniforms.glsl"
+
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 struct AnimationData {
 	uint frames;
 	uint time;
 };
-
-#include "chunk_data.glsl"
 
 struct DrawElementsIndirectCommand {
 	uint  count;
@@ -30,14 +31,6 @@ layout(location = 1) uniform uint commandIndexStart;
 layout(location = 2) uniform uint size;
 layout(location = 3) uniform bool isTransparent;
 layout(location = 4) uniform bool onlyDrawPreviouslyInvisible;
-
-layout (std140, binding = 0) uniform _frameData
-{
-	mat4 projectionMatrix;
-	mat4 viewMatrix;
-	ivec3 playerPositionInteger;
-	vec3 playerPositionFraction;
-};
 
 layout(location = 6) uniform float lodDistance;
 
