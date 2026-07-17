@@ -127,7 +127,7 @@ pub fn init() void {
 		&depthUniforms,
 		graphics.VertexArray.EmptyVertex,
 		&.{},
-		.{.cullMode = .back},
+		.{.cullMode = .none},
 		.{.depthTest = true, .depthWrite = true, .depthCompare = .lessOrEqual},
 		.{.attachments = &.{.noBlending}},
 	);

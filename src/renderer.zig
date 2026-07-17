@@ -222,11 +222,13 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	const lightView: Mat4f = Mat4f.identity().mul(.translation(lightOffset));
 
+	const depthFrustum = Frustum.initFromView(lightProjection.mul(lightView), playerPos);
+
 	game.camera.updateViewMatrix();
 
 	chunk_meshing.quadsDrawn = 0;
 	chunk_meshing.transparentQuadsDrawn = 0;
-	const depthMeshes = mesh_storage.updateAndGetRenderChunks(world.conn, null, playerPos, settings.renderDistance);
+	const depthMeshes = mesh_storage.updateAndGetRenderChunks(world.conn, &depthFrustum, playerPos, settings.renderDistance);
 
 	gpu_performance_measuring.startQuery(.depth_framebuffer_chunk_rendering_preparation);
 	chunk_meshing.beginRender();
@@ -907,6 +909,7 @@ pub const Frustum = struct { // MARK: Frustum
 		norm: Vec3f,
 	};
 	planes: [4]Plane, // Who cares about the near/far plane anyways?
+	isPerspective: bool,
 
 	pub fn init(cameraPos: Vec3f, rotationMatrix: Mat4f, fovY: f32, width: u31, height: u31) Frustum {
 		const invRotationMatrix = rotationMatrix.transpose();
@@ -922,6 +925,27 @@ pub const Frustum = struct { // MARK: Frustum
 		self.planes[1] = Plane{.pos = cameraPos, .norm = vec.cross(cameraDir - cameraRight*@as(Vec3f, @splat(halfHSide)), cameraUp)}; // left
 		self.planes[2] = Plane{.pos = cameraPos, .norm = vec.cross(cameraRight, cameraDir - cameraUp*@as(Vec3f, @splat(halfVSide)))}; // top
 		self.planes[3] = Plane{.pos = cameraPos, .norm = vec.cross(cameraDir + cameraUp*@as(Vec3f, @splat(halfVSide)), cameraRight)}; // bottom
+		self.isPerspective = true;
+		return self;
+	}
+
+	pub fn initFromView(view: Mat4f, playerPos: Vec3d) Frustum {
+		const invView = view.inverse();
+		var planes: [4]Plane = undefined;
+		planes[0] = Plane{.pos = .{0, 0, 0}, .norm = .{1, 0, 0}};
+		planes[1] = Plane{.pos = .{0, 0, 0}, .norm = .{0, 1, 0}};
+		planes[2] = Plane{.pos = .{1, 0, 0}, .norm = .{-1, 0, 0}};
+		planes[3] = Plane{.pos = .{0, 1, 0}, .norm = .{0, -1, 0}};
+		
+		var self: Frustum = undefined;
+		inline for (0.., planes) |i, plane| {
+			const newPos = vec.xyz(invView.mulVec(vec.combine(plane.pos, 1.0)));
+			const normPos = plane.pos + plane.norm;
+			const newNormPos = vec.xyz(invView.mulVec(vec.combine(normPos, 1.0)));
+			const newNorm = vec.normalize(newNormPos - newPos);
+			self.planes[i] = Plane{.pos = @as(Vec3f, @floatCast(playerPos)) + newPos, .norm = newNorm};
+		}
+		self.isPerspective = false;
 		return self;
 	}
 

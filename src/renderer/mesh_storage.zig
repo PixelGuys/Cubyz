@@ -544,7 +544,7 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshR
 	}
 }
 
-pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: ?*const main.renderer.Frustum, playerPos: Vec3d, renderDistance: u16) []*chunk_meshing.ChunkMesh { // MARK: updateAndGetRenderChunks()
+pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *const main.renderer.Frustum, playerPos: Vec3d, renderDistance: u16) []*chunk_meshing.ChunkMesh { // MARK: updateAndGetRenderChunks()
 	meshList.clearRetainingCapacity();
 
 	const playerPosInt: Vec3i = @floor(playerPos);
@@ -624,7 +624,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: ?*c
 				const node2 = getNodePointer(neighborPos);
 				if (!node2.active and node2.finishedMeshing) {
 					const relPosFloat: Vec3f = @floatCast(@as(Vec3d, @floatFromInt(Vec3i{pos.wx, pos.wy, pos.wz})) - playerPos);
-					if (frustum != null and !frustum.?.testAAB(relPosFloat + @as(Vec3f, @floatFromInt(neighbor.relPos()*chunkSizeVector)), @floatFromInt(chunkSizeVector))) continue;
+					if (!frustum.testAAB(relPosFloat + @as(Vec3f, @floatFromInt(neighbor.relPos()*chunkSizeVector)), @floatFromInt(chunkSizeVector))) continue;
 					node2.active = true;
 					node2.rendered = true;
 					searchList.pushBack(node2);
@@ -650,7 +650,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: ?*c
 						if (dz == 1) nextPos.wz ^= lowerLodBit;
 						const node2 = getNodePointer(nextPos);
 						const relNextPos: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{nextPos.wx, nextPos.wy, nextPos.wz})) - playerPos;
-						if (frustum != null and !frustum.?.testAAB(@floatCast(relNextPos), @splat(@floatFromInt(chunk.chunkSize*nextPos.voxelSize))))
+						if (frustum.isPerspective and !frustum.testAAB(@floatCast(relNextPos), @splat(@floatFromInt(chunk.chunkSize*nextPos.voxelSize))))
 							continue;
 						std.debug.assert(node2.finishedMeshing);
 						node2.active = true;
