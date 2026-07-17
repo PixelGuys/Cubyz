@@ -8,9 +8,6 @@ const CaveBiomeMapFragment = terrain.CaveBiomeMap.CaveBiomeMapFragment;
 const Biome = terrain.biomes.Biome;
 const Assets = main.assets.Assets;
 const Tag = main.Tag;
-const marginDiv = 1024;
-const marginMulPositive: comptime_int = CaveBiomeMapFragment.rotateInverse(.{marginDiv, 0, marginDiv})[2];
-const marginMulNegative: comptime_int = CaveBiomeMapFragment.rotateInverse(.{0, marginDiv, 0})[2];
 
 pub const CaveLayer = struct {
 	minHeight: i32,
@@ -63,9 +60,7 @@ pub const CaveLayer = struct {
 		defer layerBiomes.deinit(main.stackAllocator);
 
 		for (biomes.items) |biome| {
-			if (biome.maxHeight > result.minHeight + CaveBiomeMapFragment.caveBiomeSize*marginMulNegative/marginDiv and
-				biome.minHeight < result.maxHeight + CaveBiomeMapFragment.caveBiomeSize*marginMulPositive/marginDiv)
-			{
+			if (biome.maxHeight > result.minHeight and biome.minHeight < result.maxHeight) {
 				layerBiomes.append(main.stackAllocator, biome);
 				std.log.debug("Layer {s} contains {s}", .{result.id, biome.id});
 			}
@@ -147,6 +142,17 @@ pub fn getLayer(height: i32) CaveLayer {
 		} else return caveLayers.items[centerIndex];
 	}
 	return caveLayers.items[minIndex];
+}
+
+pub fn getLayerGuess(height: i32, i: *usize) CaveLayer {
+	if (height < caveLayers.items[i.*].minHeight) {
+		while (i.* > 0 and height < caveLayers.items[i.*].minHeight)
+			i.* -= 1;
+	} else {
+		while (i.* + 1 < caveLayers.items.len and height >= caveLayers.items[i.*].maxHeight)
+			i.* += 1;
+	}
+	return caveLayers.items[i.*];
 }
 
 pub fn reset() void {
