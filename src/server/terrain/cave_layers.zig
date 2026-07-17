@@ -16,6 +16,7 @@ pub const CaveLayer = struct {
 	caveDensity: f32,
 
 	biomes: main.utils.AliasTable(*const Biome),
+	layerBiomes: main.utils.AliasTable(*const Biome),
 	id: []const u8,
 
 	pub fn init(id: []const u8, zon: ZonElement) ?CaveLayer {
@@ -54,6 +55,16 @@ pub const CaveLayer = struct {
 			}
 		}
 
+		var layerBiomes: main.List(*const Biome) = .empty;
+		defer layerBiomes.deinit(main.stackAllocator);
+
+		for (biomes.items) |biome| {
+			if (biome.maxHeight > result.minHeight and
+				biome.minHeight < result.maxHeight)
+			{
+				layerBiomes.append(main.stackAllocator, biome);
+			}
+		}
 		if (biomes.items.len == 0) {
 			std.log.err("Cave layer with id {s} has no biomes that match the provided tags. Skipping", .{id});
 			return null;
@@ -66,7 +77,7 @@ pub const CaveLayer = struct {
 		}
 
 		result.biomes = .init(main.worldArena, main.worldArena.dupe(*const Biome, biomes.items));
-
+		result.layerBiomes = .init(main.worldArena, main.worldArena.dupe(*const Biome, layerBiomes.items));
 		return result;
 	}
 };

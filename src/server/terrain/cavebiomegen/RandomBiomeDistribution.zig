@@ -40,7 +40,7 @@ pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) void {
 					const biomeWorldPos = CaveBiomeMapFragment.rotateInverse(pos + offset);
 					const caveLayer = terrain.cave_layers.getLayer(biomeWorldPos[2]);
 					while (true) {
-						const biome = caveLayer.biomes.sample(&seed).*;
+						const biome = caveLayer.layerBiomes.sample(&seed).*;
 						if (biome.minHeight < biomeWorldPos[2] + CaveBiomeMapFragment.caveBiomeSize*marginMulPositive/marginDiv and biome.maxHeight > biomeWorldPos[2] + CaveBiomeMapFragment.caveBiomeSize*marginMulNegative/marginDiv) {
 							const index = CaveBiomeMapFragment.getIndex(x, y, z);
 							map.biomeMap[index][_map] = biome;
