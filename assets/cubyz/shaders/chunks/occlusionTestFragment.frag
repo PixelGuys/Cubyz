@@ -6,6 +6,8 @@ layout(location = 0) flat in uint chunkID;
 
 #include "chunk_data.glsl"
 
+layout(location = 4) uniform bool isDepth;
+
 void main() {
 	if(isDepth) {
 		chunks[chunkID].visibilityStateDepth = 1;
