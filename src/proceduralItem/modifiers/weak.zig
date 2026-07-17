@@ -21,8 +21,12 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	};
 }
 
-pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Data) void {
-	proceduralItem.setProperty(.damage, @max(proceduralItem.getProperty(.damage) - data.flatStrength, 0)*(1 - data.multStrength));
+pub fn changeProceduralItemParametersFlat(proceduralItem: *ProceduralItem, data: Data) void {
+	proceduralItem.setProperty(.damage, proceduralItem.getProperty(.damage) + data.flatStrength);
+}
+
+pub fn changeProceduralItemParametersMult(proceduralItem: *ProceduralItem, data: Data) void {
+	proceduralItem.setProperty(.damage, proceduralItem.getProperty(.damage)*(1 + data.multStrength));
 }
 
 pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {

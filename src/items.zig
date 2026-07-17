@@ -157,6 +157,8 @@ const Modifier = struct {
 	pub const VTable = struct {
 		const Data = packed struct(u128) { pad: u128 };
 		combineModifiers: *const fn (data1: Data, data2: Data) ?Data,
+		changeProceduralItemParametersFlat: *const fn (proceduralItem: *ProceduralItem, data: Data) void,
+		changeProceduralItemParametersMult: *const fn (proceduralItem: *ProceduralItem, data: Data) void,
 		changeProceduralItemParameters: *const fn (proceduralItem: *ProceduralItem, data: Data) void,
 		changeBlockDamage: *const fn (damage: f32, block: Block, data: Data) f32,
 		printTooltip: *const fn (outString: *main.ListManaged(u8), data: Data) void,
@@ -165,6 +167,8 @@ const Modifier = struct {
 
 		const Defaults = struct {
 			pub fn changeProceduralItemParameters(_: *ProceduralItem, _: Data) void {}
+			pub fn changeProceduralItemParametersFlat(_: *ProceduralItem, _: Data) void {}
+			pub fn changeProceduralItemParametersMult(_: *ProceduralItem, _: Data) void {}
 			pub fn changeBlockDamage(damage: f32, _: Block, _: Data) f32 {
 				return damage;
 			}
@@ -172,6 +176,8 @@ const Modifier = struct {
 
 		inline fn initFromModifierStruct(comptime ModifierStruct: type) VTable {
 			return comptime .{
+				.changeProceduralItemParametersFlat = @ptrCast(if (@hasDecl(ModifierStruct, "changeProceduralItemParametersFlat")) &ModifierStruct.changeProceduralItemParametersFlat else &VTable.Defaults.changeProceduralItemParametersFlat),
+				.changeProceduralItemParametersMult = @ptrCast(if (@hasDecl(ModifierStruct, "changeProceduralItemParametersMult")) &ModifierStruct.changeProceduralItemParametersMult else &VTable.Defaults.changeProceduralItemParametersMult),
 				.changeProceduralItemParameters = @ptrCast(if (@hasDecl(ModifierStruct, "changeProceduralItemParameters")) &ModifierStruct.changeProceduralItemParameters else &VTable.Defaults.changeProceduralItemParameters),
 				.changeBlockDamage = @ptrCast(if (@hasDecl(ModifierStruct, "changeBlockDamage")) &ModifierStruct.changeBlockDamage else &VTable.Defaults.changeBlockDamage),
 				.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
@@ -189,6 +195,14 @@ const Modifier = struct {
 			.vTable = a.vTable,
 			.restriction = undefined,
 		};
+	}
+
+	pub fn changeProceduralItemParametersFlat(self: Modifier, proceduralItem: *ProceduralItem) void {
+		self.vTable.changeProceduralItemParametersFlat(proceduralItem, self.data);
+	}
+
+	pub fn changeProceduralItemParametersMult(self: Modifier, proceduralItem: *ProceduralItem) void {
+		self.vTable.changeProceduralItemParametersMult(proceduralItem, self.data);
 	}
 
 	pub fn changeProceduralItemParameters(self: Modifier, proceduralItem: *ProceduralItem) void {
@@ -501,6 +515,12 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 			}
 		}.lessThan);
 		proceduralItem.modifiers = main.globalAllocator.dupe(Modifier, tempModifiers.items);
+		for (tempModifiers.items) |mod| {
+			mod.changeProceduralItemParametersFlat(proceduralItem);
+		}
+		for (tempModifiers.items) |mod| {
+			mod.changeProceduralItemParametersMult(proceduralItem);
+		}
 		for (tempModifiers.items) |mod| {
 			mod.changeProceduralItemParameters(proceduralItem);
 		}
