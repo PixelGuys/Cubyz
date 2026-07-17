@@ -51,26 +51,7 @@ layout(std430, binding = 10) buffer _lightData
 	uint lightData[];
 };
 
-struct ChunkData {
-	ivec4 position;
-	vec4 minPos;
-	vec4 maxPos;
-	int voxelSize;
-	uint lightStart;
-	uint vertexStartOpaque;
-	uint faceCountsByNormalOpaque[14];
-	uint vertexStartTransparent;
-	uint vertexCountTransparent;
-	uint visibilityState;
-	uint oldVisibilityState;
-	uint visibilityStateDepth;
-	uint oldVisibilityStateDepth;
-};
-
-layout(std430, binding = 6) buffer _chunks
-{
-	ChunkData chunks[];
-};
+#include "chunk_data.glsl"
 
 vec3 square(vec3 x) {
 	return x*x;

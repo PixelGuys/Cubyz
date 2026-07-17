@@ -72,11 +72,64 @@ const Shader = struct { // MARK: Shader
 		return result;
 	}
 
-	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shaderStage: c_uint) !void {
-		const source = main.files.cwd().read(main.stackAllocator, filename) catch |err| {
+	fn loadShaderFile(allocator: main.heap.NeverFailingAllocator, filename: []const u8, defines: []const u8) ![]const u8 {
+		var result: main.ListManaged(u8) = .init(allocator);
+		errdefer result.deinit();
+
+		const arena = main.stackAllocator.createArena();
+		defer main.stackAllocator.destroyArena(arena);
+
+		const includePaths: [3]?[]const u8 = .{
+			blk: {
+				const end = std.mem.findScalarLast(u8, filename, '/') orelse break :blk null;
+				break :blk filename[0..end];
+			},
+			blk: {
+				const end = std.mem.find(u8, filename, "/shaders/") orelse break :blk null;
+				break :blk std.fmt.allocPrint(arena.allocator, "{s}/shaders/include", .{filename[0..end]}) catch unreachable;
+			},
+			"assets/cubyz/shaders/include",
+		};
+
+		var source = main.files.cwd().read(arena, filename) catch |err| {
 			std.log.err("Couldn't read shader file: {s}", .{filename});
 			return err;
 		};
+
+		const versionLineEnd = if (std.mem.indexOfScalar(u8, source, '\n')) |len| len + 1 else 0;
+		result.appendSlice(source[0..versionLineEnd]);
+		result.appendSlice(defines);
+
+		var includeIterator = std.mem.splitSequence(u8, source[versionLineEnd..], "#include");
+		result.appendSlice(includeIterator.first());
+		while (includeIterator.next()) |next_| {
+			var next = next_;
+			while (next[0] == ' ') next = next[1..];
+			if (next[0] != '"') return error.MalformedInclude;
+			next = next[1..];
+			const includeEnd = std.mem.findScalar(u8, next, '"') orelse return error.MalformedInclude;
+			const includeFilename = next[0..includeEnd];
+			next = next[includeEnd + 1 ..];
+
+			for (includePaths) |includePath| {
+				const fullPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}", .{includePath orelse continue, includeFilename}) catch unreachable;
+				defer main.stackAllocator.free(fullPath);
+				if (main.files.cwd().hasFile(fullPath)) {
+					const code = try loadShaderFile(main.stackAllocator, fullPath, &.{});
+					defer main.stackAllocator.free(code);
+					result.appendSlice(code);
+					break;
+				}
+			}
+
+			result.appendSlice(next);
+		}
+
+		return result.toOwnedSlice();
+	}
+
+	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shaderStage: c_uint) !void {
+		const source = try loadShaderFile(main.stackAllocator, filename, defines);
 		defer main.stackAllocator.free(source);
 
 		const shader = c.glCreateShader(shaderStage);
@@ -152,10 +205,7 @@ const Shader = struct { // MARK: Shader
 	}
 
 	fn createShaderModule(path: []const u8, defines: []const u8, stage: ShaderStage) !c.VkShaderModule {
-		const source = main.files.cwd().read(main.stackAllocator, path) catch |err| {
-			std.log.err("Couldn't read shader file: {s}", .{path});
-			return err;
-		};
+		const source = try loadShaderFile(main.stackAllocator, path, defines);
 		defer main.stackAllocator.free(source);
 
 		const spirv = try compileToSpirV(main.stackAllocator, source, path, defines, stage);
