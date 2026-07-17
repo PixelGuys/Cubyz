@@ -24,7 +24,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:magma",
+			.block = "cubyz:magma/rough",
 			.chance = 0.055,
 			.width = 4,
 			.variation = 3,

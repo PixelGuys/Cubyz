@@ -1,0 +1,37 @@
+.{
+	.tags = .{.stone, .mineable, .hot},
+	.blockHealth = 15,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.emittedLight = 0x884928,
+	.onTouch = .{
+		.type = .hurt,
+		.dps = 0.5,
+		.damageType = .heat,
+	},
+	.item = .{
+		.material = .{
+			.durability = 55,
+			.massDamage = 1.0,
+			.hardnessDamage = 3.7,
+			.swingSpeed = 3.0,
+			.textureRoughness = 1.0,
+			.colors = .{
+				0xff6b231b, 0xff2c1b27, 0xff9b4522, 0xffcb6816, 0xff312834, 0xff4b3849,
+			},
+			.modifiers = .{
+				.{
+					.id = "good_at",
+					.strength = 0.2,
+					.tag = .stone,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 3,
+					},
+				},
+			},
+		},
+	},
+}

@@ -112,4 +112,5 @@
 	.{.old = "cold_grass_vegetation", .new = "grass/vegetation/cold"},
 	.{.old = "dry_grass_vegetation", .new = "grass/vegetation/dry"},
 	.{.old = "lush_grass_vegetation", .new = "grass/vegetation/lush"},
+	.{.old = "magma", .new = "magma/rough"},
 }
