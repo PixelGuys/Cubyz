@@ -18,7 +18,7 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	return .{
 		.multStrength = std.math.hypot(data1.multStrength, data2.multStrength),
 		.flatStrength = std.math.hypot(data1.flatStrength, data2.flatStrength),
-		};
+	};
 }
 
 pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Data) void {

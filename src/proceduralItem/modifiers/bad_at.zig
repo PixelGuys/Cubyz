@@ -21,7 +21,7 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 		.multStrength = 1.0 - 1.0/(1.0 + std.math.hypot(1.0/(1.0 - data1.multStrength) - 1.0, 1.0/(1.0 - data2.multStrength) - 1.0)),
 		.tag = data1.tag,
 		.flatStrength = 1.0 - 1.0/(1.0 + std.math.hypot(1.0/(1.0 - data1.flatStrength) - 1.0, 1.0/(1.0 - data2.flatStrength) - 1.0)),
-		};
+	};
 }
 
 pub fn changeBlockDamage(damage: f32, block: main.blocks.Block, data: Data) f32 {
