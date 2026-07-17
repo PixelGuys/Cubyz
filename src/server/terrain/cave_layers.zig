@@ -4,9 +4,13 @@ const main = @import("main");
 const ZonElement = main.ZonElement;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const terrain = main.server.terrain;
+const CaveBiomeMapFragment = terrain.CaveBiomeMap.CaveBiomeMapFragment;
 const Biome = terrain.biomes.Biome;
 const Assets = main.assets.Assets;
 const Tag = main.Tag;
+const marginDiv = 1024;
+const marginMulPositive: comptime_int = CaveBiomeMapFragment.rotateInverse(.{marginDiv, 0, marginDiv})[2];
+const marginMulNegative: comptime_int = CaveBiomeMapFragment.rotateInverse(.{0, marginDiv, 0})[2];
 
 pub const CaveLayer = struct {
 	minHeight: i32,
@@ -59,10 +63,11 @@ pub const CaveLayer = struct {
 		defer layerBiomes.deinit(main.stackAllocator);
 
 		for (biomes.items) |biome| {
-			if (biome.maxHeight > result.minHeight and
-				biome.minHeight < result.maxHeight)
+			if (biome.maxHeight > result.minHeight + CaveBiomeMapFragment.caveBiomeSize*marginMulNegative/marginDiv and
+				biome.minHeight < result.maxHeight + CaveBiomeMapFragment.caveBiomeSize*marginMulPositive/marginDiv)
 			{
 				layerBiomes.append(main.stackAllocator, biome);
+				std.log.debug("Layer {s} contains {s}", .{result.id, biome.id});
 			}
 		}
 		if (biomes.items.len == 0) {

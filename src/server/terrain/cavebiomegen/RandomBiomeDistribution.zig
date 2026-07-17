@@ -23,10 +23,6 @@ pub fn init(parameters: ZonElement) void {
 }
 
 pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) void {
-	const marginDiv = 1024;
-	const marginMulPositive: comptime_int = comptime CaveBiomeMapFragment.rotateInverse(.{marginDiv, 0, marginDiv})[2];
-	const marginMulNegative: comptime_int = comptime CaveBiomeMapFragment.rotateInverse(.{0, marginDiv, 0})[2];
-
 	var seed = random.initSeed3D(worldSeed, .{map.pos.wx, map.pos.wy, map.pos.wz});
 	var z: u31 = 0;
 	while (z < CaveBiomeMapFragment.caveBiomeMapSize) : (z += CaveBiomeMapFragment.caveBiomeSize) {
@@ -39,14 +35,9 @@ pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) void {
 					const offset: Vec3i = @splat(if (_map == 0) 0 else CaveBiomeMapFragment.caveBiomeSize/2);
 					const biomeWorldPos = CaveBiomeMapFragment.rotateInverse(pos + offset);
 					const caveLayer = terrain.cave_layers.getLayer(biomeWorldPos[2]);
-					while (true) {
-						const biome = caveLayer.layerBiomes.sample(&seed).*;
-						if (biome.minHeight < biomeWorldPos[2] + CaveBiomeMapFragment.caveBiomeSize*marginMulPositive/marginDiv and biome.maxHeight > biomeWorldPos[2] + CaveBiomeMapFragment.caveBiomeSize*marginMulNegative/marginDiv) {
-							const index = CaveBiomeMapFragment.getIndex(x, y, z);
-							map.biomeMap[index][_map] = biome;
-							break;
-						}
-					}
+					const biome = caveLayer.layerBiomes.sample(&seed).*;
+					const index = CaveBiomeMapFragment.getIndex(x, y, z);
+					map.biomeMap[index][_map] = biome;
 				}
 			}
 		}
