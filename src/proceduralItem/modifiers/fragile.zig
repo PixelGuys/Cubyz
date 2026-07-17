@@ -30,5 +30,10 @@ pub fn changeProceduralItemParametersMult(proceduralItem: *ProceduralItem, data:
 }
 
 pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
-	outString.print("#ccddff**Fragile**#808080 *Decreases durability by **{d:.0}%** and **-{d:.0}**", .{data.multStrength*100, data.flatStrength});
+	switch (data) {
+		data.multStrength != 0 and data.flatStrength != 0 => outString.print("#ccddff**Fragile**#808080 *Decreases durability by **{d:.0}%** and **-{d:.0}**", .{data.multStrength*100, data.flatStrength}),
+		data.multStrength != 0 and data.flatStrength == 0 => outString.print("#ccddff**Fragile**#808080 *Decreases durability by **{d:.0}%**", .{data.multStrength*100}),
+		data.multStrength == 0 and data.flatStrength != 0 => outString.print("#ccddff**Fragile**#808080 *Decreases durability by **-{d:.0}**", .{data.flatStrength}),
+		data.multStrength == 0 and data.flatStrength == 0 => outString.print("#ff0000**Fragile did not find any multStrength and Flatstrength**", .{}),
+	}
 }

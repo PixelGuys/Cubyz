@@ -31,4 +31,10 @@ pub fn changeProceduralItemParametersMult(proceduralItem: *ProceduralItem, data:
 
 pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
 	outString.print("#f84a00**Powerful**#808080 *Increases damage by **{d:.0}%** and **+{d:.0}**", .{data.multStrength*100, data.flatStrength});
+	switch (data) {
+		data.multStrength != 0 and data.flatStrength != 0 => outString.print("#f84a00**Powerful**#808080 *Increases damage by **{d:.0}%** and **+{d:.0}**", .{data.multStrength*100, data.flatStrength}),
+		data.multStrength != 0 and data.flatStrength == 0 => outString.print("#f84a00**Powerful**#808080 *Increases damage by **{d:.0}%**", .{data.multStrength*100}),
+		data.multStrength == 0 and data.flatStrength != 0 => outString.print("#f84a00**Powerful**#808080 *Increases damage by **+{d:.0}**", .{data.flatStrength}),
+		data.multStrength == 0 and data.flatStrength == 0 => outString.print("#ff0000**Powerful did not find any multStrength and Flatstrength**", .{}),
+	}
 }
