@@ -17,7 +17,7 @@
 			.modifiers = .{
 				.{
 					.id = "fragile",
-					.strength = 0.20,
+					.multStrength = 0.20,
 					.restriction = .{
 						.id = .not,
 						.child = .{
@@ -29,7 +29,7 @@
 				},
 				.{
 					.id = "good_at",
-					.strength = 0.5,
+					.multStrength = 0.5,
 					.tag = .sandstone,
 					.restriction = .{
 						.id = .encased,

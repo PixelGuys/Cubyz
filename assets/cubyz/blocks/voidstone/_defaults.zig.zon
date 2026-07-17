@@ -18,11 +18,11 @@
 			.modifiers = .{
 				.{
 					.id = "durable",
-					.strength = 0.1,
+					.multStrength = 0.1,
 				},
 				.{
 					.id = "good_at",
-					.strength = 0.5,
+					.multStrength = 0.5,
 					.tag = .voidstone,
 					.restriction = .{
 						.id = .encased,

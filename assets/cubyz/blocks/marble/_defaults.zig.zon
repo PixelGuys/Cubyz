@@ -17,7 +17,7 @@
 			.modifiers = .{
 				.{
 					.id = "good_at",
-					.strength = 0.5,
+					.multStrength = 0.5,
 					.tag = .marble,
 					.restriction = .{
 						.id = .encased,

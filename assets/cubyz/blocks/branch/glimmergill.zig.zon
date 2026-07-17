@@ -20,7 +20,7 @@
 			.modifiers = .{
 				.{
 					.id = "durable",
-					.strength = 0.50,
+					.multStrength = 0.50,
 				},
 			},
 		},
