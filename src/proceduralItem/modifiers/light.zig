@@ -30,11 +30,8 @@ pub fn changeProceduralItemParametersMult(proceduralItem: *ProceduralItem, data:
 }
 
 pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
-	outString.print("#9fffde**Light**#808080 *Increases swing speed by **{d:.0}%** and **+{d:.0}**", .{data.multStrength*100, data.flatStrength});
-	switch (data) {
-		data.multStrength != 0 and data.flatStrength != 0 => outString.print("#9fffde**Light**#808080 *Increases swing speed by **{d:.0}%** and **+{d:.0}**", .{data.multStrength*100, data.flatStrength}),
-		data.multStrength != 0 and data.flatStrength == 0 => outString.print("#9fffde**Light**#808080 *Increases swing speed by **{d:.0}%**", .{data.multStrength*100}),
-		data.multStrength == 0 and data.flatStrength != 0 => outString.print("#9fffde**Light**#808080 *Increases swing speed by **+{d:.0}**", .{data.flatStrength}),
-		data.multStrength == 0 and data.flatStrength == 0 => outString.print("#ff0000**Light did not find any multStrength and Flatstrength**", .{}),
-	}
+	if (data.multStrength != 0 and data.flatStrength != 0) outString.print("#9fffde**Light**#808080 *Increases swing speed by **{d:.0}%** and **+{d:.0}**", .{data.multStrength*100, data.flatStrength});
+	if (data.multStrength != 0 and data.flatStrength == 0) outString.print("#9fffde**Light**#808080 *Increases swing speed by **{d:.0}%**", .{data.multStrength*100});
+	if (data.multStrength == 0 and data.flatStrength != 0) outString.print("#9fffde**Light**#808080 *Increases swing speed by **+{d:.0}**", .{data.flatStrength});
+	if (data.multStrength == 0 and data.flatStrength == 0) outString.print("#ff0000**Light did not find any multStrength and Flatstrength**", .{});
 }

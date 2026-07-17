@@ -32,10 +32,8 @@ pub fn changeBlockDamage(damage: f32, block: main.blocks.Block, data: Data) f32 
 }
 
 pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
-	switch (data) {
-		data.multStrength != 0 and data.flatStrength != 0 => outString.print("#a00050**Bad at**#808080 *Decreases damage by **{d:.0}%** and **-{d:.0}** on \n***#a00050{s}#808080*** blocks", .{data.multStrength*100, data.flatStrength, data.tag.getName()}),
-		data.multStrength != 0 and data.flatStrength == 0 => outString.print("#a00050**Bad at**#808080 *Decreases damage by **{d:.0}%** on \n***#a00050{s}#808080*** blocks", .{data.multStrength*100, data.tag.getName()}),
-		data.multStrength == 0 and data.flatStrength != 0 => outString.print("#a00050**Bad at**#808080 *Decreases damage by **-{d:.0}** on \n***#a00050{s}#808080*** blocks", .{data.flatStrength, data.tag.getName()}),
-		data.multStrength == 0 and data.flatStrength == 0 => outString.print("#ff0000**Bad at did not find any multStrength and Flatstrength**", .{}),
-	}
+	if (data.multStrength != 0 and data.flatStrength != 0) outString.print("#a00050**Bad at**#808080 *Decreases damage by **{d:.0}%** and **-{d:.0}** on \n***#a00050{s}#808080*** blocks", .{data.multStrength*100, data.flatStrength, data.tag.getName()});
+	if (data.multStrength != 0 and data.flatStrength == 0) outString.print("#a00050**Bad at**#808080 *Decreases damage by **{d:.0}%** on \n***#a00050{s}#808080*** blocks", .{data.multStrength*100, data.tag.getName()});
+	if (data.multStrength == 0 and data.flatStrength != 0) outString.print("#a00050**Bad at**#808080 *Decreases damage by **-{d:.0}** on \n***#a00050{s}#808080*** blocks", .{data.flatStrength, data.tag.getName()});
+	if (data.multStrength == 0 and data.flatStrength == 0) outString.print("#ff0000**Bad at did not find any multStrength and Flatstrength**", .{});
 }
