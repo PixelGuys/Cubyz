@@ -18,7 +18,6 @@ pub const CaveLayer = struct {
 	tags: []Tag,
 	biomes: main.utils.AliasTable(*const Biome),
 	id: []const u8,
-	allocator: NeverFailingAllocator,
 
 	pub fn init(id: []const u8, zon: ZonElement) ?CaveLayer {
 		var result: CaveLayer = undefined;
@@ -45,18 +44,6 @@ pub const CaveLayer = struct {
 			}
 		}
 		return result;
-	}
-	pub fn clone(self: CaveLayer) CaveLayer {
-		var result = self;
-		result.id = self.id;
-		result.depthHint = self.depthHint;
-		result.layerHeight = self.layerHeight;
-		result.minHeight = self.minHeight;
-		result.maxHeight = self.maxHeight;
-		return result;
-	}
-	pub fn deinit(self: CaveLayer) void {
-		self.biomes.deinit(self.allocator);
 	}
 };
 
@@ -118,7 +105,7 @@ pub fn registerCaveLayers(caveLayerMap: *Assets.ZonHashMap) !void {
 							}
 						}
 						if (!hasSplit) {
-							caveLayers.append(main.worldArena, caveLayers.items[i].clone());
+							caveLayers.append(main.worldArena, caveLayers.items[i]);
 							splitHeights.append(main.stackAllocator, biome.maxHeight);
 						}
 					}
@@ -130,7 +117,7 @@ pub fn registerCaveLayers(caveLayerMap: *Assets.ZonHashMap) !void {
 							}
 						}
 						if (!hasSplit) {
-							caveLayers.append(main.worldArena, caveLayers.items[i].clone());
+							caveLayers.append(main.worldArena, caveLayers.items[i]);
 							splitHeights.append(main.stackAllocator, biome.minHeight);
 						}
 					}
@@ -208,19 +195,6 @@ pub fn getLayer(height: i32) CaveLayer {
 		} else return caveLayers.items[centerIndex];
 	}
 	return caveLayers.items[minIndex];
-}
-
-pub fn getLayerGuess(height: i32, i: *usize) CaveLayer {
-	if (height < caveLayers.items[i.*].minHeight) {
-		while (i.* > 0 and height < caveLayers.items[i.*].minHeight) {
-			i.* -= 1;
-		}
-	} else {
-		while (i.* + 1 < caveLayers.items.len and height >= caveLayers.items[i.*].maxHeight) {
-			i.* += 1;
-		}
-	}
-	return caveLayers.items[i.*];
 }
 
 pub fn reset() void {
