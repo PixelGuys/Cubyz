@@ -11,6 +11,8 @@ layout(location = 7) flat in int textureIndex;
 layout(location = 8) flat in int isBackFace;
 layout(location = 9) flat in float distanceForLodCheck;
 layout(location = 10) flat in int opaqueInLod;
+layout(location = 11) flat in mat4 worldToQuad;
+layout(location = 15) flat in mat3 uvTransform;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -63,37 +65,17 @@ vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012
 
 float shadowCalculation() {
 	if (dot(lightDir, normal) > 0.0) return 1.0;
-	vec3 dx = dFdx(shadowPos);
-	vec3 dy = dFdy(shadowPos);
 
-	vec2 duv_dx = dFdx(uv);
-	vec2 duv_dy = dFdy(uv);
+	vec3 shadowPosUV = uvTransform * (worldToQuad * lightViewMatrix * vec4(shadowPos, 1.0)).xyz;
+	shadowPosUV.xy = ceil(shadowPosUV.xy * 16.0) / 16.0;
+	vec4 shadowPosSnapped = inverse(worldToQuad) * vec4(inverse(uvTransform) * shadowPosUV, 1.0);
 
-	vec2 texSize = vec2(16.0);
-	vec2 texelFrac = fract(uv * texSize);
-	vec2 texelOffset = (0.5 - texelFrac) / texSize;
-
-	mat2 uvGrad = mat2(duv_dx, duv_dy);
-
-	mat2 invUvGrad = inverse(uvGrad);
-
-	vec2 screenOffset = invUvGrad * texelOffset;
-
-	vec3 offset =
-		dx * screenOffset.x +
-		dy * screenOffset.y;
-
-	vec3 snappedShadowPos = shadowPos + offset;
-
-	vec4 lightPos =
-		lightProjectionMatrix *
-		lightViewMatrix *
-		vec4(snappedShadowPos, 1.0);
+	vec4 lightPos = lightProjectionMatrix * shadowPosSnapped;
 	vec3 projCoords = lightPos.xyz;
 	projCoords = projCoords * 0.5 + 0.5;
 	float closestDepth = texture(shadowMap, projCoords.xy).r;
 	float currentDepth = projCoords.z;
-	currentDepth += 0.00018;
+	currentDepth += 0.0001;
 	float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
 	if(projCoords.z > 1.0) {
 		shadow = 0.0;

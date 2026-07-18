@@ -11,6 +11,8 @@ layout(location = 7) flat out int textureIndex;
 layout(location = 8) flat out int isBackFace;
 layout(location = 9) flat out float distanceForLodCheck;
 layout(location = 10) flat out int opaqueInLod;
+layout(location = 11) flat out mat4 worldToQuad;
+layout(location = 15) flat out mat3 uvTransform;
 
 layout(location = 0) uniform vec3 ambientLight;
 layout(location = 1) uniform mat4 projectionMatrix;
@@ -107,5 +109,33 @@ void main() {
 	uv = quads[quadIndex].cornerUV[vertexID]*voxelSize;
 	opaqueInLod = quads[quadIndex].opaqueInLod;
 
-	shadowPos = position + normal * 0.04;
+	shadowPos = position + normal * 0.03;
+
+	vec3 p0 = vec3(quads[quadIndex].corners[0][0], quads[quadIndex].corners[0][1], quads[quadIndex].corners[0][2]);
+	vec3 p1 = vec3(quads[quadIndex].corners[1][0], quads[quadIndex].corners[1][1], quads[quadIndex].corners[1][2]);
+	vec3 p3 = vec3(quads[quadIndex].corners[3][0], quads[quadIndex].corners[3][1], quads[quadIndex].corners[3][2]);
+	
+	vec2 uv0 = vec2(quads[quadIndex].cornerUV[0][0], quads[quadIndex].cornerUV[0][1]);
+	vec2 uv1 = vec2(quads[quadIndex].cornerUV[1][0], quads[quadIndex].cornerUV[1][1]);
+	vec2 uv3 = vec2(quads[quadIndex].cornerUV[3][0], quads[quadIndex].cornerUV[3][1]);
+	
+	vec3 u = p1 - p0;
+	vec3 v = p3 - p0;
+	mat3 invBasis = inverse(mat3(u, v, cross(u,v)));
+
+	vec2 du = uv1 - uv0;
+	vec2 dv = uv3 - uv0;
+
+	uvTransform = mat3(
+		vec3(du, 0.0),
+		vec3(dv, 0.0),
+		vec3(uv0, 1.0)
+	);
+
+	worldToQuad = mat4(
+		vec4(invBasis[0], 0),
+		vec4(invBasis[1], 0),
+		vec4(invBasis[2], 0),
+		vec4(-(invBasis * p0),1)
+	);
 }
