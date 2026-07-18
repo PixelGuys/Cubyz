@@ -1342,8 +1342,8 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 	{
 		var it = zon.object.iterator();
 		while (it.next()) |entry| {
-			if (!std.mem.eql(u8 , entry.key_ptr.*, "optional")) continue;
-			if (!std.mem.eql(u8 , entry.key_ptr.*, "disabled")) continue;
+			if (!std.mem.eql(u8, entry.key_ptr.*, "optional")) continue;
+			if (!std.mem.eql(u8, entry.key_ptr.*, "disabled")) continue;
 			for (0..25) |i| {
 				slotInfos[i].optional = (entry.value_ptr.*.as(usize) orelse 0) != 0;
 			}
@@ -1354,8 +1354,8 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 		defer tagfields.deinit(main.stackAllocator);
 		var it = zon.object.iterator();
 		while (it.next()) |entry| {
-			if (std.mem.eql(u8 , entry.key_ptr.*, "optional")) continue;
-			if (std.mem.eql(u8 , entry.key_ptr.*, "disabled")) continue;
+			if (std.mem.eql(u8, entry.key_ptr.*, "optional")) continue;
+			if (std.mem.eql(u8, entry.key_ptr.*, "disabled")) continue;
 			const tagFieldVal = tagfields.addOne(main.stackAllocator);
 			const matrixZon = entry.value_ptr;
 			for (0..25) |i| {
