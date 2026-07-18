@@ -105,12 +105,12 @@ pub fn init() void {
 		.{.depthTest = true, .depthWrite = false},
 		.{.attachments = &.{.{
 			.enabled = false,
-			.srcColorBlendFactor = undefined,
-			.dstColorBlendFactor = undefined,
-			.colorBlendOp = undefined,
-			.srcAlphaBlendFactor = undefined,
-			.dstAlphaBlendFactor = undefined,
-			.alphaBlendOp = undefined,
+			.srcColorBlendFactor = .zero,
+			.dstColorBlendFactor = .zero,
+			.colorBlendOp = .add,
+			.srcAlphaBlendFactor = .zero,
+			.dstAlphaBlendFactor = .zero,
+			.alphaBlendOp = .add,
 			.colorWriteMask = .none,
 		}}},
 	);

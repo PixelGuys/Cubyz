@@ -129,7 +129,9 @@ const Shader = struct { // MARK: Shader
 	}
 
 	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shaderStage: c_uint) !void {
-		const source = try loadShaderFile(main.stackAllocator, filename, defines);
+		const extraDefines = std.mem.concat(main.stackAllocator.allocator, u8, &.{defines, "#define gl_VertexIndex gl_VertexID\n"}) catch unreachable;
+		defer main.stackAllocator.free(extraDefines);
+		const source = try loadShaderFile(main.stackAllocator, filename, extraDefines);
 		defer main.stackAllocator.free(source);
 
 		const shader = c.glCreateShader(shaderStage);

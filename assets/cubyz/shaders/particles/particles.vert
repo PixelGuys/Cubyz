@@ -50,8 +50,8 @@ vec3 square(vec3 x) {
 }
 
 void main() {
-	int particleID = gl_VertexID >> 2;
-	int vertexID = gl_VertexID & 3;
+	int particleID = gl_VertexIndex >> 2;
+	int vertexID = gl_VertexIndex & 3;
 	ParticleData particle = particleData[particleID];
 	ParticleTypeData particleType = particleTypeData[particle.type];
 

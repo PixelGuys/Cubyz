@@ -51,8 +51,8 @@ vec3 square(vec3 x) {
 }
 
 void main() {
-	int faceID = gl_VertexID >> 2;
-	int vertexID = gl_VertexID & 3;
+	int faceID = gl_VertexIndex >> 2;
+	int vertexID = gl_VertexIndex & 3;
 	int chunkID = gl_BaseInstance;
 	int voxelSize = chunks[chunkID].voxelSize;
 	int encodedPositionAndLightIndex = faceData[faceID].encodedPositionAndLightIndex;
