@@ -990,12 +990,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 			user.gamemode = .init(self.settings.defaultGamemode);
 		} else {
-			// load old permissions from zon.
-			if (main.entity.components.@"cubyz:permissions".server.get(player.id) == null) {
-				main.entity.components.@"cubyz:permissions".server.loadEmpty(player.id);
-			}
-			main.entity.components.@"cubyz:permissions".server.getPermissions(player.id).?.fromZon(playerData);
-
 			user.gamemode = .init(std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode") orelse @tagName(self.settings.defaultGamemode)) orelse self.settings.defaultGamemode);
 		}
 		user.inventory = loadPlayerInventory(main.game.Player.inventorySize, playerData.get([]const u8, "playerInventory") orelse "", .{.playerInventory = user.id}, path);
@@ -1045,16 +1039,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		if (playerZon != .object) {
 			playerZon.deinit(main.stackAllocator);
 			playerZon = ZonElement.initObject(main.stackAllocator);
-		}
-
-		// remove old permission data
-		if (playerZon.object.fetchRemove("permissionWhitelist")) |entry| {
-			main.stackAllocator.free(entry.key);
-			entry.value.deinit(main.stackAllocator);
-		}
-		if (playerZon.object.fetchRemove("permissionBlacklist")) |entry| {
-			main.stackAllocator.free(entry.key);
-			entry.value.deinit(main.stackAllocator);
 		}
 
 		playerZon.put("name", user.name);

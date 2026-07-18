@@ -298,6 +298,11 @@ pub const User = struct { // MARK: User
 		}
 		if (main.entity.components.@"cubyz:permissions".server.get(self.id) == null) {
 			main.entity.components.@"cubyz:permissions".server.loadEmpty(self.id);
+
+			main.entity.components.@"cubyz:permissions".server.getPermissions(self.id).?.addPermission(.white, "/command/avatar");
+			if (self.isLocal) {
+				main.entity.components.@"cubyz:permissions".server.getPermissions(self.id).?.addPermission(.white, "/");
+			}
 		}
 
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
@@ -888,11 +893,6 @@ pub fn connectInternal(user: *User) void {
 	main.network.protocols.entity.send(user.conn, initialList);
 	main.stackAllocator.free(initialList);
 	sendMessage("{s}§#ffff00 joined", .{user.name});
-
-	main.entity.components.@"cubyz:permissions".server.getPermissions(user.id).?.addPermission(.white, "/command/avatar");
-	if (user.isLocal) {
-		main.entity.components.@"cubyz:permissions".server.getPermissions(user.id).?.addPermission(.white, "/");
-	}
 
 	userMutex.lock();
 	users.append(user);
