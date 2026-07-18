@@ -271,6 +271,13 @@ pub fn deleteGroup(allocator: NeverFailingAllocator, name: []const u8) bool {
 	sync.threadContext.assertCorrectContext(.server);
 	const group = groups.fetchRemove(name) orelse return false;
 
+	const users = server.getUserListAndIncreaseRefCount(main.globalAllocator);
+	for (users) |user| {
+		const kv = user.permissionGroups.fetchRemove(name) orelse continue;
+		main.globalAllocator.free(kv.key);
+	}
+	server.freeUserListAndDecreaseRefCount(main.globalAllocator, users);
+
 	const path = std.fmt.allocPrint(allocator.allocator, "saves/{s}/groups/{d}.zon", .{main.server.world.?.path, group.value.id}) catch unreachable;
 	defer allocator.free(path);
 	main.files.cubyzDir().deleteFile(path) catch |err| {
