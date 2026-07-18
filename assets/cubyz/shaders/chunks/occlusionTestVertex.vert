@@ -1,25 +1,10 @@
 #version 460
 
+#include "chunk_data.glsl"
+#include "frame_uniforms.glsl"
+
 layout(location = 0) flat out uint chunkID;
 
-struct ChunkData {
-	ivec4 position;
-	vec4 minPos;
-	vec4 maxPos;
-	int voxelSize;
-	uint lightStart;
-	uint vertexStartOpaque;
-	uint faceCountsByNormalOpaque[14];
-	uint vertexStartTransparent;
-	uint vertexCountTransparent;
-	uint visibilityState;
-	uint oldVisibilityState;
-};
-
-layout(std430, binding = 6) buffer _chunks
-{
-	ChunkData chunks[];
-};
 layout(std430, binding = 9) buffer _chunkIDs
 {
 	uint chunkIDs[];
@@ -57,14 +42,9 @@ vec3 vertexBuffer[24] = vec3[24](
 	vec3(0, 0, 1)
 );
 
-layout(location = 0) uniform mat4 projectionMatrix;
-layout(location = 1) uniform mat4 viewMatrix;
-layout(location = 2) uniform ivec3 playerPositionInteger;
-layout(location = 3) uniform vec3 playerPositionFraction;
-
 void main() {
-	uint chunkIDID = uint(gl_VertexID)/24u;
-	uint vertexID = uint(gl_VertexID)%24u;
+	uint chunkIDID = uint(gl_VertexIndex)/24u;
+	uint vertexID = uint(gl_VertexIndex)%24u;
 	chunkID = chunkIDs[chunkIDID];
 	vec3 modelPosition = vec3(chunks[chunkID].position.xyz - playerPositionInteger) - playerPositionFraction;
 	vec3 margin = vec3(1); // Avoid near plane clipping when the player is at the edge of chunks
