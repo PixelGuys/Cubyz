@@ -4,11 +4,13 @@
 		.prevention = .{.log, .branch},
 		.drops = .{
 			.{.chance = 0.01, .items = .{"cubyz:apple"}},
+			.{.chance = 0.001, .items = .{"cubyz:sapling/oak"}},
 		},
 	},
 	.drops = .{
 		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
 		.{.chance = 0.01, .items = .{"cubyz:apple"}, .forbiddenToolTags = .{.cuttable}},
+		.{.chance = 0.001, .items = .{"cubyz:sapling/oak"}, .forbiddenToolTags = .{.cuttable}},
 	},
 	.rotation = "cubyz:decayable",
 	.tags = .{.cuttable, .sliceable, .leaf},

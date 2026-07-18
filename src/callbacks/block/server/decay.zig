@@ -133,7 +133,7 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 			if (self.foundWayToLog(world, leaf, wx, wy, wz)) return .ignored;
 
 			// no, there is no log in proximity
-			if (world.cmpxchgBlock(wx, wy, wz, leaf, self.decayReplacement) == null) {
+			if (world.cmpxchgBlock(wx, wy, wz, leaf, self.decayReplacement, false) == null) {
 				for (self.blockDrops) |drop| {
 					if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
 						for (drop.items) |stack| {
