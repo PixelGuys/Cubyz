@@ -47,8 +47,8 @@ layout(location = 2) uniform ivec3 playerPositionInteger;
 layout(location = 3) uniform vec3 playerPositionFraction;
 
 void main() {
-	uint chunkIDID = uint(gl_VertexID)/24u;
-	uint vertexID = uint(gl_VertexID)%24u;
+	uint chunkIDID = uint(gl_VertexIndex)/24u;
+	uint vertexID = uint(gl_VertexIndex)%24u;
 	chunkID = chunkIDs[chunkIDID];
 	vec3 modelPosition = vec3(chunks[chunkID].position.xyz - playerPositionInteger) - playerPositionFraction;
 	vec3 margin = vec3(1); // Avoid near plane clipping when the player is at the edge of chunks
