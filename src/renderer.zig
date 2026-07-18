@@ -243,9 +243,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
-	main.entity.client.render(game.projectionMatrix, ambientLight, playerPos, main.lastDeltaTime.load(.monotonic));
+	main.entity.client.render(ambientLight, playerPos, main.lastDeltaTime.load(.monotonic));
 
-	itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos);
+	itemdrop.ItemDropRenderer.renderItemDrops(ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.block_entity_rendering);
@@ -262,7 +262,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glActiveTexture(c.GL_TEXTURE1);
 	blocks.meshes.emissionTextureArray.bind();
 
-	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
+	MeshSelection.render(playerPos);
 
 	// Render transparent chunk meshes:
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE5);
@@ -329,7 +329,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-	if (!main.gui.hideGui) main.entity.client.renderHud(game.projectionMatrix, ambientLight, playerPos);
+	if (!main.gui.hideGui) main.entity.client.renderHud(ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
 }
 
@@ -476,10 +476,6 @@ const Bloom = struct { // MARK: Bloom
 
 pub const MenuBackGround = struct {
 	var pipeline: graphics.Pipeline = undefined;
-	var uniforms: struct {
-		viewMatrix: c_int,
-		projectionMatrix: c_int,
-	} = undefined;
 
 	var vao: graphics.VertexArray = undefined;
 	var texture: graphics.Texture = undefined;
@@ -508,7 +504,7 @@ pub const MenuBackGround = struct {
 			"assets/cubyz/shaders/background/vertex.vert",
 			"assets/cubyz/shaders/background/fragment.frag",
 			"",
-			&uniforms,
+			null,
 			MenuBackgroundVertex,
 			&.{},
 			.{.cullMode = .none},
@@ -603,9 +599,13 @@ pub const MenuBackGround = struct {
 		// Use a simple rotation around the z axis, with a steadily increasing angle.
 		angle += @as(f32, @floatCast(deltaTime))/20.0;
 		const viewMatrix = Mat4f.rotationZ(angle);
+		main.graphics.frame_uniforms.uploadNewFrame(.{
+			.playerPositionInteger = @splat(0),
+			.playerPositionFraction = @splat(0),
+			.projectionMatrix = game.projectionMatrix.toGl(),
+			.viewMatrix = viewMatrix.toGl(),
+		});
 		pipeline.bind(null);
-		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
-		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
 
 		texture.bindTo(0);
 
@@ -1141,11 +1141,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		mesh_storage.updateBlock(.{.pos = pos, .newBlock = newBlock, .blockEntityData = &.{}});
 	}
 
-	pub fn drawCube(projectionMatrix: Mat4f, viewMatrix: Mat4f, relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
+	pub fn drawCube(relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
 		pipeline.bind(null);
-
-		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projectionMatrix));
-		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 
 		c.glUniform3f(
 			uniforms.modelPosition,
@@ -1161,16 +1158,16 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		c.glDrawElements(c.GL_TRIANGLES, 12*6*6, c.GL_UNSIGNED_INT, null);
 	}
 
-	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
+	pub fn render(playerPos: Vec3d) void {
 		if (main.gui.hideGui) return;
 		if (selectedBlockPos) |_selectedBlockPos| {
-			drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, selectionMin, selectionMax);
+			drawCube(@as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, selectionMin, selectionMax);
 		}
 		if (game.Player.selectionPosition1) |pos1| {
 			if (game.Player.selectionPosition2) |pos2| {
 				const bottomLeft: Vec3i = @min(pos1, pos2);
 				const topRight: Vec3i = @max(pos1, pos2);
-				drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(bottomLeft)) - playerPos, .{0, 0, 0}, @floatFromInt(topRight - bottomLeft + Vec3i{1, 1, 1}));
+				drawCube(@as(Vec3d, @floatFromInt(bottomLeft)) - playerPos, .{0, 0, 0}, @floatFromInt(topRight - bottomLeft + Vec3i{1, 1, 1}));
 			}
 		}
 	}
