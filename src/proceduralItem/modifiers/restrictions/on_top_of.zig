@@ -29,6 +29,6 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const OnT
 	return result;
 }
 
-pub fn printTooltip(self: *const OnTopOf, outString: *main.List(u8)) void {
+pub fn printTooltip(self: *const OnTopOf, outString: *main.ListManaged(u8)) void {
 	outString.print("on top of .{s}", .{self.tag.getName()});
 }

@@ -1322,16 +1322,16 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 	}
 	var tagfields: main.List(TagField) = .empty;
 	defer tagfields.deinit(main.stackAllocator);
-	for (zon.getChild("tagfields").toSlice()) |paramZon| {
+	var it = zon.object.iterator();
+	while (it.next()) |entry| {
+		if (std.mem.eql(u8 , entry.key_ptr.*, "optional")) continue;
+		if (std.mem.eql(u8 , entry.key_ptr.*, "disabled")) continue;
 		const tagFieldVal = tagfields.addOne(main.stackAllocator);
-		const matrixZon = paramZon.getChild("matrix");
+		const matrixZon = entry;
 		for (0..25) |i| {
 			tagFieldVal.hasTagMatrix[i] = (matrixZon.getAtIndex(usize, i, 0) != 0);
 		}
-		tagFieldVal.tagType = main.Tag.find(paramZon.get(?[]const u8, "tag", null) orelse blk: {
-			std.log.err("Couldn't find tagfield's tag.", .{});
-			break :blk "not specified";
-		});
+		tagFieldVal.tagType = main.Tag.find(entry.key_ptr);
 	}
 	var parameterMatrices: main.List(PropertyMatrix) = .empty;
 	defer parameterMatrices.deinit(main.stackAllocator);
