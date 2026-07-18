@@ -55,7 +55,13 @@ fn register(id: []const u8, zon: ZonElement) void {
 	caveLayers.append(main.worldArena, caveLayer);
 }
 
-fn sortAndFitLayers() void {
+pub fn registerCaveLayers(caveLayerMap: *Assets.ZonHashMap) !void {
+	//Make cave layers
+	var iterator = caveLayerMap.iterator();
+	while (iterator.next()) |entry| {
+		register(entry.key_ptr.*, entry.value_ptr.*);
+	}
+
 	std.mem.sort(CaveLayer, caveLayers.items, {}, lessThan);
 
 	var i: usize = 0;
@@ -75,18 +81,19 @@ fn sortAndFitLayers() void {
 		height -= caveLayers.items[i].layerHeight;
 		caveLayers.items[i].minHeight = height;
 	}
+
+	splitCaveLayers();
+
+	std.debug.assert(!finishedLoading);
+	finishedLoading = true;
+
+	std.log.debug("Registered cave layers:", .{});
+	for (caveLayers.items) |caveLayer| {
+		std.log.debug("{s}: {} to {}", .{caveLayer.id, caveLayer.minHeight, caveLayer.maxHeight});
+	}
 }
 
-pub fn registerCaveLayers(caveLayerMap: *Assets.ZonHashMap) !void {
-	//Make cave layers
-	var iterator = caveLayerMap.iterator();
-	while (iterator.next()) |entry| {
-		register(entry.key_ptr.*, entry.value_ptr.*);
-	}
-
-	//Adjust heights
-	sortAndFitLayers();
-
+pub fn splitCaveLayers() void {
 	//Remember where we split
 	var splitHeights: main.List(i32) = .empty;
 	defer splitHeights.deinit(main.stackAllocator);
@@ -161,14 +168,6 @@ pub fn registerCaveLayers(caveLayerMap: *Assets.ZonHashMap) !void {
 		}
 		std.debug.assert(biomes.items.len > 0);
 		caveLayers.items[i].biomes = .init(main.worldArena, main.worldArena.dupe(*const Biome, biomes.items));
-	}
-
-	std.debug.assert(!finishedLoading);
-	finishedLoading = true;
-
-	std.log.debug("Registered cave layers:", .{});
-	for (caveLayers.items) |caveLayer| {
-		std.log.debug("{s}: {} to {}", .{caveLayer.id, caveLayer.minHeight, caveLayer.maxHeight});
 	}
 }
 
