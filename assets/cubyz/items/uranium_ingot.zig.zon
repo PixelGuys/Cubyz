@@ -13,7 +13,7 @@
 		.modifiers = .{
 			.{
 				.id = "powerful",
-				.flatStrength = 5,
+				.flatStrength = 2,
 			},
 		},
 	},
