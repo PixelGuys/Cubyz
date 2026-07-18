@@ -189,10 +189,7 @@ pub fn registerCaveLayers(caveLayerMap: *Assets.ZonHashMap) !void {
 		var layerStart = baseLayer.minHeight;
 		i = 0;
 		while (i <= heights.items.len) : (i += 1) {
-			const layerEnd = if (i < heights.items.len)
-				heights.items[i]
-			else
-				baseLayer.maxHeight;
+			const layerEnd = if (i < heights.items.len) heights.items[i] else baseLayer.maxHeight;
 
 			if (layerEnd <= layerStart) continue;
 
