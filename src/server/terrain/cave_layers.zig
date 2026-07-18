@@ -15,9 +15,8 @@ pub const CaveLayer = struct {
 	layerHeight: i32,
 	depthHint: i32,
 	caveDensity: f32,
-
+	tags: []Tag,
 	biomes: main.utils.AliasTable(*const Biome),
-	layerBiomes: main.utils.AliasTable(*const Biome),
 	id: []const u8,
 	allocator: NeverFailingAllocator,
 
@@ -34,65 +33,30 @@ pub const CaveLayer = struct {
 		result.caveDensity = zon.get(f32, "caveDensity") orelse 1.0/32.0;
 		result.id = main.worldArena.dupe(u8, id);
 
-		const tags = Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("tags"));
-		defer main.stackAllocator.free(tags);
-		if (tags.len == 0) {
+		result.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags"));
+		if (result.tags.len == 0) {
 			std.log.err("Cave layer with id {s} is missing tags. Skipping", .{id});
 			return null;
 		}
-		for (tags) |tag| {
+		for (result.tags) |tag| {
 			if (!std.mem.endsWith(u8, tag.getName(), "_layer")) {
 				std.log.err("Cave layer tags must end with '_layer'. Tag {s} defined in cave layer with id {s} does not. Skipping", .{tag.getName(), id});
 				return null;
 			}
 		}
-		var biomes: main.List(*const Biome) = .empty;
-		defer biomes.deinit(main.stackAllocator);
-		outer: for (terrain.biomes.getCaveBiomes()) |*biome| {
-			for (tags) |tag| {
-				if (biome.hasTag(tag)) {
-					biomes.append(main.stackAllocator, biome);
-					continue :outer;
-				}
-			}
-		}
-		if (biomes.items.len == 0) {
-			std.log.err("Cave layer with id {s} has no biomes that match the provided tags. Skipping", .{id});
-			return null;
-		}
-		for (biomes.items) |biome| {
-			if (biome.minHeight == std.math.minInt(i32) and biome.maxHeight == std.math.maxInt(i32) and biome.chance != 0) break;
-		} else {
-			std.log.err("Cave layer with id {s} has no biomes with unbounded height. At least one biome with unbounded height must exist to ensure compatibility with other addons. Skipping", .{id});
-			return null;
-		}
-
-		result.biomes = .init(main.worldArena, main.worldArena.dupe(*const Biome, biomes.items));
-		result.allocator = main.worldArena;
 		return result;
 	}
 	pub fn clone(self: CaveLayer) CaveLayer {
 		var result = self;
-
-		result.biomes = .init(
-			main.globalAllocator,
-			main.globalAllocator.dupe(*const Biome, self.biomes.items),
-		);
-
-		result.layerBiomes = .init(
-			main.globalAllocator,
-			main.globalAllocator.dupe(*const Biome, self.layerBiomes.items),
-		);
-
 		result.id = self.id;
-		result.allocator = main.globalAllocator;
 		result.depthHint = self.depthHint;
-
+		result.layerHeight = self.layerHeight;
+		result.minHeight = self.minHeight;
+		result.maxHeight = self.maxHeight;
 		return result;
 	}
 	pub fn deinit(self: CaveLayer) void {
 		self.biomes.deinit(self.allocator);
-		self.layerBiomes.deinit(self.allocator);
 	}
 };
 
@@ -127,102 +91,93 @@ fn sortAndFitLayers() void {
 }
 
 pub fn registerCaveLayers(caveLayerMap: *Assets.ZonHashMap) !void {
+	//Make cave layers
 	var iterator = caveLayerMap.iterator();
 	while (iterator.next()) |entry| {
 		register(entry.key_ptr.*, entry.value_ptr.*);
 	}
 
+	//Adjust heights
 	sortAndFitLayers();
 
-	var i: usize = 0;
-	for (caveLayers.items[i..]) |*caveLayer| {
-		var layerBiomes: main.List(*const Biome) = .empty;
-		defer layerBiomes.deinit(main.stackAllocator);
-		for (caveLayer.*.biomes.items) |biome| {
-			if (biome.maxHeight > caveLayer.*.minHeight and biome.minHeight < caveLayer.*.maxHeight) {
-				layerBiomes.append(main.stackAllocator, biome);
-				std.log.debug("Layer {s} contains {s}", .{caveLayer.*.id, biome.id});
-			}
-		}
-		caveLayer.*.layerBiomes = .init(main.worldArena, main.worldArena.dupe(*const Biome, layerBiomes.items));
-	}
+	//Remember where we split
+	var splitHeights: main.List(i32) = .empty;
+	defer splitHeights.deinit(main.stackAllocator);
 
-	var pending: main.List(CaveLayer) = caveLayers;
-	caveLayers = .empty;
-	defer pending.deinit(main.worldArena);
-
-	for (pending.items) |baseLayer| {
-		std.log.debug("base layer {s} biomes={d}", .{
-			baseLayer.id,
-			baseLayer.layerBiomes.items.len,
-		});
-
-		var heights = main.List(i32).initCapacity(main.stackAllocator, 1);
-		defer heights.deinit(main.stackAllocator);
-
-		for (baseLayer.layerBiomes.items) |biome| {
-			std.log.debug(
-				"layer {}-{}, biome {}-{}",
-				.{
-					baseLayer.minHeight,
-					baseLayer.maxHeight,
-					biome.minHeight,
-					biome.maxHeight,
-				},
-			);
-
-			if (biome.minHeight > baseLayer.minHeight and biome.minHeight < baseLayer.maxHeight) {
-				heights.append(main.stackAllocator, biome.minHeight);
-			}
-
-			if (biome.maxHeight > baseLayer.minHeight and biome.maxHeight < baseLayer.maxHeight) {
-				heights.append(main.stackAllocator, biome.maxHeight);
-			}
-		}
-
-		if (heights.items.len == 0) {
-			caveLayers.append(main.worldArena, baseLayer);
-			continue;
-		}
-
-		std.mem.sort(i32, heights.items, {}, intLessThan);
-		var layerStart = baseLayer.minHeight;
-		i = 0;
-		while (i <= heights.items.len) : (i += 1) {
-			const layerEnd = if (i < heights.items.len) heights.items[i] else baseLayer.maxHeight;
-
-			if (layerEnd <= layerStart) continue;
-
-			var newLayer = baseLayer.clone();
-			newLayer.minHeight = layerStart;
-			newLayer.maxHeight = layerEnd;
-			newLayer.layerHeight = layerEnd - layerStart;
-			newLayer.depthHint = layerStart;
-
-			var biomeList = main.List(*const Biome).initCapacity(main.globalAllocator, 1);
-
-			for (baseLayer.layerBiomes.items) |biome| {
-				if (biome.minHeight <= layerStart and biome.maxHeight >= layerEnd) {
-					biomeList.append(main.globalAllocator, biome);
+	//Add duplicate layers for when we split
+	const original_len = caveLayers.items.len;
+	for (0..original_len) |i| {
+		outer: for (terrain.biomes.getCaveBiomes()) |*biome| {
+			for (caveLayers.items[i].tags) |tag| {
+				if (biome.hasTag(tag)) {
+					if (biome.maxHeight < caveLayers.items[i].maxHeight and biome.maxHeight > caveLayers.items[i].minHeight) {
+						var hasSplit: bool = false;
+						for (0..splitHeights.items.len) |h| {
+							if (splitHeights.items[h] != biome.maxHeight) {
+								hasSplit = true;
+							}
+						}
+						if (!hasSplit) {
+							caveLayers.append(main.worldArena, caveLayers.items[i].clone());
+							splitHeights.append(main.stackAllocator, biome.maxHeight);
+						}
+					}
+					if (biome.minHeight > caveLayers.items[i].minHeight and biome.minHeight < caveLayers.items[i].maxHeight) {
+						var hasSplit: bool = false;
+						for (0..splitHeights.items.len) |h| {
+							if (splitHeights.items[h] != biome.minHeight) {
+								hasSplit = true;
+							}
+						}
+						if (!hasSplit) {
+							caveLayers.append(main.worldArena, caveLayers.items[i].clone());
+							splitHeights.append(main.stackAllocator, biome.minHeight);
+						}
+					}
+					continue :outer;
 				}
 			}
-
-			newLayer.layerBiomes = main.utils.AliasTable(*const Biome).init(
-				main.globalAllocator,
-				biomeList.items,
-			);
-
-			caveLayers.append(main.worldArena, newLayer);
-
-			layerStart = layerEnd;
 		}
-		baseLayer.deinit();
+	}
+
+	//Sort new by
+	std.mem.sort(CaveLayer, caveLayers.items, {}, lessThan);
+	//filter biomes
+	for (0..caveLayers.items.len) |i| {
+		var biomes: main.List(*const Biome) = .empty;
+		defer biomes.deinit(main.stackAllocator);
+		outer: for (terrain.biomes.getCaveBiomes()) |*biome| {
+			for (caveLayers.items[i].tags) |tag| {
+				if (biome.hasTag(tag)) {
+					if (caveLayers.items[i].maxHeight > biome.minHeight and caveLayers.items[i].minHeight < biome.maxHeight) {
+						if (caveLayers.items[i].maxHeight > biome.maxHeight) {
+							//Biome is not full overlap
+							caveLayers.items[i].minHeight = biome.maxHeight;
+							if (i + 1 < caveLayers.items.len and std.mem.eql(u8, caveLayers.items[i + 1].id, caveLayers.items[i].id)) {
+								caveLayers.items[i + 1].maxHeight = biome.maxHeight;
+							}
+						} else if (caveLayers.items[i].minHeight <= biome.minHeight) {
+							//Biome is not full overlap
+							caveLayers.items[i].minHeight = biome.minHeight;
+							if (i + 1 < caveLayers.items.len and std.mem.eql(u8, caveLayers.items[i + 1].id, caveLayers.items[i].id)) {
+								caveLayers.items[i + 1].maxHeight = biome.minHeight;
+							}
+							biomes.append(main.stackAllocator, biome);
+						} else {
+							//Biome is full overlap
+							biomes.append(main.stackAllocator, biome);
+						}
+					}
+					continue :outer;
+				}
+			}
+		}
+		std.debug.assert(biomes.items.len > 0);
+		caveLayers.items[i].biomes = .init(main.worldArena, main.worldArena.dupe(*const Biome, biomes.items));
 	}
 
 	std.debug.assert(!finishedLoading);
 	finishedLoading = true;
-
-	sortAndFitLayers();
 
 	std.log.debug("Registered cave layers:", .{});
 	for (caveLayers.items) |caveLayer| {
@@ -233,6 +188,7 @@ pub fn registerCaveLayers(caveLayerMap: *Assets.ZonHashMap) !void {
 fn lessThan(_: void, lhs: CaveLayer, rhs: CaveLayer) bool {
 	if (lhs.depthHint < rhs.depthHint) return true;
 	if (lhs.depthHint > rhs.depthHint) return false;
+	if (lhs.layerHeight < rhs.layerHeight) return true;
 	return std.ascii.orderIgnoreCase(lhs.id, rhs.id) == .gt;
 }
 
