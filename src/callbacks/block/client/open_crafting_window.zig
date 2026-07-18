@@ -21,6 +21,5 @@ pub fn init(zon: ZonElement, _: main.callbacks.Creator) ?*@This() {
 pub fn run(self: *@This(), _: main.callbacks.ClientBlockCallback.Params) main.callbacks.Result {
 	main.gui.windowlist.inventory_crafting.openFromCallback(self.craftingTags);
 	main.Window.setMouseGrabbed(false);
-	defer main.worldArena.free(self.craftingTags);
 	return .handled;
 }
