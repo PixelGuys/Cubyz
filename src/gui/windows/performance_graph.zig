@@ -63,15 +63,16 @@ pub fn deinit() void {
 pub fn render() void {
 	lastFrameTime[index] = @floatCast(main.lastFrameTime.load(.monotonic)*1000.0);
 	index = (index + 1)%@as(u31, @intCast(lastFrameTime.len));
-	draw.setColor(0xffffffff);
-	draw.text("32 ms", 0, 16, 8, .left);
-	draw.text("16 ms", 0, 32, 8, .left);
-	draw.text("00 ms", 0, 48, 8, .left);
-	draw.setColor(0x80ffffff);
-	draw.line(.{border, 24}, .{window.contentSize[0] - border, 24});
-	draw.line(.{border, 40}, .{window.contentSize[0] - border, 40});
-	draw.line(.{border, 56}, .{window.contentSize[0] - border, 56});
-	draw.setColor(0xffffffff);
+	draw.text("32 ms", 0, 16, 8);
+	draw.text("16 ms", 0, 32, 8);
+	draw.text("00 ms", 0, 48, 8);
+	{
+		const oldColor = draw.setColor(0x80ffffff);
+		defer draw.restoreColor(oldColor);
+		draw.line(.{border, 24}, .{window.contentSize[0] - border, 24});
+		draw.line(.{border, 40}, .{window.contentSize[0] - border, 40});
+		draw.line(.{border, 56}, .{window.contentSize[0] - border, 56});
+	}
 	pipeline.bind(null);
 	c.glUniform1i(uniforms.points, lastFrameTime.len);
 	c.glUniform1i(uniforms.offset, index);

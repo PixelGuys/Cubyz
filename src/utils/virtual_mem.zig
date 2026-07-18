@@ -208,7 +208,7 @@ pub fn VirtualList(T: type, maxSize: u32) type {
 		}
 
 		pub fn pop(self: *@This()) T {
-			return self.popOrNull() orelse unreachable;
+			return self.popOrNull().?;
 		}
 
 		pub fn replaceRange(self: *@This(), start: usize, len: usize, new_items: []const T) void {

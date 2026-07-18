@@ -28,15 +28,15 @@ height: f64,
 pos: Vec3d = undefined,
 rot: Vec3f = undefined,
 
-id: u32,
+id: main.entity.Entity,
 name: []const u8,
 
 pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) !void {
 	self.* = @This(){
-		.id = zon.get(u32, "id", std.math.maxInt(u32)),
-		.width = zon.get(f64, "width", 1),
-		.height = zon.get(f64, "height", 1),
-		.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
+		.id = @enumFromInt(zon.get(u32, "id") orelse std.math.maxInt(u32)),
+		.width = zon.get(f64, "width") orelse 1,
+		.height = zon.get(f64, "height") orelse 1,
+		.name = allocator.dupe(u8, zon.get([]const u8, "name") orelse ""),
 	};
 	self._interpolationPos = [_]f64{
 		self.pos[0],
@@ -50,7 +50,7 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) !
 	self.interpolatedValues.init(&self._interpolationPos, &self._interpolationVel);
 
 	if (zon.getChildOrNull("components")) |components| {
-		try main.entity.loadComponentsFromBase64(components.as([]const u8, ""), self.id, .client);
+		try main.entity.loadComponentsFromBase64(components.as([]const u8) orelse "", self.id, .client);
 	}
 }
 

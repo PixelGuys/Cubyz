@@ -24,7 +24,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:lush_grass",
+			.block = "cubyz:grass/lush",
 			.chance = 0.33,
 			.width = 5,
 			.variation = 4,
@@ -33,7 +33,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:lush_grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/lush"},
 			.chance = 0.25,
 			.width = 10,
 			.variation = 6,

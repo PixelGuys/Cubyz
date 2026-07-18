@@ -22,6 +22,7 @@ pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
 pub const itemdrop = @import("itemdrop.zig");
 pub const items = @import("items.zig");
+pub const log = @import("log.zig");
 pub const meta = @import("meta.zig");
 pub const migrations = @import("migrations.zig");
 pub const models = @import("models.zig");
@@ -52,9 +53,6 @@ pub const heap = @import("utils/heap.zig");
 pub const ListManaged = utils.list.ListManaged;
 pub const List = utils.list.List;
 pub const MultiArray = utils.list.MultiArray;
-
-// Dprecated, will be removed in progress of #1181
-pub const ListUnmanaged = List;
 
 pub threadlocal var stackAllocator: heap.NeverFailingAllocator = if (builtin.is_test) heap.testingAllocator else undefined;
 pub threadlocal var seed: u64 = undefined;
@@ -89,121 +87,12 @@ fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
 fn cacheString(comptime str: []const u8) []const u8 {
 	return cacheStringImpl(str.len, str[0..].*);
 }
-var logFile: ?std.Io.File = undefined;
-var logFileTs: ?std.Io.File = undefined;
-var supportsANSIColors: bool = undefined;
-var openingErrorWindow: bool = false;
+
 // overwrite the log function:
 pub const std_options: std.Options = .{ // MARK: std_options
 	.log_level = .debug,
-	.logFn = struct {
-		pub fn logFn(
-			comptime level: std.log.Level,
-			comptime _: @EnumLiteral(),
-			comptime format: []const u8,
-			args: anytype,
-		) void {
-			var runtimeArgs: [args.len]fmt.FormatArg = undefined;
-			inline for (0..args.len) |i| {
-				runtimeArgs[i] = .fromAnytype(@TypeOf(args[i]), &args[i]);
-			}
-			runtimeLogFn(level, format, &runtimeArgs);
-		}
-	}.logFn,
+	.logFn = log.logFn,
 };
-
-noinline fn runtimeLogFn(level: std.log.Level, format: []const u8, args: []const fmt.FormatArg) void {
-	var buf: [65536]u8 = undefined;
-	var writer: std.Io.Writer = .fixed(&buf);
-	fmt.format(&writer, format, args) catch {
-		std.log.err("Truncated long log message.", .{});
-	};
-
-	const color: []const u8 = switch (level) {
-		std.log.Level.err => "\x1b[31m",
-		std.log.Level.info => "",
-		std.log.Level.warn => "\x1b[33m",
-		std.log.Level.debug => "\x1b[37;44m",
-	};
-	const colorReset = "\x1b[0m\n";
-	const filePrefix = switch (level) {
-		.err => "error",
-		.warn => "warning",
-		.info => "info",
-		.debug => "debug",
-	};
-	const fileSuffix = "\n";
-
-	logToFile("[{s}]: {s}{s}", .{filePrefix, writer.buffered(), fileSuffix});
-	if (supportsANSIColors) {
-		logToStdErr("{s}{s}{s}", .{color, writer.buffered(), colorReset});
-	} else {
-		logToStdErr("[{s}]: {s}{s}", .{filePrefix, writer.buffered(), fileSuffix});
-	}
-
-	if (level == .err and !openingErrorWindow and !settings.launchConfig.headlessServer) {
-		openingErrorWindow = true;
-		gui.openWindow("error_prompt");
-		openingErrorWindow = false;
-	}
-}
-
-fn initLogging() void {
-	logFile = null;
-	files.cwd().makePath("logs") catch |err| {
-		std.log.err("Couldn't create logs folder: {s}", .{@errorName(err)});
-		return;
-	};
-	logFile = std.Io.Dir.cwd().createFile(io, "logs/latest.log", .{}) catch |err| {
-		std.log.err("Couldn't create logs/latest.log: {s}", .{@errorName(err)});
-		return;
-	};
-
-	const _timestamp = std.Io.Clock.Timestamp.now(io, .real).raw;
-
-	const _path_str = std.fmt.allocPrint(stackAllocator.allocator, "logs/ts_{}.log", .{_timestamp.nanoseconds}) catch unreachable;
-	defer stackAllocator.free(_path_str);
-
-	logFileTs = std.Io.Dir.cwd().createFile(io, _path_str, .{}) catch |err| {
-		std.log.err("Couldn't create {s}: {s}", .{_path_str, @errorName(err)});
-		return;
-	};
-
-	supportsANSIColors = std.Io.File.stdout().supportsAnsiEscapeCodes(io) catch unreachable;
-}
-
-fn deinitLogging() void {
-	if (logFile) |_logFile| {
-		_logFile.close(io);
-		logFile = null;
-	}
-
-	if (logFileTs) |_logFileTs| {
-		_logFileTs.close(io);
-		logFileTs = null;
-	}
-}
-
-fn logToFile(comptime format: []const u8, args: anytype) void {
-	var buf: [65536]u8 = undefined;
-	var fba = std.heap.FixedBufferAllocator.init(&buf);
-	const allocator = fba.allocator();
-
-	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	(logFile orelse return).writeStreamingAll(io, string) catch {};
-	(logFileTs orelse return).writeStreamingAll(io, string) catch {};
-}
-
-fn logToStdErr(comptime format: []const u8, args: anytype) void {
-	var buf: [65536]u8 = undefined;
-	var fba = std.heap.FixedBufferAllocator.init(&buf);
-	const allocator = fba.allocator();
-
-	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	const writer = std.debug.lockStderr(&.{});
-	defer std.debug.unlockStderr();
-	nosuspend writer.file_writer.interface.writeAll(string) catch {};
-}
 
 // MARK: Callbacks
 fn escape(mods: Window.Key.Modifiers) void {
@@ -409,6 +298,7 @@ pub var lastFrameTime = std.atomic.Value(f64).init(0);
 pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 
 var shouldExitToMenu = std.atomic.Value(bool).init(false);
+
 pub fn exitToMenu() void {
 	shouldExitToMenu.store(true, .monotonic);
 }
@@ -437,8 +327,24 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	threadedIo = .init(globalAllocator.allocator, .{});
 	defer threadedIo.deinit();
 
-	initLogging();
-	defer deinitLogging();
+	log.init();
+	defer log.deinit();
+
+	argCheck: {
+		var argIterator = args.args.iterateAllocator(stackAllocator.allocator) catch |err| {
+			std.log.err("Failed to read command line arguments: {s}", .{@errorName(err)});
+			break :argCheck;
+		};
+		defer argIterator.deinit();
+		_ = argIterator.skip();
+		if (argIterator.next() != null) {
+			std.log.info(
+				\\Cubyz does not accept any command line arguments.
+				\\All launch-time configuration is done through the "launchConfig.zon" file in the game's working directory. See that file for the available options.
+			, .{});
+			std.process.exit(0);
+		}
+	}
 
 	std.log.info("Starting game with version {s}", .{settings.version.version});
 
@@ -528,43 +434,21 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	server.terrain.globalInit();
 
 	if (headless) {
-		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null);
+		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null, .multiplayer);
+		heap.GarbageCollection.waitForFreeCompletion();
 	} else {
 		clientMain();
 	}
 }
 
 pub fn clientMain() void { // MARK: clientMain()
-	switch (settings.storedAccount.typ) {
-		.none => blk: {
-			if (settings.storedAccount.data.len == 0) {
-				gui.openWindow("authentication/login");
-				break :blk;
-			}
-			var failureText: ListManaged(u8) = .init(stackAllocator);
-			defer failureText.deinit();
-			const accountCode = settings.storedAccount.decryptFromPassword(undefined, &failureText) catch |err| {
-				std.log.err("Got error while loading Account Code: {s}", .{@errorName(err)});
-				gui.openWindow("authentication/login");
-				break :blk;
-			};
-			defer accountCode.deinit();
-			if (failureText.items.len != 0) {
-				std.log.warn("Encountered errors while verifying your Account. This may happen if you created your account in a future version, in which case it's fine to continue.\n{s}", .{failureText.items});
-			}
-			network.authentication.KeyCollection.init(accountCode);
-			if (settings.playerName.len == 0) {
-				gui.openWindow("change_name");
-			} else if (settings.launchConfig.autoEnterWorld.len == 0) {
-				gui.openWindow("main");
-			} else {
-				// Speed up the dev process by entering the world directly.
-				gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
-			}
-		},
-		else => {
-			gui.openWindow("authentication/unlock");
-		},
+	if (settings.playerName.len == 0) {
+		gui.openWindow("change_name");
+	} else if (settings.launchConfig.autoEnterWorld.len == 0) {
+		gui.openWindow("main");
+	} else {
+		// Speed up the dev process by entering the world directly.
+		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
 	}
 
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);

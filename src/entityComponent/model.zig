@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const chunk = main.chunk;
+const Entity = main.entity.Entity;
 const game = main.game;
 const graphics = main.graphics;
 const ZonElement = main.ZonElement;
@@ -13,8 +14,8 @@ const vec = main.vec;
 const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
-const Vec4f = vec.Vec4f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const EntityModel = main.entityModel.EntityModel;
 
 const c = @import("c");
 const Self = @This();
@@ -26,8 +27,19 @@ pub const entityComponentVersion = 0;
 pub const client = struct {
 	const Component = struct {
 		entityModel: main.entityModel.EntityModelIndex,
+
+		bufferAllocation: graphics.SubAllocation = .{.len = 0, .start = 0},
+		matrices: []Mat4f = undefined,
+		nodes: []EntityModel.Node = undefined,
+
+		pub fn deinit(self: Component) void {
+			main.globalAllocator.free(self.matrices);
+			main.globalAllocator.free(self.nodes);
+
+			main.entity.systems.modelRenderer.client.nodeBuffer.free(self.bufferAllocation);
+		}
 	};
-	pub var components: main.utils.SparseSet(Component, main.entity.Entity) = .{};
+	pub var components: main.utils.SparseSet(Component, Entity) = .{};
 
 	pub fn init() void {}
 	pub fn deinit() void {
@@ -36,21 +48,32 @@ pub const client = struct {
 	pub fn clear() void {
 		components.clear();
 	}
-	pub fn load(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
+	pub fn load(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != 0) return error.InvalidComponentVersion;
 
 		const entityModel = reader.readVarInt(u32) catch return error.UnreadableComponentData;
 
-		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
+		var ptr: *Component = undefined;
+		if (components.get(entity)) |p| {
+			ptr = p;
+			ptr.deinit();
+		} else {
+			ptr = components.add(main.globalAllocator, entity);
+		}
 		ptr.* = Component{
 			.entityModel = .{.index = entityModel},
 		};
+		const model = ptr.entityModel.get();
+
+		ptr.matrices = main.globalAllocator.alloc(Mat4f, model.nodeCount);
+		ptr.nodes = main.globalAllocator.dupe(EntityModel.Node, model.nodes);
 	}
-	pub fn unload(entity: u32) void {
-		components.remove(@enumFromInt(entity)) catch {};
+	pub fn unload(entity: Entity) void {
+		const ptr = components.fetchRemove(entity) catch return;
+		ptr.deinit();
 	}
-	pub fn get(entity: u32) ?*Component {
-		return components.get(@enumFromInt(entity));
+	pub fn get(entity: Entity) ?*Component {
+		return components.get(entity);
 	}
 };
 
@@ -65,14 +88,14 @@ pub const server = struct {
 			return .save;
 		}
 	};
-	var components: main.utils.SparseSet(Component, main.entity.Entity) = undefined;
+	var components: main.utils.SparseSet(Component, Entity) = undefined;
 	pub fn init() void {
 		components = .{};
 	}
 	pub fn deinit() void {
 		components.deinit(main.globalAllocator);
 	}
-	pub fn loadFromData(entity: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
+	pub fn loadFromData(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != 0) return error.InvalidComponentVersion;
 		const entityModel = reader.readVarInt(u32) catch return error.UnreadableComponentData;
 
@@ -80,15 +103,15 @@ pub const server = struct {
 			.entityModel = .{.index = entityModel},
 		});
 	}
-	pub fn unload(entity: u32) void {
-		components.remove(@enumFromInt(entity)) catch {};
+	pub fn unload(entity: Entity) void {
+		components.remove(entity) catch {};
 	}
-	pub fn put(entity: u32, renderComponent: Component) void {
-		const ptr = components.get(@enumFromInt(entity)) orelse components.add(main.globalAllocator, @enumFromInt(entity));
+	pub fn put(entity: Entity, renderComponent: Component) void {
+		const ptr = components.get(entity) orelse components.add(main.globalAllocator, entity);
 		ptr.* = renderComponent;
 		main.entity.server.transmitChange(Self, entity);
 	}
-	pub fn get(entity: u32) ?*const Component {
-		return components.get(@enumFromInt(entity));
+	pub fn get(entity: Entity) ?*const Component {
+		return components.get(entity);
 	}
 };

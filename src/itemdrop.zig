@@ -139,14 +139,14 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			return;
 		};
 		const properties = .{
-			zon.get(Vec3d, "pos", .{0, 0, 0}),
-			zon.get(Vec3d, "vel", .{0, 0, 0}),
+			zon.get(Vec3d, "pos") orelse .{0, 0, 0},
+			zon.get(Vec3d, "vel") orelse .{0, 0, 0},
 			random.nextFloatVector(3, &main.seed)*@as(Vec3f, @splat(2*std.math.pi)),
-			items.ItemStack{.item = item, .amount = zon.get(u16, "amount", 1)},
-			zon.get(i32, "despawnTime", 60),
+			items.ItemStack{.item = item, .amount = zon.get(u16, "amount") orelse 1},
+			zon.get(i32, "despawnTime") orelse 60,
 			0,
 		};
-		if (zon.get(?u16, "i", null)) |i| {
+		if (zon.get(u16, "i")) |i| {
 			@call(.auto, addWithIndex, .{self, i} ++ properties);
 		} else {
 			@call(.auto, add, .{self} ++ properties);
@@ -586,7 +586,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 					while (x < img.width) : (x += 1) {
 						var y: u32 = 0;
 						while (y < img.height) : (y += 1) {
-							dataSection[i] = img.getRGB(x, y).toARBG();
+							dataSection[i] = img.getRGB(x, y).toArgb();
 							i += 1;
 						}
 					}

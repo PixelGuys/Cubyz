@@ -38,27 +38,27 @@ const Material = struct { // MARK: Material
 	modifiers: []Modifier = undefined,
 
 	pub fn init(self: *Material, allocator: NeverFailingAllocator, zon: ZonElement) void {
-		self.massDamage = zon.get(?f32, "massDamage", null) orelse blk: {
+		self.massDamage = zon.get(f32, "massDamage") orelse blk: {
 			std.log.err("Couldn't find material attribute 'massDamage'", .{});
 			break :blk 0;
 		};
-		self.hardnessDamage = zon.get(?f32, "hardnessDamage", null) orelse blk: {
+		self.hardnessDamage = zon.get(f32, "hardnessDamage") orelse blk: {
 			std.log.err("Couldn't find material attribute 'hardnessDamage'", .{});
 			break :blk 0;
 		};
-		self.durability = zon.get(?f32, "durability", null) orelse blk: {
+		self.durability = zon.get(f32, "durability") orelse blk: {
 			std.log.err("Couldn't find material attribute 'durability'", .{});
 			break :blk 0;
 		};
-		self.swingSpeed = zon.get(?f32, "swingSpeed", null) orelse blk: {
+		self.swingSpeed = zon.get(f32, "swingSpeed") orelse blk: {
 			std.log.err("Couldn't find material attribute 'swingSpeed'", .{});
 			break :blk 0;
 		};
-		self.textureRoughness = @max(0, zon.get(f32, "textureRoughness", 1.0));
+		self.textureRoughness = @max(0, zon.get(f32, "textureRoughness") orelse 1.0);
 		const colors = zon.getChild("colors");
 		self.colorPalette = allocator.alloc(Color, colors.toSlice().len);
 		for (colors.toSlice(), self.colorPalette) |item, *color| {
-			const colorInt: u32 = @intCast(item.as(i64, 0xff000000) & 0xffffffff);
+			const colorInt: u32 = @intCast((item.as(i64) orelse 0xff000000) & 0xffffffff);
 			color.* = Color{
 				.r = @intCast(colorInt >> 16 & 0xff),
 				.g = @intCast(colorInt >> 8 & 0xff),
@@ -69,10 +69,10 @@ const Material = struct { // MARK: Material
 		const modifiersZon = zon.getChild("modifiers");
 		self.modifiers = allocator.alloc(Modifier, modifiersZon.toSlice().len);
 		for (modifiersZon.toSlice(), self.modifiers) |item, *modifier| {
-			const id = item.get([]const u8, "id", "not specified");
+			const id = item.get([]const u8, "id") orelse "not specified";
 			const vTable = modifiers.get(id) orelse blk: {
 				std.log.err("Couldn't find modifier with id '{s}'. Replacing it with 'durable'", .{id});
-				break :blk modifiers.get("durable") orelse unreachable;
+				break :blk modifiers.get("durable").?;
 			};
 			modifier.* = .{
 				.vTable = vTable,
@@ -104,7 +104,7 @@ const Material = struct { // MARK: Material
 			outString.appendSlice("§#808080Material\n");
 		}
 		for (self.modifiers) |modifier| {
-			if (modifier.restriction.vTable == modifierRestrictions.get("always") orelse unreachable) {
+			if (modifier.restriction.vTable == modifierRestrictions.get("always").?) {
 				modifier.printTooltip(outString);
 				outString.appendSlice("\n");
 			} else {
@@ -133,10 +133,10 @@ pub const ModifierRestriction = struct {
 	}
 
 	pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) ModifierRestriction {
-		const id = zon.get([]const u8, "id", "always");
+		const id = zon.get([]const u8, "id") orelse "always";
 		const vTable = modifierRestrictions.get(id) orelse blk: {
 			std.log.err("Couldn't find modifier restriction with id '{s}'. Replacing it with 'always'", .{id});
-			break :blk modifierRestrictions.get("always") orelse unreachable;
+			break :blk modifierRestrictions.get("always").?;
 		};
 		return .{
 			.vTable = vTable,
@@ -285,9 +285,9 @@ pub const BaseItem = struct { // MARK: BaseItem
 				break :blk graphics.Image.defaultImage;
 			};
 		}
-		self.name = allocator.dupe(u8, zon.get([]const u8, "name", id));
+		self.name = allocator.dupe(u8, zon.get([]const u8, "name") orelse id);
 		self.tags = Tag.loadTagsFromZon(allocator, zon.getChild("tags"));
-		self.stackSize = zon.get(u16, "stackSize", 120);
+		self.stackSize = zon.get(u16, "stackSize") orelse 120;
 		const material = zon.getChild("material");
 		if (material == .object) {
 			self.material = Material{};
@@ -296,10 +296,10 @@ pub const BaseItem = struct { // MARK: BaseItem
 			self.material = null;
 		}
 		self.block = blk: {
-			break :blk blocks.getTypeById(zon.get(?[]const u8, "block", null) orelse break :blk null);
+			break :blk blocks.getTypeById(zon.get([]const u8, "block") orelse break :blk null);
 		};
 		self.texture = null;
-		self.foodValue = zon.get(f32, "food", 0);
+		self.foodValue = zon.get(f32, "food") orelse 0;
 
 		var tooltip: main.ListManaged(u8) = .init(allocator);
 		tooltip.appendSlice(self.name);
@@ -598,6 +598,16 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 		}
 	};
 
+	pub fn toBytes(self: ProceduralItemTypeIndex, writer: *BinaryWriter) void {
+		writer.writeEnum(ProceduralItemTypeIndex, self);
+	}
+
+	pub fn fromBytes(reader: *BinaryReader) !ProceduralItemTypeIndex {
+		const result = try reader.readEnum(ProceduralItemTypeIndex);
+		if (@intFromEnum(result) >= proceduralItemTypeList.items.len) return error.InvalidEnumTag;
+		return result;
+	}
+
 	pub fn iterator() ProceduralItemTypeIterator {
 		return .{};
 	}
@@ -759,11 +769,11 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	}
 
 	pub fn initFromZon(zon: ZonElement) *ProceduralItem {
-		const self = initFromCraftingGrid(extractItemsFromZon(zon.getChild("grid")), zon.get(u32, "seed", 0), ProceduralItemTypeIndex.fromId(zon.get([]const u8, "type", "cubyz:pickaxe")) orelse blk: {
-			std.log.err("Couldn't find procedural item with type {s}. Replacing it with cubyz:pickaxe", .{zon.get([]const u8, "type", "cubyz:pickaxe")});
+		const self = initFromCraftingGrid(extractItemsFromZon(zon.getChild("grid")), zon.get(u32, "seed") orelse 0, ProceduralItemTypeIndex.fromId(zon.get([]const u8, "type") orelse "cubyz:pickaxe") orelse blk: {
+			std.log.err("Couldn't find procedural item with type {s}. Replacing it with cubyz:pickaxe", .{zon.get([]const u8, "type") orelse "cubyz:pickaxe"});
 			break :blk ProceduralItemTypeIndex.fromId("cubyz:pickaxe") orelse @panic("cubyz:pickaxe procedural item not found. Did you load the game with the correct assets?");
 		});
-		self.durability = zon.get(u32, "durability", std.math.lossyCast(u32, self.getProperty(.maxDurability)));
+		self.durability = zon.get(u32, "durability") orelse std.math.lossyCast(u32, self.getProperty(.maxDurability));
 		return self;
 	}
 
@@ -931,6 +941,15 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		self.durability -|= 1;
 		return self.durability == 0;
 	}
+
+	pub fn canPutIntoWorkbenchCallback(source: Inventory.Source, item: Item, slot: usize) bool {
+		if (source.workbench.proceduralItemIndex.slotInfos()[slot].disabled) return false;
+		return switch (item) {
+			.null => true,
+			.baseItem => |baseItem| baseItem.material() != null,
+			.proceduralItem => false,
+		};
+	}
 };
 
 const ItemType = enum(u7) {
@@ -945,7 +964,7 @@ pub const Item = union(ItemType) { // MARK: Item
 	null: void,
 
 	pub fn init(zon: ZonElement) !Item {
-		if (BaseItemIndex.fromId(zon.get([]const u8, "item", "null"))) |baseItem| {
+		if (BaseItemIndex.fromId(zon.get([]const u8, "item") orelse "null")) |baseItem| {
 			return Item{.baseItem = baseItem};
 		} else {
 			const proceduralItemZon = zon.getChild("tool");
@@ -1002,7 +1021,8 @@ pub const Item = union(ItemType) { // MARK: Item
 		const typ = try reader.readEnum(ItemType);
 		switch (typ) {
 			.baseItem => {
-				return .{.baseItem = try reader.readEnum(BaseItemIndex)};
+				const index = try reader.readEnum(BaseItemIndex);
+				return .{.baseItem = itemDeduplicationMap[@intFromEnum(index)]};
 			},
 			.proceduralItem => {
 				return .{.proceduralItem = try ProceduralItem.fromBytes(reader)};
@@ -1082,14 +1102,20 @@ pub const Item = union(ItemType) { // MARK: Item
 
 			if (durabilityPercentage < 1) {
 				const width = durabilityPercentage*(slotSize[0] - 2*border);
-				graphics.draw.setColorSameAlpha(0x000000);
-				graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{slotSize[0] - 2*border, (slotSize[1] - 2*border)/16.0});
+				{
+					const oldColor = graphics.draw.setColor(0xff000000);
+					defer graphics.draw.restoreColor(oldColor);
+					graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{slotSize[0] - 2*border, (slotSize[1] - 2*border)/16.0});
+				}
 
 				const red = std.math.lossyCast(u8, (2 - durabilityPercentage*2)*255);
 				const green = std.math.lossyCast(u8, durabilityPercentage*2*255);
 
-				graphics.draw.setColorSameAlpha((@as(u24, @intCast(red)) << 16) | (@as(u24, @intCast(green)) << 8));
-				graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{width, (slotSize[1] - 2*border)/16.0});
+				{
+					const oldColor = graphics.draw.setColor(0xff000000 | (@as(u32, red) << 16) | (@as(u32, green) << 8));
+					defer graphics.draw.restoreColor(oldColor);
+					graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{width, (slotSize[1] - 2*border)/16.0});
+				}
 			}
 		}
 	}
@@ -1102,7 +1128,7 @@ pub const ItemStack = struct { // MARK: ItemStack
 	pub fn load(zon: ZonElement) !ItemStack {
 		return .{
 			.item = try Item.init(zon),
-			.amount = zon.get(?u16, "amount", null) orelse return error.InvalidAmount,
+			.amount = zon.get(u16, "amount") orelse return error.InvalidAmount,
 		};
 	}
 
@@ -1208,6 +1234,9 @@ var modifierRestrictions: std.StringHashMapUnmanaged(*const ModifierRestriction.
 pub var itemList: [65536]BaseItem = undefined;
 pub var itemListSize: u16 = 0;
 
+// Due to migrations multiple indices can map to the same item. This must be resolved during inventory loading using this map.
+var itemDeduplicationMap: [65536]BaseItemIndex = undefined;
+
 var recipeList: main.ListManaged(Recipe) = .init(main.worldArena);
 
 pub fn hasRegistered(id: []const u8) bool {
@@ -1262,7 +1291,11 @@ pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: 
 	defer itemListSize += 1;
 
 	newItem.init(main.worldArena, texturePath, replacementTexturePath, id, zon);
-	reverseIndices.put(main.worldArena.allocator, newItem.id, @enumFromInt(itemListSize)) catch unreachable;
+	const result = reverseIndices.getOrPut(main.worldArena.allocator, newItem.id) catch unreachable;
+	if (!result.found_existing) {
+		result.value_ptr.* = @enumFromInt(itemListSize);
+	}
+	itemDeduplicationMap[itemListSize] = result.value_ptr.*;
 
 	std.log.debug("Registered item: {d: >5} '{s}'", .{itemListSize, id});
 	return newItem;
@@ -1311,14 +1344,14 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 			std.log.err("disabled array of {s} has too many entries", .{id});
 			break;
 		}
-		slotInfos[i].disabled = zonDisabled.as(usize, 0) != 0;
+		slotInfos[i].disabled = (zonDisabled.as(usize) orelse 0) != 0;
 	}
 	for (zon.getChild("optional").toSlice(), 0..) |zonDisabled, i| {
 		if (i >= 25) {
 			std.log.err("disabled array of {s} has too many entries", .{id});
 			break;
 		}
-		slotInfos[i].optional = zonDisabled.as(usize, 0) != 0;
+		slotInfos[i].optional = (zonDisabled.as(usize) orelse 0) != 0;
 	}
 	var tagfields: main.List(TagField) = .empty;
 	defer tagfields.deinit(main.stackAllocator);
@@ -1337,10 +1370,10 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 	defer parameterMatrices.deinit(main.stackAllocator);
 	for (zon.getChild("parameters").toSlice()) |paramZon| {
 		const val = parameterMatrices.addOne(main.stackAllocator);
-		val.source = MaterialProperty.fromString(paramZon.get([]const u8, "source", "not specified"));
-		val.destination = ProceduralItemProperty.fromString(paramZon.get([]const u8, "destination", "not specified"));
-		val.resultScale = paramZon.get(f32, "factor", 1.0);
-		val.method = PropertyMatrix.Method.fromString(paramZon.get([]const u8, "method", "not specified")) orelse .sum;
+		val.source = MaterialProperty.fromString(paramZon.get([]const u8, "source") orelse "not specified");
+		val.destination = ProceduralItemProperty.fromString(paramZon.get([]const u8, "destination") orelse "not specified");
+		val.resultScale = paramZon.get(f32, "factor") orelse 1.0;
+		val.method = PropertyMatrix.Method.fromString(paramZon.get([]const u8, "method") orelse "not specified") orelse .sum;
 		const matrixZon = paramZon.getChild("matrix");
 		var total_weight: f32 = 0.0;
 		for (0..25) |i| {
@@ -1388,37 +1421,13 @@ fn parseRecipeItem(zon: ZonElement) !ItemStack {
 	return result;
 }
 
-fn parseRecipe(zon: ZonElement) !Recipe {
-	const inputs = zon.getChild("inputs").toSlice();
-	const output = try parseRecipeItem(zon.getChild("output"));
-	const recipe = Recipe{
-		.sourceItems = main.worldArena.alloc(BaseItemIndex, inputs.len),
-		.sourceAmounts = main.worldArena.alloc(u16, inputs.len),
-		.resultItem = output.item.baseItem,
-		.resultAmount = output.amount,
-	};
-	for (inputs, 0..) |inputZon, i| {
-		const input = try parseRecipeItem(inputZon);
-		recipe.sourceItems[i] = input.item.baseItem;
-		recipe.sourceAmounts[i] = input.amount;
-	}
-	return recipe;
-}
-
 pub fn registerRecipes(zon: ZonElement) void {
 	for (zon.toSlice()) |recipeZon| {
-		recipes.parseRecipe(main.globalAllocator, recipeZon, &recipeList) catch |err| {
+		recipes.parseRecipe(recipeZon, &recipeList) catch |err| {
 			const recipeString = recipeZon.toString(main.stackAllocator);
 			defer main.stackAllocator.free(recipeString);
 			std.log.err("Skipping recipe with error {s}:\n{s}", .{@errorName(err), recipeString});
 			continue;
 		};
-	}
-}
-
-pub fn clearRecipeCachedInventories() void {
-	for (recipeList.items) |recipe| {
-		main.globalAllocator.free(recipe.sourceItems);
-		main.globalAllocator.free(recipe.sourceAmounts);
 	}
 }

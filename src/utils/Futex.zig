@@ -577,7 +577,7 @@ const PosixImpl = struct {
 
 			// There's a wait queue on the address; get the queue head and tail.
 			const head: *Waiter = @fieldParentPtr("node", entry_node);
-			const tail = head.tail orelse unreachable;
+			const tail = head.tail.?;
 
 			// Push the waiter to the tail by replacing it and linking to the previous tail.
 			head.tail = waiter;
@@ -631,8 +631,8 @@ const PosixImpl = struct {
 				};
 
 				// The queue head and tail must exist if we're removing a queued waiter.
-				const head: *Waiter = @fieldParentPtr("node", entry.node orelse unreachable);
-				const tail = head.tail orelse unreachable;
+				const head: *Waiter = @fieldParentPtr("node", entry.node.?);
+				const tail = head.tail.?;
 
 				// A waiter with a previous link is never the head of the queue.
 				if (waiter.prev) |prev| {
