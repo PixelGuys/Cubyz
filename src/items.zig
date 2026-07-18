@@ -39,15 +39,6 @@ const Material = struct { // MARK: Material
 	outlineColorShadow: Color = undefined,
 	modifiers: []Modifier = undefined,
 
-	fn colorFromInt(colorInt: u32) Color {
-		return Color{
-			.r = @intCast(colorInt >> 16 & 0xff),
-			.g = @intCast(colorInt >> 8 & 0xff),
-			.b = @intCast(colorInt >> 0 & 0xff),
-			.a = @intCast(colorInt >> 24 & 0xff),
-		};
-	}
-
 	fn darken(color: Color, factor: f32) Color {
 		return Color{
 			.r = @intFromFloat(@as(f32, @floatFromInt(color.r))*factor),
@@ -78,16 +69,15 @@ const Material = struct { // MARK: Material
 		const colors = zon.getChild("colors");
 		self.colorPalette = allocator.alloc(Color, colors.toSlice().len);
 		for (colors.toSlice(), self.colorPalette) |item, *color| {
-			const colorInt: u32 = @intCast((item.as(i64) orelse 0xff000000) & 0xffffffff);
-			color.* = colorFromInt(colorInt);
+			color.* = Color.fromArgb(item.as(u32) orelse 0xff000000);
 		}
-		if (zon.get(i64, "outlineColorLight")) |colorInt| {
-			self.outlineColorLight = colorFromInt(@intCast(colorInt & 0xffffffff));
+		if (zon.get(u32, "outlineColorLight")) |colorInt| {
+			self.outlineColorLight = Color.fromArgb(colorInt);
 		} else {
 			self.outlineColorLight = darken(self.colorPalette[self.colorPalette.len - 1], 0.7);
 		}
-		if (zon.get(i64, "outlineColorShadow")) |colorInt| {
-			self.outlineColorShadow = colorFromInt(@intCast(colorInt & 0xffffffff));
+		if (zon.get(u32, "outlineColorShadow")) |colorInt| {
+			self.outlineColorShadow = Color.fromArgb(colorInt);
 		} else {
 			self.outlineColorShadow = darken(self.colorPalette[0], 0.5);
 		}
@@ -383,6 +373,10 @@ pub const BaseItem = struct { // MARK: BaseItem
 	}
 };
 
+const allNeighborOffsets = [_][2]i8{.{-1, -1}, .{0, -1}, .{1, -1}, .{-1, 0}, .{1, 0}, .{-1, 1}, .{0, 1}, .{1, 1}};
+const orthogonalOffsets = [_][2]i8{.{0, -1}, .{-1, 0}, .{1, 0}, .{0, 1}};
+const diagonalOffsets = [_][2]i8{.{-1, -1}, .{1, -1}, .{-1, 1}, .{1, 1}};
+
 /// Generates the texture of a ProceduralItem using the material information.
 const TextureGenerator = struct { // MARK: TextureGenerator
 	fn generateHeightMap(itemGrid: *[16][16]?BaseItemIndex, seed: *u64) [17][17]f32 {
@@ -432,24 +426,18 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 		return heightMap;
 	}
 
-	fn calculateLight(heightMap: *const [17][17]f32, x: u8, y: u8) f32 {
-		const lightTL = heightMap[x + 1][y + 1] - heightMap[x][y];
-		const lightTR = heightMap[x][y + 1] - heightMap[x + 1][y];
+	fn calculateLight(heightMap: *const [17][17]f32, pos: [2]u8) f32 {
+		const lightTL = heightMap[pos[0] + 1][pos[1] + 1] - heightMap[pos[0]][pos[1]];
+		const lightTR = heightMap[pos[0]][pos[1] + 1] - heightMap[pos[0] + 1][pos[1]];
 		var light = (lightTL*2 + lightTR)/3; // value of this typically ranges from -7 to 5
 		light += 4; // illuminate everything by an amount
 		light /= 8; // near-normalize the light value
 		return @max(@min(light, 1), 0);
 	}
 
-	const eightOffsets = [_][2]i8{.{-1, -1}, .{0, -1}, .{1, -1}, .{-1, 0}, .{1, 0}, .{-1, 1}, .{0, 1}, .{1, 1}};
-	const diagonalOffsets = [_][2]i8{.{-1, -1}, .{1, -1}, .{-1, 1}, .{1, 1}};
-	const maxTipWalkSteps = 5;
-
-	fn materialAt(materialGrid: *const [16][16]?BaseItemIndex, x: u8, y: u8, offset: [2]i8) ?Material {
-		const nx = @as(i32, x) + offset[0];
-		const ny = @as(i32, y) + offset[1];
-		if (nx < 0 or nx >= 16 or ny < 0 or ny >= 16) return null;
-		const item = materialGrid[@intCast(nx)][@intCast(ny)] orelse return null;
+	fn materialAt(materialGrid: *const [16][16]?BaseItemIndex, pos: ?[2]u8) ?Material {
+		const p = pos orelse return null;
+		const item = materialGrid[p[0]][p[1]] orelse return null;
 		return item.material();
 	}
 
@@ -460,77 +448,60 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 		return .{@intCast(nx), @intCast(ny)};
 	}
 
-	fn tipNeighborOffset(materialGrid: *const [16][16]?BaseItemIndex, x: u8, y: u8) ?[2]i8 {
+	fn tipCornerDirection(materialGrid: *const [16][16]?BaseItemIndex, pos: [2]u8) ?[2]i8 {
 		var found: ?[2]i8 = null;
 		var count: u32 = 0;
-		for (eightOffsets) |offset| {
-			if (materialAt(materialGrid, x, y, offset) != null) {
+		for (allNeighborOffsets) |offset| {
+			if (materialAt(materialGrid, neighborCoord(pos, offset)) != null) {
 				count += 1;
 				found = offset;
 			}
 		}
-		if (count == 1) return found;
+
+		if (count == 1) {
+			const offset = found.?;
+			if (offset[0] != 0 and offset[1] != 0) return .{-offset[0], -offset[1]};
+			const turnDiagonals: [2][2]i8 = if (offset[0] != 0)
+				.{.{offset[0], -1}, .{offset[0], 1}}
+			else
+				.{.{-1, offset[1]}, .{1, offset[1]}};
+			var current = neighborCoord(pos, offset).?;
+			while (true) {
+				const occ0 = materialAt(materialGrid, neighborCoord(current, turnDiagonals[0])) != null;
+				const occ1 = materialAt(materialGrid, neighborCoord(current, turnDiagonals[1])) != null;
+				if (occ0 and occ1) return null;
+				if (occ0 or occ1) {
+					const turn = if (occ0) turnDiagonals[0] else turnDiagonals[1];
+					return .{-turn[0], -turn[1]};
+				}
+				const next = neighborCoord(current, offset) orelse return null;
+				if (materialAt(materialGrid, next) == null) return null;
+				current = next;
+			}
+		}
 
 		if (count == 3) {
 			for (diagonalOffsets) |d| {
-				if (materialAt(materialGrid, x, y, d) != null and
-					materialAt(materialGrid, x, y, .{d[0], 0}) != null and
-					materialAt(materialGrid, x, y, .{0, d[1]}) != null)
+				if (materialAt(materialGrid, neighborCoord(pos, d)) != null and
+					materialAt(materialGrid, neighborCoord(pos, .{d[0], 0})) != null and
+					materialAt(materialGrid, neighborCoord(pos, .{0, d[1]})) != null)
 				{
-					return d;
+					return .{-d[0], -d[1]};
 				}
 			}
 		}
 		return null;
 	}
 
-	fn estimateTipDirection(materialGrid: *const [16][16]?BaseItemIndex, tip: [2]u8, firstStep: [2]i8) Vec2f {
-		var previous = tip;
-		var current = neighborCoord(tip, firstStep).?;
-		var steps: u32 = 1;
-		while (steps < maxTipWalkSteps) : (steps += 1) {
-			var next: ?[2]u8 = null;
-			var count: u32 = 0;
-			for (eightOffsets) |offset| {
-				const candidate = neighborCoord(current, offset) orelse continue;
-				if (candidate[0] == previous[0] and candidate[1] == previous[1]) continue;
-				if (materialGrid[candidate[0]][candidate[1]] == null) continue;
-				count += 1;
-				next = candidate;
-			}
-			if (count != 1) break;
-			previous = current;
-			current = next.?;
-		}
-		return Vec2f{@floatFromInt(@as(i32, tip[0]) - @as(i32, current[0])), @floatFromInt(@as(i32, tip[1]) - @as(i32, current[1]))};
-	}
-
-	fn closestDiagonalOffset(direction: Vec2f) [2]i8 {
-		var best = diagonalOffsets[0];
-		var bestDot: f32 = -std.math.inf(f32);
-		for (diagonalOffsets) |offset| {
-			const d = vec.dot(direction, Vec2f{@floatFromInt(offset[0]), @floatFromInt(offset[1])});
-			if (d > bestDot) {
-				bestDot = d;
-				best = offset;
-			}
-		}
-		return best;
-	}
-
-	fn findNeighborMaterial(materialGrid: *const [16][16]?BaseItemIndex, x: u8, y: u8) ?Material {
-		const orthogonalOffsets = [_][2]i8{.{0, -1}, .{-1, 0}, .{1, 0}, .{0, 1}};
+	fn findNeighborMaterial(materialGrid: *const [16][16]?BaseItemIndex, pos: [2]u8) ?Material {
 		for (orthogonalOffsets) |offset| {
-			if (materialAt(materialGrid, x, y, offset)) |material| return material;
+			if (materialAt(materialGrid, neighborCoord(pos, offset))) |material| return material;
 		}
 		for (diagonalOffsets) |offset| {
-			const m = neighborCoord(.{x, y}, offset) orelse continue;
-			const item = materialGrid[m[0]][m[1]] orelse continue;
-			const material = item.material() orelse continue;
-			const firstStep = tipNeighborOffset(materialGrid, m[0], m[1]) orelse continue;
-			const direction = estimateTipDirection(materialGrid, m, firstStep);
-			const chosen = closestDiagonalOffset(direction);
-			if (chosen[0] == -offset[0] and chosen[1] == -offset[1]) return material;
+			const m = neighborCoord(pos, offset) orelse continue;
+			const material = materialAt(materialGrid, m) orelse continue;
+			const corner = tipCornerDirection(materialGrid, m) orelse continue;
+			if (corner[0] == -offset[0] and corner[1] == -offset[1]) return material;
 		}
 		return null;
 	}
@@ -563,14 +534,14 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 				if (proceduralItem.materialGrid[x][y]) |item| {
 					if (item.material()) |material| {
 						// Calculate the lighting based on the nearest free space:
-						const light = calculateLight(&heightMap, x, y);
+						const light = calculateLight(&heightMap, .{x, y});
 						const colorIndex: usize = @round(light*@as(f32, @floatFromInt(material.colorPalette.len - 1)));
 						img.setRGB(x, 15 - y, material.colorPalette[colorIndex]);
 					} else {
 						img.setRGB(x, 15 - y, if ((x ^ y) & 1 == 0) Color{.r = 255, .g = 0, .b = 255, .a = 255} else Color{.r = 0, .g = 0, .b = 0, .a = 255});
 					}
-				} else if (findNeighborMaterial(&proceduralItem.materialGrid, x, y)) |material| {
-					const light = calculateLight(&heightMap, x, y);
+				} else if (findNeighborMaterial(&proceduralItem.materialGrid, .{x, y})) |material| {
+					const light = calculateLight(&heightMap, .{x, y});
 					img.setRGB(x, 15 - y, if (light > 0.5) material.outlineColorLight else material.outlineColorShadow);
 				} else {
 					img.setRGB(x, 15 - y, Color{.r = 0, .g = 0, .b = 0, .a = 0});
@@ -658,7 +629,8 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 			}
 		}
 		while (floodfillQueue.popFront()) |pos| {
-			for ([8]Vec2i{.{-1, 0}, .{1, 0}, .{0, -1}, .{0, 1}, .{-1, -1}, .{1, -1}, .{-1, 1}, .{1, 1}}) |delta| {
+			for (allNeighborOffsets) |offset| {
+				const delta = Vec2i{offset[0], offset[1]};
 				const newPos = pos + delta;
 				if (newPos[0] < 0 or newPos[0] >= gridCellsReached.len) continue;
 				if (newPos[1] < 0 or newPos[1] >= gridCellsReached.len) continue;

@@ -2085,6 +2085,15 @@ pub const Color = packed struct(u32) { // MARK: Color
 	pub fn toArgb(self: Color) u32 {
 		return @as(u32, self.a) << 24 | @as(u32, self.r) << 16 | @as(u32, self.g) << 8 | @as(u32, self.b);
 	}
+
+	pub fn fromArgb(argb: u32) Color {
+		return Color{
+			.r = @intCast(argb >> 16 & 0xff),
+			.g = @intCast(argb >> 8 & 0xff),
+			.b = @intCast(argb >> 0 & 0xff),
+			.a = @intCast(argb >> 24 & 0xff),
+		};
+	}
 };
 
 pub const Image = struct { // MARK: Image
