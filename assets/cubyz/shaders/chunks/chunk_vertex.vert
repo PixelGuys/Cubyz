@@ -1,5 +1,8 @@
 #version 460
 
+#include "chunk_data.glsl"
+#include "frame_uniforms.glsl"
+
 layout(location = 0) out vec3 mvVertexPos;
 layout(location = 1) out vec3 direction;
 layout(location = 2) out vec3 light;
@@ -11,10 +14,6 @@ layout(location = 7) flat out float distanceForLodCheck;
 layout(location = 8) flat out int opaqueInLod;
 
 layout(location = 0) uniform vec3 ambientLight;
-layout(location = 1) uniform mat4 projectionMatrix;
-layout(location = 2) uniform mat4 viewMatrix;
-layout(location = 3) uniform ivec3 playerPositionInteger;
-layout(location = 4) uniform vec3 playerPositionFraction;
 
 #ifdef ENTITY
 layout(location = 14) uniform mat4 modelMatrix;
@@ -46,8 +45,6 @@ layout(std430, binding = 10) buffer _lightData
 {
 	uint lightData[];
 };
-
-#include "chunk_data.glsl"
 
 vec3 square(vec3 x) {
 	return x*x;

@@ -1,8 +1,9 @@
 #version 460
 
-layout(location = 0) flat out uint chunkID;
-
 #include "chunk_data.glsl"
+#include "frame_uniforms.glsl"
+
+layout(location = 0) flat out uint chunkID;
 
 layout(std430, binding = 9) buffer _chunkIDs
 {
@@ -40,11 +41,6 @@ vec3 vertexBuffer[24] = vec3[24](
 	vec3(0, 1, 1),
 	vec3(0, 0, 1)
 );
-
-layout(location = 0) uniform mat4 projectionMatrix;
-layout(location = 1) uniform mat4 viewMatrix;
-layout(location = 2) uniform ivec3 playerPositionInteger;
-layout(location = 3) uniform vec3 playerPositionFraction;
 
 void main() {
 	uint chunkIDID = uint(gl_VertexID)/24u;

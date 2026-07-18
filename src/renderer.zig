@@ -194,6 +194,13 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 	game.camera.updateViewMatrix();
 
+	main.graphics.frame_uniforms.uploadNewFrame(.{
+		.playerPositionInteger = @as(Vec3i, @floor(playerPos)),
+		.playerPositionFraction = @as(Vec3f, @floatCast(@mod(playerPos, Vec3d{1, 1, 1}))),
+		.projectionMatrix = game.projectionMatrix.toGl(),
+		.viewMatrix = game.camera.viewMatrix.toGl(),
+	});
+
 	// Uses FrustumCulling on the chunks.
 	const frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
 
@@ -206,9 +213,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.animation);
 	blocks.meshes.preProcessAnimationData(time);
 	gpu_performance_measuring.stopQuery();
-
-	// Update the uniforms. The uniforms are needed to render the replacement meshes.
-	chunk_meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, playerPos);
 
 	c.glActiveTexture(c.GL_TEXTURE0);
 	blocks.meshes.blockTextureArray.bind();
@@ -237,7 +241,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	}
 	gpu_performance_measuring.stopQuery();
 	gpu_performance_measuring.startQuery(.chunk_rendering);
-	chunk_meshing.drawChunksIndirect(&chunkLists, game.projectionMatrix, ambientLight, playerPos, false);
+	chunk_meshing.drawChunksIndirect(&chunkLists, ambientLight, false);
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
@@ -278,7 +282,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		}
 		gpu_performance_measuring.stopQuery();
 		gpu_performance_measuring.startQuery(.transparent_rendering);
-		chunk_meshing.drawChunksIndirect(&chunkLists, game.projectionMatrix, ambientLight, playerPos, true);
+		chunk_meshing.drawChunksIndirect(&chunkLists, ambientLight, true);
 		gpu_performance_measuring.stopQuery();
 	}
 
