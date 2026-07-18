@@ -19,6 +19,7 @@ pub const CaveLayer = struct {
 	biomes: main.utils.AliasTable(*const Biome),
 	layerBiomes: main.utils.AliasTable(*const Biome),
 	id: []const u8,
+	allocator: NeverFailingAllocator,
 
 	pub fn init(id: []const u8, zon: ZonElement) ?CaveLayer {
 		var result: CaveLayer = undefined;
@@ -55,16 +56,6 @@ pub const CaveLayer = struct {
 				}
 			}
 		}
-
-		var layerBiomes: main.List(*const Biome) = .empty;
-		defer layerBiomes.deinit(main.stackAllocator);
-
-		for (biomes.items) |biome| {
-			if (biome.maxHeight > result.minHeight and biome.minHeight < result.maxHeight) {
-				layerBiomes.append(main.stackAllocator, biome);
-				std.log.debug("Layer {s} contains {s}", .{result.id, biome.id});
-			}
-		}
 		if (biomes.items.len == 0) {
 			std.log.err("Cave layer with id {s} has no biomes that match the provided tags. Skipping", .{id});
 			return null;
@@ -77,8 +68,31 @@ pub const CaveLayer = struct {
 		}
 
 		result.biomes = .init(main.worldArena, main.worldArena.dupe(*const Biome, biomes.items));
-		result.layerBiomes = .init(main.worldArena, main.worldArena.dupe(*const Biome, layerBiomes.items));
+		result.allocator = main.worldArena;
 		return result;
+	}
+	pub fn clone(self: CaveLayer) CaveLayer {
+		var result = self;
+
+		result.biomes = .init(
+			main.globalAllocator,
+			main.globalAllocator.dupe(*const Biome, self.biomes.items),
+		);
+
+		result.layerBiomes = .init(
+			main.globalAllocator,
+			main.globalAllocator.dupe(*const Biome, self.layerBiomes.items),
+		);
+
+		result.id = self.id;
+		result.allocator = main.globalAllocator;
+		result.depthHint = self.depthHint;
+
+		return result;
+	}
+	pub fn deinit(self: CaveLayer) void {
+		self.biomes.deinit(self.allocator);
+		self.layerBiomes.deinit(self.allocator);
 	}
 };
 
@@ -90,15 +104,7 @@ fn register(id: []const u8, zon: ZonElement) void {
 	caveLayers.append(main.worldArena, caveLayer);
 }
 
-pub fn registerCaveLayers(caveLayerMap: *Assets.ZonHashMap) !void {
-	var iterator = caveLayerMap.iterator();
-	while (iterator.next()) |entry| {
-		register(entry.key_ptr.*, entry.value_ptr.*);
-	}
-
-	std.debug.assert(!finishedLoading);
-	finishedLoading = true;
-
+fn sortAndFitLayers() void {
 	std.mem.sort(CaveLayer, caveLayers.items, {}, lessThan);
 
 	var i: usize = 0;
@@ -118,6 +124,109 @@ pub fn registerCaveLayers(caveLayerMap: *Assets.ZonHashMap) !void {
 		height -= caveLayers.items[i].layerHeight;
 		caveLayers.items[i].minHeight = height;
 	}
+}
+
+pub fn registerCaveLayers(caveLayerMap: *Assets.ZonHashMap) !void {
+	var iterator = caveLayerMap.iterator();
+	while (iterator.next()) |entry| {
+		register(entry.key_ptr.*, entry.value_ptr.*);
+	}
+
+	sortAndFitLayers();
+
+	var i: usize = 0;
+	for (caveLayers.items[i..]) |*caveLayer| {
+		var layerBiomes: main.List(*const Biome) = .empty;
+		defer layerBiomes.deinit(main.stackAllocator);
+		for (caveLayer.*.biomes.items) |biome| {
+			if (biome.maxHeight > caveLayer.*.minHeight and biome.minHeight < caveLayer.*.maxHeight) {
+				layerBiomes.append(main.stackAllocator, biome);
+				std.log.debug("Layer {s} contains {s}", .{caveLayer.*.id, biome.id});
+			}
+		}
+		caveLayer.*.layerBiomes = .init(main.worldArena, main.worldArena.dupe(*const Biome, layerBiomes.items));
+	}
+
+	var pending: main.List(CaveLayer) = caveLayers;
+	caveLayers = .empty;
+	defer pending.deinit(main.worldArena);
+
+	for (pending.items) |baseLayer| {
+		std.log.debug("base layer {s} biomes={d}", .{
+			baseLayer.id,
+			baseLayer.layerBiomes.items.len,
+		});
+
+		var heights = main.List(i32).initCapacity(main.stackAllocator, 1);
+		defer heights.deinit(main.stackAllocator);
+
+		for (baseLayer.layerBiomes.items) |biome| {
+			std.log.debug(
+				"layer {}-{}, biome {}-{}",
+				.{
+					baseLayer.minHeight,
+					baseLayer.maxHeight,
+					biome.minHeight,
+					biome.maxHeight,
+				},
+			);
+
+			if (biome.minHeight > baseLayer.minHeight and biome.minHeight < baseLayer.maxHeight) {
+				heights.append(main.stackAllocator, biome.minHeight);
+			}
+
+			if (biome.maxHeight > baseLayer.minHeight and biome.maxHeight < baseLayer.maxHeight) {
+				heights.append(main.stackAllocator, biome.maxHeight);
+			}
+		}
+
+		if (heights.items.len == 0) {
+			caveLayers.append(main.worldArena, baseLayer);
+			continue;
+		}
+
+		std.mem.sort(i32, heights.items, {}, intLessThan);
+		var layerStart = baseLayer.minHeight;
+		i = 0;
+		while (i <= heights.items.len) : (i += 1) {
+			const layerEnd = if (i < heights.items.len)
+				heights.items[i]
+			else
+				baseLayer.maxHeight;
+
+			if (layerEnd <= layerStart) continue;
+
+			var newLayer = baseLayer.clone();
+			newLayer.minHeight = layerStart;
+			newLayer.maxHeight = layerEnd;
+			newLayer.layerHeight = layerEnd - layerStart;
+			newLayer.depthHint = layerStart;
+
+			var biomeList = main.List(*const Biome).initCapacity(main.globalAllocator, 1);
+
+			for (baseLayer.layerBiomes.items) |biome| {
+				if (biome.minHeight <= layerStart and biome.maxHeight >= layerEnd) {
+					biomeList.append(main.globalAllocator, biome);
+				}
+			}
+
+			newLayer.layerBiomes = main.utils.AliasTable(*const Biome).init(
+				main.globalAllocator,
+				biomeList.items,
+			);
+
+			caveLayers.append(main.worldArena, newLayer);
+
+			layerStart = layerEnd;
+		}
+		baseLayer.deinit();
+	}
+
+	std.debug.assert(!finishedLoading);
+	finishedLoading = true;
+
+	sortAndFitLayers();
+
 	std.log.debug("Registered cave layers:", .{});
 	for (caveLayers.items) |caveLayer| {
 		std.log.debug("{s}: {} to {}", .{caveLayer.id, caveLayer.minHeight, caveLayer.maxHeight});
@@ -128,6 +237,10 @@ fn lessThan(_: void, lhs: CaveLayer, rhs: CaveLayer) bool {
 	if (lhs.depthHint < rhs.depthHint) return true;
 	if (lhs.depthHint > rhs.depthHint) return false;
 	return std.ascii.orderIgnoreCase(lhs.id, rhs.id) == .gt;
+}
+
+fn intLessThan(_: void, a: i32, b: i32) bool {
+	return a < b;
 }
 
 pub fn getLayer(height: i32) CaveLayer {

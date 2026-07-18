@@ -37,14 +37,9 @@ pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) void {
 					const offset: Vec3i = @splat(if (_map == 0) 0 else CaveBiomeMapFragment.caveBiomeSize/2);
 					const biomeWorldPos = CaveBiomeMapFragment.rotateInverse(pos + offset);
 					caveLayer = terrain.cave_layers.getLayerGuess(biomeWorldPos[2], &i);
-					while (true) {
-						const biome = caveLayer.layerBiomes.sample(&seed).*;
-						if (biome.minHeight < biomeWorldPos[2] and biome.maxHeight > biomeWorldPos[2]) {
-							const index = CaveBiomeMapFragment.getIndex(x, y, z);
-							map.biomeMap[index][_map] = biome;
-							break;
-						}
-					}
+					const biome = caveLayer.layerBiomes.sample(&seed).*;
+					const index = CaveBiomeMapFragment.getIndex(x, y, z);
+					map.biomeMap[index][_map] = biome;
 				}
 			}
 		}
