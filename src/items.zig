@@ -461,10 +461,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 		if (count == 1) {
 			const offset = found.?;
 			if (offset[0] != 0 and offset[1] != 0) return .{-offset[0], -offset[1]};
-			const turnDiagonals: [2][2]i8 = if (offset[0] != 0)
-				.{.{offset[0], -1}, .{offset[0], 1}}
-			else
-				.{.{-1, offset[1]}, .{1, offset[1]}};
+			const turnDiagonals: [2][2]i8 = if (offset[0] != 0) .{.{offset[0], -1}, .{offset[0], 1}} else .{.{-1, offset[1]}, .{1, offset[1]}};
 			var current = neighborCoord(pos, offset).?;
 			while (true) {
 				const occ0 = materialAt(materialGrid, neighborCoord(current, turnDiagonals[0])) != null;
