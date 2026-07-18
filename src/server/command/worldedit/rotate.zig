@@ -10,19 +10,25 @@ pub const usage =
 	\\/rotate <0/90/180/270>
 ;
 
+const Args = union(enum) {
+	@"/rotate <rotation>": struct { rotation: ?Degrees },
+};
+
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/rotate"});
+
 pub fn execute(args: []const u8, source: *User) void {
-	var angle: Degrees = .@"90";
-	if (args.len != 0) {
-		angle = std.meta.stringToEnum(Degrees, args) orelse {
-			source.sendMessage("#ff0000Error: Invalid angle '{s}'. Use 0, 90, 180 or 270.", .{args});
-			return;
-		};
-	}
+	var errorMessage: main.List(u8) = .empty;
+	defer errorMessage.deinit(main.stackAllocator);
+
+	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
+		source.sendMessage("#ff0000{s}", .{errorMessage.items});
+		return;
+	};
 	if (source.worldEditData.clipboard == null) {
 		source.sendMessage("#ff0000Error: No clipboard content to rotate.", .{});
 		return;
 	}
 	const current = source.worldEditData.clipboard.?;
 	defer current.deinit(main.globalAllocator);
-	source.worldEditData.clipboard = current.rotateZ(main.globalAllocator, angle);
+	source.worldEditData.clipboard = current.rotateZ(main.globalAllocator, result.@"/rotate <rotation>".rotation orelse .@"90");
 }
