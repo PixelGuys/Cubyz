@@ -426,13 +426,17 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 		return heightMap;
 	}
 
-	fn calculateLight(heightMap: *const [17][17]f32, pos: [2]u8) f32 {
+	fn calculateRawLight(heightMap: *const [17][17]f32, pos: [2]u8) f32 {
 		const lightTL = heightMap[pos[0] + 1][pos[1] + 1] - heightMap[pos[0]][pos[1]];
 		const lightTR = heightMap[pos[0]][pos[1] + 1] - heightMap[pos[0] + 1][pos[1]];
 		var light = (lightTL*2 + lightTR)/3; // value of this typically ranges from -7 to 5
 		light += 4; // illuminate everything by an amount
 		light /= 8; // near-normalize the light value
-		return @max(@min(light, 1), 0);
+		return light;
+	}
+
+	fn calculateLight(heightMap: *const [17][17]f32, pos: [2]u8) f32 {
+		return @max(@min(calculateRawLight(heightMap, pos), 1), 0);
 	}
 
 	fn materialAt(materialGrid: *const [16][16]?BaseItemIndex, pos: ?[2]u8) ?Material {
@@ -490,10 +494,36 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 		return null;
 	}
 
-	fn findNeighborMaterial(materialGrid: *const [16][16]?BaseItemIndex, pos: [2]u8) ?Material {
+	fn findNeighborMaterial(materialGrid: *const [16][16]?BaseItemIndex, heightMap: *const [17][17]f32, pos: [2]u8) ?Material {
+		var bestItem: ?BaseItemIndex = null;
+		var bestCount: u32 = 0;
+		var bestWeight: f32 = -std.math.inf(f32);
 		for (orthogonalOffsets) |offset| {
-			if (materialAt(materialGrid, neighborCoord(pos, offset))) |material| return material;
+			const neighborPos = neighborCoord(pos, offset) orelse continue;
+			const item = materialGrid[neighborPos[0]][neighborPos[1]] orelse continue;
+			if (item.material() == null) continue;
+
+			var count: u32 = 0;
+			var weight: f32 = 0;
+			for (orthogonalOffsets) |otherOffset| {
+				const otherPos = neighborCoord(pos, otherOffset) orelse continue;
+				const otherItem = materialGrid[otherPos[0]][otherPos[1]] orelse continue;
+				if (otherItem != item) continue;
+				count += 1;
+				weight += calculateRawLight(heightMap, otherPos);
+			}
+
+			const better = count > bestCount or
+				(count == bestCount and weight > bestWeight) or
+				(count == bestCount and weight == bestWeight and (bestItem == null or @intFromEnum(item) < @intFromEnum(bestItem.?)));
+			if (better) {
+				bestItem = item;
+				bestCount = count;
+				bestWeight = weight;
+			}
 		}
+		if (bestItem) |item| return item.material();
+
 		for (diagonalOffsets) |offset| {
 			const m = neighborCoord(pos, offset) orelse continue;
 			const material = materialAt(materialGrid, m) orelse continue;
@@ -537,7 +567,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 					} else {
 						img.setRGB(x, 15 - y, if ((x ^ y) & 1 == 0) Color{.r = 255, .g = 0, .b = 255, .a = 255} else Color{.r = 0, .g = 0, .b = 0, .a = 255});
 					}
-				} else if (findNeighborMaterial(&proceduralItem.materialGrid, .{x, y})) |material| {
+				} else if (findNeighborMaterial(&proceduralItem.materialGrid, &heightMap, .{x, y})) |material| {
 					const light = calculateLight(&heightMap, .{x, y});
 					img.setRGB(x, 15 - y, if (light > 0.5) material.outlineColorLight else material.outlineColorShadow);
 				} else {
