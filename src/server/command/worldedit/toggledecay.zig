@@ -36,6 +36,7 @@ pub fn execute(args: []const u8, _source: Source) void {
 		_source.sendMessage("Command doesn't support running from console", .{});
 		return;
 	}
+	const source = _source.user;
 	var errorMessage: main.List(u8) = .empty;
 	defer errorMessage.deinit(main.stackAllocator);
 
