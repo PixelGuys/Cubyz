@@ -159,7 +159,7 @@ const Modifier = struct {
 		combineModifiers: *const fn (data1: Data, data2: Data) ?Data,
 		changeProceduralItemParameters: *const fn (proceduralItem: *ProceduralItem, data: Data) void,
 		changeBlockDamage: *const fn (damage: f32, block: Block, data: Data) f32,
-		changeBlockRange: *const fn (data: Data) struct {f32, f32},
+		changeBlockRange: *const fn (data: Data) struct { f32, f32 },
 		printTooltip: *const fn (outString: *main.ListManaged(u8), data: Data) void,
 		loadData: *const fn (zon: ZonElement) Data,
 		priority: f32,
@@ -169,7 +169,7 @@ const Modifier = struct {
 			pub fn changeBlockDamage(damage: f32, _: Block, _: Data) f32 {
 				return damage;
 			}
-			pub fn changeBlockRange(_: f32) struct {f32, f32} {
+			pub fn changeBlockRange(_: f32) struct { f32, f32 } {
 				return .{0, 1}; // returns a flat 0 and a mult of 1
 			}
 		};
@@ -204,7 +204,7 @@ const Modifier = struct {
 		return self.vTable.changeBlockDamage(damage, block, self.data);
 	}
 
-	pub fn changeBlockRange(self: Modifier) struct {f32, f32} {
+	pub fn changeBlockRange(self: Modifier) struct { f32, f32 } {
 		return self.vTable.changeBlockRange(self.data);
 	}
 
@@ -925,7 +925,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		return main.game.Player.defaultBlockDamage;
 	}
 
-	pub fn getBlockRange(self: *ProceduralItem) struct {f32, f32} {
+	pub fn getBlockRange(self: *ProceduralItem) struct { f32, f32 } {
 		var flatRange: f32 = 0;
 		var multRange: f32 = 1;
 		for (self.modifiers) |modifier| {
