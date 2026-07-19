@@ -5,7 +5,7 @@ const utils = main.utils;
 
 const c = @import("c");
 
-const StbErrorEnum = enum(c_int) {
+const StbVorbisErrorEnum = enum(c_int) {
 	no_error = 0,
 	need_more_data = 1,
 	invalid_api_mixing = 2,
@@ -30,7 +30,7 @@ const StbErrorEnum = enum(c_int) {
 };
 
 pub fn getStbVorbisError(result: c_int) []const u8 {
-	const resultEnum = std.enums.fromInt(StbErrorEnum, result) orelse {
+	const resultEnum = std.enums.fromInt(StbVorbisErrorEnum, result) orelse {
 		std.log.err("Encountered an STB Vorbis error with unknown error code {}", .{result});
 		return "unknown_error";
 	};
@@ -61,7 +61,7 @@ const AudioData = struct {
 		defer main.stackAllocator.free(path1);
 		var err: c_int = 0;
 		if (c.stb_vorbis_open_filename(path1.ptr, &err, null)) |ogg_stream| return ogg_stream;
-		if (err != @intFromEnum(StbErrorEnum.no_error)) {
+		if (err != @intFromEnum(StbVorbisErrorEnum.no_error)) {
 			std.log.err("Couldn't handle audio file. Error: {s}. ID: \"{s}\". Path: \"{s}\"", .{getStbVorbisError(err), id, path1});
 			return null;
 		}
