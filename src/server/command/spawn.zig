@@ -15,25 +15,15 @@ pub const usage =
 	\\/spawn world <x> <y> <z>
 ;
 
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/spawn <playerIndex> <x> <y> <z>": struct { playerIndex: ?command.PlayerIndex, x: command.Coordinate, y: command.Coordinate, z: command.Coordinate },
 	@"/spawn <world> <x> <y> <z>": struct { world: enum { world }, x: command.Coordinate, y: command.Coordinate, z: command.Coordinate },
 	@"/spawn <world>": struct { world: enum { world } },
 	@"/spawn <playerIndex>": struct { playerIndex: ?command.PlayerIndex },
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/spawn"});
-
-pub fn execute(args: []const u8, source: Source) void {
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
-		return;
-	};
-
-	switch (result) {
+pub fn execute(args: Args, source: Source) void {
+	switch (args) {
 		.@"/spawn <playerIndex> <x> <y> <z>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
 			defer target.deinit();

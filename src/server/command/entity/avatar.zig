@@ -10,27 +10,18 @@ pub const usage =
 	\\/avatar
 	\\/avatar <entityModel>
 ;
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/avatar": struct {},
 	@"/avatar <entityModel>": struct { entityModel: command.EntityModel },
 };
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/avatar"});
 
-pub fn execute(args: []const u8, _source: Source) void {
+pub fn execute(args: Args, _source: Source) void {
 	if (_source != .user) {
 		_source.sendMessage("Command doesn't support running from console", .{});
 		return;
 	}
 	const source = _source.user;
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
-		return;
-	};
-
-	switch (result) {
+	switch (args) {
 		.@"/avatar <entityModel>" => |params| {
 			model.server.put(source.id, .{
 				.entityModel = params.entityModel.index,

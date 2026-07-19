@@ -2,34 +2,24 @@ const std = @import("std");
 
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const List = main.List;
+const ListManaged = main.ListManaged;
 const command = main.server.command;
 const Source = command.Source;
 
 pub const description = "Shows info about all the commands.";
 pub const usage = "/help\n/help <command>";
 
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/help <bobik>": struct { bobik: enum { Bobik, bobik } },
 	@"/help <command>": struct { command: Cmd },
 	@"/help": struct {},
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/help"});
-
-pub fn execute(args: []const u8, source: Source) void {
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
-		return;
-	};
-
+pub fn execute(args: Args, source: Source) void {
 	var msg: main.ListManaged(u8) = .init(main.stackAllocator);
 	defer msg.deinit();
 	msg.appendSlice("#ffff00");
-	switch (result) {
+	switch (args) {
 		.@"/help" => {
 			var iterator = command.commands.valueIterator();
 			while (iterator.next()) |cmd| {
@@ -62,10 +52,10 @@ pub fn execute(args: []const u8, source: Source) void {
 const Cmd = struct {
 	cmd: command.Command,
 
-	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorList: *List(u8)) error{ParseError}!Cmd {
+	pub fn parse(_: NeverFailingAllocator, name: []const u8, arg: []const u8, errorList: *ListManaged(u8)) error{ParseError}!Cmd {
 		return .{
 			.cmd = command.commands.get(arg) orelse {
-				errorList.print(allocator, "Unrecognized command name for <{s}>, got {s}", .{name, arg});
+				errorList.print("Unrecognized command name for <{s}>, got {s}", .{name, arg});
 				return error.ParseError;
 			},
 		};

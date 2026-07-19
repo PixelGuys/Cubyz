@@ -25,7 +25,7 @@ pub const usage =
 	\\}
 ;
 
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>": struct {
 		id: []const u8,
 		x: command.Coordinate,
@@ -37,32 +37,22 @@ const Args = union(enum) {
 	},
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/particles"});
-
-pub fn execute(args: []const u8, source: Source) void {
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = (ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
-		return;
-	}).@"/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>";
-
+pub fn execute(args: Args, source: Source) void {
 	const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
 	for (users) |user| {
 		main.network.protocols.genericUpdate.sendParticles(
 			user.conn,
-			result.id,
+			args.@"/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>".id,
 			command.resolveCoordinates(
-				result.x,
-				result.y,
-				result.z,
+				args.@"/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>".x,
+				args.@"/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>".y,
+				args.@"/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>".z,
 				source,
 			),
-			result.collides orelse true,
-			result.count orelse 1,
-			result.spawnDataZon orelse "",
+			args.@"/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>".collides orelse true,
+			args.@"/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>".count orelse 1,
+			args.@"/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>".spawnDataZon orelse "",
 		);
 	}
 }

@@ -10,26 +10,15 @@ const Blueprint = main.blueprint.Blueprint;
 pub const description = "Copy selection to clipboard.";
 pub const usage = "/copy";
 
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/copy": struct {},
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/copy"});
-
-pub fn execute(args: []const u8, _source: Source) void {
+pub fn execute(_: Args, _source: Source) void {
 	if (_source != .user) {
 		_source.sendMessage("Command doesn't support running from console", .{});
 		return;
 	}
-	const source = _source.user;
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	_ = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
-		return;
-	};
-
 	const selection = command.getCurrentSelection(source) catch return;
 	source.sendMessage("Copying: {f}", .{selection});
 

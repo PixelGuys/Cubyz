@@ -146,8 +146,6 @@ pub const User = struct { // MARK: User
 
 	inventoryCommands: main.List([]const u8) = .empty,
 
-	permissions: permission.Permissions = undefined,
-
 	pub const State = enum { awaitingKeyVerification, connectedVerified, awaitingReloadVerified };
 
 	pub fn player(self: *User) *Entity {
@@ -175,7 +173,6 @@ pub const User = struct { // MARK: User
 
 			.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator),
 			.worldEditData = .init(),
-			.permissions = .init(main.globalAllocator),
 			.jobQueue = .init(main.globalAllocator),
 		};
 	}
@@ -209,8 +206,6 @@ pub const User = struct { // MARK: User
 			main.items.Inventory.server.destroyExternallyManagedInventory(self.inventory.?);
 			main.items.Inventory.server.destroyExternallyManagedInventory(self.handInventory.?);
 		}
-
-		self.permissions.deinit();
 
 		self.worldEditData.deinit();
 
@@ -301,6 +296,14 @@ pub const User = struct { // MARK: User
 		}
 		if (main.entity.components.@"cubyz:bag".server.get(self.id) == null) {
 			main.entity.components.@"cubyz:bag".server.loadEmpty(self.id);
+		}
+		if (main.entity.components.@"cubyz:permissions".server.get(self.id) == null) {
+			main.entity.components.@"cubyz:permissions".server.loadEmpty(self.id);
+
+			main.entity.components.@"cubyz:permissions".server.getPermissions(self.id).?.addPermission(.white, "/command/avatar");
+			if (self.isLocal) {
+				main.entity.components.@"cubyz:permissions".server.getPermissions(self.id).?.addPermission(.white, "/");
+			}
 		}
 
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
@@ -546,13 +549,6 @@ pub const User = struct { // MARK: User
 		main.network.protocols.chat.send(self.conn, msg);
 	}
 
-	pub fn hasPermission(user: *User, permissionPath: []const u8) bool {
-		return switch (user.permissions.hasPermission(permissionPath)) {
-			.yes => true,
-			.no, .neutral => false,
-		};
-	}
-
 	pub fn getSpawnPos(user: *User) Vec3d {
 		return user.spawnPos orelse @floatFromInt(main.server.world.?.spawn);
 	}
@@ -615,7 +611,6 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 		};
 		defer user.decreaseRefCount();
 		user.isLocal = true;
-		user.permissions.addPermission(.white, "/");
 	}
 }
 
@@ -895,7 +890,6 @@ pub fn connectInternal(user: *User) void {
 	main.network.protocols.entity.send(user.conn, initialList);
 	main.stackAllocator.free(initialList);
 	sendMessage("{s}§#ffff00 joined", .{user.name});
-	user.permissions.addPermission(.white, "/command/avatar");
 
 	userMutex.lock();
 	users.append(user);
