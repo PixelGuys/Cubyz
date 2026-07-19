@@ -137,12 +137,7 @@ pub var lastHeight: u31 = 0;
 var lastFov: f32 = 0;
 var lastZoom: f32 = 1;
 pub fn updateProjectionMatrix() void {
-	game.projectionMatrix = 
-		Mat4f.scale(Vec3f{lastZoom, lastZoom, 1})
-		.mul(Mat4f.perspective(
-			std.math.degreesToRadians(lastFov),
-			@as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)),
-			zNear, zFar));
+	game.projectionMatrix = Mat4f.scale(Vec3f{lastZoom, lastZoom, 1}).mul(Mat4f.perspective(std.math.degreesToRadians(lastFov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar));
 }
 pub fn updateFov(fov: f32) void {
 	if (lastFov != fov) {

@@ -730,7 +730,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				// https://vanwijk.win.tue.nl/zoompan.pdf
 				zoomSScaled = @log(zoomEnd/zoomStart);
 				zoomNeededDuration = @abs(zoomSScaled)/settings.zoomSpeed;
-				zoomNeededDurationTime = std.Io.Timestamp.fromNanoseconds(@as(i96, @trunc(zoomNeededDuration * 1e9)));
+				zoomNeededDurationTime = std.Io.Timestamp.fromNanoseconds(@as(i96, @trunc(zoomNeededDuration*1e9)));
 			} else if (zoomStartTime) |time| { // zooming in without interruptions
 				startTime = time;
 			} else { // ended zooming in
@@ -740,7 +740,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			if (zoomDuration.nanoseconds < zoomNeededDurationTime.nanoseconds) {
 				const zoomSeconds = @as(f32, @floatFromInt(zoomDuration.toNanoseconds()))/1.0e9;
 				const t = std.math.clamp(zoomSeconds/zoomNeededDuration, 0, 1);
-				zoom = zoomStart * std.math.exp(zoomSScaled * t);
+				zoom = zoomStart*std.math.exp(zoomSScaled*t);
 			} else {
 				zoom = zoomEnd;
 				zoomStartTime = null;
