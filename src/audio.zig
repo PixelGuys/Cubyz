@@ -6,6 +6,7 @@ const utils = main.utils;
 const c = @import("c");
 
 const StbVorbisErrorEnum = enum(c_int) {
+	unknown_error = -1,
 	no_error = 0,
 	need_more_data = 1,
 	invalid_api_mixing = 2,
@@ -29,13 +30,13 @@ const StbVorbisErrorEnum = enum(c_int) {
 	ogg_skeleton_not_supported = 38,
 };
 
-pub fn getStbVorbisError(result: c_int) []const u8 {
+pub fn getStbVorbisError(result: c_int) StbVorbisErrorEnum {
 	const resultEnum = std.enums.fromInt(StbVorbisErrorEnum, result) orelse {
 		std.log.err("Encountered an STB Vorbis error with unknown error code {}", .{result});
-		return "unknown_error";
+		return .unknown_error;
 	};
 
-	return @tagName(resultEnum);
+	return resultEnum;
 }
 
 fn handleError(miniaudioError: c.ma_result) !void {
@@ -62,13 +63,13 @@ const AudioData = struct {
 		var err: c_int = 0;
 		if (c.stb_vorbis_open_filename(path1.ptr, &err, null)) |ogg_stream| return ogg_stream;
 		if (err != @intFromEnum(StbVorbisErrorEnum.no_error)) {
-			std.log.err("Couldn't handle audio file. Error: {s}. ID: \"{s}\". Path: \"{s}\"", .{getStbVorbisError(err), id, path1});
+			std.log.err("Couldn't handle audio file. Error: {t}. ID: \"{s}\". Path: \"{s}\"", .{getStbVorbisError(err), id, path1});
 			return null;
 		}
 		const path2 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "{s}/serverAssets/{s}/{s}/{s}.ogg", .{main.files.cubyzDirStr(), addon, subPath, fileName}, 0) catch unreachable;
 		defer main.stackAllocator.free(path2);
 		if (c.stb_vorbis_open_filename(path2.ptr, &err, null)) |ogg_stream| return ogg_stream;
-		std.log.err("Couldn't handle or find audio file. Error: {s}. ID: \"{s}\". Searched path: \"{s}\" and \"{s}\"", .{getStbVorbisError(err), id, path1, path2});
+		std.log.err("Couldn't handle or find audio file. Error: {t}. ID: \"{s}\". Searched path: \"{s}\" and \"{s}\"", .{getStbVorbisError(err), id, path1, path2});
 		return null;
 	}
 
