@@ -16,8 +16,6 @@ const Label = GuiComponent.Label;
 
 const ScrollBar = @This();
 
-const fontSize: f32 = 16;
-
 var texture: Texture = undefined;
 
 pos: Vec2f,

@@ -17,7 +17,6 @@ const Label = GuiComponent.Label;
 const DiscreteSlider = @This();
 
 const border: f32 = 3;
-const fontSize: f32 = 16;
 
 var texture: Texture = undefined;
 
