@@ -592,6 +592,7 @@ pub fn getBlockWithSide(comptime side: main.sync.Side, x: i32, y: i32, z: i32) ?
 }
 
 fn updateZoom() void {
+	const maxZoom = 10_000.0;
 	const currentTime = main.timestamp();
 	var startTime = currentTime;
 	var newZoomEnd: f32 = 1.0;
@@ -603,7 +604,7 @@ fn updateZoom() void {
 		}
 		const change = @as(f32, @floatFromInt(main.Window.scrollOffsetInteger));
 		newZoomEnd *= std.math.pow(f32, settings.zoomIncrease, change);
-		newZoomEnd = @max(newZoomEnd, 1.0);
+		newZoomEnd = std.math.clamp(newZoomEnd, 1.0, maxZoom);
 		zoomIsPressed = true;
 	} else {
 		newZoomEnd = 1.0;
@@ -627,11 +628,11 @@ fn updateZoom() void {
 		const zoomSeconds = @as(f32, @floatFromInt(zoomDuration.toNanoseconds()))/1.0e9;
 		const t = std.math.clamp(zoomSeconds/zoomNeededDurationSeconds, 0, 1);
 		zoom = zoomStart*std.math.exp(zoomSScaled*t);
+		zoom = @max(zoom, 1);
 	} else {
 		zoom = zoomEnd;
 		zoomStartTime = null;
 	}
-	zoom = @max(zoom, 1);
 	renderer.updateZoom(zoom);
 }
 
