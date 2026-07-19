@@ -23,12 +23,12 @@ pub const Args = union(enum) {
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/tp"});
 
-pub fn execute(args: Args, _source: *User) void {
+pub fn execute(args: Args, _source: Source) void {
 	if (_source != .user) {
 		_source.sendMessage("Command doesn't support running from console", .{});
 		return;
 	}
-        const source = _source.user;
+	const source = _source.user;
 	const pos: main.vec.Vec3d = blk: switch (args) {
 		.@"/tp <biome>" => |b| {
 			const biome = b.biome.biome;

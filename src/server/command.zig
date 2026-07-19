@@ -31,10 +31,10 @@ pub const Command = struct {
 
 pub var commands: std.StringHashMap(Command) = undefined;
 
-fn initExecutionFn(comptime name: []const u8) *const fn (args: []const u8, source: *User) void {
+fn initExecutionFn(comptime name: []const u8) *const fn (args: []const u8, source: Source) void {
 	const ArgPaser = main.argparse.Parser(@field(commandList, name).Args, .{.commandName = name});
 	return struct {
-		fn exec(msg: []const u8, source: *User) void {
+		fn exec(msg: []const u8, source: Source) void {
 			const arena: main.heap.NeverFailingAllocator = .createArena(main.stackAllocator);
 			defer main.stackAllocator.destroyArena(arena);
 			var errorMessage: main.ListManaged(u8) = .init(arena);
@@ -117,7 +117,11 @@ pub const Target = struct {
 	user: *User,
 	increasedRefCount: bool,
 
-	pub fn fromPlayerIndex(arg: ?PlayerIndex, source: *User) !Target {
+	pub fn fromPlayerIndex(arg: ?PlayerIndex, source: Source) !Target {
+		if (arg == null and source == .server) {
+			source.sendMessage("ff0000Server is no player, command needs playerIndex to work", .{});
+			return error.InvalidArg;
+		}
 		const playerIndex = arg orelse return .{
 			.user = source.user,
 			.increasedRefCount = false,

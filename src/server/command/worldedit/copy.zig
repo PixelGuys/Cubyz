@@ -19,6 +19,7 @@ pub fn execute(_: Args, _source: Source) void {
 		_source.sendMessage("Command doesn't support running from console", .{});
 		return;
 	}
+	const source = _source.user;
 	const selection = command.getCurrentSelection(source) catch return;
 	source.sendMessage("Copying: {f}", .{selection});
 
