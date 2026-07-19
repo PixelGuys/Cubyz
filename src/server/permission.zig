@@ -14,15 +14,16 @@ const PermissionMap = struct { // MARK: PermissionMap
 
 	pub fn fromBytes(self: *PermissionMap, arena: NeverFailingAllocator, reader: *main.utils.BinaryReader) !void {
 		sync.threadContext.assertCorrectContext(.server);
-		const len = try reader.readVarInt(usize);
+		const len = try reader.readInt(u32);
+		self.map.ensureUnusedCapacity(arena.allocator, len) catch unreachable;
 		for (0..len) |_| {
-			self.put(arena, try reader.readSliceWithSize());
+			self.map.putAssumeCapacity(try reader.readSliceWithSize(), {});
 		}
 	}
 
 	pub fn toBytes(self: PermissionMap, writer: *main.utils.BinaryWriter) void {
 		sync.threadContext.assertCorrectContext(.server);
-		writer.writeVarInt(usize, self.map.count());
+		writer.writeInt(u32, self.map.count());
 
 		var it = self.map.keyIterator();
 		while (it.next()) |key| {
