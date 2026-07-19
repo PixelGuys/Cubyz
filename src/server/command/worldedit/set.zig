@@ -13,7 +13,7 @@ pub const description = "Set all blocks within selection to a block.";
 pub const usage = "/set <pattern>";
 
 const Args = union(enum) {
-	@"/set": struct { selection: []const u8 },
+	@"/set": struct { pattern: command.PatternExpression },
 };
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/set"});
@@ -26,13 +26,9 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000{s}", .{errorMessage.items});
 		return;
 	};
-	const selection = command.getCurrentSelection(source) catch return;
+	defer argsResult.@"/set".pattern.deinit(main.stackAllocator);
 
-	const pattern = Pattern.initFromString(main.stackAllocator, argsResult.@"/set".selection) catch |err| {
-		source.sendMessage("#ff0000Error parsing pattern: {s}", .{@errorName(err)});
-		return;
-	};
-	defer pattern.deinit(main.stackAllocator);
+	const selection = command.getCurrentSelection(source) catch return;
 
 	const result = Blueprint.capture(main.globalAllocator, selection);
 
@@ -44,7 +40,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			var modifiedBlueprint = blueprint.clone(main.stackAllocator);
 			defer modifiedBlueprint.deinit(main.stackAllocator);
 
-			modifiedBlueprint.replace(null, source.worldEditData.mask, pattern);
+			modifiedBlueprint.replace(null, source.worldEditData.mask, argsResult.@"/set".pattern.pattern);
 			modifiedBlueprint.paste(selection.minPos, .{.preserveVoid = true});
 		},
 		.failure => |err| {
