@@ -9,16 +9,25 @@ const Blueprint = main.blueprint.Blueprint;
 pub const description = "Undo last change done to world with world editing commands.";
 pub const usage = "/undo";
 
+const Args = union(enum) {
+	@"/undo": struct {},
+};
+
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/undo"});
+
 pub fn execute(args: []const u8, _source: Source) void {
 	if (_source != .user) {
 		_source.sendMessage("Command doesn't support running from console", .{});
 		return;
 	}
 	const source = _source.user;
-	if (args.len != 0) {
-		source.sendMessage("#ff0000Too many arguments for command /undo. Expected no arguments.", .{});
+	var errorMessage: main.List(u8) = .empty;
+	defer errorMessage.deinit(main.stackAllocator);
+
+	_ = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
+		source.sendMessage("#ff0000{s}", .{errorMessage.items});
 		return;
-	}
+	};
 	if (source.worldEditData.undoHistory.pop()) |action| {
 		defer action.deinit();
 

@@ -516,7 +516,6 @@ fn getRenderCursorPos(self: *const TextInput, pos: u32) u32 {
 pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 	texture.bindTo(0);
 	Button.pipeline.bind(draw.getScissor());
-	draw.setColor(0xff000000);
 	draw.customShadedRect(Button.buttonUniforms, self.pos, self.size);
 	const oldTranslation = draw.setTranslation(self.pos);
 	defer draw.restoreTranslation(oldTranslation);
@@ -550,7 +549,8 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 		const cursorPos = textPos + textBuffer.indexToCursorPos(cursor);
 		if (self.selectionStart) |_selectionStart| {
 			const selectionStart = self.getRenderCursorPos(_selectionStart);
-			draw.setColor(0x440000ff);
+			const oldColor = draw.setColor(0x440000ff);
+			defer draw.restoreColor(oldColor);
 			textBuffer.drawSelection(textPos, @min(selectionStart, cursor), @max(selectionStart, cursor));
 		}
 
@@ -561,7 +561,8 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 		}
 
 		if (self.showCusor) {
-			draw.setColor(0xff000000);
+			const oldColor = draw.setColor(0xff000000);
+			defer draw.restoreColor(oldColor);
 			const thickness = @min(@ceil(fontSize/8), 1);
 			draw.rect(cursorPos, Vec2f{thickness, fontSize});
 		}

@@ -40,13 +40,13 @@ pub const Settings = struct {
 
 	pub fn fromZon(zon: ZonElement) error{NoSeed}!Settings {
 		return .{
-			.seed = zon.get(?u64, "seed", null) orelse {
+			.seed = zon.get(u64, "seed") orelse {
 				std.log.err("Cannot load world. World has no seed!", .{});
 				return error.NoSeed;
 			},
-			.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "defaultGamemode", @tagName(defaults.defaultGamemode))) orelse defaults.defaultGamemode,
-			.allowCheats = zon.get(bool, "allowCheats", defaults.allowCheats),
-			.testingMode = zon.get(bool, "testingMode", defaults.testingMode),
+			.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "defaultGamemode") orelse @tagName(defaults.defaultGamemode)) orelse defaults.defaultGamemode,
+			.allowCheats = zon.get(bool, "allowCheats") orelse defaults.allowCheats,
+			.testingMode = zon.get(bool, "testingMode") orelse defaults.testingMode,
 		};
 	}
 
@@ -320,6 +320,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 	}
 
 	pub fn deinit(_: ChunkManager) void {
+		main.threadPool.updateTaskPriority();
 		for (0..main.settings.highestSupportedLod) |_| {
 			chunkCache.clear();
 		}
@@ -421,8 +422,6 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 pub const worldDataVersion: u32 = 5;
 
 pub const ServerWorld = struct { // MARK: ServerWorld
-	pub const dayCycle: u31 = 12000; // Length of one in-game day in units of 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
-
 	itemDropManager: ItemDropManager = undefined,
 	blockPalette: *main.assets.Palette = undefined,
 	itemPalette: *main.assets.Palette = undefined,
@@ -442,6 +441,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	settings: Settings = undefined,
 
+	mode: Mode,
+
 	path: []const u8,
 	name: []const u8 = &.{},
 	spawn: Vec3i = undefined,
@@ -452,6 +453,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	regionUpdateQueue: main.utils.CircularBufferQueue(RegionUpdateRequest),
 
 	playerDatabase: std.StringHashMapUnmanaged(usize) = .{},
+	localPlayerIndex: usize = 0,
 	nextPlayerIndex: std.atomic.Value(usize) = .init(0),
 
 	biomeChecksum: i64 = 0,
@@ -466,7 +468,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		milliTimeStamp: i64,
 	};
 
-	pub fn init(path: []const u8) !*ServerWorld { // MARK: init()
+	pub const Mode = enum { singleplayer, multiplayer };
+
+	pub fn init(path: []const u8, mode: Mode) !*ServerWorld { // MARK: init()
 		const self = main.globalAllocator.create(ServerWorld);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = ServerWorld{
@@ -476,6 +480,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			.path = main.globalAllocator.dupe(u8, path),
 			.chunkUpdateQueue = .init(main.globalAllocator, 256),
 			.regionUpdateQueue = .init(main.globalAllocator, 256),
+			.mode = mode,
 		};
 		self.itemDropManager.init(main.globalAllocator, self);
 		errdefer self.itemDropManager.deinit();
@@ -522,6 +527,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));
 		errdefer self.chunkManager.deinit();
 
+		try permission.loadGroups(try dir.openIterableDir("groups"));
 		std.debug.assert(main.entityModel.getById("cubyz:missing") != null);
 
 		return self;
@@ -537,8 +543,14 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn deinit(self: *ServerWorld) void {
-		self.forceSave() catch |err| {
-			std.log.err("Error while saving the world: {s}", .{@errorName(err)});
+		self.saveWorldConfig() catch |err| {
+			std.log.err("Error while saving world config: {s}", .{@errorName(err)});
+		};
+		self.saveAllPlayers() catch |err| {
+			std.log.err("Error while saving player data: {s}", .{@errorName(err)});
+		};
+		self.saveItemdrops() catch |err| {
+			std.log.err("Error while saving item data: {s}", .{@errorName(err)});
 		};
 		while (self.chunkUpdateQueue.popFront()) |updateRequest| {
 			updateRequest.ch.save(self);
@@ -558,13 +570,14 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.biomePalette.deinit();
 		self.entityModelPalette.deinit();
 		self.entityComponentPalette.deinit();
+		permission.deinit();
 		main.globalAllocator.free(self.path);
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
 	}
 
 	pub fn loadWorldConfig(self: *ServerWorld, arena: NeverFailingAllocator, dir: main.files.Dir, worldData: ZonElement) !void { // MARK: loadWorldConfig
-		if (worldData.get(u32, "version", 0) == 2) { // TODO: #2458
+		if ((worldData.get(u32, "version") orelse 0) == 2) { // TODO: #2458
 			std.log.info("Migrating old world with world version 2 to version 3", .{});
 
 			const gamerules = try dir.readToZon(arena, "gamerules.zig.zon");
@@ -572,7 +585,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			settings.put("defaultGamemode", gamerules.getChild("default_gamemode"));
 			settings.put("allowCheats", gamerules.getChild("cheats"));
 			settings.put("testingMode", gamerules.getChild("testingMode"));
-			settings.put("seed", worldData.get(?u64, "seed", null) orelse {
+			settings.put("seed", worldData.get(u64, "seed") orelse {
 				std.log.err("Cannot migrate world. World has no seed!", .{});
 				return error.NoSeed;
 			});
@@ -587,7 +600,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			try dir.deleteFile("generatorSettings.zig.zon");
 		}
 
-		if (worldData.get(u32, "version", 0) == 3) { // TODO: #2458
+		if ((worldData.get(u32, "version") orelse 0) == 3) { // TODO: #2458
 			std.log.info("Migrating old world with world version 3 to version 4", .{});
 			// In version 0.1.0 these values were written incorrectly
 			const settings = worldData.getChild("settings");
@@ -602,7 +615,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			try dir.writeZon("world.zig.zon", worldData);
 		}
 
-		if (worldData.get(u32, "version", 0) == 4) { // TODO: #2458
+		if ((worldData.get(u32, "version") orelse 0) == 4) { // TODO: #2458
 			std.log.info("Migrating old world with world version 4 to version 5", .{});
 			// Player file names are now numerical instead of based on the name.
 			var fileNames: main.List([]const u8) = .empty;
@@ -624,18 +637,19 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			try dir.writeZon("world.zig.zon", worldData);
 		}
 
-		if (worldData.get(u32, "version", 0) != worldDataVersion) {
-			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version", 0), worldDataVersion});
+		if ((worldData.get(u32, "version") orelse 0) != worldDataVersion) {
+			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version") orelse 0, worldDataVersion});
 			return error.OldWorld;
 		}
 		self.settings = try .fromZon(worldData.getChild("settings"));
 
-		self.doGameTimeCycle = worldData.get(bool, "doGameTimeCycle", true);
-		self.gameTime = worldData.get(i64, "gameTime", 0);
-		self.spawn = worldData.get(Vec3i, "spawn", .{0, 0, 0});
-		self.biomeChecksum = worldData.get(i64, "biomeChecksum", 0);
-		self.name = main.globalAllocator.dupe(u8, worldData.get([]const u8, "name", self.path));
-		self.tickSpeed = .init(worldData.get(u32, "tickSpeed", 12));
+		self.doGameTimeCycle = worldData.get(bool, "doGameTimeCycle") orelse true;
+		self.gameTime = worldData.get(i64, "gameTime") orelse 0;
+		self.spawn = worldData.get(Vec3i, "spawn") orelse .{0, 0, 0};
+		self.biomeChecksum = worldData.get(i64, "biomeChecksum") orelse 0;
+		self.name = main.globalAllocator.dupe(u8, worldData.get([]const u8, "name") orelse self.path);
+		self.tickSpeed = .init(worldData.get(u32, "tickSpeed") orelse 12);
+		self.localPlayerIndex = worldData.get(usize, "localPlayer") orelse 0;
 	}
 
 	pub fn saveWorldConfig(self: *ServerWorld) !void {
@@ -651,6 +665,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		worldData.put("name", self.name);
 		worldData.put("lastUsedTime", std.Io.Clock.Timestamp.now(main.io, .real).raw.toMilliseconds());
 		worldData.put("tickSpeed", self.tickSpeed.load(.monotonic));
+		worldData.put("localPlayer", self.localPlayerIndex);
 
 		try files.cubyzDir().writeZon(path, worldData);
 	}
@@ -663,7 +678,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			if (file.kind == .file and std.mem.endsWith(u8, file.name, ".zon")) {
 				const zon = try playerDir.readToZon(main.stackAllocator, file.name);
 				defer zon.deinit(main.stackAllocator);
-				const fileNameBase = file.name[0 .. std.mem.findScalar(u8, file.name, '.') orelse unreachable];
+				const fileNameBase = file.name[0..std.mem.findScalar(u8, file.name, '.').?];
 				if (fileNameBase[0] == '0' and fileNameBase.len != 1) {
 					std.log.err("Player file {s} contains leading zeroes. Skipping.", .{file.name});
 					continue;
@@ -673,7 +688,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 					continue;
 				};
 				_ = self.nextPlayerIndex.fetchMax(index + 1, .monotonic);
-				if (zon.get(?[]const u8, "publicKey", null)) |key| {
+				if (zon.get([]const u8, "publicKey")) |key| {
 					const keyType = key[0 .. std.mem.findScalar(u8, key, ':') orelse {
 						std.log.err("Player file {s} has invalid key entry {s}: Type is missing. Skipping.", .{file.name, key});
 						continue;
@@ -683,8 +698,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 						continue;
 					};
 					self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, key), index) catch unreachable;
-				} else {
-					const name = zon.get(?[]const u8, "name", null) orelse {
+				} else if (index != self.localPlayerIndex) {
+					const name = zon.get([]const u8, "name") orelse {
 						std.log.err("Couldn't read player file {s}. Skipping.", .{file.name});
 						continue;
 					};
@@ -946,18 +961,20 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		const playerData = files.cubyzDir().readToZon(main.stackAllocator, path) catch .null;
 		defer playerData.deinit(main.stackAllocator);
-		if (playerData.get(?[]const u8, "publicKey", null)) |publicKey| {
-			if (!std.mem.eql(u8, publicKey, user.newKeyString)) {
-				std.debug.assert(self.playerDatabase.remove(publicKey));
-				self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, user.newKeyString), user.playerIndex) catch unreachable;
+		if (user.newKeyString) |userKey| {
+			if (playerData.get([]const u8, "publicKey")) |publicKey| {
+				if (!std.mem.eql(u8, publicKey, userKey)) {
+					std.debug.assert(self.playerDatabase.remove(publicKey));
+					self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, userKey), user.playerIndex) catch unreachable;
+				}
+			} else {
+				removeOld: {
+					const nameEntry = std.fmt.allocPrint(main.stackAllocator.allocator, "name:{s}", .{playerData.get([]const u8, "name") orelse break :removeOld}) catch unreachable;
+					defer main.stackAllocator.free(nameEntry);
+					_ = self.playerDatabase.remove(nameEntry);
+				}
+				self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, userKey), user.playerIndex) catch unreachable;
 			}
-		} else {
-			removeOld: {
-				const nameEntry = std.fmt.allocPrint(main.stackAllocator.allocator, "name:{s}", .{playerData.get(?[]const u8, "name", null) orelse break :removeOld}) catch unreachable;
-				defer main.stackAllocator.free(nameEntry);
-				std.debug.assert(self.playerDatabase.remove(nameEntry));
-			}
-			self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, user.newKeyString), user.playerIndex) catch unreachable;
 		}
 		const player = user.player();
 		const loadingError = player.loadFrom(user.id, playerData.getChild("entity"), .server);
@@ -975,12 +992,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		} else {
 			user.permissions.fromZon(playerData);
 
-			user.gamemode = .init(std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.settings.defaultGamemode))) orelse self.settings.defaultGamemode);
+			user.gamemode = .init(std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode") orelse @tagName(self.settings.defaultGamemode)) orelse self.settings.defaultGamemode);
 		}
-		user.inventory = loadPlayerInventory(main.game.Player.inventorySize, playerData.get([]const u8, "playerInventory", ""), .{.playerInventory = user.id}, path);
-		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand", ""), .{.hand = user.id}, path);
+		user.inventory = loadPlayerInventory(main.game.Player.inventorySize, playerData.get([]const u8, "playerInventory") orelse "", .{.playerInventory = user.id}, path);
+		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand") orelse "", .{.hand = user.id}, path);
 
-		user.spawnPos = playerData.get(?Vec3d, "playerSpawnPos", null);
+		user.spawnPos = playerData.get(Vec3d, "playerSpawnPos");
 
 		return loadingError;
 	}
@@ -1027,7 +1044,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 
 		playerZon.put("name", user.name);
-		playerZon.put("publicKey", user.newKeyString);
+		if (user.newKeyString) |key| {
+			playerZon.put("publicKey", key);
+		}
 
 		playerZon.put("entity", user.player().save(main.stackAllocator, .disk));
 		user.permissions.toZon(main.stackAllocator, &playerZon);
@@ -1065,12 +1084,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 	}
 
-	pub fn forceSave(self: *ServerWorld) !void {
-		// TODO: Save chunks and player data
-		try self.saveWorldConfig();
-
-		try self.saveAllPlayers();
-
+	fn saveItemdrops(self: *ServerWorld) !void {
 		var itemDropData = main.utils.BinaryWriter.init(main.stackAllocator);
 		defer itemDropData.deinit();
 		self.itemDropManager.storeToBytes(&itemDropData);
@@ -1156,14 +1170,14 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			defer self.mutex.lock();
 			updateRequest.ch.save(self);
 			updateRequest.ch.decreaseRefCount();
-			if (updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() <= 0) break;
+			if (updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() >= 0) break;
 		}
 		while (self.regionUpdateQueue.popFront()) |updateRequest| {
 			self.mutex.unlock();
 			defer self.mutex.lock();
 			updateRequest.region.store();
 			updateRequest.region.decreaseRefCount();
-			if (updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() <= 0) break;
+			if (updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() >= 0) break;
 		}
 	}
 
@@ -1258,6 +1272,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			var neighborBlock = ch.getBlock(neighborPos.x, neighborPos.y, neighborPos.z);
 			if (neighborBlock.mode().dependsOnNeighbors and neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
 				ch.updateBlockAndSetChanged(neighborPos.x, neighborPos.y, neighborPos.z, neighborBlock);
+
+				const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
+				defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+
+				for (userList) |user| {
+					main.network.protocols.blockUpdate.send(user.conn, &.{.{.pos = .{wx +% neighbor.relX(), wy +% neighbor.relY(), wz +% neighbor.relZ()}, .newBlock = neighborBlock, .blockEntityData = &.{}}});
+				}
 			}
 			if (newBlock.mode().dependsOnNeighbors) {
 				_ = newBlock.mode().updateData(&newBlock, neighbor, neighborBlock);

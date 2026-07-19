@@ -13,7 +13,7 @@
 	.music = "cubyz:sinanimea/sunrise",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
-		"cubyz:grass",
+		"cubyz:grass/temperate",
 		"2 to 3 cubyz:soil",
 	},
 	.structures = .{
@@ -44,7 +44,7 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.005,
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.size = 5,
 			.size_variance = 1,
 		},
@@ -64,7 +64,7 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:grass_vegetation",
+			.block = "cubyz:grass/vegetation/temperate",
 			.chance = 0.6,
 			.height = 1,
 			.height_variation = 0,

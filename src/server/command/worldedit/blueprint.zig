@@ -136,15 +136,16 @@ fn blueprintList(source: *User) void {
 	};
 	defer blueprintsDir.close();
 
-	var directoryIterator = blueprintsDir.iterate();
+	var directoryWalker = blueprintsDir.walk(main.stackAllocator);
+	defer directoryWalker.deinit();
 
-	while (directoryIterator.next(main.io) catch |err| {
+	while (directoryWalker.next(main.io) catch |err| {
 		return sendWarningAndLog("Failed to read blueprint directory ({s})", .{@errorName(err)}, source);
 	}) |entry| {
-		if (entry.kind != .file) break;
-		if (!std.ascii.endsWithIgnoreCase(entry.name, ".blp")) break;
+		if (entry.kind != .file) continue;
+		if (!std.ascii.endsWithIgnoreCase(entry.basename, ".blp")) continue;
 
-		source.sendMessage("#ffffff- {s}", .{entry.name});
+		source.sendMessage("#ffffff- {s}", .{entry.path});
 	}
 }
 

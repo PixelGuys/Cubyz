@@ -90,8 +90,8 @@ pub fn execute(argsString: []const u8, _source: Source) void {
 
 	switch (args.target) {
 		.selection => {
-			const pos1 = source.worldEditData.selectionPosition1 orelse unreachable;
-			const pos2 = source.worldEditData.selectionPosition2 orelse unreachable;
+			const pos1 = source.worldEditData.selectionPosition1.?;
+			const pos2 = source.worldEditData.selectionPosition2.?;
 
 			const posStart: Vec3i = @min(pos1, pos2);
 

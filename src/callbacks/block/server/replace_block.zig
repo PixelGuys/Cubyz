@@ -4,10 +4,10 @@ const main = @import("main");
 
 block: main.blocks.Block,
 
-pub fn init(zon: main.ZonElement) ?*@This() {
+pub fn init(zon: main.ZonElement, _: main.callbacks.Creator) ?*@This() {
 	const result = main.worldArena.create(@This());
 	result.* = .{
-		.block = main.blocks.parseBlock(zon.get(?[]const u8, "block", null) orelse {
+		.block = main.blocks.parseBlock(zon.get([]const u8, "block") orelse {
 			std.log.err("Missing field \"block\" for replace_block event", .{});
 			return null;
 		}),

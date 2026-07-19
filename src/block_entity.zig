@@ -251,7 +251,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 
 		pub fn onUnloadServer(entity: BlockEntity) void {
 			StorageServer.mutex.lock();
-			const data = StorageServer.removeAtIndex(entity) orelse unreachable;
+			const data = StorageServer.removeAtIndex(entity).?;
 			StorageServer.mutex.unlock();
 			main.items.Inventory.server.destroyExternallyManagedInventory(data.invId);
 		}
@@ -354,7 +354,9 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 				texture.deinit();
 			}
 			textureDeinitList.deinit(main.globalAllocator);
-			pipeline.deinit();
+			if (!main.settings.launchConfig.headlessServer) {
+				pipeline.deinit();
+			}
 			StorageServer.deinit();
 			StorageClient.deinit();
 		}
@@ -366,13 +368,13 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 		pub fn onUnloadClient(entity: BlockEntity) void {
 			StorageClient.mutex.lock();
 			defer StorageClient.mutex.unlock();
-			const entry = StorageClient.removeAtIndex(entity) orelse unreachable;
+			const entry = StorageClient.removeAtIndex(entity).?;
 			entry.deinit();
 		}
 		pub fn onUnloadServer(entity: BlockEntity) void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
-			const entry = StorageServer.removeAtIndex(entity) orelse unreachable;
+			const entry = StorageServer.removeAtIndex(entity).?;
 			main.globalAllocator.free(entry.text);
 		}
 

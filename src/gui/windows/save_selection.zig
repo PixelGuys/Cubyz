@@ -21,10 +21,12 @@ pub var window = GuiWindow{
 };
 
 const padding: f32 = 8;
-const width: f32 = 128;
+const width: f32 = 160;
 var buttonNameArena: main.heap.NeverFailingArenaAllocator = undefined;
 
 pub var needsUpdate: bool = false;
+
+pub var mode: main.server.ServerWorld.Mode = undefined;
 
 var deleteIcon: Texture = undefined;
 var fileExplorerIcon: Texture = undefined;
@@ -47,13 +49,13 @@ pub fn deinit() void {
 }
 
 pub fn openWorld(name: []const u8) void {
-	const clientConnection = ConnectionManager.init(0, false) catch |err| {
+	const clientConnection = ConnectionManager.init(0, .{}) catch |err| {
 		std.log.err("Encountered error while opening connection: {s}", .{@errorName(err)});
 		return;
 	};
 
 	std.log.info("Opening world {s}", .{name});
-	main.server.thread = std.Thread.spawn(.{}, main.server.startFromNewThread, .{name, clientConnection.localPort}) catch |err| {
+	main.server.thread = std.Thread.spawn(.{}, main.server.startFromNewThread, .{name, clientConnection.localPort, mode}) catch |err| {
 		std.log.err("Encountered error while starting server thread: {s}", .{@errorName(err)});
 		return;
 	};
@@ -65,12 +67,15 @@ pub fn openWorld(name: []const u8) void {
 		main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 		main.heap.GarbageCollection.syncPoint();
 	}
-	clientConnection.world = &main.game.testWorld;
 	const ipPort = std.fmt.allocPrint(main.stackAllocator.allocator, "127.0.0.1:{}", .{main.server.connectionManager.localPort}) catch unreachable;
 	defer main.stackAllocator.free(ipPort);
-	main.game.world = &main.game.testWorld;
-	main.game.testWorld.init(ipPort, clientConnection) catch |err| {
+	const zon = main.game.testWorld.init(ipPort, clientConnection) catch |err| {
 		std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
+		return;
+	};
+	main.game.testWorld.finishHandshake(zon) catch |err| {
+		std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
+		return;
 	};
 	for (gui.openWindows.items) |openWindow| {
 		gui.closeWindowFromRef(openWindow);
@@ -106,8 +111,8 @@ pub fn update() void {
 pub fn onOpen() void {
 	buttonNameArena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
-	list.add(Label.init(.{0, 0}, width, "**Select World**", .center));
-	list.add(Button.initText(.{0, 0}, 128, "Create New World", gui.openWindowCallback("save_creation")));
+	list.add(Label.init(.{0, 0}, width, if (mode == .singleplayer) "**Select World**" else "**Select World to Host**", .center));
+	list.add(Button.initText(.{0, 0}, 128, "Create New World", .{.onAction = gui.openWindowCallback("save_creation")}));
 	readingSaves: {
 		var dir = main.files.cubyzDir().openIterableDir("saves") catch |err| {
 			list.add(Label.init(.{0, 0}, 128, "Encountered error while trying to open saves folder:", .center));
@@ -133,8 +138,8 @@ pub fn onOpen() void {
 
 				worldList.append(main.globalAllocator, .{
 					.fileName = main.globalAllocator.dupe(u8, entry.name),
-					.lastUsedTime = worldInfo.get(i64, "lastUsedTime", 0),
-					.name = main.globalAllocator.dupe(u8, worldInfo.get([]const u8, "name", entry.name)),
+					.lastUsedTime = worldInfo.get(i64, "lastUsedTime") orelse 0,
+					.name = main.globalAllocator.dupe(u8, worldInfo.get([]const u8, "name") orelse entry.name),
 				});
 			}
 		}
@@ -148,9 +153,9 @@ pub fn onOpen() void {
 
 	for (worldList.items, 0..) |worldInfo, i| {
 		const row = HorizontalList.init();
-		row.add(Button.initText(.{0, 0}, 128, worldInfo.name, .initWithInt(openWorldWrap, i)));
-		row.add(Button.initIcon(.{8, 0}, .{16, 16}, fileExplorerIcon, false, .initWithInt(openFolder, i)));
-		row.add(Button.initIcon(.{8, 0}, .{16, 16}, deleteIcon, false, .initWithInt(deleteWorld, i)));
+		row.add(Button.initText(.{0, 0}, 128, worldInfo.name, .{.onAction = .initWithInt(openWorldWrap, i)}));
+		row.add(Button.initIcon(.{8, 0}, .{16, 16}, fileExplorerIcon, .{.onAction = .initWithInt(openFolder, i)}));
+		row.add(Button.initIcon(.{8, 0}, .{16, 16}, deleteIcon, .{.onAction = .initWithInt(deleteWorld, i)}));
 		row.finish(.{0, 0}, .center);
 		list.add(row);
 	}

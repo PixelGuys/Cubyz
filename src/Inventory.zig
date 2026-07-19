@@ -285,6 +285,7 @@ pub const server = struct { // MARK: server
 					}
 				};
 				callbacks.onLastCloseCallback = &workbench_close_callback.callback;
+				callbacks.canPutInto = main.items.ProceduralItem.canPutIntoWorkbenchCallback;
 			},
 			.other => {},
 			.alreadyFreed => unreachable,
@@ -391,6 +392,7 @@ pub const Callbacks = struct {
 	onUpdateCallback: ?*const fn (Source) void = null,
 	onFirstOpenCallback: ?*const fn (Source) void = null,
 	onLastCloseCallback: ?*const fn (Source) void = null,
+	canPutInto: ?*const fn (Source, item: Item, slot: usize) bool = null,
 };
 
 pub const SourceType = enum(u8) {
@@ -492,6 +494,11 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	pub fn dropStack(source: ClientInventory, sourceSlot: u32) void {
 		if (source.type != .serverShared) return;
 		main.sync.client.executeCommand(.{.drop = .{.source = .{.inv = source.super, .slot = sourceSlot}}});
+	}
+
+	pub fn depositToBag(source: ClientInventory, sourseSlot: u32, amount: u16) void {
+		std.debug.assert(source.type == .serverShared);
+		main.sync.client.executeCommand(.{.moveToPlayerBag = .{.amount = amount, .source = .{.inv = source.super, .slot = sourseSlot}}});
 	}
 
 	pub fn dropOne(source: ClientInventory, sourceSlot: u32) void {
@@ -619,11 +626,10 @@ pub const CanHoldReturn = union(enum) {
 
 pub fn canHold(self: Inventory, sourceStack: ItemStack) CanHoldReturn {
 	if (sourceStack.amount == 0) return .yes;
-	if (self.source == .workbench and !sync.Command.canPutIntoWorkbench(sourceStack.item)) return .{.remainingAmount = sourceStack.amount};
 
 	var remainingAmount = sourceStack.amount;
 	for (self._items, 0..) |*destStack, destSlot| {
-		if (self.source == .workbench and self.source.workbench.proceduralItemIndex.slotInfos()[destSlot].disabled) continue;
+		if (self.callbacks.canPutInto) |c| if (!c(self.source, sourceStack.item, destSlot)) continue;
 		if (std.meta.eql(destStack.item, sourceStack.item) or destStack.item == .null) {
 			const amount = @min(sourceStack.item.stackSize() - destStack.amount, remainingAmount);
 			remainingAmount -= amount;
@@ -841,11 +847,10 @@ pub const Inventories = struct { // MARK: Inventories
 		var selectedEmptyInv: ?Inventory = null;
 
 		outer: for (self.inventories) |dest| {
-			if (dest.source == .workbench and !sync.Command.canPutIntoWorkbench(item)) continue;
 			var emptySlot: ?u32 = null;
 			var hasItem = false;
 			for (dest._items, 0..) |*destStack, destSlot| {
-				if (dest.source == .workbench and dest.source.workbench.proceduralItemIndex.slotInfos()[destSlot].disabled) continue;
+				if (dest.callbacks.canPutInto) |c| if (!c(dest.source, item, destSlot)) continue;
 				if (destStack.item == .null and emptySlot == null) {
 					emptySlot = @intCast(destSlot);
 					if (selectedEmptySlot == null) {

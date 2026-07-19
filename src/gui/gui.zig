@@ -23,6 +23,7 @@ const gui_component = @import("gui_component.zig");
 pub const GuiComponent = gui_component.GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
 
+pub const tooltip = @import("tooltip.zig");
 pub const windowlist = @import("windows/_list.zig");
 const gamepad_cursor = @import("gamepad_cursor.zig");
 
@@ -30,6 +31,7 @@ var windowList: ListManaged(*GuiWindow) = undefined;
 var hudWindows: ListManaged(*GuiWindow) = undefined;
 pub var openWindows: ListManaged(*GuiWindow) = undefined;
 var selectedWindow: ?*GuiWindow = null;
+var modalWindow: ?*GuiWindow = null;
 pub var selectedTextInput: ?*TextInput = null;
 var hoveredAWindow: bool = false;
 pub var reorderWindows: bool = false;
@@ -42,6 +44,7 @@ pub var hoveredItemSlot: ?*ItemSlot = null;
 const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	const Action = enum {
 		open,
+		openModal,
 		close,
 	};
 	const Command = struct {
@@ -69,6 +72,9 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 				.open => {
 					executeOpenWindowCommand(command.window);
 				},
+				.openModal => {
+					executeOpenModalWindowCommand(command.window);
+				},
 				.close => {
 					executeCloseWindowCommand(command.window);
 				},
@@ -91,10 +97,20 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 		selectedWindow = null;
 	}
 
+	fn executeOpenModalWindowCommand(window: *GuiWindow) void {
+		const alreadyOpen = std.mem.containsAtLeastScalar(*GuiWindow, openWindows.items, 1, window);
+		if (!alreadyOpen) setSelectedTextInput(null);
+		modalWindow = window;
+		executeOpenWindowCommand(window);
+	}
+
 	fn executeCloseWindowCommand(window: *GuiWindow) void {
 		defer updateWindowPositions();
 		if (selectedWindow == window) {
 			selectedWindow = null;
+		}
+		if (modalWindow == window) {
+			modalWindow = null;
 		}
 		for (openWindows.items, 0..) |_openWindow, i| {
 			if (_openWindow == window) {
@@ -147,6 +163,7 @@ pub fn init() void { // MARK: init()
 	ContinuousSlider.globalInit();
 	DiscreteSlider.globalInit();
 	TextInput.globalInit();
+	tooltip.globalInit();
 	load();
 	gamepad_cursor.init();
 }
@@ -167,6 +184,7 @@ pub fn deinit() void {
 	ContinuousSlider.globalDeinit();
 	DiscreteSlider.globalDeinit();
 	TextInput.globalDeinit();
+	tooltip.globalDeinit();
 	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
 		const WindowStruct = @field(windowlist, decl.name);
 		if (@hasDecl(WindowStruct, "deinit")) {
@@ -242,32 +260,32 @@ fn load() void {
 		if (windowZon == .null) continue;
 		for (&window.relativePosition, 0..) |*relPos, i| {
 			const relPosZon = windowZon.getChild(([_][]const u8{"relPos0", "relPos1"})[i]);
-			const typ = relPosZon.get([]const u8, "type", "ratio");
+			const typ = relPosZon.get([]const u8, "type") orelse "ratio";
 			if (std.mem.eql(u8, typ, "ratio")) {
-				relPos.* = .{.ratio = relPosZon.get(f32, "ratio", 0.5)};
+				relPos.* = .{.ratio = relPosZon.get(f32, "ratio") orelse 0.5};
 			} else if (std.mem.eql(u8, typ, "attachedToFrame")) {
 				relPos.* = .{.attachedToFrame = .{
-					.selfAttachmentPoint = @enumFromInt(relPosZon.get(u8, "selfAttachmentPoint", 0)),
-					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint", 0)),
+					.selfAttachmentPoint = @enumFromInt(relPosZon.get(u8, "selfAttachmentPoint") orelse 0),
+					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint") orelse 0),
 				}};
 			} else if (std.mem.eql(u8, typ, "relativeToWindow")) {
-				const reference = getWindowById(relPosZon.get([]const u8, "reference", "")) orelse continue;
+				const reference = getWindowById(relPosZon.get([]const u8, "reference") orelse "") orelse continue;
 				relPos.* = .{.relativeToWindow = .{
 					.reference = reference,
-					.ratio = relPosZon.get(f32, "ratio", 0.5),
+					.ratio = relPosZon.get(f32, "ratio") orelse 0.5,
 				}};
 			} else if (std.mem.eql(u8, typ, "attachedToWindow")) {
-				const reference = getWindowById(relPosZon.get([]const u8, "reference", "")) orelse continue;
+				const reference = getWindowById(relPosZon.get([]const u8, "reference") orelse "") orelse continue;
 				relPos.* = .{.attachedToWindow = .{
 					.reference = reference,
-					.selfAttachmentPoint = @enumFromInt(relPosZon.get(u8, "selfAttachmentPoint", 0)),
-					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint", 0)),
+					.selfAttachmentPoint = @enumFromInt(relPosZon.get(u8, "selfAttachmentPoint") orelse 0),
+					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint") orelse 0),
 				}};
 			} else {
 				std.log.err("Unknown window attachment type: {s}", .{typ});
 			}
 		}
-		window.scale = windowZon.get(f32, "scale", 1);
+		window.scale = windowZon.get(f32, "scale") orelse 1;
 	}
 }
 
@@ -322,6 +340,20 @@ pub fn openWindow(id: []const u8) void {
 
 pub fn openWindowFromRef(window: *GuiWindow) void {
 	GuiCommandQueue.scheduleCommand(.{.action = .open, .window = window});
+}
+
+pub fn openModalWindow(id: []const u8) void {
+	for (windowList.items) |window| {
+		if (std.mem.eql(u8, window.id, id)) {
+			openModalWindowFromRef(window);
+			return;
+		}
+	}
+	std.log.err("Could not find window with id {s}.", .{id});
+}
+
+pub fn openModalWindowFromRef(window: *GuiWindow) void {
+	GuiCommandQueue.scheduleCommand(.{.action = .openModal, .window = window});
 }
 
 pub fn toggleWindow(id: []const u8) void {
@@ -468,6 +500,15 @@ pub fn mainButtonPressed(_: main.Window.Key.Modifiers) void {
 	setSelectedTextInput(null);
 	const mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 
+	if (modalWindow) |modal| {
+		if (@reduce(.And, mousePosition >= modal.pos) and @reduce(.And, mousePosition < modal.pos + modal.size)) {
+			if (modal.mainButtonPressed(mousePosition) == .handled) {
+				selectedWindow = modal;
+			}
+		}
+		return;
+	}
+
 	// reverse order of rendering, the last-rendered element is the first one that we should try to interact with
 	var i: usize = openWindows.items.len;
 	while (i > 0) {
@@ -492,6 +533,9 @@ pub fn mainButtonReleased(_: main.Window.Key.Modifiers) void {
 	const oldWindow = selectedWindow;
 	selectedWindow = null;
 	for (openWindows.items) |window| {
+		if (modalWindow) |modal| {
+			if (window != modal) continue;
+		}
 		var mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 		mousePosition -= window.pos;
 		if (@reduce(.And, mousePosition >= Vec2f{0, 0}) and @reduce(.And, mousePosition < window.size)) {
@@ -544,6 +588,9 @@ pub fn updateAndRenderGui() void {
 		while (i != 0) {
 			i -= 1;
 			const window: *GuiWindow = openWindows.items[i];
+			if (modalWindow) |modal| {
+				if (window != modal) continue;
+			}
 			if (GuiComponent.contains(window.pos, window.size, mousePos)) {
 				if (window.updateHovered(mousePos) == .handled) {
 					hoveredAWindow = true;
@@ -558,7 +605,8 @@ pub fn updateAndRenderGui() void {
 	}
 	if (!hideGui) {
 		if (!main.Window.grabbed) {
-			draw.setColor(0x80000000);
+			const oldColor = draw.setColor(0x80000000);
+			defer draw.restoreColor(oldColor);
 			GuiWindow.borderPipeline.bind(draw.getScissor());
 			c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
 			draw.customShadedRect(GuiWindow.borderUniforms, .{0, 0}, main.Window.getWindowSize());
@@ -566,6 +614,11 @@ pub fn updateAndRenderGui() void {
 		const oldScale = draw.setScale(scale);
 		defer draw.restoreScale(oldScale);
 		for (openWindows.items) |window| {
+			if (modalWindow == window) {
+				const modalOldColor = draw.setColor(0x80000000);
+				defer draw.restoreColor(modalOldColor);
+				draw.rect(.{0, 0}, main.Window.getWindowSize());
+			}
 			window.render(mousePos);
 		}
 		inventory.render(mousePos);
@@ -696,14 +749,15 @@ pub const inventory = struct { // MARK: inventory
 		if (itemSlot.mode != .normal) return;
 
 		if (mainGuiButton.pressed and mainGuiButton.modsOnPress.shift) {
-			if (itemSlot.inventory.super.id == main.game.Player.inventory.super.id) {
+			if (itemSlot.inventory.super.id == main.game.Player.inventory.super.id) blk: {
 				var iterator = std.mem.reverseIterator(openWindows.items);
 				while (iterator.next()) |window| {
 					if (window.shiftClickableInventory) |inv| {
 						itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{inv}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
-						break;
+						break :blk;
 					}
 				}
+				itemSlot.inventory.depositToBag(itemSlot.itemSlot, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 			} else {
 				itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{main.game.Player.inventory}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 			}
@@ -783,32 +837,8 @@ pub const inventory = struct { // MARK: inventory
 		// Draw tooltip:
 		const hovered = hoveredItemSlot orelse return;
 		if (carried.getAmount(0) == 0) {
-			if (hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltip| {
-				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, tooltip, .{}, false, .left);
-				defer textBuffer.deinit();
-				const fontSize = 16;
-				var size = textBuffer.calculateLineBreaks(fontSize, 300);
-				size[0] = 0;
-				for (textBuffer.lineBreaks.items) |lineBreak| {
-					size[0] = @max(size[0], lineBreak.width);
-				}
-				const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(scale));
-				const xOffset = 18;
-				const padding: f32 = 1;
-				const border: f32 = padding + 1;
-				var pos = mousePos;
-				if (pos[0] + size[0] + border + xOffset >= windowSize[0]) {
-					pos[0] -= size[0] + xOffset;
-				} else {
-					pos[0] += xOffset;
-				}
-				pos[1] = @min(pos[1] - fontSize, windowSize[1] - size[1] - border);
-				pos = @max(pos, Vec2f{border, border});
-				draw.setColor(0xffffff00);
-				draw.rect(pos - @as(Vec2f, @splat(border)), size + @as(Vec2f, @splat(2*border)));
-				draw.setColor(0xff000000);
-				draw.rect(pos - @as(Vec2f, @splat(padding)), size + @as(Vec2f, @splat(2*padding)));
-				textBuffer.render(pos[0], pos[1], fontSize);
+			if (hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltipContent| {
+				tooltip.renderFromText(tooltipContent, mousePos);
 			}
 		}
 	}
