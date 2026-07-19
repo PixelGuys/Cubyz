@@ -28,8 +28,8 @@ pub const Args = union(enum) {
 	},
 };
 
-pub fn execute(result: Args, source: *User) void {
-	var blueprint: Blueprint = switch (result.@"/toggledecay <target> <state>".target) {
+pub fn execute(args: Args, source: *User) void {
+	var blueprint: Blueprint = switch (args.@"/toggledecay <target> <state>".target) {
 		.selection => blk: {
 			const selection = command.getCurrentSelection(source) catch return;
 			const blueprint = switch (Blueprint.capture(main.globalAllocator, selection)) {
@@ -51,9 +51,9 @@ pub fn execute(result: Args, source: *User) void {
 		},
 	};
 
-	blueprint.apply(result.@"/toggledecay <target> <state>".state, toggledecay);
+	blueprint.apply(args.@"/toggledecay <target> <state>".state, toggledecay);
 
-	switch (result.@"/toggledecay <target> <state>".target) {
+	switch (args.@"/toggledecay <target> <state>".target) {
 		.selection => {
 			const pos1 = source.worldEditData.selectionPosition1.?;
 			const pos2 = source.worldEditData.selectionPosition2.?;
