@@ -69,7 +69,7 @@ const AudioData = struct {
 		const path2 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "{s}/serverAssets/{s}/{s}/{s}.ogg", .{main.files.cubyzDirStr(), addon, subPath, fileName}, 0) catch unreachable;
 		defer main.stackAllocator.free(path2);
 		if (c.stb_vorbis_open_filename(path2.ptr, &err, null)) |ogg_stream| return ogg_stream;
-		std.log.err("Couldn't handle or find audio file. Error 1: {any}. Error 2: {any}. ID: \"{s}\". Searched path: \"{s}\" and \"{s}\"", .{getStbVorbisError(err), getStbVorbisError(err1), id, path1, path2});
+		std.log.err("Couldn't handle or find audio file. Current Error: {any}. Previous Error: {any}. ID: \"{s}\". Searched path: \"{s}\" and \"{s}\"", .{getStbVorbisError(err), getStbVorbisError(err1), id, path1, path2});
 		return null;
 	}
 
