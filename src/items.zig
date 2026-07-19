@@ -494,43 +494,59 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 		return null;
 	}
 
-	fn findNeighborMaterial(materialGrid: *const [16][16]?BaseItemIndex, heightMap: *const [17][17]f32, pos: [2]u8) ?Material {
-		var bestItem: ?BaseItemIndex = null;
-		var bestCount: u32 = 0;
-		var bestWeight: f32 = -std.math.inf(f32);
+	fn isOutlinePixel(materialGrid: *const [16][16]?BaseItemIndex, pos: [2]u8) bool {
 		for (orthogonalOffsets) |offset| {
+			if (materialAt(materialGrid, neighborCoord(pos, offset)) != null) return true;
+		}
+		for (diagonalOffsets) |offset| {
+			const m = neighborCoord(pos, offset) orelse continue;
+			if (materialAt(materialGrid, m) == null) continue;
+			const corner = tipCornerDirection(materialGrid, m) orelse continue;
+			if (corner[0] == -offset[0] and corner[1] == -offset[1]) return true;
+		}
+		return false;
+	}
+
+	fn mostCommonNeighborMaterial(materialGrid: *const [16][16]?BaseItemIndex, heightMap: *const [17][17]f32, pos: [2]u8, offsets: []const [2]i8) ?Material {
+		const Tally = struct { item: BaseItemIndex, count: u32, weight: f32 };
+		var tallies: [8]Tally = undefined;
+		var tallyCount: usize = 0;
+
+		for (offsets) |offset| {
 			const neighborPos = neighborCoord(pos, offset) orelse continue;
 			const item = materialGrid[neighborPos[0]][neighborPos[1]] orelse continue;
 			if (item.material() == null) continue;
+			const light = calculateRawLight(heightMap, neighborPos);
 
-			var count: u32 = 0;
-			var weight: f32 = 0;
-			for (orthogonalOffsets) |otherOffset| {
-				const otherPos = neighborCoord(pos, otherOffset) orelse continue;
-				const otherItem = materialGrid[otherPos[0]][otherPos[1]] orelse continue;
-				if (otherItem != item) continue;
-				count += 1;
-				weight += calculateRawLight(heightMap, otherPos);
+			var foundIndex: ?usize = null;
+			for (tallies[0..tallyCount], 0..) |tally, i| {
+				if (tally.item == item) {
+					foundIndex = i;
+					break;
+				}
 			}
-
-			const better = count > bestCount or
-				(count == bestCount and weight > bestWeight) or
-				(count == bestCount and weight == bestWeight and (bestItem == null or @intFromEnum(item) < @intFromEnum(bestItem.?)));
-			if (better) {
-				bestItem = item;
-				bestCount = count;
-				bestWeight = weight;
+			if (foundIndex) |i| {
+				tallies[i].count += 1;
+				tallies[i].weight += light;
+			} else {
+				tallies[tallyCount] = .{.item = item, .count = 1, .weight = light};
+				tallyCount += 1;
 			}
 		}
-		if (bestItem) |item| return item.material();
 
-		for (diagonalOffsets) |offset| {
-			const m = neighborCoord(pos, offset) orelse continue;
-			const material = materialAt(materialGrid, m) orelse continue;
-			const corner = tipCornerDirection(materialGrid, m) orelse continue;
-			if (corner[0] == -offset[0] and corner[1] == -offset[1]) return material;
+		var best: ?Tally = null;
+		for (tallies[0..tallyCount]) |tally| {
+			const better = best == null or tally.count > best.?.count or
+				(tally.count == best.?.count and tally.weight > best.?.weight) or
+				(tally.count == best.?.count and tally.weight == best.?.weight and @intFromEnum(tally.item) < @intFromEnum(best.?.item));
+			if (better) best = tally;
 		}
-		return null;
+		return if (best) |b| b.item.material() else null;
+	}
+
+	fn findNeighborMaterial(materialGrid: *const [16][16]?BaseItemIndex, heightMap: *const [17][17]f32, pos: [2]u8) ?Material {
+		if (!isOutlinePixel(materialGrid, pos)) return null;
+		return mostCommonNeighborMaterial(materialGrid, heightMap, pos, &allNeighborOffsets);
 	}
 
 	pub fn generate(proceduralItem: *ProceduralItem) void {
