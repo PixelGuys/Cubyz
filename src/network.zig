@@ -40,6 +40,7 @@ const Socket = struct {
 			c.WSAEINVAL => unreachable,
 			c.WSAENOBUFS => return error.SystemResources,
 			c.WSAENOTSOCK => return error.FileDescriptorNotASocket,
+			c.WSAECONNRESET => return error.ConnectionResetByPeer,
 			else => return error.UNKNOWN,
 		}
 	}

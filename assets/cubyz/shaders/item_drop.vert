@@ -69,8 +69,8 @@ const int[24] positions = int[24](
 );
 
 void main() {
-	int faceID = gl_VertexID >> 2;
-	int vertexID = gl_VertexID & 3;
+	int faceID = gl_VertexIndex >> 2;
+	int vertexID = gl_VertexIndex & 3;
 	int voxelModelIndex = modelIndex;
 	bool isBlock = block != 0;
 	vec3 pos;
@@ -87,7 +87,7 @@ void main() {
 		}
 		faceNormal = quads[quadIndex].normal;
 	} else {
-		int position = positions[gl_VertexID];
+		int position = positions[gl_VertexIndex];
 		pos = vec3 (
 			position >> 8 & 1,
 			position >> 4 & 1,
