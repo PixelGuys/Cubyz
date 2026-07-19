@@ -2,13 +2,12 @@ const std = @import("std");
 
 const main = @import("main");
 
-var stdin: std.Io.File = undefined;
 var readBuffer: [1024]u8 = undefined;
 
 var running: bool = true;
 
 pub fn init() void {
-	stdin = .stdin();
+	running = true;
 }
 
 pub fn deinit() void {
@@ -19,7 +18,7 @@ pub fn update() void {
 	if (!running) return;
 	const _result = main.io.operateTimeout(.{.file_read_streaming = .{
 		.data = &.{&readBuffer},
-		.file = stdin,
+		.file = std.Io.File.stdin(),
 	}}, .{.duration = .{.raw = .fromMilliseconds(1), .clock = .awake}}) catch |err| {
 		if (err == error.Timeout) return;
 		std.log.err("Error while reading from stdin: {t}", .{err});

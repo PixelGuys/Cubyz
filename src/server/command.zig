@@ -15,7 +15,7 @@ pub const Source = union(enum) {
 	pub fn sendMessage(self: Source, comptime fmt: []const u8, args: anytype) void {
 		switch (self) {
 			.user => |user| user.sendMessage(fmt, args),
-			.server => std.log.info(fmt, args),
+			.server => main.log.server(fmt, args),
 		}
 	}
 };
