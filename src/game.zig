@@ -280,6 +280,7 @@ pub const World = struct { // MARK: World
 	entityComponentPalette: *assets.Palette = undefined,
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
+	randomTicksTime: f64 = 0,
 
 	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
 		main.heap.allocators.createWorldArena();
@@ -379,29 +380,43 @@ pub const World = struct { // MARK: World
 		}
 		network.protocols.playerPosition.send(self.conn, Player.getPosBlocking(), Player.getVelBlocking(), @intCast(newTime & 65535));
 		self.dayTime.update(deltaTime);
-		updateRandomTickBlocks(self, deltaTime);
+
+		self.randomTicksTime += deltaTime;
+		const tickrate: f32 = 1.0/20.0;
+		if (self.randomTicksTime >= tickrate) {
+			updateRandomTickBlocks(self);
+			self.randomTicksTime = 0;
+		}
 	}
 
-	pub fn updateRandomTickBlocks(_: *World, _: f64) void {
-		const chunkRadius = 3;
-		const blockPos: Vec3i = @intFromFloat(@floor(Player.getPosBlocking()));
-		const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(blockPos, 1)) orelse return;
+	pub fn updateRandomTickBlocks(_: *World) void {
+		const chunkRadius = settings.visualRandomTickRadius;
+		const playerBlockPos: Vec3i = @intFromFloat(@floor(Player.getPosBlocking()));
+		const thing: i32 = @intCast(if (@mod(chunkRadius, 2) == 0) @divFloor(chunkRadius, 2) else @divFloor(chunkRadius - 1, 2)); 
 		for (0..chunkRadius) |cx| {
 			for (0..chunkRadius) |cy| {
 				for (0..chunkRadius) |cz| {
-				
+					const chunkMultiplierPos: Vec3i = playerBlockPos +% @as(Vec3i, @splat(32))*Vec3i{
+						@as(i32, @intCast(cx)) - thing, 
+						@as(i32, @intCast(cy)) - thing, 
+						@as(i32, @intCast(cz)) - thing
+					};
+					const chunkMesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(chunkMultiplierPos, 1));
+
+					if (chunkMesh) |mesh| {
+						for (0..20) |_| {
+							const curBlockPos = Vec3i{
+								main.random.nextIntBounded(i32, &main.seed, 32), 
+								main.random.nextIntBounded(i32, &main.seed, 32), 
+								main.random.nextIntBounded(i32, &main.seed, 32)
+							};
+							const block = mesh.chunk.getBlock(curBlockPos[0], curBlockPos[1], curBlockPos[2]);
+							const onClientUpdate = block.onClientUpdate();
+							if (onClientUpdate.run(.{.blockPos = curBlockPos + Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, .block = block, .chunk = mesh.chunk}) == .handled) continue;
+						}
+					}
 				}
 			}
-		}
-		for (0..20) |_| {
-			const curBlockPos = Vec3i{
-				main.random.nextIntBounded(i32, &main.seed, 32), 
-				main.random.nextIntBounded(i32, &main.seed, 32), 
-				main.random.nextIntBounded(i32, &main.seed, 32)
-			};
-			const block = mesh.chunk.getBlock(curBlockPos[0], curBlockPos[1], curBlockPos[2]);
-			const onClientUpdate = block.onClientUpdate();
-			if (onClientUpdate.run(.{.blockPos = curBlockPos + Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, .block = block, .chunk = mesh.chunk}) == .handled) continue;
 		}
 	}
 
