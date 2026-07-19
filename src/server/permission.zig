@@ -162,7 +162,7 @@ pub const Group = struct { // MARK: Group
 	fn save(self: *Group, allocator: NeverFailingAllocator) void {
 		if (builtin.is_test) return;
 		sync.threadContext.assertCorrectContext(.server);
-		const path = std.fmt.allocPrint(allocator.allocator, "saves/{s}/groups/{d}.bin", .{main.server.world.?.path, self.id}) catch unreachable;
+		const path = std.fmt.allocPrint(allocator.allocator, "saves/{s}/permission/{d}.group", .{main.server.world.?.path, self.id}) catch unreachable;
 		defer allocator.free(path);
 
 		const writer: main.utils.BinaryWriter = .init(allocator);
@@ -228,7 +228,7 @@ pub fn loadGroups(dir: main.files.Dir) !void {
 	var iterator = dir.iterate();
 	while (try iterator.next(main.io)) |file| {
 		if (file.kind != .file) continue;
-		if (!std.mem.endsWith(u8, file.name, ".bin")) continue;
+		if (!std.mem.endsWith(u8, file.name, ".group")) continue;
 
 		const data = try dir.read(main.stackAllocator, file.name);
 		defer main.stackAllocator.free(data);
@@ -247,7 +247,7 @@ pub fn loadGroups(dir: main.files.Dir) !void {
 
 fn saveMetaData(allocator: NeverFailingAllocator) !void {
 	if (builtin.is_test) return;
-	const metadatPath = std.fmt.allocPrint(allocator.allocator, "saves/{s}/groups/metadata.zon", .{main.server.world.?.path}) catch unreachable;
+	const metadatPath = std.fmt.allocPrint(allocator.allocator, "saves/{s}/permission/metadata.zon", .{main.server.world.?.path}) catch unreachable;
 	defer allocator.free(metadatPath);
 	var metadataZon: ZonElement = .initObject(main.stackAllocator);
 	defer metadataZon.deinit(main.stackAllocator);
@@ -273,7 +273,7 @@ pub fn deleteGroup(allocator: NeverFailingAllocator, name: []const u8) bool {
 	sync.threadContext.assertCorrectContext(.server);
 	const group = groups.fetchRemove(name) orelse return false;
 
-	const path = std.fmt.allocPrint(allocator.allocator, "saves/{s}/groups/{d}.bin", .{main.server.world.?.path, group.value.id}) catch unreachable;
+	const path = std.fmt.allocPrint(allocator.allocator, "saves/{s}/permission/{d}.group", .{main.server.world.?.path, group.value.id}) catch unreachable;
 	defer allocator.free(path);
 	main.files.cubyzDir().deleteFile(path) catch |err| {
 		std.log.err("Couldn't delete group file even though it exits: {t}", .{err});
