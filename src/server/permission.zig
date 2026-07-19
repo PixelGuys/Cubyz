@@ -115,7 +115,6 @@ pub const Group = struct { // MARK: Group
 	// - A new Group1 is created
 	// - When User1 reconnects, they are incorrectly treated as a member of the new Group1
 	id: u32,
-	// not owned by the group, instead owned by the groups StringHashMap
 	name: []const u8,
 
 	fn init(allocator: NeverFailingAllocator, name: []const u8) *Group {
@@ -136,17 +135,18 @@ pub const Group = struct { // MARK: Group
 
 	fn deinit(self: *Group, allocator: NeverFailingAllocator) void {
 		sync.threadContext.assertCorrectContext(.server);
+		allocator.free(self.name);
 		self.permissions.deinit();
 		allocator.destroy(self);
 	}
 
-	pub fn fromBytes(allocator: NeverFailingAllocator, reader: *main.utils.BinaryReader, id: u32, name: []const u8) !*Group {
+	pub fn fromBytes(allocator: NeverFailingAllocator, reader: *main.utils.BinaryReader, id: u32) !*Group {
 		const self = allocator.create(Group);
 		errdefer allocator.destroy(self);
 		self.* = .{
 			.permissions = .init(allocator),
 			.id = id,
-			.name = name,
+			.name = allocator.dupe(u8, try reader.readSliceWithSize()),
 		};
 		try self.permissions.fromBytes(reader);
 		return self;
@@ -211,14 +211,11 @@ pub fn deinit() void {
 
 pub fn addGroupFromBin(id: u32, data: []const u8) void {
 	var reader: main.utils.BinaryReader = .init(data);
-	const name = groupsArena.allocator().dupe(u8, reader.readSliceWithSize() catch |err| {
+	const group = Group.fromBytes(groupsArena.allocator(), &reader, id) catch |err| {
 		std.log.err("Group with id {d} has invalid content skipping: {t}", .{id, err});
 		return;
-	});
-	groups.put(groupsArena.allocator().allocator, name, Group.fromBytes(groupsArena.allocator(), &reader, id, name) catch |err| {
-		std.log.err("Group with id {d} has invalid content skipping: {t}", .{id, err});
-		return;
-	}) catch unreachable;
+	};
+	groups.put(groupsArena.allocator().allocator, group.name, group) catch unreachable;
 }
 
 pub fn loadGroups(dir: main.files.Dir) !void {
@@ -452,7 +449,7 @@ test "permissionGroupToFromBytes" {
 	group.toBytes(&writer);
 
 	var reader: main.utils.BinaryReader = .init(writer.data.items);
-	var testGroup: *Group = try .fromBytes(main.heap.testingAllocator, &reader, 0, try reader.readSliceWithSize());
+	var testGroup: *Group = try .fromBytes(main.heap.testingAllocator, &reader, 0);
 	defer testGroup.deinit(main.heap.testingAllocator);
 
 	try std.testing.expectEqual(2, testGroup.permissions.whitelist.map.size);
