@@ -30,8 +30,8 @@ pub const Args = union(enum) {
 	}
 };
 
-pub fn execute(args: *Args, source: *User) void {
-	switch (args.*) {
+pub fn execute(args: Args, source: *User) void {
+	switch (args) {
 		.@"/mask <mask>" => |cmd| {
 			source.worldEditData.mask = cmd.mask.mask.clone(main.globalAllocator);
 			source.sendMessage("#00ff00Mask set.", .{});

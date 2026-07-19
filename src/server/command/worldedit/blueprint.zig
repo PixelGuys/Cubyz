@@ -57,8 +57,8 @@ pub const Args = union(enum) {
 	}
 };
 
-pub fn execute(args: *Args, source: *User) void {
-	switch (args.*) {
+pub fn execute(args: Args, source: *User) void {
+	switch (args) {
 		.@"/blueprint save <filePath>" => |params| blueprintSave(params.filePath, source),
 		.@"/blueprint delete <filePath>" => |params| blueprintDelete(params.filePath, source),
 		.@"/blueprint load <filePath>" => |params| blueprintLoad(params.filePath, source),

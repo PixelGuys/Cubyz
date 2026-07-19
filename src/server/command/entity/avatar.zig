@@ -15,8 +15,8 @@ pub const Args = union(enum) {
 	@"/avatar <entityModel>": struct { entityModel: command.EntityModel },
 };
 
-pub fn execute(args: *Args, source: *User) void {
-	switch (args.*) {
+pub fn execute(args: Args, source: *User) void {
+	switch (args) {
 		.@"/avatar <entityModel>" => |params| {
 			model.server.put(source.id, .{
 				.entityModel = params.entityModel.index,

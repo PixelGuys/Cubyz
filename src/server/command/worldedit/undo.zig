@@ -13,7 +13,7 @@ pub const Args = union(enum) {
 	@"/undo": struct {},
 };
 
-pub fn execute(result: *Args, source: *User) void {
+pub fn execute(result: Args, source: *User) void {
 	_ = result; // autofix
 	if (source.worldEditData.undoHistory.pop()) |action| {
 		defer action.deinit();

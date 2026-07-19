@@ -28,7 +28,7 @@ pub const Args = union(enum) {
 	},
 };
 
-pub fn execute(result: *Args, source: *User) void {
+pub fn execute(result: Args, source: *User) void {
 	var blueprint: Blueprint = switch (result.@"/toggledecay <target> <state>".target) {
 		.selection => blk: {
 			const selection = command.getCurrentSelection(source) catch return;

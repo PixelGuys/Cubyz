@@ -26,8 +26,8 @@ pub const Args = union(enum) {
 	@"/perm <playerIndex> <permissionPath>": struct { playerIndex: ?command.PlayerIndex, permissionPath: Path },
 };
 
-pub fn execute(args: *Args, source: *User) void {
-	switch (args.*) {
+pub fn execute(args: Args, source: *User) void {
+	switch (args) {
 		.@"/perm <action> <list> <playerIndex> <permissionPath>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
 			defer target.deinit();

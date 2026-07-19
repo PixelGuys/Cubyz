@@ -11,7 +11,7 @@ pub const usage = "/redo";
 
 pub const Args = struct {};
 
-pub fn execute(_: *Args, source: *User) void {
+pub fn execute(_: Args, source: *User) void {
 	if (source.worldEditData.redoHistory.pop()) |action| {
 		defer action.deinit();
 

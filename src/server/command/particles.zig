@@ -36,7 +36,7 @@ pub const Args = union(enum) {
 	},
 };
 
-pub fn execute(args: *Args, source: *User) void {
+pub fn execute(args: Args, source: *User) void {
 	const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
 	for (users) |user| {

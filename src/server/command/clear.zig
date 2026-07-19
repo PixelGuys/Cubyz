@@ -10,8 +10,8 @@ pub const Args = union(enum) {
 	@"/clear <target>": struct { target: enum { inventory, chat } },
 };
 
-pub fn execute(args: *Args, source: *User) void {
-	switch (args.*.@"/clear <target>".target) {
+pub fn execute(args: Args, source: *User) void {
+	switch (args.@"/clear <target>".target) {
 		.inventory => main.items.Inventory.server.clearPlayerInventory(source),
 		.chat => main.network.protocols.genericUpdate.sendClear(source.conn, .chat),
 	}

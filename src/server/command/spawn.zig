@@ -21,8 +21,8 @@ pub const Args = union(enum) {
 	@"/spawn <playerIndex>": struct { playerIndex: ?command.PlayerIndex },
 };
 
-pub fn execute(args: *Args, source: *User) void {
-	switch (args.*) {
+pub fn execute(args: Args, source: *User) void {
+	switch (args) {
 		.@"/spawn <playerIndex> <x> <y> <z>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
 			defer target.deinit();

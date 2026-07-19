@@ -16,7 +16,7 @@ pub const Args = union(enum) {
 	@"/set": struct { pattern: command.PatternExpression },
 };
 
-pub fn execute(args: *Args, source: *User) void {
+pub fn execute(args: Args, source: *User) void {
 	const selection = command.getCurrentSelection(source) catch return;
 
 	const result = Blueprint.capture(main.globalAllocator, selection);

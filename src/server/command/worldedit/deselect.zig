@@ -10,7 +10,7 @@ pub const Args = union(enum) {
 	@"/deselect": struct {},
 };
 
-pub fn execute(_: *Args, source: *User) void {
+pub fn execute(_: Args, source: *User) void {
 	source.worldEditData.selectionPosition1 = null;
 	source.worldEditData.selectionPosition2 = null;
 

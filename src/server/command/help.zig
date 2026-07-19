@@ -15,11 +15,11 @@ pub const Args = union(enum) {
 	@"/help": struct {},
 };
 
-pub fn execute(result: *Args, source: *User) void {
+pub fn execute(result: Args, source: *User) void {
 	var msg: main.ListManaged(u8) = .init(main.stackAllocator);
 	defer msg.deinit();
 	msg.appendSlice("#ffff00");
-	switch (result.*) {
+	switch (result) {
 		.@"/help" => {
 			var iterator = command.commands.valueIterator();
 			while (iterator.next()) |cmd| {

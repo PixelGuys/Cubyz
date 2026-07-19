@@ -12,6 +12,6 @@ pub const Args = union(enum) {
 	@"/seed": struct {},
 };
 
-pub fn execute(_: *Args, source: *User) void {
+pub fn execute(_: Args, source: *User) void {
 	source.sendMessage("#ffff00{}", .{main.server.world.?.settings.seed});
 }

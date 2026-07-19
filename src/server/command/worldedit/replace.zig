@@ -20,7 +20,7 @@ pub const Args = union(enum) {
 	},
 };
 
-pub fn execute(args: *Args, source: *User) void {
+pub fn execute(args: Args, source: *User) void {
 	const selection = command.getCurrentSelection(source) catch return;
 	const capture = Blueprint.capture(main.globalAllocator, selection);
 

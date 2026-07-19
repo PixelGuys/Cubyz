@@ -14,8 +14,8 @@ pub const Args = union(enum) {
 	@"/tickspeed": struct {},
 };
 
-pub fn execute(args: *Args, source: *User) void {
-	switch (args.*) {
+pub fn execute(args: Args, source: *User) void {
+	switch (args) {
 		.@"/tickspeed <rate>" => |tickSpeed| main.server.world.?.tickSpeed.store(tickSpeed.rate, .monotonic),
 		.@"/tickspeed" => {},
 	}

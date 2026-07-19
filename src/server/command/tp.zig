@@ -21,8 +21,8 @@ pub const Args = union(enum) {
 	@"/tp <playerIndex>": struct { playerIndex: command.PlayerIndex },
 };
 
-pub fn execute(args: *Args, source: *User) void {
-	const pos: main.vec.Vec3d = blk: switch (args.*) {
+pub fn execute(args: Args, source: *User) void {
+	const pos: main.vec.Vec3d = blk: switch (args) {
 		.@"/tp <biome>" => |b| {
 			const biome = b.biome.biome;
 			if (biome.isCave) {

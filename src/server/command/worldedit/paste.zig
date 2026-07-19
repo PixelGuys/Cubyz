@@ -17,7 +17,7 @@ pub const Args = union(enum) {
 	@"/paste [-v|--keep-void]": struct { void: ?enum { @"-v", @"--keep-void" } },
 };
 
-pub fn execute(args: *Args, source: *User) void {
+pub fn execute(args: Args, source: *User) void {
 	if (source.worldEditData.clipboard) |clipboard| {
 		const pos: Vec3i = @floor(source.player().pos);
 		source.sendMessage("Pasting: {}", .{pos});

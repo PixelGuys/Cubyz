@@ -11,7 +11,7 @@ pub const Args = union(enum) {
 	@"/pos1": struct {},
 };
 
-pub fn execute(_: *Args, source: *User) void {
+pub fn execute(_: Args, source: *User) void {
 	const pos: Vec3i = @floor(source.player().pos);
 
 	source.worldEditData.selectionPosition1 = pos;

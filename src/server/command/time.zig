@@ -18,8 +18,8 @@ pub const Args = union(enum) {
 	@"/time": struct {},
 };
 
-pub fn execute(args: *Args, source: *User) void {
-	const gameTime: i64 = switch (args.*) {
+pub fn execute(args: Args, source: *User) void {
+	const gameTime: i64 = switch (args) {
 		.@"/time" => time: {
 			source.sendMessage("#ffff00{}", .{main.server.world.?.gameTime});
 			break :time main.server.world.?.gameTime;

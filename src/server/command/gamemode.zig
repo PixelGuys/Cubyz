@@ -16,8 +16,8 @@ pub const Args = union(enum) {
 	@"/gamemode <playerIndex> <mode>": struct { playerIndex: ?command.PlayerIndex, mode: ?main.game.Gamemode },
 };
 
-pub fn execute(result: *Args, source: *User) void {
-	switch (result.*) {
+pub fn execute(result: Args, source: *User) void {
+	switch (result) {
 		.@"/gamemode <playerIndex> <mode>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
 			defer target.deinit();

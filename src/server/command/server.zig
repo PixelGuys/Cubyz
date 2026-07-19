@@ -12,7 +12,7 @@ pub const Args = union(enum) {
 	@"/server <action>": struct { action: main.server.StopType },
 };
 
-pub fn execute(args: *Args, source: *User) void {
+pub fn execute(args: Args, source: *User) void {
 	if (args.@"/server <action>".action == .restart and !main.settings.launchConfig.headlessServer) {
 		source.sendMessage("#ff0000Headfull restart isn't supported yet.", .{});
 		return;

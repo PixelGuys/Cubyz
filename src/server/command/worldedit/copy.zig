@@ -14,7 +14,7 @@ pub const Args = union(enum) {
 	@"/copy": struct {},
 };
 
-pub fn execute(_: *Args, source: *User) void {
+pub fn execute(_: Args, source: *User) void {
 	const selection = command.getCurrentSelection(source) catch return;
 	source.sendMessage("Copying: {f}", .{selection});
 
