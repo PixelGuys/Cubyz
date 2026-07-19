@@ -137,6 +137,7 @@ pub const User = struct { // MARK: User
 	handInventory: ?InventoryId = null,
 
 	connected: Atomic(bool) = .init(true),
+	state: State = .awaitingKeyVerification,
 
 	refCount: Atomic(u32) = .init(1),
 
@@ -144,7 +145,7 @@ pub const User = struct { // MARK: User
 
 	inventoryCommands: main.List([]const u8) = .empty,
 
-	permissions: permission.Permissions = undefined,
+	pub const State = enum { awaitingKeyVerification, connectedVerified, awaitingReloadVerified };
 
 	pub fn player(self: *User) *Entity {
 		return &self.innerPlayer;
@@ -154,19 +155,42 @@ pub const User = struct { // MARK: User
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
-		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
-		self.jobQueue = .init(main.globalAllocator);
-		errdefer self.jobQueue.deinit();
 		self.conn = try Connection.init(manager, ipPort, self);
+		self.@"continue"();
 		self.increaseRefCount();
-		self.worldEditData = .init();
-		self.permissions = .init(main.globalAllocator);
 		network.protocols.handShake.serverSide(self.conn);
 		return self;
 	}
+	pub fn @"continue"(self: *User) void {
+		// reset
+		self.* = .{
+			.conn = self.conn,
+			.name = self.name,
+			.newKeyString = self.newKeyString,
+			.playerIndex = self.playerIndex,
+			.state = self.state,
 
+			.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator),
+			.worldEditData = .init(),
+			.jobQueue = .init(main.globalAllocator),
+		};
+	}
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
+
+		self.conn.deinit();
+		main.globalAllocator.free(self.name);
+		if (self.newKeyString) |str| main.globalAllocator.free(str);
+		main.globalAllocator.destroy(self);
+	}
+	pub fn pause(self: *User) void {
+		self.state = switch (self.state) {
+			.awaitingKeyVerification => .awaitingKeyVerification,
+			.connectedVerified => .awaitingReloadVerified,
+			.awaitingReloadVerified => .awaitingReloadVerified,
+		};
+
+		self.clearJobQueue();
 
 		main.items.Inventory.server.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
@@ -182,8 +206,6 @@ pub const User = struct { // MARK: User
 			main.items.Inventory.server.destroyExternallyManagedInventory(self.handInventory.?);
 		}
 
-		self.permissions.deinit();
-
 		self.worldEditData.deinit();
 
 		if (self.player().id != .noValue) {
@@ -191,17 +213,13 @@ pub const User = struct { // MARK: User
 		}
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);
-		self.conn.deinit();
-		self.jobQueue.deinit();
-		main.globalAllocator.free(self.name);
-		if (self.newKeyString) |str| main.globalAllocator.free(str);
 		for (self.inventoryCommands.items) |commandData| {
 			main.globalAllocator.free(commandData);
 		}
 		self.inventoryCommands.deinit(main.globalAllocator);
-		main.globalAllocator.destroy(self);
-	}
 
+		self.jobQueue.deinit();
+	}
 	pub fn increaseRefCount(self: *User) void {
 		const prevVal = self.refCount.fetchAdd(1, .monotonic);
 		std.debug.assert(prevVal != 0);
@@ -211,6 +229,7 @@ pub const User = struct { // MARK: User
 		const prevVal = self.refCount.fetchSub(1, .monotonic);
 		std.debug.assert(prevVal != 0);
 		if (prevVal == 1) {
+			self.pause();
 			self.deinit();
 		}
 	}
@@ -230,7 +249,7 @@ pub const User = struct { // MARK: User
 			defer main.stackAllocator.free(keyWithType);
 			self.playerIndex = world.?.playerDatabase.get(keyWithType) orelse continue;
 			foundKey = true;
-			const keyType = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, keyTypeName) orelse unreachable;
+			const keyType = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, keyTypeName).?;
 			if (keyType == self.key) break;
 			self.legacyKey = try .initFromBase64(keyBase64, keyType);
 			break;
@@ -276,6 +295,14 @@ pub const User = struct { // MARK: User
 		}
 		if (main.entity.components.@"cubyz:bag".server.get(self.id) == null) {
 			main.entity.components.@"cubyz:bag".server.loadEmpty(self.id);
+		}
+		if (main.entity.components.@"cubyz:permissions".server.get(self.id) == null) {
+			main.entity.components.@"cubyz:permissions".server.loadEmpty(self.id);
+
+			main.entity.components.@"cubyz:permissions".server.getPermissions(self.id).?.addPermission(.white, "/command/avatar");
+			if (self.isLocal) {
+				main.entity.components.@"cubyz:permissions".server.getPermissions(self.id).?.addPermission(.white, "/");
+			}
 		}
 
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
@@ -521,13 +548,6 @@ pub const User = struct { // MARK: User
 		main.network.protocols.chat.send(self.conn, msg);
 	}
 
-	pub fn hasPermission(user: *User, permissionPath: []const u8) bool {
-		return switch (user.permissions.hasPermission(permissionPath)) {
-			.yes => true,
-			.no, .neutral => false,
-		};
-	}
-
 	pub fn getSpawnPos(user: *User) Vec3d {
 		return user.spawnPos orelse @floatFromInt(main.server.world.?.spawn);
 	}
@@ -560,14 +580,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 	std.debug.assert(world == null); // There can only be one world.
 	command.init();
 	users = .init(main.globalAllocator);
-	userDeinitList = .init(main.globalAllocator, 16);
-	userConnectList = .init(main.globalAllocator, 16);
 	lastTime = main.timestamp();
-
-	connectionManager.@"continue"() catch |err| {
-		std.log.err("Couldn't create thread: {s}", .{@errorName(err)});
-		@panic("Could not open Server.");
-	};
 
 	main.entity.server.init();
 	main.items.Inventory.server.init();
@@ -582,6 +595,11 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 		std.log.err("Failed to generate world: {s}", .{@errorName(err)});
 		@panic("Can't generate world.");
 	};
+
+	connectionManager.@"continue"() catch |err| {
+		std.log.err("Couldn't create thread: {s}", .{@errorName(err)});
+		@panic("Could not open Server.");
+	};
 	if (singlePlayerPort) |port| blk: {
 		const ipString = std.fmt.allocPrint(main.stackAllocator.allocator, "127.0.0.1:{}", .{port}) catch unreachable;
 		defer main.stackAllocator.free(ipString);
@@ -591,27 +609,28 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 		};
 		defer user.decreaseRefCount();
 		user.isLocal = true;
-		user.permissions.addPermission(.white, "/");
 	}
 }
 
 fn deinit() void {
 	connectionManager.pause();
-	main.threadPool.clear();
+	main.threadPool.pause();
+	defer main.threadPool.@"continue"();
+
+	main.threadPool.unschedulePlayers();
 
 	users.clearAndFree();
+
 	while (userDeinitList.popFront()) |user| {
 		user.clearJobQueue();
 		if (user.refCount.load(.monotonic) == 1) {
 			user.decreaseRefCount();
 		} else {
 			std.log.err("Leaked user {f}", .{user});
+			user.pause();
 			user.deinit();
 		}
 	}
-
-	userDeinitList.deinit();
-	userConnectList.deinit();
 
 	if (world) |_world| {
 		_world.deinit();
@@ -724,16 +743,32 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16, mode: ServerWorld.M
 	const worldName: []const u8 = main.globalAllocator.dupe(u8, name);
 	defer main.globalAllocator.free(worldName);
 
-	restart = true;
-
 	connectionManager = ConnectionManager.init(main.settings.defaultPort, .{.allowNewConnections = mode == .multiplayer}) catch |err| {
 		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
+	userDeinitList = .init(main.globalAllocator, 16);
+	userConnectList = .init(main.globalAllocator, 16);
+
 	defer {
 		connectionManager.deinit();
 		connectionManager = undefined;
+
+		while (userDeinitList.popFront()) |user| {
+			if (user.refCount.load(.monotonic) == 1) {
+				_ = user.refCount.fetchSub(1, .monotonic);
+				user.deinit();
+			} else {
+				std.log.err("Leaked user {f}", .{user});
+				user.deinit();
+			}
+		}
+
+		userDeinitList.deinit();
+		userConnectList.deinit();
 	}
+
+	restart = true;
 	while (restart) {
 		restart = false;
 
@@ -851,7 +886,6 @@ pub fn connectInternal(user: *User) void {
 	main.network.protocols.entity.send(user.conn, initialList);
 	main.stackAllocator.free(initialList);
 	sendMessage("{s}§#ffff00 joined", .{user.name});
-	user.permissions.addPermission(.white, "/command/avatar");
 
 	userMutex.lock();
 	users.append(user);

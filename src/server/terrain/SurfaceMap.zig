@@ -118,7 +118,6 @@ pub const MapFragment = struct { // MARK: MapFragment
 	}
 
 	const StorageHeader = struct {
-		const minSupportedVersion: u8 = 0;
 		const activeVersion: u8 = 1;
 		version: u8 = activeVersion,
 		neighborInfo: NeighborInfo,
@@ -271,7 +270,6 @@ pub const MapGenerator = struct {
 };
 
 const cacheSize = 1 << 6; // Must be a power of 2!
-const cacheMask = cacheSize - 1;
 const associativity = 8; // ~400MiB MiB Cache size
 var cache: Cache(MapFragment, cacheSize, associativity, MapFragment.deferredDeinit) = .{};
 var profile: TerrainGenerationProfile = undefined;

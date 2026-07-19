@@ -72,7 +72,7 @@ const Material = struct { // MARK: Material
 			const id = item.get([]const u8, "id") orelse "not specified";
 			const vTable = modifiers.get(id) orelse blk: {
 				std.log.err("Couldn't find modifier with id '{s}'. Replacing it with 'durable'", .{id});
-				break :blk modifiers.get("durable") orelse unreachable;
+				break :blk modifiers.get("durable").?;
 			};
 			modifier.* = .{
 				.vTable = vTable,
@@ -104,7 +104,7 @@ const Material = struct { // MARK: Material
 			outString.appendSlice("§#808080Material\n");
 		}
 		for (self.modifiers) |modifier| {
-			if (modifier.restriction.vTable == modifierRestrictions.get("always") orelse unreachable) {
+			if (modifier.restriction.vTable == modifierRestrictions.get("always").?) {
 				modifier.printTooltip(outString);
 				outString.appendSlice("\n");
 			} else {
@@ -136,7 +136,7 @@ pub const ModifierRestriction = struct {
 		const id = zon.get([]const u8, "id") orelse "always";
 		const vTable = modifierRestrictions.get(id) orelse blk: {
 			std.log.err("Couldn't find modifier restriction with id '{s}'. Replacing it with 'always'", .{id});
-			break :blk modifierRestrictions.get("always") orelse unreachable;
+			break :blk modifierRestrictions.get("always").?;
 		};
 		return .{
 			.vTable = vTable,
@@ -1371,19 +1371,6 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 	proceduralItemTypeIdToIndex.put(main.worldArena.allocator, idDupe, @enumFromInt(proceduralItemTypeList.items.len - 1)) catch unreachable;
 
 	std.log.debug("Registered procedural item: '{s}'", .{id});
-}
-
-fn parseRecipeItem(zon: ZonElement) !ItemStack {
-	var id = zon.as([]const u8, "");
-	id = std.mem.trim(u8, id, &std.ascii.whitespace);
-	var result: ItemStack = .{.amount = 1};
-	if (std.mem.indexOfScalar(u8, id, ' ')) |index| blk: {
-		result.amount = std.fmt.parseInt(u16, id[0..index], 0) catch break :blk;
-		id = id[index + 1 ..];
-		id = std.mem.trim(u8, id, &std.ascii.whitespace);
-	}
-	result.item = .{.baseItem = BaseItemIndex.fromId(id) orelse return error.ItemNotFound};
-	return result;
 }
 
 pub fn registerRecipes(zon: ZonElement) void {

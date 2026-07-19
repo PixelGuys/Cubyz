@@ -21,44 +21,15 @@ const State = enum {
 	off,
 };
 
-const Args = struct {
-	target: Target,
-	decayState: State,
-
-	pub fn parse(args: []const u8, source: *User) !Args {
-		var argsSplit = std.mem.splitScalar(u8, args, ' ');
-
-		const targetString = argsSplit.next() orelse {
-			source.sendMessage("#ff0000Missing required <selection/clipboard> argument.", .{});
-			return error.ParsingFailed;
-		};
-		const target = std.meta.stringToEnum(Target, targetString) orelse {
-			source.sendMessage("#ff0000'{s}' as a target specifier was not recognized, use 'selection' or 'clipboard'", .{targetString});
-			return error.ParsingFailed;
-		};
-
-		const stateString = argsSplit.next() orelse {
-			source.sendMessage("#ff0000Missing required <on/off> argument.", .{});
-			return error.ParsingFailed;
-		};
-		const state = std.meta.stringToEnum(State, stateString) orelse {
-			source.sendMessage("#ff0000'{s}' as a state specifier was not recognized, use 'on' or 'off'", .{stateString});
-			return error.ParsingFailed;
-		};
-
-		if (argsSplit.next() != null) {
-			source.sendMessage("#ff0000Too many arguments for command /toggledecay. Expected two.", .{});
-			return error.ParsingFailed;
-		}
-
-		return .{.target = target, .decayState = state};
-	}
+pub const Args = union(enum) {
+	@"/toggledecay <target> <state>": struct {
+		target: Target,
+		state: State,
+	},
 };
 
-pub fn execute(argsString: []const u8, source: *User) void {
-	const args = Args.parse(argsString, source) catch return;
-
-	var blueprint: Blueprint = switch (args.target) {
+pub fn execute(args: Args, source: *User) void {
+	var blueprint: Blueprint = switch (args.@"/toggledecay <target> <state>".target) {
 		.selection => blk: {
 			const selection = command.getCurrentSelection(source) catch return;
 			const blueprint = switch (Blueprint.capture(main.globalAllocator, selection)) {
@@ -80,12 +51,12 @@ pub fn execute(argsString: []const u8, source: *User) void {
 		},
 	};
 
-	blueprint.apply(args.decayState, toggledecay);
+	blueprint.apply(args.@"/toggledecay <target> <state>".state, toggledecay);
 
-	switch (args.target) {
+	switch (args.@"/toggledecay <target> <state>".target) {
 		.selection => {
-			const pos1 = source.worldEditData.selectionPosition1 orelse unreachable;
-			const pos2 = source.worldEditData.selectionPosition2 orelse unreachable;
+			const pos1 = source.worldEditData.selectionPosition1.?;
+			const pos2 = source.worldEditData.selectionPosition2.?;
 
 			const posStart: Vec3i = @min(pos1, pos2);
 

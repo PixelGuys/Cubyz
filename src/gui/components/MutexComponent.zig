@@ -13,9 +13,6 @@ const ScrollBar = GuiComponent.ScrollBar;
 
 const MutexComponent = @This();
 
-const scrollBarWidth = 5;
-const border: f32 = 3;
-
 pos: Vec2f = undefined,
 size: Vec2f = undefined,
 child: GuiComponent = undefined,

@@ -40,6 +40,7 @@ const Socket = struct {
 			c.WSAEINVAL => unreachable,
 			c.WSAENOBUFS => return error.SystemResources,
 			c.WSAENOTSOCK => return error.FileDescriptorNotASocket,
+			c.WSAECONNRESET => return error.ConnectionResetByPeer,
 			else => return error.UNKNOWN,
 		}
 	}
@@ -525,6 +526,15 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	}
 	pub fn @"continue"(result: *ConnectionManager) !void {
 		if (result.running.load(.monotonic)) return;
+
+		result.mutex.lock();
+		defer result.mutex.unlock();
+
+		for (result.connections.items) |conn| {
+			conn.@"continue"();
+		}
+
+		result.requests = .empty;
 		result.packetSendRequests = .initContext({});
 		result.running.store(true, .monotonic);
 		result.thread = try std.Thread.spawn(.{}, run, .{result});
@@ -532,6 +542,11 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	}
 	pub fn deinit(self: *ConnectionManager) void {
 		if (self.running.load(.monotonic)) self.pause();
+
+		for (self.connections.items) |conn| {
+			conn.disconnect();
+		}
+
 		self.socket.deinit();
 		self.connections.deinit(main.globalAllocator);
 		main.globalAllocator.destroy(self);
@@ -541,17 +556,22 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 		self.running.store(false, .monotonic);
 		self.thread.join();
+
+		self.mutex.lock();
+		defer self.mutex.unlock();
+
 		for (self.requests.items) |request| {
 			request.requestNotifier.signal();
 		}
 		self.requests.deinit(main.globalAllocator);
+
 		while (self.packetSendRequests.pop()) |packet| {
 			main.globalAllocator.free(packet.data);
 		}
 		self.packetSendRequests.deinit(main.globalAllocator.allocator);
 
 		for (self.connections.items) |conn| {
-			conn.disconnect();
+			conn.pause();
 		}
 	}
 
@@ -740,20 +760,10 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	}
 };
 
-const UnconfirmedPacket = struct {
-	data: []const u8,
-	lastKeepAliveSentBefore: u32,
-	id: u32,
-};
-
 pub const Connection = struct { // MARK: Connection
 	const maxMtu: u32 = 65507; // max udp packet size
-	const importantHeaderSize: u32 = 5;
 	const minMtu: u32 = 576 - 20 - 8; // IPv4 MTU minus IP header minus udp header
 	const headerOverhead = 20 + 8 + 42; // IP Header + UDP Header + Ethernet header/footer
-	const congestionControl_historySize = 16;
-	const congestionControl_historyMask = congestionControl_historySize - 1;
-	const minimumBandWidth = 10_000;
 
 	const receiveBufferSize = 8 << 20;
 
@@ -871,12 +881,14 @@ pub const Connection = struct { // MARK: Connection
 		buffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
 		header: ?Header = null,
 		protocolBuffer: main.List(u8) = .empty,
+		channelId: ChannelId,
 
-		pub fn init() ReceiveBuffer {
+		pub fn init(channelId: ChannelId) ReceiveBuffer {
 			return .{
 				.ranges = .init(),
 				.decryptedBuffer = .init(main.globalAllocator),
 				.buffer = .init(main.globalAllocator),
+				.channelId = channelId,
 			};
 		}
 
@@ -888,7 +900,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		fn applyRanges(self: *ReceiveBuffer, secureChannel: ?*SecureChannel) !void {
-			const range = self.ranges.extractFirstRange() orelse unreachable;
+			const range = self.ranges.extractFirstRange().?;
 			std.debug.assert(range.start == self.availablePosition);
 			self.availablePosition = range.end();
 			const data = main.stackAllocator.alloc(u8, @intCast(range.len));
@@ -904,13 +916,13 @@ pub const Connection = struct { // MARK: Connection
 		fn getHeaderInformation(self: *ReceiveBuffer) !?Header {
 			if (self.decryptedBuffer.len == 0) return null;
 			var header: Header = .{
-				.protocolIndex = self.decryptedBuffer.getAtOffset(0) orelse unreachable,
+				.protocolIndex = self.decryptedBuffer.getAtOffset(0).?,
 				.size = 0,
 			};
 			var i: u8 = 1;
 			while (true) : (i += 1) {
 				if (i == self.decryptedBuffer.len) return null;
-				const nextByte = self.decryptedBuffer.getAtOffset(i) orelse unreachable;
+				const nextByte = self.decryptedBuffer.getAtOffset(i).?;
 				header.size = header.size << 7 | (nextByte & 0x7f);
 				if (nextByte & 0x80 == 0) break;
 				if (header.size > std.math.maxInt(@TypeOf(header.size)) >> 7) return error.Invalid;
@@ -934,7 +946,9 @@ pub const Connection = struct { // MARK: Connection
 
 				const protocolIndex = self.header.?.protocolIndex;
 				self.header = null;
-				try protocols.onReceive(conn, protocolIndex, self.protocolBuffer.items);
+				if (try conn.checkRestartCounter(protocolIndex, self.protocolBuffer.items, self.channelId) != .discard) {
+					try protocols.onReceive(conn, protocolIndex, self.protocolBuffer.items);
+				}
 				self.protocolBuffer.clearRetainingCapacity();
 				if (self.protocolBuffer.items.len > 1 << 24) {
 					self.protocolBuffer.shrinkAndFree(main.globalAllocator, 1 << 24);
@@ -1142,7 +1156,7 @@ pub const Connection = struct { // MARK: Connection
 
 		pub fn init(sequenceIndex: SequenceIndex, delay: i64, id: ChannelId) Channel {
 			return .{
-				.receiveBuffer = .init(),
+				.receiveBuffer = .init(id),
 				.sendBuffer = .init(sequenceIndex),
 				.allowedDelay = delay,
 				.channelId = id,
@@ -1299,7 +1313,8 @@ pub const Connection = struct { // MARK: Connection
 				const result = c.mbedtls_ssl_handshake(&self.sslContext);
 				self.mutex.unlock();
 				if (result == c.MBEDTLS_ERR_SSL_WANT_READ) {
-					main.io.sleep(.fromMilliseconds(10), .awake) catch {};
+					main.heap.GarbageCollection.syncPoint();
+					try main.io.sleep(.fromMilliseconds(10), .awake);
 					continue;
 				}
 				try checkResult(result, "mbedtls_ssl_handshake");
@@ -1394,7 +1409,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 	};
 
-	const ChannelId = enum(u8) { // MARK: ChannelId
+	pub const ChannelId = enum(u8) { // MARK: ChannelId
 		lossy = 0,
 		secure = 1,
 		slow = 2,
@@ -1416,6 +1431,7 @@ pub const Connection = struct { // MARK: Connection
 		awaitingClientAcknowledgement,
 		connected,
 		disconnected,
+		paused,
 	};
 
 	pub const HandShakeState = enum(u8) {
@@ -1423,8 +1439,9 @@ pub const Connection = struct { // MARK: Connection
 		userData = 1,
 		signatureRequest = 2,
 		signatureResponse = 3,
-		assets = 4,
-		serverData = 5,
+		reload = 4,
+		assets = 5,
+		serverData = 6,
 		complete = 255,
 	};
 
@@ -1440,6 +1457,9 @@ pub const Connection = struct { // MARK: Connection
 	lossyChannel: Channel, // TODO: Actually allow it to be lossy
 	secureChannel: SecureChannel,
 	slowChannel: Channel,
+
+	restartChannelCounter: [3]u32 = .{0, 0, 0},
+	restartCounter: u32 = 0,
 
 	hasRttEstimate: bool = false,
 	rttEstimate: f32 = 1000*ms,
@@ -1524,8 +1544,62 @@ pub const Connection = struct { // MARK: Connection
 		main.globalAllocator.destroy(self);
 	}
 
+	// pretending the connection is closed
+	fn pause(self: *Connection) void {
+		std.debug.assert(self.connectionState.load(.monotonic) != .paused);
+		if (self.connectionState.load(.monotonic) == .connected) {
+			self.connectionState.store(.paused, .monotonic);
+		}
+		self.restartCounter += 1;
+		if (self.user) |user| {
+			user.pause();
+		}
+	}
+	fn @"continue"(self: *Connection) void {
+		std.debug.assert(self.connectionState.load(.monotonic) != .connected);
+		if (self.connectionState.load(.monotonic) == .paused) {
+			self.connectionState.store(.connected, .monotonic);
+		}
+		main.network.protocols.reload.informClientOfRestart(self);
+		self.handShakeState.store(.signatureResponse, .monotonic);
+		if (self.user) |user| {
+			user.@"continue"();
+		}
+	}
+	fn checkRestartCounter(conn: *Connection, protocolIndex: u8, data: []const u8, channelId: ChannelId) !enum { discard, evaluate } { // MARK: checkRestartCounter()
+		// Reload protocol bypasses everything else
+		std.debug.assert(channelId == .lossy or channelId == .secure or channelId == .slow);
+
+		if (protocolIndex != protocols.reload.id) {
+			// Throw away everything from before the restart
+			if (conn.restartChannelCounter[@intFromEnum(channelId)] != conn.restartCounter) return .discard;
+			return .evaluate;
+		}
+
+		var reader = utils.BinaryReader.init(data);
+
+		const restartCounter = try reader.readInt(u32);
+
+		if (!conn.isServerSide()) {
+			const state = try reader.readEnum(main.server.User.State);
+
+			if (conn.restartCounter < restartCounter) {
+				conn.restartCounter = restartCounter;
+				switch (state) {
+					.awaitingKeyVerification => main.game.world.?.shouldReload = false,
+					.connectedVerified, .awaitingReloadVerified => main.game.world.?.shouldReload = true,
+				}
+				main.game.world.?.shouldRestart.store(true, .release);
+			}
+		}
+		if (conn.restartChannelCounter[@intFromEnum(channelId)] < restartCounter) {
+			conn.restartChannelCounter[@intFromEnum(channelId)] = restartCounter;
+		}
+		return .discard;
+	}
+
 	pub fn send(self: *Connection, comptime channel: ChannelId, protocolIndex: u8, data: []const u8) void {
-		std.debug.assert(self.handShakeState.raw == .complete or protocolIndex == protocols.handShake.id);
+		std.debug.assert(self.handShakeState.raw == .complete or protocolIndex == protocols.handShake.id or protocolIndex == protocols.reload.id);
 		std.debug.assert(self.handShakeState.raw != .complete or protocolIndex != protocols.handShake.id);
 		_ = protocols.bytesSent[protocolIndex].fetchAdd(data.len, .monotonic);
 		self.mutex.lock();
@@ -1695,7 +1769,7 @@ pub const Connection = struct { // MARK: Connection
 						return;
 					}
 				},
-				.disconnected => {},
+				.disconnected, .paused => {},
 			}
 			// Acknowledge the packet on the client:
 			if (self.user == null) {
@@ -1787,7 +1861,7 @@ pub const Connection = struct { // MARK: Connection
 				return;
 			},
 			.connected => {},
-			.disconnected => return,
+			.disconnected, .paused => return,
 		}
 
 		self.handlePacketLoss(self.lossyChannel.checkForLosses(self, timestamp));
@@ -1845,7 +1919,9 @@ pub const Connection = struct { // MARK: Connection
 			main.server.disconnect(user);
 		} else {
 			self.handShakeWaiting.broadcast();
-			main.exitToMenu();
+			if (self.handShakeState.load(.monotonic) == .complete) {
+				main.exitToMenu();
+			}
 		}
 		std.log.info("Disconnected", .{});
 	}

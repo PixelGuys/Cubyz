@@ -104,4 +104,12 @@
 	.{.old = "ferrock/base", .new = "ferrock/smooth"},
 	.{.old = "limestone/base", .new = "limestone/smooth"},
 	.{.old = "nimbusite/base", .new = "nimbusite/smooth"},
+	.{.old = "grass", .new = "grass/temperate"},
+	.{.old = "cold_grass", .new = "grass/cold"},
+	.{.old = "dry_grass", .new = "grass/dry"},
+	.{.old = "lush_grass", .new = "grass/lush"},
+	.{.old = "grass_vegetation", .new = "grass/vegetation/temperate"},
+	.{.old = "cold_grass_vegetation", .new = "grass/vegetation/cold"},
+	.{.old = "dry_grass_vegetation", .new = "grass/vegetation/dry"},
+	.{.old = "lush_grass_vegetation", .new = "grass/vegetation/lush"},
 }

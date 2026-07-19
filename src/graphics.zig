@@ -470,6 +470,30 @@ pub const draw = struct { // MARK: draw
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
+	fn drawSlice(destMin: Vec2f, destMax: Vec2f, uvMin: Vec2f, uvMax: Vec2f) void {
+		boundSubImage(destMin, destMax - destMin, uvMin, uvMax - uvMin);
+	}
+
+	pub fn bound9SliceImage(pos: Vec2f, dim: Vec2f, textureSize: Vec2f, slices: Vec2f, sliceScale: f32) void {
+		const widthSlice = slices[0]*sliceScale;
+		const heightSlice = slices[1]*sliceScale;
+
+		// Construct UV
+		const u: Vec2f = .{slices[0]/textureSize[0], (textureSize[0] - slices[0])/textureSize[0]};
+		const v: Vec2f = .{slices[1]/textureSize[1], (textureSize[1] - slices[1])/textureSize[1]};
+
+		// Draw all Slices
+		drawSlice(.{pos[0], pos[1]}, .{pos[0] + widthSlice, pos[1] + heightSlice}, .{0, 0}, .{u[0], v[0]});
+		drawSlice(.{pos[0] + widthSlice, pos[1]}, .{pos[0] + dim[0] - widthSlice, pos[1] + heightSlice}, .{u[0], 0}, .{u[1], v[0]});
+		drawSlice(.{pos[0] + dim[0] - widthSlice, pos[1]}, .{pos[0] + dim[0], pos[1] + heightSlice}, .{u[1], 0}, .{1, v[0]});
+		drawSlice(.{pos[0], pos[1] + heightSlice}, .{pos[0] + widthSlice, pos[1] + dim[1] - heightSlice}, .{0, v[0]}, .{u[0], v[1]});
+		drawSlice(.{pos[0] + widthSlice, pos[1] + heightSlice}, .{pos[0] + dim[0] - widthSlice, pos[1] + dim[1] - heightSlice}, .{u[0], v[0]}, .{u[1], v[1]});
+		drawSlice(.{pos[0] + dim[0] - widthSlice, pos[1] + heightSlice}, .{pos[0] + dim[0], pos[1] + dim[1] - heightSlice}, .{u[1], v[0]}, .{1, v[1]});
+		drawSlice(.{pos[0], pos[1] + dim[1] - heightSlice}, .{pos[0] + widthSlice, pos[1] + dim[1]}, .{0, v[1]}, .{u[0], 1});
+		drawSlice(.{pos[0] + widthSlice, pos[1] + dim[1] - heightSlice}, .{pos[0] + dim[0] - widthSlice, pos[1] + dim[1]}, .{u[0], v[1]}, .{u[1], 1});
+		drawSlice(.{pos[0] + dim[0] - widthSlice, pos[1] + dim[1] - heightSlice}, .{pos[0] + dim[0], pos[1] + dim[1]}, .{u[1], v[1]}, .{1, 1});
+	}
+
 	pub fn customShadedImage(uniforms: anytype, _pos: Vec2f, _dim: Vec2f) void {
 		var pos = _pos;
 		var dim = _dim;
@@ -519,14 +543,14 @@ pub const draw = struct { // MARK: draw
 	// ----------------------------------------------------------------------------
 	// MARK: text()
 
-	pub fn text(_text: []const u8, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) void {
-		TextRendering.renderText(_text, x, y, fontSize, .{}, alignment);
+	pub fn text(_text: []const u8, x: f32, y: f32, fontSize: f32) void {
+		TextRendering.renderText(_text, x, y, fontSize, .{});
 	}
 
-	pub inline fn print(comptime format: []const u8, args: anytype, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) void {
+	pub inline fn print(comptime format: []const u8, args: anytype, x: f32, y: f32, fontSize: f32) void {
 		const string = std.fmt.allocPrint(main.stackAllocator.allocator, format, args) catch unreachable;
 		defer main.stackAllocator.free(string);
-		text(string, x, y, fontSize, alignment);
+		text(string, x, y, fontSize);
 	}
 };
 
@@ -1249,8 +1273,8 @@ const TextRendering = struct { // MARK: TextRendering
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
-	fn renderText(text: []const u8, x: f32, y: f32, fontSize: f32, initialFontEffect: TextBuffer.FontEffect, alignment: TextBuffer.Alignment) void {
-		const buf = TextBuffer.init(main.stackAllocator, text, initialFontEffect, false, alignment);
+	fn renderText(text: []const u8, x: f32, y: f32, fontSize: f32, initialFontEffect: TextBuffer.FontEffect) void {
+		const buf = TextBuffer.init(main.stackAllocator, text, initialFontEffect, false, .left);
 		defer buf.deinit();
 
 		buf.render(x, y, fontSize);
@@ -1269,9 +1293,11 @@ pub fn init() void { // MARK: init()
 	block_texture.init();
 	pipelines.init();
 	RenderPass.initRenderPasses() catch @panic("Failed to create render passes");
+	frame_uniforms.init();
 }
 
 pub fn deinit() void {
+	frame_uniforms.deinit();
 	RenderPass.deinitRenderPasses();
 	draw.deinitCircle();
 	draw.deinitImage();
@@ -1382,6 +1408,7 @@ pub const VertexArray = struct { // MARK: VertexArray
 				c.VK_FORMAT_R32G32_SFLOAT => c.GL_FLOAT,
 				c.VK_FORMAT_R32G32B32_SFLOAT => c.GL_FLOAT,
 				c.VK_FORMAT_R32G32B32A32_SFLOAT => c.GL_FLOAT,
+				c.VK_FORMAT_R32_UINT => c.GL_UNSIGNED_INT,
 				else => @compileError("Unrecognized format"),
 			};
 			const size = comptime switch (desc.format) {
@@ -1389,9 +1416,14 @@ pub const VertexArray = struct { // MARK: VertexArray
 				c.VK_FORMAT_R32G32_SFLOAT => 2,
 				c.VK_FORMAT_R32G32B32_SFLOAT => 3,
 				c.VK_FORMAT_R32G32B32A32_SFLOAT => 4,
+				c.VK_FORMAT_R32_UINT => 1,
 				else => @compileError("Unrecognized format"),
 			};
-			c.glVertexAttribPointer(desc.location, size, glType, c.GL_FALSE, @sizeOf(T), @ptrFromInt(desc.offset));
+			switch (glType) {
+				c.GL_UNSIGNED_INT => c.glVertexAttribIPointer(desc.location, size, glType, @sizeOf(T), @ptrFromInt(desc.offset)),
+				c.GL_FLOAT => c.glVertexAttribPointer(desc.location, size, glType, c.GL_FALSE, @sizeOf(T), @ptrFromInt(desc.offset)),
+				else => unreachable,
+			}
 		}
 
 		c.glBindVertexArray(0);
@@ -2136,6 +2168,74 @@ pub const Image = struct { // MARK: Image
 	}
 };
 
+pub const frame_uniforms = struct { // MARK: frame_uniforms
+	const Data = extern struct {
+		projectionMatrix: [4][4]f32,
+		viewMatrix: [4][4]f32,
+		playerPositionInteger: [3]i32 align(16),
+		playerPositionFraction: [3]f32 align(16),
+	};
+
+	var buffers: [3]c_uint = undefined;
+	var fences: [3]c.GLsync = undefined;
+	var currentFrame: usize = 0;
+
+	fn init() void {
+		c.glGenBuffers(buffers.len, &buffers);
+		for (buffers) |buffer| {
+			c.glBindBuffer(c.GL_UNIFORM_BUFFER, buffer);
+			c.glBufferStorage(c.GL_UNIFORM_BUFFER, @sizeOf(Data), null, c.GL_DYNAMIC_STORAGE_BIT);
+		}
+		for (&fences) |*fence| {
+			fence.* = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+		}
+		c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
+	}
+
+	fn deinit() void {
+		c.glDeleteBuffers(buffers.len, &buffers);
+		for (fences) |fence| {
+			c.glDeleteSync(fence);
+		}
+	}
+
+	pub fn uploadNewFrame(data: Data) void {
+		c.glDeleteSync(fences[currentFrame]);
+		fences[currentFrame] = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+		currentFrame = (currentFrame + 1)%buffers.len;
+		_ = c.glClientWaitSync(fences[currentFrame], 0, c.GL_TIMEOUT_IGNORED); // Make sure the render calls that accessed these parts of the buffer have finished.
+		c.glBindBuffer(c.GL_UNIFORM_BUFFER, buffers[currentFrame]);
+		c.glBufferSubData(c.GL_UNIFORM_BUFFER, 0, @sizeOf(Data), &data);
+		c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
+		c.glBindBufferBase(c.GL_UNIFORM_BUFFER, 0, buffers[currentFrame]);
+	}
+
+	pub const StaticUbo = struct {
+		id: c_uint,
+
+		pub fn init(data: Data) StaticUbo {
+			var self: StaticUbo = undefined;
+			c.glGenBuffers(1, &self.id);
+			c.glBindBuffer(c.GL_UNIFORM_BUFFER, self.id);
+			c.glBufferData(c.GL_UNIFORM_BUFFER, @sizeOf(Data), &data, c.GL_STATIC_DRAW);
+			c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
+			return self;
+		}
+
+		pub fn deinit(self: StaticUbo) void {
+			c.glDeleteBuffers(1, &self.id);
+		}
+
+		pub fn bind(self: StaticUbo) void {
+			c.glBindBufferBase(c.GL_UNIFORM_BUFFER, 0, self.id);
+		}
+
+		pub fn unbind(_: StaticUbo) void {
+			c.glBindBufferBase(c.GL_UNIFORM_BUFFER, 0, buffers[currentFrame]); // Bind the current frame default instead
+		}
+	};
+};
+
 pub const Fog = struct { // MARK: Fog
 	fogColor: Vec3f,
 	skyColor: Vec3f,
@@ -2145,6 +2245,7 @@ pub const Fog = struct { // MARK: Fog
 };
 
 const block_texture = struct { // MARK: block_texture
+	var ubo: frame_uniforms.StaticUbo = undefined;
 	var uniforms: struct {
 		transparent: c_int,
 	} = undefined;
@@ -2168,10 +2269,10 @@ const block_texture = struct { // MARK: block_texture
 		depthTexture.bind();
 		var data: [128*128]f32 = undefined;
 
-		const z: f32 = 134;
+		const zMax: f32 = 134;
 		const near = main.renderer.zNear;
 		const far = main.renderer.zFar;
-		const depth = ((far + near)/(near - far)*-z + 2*near*far/(near - far))/z*0.5 + 0.5;
+		const depth = ((far + near)/(near - far)*(-zMax) + 2*near*far/(near - far))/zMax*0.5 + 0.5;
 
 		@memset(&data, depth);
 		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_R32F, textureSize, textureSize, 0, c.GL_RED, c.GL_FLOAT, &data);
@@ -2179,10 +2280,27 @@ const block_texture = struct { // MARK: block_texture
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
+
+		ubo = .init(.{
+			.projectionMatrix = Mat4f.perspective(0.013, 1, 64, 256).toGl(),
+			.viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(std.math.pi/4.0)).mul(Mat4f.rotationZ(1.0*std.math.pi/4.0)).toGl(),
+			.playerPositionInteger = @splat(0),
+			.playerPositionFraction = blk: {
+				const i = 4; // Easily switch between the 8 diagonal coordinates.
+				var x: f32 = -65.5 + 1.5;
+				var y: f32 = -65.5 + 1.5;
+				var z: f32 = -92.631 + 1.5;
+				if (i & 1 != 0) x = -x + 3;
+				if (i & 2 != 0) y = -y + 3;
+				if (i & 4 != 0) z = -z + 3;
+				break :blk .{x, y, z};
+			},
+		});
 	}
 	fn deinit() void {
 		pipeline.deinit();
 		depthTexture.deinit();
+		ubo.deinit();
 	}
 };
 
@@ -2203,10 +2321,6 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 		frameBuffer.clear(.{0, 0, 0, 0});
 	}
 
-	const projMatrix = Mat4f.perspective(0.013, 1, 64, 256);
-	const oldViewMatrix = main.game.camera.viewMatrix;
-	main.game.camera.viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(std.math.pi/4.0)).mul(Mat4f.rotationZ(1.0*std.math.pi/4.0));
-	defer main.game.camera.viewMatrix = oldViewMatrix;
 	const uniforms = if (block.transparent()) &main.renderer.chunk_meshing.transparentUniforms else &main.renderer.chunk_meshing.uniforms;
 
 	var faceData: main.ListManaged(main.renderer.chunk_meshing.FaceData) = .init(main.stackAllocator);
@@ -2235,13 +2349,6 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	defer main.renderer.chunk_meshing.lightBuffers[0].free(lightAllocation);
 
 	{
-		const i = 4; // Easily switch between the 8 diagonal coordinates.
-		var x: f64 = -65.5 + 1.5;
-		var y: f64 = -65.5 + 1.5;
-		var z: f64 = -92.631 + 1.5;
-		if (i & 1 != 0) x = -x + 3;
-		if (i & 2 != 0) y = -y + 3;
-		if (i & 4 != 0) z = -z + 3;
 		var chunkAllocation: SubAllocation = .{.start = 0, .len = 0};
 		main.renderer.chunk_meshing.chunkBuffer.uploadData(&.{.{
 			.position = .{0, 0, 0},
@@ -2260,10 +2367,14 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 		if (block.transparent()) {
 			c.glBlendEquation(c.GL_FUNC_ADD);
 			c.glBlendFunc(c.GL_ONE, c.GL_SRC1_COLOR);
-			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(projMatrix, .{1, 1, 1}, .{x, y, z});
+			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(.{1, 1, 1});
 		} else {
-			main.renderer.chunk_meshing.bindShaderAndUniforms(projMatrix, .{1, 1, 1}, .{x, y, z});
+			main.renderer.chunk_meshing.bindShaderAndUniforms(.{1, 1, 1});
 		}
+
+		block_texture.ubo.bind();
+		defer block_texture.ubo.unbind();
+
 		c.glUniform1f(uniforms.contrast, 0.25);
 		c.glActiveTexture(c.GL_TEXTURE0);
 		main.blocks.meshes.blockTextureArray.bind();

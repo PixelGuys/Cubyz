@@ -74,10 +74,6 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		}
 		break :blk generators;
 	});
-
-	fn getHash(self: SimpleStructureModel) u64 {
-		return self.vtable.hashFunction(self.data);
-	}
 };
 
 pub const StructureTable = struct {
