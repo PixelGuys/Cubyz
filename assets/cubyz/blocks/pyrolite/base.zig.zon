@@ -1,6 +1,0 @@
-.{
-	.allowOres = true,
-	.rotation = "cubyz:stairs",
-	.model = "cubyz:cube",
-	.texture = "cubyz:pyrolite/base",
-}

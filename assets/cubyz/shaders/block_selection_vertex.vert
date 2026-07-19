@@ -68,8 +68,8 @@ vec3 lineVertices[] = vec3[] (
 );
 
 void main() {
-	int vertexIndex = gl_VertexID%24;
-	int lineIndex = gl_VertexID/24;
+	int vertexIndex = gl_VertexIndex%24;
+	int lineIndex = gl_VertexIndex/24;
 	vec3 lineStart = lineVertices[lineIndex*2];
 	vec3 lineEnd = lineVertices[lineIndex*2 + 1];
 	vec3 lineCenter = (lineStart + lineEnd)/2*(upperBounds - lowerBounds);

@@ -20,15 +20,15 @@ pub const CaveLayer = struct {
 
 	pub fn init(id: []const u8, zon: ZonElement) ?CaveLayer {
 		var result: CaveLayer = undefined;
-		result.depthHint = zon.get(?i32, "depthHint", null) orelse {
+		result.depthHint = zon.get(i32, "depthHint") orelse {
 			std.log.err("Cave layer with id {s} is missing depthHint field. Skipping", .{id});
 			return null;
 		};
-		result.layerHeight = zon.get(?i32, "layerHeight", null) orelse {
+		result.layerHeight = zon.get(i32, "layerHeight") orelse {
 			std.log.err("Cave layer with id {s} is missing layerHeight field. Skipping", .{id});
 			return null;
 		};
-		result.caveDensity = zon.get(f32, "caveDensity", 1.0/32.0);
+		result.caveDensity = zon.get(f32, "caveDensity") orelse 1.0/32.0;
 		result.id = main.worldArena.dupe(u8, id);
 
 		const tags = Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("tags"));

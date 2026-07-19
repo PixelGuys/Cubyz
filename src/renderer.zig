@@ -155,10 +155,10 @@ pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 	std.debug.assert(game.world != null);
 
 	const nightColor: Vec3f = .{0.3, 0.4, 0.5};
-	const ambient = @max(nightColor*@as(Vec3f, @splat(settings.nightBrightness)), @as(Vec3f, @splat(game.world.?.ambientLight)));
+	const ambient = @max(nightColor*@as(Vec3f, @splat(settings.nightBrightness)), @as(Vec3f, @splat(game.world.?.dayTime.ambientLight)));
 
 	itemdrop.ItemDisplayManager.update(deltaTime);
-	renderWorld(game.world.?, ambient, game.fog.skyColor, playerPosition);
+	renderWorld(game.world.?, ambient, game.world.?.dayTime.fog.skyColor, playerPosition);
 	const startTime = main.timestamp();
 	mesh_storage.updateMeshes(startTime.addDuration(maximumMeshTime));
 }
@@ -194,6 +194,13 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 	game.camera.updateViewMatrix();
 
+	main.graphics.frame_uniforms.uploadNewFrame(.{
+		.playerPositionInteger = @as(Vec3i, @floor(playerPos)),
+		.playerPositionFraction = @as(Vec3f, @floatCast(@mod(playerPos, Vec3d{1, 1, 1}))),
+		.projectionMatrix = game.projectionMatrix.toGl(),
+		.viewMatrix = game.camera.viewMatrix.toGl(),
+	});
+
 	// Uses FrustumCulling on the chunks.
 	const frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
 
@@ -206,9 +213,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.animation);
 	blocks.meshes.preProcessAnimationData(time);
 	gpu_performance_measuring.stopQuery();
-
-	// Update the uniforms. The uniforms are needed to render the replacement meshes.
-	chunk_meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, playerPos);
 
 	c.glActiveTexture(c.GL_TEXTURE0);
 	blocks.meshes.blockTextureArray.bind();
@@ -237,7 +241,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	}
 	gpu_performance_measuring.stopQuery();
 	gpu_performance_measuring.startQuery(.chunk_rendering);
-	chunk_meshing.drawChunksIndirect(&chunkLists, game.projectionMatrix, ambientLight, playerPos, false);
+	chunk_meshing.drawChunksIndirect(&chunkLists, ambientLight, false);
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
@@ -278,7 +282,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		}
 		gpu_performance_measuring.stopQuery();
 		gpu_performance_measuring.startQuery(.transparent_rendering);
-		chunk_meshing.drawChunksIndirect(&chunkLists, game.projectionMatrix, ambientLight, playerPos, true);
+		chunk_meshing.drawChunksIndirect(&chunkLists, ambientLight, true);
 		gpu_performance_measuring.stopQuery();
 	}
 
@@ -304,10 +308,10 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	worldFrameBuffer.unbind();
 	deferredRenderPassPipeline.bind(null);
 	if (!blocks.meshes.hasFog(playerBlock)) {
-		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
-		c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
-		c.glUniform1f(deferredUniforms.@"fog.fogLower", game.fog.fogLower);
-		c.glUniform1f(deferredUniforms.@"fog.fogHigher", game.fog.fogHigher);
+		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.world.?.dayTime.fog.fogColor));
+		c.glUniform1f(deferredUniforms.@"fog.density", game.world.?.dayTime.fog.density);
+		c.glUniform1f(deferredUniforms.@"fog.fogLower", game.world.?.dayTime.fog.fogLower);
+		c.glUniform1f(deferredUniforms.@"fog.fogHigher", game.world.?.dayTime.fog.fogHigher);
 	} else {
 		const fogColor = blocks.meshes.fogColor(playerBlock);
 		c.glUniform3f(deferredUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
@@ -409,10 +413,10 @@ const Bloom = struct { // MARK: Bloom
 		worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 		buffer1.bind();
 		if (!blocks.meshes.hasFog(playerBlock)) {
-			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.fog.fogColor));
-			c.glUniform1f(colorExtractUniforms.@"fog.density", game.fog.density);
-			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", game.fog.fogLower);
-			c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", game.fog.fogHigher);
+			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.world.?.dayTime.fog.fogColor));
+			c.glUniform1f(colorExtractUniforms.@"fog.density", game.world.?.dayTime.fog.density);
+			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", game.world.?.dayTime.fog.fogLower);
+			c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", game.world.?.dayTime.fog.fogHigher);
 		} else {
 			const fogColor = blocks.meshes.fogColor(playerBlock);
 			c.glUniform3f(colorExtractUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
@@ -814,22 +818,12 @@ pub const Skybox = struct {
 	pub fn render() void {
 		const viewMatrix = game.camera.viewMatrix;
 
-		const time = game.world.?.gameTime.load(.monotonic);
-
-		var starOpacity: f32 = 0;
-		const dayTime = @abs(@mod(time, game.World.dayCycle) -% game.World.dayCycle/2);
-		if (dayTime < game.World.dayCycle/4 - game.World.dayCycle/16) {
-			starOpacity = 1;
-		} else if (dayTime > game.World.dayCycle/4 + game.World.dayCycle/16) {
-			starOpacity = 0;
-		} else {
-			starOpacity = 1 - @as(f32, @floatFromInt(dayTime - (game.World.dayCycle/4 - game.World.dayCycle/16)))/@as(f32, @floatFromInt(game.World.dayCycle/8));
-		}
+		const starOpacity: f32 = game.world.?.dayTime.getStarOpacity();
 
 		if (starOpacity != 0) {
 			starPipeline.bind(null);
 
-			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationX(@as(f32, @floatFromInt(time))/@as(f32, @floatFromInt(main.game.World.dayCycle)))));
+			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationX(2*std.math.pi*game.world.?.dayTime.getDayProgress())));
 
 			starSsbo.bind(12);
 

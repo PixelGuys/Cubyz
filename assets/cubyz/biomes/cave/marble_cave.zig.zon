@@ -9,11 +9,11 @@
 
 	.music = "cubyz:totaldemented/vitreous",
 
-	.stoneBlock = "cubyz:marble/base",
+	.stoneBlock = "cubyz:marble/smooth",
 	.structures = .{
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:marble/base",
+			.block = "cubyz:marble/smooth",
 			.chance = 0.112,
 			.size = 4,
 			.size_variation = 10,

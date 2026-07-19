@@ -31,6 +31,7 @@ const c = @import("c");
 // ############################# Client only stuff ################################
 pub const client = struct {
 	var pipeline: graphics.Pipeline = undefined;
+	pub var nodeBuffer: graphics.LargeBuffer(Mat4f) = undefined;
 
 	var uniforms: struct {
 		projectionMatrix: c_int,
@@ -38,6 +39,7 @@ pub const client = struct {
 		light: c_int,
 		contrast: c_int,
 		ambientLight: c_int,
+		nodeBufferOffset: c_int,
 	} = undefined;
 
 	pub fn init() void {
@@ -52,9 +54,12 @@ pub const client = struct {
 			.{.depthTest = true},
 			.{.attachments = &.{.alphaBlending}},
 		);
+
+		nodeBuffer.init(main.globalAllocator, 1 << 20, 15);
 	}
 	pub fn deinit() void {
 		pipeline.deinit();
+		nodeBuffer.deinit();
 	}
 	pub fn clear() void {}
 
@@ -93,7 +98,8 @@ pub const client = struct {
 
 			const transparency = 38.0*std.math.log10(vec.lengthSquare(pos3d) + 1) - 80.0;
 			const alpha: u32 = @trunc(std.math.clamp(0xff - transparency, 0, 0xff));
-			graphics.draw.setColor(alpha << 24);
+			const oldColor = graphics.draw.setColor(alpha << 24 | 0xffffff);
+			defer graphics.draw.restoreColor(oldColor);
 
 			const renderedName = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{ent}) catch unreachable;
 			defer main.stackAllocator.free(renderedName);
@@ -109,11 +115,40 @@ pub const client = struct {
 		_ = deltaTime;
 		main.client.entity_manager.mutex.lock();
 		defer main.client.entity_manager.mutex.unlock();
+
+		// TODO: #3342
+		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |*component, id| {
+			if (id == game.Player.id) continue; // don't process local player
+
+			const entModel = component.entityModel.get();
+			const ent = main.client.entity_manager.getEntity(id) orelse continue;
+
+			const head = entModel.nodeIndexMap.get("Head");
+			if (head) |headId| {
+				var headRot: f32 = ent.rot[0];
+				if (entModel.nodeIndexMap.get("Eyestalks")) |eyestalksId| {
+					const stalkRot = ent.rot[0]*0.25;
+					headRot = ent.rot[0]*0.75;
+					component.nodes[eyestalksId].rot = vec.Quat.quatFromAxisAngle(Vec3f{1, 0, 0}, stalkRot);
+				}
+				component.nodes[headId].rot = vec.Quat.quatFromAxisAngle(Vec3f{1, 0, 0}, headRot);
+			}
+
+			for (component.nodes, 0..) |*node, i| {
+				const parentMat = if (entModel.nodeParents[i]) |p| component.matrices[p].transpose() else Mat4f.identity();
+
+				component.matrices[i] = parentMat.mul(node.recalc(entModel.nodePivots[i])).transpose();
+			}
+			main.entity.systems.modelRenderer.client.nodeBuffer.uploadData(component.matrices, &component.bufferAllocation);
+		}
+
 		pipeline.bind(null);
 
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
+
+		main.entity.systems.modelRenderer.client.nodeBuffer.beginRender();
 
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |component, id| {
 			if (id == game.Player.id) continue; // don't render local player
@@ -135,6 +170,7 @@ pub const client = struct {
 				@as(u32, lightVals[5] >> 3) << 0);
 
 			c.glUniform1ui(uniforms.light, @bitCast(@as(u32, light)));
+			c.glUniform1ui(uniforms.nodeBufferOffset, @bitCast(@as(u32, component.bufferAllocation.start)));
 
 			const pos: Vec3d = ent.getRenderPosition() - playerPos;
 			const modelMatrix = (Mat4f.identity()
@@ -148,6 +184,8 @@ pub const client = struct {
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
 			c.glDrawElements(c.GL_TRIANGLES, entModel.indexCount, c.GL_UNSIGNED_INT, null);
 		}
+
+		main.entity.systems.modelRenderer.client.nodeBuffer.endRender();
 	}
 };
 // ############################# Server only stuff ################################

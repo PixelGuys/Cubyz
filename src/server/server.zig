@@ -129,7 +129,7 @@ pub const User = struct { // MARK: User
 
 	lastSentBiomeId: u32 = 0xffffffff,
 
-	newKeyString: []const u8 = &.{},
+	newKeyString: ?[]const u8 = null,
 	key: network.authentication.PublicKey = undefined,
 	legacyKey: ?network.authentication.PublicKey = null,
 
@@ -138,6 +138,7 @@ pub const User = struct { // MARK: User
 	handInventory: ?InventoryId = null,
 
 	connected: Atomic(bool) = .init(true),
+	state: State = .awaitingKeyVerification,
 
 	refCount: Atomic(u32) = .init(1),
 
@@ -147,6 +148,8 @@ pub const User = struct { // MARK: User
 
 	permissions: permission.Permissions = undefined,
 
+	pub const State = enum { awaitingKeyVerification, connectedVerified, awaitingReloadVerified };
+
 	pub fn player(self: *User) *Entity {
 		return &self.innerPlayer;
 	}
@@ -155,19 +158,43 @@ pub const User = struct { // MARK: User
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
-		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
-		self.jobQueue = .init(main.globalAllocator);
-		errdefer self.jobQueue.deinit();
 		self.conn = try Connection.init(manager, ipPort, self);
+		self.@"continue"();
 		self.increaseRefCount();
-		self.worldEditData = .init();
-		self.permissions = .init(main.globalAllocator);
 		network.protocols.handShake.serverSide(self.conn);
 		return self;
 	}
+	pub fn @"continue"(self: *User) void {
+		// reset
+		self.* = .{
+			.conn = self.conn,
+			.name = self.name,
+			.newKeyString = self.newKeyString,
+			.playerIndex = self.playerIndex,
+			.state = self.state,
 
+			.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator),
+			.worldEditData = .init(),
+			.permissions = .init(main.globalAllocator),
+			.jobQueue = .init(main.globalAllocator),
+		};
+	}
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
+
+		self.conn.deinit();
+		main.globalAllocator.free(self.name);
+		if (self.newKeyString) |str| main.globalAllocator.free(str);
+		main.globalAllocator.destroy(self);
+	}
+	pub fn pause(self: *User) void {
+		self.state = switch (self.state) {
+			.awaitingKeyVerification => .awaitingKeyVerification,
+			.connectedVerified => .awaitingReloadVerified,
+			.awaitingReloadVerified => .awaitingReloadVerified,
+		};
+
+		self.clearJobQueue();
 
 		main.items.Inventory.server.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
@@ -192,17 +219,13 @@ pub const User = struct { // MARK: User
 		}
 
 		self.unloadOldChunk(.{0, 0, 0}, 0);
-		self.conn.deinit();
-		self.jobQueue.deinit();
-		main.globalAllocator.free(self.name);
-		main.globalAllocator.free(self.newKeyString);
 		for (self.inventoryCommands.items) |commandData| {
 			main.globalAllocator.free(commandData);
 		}
 		self.inventoryCommands.deinit(main.globalAllocator);
-		main.globalAllocator.destroy(self);
-	}
 
+		self.jobQueue.deinit();
+	}
 	pub fn increaseRefCount(self: *User) void {
 		const prevVal = self.refCount.fetchAdd(1, .monotonic);
 		std.debug.assert(prevVal != 0);
@@ -212,6 +235,7 @@ pub const User = struct { // MARK: User
 		const prevVal = self.refCount.fetchSub(1, .monotonic);
 		std.debug.assert(prevVal != 0);
 		if (prevVal == 1) {
+			self.pause();
 			self.deinit();
 		}
 	}
@@ -220,27 +244,38 @@ pub const User = struct { // MARK: User
 		std.debug.assert(self.name.len == 0);
 		self.name = main.globalAllocator.dupe(u8, name);
 		{
-			const keyBase64 = keys.get(?[]const u8, @tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm), null) orelse return error.PublicKeyNotPresent;
+			const keyBase64 = keys.get([]const u8, @tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm)) orelse return error.PublicKeyNotPresent;
 			self.key = try .initFromBase64(keyBase64, main.settings.launchConfig.preferredAuthenticationAlgorithm);
 			self.newKeyString = std.fmt.allocPrint(main.globalAllocator.allocator, "{s}:{s}", .{@tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm), keyBase64}) catch unreachable;
 		}
 		var foundKey: bool = false;
 		for (std.meta.fieldNames(main.network.authentication.KeyTypeEnum)) |keyTypeName| {
-			const keyBase64 = keys.get(?[]const u8, keyTypeName, null) orelse continue;
+			const keyBase64 = keys.get([]const u8, keyTypeName) orelse continue;
 			const keyWithType = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}:{s}", .{keyTypeName, keyBase64}) catch unreachable;
 			defer main.stackAllocator.free(keyWithType);
 			self.playerIndex = world.?.playerDatabase.get(keyWithType) orelse continue;
 			foundKey = true;
-			const keyType = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, keyTypeName) orelse unreachable;
+			const keyType = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, keyTypeName).?;
 			if (keyType == self.key) break;
 			self.legacyKey = try .initFromBase64(keyBase64, keyType);
 			break;
 		}
 		if (!foundKey) {
-			const nameEntry = std.fmt.allocPrint(main.stackAllocator.allocator, "name:{s}", .{name}) catch unreachable;
-			defer main.stackAllocator.free(nameEntry);
-			self.playerIndex = world.?.playerDatabase.get(nameEntry) orelse world.?.nextPlayerIndex.fetchAdd(1, .monotonic);
+			if (world.?.playerDatabase.size == 0) { // Claim the local player
+				std.log.info("Here", .{});
+				self.playerIndex = world.?.localPlayerIndex;
+			} else {
+				const nameEntry = std.fmt.allocPrint(main.stackAllocator.allocator, "name:{s}", .{name}) catch unreachable;
+				defer main.stackAllocator.free(nameEntry);
+				self.playerIndex = world.?.playerDatabase.get(nameEntry) orelse world.?.nextPlayerIndex.fetchAdd(1, .monotonic);
+			}
 		}
+	}
+
+	pub fn identifyAsLocal(self: *User, name: []const u8) !void {
+		std.debug.assert(self.name.len == 0);
+		self.name = main.globalAllocator.dupe(u8, name);
+		self.playerIndex = world.?.localPlayerIndex;
 	}
 
 	pub fn verifySignatures(self: *User, reader: *BinaryReader) !void {
@@ -539,35 +574,37 @@ var userConnectList: main.utils.ConcurrentQueue(*User) = undefined;
 pub var connectionManager: *ConnectionManager = undefined;
 
 pub var running: std.atomic.Value(bool) = .init(false);
+var restart: bool = true;
+
 var lastTime: std.Io.Timestamp = undefined;
 
 pub var thread: ?std.Thread = null;
 
-fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
+fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void { // MARK: init()
 	main.heap.allocators.createWorldArena();
 	std.debug.assert(world == null); // There can only be one world.
 	command.init();
 	users = .init(main.globalAllocator);
-	userDeinitList = .init(main.globalAllocator, 16);
-	userConnectList = .init(main.globalAllocator, 16);
 	lastTime = main.timestamp();
-	connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
-		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
-		@panic("Could not open Server.");
-	}; // TODO Configure the second argument in the server settings.
 
 	stdin_handler.init();
 	main.entity.server.init();
 	main.items.Inventory.server.init();
 	main.sync.server.init();
 
-	world = ServerWorld.init(name) catch |err| {
+	world = ServerWorld.init(name, mode) catch |err| {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
 		@panic("Can't create world.");
 	};
+
 	world.?.generate() catch |err| {
 		std.log.err("Failed to generate world: {s}", .{@errorName(err)});
 		@panic("Can't generate world.");
+	};
+
+	connectionManager.@"continue"() catch |err| {
+		std.log.err("Couldn't create thread: {s}", .{@errorName(err)});
+		@panic("Could not open Server.");
 	};
 	if (singlePlayerPort) |port| blk: {
 		const ipString = std.fmt.allocPrint(main.stackAllocator.allocator, "127.0.0.1:{}", .{port}) catch unreachable;
@@ -583,21 +620,24 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 }
 
 fn deinit() void {
-	connectionManager.deinit();
-	connectionManager = undefined;
+	connectionManager.pause();
+	main.threadPool.pause();
+	defer main.threadPool.@"continue"();
+
 	stdin_handler.deinit();
+	main.threadPool.unschedulePlayers();
 	users.clearAndFree();
+
 	while (userDeinitList.popFront()) |user| {
 		user.clearJobQueue();
 		if (user.refCount.load(.monotonic) == 1) {
 			user.decreaseRefCount();
 		} else {
 			std.log.err("Leaked user {f}", .{user});
+			user.pause();
 			user.deinit();
 		}
 	}
-	userDeinitList.deinit();
-	userConnectList.deinit();
 
 	if (world) |_world| {
 		_world.deinit();
@@ -609,6 +649,7 @@ fn deinit() void {
 	main.entity.server.deinit();
 
 	command.deinit();
+
 	main.heap.allocators.destroyWorldArena();
 }
 
@@ -698,33 +739,72 @@ fn update() void { // MARK: update()
 	}
 }
 
-pub fn startFromNewThread(name: []const u8, port: ?u16) void {
+pub fn startFromNewThread(name: []const u8, port: ?u16, mode: ServerWorld.Mode) void {
 	main.initThreadLocals();
 	defer main.deinitThreadLocals();
-	startFromExistingThread(name, port);
+	startFromExistingThread(name, port, mode);
 }
 
-pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
+pub fn startFromExistingThread(name: []const u8, port: ?u16, mode: ServerWorld.Mode) void {
 	std.debug.assert(!running.load(.monotonic)); // There can only be one server.
-	init(name, port);
-	defer deinit();
-	running.store(true, .release);
-	while (running.load(.monotonic)) {
-		main.heap.GarbageCollection.syncPoint();
-		const newTime = main.timestamp();
-		if (lastTime.durationTo(newTime).nanoseconds < updateTime.nanoseconds) {
-			main.io.sleep(newTime.durationTo(lastTime.addDuration(updateTime)), .awake) catch {};
-			lastTime = lastTime.addDuration(updateTime);
-		} else {
-			std.log.warn("The server is lagging behind by {d:.1} ms", .{@as(f32, @floatFromInt(newTime.nanoseconds -% lastTime.nanoseconds -% updateTime.nanoseconds))/1000000.0});
-			lastTime = newTime;
+
+	const worldName: []const u8 = main.globalAllocator.dupe(u8, name);
+	defer main.globalAllocator.free(worldName);
+
+	connectionManager = ConnectionManager.init(main.settings.defaultPort, .{.allowNewConnections = mode == .multiplayer}) catch |err| {
+		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
+		@panic("Could not open Server.");
+	}; // TODO Configure the second argument in the server settings.
+	userDeinitList = .init(main.globalAllocator, 16);
+	userConnectList = .init(main.globalAllocator, 16);
+
+	defer {
+		connectionManager.deinit();
+		connectionManager = undefined;
+
+		while (userDeinitList.popFront()) |user| {
+			if (user.refCount.load(.monotonic) == 1) {
+				_ = user.refCount.fetchSub(1, .monotonic);
+				user.deinit();
+			} else {
+				std.log.err("Leaked user {f}", .{user});
+				user.deinit();
+			}
 		}
-		update();
+
+		userDeinitList.deinit();
+		userConnectList.deinit();
+	}
+
+	restart = true;
+	while (restart) {
+		restart = false;
+
+		init(worldName, port, mode);
+		defer deinit();
+
+		running.store(true, .release);
+		while (running.load(.monotonic)) {
+			main.heap.GarbageCollection.syncPoint();
+			const newTime = main.timestamp();
+			if (lastTime.durationTo(newTime).nanoseconds < updateTime.nanoseconds) {
+				main.io.sleep(newTime.durationTo(lastTime.addDuration(updateTime)), .awake) catch {};
+				lastTime = lastTime.addDuration(updateTime);
+			} else {
+				std.log.warn("The server is lagging behind by {d:.1} ms", .{@as(f32, @floatFromInt(newTime.nanoseconds -% lastTime.nanoseconds -% updateTime.nanoseconds))/1000000.0});
+				lastTime = newTime;
+			}
+			update();
+		}
 	}
 }
 
-pub fn stop() void {
-	running.store(false, .monotonic);
+pub const StopType = enum { stop, restart };
+pub fn stop(_restart: StopType) void {
+	if (_restart == .restart) {
+		restart = true;
+	}
+	running.store(false, .release);
 }
 
 pub fn disconnect(user: *User) void { // MARK: disconnect()
@@ -828,7 +908,7 @@ pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
 fn sendRawMessage(msg: []const u8) void {
 	chatMutex.lock();
 	defer chatMutex.unlock();
-	std.log.info("Chat: {s}", .{msg}); // TODO use color \033[0;32m
+	main.log.chat("{s}", .{msg});
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 	for (userList) |user| {
