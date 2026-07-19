@@ -70,7 +70,6 @@ fn CastFunctionReturnToOptionalAnyopaqueType(Fn: type) type {
 	const ReturnType = ?*anyopaque;
 	return @Fn(&paramTypes, &paramAttributes, ReturnType, .{.@"callconv" = typeInfo.@"fn".calling_convention, .varargs = typeInfo.@"fn".is_var_args});
 }
-
 /// Turns the return parameter into a *anyopaque
 pub fn castFunctionReturnToAnyopaque(function: anytype) *const CastFunctionReturnToAnyopaqueType(@TypeOf(function)) {
 	return @ptrCast(&function);
