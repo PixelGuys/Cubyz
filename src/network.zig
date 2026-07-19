@@ -267,14 +267,6 @@ pub const SocketAddress = struct {
 		};
 	}
 
-	pub fn parse(string: []const u8, defaultPort: ?u16) !SocketAddress {
-		const innerResult = try parseInner(string, defaultPort);
-		return .{
-			.address = try .parse(innerResult.ip, innerResult.port),
-			.isSymmetricNAT = innerResult.isSymmetricNAT,
-		};
-	}
-
 	pub fn resolve(string: []const u8, defaultPort: ?u16) !SocketAddress {
 		const innerResult = try parseInner(string, defaultPort);
 		return .{
