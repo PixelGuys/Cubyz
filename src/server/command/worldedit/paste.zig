@@ -13,21 +13,11 @@ pub const description =
 ;
 pub const usage = "/paste [-v|--keep-void]";
 
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/paste [-v|--keep-void]": struct { void: ?enum { @"-v", @"--keep-void" } },
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/paste"});
-
-pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
-		return;
-	};
-
+pub fn execute(args: Args, source: *User) void {
 	if (source.worldEditData.clipboard) |clipboard| {
 		const pos: Vec3i = @floor(source.player().pos);
 		source.sendMessage("Pasting: {}", .{pos});
@@ -44,7 +34,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			},
 		}
 
-		clipboard.paste(pos, .{.preserveVoid = result.@"/paste [-v|--keep-void]".void != null});
+		clipboard.paste(pos, .{.preserveVoid = args.@"/paste [-v|--keep-void]".void != null});
 	} else {
 		source.sendMessage("#ff0000Error: No clipboard content to paste.", .{});
 	}

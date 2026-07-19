@@ -11,7 +11,7 @@ pub const usage =
 	\\/mask
 ;
 
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/mask": struct {
 		fn deinit(_: @This(), _: NeverFailingAllocator) void {}
 	},
@@ -30,21 +30,8 @@ const Args = union(enum) {
 	}
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/mask"});
-
-pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
-		return;
-	};
-	defer result.deinit(main.stackAllocator);
-
-	if (source.worldEditData.mask) |mask| mask.deinit(main.globalAllocator);
-
-	switch (result) {
+pub fn execute(args: Args, source: *User) void {
+	switch (args) {
 		.@"/mask <mask>" => |cmd| {
 			source.worldEditData.mask = cmd.mask.mask.clone(main.globalAllocator);
 			source.sendMessage("#00ff00Mask set.", .{});
