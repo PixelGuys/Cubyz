@@ -349,14 +349,6 @@ pub const chunkTransmission = struct { // MARK: chunkTransmission
 			.taskType = .meshgenAndLighting,
 		};
 
-		fn schedule(mesh: *chunk.Chunk) void {
-			const task = main.globalAllocator.create(MeshGenerationTask);
-			task.* = MeshGenerationTask{
-				.mesh = mesh,
-			};
-			main.threadPool.addTask(task, &vtable);
-		}
-
 		pub fn getPriority(self: *MeshGenerationTask) f32 {
 			return self.pos.getPriority(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 		}
@@ -448,8 +440,6 @@ pub const playerPosition = struct { // MARK: playerPosition
 
 pub const entityPosition = struct { // MARK: entityPosition
 	pub const id: u8 = 6;
-	const type_entity: u8 = 0;
-	const type_item: u8 = 1;
 	const Type = enum(u8) {
 		noVelocityEntity = 0,
 		f16VelocityEntity = 1,

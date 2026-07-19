@@ -21,12 +21,6 @@ pub const AttachmentPoint = enum(u8) {
 	upper = 2,
 };
 
-const OrientationLine = struct {
-	pos: f32,
-	start: f32,
-	end: f32,
-};
-
 const RelativePosition = union(enum) {
 	ratio: f32,
 	attachedToFrame: struct {

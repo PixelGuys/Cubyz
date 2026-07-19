@@ -16,7 +16,6 @@ const Label = GuiComponent.Label;
 const Button = @This();
 
 const border: f32 = 3;
-const fontSize: f32 = 16;
 
 const Textures = struct {
 	texture: Texture,
@@ -85,8 +84,6 @@ pub fn globalDeinit() void {
 	hoveredTextures.deinit();
 	pressedTextures.deinit();
 }
-
-fn defaultOnAction(_: usize) void {}
 
 const Options = struct {
 	onAction: main.callbacks.SimpleCallback = .{},
