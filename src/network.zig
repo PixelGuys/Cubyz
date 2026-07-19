@@ -1894,16 +1894,6 @@ test "Resolve address" {
 	const resolvedLocalhost = try Socket.resolveIP("localhost", 0);
 	try std.testing.expectEqualDeep(IpAddress{.ip4 = .loopback(0)}, resolvedLocalhost);
 
-	const socketAddresses: [3][]const u8 = .{
-		"11.22.33.44",
-		"127.0.0.1:1234",
-		"123.1.111.222:11111?",
-	};
-	for (socketAddresses) |addressStr| {
-		const parsedAddress = try SocketAddress.parse(addressStr, 888);
-		const resolvedAddress = try SocketAddress.resolve(addressStr, 888);
-		try std.testing.expectEqualDeep(parsedAddress, resolvedAddress);
-	}
 	const localhostSocketAddresses: [3][]const u8 = .{
 		"localhost",
 		"localhost:1234",
@@ -1928,7 +1918,7 @@ test "Format address" {
 		"0.0.0.0:3333?",
 	};
 	for (socketAddresses) |addressStr| {
-		const address = try SocketAddress.parse(addressStr, null);
+		const address = try SocketAddress.resolve(addressStr, null);
 		const reformattedAddress = std.fmt.allocPrint(main.heap.testingAllocator.allocator, "{f}", .{address}) catch unreachable;
 		defer main.heap.testingAllocator.free(reformattedAddress);
 		try std.testing.expectEqualStrings(addressStr, reformattedAddress);
