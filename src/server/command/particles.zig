@@ -30,7 +30,7 @@ const Args = union(enum) {
 		x: command.Coordinate,
 		y: command.Coordinate,
 		z: command.Coordinate,
-		collides: ?enum { true, false },
+		collides: ?bool,
 		count: ?u32,
 		spawnDataZon: ?[]const u8,
 	},
@@ -59,7 +59,7 @@ pub fn execute(args: []const u8, source: *User) void {
 				result.z,
 				source,
 			),
-			result.collides == null or result.collides.? == .true,
+			result.collides orelse true,
 			result.count orelse 1,
 			result.spawnDataZon orelse "",
 		);
