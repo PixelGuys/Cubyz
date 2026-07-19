@@ -914,13 +914,25 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var selectionNormal: Vec3f = undefined;
 	var lastPos: Vec3d = undefined;
 	var lastDir: Vec3f = undefined;
+	fn getSelectRange(baseRange: f64, heldItem: main.items.Item) f64 {
+		var flatRange: f32 = 1;
+		var multRange: f32 = 0;
+		if (heldItem == .proceduralItem) {
+			const flatRangeDiff, const multRangeDiff = heldItem.proceduralItem.getBlockRange();
+			flatRange += flatRangeDiff;
+			multRange = multRange*multRangeDiff;
+		}
+		const range: f64 = (baseRange + flatRange)*multRange;
+		return range;
+	}
 	pub fn select(pos: Vec3d, _dir: Vec3f, item: main.items.Item) void {
 		lastPos = pos;
 		const dir: Vec3d = @floatCast(_dir);
 		lastDir = _dir;
 
 		// Test blocks:
-		const closestDistance: f64 = 6.0; // selection now limited
+		const defaultClosestDistance: f64 = 6.0; // selection now limited
+		const closestDistance: f64 = getSelectRange(defaultClosestDistance, item); // selection now limited
 		// Implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
 		const step: Vec3i = std.math.sign(dir);
 		const invDir = @as(Vec3d, @splat(1))/dir;

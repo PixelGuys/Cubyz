@@ -159,6 +159,7 @@ const Modifier = struct {
 		combineModifiers: *const fn (data1: Data, data2: Data) ?Data,
 		changeProceduralItemParameters: *const fn (proceduralItem: *ProceduralItem, data: Data) void,
 		changeBlockDamage: *const fn (damage: f32, block: Block, data: Data) f32,
+		changeBlockRange: *const fn (data: Data) struct {f32, f32},
 		printTooltip: *const fn (outString: *main.ListManaged(u8), data: Data) void,
 		loadData: *const fn (zon: ZonElement) Data,
 		priority: f32,
@@ -168,12 +169,16 @@ const Modifier = struct {
 			pub fn changeBlockDamage(damage: f32, _: Block, _: Data) f32 {
 				return damage;
 			}
+			pub fn changeBlockRange(_: f32) struct {f32, f32} {
+				return .{0, 1}; // returns a flat 0 and a mult of 1
+			}
 		};
 
 		inline fn initFromModifierStruct(comptime ModifierStruct: type) VTable {
 			return comptime .{
 				.changeProceduralItemParameters = @ptrCast(if (@hasDecl(ModifierStruct, "changeProceduralItemParameters")) &ModifierStruct.changeProceduralItemParameters else &VTable.Defaults.changeProceduralItemParameters),
 				.changeBlockDamage = @ptrCast(if (@hasDecl(ModifierStruct, "changeBlockDamage")) &ModifierStruct.changeBlockDamage else &VTable.Defaults.changeBlockDamage),
+				.changeBlockRange = @ptrCast(if (@hasDecl(ModifierStruct, "changeBlockRange")) &ModifierStruct.changeBlockRange else &VTable.Defaults.changeBlockRange),
 				.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
 				.printTooltip = @ptrCast(&ModifierStruct.printTooltip),
 				.loadData = @ptrCast(&ModifierStruct.loadData),
@@ -197,6 +202,10 @@ const Modifier = struct {
 
 	pub fn changeBlockDamage(self: Modifier, damage: f32, block: Block) f32 {
 		return self.vTable.changeBlockDamage(damage, block, self.data);
+	}
+
+	pub fn changeBlockRange(self: Modifier) struct {f32, f32} {
+		return self.vTable.changeBlockRange(self.data);
 	}
 
 	pub fn printTooltip(self: Modifier, outString: *main.ListManaged(u8)) void {
@@ -914,6 +923,17 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 			return damage;
 		}
 		return main.game.Player.defaultBlockDamage;
+	}
+
+	pub fn getBlockRange(self: *ProceduralItem) struct {f32, f32} {
+		var flatRange: f32 = 0;
+		var multRange: f32 = 1;
+		for (self.modifiers) |modifier| {
+			const flatRangeDiff, const multRangeDiff = modifier.changeBlockRange();
+			flatRange += flatRangeDiff;
+			multRange = multRange*multRangeDiff;
+		}
+		return .{flatRange, multRange};
 	}
 
 	pub fn onUseReturnBroken(self: *ProceduralItem) bool {
