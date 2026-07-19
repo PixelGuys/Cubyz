@@ -19,6 +19,7 @@ const Mask = main.blueprint.Mask;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const CircularBufferQueue = main.utils.CircularBufferQueue;
 const sync = main.sync;
+const stdin_handler = main.stdin_handler;
 
 pub const BlockUpdateSystem = @import("BlockUpdateSystem.zig");
 pub const world_zig = @import("world.zig");
@@ -586,6 +587,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 	users = .init(main.globalAllocator);
 	lastTime = main.timestamp();
 
+	stdin_handler.init();
 	main.entity.server.init();
 	main.items.Inventory.server.init();
 	main.sync.server.init();
@@ -622,8 +624,8 @@ fn deinit() void {
 	main.threadPool.pause();
 	defer main.threadPool.@"continue"();
 
+	stdin_handler.deinit();
 	main.threadPool.unschedulePlayers();
-
 	users.clearAndFree();
 
 	while (userDeinitList.popFront()) |user| {
@@ -685,6 +687,7 @@ fn getInitialEntityList(allocator: main.heap.NeverFailingAllocator) []const u8 {
 fn update() void { // MARK: update()
 	world.?.update();
 	main.entity.server.update();
+	stdin_handler.update();
 
 	while (userConnectList.popFront()) |user| {
 		connectInternal(user);
