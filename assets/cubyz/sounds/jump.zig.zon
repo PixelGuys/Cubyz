@@ -1,4 +1,4 @@
 .{
 	.audio = "cubyz:jump",
-	.volume = 1.5,
+	.volume = 0.35,
 }
