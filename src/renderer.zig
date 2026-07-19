@@ -1175,7 +1175,11 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, selectionMin, selectionMax);
 		}
 		if (game.Player.selectionPosition1) |pos1| {
+			drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(pos1)) - playerPos, .{0, 0, 0}, @floatFromInt(Vec3i{1, 1, 1}));
+
 			if (game.Player.selectionPosition2) |pos2| {
+				drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(pos2)) - playerPos, .{0, 0, 0}, @floatFromInt(Vec3i{1, 1, 1}));
+
 				const bottomLeft: Vec3i = @min(pos1, pos2);
 				const topRight: Vec3i = @max(pos1, pos2);
 				drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(bottomLeft)) - playerPos, .{0, 0, 0}, @floatFromInt(topRight - bottomLeft + Vec3i{1, 1, 1}));
