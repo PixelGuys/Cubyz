@@ -624,8 +624,8 @@ fn deinit() void {
 	main.threadPool.pause();
 	defer main.threadPool.@"continue"();
 
-	stdin_handler.deinit();
 	main.threadPool.unschedulePlayers();
+
 	users.clearAndFree();
 
 	while (userDeinitList.popFront()) |user| {
@@ -644,6 +644,7 @@ fn deinit() void {
 	}
 	world = null;
 
+	stdin_handler.deinit();
 	main.sync.server.deinit();
 	main.items.Inventory.server.deinit();
 	main.entity.server.deinit();
