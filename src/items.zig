@@ -1373,19 +1373,6 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 	std.log.debug("Registered procedural item: '{s}'", .{id});
 }
 
-fn parseRecipeItem(zon: ZonElement) !ItemStack {
-	var id = zon.as([]const u8, "");
-	id = std.mem.trim(u8, id, &std.ascii.whitespace);
-	var result: ItemStack = .{.amount = 1};
-	if (std.mem.indexOfScalar(u8, id, ' ')) |index| blk: {
-		result.amount = std.fmt.parseInt(u16, id[0..index], 0) catch break :blk;
-		id = id[index + 1 ..];
-		id = std.mem.trim(u8, id, &std.ascii.whitespace);
-	}
-	result.item = .{.baseItem = BaseItemIndex.fromId(id) orelse return error.ItemNotFound};
-	return result;
-}
-
 pub fn registerRecipes(zon: ZonElement) void {
 	for (zon.toSlice()) |recipeZon| {
 		recipes.parseRecipe(recipeZon, &recipeList) catch |err| {
