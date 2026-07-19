@@ -1,11 +1,11 @@
 .{
-	.emittedLight = 0xc0616a,
+	.emittedLight = 0x6b5d1b,
 	.model = .{
 		.base = "cubyz:torch",
 		.side = "cubyz:torch_side",
 	},
-	.texture = "cubyz:torch/lumi",
+	.texture = "cubyz:torch/grass",
 	.item = .{
-		.texture = "torch/lumi.png",
+		.texture = "torch/grass.png",
 	},
 }
