@@ -142,6 +142,9 @@ pub const Group = struct { // MARK: Group
 	}
 
 	pub fn fromBytes(allocator: NeverFailingAllocator, reader: *main.utils.BinaryReader, id: u32) !*Group {
+		const version = try reader.readInt(u8);
+		if (version != 0) return error.UnsupportedVersion;
+
 		const self = allocator.create(Group);
 		errdefer allocator.destroy(self);
 		self.* = .{
@@ -155,6 +158,8 @@ pub const Group = struct { // MARK: Group
 
 	pub fn toBytes(self: *Group, writer: *main.utils.BinaryWriter) void {
 		sync.threadContext.assertCorrectContext(.server);
+		const version = 0;
+		writer.writeInt(u8, version);
 		writer.writeSliceWithSize(self.name);
 		self.permissions.toBytes(writer);
 	}
