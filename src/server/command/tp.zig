@@ -91,7 +91,7 @@ pub fn execute(args: []const u8, _source: Source) void {
 			return;
 		},
 		.@"/tp <x> <y> <z>" => |pos| {
-			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source);
+			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, _source);
 		},
 		.@"/tp <playerIndex>" => |index| {
 			const target = command.Target.fromPlayerIndex(index.playerIndex, _source) catch return;

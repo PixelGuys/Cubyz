@@ -84,12 +84,15 @@ pub const Coordinate = union(enum) {
 	}
 };
 
-pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, player: *User) main.vec.Vec3d {
+pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, source: Source) main.vec.Vec3d {
+	if (source == .server and (x == .relative or y == .relative or z == .relative)) {
+		source.sendMessage("Commands per console can't interpret relative coordinates, will interpret them as absolute values instead", .{});
+	}
 	return .{
 		// TODO: Remove clamp after #310 is implemented
-		std.math.clamp(if (x == .relative) player.player().pos[0] + x.relative else x.absolute, -1e9, 1e9),
-		std.math.clamp(if (y == .relative) player.player().pos[1] + y.relative else y.absolute, -1e9, 1e9),
-		std.math.clamp(if (z == .relative) player.player().pos[2] + z.relative else z.absolute, -1e9, 1e9),
+		std.math.clamp(if (x == .relative and source == .user) source.user.player().pos[0] + x.relative else x.absolute, -1e9, 1e9),
+		std.math.clamp(if (y == .relative and source == .user) source.user.player().pos[1] + y.relative else y.absolute, -1e9, 1e9),
+		std.math.clamp(if (z == .relative and source == .user) source.user.player().pos[2] + z.relative else z.absolute, -1e9, 1e9),
 	};
 }
 
