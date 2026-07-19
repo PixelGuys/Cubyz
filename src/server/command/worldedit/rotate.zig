@@ -11,7 +11,8 @@ pub const usage =
 ;
 
 const Args = union(enum) {
-	@"/rotate <rotation>": struct { rotation: ?Degrees },
+	@"/rotate": struct {},
+	@"/rotate <rotation>": struct { rotation: Degrees },
 };
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/rotate"});
@@ -30,5 +31,8 @@ pub fn execute(args: []const u8, source: *User) void {
 	}
 	const current = source.worldEditData.clipboard.?;
 	defer current.deinit(main.globalAllocator);
-	source.worldEditData.clipboard = current.rotateZ(main.globalAllocator, result.@"/rotate <rotation>".rotation orelse .@"90");
+	switch (result) {
+		.@"/rotate" => source.worldEditData.clipboard = current.rotateZ(main.globalAllocator, .@"90"),
+		.@"/rotate <rotation>" => |params| source.worldEditData.clipboard = current.rotateZ(main.globalAllocator, params.rotation),
+	}
 }
