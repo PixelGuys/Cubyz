@@ -990,8 +990,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 			user.gamemode = .init(self.settings.defaultGamemode);
 		} else {
-			user.permissions.fromZon(playerData);
-
 			user.gamemode = .init(std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode") orelse @tagName(self.settings.defaultGamemode)) orelse self.settings.defaultGamemode);
 		}
 		user.inventory = loadPlayerInventory(main.game.Player.inventorySize, playerData.get([]const u8, "playerInventory") orelse "", .{.playerInventory = user.id}, path);
@@ -1049,7 +1047,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 
 		playerZon.put("entity", user.player().save(main.stackAllocator, .disk));
-		user.permissions.toZon(main.stackAllocator, &playerZon);
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 
 		{

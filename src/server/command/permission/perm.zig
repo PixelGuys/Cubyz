@@ -48,9 +48,9 @@ pub fn execute(args: []const u8, source: *User) void {
 			};
 
 			switch (params.action) {
-				.add => target.user.permissions.addPermission(listType, params.permissionPath.path),
+				.add => main.entity.components.@"cubyz:permissions".server.getPermissions(target.user.id).?.addPermission(listType, params.permissionPath.path),
 				.remove => {
-					if (!target.user.permissions.removePermission(listType, params.permissionPath.path)) {
+					if (!main.entity.components.@"cubyz:permissions".server.getPermissions(target.user.id).?.removePermission(listType, params.permissionPath.path)) {
 						source.sendMessage("#ff0000Permission path {s} is not present inside users permission {s}list", .{params.permissionPath.path, @tagName(listType)});
 					}
 				},
@@ -60,7 +60,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
 			defer target.deinit();
 
-			if (target.user.hasPermission(params.permissionPath.path)) {
+			if (main.entity.components.@"cubyz:permissions".server.hasPermission(target.user.id, params.permissionPath.path)) {
 				source.sendMessage("#00ff00Player {s}§#00ff00 has permission for path: {s}", .{target.user.name, params.permissionPath.path});
 			} else {
 				source.sendMessage("#ff0000Player {s}§#ff0000 has no permission for path: {s}", .{target.user.name, params.permissionPath.path});
