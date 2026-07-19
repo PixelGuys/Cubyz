@@ -14,7 +14,6 @@ pub const Args = union(enum) {
 };
 
 pub fn execute(_: Args, source: *User) void {
-	_ = result; // autofix
 	if (source.worldEditData.undoHistory.pop()) |action| {
 		defer action.deinit();
 

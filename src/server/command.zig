@@ -20,8 +20,8 @@ pub const Command = struct {
 pub var commands: std.StringHashMap(Command) = undefined;
 
 fn initExecutionFn(comptime name: []const u8) *const fn (args: []const u8, source: *User) void {
+	const ArgPaser = main.argparse.Parser(@field(commandList, name).Args, .{.commandName = name});
 	return struct {
-		const ArgPaser = main.argparse.Parser(@field(commandList, name).Args, .{.commandName = name});
 		fn exec(msg: []const u8, source: *User) void {
 			var arena: main.heap.NeverFailingArenaAllocator = .init(main.stackAllocator);
 			defer arena.deinit();
