@@ -92,75 +92,9 @@ pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, player: *
 	};
 }
 
-// TODO remove after every command which uses it is migrated to the argsparser #3073
-fn parseAxis(arg: []const u8, playerPos: f64, source: *User) !f64 {
-	const hasTilde = if (arg.len == 0) false else arg[0] == '~';
-	const numberSlice = if (hasTilde) arg[1..] else arg;
-	if (hasTilde and numberSlice.len == 0) return playerPos;
-	const num = std.fmt.parseFloat(f64, numberSlice) catch {
-		if (hasTilde) {
-			source.sendMessage("#ff0000Expected number, found \"{s}\"", .{numberSlice});
-		} else {
-			source.sendMessage("#ff0000Expected number or \"~\", found \"{s}\"", .{arg});
-		}
-		return error.InvalidNumber;
-	};
-
-	return std.math.clamp(if (hasTilde) playerPos + num else num, -1e9, 1e9); // TODO: Remove clamp after #310 is implemented
-}
-
-// TODO remove after every command which uses it is migrated to the argsparser #3073
-pub fn parseCoordinates(split: *std.mem.SplitIterator(u8, .scalar), source: *User) !main.vec.Vec3d {
-	return blk: {
-		var output: main.vec.Vec3d = undefined;
-		inline for (0..3) |i| {
-			output[i] = try parseAxis(split.next() orelse {
-				source.sendMessage("#ff0000Too few arguments for position", .{});
-				return error.TooFewArguments;
-			}, source.player().pos[i], source);
-		}
-		break :blk output;
-	};
-}
-
-// TODO remove after every command which uses it is migrated to the argsparser #3073
-fn parsePlayerIndexAndIncreaseRefCount(playerIndex: []const u8, source: *User) !*User {
-	if (!std.ascii.startsWithIgnoreCase(playerIndex, "@")) {
-		source.sendMessage("#ff0000Player index specifiers always start with @, found \"{s}\"", .{playerIndex});
-		return error.InvalidArg;
-	}
-	const index = std.fmt.parseInt(usize, playerIndex[1..], 10) catch {
-		source.sendMessage("#ff0000Player index must be an integer, found \"{s}\"", .{playerIndex[1..]});
-		return error.InvalidArg;
-	};
-	return main.server.getUserByIndexAndIncreaseRefCount(index) orelse {
-		source.sendMessage("#ff0000Player with index {d} not found or not online", .{index});
-		return error.InvalidArg;
-	};
-}
-
 pub const Target = struct {
 	user: *User,
 	increasedRefCount: bool,
-
-	// TODO remove after every command which uses it is migrated to the argsparser #3073
-	pub fn init(split: *std.mem.SplitIterator(u8, .scalar), source: *User) !Target {
-		var increasedRefCount = false;
-		const user: *User = blk: {
-			const userIndex = split.peek() orelse {
-				source.sendMessage("#ff0000Too few arguments for command", .{});
-				return error.TooFewArguments;
-			};
-			if (userIndex.len > 0 and userIndex[0] == '@') {
-				const user = parsePlayerIndexAndIncreaseRefCount(userIndex, source) catch return error.InvalidArgs;
-				increasedRefCount = true;
-				_ = split.next();
-				break :blk user;
-			}
-			break :blk source;
-		};
-		return .{.user = user, .increasedRefCount = increasedRefCount};
-	}
 
 	pub fn fromPlayerIndex(arg: ?PlayerIndex, source: *User) !Target {
 		const playerIndex = arg orelse return .{
