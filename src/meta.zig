@@ -79,8 +79,8 @@ fn CastFunctionReturnToErrorAnyopaqueType(Fn: type, errorSet: type) type {
 		paramTypes[i] = param.type.?;
 		paramAttributes[i] = .{.@"noalias" = param.is_noalias};
 	}
-	if (@sizeOf(typeInfo.@"fn".return_type.?) != @sizeOf(errorSet!*anyopaque) or @alignOf(typeInfo.@"fn".return_type.?) != @alignOf(errorSet!*anyopaque)) {
-		@compileError(std.fmt.comptimePrint("Cannot convert {} to *anyopaque", .{typeInfo.@"fn".return_type.?}));
+	if (@sizeOf(typeInfo.@"fn".return_type.?) != @sizeOf(errorSet!*anyopaque) or @alignOf(typeInfo.@"fn".return_type.?) != @alignOf(errorSet!*anyopaque) or @typeInfo(typeInfo.@"fn".return_type.?) != .error_union or @typeInfo(typeInfo.@"fn".return_type.?).error_union.error_set != errorSet) {
+		@compileError(std.fmt.comptimePrint("Cannot convert {} to {}!*anyopaque", .{typeInfo.@"fn".return_type.?, errorSet}));
 	}
 	const ReturnType = errorSet!*anyopaque;
 	return @Fn(&paramTypes, &paramAttributes, ReturnType, .{.@"callconv" = typeInfo.@"fn".calling_convention, .varargs = typeInfo.@"fn".is_var_args});
