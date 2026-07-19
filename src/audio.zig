@@ -441,7 +441,7 @@ fn mixSound(buffer: []f32) void {
 		const audioData = audios.items[sound.audioIndex];
 		const soundBuffer = audioData.data;
 
-		const notMonoInt: u32 = @intFromBool(!audioData.isMono);
+		const notMonoInt: u32 = @intFromBool(audioData.channelType == .stereo);
 		const bufferStep: u32 = 1 + notMonoInt;
 
 		var leftVol: f32 = 1;
@@ -452,7 +452,7 @@ fn mixSound(buffer: []f32) void {
 			const distance: f32 = vec.length(toSound);
 
 			if (distance > sound.maxDistance) {
-				sound.bufPos += @intCast(if (audioData.isMono) @divFloor(buffer.len, 2) else buffer.len);
+				sound.bufPos += @intCast(if (audioData.channelType == .mono) @divFloor(buffer.len, 2) else buffer.len);
 				if (sound.bufPos >= soundBuffer.len) {
 					soundCount -= 1;
 					activeSounds.items[i] = activeSounds.items[soundCount];
