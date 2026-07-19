@@ -60,15 +60,14 @@ const AudioData = struct {
 		const fileName = id[colonIndex + 1 ..];
 		const path1 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/{s}/{s}.ogg", .{addon, subPath, fileName}, 0) catch unreachable;
 		defer main.stackAllocator.free(path1);
-		var err: c_int = 0;
-		if (c.stb_vorbis_open_filename(path1.ptr, &err, null)) |ogg_stream| return ogg_stream;
-		const err1 = err;
+		var err1: c_int = 0;
+		if (c.stb_vorbis_open_filename(path1.ptr, &err1, null)) |ogg_stream| return ogg_stream;
 
 		const path2 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "{s}/serverAssets/{s}/{s}/{s}.ogg", .{main.files.cubyzDirStr(), addon, subPath, fileName}, 0) catch unreachable;
 		defer main.stackAllocator.free(path2);
-		if (c.stb_vorbis_open_filename(path2.ptr, &err, null)) |ogg_stream| return ogg_stream;
-		const err2 = err;
-		std.log.err("Couldn't handle or find audio file. ID: \"{s}\". Searched path: \"{s}\" (error: {any}) and \"{s}\" (error: {any})", .{id, path1, getStbVorbisError(err2), path2, getStbVorbisError(err1)});
+		var err2: c_int = 0;
+		if (c.stb_vorbis_open_filename(path2.ptr, &err2, null)) |ogg_stream| return ogg_stream;
+		std.log.err("Couldn't handle or find audio file. ID: \"{s}\". Searched path: \"{s}\" (error: {any}) and \"{s}\" (error: {any})", .{id, path1, getStbVorbisError(err1), path2, getStbVorbisError(err2)});
 		return null;
 	}
 
