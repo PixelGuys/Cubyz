@@ -196,7 +196,7 @@ const Test = struct {
 
 test "no arguments" {
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
-	defer errors.deinit(main.stackAllocator);
+	defer errors.deinit();
 
 	const resultOrError = Parser(struct {}, .{.commandName = "foo"}).parse(main.stackAllocator, "", &errors);
 
@@ -206,10 +206,9 @@ test "no arguments" {
 
 test "bool" {
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
-	defer errors.deinit(main.stackAllocator);
+	defer errors.deinit();
 
 	const result = try Parser(struct { a: bool, b: bool }, .{.commandName = "foo"}).parse(main.stackAllocator, "true false", &errors);
-	defer main.stackAllocator.destroy(result);
 
 	try std.testing.expectEqualStrings("", errors.items);
 	try std.testing.expectEqual(result.a, true);
@@ -218,10 +217,9 @@ test "bool" {
 
 test "float" {
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
-	defer errors.deinit(main.stackAllocator);
+	defer errors.deinit();
 
 	const result = try Test.OnlyX.parse(main.stackAllocator, "33.0", &errors);
-	defer main.stackAllocator.destroy(result);
 
 	try std.testing.expectEqualStrings("", errors.items);
 	try std.testing.expectEqual(result.x, 33.0);
@@ -229,7 +227,7 @@ test "float" {
 
 test "float negative" {
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
-	defer errors.deinit(main.stackAllocator);
+	defer errors.deinit();
 
 	const resultOrError = Test.OnlyX.parse(main.stackAllocator, "foo", &errors);
 
@@ -243,10 +241,9 @@ test "enum" {
 	}, .{.commandName = "c"});
 
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
-	defer errors.deinit(main.stackAllocator);
+	defer errors.deinit();
 
 	const result = try ArgParser.parse(main.stackAllocator, "foo", &errors);
-	defer main.stackAllocator.destroy(result);
 
 	try std.testing.expectEqualStrings("", errors.items);
 	try std.testing.expectEqual(result.cmd, .foo);
@@ -260,10 +257,9 @@ test "float int float" {
 	}, .{.commandName = ""});
 
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
-	defer errors.deinit(main.stackAllocator);
+	defer errors.deinit();
 
 	const result = try ArgParser.parse(main.stackAllocator, "33.0 154 -5654.0", &errors);
-	defer main.stackAllocator.destroy(result);
 
 	try std.testing.expectEqualStrings("", errors.items);
 	try std.testing.expectEqual(result.x, 33.0);
@@ -279,10 +275,9 @@ test "float int optional float missing" {
 	}, .{.commandName = ""});
 
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
-	defer errors.deinit(main.stackAllocator);
+	defer errors.deinit();
 
 	const result = try ArgParser.parse(main.stackAllocator, "33.0 154", &errors);
-	defer main.stackAllocator.destroy(result);
 
 	try std.testing.expectEqualStrings("", errors.items);
 	try std.testing.expectEqual(result.x, 33.0);
@@ -298,10 +293,9 @@ test "two optionals missing" {
 	}, .{.commandName = ""});
 
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
-	defer errors.deinit(main.stackAllocator);
+	defer errors.deinit();
 
 	const result = try ArgParser.parse(main.stackAllocator, "1.0", &errors);
-	defer main.stackAllocator.destroy(result);
 
 	try std.testing.expectEqualStrings("", errors.items);
 	try std.testing.expectEqual(result.x, 1.0);
@@ -317,10 +311,9 @@ test "float int optional float present" {
 	}, .{.commandName = ""});
 
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
-	defer errors.deinit(main.stackAllocator);
+	defer errors.deinit();
 
 	const result = try ArgParser.parse(main.stackAllocator, "33.0 154 0.1", &errors);
-	defer main.stackAllocator.destroy(result);
 
 	try std.testing.expectEqualStrings("", errors.items);
 	try std.testing.expectEqual(result.x, 33.0);
@@ -336,10 +329,9 @@ test "optional inbetween" {
 	}, .{.commandName = "c"});
 
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
-	defer errors.deinit(main.stackAllocator);
+	defer errors.deinit();
 
 	const result = try ArgParser.parse(main.stackAllocator, "foo bar", &errors);
-	defer main.stackAllocator.destroy(result);
 
 	try std.testing.expectEqualStrings("", errors.items);
 	try std.testing.expectEqual(result.x, .foo);
@@ -349,10 +341,9 @@ test "optional inbetween" {
 
 test "x or xy case x" {
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
-	defer errors.deinit(main.stackAllocator);
+	defer errors.deinit();
 
 	const result = try Test.@"Union X or XY".parse(main.stackAllocator, "0.9", &errors);
-	defer main.stackAllocator.destroy(result);
 
 	try std.testing.expectEqualStrings("", errors.items);
 	try std.testing.expectEqual(result.x.x, 0.9);
@@ -360,10 +351,9 @@ test "x or xy case x" {
 
 test "x or xy case xy" {
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
-	defer errors.deinit(main.stackAllocator);
+	defer errors.deinit();
 
 	const result = try Test.@"Union X or XY".parse(main.stackAllocator, "0.9 1.0", &errors);
-	defer main.stackAllocator.destroy(result);
 
 	try std.testing.expectEqualStrings("", errors.items);
 	try std.testing.expectEqual(result.xy.x, 0.9);
@@ -372,7 +362,7 @@ test "x or xy case xy" {
 
 test "x or xy negative empty" {
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
-	defer errors.deinit(main.stackAllocator);
+	defer errors.deinit();
 
 	const resultOrError = Test.@"Union X or XY".parse(main.stackAllocator, "", &errors);
 
@@ -390,7 +380,7 @@ test "x or xy negative empty" {
 
 test "x or xy negative too many args" {
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
-	defer errors.deinit(main.stackAllocator);
+	defer errors.deinit();
 
 	const resultOrError = Test.@"Union X or XY".parse(main.stackAllocator, "1.0 3.0 5.0", &errors);
 
@@ -408,10 +398,9 @@ test "x or xy negative too many args" {
 
 test "subCommands foo" {
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
-	defer errors.deinit(main.stackAllocator);
+	defer errors.deinit();
 
 	const result = try Test.@"subCommands foo or bar".parse(main.stackAllocator, "foo 1.0", &errors);
-	defer main.stackAllocator.destroy(result);
 
 	try std.testing.expectEqualStrings("", errors.items);
 	try std.testing.expectEqual(result.foo.cmd, .foo);
@@ -420,10 +409,9 @@ test "subCommands foo" {
 
 test "subCommands bar" {
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
-	defer errors.deinit(main.stackAllocator);
+	defer errors.deinit();
 
 	const result = try Test.@"subCommands foo or bar".parse(main.stackAllocator, "bar 2.0 3.0", &errors);
-	defer main.stackAllocator.destroy(result);
 
 	try std.testing.expectEqualStrings("", errors.items);
 	try std.testing.expectEqual(result.bar.cmd, .bar);

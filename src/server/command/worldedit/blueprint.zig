@@ -154,19 +154,15 @@ fn blueprintLoad(filePath: FilePath, source: *User) void {
 const FilePath = struct {
 	path: []const u8,
 
-	pub fn deinit(self: FilePath, allocator: NeverFailingAllocator) void {
-		allocator.free(self.path);
+	pub fn parse(arena: NeverFailingAllocator, _: []const u8, arg: []const u8, _: *ListManaged(u8)) error{ParseError}!FilePath {
+		return .{.path = ensureBlueprintExtension(arena, arg)};
 	}
 
-	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, arg: []const u8, _: *ListManaged(u8)) error{ParseError}!FilePath {
-		return .{.path = ensureBlueprintExtension(allocator, arg)};
-	}
-
-	fn ensureBlueprintExtension(allocator: NeverFailingAllocator, fileName: []const u8) []const u8 {
+	fn ensureBlueprintExtension(arena: NeverFailingAllocator, fileName: []const u8) []const u8 {
 		if (!std.ascii.endsWithIgnoreCase(fileName, ".blp")) {
-			return std.fmt.allocPrint(allocator.allocator, "{s}.blp", .{fileName}) catch unreachable;
+			return std.fmt.allocPrint(arena.allocator, "{s}.blp", .{fileName}) catch unreachable;
 		} else {
-			return allocator.dupe(u8, fileName);
+			return arena.dupe(u8, fileName);
 		}
 	}
 };

@@ -72,8 +72,7 @@ pub const Coordinate = union(enum) {
 	relative: f64, // Relative coordinates are indicated by leading `~`.
 	absolute: f64,
 
-	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!Coordinate {
-		_ = allocator; // autofix
+	pub fn parse(_: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!Coordinate {
 		const isRelative = arg[0] == '~';
 		const numberSlice = if (isRelative) arg[1..] else arg;
 		if (isRelative and numberSlice.len == 0) return .{.relative = 0};
