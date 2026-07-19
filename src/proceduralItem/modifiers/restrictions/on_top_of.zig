@@ -1,0 +1,34 @@
+const std = @import("std");
+
+const main = @import("main");
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const ModifierRestriction = main.items.ModifierRestriction;
+const ProceduralItem = main.items.ProceduralItem;
+const ZonElement = main.ZonElement;
+
+const OnTopOf = struct {
+	tag: main.Tag,
+};
+
+pub fn satisfied(self: *const OnTopOf, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
+	var isOnTopOfTag: bool = false;
+
+	isOnTopOfTag = proceduralItem.checkForTagAt(x, y, self.tag);
+
+	return isOnTopOfTag;
+}
+
+pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const OnTopOf {
+	const result = allocator.create(OnTopOf);
+	result.* = .{
+		.tag = main.Tag.find(zon.get([]const u8, "tag") orelse blk: {
+			std.log.err("Missing tag field for encased restriction.", .{});
+			break :blk "not specified";
+		}),
+	};
+	return result;
+}
+
+pub fn printTooltip(self: *const OnTopOf, outString: *main.ListManaged(u8)) void {
+	outString.print("on top of .{s}", .{self.tag.getName()});
+}
