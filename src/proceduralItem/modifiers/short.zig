@@ -22,8 +22,8 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 }
 
 pub fn changeBlockRange(data: Data) struct {f32, f32} {
-				return .{data.flatStrength, data.multStrength};
-			}
+	return .{data.flatStrength, data.multStrength};
+}
 
 pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
 	if (data.multStrength != 0 and data.flatStrength != 0) outString.print("#f80088**Short**#808080 *Decreases range by **{d:.0}%** and **+{d:.0}**", .{data.multStrength*100, data.flatStrength});
