@@ -65,7 +65,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 		} {
 			var result: T = undefined;
 
-			var resolved: u32 = 0;
+			var resolved: usize = 0;
 			errdefer blk: {
 				if (resolved == 0) break :blk;
 				if (@typeInfo(T) != .@"struct") break :blk;
