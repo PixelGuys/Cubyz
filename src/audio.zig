@@ -63,7 +63,7 @@ const AudioData = struct {
 		var err: c_int = 0;
 		if (c.stb_vorbis_open_filename(path1.ptr, &err, null)) |ogg_stream| return ogg_stream;
 		const err1 = err;
-		if (err != @intFromEnum(StbVorbisErrorEnum.no_error) and err != @intFromEnum(StbVorbisErrorEnum.file_open_failure)) {
+		if (err != @intFromEnum(StbVorbisErrorEnum.file_open_failure)) {
 			std.log.err("Couldn't handle audio file. Error: {any}. ID: \"{s}\". Path: \"{s}\"", .{getStbVorbisError(err), id, path1});
 		}
 		const path2 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "{s}/serverAssets/{s}/{s}/{s}.ogg", .{main.files.cubyzDirStr(), addon, subPath, fileName}, 0) catch unreachable;
