@@ -507,38 +507,41 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 		return false;
 	}
 
+	fn neighborWeight(offset: [2]i8) f32 {
+		return if (offset[0] != 0 and offset[1] != 0) 1.0/@sqrt(2.0) else 1.0;
+	}
+
 	fn mostCommonNeighborMaterial(materialGrid: *const [16][16]?BaseItemIndex, heightMap: *const [17][17]f32, pos: [2]u8, offsets: []const [2]i8) ?Material {
-		const Tally = struct { item: BaseItemIndex, count: u32, weight: f32 };
-		var tallies: [8]Tally = undefined;
-		var tallyCount: usize = 0;
+		const Tally = struct { item: BaseItemIndex, score: f32, lightWeight: f32 };
+		var tallies: main.List(Tally) = .empty;
+		defer tallies.deinit(main.stackAllocator);
 
 		for (offsets) |offset| {
 			const neighborPos = neighborCoord(pos, offset) orelse continue;
 			const item = materialGrid[neighborPos[0]][neighborPos[1]] orelse continue;
 			if (item.material() == null) continue;
+			const score = neighborWeight(offset);
 			const light = calculateRawLight(heightMap, neighborPos);
 
-			var foundIndex: ?usize = null;
-			for (tallies[0..tallyCount], 0..) |tally, i| {
+			var found = false;
+			for (tallies.items) |*tally| {
 				if (tally.item == item) {
-					foundIndex = i;
+					tally.score += score;
+					tally.lightWeight += light;
+					found = true;
 					break;
 				}
 			}
-			if (foundIndex) |i| {
-				tallies[i].count += 1;
-				tallies[i].weight += light;
-			} else {
-				tallies[tallyCount] = .{.item = item, .count = 1, .weight = light};
-				tallyCount += 1;
+			if (!found) {
+				tallies.append(main.stackAllocator, .{.item = item, .score = score, .lightWeight = light});
 			}
 		}
 
 		var best: ?Tally = null;
-		for (tallies[0..tallyCount]) |tally| {
-			const better = best == null or tally.count > best.?.count or
-				(tally.count == best.?.count and tally.weight > best.?.weight) or
-				(tally.count == best.?.count and tally.weight == best.?.weight and @intFromEnum(tally.item) < @intFromEnum(best.?.item));
+		for (tallies.items) |tally| {
+			const better = best == null or tally.score > best.?.score or
+				(tally.score == best.?.score and tally.lightWeight > best.?.lightWeight) or
+				(tally.score == best.?.score and tally.lightWeight == best.?.lightWeight and @intFromEnum(tally.item) < @intFromEnum(best.?.item));
 			if (better) best = tally;
 		}
 		return if (best) |b| b.item.material() else null;
