@@ -9,6 +9,7 @@ const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
 const Button = @import("../components/Button.zig");
+const HorizontalList = @import("../components/HorizontalList.zig");
 const Label = @import("../components/Label.zig");
 const TextInput = @import("../components/TextInput.zig");
 const VerticalList = @import("../components/VerticalList.zig");
@@ -88,9 +89,6 @@ fn copyIp() void {
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	list.add(Label.init(.{0, 0}, width, "Name:", .center));
-	nameEntry = TextInput.init(.{0, 0}, width, 32, settings.playerName, .{.onNewline = .init(applyName)});
-	list.add(nameEntry);
 	list.add(Label.init(.{0, 0}, width, "Please send your IP to the host of the game and enter the host's IP below.", .center));
 	//                                               255.255.255.255:?65536 (longest possible ip address)
 	ipAddressLabel = Label.init(.{0, 0}, width, "                      ", .center);
@@ -99,6 +97,13 @@ pub fn onOpen() void {
 	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.onNewline = .init(join)});
 	ipAddressEntry.obfuscated = main.settings.streamerMode;
 	list.add(ipAddressEntry);
+	const nameLabel = Label.init(.{0, 0}, 48, "Name:", .left);
+	nameEntry = TextInput.init(.{0, 0}, width - 48, 32, settings.playerName, .{.onNewline = .init(applyName)});
+	const nameRow = HorizontalList.init();
+	nameRow.add(nameLabel);
+	nameRow.add(nameEntry);
+	nameRow.finish(.{0, 0}, .center);
+	list.add(nameRow);
 	list.add(Button.initText(.{0, 0}, 100, "Join", .{.onAction = .init(join)}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
