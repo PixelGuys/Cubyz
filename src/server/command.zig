@@ -61,8 +61,8 @@ pub fn execute(msg: []const u8, source: *User) void {
 			source.sendMessage("#ff0000No permission to use Command \"{s}\"", .{command});
 			return;
 		}
-		cmd.exec(msg[@min(end + 1, msg.len)..], source);
 		source.sendMessage("#00ff00Executing Command /{s}", .{msg});
+		cmd.exec(msg[@min(end + 1, msg.len)..], source);
 	} else {
 		source.sendMessage("#ff0000Unrecognized Command \"{s}\"", .{command});
 	}
