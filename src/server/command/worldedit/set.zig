@@ -12,14 +12,23 @@ const Pattern = main.blueprint.Pattern;
 pub const description = "Set all blocks within selection to a block.";
 pub const usage = "/set <pattern>";
 
+const Args = union(enum) {
+	@"/set": struct { selection: []const u8 },
+};
+
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/set"});
+
 pub fn execute(args: []const u8, source: *User) void {
-	if (args.len == 0) {
-		source.sendMessage("#ff0000Missing required <pattern> argument.", .{});
+	var errorMessage: main.List(u8) = .empty;
+	defer errorMessage.deinit(main.stackAllocator);
+
+	const argsResult = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
+		source.sendMessage("#ff0000{s}", .{errorMessage.items});
 		return;
-	}
+	};
 	const selection = command.getCurrentSelection(source) catch return;
 
-	const pattern = Pattern.initFromString(main.stackAllocator, args) catch |err| {
+	const pattern = Pattern.initFromString(main.stackAllocator, argsResult.@"/set".selection) catch |err| {
 		source.sendMessage("#ff0000Error parsing pattern: {s}", .{@errorName(err)});
 		return;
 	};
