@@ -16,8 +16,6 @@ const ResolveMode = enum {
 
 pub fn Parser(comptime T: type, comptime options: Options) type {
 	return struct {
-		const Self = @This();
-
 		/// Parse the string `args` according to the schema defined in `T` type parameter of the Parser.
 		/// Result is returned from this function as a value of type `T`.
 		///
