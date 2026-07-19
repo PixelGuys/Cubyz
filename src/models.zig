@@ -427,18 +427,6 @@ pub const Model = struct {
 		};
 	}
 
-	fn addVert(vert: Vec3f, vertList: *main.List(Vec3f)) usize {
-		const ind = for (vertList.*.items, 0..) |vertex, index| {
-			if (vertex == vert) break index;
-		} else vertList.*.items.len;
-
-		if (ind == vertList.*.items.len) {
-			vertList.*.append(vert);
-		}
-
-		return ind;
-	}
-
 	pub fn loadModel(data: []const u8, coordinateSystem: vec.CoordinateSystem) ModelIndex {
 		const quadInfos = loadRawModelDataFromObj(main.stackAllocator, data, coordinateSystem);
 		defer main.stackAllocator.free(quadInfos);
@@ -798,64 +786,6 @@ fn addCornerLightSamples(lightSamples: *main.List(LightSample), pos: Vec3i, dire
 			const finalPos = startPos +% @as(Vec3i, @intCast(@abs(direction.textureX())))*@as(Vec3i, @splat(dx)) +% @as(Vec3i, @intCast(@abs(direction.textureY()*@as(Vec3i, @splat(dy)))));
 			lightSamples.appendAssumeCapacity(.{.offset = finalPos, .weights = weights});
 		}
-	}
-}
-
-fn box(min: Vec3f, max: Vec3f, uvOffset: Vec2f) [6]QuadInfo {
-	const corner000: Vec3f = .{min[0], min[1], min[2]};
-	const corner001: Vec3f = .{min[0], min[1], max[2]};
-	const corner010: Vec3f = .{min[0], max[1], min[2]};
-	const corner011: Vec3f = .{min[0], max[1], max[2]};
-	const corner100: Vec3f = .{max[0], min[1], min[2]};
-	const corner101: Vec3f = .{max[0], min[1], max[2]};
-	const corner110: Vec3f = .{max[0], max[1], min[2]};
-	const corner111: Vec3f = .{max[0], max[1], max[2]};
-	return .{
-		.{
-			.normal = .{-1, 0, 0},
-			.corners = .{corner010, corner011, corner000, corner001},
-			.cornerUV = .{uvOffset + Vec2f{1 - max[1], min[2]}, uvOffset + Vec2f{1 - max[1], max[2]}, uvOffset + Vec2f{1 - min[1], min[2]}, uvOffset + Vec2f{1 - min[1], max[2]}},
-			.textureSlot = Neighbor.dirNegX.toInt(),
-		},
-		.{
-			.normal = .{1, 0, 0},
-			.corners = .{corner100, corner101, corner110, corner111},
-			.cornerUV = .{uvOffset + Vec2f{min[1], min[2]}, uvOffset + Vec2f{min[1], max[2]}, uvOffset + Vec2f{max[1], min[2]}, uvOffset + Vec2f{max[1], max[2]}},
-			.textureSlot = Neighbor.dirPosX.toInt(),
-		},
-		.{
-			.normal = .{0, -1, 0},
-			.corners = .{corner000, corner001, corner100, corner101},
-			.cornerUV = .{uvOffset + Vec2f{min[0], min[2]}, uvOffset + Vec2f{min[0], max[2]}, uvOffset + Vec2f{max[0], min[2]}, uvOffset + Vec2f{max[0], max[2]}},
-			.textureSlot = Neighbor.dirNegY.toInt(),
-		},
-		.{
-			.normal = .{0, 1, 0},
-			.corners = .{corner110, corner111, corner010, corner011},
-			.cornerUV = .{uvOffset + Vec2f{1 - max[0], min[2]}, uvOffset + Vec2f{1 - max[0], max[2]}, uvOffset + Vec2f{1 - min[0], min[2]}, uvOffset + Vec2f{1 - min[0], max[2]}},
-			.textureSlot = Neighbor.dirPosY.toInt(),
-		},
-		.{
-			.normal = .{0, 0, -1},
-			.corners = .{corner010, corner000, corner110, corner100},
-			.cornerUV = .{uvOffset + Vec2f{min[0], 1 - max[1]}, uvOffset + Vec2f{min[0], 1 - min[1]}, uvOffset + Vec2f{max[0], 1 - max[1]}, uvOffset + Vec2f{max[0], 1 - min[1]}},
-			.textureSlot = Neighbor.dirDown.toInt(),
-		},
-		.{
-			.normal = .{0, 0, 1},
-			.corners = .{corner111, corner101, corner011, corner001},
-			.cornerUV = .{uvOffset + Vec2f{1 - max[0], 1 - max[1]}, uvOffset + Vec2f{1 - max[0], 1 - min[1]}, uvOffset + Vec2f{1 - min[0], 1 - max[1]}, uvOffset + Vec2f{1 - min[0], 1 - min[1]}},
-			.textureSlot = Neighbor.dirUp.toInt(),
-		},
-	};
-}
-
-fn openBox(min: Vec3f, max: Vec3f, uvOffset: Vec2f, openSide: enum { x, y, z }) [4]QuadInfo {
-	const fullBox = box(min, max, uvOffset);
-	switch (openSide) {
-		.x => return fullBox[2..6].*,
-		.y => return fullBox[0..2].* ++ fullBox[4..6].*,
-		.z => return fullBox[0..4].*,
 	}
 }
 

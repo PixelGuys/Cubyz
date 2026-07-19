@@ -16,8 +16,6 @@ const ResolveMode = enum {
 
 pub fn Parser(comptime T: type, comptime options: Options) type {
 	return struct {
-		const Self = @This();
-
 		/// Parse the string `args` according to the schema defined in `T` type parameter of the Parser.
 		/// Result is returned from this function as a value of type `T`.
 		///
@@ -139,6 +137,12 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 						return error.ParseError;
 					};
 				},
+				inline .bool => {
+					return (std.meta.stringToEnum(enum { true, false }, arg) orelse {
+						errorMessage.print(main.stackAllocator, "Expected either true or false for <{s}>, found \"{s}\"", .{name, arg});
+						return error.ParseError;
+					}) == .true;
+				},
 				inline else => |other| @compileError("Unsupported type " ++ @tagName(other)),
 			}
 		}
@@ -198,6 +202,18 @@ test "no arguments" {
 
 	try std.testing.expectEqualStrings("", errors.items);
 	_ = try resultOrError;
+}
+
+test "bool" {
+	var errors: List(u8) = .empty;
+	defer errors.deinit(main.stackAllocator);
+
+	const resultOrError = Parser(struct { a: bool, b: bool }, .{.commandName = "foo"}).parse(main.stackAllocator, "true false", &errors);
+
+	try std.testing.expectEqualStrings("", errors.items);
+	const result = try resultOrError;
+	try std.testing.expectEqual(result.a, true);
+	try std.testing.expectEqual(result.b, false);
 }
 
 test "float" {

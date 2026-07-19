@@ -81,14 +81,6 @@ pub fn timestamp() std.Io.Timestamp {
 	return std.Io.Clock.Timestamp.now(io, .awake).raw;
 }
 
-fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
-	return str[0..len];
-}
-
-fn cacheString(comptime str: []const u8) []const u8 {
-	return cacheStringImpl(str.len, str[0..].*);
-}
-
 // overwrite the log function:
 pub const std_options: std.Options = .{ // MARK: std_options
 	.log_level = .debug,
@@ -302,22 +294,6 @@ var shouldExitToMenu = std.atomic.Value(bool).init(false);
 
 pub fn exitToMenu() void {
 	shouldExitToMenu.store(true, .monotonic);
-}
-
-fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
-	var iter = std.fs.path.componentIterator(path) catch |err| {
-		std.log.err("Cannot iterate on path {s}: {s}!", .{path, @errorName(err)});
-		return false;
-	};
-	while (iter.next()) |component| {
-		if (std.mem.eql(u8, component.name, ".") or std.mem.eql(u8, component.name, "..")) {
-			continue;
-		}
-		if (component.name.len > 0 and component.name[0] == '.') {
-			return true;
-		}
-	}
-	return false;
 }
 
 pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
