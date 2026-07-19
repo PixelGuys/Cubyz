@@ -11,25 +11,15 @@ pub const usage =
 	\\/time <start/stop>"
 ;
 
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/time <phase>": struct { phase: enum { day, night } },
 	@"/time <subcommand>": struct { subcommand: enum { start, stop } },
 	@"/time <number>": struct { number: i64 },
 	@"/time": struct {},
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/time"});
-
-pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
-		return;
-	};
-
-	const gameTime: i64 = switch (result) {
+pub fn execute(args: *Args, source: *User) void {
+	const gameTime: i64 = switch (args.*) {
 		.@"/time" => time: {
 			source.sendMessage("#ffff00{}", .{main.server.world.?.gameTime});
 			break :time main.server.world.?.gameTime;

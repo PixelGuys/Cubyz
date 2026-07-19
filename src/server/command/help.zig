@@ -9,27 +9,17 @@ const User = main.server.User;
 pub const description = "Shows info about all the commands.";
 pub const usage = "/help\n/help <command>";
 
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/help <bobik>": struct { bobik: enum { Bobik, bobik } },
 	@"/help <command>": struct { command: Cmd },
 	@"/help": struct {},
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/help"});
-
-pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
-		return;
-	};
-
+pub fn execute(result: *Args, source: *User) void {
 	var msg: main.ListManaged(u8) = .init(main.stackAllocator);
 	defer msg.deinit();
 	msg.appendSlice("#ffff00");
-	switch (result) {
+	switch (result.*) {
 		.@"/help" => {
 			var iterator = command.commands.valueIterator();
 			while (iterator.next()) |cmd| {

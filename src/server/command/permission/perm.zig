@@ -16,7 +16,7 @@ pub const usage =
 	\\/perm <add/remove> <whitelist/blacklist> @<playerIndex> <permissionPath>
 ;
 
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/perm <action> <list> <playerIndex> <permissionPath>": struct {
 		action: enum { add, remove },
 		list: enum { whitelist, blacklist },
@@ -26,18 +26,8 @@ const Args = union(enum) {
 	@"/perm <playerIndex> <permissionPath>": struct { playerIndex: ?command.PlayerIndex, permissionPath: Path },
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/perm"});
-
-pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
-		return;
-	};
-
-	switch (result) {
+pub fn execute(args: *Args, source: *User) void {
+	switch (args.*) {
 		.@"/perm <action> <list> <playerIndex> <permissionPath>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
 			defer target.deinit();

@@ -10,7 +10,8 @@ const User = main.server.User;
 pub const commandList = @import("command/_list.zig");
 
 pub const Command = struct {
-	exec: *const fn (args: []const u8, source: *User) void,
+	parse: *const fn (allocator: NeverFailingAllocator, args: []const u8, errorMessage: *List(u8)) error{ParseError}!*anyopaque,
+	exec: *const fn (args: *anyopaque, source: *User) void,
 	name: []const u8,
 	description: []const u8,
 	usage: []const u8,
@@ -26,8 +27,9 @@ pub fn init() void {
 			.name = decl.name,
 			.description = @field(commandList, decl.name).description,
 			.usage = @field(commandList, decl.name).usage,
-			.exec = &@field(commandList, decl.name).execute,
+			.exec = main.meta.castFunctionSelfToAnyopaque(@field(commandList, decl.name).execute),
 			.permissionPath = "/command/" ++ decl.name,
+			.parse = main.meta.castFunctionReturnToErrorAnyopaque(main.argparse.Parser(@field(commandList, decl.name).Args, .{.commandName = decl.name}).parse, error{ParseError}),
 		}) catch unreachable;
 		std.log.debug("Registered command: '/{s}'", .{decl.name});
 	}
@@ -46,7 +48,15 @@ pub fn execute(msg: []const u8, source: *User) void {
 			return;
 		}
 		source.sendMessage("#00ff00Executing Command /{s}", .{msg});
-		cmd.exec(msg[@min(end + 1, msg.len)..], source);
+		var arena: main.heap.NeverFailingArenaAllocator = .init(main.stackAllocator);
+		defer arena.deinit();
+		var errorMessage: main.List(u8) = .empty;
+
+		const result = cmd.parse(arena.allocator(), msg[@min(end + 1, msg.len)..], &errorMessage) catch {
+			source.sendMessage("#ff0000{s}", .{errorMessage.items});
+			return;
+		};
+		cmd.exec(result, source);
 	} else {
 		source.sendMessage("#ff0000Unrecognized Command \"{s}\"", .{command});
 	}

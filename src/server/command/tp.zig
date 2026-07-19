@@ -11,7 +11,7 @@ pub const usage =
 	\\/tp @<playerIndex>
 ;
 
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/tp <biome>": struct { biome: command.BiomeId },
 	@"/tp <x> <y> <z>": struct {
 		x: command.Coordinate,
@@ -21,18 +21,8 @@ const Args = union(enum) {
 	@"/tp <playerIndex>": struct { playerIndex: command.PlayerIndex },
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/tp"});
-
-pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
-		return;
-	};
-
-	const pos: main.vec.Vec3d = blk: switch (result) {
+pub fn execute(args: *Args, source: *User) void {
+	const pos: main.vec.Vec3d = blk: switch (args.*) {
 		.@"/tp <biome>" => |b| {
 			const biome = b.biome.biome;
 			if (biome.isCave) {
