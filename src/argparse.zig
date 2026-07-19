@@ -64,7 +64,6 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			.parse => error{ParseError}!T,
 		} {
 			var result: T = undefined;
-
 			var tokens = std.mem.tokenizeScalar(u8, args, ' ');
 
 			var tempErrorMessage: List(u8) = .empty;
