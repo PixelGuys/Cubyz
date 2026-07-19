@@ -21,7 +21,7 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	};
 }
 
-pub fn changeBlockRange(data: Data) struct {f32, f32} {
+pub fn changeBlockRange(data: Data) struct { f32, f32 } {
 	return .{data.flatStrength, data.multStrength};
 }
 
