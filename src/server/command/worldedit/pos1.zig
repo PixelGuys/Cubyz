@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
-const User = main.server.User;
+const Source = main.server.command.Source;
 const Vec3i = main.vec.Vec3i;
 
 pub const description = "Select the player position as position 1.";
@@ -11,7 +11,12 @@ pub const Args = union(enum) {
 	@"/pos1": struct {},
 };
 
-pub fn execute(_: Args, source: *User) void {
+pub fn execute(_: Args, _source: Source) void {
+	if (_source != .user) {
+		_source.sendMessage("Command doesn't support running from console", .{});
+		return;
+	}
+	const source = _source.user;
 	const pos: Vec3i = @floor(source.player().pos);
 
 	source.worldEditData.selectionPosition1 = pos;

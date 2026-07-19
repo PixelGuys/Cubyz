@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
-const User = main.server.User;
 const Degrees = main.rotation.Degrees;
+const Source = main.server.command.Source;
 
 pub const description = "rotate clipboard content around Z axis counterclockwise.";
 pub const usage =
@@ -15,7 +15,12 @@ pub const Args = union(enum) {
 	@"/rotate <rotation>": struct { rotation: Degrees },
 };
 
-pub fn execute(args: Args, source: *User) void {
+pub fn execute(args: Args, _source: Source) void {
+	if (_source != .user) {
+		_source.sendMessage("Command doesn't support running from console", .{});
+		return;
+	}
+	const source = _source.user;
 	if (source.worldEditData.clipboard == null) {
 		source.sendMessage("#ff0000Error: No clipboard content to rotate.", .{});
 		return;

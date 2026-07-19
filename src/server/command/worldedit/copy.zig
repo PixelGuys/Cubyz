@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
-const User = main.server.User;
+const Source = command.Source;
 
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
@@ -14,7 +14,12 @@ pub const Args = union(enum) {
 	@"/copy": struct {},
 };
 
-pub fn execute(_: Args, source: *User) void {
+pub fn execute(_: Args, _source: Source) void {
+	if (_source != .user) {
+		_source.sendMessage("Command doesn't support running from console", .{});
+		return;
+	}
+	const source = _source.user;
 	const selection = command.getCurrentSelection(source) catch return;
 	source.sendMessage("Copying: {f}", .{selection});
 

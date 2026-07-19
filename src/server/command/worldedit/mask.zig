@@ -2,8 +2,8 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
+const Source = command.Source;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const User = main.server.User;
 
 pub const description = "Set edit mask. When used with no mask expression it will clear current mask.";
 pub const usage =
@@ -30,7 +30,12 @@ pub const Args = union(enum) {
 	}
 };
 
-pub fn execute(args: Args, source: *User) void {
+pub fn execute(args: Args, _source: Source) void {
+	if (_source != .user) {
+		_source.sendMessage("Command doesn't support running from console", .{});
+		return;
+	}
+	const source = _source.user;
 	switch (args) {
 		.@"/mask <mask>" => |cmd| {
 			source.worldEditData.mask = cmd.mask.mask.clone(main.globalAllocator);

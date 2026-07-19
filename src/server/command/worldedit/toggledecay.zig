@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
+const Source = command.Source;
 const Vec3i = main.vec.Vec3i;
 const User = main.server.User;
 
@@ -28,7 +29,12 @@ pub const Args = union(enum) {
 	},
 };
 
-pub fn execute(args: Args, source: *User) void {
+pub fn execute(args: Args, _source: Source) void {
+	if (_source != .user) {
+		_source.sendMessage("Command doesn't support running from console", .{});
+		return;
+	}
+	const source = _source.user;
 	var blueprint: Blueprint = switch (args.@"/toggledecay <target> <state>".target) {
 		.selection => blk: {
 			const selection = command.getCurrentSelection(source) catch return;

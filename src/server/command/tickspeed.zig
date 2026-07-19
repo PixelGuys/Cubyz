@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
-const User = main.server.User;
+const Source = main.server.command.Source;
 
 pub const description = "Get or set the server's random tickrate, measured in blocks per chunk per tick.";
 pub const usage =
@@ -14,7 +14,7 @@ pub const Args = union(enum) {
 	@"/tickspeed": struct {},
 };
 
-pub fn execute(args: Args, source: *User) void {
+pub fn execute(args: Args, source: Source) void {
 	switch (args) {
 		.@"/tickspeed <rate>" => |tickSpeed| main.server.world.?.tickSpeed.store(tickSpeed.rate, .monotonic),
 		.@"/tickspeed" => {},

@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
-const User = main.server.User;
+const Source = command.Source;
 const model = main.entity.components.@"cubyz:model";
 
 pub const description = "Lookup or change your avatar";
@@ -15,7 +15,12 @@ pub const Args = union(enum) {
 	@"/avatar <entityModel>": struct { entityModel: command.EntityModel },
 };
 
-pub fn execute(args: Args, source: *User) void {
+pub fn execute(args: Args, _source: Source) void {
+	if (_source != .user) {
+		_source.sendMessage("Command doesn't support running from console", .{});
+		return;
+	}
+	const source = _source.user;
 	switch (args) {
 		.@"/avatar <entityModel>" => |params| {
 			model.server.put(source.id, .{

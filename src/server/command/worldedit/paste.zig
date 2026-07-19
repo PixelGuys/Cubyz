@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
-const User = main.server.User;
+const Source = main.server.command.Source;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
@@ -17,7 +17,12 @@ pub const Args = union(enum) {
 	@"/paste [-v|--keep-void]": struct { void: ?enum { @"-v", @"--keep-void" } },
 };
 
-pub fn execute(args: Args, source: *User) void {
+pub fn execute(args: Args, _source: Source) void {
+	if (_source != .user) {
+		_source.sendMessage("Command doesn't support running from console", .{});
+		return;
+	}
+	const source = _source.user;
 	if (source.worldEditData.clipboard) |clipboard| {
 		const pos: Vec3i = @floor(source.player().pos);
 		source.sendMessage("Pasting: {}", .{pos});

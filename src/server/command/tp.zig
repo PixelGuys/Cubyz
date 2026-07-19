@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
-const User = main.server.User;
+const Source = command.Source;
 
 pub const description = "Teleport to location.";
 pub const usage =
@@ -21,7 +21,14 @@ pub const Args = union(enum) {
 	@"/tp <playerIndex>": struct { playerIndex: command.PlayerIndex },
 };
 
-pub fn execute(args: Args, source: *User) void {
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/tp"});
+
+pub fn execute(args: Args, _source: Source) void {
+	if (_source != .user) {
+		_source.sendMessage("Command doesn't support running from console", .{});
+		return;
+	}
+	const source = _source.user;
 	const pos: main.vec.Vec3d = blk: switch (args) {
 		.@"/tp <biome>" => |b| {
 			const biome = b.biome.biome;
@@ -76,10 +83,10 @@ pub fn execute(args: Args, source: *User) void {
 			return;
 		},
 		.@"/tp <x> <y> <z>" => |pos| {
-			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source);
+			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, _source);
 		},
 		.@"/tp <playerIndex>" => |index| {
-			const target = command.Target.fromPlayerIndex(index.playerIndex, source) catch return;
+			const target = command.Target.fromPlayerIndex(index.playerIndex, _source) catch return;
 			defer target.deinit();
 			break :blk target.user.player().pos;
 		},

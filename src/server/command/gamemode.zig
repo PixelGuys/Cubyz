@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
-const User = main.server.User;
+const Source = command.Source;
 
 pub const description = "Get or set a player's gamemode.";
 pub const usage =
@@ -16,7 +16,7 @@ pub const Args = union(enum) {
 	@"/gamemode <playerIndex> <mode>": struct { playerIndex: ?command.PlayerIndex, mode: ?main.game.Gamemode },
 };
 
-pub fn execute(args: Args, source: *User) void {
+pub fn execute(args: Args, source: Source) void {
 	switch (args) {
 		.@"/gamemode <playerIndex> <mode>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;

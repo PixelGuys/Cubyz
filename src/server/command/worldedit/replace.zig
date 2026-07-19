@@ -2,8 +2,8 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
+const Source = command.Source;
 const Vec3i = main.vec.Vec3i;
-const User = main.server.User;
 
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
@@ -20,7 +20,12 @@ pub const Args = union(enum) {
 	},
 };
 
-pub fn execute(args: Args, source: *User) void {
+pub fn execute(args: Args, _source: Source) void {
+	if (_source != .user) {
+		_source.sendMessage("Command doesn't support running from console", .{});
+		return;
+	}
+	const source = _source.user;
 	const selection = command.getCurrentSelection(source) catch return;
 	const capture = Blueprint.capture(main.globalAllocator, selection);
 

@@ -4,7 +4,7 @@ const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ListManaged = main.ListManaged;
 const command = main.server.command;
-const User = main.server.User;
+const Source = command.Source;
 
 pub const description = "Shows info about all the commands.";
 pub const usage = "/help\n/help <command>";
@@ -15,7 +15,7 @@ pub const Args = union(enum) {
 	@"/help": struct {},
 };
 
-pub fn execute(args: Args, source: *User) void {
+pub fn execute(args: Args, source: Source) void {
 	var msg: main.ListManaged(u8) = .init(main.stackAllocator);
 	defer msg.deinit();
 	msg.appendSlice("#ffff00");

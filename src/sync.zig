@@ -1742,7 +1742,7 @@ pub const Command = struct { // MARK: Command
 				const user = ctx.user orelse return;
 				if (main.server.world.?.settings.allowCheats) {
 					main.log.server("User \"{f}§#ffffff\" executed command \"{s}\"", .{user, self.message});
-					main.server.command.execute(self.message, user);
+					main.server.command.execute(self.message, .{.user = user});
 				} else {
 					user.sendRawMessage("Commands are not allowed because cheats are disabled");
 				}
