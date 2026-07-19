@@ -30,8 +30,8 @@ layout(std430, binding = 4) buffer _quads
 };
 
 void main() {
-	int faceID = gl_VertexID >> 2;
-	int vertexID = gl_VertexID & 3;
+	int faceID = gl_VertexIndex >> 2;
+	int vertexID = gl_VertexIndex & 3;
 	uint fullLight = lightData[vertexID];
 	vec3 sunLight = vec3(
 		fullLight >> 25 & 31u,
