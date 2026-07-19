@@ -3,6 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const Blueprint = main.blueprint.Blueprint;
 const Mask = main.blueprint.Mask;
+const Pattern = main.blueprint.Pattern;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const List = main.List;
 const User = main.server.User;
@@ -234,5 +235,20 @@ pub const MaskExpression = struct {
 
 	pub fn deinit(self: MaskExpression, allocator: NeverFailingAllocator) void {
 		self.mask.deinit(allocator);
+	}
+};
+
+pub const PatternExpression = struct {
+	pattern: Pattern,
+
+	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, args: []const u8, errorMessage: *List(u8)) error{ParseError}!PatternExpression {
+		return .{.pattern = Pattern.initFromString(allocator, args) catch |err| {
+			errorMessage.print(allocator, "Couldn't parse pattern: {s}", .{@errorName(err)});
+			return error.ParseError;
+		}};
+	}
+
+	pub fn deinit(self: PatternExpression, allocator: NeverFailingAllocator) void {
+		self.pattern.deinit(allocator);
 	}
 };

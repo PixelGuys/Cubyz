@@ -14,7 +14,15 @@ pub const description = "Replace blocks in the world edit selection.";
 pub const usage = "/replace <old mask> <new pattern>";
 
 const Args = union(enum) {
-	@"/replace <old mask> <new pattern>": struct { oldMask: []const u8, newPattern: []const u8 },
+	@"/replace <old mask> <new pattern>": struct {
+		oldMask: command.MaskExpression,
+		newPattern: command.PatternExpression,
+	},
+
+	fn deinit(self: @This(), allocator: main.heap.NeverFailingAllocator) void {
+		self.@"/replace <old mask> <new pattern>".newPattern.deinit(allocator);
+		self.@"/replace <old mask> <new pattern>".oldMask.deinit(allocator);
+	}
 };
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/replace"});
@@ -27,19 +35,9 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000{s}", .{errorMessage.items});
 		return;
 	};
+	defer result.deinit(main.stackAllocator);
 
 	const selection = command.getCurrentSelection(source) catch return;
-
-	const oldMask = Mask.initFromString(main.stackAllocator, result.@"/replace <old mask> <new pattern>".oldMask) catch |err| {
-		return source.sendMessage("#ff0000Error parsing mask: {s}", .{@errorName(err)});
-	};
-	defer oldMask.deinit(main.stackAllocator);
-
-	const newPattern = Pattern.initFromString(main.stackAllocator, result.@"/replace <old mask> <new pattern>".newPattern) catch |err| {
-		return source.sendMessage("#ff0000Error parsing pattern: {s}", .{@errorName(err)});
-	};
-	defer newPattern.deinit(main.stackAllocator);
-
 	const capture = Blueprint.capture(main.globalAllocator, selection);
 
 	switch (capture) {
@@ -50,7 +48,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			var modifiedBlueprint = blueprint.clone(main.stackAllocator);
 			defer modifiedBlueprint.deinit(main.stackAllocator);
 
-			modifiedBlueprint.replace(oldMask, null, newPattern);
+			modifiedBlueprint.replace(result.@"/replace <old mask> <new pattern>".oldMask.mask, null, result.@"/replace <old mask> <new pattern>".newPattern.pattern);
 			modifiedBlueprint.paste(selection.minPos, .{.preserveVoid = true});
 		},
 		.failure => |err| {

@@ -64,6 +64,18 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			.parse => error{ParseError}!T,
 		} {
 			var result: T = undefined;
+
+			var resolved: u32 = 0;
+			errdefer blk: {
+				if (resolved == 0) break :blk;
+				if (@typeInfo(T) != .@"struct") break :blk;
+				inline for (@typeInfo(T).@"struct".fields, 0..) |field, i| {
+					if (i >= resolved) break;
+					if (@typeInfo(field.type) != .@"struct" and @typeInfo(field.type) != .@"enum" and @typeInfo(field.type) != .@"union") continue;
+					if (!@hasDecl(field.type, "deinit")) continue;
+					@field(field.type, "deinit")(@field(result, field.name), allocator);
+				}
+			}
 			var tokens = std.mem.tokenizeScalar(u8, args, ' ');
 
 			var tempErrorMessage: List(u8) = .empty;
@@ -84,6 +96,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 					}
 				} else {
 					@field(result, field.name) = value catch unreachable;
+					resolved += 1;
 					tempErrorMessage.clearRetainingCapacity();
 					nextArgument = tokens.next();
 				}
