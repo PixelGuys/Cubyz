@@ -22,7 +22,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 		/// Arguments:
 		/// - `arena` - will be used for dynamic allocations of the parsing result returned.
 		/// - `args` - unprocessed string containing command arguments without command name.
-		/// - `errorMessage` - out parameter used to store and return errors, if any occur. Has to be allocated with stackAllocator.
+		/// - `errorMessage` - out parameter used to store and return errors, if any occur.
 		pub fn parse(arena: NeverFailingAllocator, args: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!T {
 			return resolve(ResolveMode.parse, arena, args, errorMessage);
 		}
