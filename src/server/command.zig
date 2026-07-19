@@ -23,10 +23,10 @@ fn initExecutionFn(comptime name: []const u8) *const fn (args: []const u8, sourc
 	const ArgPaser = main.argparse.Parser(@field(commandList, name).Args, .{.commandName = name});
 	return struct {
 		fn exec(msg: []const u8, source: *User) void {
-			var arena: main.heap.NeverFailingArenaAllocator = .init(main.stackAllocator);
-			defer arena.deinit();
-			var errorMessage: main.ListManaged(u8) = .init(arena.allocator());
-			const result = ArgPaser.parse(arena.allocator(), msg, &errorMessage) catch {
+			const arena: main.heap.NeverFailingAllocator = .createArena(main.stackAllocator);
+			defer main.stackAllocator.destroyArena(arena);
+			var errorMessage: main.ListManaged(u8) = .init(arena);
+			const result = ArgPaser.parse(arena, msg, &errorMessage) catch {
 				source.sendMessage("#ff0000{s}", .{errorMessage.items});
 				return;
 			};
