@@ -24,12 +24,7 @@ const Args = union(enum) {
 
 const ArgParser = main.argparse.Parser(Args, .{.commandName = "/spawn"});
 
-pub fn execute(args: []const u8, _source: Source) void {
-	if (_source != .user) {
-		_source.sendMessage("Command doesn't support running from console", .{});
-		return;
-	}
-	const source = _source.user;
+pub fn execute(args: []const u8, source: Source) void {
 	var errorMessage: main.List(u8) = .empty;
 	defer errorMessage.deinit(main.stackAllocator);
 
@@ -40,12 +35,12 @@ pub fn execute(args: []const u8, _source: Source) void {
 
 	switch (result) {
 		.@"/spawn <playerIndex> <x> <y> <z>" => |params| {
-			const target = command.Target.fromPlayerIndex(params.playerIndex, _source) catch return;
+			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
 			defer target.deinit();
 			target.user.spawnPos = command.resolveCoordinates(params.x, params.y, params.z, source);
 		},
 		.@"/spawn <playerIndex>" => |params| {
-			const target = command.Target.fromPlayerIndex(params.playerIndex, _source) catch return;
+			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
 			defer target.deinit();
 			source.sendMessage("#ffff00{}", .{target.user.getSpawnPos()});
 		},
