@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const List = main.List;
+const ListManaged = main.ListManaged;
 const command = main.server.command;
 const User = main.server.User;
 
@@ -52,10 +52,10 @@ pub fn execute(result: *Args, source: *User) void {
 const Cmd = struct {
 	cmd: command.Command,
 
-	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorList: *List(u8)) error{ParseError}!Cmd {
+	pub fn parse(_: NeverFailingAllocator, name: []const u8, arg: []const u8, errorList: *ListManaged(u8)) error{ParseError}!Cmd {
 		return .{
 			.cmd = command.commands.get(arg) orelse {
-				errorList.print(allocator, "Unrecognized command name for <{s}>, got {s}", .{name, arg});
+				errorList.print("Unrecognized command name for <{s}>, got {s}", .{name, arg});
 				return error.ParseError;
 			},
 		};

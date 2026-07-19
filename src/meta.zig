@@ -71,29 +71,11 @@ fn CastFunctionReturnToOptionalAnyopaqueType(Fn: type) type {
 	return @Fn(&paramTypes, &paramAttributes, ReturnType, .{.@"callconv" = typeInfo.@"fn".calling_convention, .varargs = typeInfo.@"fn".is_var_args});
 }
 
-fn CastFunctionReturnToErrorAnyopaqueType(Fn: type, errorSet: type) type {
-	var typeInfo = @typeInfo(Fn);
-	var paramTypes: [typeInfo.@"fn".params.len]type = undefined;
-	var paramAttributes: [typeInfo.@"fn".params.len]std.builtin.Type.Fn.Param.Attributes = undefined;
-	for (typeInfo.@"fn".params[0..typeInfo.@"fn".params.len], 0..) |param, i| {
-		paramTypes[i] = param.type.?;
-		paramAttributes[i] = .{.@"noalias" = param.is_noalias};
-	}
-	if (@sizeOf(typeInfo.@"fn".return_type.?) != @sizeOf(errorSet!*anyopaque) or @alignOf(typeInfo.@"fn".return_type.?) != @alignOf(errorSet!*anyopaque) or @typeInfo(typeInfo.@"fn".return_type.?) != .error_union or @typeInfo(typeInfo.@"fn".return_type.?).error_union.error_set != errorSet) {
-		@compileError(std.fmt.comptimePrint("Cannot convert {} to {}!*anyopaque", .{typeInfo.@"fn".return_type.?, errorSet}));
-	}
-	const ReturnType = errorSet!*anyopaque;
-	return @Fn(&paramTypes, &paramAttributes, ReturnType, .{.@"callconv" = typeInfo.@"fn".calling_convention, .varargs = typeInfo.@"fn".is_var_args});
-}
-
 /// Turns the return parameter into a *anyopaque
 pub fn castFunctionReturnToAnyopaque(function: anytype) *const CastFunctionReturnToAnyopaqueType(@TypeOf(function)) {
 	return @ptrCast(&function);
 }
 pub fn castFunctionReturnToOptionalAnyopaque(function: anytype) *const CastFunctionReturnToOptionalAnyopaqueType(@TypeOf(function)) {
-	return @ptrCast(&function);
-}
-pub fn castFunctionReturnToErrorAnyopaque(function: anytype, errorSet: type) *const CastFunctionReturnToErrorAnyopaqueType(@TypeOf(function), errorSet) {
 	return @ptrCast(&function);
 }
 

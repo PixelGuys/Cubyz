@@ -6,7 +6,7 @@ const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
 const Dir = main.files.Dir;
-const List = main.List;
+const ListManaged = main.ListManaged;
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
@@ -158,7 +158,7 @@ const FilePath = struct {
 		allocator.free(self.path);
 	}
 
-	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, arg: []const u8, _: *List(u8)) error{ParseError}!FilePath {
+	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, arg: []const u8, _: *ListManaged(u8)) error{ParseError}!FilePath {
 		return .{.path = ensureBlueprintExtension(allocator, arg)};
 	}
 

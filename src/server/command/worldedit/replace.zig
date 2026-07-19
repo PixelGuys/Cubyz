@@ -18,16 +18,9 @@ pub const Args = union(enum) {
 		oldMask: command.MaskExpression,
 		newPattern: command.PatternExpression,
 	},
-
-	fn deinit(self: @This(), allocator: main.heap.NeverFailingAllocator) void {
-		self.@"/replace <old mask> <new pattern>".newPattern.deinit(allocator);
-		self.@"/replace <old mask> <new pattern>".oldMask.deinit(allocator);
-	}
 };
 
 pub fn execute(args: *Args, source: *User) void {
-	defer args.deinit(main.stackAllocator);
-
 	const selection = command.getCurrentSelection(source) catch return;
 	const capture = Blueprint.capture(main.globalAllocator, selection);
 

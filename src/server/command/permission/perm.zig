@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const List = main.List;
+const ListManaged = main.ListManaged;
 const User = main.server.User;
 const permission = main.server.permission;
 const ListType = permission.Permissions.ListType;
@@ -62,9 +62,9 @@ pub fn execute(args: *Args, source: *User) void {
 const Path = struct {
 	path: []const u8,
 
-	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *List(u8)) error{ParseError}!Path {
+	pub fn parse(_: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!Path {
 		if (arg[0] != '/') {
-			errorMessage.print(allocator, "Permission path for <{s}> doesn't begin with a \"/\", got: {s}", .{name, arg});
+			errorMessage.print("Permission path for <{s}> doesn't begin with a \"/\", got: {s}", .{name, arg});
 			return error.ParseError;
 		}
 		return .{.path = arg};

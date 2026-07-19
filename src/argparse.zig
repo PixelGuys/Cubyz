@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const List = main.List;
+const ListManaged = main.ListManaged;
 const utils = main.utils;
 
 pub const Options = struct {
@@ -20,34 +20,34 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 		/// Result is returned from this function as a value of type `T`.
 		///
 		/// Arguments:
-		/// - `allocator` - will be used for dynamic allocations of the parsing result returned.
+		/// - `arena` - will be used for dynamic allocations of the parsing result returned.
 		/// - `args` - unprocessed string containing command arguments without command name.
 		/// - `errorMessage` - out parameter used to store and return errors, if any occur. Has to be allocated with stackAllocator.
-		pub fn parse(allocator: NeverFailingAllocator, args: []const u8, errorMessage: *List(u8)) error{ParseError}!*T {
-			const result = allocator.create(T);
-			errdefer allocator.destroy(result);
-			result.* = try resolve(ResolveMode.parse, allocator, args, errorMessage);
+		pub fn parse(arena: NeverFailingAllocator, args: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!*T {
+			const result = arena.create(T);
+			errdefer arena.destroy(result);
+			result.* = try resolve(ResolveMode.parse, arena, args, errorMessage);
 			return result;
 		}
 
 		pub fn resolve(
 			comptime mode: ResolveMode,
-			allocator: NeverFailingAllocator,
+			arena: NeverFailingAllocator,
 			args: []const u8,
-			errorMessage: *List(u8),
+			errorMessage: *ListManaged(u8),
 		) switch (mode) {
 			.autocomplete => AutocompleteResult,
 			.parse => error{ParseError}!T,
 		} {
 			switch (@typeInfo(T)) {
 				inline .@"struct" => |s| {
-					return resolveStruct(mode, s, allocator, args, errorMessage);
+					return resolveStruct(mode, s, arena, args, errorMessage);
 				},
 				inline .@"union" => |u| {
 					if (u.tag_type == null) @compileError("Union must have a tag type");
 					return switch (mode) {
-						.autocomplete => autocompleteUnion(u, allocator, args, errorMessage),
-						.parse => parseUnion(u, allocator, args, errorMessage),
+						.autocomplete => autocompleteUnion(u, arena, args, errorMessage),
+						.parse => parseUnion(u, arena, args, errorMessage),
 					};
 				},
 				else => @compileError("Only structs and unions are supported"),
@@ -57,9 +57,9 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 		fn resolveStruct(
 			comptime mode: ResolveMode,
 			comptime s: std.builtin.Type.Struct,
-			allocator: NeverFailingAllocator,
+			arena: NeverFailingAllocator,
 			args: []const u8,
-			errorMessage: *List(u8),
+			errorMessage: *ListManaged(u8),
 		) switch (mode) {
 			.autocomplete => AutocompleteResult,
 			.parse => error{ParseError}!T,
@@ -67,20 +67,20 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			var result: T = undefined;
 			var tokens = std.mem.tokenizeScalar(u8, args, ' ');
 
-			var tempErrorMessage: List(u8) = .empty;
-			defer tempErrorMessage.deinit(allocator);
+			var tempErrorMessage: ListManaged(u8) = .init(main.stackAllocator);
+			defer tempErrorMessage.deinit();
 
 			var nextArgument: ?[]const u8 = tokens.next();
 
 			inline for (s.fields) |field| {
-				const value = resolveArgument(field.type, allocator, field.name[0..], nextArgument, &tempErrorMessage);
+				const value = resolveArgument(field.type, arena, field.name[0..], nextArgument, &tempErrorMessage);
 
 				if (value == error.ParseError) {
 					if (@typeInfo(field.type) == .optional) {
 						@field(result, field.name) = null;
 						tempErrorMessage.clearRetainingCapacity();
 					} else {
-						errorMessage.appendSlice(allocator, tempErrorMessage.items);
+						errorMessage.appendSlice(tempErrorMessage.items);
 						return error.ParseError;
 					}
 				} else {
@@ -91,24 +91,24 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			}
 
 			if (nextArgument != null) {
-				errorMessage.print(allocator, "Too many arguments for command, expected {}", .{s.fields.len});
+				errorMessage.print("Too many arguments for command, expected {}", .{s.fields.len});
 				return error.ParseError;
 			}
 
 			return result;
 		}
 
-		fn resolveArgument(comptime Field: type, allocator: NeverFailingAllocator, name: []const u8, argument: ?[]const u8, errorMessage: *List(u8)) error{ParseError}!Field {
+		fn resolveArgument(comptime Field: type, arena: NeverFailingAllocator, name: []const u8, argument: ?[]const u8, errorMessage: *ListManaged(u8)) error{ParseError}!Field {
 			const fieldTypeInfo = @typeInfo(Field);
 			if (fieldTypeInfo == .optional) {
 				if (argument == null) return error.ParseError;
-				return resolveArgument(fieldTypeInfo.optional.child, allocator, name, argument, errorMessage) catch |err| {
+				return resolveArgument(fieldTypeInfo.optional.child, arena, name, argument, errorMessage) catch |err| {
 					return err;
 				};
 			}
 
 			const arg = argument orelse {
-				errorMessage.print(allocator, "Missing argument at position <{s}>", .{name});
+				errorMessage.print("Missing argument at position <{s}>", .{name});
 				return error.ParseError;
 			};
 
@@ -119,30 +119,30 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			switch (fieldTypeInfo) {
 				inline .@"struct", .@"union" => {
 					if (!@hasDecl(Field, "parse")) @compileError("Structs / Unions must have a parse function");
-					return @field(Field, "parse")(allocator, name, arg, errorMessage);
+					return @field(Field, "parse")(arena, name, arg, errorMessage);
 				},
 				inline .@"enum" => {
 					return std.meta.stringToEnum(Field, arg) orelse {
 						const str = main.meta.concatComptime("/", std.meta.fieldNames(Field));
-						errorMessage.print(allocator, "Expected one of {s} for <{s}>, found \"{s}\"", .{str, name, arg});
+						errorMessage.print("Expected one of {s} for <{s}>, found \"{s}\"", .{str, name, arg});
 						return error.ParseError;
 					};
 				},
 				inline .float => |floatInfo| return {
 					return std.fmt.parseFloat(std.meta.Float(floatInfo.bits), arg) catch {
-						errorMessage.print(allocator, "Expected a number for <{s}>, found \"{s}\"", .{name, arg});
+						errorMessage.print("Expected a number for <{s}>, found \"{s}\"", .{name, arg});
 						return error.ParseError;
 					};
 				},
 				inline .int => |intInfo| {
 					return std.fmt.parseInt(std.meta.Int(intInfo.signedness, intInfo.bits), arg, 0) catch {
-						errorMessage.print(allocator, "Expected an integer for <{s}>, found \"{s}\"", .{name, arg});
+						errorMessage.print("Expected an integer for <{s}>, found \"{s}\"", .{name, arg});
 						return error.ParseError;
 					};
 				},
 				inline .bool => {
 					return (std.meta.stringToEnum(enum { true, false }, arg) orelse {
-						errorMessage.print(allocator, "Expected either true or false for <{s}>, found \"{s}\"", .{name, arg});
+						errorMessage.print("Expected either true or false for <{s}>, found \"{s}\"", .{name, arg});
 						return error.ParseError;
 					}) == .true;
 				},
@@ -150,31 +150,31 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			}
 		}
 
-		fn parseUnion(comptime u: std.builtin.Type.Union, allocator: NeverFailingAllocator, args: []const u8, errorMessage: *List(u8)) error{ParseError}!T {
-			var tempErrorMessage: List(u8) = .empty;
-			defer tempErrorMessage.deinit(allocator);
+		fn parseUnion(comptime u: std.builtin.Type.Union, arena: NeverFailingAllocator, args: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!T {
+			var tempErrorMessage: ListManaged(u8) = .init(main.stackAllocator);
+			defer tempErrorMessage.deinit();
 
-			tempErrorMessage.appendSlice(allocator, "---");
+			tempErrorMessage.appendSlice("---");
 
 			inline for (u.fields) |field| {
-				tempErrorMessage.append(allocator, '\n');
-				tempErrorMessage.appendSlice(allocator, field.name);
-				tempErrorMessage.append(allocator, '\n');
+				tempErrorMessage.append('\n');
+				tempErrorMessage.appendSlice(field.name);
+				tempErrorMessage.append('\n');
 
-				const result = Parser(field.type, options).resolve(.parse, allocator, args, &tempErrorMessage);
+				const result = Parser(field.type, options).resolve(.parse, arena, args, &tempErrorMessage);
 				if (result != error.ParseError) {
 					return @unionInit(T, field.name, result catch unreachable);
 				}
-				tempErrorMessage.appendSlice(allocator, "\n---");
+				tempErrorMessage.appendSlice("\n---");
 			}
 
-			errorMessage.appendSlice(allocator, tempErrorMessage.items);
+			errorMessage.appendSlice(tempErrorMessage.items);
 			return error.ParseError;
 		}
 
-		fn autocompleteUnion(comptime u: std.builtin.Type.Union, allocator: NeverFailingAllocator, args: []const u8) AutocompleteResult {
+		fn autocompleteUnion(comptime u: std.builtin.Type.Union, arena: NeverFailingAllocator, args: []const u8) AutocompleteResult {
 			_ = u;
-			_ = allocator;
+			_ = arena;
 			_ = args;
 			return .{};
 		}
@@ -198,7 +198,7 @@ const Test = struct {
 };
 
 test "no arguments" {
-	var errors: List(u8) = .empty;
+	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Parser(struct {}, .{.commandName = "foo"}).parse(main.stackAllocator, "", &errors);
@@ -208,7 +208,7 @@ test "no arguments" {
 }
 
 test "bool" {
-	var errors: List(u8) = .empty;
+	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit(main.stackAllocator);
 
 	const result = try Parser(struct { a: bool, b: bool }, .{.commandName = "foo"}).parse(main.stackAllocator, "true false", &errors);
@@ -220,7 +220,7 @@ test "bool" {
 }
 
 test "float" {
-	var errors: List(u8) = .empty;
+	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit(main.stackAllocator);
 
 	const result = try Test.OnlyX.parse(main.stackAllocator, "33.0", &errors);
@@ -231,7 +231,7 @@ test "float" {
 }
 
 test "float negative" {
-	var errors: List(u8) = .empty;
+	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Test.OnlyX.parse(main.stackAllocator, "foo", &errors);
@@ -245,7 +245,7 @@ test "enum" {
 		cmd: enum(u1) { foo },
 	}, .{.commandName = "c"});
 
-	var errors: List(u8) = .empty;
+	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit(main.stackAllocator);
 
 	const result = try ArgParser.parse(main.stackAllocator, "foo", &errors);
@@ -262,7 +262,7 @@ test "float int float" {
 		z: f32,
 	}, .{.commandName = ""});
 
-	var errors: List(u8) = .empty;
+	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit(main.stackAllocator);
 
 	const result = try ArgParser.parse(main.stackAllocator, "33.0 154 -5654.0", &errors);
@@ -281,7 +281,7 @@ test "float int optional float missing" {
 		z: ?f32,
 	}, .{.commandName = ""});
 
-	var errors: List(u8) = .empty;
+	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit(main.stackAllocator);
 
 	const result = try ArgParser.parse(main.stackAllocator, "33.0 154", &errors);
@@ -300,7 +300,7 @@ test "two optionals missing" {
 		z: ?f32,
 	}, .{.commandName = ""});
 
-	var errors: List(u8) = .empty;
+	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit(main.stackAllocator);
 
 	const result = try ArgParser.parse(main.stackAllocator, "1.0", &errors);
@@ -319,7 +319,7 @@ test "float int optional float present" {
 		z: ?f32,
 	}, .{.commandName = ""});
 
-	var errors: List(u8) = .empty;
+	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit(main.stackAllocator);
 
 	const result = try ArgParser.parse(main.stackAllocator, "33.0 154 0.1", &errors);
@@ -338,7 +338,7 @@ test "optional inbetween" {
 		z: enum { bar },
 	}, .{.commandName = "c"});
 
-	var errors: List(u8) = .empty;
+	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit(main.stackAllocator);
 
 	const result = try ArgParser.parse(main.stackAllocator, "foo bar", &errors);
@@ -351,7 +351,7 @@ test "optional inbetween" {
 }
 
 test "x or xy case x" {
-	var errors: List(u8) = .empty;
+	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit(main.stackAllocator);
 
 	const result = try Test.@"Union X or XY".parse(main.stackAllocator, "0.9", &errors);
@@ -362,7 +362,7 @@ test "x or xy case x" {
 }
 
 test "x or xy case xy" {
-	var errors: List(u8) = .empty;
+	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit(main.stackAllocator);
 
 	const result = try Test.@"Union X or XY".parse(main.stackAllocator, "0.9 1.0", &errors);
@@ -374,7 +374,7 @@ test "x or xy case xy" {
 }
 
 test "x or xy negative empty" {
-	var errors: List(u8) = .empty;
+	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Test.@"Union X or XY".parse(main.stackAllocator, "", &errors);
@@ -392,7 +392,7 @@ test "x or xy negative empty" {
 }
 
 test "x or xy negative too many args" {
-	var errors: List(u8) = .empty;
+	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit(main.stackAllocator);
 
 	const resultOrError = Test.@"Union X or XY".parse(main.stackAllocator, "1.0 3.0 5.0", &errors);
@@ -410,7 +410,7 @@ test "x or xy negative too many args" {
 }
 
 test "subCommands foo" {
-	var errors: List(u8) = .empty;
+	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit(main.stackAllocator);
 
 	const result = try Test.@"subCommands foo or bar".parse(main.stackAllocator, "foo 1.0", &errors);
@@ -422,7 +422,7 @@ test "subCommands foo" {
 }
 
 test "subCommands bar" {
-	var errors: List(u8) = .empty;
+	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit(main.stackAllocator);
 
 	const result = try Test.@"subCommands foo or bar".parse(main.stackAllocator, "bar 2.0 3.0", &errors);

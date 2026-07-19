@@ -17,8 +17,6 @@ pub const Args = union(enum) {
 };
 
 pub fn execute(args: *Args, source: *User) void {
-	defer args.@"/set".pattern.deinit(main.stackAllocator);
-
 	const selection = command.getCurrentSelection(source) catch return;
 
 	const result = Blueprint.capture(main.globalAllocator, selection);
