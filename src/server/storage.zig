@@ -182,7 +182,6 @@ pub const RegionFile = struct { // MARK: RegionFile
 
 // MARK: cache
 const cacheSize = 1 << 8; // Must be a power of 2!
-const cacheMask = cacheSize - 1;
 const associativity = 8;
 var cache: main.utils.Cache(RegionFile, cacheSize, associativity, cacheDeinit) = .{};
 const HashContext = struct {
