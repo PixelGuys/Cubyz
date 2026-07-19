@@ -548,13 +548,6 @@ pub const User = struct { // MARK: User
 		main.network.protocols.chat.send(self.conn, msg);
 	}
 
-	pub fn hasPermission(user: *User, permissionPath: []const u8) bool {
-		return switch (main.entity.components.@"cubyz:permissions".server.getPermissions(user.id).?.hasPermission(permissionPath)) {
-			.yes => true,
-			.no, .neutral => false,
-		};
-	}
-
 	pub fn getSpawnPos(user: *User) Vec3d {
 		return user.spawnPos orelse @floatFromInt(main.server.world.?.spawn);
 	}

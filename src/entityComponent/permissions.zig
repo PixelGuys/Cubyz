@@ -53,6 +53,13 @@ pub const server = struct {
 		return &(components.get(entity) orelse return null).permissions;
 	}
 
+	pub fn hasPermission(entity: Entity, permissionPath: []const u8) bool {
+		return switch ((getPermissions(entity) orelse return false).hasPermission(permissionPath)) {
+			.yes => true,
+			.no, .neutral => false,
+		};
+	}
+
 	pub fn loadFromData(entity: Entity, reader: *BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != entityComponentVersion) return error.InvalidComponentVersion;
 		const permissions = &components.add(main.globalAllocator, entity).permissions;
