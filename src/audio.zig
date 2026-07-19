@@ -5,31 +5,37 @@ const utils = main.utils;
 
 const c = @import("c");
 
-fn getMaError(err: c_int) anyerror {
-	return switch (err) {
-		0 => error.VORBIS__no_error,
-		1 => error.VORBIS_need_more_data,
-		2 => error.VORBIS_invalid_api_mixing,
-		3 => error.VORBIS_outofmem,
-		4 => error.VORBIS_feature_not_supported,
-		5 => error.VORBIS_too_many_channels,
-		6 => error.VORBIS_file_open_failure,
-		7 => error.VORBIS_seek_without_length,
-		10 => error.VORBIS_unexpected_eof,
-		11 => error.VORBIS_seek_invalid,
-		20 => error.VORBIS_invalid_setup,
-		21 => error.VORBIS_invalid_stream,
-		30 => error.VORBIS_missing_capture_pattern,
-		31 => error.VORBIS_invalid_stream_structure_version,
-		32 => error.VORBIS_continued_packet_flag_invalid,
-		33 => error.VORBIS_incorrect_stream_serial_number,
-		34 => error.VORBIS_invalid_first_page,
-		35 => error.VORBIS_bad_packet_type,
-		36 => error.VORBIS_cant_find_last_page,
-		37 => error.VORBIS_seek_failed,
-		38 => error.VORBIS_ogg_skeleton_not_supported,
-		else => unreachable,
+const StbErrorEnum = enum(c_int) {
+	no_error = 0,
+	need_more_data = 1,
+	invalid_api_mixing = 2,
+	outofmem = 3,
+	feature_not_supported = 4,
+	too_many_channels = 5,
+	file_open_failure = 6,
+	seek_without_length = 7,
+	unexpected_eof = 10,
+	seek_invalid = 11,
+	invalid_setup = 20,
+	invalid_stream = 21,
+	missing_capture_pattern = 30,
+	invalid_stream_structure_version = 31,
+	continued_packet_flag_invalid = 32,
+	incorrect_stream_serial_number = 33,
+	invalid_first_page = 34,
+	bad_packet_type = 35,
+	cant_find_last_page = 36,
+	seek_failed = 37,
+	ogg_skeleton_not_supported = 38,
+};
+
+pub fn getStbVorbisError(result: c_int) []const u8 {
+	const resultEnum = std.enums.fromInt(StbErrorEnum, result) orelse {
+		std.log.err("Encountered an STB Vorbis error with unknown error code {}", .{result});
+		return "unknown_error";
 	};
+
+	return @tagName(resultEnum);
 }
 
 fn handleError(miniaudioError: c.ma_result) !void {
@@ -42,7 +48,7 @@ fn handleError(miniaudioError: c.ma_result) !void {
 const AudioData = struct {
 	audioId: []const u8,
 	data: []f32 = &.{},
-	isMono: bool = false,
+	channelType: enum { mono, stereo } = .stereo,
 
 	fn open_vorbis_file_by_id(id: []const u8, subPath: []const u8) ?*c.stb_vorbis {
 		const colonIndex = std.mem.indexOfScalar(u8, id, ':') orelse {
@@ -55,10 +61,14 @@ const AudioData = struct {
 		defer main.stackAllocator.free(path1);
 		var err: c_int = 0;
 		if (c.stb_vorbis_open_filename(path1.ptr, &err, null)) |ogg_stream| return ogg_stream;
+		if (err != @intFromEnum(StbErrorEnum.no_error)) {
+			std.log.err("Couldn't handle audio file. Error: {s}. ID: \"{s}\". Path: \"{s}\"", .{getStbVorbisError(err), id, path1});
+			return null;
+		}
 		const path2 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "{s}/serverAssets/{s}/{s}/{s}.ogg", .{main.files.cubyzDirStr(), addon, subPath, fileName}, 0) catch unreachable;
 		defer main.stackAllocator.free(path2);
 		if (c.stb_vorbis_open_filename(path2.ptr, &err, null)) |ogg_stream| return ogg_stream;
-		std.log.err("Couldn't handle audio file. Error: {t}. ID: \"{s}\". Searched path: \"{s}\" and \"{s}\"", .{getMaError(err), id, path1, path2});
+		std.log.err("Couldn't handle or find audio file. Error: {s}. ID: \"{s}\". Searched path: \"{s}\" and \"{s}\"", .{getStbVorbisError(err), id, path1, path2});
 		return null;
 	}
 
@@ -74,7 +84,7 @@ const AudioData = struct {
 			if (sampleRate != @as(f32, @floatFromInt(ogg_info.sample_rate))) {
 				const tempData = main.stackAllocator.alloc(f32, samples*channels);
 				defer main.stackAllocator.free(tempData);
-				self.isMono = ogg_info.channels == 1;
+				self.channelType = if (ogg_info.channels == 2) .stereo else .mono;
 				_ = c.stb_vorbis_get_samples_float_interleaved(ogg_stream, channels, tempData.ptr, @as(c_int, @intCast(samples))*ogg_info.channels);
 				var stepWidth = @as(f32, @floatFromInt(ogg_info.sample_rate))/sampleRate;
 				const newSamples: usize = @trunc(@as(f32, @floatFromInt(tempData.len/2))/stepWidth);
@@ -124,7 +134,7 @@ const AudioData = struct {
 	}
 };
 
-var activeTasks: main.List([]const u8) = .empty; // MARK: MUSIC
+var activeTasks: main.List([]const u8) = .empty; // MARK: Music
 var taskMutex: main.utils.Mutex = .{};
 
 var musicCache: utils.Cache(AudioData, 4, 4, AudioData.deinit) = .{};
