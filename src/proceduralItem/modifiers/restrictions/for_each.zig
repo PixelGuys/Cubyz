@@ -8,25 +8,21 @@ const ZonElement = main.ZonElement;
 const ModifierRestrictionOutput = main.items.ModifierRestrictionOutput;
 
 const And = struct {
-	children: []ModifierRestriction,
+	child: ModifierRestriction,
 };
 
 pub fn satisfied(self: *const And, proceduralItem: *const ProceduralItem, x: i32, y: i32) ModifierRestrictionOutput {
-	var combinedIsSatisfied = true;
-	var combinedtotalCountedItems: usize = 0;
-	var combinedTotalItemsChecked: usize = 0;
+	const childValues = self.child.satisfied(proceduralItem, x, y);
+	const loopCount = childValues.totalCountedItems;
 	var combinedModifierPower: f32 = 0;
-	for (self.children) |child| {
-		const childValues: ModifierRestrictionOutput = child.satisfied(proceduralItem, x, y);
-		if (!childValues.ifSatisfied) combinedIsSatisfied = false;
-		combinedtotalCountedItems += childValues.totalCountedItems;
-		combinedTotalItemsChecked += childValues.totalItemsChecked;
-		combinedModifierPower = std.math.hypot(combinedModifierPower, childValues.modifierPower);
+	for (0..loopCount) |i| {
+		_ = i;
+		combinedModifierPower = std.math.hypot(combinedModifierPower, 1);
 	}
 	return .{
-		.ifSatisfied = combinedIsSatisfied, 
-		.totalItemsChecked = combinedTotalItemsChecked, 
-		.totalCountedItems = combinedtotalCountedItems, 
+		.ifSatisfied = childValues.ifSatisfied, 
+		.totalItemsChecked = childValues.totalItemsChecked, 
+		.totalCountedItems = childValues.totalCountedItems, 
 		.modifierPower = combinedModifierPower,
 	};
 }
