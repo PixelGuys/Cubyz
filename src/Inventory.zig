@@ -600,18 +600,6 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			if ((itemA != .proceduralItem) and (itemB == .proceduralItem)) return false;
 			if ((itemA == .proceduralItem) and (itemB != .proceduralItem)) return true;
 
-			const itemATags = itemA.getTags();
-			const itemBTags = itemB.getTags();
-
-			for (0..@min(itemATags.len, itemBTags.len)) |i| {
-				if (itemATags[i] == itemBTags[i]) continue;
-				return std.mem.lessThan(u8, itemATags[i].getName(), itemBTags[i].getName());
-			}
-			if (itemATags.len != itemBTags.len) return itemATags.len < itemBTags.len;
-			if ((itemA == .proceduralItem) and (itemB == .proceduralItem)) {
-				return (itemA.proceduralItem.durability > itemB.proceduralItem.durability);
-			}
-
 			return std.mem.lessThan(u8, itemA.id().?, itemB.id().?);
 		}
 
