@@ -2179,6 +2179,7 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 	var buffers: [3]c_uint = undefined;
 	var fences: [3]c.GLsync = undefined;
 	var currentFrame: usize = 0;
+	var currentData: Data = undefined;
 
 	fn init() void {
 		c.glGenBuffers(buffers.len, &buffers);
@@ -2199,7 +2200,12 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 		}
 	}
 
+	pub fn frameData() Data {
+		return currentData;
+	}
+
 	pub fn uploadNewFrame(data: Data) void {
+		currentData = data;
 		c.glDeleteSync(fences[currentFrame]);
 		fences[currentFrame] = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 		currentFrame = (currentFrame + 1)%buffers.len;
