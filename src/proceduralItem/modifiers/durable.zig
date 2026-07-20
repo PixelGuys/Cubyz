@@ -15,10 +15,10 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	return .{.strength = std.math.hypot(data1.strength, data2.strength)};
 }
 
-pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Data) void {
-	proceduralItem.setProperty(.maxDurability, proceduralItem.getProperty(.maxDurability)*(1 + data.strength));
+pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Data, restrictionPower: f32) void {
+	proceduralItem.setProperty(.maxDurability, proceduralItem.getProperty(.maxDurability)*(1 + data.strength*restrictionPower));
 }
 
-pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
-	outString.print("#500090**Durable**#808080 *Increases durability by **{d:.0}%", .{data.strength*100});
+pub fn printTooltip(outString: *main.ListManaged(u8), data: Data, restrictionPower: f32) void {
+	outString.print("#500090**Durable**#808080 *Increases durability by **{d:.0}%", .{data.strength*100*restrictionPower});
 }

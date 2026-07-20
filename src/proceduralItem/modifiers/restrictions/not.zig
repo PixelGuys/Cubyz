@@ -5,13 +5,20 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ModifierRestriction = main.items.ModifierRestriction;
 const ProceduralItem = main.items.ProceduralItem;
 const ZonElement = main.ZonElement;
+const ModifierRestrictionOutput = main.items.ModifierRestrictionOutput;
 
 const Not = struct {
 	child: ModifierRestriction,
 };
 
-pub fn satisfied(self: *const Not, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
-	return !self.child.satisfied(proceduralItem, x, y);
+pub fn satisfied(self: *const Not, proceduralItem: *const ProceduralItem, x: i32, y: i32) ModifierRestrictionOutput {
+	const childValues = self.child.satisfied(proceduralItem, x, y);
+	return .{
+		.ifSatisfied = !childValues.ifSatisfied,
+		.totalItemsChecked = childValues.totalItemsChecked,
+		.totalCountedItems = childValues.totalItemsChecked - childValues.totalCountedItems,
+		.modifierPower = childValues.modifierPower,
+	};
 }
 
 pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Not {

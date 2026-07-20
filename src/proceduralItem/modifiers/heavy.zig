@@ -15,10 +15,10 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	return .{.strength = 1.0 - 1.0/(1.0 + std.math.hypot(1.0/(1.0 - data1.strength) - 1.0, 1.0/(1.0 - data2.strength) - 1.0))};
 }
 
-pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Data) void {
-	proceduralItem.setProperty(.swingSpeed, proceduralItem.getProperty(.swingSpeed)*(1 - data.strength));
+pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Data, restrictionPower: f32) void {
+	proceduralItem.setProperty(.swingSpeed, proceduralItem.getProperty(.swingSpeed)*(1 - @min(data.strength*restrictionPower, 0)));
 }
 
-pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
-	outString.print("#ffcc30**Heavy**#808080 *Decreases swing speed by **{d:.0}%", .{data.strength*100});
+pub fn printTooltip(outString: *main.ListManaged(u8), data: Data, restrictionPower: f32) void {
+	outString.print("#ffcc30**Heavy**#808080 *Decreases swing speed by **{d:.0}%", .{@min(data.strength*100*restrictionPower, 100)});
 }
