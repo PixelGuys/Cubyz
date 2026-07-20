@@ -508,7 +508,7 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 		comptime format: []const u8,
 		args: anytype,
 		comptime sentinel: u8,
-	) Allocator.Error![:sentinel]u8 {
+	) [:sentinel]u8 {
 		return std.fmt.allocPrintSentinel(a.allocator, format, args, sentinel) catch unreachable;
 	}
 
