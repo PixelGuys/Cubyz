@@ -516,25 +516,21 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 		var tallies: main.List(Tally) = .empty;
 		defer tallies.deinit(main.stackAllocator);
 
-		for (offsets) |offset| {
+		outer: for (offsets) |offset| {
 			const neighborPos = neighborCoord(pos, offset) orelse continue;
 			const item = materialGrid[neighborPos[0]][neighborPos[1]] orelse continue;
 			if (item.material() == null) continue;
 			const score = neighborWeight(offset);
 			const light = calculateRawLight(heightMap, neighborPos);
 
-			var found = false;
 			for (tallies.items) |*tally| {
 				if (tally.item == item) {
 					tally.score += score;
 					tally.lightWeight += light;
-					found = true;
-					break;
+					continue :outer;
 				}
 			}
-			if (!found) {
-				tallies.append(main.stackAllocator, .{.item = item, .score = score, .lightWeight = light});
-			}
+			tallies.append(main.stackAllocator, .{.item = item, .score = score, .lightWeight = light});
 		}
 
 		var best: ?Tally = null;
