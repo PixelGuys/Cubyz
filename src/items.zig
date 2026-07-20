@@ -78,7 +78,6 @@ const Material = struct { // MARK: Material
 				.vTable = vTable,
 				.data = vTable.loadData(item),
 				.restriction = ModifierRestriction.loadFromZon(allocator, item.getChild("restriction")),
-				.restrictionPower = 0,
 			};
 		}
 	}
@@ -119,24 +118,17 @@ const Material = struct { // MARK: Material
 	}
 };
 
-pub const ModifierRestrictionOutput = struct {
-	ifSatisfied: bool,
-	totalItemsChecked: usize,
-	totalCountedItems: usize,
-	modifierPower: f32,
-};
-
 pub const ModifierRestriction = struct {
 	vTable: *const VTable,
 	data: *anyopaque,
 
 	pub const VTable = struct {
-		satisfied: *const fn (data: *anyopaque, proceduralItem: *const ProceduralItem, x: i32, y: i32) ModifierRestrictionOutput,
+		satisfied: *const fn (data: *anyopaque, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool,
 		loadFromZon: *const fn (allocator: NeverFailingAllocator, zon: ZonElement) *anyopaque,
 		printTooltip: *const fn (data: *anyopaque, outString: *main.ListManaged(u8)) void,
 	};
 
-	pub fn satisfied(self: ModifierRestriction, proceduralItem: *const ProceduralItem, x: i32, y: i32) ModifierRestrictionOutput {
+	pub fn satisfied(self: ModifierRestriction, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
 		return self.vTable.satisfied(self.data, proceduralItem, x, y);
 	}
 
@@ -161,20 +153,19 @@ const Modifier = struct {
 	data: VTable.Data,
 	restriction: ModifierRestriction,
 	vTable: *const VTable,
-	restrictionPower: f32,
 
 	pub const VTable = struct {
 		const Data = packed struct(u128) { pad: u128 };
 		combineModifiers: *const fn (data1: Data, data2: Data) ?Data,
-		changeProceduralItemParameters: *const fn (proceduralItem: *ProceduralItem, data: Data, restrictionPower: f32) void,
-		changeBlockDamage: *const fn (damage: f32, block: Block, data: Data, restrictionPower: f32) f32,
+		changeProceduralItemParameters: *const fn (proceduralItem: *ProceduralItem, data: Data) void,
+		changeBlockDamage: *const fn (damage: f32, block: Block, data: Data) f32,
 		printTooltip: *const fn (outString: *main.ListManaged(u8), data: Data) void,
 		loadData: *const fn (zon: ZonElement) Data,
 		priority: f32,
 
 		const Defaults = struct {
-			pub fn changeProceduralItemParameters(_: *ProceduralItem, _: Data, _: f32) void {}
-			pub fn changeBlockDamage(damage: f32, _: Block, _: Data, _: f32) f32 {
+			pub fn changeProceduralItemParameters(_: *ProceduralItem, _: Data) void {}
+			pub fn changeBlockDamage(damage: f32, _: Block, _: Data) f32 {
 				return damage;
 			}
 		};
@@ -197,16 +188,15 @@ const Modifier = struct {
 			.data = a.vTable.combineModifiers(a.data, b.data) orelse return null,
 			.vTable = a.vTable,
 			.restriction = undefined,
-			.restrictionPower = std.math.hypot(a.restrictionPower, b.restrictionPower),
 		};
 	}
 
 	pub fn changeProceduralItemParameters(self: Modifier, proceduralItem: *ProceduralItem) void {
-		self.vTable.changeProceduralItemParameters(proceduralItem, self.data, self.restrictionPower);
+		self.vTable.changeProceduralItemParameters(proceduralItem, self.data);
 	}
 
 	pub fn changeBlockDamage(self: Modifier, damage: f32, block: Block) f32 {
-		return self.vTable.changeBlockDamage(damage, block, self.data, self.restrictionPower);
+		return self.vTable.changeBlockDamage(damage, block, self.data);
 	}
 
 	pub fn printTooltip(self: Modifier, outString: *main.ListManaged(u8)) void {
@@ -494,17 +484,15 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 		if (proceduralItem.getProperty(.swingSpeed) < 1) proceduralItem.setProperty(.swingSpeed, 1/(2 - proceduralItem.getProperty(.swingSpeed)));
 		for (0..25) |i| {
 			const material = (proceduralItem.craftingGrid[i] orelse continue).material() orelse continue;
-			outer: for (material.modifiers) |*newMod| {
-				const checkedRestrictionValues = newMod.restriction.satisfied(proceduralItem, @intCast(i%5), @intCast(i/5));
-				if (!checkedRestrictionValues.ifSatisfied) continue;
+			outer: for (material.modifiers) |newMod| {
+				if (!newMod.restriction.satisfied(proceduralItem, @intCast(i%5), @intCast(i/5))) continue;
 				for (tempModifiers.items) |*oldMod| {
 					if (oldMod.vTable == newMod.vTable) {
-						oldMod.* = oldMod.combineModifiers(newMod.*) orelse continue;
+						oldMod.* = oldMod.combineModifiers(newMod) orelse continue;
 						continue :outer;
 					}
 				}
-				newMod.restrictionPower = checkedRestrictionValues.modifierPower;
-				tempModifiers.append(main.stackAllocator, newMod.*);
+				tempModifiers.append(main.stackAllocator, newMod);
 			}
 		}
 		std.sort.insertion(Modifier, tempModifiers.items, {}, struct {

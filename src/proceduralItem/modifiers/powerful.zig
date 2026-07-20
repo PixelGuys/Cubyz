@@ -15,8 +15,8 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	return .{.strength = std.math.hypot(data1.strength, data2.strength)};
 }
 
-pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Data, restrictionPower: f32) void {
-	proceduralItem.setProperty(.damage, proceduralItem.getProperty(.damage)*(1 + data.strength*restrictionPower));
+pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Data) void {
+	proceduralItem.setProperty(.damage, proceduralItem.getProperty(.damage)*(1 + data.strength));
 }
 
 pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {

@@ -5,30 +5,16 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ModifierRestriction = main.items.ModifierRestriction;
 const ProceduralItem = main.items.ProceduralItem;
 const ZonElement = main.ZonElement;
-const ModifierRestrictionOutput = main.items.ModifierRestrictionOutput;
 
 const Or = struct {
 	children: []ModifierRestriction,
 };
 
-pub fn satisfied(self: *const Or, proceduralItem: *const ProceduralItem, x: i32, y: i32) ModifierRestrictionOutput {
-	var combinedIsSatisfied = false;
-	var combinedtotalCountedItems: usize = 0;
-	var combinedTotalItemsChecked: usize = 0;
-	var combinedModifierPower: f32 = 0;
+pub fn satisfied(self: *const Or, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
 	for (self.children) |child| {
-		const childValues: ModifierRestrictionOutput = child.satisfied(proceduralItem, x, y);
-		if (childValues.ifSatisfied) combinedIsSatisfied = true;
-		combinedtotalCountedItems += childValues.totalCountedItems;
-		combinedTotalItemsChecked += childValues.totalItemsChecked;
-		combinedModifierPower = std.math.hypot(combinedModifierPower, childValues.modifierPower);
+		if (child.satisfied(proceduralItem, x, y)) return true;
 	}
-	return .{
-		.ifSatisfied = combinedIsSatisfied, 
-		.totalItemsChecked = combinedTotalItemsChecked, 
-		.totalCountedItems = combinedtotalCountedItems, 
-		.modifierPower = combinedModifierPower,
-	};
+	return false;
 }
 
 pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Or {
