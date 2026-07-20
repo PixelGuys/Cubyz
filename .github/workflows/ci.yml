@@ -31,7 +31,7 @@ jobs:
             git diff --color=always;
             exit 1;
           fi
-      - run: wget -O ./Cubyz-linter https://github.com/PixelGuys/Cubyz-linter/releases/download/0.16.0%2B3/Cubyz-linter-x86_64-linux
+      - run: wget -O ./Cubyz-linter https://github.com/PixelGuys/Cubyz-linter/releases/download/0.16.0+4/Cubyz-linter-x86_64-linux
       - run: chmod +x ./Cubyz-linter
       - run: ./Cubyz-linter assets/ mods/ src/ *.zon
       - run: zig build
@@ -39,4 +39,4 @@ jobs:
       - run: zig build -Dtarget=aarch64-linux-gnu
       - run: zig build -Dtarget=aarch64-windows-gnu
       - run: zig build test
-      - run: 'find assets/cubyz/shaders -type f ! -name "*.glsl" | xargs -L1 glslangValidator -G100 -P"#extension GL_GOOGLE_include_directive : enable" -Iassets/cubyz/shaders/include'
+      - run: 'find assets/cubyz/shaders -type f ! -name "*.glsl" | xargs -L1 glslangValidator -G100 -P"#extension GL_GOOGLE_include_directive : enable" -Iassets/cubyz/shaders/include -Dgl_VertexIndex=gl_VertexID'

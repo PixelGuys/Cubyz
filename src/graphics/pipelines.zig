@@ -86,7 +86,7 @@ const Shader = struct { // MARK: Shader
 			},
 			blk: {
 				const end = std.mem.find(u8, filename, "/shaders/") orelse break :blk null;
-				break :blk std.fmt.allocPrint(arena.allocator, "{s}/shaders/include", .{filename[0..end]}) catch unreachable;
+				break :blk arena.print("{s}/shaders/include", .{filename[0..end]});
 			},
 			"assets/cubyz/shaders/include",
 		};
@@ -112,7 +112,7 @@ const Shader = struct { // MARK: Shader
 			next = next[includeEnd + 1 ..];
 
 			for (includePaths) |includePath| {
-				const fullPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}", .{includePath orelse continue, includeFilename}) catch unreachable;
+				const fullPath = main.stackAllocator.print("{s}/{s}", .{includePath orelse continue, includeFilename});
 				defer main.stackAllocator.free(fullPath);
 				if (main.files.cwd().hasFile(fullPath)) {
 					const code = try loadShaderFile(main.stackAllocator, fullPath, &.{});
@@ -129,7 +129,9 @@ const Shader = struct { // MARK: Shader
 	}
 
 	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shaderStage: c_uint) !void {
-		const source = try loadShaderFile(main.stackAllocator, filename, defines);
+		const extraDefines = std.mem.concat(main.stackAllocator.allocator, u8, &.{defines, "#define gl_VertexIndex gl_VertexID\n"}) catch unreachable;
+		defer main.stackAllocator.free(extraDefines);
+		const source = try loadShaderFile(main.stackAllocator, filename, extraDefines);
 		defer main.stackAllocator.free(source);
 
 		const shader = c.glCreateShader(shaderStage);

@@ -12,8 +12,6 @@ const GuiComponent = gui.GuiComponent;
 
 const Icon = @This();
 
-const fontSize: f32 = 16;
-
 pos: Vec2f,
 size: Vec2f,
 texture: Texture,

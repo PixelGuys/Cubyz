@@ -12,23 +12,23 @@ const sync = main.sync;
 const PermissionMap = struct { // MARK: PermissionMap
 	map: std.StringHashMapUnmanaged(void) = .{},
 
-	pub fn fromZon(self: *PermissionMap, arena: NeverFailingAllocator, zon: ZonElement) void {
+	pub fn fromBytes(self: *PermissionMap, arena: NeverFailingAllocator, reader: *main.utils.BinaryReader) !void {
 		sync.threadContext.assertCorrectContext(.server);
-		for (zon.toSlice()) |item| {
-			const string = item.as([]const u8) orelse continue;
-			self.put(arena, string);
+		const len = try reader.readInt(u32);
+		self.map.ensureUnusedCapacity(arena.allocator, len) catch unreachable;
+		for (0..len) |_| {
+			self.map.putAssumeCapacity(try reader.readSliceWithSize(), {});
 		}
 	}
 
-	pub fn toZon(self: *PermissionMap, arena: NeverFailingAllocator) ZonElement {
+	pub fn toBytes(self: PermissionMap, writer: *main.utils.BinaryWriter) void {
 		sync.threadContext.assertCorrectContext(.server);
-		const zon: ZonElement = .initArray(arena);
+		writer.writeInt(u32, self.map.count());
 
 		var it = self.map.keyIterator();
 		while (it.next()) |key| {
-			zon.append(key.*);
+			writer.writeSliceWithSize(key.*);
 		}
-		return zon;
 	}
 
 	pub fn put(self: *PermissionMap, arena: NeverFailingAllocator, key: []const u8) void {
@@ -53,7 +53,7 @@ pub const Permissions = struct { // MARK: Permissions
 		};
 	}
 
-	pub fn deinit(self: *Permissions) void {
+	pub fn deinit(self: Permissions) void {
 		sync.threadContext.assertCorrectContext(.server);
 		self.arena.deinit();
 	}
@@ -71,16 +71,16 @@ pub const Permissions = struct { // MARK: Permissions
 		};
 	}
 
-	pub fn fromZon(self: *Permissions, zon: ZonElement) void {
+	pub fn fromBytes(self: *Permissions, reader: *main.utils.BinaryReader) !void {
 		sync.threadContext.assertCorrectContext(.server);
-		self.list(.white).fromZon(self.arena.allocator(), zon.getChild("permissionWhitelist"));
-		self.list(.black).fromZon(self.arena.allocator(), zon.getChild("permissionBlacklist"));
+		try self.list(.white).fromBytes(self.arena.allocator(), reader);
+		try self.list(.black).fromBytes(self.arena.allocator(), reader);
 	}
 
-	pub fn toZon(self: *Permissions, allocator: NeverFailingAllocator, zon: *ZonElement) void {
+	pub fn toBytes(self: Permissions, writer: *main.utils.BinaryWriter) void {
 		sync.threadContext.assertCorrectContext(.server);
-		zon.put("permissionWhitelist", self.list(.white).toZon(allocator));
-		zon.put("permissionBlacklist", self.list(.black).toZon(allocator));
+		self.whitelist.toBytes(writer);
+		self.blacklist.toBytes(writer);
 	}
 
 	pub fn addPermission(self: *Permissions, listType: ListType, permissionPath: []const u8) void {
@@ -116,7 +116,6 @@ pub const Group = struct { // MARK: Group
 	// - A new Group1 is created
 	// - When User1 reconnects, they are incorrectly treated as a member of the new Group1
 	id: u32,
-	// not owned by the group, instead owned by the groups StringHashMap
 	name: []const u8,
 
 	fn init(allocator: NeverFailingAllocator, name: []const u8) *Group {
@@ -137,37 +136,45 @@ pub const Group = struct { // MARK: Group
 
 	fn deinit(self: *Group, allocator: NeverFailingAllocator) void {
 		sync.threadContext.assertCorrectContext(.server);
+		allocator.free(self.name);
 		self.permissions.deinit();
 		allocator.destroy(self);
 	}
 
-	fn fromZon(allocator: NeverFailingAllocator, zon: ZonElement, id: u32, name: []const u8) *Group {
-		sync.threadContext.assertCorrectContext(.server);
+	pub fn fromBytes(allocator: NeverFailingAllocator, reader: *main.utils.BinaryReader, id: u32) !*Group {
+		const version = try reader.readInt(u8);
+		if (version != 0) return error.UnsupportedVersion;
+
 		const self = allocator.create(Group);
+		errdefer allocator.destroy(self);
 		self.* = .{
 			.permissions = .init(allocator),
 			.id = id,
-			.name = name,
+			.name = allocator.dupe(u8, try reader.readSliceWithSize()),
 		};
-		self.permissions.fromZon(zon);
+		try self.permissions.fromBytes(reader);
 		return self;
 	}
 
-	fn toZon(self: *Group, allocator: NeverFailingAllocator, zon: *ZonElement) void {
+	pub fn toBytes(self: *Group, writer: *main.utils.BinaryWriter) void {
 		sync.threadContext.assertCorrectContext(.server);
-		self.permissions.toZon(allocator, zon);
+		const version = 0;
+		writer.writeInt(u8, version);
+		writer.writeSliceWithSize(self.name);
+		self.permissions.toBytes(writer);
 	}
 
 	fn save(self: *Group, allocator: NeverFailingAllocator) void {
 		if (builtin.is_test) return;
 		sync.threadContext.assertCorrectContext(.server);
-		const path = std.fmt.allocPrint(allocator.allocator, "saves/{s}/groups/{d}.zon", .{main.server.world.?.path, self.id}) catch unreachable;
+		const path = allocator.print("saves/{s}/permission/{d}.group", .{main.server.world.?.path, self.id});
 		defer allocator.free(path);
-		var groupZon: ZonElement = .initObject(allocator);
-		defer groupZon.deinit(allocator);
-		groupZon.put("name", self.name);
-		self.toZon(allocator, &groupZon);
-		main.files.cubyzDir().writeZon(path, groupZon) catch |err| {
+
+		const writer: main.utils.BinaryWriter = .init(allocator);
+		defer writer.deinit();
+
+		self.toBytes(&writer);
+		main.files.cubyzDir().write(path, writer.data.items) catch |err| {
 			std.log.err("Couldn't save permission group: {s} {t}", .{self.name, err});
 		};
 	}
@@ -208,12 +215,13 @@ pub fn deinit() void {
 	groups = .{};
 }
 
-pub fn addGroupFromZon(id: u32, zon: ZonElement) void {
-	const name = groupsArena.allocator().dupe(u8, zon.get([]const u8, "name") orelse {
-		std.log.err("Group with id {d} has invalid content skipping", .{id});
+pub fn addGroupFromBin(id: u32, data: []const u8) void {
+	var reader: main.utils.BinaryReader = .init(data);
+	const group = Group.fromBytes(groupsArena.allocator(), &reader, id) catch |err| {
+		std.log.err("Group with id {d} has invalid content skipping: {t}", .{id, err});
 		return;
-	});
-	groups.put(groupsArena.allocator().allocator, name, .fromZon(groupsArena.allocator(), zon, id, name)) catch unreachable;
+	};
+	groups.put(groupsArena.allocator().allocator, group.name, group) catch unreachable;
 }
 
 pub fn loadGroups(dir: main.files.Dir) !void {
@@ -225,11 +233,10 @@ pub fn loadGroups(dir: main.files.Dir) !void {
 	var iterator = dir.iterate();
 	while (try iterator.next(main.io)) |file| {
 		if (file.kind != .file) continue;
-		if (!std.mem.endsWith(u8, file.name, ".zon")) continue;
+		if (!std.mem.endsWith(u8, file.name, ".group")) continue;
 
-		const zon = try dir.readToZon(main.stackAllocator, file.name);
-		defer zon.deinit(main.stackAllocator);
-		if (std.mem.eql(u8, file.name, "metadata.zon")) continue;
+		const data = try dir.read(main.stackAllocator, file.name);
+		defer main.stackAllocator.free(data);
 		const fileNameBase = file.name[0..std.mem.findScalar(u8, file.name, '.').?];
 		if (fileNameBase[0] == '0' and fileNameBase.len != 1) {
 			std.log.err("Group file {s} contains leading zeroes. Skipping.", .{file.name});
@@ -239,13 +246,13 @@ pub fn loadGroups(dir: main.files.Dir) !void {
 			std.log.err("Couldn't parse group file {s}: {s} Skipping.", .{file.name, @errorName(err)});
 			continue;
 		};
-		addGroupFromZon(id, zon);
+		addGroupFromBin(id, data);
 	}
 }
 
 fn saveMetaData(allocator: NeverFailingAllocator) !void {
 	if (builtin.is_test) return;
-	const metadatPath = std.fmt.allocPrint(allocator.allocator, "saves/{s}/groups/metadata.zon", .{main.server.world.?.path}) catch unreachable;
+	const metadatPath = allocator.print("saves/{s}/permission/metadata.zon", .{main.server.world.?.path});
 	defer allocator.free(metadatPath);
 	var metadataZon: ZonElement = .initObject(main.stackAllocator);
 	defer metadataZon.deinit(main.stackAllocator);
@@ -271,7 +278,7 @@ pub fn deleteGroup(allocator: NeverFailingAllocator, name: []const u8) bool {
 	sync.threadContext.assertCorrectContext(.server);
 	const group = groups.fetchRemove(name) orelse return false;
 
-	const path = std.fmt.allocPrint(allocator.allocator, "saves/{s}/groups/{d}.zon", .{main.server.world.?.path, group.value.id}) catch unreachable;
+	const path = allocator.print("saves/{s}/permission/{d}.group", .{main.server.world.?.path, group.value.id});
 	defer allocator.free(path);
 	main.files.cubyzDir().deleteFile(path) catch |err| {
 		std.log.err("Couldn't delete group file even though it exits: {t}", .{err});
@@ -408,20 +415,22 @@ test "invalidGroupCreation" {
 	try std.testing.expectError(error.AlreadyExists, createGroup("test"));
 }
 
-test "permissionListToFromZon" {
+test "permissionListToFromBytes" {
 	var permissions: Permissions = .init(main.heap.testingAllocator);
 	defer permissions.deinit();
 
 	permissions.addPermission(.white, "/command/test");
 	permissions.addPermission(.white, "/command/spawn");
 
-	const zon = permissions.whitelist.toZon(main.heap.testingAllocator);
-	defer zon.deinit(main.heap.testingAllocator);
+	var writer = main.utils.BinaryWriter.init(main.heap.testingAllocator);
+	defer writer.deinit();
+	permissions.toBytes(&writer);
 
 	var testPermissions: Permissions = .init(main.heap.testingAllocator);
 	defer testPermissions.deinit();
 
-	testPermissions.whitelist.fromZon(testPermissions.arena.allocator(), zon);
+	var reader: main.utils.BinaryReader = .init(writer.data.items);
+	try testPermissions.fromBytes(&reader);
 
 	try std.testing.expectEqual(2, testPermissions.whitelist.map.size);
 
@@ -431,7 +440,7 @@ test "permissionListToFromZon" {
 	}
 }
 
-test "permissionGroupToFromZon" {
+test "permissionGroupToFromBytes" {
 	init(main.heap.testingAllocator, 0);
 	defer deinit();
 
@@ -441,11 +450,12 @@ test "permissionGroupToFromZon" {
 	group.addPermission(main.heap.testingAllocator, .white, "/command/test");
 	group.addPermission(main.heap.testingAllocator, .white, "/command/spawn");
 
-	var zon: ZonElement = .initObject(main.heap.testingAllocator);
-	defer zon.deinit(main.heap.testingAllocator);
-	group.toZon(main.heap.testingAllocator, &zon);
+	var writer: main.utils.BinaryWriter = .init(main.heap.testingAllocator);
+	defer writer.deinit();
+	group.toBytes(&writer);
 
-	var testGroup: *Group = .fromZon(main.heap.testingAllocator, zon, 0, "test2");
+	var reader: main.utils.BinaryReader = .init(writer.data.items);
+	var testGroup: *Group = try .fromBytes(main.heap.testingAllocator, &reader, 0);
 	defer testGroup.deinit(main.heap.testingAllocator);
 
 	try std.testing.expectEqual(2, testGroup.permissions.whitelist.map.size);

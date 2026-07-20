@@ -109,7 +109,7 @@ pub fn init() void {
 
 	const _timestamp = std.Io.Clock.Timestamp.now(main.io, .real).raw;
 
-	const _path_str = std.fmt.allocPrint(main.stackAllocator.allocator, "logs/ts_{}.log", .{_timestamp.nanoseconds}) catch unreachable;
+	const _path_str = main.stackAllocator.print("logs/ts_{}.log", .{_timestamp.nanoseconds});
 	defer main.stackAllocator.free(_path_str);
 
 	logFileTs = std.Io.Dir.cwd().createFile(main.io, _path_str, .{}) catch |err| {

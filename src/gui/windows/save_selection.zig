@@ -67,7 +67,7 @@ pub fn openWorld(name: []const u8) void {
 		main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 		main.heap.GarbageCollection.syncPoint();
 	}
-	const ipPort = std.fmt.allocPrint(main.stackAllocator.allocator, "127.0.0.1:{}", .{main.server.connectionManager.localPort}) catch unreachable;
+	const ipPort = main.stackAllocator.print("127.0.0.1:{}", .{main.server.connectionManager.localPort});
 	defer main.stackAllocator.free(ipPort);
 	const zon = main.game.testWorld.init(ipPort, clientConnection) catch |err| {
 		std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
@@ -94,7 +94,7 @@ fn deleteWorld(index: usize) void {
 }
 
 fn openFolder(index: usize) void {
-	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/saves/{s}", .{main.files.cubyzDirStr(), worldList.items[index].fileName}) catch unreachable;
+	const path = main.stackAllocator.print("{s}/saves/{s}", .{main.files.cubyzDirStr(), worldList.items[index].fileName});
 	defer main.stackAllocator.free(path);
 
 	main.files.openDirInWindow(path);
@@ -128,7 +128,7 @@ pub fn onOpen() void {
 			break :readingSaves;
 		}) |entry| {
 			if (entry.kind == .directory) {
-				const worldInfoPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.zig.zon", .{entry.name}) catch unreachable;
+				const worldInfoPath = main.stackAllocator.print("saves/{s}/world.zig.zon", .{entry.name});
 				defer main.stackAllocator.free(worldInfoPath);
 				const worldInfo = main.files.cubyzDir().readToZon(main.stackAllocator, worldInfoPath) catch |err| {
 					std.log.err("Couldn't open save {s}: {s}", .{worldInfoPath, @errorName(err)});

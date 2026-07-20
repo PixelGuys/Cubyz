@@ -422,7 +422,6 @@ pub const Mask = struct {
 
 	const or_ = '|';
 	const and_ = '&';
-	const inverse = '!';
 	const tag = '$';
 	const property = '@';
 
