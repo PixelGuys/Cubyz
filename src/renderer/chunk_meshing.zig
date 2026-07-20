@@ -46,13 +46,6 @@ const UniformStruct = struct {
 pub var uniforms: UniformStruct = undefined;
 pub var transparentUniforms: UniformStruct = undefined;
 const DepthUniformStruct = struct {
-	projectionMatrix: c_int,
-	viewMatrix: c_int,
-	playerPositionInteger: c_int,
-	playerPositionFraction: c_int,
-	lodDistance: c_int,
-	zNear: c_int,
-	zFar: c_int,
 };
 pub var depthUniforms: DepthUniformStruct = undefined;
 pub var commandPipeline: graphics.ComputePipeline = undefined;
@@ -230,11 +223,6 @@ pub fn bindTransparentShaderAndUniforms(ambient: Vec3f) void {
 
 pub fn bindDepthShaderAndUniforms() void {
 	depthPipeline.bind(null);
-
-	c.glUniform1f(depthUniforms.lodDistance, main.settings.@"lod0.5Distance");
-
-	c.glUniform1f(depthUniforms.zNear, renderer.zNear);
-	c.glUniform1f(depthUniforms.zFar, renderer.zFar);
 
 	vao.bind();
 }

@@ -5,10 +5,9 @@
 
 layout(location = 1) out vec3 direction;
 layout(location = 2) out vec2 uv;
-layout(location = 3) flat out vec3 normal;
-layout(location = 4) flat out int textureIndex;
-layout(location = 5) flat out int isBackFace;
-layout(location = 7) flat out int opaqueInLod;
+layout(location = 3) flat out int textureIndex;
+layout(location = 4) flat out int isBackFace;
+layout(location = 5) flat out int opaqueInLod;
 
 struct FaceData {
 	int encodedPositionAndLightIndex;
@@ -42,8 +41,8 @@ vec3 square(vec3 x) {
 }
 
 void main() {
-	int faceID = gl_VertexID >> 2;
-	int vertexID = gl_VertexID & 3;
+	int faceID = gl_VertexIndex >> 2;
+	int vertexID = gl_VertexIndex & 3;
 	int chunkID = gl_BaseInstance;
 	int voxelSize = chunks[chunkID].voxelSize;
 	int encodedPositionAndLightIndex = faceData[faceID].encodedPositionAndLightIndex;
@@ -58,8 +57,6 @@ void main() {
 		encodedPositionAndLightIndex >> 5 & 31,
 		encodedPositionAndLightIndex >> 10 & 31
 	);
-
-	normal = quads[quadIndex].normal;
 
 	position += vec3(quads[quadIndex].corners[vertexID][0], quads[quadIndex].corners[vertexID][1], quads[quadIndex].corners[vertexID][2]);
 	position *= voxelSize;

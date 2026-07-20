@@ -2,15 +2,11 @@
 
 layout(location = 1) in vec3 direction;
 layout(location = 2) in vec2 uv;
-layout(location = 3) flat in vec3 normal;
-layout(location = 4) flat in int textureIndex;
-layout(location = 5) flat in int isBackFace;
-layout(location = 7) flat in int opaqueInLod;
-
-layout(location = 5) uniform float lodDistance;
+layout(location = 3) flat in int textureIndex;
+layout(location = 4) flat in int isBackFace;
+layout(location = 5) flat in int opaqueInLod;
 
 layout(binding = 0) uniform sampler2DArray textureSampler;
-layout(binding = 5) uniform sampler2D ditherTexture;
 
 layout(std430, binding = 1) buffer _animatedTexture
 {

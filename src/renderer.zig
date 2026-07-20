@@ -233,7 +233,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		.viewMatrix = game.camera.viewMatrix.toGl(),
 		.lightProjectionMatrix = lightProjection.toGl(),
 		.lightViewMatrix = lightView.toGl(),
-		.isDepth = false,
+		.isDepth = true,
 	});
 
 	chunk_meshing.quadsDrawn = 0;
@@ -290,11 +290,18 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	reflectionCubeMap.bindTo(4);
 	depthFrameBuffer.bindDepthTexture(c.GL_TEXTURE6);
 
-	chunk_meshing.quadsDrawn = 0;
-	chunk_meshing.transparentQuadsDrawn = 0;
-
 	// Uses FrustumCulling on the chunks.
 	game.camera.updateViewMatrix();
+
+	main.graphics.frame_uniforms.uploadNewFrame(.{
+		.playerPositionInteger = @as(Vec3i, @floor(playerPos)),
+		.playerPositionFraction = @as(Vec3f, @floatCast(@mod(playerPos, Vec3d{1, 1, 1}))),
+		.projectionMatrix = game.projectionMatrix.toGl(),
+		.viewMatrix = game.camera.viewMatrix.toGl(),
+		.lightProjectionMatrix = lightProjection.toGl(),
+		.lightViewMatrix = lightView.toGl(),
+		.isDepth = false,
+	});
 
 	chunk_meshing.quadsDrawn = 0;
 	chunk_meshing.transparentQuadsDrawn = 0;
