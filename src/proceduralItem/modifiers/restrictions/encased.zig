@@ -21,8 +21,8 @@ pub fn satisfied(self: *const Encased, proceduralItem: *const ProceduralItem, x:
 	}
 	return .{
 		.ifSatisfied = count >= self.amount, 
-		.totalItemsChecked = 9, 
-		.totalCountedItems = count, 
+		.totalItemsChecked = count, 
+		.totalCountedItems = 9, 
 		.modifierPower = 1,
 	};
 }

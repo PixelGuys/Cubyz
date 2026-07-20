@@ -19,6 +19,6 @@ pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Dat
 	proceduralItem.setProperty(.damage, proceduralItem.getProperty(.damage)*(1 - @min(data.strength*restrictionPower, 0)));
 }
 
-pub fn printTooltip(outString: *main.ListManaged(u8), data: Data, restrictionPower: f32) void {
-	outString.print("#fcb5e3**Weak**#808080 *Decreases damage by **{d:.0}%", .{@min(data.strength*100*restrictionPower, 100)});
+pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
+	outString.print("#fcb5e3**Weak**#808080 *Decreases damage by **{d:.0}%", .{data.strength*100});
 }

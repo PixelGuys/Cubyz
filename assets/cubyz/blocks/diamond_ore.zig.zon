@@ -42,12 +42,9 @@
 					.id = "powerful",
 					.strength = 0.5,
 					.restriction = .{
-						.id = .for_each,
-						.child = .{
-							.id = .encased,
-							.tag = .precious,
-							.amount = 4,
-						},
+						.id = .encased,
+						.tag = .precious,
+						.amount = 4,
 					},
 				},
 			},
