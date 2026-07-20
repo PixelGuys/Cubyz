@@ -55,6 +55,8 @@ pub var guiScale: ?f32 = null;
 
 pub var musicVolume: f32 = 1;
 
+pub var soundVolume: f32 = 1;
+
 pub var leavesQuality: u16 = 2;
 
 pub var @"lod0.5Distance": f32 = 200;

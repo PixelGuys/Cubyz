@@ -7,6 +7,7 @@ const migrations = @import("migrations.zig");
 const blueprint = @import("blueprint.zig");
 const Blueprint = blueprint.Blueprint;
 const particles = @import("particles.zig");
+const audio = @import("audio.zig");
 const ZonElement = main.ZonElement;
 const biomes = main.server.terrain.biomes;
 const sbb = main.server.terrain.sbb;
@@ -42,6 +43,8 @@ pub const Assets = struct {
 	worldPresets: ZonHashMap,
 	entityModelDescriptions: ZonHashMap,
 	entityModelMigrations: ZonHashMap,
+	audioDatas: main.List([]const u8),
+	sounds: ZonHashMap,
 
 	fn init() Assets {
 		return .{
@@ -65,6 +68,8 @@ pub const Assets = struct {
 			.worldPresets = .{},
 			.entityModelDescriptions = .{},
 			.entityModelMigrations = .{},
+			.audioDatas = .empty,
+			.sounds = .{},
 		};
 	}
 	fn deinit(self: *Assets, allocator: NeverFailingAllocator) void {
@@ -88,6 +93,8 @@ pub const Assets = struct {
 		self.worldPresets.deinit(allocator.allocator);
 		self.entityModelDescriptions.deinit(allocator.allocator);
 		self.entityModelMigrations.deinit(allocator.allocator);
+		self.audioDatas.deinit(allocator);
+		self.sounds.deinit(allocator.allocator);
 	}
 	fn clone(self: Assets, allocator: NeverFailingAllocator) Assets {
 		return .{
@@ -111,6 +118,8 @@ pub const Assets = struct {
 			.worldPresets = .{}, // Not accessible inside the world
 			.entityModelDescriptions = self.entityModelDescriptions.clone(allocator.allocator) catch unreachable,
 			.entityModelMigrations = self.entityModelMigrations.clone(allocator.allocator) catch unreachable,
+			.audioDatas = self.audioDatas.clone(allocator),
+			.sounds = self.sounds.clone(allocator.allocator) catch unreachable,
 		};
 	}
 	fn read(self: *Assets, allocator: NeverFailingAllocator, assetDir: main.files.Dir, assetPath: []const u8) void {
@@ -133,12 +142,14 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
 			addon.readAllZon(allocator, "entity_models", true, &self.entityModelDescriptions, &self.entityModelMigrations);
+			addon.readAllAudio(allocator, "sounds/audio", ".ogg", &self.audioDatas);
+			addon.readAllZon(allocator, "sounds", true, &self.sounds, null);
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks, {} items, {} procedural items, {} biomes, {} cave layers, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, {} world presets, block models {}, and {} block model ZONs",
-			.{@tagName(typ), self.blocks.count(), self.items.count(), self.proceduralItems.count(), self.biomes.count(), self.caveLayers.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count(), self.blockModels.count(), self.blockModelsZon.count()},
+			"Finished {s} assets reading with {} blocks, {} items, {} procedural items, {} biomes, {} cave layers, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, {} world presets, block models {}, {} block model ZONs, {} audio datas, and {} sounds",
+			.{@tagName(typ), self.blocks.count(), self.items.count(), self.proceduralItems.count(), self.biomes.count(), self.caveLayers.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count(), self.blockModels.count(), self.blockModelsZon.count(), self.audioDatas.items.len, self.sounds.count()},
 		);
 	}
 
@@ -335,6 +346,30 @@ pub const Assets = struct {
 					continue;
 				};
 				output.put(allocator.allocator, id, string) catch unreachable;
+			}
+		}
+
+		pub fn readAllAudio(addon: Addon, allocator: NeverFailingAllocator, subPath: []const u8, fileEnding: []const u8, output: *main.List([]const u8)) void {
+			var assetsDirectory = addon.dir.openIterableDir(subPath) catch |err| {
+				if (err != error.FileNotFound) {
+					std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
+				}
+				return;
+			};
+			defer assetsDirectory.close();
+			var walker = assetsDirectory.walk(main.stackAllocator);
+			defer walker.deinit();
+
+			while (walker.next(main.io) catch |err| blk: {
+				std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
+				break :blk null;
+			}) |entry| {
+				if (entry.kind != .file) continue;
+				if (!std.ascii.endsWithIgnoreCase(entry.basename, fileEnding)) continue;
+
+				const id = createAssetStringID(allocator, addon.name, "audio", entry.path) catch continue;
+
+				output.append(allocator, id);
 			}
 		}
 	};
@@ -709,6 +744,15 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		particles.ParticleManager.register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 	}
 
+	for (worldAssets.audioDatas.items) |entry| {
+		audio.registerAudioData(assetFolder, entry);
+	}
+
+	iterator = worldAssets.sounds.iterator();
+	while (iterator.next()) |entry| {
+		audio.registerSound(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+	}
+
 	// Biomes:
 	var nextBiomeNumericId: u32 = 0;
 	for (biomePalette.palette.items) |id| {
@@ -791,6 +835,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	main.server.terrain.structures.reset();
 	main.models.reset();
 	main.particles.ParticleManager.reset();
+	main.audio.reset();
 	main.rotation.reset();
 	main.Tag.resetTags();
 	main.entityModel.reset();

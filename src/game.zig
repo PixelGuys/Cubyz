@@ -579,6 +579,8 @@ pub fn getBlockWithSide(comptime side: main.sync.Side, x: i32, y: i32, z: i32) ?
 	}
 }
 
+var timeing: f64 = 0;
+
 pub fn update(deltaTime: f64) void { // MARK: update()
 	if (world.?.shouldRestart.load(.acquire)) {
 		restart();
@@ -605,6 +607,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const forward = vec.normalize(std.math.lerp(horizontalForward, camera.direction, @as(Vec3d, @splat(density/@max(1.0, maxDensity)))));
 	const right = Vec3d{-horizontalForward[1], horizontalForward[0], 0};
 	var movementDir: Vec3d = .{0, 0, 0};
+
+	timeing += deltaTime;
+	if (timeing > 0.5) {
+		main.audio.playSpatialSound("cubyz:block_break", Vec3f{0, 0, 0}, 20);
+		timeing = 0;
+	}
 
 	if (main.Window.grabbed) {
 		const walkingSpeed: f64 = if (Player.crouching) 2.5 else 4.5;
@@ -652,6 +660,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 					movementDir[2] += 5.5;
 				}
 			} else if ((Player.onGround or Player.jumpCoyote > 0.0) and Player.jumpCooldown <= 0) {
+				main.audio.playSound("cubyz:jump");
 				jumping = true;
 				Player.jumpCooldown = Player.jumpCooldownConstant;
 				if (!Player.onGround) {
