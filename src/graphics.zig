@@ -2187,7 +2187,6 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 		playerPositionFraction: [3]f32 align(16),
 		lightProjectionMatrix: [4][4]f32,
 		lightViewMatrix: [4][4]f32,
-		isDepth: bool,
 	};
 
 	var buffers: [3]c_uint = undefined;
@@ -2311,7 +2310,6 @@ const block_texture = struct { // MARK: block_texture
 			},
 			.lightProjectionMatrix = Mat4f.identity().toGl(),
 			.lightViewMatrix = Mat4f.identity().toGl(),
-			.isDepth = false,
 		});
 	}
 	fn deinit() void {

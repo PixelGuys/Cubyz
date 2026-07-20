@@ -5,6 +5,8 @@
 
 layout(location = 0) flat out uint chunkID;
 
+layout(location = 0) uniform bool isDepth;
+
 layout(std430, binding = 9) buffer _chunkIDs
 {
 	uint chunkIDs[];

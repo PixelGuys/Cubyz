@@ -6,5 +6,4 @@ layout (std140, binding = 0) uniform _frameData
 	vec3 playerPositionFraction;
 	mat4 lightProjectionMatrix;
 	mat4 lightViewMatrix;
-	bool isDepth;
 };

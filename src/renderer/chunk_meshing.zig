@@ -59,6 +59,9 @@ pub var commandUniforms: struct {
 	isDepth: c_int,
 } = undefined;
 pub var occlusionTestPipeline: graphics.Pipeline = undefined;
+pub var occlusionTestUniforms: struct {
+	isDepth: c_int,
+} = undefined;
 pub var vao: graphics.VertexArray = undefined;
 pub var faceBuffers: [settings.highestSupportedLod + 1]graphics.LargeBuffer(FaceData) = undefined;
 pub var lightBuffers: [settings.highestSupportedLod + 1]graphics.LargeBuffer(u32) = undefined;
@@ -115,7 +118,7 @@ pub fn init() void {
 		"assets/cubyz/shaders/chunks/occlusionTestVertex.vert",
 		"assets/cubyz/shaders/chunks/occlusionTestFragment.frag",
 		"",
-		null,
+		&occlusionTestUniforms,
 		graphics.VertexArray.EmptyVertex,
 		&.{},
 		.{},
@@ -277,6 +280,7 @@ fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, lightDir: Vec3f, mode:
 
 	// Occlusion tests:
 	occlusionTestPipeline.bind(null);
+	c.glUniform1i(occlusionTestUniforms.isDepth, @intFromBool(mode == .depth));
 	vao.bind();
 	c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(6*6*chunkIDs.len), c.GL_UNSIGNED_INT, null, chunkIDAllocation.start*24);
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
