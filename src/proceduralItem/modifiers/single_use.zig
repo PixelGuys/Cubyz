@@ -19,6 +19,6 @@ pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Dat
 	proceduralItem.setProperty(.maxDurability, data.strength*restrictionPower);
 }
 
-pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
-	outString.print("#800000**Single-use**#808080 *Sets durability to **{d:.0}", .{data.strength});
+pub fn printTooltip(outString: *main.ListManaged(u8), data: Data, restrictionPower: f32) void {
+	outString.print("#800000**Single-use**#808080 *Sets durability to **{d:.0}", .{data.strength*restrictionPower});
 }
