@@ -101,7 +101,7 @@ pub const client = struct {
 			const oldColor = graphics.draw.setColor(alpha << 24 | 0xffffff);
 			defer graphics.draw.restoreColor(oldColor);
 
-			const renderedName = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{ent}) catch unreachable;
+			const renderedName = main.stackAllocator.print("{f}", .{ent});
 			defer main.stackAllocator.free(renderedName);
 
 			var buf = graphics.TextBuffer.init(main.stackAllocator, renderedName, .{.color = 0xffffff}, false, .center);

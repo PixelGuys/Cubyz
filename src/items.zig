@@ -1284,13 +1284,13 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 	var split = std.mem.splitScalar(u8, id, ':');
 	const mod = split.first();
 	const proceduralItem = split.rest();
-	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/tools/{s}{s}.png", .{assetFolder, mod, proceduralItem, layerPostfix}) catch unreachable;
+	const path = main.stackAllocator.print("{s}/{s}/tools/{s}{s}.png", .{assetFolder, mod, proceduralItem, layerPostfix});
 	defer main.stackAllocator.free(path);
 	const image = main.graphics.Image.readFromFile(main.stackAllocator, path, .{.orientation = .openGl}) catch |err| blk: {
 		if (err != error.FileNotFound) {
 			std.log.err("Error while reading procedural item image '{s}': {s}", .{path, @errorName(err)});
 		}
-		const replacementPath = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/tools/{s}{s}.png", .{mod, proceduralItem, layerPostfix}) catch unreachable;
+		const replacementPath = main.stackAllocator.print("assets/{s}/tools/{s}{s}.png", .{mod, proceduralItem, layerPostfix});
 		defer main.stackAllocator.free(replacementPath);
 		break :blk main.graphics.Image.readFromFile(main.stackAllocator, replacementPath, .{.orientation = .openGl}) catch |err2| {
 			if (layerPostfix.len == 0 or err2 != error.FileNotFound) {
