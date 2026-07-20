@@ -73,6 +73,8 @@ onOpenFn: *const fn () void = &defaultFunction,
 
 onCloseFn: *const fn () void = &defaultFunction,
 
+setRecipeFn: *const fn (recipe: main.items.Recipe) void = &defaultRecipeFunction,
+
 var grabbedWindow: *const GuiWindow = undefined;
 var windowMoving: bool = false;
 var grabPosition: ?Vec2f = null;
@@ -139,6 +141,10 @@ pub fn globalDeinit() void {
 }
 
 pub fn defaultFunction() void {}
+pub fn defaultRecipeFunction(recipe: main.items.Recipe) void {
+	std.log.err("cannot set recipie for this window type", .{});
+	_ = recipe;
+}
 pub fn defaultFunctionWithResult() main.callbacks.Result {
 	return .ignored;
 }
@@ -355,6 +361,10 @@ fn positionRelativeToConnectedWindow(self: *GuiWindow, other: *GuiWindow, compti
 
 pub fn update(self: *GuiWindow) void {
 	self.updateFn();
+}
+
+pub fn setRecipe(self: *GuiWindow, recipe: main.items.Recipe) void {
+	self.setRecipeFn(recipe);
 }
 
 pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) void {
