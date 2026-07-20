@@ -405,7 +405,15 @@ fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void 
 		texturePath = main.stackAllocator.print("{s}/{s}/items/textures/{s}", .{assetFolder, mod, texture});
 		replacementTexturePath = main.stackAllocator.print("assets/{s}/items/textures/{s}", .{mod, texture});
 	}
-	_ = items.register(assetFolder, texturePath, replacementTexturePath, id, zon);
+	var colorTexturePath: []const u8 = &.{};
+	defer main.stackAllocator.free(colorTexturePath);
+	var colorReplacementTexturePath: []const u8 = &.{};
+	defer main.stackAllocator.free(colorReplacementTexturePath);
+	if (zon.get([]const u8, "colorTexture")) |colorTexture| {
+		colorTexturePath = main.stackAllocator.print("{s}/{s}/items/textures/{s}", .{assetFolder, mod, colorTexture});
+		colorReplacementTexturePath = main.stackAllocator.print("assets/{s}/items/textures/{s}", .{mod, colorTexture});
+	}
+	_ = items.register(assetFolder, texturePath, replacementTexturePath, colorTexturePath, colorReplacementTexturePath, id, zon);
 }
 
 fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {

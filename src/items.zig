@@ -48,7 +48,34 @@ const Material = struct { // MARK: Material
 		};
 	}
 
-	pub fn init(self: *Material, allocator: NeverFailingAllocator, zon: ZonElement) void {
+	fn loadColorsFromTexture(self: *Material, allocator: NeverFailingAllocator, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8) bool {
+		if (colorTexturePath.len == 0) return false;
+		const image = graphics.Image.readFromFile(main.stackAllocator, colorTexturePath, .{.orientation = .asIs}) catch |err| blk: {
+			if (err != error.FileNotFound) {
+				std.log.err("Error while reading material color texture '{s}': {s}", .{colorTexturePath, @errorName(err)});
+			}
+			break :blk graphics.Image.readFromFile(main.stackAllocator, colorReplacementTexturePath, .{.orientation = .asIs}) catch |err2| {
+				std.log.err("Error while reading material color texture. Tried '{s}' and '{s}': {s}", .{colorTexturePath, colorReplacementTexturePath, @errorName(err2)});
+				return false;
+			};
+		};
+		defer image.deinit(main.stackAllocator);
+		if (image.width == 0 or image.height < 2) {
+			std.log.err("Material color texture '{s}' must be at least 1x2 pixels (got {}x{}).", .{colorTexturePath, image.width, image.height});
+			return false;
+		}
+		self.colorPalette = allocator.alloc(Color, image.width);
+		for (0..image.width) |x| {
+			self.colorPalette[x] = image.getRGB(x, 0);
+		}
+		const shadow = image.getRGB(0, 1);
+		self.outlineColorShadow = if (shadow.a != 0) shadow else darken(self.colorPalette[0], 0.5);
+		const light = if (image.width >= 2) image.getRGB(1, 1) else Color{.r = 0, .g = 0, .b = 0, .a = 0};
+		self.outlineColorLight = if (light.a != 0) light else darken(self.colorPalette[self.colorPalette.len - 1], 0.7);
+		return true;
+	}
+
+	pub fn init(self: *Material, allocator: NeverFailingAllocator, zon: ZonElement, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8) void {
 		self.massDamage = zon.get(f32, "massDamage") orelse blk: {
 			std.log.err("Couldn't find material attribute 'massDamage'", .{});
 			break :blk 0;
@@ -66,20 +93,22 @@ const Material = struct { // MARK: Material
 			break :blk 0;
 		};
 		self.textureRoughness = @max(0, zon.get(f32, "textureRoughness") orelse 1.0);
-		const colors = zon.getChild("colors");
-		self.colorPalette = allocator.alloc(Color, colors.toSlice().len);
-		for (colors.toSlice(), self.colorPalette) |item, *color| {
-			color.* = Color.fromArgb(item.as(u32) orelse 0xff000000);
-		}
-		if (zon.get(u32, "outlineColorLight")) |colorInt| {
-			self.outlineColorLight = Color.fromArgb(colorInt);
-		} else {
-			self.outlineColorLight = darken(self.colorPalette[self.colorPalette.len - 1], 0.7);
-		}
-		if (zon.get(u32, "outlineColorShadow")) |colorInt| {
-			self.outlineColorShadow = Color.fromArgb(colorInt);
-		} else {
-			self.outlineColorShadow = darken(self.colorPalette[0], 0.5);
+		if (!self.loadColorsFromTexture(allocator, colorTexturePath, colorReplacementTexturePath)) {
+			const colors = zon.getChild("colors");
+			self.colorPalette = allocator.alloc(Color, colors.toSlice().len);
+			for (colors.toSlice(), self.colorPalette) |item, *color| {
+				color.* = Color.fromArgb(item.as(u32) orelse 0xff000000);
+			}
+			if (zon.get(u32, "outlineColorLight")) |colorInt| {
+				self.outlineColorLight = Color.fromArgb(colorInt);
+			} else {
+				self.outlineColorLight = darken(self.colorPalette[self.colorPalette.len - 1], 0.7);
+			}
+			if (zon.get(u32, "outlineColorShadow")) |colorInt| {
+				self.outlineColorShadow = Color.fromArgb(colorInt);
+			} else {
+				self.outlineColorShadow = darken(self.colorPalette[0], 0.5);
+			}
 		}
 		const modifiersZon = zon.getChild("modifiers");
 		self.modifiers = allocator.alloc(Modifier, modifiersZon.toSlice().len);
@@ -290,7 +319,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	block: ?u16,
 	foodValue: f32, // TODO: Effects.
 
-	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
+	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
 		self.id = allocator.dupe(u8, id);
 		if (texturePath.len == 0) {
 			self.image = graphics.Image.defaultImage;
@@ -306,7 +335,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 		const material = zon.getChild("material");
 		if (material == .object) {
 			self.material = Material{};
-			self.material.?.init(allocator, material);
+			self.material.?.init(allocator, material, colorTexturePath, colorReplacementTexturePath);
 		} else {
 			self.material = null;
 		}
@@ -1405,11 +1434,11 @@ pub fn reset() void {
 	itemListSize = 0;
 }
 
-pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) *BaseItem {
+pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8, id: []const u8, zon: ZonElement) *BaseItem {
 	const newItem = &itemList[itemListSize];
 	defer itemListSize += 1;
 
-	newItem.init(main.worldArena, texturePath, replacementTexturePath, id, zon);
+	newItem.init(main.worldArena, texturePath, replacementTexturePath, colorTexturePath, colorReplacementTexturePath, id, zon);
 	const result = reverseIndices.getOrPut(main.worldArena.allocator, newItem.id) catch unreachable;
 	if (!result.found_existing) {
 		result.value_ptr.* = @enumFromInt(itemListSize);
