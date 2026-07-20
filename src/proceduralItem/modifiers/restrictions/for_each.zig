@@ -22,9 +22,9 @@ pub fn satisfied(self: *const ForEach, proceduralItem: *const ProceduralItem, x:
 	}
 	std.log.debug("restrictionPower {}", .{combinedModifierPower});
 	return .{
-		.ifSatisfied = childValues.ifSatisfied, 
-		.totalItemsChecked = childValues.totalItemsChecked, 
-		.totalCountedItems = childValues.totalCountedItems, 
+		.ifSatisfied = childValues.ifSatisfied,
+		.totalItemsChecked = childValues.totalItemsChecked,
+		.totalCountedItems = childValues.totalCountedItems,
 		.modifierPower = combinedModifierPower,
 	};
 }

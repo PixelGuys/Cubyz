@@ -24,9 +24,9 @@ pub fn satisfied(self: *const Or, proceduralItem: *const ProceduralItem, x: i32,
 		combinedModifierPower = std.math.hypot(combinedModifierPower, childValues.modifierPower);
 	}
 	return .{
-		.ifSatisfied = combinedIsSatisfied, 
-		.totalItemsChecked = combinedTotalItemsChecked, 
-		.totalCountedItems = combinedtotalCountedItems, 
+		.ifSatisfied = combinedIsSatisfied,
+		.totalItemsChecked = combinedTotalItemsChecked,
+		.totalCountedItems = combinedtotalCountedItems,
 		.modifierPower = combinedModifierPower,
 	};
 }

@@ -14,9 +14,9 @@ const Not = struct {
 pub fn satisfied(self: *const Not, proceduralItem: *const ProceduralItem, x: i32, y: i32) ModifierRestrictionOutput {
 	const childValues = self.child.satisfied(proceduralItem, x, y);
 	return .{
-		.ifSatisfied = !childValues.ifSatisfied, 
-		.totalItemsChecked = childValues.totalItemsChecked, 
-		.totalCountedItems = childValues.totalItemsChecked - childValues.totalCountedItems, 
+		.ifSatisfied = !childValues.ifSatisfied,
+		.totalItemsChecked = childValues.totalItemsChecked,
+		.totalCountedItems = childValues.totalItemsChecked - childValues.totalCountedItems,
 		.modifierPower = childValues.modifierPower,
 	};
 }

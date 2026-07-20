@@ -8,9 +8,9 @@ const ModifierRestrictionOutput = main.items.ModifierRestrictionOutput;
 
 pub fn satisfied(_: *const anyopaque, _: *const ProceduralItem, _: i32, _: i32) ModifierRestrictionOutput {
 	return .{
-		.ifSatisfied = true, 
+		.ifSatisfied = true,
 		.totalItemsChecked = 0,
-		.totalCountedItems = 0,  
+		.totalCountedItems = 0,
 		.modifierPower = 1,
 	};
 }
