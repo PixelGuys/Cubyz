@@ -28,7 +28,7 @@ fn kickbyConnection(conn: *main.network.Connection) void {
 }
 
 fn kickByPlayerIndex(playerIndex: usize) void {
-	const command = std.fmt.allocPrint(main.globalAllocator.allocator, "kick @{d}", .{playerIndex}) catch unreachable;
+	const command = main.globalAllocator.print("kick @{d}", .{playerIndex});
 	main.sync.client.executeCommand(.{.chatCommand = .{.message = command}});
 }
 
@@ -45,7 +45,7 @@ pub fn onOpen() void {
 			const playerComponent = main.entity.components.@"cubyz:player".client.get(ent.id) orelse continue;
 			const row = HorizontalList.init();
 
-			const string = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{std.fmt.alt(ent, .formatWithPlayerIndex)}) catch unreachable;
+			const string = main.stackAllocator.print("{f}", .{std.fmt.alt(ent, .formatWithPlayerIndex)});
 			defer main.stackAllocator.free(string);
 			row.add(Label.init(.{0, 0}, 200, string, .left));
 			row.add(Button.initText(.{0, 0}, 100, "Kick", .{.onAction = .initWithInt(kickByPlayerIndex, playerComponent.playerIndex)}));
@@ -62,12 +62,12 @@ pub fn onOpen() void {
 			if (userList[i].id == main.game.Player.id and connection.isConnected()) continue;
 			const row = HorizontalList.init();
 			if (connection.handShakeState.load(.monotonic) == .complete) {
-				const string = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{connection.user.?}) catch unreachable;
+				const string = main.stackAllocator.print("{f}", .{connection.user.?});
 				defer main.stackAllocator.free(string);
 				row.add(Label.init(.{0, 0}, 200, string, .left));
 				row.add(Button.initText(.{0, 0}, 100, "Kick", .{.onAction = .initWithPtr(kickbyConnection, connection)}));
 			} else {
-				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{connection.remoteAddress}) catch unreachable;
+				const ip = main.stackAllocator.print("{f}", .{connection.remoteAddress});
 				defer main.stackAllocator.free(ip);
 				row.add(Label.init(.{0, 0}, 200, ip, .left));
 				row.add(Button.initText(.{0, 0}, 100, "Cancel", .{.onAction = .initWithPtr(kickbyConnection, connection)}));

@@ -548,7 +548,7 @@ pub const draw = struct { // MARK: draw
 	}
 
 	pub inline fn print(comptime format: []const u8, args: anytype, x: f32, y: f32, fontSize: f32) void {
-		const string = std.fmt.allocPrint(main.stackAllocator.allocator, format, args) catch unreachable;
+		const string = main.stackAllocator.print(format, args);
 		defer main.stackAllocator.free(string);
 		text(string, x, y, fontSize);
 	}
@@ -1942,7 +1942,7 @@ pub const Texture = struct { // MARK: Texture
 
 		curSize = largestSize;
 		while (curSize != 0) : (curSize /= 2) {
-			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}{}.png", .{pathPrefix, curSize}) catch unreachable;
+			const path = main.stackAllocator.print("{s}{}.png", .{pathPrefix, curSize});
 			defer main.stackAllocator.free(path);
 			const image = Image.readFromFile(main.stackAllocator, path, .{.orientation = .openGl}) catch |err| blk: {
 				std.log.err("Couldn't read image from {s}: {s}", .{path, @errorName(err)});
