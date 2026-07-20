@@ -34,8 +34,6 @@ layout(location = 4) uniform bool onlyDrawPreviouslyInvisible;
 
 layout(location = 6) uniform float lodDistance;
 
-layout(location = 7) uniform bool isDepth;
-
 bool isVisible(int dir, ivec3 playerDist) {
 	switch(dir) {
 	case 0: // dirUp

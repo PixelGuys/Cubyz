@@ -1,5 +1,7 @@
 #version 460
 
+#include "frame_uniforms.glsl"
+
 layout(location = 0) in vec3 mvVertexPos;
 layout(location = 1) in vec3 direction;
 layout(location = 2) in vec3 sunLight;
@@ -26,8 +28,6 @@ layout(binding = 6) uniform sampler2D shadowMap;
 layout(location = 5) uniform float reflectionMapSize;
 layout(location = 6) uniform float contrast;
 layout(location = 7) uniform float lodDistance;
-layout(location = 8) uniform mat4 lightProjectionMatrix;
-layout(location = 9) uniform mat4 lightViewMatrix;
 layout(location = 42) uniform vec3 lightDir;
 
 layout(std430, binding = 1) buffer _animatedTexture

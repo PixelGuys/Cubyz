@@ -226,6 +226,16 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	game.camera.updateViewMatrix();
 
+	main.graphics.frame_uniforms.uploadNewFrame(.{
+		.playerPositionInteger = @as(Vec3i, @floor(playerPos)),
+		.playerPositionFraction = @as(Vec3f, @floatCast(@mod(playerPos, Vec3d{1, 1, 1}))),
+		.projectionMatrix = game.projectionMatrix.toGl(),
+		.viewMatrix = game.camera.viewMatrix.toGl(),
+		.lightProjectionMatrix = lightProjection.toGl(),
+		.lightViewMatrix = lightView.toGl(),
+		.isDepth = false,
+	});
+
 	chunk_meshing.quadsDrawn = 0;
 	chunk_meshing.transparentQuadsDrawn = 0;
 	const depthMeshes = mesh_storage.updateAndGetRenderChunks(world.conn, &depthFrustum, playerPos, settings.renderDistance);
@@ -245,7 +255,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	blocks.meshes.blockTextureArray.bind();
 
 	gpu_performance_measuring.startQuery(.depth_framebuffer_chunk_rendering);
-	chunk_meshing.drawChunksIndirect(&depthChunkLists, lightProjection, lightProjection, lightView, lightDir, ambientLight, playerPos, .depth);
+	chunk_meshing.drawChunksIndirect(&depthChunkLists, ambientLight, lightDir, .depth);
 	gpu_performance_measuring.stopQuery();
 
 	chunk_meshing.endRender();
@@ -255,14 +265,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.clear);
 	worldFrameBuffer.clear(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
 	gpu_performance_measuring.stopQuery();
-	game.camera.updateViewMatrix();
-
-	main.graphics.frame_uniforms.uploadNewFrame(.{
-		.playerPositionInteger = @as(Vec3i, @floor(playerPos)),
-		.playerPositionFraction = @as(Vec3f, @floatCast(@mod(playerPos, Vec3d{1, 1, 1}))),
-		.projectionMatrix = game.projectionMatrix.toGl(),
-		.viewMatrix = game.camera.viewMatrix.toGl(),
-	});
 
 	// Uses FrustumCulling on the chunks.
 	const frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
@@ -313,7 +315,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	chunk_meshing.beginRender();
 
 	gpu_performance_measuring.startQuery(.chunk_rendering);
-	chunk_meshing.drawChunksIndirect(&chunkLists, ambientLight, false);
+	chunk_meshing.drawChunksIndirect(&chunkLists, ambientLight, lightDir, .regular);
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
@@ -354,7 +356,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		}
 		gpu_performance_measuring.stopQuery();
 		gpu_performance_measuring.startQuery(.transparent_rendering);
-		chunk_meshing.drawChunksIndirect(&chunkLists, ambientLight, .transparent);
+		chunk_meshing.drawChunksIndirect(&chunkLists, ambientLight, lightDir, .transparent);
 		gpu_performance_measuring.stopQuery();
 	}
 

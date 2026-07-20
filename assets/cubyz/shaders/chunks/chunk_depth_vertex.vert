@@ -1,16 +1,14 @@
 #version 460
 
+#include "chunk_data.glsl"
+#include "frame_uniforms.glsl"
+
 layout(location = 1) out vec3 direction;
 layout(location = 2) out vec2 uv;
 layout(location = 3) flat out vec3 normal;
 layout(location = 4) flat out int textureIndex;
 layout(location = 5) flat out int isBackFace;
 layout(location = 7) flat out int opaqueInLod;
-
-layout(location = 1) uniform mat4 projectionMatrix;
-layout(location = 2) uniform mat4 viewMatrix;
-layout(location = 3) uniform ivec3 playerPositionInteger;
-layout(location = 4) uniform vec3 playerPositionFraction;
 
 struct FaceData {
 	int encodedPositionAndLightIndex;
@@ -37,27 +35,6 @@ layout(std430, binding = 4) buffer _quads
 layout(std430, binding = 10) buffer _lightData
 {
 	uint lightData[];
-};
-
-struct ChunkData {
-	ivec4 position;
-	vec4 minPos;
-	vec4 maxPos;
-	int voxelSize;
-	uint lightStart;
-	uint vertexStartOpaque;
-	uint faceCountsByNormalOpaque[14];
-	uint vertexStartTransparent;
-	uint vertexCountTransparent;
-	uint visibilityState;
-	uint oldVisibilityState;
-	uint visibilityStateDepth;
-	uint oldVisibilityStateDepth;
-};
-
-layout(std430, binding = 6) buffer _chunks
-{
-	ChunkData chunks[];
 };
 
 vec3 square(vec3 x) {
@@ -91,7 +68,7 @@ void main() {
 
 	direction = position;
 
-	gl_Position = projectionMatrix*viewMatrix*vec4(position, 1);
+	gl_Position = lightProjectionMatrix*lightViewMatrix*vec4(position, 1);
 	uv = quads[quadIndex].cornerUV[vertexID]*voxelSize;
 	opaqueInLod = quads[quadIndex].opaqueInLod;
 }

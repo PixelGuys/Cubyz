@@ -41,8 +41,6 @@ const UniformStruct = struct {
 	lodDistance: c_int,
 	zNear: c_int,
 	zFar: c_int,
-	lightProjectionMatrix: c_int,
-	lightViewMatrix: c_int,
 	lightDir: c_int,
 };
 pub var uniforms: UniformStruct = undefined;
@@ -207,8 +205,10 @@ fn bindCommonUniforms(locations: *UniformStruct, ambient: Vec3f) void {
 	c.glUniform1f(locations.zFar, renderer.zFar);
 }
 
-pub fn bindShaderAndUniforms(ambient: Vec3f) void {
+pub fn bindShaderAndUniforms(ambient: Vec3f, lightDir: Vec3f) void {
 	pipeline.bind(null);
+
+	c.glUniform3fv(uniforms.lightDir, 1, @ptrCast(&lightDir));
 
 	bindCommonUniforms(&uniforms, ambient);
 
@@ -250,15 +250,15 @@ pub const DrawMode = enum {
 	depth,
 };
 
-pub fn drawChunksIndirect(chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), ambient: Vec3f, mode: DrawMode) void {
+pub fn drawChunksIndirect(chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), ambient: Vec3f, lightDir: Vec3f, mode: DrawMode) void {
 	for (0..chunkIds.len) |i| {
 		const lod = if (mode == .transparent) main.settings.highestSupportedLod - i else i;
 		bindBuffers(lod);
-		drawChunksOfLod(chunkIds[lod].items, ambient, mode);
+		drawChunksOfLod(chunkIds[lod].items, ambient, lightDir, mode);
 	}
 }
 
-fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, mode: DrawMode) void {
+fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, lightDir: Vec3f, mode: DrawMode) void {
 	if (chunkIDs.len == 0) return;
 	const drawCallsEstimate: u31 = @intCast(if (mode == .transparent) chunkIDs.len else chunkIDs.len*8);
 	var chunkIDAllocation: main.graphics.SubAllocation = .{.start = 0, .len = 0};
@@ -281,7 +281,7 @@ fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, mode: DrawMode) void {
 		if (mode == .depth) {
 			bindDepthShaderAndUniforms();
 		} else {
-			bindShaderAndUniforms(ambient);
+			bindShaderAndUniforms(ambient, lightDir);
 		}
 		c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 		c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
@@ -300,7 +300,7 @@ fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, mode: DrawMode) void {
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
 	switch (mode) {
-		.regular => bindShaderAndUniforms(ambient),
+		.regular => bindShaderAndUniforms(ambient, lightDir),
 		.transparent => bindTransparentShaderAndUniforms(ambient),
 		.depth => bindDepthShaderAndUniforms(),
 	}

@@ -2185,6 +2185,9 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 		viewMatrix: [4][4]f32,
 		playerPositionInteger: [3]i32 align(16),
 		playerPositionFraction: [3]f32 align(16),
+		lightProjectionMatrix: [4][4]f32,
+		lightViewMatrix: [4][4]f32,
+		isDepth: bool,
 	};
 
 	var buffers: [3]c_uint = undefined;
@@ -2306,6 +2309,9 @@ const block_texture = struct { // MARK: block_texture
 				if (i & 4 != 0) z = -z + 3;
 				break :blk .{x, y, z};
 			},
+			.lightProjectionMatrix = Mat4f.identity().toGl(),
+			.lightViewMatrix = Mat4f.identity().toGl(),
+			.isDepth = false,
 		});
 	}
 	fn deinit() void {
@@ -2382,7 +2388,7 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 			c.glBlendFunc(c.GL_ONE, c.GL_SRC1_COLOR);
 			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(.{1, 1, 1});
 		} else {
-			main.renderer.chunk_meshing.bindShaderAndUniforms(.{1, 1, 1});
+			main.renderer.chunk_meshing.bindShaderAndUniforms(.{1, 1, 1}, .{-1, -1, -1});
 		}
 
 		block_texture.ubo.bind();
