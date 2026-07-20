@@ -78,7 +78,7 @@ const Material = struct { // MARK: Material
 				.vTable = vTable,
 				.data = vTable.loadData(item),
 				.restriction = ModifierRestriction.loadFromZon(allocator, item.getChild("restriction")),
-				.restrictionPower = 0,
+				.restrictionPower = 1,
 			};
 		}
 	}
@@ -106,6 +106,11 @@ const Material = struct { // MARK: Material
 		}
 		for (self.modifiers) |modifier| {
 			if (modifier.restriction.vTable == modifierRestrictions.get("always").?) {
+				modifier.printTooltip(outString);
+				outString.appendSlice("\n");
+			} else if (modifier.restriction.vTable == modifierRestrictions.get("for_each").?) {
+				modifier.restriction.printTooltip(outString);
+				outString.appendSlice("\n  ");
 				modifier.printTooltip(outString);
 				outString.appendSlice("\n");
 			} else {
@@ -168,7 +173,7 @@ const Modifier = struct {
 		combineModifiers: *const fn (data1: Data, data2: Data) ?Data,
 		changeProceduralItemParameters: *const fn (proceduralItem: *ProceduralItem, data: Data, restrictionPower: f32) void,
 		changeBlockDamage: *const fn (damage: f32, block: Block, data: Data, restrictionPower: f32) f32,
-		printTooltip: *const fn (outString: *main.ListManaged(u8), data: Data) void,
+		printTooltip: *const fn (outString: *main.ListManaged(u8), data: Data, restrictionPower: f32) void,
 		loadData: *const fn (zon: ZonElement) Data,
 		priority: f32,
 
@@ -210,7 +215,7 @@ const Modifier = struct {
 	}
 
 	pub fn printTooltip(self: Modifier, outString: *main.ListManaged(u8)) void {
-		self.vTable.printTooltip(outString, self.data);
+		self.vTable.printTooltip(outString, self.data, self.restrictionPower);
 	}
 };
 
