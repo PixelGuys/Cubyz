@@ -486,6 +486,32 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 		return self.allocator.dupeZ(T, m) catch unreachable;
 	}
 
+	/// Allocates a formatted string which is returned on success.
+	///
+	/// Returned slice can be deallocated with `free`. If an arena-style allocator
+	/// is used instead, such as `std.heap.ArenaAllocator`, then no call to `free`
+	/// is necessary.
+	///
+	/// See `std.Io.Writer.print`.
+	pub fn print(a: NeverFailingAllocator, comptime format: []const u8, args: anytype) []u8 {
+		return std.fmt.allocPrint(a.allocator, format, args) catch unreachable;
+	}
+
+	/// Like `print` but returned slice has the provided sentinel.
+	///
+	/// Returned slice can be deallocated with `free`. If an arena-style allocator
+	/// is used instead, such as `std.heap.ArenaAllocator`, then no call to `free`
+	/// is necessary. Illegal behavior occurs if the returned slice is type-coerced
+	/// to a slice without the sentinel and then passed to `free`.
+	pub fn printSentinel(
+		a: NeverFailingAllocator,
+		comptime format: []const u8,
+		args: anytype,
+		comptime sentinel: u8,
+	) Allocator.Error![:sentinel]u8 {
+		return std.fmt.allocPrintSentinel(a.allocator, format, args, sentinel) catch unreachable;
+	}
+
 	pub fn createArena(self: NeverFailingAllocator) NeverFailingAllocator {
 		const arenaPtr = self.create(NeverFailingArenaAllocator);
 		arenaPtr.* = NeverFailingArenaAllocator.init(self);
