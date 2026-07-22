@@ -1323,7 +1323,6 @@ pub const Recipe = struct { // MARK: Recipe
 	pub fn toBytes(self: *const Recipe, writer: *BinaryWriter) void {
 		writer.writeEnum(BaseItemIndex, self.resultItem);
 		writer.writeVarInt(u16, self.resultAmount);
-		writer.writeVarInt(u16, self.resultAmount);
 		writer.writeVarInt(usize, self.sourceItems.len);
 		for (self.sourceItems, self.sourceAmounts) |item, amount| {
 			writer.writeEnum(BaseItemIndex, item);

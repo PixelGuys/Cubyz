@@ -642,6 +642,7 @@ pub fn toggleGameMenu() void {
 				_ = openWindows.swapRemove(i);
 				window.onCloseFn();
 			} else {
+				window.onToggleWindowFn();
 				i += 1;
 			}
 		}

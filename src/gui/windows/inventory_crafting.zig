@@ -189,6 +189,11 @@ pub fn onClose() void {
 	inventories.deinit();
 }
 
+pub fn onToggleWindowFn() void {
+	craftableFromTags[0] = main.Tag.handCraftable;
+	refresh();
+}
+
 pub fn update() void {
 	refresh();
 }
