@@ -58,72 +58,88 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	}
 }
 
+fn displaceByHalfExtentBounded(center: f32, extent: f32, max_extent: i32) struct {
+	min: i32,
+	max: i32,
+} {
+	return .{
+		.min = @max(@as(i32, @trunc(center - extent)) - 1, 0),
+		.max = @min(
+			@as(i32, @trunc(center + extent)) + 1,
+			max_extent,
+		),
+	};
+}
+
 fn generateSphere_(seed: *u64, map: *CaveMapFragment, relPos: Vec3f, radius: f32, comptime addTerrain: bool) void {
+	const lodScale = map.pos.voxelSize;
+	const scaledWidth = CaveMapFragment.width*lodScale;
+	const scaledHeight = CaveMapFragment.height*lodScale;
+
+	// Makes walls rough by adding a 1-in-roughnessChance chance that blocks
+	// remain unchanged.
+	const roughnessChance = 6;
+	const terrainShaper = if (addTerrain) CaveMapFragment.addRange else CaveMapFragment.removeRange;
+
 	const relX = relPos[0];
 	const relY = relPos[1];
 	const relZ = relPos[2];
-	var xMin = @as(i32, @trunc(relX - radius)) - 1;
-	xMin = @max(xMin, 0);
-	var xMax = @as(i32, @trunc(relX + radius)) + 1;
-	xMax = @min(xMax, CaveMapFragment.width*map.pos.voxelSize);
-	var yMin = @as(i32, @trunc(relY - radius)) - 1;
-	yMin = @max(yMin, 0);
-	var yMax = @as(i32, @trunc(relY + radius)) + 1;
-	yMax = @min(yMax, CaveMapFragment.width*map.pos.voxelSize);
-	if (xMin >= xMax or yMin >= yMax or relZ - radius + 1 >= @as(f32, @floatFromInt(CaveMapFragment.height*map.pos.voxelSize)) or relZ + radius + 1 < 0) {
+
+	const xDist = displaceByHalfExtentBounded(relX, radius, scaledWidth);
+	const yDist = displaceByHalfExtentBounded(relY, radius, scaledWidth);
+	const zDist = displaceByHalfExtentBounded(relZ, radius, scaledHeight);
+
+	if (xDist.min >= xDist.max or yDist.min >= yDist.max or zDist.min >= zDist.max) {
 		return;
 	}
+
+	const radiusSq = radius*radius;
+	const invRadiusSq = 1.0/(radiusSq);
+	const thresholdXY = 0.9*0.9*radiusSq;
+
 	// Go through all blocks within range of the sphere center and remove them.
-	var curX = xMin;
-	while (curX < xMax) : (curX += map.pos.voxelSize) {
-		const distToCenterX = (@as(f32, @floatFromInt(curX)) - relX)/radius;
-		var curY = yMin;
-		while (curY < yMax) : (curY += map.pos.voxelSize) {
-			const distToCenterY = (@as(f32, @floatFromInt(curY)) - relY)/radius;
-			const xyDistanceSquared = distToCenterX*distToCenterX + distToCenterY*distToCenterY;
+	var curX = xDist.min;
+	while (curX < xDist.max) : (curX += lodScale) {
+		const dx = @as(f32, @floatFromInt(curX)) - relX;
+		const dxSq = dx*dx;
+
+		var curY = yDist.min;
+		while (curY < yDist.max) : (curY += lodScale) {
+			const dy = @as(f32, @floatFromInt(curY)) - relY;
+			const dySq = dy*dy;
+			const xySumSq = dxSq + dySq;
+
 			var zMin: i32 = @trunc(relZ);
 			var zMax: i32 = @trunc(relZ);
-			if (xyDistanceSquared < 0.9*0.9) {
-				const zDistance = radius*@sqrt(0.9*0.9 - xyDistanceSquared);
+			if (xySumSq < thresholdXY) {
+				const zDistance = @sqrt(thresholdXY - xySumSq);
 				zMin = @trunc(relZ - zDistance);
 				zMax = @trunc(relZ + zDistance);
-				if (addTerrain) {
-					map.addRange(curX, curY, zMin, zMax); // Add the center range in a single call.
-				} else {
-					map.removeRange(curX, curY, zMin, zMax); // Remove the center range in a single call.
+				terrainShaper(map, curX, curY, zMin, zMax);
+			}
+
+			// Add some roughness to the upper cave walls:
+			var curZ: i32 = zMax;
+			while (curZ <= scaledHeight) : (curZ += lodScale) {
+				const dz = @as(f32, @floatFromInt(curZ)) - relZ;
+				const distToCenter = (xySumSq + dz*dz)*invRadiusSq;
+				if (distToCenter >= 1) break;
+
+				if (random.nextIntBounded(u8, seed, roughnessChance) != 0) {
+					terrainShaper(map, curX, curY, curZ, curZ + 1);
 				}
 			}
-			// Add some roughness at the upper cave walls:
-			var curZ: i32 = zMax;
-			while (curZ <= CaveMapFragment.height*map.pos.voxelSize) : (curZ += map.pos.voxelSize) {
-				const distToCenterZ = (@as(f32, @floatFromInt(curZ)) - relZ)/radius;
-				const distToCenter = distToCenterZ*distToCenterZ + xyDistanceSquared;
-				if (distToCenter < 1) {
-					// Add a small roughness parameter to make walls look a bit rough by filling only 5/6 of the blocks at the walls with air:
-					if (random.nextIntBounded(u8, seed, 6) != 0) {
-						if (addTerrain) {
-							map.addRange(curX, curY, curZ, curZ + 1);
-						} else {
-							map.removeRange(curX, curY, curZ, curZ + 1);
-						}
-					}
-				} else break;
-			}
-			// Add some roughness at the lower cave walls:
+
+			// Add some roughness to the lower cave walls:
 			curZ = zMin;
-			while (curZ >= 0) : (curZ -= map.pos.voxelSize) {
-				const distToCenterZ = (@as(f32, @floatFromInt(curZ)) - relZ)/radius;
-				const distToCenter = distToCenterZ*distToCenterZ + xyDistanceSquared;
-				if (distToCenter < 1) {
-					// Add a small roughness parameter to make walls look a bit rough by filling only 5/6 of the blocks at the walls with air:
-					if (random.nextIntBounded(u8, seed, 6) != 0) {
-						if (addTerrain) {
-							map.addRange(curX, curY, curZ, curZ + 1);
-						} else {
-							map.removeRange(curX, curY, curZ, curZ + 1);
-						}
-					}
-				} else break;
+			while (curZ >= 0) : (curZ -= lodScale) {
+				const dz = @as(f32, @floatFromInt(curZ)) - relZ;
+				const distToCenter = (xySumSq + dz*dz)*invRadiusSq;
+				if (distToCenter >= 1) break;
+
+				if (random.nextIntBounded(u8, seed, roughnessChance) != 0) {
+					terrainShaper(map, curX, curY, curZ, curZ + 1);
+				}
 			}
 		}
 	}
