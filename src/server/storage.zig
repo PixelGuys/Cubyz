@@ -40,7 +40,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 			.saveFolder = main.globalAllocator.dupe(u8, saveFolder),
 		};
 
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}/{}.region", .{saveFolder, pos.voxelSize, pos.wx, pos.wy, pos.wz}) catch unreachable;
+		const path = main.stackAllocator.print("{s}/{}/{}/{}/{}.region", .{saveFolder, pos.voxelSize, pos.wx, pos.wy, pos.wz});
 		defer main.stackAllocator.free(path);
 		const data = main.files.cubyzDir().read(main.stackAllocator, path) catch {
 			return self;
@@ -143,9 +143,9 @@ pub const RegionFile = struct { // MARK: RegionFile
 		}
 		std.debug.assert(writer.data.items.len == totalSize + headerSize);
 
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}/{}.region", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy, self.pos.wz}) catch unreachable;
+		const path = main.stackAllocator.print("{s}/{}/{}/{}/{}.region", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy, self.pos.wz});
 		defer main.stackAllocator.free(path);
-		const folder = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy}) catch unreachable;
+		const folder = main.stackAllocator.print("{s}/{}/{}/{}", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy});
 		defer main.stackAllocator.free(folder);
 
 		main.files.cubyzDir().makePath(folder) catch |err| {
@@ -182,7 +182,6 @@ pub const RegionFile = struct { // MARK: RegionFile
 
 // MARK: cache
 const cacheSize = 1 << 8; // Must be a power of 2!
-const cacheMask = cacheSize - 1;
 const associativity = 8;
 var cache: main.utils.Cache(RegionFile, cacheSize, associativity, cacheDeinit) = .{};
 const HashContext = struct {
@@ -215,7 +214,7 @@ fn cacheInit(pos: chunk.ChunkPosition) *RegionFile {
 		return region;
 	}
 	hashMapMutex.unlock();
-	const path: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks", .{server.world.?.path}) catch unreachable;
+	const path: []const u8 = main.stackAllocator.print("saves/{s}/chunks", .{server.world.?.path});
 	defer main.stackAllocator.free(path);
 	return RegionFile.init(pos, path);
 }

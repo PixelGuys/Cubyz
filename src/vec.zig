@@ -342,6 +342,28 @@ pub const Mat4f = struct { // MARK: Mat4f
 			dot(self.rows[3], vec),
 		};
 	}
+
+	pub fn fromGl(mat: [4][4]f32) Mat4f {
+		const t: Mat4f = .{
+			.rows = .{
+				mat[0],
+				mat[1],
+				mat[2],
+				mat[3],
+			},
+		};
+		return t.transpose();
+	}
+
+	pub fn toGl(self: Mat4f) [4][4]f32 {
+		const t = self.transpose();
+		return .{
+			t.rows[0],
+			t.rows[1],
+			t.rows[2],
+			t.rows[3],
+		};
+	}
 };
 
 pub const Complex = struct { // MARK: Complex

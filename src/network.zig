@@ -40,6 +40,7 @@ const Socket = struct {
 			c.WSAEINVAL => unreachable,
 			c.WSAENOBUFS => return error.SystemResources,
 			c.WSAENOTSOCK => return error.FileDescriptorNotASocket,
+			c.WSAECONNRESET => return error.ConnectionResetByPeer,
 			else => return error.UNKNOWN,
 		}
 	}
@@ -686,7 +687,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 		if (self.allowNewConnections or source.ip == Address.localHost) {
 			if (data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
-				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{source}) catch unreachable;
+				const ip = main.stackAllocator.print("{f}", .{source});
 				defer main.stackAllocator.free(ip);
 				const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ip) catch |err| {
 					std.log.err("Cannot connect user from external IP {f}: {s}", .{source, @errorName(err)});
@@ -759,20 +760,10 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	}
 };
 
-const UnconfirmedPacket = struct {
-	data: []const u8,
-	lastKeepAliveSentBefore: u32,
-	id: u32,
-};
-
 pub const Connection = struct { // MARK: Connection
 	const maxMtu: u32 = 65507; // max udp packet size
-	const importantHeaderSize: u32 = 5;
 	const minMtu: u32 = 576 - 20 - 8; // IPv4 MTU minus IP header minus udp header
 	const headerOverhead = 20 + 8 + 42; // IP Header + UDP Header + Ethernet header/footer
-	const congestionControl_historySize = 16;
-	const congestionControl_historyMask = congestionControl_historySize - 1;
-	const minimumBandWidth = 10_000;
 
 	const receiveBufferSize = 8 << 20;
 
