@@ -1,6 +1,5 @@
 .{
 	.isCave = true,
-	.tags = .{.cave_layer},
 	.fogDensity = 2,
 	.caveNoiseStrength = 10,
 	.music = "cubyz:totaldemented/vitreous",
@@ -19,6 +18,25 @@
 			.block = "cubyz:slate/smooth",
 			.size = 4,
 			.size_variance = 4,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:cave_sprouts"},
+			.chance = 0.03,
+			.width = 6,
+			.variation = 3,
+			.density = 0.06,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:cave_sprouts:1"},
+			.chance = 0.03,
+			.width = 3,
+			.variation = 2,
+			.density = 0.08,
+			.priority = 0.1,
+			.generationMode = .ceiling,
 		},
 	},
 }

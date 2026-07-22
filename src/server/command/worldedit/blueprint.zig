@@ -6,7 +6,7 @@ const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
 const Dir = main.files.Dir;
-const List = main.List;
+const ListManaged = main.ListManaged;
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
@@ -19,7 +19,7 @@ pub const usage =
 	\\/blueprint list
 ;
 
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/blueprint save <filePath>": struct {
 		_: enum { save },
 		filePath: FilePath,
@@ -57,19 +57,8 @@ const Args = union(enum) {
 	}
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/blueprint"});
-
-pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
-		return;
-	};
-	defer result.deinit(main.stackAllocator);
-
-	switch (result) {
+pub fn execute(args: Args, source: *User) void {
+	switch (args) {
 		.@"/blueprint save <filePath>" => |params| blueprintSave(params.filePath, source),
 		.@"/blueprint delete <filePath>" => |params| blueprintDelete(params.filePath, source),
 		.@"/blueprint load <filePath>" => |params| blueprintLoad(params.filePath, source),
@@ -165,19 +154,15 @@ fn blueprintLoad(filePath: FilePath, source: *User) void {
 const FilePath = struct {
 	path: []const u8,
 
-	pub fn deinit(self: FilePath, allocator: NeverFailingAllocator) void {
-		allocator.free(self.path);
+	pub fn parse(arena: NeverFailingAllocator, _: []const u8, arg: []const u8, _: *ListManaged(u8)) error{ParseError}!FilePath {
+		return .{.path = ensureBlueprintExtension(arena, arg)};
 	}
 
-	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, arg: []const u8, _: *List(u8)) error{ParseError}!FilePath {
-		return .{.path = ensureBlueprintExtension(allocator, arg)};
-	}
-
-	fn ensureBlueprintExtension(allocator: NeverFailingAllocator, fileName: []const u8) []const u8 {
+	fn ensureBlueprintExtension(arena: NeverFailingAllocator, fileName: []const u8) []const u8 {
 		if (!std.ascii.endsWithIgnoreCase(fileName, ".blp")) {
-			return std.fmt.allocPrint(allocator.allocator, "{s}.blp", .{fileName}) catch unreachable;
+			return arena.print("{s}.blp", .{fileName});
 		} else {
-			return allocator.dupe(u8, fileName);
+			return arena.dupe(u8, fileName);
 		}
 	}
 };
