@@ -79,13 +79,13 @@ fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const
 	defer main.stackAllocator.free(resultName);
 	var i: usize = 0;
 	while (true) {
-		const resultPath = main.stackAllocator.print("saves/{s}", .{resultName});
+		const resultPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{resultName}) catch unreachable;
 		defer main.stackAllocator.free(resultPath);
 
 		if (!main.files.cubyzDir().hasDir(resultPath)) break;
 
 		main.stackAllocator.free(resultName);
-		resultName = main.stackAllocator.print("{s}_{}", .{escapedName, i});
+		resultName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}_{}", .{escapedName, i}) catch unreachable;
 		i += 1;
 	}
 	return allocator.dupe(u8, resultName);
@@ -94,7 +94,7 @@ fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const
 pub fn tryCreateWorld(worldName: []const u8, worldSettings: Settings, preset: ZonElement) !void {
 	const worldPath = findValidFolderName(main.stackAllocator, worldName);
 	defer main.stackAllocator.free(worldPath);
-	const saveFolder = main.stackAllocator.print("saves/{s}", .{worldPath});
+	const saveFolder = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{worldPath}) catch unreachable;
 	defer main.stackAllocator.free(saveFolder);
 	try main.files.cubyzDir().makePath(saveFolder);
 
@@ -105,7 +105,7 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: Settings, preset: Zo
 	worldInfo.put("settings", worldSettings.toZon(main.stackAllocator));
 
 	{
-		const worldInfoPath = main.stackAllocator.print("saves/{s}/world.zig.zon", .{worldPath});
+		const worldInfoPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.zig.zon", .{worldPath}) catch unreachable;
 		defer main.stackAllocator.free(worldInfoPath);
 
 		worldInfo.put("name", worldName);
@@ -115,7 +115,7 @@ pub fn tryCreateWorld(worldName: []const u8, worldSettings: Settings, preset: Zo
 		try main.files.cubyzDir().writeZon(worldInfoPath, worldInfo);
 	}
 	{ // Make assets subfolder
-		const assetsPath = main.stackAllocator.print("saves/{s}/assets", .{worldPath});
+		const assetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets", .{worldPath}) catch unreachable;
 		defer main.stackAllocator.free(assetsPath);
 		try main.files.cubyzDir().makePath(assetsPath);
 	}
@@ -320,7 +320,6 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 	}
 
 	pub fn deinit(_: ChunkManager) void {
-		main.threadPool.updateTaskPriority();
 		for (0..main.settings.highestSupportedLod) |_| {
 			chunkCache.clear();
 		}
@@ -488,7 +487,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const arena = main.stackAllocator.createArena();
 		defer main.stackAllocator.destroyArena(arena);
 
-		var dir = try files.cubyzDir().openDir(arena.print("saves/{s}", .{path}));
+		var dir = try files.cubyzDir().openDir(try std.fmt.allocPrint(arena.allocator, "saves/{s}", .{path}));
 		defer dir.close();
 
 		self.blockPalette = try loadPalette(arena, path, "palette", "cubyz:air");
@@ -515,7 +514,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try self.loadWorldConfig(arena, dir, worldData);
 		try self.loadPlayerLoginInfo(dir);
 
-		try main.assets.loadWorldAssets(arena.print("{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.proceduralItemPalette, self.biomePalette, self.entityModelPalette, self.entityComponentPalette);
+		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arena.allocator, "{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.proceduralItemPalette, self.biomePalette, self.entityModelPalette, self.entityComponentPalette);
 		// Store the block palette now that everything is loaded.
 		try dir.writeZon("palette.zig.zon", self.blockPalette.storeToZon(arena));
 		try dir.writeZon("item_palette.zig.zon", self.itemPalette.storeToZon(arena));
@@ -527,14 +526,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));
 		errdefer self.chunkManager.deinit();
 
-		try permission.loadGroups(try dir.openIterableDir("groups"));
 		std.debug.assert(main.entityModel.getById("cubyz:missing") != null);
 
 		return self;
 	}
 
 	pub fn loadPalette(allocator: NeverFailingAllocator, worldName: []const u8, paletteName: []const u8, firstEntry: ?[]const u8) !*Palette {
-		const path = main.stackAllocator.print("saves/{s}/{s}.zig.zon", .{worldName, paletteName});
+		const path = try std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/{s}.zig.zon", .{worldName, paletteName});
 		defer main.stackAllocator.allocator.free(path);
 		const paletteZon = files.cubyzDir().readToZon(allocator, path) catch .null;
 		const palette = try main.assets.Palette.init(main.globalAllocator, paletteZon, firstEntry);
@@ -543,14 +541,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn deinit(self: *ServerWorld) void {
-		self.saveWorldConfig() catch |err| {
-			std.log.err("Error while saving world config: {s}", .{@errorName(err)});
-		};
-		self.saveAllPlayers() catch |err| {
-			std.log.err("Error while saving player data: {s}", .{@errorName(err)});
-		};
-		self.saveItemdrops() catch |err| {
-			std.log.err("Error while saving item data: {s}", .{@errorName(err)});
+		self.forceSave() catch |err| {
+			std.log.err("Error while saving the world: {s}", .{@errorName(err)});
 		};
 		while (self.chunkUpdateQueue.popFront()) |updateRequest| {
 			updateRequest.ch.save(self);
@@ -570,7 +562,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.biomePalette.deinit();
 		self.entityModelPalette.deinit();
 		self.entityComponentPalette.deinit();
-		permission.deinit();
 		main.globalAllocator.free(self.path);
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
@@ -629,7 +620,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			}
 
 			for (fileNames.items, 0..) |oldName, i| {
-				const newName = arena.print("{}.zon", .{i});
+				const newName = std.fmt.allocPrint(arena.allocator, "{}.zon", .{i}) catch unreachable;
 				try playerDir.dir.rename(oldName, playerDir.dir, newName, main.io);
 			}
 
@@ -653,7 +644,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn saveWorldConfig(self: *ServerWorld) !void {
-		const path = main.stackAllocator.print("saves/{s}/world.zig.zon", .{self.path});
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.zig.zon", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(path);
 		const worldData = try files.cubyzDir().readToZon(main.stackAllocator, path);
 		defer worldData.deinit(main.stackAllocator);
@@ -678,7 +669,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			if (file.kind == .file and std.mem.endsWith(u8, file.name, ".zon")) {
 				const zon = try playerDir.readToZon(main.stackAllocator, file.name);
 				defer zon.deinit(main.stackAllocator);
-				const fileNameBase = file.name[0..std.mem.findScalar(u8, file.name, '.').?];
+				const fileNameBase = file.name[0 .. std.mem.findScalar(u8, file.name, '.') orelse unreachable];
 				if (fileNameBase[0] == '0' and fileNameBase.len != 1) {
 					std.log.err("Player file {s} contains leading zeroes. Skipping.", .{file.name});
 					continue;
@@ -703,7 +694,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 						std.log.err("Couldn't read player file {s}. Skipping.", .{file.name});
 						continue;
 					};
-					const fullEntry = main.worldArena.print("name:{s}", .{name});
+					const fullEntry = std.fmt.allocPrint(main.worldArena.allocator, "name:{s}", .{name}) catch unreachable;
 					self.playerDatabase.put(main.worldArena.allocator, fullEntry, index) catch unreachable;
 				}
 			}
@@ -782,7 +773,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	fn regenerateLOD(self: *ServerWorld, newBiomeCheckSum: i64) !void {
 		std.log.info("Biomes have changed. Regenerating LODs... (this might take some time)", .{});
-		const mapsPath = main.stackAllocator.print("saves/{s}/maps", .{self.path});
+		const mapsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(mapsPath);
 		const hasSurfaceMaps = main.files.cubyzDir().hasDir(mapsPath);
 		if (hasSurfaceMaps) {
@@ -791,7 +782,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		// Delete old LODs:
 		for (1..main.settings.highestSupportedLod + 1) |i| {
 			const lod = @as(u32, 1) << @intCast(i);
-			const path = main.stackAllocator.print("saves/{s}/chunks/{}", .{self.path, lod});
+			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks/{}", .{self.path, lod}) catch unreachable;
 			defer main.stackAllocator.free(path);
 			main.files.cubyzDir().deleteTree(path) catch |err| {
 				if (err != error.FileNotFound) {
@@ -802,7 +793,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		// Find all the stored chunks:
 		var chunkPositions: main.List(ChunkPosition) = .empty;
 		defer chunkPositions.deinit(main.stackAllocator);
-		const path = main.stackAllocator.print("saves/{s}/chunks/1", .{self.path});
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks/1", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(path);
 		blk: {
 			var dirX = main.files.cubyzDir().openIterableDir(path) catch |err| {
@@ -925,7 +916,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const newBiomeCheckSum: i64 = @bitCast(terrain.biomes.getBiomeCheckSum(self.settings.seed));
 		if (newBiomeCheckSum != self.biomeChecksum) {
 			if (self.settings.testingMode) {
-				const dir = main.stackAllocator.print("saves/{s}/maps", .{self.path});
+				const dir = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{self.path}) catch unreachable;
 				defer main.stackAllocator.free(dir);
 				main.files.cubyzDir().deleteTree("maps") catch |err| {
 					std.log.err("Error while trying to remove maps folder of testingMode world: {s}", .{@errorName(err)});
@@ -938,7 +929,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 		try self.saveWorldConfig();
 		loadItemDrops: {
-			const itemsPath = main.stackAllocator.print("saves/{s}/itemdrops.bin", .{self.path});
+			const itemsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/itemdrops.bin", .{self.path}) catch unreachable;
 			defer main.stackAllocator.free(itemsPath);
 			const itemDropData: []const u8 = files.cubyzDir().read(main.stackAllocator, itemsPath) catch |err| {
 				if (err != error.FileNotFound) {
@@ -956,7 +947,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn loadPlayer(self: *ServerWorld, user: *User) !void {
-		const path = main.stackAllocator.print("saves/{s}/players/{}.zon", .{self.path, user.playerIndex});
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{}.zon", .{self.path, user.playerIndex}) catch unreachable;
 		defer main.stackAllocator.free(path);
 
 		const playerData = files.cubyzDir().readToZon(main.stackAllocator, path) catch .null;
@@ -969,7 +960,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				}
 			} else {
 				removeOld: {
-					const nameEntry = main.stackAllocator.print("name:{s}", .{playerData.get([]const u8, "name") orelse break :removeOld});
+					const nameEntry = std.fmt.allocPrint(main.stackAllocator.allocator, "name:{s}", .{playerData.get([]const u8, "name") orelse break :removeOld}) catch unreachable;
 					defer main.stackAllocator.free(nameEntry);
 					_ = self.playerDatabase.remove(nameEntry);
 				}
@@ -990,6 +981,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 			user.gamemode = .init(self.settings.defaultGamemode);
 		} else {
+			user.permissions.fromZon(playerData);
+
 			user.gamemode = .init(std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode") orelse @tagName(self.settings.defaultGamemode)) orelse self.settings.defaultGamemode);
 		}
 		user.inventory = loadPlayerInventory(main.game.Player.inventorySize, playerData.get([]const u8, "playerInventory") orelse "", .{.playerInventory = user.id}, path);
@@ -1030,7 +1023,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn savePlayer(self: *ServerWorld, user: *User) !void {
-		const path = main.stackAllocator.print("saves/{s}/players/{}.zon", .{self.path, user.playerIndex});
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{}.zon", .{self.path, user.playerIndex}) catch unreachable;
 		defer main.stackAllocator.free(path);
 
 		var playerZon: ZonElement = files.cubyzDir().readToZon(main.stackAllocator, path) catch .null;
@@ -1047,6 +1040,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 
 		playerZon.put("entity", user.player().save(main.stackAllocator, .disk));
+		user.permissions.toZon(main.stackAllocator, &playerZon);
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 
 		{
@@ -1064,7 +1058,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			playerZon.put("playerSpawnPos", spawnPos);
 		}
 
-		const playerPath = main.stackAllocator.print("saves/{s}/players", .{self.path});
+		const playerPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(playerPath);
 
 		try files.cubyzDir().makePath(playerPath);
@@ -1081,11 +1075,16 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 	}
 
-	fn saveItemdrops(self: *ServerWorld) !void {
+	pub fn forceSave(self: *ServerWorld) !void {
+		// TODO: Save chunks and player data
+		try self.saveWorldConfig();
+
+		try self.saveAllPlayers();
+
 		var itemDropData = main.utils.BinaryWriter.init(main.stackAllocator);
 		defer itemDropData.deinit();
 		self.itemDropManager.storeToBytes(&itemDropData);
-		const itemsPath = main.stackAllocator.print("saves/{s}/itemdrops.bin", .{self.path});
+		const itemsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/itemdrops.bin", .{self.path}) catch unreachable;
 		defer main.stackAllocator.free(itemsPath);
 		try files.cubyzDir().write(itemsPath, itemDropData.data.items);
 	}
@@ -1148,11 +1147,35 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		// Item Entities
 		self.itemDropManager.update(deltaTime);
-		{ // Collect item entities:
+		{
 			const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
 			defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 			for (userList) |user| {
 				self.itemDropManager.checkEntity(user);
+
+				// --- ASHFRAME CUSTOM (Auto AFK) ---
+				const prof = user.player();
+				const speed_sq = (prof.vel[0] * prof.vel[0]) + (prof.vel[1] * prof.vel[1]) + (prof.vel[2] * prof.vel[2]);
+
+				if (prof.is_afk) {
+					if (speed_sq > 0.0001) {
+						prof.is_afk = false;
+						prof.still_time = 0.0;
+						server.sendMessage("{s}§#00ff00 is no longer AFK", .{user.name});
+					}
+				} else {
+					if (speed_sq <= 0.0001) {
+						prof.still_time += deltaTime;
+
+						if (prof.still_time >= 300.0) {
+							prof.is_afk = true;
+							server.sendMessage("{s}§#aaaaaa is now AFK (Inactivity)", .{user.name});
+						}
+					} else {
+						prof.still_time = 0.0;
+					}
+				}
+				// --- ASHFRAME CUSTOM (Auto AFK) ---
 			}
 		}
 
@@ -1225,6 +1248,42 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		ch.mutex.lock();
 		defer ch.mutex.unlock();
 		const block = ch.getBlock(x - ch.super.pos.wx, y - ch.super.pos.wy, z - ch.super.pos.wz);
+
+		// --- ASHFRAME CUSTOM (Container Access Intercept Check) ---
+		if (std.mem.startsWith(u8, block.id(), "cubyz:chest")) {
+			const storage_mod = @import("storage.zig");
+			if (storage_mod.chest_locks.get(.{x, y, z})) |lock| {
+				if (lock.lock_type == 1) {
+					const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
+					defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+
+					var triggering_user: ?*User = null;
+					var closest_dist: f64 = 8.0 * 8.0;
+					const target_pos = Vec3d{ @floatFromInt(x), @floatFromInt(y), @floatFromInt(z) };
+
+					for (userList) |u| {
+						const dist = vec.lengthSquare(u.player().pos - target_pos);
+						if (dist < closest_dist) {
+							closest_dist = dist;
+							triggering_user = u;
+						}
+					}
+
+					if (triggering_user) |user| {
+						const player_key = user.newKeyString orelse user.name;
+						if (!std.mem.eql(u8, player_key, lock.owner_key)) {
+							if (std.mem.indexOf(u8, lock.allowed_keys, player_key) == null) {
+								user.sendMessage("#ff0000Access Denied: This chest is private property.", .{});
+								main.network.protocols.inventory.sendFailure(user.conn);
+								return null;
+							}
+						}
+					}
+				}
+			}
+		}
+		// --- ASHFRAME CUSTOM (Container Access Intercept Check) ---
+
 		if (block.blockEntity()) |blockEntity| {
 			blockEntity.getServerToClientData(.{x, y, z}, &ch.super, blockEntityDataWriter);
 		}
@@ -1239,6 +1298,62 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const pos: chunk.BlockPos = .fromWorldCoords(wx, wy, wz);
 		baseChunk.mutex.lock();
 		const currentBlock = baseChunk.getBlock(pos.x, pos.y, pos.z);
+
+		// --- ASHFRAME CUSTOM (Lockable Chest / Block Protection Intercept) ---
+		if (currentBlock.typ != _newBlock.typ) {
+			if (currentBlock.blockEntity()) |_| {
+				if (std.mem.startsWith(u8, currentBlock.id(), "cubyz:chest")) {
+					baseChunk.mutex.unlock();
+
+					const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
+					defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+
+					var triggering_user: ?*User = null;
+					var closest_dist: f64 = 8.0 * 8.0;
+
+					const target_pos = Vec3d{ @floatFromInt(wx), @floatFromInt(wy), @floatFromInt(wz) };
+					for (userList) |u| {
+						const dist = vec.lengthSquare(u.player().pos - target_pos);
+						if (dist < closest_dist) {
+							closest_dist = dist;
+							triggering_user = u;
+						}
+					}
+
+					if (triggering_user) |user| {
+						baseChunk.super.blockPosToEntityDataMapMutex.lock();
+						const opt_be_idx = baseChunk.super.blockPosToEntityDataMap.get(pos);
+						baseChunk.super.blockPosToEntityDataMapMutex.unlock();
+
+						if (opt_be_idx) |_| {
+							const storage_mod = @import("storage.zig");
+							if (storage_mod.chest_locks.get(.{wx, wy, wz})) |lock| {
+								const player_key = user.newKeyString orelse user.name;
+								if (!std.mem.eql(u8, player_key, lock.owner_key)) {
+									if (std.mem.indexOf(u8, lock.allowed_keys, player_key) == null) {
+										user.sendMessage("#ff0000This chest is securely locked and cannot be broken!", .{});
+
+										main.network.protocols.blockUpdate.send(user.conn, &.{.{
+											.pos = .{wx, wy, wz},
+											.newBlock = currentBlock,
+											.blockEntityData = &.{}
+										}});
+										return currentBlock;
+									}
+								}
+							}
+						}
+					}
+
+					baseChunk.mutex.lock();
+				}
+			}
+		}
+		// --- ASHFRAME CUSTOM (Lockable Chest / Block Protection Intercept) ---
+
+		// Corrected from 'var' to 'const' to satisfy the strict compiler warning
+		const newBlock = _newBlock;
+
 		if (oldBlock != null) {
 			if (oldBlock.? != currentBlock) {
 				baseChunk.mutex.unlock();
@@ -1246,43 +1361,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			}
 		}
 		baseChunk.mutex.unlock();
-
-		var newBlock = _newBlock;
-		for (chunk.Neighbor.iterable) |neighbor| {
-			const neighborPos, const chunkLocation = pos.neighbor(neighbor);
-			var ch = baseChunk;
-			if (chunkLocation == .inNeighborChunk) {
-				ch = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{
-					.wx = baseChunk.super.pos.wx +% pos.x +% neighbor.relX() & ~@as(i32, chunk.chunkMask),
-					.wy = baseChunk.super.pos.wy +% pos.y +% neighbor.relY() & ~@as(i32, chunk.chunkMask),
-					.wz = baseChunk.super.pos.wz +% pos.z +% neighbor.relZ() & ~@as(i32, chunk.chunkMask),
-					.voxelSize = 1,
-				});
-			}
-			defer if (ch != baseChunk) {
-				ch.decreaseRefCount();
-			};
-
-			ch.mutex.lock();
-			defer ch.mutex.unlock();
-
-			var neighborBlock = ch.getBlock(neighborPos.x, neighborPos.y, neighborPos.z);
-			if (neighborBlock.mode().dependsOnNeighbors and neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
-				ch.updateBlockAndSetChanged(neighborPos.x, neighborPos.y, neighborPos.z, neighborBlock);
-
-				const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
-				defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
-
-				for (userList) |user| {
-					main.network.protocols.blockUpdate.send(user.conn, &.{.{.pos = .{wx +% neighbor.relX(), wy +% neighbor.relY(), wz +% neighbor.relZ()}, .newBlock = neighborBlock, .blockEntityData = &.{}}});
-				}
-			}
-			if (newBlock.mode().dependsOnNeighbors) {
-				_ = newBlock.mode().updateData(&newBlock, neighbor, neighborBlock);
-			}
-		}
-		baseChunk.mutex.lock();
-		defer baseChunk.mutex.unlock();
 
 		if (currentBlock != _newBlock) {
 			if (currentBlock.blockEntity()) |blockEntity| {
