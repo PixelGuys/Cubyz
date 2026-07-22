@@ -13,27 +13,15 @@ const Mask = main.blueprint.Mask;
 pub const description = "Replace blocks in the world edit selection.";
 pub const usage = "/replace <old mask> <new pattern>";
 
-pub fn execute(args: []const u8, source: *User) void {
-	var argsSplit = std.mem.splitScalar(u8, args, ' ');
-	const oldMaskString = argsSplit.next() orelse {
-		return source.sendMessage("#ff0000Missing required <old> argument.", .{});
-	};
-	const newPatternString = argsSplit.next() orelse {
-		return source.sendMessage("#ff0000Missing required <new> argument.", .{});
-	};
+pub const Args = union(enum) {
+	@"/replace <old mask> <new pattern>": struct {
+		oldMask: command.MaskExpression,
+		newPattern: command.PatternExpression,
+	},
+};
 
+pub fn execute(args: Args, source: *User) void {
 	const selection = command.getCurrentSelection(source) catch return;
-
-	const oldMask = Mask.initFromString(main.stackAllocator, oldMaskString) catch |err| {
-		return source.sendMessage("#ff0000Error parsing mask: {s}", .{@errorName(err)});
-	};
-	defer oldMask.deinit(main.stackAllocator);
-
-	const newPattern = Pattern.initFromString(main.stackAllocator, newPatternString) catch |err| {
-		return source.sendMessage("#ff0000Error parsing pattern: {s}", .{@errorName(err)});
-	};
-	defer newPattern.deinit(main.stackAllocator);
-
 	const capture = Blueprint.capture(main.globalAllocator, selection);
 
 	switch (capture) {
@@ -44,7 +32,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			var modifiedBlueprint = blueprint.clone(main.stackAllocator);
 			defer modifiedBlueprint.deinit(main.stackAllocator);
 
-			modifiedBlueprint.replace(oldMask, null, newPattern);
+			modifiedBlueprint.replace(args.@"/replace <old mask> <new pattern>".oldMask.mask, null, args.@"/replace <old mask> <new pattern>".newPattern.pattern);
 			modifiedBlueprint.paste(selection.minPos, .{.preserveVoid = true});
 		},
 		.failure => |err| {

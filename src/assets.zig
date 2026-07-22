@@ -403,8 +403,8 @@ fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void 
 	var replacementTexturePath: []const u8 = &.{};
 	defer main.stackAllocator.free(replacementTexturePath);
 	if (zon.get([]const u8, "texture")) |texture| {
-		texturePath = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/items/textures/{s}", .{assetFolder, mod, texture});
-		replacementTexturePath = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/items/textures/{s}", .{mod, texture});
+		texturePath = main.stackAllocator.print("{s}/{s}/items/textures/{s}", .{assetFolder, mod, texture});
+		replacementTexturePath = main.stackAllocator.print("assets/{s}/items/textures/{s}", .{mod, texture});
 	}
 	_ = items.register(assetFolder, texturePath, replacementTexturePath, id, zon);
 }
@@ -768,7 +768,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		break :blk null;
 	}) |addon| {
 		if (addon.kind == .directory) {
-			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
+			const path = main.stackAllocator.printSentinel("assets/{s}/blocks/textures", .{addon.name}, 0);
 			defer main.stackAllocator.free(path);
 			// Check for access rights
 			if (!main.files.cwd().hasDir(path)) continue;
@@ -810,7 +810,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 		break :blk null;
 	}) |addon| {
 		if (addon.kind == .directory) {
-			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
+			const path = main.stackAllocator.printSentinel("assets/{s}/blocks/textures", .{addon.name}, 0);
 			defer main.stackAllocator.free(path);
 			// Check for access rights
 			if (!main.files.cwd().hasDir(path)) continue;
@@ -824,11 +824,11 @@ pub fn readAsset(allocator: NeverFailingAllocator, subPath: []const u8, id: []co
 	const mod = split.first();
 	const name = split.next().?;
 
-	var path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/{s}/{s}{s}", .{worldAssetFolder, mod, subPath, name, fileEnding}) catch unreachable;
+	var path = main.stackAllocator.print("{s}/{s}/{s}/{s}{s}", .{worldAssetFolder, mod, subPath, name, fileEnding});
 	defer main.stackAllocator.free(path);
 	if (!main.files.cwd().hasFile(path)) {
 		main.stackAllocator.free(path);
-		path = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/{s}/{s}{s}", .{mod, subPath, name, fileEnding}) catch unreachable;
+		path = main.stackAllocator.print("assets/{s}/{s}/{s}{s}", .{mod, subPath, name, fileEnding});
 	}
 
 	const data = main.files.cwd().read(allocator, path) catch |err| {
