@@ -14,6 +14,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const NeverFailingArenaAllocator = main.heap.NeverFailingArenaAllocator;
 const List = main.List;
 const files = main.files;
+const Tag = main.Tag;
 
 var common: Assets = undefined;
 
@@ -425,6 +426,8 @@ fn assignBlockItem(stringId: []const u8) !void {
 	const index = items.BaseItemIndex.fromId(stringId).?;
 	const item = &items.itemList[@intFromEnum(index)];
 	item.block = block;
+	const combinedTags = std.mem.concat(main.worldArena.allocator, Tag, &.{blocks.parseBlock(stringId).tags(), item.tags}) catch unreachable;
+	item.tags = combinedTags;
 }
 
 fn registerBiome(numericId: u32, stringId: []const u8, zon: ZonElement) void {

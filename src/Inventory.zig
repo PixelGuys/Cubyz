@@ -7,6 +7,7 @@ const Item = main.items.Item;
 const ItemStack = main.items.ItemStack;
 const ProceduralItem = main.items.ProceduralItem;
 const utils = main.utils;
+const Tag = main.Tag;
 const BinaryWriter = utils.BinaryWriter;
 const BinaryReader = utils.BinaryReader;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
@@ -537,6 +538,75 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 
 		main.sync.client.executeCommand(.{.craftProceduralItem = .init(destinations, workbenchInv)});
 	}
+
+	pub const SortOptions = struct {
+		ignoredSlotCount: usize,
+	};
+
+	pub fn sortItems(source: ClientInventory, options: SortOptions) void {
+		compressItems(source, options);
+		const InventorySize: usize = source.super.size() - options.ignoredSlotCount;
+		var SortList = main.ListManaged(usize).init(main.stackAllocator);
+		var intermediaryList = main.ListManaged(usize).init(main.stackAllocator);
+		defer SortList.deinit();
+		defer intermediaryList.deinit();
+		for (0..InventorySize) |i| {
+			SortList.append(i + options.ignoredSlotCount);
+			intermediaryList.append(i + options.ignoredSlotCount);
+		}
+		const ctx: SortContext = .{.inv = source, .sortlist = SortList};
+		std.sort.insertion(usize, SortList.items, ctx, SortContext.lessThan);
+		for (0..InventorySize) |i| {
+			if (SortList.items[i] == intermediaryList.items[i]) continue;
+			var previousIndex: usize = i;
+			var checkedIndex = SortList.items[i] - options.ignoredSlotCount;
+			while (checkedIndex != i) {
+				main.sync.client.executeCommand(.{.depositOrSwap = .{
+					.dest = .{.inv = source.super, .slot = @intCast(previousIndex + options.ignoredSlotCount)},
+					.source = .{.inv = source.super, .slot = @intCast(checkedIndex + options.ignoredSlotCount)},
+				}});
+				std.mem.swap(usize, &intermediaryList.items[previousIndex], &intermediaryList.items[checkedIndex]);
+				previousIndex = checkedIndex;
+				checkedIndex = SortList.items[checkedIndex] - options.ignoredSlotCount;
+			}
+		}
+	}
+
+	pub fn compressItems(source: ClientInventory, options: SortOptions) void {
+		for (source.super._items, 0..) |invStack, slot| {
+			if (invStack.item == .null) continue;
+			if (slot < options.ignoredSlotCount) continue;
+			for (source.super._items, 0..) |checkedInvStack, checkedSlot| {
+				if (checkedInvStack.item == .null) continue;
+				if (checkedSlot < slot) continue;
+				if (checkedSlot < options.ignoredSlotCount) continue;
+				if (std.meta.eql(invStack.item, checkedInvStack.item)) {
+					main.sync.client.executeCommand(.{.deposit = .{.dest = .{.inv = source.super, .slot = @intCast(checkedSlot)}, .source = .{.inv = source.super, .slot = @intCast(slot)}, .amount = checkedInvStack.amount}});
+				}
+			}
+		}
+	}
+
+	const SortContext = struct {
+		inv: ClientInventory,
+		sortlist: main.ListManaged(usize),
+
+		pub fn lessThan(ctx: @This(), a: usize, b: usize) bool {
+			const itemA: Item = ctx.inv.getItem(a);
+			const itemB: Item = ctx.inv.getItem(b);
+
+			if (itemA == .null) return false;
+			if (itemB == .null) return true;
+			if ((itemA != .proceduralItem) and (itemB == .proceduralItem)) return false;
+			if ((itemA == .proceduralItem) and (itemB != .proceduralItem)) return true;
+
+			return std.mem.lessThan(u8, itemA.id().?, itemB.id().?);
+		}
+
+		pub fn swap(ctx: *@This(), a: usize, b: usize) void {
+			std.mem.swap(usize, ctx.sortlist[a], ctx.sortlist[b]);
+		}
+	};
 
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {
 		std.debug.assert(self.type == .serverShared);

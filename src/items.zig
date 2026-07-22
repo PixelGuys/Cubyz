@@ -1238,6 +1238,14 @@ pub const Item = union(ItemType) { // MARK: Item
 			}
 		}
 	}
+
+	pub fn getTags(self: Item) []const Tag {
+		switch (self) {
+			.null => return &[_]Tag{},
+			.proceduralItem => return self.proceduralItem.type.tags(),
+			.baseItem => return self.baseItem.tags(),
+		}
+	}
 };
 
 pub const ItemStack = struct { // MARK: ItemStack
