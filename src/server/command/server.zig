@@ -8,15 +8,24 @@ pub const usage =
 	\\/server <stop/restart>
 ;
 
-pub const Args = union(enum) {
+const Args = union(enum) {
 	@"/server <action>": struct { action: main.server.StopType },
 };
 
-pub fn execute(args: Args, source: *User) void {
-	if (args.@"/server <action>".action == .restart and !main.settings.launchConfig.headlessServer) {
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/server"});
+
+pub fn execute(args: []const u8, source: *User) void {
+	var errorMessage: main.List(u8) = .empty;
+	defer errorMessage.deinit(main.stackAllocator);
+
+	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
+		source.sendMessage("#ff0000{s}", .{errorMessage.items});
+		return;
+	};
+	if (result.@"/server <action>".action == .restart and !main.settings.launchConfig.headlessServer) {
 		source.sendMessage("#ff0000Headfull restart isn't supported yet.", .{});
 		return;
 	}
 
-	main.server.stop(args.@"/server <action>".action);
+	main.server.stop(result.@"/server <action>".action);
 }
