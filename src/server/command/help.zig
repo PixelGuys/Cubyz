@@ -2,27 +2,46 @@ const std = @import("std");
 
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const ListManaged = main.ListManaged;
+const List = main.List;
 const command = main.server.command;
 const User = main.server.User;
 
-pub const description = "Shows info about all the commands.";
+pub const description = "Shows info about all the commands you are permitted to use.";
 pub const usage = "/help\n/help <command>";
 
-pub const Args = union(enum) {
+const Args = union(enum) {
 	@"/help <bobik>": struct { bobik: enum { Bobik, bobik } },
 	@"/help <command>": struct { command: Cmd },
 	@"/help": struct {},
 };
 
-pub fn execute(args: Args, source: *User) void {
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/help"});
+
+pub fn execute(args: []const u8, source: *User) void {
+	var errorMessage: main.List(u8) = .empty;
+	defer errorMessage.deinit(main.stackAllocator);
+
+	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
+		source.sendMessage("#ff0000{s}", .{errorMessage.items});
+		return;
+	};
+
 	var msg: main.ListManaged(u8) = .init(main.stackAllocator);
 	defer msg.deinit();
 	msg.appendSlice("#ffff00");
-	switch (args) {
+	switch (result) {
 		.@"/help" => {
 			var iterator = command.commands.valueIterator();
 			while (iterator.next()) |cmd| {
+				// --- ASHFRAME CUSTOM (help permission validation) ---
+				// Build permission path using a buffer to handle variable runtime string lengths safely
+				var buf: [128]u8 = undefined;
+				const perm_path = std.fmt.bufPrint(&buf, "/command/{s}", .{cmd.name}) catch continue;
+
+				// Restrict and completely hide commands the player shouldn't know exist
+				if (!source.hasPermission(perm_path)) continue;
+				// --- ASHFRAME CUSTOM (help permission validation) ---
+
 				msg.append('/');
 				msg.appendSlice(cmd.name);
 				msg.appendSlice(": ");
@@ -33,6 +52,17 @@ pub fn execute(args: Args, source: *User) void {
 		},
 		.@"/help <command>" => |params| {
 			const cmd = params.command.cmd;
+
+			// --- ASHFRAME CUSTOM (help targeting check) ---
+			var buf: [128]u8 = undefined;
+			const perm_path = std.fmt.bufPrint(&buf, "/command/{s}", .{cmd.name}) catch return;
+
+			if (!source.hasPermission(perm_path)) {
+				source.sendMessage("#ff0000Unrecognized command name.", .{});
+				return;
+			}
+			// --- ASHFRAME CUSTOM (help targeting check) ---
+
 			msg.append('/');
 			msg.appendSlice(cmd.name);
 			msg.appendSlice(": ");
@@ -52,10 +82,10 @@ pub fn execute(args: Args, source: *User) void {
 const Cmd = struct {
 	cmd: command.Command,
 
-	pub fn parse(_: NeverFailingAllocator, name: []const u8, arg: []const u8, errorList: *ListManaged(u8)) error{ParseError}!Cmd {
+	pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8, errorList: *List(u8)) error{ParseError}!Cmd {
 		return .{
 			.cmd = command.commands.get(arg) orelse {
-				errorList.print("Unrecognized command name for <{s}>, got {s}", .{name, arg});
+				errorList.print(allocator, "Unrecognized command name for <{s}>, got {s}", .{name, arg});
 				return error.ParseError;
 			},
 		};
