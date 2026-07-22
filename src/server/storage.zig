@@ -9,15 +9,6 @@ const utils = main.utils;
 const BinaryWriter = utils.BinaryWriter;
 const BinaryReader = utils.BinaryReader;
 
-// --- ASHFRAME CUSTOM (Chest Lock Map) ---
-pub const LockData = struct {
-	owner_key: []const u8,
-	lock_type: u8,
-	allowed_keys: []const u8,
-};
-pub var chest_locks: std.AutoHashMap(main.vec.Vec3i, LockData) = undefined;
-// --- ASHFRAME CUSTOM (Chest Lock Map) ---
-
 pub const RegionFile = struct { // MARK: RegionFile
 	const version = 0;
 	pub const regionShift = 2;
@@ -34,7 +25,6 @@ pub const RegionFile = struct { // MARK: RegionFile
 	storedInHashMap: bool = false,
 	saveFolder: []const u8,
 
-
 	pub fn getIndex(x: usize, y: usize, z: usize) usize {
 		std.debug.assert(x < regionSize and y < regionSize and z < regionSize);
 		return ((x*regionSize) + y)*regionSize + z;
@@ -50,7 +40,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 			.saveFolder = main.globalAllocator.dupe(u8, saveFolder),
 		};
 
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}/{}.region", .{saveFolder, pos.voxelSize, pos.wx, pos.wy, pos.wz}) catch unreachable;
+		const path = main.stackAllocator.print("{s}/{}/{}/{}/{}.region", .{saveFolder, pos.voxelSize, pos.wx, pos.wy, pos.wz});
 		defer main.stackAllocator.free(path);
 		const data = main.files.cubyzDir().read(main.stackAllocator, path) catch {
 			return self;
@@ -153,9 +143,9 @@ pub const RegionFile = struct { // MARK: RegionFile
 		}
 		std.debug.assert(writer.data.items.len == totalSize + headerSize);
 
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}/{}.region", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy, self.pos.wz}) catch unreachable;
+		const path = main.stackAllocator.print("{s}/{}/{}/{}/{}.region", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy, self.pos.wz});
 		defer main.stackAllocator.free(path);
-		const folder = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy}) catch unreachable;
+		const folder = main.stackAllocator.print("{s}/{}/{}/{}", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy});
 		defer main.stackAllocator.free(folder);
 
 		main.files.cubyzDir().makePath(folder) catch |err| {
@@ -192,7 +182,6 @@ pub const RegionFile = struct { // MARK: RegionFile
 
 // MARK: cache
 const cacheSize = 1 << 8; // Must be a power of 2!
-const cacheMask = cacheSize - 1;
 const associativity = 8;
 var cache: main.utils.Cache(RegionFile, cacheSize, associativity, cacheDeinit) = .{};
 const HashContext = struct {
@@ -225,7 +214,7 @@ fn cacheInit(pos: chunk.ChunkPosition) *RegionFile {
 		return region;
 	}
 	hashMapMutex.unlock();
-	const path: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks", .{server.world.?.path}) catch unreachable;
+	const path: []const u8 = main.stackAllocator.print("saves/{s}/chunks", .{server.world.?.path});
 	defer main.stackAllocator.free(path);
 	return RegionFile.init(pos, path);
 }
@@ -243,22 +232,10 @@ fn tryHashmapDeinit(region: *RegionFile) void {
 
 pub fn init() void {
 	stillUsedHashMap = .init(main.globalAllocator.allocator);
-	// --- ASHFRAME CUSTOM (Map Allocation Init) ---
-	chest_locks = std.AutoHashMap(main.vec.Vec3i, LockData).init(main.globalAllocator.allocator);
-	// --- ASHFRAME CUSTOM (Map Allocation Init) ---
 }
 
 pub fn deinit() void {
 	cache.clear();
-
-	// --- ASHFRAME CUSTOM (Free Lock Data Strings) ---
-	var iter = chest_locks.iterator();
-	while (iter.next()) |entry| {
-		main.globalAllocator.free(entry.value_ptr.owner_key);
-	}
-	chest_locks.deinit();
-	// --- ASHFRAME CUSTOM (Free Lock Data Strings) ---
-
 	stillUsedHashMap.deinit();
 }
 
@@ -446,26 +423,6 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 			if (tempWriter.data.items.len == 0) continue;
 
 			writer.writeInt(u15, pos.toIndex());
-			// --- ASHFRAME CUSTOM (Lock Compress Hook) ---
-			if (target == .toDisk and std.mem.startsWith(u8, block.id(), "cubyz:chest")) {
-				const globalPos = ch.localToGlobalPosition(pos);
-				if (chest_locks.get(globalPos)) |lock| {
-					var wrapper = BinaryWriter.init(main.stackAllocator);
-					defer wrapper.deinit();
-
-					wrapper.writeSlice(tempWriter.data.items);
-					wrapper.writeSlice("ASHLOCK");
-					wrapper.writeInt(u8, lock.lock_type);
-					wrapper.writeVarInt(usize, lock.owner_key.len);
-					wrapper.writeSlice(lock.owner_key);
-
-					writer.writeVarInt(usize, wrapper.data.items.len);
-					writer.writeSlice(wrapper.data.items);
-					continue;
-				}
-			}
-			// --- ASHFRAME CUSTOM (Lock Compress Hook) ---
-
 			writer.writeVarInt(usize, tempWriter.data.items.len);
 			writer.writeSlice(tempWriter.data.items);
 		}
@@ -482,47 +439,12 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 			const globalPos = ch.localToGlobalPosition(pos);
 			const dataLength = try reader.readVarInt(usize);
 
-			var blockEntityData = try reader.readSlice(dataLength);
+			const blockEntityData = try reader.readSlice(dataLength);
 			const block = ch.data.getValue(pos.toIndex());
 			const blockEntity = block.blockEntity() orelse {
 				std.log.err("Could not load BlockEntity at position {} for block {s}: Block has no block entity", .{globalPos, block.id()});
 				continue;
 			};
-
-			// --- ASHFRAME CUSTOM (Lock Decompress Hook) ---
-			if (side == .server and std.mem.startsWith(u8, block.id(), "cubyz:chest")) {
-				if (blockEntityData.len >= 7) {
-					const tail = blockEntityData[blockEntityData.len - 7..];
-					if (std.mem.eql(u8, tail, "ASHLOCK")) {
-						if (std.mem.indexOf(u8, blockEntityData, "ASHLOCK")) |marker_idx| {
-							var footerReader = BinaryReader.init(blockEntityData[marker_idx..]);
-							_ = footerReader.readSlice(7) catch ""; // Skip marker string
-
-							const lock_type = footerReader.readInt(u8) catch 1;
-							const key_len = footerReader.readVarInt(usize) catch 0;
-							const key_name = footerReader.readSlice(key_len) catch "";
-
-							var friend_keys: []const u8 = "";
-							if (footerReader.remaining.len > 0) {
-								const allowed_len = footerReader.readVarInt(usize) catch 0;
-								friend_keys = footerReader.readSlice(allowed_len) catch "";
-							}
-
-							const allocated_key = main.globalAllocator.dupe(u8, key_name);
-							const allocated_allowed = main.globalAllocator.dupe(u8, friend_keys);
-
-							try chest_locks.put(globalPos, .{
-								.owner_key = allocated_key,
-								.lock_type = lock_type,
-								.allowed_keys = allocated_allowed,
-							});
-
-							blockEntityData = blockEntityData[0..marker_idx];
-						}
-					}
-				}
-			}
-			// --- ASHFRAME CUSTOM (Lock Decompress Hook) ---
 
 			var tempReader = BinaryReader.init(blockEntityData);
 			if (side == .server) {
