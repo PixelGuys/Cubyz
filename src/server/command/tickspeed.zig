@@ -9,13 +9,23 @@ pub const usage =
 	\\/tickspeed <rate>
 ;
 
-pub const Args = union(enum) {
+const Args = union(enum) {
 	@"/tickspeed <rate>": struct { rate: u32 },
 	@"/tickspeed": struct {},
 };
 
-pub fn execute(args: Args, source: *User) void {
-	switch (args) {
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/tickspeed"});
+
+pub fn execute(args: []const u8, source: *User) void {
+	var errorMessage: main.List(u8) = .empty;
+	defer errorMessage.deinit(main.stackAllocator);
+
+	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
+		source.sendMessage("#ff0000{s}", .{errorMessage.items});
+		return;
+	};
+
+	switch (result) {
 		.@"/tickspeed <rate>" => |tickSpeed| main.server.world.?.tickSpeed.store(tickSpeed.rate, .monotonic),
 		.@"/tickspeed" => {},
 	}
