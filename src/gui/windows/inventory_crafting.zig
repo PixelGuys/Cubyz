@@ -47,6 +47,7 @@ pub fn init() void {
 
 pub fn deinit() void {
 	arrowTexture.deinit();
+	main.stackAllocator.free(craftableFromTags);
 }
 
 pub fn openFromCallback(craftingTags: []main.Tag) void {
