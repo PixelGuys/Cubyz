@@ -32,6 +32,14 @@ pub const Args = union(enum) {
 		sourcePlayerIndex: command.PlayerIndex,
 		destinationPlayerIndex: command.PlayerIndex,
 	},
+	@"/tp <sourcePlayerIndex> <x> <y> <z> <yaw> <pitch>": struct {
+		sourcePlayerIndex: ?command.PlayerIndex,
+		x: command.Coordinate,
+		y: command.Coordinate,
+		z: command.Coordinate,
+		yaw: command.Rotation,
+		pitch: command.Rotation,
+	},
 };
 
 pub fn execute(args: Args, source: Source) void {
@@ -104,5 +112,6 @@ pub fn execute(args: Args, source: Source) void {
 			break :blk dest.user.player().pos;
 		},
 	};
-	main.network.protocols.genericUpdate.sendTPCoordinates(target.user.conn, pos);
+
+	if (!std.meta.eql(target.user.player().pos, pos)) main.network.protocols.genericUpdate.sendTPCoordinates(target.conn, pos);
 }
