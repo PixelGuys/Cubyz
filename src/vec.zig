@@ -448,6 +448,18 @@ pub const Mat4f = struct { // MARK: Mat4f
 		};
 	}
 
+	pub fn fromGl(mat: [4][4]f32) Mat4f {
+		const t: Mat4f = .{
+			.rows = .{
+				mat[0],
+				mat[1],
+				mat[2],
+				mat[3],
+			},
+		};
+		return t.transpose();
+	}
+
 	pub fn toGl(self: Mat4f) [4][4]f32 {
 		const t = self.transpose();
 		return .{

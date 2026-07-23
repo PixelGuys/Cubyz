@@ -346,6 +346,12 @@ const GenerationStructure = struct {
 	}
 
 	fn addSubBiomesOf(biome: BiomePoint, preMap: *[preMapSize][preMapSize]BiomeSample, extraBiomes: *main.ListManaged(BiomePoint), wx: i32, wy: i32, width: u31, height: u31, worldSeed: u64, comptime radius: enum { known, unknown }) void {
+		const maxSubbiomeMargin: i32 = @ceil(biome.radius + if (radius == .unknown) biome.radius/2 else 0);
+		if (biome.pos[0] +% maxSubbiomeMargin -% wx < 0) return;
+		if (biome.pos[1] +% maxSubbiomeMargin -% wy < 0) return;
+		if (biome.pos[0] +% maxSubbiomeMargin -% wx >= width) return;
+		if (biome.pos[1] +% maxSubbiomeMargin -% wy >= height) return;
+
 		var seed = random.initSeed2D(worldSeed, @bitCast(biome.pos));
 		var biomeCount: f32 = undefined;
 		if (biome.biome.subBiomeTotalChance > biome.biome.maxSubBiomeCount) {
