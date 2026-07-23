@@ -28,6 +28,7 @@ const mesh_storage = @import("mesh_storage.zig");
 
 var pipeline: graphics.Pipeline = undefined;
 var transparentPipeline: graphics.Pipeline = undefined;
+var depthPipeline: graphics.Pipeline = undefined;
 const UniformStruct = struct {
 	screenSize: c_int,
 	ambientLight: c_int,
@@ -40,9 +41,12 @@ const UniformStruct = struct {
 	lodDistance: c_int,
 	zNear: c_int,
 	zFar: c_int,
+	lightDir: c_int,
 };
 pub var uniforms: UniformStruct = undefined;
 pub var transparentUniforms: UniformStruct = undefined;
+const DepthUniformStruct = struct {};
+pub var depthUniforms: DepthUniformStruct = undefined;
 pub var commandPipeline: graphics.ComputePipeline = undefined;
 pub var commandUniforms: struct {
 	chunkIDIndex: c_int,
@@ -51,8 +55,12 @@ pub var commandUniforms: struct {
 	isTransparent: c_int,
 	onlyDrawPreviouslyInvisible: c_int,
 	lodDistance: c_int,
+	isDepth: c_int,
 } = undefined;
 pub var occlusionTestPipeline: graphics.Pipeline = undefined;
+pub var occlusionTestUniforms: struct {
+	isDepth: c_int,
+} = undefined;
 pub var vao: graphics.VertexArray = undefined;
 pub var faceBuffers: [settings.highestSupportedLod + 1]graphics.LargeBuffer(FaceData) = undefined;
 pub var lightBuffers: [settings.highestSupportedLod + 1]graphics.LargeBuffer(u32) = undefined;
@@ -93,12 +101,23 @@ pub fn init() void {
 			.alphaBlendOp = .add,
 		}}},
 	);
+	depthPipeline = graphics.Pipeline.init(
+		"assets/cubyz/shaders/chunks/chunk_depth_vertex.vert",
+		"assets/cubyz/shaders/chunks/chunk_depth_fragment.frag",
+		"",
+		&depthUniforms,
+		graphics.VertexArray.EmptyVertex,
+		&.{},
+		.{.cullMode = .none},
+		.{.depthTest = true, .depthWrite = true, .depthCompare = .lessOrEqual},
+		.{.attachments = &.{.noBlending}},
+	);
 	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms);
 	occlusionTestPipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/chunks/occlusionTestVertex.vert",
 		"assets/cubyz/shaders/chunks/occlusionTestFragment.frag",
 		"",
-		null,
+		&occlusionTestUniforms,
 		graphics.VertexArray.EmptyVertex,
 		&.{},
 		.{},
@@ -135,6 +154,7 @@ pub fn init() void {
 pub fn deinit() void {
 	pipeline.deinit();
 	transparentPipeline.deinit();
+	depthPipeline.deinit();
 	occlusionTestPipeline.deinit();
 	commandPipeline.deinit();
 	vao.deinit();
@@ -180,8 +200,10 @@ fn bindCommonUniforms(locations: *UniformStruct, ambient: Vec3f) void {
 	c.glUniform1f(locations.zFar, renderer.zFar);
 }
 
-pub fn bindShaderAndUniforms(ambient: Vec3f) void {
+pub fn bindShaderAndUniforms(ambient: Vec3f, lightDir: Vec3f) void {
 	pipeline.bind(null);
+
+	c.glUniform3fv(uniforms.lightDir, 1, @ptrCast(&lightDir));
 
 	bindCommonUniforms(&uniforms, ambient);
 
@@ -201,22 +223,34 @@ pub fn bindTransparentShaderAndUniforms(ambient: Vec3f) void {
 	vao.bind();
 }
 
+pub fn bindDepthShaderAndUniforms() void {
+	depthPipeline.bind(null);
+
+	vao.bind();
+}
+
 fn bindBuffers(lod: usize) void {
 	faceBuffers[lod].ssbo.bind(faceBuffers[lod].binding);
 	lightBuffers[lod].ssbo.bind(lightBuffers[lod].binding);
 }
 
-pub fn drawChunksIndirect(chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), ambient: Vec3f, transparent: bool) void {
+pub const DrawMode = enum {
+	regular,
+	transparent,
+	depth,
+};
+
+pub fn drawChunksIndirect(chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), ambient: Vec3f, lightDir: Vec3f, mode: DrawMode) void {
 	for (0..chunkIds.len) |i| {
-		const lod = if (transparent) main.settings.highestSupportedLod - i else i;
+		const lod = if (mode == .transparent) main.settings.highestSupportedLod - i else i;
 		bindBuffers(lod);
-		drawChunksOfLod(chunkIds[lod].items, ambient, transparent);
+		drawChunksOfLod(chunkIds[lod].items, ambient, lightDir, mode);
 	}
 }
 
-fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, transparent: bool) void {
+fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, lightDir: Vec3f, mode: DrawMode) void {
 	if (chunkIDs.len == 0) return;
-	const drawCallsEstimate: u31 = @intCast(if (transparent) chunkIDs.len else chunkIDs.len*8);
+	const drawCallsEstimate: u31 = @intCast(if (mode == .transparent) chunkIDs.len else chunkIDs.len*8);
 	var chunkIDAllocation: main.graphics.SubAllocation = .{.start = 0, .len = 0};
 	chunkIDBuffer.uploadData(chunkIDs, &chunkIDAllocation);
 	defer chunkIDBuffer.free(chunkIDAllocation);
@@ -227,16 +261,17 @@ fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, transparent: bool) voi
 	c.glUniform1ui(commandUniforms.chunkIDIndex, chunkIDAllocation.start);
 	c.glUniform1ui(commandUniforms.commandIndexStart, allocation.start);
 	c.glUniform1ui(commandUniforms.size, @intCast(chunkIDs.len));
-	c.glUniform1i(commandUniforms.isTransparent, @intFromBool(transparent));
-	if (!transparent) {
+	c.glUniform1i(commandUniforms.isTransparent, @intFromBool(mode == .transparent));
+	c.glUniform1i(commandUniforms.isDepth, @intFromBool(mode == .depth));
+	if (mode != .transparent) {
 		c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 0);
 		c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
 		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
-		if (transparent) {
-			bindTransparentShaderAndUniforms(ambient);
+		if (mode == .depth) {
+			bindDepthShaderAndUniforms();
 		} else {
-			bindShaderAndUniforms(ambient);
+			bindShaderAndUniforms(ambient, lightDir);
 		}
 		c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 		c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
@@ -244,6 +279,7 @@ fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, transparent: bool) voi
 
 	// Occlusion tests:
 	occlusionTestPipeline.bind(null);
+	c.glUniform1i(occlusionTestUniforms.isDepth, @intFromBool(mode == .depth));
 	vao.bind();
 	c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(6*6*chunkIDs.len), c.GL_UNSIGNED_INT, null, chunkIDAllocation.start*24);
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
@@ -254,10 +290,10 @@ fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, transparent: bool) voi
 	c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
-	if (transparent) {
-		bindTransparentShaderAndUniforms(ambient);
-	} else {
-		bindShaderAndUniforms(ambient);
+	switch (mode) {
+		.regular => bindShaderAndUniforms(ambient, lightDir),
+		.transparent => bindTransparentShaderAndUniforms(ambient),
+		.depth => bindDepthShaderAndUniforms(),
 	}
 	c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 	c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
@@ -296,6 +332,8 @@ pub const ChunkData = extern struct {
 	vertexCountTransparent: u32,
 	visibilityState: u32,
 	oldVisibilityState: u32,
+	visibilityStateDepth: u32,
+	oldVisibilityStateDepth: u32,
 };
 
 pub const IndirectData = extern struct {
@@ -1431,6 +1469,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			.max = self.max,
 			.visibilityState = 0,
 			.oldVisibilityState = 0,
+			.visibilityStateDepth = 0,
+			.oldVisibilityStateDepth = 0,
 		}}, &self.chunkAllocation);
 	}
 

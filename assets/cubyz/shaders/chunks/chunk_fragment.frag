@@ -1,14 +1,20 @@
 #version 460
 
+#include "frame_uniforms.glsl"
+
 layout(location = 0) in vec3 mvVertexPos;
 layout(location = 1) in vec3 direction;
-layout(location = 2) in vec3 light;
-layout(location = 3) in vec2 uv;
-layout(location = 4) flat in vec3 normal;
-layout(location = 5) flat in int textureIndex;
-layout(location = 6) flat in int isBackFace;
-layout(location = 7) flat in float distanceForLodCheck;
-layout(location = 8) flat in int opaqueInLod;
+layout(location = 2) in vec3 sunLight;
+layout(location = 3) in vec3 blockLight;
+layout(location = 4) in vec2 uv;
+layout(location = 5) in vec3 shadowPos;
+layout(location = 6) flat in vec3 normal;
+layout(location = 7) flat in int textureIndex;
+layout(location = 8) flat in int isBackFace;
+layout(location = 9) flat in float distanceForLodCheck;
+layout(location = 10) flat in int opaqueInLod;
+layout(location = 11) flat in mat4 worldToQuad;
+layout(location = 15) flat in mat3 uvTransform;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -17,15 +23,21 @@ layout(binding = 1) uniform sampler2DArray emissionSampler;
 layout(binding = 2) uniform sampler2DArray reflectivityAndAbsorptionSampler;
 layout(binding = 4) uniform samplerCube reflectionMap;
 layout(binding = 5) uniform sampler2D ditherTexture;
+layout(binding = 6) uniform sampler2D shadowMap;
 
 layout(location = 5) uniform float reflectionMapSize;
 layout(location = 6) uniform float contrast;
 layout(location = 7) uniform float lodDistance;
+layout(location = 42) uniform vec3 lightDir;
 
 layout(std430, binding = 1) buffer _animatedTexture
 {
 	float animatedTexture[];
 };
+
+vec3 square(vec3 x) {
+	return x*x;
+}
 
 float lightVariation(vec3 normal) {
 	const vec3 directionalPart = vec3(0, contrast/2, contrast);
@@ -51,6 +63,27 @@ vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012
 	return texture(reflectionMap, v);
 }
 
+float shadowCalculation() {
+	if (dot(lightDir, normal) > 0.0) return 1.0;
+
+	vec3 shadowPosUV = uvTransform * (worldToQuad * lightViewMatrix * vec4(shadowPos, 1.0)).xyz;
+	shadowPosUV.xy = ceil(shadowPosUV.xy * 16.0) / 16.0;
+	vec4 shadowPosSnapped = inverse(worldToQuad) * vec4(inverse(uvTransform) * shadowPosUV, 1.0);
+
+	vec4 lightPos = lightProjectionMatrix * shadowPosSnapped;
+	vec3 projCoords = lightPos.xyz;
+	projCoords = projCoords * 0.5 + 0.5;
+	float clipMargin = 0.05;
+	if(projCoords.z >= 1.0 - clipMargin || projCoords.z <= clipMargin) {
+		return 0.0;
+	}
+	float closestDepth = texture(shadowMap, projCoords.xy).r;
+	float currentDepth = projCoords.z;
+	currentDepth += 0.0001;
+	float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
+	return shadow;
+}
+
 void main() {
 	float animatedTextureIndex = animatedTexture[textureIndex];
 	float normalVariation = lightVariation(normal);
@@ -62,6 +95,11 @@ void main() {
 	fresnelReflection *= min(1, 2*reflectivity); // Limit it to 2*reflectivity to avoid making every block reflective.
 	reflectivity = reflectivity*fixedCubeMapLookup(reflect(direction, normal)).x;
 	reflectivity = reflectivity*(1 - fresnelReflection) + fresnelReflection;
+
+	vec3 shadowColor = vec3(0.5, 0.5, 0.35);
+
+	float shadow = shadowCalculation();
+	vec3 light = min(sqrt(square((1.0 - shadow*shadowColor)*sunLight) + square(blockLight)), vec3(31))/31;
 
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
 	fragColor = texture(textureSampler, textureCoords)*vec4(pixelLight, 1);
