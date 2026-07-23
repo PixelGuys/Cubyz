@@ -607,6 +607,7 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 		biome = 4,
 		particles = 5,
 		clear = 6,
+		setRotation = 7,
 	};
 
 	const WorldEditPosition = enum(u2) {
@@ -626,6 +627,13 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 			},
 			.teleport => {
 				game.Player.setPosBlocking(try reader.readVec(Vec3d));
+			},
+			.setRotation => {
+				var rot: Vec3f = try reader.readVec(Vec3f);
+				const bound = std.math.pi/2.0 - 0.001;
+				rot[0] = std.math.clamp(rot[0], -bound, bound);
+				game.camera.rotation[0] = rot[0];
+				game.camera.rotation[2] = rot[2];
 			},
 			.worldEditPos => {
 				const typ = try reader.readEnum(WorldEditPosition);
@@ -705,7 +713,7 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 
 	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		switch (try reader.readEnum(UpdateType)) {
-			.gamemode, .teleport, .time, .biome, .particles, .clear => return error.InvalidSide,
+			.gamemode, .teleport, .setRotation, .time, .biome, .particles, .clear => return error.InvalidSide,
 			.worldEditPos => {
 				const typ = try reader.readEnum(WorldEditPosition);
 				const pos: ?Vec3i = switch (typ) {
@@ -734,6 +742,16 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 
 		writer.writeEnum(UpdateType, .teleport);
 		writer.writeVec(Vec3d, pos);
+
+		conn.send(.secure, id, writer.data.items);
+	}
+
+	pub fn sendTPRotation(conn: *Connection, rot: Vec3f) void {
+		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 25);
+		defer writer.deinit();
+
+		writer.writeEnum(UpdateType, .setRotation);
+		writer.writeVec(Vec3f, rot);
 
 		conn.send(.secure, id, writer.data.items);
 	}
