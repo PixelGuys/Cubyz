@@ -89,12 +89,42 @@ pub const Coordinate = union(enum) {
 	}
 };
 
+pub const Rotation = union(enum) {
+	relative: f32, // Relative rotations are indicated by leading `~`.
+	absolute: f32,
+
+	pub fn parse(_: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!Rotation {
+		const isRelative = arg[0] == '~';
+		const numberSlice = if (isRelative) arg[1..] else arg;
+		if (isRelative and numberSlice.len == 0) return .{.relative = 0};
+		if (isRelative) {
+			return .{.relative = std.fmt.parseFloat(f32, numberSlice) catch {
+				errorMessage.print("Expected number for <{s}>, found \"{s}\"", .{name, numberSlice});
+				return error.ParseError;
+			}};
+		}
+		return .{.absolute = std.fmt.parseFloat(f32, numberSlice) catch {
+			errorMessage.print("Expected number or \"~\" for <{s}>, found \"{s}\"", .{name, arg});
+			return error.ParseError;
+		}};
+	}
+};
+
 pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, player: *User) main.vec.Vec3d {
 	return .{
 		// TODO: Remove clamp after #310 is implemented
 		std.math.clamp(if (x == .relative) player.player().pos[0] + x.relative else x.absolute, -1e9, 1e9),
 		std.math.clamp(if (y == .relative) player.player().pos[1] + y.relative else y.absolute, -1e9, 1e9),
 		std.math.clamp(if (z == .relative) player.player().pos[2] + z.relative else z.absolute, -1e9, 1e9),
+	};
+}
+
+pub fn resolveRotation(x: Rotation, z: Rotation, player: *User) main.vec.Vec3f {
+	const bound = std.math.pi/2.0 - 0.001;
+	return .{
+		std.math.clamp(if (x == .relative) player.player().rot[0] + x.relative*std.math.pi/180 else x.absolute*std.math.pi/180, -bound, bound),
+		0,
+		if (z == .relative) player.player().rot[2] + @mod(z.relative,360)*std.math.pi/180 else @mod(z.absolute,360)*std.math.pi/180,
 	};
 }
 

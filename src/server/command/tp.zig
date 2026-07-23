@@ -18,6 +18,13 @@ pub const Args = union(enum) {
 		y: command.Coordinate,
 		z: command.Coordinate,
 	},
+	@"/tp <x> <y> <z> <yaw> <pitch>": struct {
+		x: command.Coordinate,
+		y: command.Coordinate,
+		z: command.Coordinate,
+		yaw: command.Rotation,
+		pitch: command.Rotation,
+	},
 	@"/tp <playerIndex>": struct { playerIndex: command.PlayerIndex },
 };
 
@@ -76,6 +83,10 @@ pub fn execute(args: Args, source: *User) void {
 			return;
 		},
 		.@"/tp <x> <y> <z>" => |pos| {
+			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source);
+		},
+		.@"/tp <x> <y> <z> <yaw> <pitch>" => |pos| {
+			main.network.protocols.genericUpdate.sendTPRotation(source.conn, command.resolveRotation(pos.yaw, pos.pitch, source));
 			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source);
 		},
 		.@"/tp <playerIndex>" => |index| {
