@@ -109,11 +109,11 @@ void main() {
 	vec3 p0 = vec3(quads[quadIndex].corners[0][0], quads[quadIndex].corners[0][1], quads[quadIndex].corners[0][2]);
 	vec3 p1 = vec3(quads[quadIndex].corners[1][0], quads[quadIndex].corners[1][1], quads[quadIndex].corners[1][2]);
 	vec3 p3 = vec3(quads[quadIndex].corners[3][0], quads[quadIndex].corners[3][1], quads[quadIndex].corners[3][2]);
-	
+
 	vec2 uv0 = vec2(quads[quadIndex].cornerUV[0][0], quads[quadIndex].cornerUV[0][1]);
 	vec2 uv1 = vec2(quads[quadIndex].cornerUV[1][0], quads[quadIndex].cornerUV[1][1]);
 	vec2 uv3 = vec2(quads[quadIndex].cornerUV[3][0], quads[quadIndex].cornerUV[3][1]);
-	
+
 	vec3 u = p1 - p0;
 	vec3 v = p3 - p0;
 	mat3 invBasis = inverse(mat3(u, v, cross(u,v)));
