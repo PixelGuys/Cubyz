@@ -843,6 +843,9 @@ pub fn connect(user: *User) void {
 }
 
 pub fn connectInternal(user: *User) void {
+	if (main.server.world.?.mode == .singleplayer) {
+		user.initPlayer();
+	}
 	main.network.protocols.handShake.sendServerPlayerData(user.conn);
 	user.conn.handShakeState.store(.complete, .monotonic);
 

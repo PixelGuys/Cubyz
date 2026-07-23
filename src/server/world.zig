@@ -513,7 +513,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		errdefer main.assets.unloadAssets();
 
 		const worldData = try dir.readToZon(arena, "world.zig.zon");
-		self.whitelisted = worldData.get(bool, "whitelisted", false);
+		self.whitelisted = worldData.get(bool, "whitelisted") orelse false;
 		try self.loadWorldConfig(arena, dir, worldData);
 		try self.loadPlayerLoginInfo(dir);
 
@@ -999,7 +999,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand") orelse "", .{.hand = user.id}, path);
 
 		user.spawnPos = playerData.get(Vec3d, "playerSpawnPos");
-		user.mayJoin = playerData.get(mayJoinState, "mayJoin", .default);
+		user.mayJoin = playerData.get(mayJoinState, "mayJoin") orelse .default;
 
 		return loadingError;
 	}
