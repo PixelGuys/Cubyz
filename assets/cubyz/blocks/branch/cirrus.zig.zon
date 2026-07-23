@@ -23,7 +23,7 @@
 			.modifiers = .{
 				.{
 					.id = "light",
-					.strength = 0.15,
+					.multStrength = 0.15,
 				},
 			},
 		},
