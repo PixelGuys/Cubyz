@@ -669,6 +669,8 @@ pub const MenuBackGround = struct {
 		main.graphics.frame_uniforms.uploadNewFrame(.{
 			.playerPositionInteger = @splat(0),
 			.playerPositionFraction = @splat(0),
+			.lightProjectionMatrix = Mat4f.identity().toGl(),
+			.lightViewMatrix = Mat4f.identity().toGl(),
 			.projectionMatrix = game.projectionMatrix.toGl(),
 			.viewMatrix = viewMatrix.toGl(),
 		});

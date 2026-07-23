@@ -631,6 +631,8 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		displayItemUbo = .init(.{
 			.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(main.renderer.lastWidth))/@as(f32, @floatFromInt(main.renderer.lastHeight)), 0.01, 3).toGl(),
 			.viewMatrix = Mat4f.identity().toGl(),
+			.lightProjectionMatrix = Mat4f.identity().toGl(),
+			.lightViewMatrix = Mat4f.identity().toGl(),
 			.playerPositionInteger = @splat(0),
 			.playerPositionFraction = @splat(0),
 		});
