@@ -1,0 +1,64 @@
+.{
+	.properties = .{.mountain, .cold, .wet},
+	.tags = .{.pine, .snowy},
+	.minHeight = 458,
+	.maxHeight = 458,
+	.smoothBeaches = true,
+	.radius = 220,
+	.mountains = 110,
+	.chance = 0,
+	.maxSubBiomeCount = 1,
+	.stoneBlock = "cubyz:glacite/smooth",
+	.validPlayerSpawn = false,
+	.music = "cubyz:totaldemented/frigid_feeling",
+	.ground_structure = .{
+		"1 to 3 cubyz:snow",
+		"3 to 5 cubyz:permafrost",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.001,
+			.block = "cubyz:snow",
+			.size = 5,
+			.size_variance = 1,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/loblolly",
+			.placeMode = .degradable,
+			.chance = 0.025,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/eastern_white",
+			.placeMode = .degradable,
+			.chance = 0.025,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/young_tree",
+			.placeMode = .degradable,
+			.chance = 0.02,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/standalone_roots",
+			.placeMode = .degradable,
+			.chance = 0.01,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:snow",
+			.chance = 0.02,
+			.size = 6,
+			.size_variation = 5,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:tall_mountain/cold/slope2",
+			.chance = 1,
+		},
+	},
+}
