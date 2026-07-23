@@ -95,5 +95,5 @@ pub fn execute(args: Args, source: *User) void {
 			break :blk target.user.player().pos;
 		},
 	};
-	main.network.protocols.genericUpdate.sendTPCoordinates(source.conn, pos);
+	if (!std.meta.eql(source.player().pos, pos)) main.network.protocols.genericUpdate.sendTPCoordinates(source.conn, pos);
 }
