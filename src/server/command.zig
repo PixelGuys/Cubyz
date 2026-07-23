@@ -124,7 +124,7 @@ pub fn resolveRotation(x: Rotation, z: Rotation, player: *User) main.vec.Vec3f {
 	return .{
 		std.math.clamp(if (x == .relative) player.player().rot[0] + x.relative*std.math.pi/180 else x.absolute*std.math.pi/180, -bound, bound),
 		0,
-		if (z == .relative) player.player().rot[2] + @mod(z.relative,360)*std.math.pi/180 else @mod(z.absolute,360)*std.math.pi/180,
+		if (z == .relative) player.player().rot[2] + @mod(z.relative, 360)*std.math.pi/180 else @mod(z.absolute, 360)*std.math.pi/180,
 	};
 }
 
