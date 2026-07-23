@@ -73,7 +73,8 @@ float shadowCalculation() {
 	vec4 lightPos = lightProjectionMatrix * shadowPosSnapped;
 	vec3 projCoords = lightPos.xyz;
 	projCoords = projCoords * 0.5 + 0.5;
-	if(projCoords.x >= 1.0 || projCoords.x <= 0.0 || projCoords.y >= 1.0 || projCoords.y <= 0.0 || projCoords.z >= 1.0 || projCoords.z <= 0.0) {
+	float clipMargin = 0.05;
+	if(projCoords.z >= 1.0 - clipMargin || projCoords.z <= clipMargin) {
 		return 0.0;
 	}
 	float closestDepth = texture(shadowMap, projCoords.xy).r;
