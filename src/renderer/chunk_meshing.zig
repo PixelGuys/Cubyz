@@ -45,8 +45,7 @@ const UniformStruct = struct {
 };
 pub var uniforms: UniformStruct = undefined;
 pub var transparentUniforms: UniformStruct = undefined;
-const DepthUniformStruct = struct {
-};
+const DepthUniformStruct = struct {};
 pub var depthUniforms: DepthUniformStruct = undefined;
 pub var commandPipeline: graphics.ComputePipeline = undefined;
 pub var commandUniforms: struct {

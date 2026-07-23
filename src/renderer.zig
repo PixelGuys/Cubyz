@@ -930,7 +930,7 @@ pub const Frustum = struct { // MARK: Frustum
 		planes[1] = Plane{.pos = .{0, 0, 0}, .norm = .{0, 1, 0}};
 		planes[2] = Plane{.pos = .{1, 0, 0}, .norm = .{-1, 0, 0}};
 		planes[3] = Plane{.pos = .{0, 1, 0}, .norm = .{0, -1, 0}};
-		
+
 		var self: Frustum = undefined;
 		inline for (0.., planes) |i, plane| {
 			const newPos = vec.xyz(invView.mulVec(vec.combine(plane.pos, 1.0)));

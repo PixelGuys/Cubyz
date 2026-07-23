@@ -306,94 +306,90 @@ pub const Mat4f = struct { // MARK: Mat4f
 		v1[0] = swizzle(mt.rows[3], .z, .w, .z, .w);
 		v0[1] = swizzle(mt.rows[0], .x, .x, .y, .y);
 		v1[1] = swizzle(mt.rows[1], .z, .w, .z, .w);
-		v0[2] = @shuffle(f32, mt.rows[2], mt.rows[0], [4]i32{ 0, 2, ~@as(i32, 0), ~@as(i32, 2) });
-		v1[2] = @shuffle(f32, mt.rows[3], mt.rows[1], [4]i32{ 1, 3, ~@as(i32, 1), ~@as(i32, 3) });
+		v0[2] = @shuffle(f32, mt.rows[2], mt.rows[0], [4]i32{0, 2, ~@as(i32, 0), ~@as(i32, 2)});
+		v1[2] = @shuffle(f32, mt.rows[3], mt.rows[1], [4]i32{1, 3, ~@as(i32, 1), ~@as(i32, 3)});
 
-		var d0 = v0[0] * v1[0];
-		var d1 = v0[1] * v1[1];
-		var d2 = v0[2] * v1[2];
+		var d0 = v0[0]*v1[0];
+		var d1 = v0[1]*v1[1];
+		var d2 = v0[2]*v1[2];
 
 		v0[0] = swizzle(mt.rows[2], .z, .w, .z, .w);
 		v1[0] = swizzle(mt.rows[3], .x, .x, .y, .y);
 		v0[1] = swizzle(mt.rows[0], .z, .w, .z, .w);
 		v1[1] = swizzle(mt.rows[1], .x, .x, .y, .y);
-		v0[2] = @shuffle(f32, mt.rows[2], mt.rows[0], [4]i32{ 1, 3, ~@as(i32, 1), ~@as(i32, 3) });
-		v1[2] = @shuffle(f32, mt.rows[3], mt.rows[1], [4]i32{ 0, 2, ~@as(i32, 0), ~@as(i32, 2) });
+		v0[2] = @shuffle(f32, mt.rows[2], mt.rows[0], [4]i32{1, 3, ~@as(i32, 1), ~@as(i32, 3)});
+		v1[2] = @shuffle(f32, mt.rows[3], mt.rows[1], [4]i32{0, 2, ~@as(i32, 0), ~@as(i32, 2)});
 
-		d0 = -v0[0] * v1[0] + d0;
-		d1 = -v0[1] * v1[1] + d1;
-		d2 = -v0[2] * v1[2] + d2;
+		d0 = -v0[0]*v1[0] + d0;
+		d1 = -v0[1]*v1[1] + d1;
+		d2 = -v0[2]*v1[2] + d2;
 
 		v0[0] = swizzle(mt.rows[1], .y, .z, .x, .y);
-		v1[0] = @shuffle(f32, d0, d2, [4]i32{ ~@as(i32, 1), 1, 3, 0 });
+		v1[0] = @shuffle(f32, d0, d2, [4]i32{~@as(i32, 1), 1, 3, 0});
 		v0[1] = swizzle(mt.rows[0], .z, .x, .y, .x);
-		v1[1] = @shuffle(f32, d0, d2, [4]i32{ 3, ~@as(i32, 1), 1, 2 });
+		v1[1] = @shuffle(f32, d0, d2, [4]i32{3, ~@as(i32, 1), 1, 2});
 		v0[2] = swizzle(mt.rows[3], .y, .z, .x, .y);
-		v1[2] = @shuffle(f32, d1, d2, [4]i32{ ~@as(i32, 3), 1, 3, 0 });
+		v1[2] = @shuffle(f32, d1, d2, [4]i32{~@as(i32, 3), 1, 3, 0});
 		v0[3] = swizzle(mt.rows[2], .z, .x, .y, .x);
-		v1[3] = @shuffle(f32, d1, d2, [4]i32{ 3, ~@as(i32, 3), 1, 2 });
+		v1[3] = @shuffle(f32, d1, d2, [4]i32{3, ~@as(i32, 3), 1, 2});
 
-		var c0 = v0[0] * v1[0];
-		var c2 = v0[1] * v1[1];
-		var c4 = v0[2] * v1[2];
-		var c6 = v0[3] * v1[3];
+		var c0 = v0[0]*v1[0];
+		var c2 = v0[1]*v1[1];
+		var c4 = v0[2]*v1[2];
+		var c6 = v0[3]*v1[3];
 
 		v0[0] = swizzle(mt.rows[1], .z, .w, .y, .z);
-		v1[0] = @shuffle(f32, d0, d2, [4]i32{ 3, 0, 1, ~@as(i32, 0) });
+		v1[0] = @shuffle(f32, d0, d2, [4]i32{3, 0, 1, ~@as(i32, 0)});
 		v0[1] = swizzle(mt.rows[0], .w, .z, .w, .y);
-		v1[1] = @shuffle(f32, d0, d2, [4]i32{ 2, 1, ~@as(i32, 0), 0 });
+		v1[1] = @shuffle(f32, d0, d2, [4]i32{2, 1, ~@as(i32, 0), 0});
 		v0[2] = swizzle(mt.rows[3], .z, .w, .y, .z);
-		v1[2] = @shuffle(f32, d1, d2, [4]i32{ 3, 0, 1, ~@as(i32, 2) });
+		v1[2] = @shuffle(f32, d1, d2, [4]i32{3, 0, 1, ~@as(i32, 2)});
 		v0[3] = swizzle(mt.rows[2], .w, .z, .w, .y);
-		v1[3] = @shuffle(f32, d1, d2, [4]i32{ 2, 1, ~@as(i32, 2), 0 });
+		v1[3] = @shuffle(f32, d1, d2, [4]i32{2, 1, ~@as(i32, 2), 0});
 
-		c0 = -v0[0] * v1[0] + c0;
-		c2 = -v0[1] * v1[1] + c2;
-		c4 = -v0[2] * v1[2] + c4;
-		c6 = -v0[3] * v1[3] + c6;
+		c0 = -v0[0]*v1[0] + c0;
+		c2 = -v0[1]*v1[1] + c2;
+		c4 = -v0[2]*v1[2] + c4;
+		c6 = -v0[3]*v1[3] + c6;
 
 		v0[0] = swizzle(mt.rows[1], .w, .x, .w, .x);
-		v1[0] = @shuffle(f32, d0, d2, [4]i32{ 2, ~@as(i32, 1), ~@as(i32, 0), 2 });
+		v1[0] = @shuffle(f32, d0, d2, [4]i32{2, ~@as(i32, 1), ~@as(i32, 0), 2});
 		v0[1] = swizzle(mt.rows[0], .y, .w, .x, .z);
-		v1[1] = @shuffle(f32, d0, d2, [4]i32{ ~@as(i32, 1), 0, 3, ~@as(i32, 0) });
+		v1[1] = @shuffle(f32, d0, d2, [4]i32{~@as(i32, 1), 0, 3, ~@as(i32, 0)});
 		v0[2] = swizzle(mt.rows[3], .w, .x, .w, .x);
-		v1[2] = @shuffle(f32, d1, d2, [4]i32{ 2, ~@as(i32, 3), ~@as(i32, 2), 2 });
+		v1[2] = @shuffle(f32, d1, d2, [4]i32{2, ~@as(i32, 3), ~@as(i32, 2), 2});
 		v0[3] = swizzle(mt.rows[2], .y, .w, .x, .z);
-		v1[3] = @shuffle(f32, d1, d2, [4]i32{ ~@as(i32, 3), 0, 3, ~@as(i32, 2) });
+		v1[3] = @shuffle(f32, d1, d2, [4]i32{~@as(i32, 3), 0, 3, ~@as(i32, 2)});
 
-		const c1 = -v0[0] * v1[0] + c0;
-		const c3 = v0[1] * v1[1] + c2;
-		const c5 = -v0[2] * v1[2] + c4;
-		const c7 = v0[3] * v1[3] + c6;
+		const c1 = -v0[0]*v1[0] + c0;
+		const c3 = v0[1]*v1[1] + c2;
+		const c5 = -v0[2]*v1[2] + c4;
+		const c7 = v0[3]*v1[3] + c6;
 
-		c0 = v0[0] * v1[0] + c0;
-		c2 = -v0[1] * v1[1] + c2;
-		c4 = v0[2] * v1[2] + c4;
-		c6 = -v0[3] * v1[3] + c6;
+		c0 = v0[0]*v1[0] + c0;
+		c2 = -v0[1]*v1[1] + c2;
+		c4 = v0[2]*v1[2] + c4;
+		c6 = -v0[3]*v1[3] + c6;
 
-		var mr = Mat4f{
-			.rows = [4]Vec4f{
-				Vec4f{c0[0], c1[1], c0[2], c1[3]},
-				Vec4f{c2[0], c3[1], c2[2], c3[3]},
-				Vec4f{c4[0], c5[1], c4[2], c5[3]},
-				Vec4f{c6[0], c7[1], c6[2], c7[3]},
-			}
-		};
+		var mr = Mat4f{.rows = [4]Vec4f{
+			Vec4f{c0[0], c1[1], c0[2], c1[3]},
+			Vec4f{c2[0], c3[1], c2[2], c3[3]},
+			Vec4f{c4[0], c5[1], c4[2], c5[3]},
+			Vec4f{c6[0], c7[1], c6[2], c7[3]},
+		}};
 
 		const det = dot(mr.rows[0], mt.rows[0]);
 
 		if (std.math.approxEqAbs(f64, det, 0.0, std.math.floatEps(f64))) {
-			return Mat4f{
-			.rows = [4]Vec4f{
-					Vec4f{0.0, 0.0, 0.0, 0.0},
-					Vec4f{0.0, 0.0, 0.0, 0.0},
-					Vec4f{0.0, 0.0, 0.0, 0.0},
-					Vec4f{0.0, 0.0, 0.0, 0.0},
-				}
-			};
+			return Mat4f{.rows = [4]Vec4f{
+				Vec4f{0.0, 0.0, 0.0, 0.0},
+				Vec4f{0.0, 0.0, 0.0, 0.0},
+				Vec4f{0.0, 0.0, 0.0, 0.0},
+				Vec4f{0.0, 0.0, 0.0, 0.0},
+			}};
 		}
 
-		const scaleFactor = @as(Vec4f, @splat(1.0 / det));
+		const scaleFactor = @as(Vec4f, @splat(1.0/det));
 		mr.rows[0] *= scaleFactor;
 		mr.rows[1] *= scaleFactor;
 		mr.rows[2] *= scaleFactor;
