@@ -1,0 +1,14 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:landmarks/giant_oak/deco/bolete_0", .chance = 0.05},
+		.{.id = "cubyz:landmarks/giant_oak/deco/bolete_1", .chance = 0.05},
+		.{.id = "cubyz:landmarks/giant_oak/deco/branch_0", .chance = 0.05},
+		.{.id = "cubyz:tree/oak/young/branch/1", .chance = 0.05},
+		.{.id = "cubyz:tree/oak/young/branch/2", .chance = 0.05},
+		.{.id = "cubyz:tree/oak/young/branch/3", .chance = 0.05},
+		.{.id = "cubyz:tree/oak/young/branch/4", .chance = 0.05},
+		.{.id = "cubyz:tree/oak/young/branch/5", .chance = 0.05},
+		.{.id = "cubyz:tree/oak/young/branch/7", .chance = 0.05},
+		.{.id = null},
+	},
+}

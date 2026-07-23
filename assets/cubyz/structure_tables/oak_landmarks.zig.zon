@@ -1,0 +1,12 @@
+.{
+	.id = "cubyz:oak_landmarks",
+	.tags = .{.oak_landmarks},
+	.chance = 0.005,
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.placeMode = .degradable,
+			.structure = "cubyz:landmarks/giant_oak/tree",
+		},
+	},
+}
