@@ -2183,10 +2183,10 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 	const Data = extern struct {
 		projectionMatrix: [4][4]f32,
 		viewMatrix: [4][4]f32,
-		playerPositionInteger: [3]i32 align(16),
-		playerPositionFraction: [3]f32 align(16),
 		lightProjectionMatrix: [4][4]f32,
 		lightViewMatrix: [4][4]f32,
+		playerPositionInteger: [3]i32 align(16),
+		playerPositionFraction: [3]f32 align(16),
 	};
 
 	var buffers: [3]c_uint = undefined;
