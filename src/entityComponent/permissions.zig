@@ -6,7 +6,6 @@ const utils = main.utils;
 const BinaryReader = utils.BinaryReader;
 const BinaryWriter = utils.BinaryWriter;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const Self = @This();
 
 pub var entityComponentID: main.entity.EntityComponentId = undefined;
 pub const entityComponentVersion = 0;
