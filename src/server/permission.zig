@@ -17,7 +17,9 @@ const PermissionMap = struct { // MARK: PermissionMap
 		const len = try reader.readInt(u32);
 		self.map.ensureUnusedCapacity(arena.allocator, len) catch unreachable;
 		for (0..len) |_| {
-			self.map.putAssumeCapacity(try reader.readSliceWithSize(), {});
+			const read = try reader.readSliceWithSize();
+			if (read.len == 0 or read[0] != '/') return error.Invalid;
+			self.map.putAssumeCapacity(arena.dupe(u8, read), {});
 		}
 	}
 

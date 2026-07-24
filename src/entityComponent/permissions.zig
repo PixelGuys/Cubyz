@@ -6,6 +6,7 @@ const utils = main.utils;
 const BinaryReader = utils.BinaryReader;
 const BinaryWriter = utils.BinaryWriter;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const Self = @This();
 
 pub var entityComponentID: main.entity.EntityComponentId = undefined;
 pub const entityComponentVersion = 0;
@@ -58,6 +59,17 @@ pub const server = struct {
 			.yes => true,
 			.no, .neutral => false,
 		};
+	}
+
+	pub fn addPermission(entity: Entity, listType: main.server.permission.Permissions.ListType, permissionPath: []const u8) void {
+		(getPermissions(entity) orelse return).addPermission(listType, permissionPath);
+		main.entity.server.transmitChange(Self, entity);
+	}
+
+	pub fn removePermission(entity: Entity, listType: main.server.permission.Permissions.ListType, permissionPath: []const u8) bool {
+		const result = (getPermissions(entity) orelse return false).removePermission(listType, permissionPath);
+		main.entity.server.transmitChange(Self, entity);
+		return result;
 	}
 
 	pub fn loadFromData(entity: Entity, reader: *BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
