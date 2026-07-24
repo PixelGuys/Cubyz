@@ -63,13 +63,10 @@ pub const server = struct {
 
 	pub fn addPermission(entity: Entity, listType: main.server.permission.Permissions.ListType, permissionPath: []const u8) void {
 		(getPermissions(entity) orelse return).addPermission(listType, permissionPath);
-		main.entity.server.transmitChange(Self, entity);
 	}
 
 	pub fn removePermission(entity: Entity, listType: main.server.permission.Permissions.ListType, permissionPath: []const u8) bool {
-		const result = (getPermissions(entity) orelse return false).removePermission(listType, permissionPath);
-		main.entity.server.transmitChange(Self, entity);
-		return result;
+		return (getPermissions(entity) orelse return false).removePermission(listType, permissionPath);
 	}
 
 	pub fn loadFromData(entity: Entity, reader: *BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
