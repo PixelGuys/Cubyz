@@ -58,87 +58,89 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	}
 }
 
-fn displaceByHalfExtentBounded(center: f32, extent: f32, max_extent: i32) struct {
-	min: i32,
-	max: i32,
-} {
+fn getSphereBounds(center: Vec3f, radius: f32, maxExtent: Vec3i) struct { Vec3i, Vec3i } {
+	// the call to this in `generateSphere_` doesn't leak through to this function.
+	@setFloatMode(.optimized);
+	const vecRadius: Vec3f = @splat(radius);
+	const vec3iOne: Vec3i = @splat(1);
+
+	const minBound = @as(Vec3i, @trunc(center - vecRadius)) - vec3iOne;
+	const maxBound = @as(Vec3i, @trunc(center + vecRadius)) + vec3iOne;
+
 	return .{
-		.min = @max(@as(i32, @trunc(center - extent)) - 1, 0),
-		.max = @min(
-			@as(i32, @trunc(center + extent)) + 1,
-			max_extent,
-		),
+		@max(minBound, @as(Vec3i, @splat(0))),
+		@min(maxBound, maxExtent),
 	};
 }
 
-fn generateSphere_(seed: *u64, map: *CaveMapFragment, relPos: Vec3f, radius: f32, comptime addTerrain: bool) void {
-	const lodScale = map.pos.voxelSize;
-	const scaledWidth = CaveMapFragment.width*lodScale;
-	const scaledHeight = CaveMapFragment.height*lodScale;
+fn generateSphere_(seed: *u64, map: *CaveMapFragment, relPos: Vec3f, radius: f32, comptime terrainModifier: CaveMapFragment.TerrainModifier) void {
+	@setFloatMode(.optimized);
 
 	// Makes walls rough by adding a 1-in-roughnessChance chance that blocks
 	// remain unchanged.
 	const roughnessChance = 6;
-	const terrainShaper = if (addTerrain) CaveMapFragment.addRange else CaveMapFragment.removeRange;
+	const voxelSize = map.pos.voxelSize;
+	const scaledWidth = CaveMapFragment.width*voxelSize;
+	const scaledHeight = CaveMapFragment.height*voxelSize;
 
-	const relX = relPos[0];
-	const relY = relPos[1];
-	const relZ = relPos[2];
+	const minDist, const maxDist = getSphereBounds(relPos, radius, .{scaledWidth, scaledWidth, scaledHeight});
+	if (@reduce(.Or, minDist >= maxDist)) return;
 
-	const xDist = displaceByHalfExtentBounded(relX, radius, scaledWidth);
-	const yDist = displaceByHalfExtentBounded(relY, radius, scaledWidth);
-	const zDist = displaceByHalfExtentBounded(relZ, radius, scaledHeight);
+	const relX, const relY, const relZ = relPos;
+	const minXDist, const minYDist, _ = minDist;
+	const maxXDist, const maxYDist, _ = maxDist;
 
-	if (xDist.min >= xDist.max or yDist.min >= yDist.max or zDist.min >= zDist.max) {
-		return;
-	}
-
-	const radiusSq = radius*radius;
-	const invRadiusSq = 1.0/(radiusSq);
-	const thresholdXY = 0.9*0.9*radiusSq;
+	const radiusSquare = radius*radius;
+	const thresholdXY = 0.9*0.9*radiusSquare;
 
 	// Go through all blocks within range of the sphere center and remove them.
-	var curX = xDist.min;
-	while (curX < xDist.max) : (curX += lodScale) {
+	var curX = minXDist;
+	while (curX < maxXDist) : (curX += voxelSize) {
 		const dx = @as(f32, @floatFromInt(curX)) - relX;
-		const dxSq = dx*dx;
 
-		var curY = yDist.min;
-		while (curY < yDist.max) : (curY += lodScale) {
+		var curY = minYDist;
+		while (curY < maxYDist) : (curY += voxelSize) {
 			const dy = @as(f32, @floatFromInt(curY)) - relY;
-			const dySq = dy*dy;
-			const xySumSq = dxSq + dySq;
+			const xySumSquare = @mulAdd(f32, dy, dy, dx*dx);
 
 			var zMin: i32 = @trunc(relZ);
 			var zMax: i32 = @trunc(relZ);
-			if (xySumSq < thresholdXY) {
-				const zDistance = @sqrt(thresholdXY - xySumSq);
+			if (xySumSquare < thresholdXY) {
+				const zDistance = @sqrt(thresholdXY - xySumSquare);
 				zMin = @trunc(relZ - zDistance);
 				zMax = @trunc(relZ + zDistance);
-				terrainShaper(map, curX, curY, zMin, zMax);
+				map.modifyTerrain(terrainModifier, curX, curY, zMin, zMax);
 			}
+
+			// My rather poor attempt at explaining to whatever poor soul wants to
+			// understand this:
+			//
+			// (x - r_x)^2 + (y - r_y)^2 + (z - r_z)^2 = r^2
+			// we already know x and y, so:
+			// (z - r_z)^2 = r^2 - xySumSquare
+			// z = r_z +- sqrt(r^2 - xySumSquare)
+			// where +z is the upper-bound, and -z is the lower-bound
+			//
+			// this calculation allows us to avoid checking per-iteration if a voxel is
+			// within the sphere that we were doing before
+			if (xySumSquare >= radiusSquare) continue;
+			const outerZDistance = @sqrt(radiusSquare - xySumSquare);
+			const outerZMax: i32 = @min(@as(i32, @trunc(relZ + outerZDistance)), scaledHeight);
+			const outerZMin: i32 = @max(@as(i32, @trunc(relZ - outerZDistance)), 0);
 
 			// Add some roughness to the upper cave walls:
 			var curZ: i32 = zMax;
-			while (curZ <= scaledHeight) : (curZ += lodScale) {
-				const dz = @as(f32, @floatFromInt(curZ)) - relZ;
-				const distToCenter = (xySumSq + dz*dz)*invRadiusSq;
-				if (distToCenter >= 1) break;
-
+			while (curZ <= outerZMax) : (curZ += voxelSize) {
 				if (random.nextIntBounded(u8, seed, roughnessChance) != 0) {
-					terrainShaper(map, curX, curY, curZ, curZ + 1);
+					map.modifyTerrain(terrainModifier, curX, curY, curZ, curZ + 1);
 				}
 			}
 
 			// Add some roughness to the lower cave walls:
 			curZ = zMin;
-			while (curZ >= 0) : (curZ -= lodScale) {
-				const dz = @as(f32, @floatFromInt(curZ)) - relZ;
-				const distToCenter = (xySumSq + dz*dz)*invRadiusSq;
-				if (distToCenter >= 1) break;
-
+			while (curZ >= outerZMin) : (curZ -= voxelSize) {
 				if (random.nextIntBounded(u8, seed, roughnessChance) != 0) {
-					terrainShaper(map, curX, curY, curZ, curZ + 1);
+					map.modifyTerrain(terrainModifier, curX, curY, curZ, curZ + 1);
 				}
 			}
 		}
@@ -147,9 +149,9 @@ fn generateSphere_(seed: *u64, map: *CaveMapFragment, relPos: Vec3f, radius: f32
 
 fn generateSphere(seed: *u64, map: *CaveMapFragment, relPos: Vec3f, radius: f32) void {
 	if (radius < 0) {
-		generateSphere_(seed, map, relPos, -radius, true);
+		generateSphere_(seed, map, relPos, -radius, .add);
 	} else {
-		generateSphere_(seed, map, relPos, radius, false);
+		generateSphere_(seed, map, relPos, radius, .remove);
 	}
 }
 
