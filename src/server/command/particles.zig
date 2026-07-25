@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
+const Source = command.Source;
 const particles = main.particles;
 const User = main.server.User;
 
@@ -36,7 +37,7 @@ pub const Args = union(enum) {
 	},
 };
 
-pub fn execute(args: Args, source: *User) void {
+pub fn execute(args: Args, source: Source) void {
 	const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
 	for (users) |user| {
@@ -48,7 +49,7 @@ pub fn execute(args: Args, source: *User) void {
 				args.@"/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>".y,
 				args.@"/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>".z,
 				source,
-			),
+			) catch return,
 			args.@"/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>".collides orelse true,
 			args.@"/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>".count orelse 1,
 			args.@"/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>".spawnDataZon orelse "",

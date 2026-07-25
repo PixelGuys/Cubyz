@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
-const User = main.server.User;
+const Source = command.Source;
 
 pub const description = "Kills the player";
 pub const usage =
@@ -14,7 +14,7 @@ pub const Args = union(enum) {
 	@"/kill <playerIndex>": struct { playerIndex: ?command.PlayerIndex },
 };
 
-pub fn execute(args: Args, source: *User) void {
+pub fn execute(args: Args, source: Source) void {
 	const target = command.Target.fromPlayerIndex(args.@"/kill <playerIndex>".playerIndex, source) catch return;
 	defer target.deinit();
 
