@@ -99,9 +99,10 @@ pub const Coordinate = union(enum) {
 	}
 };
 
-pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, source: Source) main.vec.Vec3d {
+pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, source: Source) error{InvalidArg}!main.vec.Vec3d {
 	if (source != .user and (x == .relative or y == .relative or z == .relative)) {
-		source.sendMessage("Command was run without a user; unable to interpret relative coordinates. Using absolute values instead", .{});
+		source.sendMessage("Command was run without a user; unable to interpret relative coordinates.", .{});
+		return error.InvalidArg;
 	}
 	return .{
 		// TODO: Remove clamp after #310 is implemented

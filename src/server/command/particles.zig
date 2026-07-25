@@ -49,7 +49,7 @@ pub fn execute(args: Args, source: Source) void {
 				args.@"/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>".y,
 				args.@"/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>".z,
 				source,
-			),
+			) catch return,
 			args.@"/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>".collides orelse true,
 			args.@"/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>".count orelse 1,
 			args.@"/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>".spawnDataZon orelse "",

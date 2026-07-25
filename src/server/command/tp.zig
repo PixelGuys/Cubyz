@@ -83,7 +83,7 @@ pub fn execute(args: Args, _source: Source) void {
 			return;
 		},
 		.@"/tp <x> <y> <z>" => |pos| {
-			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, _source);
+			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, _source) catch return;
 		},
 		.@"/tp <playerIndex>" => |index| {
 			const target = command.Target.fromPlayerIndex(index.playerIndex, _source) catch return;

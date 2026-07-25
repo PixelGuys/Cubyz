@@ -27,7 +27,7 @@ pub fn execute(args: Args, source: Source) void {
 		.@"/spawn <playerIndex> <x> <y> <z>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
 			defer target.deinit();
-			target.user.spawnPos = command.resolveCoordinates(params.x, params.y, params.z, source);
+			target.user.spawnPos = command.resolveCoordinates(params.x, params.y, params.z, source) catch return;
 		},
 		.@"/spawn <playerIndex>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
@@ -35,7 +35,7 @@ pub fn execute(args: Args, source: Source) void {
 			source.sendMessage("#ffff00{}", .{target.user.getSpawnPos()});
 		},
 		.@"/spawn <world> <x> <y> <z>" => |params| {
-			const pos = command.resolveCoordinates(params.x, params.y, params.z, source);
+			const pos = command.resolveCoordinates(params.x, params.y, params.z, source) catch return;
 			const world = main.server.world.?;
 			world.spawn = @trunc(pos);
 		},
