@@ -34,8 +34,7 @@ pub const client = struct {
 	pub var nodeBuffer: graphics.LargeBuffer(Mat4f) = undefined;
 
 	var uniforms: struct {
-		projectionMatrix: c_int,
-		viewMatrix: c_int,
+		modelViewMatrix: c_int,
 		light: c_int,
 		contrast: c_int,
 		ambientLight: c_int,
@@ -63,7 +62,7 @@ pub const client = struct {
 	}
 	pub fn clear() void {}
 
-	pub fn renderHud(projMatrix: Mat4f, _: Vec3f, playerPos: Vec3d) void {
+	pub fn renderHud(_: Vec3f, playerPos: Vec3d) void {
 		main.client.entity_manager.mutex.lock();
 		defer main.client.entity_manager.mutex.unlock();
 
@@ -91,7 +90,7 @@ pub const client = struct {
 			};
 
 			const rotatedPos = game.camera.viewMatrix.mulVec(pos4f);
-			const projectedPos = projMatrix.mulVec(rotatedPos);
+			const projectedPos = Mat4f.fromGl(main.graphics.frame_uniforms.frameData().projectionMatrix).mulVec(rotatedPos);
 			if (projectedPos[2] < 0) continue;
 			const xCenter = (1 + projectedPos[0]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.width/2));
 			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.height/2));
@@ -101,7 +100,7 @@ pub const client = struct {
 			const oldColor = graphics.draw.setColor(alpha << 24 | 0xffffff);
 			defer graphics.draw.restoreColor(oldColor);
 
-			const renderedName = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{ent}) catch unreachable;
+			const renderedName = main.stackAllocator.print("{f}", .{ent});
 			defer main.stackAllocator.free(renderedName);
 
 			var buf = graphics.TextBuffer.init(main.stackAllocator, renderedName, .{.color = 0xffffff}, false, .center);
@@ -111,7 +110,7 @@ pub const client = struct {
 			buf.render(xCenter - size[0]/2, yCenter - size[1], fontSize);
 		}
 	}
-	pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
+	pub fn render(ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
 		_ = deltaTime;
 		main.client.entity_manager.mutex.lock();
 		defer main.client.entity_manager.mutex.unlock();
@@ -144,7 +143,6 @@ pub const client = struct {
 
 		pipeline.bind(null);
 
-		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
@@ -181,7 +179,7 @@ pub const client = struct {
 				}))
 				.mul(Mat4f.rotationZ(-ent.rot[2])));
 			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
-			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
+			c.glUniformMatrix4fv(uniforms.modelViewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
 			c.glDrawElements(c.GL_TRIANGLES, entModel.indexCount, c.GL_UNSIGNED_INT, null);
 		}
 

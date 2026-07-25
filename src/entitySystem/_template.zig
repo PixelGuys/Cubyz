@@ -35,14 +35,12 @@ pub const client = struct {
 	pub fn deinit() void {}
 	pub fn clear() void {}
 
-	pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
-		_ = projMatrix;
+	pub fn render(ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
 		_ = ambientLight;
 		_ = playerPos;
 		_ = deltaTime;
 	}
-	pub fn renderHud(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
-		_ = projMatrix;
+	pub fn renderHud(ambientLight: Vec3f, playerPos: Vec3d) void {
 		_ = ambientLight;
 		_ = playerPos;
 	}

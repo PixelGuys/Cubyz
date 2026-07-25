@@ -122,10 +122,10 @@ pub const ParticleManager = struct {
 		const mod = splitter.first();
 		const id = splitter.rest();
 
-		const gameAssetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/particles/textures/{s}{s}", .{mod, id, suffix}) catch unreachable;
+		const gameAssetsPath = main.stackAllocator.print("assets/{s}/particles/textures/{s}{s}", .{mod, id, suffix});
 		defer main.stackAllocator.free(gameAssetsPath);
 
-		const worldAssetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/particles/textures/{s}{s}", .{assetsFolder, mod, id, suffix}) catch unreachable;
+		const worldAssetsPath = main.stackAllocator.print("{s}/{s}/particles/textures/{s}{s}", .{assetsFolder, mod, id, suffix});
 		defer main.stackAllocator.free(worldAssetsPath);
 
 		return graphics.Image.readFromFile(main.worldArena, worldAssetsPath, .{.orientation = .openGl}) catch graphics.Image.readFromFile(main.worldArena, gameAssetsPath, .{.orientation = .openGl}) catch {

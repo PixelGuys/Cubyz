@@ -121,10 +121,10 @@ pub const EntityModel = struct {
 				var split = std.mem.splitScalar(u8, texture, ':');
 				const mod = split.first();
 				const textureName = split.next().?;
-				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entity_models/textures/{s}{s}", .{assetFolder, mod, textureName, fileEnding}) catch unreachable;
+				self.texturePath = main.worldArena.print("{s}/{s}/entity_models/textures/{s}{s}", .{assetFolder, mod, textureName, fileEnding});
 				main.files.cubyzDir().dir.access(main.io, self.texturePath, .{}) catch {
 					main.worldArena.free(self.texturePath);
-					self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "assets/{s}/entity_models/textures/{s}{s}", .{mod, textureName, fileEnding}) catch unreachable;
+					self.texturePath = main.worldArena.print("assets/{s}/entity_models/textures/{s}{s}", .{mod, textureName, fileEnding});
 				};
 			}
 		}

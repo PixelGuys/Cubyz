@@ -346,6 +346,12 @@ const GenerationStructure = struct {
 	}
 
 	fn addSubBiomesOf(biome: BiomePoint, preMap: *[preMapSize][preMapSize]BiomeSample, extraBiomes: *main.ListManaged(BiomePoint), wx: i32, wy: i32, width: u31, height: u31, worldSeed: u64, comptime radius: enum { known, unknown }) void {
+		const maxSubbiomeMargin: i32 = @ceil(biome.radius + if (radius == .unknown) biome.radius/2 else 0);
+		if (biome.pos[0] +% maxSubbiomeMargin -% wx < 0) return;
+		if (biome.pos[1] +% maxSubbiomeMargin -% wy < 0) return;
+		if (biome.pos[0] +% maxSubbiomeMargin -% wx >= width) return;
+		if (biome.pos[1] +% maxSubbiomeMargin -% wy >= height) return;
+
 		var seed = random.initSeed2D(worldSeed, @bitCast(biome.pos));
 		var biomeCount: f32 = undefined;
 		if (biome.biome.subBiomeTotalChance > biome.biome.maxSubBiomeCount) {
@@ -450,23 +456,23 @@ const GenerationStructure = struct {
 				result.append(allocator, candidate);
 				continue;
 			}
+			const canditateClosestPoint: Vec2i = .{
+				if (candidate.pos[0] < wx) wx else if (candidate.pos[0] >= wxMax) wxMax else candidate.pos[0],
+				if (candidate.pos[1] < wy) wy else if (candidate.pos[1] >= wyMax) wyMax else candidate.pos[1],
+			};
 			var i: usize = 0;
 			while (i < result.items.len) {
-				blk: {
-					const interp1 = interpolationValueBetween(candidate, result.items[i], .{wx, wy});
-					if (interp1 != 0 and interp1 != 1) break :blk;
-					const interp2 = interpolationValueBetween(candidate, result.items[i], .{wx, wyMax});
-					if (interp2 != interp1) break :blk;
-					const interp3 = interpolationValueBetween(candidate, result.items[i], .{wxMax, wy});
-					if (interp3 != interp1) break :blk;
-					const interp4 = interpolationValueBetween(candidate, result.items[i], .{wxMax, wyMax});
-					if (interp4 != interp1) break :blk;
-					if (interp1 == 0) {
-						_ = result.swapRemove(i);
-						continue;
-					} else {
-						continue :outer;
-					}
+				const interpCandidate = interpolationValueBetween(candidate, result.items[i], canditateClosestPoint);
+				if (interpCandidate == 1) continue :outer;
+
+				const otherClosestPoint: Vec2i = .{
+					if (result.items[i].pos[0] < wx) wx else if (result.items[i].pos[0] >= wxMax) wxMax else result.items[i].pos[0],
+					if (result.items[i].pos[1] < wy) wy else if (result.items[i].pos[1] >= wyMax) wyMax else result.items[i].pos[1],
+				};
+				const interpOther = interpolationValueBetween(candidate, result.items[i], otherClosestPoint);
+				if (interpOther == 0) {
+					_ = result.swapRemove(i);
+					continue;
 				}
 				i += 1;
 			}

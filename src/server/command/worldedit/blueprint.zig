@@ -160,7 +160,7 @@ const FilePath = struct {
 
 	fn ensureBlueprintExtension(arena: NeverFailingAllocator, fileName: []const u8) []const u8 {
 		if (!std.ascii.endsWithIgnoreCase(fileName, ".blp")) {
-			return std.fmt.allocPrint(arena.allocator, "{s}.blp", .{fileName}) catch unreachable;
+			return arena.print("{s}.blp", .{fileName});
 		} else {
 			return arena.dupe(u8, fileName);
 		}
