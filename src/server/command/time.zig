@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
-const User = main.server.User;
+const Source = main.server.command.Source;
 
 pub const description = "Get or set the server time.";
 pub const usage =
@@ -18,7 +18,7 @@ pub const Args = union(enum) {
 	@"/time": struct {},
 };
 
-pub fn execute(args: Args, source: *User) void {
+pub fn execute(args: Args, source: Source) void {
 	const gameTime: i64 = switch (args) {
 		.@"/time" => time: {
 			source.sendMessage("#ffff00{}", .{main.server.world.?.gameTime});
