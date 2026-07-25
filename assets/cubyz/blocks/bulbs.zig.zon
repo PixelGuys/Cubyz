@@ -12,7 +12,7 @@
 	.emittedLight = 0x350678,
 	.collide = false,
 	.model = "cubyz:cross",
-	.texture = "phantasmal:bulbs",
+	.texture = "cubyz:bulbs",
 	.lodReplacement = "cubyz:air",
 	.onUpdate = .{
 		.type = .check_support_blocks,

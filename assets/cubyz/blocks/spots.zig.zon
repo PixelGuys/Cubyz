@@ -16,6 +16,6 @@
 	.onUpdate = .{
 		.type = .check_support_blocks,
 	},
-	.texture = "phantasmal:spots",
+	.texture = "cubyz:spots",
 	.lodReplacement = "cubyz:air",
 }
