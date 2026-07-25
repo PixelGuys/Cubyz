@@ -1,9 +1,9 @@
 #version 460
 
+#include "frame_uniforms.glsl"
+
 layout(location = 0) out vec3 mvVertexPos;
 
-layout(location = 0) uniform mat4 projectionMatrix;
-layout(location = 1) uniform mat4 viewMatrix;
 layout(location = 2) uniform vec3 modelPosition;
 layout(location = 3) uniform vec3 lowerBounds;
 layout(location = 4) uniform vec3 upperBounds;

@@ -548,7 +548,7 @@ pub const draw = struct { // MARK: draw
 	}
 
 	pub inline fn print(comptime format: []const u8, args: anytype, x: f32, y: f32, fontSize: f32) void {
-		const string = std.fmt.allocPrint(main.stackAllocator.allocator, format, args) catch unreachable;
+		const string = main.stackAllocator.print(format, args);
 		defer main.stackAllocator.free(string);
 		text(string, x, y, fontSize);
 	}
@@ -1942,7 +1942,7 @@ pub const Texture = struct { // MARK: Texture
 
 		curSize = largestSize;
 		while (curSize != 0) : (curSize /= 2) {
-			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}{}.png", .{pathPrefix, curSize}) catch unreachable;
+			const path = main.stackAllocator.print("{s}{}.png", .{pathPrefix, curSize});
 			defer main.stackAllocator.free(path);
 			const image = Image.readFromFile(main.stackAllocator, path, .{.orientation = .openGl}) catch |err| blk: {
 				std.log.err("Couldn't read image from {s}: {s}", .{path, @errorName(err)});
@@ -2087,6 +2087,15 @@ pub const Color = packed struct(u32) { // MARK: Color
 	pub fn toArgb(self: Color) u32 {
 		return @as(u32, self.a) << 24 | @as(u32, self.r) << 16 | @as(u32, self.g) << 8 | @as(u32, self.b);
 	}
+
+	pub fn fromArgb(argb: u32) Color {
+		return Color{
+			.r = @intCast(argb >> 16 & 0xff),
+			.g = @intCast(argb >> 8 & 0xff),
+			.b = @intCast(argb >> 0 & 0xff),
+			.a = @intCast(argb >> 24 & 0xff),
+		};
+	}
 };
 
 pub const Image = struct { // MARK: Image
@@ -2179,6 +2188,7 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 	var buffers: [3]c_uint = undefined;
 	var fences: [3]c.GLsync = undefined;
 	var currentFrame: usize = 0;
+	var currentData: Data = undefined;
 
 	fn init() void {
 		c.glGenBuffers(buffers.len, &buffers);
@@ -2199,7 +2209,12 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 		}
 	}
 
+	pub fn frameData() Data {
+		return currentData;
+	}
+
 	pub fn uploadNewFrame(data: Data) void {
+		currentData = data;
 		c.glDeleteSync(fences[currentFrame]);
 		fences[currentFrame] = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 		currentFrame = (currentFrame + 1)%buffers.len;

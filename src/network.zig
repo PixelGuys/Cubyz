@@ -687,7 +687,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 		if (self.allowNewConnections or source.ip == Address.localHost) {
 			if (data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
-				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{source}) catch unreachable;
+				const ip = main.stackAllocator.print("{f}", .{source});
 				defer main.stackAllocator.free(ip);
 				const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ip) catch |err| {
 					std.log.err("Cannot connect user from external IP {f}: {s}", .{source, @errorName(err)});

@@ -35,7 +35,7 @@ fn discoverIpAddress() void {
 		return;
 	};
 	connection.?.makeOnline();
-	ipAddress = std.fmt.allocPrint(main.globalAllocator.allocator, "{f}", .{connection.?.externalAddress}) catch unreachable;
+	ipAddress = main.globalAllocator.print("{f}", .{connection.?.externalAddress});
 	gotIpAddress.store(true, .release);
 }
 

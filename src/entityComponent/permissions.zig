@@ -60,6 +60,14 @@ pub const server = struct {
 		};
 	}
 
+	pub fn addPermission(entity: Entity, listType: main.server.permission.Permissions.ListType, permissionPath: []const u8) void {
+		(getPermissions(entity) orelse return).addPermission(listType, permissionPath);
+	}
+
+	pub fn removePermission(entity: Entity, listType: main.server.permission.Permissions.ListType, permissionPath: []const u8) bool {
+		return (getPermissions(entity) orelse return false).removePermission(listType, permissionPath);
+	}
+
 	pub fn loadFromData(entity: Entity, reader: *BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != entityComponentVersion) return error.InvalidComponentVersion;
 		const permissions = &components.add(main.globalAllocator, entity).permissions;

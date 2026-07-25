@@ -67,7 +67,7 @@ pub fn execute(msg: []const u8, source: Source) void {
 	const end = std.mem.indexOfScalar(u8, msg, ' ') orelse msg.len;
 	const command = msg[0..end];
 	if (commands.get(command)) |cmd| {
-		if (source == .user and main.entity.components.@"cubyz:permissions".server.hasPermission(source.user.id, cmd.permissionPath)) {
+		if (source == .user and !main.entity.components.@"cubyz:permissions".server.hasPermission(source.user.id, cmd.permissionPath)) {
 			source.sendMessage("#ff0000No permission to use Command \"{s}\"", .{command});
 			return;
 		}
