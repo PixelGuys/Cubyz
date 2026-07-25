@@ -1,0 +1,21 @@
+.{
+	.tags = .{.cuttable, .sliceable},
+	.blockHealth = 3,
+	.drops = .{
+		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
+	},
+	.selectionCapabilities = .{.toolEffective},
+	.replaceable = true,
+	.degradable = true,
+	.collide = false,
+	.alwaysViewThrough = true,
+	.absorbedLight = 0x121012,
+	.emittedLight = 0x3706a1,
+	.model = "cubyz:plane",
+	.rotation = "cubyz:carpet",
+	.onUpdate = .{
+		.type = .check_support_blocks,
+	},
+	.texture = "phantasmal:spots",
+	.lodReplacement = "cubyz:air",
+}

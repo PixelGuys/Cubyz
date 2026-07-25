@@ -1,0 +1,29 @@
+.{
+	.chance = 0.02,
+	.crystals = 16,
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:phantasmal/star/stars",
+			.chance = 0.03,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:bulbs"},
+			.chance = 0.06,
+			.width = 8,
+			.variation = 4,
+			.density = 0.5,
+			.priority = 0.15,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:spots"},
+			.chance = 0.04,
+			.width = 6,
+			.variation = 6,
+			.density = 0.2,
+			.priority = 0.1,
+		},
+	},
+}

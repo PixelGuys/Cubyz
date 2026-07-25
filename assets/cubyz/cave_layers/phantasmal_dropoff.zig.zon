@@ -1,0 +1,5 @@
+.{
+	.tags = .{.phantasmal_dropoff_layer},
+	.layerHeight = 200,
+	.depthHint = -29300,
+}

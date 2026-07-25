@@ -1,0 +1,5 @@
+.{
+	.tags = .{.phantasmal_basin_layer},
+	.layerHeight = 100,
+	.depthHint = -29900,
+}

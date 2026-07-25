@@ -1,0 +1,37 @@
+.{
+	.isCave = true,
+	.tags = .{.phantasmal_layer},
+	.fogDensity = 40,
+	.fogColor = 0x000C14,
+	.chance = 0.2,
+	.music = "cubyz:ikabod/xeric",
+	.stoneBlock = "cubyz:chalk/black",
+
+	.ground_structure = .{
+		"0 to 1 cubyz:obsidian",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:phantasmal/phantasmal_pillars",
+			.placeMode = .degradable,
+			.chance = 0.2,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.024,
+			.block = "cubyz:basalt/smooth",
+			.size = 4,
+			.size_variance = 8,
+		},
+	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:partial_sphere",
+			.minAmount = 1,
+			.maxAmount = 3,
+			.minRadius = 35,
+			.maxRadius = 45,
+		},
+	},
+}

@@ -1,0 +1,50 @@
+.{
+	.isCave = true,
+	.tags = .{.phantasmal_void_layer, .phantasmal_basin_layer,},
+	.fogDensity = 3,
+	.fogColor = 0x000C14,
+	.chance = 0.04,
+	.stoneBlock = "cubyz:chalk/black",
+	.music = "cubyz:ikabod/xeric",
+
+	.structures = .{
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:bulbs"},
+			.chance = 0.01,
+			.width = 5,
+			.variation = 4,
+			.density = 0.3,
+			.priority = 0.15,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:spots"},
+			.chance = 0.004,
+			.width = 4,
+			.variation = 2,
+			.density = 0.1,
+			.priority = 0.1,
+		},
+	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:sphere",
+			.minAmount = 1,
+			.maxAmount = 1,
+			.minRadius = 80,
+			.maxRadius = 80,
+			.maxBiomeCenterDistance = 0,
+		},
+		.{
+			.id = "cubyz:cylinder",
+			.minAmount = 0,
+			.maxAmount = 1,
+			.minRadius = 10,
+			.maxRadius = 16,
+			.minHeight = 200,
+			.maxHeight = 250,
+			.mode = .additive,
+		},
+	},
+}
