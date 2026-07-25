@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
-const User = main.server.User;
+const Source = command.Source;
 
 pub const description = "Teleport to location.";
 pub const usage =
@@ -21,20 +21,25 @@ pub const Args = union(enum) {
 	@"/tp <playerIndex>": struct { playerIndex: command.PlayerIndex },
 };
 
-pub fn execute(args: Args, source: *User) void {
+pub fn execute(args: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
+		return;
+	}
+	const user = source.user;
 	const pos: main.vec.Vec3d = blk: switch (args) {
 		.@"/tp <biome>" => |b| {
 			const biome = b.biome.biome;
 			if (biome.isCave) {
-				source.sendMessage("#ff0000Teleport to biome is only available for surface biomes.", .{});
+				user.sendMessage("#ff0000Teleport to biome is only available for surface biomes.", .{});
 				return;
 			}
 			const radius = 16384;
 			const mapSize: i32 = main.server.terrain.ClimateMap.ClimateMapFragment.mapSize;
 			// Explore chunks in a spiral from the center:
 			const spiralLen = 2*radius/mapSize*2*radius/mapSize;
-			var wx = source.lastPos[0] & ~(mapSize - 1);
-			var wy = source.lastPos[1] & ~(mapSize - 1);
+			var wx = user.lastPos[0] & ~(mapSize - 1);
+			var wy = user.lastPos[1] & ~(mapSize - 1);
 			var dirChanges: usize = 1;
 			var dir: main.chunk.Neighbor = .dirNegX;
 			var stepsRemaining: usize = 1;
@@ -47,7 +52,7 @@ pub fn execute(args: Args, source: *User) void {
 					if (sample.biome == biome) {
 						const z = sample.height + sample.hills + sample.mountains + sample.roughness;
 						const biomeSize = main.server.terrain.SurfaceMap.MapFragment.biomeSize;
-						main.network.protocols.genericUpdate.sendTPCoordinates(source.conn, .{@floatFromInt(wx + x*biomeSize + biomeSize/2), @floatFromInt(wy + y*biomeSize + biomeSize/2), @floatCast(z + biomeSize/2)});
+						main.network.protocols.genericUpdate.sendTPCoordinates(user.conn, .{@floatFromInt(wx + x*biomeSize + biomeSize/2), @floatFromInt(wy + y*biomeSize + biomeSize/2), @floatCast(z + biomeSize/2)});
 						return;
 					}
 				}
@@ -72,11 +77,11 @@ pub fn execute(args: Args, source: *User) void {
 					stepsRemaining = dirChanges/2;
 				}
 			}
-			source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.", .{});
+			user.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.", .{});
 			return;
 		},
 		.@"/tp <x> <y> <z>" => |pos| {
-			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source);
+			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source) catch return;
 		},
 		.@"/tp <playerIndex>" => |index| {
 			const target = command.Target.fromPlayerIndex(index.playerIndex, source) catch return;
@@ -84,5 +89,5 @@ pub fn execute(args: Args, source: *User) void {
 			break :blk target.user.player().pos;
 		},
 	};
-	main.network.protocols.genericUpdate.sendTPCoordinates(source.conn, pos);
+	main.network.protocols.genericUpdate.sendTPCoordinates(user.conn, pos);
 }
