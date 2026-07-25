@@ -25,7 +25,7 @@ pub fn update() void {
 	const _result = main.io.operateTimeout(.{.file_read_streaming = .{
 		.data = &.{&readBuffer},
 		.file = std.Io.File.stdin(),
-	}}, .{.duration = .{.raw = .fromMilliseconds(1), .clock = .awake}}) catch |err| {
+	}}, .{.duration = .{.raw = .zero, .clock = .awake}}) catch |err| {
 		if (err == error.Timeout) return;
 		std.log.err("Error while reading from stdin: {t}", .{err});
 		running = false;
