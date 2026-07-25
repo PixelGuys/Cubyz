@@ -15,23 +15,23 @@ pub const Args = union(enum) {
 	@"/avatar <entityModel>": struct { entityModel: command.EntityModel },
 };
 
-pub fn execute(args: Args, _source: Source) void {
-	if (_source != .user) {
-		_source.sendMessage("Command cannot be run without a user", .{});
+pub fn execute(args: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
 		return;
 	}
-	const source = _source.user;
+	const user = source.user;
 	switch (args) {
 		.@"/avatar <entityModel>" => |params| {
-			model.server.put(source.id, .{
+			model.server.put(user.id, .{
 				.entityModel = params.entityModel.index,
 			});
-			source.sendMessage("#00ff00Your entity model was changed to {s}.", .{params.entityModel.index.get().entityModelId});
+			user.sendMessage("#00ff00Your entity model was changed to {s}.", .{params.entityModel.index.get().entityModelId});
 		},
 		.@"/avatar" => {
-			if (model.server.get(source.id)) |rc| {
-				source.sendMessage("#00ff00You are a {s}", .{rc.entityModel.get().entityModelId});
-			} else source.sendMessage("#ff00ffYou are invisible.", .{});
+			if (model.server.get(user.id)) |rc| {
+				user.sendMessage("#00ff00You are a {s}", .{rc.entityModel.get().entityModelId});
+			} else user.sendMessage("#ff00ffYou are invisible.", .{});
 		},
 	}
 }

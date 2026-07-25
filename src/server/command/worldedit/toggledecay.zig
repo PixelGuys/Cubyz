@@ -29,31 +29,31 @@ pub const Args = union(enum) {
 	},
 };
 
-pub fn execute(args: Args, _source: Source) void {
-	if (_source != .user) {
-		_source.sendMessage("Command cannot be run without a user", .{});
+pub fn execute(args: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
 		return;
 	}
-	const source = _source.user;
+	const user = source.user;
 	var blueprint: Blueprint = switch (args.@"/toggledecay <target> <state>".target) {
 		.selection => blk: {
-			const selection = command.getCurrentSelection(source) catch return;
+			const selection = command.getCurrentSelection(user) catch return;
 			const blueprint = switch (Blueprint.capture(main.globalAllocator, selection)) {
 				.success => |bp| bp,
 				.failure => |e| {
-					source.sendMessage("#ff0000Error while capturing block {}: {s}. Nothing was modified.", .{e.pos, e.message});
+					user.sendMessage("#ff0000Error while capturing block {}: {s}. Nothing was modified.", .{e.pos, e.message});
 					std.log.warn("Error while capturing block {}: {s}. Nothing was modified.", .{e.pos, e.message});
 					return;
 				},
 			};
 
-			source.worldEditData.undoHistory.push(.init(blueprint, selection.minPos, "toggledecay"));
-			source.worldEditData.redoHistory.clear();
+			user.worldEditData.undoHistory.push(.init(blueprint, selection.minPos, "toggledecay"));
+			user.worldEditData.redoHistory.clear();
 
 			break :blk blueprint.clone(main.stackAllocator);
 		},
-		.clipboard => source.worldEditData.clipboard orelse {
-			return source.sendMessage("#ff0000Clipboard is empty.", .{});
+		.clipboard => user.worldEditData.clipboard orelse {
+			return user.sendMessage("#ff0000Clipboard is empty.", .{});
 		},
 	};
 
@@ -61,18 +61,18 @@ pub fn execute(args: Args, _source: Source) void {
 
 	switch (args.@"/toggledecay <target> <state>".target) {
 		.selection => {
-			const pos1 = source.worldEditData.selectionPosition1.?;
-			const pos2 = source.worldEditData.selectionPosition2.?;
+			const pos1 = user.worldEditData.selectionPosition1.?;
+			const pos2 = user.worldEditData.selectionPosition2.?;
 
 			const posStart: Vec3i = @min(pos1, pos2);
 
 			blueprint.paste(posStart, .{.preserveVoid = true});
 			blueprint.deinit(main.stackAllocator);
 
-			return source.sendMessage("#00ff00Selection modified. History entry created.", .{});
+			return user.sendMessage("#00ff00Selection modified. History entry created.", .{});
 		},
 		.clipboard => {
-			return source.sendMessage("#00ff00Clipboard modified.", .{});
+			return user.sendMessage("#00ff00Clipboard modified.", .{});
 		},
 	}
 }

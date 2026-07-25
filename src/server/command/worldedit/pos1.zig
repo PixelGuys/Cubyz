@@ -11,16 +11,16 @@ pub const Args = union(enum) {
 	@"/pos1": struct {},
 };
 
-pub fn execute(_: Args, _source: Source) void {
-	if (_source != .user) {
-		_source.sendMessage("Command cannot be run without a user", .{});
+pub fn execute(_: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
 		return;
 	}
-	const source = _source.user;
-	const pos: Vec3i = @floor(source.player().pos);
+	const user = source.user;
+	const pos: Vec3i = @floor(user.player().pos);
 
-	source.worldEditData.selectionPosition1 = pos;
-	main.network.protocols.genericUpdate.sendWorldEditPos(source.conn, .selectedPos1, pos);
+	user.worldEditData.selectionPosition1 = pos;
+	main.network.protocols.genericUpdate.sendWorldEditPos(user.conn, .selectedPos1, pos);
 
-	source.sendMessage("Position 1: {}", .{pos});
+	user.sendMessage("Position 1: {}", .{pos});
 }

@@ -10,15 +10,15 @@ pub const Args = union(enum) {
 	@"/deselect": struct {},
 };
 
-pub fn execute(_: Args, _source: Source) void {
-	if (_source != .user) {
-		_source.sendMessage("Command cannot be run without a user", .{});
+pub fn execute(_: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
 		return;
 	}
-	const source = _source.user;
-	source.worldEditData.selectionPosition1 = null;
-	source.worldEditData.selectionPosition2 = null;
+	const user = source.user;
+	user.worldEditData.selectionPosition1 = null;
+	user.worldEditData.selectionPosition2 = null;
 
-	main.network.protocols.genericUpdate.sendWorldEditPos(source.conn, .clear, null);
-	source.sendMessage("Cleared selection.", .{});
+	main.network.protocols.genericUpdate.sendWorldEditPos(user.conn, .clear, null);
+	user.sendMessage("Cleared selection.", .{});
 }

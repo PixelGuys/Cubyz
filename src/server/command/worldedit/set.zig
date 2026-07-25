@@ -16,29 +16,29 @@ pub const Args = union(enum) {
 	@"/set": struct { pattern: command.PatternExpression },
 };
 
-pub fn execute(args: Args, _source: Source) void {
-	if (_source != .user) {
-		_source.sendMessage("Command cannot be run without a user", .{});
+pub fn execute(args: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
 		return;
 	}
-	const source = _source.user;
-	const selection = command.getCurrentSelection(source) catch return;
+	const user = source.user;
+	const selection = command.getCurrentSelection(user) catch return;
 
 	const result = Blueprint.capture(main.globalAllocator, selection);
 
 	switch (result) {
 		.success => |blueprint| {
-			source.worldEditData.undoHistory.push(.init(blueprint, selection.minPos, "set"));
-			source.worldEditData.redoHistory.clear();
+			user.worldEditData.undoHistory.push(.init(blueprint, selection.minPos, "set"));
+			user.worldEditData.redoHistory.clear();
 
 			var modifiedBlueprint = blueprint.clone(main.stackAllocator);
 			defer modifiedBlueprint.deinit(main.stackAllocator);
 
-			modifiedBlueprint.replace(null, source.worldEditData.mask, args.@"/set".pattern.pattern);
+			modifiedBlueprint.replace(null, user.worldEditData.mask, args.@"/set".pattern.pattern);
 			modifiedBlueprint.paste(selection.minPos, .{.preserveVoid = true});
 		},
 		.failure => |err| {
-			source.sendMessage("#ff0000Error: Could not capture selection. (at {}, {s})", .{err.pos, err.message});
+			user.sendMessage("#ff0000Error: Could not capture selection. (at {}, {s})", .{err.pos, err.message});
 		},
 	}
 }

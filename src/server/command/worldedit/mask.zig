@@ -30,20 +30,20 @@ pub const Args = union(enum) {
 	}
 };
 
-pub fn execute(args: Args, _source: Source) void {
-	if (_source != .user) {
-		_source.sendMessage("Command cannot be run without a user", .{});
+pub fn execute(args: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
 		return;
 	}
-	const source = _source.user;
+	const user = source.user;
 	switch (args) {
 		.@"/mask <mask>" => |cmd| {
-			source.worldEditData.mask = cmd.mask.mask.clone(main.globalAllocator);
-			source.sendMessage("#00ff00Mask set.", .{});
+			user.worldEditData.mask = cmd.mask.mask.clone(main.globalAllocator);
+			user.sendMessage("#00ff00Mask set.", .{});
 		},
 		.@"/mask" => {
-			source.worldEditData.mask = null;
-			source.sendMessage("#00ff00Mask cleared.", .{});
+			user.worldEditData.mask = null;
+			user.sendMessage("#00ff00Mask cleared.", .{});
 		},
 	}
 }

@@ -13,13 +13,13 @@ pub const Args = union(enum) {
 	@"/undo": struct {},
 };
 
-pub fn execute(_: Args, _source: Source) void {
-	if (_source != .user) {
-		_source.sendMessage("Command cannot be run without a user", .{});
+pub fn execute(_: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
 		return;
 	}
-	const source = _source.user;
-	if (source.worldEditData.undoHistory.pop()) |action| {
+	const user = source.user;
+	if (user.worldEditData.undoHistory.pop()) |action| {
 		defer action.deinit();
 
 		const redo = Blueprint.capture(main.globalAllocator, action.selection());
@@ -27,14 +27,14 @@ pub fn execute(_: Args, _source: Source) void {
 
 		switch (redo) {
 			.success => |blueprint| {
-				source.worldEditData.redoHistory.push(.init(blueprint, action.position, action.message));
+				user.worldEditData.redoHistory.push(.init(blueprint, action.position, action.message));
 			},
 			.failure => {
-				source.sendMessage("#ff0000Error: Could not capture redo history.", .{});
+				user.sendMessage("#ff0000Error: Could not capture redo history.", .{});
 			},
 		}
-		source.sendMessage("#00ff00Un-done last {s}.", .{action.message});
+		user.sendMessage("#00ff00Un-done last {s}.", .{action.message});
 	} else {
-		source.sendMessage("#ccccccNothing to undo.", .{});
+		user.sendMessage("#ccccccNothing to undo.", .{});
 	}
 }

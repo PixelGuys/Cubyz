@@ -20,19 +20,19 @@ pub const Args = union(enum) {
 	},
 };
 
-pub fn execute(args: Args, _source: Source) void {
-	if (_source != .user) {
-		_source.sendMessage("Command cannot be run without a user", .{});
+pub fn execute(args: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
 		return;
 	}
-	const source = _source.user;
-	const selection = command.getCurrentSelection(source) catch return;
+	const user = source.user;
+	const selection = command.getCurrentSelection(user) catch return;
 	const capture = Blueprint.capture(main.globalAllocator, selection);
 
 	switch (capture) {
 		.success => |blueprint| {
-			source.worldEditData.undoHistory.push(.init(blueprint, selection.minPos, "replace"));
-			source.worldEditData.redoHistory.clear();
+			user.worldEditData.undoHistory.push(.init(blueprint, selection.minPos, "replace"));
+			user.worldEditData.redoHistory.clear();
 
 			var modifiedBlueprint = blueprint.clone(main.stackAllocator);
 			defer modifiedBlueprint.deinit(main.stackAllocator);
@@ -41,7 +41,7 @@ pub fn execute(args: Args, _source: Source) void {
 			modifiedBlueprint.paste(selection.minPos, .{.preserveVoid = true});
 		},
 		.failure => |err| {
-			source.sendMessage("#ff0000Error: Could not capture selection. (at {}, {s})", .{err.pos, err.message});
+			user.sendMessage("#ff0000Error: Could not capture selection. (at {}, {s})", .{err.pos, err.message});
 		},
 	}
 }

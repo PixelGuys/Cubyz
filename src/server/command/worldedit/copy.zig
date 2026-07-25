@@ -14,27 +14,27 @@ pub const Args = union(enum) {
 	@"/copy": struct {},
 };
 
-pub fn execute(_: Args, _source: Source) void {
-	if (_source != .user) {
-		_source.sendMessage("Command cannot be run without a user", .{});
+pub fn execute(_: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
 		return;
 	}
-	const source = _source.user;
-	const selection = command.getCurrentSelection(source) catch return;
-	source.sendMessage("Copying: {f}", .{selection});
+	const user = source.user;
+	const selection = command.getCurrentSelection(user) catch return;
+	user.sendMessage("Copying: {f}", .{selection});
 
 	const result = Blueprint.capture(main.globalAllocator, selection);
 	switch (result) {
 		.success => {
-			if (source.worldEditData.clipboard != null) {
-				source.worldEditData.clipboard.?.deinit(main.globalAllocator);
+			if (user.worldEditData.clipboard != null) {
+				user.worldEditData.clipboard.?.deinit(main.globalAllocator);
 			}
-			source.worldEditData.clipboard = result.success;
+			user.worldEditData.clipboard = result.success;
 
-			source.sendMessage("Copied selection to clipboard.", .{});
+			user.sendMessage("Copied selection to clipboard.", .{});
 		},
 		.failure => |e| {
-			source.sendMessage("#ff0000Error while copying block {}: {s}", .{e.pos, e.message});
+			user.sendMessage("#ff0000Error while copying block {}: {s}", .{e.pos, e.message});
 			std.log.warn("Error while copying block {}: {s}", .{e.pos, e.message});
 		},
 	}

@@ -10,14 +10,14 @@ pub const Args = union(enum) {
 	@"/clear <target>": struct { target: enum { inventory, chat } },
 };
 
-pub fn execute(args: Args, _source: Source) void {
-	if (_source != .user) {
-		_source.sendMessage("Command cannot be run without a user", .{});
+pub fn execute(args: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
 		return;
 	}
-	const source = _source.user;
+	const user = source.user;
 	switch (args.@"/clear <target>".target) {
-		.inventory => main.items.Inventory.server.clearPlayerInventory(source),
-		.chat => main.network.protocols.genericUpdate.sendClear(source.conn, .chat),
+		.inventory => main.items.Inventory.server.clearPlayerInventory(user),
+		.chat => main.network.protocols.genericUpdate.sendClear(user.conn, .chat),
 	}
 }
