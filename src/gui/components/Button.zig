@@ -103,6 +103,7 @@ pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *But
 		.disabled = options.disabled,
 		.hideBackground = options.hideBackground,
 	};
+	if (self.hideBackground) self.child.mutSize().* = self.size;
 	return self;
 }
 
@@ -117,6 +118,7 @@ pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, options: Opti
 		.disabled = options.disabled,
 		.hideBackground = options.hideBackground,
 	};
+	if (self.hideBackground) self.child.mutSize().* = self.size;
 	return self;
 }
 
@@ -155,7 +157,6 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 	defer draw.restoreColor(oldColor);
 	const textPos = self.pos + self.size/@as(Vec2f, @splat(2.0)) - self.child.size()/@as(Vec2f, @splat(2.0));
 	self.child.mutPos().* = textPos;
-	if (self.hideBackground) self.child.mutSize().* = self.size;
 	self.child.render(mousePosition - self.pos);
 }
 
