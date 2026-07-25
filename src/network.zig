@@ -117,13 +117,13 @@ const Socket = struct {
 	}
 
 	fn send(self: Socket, data: []const u8, destination: SocketAddress) void {
-		const addr = blk: {
+		const addr, const addrLen = blk: {
 			var posixAddr: std.Io.Threaded.PosixAddress = undefined;
-			_ = std.Io.Threaded.addressToPosix(&destination.address, &posixAddr);
-			break :blk posixAddr.in;
+			const addrLen = std.Io.Threaded.addressToPosix(&destination.address, &posixAddr);
+			break :blk .{posixAddr.in, addrLen};
 		};
 		if (builtin.os.tag == .windows) {
-			const result = c.sendto(self.socketID, data.ptr, @intCast(data.len), 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
+			const result = c.sendto(self.socketID, data.ptr, @intCast(data.len), 0, @ptrCast(&addr), addrLen);
 			if (result == c.SOCKET_ERROR) {
 				const err = if (windowsError(c.WSAGetLastError())) error.Unknown else |err| err;
 				std.log.warn("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
@@ -259,7 +259,7 @@ pub const SocketAddress = struct {
 			isSymmetricNAT = true;
 			portString = portString[0 .. portString.len - 1];
 		}
-		const port = try (std.fmt.parseUnsigned(u16, portString, 10) catch |err| (defaultPort orelse err));
+		const port = try (std.fmt.parseUnsigned(u16, portString, 10) catch |err| (if (portString.len == 0) defaultPort orelse err else err));
 		return .{
 			.ip = ip,
 			.isSymmetricNAT = isSymmetricNAT,
