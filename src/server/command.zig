@@ -18,7 +18,7 @@ pub const Source = union(enum) {
 		}
 	}
 
-	pub fn hasPermission(self: Source, permissionPath: []const u8) void {
+	pub fn hasPermission(self: Source, permissionPath: []const u8) bool {
 		return switch (self) {
 			.user => |user| main.entity.components.@"cubyz:permissions".server.hasPermission(user.id, permissionPath),
 		};
