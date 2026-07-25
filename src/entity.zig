@@ -132,15 +132,15 @@ pub const client = struct {
 			@field(list, decl.name).client.unload(entity);
 		}
 	}
-	pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
+	pub fn render(ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
 		main.client.entity_manager.update();
 		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).client.render(projMatrix, ambientLight, playerPos, deltaTime);
+			@field(systems, decl.name).client.render(ambientLight, playerPos, deltaTime);
 		}
 	}
-	pub fn renderHud(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
+	pub fn renderHud(ambientLight: Vec3f, playerPos: Vec3d) void {
 		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).client.renderHud(projMatrix, ambientLight, playerPos);
+			@field(systems, decl.name).client.renderHud(ambientLight, playerPos);
 		}
 	}
 };

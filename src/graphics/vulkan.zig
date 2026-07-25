@@ -276,8 +276,13 @@ const deviceExtensions = blk: {
 };
 
 const deviceFeatures: c.VkPhysicalDeviceFeatures = .{
+	// needed for indirect chunk rendering
 	.multiDrawIndirect = c.VK_TRUE,
+	.vertexPipelineStoresAndAtomics = c.VK_TRUE,
+	.fragmentStoresAndAtomics = c.VK_TRUE,
+	// needed for colored glass
 	.dualSrcBlend = c.VK_TRUE,
+	// needed to prevent near-plane clipping
 	.depthClamp = c.VK_TRUE,
 };
 

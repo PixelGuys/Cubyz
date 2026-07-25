@@ -3,6 +3,7 @@ pub const change_name = @import("change_name.zig");
 pub const chat = @import("chat.zig");
 pub const chest = @import("chest.zig");
 pub const clipboard_deleted = @import("clipboard_deleted.zig");
+pub const connecting = @import("connecting.zig");
 pub const controls = @import("controls.zig");
 pub const creative_inventory = @import("creative_inventory.zig");
 pub const crosshair = @import("crosshair.zig");
@@ -34,7 +35,7 @@ pub const save_selection = @import("save_selection.zig");
 pub const settings = @import("settings.zig");
 pub const sign_editor = @import("sign_editor.zig");
 pub const social = @import("social.zig");
-pub const sound = @import("sound.zig");
+pub const audio = @import("audio.zig");
 pub const workbench = @import("workbench.zig");
 
 pub const @"authentication/create_account_account_code" = @import("authentication/create_account_account_code.zig");
