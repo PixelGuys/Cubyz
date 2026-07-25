@@ -581,7 +581,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 				if (checkedSlot < slot) continue;
 				if (checkedSlot < options.ignoredSlotCount) continue;
 				if (std.meta.eql(invStack.item, checkedInvStack.item)) {
-					main.sync.client.executeCommand(.{.deposit = .{.dest = .{.inv = source.super, .slot = @intCast(checkedSlot)}, .source = .{.inv = source.super, .slot = @intCast(slot)}, .amount = checkedInvStack.amount}});
+					main.sync.client.executeCommand(.{.deposit = .{.dest = .{.inv = source.super, .slot = @intCast(checkedSlot)}, .source = .{.inv = source.super, .slot = @intCast(slot)}, .amount = 120}});
 				}
 			}
 		}
