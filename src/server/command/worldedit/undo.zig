@@ -15,7 +15,7 @@ pub const Args = union(enum) {
 
 pub fn execute(_: Args, _source: Source) void {
 	if (_source != .user) {
-		_source.sendMessage("Command doesn't support running without a user", .{});
+		_source.sendMessage("Command cannot be run without a user", .{});
 		return;
 	}
 	const source = _source.user;
