@@ -21,8 +21,6 @@ pub const Args = union(enum) {
 	@"/tp <playerIndex>": struct { playerIndex: command.PlayerIndex },
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/tp"});
-
 pub fn execute(args: Args, _source: Source) void {
 	if (_source != .user) {
 		_source.sendMessage("Command cannot be run without a user", .{});
