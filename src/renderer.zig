@@ -220,7 +220,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	const lightView: Mat4f = Mat4f.identity().mul(.translation(lightOffset));
 
-	const depthFrustum = Frustum.initFromView(lightProjection.mul(lightView), playerPos);
+	const depthFrustum = Frustum.initShadowmap(Vec3f{0.0, 0.0, 0.0}, lightDir, shadowMapSize);
 
 	game.camera.updateViewMatrix();
 
@@ -925,22 +925,16 @@ pub const Frustum = struct { // MARK: Frustum
 		return self;
 	}
 
-	pub fn initFromView(view: Mat4f, playerPos: Vec3d) Frustum {
-		const invView = view.inverse();
-		var planes: [4]Plane = undefined;
-		planes[0] = Plane{.pos = .{0, 0, 0}, .norm = .{1, 0, 0}};
-		planes[1] = Plane{.pos = .{0, 0, 0}, .norm = .{0, 1, 0}};
-		planes[2] = Plane{.pos = .{1, 0, 0}, .norm = .{-1, 0, 0}};
-		planes[3] = Plane{.pos = .{0, 1, 0}, .norm = .{0, -1, 0}};
-
+	pub fn initShadowmap(playerPos: Vec3f, lightDir: Vec3f, shadowMapSize: f32) Frustum {
 		var self: Frustum = undefined;
-		inline for (0.., planes) |i, plane| {
-			const newPos = vec.xyz(invView.mulVec(vec.combine(plane.pos, 1.0)));
-			const normPos = plane.pos + plane.norm;
-			const newNormPos = vec.xyz(invView.mulVec(vec.combine(normPos, 1.0)));
-			const newNorm = vec.normalize(newNormPos - newPos);
-			self.planes[i] = Plane{.pos = @as(Vec3f, @floatCast(playerPos)) + newPos, .norm = newNorm};
-		}
+		self.planes = undefined;
+		const lowPos = playerPos - Vec3f{shadowMapSize/2.0, shadowMapSize/2.0, 0.0};
+		const highPos = playerPos + Vec3f{shadowMapSize/2.0, shadowMapSize/2.0, 0.0};
+		self.planes[0] = Plane{.pos = lowPos, .norm = vec.normalize(Vec3f{-lightDir[0], 0, lightDir[2]})};
+		self.planes[1] = Plane{.pos = lowPos, .norm = vec.normalize(Vec3f{0, -lightDir[0], lightDir[2]})};
+		self.planes[2] = Plane{.pos = highPos, .norm = vec.normalize(Vec3f{lightDir[0], 0, -lightDir[2]})};
+		self.planes[3] = Plane{.pos = highPos, .norm = vec.normalize(Vec3f{0, lightDir[0], -lightDir[2]})};
+
 		self.isPerspective = false;
 		return self;
 	}
