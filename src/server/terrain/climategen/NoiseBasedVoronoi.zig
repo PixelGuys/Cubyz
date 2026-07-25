@@ -456,23 +456,23 @@ const GenerationStructure = struct {
 				result.append(allocator, candidate);
 				continue;
 			}
+			const canditateClosestPoint: Vec2i = .{
+				if (candidate.pos[0] < wx) wx else if (candidate.pos[0] >= wxMax) wxMax else candidate.pos[0],
+				if (candidate.pos[1] < wy) wy else if (candidate.pos[1] >= wyMax) wyMax else candidate.pos[1],
+			};
 			var i: usize = 0;
 			while (i < result.items.len) {
-				blk: {
-					const interp1 = interpolationValueBetween(candidate, result.items[i], .{wx, wy});
-					if (interp1 != 0 and interp1 != 1) break :blk;
-					const interp2 = interpolationValueBetween(candidate, result.items[i], .{wx, wyMax});
-					if (interp2 != interp1) break :blk;
-					const interp3 = interpolationValueBetween(candidate, result.items[i], .{wxMax, wy});
-					if (interp3 != interp1) break :blk;
-					const interp4 = interpolationValueBetween(candidate, result.items[i], .{wxMax, wyMax});
-					if (interp4 != interp1) break :blk;
-					if (interp1 == 0) {
-						_ = result.swapRemove(i);
-						continue;
-					} else {
-						continue :outer;
-					}
+				const interpCandidate = interpolationValueBetween(candidate, result.items[i], canditateClosestPoint);
+				if (interpCandidate == 1) continue :outer;
+
+				const otherClosestPoint: Vec2i = .{
+					if (result.items[i].pos[0] < wx) wx else if (result.items[i].pos[0] >= wxMax) wxMax else result.items[i].pos[0],
+					if (result.items[i].pos[1] < wy) wy else if (result.items[i].pos[1] >= wyMax) wyMax else result.items[i].pos[1],
+				};
+				const interpOther = interpolationValueBetween(candidate, result.items[i], otherClosestPoint);
+				if (interpOther == 0) {
+					_ = result.swapRemove(i);
+					continue;
 				}
 				i += 1;
 			}
