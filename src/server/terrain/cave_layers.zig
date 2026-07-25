@@ -107,10 +107,77 @@ pub fn registerCaveLayers(caveLayerMap: *Assets.ZonHashMap) !void {
 		height -= caveLayers.items[i].layerHeight;
 		caveLayers.items[i].minHeight = height;
 	}
+
+	var newLayers: main.List(CaveLayer) = .empty;
+
+	for (caveLayers.items) |layer| {
+		var split = splitLayer(layer);
+		defer split.deinit(main.worldArena);
+
+		for (split.items) |newLayer| {
+			newLayers.append(main.worldArena, newLayer);
+		}
+	}
+
+	caveLayers.deinit(main.worldArena);
+	caveLayers = newLayers;
+
 	std.log.debug("Registered cave layers:", .{});
 	for (caveLayers.items) |caveLayer| {
 		std.log.debug("{s}: {} to {}", .{caveLayer.id, caveLayer.minHeight, caveLayer.maxHeight});
 	}
+}
+
+fn splitLayer(layer: CaveLayer) main.List(CaveLayer) {
+	var splitPoints: main.List(i32) = .empty;
+	defer splitPoints.deinit(main.stackAllocator);
+	for (layer.biomes.items) |biome| {
+		if (biome.*.maxHeight > layer.minHeight and biome.*.maxHeight < layer.maxHeight) {
+			splitPoints.append(main.stackAllocator, biome.*.maxHeight);
+		}
+		if (biome.*.minHeight < layer.maxHeight and biome.*.minHeight > layer.minHeight) {
+			splitPoints.append(main.stackAllocator, biome.*.minHeight);
+		}
+	}
+	std.mem.sort(i32, splitPoints.items, {}, comptime std.sort.asc(i32));
+	// Remove duplicates in place
+	var write: usize = 0;
+	for (splitPoints.items) |value| {
+		if (write == 0 or splitPoints.items[write - 1] != value) {
+			splitPoints.items[write] = value;
+			write += 1;
+		}
+	}
+	splitPoints.shrinkAndFree(main.stackAllocator, write);
+	splitPoints.items.len = write;
+
+	var newLayers: main.List(CaveLayer) = .empty;
+	var lastPoint: i32 = layer.minHeight;
+	var i: usize = 0;
+	while (i <= splitPoints.items.len) : (i += 1) {
+		const point = if (i < splitPoints.items.len) splitPoints.items[i] else layer.maxHeight;
+		var biomes: main.List(*const Biome) = .empty;
+		for (layer.biomes.items) |biome| {
+			if (biome.maxHeight > point and biome.minHeight < lastPoint) {
+				biomes.append(main.worldArena, biome);
+			}
+			if (biome.maxHeight == point and biome.minHeight == lastPoint) {
+				biomes.append(main.worldArena, biome);
+			}
+		}
+
+		newLayers.append(main.worldArena, CaveLayer{
+			.biomes = main.utils.AliasTable(*const Biome).init(main.worldArena, biomes.items),
+			.caveDensity = layer.caveDensity,
+			.id = layer.id,
+			.layerHeight = point - lastPoint,
+			.depthHint = layer.depthHint,
+			.minHeight = lastPoint,
+			.maxHeight = point,
+		});
+		lastPoint = point;
+	}
+	return newLayers;
 }
 
 fn lessThan(_: void, lhs: CaveLayer, rhs: CaveLayer) bool {
