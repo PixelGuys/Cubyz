@@ -1,13 +1,19 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const main = @import("main");
 
 var readBuffer: [1024]u8 = undefined;
 
-var running: bool = true;
+var running: bool = false;
 
 pub fn init() void {
-	running = true;
+	if (builtin.os.tag == .windows) {
+		std.log.warn("Console per stdin is currently not supported on windows");
+		running = false;
+	} else {
+		running = true;
+	}
 }
 
 pub fn deinit() void {
