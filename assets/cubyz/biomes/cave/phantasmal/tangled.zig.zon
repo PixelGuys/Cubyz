@@ -3,7 +3,7 @@
 	.tags = .{.phantasmal_layer},
 	.fogDensity = 40,
 	.fogColor = 0x000C14,
-	.chance = 0.15,
+	.chance = 0.1,
 	.music = "cubyz:ikabod/xeric",
 	.stoneBlock = "cubyz:chalk/black",
 	.caveRadiusFactor = -1,
