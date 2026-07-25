@@ -95,8 +95,8 @@ pub const server = struct {
 		}
 	}
 
-	pub fn removeToGroup(entity: Entity, groupName: []const u8) bool {
-		const groupNamePtr = (getPermissionGroups(entity) orelse return).getKey(groupName) orelse return false;
+	pub fn removeFromGroup(entity: Entity, groupName: []const u8) bool {
+		const groupNamePtr = (getPermissionGroups(entity) orelse return false).getKey(groupName) orelse return false;
 		_ = getPermissionGroups(entity).?.remove(groupName);
 		main.globalAllocator.free(groupNamePtr);
 		return true;
