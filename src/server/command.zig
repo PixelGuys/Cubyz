@@ -11,12 +11,10 @@ pub const commandList = @import("command/_list.zig");
 
 pub const Source = union(enum) {
 	user: *User,
-	server: void,
 
 	pub fn sendMessage(self: Source, comptime fmt: []const u8, args: anytype) void {
 		switch (self) {
 			.user => |user| user.sendMessage(fmt, args),
-			.server => main.log.server(fmt, args),
 		}
 	}
 };
@@ -102,8 +100,8 @@ pub const Coordinate = union(enum) {
 };
 
 pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, source: Source) main.vec.Vec3d {
-	if (source == .server and (x == .relative or y == .relative or z == .relative)) {
-		source.sendMessage("Commands per console can't interpret relative coordinates, will interpret them as absolute values instead", .{});
+	if (source != .user and (x == .relative or y == .relative or z == .relative)) {
+		source.sendMessage("Command run without user can't interpret relative coordinates, will interpret them as absolute values instead", .{});
 	}
 	return .{
 		// TODO: Remove clamp after #310 is implemented
@@ -118,8 +116,8 @@ pub const Target = struct {
 	increasedRefCount: bool,
 
 	pub fn fromPlayerIndex(arg: ?PlayerIndex, source: Source) !Target {
-		if (arg == null and source == .server) {
-			source.sendMessage("ff0000Server is no player, command needs playerIndex to work", .{});
+		if (arg == null and source != .user) {
+			source.sendMessage("ff0000Command run without a user, can't infer player index", .{});
 			return error.InvalidArg;
 		}
 		const playerIndex = arg orelse return .{
