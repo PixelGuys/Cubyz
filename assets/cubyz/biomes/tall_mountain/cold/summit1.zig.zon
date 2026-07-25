@@ -6,7 +6,7 @@
 	.smoothBeaches = true,
 	.radius = 60,
 	.mountains = 10,
-	.hills = 5,
+	.hills = 12,
 	.chance = 0,
 	.maxSubBiomeCount = 1,
 	.stoneBlock = "cubyz:glacite/smooth",
