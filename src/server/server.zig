@@ -298,11 +298,11 @@ pub const User = struct { // MARK: User
 		}
 		if (main.entity.components.@"cubyz:permissions".server.get(self.id) == null) {
 			main.entity.components.@"cubyz:permissions".server.loadEmpty(self.id);
-
-			main.entity.components.@"cubyz:permissions".server.getPermissions(self.id).?.addPermission(.white, "/command/avatar");
-			if (self.isLocal) {
-				main.entity.components.@"cubyz:permissions".server.getPermissions(self.id).?.addPermission(.white, "/");
-			}
+			main.entity.components.@"cubyz:permissions".server.addPermission(self.id, .white, "/command/avatar");
+			main.entity.components.@"cubyz:permissions".server.addPermission(self.id, .white, "/command/help");
+		}
+		if (self.isLocal) {
+			main.entity.components.@"cubyz:permissions".server.addPermission(self.id, .white, "/");
 		}
 
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
