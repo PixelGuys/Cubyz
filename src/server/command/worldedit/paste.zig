@@ -19,7 +19,7 @@ pub const Args = union(enum) {
 
 pub fn execute(args: Args, _source: Source) void {
 	if (_source != .user) {
-		_source.sendMessage("Command doesn't support running from console", .{});
+		_source.sendMessage("Command doesn't support running without a user", .{});
 		return;
 	}
 	const source = _source.user;
