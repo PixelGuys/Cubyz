@@ -3,27 +3,27 @@ const std = @import("std");
 const main = @import("main");
 const Block = main.blocks.Block;
 
-blockTyp: u16,
+blockType: u16,
 
 pub fn init(zon: main.ZonElement, creator: main.callbacks.Creator) ?*@This() {
 	const replacedBlock = switch (creator) {
 		.block => |b| b,
 	};
 	const result = main.worldArena.create(@This());
-	const blockTyp = main.blocks.getTypeById(zon.get([]const u8, "block") orelse {
-		std.log.err("Missing field \"block\" for replace_blockType event", .{});
+	const blockType = main.blocks.getTypeById(zon.get([]const u8, "block") orelse {
+		std.log.err("Missing field \"block\" for replace_block_type event", .{});
 		return null;
 	});
 	const block: Block = .{
-		.typ = blockTyp,
+		.typ = blockType,
 		.data = 0,
 	};
 	if (replacedBlock.mode() != block.mode()) {
-		std.log.err("The replaced and replacing blocks' rotation modes don't match in replace_blockType event", .{});
+		std.log.err("The replaced and replacing blocks' rotation modes don't match in replace_block_type event", .{});
 		return null;
 	}
 	result.* = .{
-		.blockTyp = blockTyp,
+		.blockType = blockType,
 	};
 	return result;
 }
@@ -34,7 +34,7 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 	const wz = params.chunk.super.pos.wz + params.blockPos.z;
 
 	const replacingBlock: Block = .{
-		.typ = self.blockTyp,
+		.typ = self.blockType,
 		.data = params.block.data,
 	};
 	_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, params.block, replacingBlock);
