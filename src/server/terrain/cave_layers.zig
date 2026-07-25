@@ -125,6 +125,9 @@ pub fn registerCaveLayers(caveLayerMap: *Assets.ZonHashMap) !void {
 	std.log.debug("Registered cave layers:", .{});
 	for (caveLayers.items) |caveLayer| {
 		std.log.debug("{s}: {} to {}", .{caveLayer.id, caveLayer.minHeight, caveLayer.maxHeight});
+		for (caveLayer.biomes.items) |biome| {
+			std.log.debug("     {s}: {} to {}", .{biome.id, biome.minHeight, biome.maxHeight});
+		}
 	}
 }
 
@@ -158,10 +161,7 @@ fn splitLayer(layer: CaveLayer) main.List(CaveLayer) {
 		const point = if (i < splitPoints.items.len) splitPoints.items[i] else layer.maxHeight;
 		var biomes: main.List(*const Biome) = .empty;
 		for (layer.biomes.items) |biome| {
-			if (biome.maxHeight > point and biome.minHeight < lastPoint) {
-				biomes.append(main.worldArena, biome);
-			}
-			if (biome.maxHeight == point and biome.minHeight == lastPoint) {
+			if (biome.maxHeight >= point and biome.minHeight <= lastPoint) {
 				biomes.append(main.worldArena, biome);
 			}
 		}
