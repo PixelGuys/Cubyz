@@ -10,10 +10,14 @@ pub fn init(zon: main.ZonElement, creator: main.callbacks.Creator) ?*@This() {
 		.block => |b| b,
 	};
 	const result = main.worldArena.create(@This());
-	const blockType = main.blocks.getTypeById(zon.get([]const u8, "block") orelse {
+	const blockId = zon.get([]const u8, "block") orelse {
 		std.log.err("Missing field \"block\" for replace_block_type event", .{});
 		return null;
-	});
+	};
+	const blockType = main.blocks.getBlockById(blockId) catch {
+		std.log.err("Block with id '{s}' not found for replace_block_type event", .{blockId});
+		return null;
+	};
 	const block: Block = .{
 		.typ = blockType,
 		.data = 0,
