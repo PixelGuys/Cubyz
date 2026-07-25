@@ -125,9 +125,6 @@ pub fn registerCaveLayers(caveLayerMap: *Assets.ZonHashMap) !void {
 	std.log.debug("Registered cave layers:", .{});
 	for (caveLayers.items) |caveLayer| {
 		std.log.debug("{s}: {} to {}", .{caveLayer.id, caveLayer.minHeight, caveLayer.maxHeight});
-		for (caveLayer.biomes.items) |biome| {
-			std.log.debug("     {s}: {} to {}", .{biome.id, biome.minHeight, biome.maxHeight});
-		}
 	}
 }
 
