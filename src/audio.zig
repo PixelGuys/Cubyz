@@ -357,6 +357,9 @@ pub fn registerSound(assetsFolder: []const u8, id: []const u8, zon: ZonElement) 
 }
 
 fn addSound(id: []const u8, pos: Vec3f, maxDistance: f32, isSpatial: bool) void {
+	mutex.lock();
+	defer mutex.unlock();
+	
 	const idx = soundDataIdMap.get(id) orelse return;
 	const soundData = soundDatas.items[idx];
 	activeSounds.append(main.globalAllocator, PlayingSound{
