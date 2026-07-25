@@ -100,7 +100,7 @@ const Range = struct {
 
 		fn next(self: *Iterator) ?i32 {
 			if (self.current != self.range.stop) {
-				defer self.current += self.range.step;
+				defer self.current +|= self.range.step;
 				return self.current;
 			} else {
 				return null;
