@@ -9,11 +9,9 @@ const Blueprint = main.blueprint.Blueprint;
 pub const description = "Redo last change done to world with world editing commands.";
 pub const usage = "/redo";
 
-pub fn execute(args: []const u8, source: *User) void {
-	if (args.len != 0) {
-		source.sendMessage("#ff0000Too many arguments for command /redo. Expected no arguments.", .{});
-		return;
-	}
+pub const Args = struct {};
+
+pub fn execute(_: Args, source: *User) void {
 	if (source.worldEditData.redoHistory.pop()) |action| {
 		defer action.deinit();
 

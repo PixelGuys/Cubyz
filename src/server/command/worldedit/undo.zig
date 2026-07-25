@@ -9,11 +9,11 @@ const Blueprint = main.blueprint.Blueprint;
 pub const description = "Undo last change done to world with world editing commands.";
 pub const usage = "/undo";
 
-pub fn execute(args: []const u8, source: *User) void {
-	if (args.len != 0) {
-		source.sendMessage("#ff0000Too many arguments for command /undo. Expected no arguments.", .{});
-		return;
-	}
+pub const Args = union(enum) {
+	@"/undo": struct {},
+};
+
+pub fn execute(_: Args, source: *User) void {
 	if (source.worldEditData.undoHistory.pop()) |action| {
 		defer action.deinit();
 

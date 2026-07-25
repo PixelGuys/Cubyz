@@ -685,7 +685,7 @@ pub fn finishLoading() void {
 
 	var transitionBiomeIterator = unfinishedTransitionBiomes.iterator();
 	while (transitionBiomeIterator.next()) |transitionBiomeData| {
-		const parentBiome = biomesById.get(transitionBiomeData.key_ptr.*) orelse unreachable;
+		const parentBiome = biomesById.get(transitionBiomeData.key_ptr.*).?;
 		const transitionBiomes = transitionBiomeData.value_ptr.*;
 		parentBiome.transitionBiomes = main.worldArena.alloc(TransitionBiome, transitionBiomes.len);
 		for (parentBiome.transitionBiomes, transitionBiomes) |*res, src| {

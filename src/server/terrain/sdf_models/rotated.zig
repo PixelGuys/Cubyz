@@ -14,12 +14,6 @@ pub const id = "cubyz:rotated";
 
 const Axis = enum { x, y, z };
 
-const Entry = struct {
-	model: sdf.SdfModel,
-	positionOffset: Vec3f,
-	randomOffset: Vec3f,
-};
-
 child: sdf.SdfModel,
 axis: Axis,
 minAngle: f32,
