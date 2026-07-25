@@ -12,7 +12,6 @@ pub const usage = "/redo";
 pub const Args = struct {};
 
 pub fn execute(_: Args, source: Source) void {
-	_ = args; // autofix
 	if (source != .user) {
 		source.sendMessage("Command cannot be run without a user", .{});
 		return;

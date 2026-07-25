@@ -81,10 +81,10 @@ pub fn execute(args: Args, source: Source) void {
 			return;
 		},
 		.@"/tp <x> <y> <z>" => |pos| {
-			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, _user) catch return;
+			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source) catch return;
 		},
 		.@"/tp <playerIndex>" => |index| {
-			const target = command.Target.fromPlayerIndex(index.playerIndex, _user) catch return;
+			const target = command.Target.fromPlayerIndex(index.playerIndex, source) catch return;
 			defer target.deinit();
 			break :blk target.user.player().pos;
 		},

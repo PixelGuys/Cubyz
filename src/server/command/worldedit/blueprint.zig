@@ -65,7 +65,6 @@ pub fn execute(args: Args, source: Source) void {
 		return;
 	}
 	const user = source.user;
-	_ = user; // autofix
 	switch (args) {
 		.@"/blueprint save <filePath>" => |params| blueprintSave(params.filePath, user),
 		.@"/blueprint delete <filePath>" => |params| blueprintDelete(params.filePath, user),
