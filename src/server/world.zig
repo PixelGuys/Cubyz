@@ -439,6 +439,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	doGameTimeCycle: bool = true,
 
 	tickSpeed: std.atomic.Value(u32) = .init(12),
+	whitelistEnabled: std.atomic.Value(bool) = .init(false),
 
 	settings: Settings = undefined,
 
@@ -652,6 +653,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.biomeChecksum = worldData.get(i64, "biomeChecksum") orelse 0;
 		self.name = main.globalAllocator.dupe(u8, worldData.get([]const u8, "name") orelse self.path);
 		self.tickSpeed = .init(worldData.get(u32, "tickSpeed") orelse 12);
+		self.whitelistEnabled = .init(worldData.get(bool, "whitelistEnabled") orelse false);
 		self.localPlayerIndex = worldData.get(usize, "localPlayer") orelse 0;
 	}
 
@@ -668,6 +670,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		worldData.put("name", self.name);
 		worldData.put("lastUsedTime", std.Io.Clock.Timestamp.now(main.io, .real).raw.toMilliseconds());
 		worldData.put("tickSpeed", self.tickSpeed.load(.monotonic));
+		worldData.put("whitelistEnabled", self.whitelistEnabled.load(.monotonic));
 		worldData.put("localPlayer", self.localPlayerIndex);
 
 		try files.cubyzDir().writeZon(path, worldData);

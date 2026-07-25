@@ -2,40 +2,39 @@ const builtin = @import("builtin");
 const std = @import("std");
 
 const main = @import("main");
-const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const NeverFailingArenaAllocator = main.heap.NeverFailingArenaAllocator;
 const ZonElement = main.ZonElement;
 const sync = main.sync;
 
-pub var enabled: bool = false;
+var allowed: std.StringHashMapUnmanaged(void) = .{};
+var blocked: std.StringHashMapUnmanaged(void) = .{};
 
-var arena: NeverFailingArenaAllocator = undefined;
-var entries: std.StringHashMapUnmanaged(void) = .{};
-
-pub fn init(allocator: NeverFailingAllocator) void {
+pub fn init() void {
 	sync.threadContext.assertCorrectContext(.server);
-	arena = .init(allocator);
-	entries = .{};
-	enabled = false;
+	allowed = .{};
+	blocked = .{};
 }
 
 pub fn deinit() void {
 	sync.threadContext.assertCorrectContext(.server);
-	arena.deinit();
-	entries = .{};
+	allowed = .{};
+	blocked = .{};
 }
 
 pub fn load(dir: main.files.Dir) void {
 	sync.threadContext.assertCorrectContext(.server);
-	init(main.globalAllocator);
+	init();
 
 	const zon = dir.readToZon(main.stackAllocator, "whitelist.zon") catch .null;
 	defer zon.deinit(main.stackAllocator);
 
-	enabled = zon.get(bool, "enabled") orelse false;
-	for (zon.getChild("keys").toSlice()) |item| {
+	loadSet(&allowed, zon.getChild("allowed"));
+	loadSet(&blocked, zon.getChild("blocked"));
+}
+
+fn loadSet(set: *std.StringHashMapUnmanaged(void), zon: ZonElement) void {
+	for (zon.toSlice()) |item| {
 		const key = item.as([]const u8) orelse continue;
-		entries.put(arena.allocator().allocator, arena.allocator().dupe(u8, key), {}) catch unreachable;
+		set.put(main.worldArena.allocator, main.worldArena.dupe(u8, key), {}) catch unreachable;
 	}
 }
 
@@ -48,65 +47,101 @@ fn save() void {
 
 	var zon: ZonElement = .initObject(main.stackAllocator);
 	defer zon.deinit(main.stackAllocator);
-	zon.put("enabled", enabled);
-
-	const keysZon: ZonElement = .initArray(main.stackAllocator);
-	var it = entries.keyIterator();
-	while (it.next()) |key| {
-		keysZon.append(key.*);
-	}
-	zon.put("keys", keysZon);
+	zon.put("allowed", setToZon(allowed));
+	zon.put("blocked", setToZon(blocked));
 
 	main.files.cubyzDir().writeZon(path, zon) catch |err| {
 		std.log.err("Couldn't save whitelist: {t}", .{err});
 	};
 }
 
-pub fn setEnabled(value: bool) void {
-	sync.threadContext.assertCorrectContext(.server);
-	enabled = value;
-	save();
+fn setToZon(set: std.StringHashMapUnmanaged(void)) ZonElement {
+	const zon: ZonElement = .initArray(main.stackAllocator);
+	var it = set.keyIterator();
+	while (it.next()) |key| {
+		zon.append(key.*);
+	}
+	return zon;
 }
 
-pub fn add(key: []const u8) bool {
+pub const AddResult = enum { added, alreadyAllowed };
+pub const RemoveResult = enum { blocked, alreadyBlocked };
+
+pub fn add(key: []const u8) AddResult {
 	sync.threadContext.assertCorrectContext(.server);
-	const result = entries.getOrPut(arena.allocator().allocator, key) catch unreachable;
-	if (result.found_existing) return false;
-	result.key_ptr.* = arena.allocator().dupe(u8, key);
-	save();
-	return true;
+	const wasBlocked = blocked.remove(key);
+	const result = allowed.getOrPut(main.worldArena.allocator, key) catch unreachable;
+	if (!result.found_existing) result.key_ptr.* = main.worldArena.dupe(u8, key);
+	const changed = wasBlocked or !result.found_existing;
+	if (changed) save();
+	return if (changed) .added else .alreadyAllowed;
 }
 
-pub fn remove(key: []const u8) bool {
+pub fn remove(key: []const u8) RemoveResult {
 	sync.threadContext.assertCorrectContext(.server);
-	const result = entries.remove(key);
-	if (result) save();
-	return result;
+	const wasAllowed = allowed.remove(key);
+	const result = blocked.getOrPut(main.worldArena.allocator, key) catch unreachable;
+	if (!result.found_existing) result.key_ptr.* = main.worldArena.dupe(u8, key);
+	const changed = wasAllowed or !result.found_existing;
+	if (changed) save();
+	return if (changed) .blocked else .alreadyBlocked;
 }
 
 pub fn contains(key: []const u8) bool {
 	sync.threadContext.assertCorrectContext(.server);
-	return entries.contains(key);
+	if (blocked.contains(key)) return false;
+	if (allowed.contains(key)) return true;
+	if (main.server.world) |world| return world.playerDatabase.contains(key);
+	return false;
 }
 
 test "addContainsRemove" {
-	init(main.heap.testingAllocator);
+	main.heap.allocators.createWorldArena();
+	defer main.heap.allocators.destroyWorldArena();
+	init();
 	defer deinit();
 
 	try std.testing.expectEqual(false, contains("ed25519:abc"));
-	try std.testing.expectEqual(true, add("ed25519:abc"));
-	try std.testing.expectEqual(false, add("ed25519:abc"));
+	try std.testing.expectEqual(.added, add("ed25519:abc"));
+	try std.testing.expectEqual(.alreadyAllowed, add("ed25519:abc"));
 	try std.testing.expectEqual(true, contains("ed25519:abc"));
-	try std.testing.expectEqual(true, remove("ed25519:abc"));
-	try std.testing.expectEqual(false, remove("ed25519:abc"));
+	try std.testing.expectEqual(.blocked, remove("ed25519:abc"));
+	try std.testing.expectEqual(.alreadyBlocked, remove("ed25519:abc"));
 	try std.testing.expectEqual(false, contains("ed25519:abc"));
 }
 
-test "disabledByDefault" {
-	init(main.heap.testingAllocator);
+test "addUnblocks" {
+	main.heap.allocators.createWorldArena();
+	defer main.heap.allocators.destroyWorldArena();
+	init();
 	defer deinit();
 
-	try std.testing.expectEqual(false, enabled);
-	setEnabled(true);
-	try std.testing.expectEqual(true, enabled);
+	try std.testing.expectEqual(.blocked, remove("ed25519:xyz"));
+	try std.testing.expectEqual(false, contains("ed25519:xyz"));
+	try std.testing.expectEqual(.added, add("ed25519:xyz"));
+	try std.testing.expectEqual(true, contains("ed25519:xyz"));
+}
+
+test "containsFallsBackToPlayerDatabaseAndBlockOverridesIt" {
+	main.heap.allocators.createWorldArena();
+	defer main.heap.allocators.destroyWorldArena();
+	init();
+	defer deinit();
+
+	var testWorld: main.server.ServerWorld = undefined;
+	testWorld.playerDatabase = .{};
+	defer testWorld.playerDatabase.deinit(main.heap.testingAllocator.allocator);
+	testWorld.playerDatabase.put(main.heap.testingAllocator.allocator, "ed25519:known", 0) catch unreachable;
+
+	main.server.world = &testWorld;
+	defer main.server.world = null;
+
+	try std.testing.expectEqual(true, contains("ed25519:known"));
+	try std.testing.expectEqual(false, contains("ed25519:unknown"));
+
+	try std.testing.expectEqual(.blocked, remove("ed25519:known"));
+	try std.testing.expectEqual(false, contains("ed25519:known"));
+
+	try std.testing.expectEqual(.added, add("ed25519:known"));
+	try std.testing.expectEqual(true, contains("ed25519:known"));
 }
