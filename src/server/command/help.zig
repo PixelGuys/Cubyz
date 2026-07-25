@@ -23,7 +23,7 @@ pub fn execute(args: Args, source: Source) void {
 		.@"/help" => {
 			var iterator = command.commands.valueIterator();
 			while (iterator.next()) |cmd| {
-				if (!main.entity.components.@"cubyz:permissions".server.hasPermission(source.id, cmd.permissionPath)) continue;
+				if (!source.hasPermission(cmd.permissionPath)) continue;
 
 				msg.append('/');
 				msg.appendSlice(cmd.name);
@@ -36,7 +36,7 @@ pub fn execute(args: Args, source: Source) void {
 		.@"/help <command>" => |params| {
 			const cmd = params.command.cmd;
 
-			if (!main.entity.components.@"cubyz:permissions".server.hasPermission(source.id, cmd.permissionPath)) {
+			if (!source.hasPermission(cmd.permissionPath)) {
 				source.sendMessage("#ff0000Unrecognized command name.", .{});
 				return;
 			}
