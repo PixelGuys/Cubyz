@@ -17,6 +17,12 @@ pub const Source = union(enum) {
 			.user => |user| user.sendMessage(fmt, args),
 		}
 	}
+
+	pub fn hasPermission(self: Source, permissionPath: []const u8) void {
+		return switch (self) {
+			.user => |user| main.entity.components.@"cubyz:permissions".server.hasPermission(user.id, permissionPath),
+		};
+	}
 };
 
 pub const Command = struct {
@@ -67,7 +73,7 @@ pub fn execute(msg: []const u8, source: Source) void {
 	const end = std.mem.indexOfScalar(u8, msg, ' ') orelse msg.len;
 	const command = msg[0..end];
 	if (commands.get(command)) |cmd| {
-		if (source == .user and !main.entity.components.@"cubyz:permissions".server.hasPermission(source.user.id, cmd.permissionPath)) {
+		if (!source.hasPermission(cmd.permissionPath)) {
 			source.sendMessage("#ff0000No permission to use Command \"{s}\"", .{command});
 			return;
 		}
@@ -106,9 +112,9 @@ pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, source: S
 	}
 	return .{
 		// TODO: Remove clamp after #310 is implemented
-		std.math.clamp(if (x == .relative and source == .user) source.user.player().pos[0] + x.relative else x.absolute, -1e9, 1e9),
-		std.math.clamp(if (y == .relative and source == .user) source.user.player().pos[1] + y.relative else y.absolute, -1e9, 1e9),
-		std.math.clamp(if (z == .relative and source == .user) source.user.player().pos[2] + z.relative else z.absolute, -1e9, 1e9),
+		std.math.clamp(if (x == .relative) source.user.player().pos[0] + x.relative else x.absolute, -1e9, 1e9),
+		std.math.clamp(if (y == .relative) source.user.player().pos[1] + y.relative else y.absolute, -1e9, 1e9),
+		std.math.clamp(if (z == .relative) source.user.player().pos[2] + z.relative else z.absolute, -1e9, 1e9),
 	};
 }
 
