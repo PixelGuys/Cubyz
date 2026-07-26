@@ -404,7 +404,8 @@ pub const Biome = struct { // MARK: Biome
 			std.log.err("Biome {s} has a relative ocean and an ocean height of {d}. Ocean height should be greater than 0.", .{self.id, self.oceanHeight});
 		}
 		if (self.relativeOceanGap == 0) {
-			std.log.err("Biome {s} cannot have relative ocean gap of 0.", .{self.id});
+			std.log.err("Biome {s} cannot have relative ocean gap of 0. Setting to 1 instead.", .{self.id});
+			self.relativeOceanGap = 1;
 		}
 		self.relativeOceanOffset = @mod(self.relativeOceanOffset, @as(i32, @intCast(self.relativeOceanGap)));
 	}
