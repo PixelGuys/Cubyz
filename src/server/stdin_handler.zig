@@ -37,7 +37,7 @@ pub fn update() void {
 }
 
 fn readFromStdin() usize {
-	const _result = main.io.operateTimeout(.{.file_read_streaming = .{
+	const result = main.io.operateTimeout(.{.file_read_streaming = .{
 		.data = &.{&readBuffer},
 		.file = std.Io.File.stdin(),
 	}}, .{.duration = .{.raw = .zero, .clock = .awake}}) catch |err| {
@@ -46,7 +46,7 @@ fn readFromStdin() usize {
 		running = false;
 		return 0;
 	};
-	return _result.file_read_streaming catch |err| {
+	return result.file_read_streaming catch |err| {
 		std.log.err("Error while reading from stdin: {t}", .{err});
 		running = false;
 		return 0;
