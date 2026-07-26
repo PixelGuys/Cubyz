@@ -48,7 +48,7 @@ fn isOceanEdge(chunk: *main.chunk.ServerChunk, relPos: Vec3i, biome: *const Biom
 	const neighborAirBlockBelow = caveMap.findTerrainChangeBelow(relPos[0], relPos[1], relPos[2]) + chunk.super.pos.voxelSize;
 	const neighborOceanHeight = getOceanHeight(neighborBiome, chunk, neighborAirBlockBelow);
 	const neighborValidDepth = neighborOceanHeight -% neighborAirBlockBelow <= neighborBiome.oceanHeight;
-	if (!liquidMatches or neighborOceanHeight != biomeOceanHeight or (biome.isOceanRelative and neighborBiome.isOceanRelative and !neighborValidDepth)){
+	if (!liquidMatches or neighborOceanHeight != biomeOceanHeight or (biome.isOceanRelative and neighborBiome.isOceanRelative and !neighborValidDepth)) {
 		return true;
 	}
 	return false;
@@ -190,7 +190,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 									break;
 								}
 							}
-							if (zStart <= z){
+							if (zStart <= z) {
 								chunk.updateBlockColumnInGeneration(x, y, zStart, z, blockToPlace);
 							}
 						}
