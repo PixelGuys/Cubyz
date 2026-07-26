@@ -19,7 +19,6 @@ const Mask = main.blueprint.Mask;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const CircularBufferQueue = main.utils.CircularBufferQueue;
 const sync = main.sync;
-const stdin_handler = main.stdin_handler;
 
 pub const BlockUpdateSystem = @import("BlockUpdateSystem.zig");
 pub const world_zig = @import("world.zig");
@@ -27,6 +26,7 @@ pub const ServerWorld = world_zig.ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
+pub const stdin_handler = @import("stdin_handler.zig");
 pub const storage = @import("storage.zig");
 pub const permission = @import("permission.zig");
 
