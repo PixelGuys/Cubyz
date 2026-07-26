@@ -36,6 +36,7 @@ layout(location = 5) uniform bool isDepth;
 layout(location = 6) uniform float lodDistance;
 
 bool isVisible(int dir, ivec3 playerDist) {
+	if(isDepth) return true;
 	switch(dir) {
 	case 0: // dirUp
 		return playerDist.z >= 0;
