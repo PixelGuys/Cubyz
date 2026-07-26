@@ -123,7 +123,7 @@ const Socket = struct {
 			break :blk .{posixAddr.in, addrLen};
 		};
 		if (builtin.os.tag == .windows) {
-			const result = c.sendto(self.socketID, data.ptr, @intCast(data.len), 0, @ptrCast(&addr), addrLen);
+			const result = c.sendto(self.socketID, data.ptr, @intCast(data.len), 0, @ptrCast(&addr), @intCast(addrLen));
 			if (result == c.SOCKET_ERROR) {
 				const err = if (windowsError(c.WSAGetLastError())) error.Unknown else |err| err;
 				std.log.warn("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
@@ -131,7 +131,7 @@ const Socket = struct {
 				std.debug.assert(@as(usize, @intCast(result)) == data.len);
 			}
 		} else {
-			const result = std.c.sendto(self.socketID, data.ptr, data.len, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
+			const result = std.c.sendto(self.socketID, data.ptr, data.len, 0, @ptrCast(&addr), addrLen);
 			switch (std.c.errno(result)) {
 				.SUCCESS => {
 					std.debug.assert(data.len == result);
