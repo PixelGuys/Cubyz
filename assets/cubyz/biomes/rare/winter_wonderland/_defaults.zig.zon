@@ -3,6 +3,9 @@
 		.cold,
 		.wet,
 	},
+
+	.music = "cubyz:totaldemented/frigid_feeling",
+
 	.roughness = 0,
 	.minHeightLimit = 7,
 	.minHeight = 22,
@@ -10,7 +13,7 @@
 	.maxHeightLimit = 60,
 	.hills = 15,
 	.mountains = 8,
-	.stoneBlock = "cubyz:glacite/base",
+	.stoneBlock = "cubyz:glacite/smooth",
 	.ground_structure = .{
 		"2 to 3 cubyz:snow",
 		"1 to 2 cubyz:permafrost",

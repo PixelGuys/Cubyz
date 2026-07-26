@@ -14,9 +14,9 @@
 
 	.hills = 5,
 
-	.music = "cubyz:tides",
+	.music = "cubyz:totaldemented/tides",
 
-	.stoneBlock = "cubyz:sandstone/base",
+	.stoneBlock = "cubyz:sandstone/rough",
 	.ground_structure = .{
 		"2 to 4 cubyz:sand",
 	},

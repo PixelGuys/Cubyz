@@ -14,12 +14,12 @@
 	.roughness = 10,
 	.hills = 10,
 
-	.music = "cubyz:leaves",
+	.music = "cubyz:totaldemented/leaves",
 
 	.validPlayerSpawn = true,
 
 	.ground_structure = .{
-		"cubyz:grass",
+		"cubyz:grass/temperate",
 		"2 to 3 cubyz:soil",
 	},
 	.structures = .{

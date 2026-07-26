@@ -1,0 +1,12 @@
+.{
+	.id = "cubyz:oak",
+	.tags = .{.oak},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.chance = 0.0001,
+			.placeMode = .degradable,
+			.structure = "cubyz:tree/oak/old_growth",
+		},
+	},
+}

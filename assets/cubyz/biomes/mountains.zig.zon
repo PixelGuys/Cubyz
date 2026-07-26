@@ -15,9 +15,9 @@
 	.mountains = 100,
 
 	.rivers = true,
-
+	.music = "cubyz:totaldemented/adventurous",
 	.ground_structure = .{
-		"cubyz:grass",
+		"cubyz:grass/temperate",
 		"1 to 2 cubyz:soil",
 	},
 	.structures = .{

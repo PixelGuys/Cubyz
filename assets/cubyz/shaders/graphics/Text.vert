@@ -11,8 +11,7 @@ layout(location = 1) uniform vec2 scene;
 layout(location = 2) uniform vec2 offset;
 layout(location = 3) uniform float ratio;
 layout(location = 4) uniform int fontEffects;
-
-layout(location = 5) uniform float alpha;
+layout(location = 5) uniform uint inColor;
 
 vec2 convert2Proportional(vec2 original, vec2 full) {
 	return vec2(original.x/full.x, original.y/full.y);
@@ -33,5 +32,6 @@ void main() {
 
 	gl_Position = vec4(position, 0, 1);
 	frag_face_pos = face_pos;
-	color = vec4(vec3((fontEffects & 0xff0000)>>16, (fontEffects & 0xff00)>>8, fontEffects & 0xff)/255.0, alpha);
+	color = vec4(vec3((fontEffects & 0xff0000)>>16, (fontEffects & 0xff00)>>8, fontEffects & 0xff)/255.0, 1.0);
+	color *= vec4((inColor & 0xff0000)>>16, (inColor & 0xff00)>>8, inColor & 0xff, inColor >> 24)/255.0;
 }

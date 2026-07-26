@@ -15,7 +15,6 @@
 const std = @import("std");
 const main = @import("main");
 const builtin = @import("builtin");
-const Futex = @This();
 const windows = std.os.windows;
 const linux = std.os.linux;
 const c = std.c;
@@ -23,6 +22,8 @@ const c = std.c;
 const assert = std.debug.assert;
 const testing = std.testing;
 const atomic = std.atomic;
+
+const Futex = @This();
 
 /// Checks if `ptr` still contains the value `expect` and, if so, blocks the caller until either:
 /// - The value at `ptr` is no longer equal to `expect`.
@@ -71,24 +72,7 @@ pub fn wake(ptr: *const atomic.Value(u32), max_waiters: u32) void {
 	Impl.wake(ptr, max_waiters);
 }
 
-const Impl = if (builtin.single_threaded)
-	SingleThreadedImpl
-else if (builtin.os.tag == .windows)
-	WindowsImpl
-else if (builtin.os.tag.isDarwin())
-	DarwinImpl
-else if (builtin.os.tag == .linux)
-	LinuxImpl
-else if (builtin.os.tag == .freebsd)
-	FreebsdImpl
-else if (builtin.os.tag == .openbsd)
-	OpenbsdImpl
-else if (builtin.target.cpu.arch.isWasm())
-	WasmImpl
-else if (std.Thread.use_pthreads)
-	PosixImpl
-else
-	UnsupportedImpl;
+const Impl = if (builtin.single_threaded) SingleThreadedImpl else if (builtin.os.tag == .windows) WindowsImpl else if (builtin.os.tag.isDarwin()) DarwinImpl else if (builtin.os.tag == .linux) LinuxImpl else if (builtin.os.tag == .freebsd) FreebsdImpl else if (builtin.os.tag == .openbsd) OpenbsdImpl else if (builtin.target.cpu.arch.isWasm()) WasmImpl else if (std.Thread.use_pthreads) PosixImpl else UnsupportedImpl;
 
 /// We can't do @compileError() in the `Impl` switch statement above as its eagerly evaluated.
 /// So instead, we @compileError() on the methods themselves for platforms which don't support futex.
@@ -593,7 +577,7 @@ const PosixImpl = struct {
 
 			// There's a wait queue on the address; get the queue head and tail.
 			const head: *Waiter = @fieldParentPtr("node", entry_node);
-			const tail = head.tail orelse unreachable;
+			const tail = head.tail.?;
 
 			// Push the waiter to the tail by replacing it and linking to the previous tail.
 			head.tail = waiter;
@@ -647,8 +631,8 @@ const PosixImpl = struct {
 				};
 
 				// The queue head and tail must exist if we're removing a queued waiter.
-				const head: *Waiter = @fieldParentPtr("node", entry.node orelse unreachable);
-				const tail = head.tail orelse unreachable;
+				const head: *Waiter = @fieldParentPtr("node", entry.node.?);
+				const tail = head.tail.?;
 
 				// A waiter with a previous link is never the head of the queue.
 				if (waiter.prev) |prev| {

@@ -16,7 +16,7 @@
 	.hills = 18,
 	.validPlayerSpawn = true,
 	.ground_structure = .{
-		"cubyz:grass",
+		"cubyz:grass/temperate",
 		"cubyz:soil",
 	},
 	.structures = .{
@@ -61,7 +61,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/temperate"},
 			.chance = 0.1,
 			.width = 5,
 			.variation = 8,
@@ -80,7 +80,7 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.03,
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.size = 3,
 			.size_variance = 3,
 		},

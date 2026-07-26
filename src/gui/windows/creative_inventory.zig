@@ -26,7 +26,7 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 const slotsPerRow: u32 = 10;
-var items: main.List(Item) = undefined;
+var items: main.ListManaged(Item) = undefined;
 var inventory: ClientInventory = undefined;
 var searchInput: *TextInput = undefined;
 var searchString: []const u8 = undefined;

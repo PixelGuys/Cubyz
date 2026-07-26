@@ -3,5 +3,5 @@
 	.properties = .{
 		.ocean,
 	},
-	.music = "cubyz:Sincerely",
+	.music = "cubyz:totaldemented/tides",
 }

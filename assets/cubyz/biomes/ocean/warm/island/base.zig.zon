@@ -45,7 +45,7 @@
 		.{
 			.id = "cubyz:ocean/warm/island/shelf",
 			.chance = 1,
-			.parentEdgeDistance = 45,
+			.parentEdgeDistance = 37,
 		},
 	},
 }

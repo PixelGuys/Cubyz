@@ -6,7 +6,6 @@ const Chunk = main.chunk.Chunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const getIndex = main.chunk.getIndex;
 const graphics = main.graphics;
-const c = graphics.c;
 const server = main.server;
 const User = server.User;
 const mesh_storage = main.renderer.mesh_storage;
@@ -17,6 +16,8 @@ const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
+
+const c = @import("c");
 
 const UpdateEvent = union(enum) {
 	remove: void,
@@ -92,7 +93,7 @@ pub const BlockEntity = enum(u32) { // MARK: BlockEntity
 	noValue = std.math.maxInt(u32),
 	_,
 
-	var freeIndexList: main.ListUnmanaged(BlockEntity) = .{};
+	var freeIndexList: main.List(BlockEntity) = .empty;
 	var nextIndex: BlockEntity = @enumFromInt(0);
 	var mutex: main.utils.Mutex = .{};
 
@@ -140,7 +141,7 @@ fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 			storage.clear();
 		}
 		fn createEntry(pos: Vec3i, chunk: *Chunk) BlockEntity {
-			main.utils.assertLocked(&mutex);
+			mutex.assertLocked();
 			const entity: BlockEntity = .create();
 			const localPos = chunk.getLocalBlockPos(pos);
 
@@ -157,7 +158,7 @@ fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 			storage.set(main.globalAllocator, entity, value);
 		}
 		pub fn removeAtIndex(entity: BlockEntity) ?DataT {
-			main.utils.assertLocked(&mutex);
+			mutex.assertLocked();
 			entity.destroy();
 			return storage.fetchRemove(entity) catch null;
 		}
@@ -177,12 +178,12 @@ fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 			return removeAtIndex(entity);
 		}
 		pub fn getByIndex(entity: BlockEntity) ?*DataT {
-			main.utils.assertLocked(&mutex);
+			mutex.assertLocked();
 
 			return storage.get(entity);
 		}
 		pub fn get(pos: Vec3i, chunk: *Chunk) ?*DataT {
-			main.utils.assertLocked(&mutex);
+			mutex.assertLocked();
 
 			const localPos = chunk.getLocalBlockPos(pos);
 
@@ -197,7 +198,7 @@ fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 			foundExisting: bool,
 		};
 		pub fn getOrPut(pos: Vec3i, chunk: *Chunk) GetOrPutResult {
-			main.utils.assertLocked(&mutex);
+			mutex.assertLocked();
 			if (get(pos, chunk)) |result| return .{.valuePtr = result, .foundExisting = true};
 
 			const entity = createEntry(pos, chunk);
@@ -245,21 +246,21 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 
 			const data = StorageServer.getOrPut(pos, chunk);
 			std.debug.assert(!data.foundExisting);
-			data.valuePtr.invId = main.items.Inventory.ServerSide.createExternallyManagedInventory(inventorySize, .{.blockInventory = pos}, reader, inventoryCallbacks);
+			data.valuePtr.invId = main.items.Inventory.server.createExternallyManagedInventory(inventorySize, .{.blockInventory = pos}, reader, inventoryCallbacks);
 		}
 
 		pub fn onUnloadServer(entity: BlockEntity) void {
 			StorageServer.mutex.lock();
-			const data = StorageServer.removeAtIndex(entity) orelse unreachable;
+			const data = StorageServer.removeAtIndex(entity).?;
 			StorageServer.mutex.unlock();
-			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(data.invId);
+			main.items.Inventory.server.destroyExternallyManagedInventory(data.invId);
 		}
 		pub fn onStoreServerToDisk(entity: BlockEntity, writer: *BinaryWriter) void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
 			const data = StorageServer.getByIndex(entity) orelse return;
 
-			const inv = main.items.Inventory.ServerSide.getInventoryFromId(data.invId);
+			const inv = main.items.Inventory.server.getInventoryFromId(data.invId);
 			var isEmpty: bool = true;
 			for (inv._items) |item| {
 				if (item.amount != 0) isEmpty = false;
@@ -274,7 +275,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			switch (event) {
 				.remove => {
 					const chestComponent = StorageServer.remove(pos, chunk) orelse return;
-					main.items.Inventory.ServerSide.destroyAndDropExternallyManagedInventory(chestComponent.invId, pos);
+					main.items.Inventory.server.destroyAndDropExternallyManagedInventory(chestComponent.invId, pos);
 				},
 				.update => {
 					StorageServer.mutex.lock();
@@ -282,14 +283,14 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 					const data = StorageServer.getOrPut(pos, chunk);
 					if (data.foundExisting) return;
 					var reader = BinaryReader.init(&.{});
-					data.valuePtr.invId = main.items.Inventory.ServerSide.createExternallyManagedInventory(inventorySize, .{.blockInventory = pos}, &reader, inventoryCallbacks);
+					data.valuePtr.invId = main.items.Inventory.server.createExternallyManagedInventory(inventorySize, .{.blockInventory = pos}, &reader, inventoryCallbacks);
 				},
 			}
 		}
 		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 
-		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {}
+		pub fn renderAll(_: Vec3f) void {}
 	};
 
 	pub const @"cubyz:sign" = struct { // MARK: cubyz:sign
@@ -307,19 +308,15 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 				if (self.renderedTexture) |texture| {
 					textureDeinitLock.lock();
 					defer textureDeinitLock.unlock();
-					textureDeinitList.append(texture);
+					textureDeinitList.append(main.globalAllocator, texture);
 				}
 			}
 		});
-		var textureDeinitList: main.List(graphics.Texture) = undefined;
+		var textureDeinitList: main.List(graphics.Texture) = .empty;
 		var textureDeinitLock: main.utils.Mutex = .{};
 		var pipeline: graphics.Pipeline = undefined;
 		var uniforms: struct {
 			ambientLight: c_int,
-			projectionMatrix: c_int,
-			viewMatrix: c_int,
-			playerPositionInteger: c_int,
-			playerPositionFraction: c_int,
 			quadIndex: c_int,
 			lightData: c_int,
 			chunkPos: c_int,
@@ -334,7 +331,6 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 		pub fn init() void {
 			StorageServer.init();
 			StorageClient.init();
-			textureDeinitList = .init(main.globalAllocator);
 			if (!main.settings.launchConfig.headlessServer) {
 				pipeline = graphics.Pipeline.init(
 					"assets/cubyz/shaders/block_entity/sign.vert",
@@ -353,8 +349,10 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			while (textureDeinitList.popOrNull()) |texture| {
 				texture.deinit();
 			}
-			textureDeinitList.deinit();
-			pipeline.deinit();
+			textureDeinitList.deinit(main.globalAllocator);
+			if (!main.settings.launchConfig.headlessServer) {
+				pipeline.deinit();
+			}
 			StorageServer.deinit();
 			StorageClient.deinit();
 		}
@@ -366,13 +364,13 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 		pub fn onUnloadClient(entity: BlockEntity) void {
 			StorageClient.mutex.lock();
 			defer StorageClient.mutex.unlock();
-			const entry = StorageClient.removeAtIndex(entity) orelse unreachable;
+			const entry = StorageClient.removeAtIndex(entity).?;
 			entry.deinit();
 		}
 		pub fn onUnloadServer(entity: BlockEntity) void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
-			const entry = StorageServer.removeAtIndex(entity) orelse unreachable;
+			const entry = StorageServer.removeAtIndex(entity).?;
 			main.globalAllocator.free(entry.text);
 		}
 
@@ -478,7 +476,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			main.network.protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
 		}
 
-		pub fn renderAll(projectionMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
+		pub fn renderAll(ambientLight: Vec3f) void {
 			var oldFramebufferBinding: c_int = undefined;
 			c.glGetIntegerv(c.GL_DRAW_FRAMEBUFFER_BINDING, &oldFramebufferBinding);
 
@@ -518,10 +516,6 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			main.renderer.chunk_meshing.vao.bind();
 
 			c.glUniform3f(uniforms.ambientLight, ambientLight[0], ambientLight[1], ambientLight[2]);
-			c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projectionMatrix));
-			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&main.game.camera.viewMatrix));
-			c.glUniform3i(uniforms.playerPositionInteger, @floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
-			c.glUniform3f(uniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 
 			outer: for (StorageClient.storage.dense.items) |signData| {
 				if (main.blocks.meshes.model(signData.block).model().internalQuads.len == 0) continue;
@@ -574,8 +568,8 @@ pub fn getByID(_id: ?[]const u8) ?*const BlockEntityType {
 	return null;
 }
 
-pub fn renderAll(projectionMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
+pub fn renderAll(ambientLight: Vec3f) void {
 	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		@field(BlockEntityTypes, declaration.name).renderAll(projectionMatrix, ambientLight, playerPos);
+		@field(BlockEntityTypes, declaration.name).renderAll(ambientLight);
 	}
 }

@@ -5,10 +5,14 @@ pub const invite = @import("invite.zig");
 pub const kick = @import("kick.zig");
 pub const kill = @import("kill.zig");
 pub const particles = @import("particles.zig");
+pub const seed = @import("seed.zig");
+pub const server = @import("server.zig");
 pub const spawn = @import("spawn.zig");
 pub const tickspeed = @import("tickspeed.zig");
 pub const time = @import("time.zig");
 pub const tp = @import("tp.zig");
+
+pub const avatar = @import("entity/avatar.zig");
 
 pub const perm = @import("permission/perm.zig");
 

@@ -15,7 +15,7 @@ const FaceData = main.renderer.chunk_meshing.FaceData;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const Box = main.physics.collision.Box;
 
-var quadSSBO: graphics.SSBO = undefined;
+var quadSSBO: ?graphics.SSBO = null;
 
 pub const QuadInfo = extern struct {
 	normal: [3]f32 align(16),
@@ -134,7 +134,7 @@ pub const Model = struct {
 		return @popCount(@as(u3, @bitCast(hasTwoOnes))) == 2 and @popCount(@as(u3, @bitCast(hasTwoZeroes))) == 2;
 	}
 
-	pub fn init(quadInfos: []const QuadInfo) ModelIndex {
+	pub fn initWithCollisionModel(quadInfos: []const QuadInfo, collisionModel: ?[]const Box) ModelIndex {
 		const adjustedQuads = main.stackAllocator.alloc(QuadInfo, quadInfos.len);
 		defer main.stackAllocator.free(adjustedQuads);
 		for (adjustedQuads, quadInfos) |*dest, *src| {
@@ -207,8 +207,16 @@ pub const Model = struct {
 			self.allNeighborsOccluded = self.allNeighborsOccluded and self.isNeighborOccluded[neighbor];
 			self.noNeighborsOccluded = self.noNeighborsOccluded and !self.isNeighborOccluded[neighbor];
 		}
-		generateCollision(self, adjustedQuads);
+		if (collisionModel) |collision| {
+			self.collision = main.globalAllocator.dupe(Box, collision);
+		} else {
+			generateCollision(self, adjustedQuads);
+		}
 		return modelIndex;
+	}
+
+	pub fn init(quadInfos: []const QuadInfo) ModelIndex {
+		return initWithCollisionModel(quadInfos, null);
 	}
 
 	fn edgeInterp(y: f32, x0: f32, y0: f32, x1: f32, y1: f32) f32 {
@@ -363,7 +371,7 @@ pub const Model = struct {
 			floodfillQueue.pushBack(.{.x = elem.x, .y = elem.y, .val = ~newValue << 1 | ~newValue >> 1});
 		}
 
-		var collision: main.List(Box) = .init(main.globalAllocator);
+		var collision: main.List(Box) = .empty;
 
 		for (0..collisionGridSize) |x| {
 			for (0..collisionGridSize) |y| {
@@ -382,12 +390,12 @@ pub const Model = struct {
 					const min = @as(Vec3f, @floatFromInt(boxMin))/@as(Vec3f, @splat(collisionGridSize));
 					const max = @as(Vec3f, @floatFromInt(boxMax))/@as(Vec3f, @splat(collisionGridSize));
 
-					collision.append(Box{.min = min, .max = max});
+					collision.append(main.globalAllocator, Box{.min = min, .max = max});
 				}
 			}
 		}
 
-		self.collision = collision.toOwnedSlice();
+		self.collision = collision.toOwnedSlice(main.globalAllocator);
 	}
 
 	fn allTrue(grid: *const [collisionGridSize][collisionGridSize]CollisionGridInteger, min: Vec3i, max: Vec3i, mask: CollisionGridInteger) bool {
@@ -419,20 +427,8 @@ pub const Model = struct {
 		};
 	}
 
-	fn addVert(vert: Vec3f, vertList: *main.List(Vec3f)) usize {
-		const ind = for (vertList.*.items, 0..) |vertex, index| {
-			if (vertex == vert) break index;
-		} else vertList.*.items.len;
-
-		if (ind == vertList.*.items.len) {
-			vertList.*.append(vert);
-		}
-
-		return ind;
-	}
-
-	pub fn loadModel(data: []const u8) ModelIndex {
-		const quadInfos = loadRawModelDataFromObj(main.stackAllocator, data);
+	pub fn loadModel(data: []const u8, coordinateSystem: vec.CoordinateSystem) ModelIndex {
+		const quadInfos = loadRawModelDataFromObj(main.stackAllocator, data, coordinateSystem);
 		defer main.stackAllocator.free(quadInfos);
 		for (quadInfos) |*quad| {
 			var minUv: Vec2f = @splat(std.math.inf(f32));
@@ -454,34 +450,32 @@ pub const Model = struct {
 		return Model.init(quadInfos);
 	}
 
-	pub fn loadRawModelDataFromObj(allocator: main.heap.NeverFailingAllocator, data: []const u8) []QuadInfo {
-		var vertices = main.List(Vec3f).init(main.stackAllocator);
+	pub fn loadRawModelDataFromObj(allocator: main.heap.NeverFailingAllocator, data: []const u8, coordinateSystem: vec.CoordinateSystem) []QuadInfo {
+		var vertices: main.ListManaged(Vec3f) = .init(main.stackAllocator);
 		defer vertices.deinit();
 
-		var normals = main.List(Vec3f).init(main.stackAllocator);
+		var normals: main.ListManaged(Vec3f) = .init(main.stackAllocator);
 		defer normals.deinit();
 
-		var uvs = main.List(Vec2f).init(main.stackAllocator);
+		var uvs: main.ListManaged(Vec2f) = .init(main.stackAllocator);
 		defer uvs.deinit();
 
-		var tris = main.List(Triangle).init(main.stackAllocator);
+		var tris: main.ListManaged(Triangle) = .init(main.stackAllocator);
 		defer tris.deinit();
 
-		var quadFaces = main.List(Quad).init(main.stackAllocator);
+		var quadFaces: main.ListManaged(Quad) = .init(main.stackAllocator);
 		defer quadFaces.deinit();
 
 		var splitIterator = std.mem.splitScalar(u8, data, '\n');
 		while (splitIterator.next()) |lineUntrimmed| {
-			if (lineUntrimmed.len < 3)
-				continue;
+			if (lineUntrimmed.len < 3) continue;
 
 			var line = lineUntrimmed;
 			if (line[line.len - 1] == '\r') {
 				line = line[0 .. line.len - 1];
 			}
 
-			if (line[0] == '#')
-				continue;
+			if (line[0] == '#') continue;
 
 			if (std.mem.eql(u8, line[0..2], "v ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[2..], ' ');
@@ -493,7 +487,7 @@ pub const Model = struct {
 						break :blk 0;
 					};
 				}
-				vertices.append(coords);
+				vertices.append(coordinateSystem.convertVec(coords, @splat(0.5)));
 			} else if (std.mem.eql(u8, line[0..3], "vn ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[3..], ' ');
 				var norm: [3]f32 = undefined;
@@ -504,7 +498,7 @@ pub const Model = struct {
 						break :blk 0;
 					};
 				}
-				normals.append(norm);
+				normals.append(coordinateSystem.convertVec(norm, @splat(0)));
 			} else if (std.mem.eql(u8, line[0..3], "vt ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[3..], ' ');
 				var uv: [2]f32 = undefined;
@@ -556,7 +550,7 @@ pub const Model = struct {
 			}
 		}
 
-		var quadInfos = main.List(QuadInfo).initCapacity(allocator, tris.items.len + quads.items.len);
+		var quadInfos: main.ListManaged(QuadInfo) = .initCapacity(allocator, tris.items.len + quads.items.len);
 		defer quadInfos.deinit();
 
 		for (tris.items) |face| {
@@ -610,7 +604,7 @@ pub const Model = struct {
 		main.globalAllocator.free(self.collision);
 	}
 
-	pub fn getRawFaces(model: Model, quadList: *main.List(QuadInfo)) void {
+	pub fn getRawFaces(model: Model, quadList: *main.ListManaged(QuadInfo)) void {
 		for (model.internalQuads) |quadIndex| {
 			quadList.append(quadIndex.quadInfo().*);
 		}
@@ -626,7 +620,7 @@ pub const Model = struct {
 	}
 
 	pub fn mergeModels(modelList: []ModelIndex) ModelIndex {
-		var quadList = main.List(QuadInfo).init(main.stackAllocator);
+		var quadList = main.ListManaged(QuadInfo).init(main.stackAllocator);
 		defer quadList.deinit();
 		for (modelList) |model| {
 			model.model().getRawFaces(&quadList);
@@ -635,7 +629,7 @@ pub const Model = struct {
 	}
 
 	pub fn transformModel(model: Model, transformFunction: anytype, transformFunctionParameters: anytype) ModelIndex {
-		var quadList = main.List(QuadInfo).init(main.stackAllocator);
+		var quadList = main.ListManaged(QuadInfo).init(main.stackAllocator);
 		defer quadList.deinit();
 		model.getRawFaces(&quadList);
 		for (quadList.items) |*quad| {
@@ -644,19 +638,19 @@ pub const Model = struct {
 		return Model.init(quadList.items);
 	}
 
-	fn appendQuadsToList(quadList: []const QuadIndex, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, pos: main.chunk.BlockPos, comptime backFace: bool) void {
+	fn appendQuadsToList(quadList: []const QuadIndex, list: *main.ListManaged(FaceData), block: main.blocks.Block, pos: main.chunk.BlockPos, comptime backFace: bool) void {
 		for (quadList) |quadIndex| {
 			const texture = main.blocks.meshes.textureIndex(block, quadIndex.quadInfo().textureSlot);
-			list.append(allocator, FaceData.init(texture, quadIndex, pos, backFace));
+			list.append(FaceData.init(texture, quadIndex, pos, backFace));
 		}
 	}
 
-	pub fn appendInternalQuadsToList(self: *const Model, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, pos: main.chunk.BlockPos, comptime backFace: bool) void {
-		appendQuadsToList(self.internalQuads, list, allocator, block, pos, backFace);
+	pub fn appendInternalQuadsToList(self: *const Model, list: *main.ListManaged(FaceData), block: main.blocks.Block, pos: main.chunk.BlockPos, comptime backFace: bool) void {
+		appendQuadsToList(self.internalQuads, list, block, pos, backFace);
 	}
 
-	pub fn appendNeighborFacingQuadsToList(self: *const Model, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, neighbor: Neighbor, pos: main.chunk.BlockPos, comptime backFace: bool) void {
-		appendQuadsToList(self.neighborFacingQuads[neighbor.toInt()], list, allocator, block, pos, backFace);
+	pub fn appendNeighborFacingQuadsToList(self: *const Model, list: *main.ListManaged(FaceData), block: main.blocks.Block, neighbor: Neighbor, pos: main.chunk.BlockPos, comptime backFace: bool) void {
+		appendQuadsToList(self.neighborFacingQuads[neighbor.toInt()], list, block, pos, backFace);
 	}
 };
 
@@ -669,8 +663,8 @@ pub fn getModelIndex(string: []const u8) ModelIndex {
 	};
 }
 
-var quads: main.List(QuadInfo) = undefined;
-var extraQuadInfos: main.List(ExtraQuadInfo) = undefined;
+var quads: main.List(QuadInfo) = .empty;
+var extraQuadInfos: main.List(ExtraQuadInfo) = .empty;
 var models: main.utils.VirtualList(Model, 1 << 20) = undefined;
 
 var quadDeduplication: std.AutoHashMap([@sizeOf(QuadInfo)]u8, QuadIndex) = undefined;
@@ -694,7 +688,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 	} else {
 		info.opaqueInLod = @intFromBool(Model.getFaceNeighbor(&info) != null);
 	}
-	quads.append(info);
+	quads.append(main.globalAllocator, info);
 	quadDeduplication.put(std.mem.toBytes(info), index) catch unreachable;
 
 	var extraQuadInfo: ExtraQuadInfo = undefined;
@@ -721,7 +715,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 	}
 
 	if (extraQuadInfo.alignedNormalDirection) |normal| {
-		var lightSamples: main.ListUnmanaged(LightSample) = .initCapacity(main.stackAllocator, 4*8*4);
+		var lightSamples: main.List(LightSample) = .initCapacity(main.stackAllocator, 4*8*4);
 		defer lightSamples.deinit(main.stackAllocator);
 
 		for (0..4) |i| {
@@ -761,7 +755,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 			}
 		}.lessThan);
 
-		var deduplicatedList: main.ListUnmanaged(LightSample) = .initCapacity(main.stackAllocator, lightSamples.items.len);
+		var deduplicatedList: main.List(LightSample) = .initCapacity(main.stackAllocator, lightSamples.items.len);
 		defer deduplicatedList.deinit(main.stackAllocator);
 
 		for (lightSamples.items) |sample| {
@@ -776,12 +770,12 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 
 		extraQuadInfo.lightSampleListForAxisAlignedModels = main.globalArena.dupe(LightSample, deduplicatedList.items);
 	}
-	extraQuadInfos.append(extraQuadInfo);
+	extraQuadInfos.append(main.globalAllocator, extraQuadInfo);
 
 	return index;
 }
 
-fn addCornerLightSamples(lightSamples: *main.ListUnmanaged(LightSample), pos: Vec3i, direction: chunk.Neighbor, weights: [4]u16) void {
+fn addCornerLightSamples(lightSamples: *main.List(LightSample), pos: Vec3i, direction: chunk.Neighbor, weights: [4]u16) void {
 	const normal: Vec3f = @floatFromInt(Vec3i{direction.relX(), direction.relY(), direction.relZ()});
 	const lightPos = @as(Vec3f, @floatFromInt(pos)) + normal*@as(Vec3f, @splat(0.5)) - @as(Vec3f, @splat(0.5));
 	const startPos: Vec3i = @floor(lightPos);
@@ -795,66 +789,9 @@ fn addCornerLightSamples(lightSamples: *main.ListUnmanaged(LightSample), pos: Ve
 	}
 }
 
-fn box(min: Vec3f, max: Vec3f, uvOffset: Vec2f) [6]QuadInfo {
-	const corner000: Vec3f = .{min[0], min[1], min[2]};
-	const corner001: Vec3f = .{min[0], min[1], max[2]};
-	const corner010: Vec3f = .{min[0], max[1], min[2]};
-	const corner011: Vec3f = .{min[0], max[1], max[2]};
-	const corner100: Vec3f = .{max[0], min[1], min[2]};
-	const corner101: Vec3f = .{max[0], min[1], max[2]};
-	const corner110: Vec3f = .{max[0], max[1], min[2]};
-	const corner111: Vec3f = .{max[0], max[1], max[2]};
-	return .{
-		.{
-			.normal = .{-1, 0, 0},
-			.corners = .{corner010, corner011, corner000, corner001},
-			.cornerUV = .{uvOffset + Vec2f{1 - max[1], min[2]}, uvOffset + Vec2f{1 - max[1], max[2]}, uvOffset + Vec2f{1 - min[1], min[2]}, uvOffset + Vec2f{1 - min[1], max[2]}},
-			.textureSlot = Neighbor.dirNegX.toInt(),
-		},
-		.{
-			.normal = .{1, 0, 0},
-			.corners = .{corner100, corner101, corner110, corner111},
-			.cornerUV = .{uvOffset + Vec2f{min[1], min[2]}, uvOffset + Vec2f{min[1], max[2]}, uvOffset + Vec2f{max[1], min[2]}, uvOffset + Vec2f{max[1], max[2]}},
-			.textureSlot = Neighbor.dirPosX.toInt(),
-		},
-		.{
-			.normal = .{0, -1, 0},
-			.corners = .{corner000, corner001, corner100, corner101},
-			.cornerUV = .{uvOffset + Vec2f{min[0], min[2]}, uvOffset + Vec2f{min[0], max[2]}, uvOffset + Vec2f{max[0], min[2]}, uvOffset + Vec2f{max[0], max[2]}},
-			.textureSlot = Neighbor.dirNegY.toInt(),
-		},
-		.{
-			.normal = .{0, 1, 0},
-			.corners = .{corner110, corner111, corner010, corner011},
-			.cornerUV = .{uvOffset + Vec2f{1 - max[0], min[2]}, uvOffset + Vec2f{1 - max[0], max[2]}, uvOffset + Vec2f{1 - min[0], min[2]}, uvOffset + Vec2f{1 - min[0], max[2]}},
-			.textureSlot = Neighbor.dirPosY.toInt(),
-		},
-		.{
-			.normal = .{0, 0, -1},
-			.corners = .{corner010, corner000, corner110, corner100},
-			.cornerUV = .{uvOffset + Vec2f{min[0], 1 - max[1]}, uvOffset + Vec2f{min[0], 1 - min[1]}, uvOffset + Vec2f{max[0], 1 - max[1]}, uvOffset + Vec2f{max[0], 1 - min[1]}},
-			.textureSlot = Neighbor.dirDown.toInt(),
-		},
-		.{
-			.normal = .{0, 0, 1},
-			.corners = .{corner111, corner101, corner011, corner001},
-			.cornerUV = .{uvOffset + Vec2f{1 - max[0], 1 - max[1]}, uvOffset + Vec2f{1 - max[0], 1 - min[1]}, uvOffset + Vec2f{1 - min[0], 1 - max[1]}, uvOffset + Vec2f{1 - min[0], 1 - min[1]}},
-			.textureSlot = Neighbor.dirUp.toInt(),
-		},
-	};
-}
-
-fn openBox(min: Vec3f, max: Vec3f, uvOffset: Vec2f, openSide: enum { x, y, z }) [4]QuadInfo {
-	const fullBox = box(min, max, uvOffset);
-	switch (openSide) {
-		.x => return fullBox[2..6].*,
-		.y => return fullBox[0..2].* ++ fullBox[4..6].*,
-		.z => return fullBox[0..4].*,
-	}
-}
-
-pub fn registerModel(id: []const u8, data: []const u8) ModelIndex {
-	const model = Model.loadModel(data);
+pub fn registerModel(id: []const u8, data: []const u8, zon: ?main.ZonElement) ModelIndex {
+	const coordinateSystem: vec.CoordinateSystem = if (zon) |z| z.get(vec.CoordinateSystem, "coordinateSystem") orelse .right_handed_z_up else .right_handed_z_up;
+	const model = Model.loadModel(data, coordinateSystem);
 	nameToIndex.put(id, model) catch unreachable;
 	return model;
 }
@@ -862,8 +799,6 @@ pub fn registerModel(id: []const u8, data: []const u8) ModelIndex {
 // TODO: Entity models.
 pub fn init() void {
 	models = .init();
-	quads = .init(main.globalAllocator);
-	extraQuadInfos = .init(main.globalAllocator);
 	quadDeduplication = .init(main.globalAllocator.allocator);
 
 	nameToIndex = .init(main.globalAllocator.allocator);
@@ -884,18 +819,20 @@ pub fn reset() void {
 }
 
 pub fn deinit() void {
-	quadSSBO.deinit();
+	if (quadSSBO) |_quadSSBO| {
+		_quadSSBO.deinit();
+	}
 	nameToIndex.deinit();
 	for (models.items()) |model| {
 		model.deinit();
 	}
 	models.deinit();
-	quads.deinit();
-	extraQuadInfos.deinit();
+	quads.deinit(main.globalAllocator);
+	extraQuadInfos.deinit(main.globalAllocator);
 	quadDeduplication.deinit();
 }
 
 pub fn uploadModels() void {
 	quadSSBO = graphics.SSBO.initStatic(QuadInfo, quads.items);
-	quadSSBO.bind(4);
+	quadSSBO.?.bind(4);
 }

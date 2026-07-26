@@ -1,8 +1,8 @@
 .{
-	.tags = .{.leaf, .cuttable},
+	.tags = .{.leaf, .cuttable, .sliceable},
 	.blockHealth = 1,
 	.drops = .{
-		.{.items = .{.auto}},
+		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
 	},
 	.rotation = "cubyz:ore",
 	.model = "cubyz:cube",

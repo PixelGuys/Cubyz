@@ -5,7 +5,7 @@
 	.hills = 4,
 	.soilCreep = 1,
 	.ground_structure = .{
-		"cubyz:cold_grass",
+		"cubyz:grass/cold",
 		"1 to 2 cubyz:permafrost",
 	},
 	.structures = .{
@@ -26,7 +26,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:cold_grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/cold"},
 			.chance = 0.06,
 			.width = 3,
 			.variation = 2,
@@ -38,7 +38,7 @@
 		.{
 			.id = "cubyz:ocean/cold/island/shelf",
 			.chance = 1,
-			.parentEdgeDistance = 45,
+			.parentEdgeDistance = 37,
 		},
 	},
 }

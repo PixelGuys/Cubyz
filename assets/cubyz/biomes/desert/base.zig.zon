@@ -16,7 +16,9 @@
 	.maxRadius = 640,
 	.hills = 20,
 	.validPlayerSpawn = false,
-	.music = "cubyz:EasternThought",
+
+	.music = "cubyz:mischol/desert_firefly",
+
 	.ground_structure = .{
 		"3 to 4 cubyz:sand",
 	},
@@ -43,5 +45,5 @@
 			.priority = 0.1,
 		},
 	},
-	.stoneBlock = "cubyz:sandstone/base",
+	.stoneBlock = "cubyz:sandstone/rough",
 }

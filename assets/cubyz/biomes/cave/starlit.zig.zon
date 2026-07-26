@@ -2,7 +2,7 @@
 	.isCave = true,
 	.tags = .{.cave_layer},
 	.maxHeight = -10000,
-	.music = "cubyz:heart-of-the-beast",
+	.music = "cubyz:ikabod/xeric",
 	.chance = 0.1,
 	.structures = .{
 		.{

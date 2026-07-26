@@ -17,10 +17,10 @@
 	.hills = 14,
 	.validPlayerSpawn = true,
 	.ground_structure = .{
-		"1 cubyz:cold_grass",
+		"1 cubyz:grass/cold",
 		"1 to 3 cubyz:permafrost",
 	},
-	.stoneBlock = "cubyz:glacite/base",
+	.stoneBlock = "cubyz:glacite/smooth",
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
@@ -60,7 +60,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:cold_grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/cold"},
 			.chance = 0.1,
 			.width = 5,
 			.variation = 8,
@@ -79,7 +79,7 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.04,
-			.block = "cubyz:glacite/base",
+			.block = "cubyz:glacite/smooth",
 			.size = 3,
 			.size_variance = 3,
 		},

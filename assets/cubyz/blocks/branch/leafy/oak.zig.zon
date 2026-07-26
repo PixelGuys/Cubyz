@@ -6,7 +6,8 @@
 		},
 	},
 	.drops = .{
-		.{.items = .{"cubyz:leaves/oak", "cubyz:branch/oak"}},
+		.{.items = .{"cubyz:branch/oak"}},
+		.{.items = .{"cubyz:leaves/oak"}, .allowedToolTags = .{.cuttable}},
 	},
 	.texture = "cubyz:leaves/oak",
 	.texture6 = "cubyz:branch/oak/dot",

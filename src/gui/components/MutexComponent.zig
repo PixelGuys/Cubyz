@@ -13,16 +13,13 @@ const ScrollBar = GuiComponent.ScrollBar;
 
 const MutexComponent = @This();
 
-const scrollBarWidth = 5;
-const border: f32 = 3;
-
 pos: Vec2f = undefined,
 size: Vec2f = undefined,
 child: GuiComponent = undefined,
 mutex: main.utils.Mutex = .{},
 
 pub fn updateInner(self: *MutexComponent, _other: anytype) void {
-	main.utils.assertLocked(&self.mutex);
+	self.mutex.assertLocked();
 	var other: GuiComponent = undefined;
 	if (@TypeOf(_other) == GuiComponent) {
 		other = _other;
@@ -35,7 +32,7 @@ pub fn updateInner(self: *MutexComponent, _other: anytype) void {
 }
 
 pub fn deinit(self: *MutexComponent) void {
-	main.utils.assertLocked(&self.mutex);
+	self.mutex.assertLocked();
 	self.child.deinit();
 }
 
