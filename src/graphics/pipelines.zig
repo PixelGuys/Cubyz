@@ -844,20 +844,24 @@ var frameUnformDescriptorSetLayout: c.VkDescriptorSetLayout = undefined;
 pub fn init() void { // MARK: init()
 	if (c.glslang_initialize_process() == c.false) std.log.err("glslang_initialize_process failed", .{});
 
-	const descriptorSetLayoutInfo = c.VkDescriptorSetLayoutCreateInfo{
-		.sType = c.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-		.bindingCount = 1,
-		.pBindings = @ptrCast(&DescriptorSetLayoutBinding{
-			.binding = 0,
-			.count = 1,
-			.stageFlags = .{.fragment = true, .vertex = true, .compute = true},
-			.type = .uniformBuffer,
-		}),
-	};
-	vulkan.checkResultErr(c.vkCreateDescriptorSetLayout(vulkan.device, &descriptorSetLayoutInfo, null, &frameUnformDescriptorSetLayout)) catch @panic("Driver Bug");
+	if (main.settings.launchConfig.vulkanTestingMode) {
+		const descriptorSetLayoutInfo = c.VkDescriptorSetLayoutCreateInfo{
+			.sType = c.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+			.bindingCount = 1,
+			.pBindings = @ptrCast(&DescriptorSetLayoutBinding{
+				.binding = 0,
+				.count = 1,
+				.stageFlags = .{.fragment = true, .vertex = true, .compute = true},
+				.type = .uniformBuffer,
+			}),
+		};
+		vulkan.checkResultErr(c.vkCreateDescriptorSetLayout(vulkan.device, &descriptorSetLayoutInfo, null, &frameUnformDescriptorSetLayout)) catch @panic("Driver Bug");
+	}
 }
 
 pub fn deinit() void { // MARK: deinit()
 	c.glslang_finalize_process();
-	c.vkDestroyDescriptorSetLayout(vulkan.device, frameUnformDescriptorSetLayout, null);
+	if (main.settings.launchConfig.vulkanTestingMode) {
+		c.vkDestroyDescriptorSetLayout(vulkan.device, frameUnformDescriptorSetLayout, null);
+	}
 }
