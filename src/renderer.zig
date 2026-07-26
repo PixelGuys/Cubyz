@@ -60,7 +60,6 @@ pub var activeFrameBuffer: c_uint = 0;
 pub const reflectionCubeMapSize = 64;
 var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
-pub const shadowMapResolution = 2048.0;
 var depthFrameBuffer: graphics.FrameBuffer = undefined;
 
 pub fn init() void {
@@ -98,7 +97,11 @@ pub fn init() void {
 	reflectionCubeMap.generate(reflectionCubeMapSize, reflectionCubeMapSize);
 	initReflectionCubeMap();
 	depthFrameBuffer.init(false, true, c.GL_NEAREST, c.GL_CLAMP_TO_BORDER);
-	depthFrameBuffer.updateSize(shadowMapResolution, shadowMapResolution, null);
+	updateDepthFrameBufferSize();
+}
+
+pub fn updateDepthFrameBufferSize() void {
+	depthFrameBuffer.updateSize(settings.shadowMapResolution, settings.shadowMapResolution, null);
 }
 
 pub fn deinit() void {
@@ -192,7 +195,7 @@ pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: 
 
 pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) void { // MARK: renderWorld()
 	depthFrameBuffer.bind();
-	c.glViewport(0, 0, shadowMapResolution, shadowMapResolution);
+	c.glViewport(0, 0, settings.shadowMapResolution, settings.shadowMapResolution);
 	gpu_performance_measuring.startQuery(.depth_framebuffer_clear);
 	c.glClear(c.GL_DEPTH_BUFFER_BIT);
 	gpu_performance_measuring.stopQuery();
@@ -207,7 +210,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	const yR = lightDir[1];
 	const zR = lightDir[2];
 
-	const shadowMapSize = shadowMapResolution/16.0;
+	const shadowMapSize = @as(f32, @floatFromInt(settings.shadowMapResolution))/16.0;
 
 	const far = shadowMapSize;
 	const near = -shadowMapSize;
