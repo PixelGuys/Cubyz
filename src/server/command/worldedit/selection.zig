@@ -131,12 +131,10 @@ fn Scanner3D(comptime mode: ScannerMode) type {
 			x = 0,
 			y = 1,
 			z = 2,
-			const iterator: [3]Axis = .{.x, .y, .z};
 		};
 		const Candidate = enum(u1) {
 			min = 0,
 			max = 1,
-			const iterator: [2]Candidate = .{.min, .max};
 		};
 		const Stage = struct {
 			axis: Axis,
