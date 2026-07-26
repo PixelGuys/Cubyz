@@ -79,7 +79,6 @@ float shadowCalculation() {
 	}
 	float closestDepth = texture(shadowMap, projCoords.xy).r;
 	float currentDepth = projCoords.z;
-	currentDepth += 0.0001;
 	float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
 	return shadow;
 }
