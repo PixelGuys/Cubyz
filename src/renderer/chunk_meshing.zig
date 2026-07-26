@@ -119,7 +119,7 @@ pub fn init() void {
 		"",
 		&occlusionTestUniforms,
 		graphics.VertexArray.EmptyVertex,
-		&.{},
+		&.{.ssbo(6, .{.vertex = true, .fragment = true}), .ssbo(9, .{.vertex = true})},
 		.{},
 		.{.depthTest = true, .depthWrite = false},
 		.{.attachments = &.{.{
