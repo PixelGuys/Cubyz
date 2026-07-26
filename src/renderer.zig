@@ -933,12 +933,11 @@ pub const Frustum = struct { // MARK: Frustum
 		self.planes = undefined;
 		const lowPos = playerPos - Vec3f{shadowMapSize/2.0, shadowMapSize/2.0, 0.0};
 		const highPos = playerPos + Vec3f{shadowMapSize/2.0, shadowMapSize/2.0, 0.0};
-		self.planes[0] = Plane{.pos = lowPos, .norm = vec.normalize(Vec3f{-lightDir[0], 0, lightDir[2]})};
-		self.planes[1] = Plane{.pos = lowPos, .norm = vec.normalize(Vec3f{0, -lightDir[0], lightDir[2]})};
-		self.planes[2] = Plane{.pos = highPos, .norm = vec.normalize(Vec3f{lightDir[0], 0, -lightDir[2]})};
-		self.planes[3] = Plane{.pos = highPos, .norm = vec.normalize(Vec3f{0, lightDir[0], -lightDir[2]})};
-
-		self.isPerspective = false;
+		self.planes[0] = Plane{.pos = lowPos, .norm = vec.normalize(Vec3f{0, -lightDir[2], lightDir[1]})};
+		self.planes[1] = Plane{.pos = lowPos, .norm = vec.normalize(Vec3f{-lightDir[2], 0, lightDir[0]})};
+		self.planes[2] = Plane{.pos = highPos, .norm = vec.normalize(Vec3f{0, lightDir[2], -lightDir[1]})};
+		self.planes[3] = Plane{.pos = highPos, .norm = vec.normalize(Vec3f{lightDir[2], 0, -lightDir[0]})};
+		self.isPerspective = true;
 		return self;
 	}
 
