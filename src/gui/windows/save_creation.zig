@@ -122,7 +122,7 @@ pub fn onOpen() void {
 	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", worldSettings.allowCheats, &allowCheatsCallback));
 
 	if (!build_options.isTaggedRelease) {
-		list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", worldSettings.testingMode, &testingModeCallback));
+		list.add(CheckBox.init(.{0, 0}, 128, "Developer Options", worldSettings.testingMode, &testingModeCallback));
 	}
 
 	presetButton = Button.initText(.{0, 0}, 128, worldPresets[selectedPreset].key_ptr.*, .{.onAction = .init(worldPresetCallback)});

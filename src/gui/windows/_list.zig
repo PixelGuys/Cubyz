@@ -32,6 +32,7 @@ pub const pause_gear = @import("pause_gear.zig");
 pub const performance_graph = @import("performance_graph.zig");
 pub const save_creation = @import("save_creation.zig");
 pub const save_selection = @import("save_selection.zig");
+pub const edit_world = @import("edit_world.zig");
 pub const settings = @import("settings.zig");
 pub const sign_editor = @import("sign_editor.zig");
 pub const social = @import("social.zig");

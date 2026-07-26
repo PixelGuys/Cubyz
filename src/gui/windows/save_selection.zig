@@ -28,6 +28,7 @@ pub var needsUpdate: bool = false;
 
 pub var mode: main.server.ServerWorld.Mode = undefined;
 
+var editWorldIcon: Texture = undefined;
 var deleteIcon: Texture = undefined;
 var fileExplorerIcon: Texture = undefined;
 
@@ -39,11 +40,13 @@ const WorldInfo = struct {
 var worldList: main.List(WorldInfo) = .empty;
 
 pub fn init() void {
+	editWorldIcon = Texture.initFromFile("assets/cubyz/ui/window_title.png");
 	deleteIcon = Texture.initFromFile("assets/cubyz/ui/delete_icon.png");
 	fileExplorerIcon = Texture.initFromFile("assets/cubyz/ui/file_explorer_icon.png");
 }
 
 pub fn deinit() void {
+	editWorldIcon = Texture.initFromFile("assets/cubyz/ui/window_title.png");
 	deleteIcon.deinit();
 	fileExplorerIcon.deinit();
 }
@@ -85,6 +88,12 @@ pub fn openWorld(name: []const u8) void {
 
 fn openWorldWrap(index: usize) void { // TODO: Improve this situation. Maybe it makes sense to always use 2 arguments in the Callback.
 	openWorld(worldList.items[index].fileName);
+}
+
+fn editWorld(index: usize) void {
+	main.gui.closeWindow("edit_world");
+	main.gui.openWindow("edit_world");
+	_ = index;
 }
 
 fn deleteWorld(index: usize) void {
@@ -154,8 +163,9 @@ pub fn onOpen() void {
 	for (worldList.items, 0..) |worldInfo, i| {
 		const row = HorizontalList.init();
 		row.add(Button.initText(.{0, 0}, 128, worldInfo.name, .{.onAction = .initWithInt(openWorldWrap, i)}));
-		row.add(Button.initIcon(.{8, 0}, .{16, 16}, fileExplorerIcon, .{.onAction = .initWithInt(openFolder, i)}));
-		row.add(Button.initIcon(.{8, 0}, .{16, 16}, deleteIcon, .{.onAction = .initWithInt(deleteWorld, i)}));
+		row.add(Button.initIcon(.{4, 0}, .{16, 16}, editWorldIcon, .{.onAction = .initWithInt(editWorld, i)}));
+		row.add(Button.initIcon(.{4, 0}, .{16, 16}, fileExplorerIcon, .{.onAction = .initWithInt(openFolder, i)}));
+		row.add(Button.initIcon(.{4, 0}, .{16, 16}, deleteIcon, .{.onAction = .initWithInt(deleteWorld, i)}));
 		row.finish(.{0, 0}, .center);
 		list.add(row);
 	}
