@@ -65,11 +65,10 @@ vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012
 
 float shadowCalculation() {
 	if (dot(lightDir, normal) > 0.0) return 1.0;
-
 	vec3 shadowPosUV = uvTransform * (worldToQuad * lightViewMatrix * vec4(shadowPos, 1.0)).xyz;
-	shadowPosUV.xy = ceil(shadowPosUV.xy * 16.0) / 16.0;
+	shadowPosUV.xy = (floor(shadowPosUV.xy * 16.0) + 0.5) / 16.0;
 	vec4 shadowPosSnapped = inverse(worldToQuad) * vec4(inverse(uvTransform) * shadowPosUV, 1.0);
-
+	shadowPosSnapped.xy += normalize(lightDir.xy) * 0.02;
 	vec4 lightPos = lightProjectionMatrix * shadowPosSnapped;
 	vec3 projCoords = lightPos.xyz;
 	projCoords = projCoords * 0.5 + 0.5;
@@ -77,6 +76,7 @@ float shadowCalculation() {
 	if(projCoords.z >= 1.0 - clipMargin || projCoords.z <= clipMargin) {
 		return 0.0;
 	}
+	vec2 projCoords2 = projCoords.xy + 1.0/textureSize(shadowMap, 0);
 	float closestDepth = texture(shadowMap, projCoords.xy).r;
 	float currentDepth = projCoords.z;
 	float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
