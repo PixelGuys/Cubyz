@@ -226,7 +226,6 @@ pub const launchConfig = struct {
 		};
 		defer zon.deinit(main.stackAllocator);
 
-
 		cubyzDir = main.globalArena.dupe(u8, zon.get([]const u8, "cubyzDir") orelse cubyzDir);
 		headlessServer = zon.get(bool, "headlessServer") orelse headlessServer;
 		autoEnterWorld = main.globalArena.dupe(u8, zon.get([]const u8, "autoEnterWorld") orelse autoEnterWorld);
