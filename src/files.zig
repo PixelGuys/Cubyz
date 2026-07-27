@@ -129,14 +129,25 @@ pub const Dir = struct {
 	}
 
 
-	pub fn hasFile(self: Dir, subPath: []const u8) bool {
-		const file = self.dir.openFile(main.io, subPath, .{}) catch return false;
+	pub fn hasFile(self: Dir, subPath: []const u8) !bool {
+		const file = self.dir.openFile(main.io, subPath, .{}) catch |err| {
+			if (err == error.FileNotFound) {
+				return false;
+			}
+			return err;
+		};
 		file.close(main.io);
 		return true;
 	}
 
-	pub fn hasDir(self: Dir, subPath: []const u8) bool {
-		var dir = self.dir.openDir(main.io, subPath, .{.iterate = false}) catch return false;
+
+	pub fn hasDir(self: Dir, subPath: []const u8) !bool {
+		var dir = self.dir.openDir(main.io, subPath, .{.iterate = false}) catch |err| {
+			if (err == error.FileNotFound) {
+				return false;
+			}
+			return err;
+		};
 		dir.close(main.io);
 		return true;
 	}

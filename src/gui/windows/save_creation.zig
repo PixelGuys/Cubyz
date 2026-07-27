@@ -59,7 +59,7 @@ fn testingModeCallback(enabled: bool) void {
 
 fn createWorld() void {
 	const worldName = nameInput.currentString.items;
-	worldSettings.chooseSeed(seedInput.currentString.items);
+	worldSettings.seed = main.server.world_zig.Settings.chooseSeed(seedInput.currentString.items);
 
 	main.server.world_zig.tryCreateWorld(worldName, worldSettings, worldPresets[selectedPreset].value_ptr.*) catch |err| {
 		std.log.err("Error while creating new world: {s}", .{@errorName(err)});

@@ -38,7 +38,7 @@ pub const Settings = struct {
 
 	pub const defaults: Settings = .{};
 
-        fn chooseSeed(seedStr: []const u8) u64 {
+        pub fn chooseSeed(seedStr: []const u8) u64 {
                 if (seedStr.len == 0) {
                         return main.random.nextInt(u64, &main.seed);
                 } else {
@@ -47,15 +47,11 @@ pub const Settings = struct {
                         };
                 }
         }
-	pub fn fromZon(zon: ZonElement) error{NoSeed}!Settings {
+	pub fn fromZon(zon: ZonElement) Settings {
 		return .{
-			.seed = zon.get(u64, "seed") orelse {
-                                chooseSeed(zon.get([]const u8, "seed")) orelse {
-                                    std.log.err("Cannot load world. World has no seed!", .{});
-                                    return error.NoSeed;
-
-                                };
-			},
+			.seed = zon.get(u64, "seed") orelse
+                                chooseSeed(zon.get([]const u8, "seed") orelse "")
+			,
 			.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "defaultGamemode") orelse @tagName(defaults.defaultGamemode)) orelse defaults.defaultGamemode,
 			.allowCheats = zon.get(bool, "allowCheats") orelse defaults.allowCheats,
 			.testingMode = zon.get(bool, "testingMode") orelse defaults.testingMode,
@@ -658,12 +654,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version") orelse 0, worldDataVersion});
 			return error.OldWorld;
 		}
-		const worldCreationSettings: ZonElement = worldData.getChild("settings");
-		if (worldCreationSettings.get(?u64, "seed", null) == null) {
-			std.log.err("No seed found in save file, potential corruption detected!", .{});
-			return error.NoSeed;
-		}
-		self.settings = .fromZon(worldCreationSettings);
+
+		self.settings = .fromZon(worldData.getChild("settings"));
 
 		self.doGameTimeCycle = worldData.get(bool, "doGameTimeCycle") orelse true;
 		self.gameTime = worldData.get(i64, "gameTime") orelse 0;

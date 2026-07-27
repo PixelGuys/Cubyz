@@ -232,7 +232,7 @@ pub const launchConfig = struct {
 		autoEnterWorld = main.globalArena.dupe(u8, zon.get([]const u8, "autoEnterWorld") orelse autoEnterWorld);
 		preferredAuthenticationAlgorithm = zon.get(main.network.authentication.KeyTypeEnum, "preferredAuthenticationAlgorithm") orelse preferredAuthenticationAlgorithm;
 		worldCreationSettings = main.server.world_zig.Settings.fromZon(zon.getChild("worldCreationSettings"));
-		worldCreationPreset = main.globalArena.dupe(u8, zon.get([]const u8, "worldCreationPreset", worldCreationPreset));
+		worldCreationPreset = main.globalArena.dupe(u8, zon.get([]const u8, "worldCreationPreset") orelse worldCreationPreset);
 		vulkanTestingMode = zon.get(bool, "vulkanTestingMode") orelse false;
 	}
 };
