@@ -212,8 +212,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		var ii: u32 = 0;
 		while (ii < self.size) {
 			const i = self.indices[ii];
-			if (self.world.?.getSimulationChunkAndIncreaseRefCount(@trunc(pos[i][0]), @trunc(pos[i][1]), @trunc(pos[i][2]))) |simChunk| {
-				defer simChunk.decreaseRefCount();
+			if (self.world.?.getSimulationChunk(@trunc(pos[i][0]), @trunc(pos[i][1]), @trunc(pos[i][2]))) |simChunk| {
 				if (simChunk.getChunk() != null) {
 					// Check collision with blocks:
 					updateEnt(&pos[i], &vel[i], &onGround[i], deltaTime);

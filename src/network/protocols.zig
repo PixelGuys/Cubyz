@@ -313,7 +313,7 @@ pub const chunkRequest = struct { // MARK: chunkRequest
 				.voxelSize = @as(u31, 1) << voxelSizeShift,
 			};
 			conn.user.?.increaseRefCount();
-			main.server.world.?.queueChunkAndDecreaseRefCount(request, conn.user.?);
+			main.server.world.?.queueChunk(request, conn.user.?);
 		}
 	}
 	pub fn sendRequest(conn: *Connection, requests: []chunk.ChunkPosition, basePosition: Vec3i, renderDistance: u16) void {
@@ -839,7 +839,7 @@ pub const lightMapRequest = struct { // MARK: lightMapRequest
 			};
 			if (conn.user) |user| {
 				user.increaseRefCount();
-				main.server.world.?.queueLightMapAndDecreaseRefCount(request, user);
+				main.server.world.?.queueLightMap(request, user);
 			}
 		}
 	}
@@ -1006,8 +1006,7 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 	fn serverReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const pos = try reader.readVec(Vec3i);
 		const blockType = try reader.readInt(u16);
-		const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
-		defer simChunk.decreaseRefCount();
+		const simChunk = main.server.world.?.getSimulationChunk(pos[0], pos[1], pos[2]) orelse return;
 		const ch = simChunk.chunk.load(.monotonic) orelse return;
 		ch.mutex.lock();
 		defer ch.mutex.unlock();
