@@ -111,15 +111,14 @@ pub fn registerCaveLayers(caveLayerMap: *Assets.ZonHashMap) !void {
 	var newLayers: main.List(CaveLayer) = .empty;
 
 	for (caveLayers.items) |layer| {
-		var split = splitLayer(layer);
-		defer split.deinit(main.worldArena);
+		var split = splitLayer(main.stackAllocator, layer);
+		defer split.deinit(main.stackAllocator);
 
 		for (split.items) |newLayer| {
 			newLayers.append(main.worldArena, newLayer);
 		}
 	}
 
-	caveLayers.deinit(main.worldArena);
 	caveLayers = newLayers;
 
 	std.log.debug("Registered cave layers:", .{});
@@ -128,15 +127,15 @@ pub fn registerCaveLayers(caveLayerMap: *Assets.ZonHashMap) !void {
 	}
 }
 
-fn splitLayer(layer: CaveLayer) main.List(CaveLayer) {
+fn splitLayer(allocator: NeverFailingAllocator, layer: CaveLayer) main.List(CaveLayer) {
 	var splitPoints: main.List(i32) = .empty;
 	defer splitPoints.deinit(main.stackAllocator);
 	for (layer.biomes.items) |biome| {
-		if (biome.*.maxHeight > layer.minHeight and biome.*.maxHeight < layer.maxHeight) {
-			splitPoints.append(main.stackAllocator, biome.*.maxHeight);
+		if (biome.maxHeight > layer.minHeight and biome.maxHeight < layer.maxHeight) {
+			splitPoints.append(main.stackAllocator, biome.maxHeight);
 		}
-		if (biome.*.minHeight < layer.maxHeight and biome.*.minHeight > layer.minHeight) {
-			splitPoints.append(main.stackAllocator, biome.*.minHeight);
+		if (biome.minHeight < layer.maxHeight and biome.minHeight > layer.minHeight) {
+			splitPoints.append(main.stackAllocator, biome.minHeight);
 		}
 	}
 	std.mem.sort(i32, splitPoints.items, {}, comptime std.sort.asc(i32));
@@ -159,12 +158,12 @@ fn splitLayer(layer: CaveLayer) main.List(CaveLayer) {
 		var biomes: main.List(*const Biome) = .empty;
 		for (layer.biomes.items) |biome| {
 			if (biome.maxHeight >= point and biome.minHeight <= lastPoint) {
-				biomes.append(main.worldArena, biome);
+				biomes.append(main.stackAllocator, biome);
 			}
 		}
 
-		newLayers.append(main.worldArena, CaveLayer{
-			.biomes = main.utils.AliasTable(*const Biome).init(main.worldArena, biomes.items),
+		newLayers.append(allocator, CaveLayer{
+			.biomes = main.utils.AliasTable(*const Biome).init(allocator, biomes.items.toOwnedSlice(main.worldArena)),
 			.caveDensity = layer.caveDensity,
 			.id = layer.id,
 			.layerHeight = point - lastPoint,
