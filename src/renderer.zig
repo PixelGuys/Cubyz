@@ -200,7 +200,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glClear(c.GL_DEPTH_BUFFER_BIT);
 	gpu_performance_measuring.stopQuery();
 
-	const lightOffset: Vec3f = Vec3f{@floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1))};
 
 	const xRot = std.math.pi*0.8;
 	const zRot = std.math.pi*0.1;
@@ -220,6 +219,12 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		Vec4f{0, 0, 1.0/(far - near), -near/(far - near)},
 		Vec4f{0, 0, 0, 1},
 	}}).mul(.scale(.{1, 1, -1}));
+
+	const lightOffset: Vec3f = Vec3f{
+		@floatCast(@mod(playerPos[0], 1.0) + @mod(xR/zR*@floor(playerPos[2]), 1.0)),
+		@floatCast(@mod(playerPos[1], 1.0) + @mod(yR/zR*@floor(playerPos[2]), 1.0)),
+		@floatCast(@mod(playerPos[2], 1.0))
+	};
 
 	const lightView: Mat4f = Mat4f.identity().mul(.translation(lightOffset));
 
