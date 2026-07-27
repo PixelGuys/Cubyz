@@ -38,20 +38,19 @@ pub const Settings = struct {
 
 	pub const defaults: Settings = .{};
 
-        pub fn chooseSeed(seedStr: []const u8) u64 {
-                if (seedStr.len == 0) {
-                        return main.random.nextInt(u64, &main.seed);
-                } else {
-                        return std.fmt.parseInt(u64, seedStr, 0) catch {
-                                return std.hash.Wyhash.hash(0, seedStr);
-                        };
-                }
-        }
+	pub fn chooseSeed(seedStr: []const u8) u64 {
+		if (seedStr.len == 0) {
+			return main.random.nextInt(u64, &main.seed);
+		} else {
+			return std.fmt.parseInt(u64, seedStr, 0) catch {
+				return std.hash.Wyhash.hash(0, seedStr);
+			};
+		}
+	}
 	pub fn fromZon(zon: ZonElement) Settings {
 		return .{
 			.seed = zon.get(u64, "seed") orelse
-                                chooseSeed(zon.get([]const u8, "seed") orelse "")
-			,
+				chooseSeed(zon.get([]const u8, "seed") orelse ""),
 			.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "defaultGamemode") orelse @tagName(defaults.defaultGamemode)) orelse defaults.defaultGamemode,
 			.allowCheats = zon.get(bool, "allowCheats") orelse defaults.allowCheats,
 			.testingMode = zon.get(bool, "testingMode") orelse defaults.testingMode,

@@ -128,7 +128,6 @@ pub const Dir = struct {
 		try self.write(path, string);
 	}
 
-
 	pub fn hasFile(self: Dir, subPath: []const u8) !bool {
 		const file = self.dir.openFile(main.io, subPath, .{}) catch |err| {
 			if (err == error.FileNotFound) {
@@ -139,7 +138,6 @@ pub const Dir = struct {
 		file.close(main.io);
 		return true;
 	}
-
 
 	pub fn hasDir(self: Dir, subPath: []const u8) !bool {
 		var dir = self.dir.openDir(main.io, subPath, .{.iterate = false}) catch |err| {

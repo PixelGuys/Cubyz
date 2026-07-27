@@ -828,7 +828,7 @@ pub fn readAsset(allocator: NeverFailingAllocator, subPath: []const u8, id: []co
 
 	var path = main.stackAllocator.print("{s}/{s}/{s}/{s}{s}", .{worldAssetFolder, mod, subPath, name, fileEnding});
 	defer main.stackAllocator.free(path);
-        const fileExists = main.files.cwd().hasFile(path) catch false;
+	const fileExists = main.files.cwd().hasFile(path) catch false;
 	if (!fileExists) {
 		main.stackAllocator.free(path);
 		path = main.stackAllocator.print("assets/{s}/{s}/{s}{s}", .{mod, subPath, name, fileEnding});
