@@ -22,7 +22,6 @@ const server = @import("server.zig");
 const User = server.User;
 const Entity = server.Entity;
 const permission = server.permission;
-const whitelist = server.whitelist;
 const Palette = main.assets.Palette;
 
 const storage = @import("storage.zig");
@@ -455,6 +454,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	regionUpdateQueue: main.utils.CircularBufferQueue(RegionUpdateRequest),
 
 	playerDatabase: std.StringHashMapUnmanaged(usize) = .{},
+	blockedPlayers: std.AutoHashMapUnmanaged(usize, void) = .{},
 	localPlayerIndex: usize = 0,
 	nextPlayerIndex: std.atomic.Value(usize) = .init(0),
 
@@ -530,7 +530,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		errdefer self.chunkManager.deinit();
 
 		try permission.loadGroups(try dir.openIterableDir("groups"));
-		whitelist.load(dir);
 		std.debug.assert(main.entityModel.getById("cubyz:missing") != null);
 
 		return self;
@@ -574,7 +573,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.entityModelPalette.deinit();
 		self.entityComponentPalette.deinit();
 		permission.deinit();
-		whitelist.deinit();
 		main.globalAllocator.free(self.path);
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
@@ -694,6 +692,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 					continue;
 				};
 				_ = self.nextPlayerIndex.fetchMax(index + 1, .monotonic);
+				if (zon.get(bool, "blocked") orelse false) {
+					self.blockedPlayers.put(main.worldArena.allocator, index, {}) catch unreachable;
+				}
 				if (zon.get([]const u8, "publicKey")) |key| {
 					const keyType = key[0 .. std.mem.findScalar(u8, key, ':') orelse {
 						std.log.err("Player file {s} has invalid key entry {s}: Type is missing. Skipping.", .{file.name, key});
