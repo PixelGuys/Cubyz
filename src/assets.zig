@@ -768,10 +768,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 			const path = main.stackAllocator.printSentinel("assets/{s}/blocks/textures", .{addon.name}, 0);
 			defer main.stackAllocator.free(path);
 			// Check for access rights
-			const fileExists: bool = main.files.cwd().hasDir(path) catch |err| {
-				std.log.err("Error reading asset file {s}: {s}", .{path, @errorName(err)});
-				return err;
-			};
+			const fileExists: bool = main.files.cwd().hasDir(path) catch false;
 			if (!fileExists) continue;
 			main.utils.file_monitor.listenToPath(path, main.blocks.meshes.reloadTextures, 0);
 		}
