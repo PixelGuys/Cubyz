@@ -111,8 +111,7 @@ pub fn registerCaveLayers(caveLayerMap: *Assets.ZonHashMap) !void {
 	var newLayers: main.List(CaveLayer) = .empty;
 
 	for (caveLayers.items) |layer| {
-		var split = splitLayer(main.stackAllocator, layer);
-		defer split.deinit(main.stackAllocator);
+		const split = splitLayer(main.worldArena, layer);
 
 		for (split.items) |newLayer| {
 			newLayers.append(main.worldArena, newLayer);
@@ -158,12 +157,12 @@ fn splitLayer(allocator: NeverFailingAllocator, layer: CaveLayer) main.List(Cave
 		var biomes: main.List(*const Biome) = .empty;
 		for (layer.biomes.items) |biome| {
 			if (biome.maxHeight >= point and biome.minHeight <= lastPoint) {
-				biomes.append(main.stackAllocator, biome);
+				biomes.append(allocator, biome);
 			}
 		}
 
 		newLayers.append(allocator, CaveLayer{
-			.biomes = main.utils.AliasTable(*const Biome).init(allocator, biomes.items.toOwnedSlice(main.worldArena)),
+			.biomes = main.utils.AliasTable(*const Biome).init(allocator, biomes.toOwnedSlice(allocator)),
 			.caveDensity = layer.caveDensity,
 			.id = layer.id,
 			.layerHeight = point - lastPoint,
