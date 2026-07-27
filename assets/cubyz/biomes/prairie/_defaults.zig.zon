@@ -1,16 +1,21 @@
 .{
-	.properties = .{.dry},
+	.properties = .{
+		.dry,
+	},
+	.tags = .{
+		.oak,
+	},
 	.minHeightLimit = 7,
 	.maxHeightLimit = 60,
 	.smoothBeaches = true,
 	.roughness = 1,
 	.hills = 6,
-	.music = "cubyz:sunrise",
+	.music = "cubyz:mischol/simmer",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
-		"1 cubyz:dry_grass",
+		"1 cubyz:grass/dry",
 		"1 to 2 cubyz:dirt",
-		"3 to 4 cubyz:limestone/base",
+		"3 to 4 cubyz:limestone/smooth",
 	},
 	.structures = .{
 		.{
@@ -24,7 +29,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:grass",
+			.block = "cubyz:grass/temperate",
 			.chance = 0.015,
 			.width = 9,
 			.variation = 7,
@@ -32,32 +37,28 @@
 			.smoothness = 0.4,
 		},
 		.{
-			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:leaves/oak",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/young",
+			.placeMode = .degradable,
 			.chance = 0.025,
-			.type = .round,
-			.height = 2,
-			.height_variation = 3,
 		},
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.05,
-			.block = "cubyz:limestone/base",
+			.block = "cubyz:limestone/smooth",
 			.size = 3,
 			.size_variance = 6,
 		},
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.01,
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.size = 3,
 			.size_variance = 4,
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:dry_grass_vegetation",
+			.blocks = .{"cubyz:grass/vegetation/dry"},
 			.chance = 0.15,
 			.width = 6,
 			.variation = 6,
@@ -66,14 +67,14 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:dry_grass_vegetation",
+			.block = "cubyz:grass/vegetation/dry",
 			.chance = 0.4,
 			.height = 1,
 			.height_variation = 0,
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:grass_vegetation",
+			.blocks = .{"cubyz:grass/vegetation/temperate"},
 			.chance = 0.06,
 			.width = 6,
 			.variation = 6,
@@ -82,7 +83,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:vetch",
+			.blocks = .{"cubyz:vetch"},
 			.chance = 0.005,
 			.width = 3,
 			.variation = 3,
@@ -91,7 +92,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:marigold",
+			.blocks = .{"cubyz:marigold"},
 			.chance = 0.01,
 			.width = 4,
 			.variation = 3,
@@ -100,7 +101,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:daisies",
+			.blocks = .{"cubyz:daisies"},
 			.chance = 0.02,
 			.width = 5,
 			.variation = 6,
@@ -109,7 +110,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:dandelions",
+			.blocks = .{"cubyz:dandelions"},
 			.chance = 0.04,
 			.width = 5,
 			.variation = 6,

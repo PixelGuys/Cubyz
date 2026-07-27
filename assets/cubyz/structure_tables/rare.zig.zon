@@ -1,0 +1,17 @@
+.{
+	.id = "cubyz:rare",
+	.tags = .{},
+	.chance = 0.000005,
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.placeMode = .all,
+			.structure = "cubyz:rare/triclops_statue/structure",
+		},
+		.{
+			.id = "cubyz:sbb",
+			.placeMode = .degradable,
+			.structure = "cubyz:rare/mushroom_pole/base",
+		},
+	},
+}

@@ -27,7 +27,7 @@ var water: main.blocks.Block = undefined;
 pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 	air = main.blocks.parseBlock("cubyz:air");
-	stone = main.blocks.parseBlock("cubyz:slate/base");
+	stone = main.blocks.parseBlock("cubyz:slate/smooth");
 	water = main.blocks.parseBlock("cubyz:water");
 }
 

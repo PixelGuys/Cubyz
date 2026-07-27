@@ -21,21 +21,21 @@ pub var window = GuiWindow{
 const padding: f32 = 8;
 
 fn delayCallback(newValue: f32) void {
-	settings.updateRepeatDelay.nanoseconds = @intFromFloat(newValue);
+	settings.updateRepeatDelay.nanoseconds = @trunc(newValue);
 	settings.save();
 }
 
 fn delayFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
-	return std.fmt.allocPrint(allocator.allocator, "#ffffffPlace/Break Delay: {d:.0} ms", .{value/1.0e6}) catch unreachable;
+	return allocator.print("#ffffffPlace/Break Delay: {d:.0} ms", .{value/1.0e6});
 }
 
 fn speedCallback(newValue: f32) void {
-	settings.updateRepeatSpeed.nanoseconds = @intFromFloat(newValue);
+	settings.updateRepeatSpeed.nanoseconds = @trunc(newValue);
 	settings.save();
 }
 
 fn speedFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
-	return std.fmt.allocPrint(allocator.allocator, "#ffffffPlace/Break Speed: {d:.0} ms", .{value/1.0e6}) catch unreachable;
+	return allocator.print("#ffffffPlace/Break Speed: {d:.0} ms", .{value/1.0e6});
 }
 
 pub fn onOpen() void {

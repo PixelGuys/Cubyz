@@ -1,0 +1,8 @@
+.{
+	.texture = "cubyz:chest/cirrus/back",
+	.texture_front = "cubyz:chest/cirrus/front",
+	.texture_left = "cubyz:chest/cirrus/side",
+	.texture_right = "cubyz:chest/cirrus/side",
+	.texture_top = "cubyz:chest/cirrus/top",
+	.texture_bottom = "cubyz:chest/cirrus/bottom",
+}

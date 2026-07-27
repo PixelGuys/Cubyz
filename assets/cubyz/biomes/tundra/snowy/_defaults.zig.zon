@@ -4,6 +4,10 @@
 		.wet,
 		.barren,
 	},
+
+	.music = "cubyz:totaldemented/frigid_feeling",
+
+	.tags = .{.snowy},
 	.roughness = 1,
 	.fogDensity = 1.5,
 	.fogColor = 0xe2f2ff,

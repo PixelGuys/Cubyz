@@ -1,0 +1,9 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/mahogany/sapele/ancient/top/1"},
+	},
+	.rotation = .inherit,
+	.children = .{
+		.yellow = "cubyz:deco/side_dense",
+	},
+}

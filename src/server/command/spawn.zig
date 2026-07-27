@@ -1,51 +1,47 @@
 const std = @import("std");
 
 const main = @import("main");
+const command = main.server.command;
+const Source = command.Source;
 const User = main.server.User;
 
-pub const description = "Get or set the player spawn point";
+pub const description = "Get or set a player's / the world spawn point";
 pub const usage =
 	\\/spawn
-	\\/spawn <x> <y>
 	\\/spawn <x> <y> <z>
+	\\/spawn @<playerIndex>
+	\\/spawn @<playerIndex> <x> <y> <z>
+	\\/spawn world
+	\\/spawn world <x> <y> <z>
 ;
 
-pub fn execute(args: []const u8, source: *User) void {
-	var x: ?f64 = null;
-	var y: ?f64 = null;
-	var z: ?f64 = null;
-	var split = std.mem.splitScalar(u8, args, ' ');
-	while (split.next()) |arg| {
-		if (arg.len == 0) break;
-		const num: f64 = std.fmt.parseFloat(f64, arg) catch {
-			source.sendMessage("#ff0000Expected number, found \"{s}\"", .{arg});
-			return;
-		};
-		if (x == null) {
-			x = num;
-		} else if (y == null) {
-			y = num;
-		} else if (z == null) {
-			z = num;
-		} else {
-			source.sendMessage("#ff0000Too many arguments for command /spawn", .{});
-			return;
-		}
-	}
-	if (x == null) {
-		source.sendMessage("#ffff00{}", .{source.spawnPos});
-		return;
-	}
-	if (y == null) {
-		source.sendMessage("#ff0000Invalid number of arguments for /spawn.\nUsage: \n" ++ usage, .{});
-		return;
-	}
-	if (z == null) {
-		z = source.player.pos[2];
-	}
-	x = std.math.clamp(x.?, -1e9, 1e9); // TODO: Remove after #310 is implemented
-	y = std.math.clamp(y.?, -1e9, 1e9);
-	z = std.math.clamp(z.?, -1e9, 1e9);
+pub const Args = union(enum) {
+	@"/spawn <playerIndex> <x> <y> <z>": struct { playerIndex: ?command.PlayerIndex, x: command.Coordinate, y: command.Coordinate, z: command.Coordinate },
+	@"/spawn <world> <x> <y> <z>": struct { world: enum { world }, x: command.Coordinate, y: command.Coordinate, z: command.Coordinate },
+	@"/spawn <world>": struct { world: enum { world } },
+	@"/spawn <playerIndex>": struct { playerIndex: ?command.PlayerIndex },
+};
 
-	source.spawnPos = .{x.?, y.?, z.?};
+pub fn execute(args: Args, source: Source) void {
+	switch (args) {
+		.@"/spawn <playerIndex> <x> <y> <z>" => |params| {
+			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
+			defer target.deinit();
+			target.user.spawnPos = command.resolveCoordinates(params.x, params.y, params.z, source) catch return;
+		},
+		.@"/spawn <playerIndex>" => |params| {
+			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
+			defer target.deinit();
+			source.sendMessage("#ffff00{}", .{target.user.getSpawnPos()});
+		},
+		.@"/spawn <world> <x> <y> <z>" => |params| {
+			const pos = command.resolveCoordinates(params.x, params.y, params.z, source) catch return;
+			const world = main.server.world.?;
+			world.spawn = @trunc(pos);
+		},
+		.@"/spawn <world>" => {
+			const world = main.server.world.?;
+			source.sendMessage("#ffff00World spawn: {}", .{world.spawn});
+		},
+	}
 }

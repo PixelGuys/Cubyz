@@ -1,11 +1,13 @@
 .{
 	.isCave = true,
+	.tags = .{.cave_layer},
 	.maxHeight = -1000,
-	.minHeight = -48250,
 	.chance = 0.2,
 	.fogDensity = 8,
 
-	.stoneBlock = "cubyz:basalt/base",
+	.music = "cubyz:totaldemented/scoria",
+
+	.stoneBlock = "cubyz:basalt/smooth",
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
@@ -15,7 +17,7 @@
 		},
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:basalt/base",
+			.block = "cubyz:basalt/smooth",
 			.chance = 0.1,
 			.size = 4,
 			.size_variation = 10,
@@ -41,7 +43,7 @@
 	},
 	.caveModels = .{
 		.{
-			.id = "cubyz:hemisphere",
+			.id = "cubyz:partial_sphere",
 			.minAmount = 10,
 			.maxAmount = 20,
 			.minRadius = 12,

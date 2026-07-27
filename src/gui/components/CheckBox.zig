@@ -17,7 +17,6 @@ const Label = GuiComponent.Label;
 const CheckBox = @This();
 
 const border: f32 = 3;
-const fontSize: f32 = 16;
 const boxSize: f32 = 16;
 
 var textureCheckedNormal: Texture = undefined;
@@ -35,7 +34,7 @@ hovered: bool = false,
 onAction: *const fn (bool) void,
 label: *Label,
 
-pub fn __init() void {
+pub fn globalInit() void {
 	textureCheckedNormal = Texture.initFromFile("assets/cubyz/ui/checked_box.png");
 	textureCheckedHovered = Texture.initFromFile("assets/cubyz/ui/checked_box_hovered.png");
 	textureCheckedPressed = Texture.initFromFile("assets/cubyz/ui/checked_box_pressed.png");
@@ -44,7 +43,7 @@ pub fn __init() void {
 	textureEmptyPressed = Texture.initFromFile("assets/cubyz/ui/box_pressed.png");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	textureCheckedNormal.deinit();
 	textureCheckedHovered.deinit();
 	textureCheckedPressed.deinit();

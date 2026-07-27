@@ -1,18 +1,22 @@
 const std = @import("std");
 
 const main = @import("main");
-const ZonElement = @import("zon.zig").ZonElement;
-const Palette = @import("assets.zig").Palette;
+const ZonElement = main.ZonElement;
+const Palette = main.assets.Palette;
 const Assets = main.assets.Assets;
 
 var blockMigrations: std.StringHashMapUnmanaged([]const u8) = .{};
 var itemMigrations: std.StringHashMapUnmanaged([]const u8) = .{};
 var biomeMigrations: std.StringHashMapUnmanaged([]const u8) = .{};
+var entityModelMigrations: std.StringHashMapUnmanaged([]const u8) = .{};
+var entityComponentMigrations: std.StringHashMapUnmanaged([]const u8) = .{};
 
 const MigrationType = enum {
 	block,
 	item,
 	biome,
+	entityModel,
+	entityComponent,
 };
 
 pub fn registerAll(comptime typ: MigrationType, migrations: *Assets.AddonNameToZonMap) void {
@@ -21,10 +25,33 @@ pub fn registerAll(comptime typ: MigrationType, migrations: *Assets.AddonNameToZ
 		.block => &blockMigrations,
 		.item => &itemMigrations,
 		.biome => &biomeMigrations,
+		.entityModel => &entityModelMigrations,
+		.entityComponent => &entityComponentMigrations,
 	};
 	var migrationIterator = migrations.iterator();
 	while (migrationIterator.next()) |migration| {
 		register(typ, collection, migration.key_ptr.*, migration.value_ptr.*);
+	}
+
+	// apply transitive migrations
+	var iterator = collection.iterator();
+	var entries: main.List([]const u8) = .empty;
+	defer entries.deinit(main.stackAllocator);
+	while (iterator.next()) |migrationEntry| {
+		defer entries.clearRetainingCapacity();
+		entries.append(main.stackAllocator, migrationEntry.key_ptr.*);
+		entries.append(main.stackAllocator, migrationEntry.value_ptr.*);
+		transitiveChain: while (collection.get(migrationEntry.value_ptr.*)) |transitive| {
+			std.log.info("Collapsing transitive {s} migration: '{s}' -> {s} -> '{s}'", .{@tagName(typ), migrationEntry.key_ptr.*, migrationEntry.value_ptr.*, transitive});
+			for (entries.items) |entry| {
+				if (std.mem.eql(u8, transitive, entry)) {
+					std.log.err("Found circular migration for {s}. Circular migrations are not allowed", .{transitive});
+					break :transitiveChain;
+				}
+			}
+			migrationEntry.value_ptr.* = transitive;
+			entries.append(main.stackAllocator, transitive);
+		}
 	}
 }
 
@@ -48,33 +75,33 @@ fn register(
 	}
 
 	for (migrationZon.array.items) |migration| {
-		const oldZonOpt = migration.get(?[]const u8, "old", null);
-		const newZonOpt = migration.get(?[]const u8, "new", null);
+		const oldZonOpt = migration.get([]const u8, "old");
+		const newZonOpt = migration.get([]const u8, "new");
 
 		if (oldZonOpt == null or newZonOpt == null) {
 			std.log.err("Skipping incomplete migration in {s} migrations: '{s}:{s}' -> '{s}:{s}'", .{@tagName(typ), addonName, oldZonOpt orelse "<null>", addonName, newZonOpt orelse "<null>"});
 			continue;
 		}
 
-		const oldZon = oldZonOpt orelse unreachable;
-		const newZon = newZonOpt orelse unreachable;
+		const oldZon = oldZonOpt.?;
+		const newZon = newZonOpt.?;
 
 		if (std.mem.eql(u8, oldZon, newZon)) {
 			std.log.err("Skipping identity migration in {s} migrations: '{s}:{s}' -> '{s}:{s}'", .{@tagName(typ), addonName, oldZon, addonName, newZon});
 			continue;
 		}
 
-		const oldAssetId = std.fmt.allocPrint(main.worldArena.allocator, "{s}:{s}", .{addonName, oldZon}) catch unreachable;
+		const oldAssetId = main.worldArena.print("{s}:{s}", .{addonName, oldZon});
 		const result = collection.getOrPut(main.worldArena.allocator, oldAssetId) catch unreachable;
 
 		if (result.found_existing) {
 			std.log.err("Skipping name collision in {s} migration: '{s}' -> '{s}:{s}'", .{@tagName(typ), oldAssetId, addonName, newZon});
-			const existingMigration = collection.get(oldAssetId) orelse unreachable;
+			const existingMigration = collection.get(oldAssetId).?;
 			std.log.err("Already mapped to '{s}'", .{existingMigration});
 
 			main.worldArena.free(oldAssetId);
 		} else {
-			const newAssetId = std.fmt.allocPrint(main.worldArena.allocator, "{s}:{s}", .{addonName, newZon}) catch unreachable;
+			const newAssetId = main.worldArena.print("{s}:{s}", .{addonName, newZon});
 
 			result.key_ptr.* = oldAssetId;
 			result.value_ptr.* = newAssetId;
@@ -88,6 +115,8 @@ pub fn applySingle(comptime typ: MigrationType, assetName: []const u8) []const u
 		.block => blockMigrations,
 		.item => itemMigrations,
 		.biome => biomeMigrations,
+		.entityModel => entityModelMigrations,
+		.entityComponent => entityComponentMigrations,
 	};
 
 	const newAssetName = migrations.get(assetName) orelse return assetName;
@@ -100,6 +129,8 @@ pub fn apply(comptime typ: MigrationType, palette: *Palette) void {
 		.block => blockMigrations,
 		.item => itemMigrations,
 		.biome => biomeMigrations,
+		.entityModel => entityModelMigrations,
+		.entityComponent => entityComponentMigrations,
 	};
 	std.log.info("Applying {} migrations to {s} palette", .{migrations.count(), @tagName(typ)});
 
@@ -114,4 +145,6 @@ pub fn reset() void {
 	biomeMigrations = .{};
 	blockMigrations = .{};
 	itemMigrations = .{};
+	entityModelMigrations = .{};
+	entityComponentMigrations = .{};
 }

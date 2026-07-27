@@ -29,7 +29,7 @@ pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
 pub const permission = @import("permission.zig");
 
-pub const command = @import("command/_command.zig");
+pub const command = @import("command.zig");
 
 pub const WorldEditData = struct {
 	const maxWorldEditHistoryCapacity: u32 = 1024;
@@ -55,6 +55,9 @@ pub const WorldEditData = struct {
 			pub fn deinit(self: Value) void {
 				main.globalAllocator.free(self.message);
 				self.blueprint.deinit(main.globalAllocator);
+			}
+			pub fn selection(self: Value) Blueprint.Selection {
+				return .initFromExtent(self.position, self.blueprint.extent());
 			}
 		};
 		pub fn init() History {
@@ -98,7 +101,7 @@ pub const User = struct { // MARK: User
 	const simulationSize = 2*maxSimulationDistance;
 	const simulationMask = simulationSize - 1;
 	conn: *Connection = undefined,
-	player: Entity = .{},
+	innerPlayer: Entity = .{},
 	timeDifference: utils.TimeDifference = .{},
 	interpolation: utils.GenericInterpolation(3) = undefined,
 	lastTime: i16 = undefined,
@@ -108,13 +111,13 @@ pub const User = struct { // MARK: User
 	clientUpdatePos: Vec3i = .{0, 0, 0},
 	receivedFirstEntityData: bool = false,
 	isLocal: bool = false,
-	id: u32 = 0, // TODO: Use entity id.
+	id: main.entity.Entity = .noValue,
 	// TODO: ipPort: []const u8,
 	loadedChunks: [simulationSize][simulationSize][simulationSize]*SimulationChunk = undefined,
 	lastRenderDistance: u16 = 0,
 	lastPos: Vec3i = @splat(0),
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
-	spawnPos: Vec3d = .{0, 0, 0},
+	spawnPos: ?Vec3d = null,
 	worldEditData: WorldEditData = undefined,
 
 	playerIndex: usize = undefined,
@@ -125,7 +128,7 @@ pub const User = struct { // MARK: User
 
 	lastSentBiomeId: u32 = 0xffffffff,
 
-	newKeyString: []const u8 = &.{},
+	newKeyString: ?[]const u8 = null,
 	key: network.authentication.PublicKey = undefined,
 	legacyKey: ?network.authentication.PublicKey = null,
 
@@ -134,33 +137,62 @@ pub const User = struct { // MARK: User
 	handInventory: ?InventoryId = null,
 
 	connected: Atomic(bool) = .init(true),
+	state: State = .awaitingKeyVerification,
 
 	refCount: Atomic(u32) = .init(1),
 
-	mutex: std.Thread.Mutex = .{},
+	mutex: main.utils.Mutex = .{},
 
-	inventoryCommands: main.ListUnmanaged([]const u8) = .{},
+	inventoryCommands: main.List([]const u8) = .empty,
 
-	permissions: permission.Permissions = undefined,
+	pub const State = enum { awaitingKeyVerification, connectedVerified, awaitingReloadVerified };
+
+	pub fn player(self: *User) *Entity {
+		return &self.innerPlayer;
+	}
 
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
-		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
-		self.jobQueue = .init(main.globalAllocator);
 		self.conn = try Connection.init(manager, ipPort, self);
+		self.@"continue"();
 		self.increaseRefCount();
-		self.worldEditData = .init();
-		self.permissions = .init(main.globalAllocator);
 		network.protocols.handShake.serverSide(self.conn);
 		return self;
 	}
+	pub fn @"continue"(self: *User) void {
+		// reset
+		self.* = .{
+			.conn = self.conn,
+			.name = self.name,
+			.newKeyString = self.newKeyString,
+			.playerIndex = self.playerIndex,
+			.state = self.state,
 
+			.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator),
+			.worldEditData = .init(),
+			.jobQueue = .init(main.globalAllocator),
+		};
+	}
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
 
-		main.items.Inventory.ServerSide.disconnectUser(self);
+		self.conn.deinit();
+		main.globalAllocator.free(self.name);
+		if (self.newKeyString) |str| main.globalAllocator.free(str);
+		main.globalAllocator.destroy(self);
+	}
+	pub fn pause(self: *User) void {
+		self.state = switch (self.state) {
+			.awaitingKeyVerification => .awaitingKeyVerification,
+			.connectedVerified => .awaitingReloadVerified,
+			.awaitingReloadVerified => .awaitingReloadVerified,
+		};
+
+		self.clearJobQueue();
+
+		main.items.Inventory.server.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
 		self.inventoryClientToServerIdMap.deinit();
 
@@ -170,26 +202,24 @@ pub const User = struct { // MARK: User
 				return;
 			};
 
-			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(self.inventory.?);
-			main.items.Inventory.ServerSide.destroyExternallyManagedInventory(self.handInventory.?);
+			main.items.Inventory.server.destroyExternallyManagedInventory(self.inventory.?);
+			main.items.Inventory.server.destroyExternallyManagedInventory(self.handInventory.?);
 		}
-
-		self.permissions.deinit();
 
 		self.worldEditData.deinit();
 
+		if (self.player().id != .noValue) {
+			self.player().deinit(.server);
+		}
+
 		self.unloadOldChunk(.{0, 0, 0}, 0);
-		self.conn.deinit();
-		self.jobQueue.deinit();
-		main.globalAllocator.free(self.name);
-		main.globalAllocator.free(self.newKeyString);
 		for (self.inventoryCommands.items) |commandData| {
 			main.globalAllocator.free(commandData);
 		}
 		self.inventoryCommands.deinit(main.globalAllocator);
-		main.globalAllocator.destroy(self);
-	}
 
+		self.jobQueue.deinit();
+	}
 	pub fn increaseRefCount(self: *User) void {
 		const prevVal = self.refCount.fetchAdd(1, .monotonic);
 		std.debug.assert(prevVal != 0);
@@ -199,6 +229,7 @@ pub const User = struct { // MARK: User
 		const prevVal = self.refCount.fetchSub(1, .monotonic);
 		std.debug.assert(prevVal != 0);
 		if (prevVal == 1) {
+			self.pause();
 			self.deinit();
 		}
 	}
@@ -207,27 +238,38 @@ pub const User = struct { // MARK: User
 		std.debug.assert(self.name.len == 0);
 		self.name = main.globalAllocator.dupe(u8, name);
 		{
-			const keyBase64 = keys.get(?[]const u8, @tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm), null) orelse return error.PublicKeyNotPresent;
+			const keyBase64 = keys.get([]const u8, @tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm)) orelse return error.PublicKeyNotPresent;
 			self.key = try .initFromBase64(keyBase64, main.settings.launchConfig.preferredAuthenticationAlgorithm);
-			self.newKeyString = std.fmt.allocPrint(main.globalAllocator.allocator, "{s}:{s}", .{@tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm), keyBase64}) catch unreachable;
+			self.newKeyString = main.globalAllocator.print("{s}:{s}", .{@tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm), keyBase64});
 		}
 		var foundKey: bool = false;
 		for (std.meta.fieldNames(main.network.authentication.KeyTypeEnum)) |keyTypeName| {
-			const keyBase64 = keys.get(?[]const u8, keyTypeName, null) orelse continue;
-			const keyWithType = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}:{s}", .{keyTypeName, keyBase64}) catch unreachable;
+			const keyBase64 = keys.get([]const u8, keyTypeName) orelse continue;
+			const keyWithType = main.stackAllocator.print("{s}:{s}", .{keyTypeName, keyBase64});
 			defer main.stackAllocator.free(keyWithType);
 			self.playerIndex = world.?.playerDatabase.get(keyWithType) orelse continue;
 			foundKey = true;
-			const keyType = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, keyTypeName) orelse unreachable;
+			const keyType = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, keyTypeName).?;
 			if (keyType == self.key) break;
 			self.legacyKey = try .initFromBase64(keyBase64, keyType);
 			break;
 		}
 		if (!foundKey) {
-			const nameEntry = std.fmt.allocPrint(main.stackAllocator.allocator, "name:{s}", .{name}) catch unreachable;
-			defer main.stackAllocator.free(nameEntry);
-			self.playerIndex = world.?.playerDatabase.get(nameEntry) orelse world.?.nextPlayerIndex.fetchAdd(1, .monotonic);
+			if (world.?.playerDatabase.size == 0) { // Claim the local player
+				std.log.info("Here", .{});
+				self.playerIndex = world.?.localPlayerIndex;
+			} else {
+				const nameEntry = main.stackAllocator.print("name:{s}", .{name});
+				defer main.stackAllocator.free(nameEntry);
+				self.playerIndex = world.?.playerDatabase.get(nameEntry) orelse world.?.nextPlayerIndex.fetchAdd(1, .monotonic);
+			}
 		}
+	}
+
+	pub fn identifyAsLocal(self: *User, name: []const u8) !void {
+		std.debug.assert(self.name.len == 0);
+		self.name = main.globalAllocator.dupe(u8, name);
+		self.playerIndex = world.?.localPlayerIndex;
 	}
 
 	pub fn verifySignatures(self: *User, reader: *BinaryReader) !void {
@@ -237,14 +279,36 @@ pub const User = struct { // MARK: User
 		}
 	}
 
-	var freeId: u32 = 0;
+	var freeId: u32 = 0; // TODO: Use id provided by the ECS.
 	pub fn initPlayer(self: *User) void {
-		self.id = freeId;
+		self.id = @enumFromInt(freeId);
 		freeId += 1;
 
-		world.?.loadPlayer(self);
-		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
+		world.?.loadPlayer(self) catch {
+			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
+		};
+		if (main.entity.components.@"cubyz:model".server.get(self.id) == null) {
+			if (main.entityModel.playerEntityModels.items.len != 0) {
+				const defaultModel = main.entityModel.playerEntityModels.items[main.random.nextIntBounded(u32, &main.seed, @intCast(main.entityModel.playerEntityModels.items.len))];
+				main.entity.components.@"cubyz:model".server.put(self.id, .{.entityModel = defaultModel});
+			}
+		}
+		if (main.entity.components.@"cubyz:bag".server.get(self.id) == null) {
+			main.entity.components.@"cubyz:bag".server.loadEmpty(self.id);
+		}
+		if (main.entity.components.@"cubyz:permissions".server.get(self.id) == null) {
+			main.entity.components.@"cubyz:permissions".server.loadEmpty(self.id);
+			main.entity.components.@"cubyz:permissions".server.addPermission(self.id, .white, "/command/avatar");
+			main.entity.components.@"cubyz:permissions".server.addPermission(self.id, .white, "/command/help");
+		}
+		if (self.isLocal) {
+			main.entity.components.@"cubyz:permissions".server.addPermission(self.id, .white, "/");
+		}
+
+		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();
+
+		main.entity.components.@"cubyz:player".server.load(self.id, @truncate(self.playerIndex));
 	}
 
 	fn simArrIndex(x: i32) usize {
@@ -299,7 +363,7 @@ pub const User = struct { // MARK: User
 	}
 
 	fn loadUnloadChunks(self: *User) void {
-		const newPos: Vec3i = @as(Vec3i, @intFromFloat(self.player.pos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
+		const newPos: Vec3i = @as(Vec3i, @trunc(self.player().pos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
 		const newRenderDistance = main.settings.simulationDistance;
 		if (@reduce(.Or, newPos != self.lastPos) or newRenderDistance != self.lastRenderDistance) {
 			self.unloadOldChunk(newPos, newRenderDistance);
@@ -335,7 +399,7 @@ pub const User = struct { // MARK: User
 					pub fn run(user: *User) void {
 						defer user.decreaseRefCount();
 
-						var newTasks: main.ListUnmanaged(main.utils.ThreadPool.Task) = .initCapacity(main.stackAllocator, user.jobQueue.size);
+						var newTasks: main.List(main.utils.ThreadPool.Task) = .initCapacity(main.stackAllocator, user.jobQueue.size);
 						defer newTasks.deinit(main.stackAllocator);
 						while (user.jobQueue.extractAny()) |_task| {
 							var task = _task;
@@ -398,12 +462,18 @@ pub const User = struct { // MARK: User
 		});
 	}
 
+	pub fn clearJobQueue(self: *User) void {
+		while (self.jobQueue.extractAny()) |task| {
+			task.vtable.clean(task.self);
+		}
+	}
+
 	fn isNetworkQueueFull(self: *User) bool {
 		return self.conn.secureChannel.super.sendBuffer.buffer.len > 900000;
 	}
 
 	fn scheduleJobQueue(self: *User) void {
-		main.utils.assertLocked(&self.mutex);
+		self.mutex.assertLocked();
 		if (self.jobQueueScheduled) return;
 		if (self.jobQueue.size == 0) return;
 		if (self.isNetworkQueueFull()) return;
@@ -416,13 +486,13 @@ pub const User = struct { // MARK: User
 		self.scheduleJobQueue();
 		const commands = self.inventoryCommands;
 		defer commands.deinit(main.globalAllocator);
-		self.inventoryCommands = .{};
+		self.inventoryCommands = .empty;
 		self.mutex.unlock();
 
 		for (commands.items) |commandData| {
 			defer main.globalAllocator.free(commandData);
 			var reader: BinaryReader = .init(commandData);
-			main.sync.ServerSide.executeUserCommand(self, &reader) catch |err| {
+			main.sync.server.executeUserCommand(self, &reader) catch |err| {
 				if (err == error.InventoryNotFound) {
 					main.network.protocols.inventory.sendFailure(self.conn);
 				} else {
@@ -463,14 +533,14 @@ pub const User = struct { // MARK: User
 		const position: [3]f64 = try reader.readVec(Vec3d);
 		const velocity: [3]f64 = try reader.readVec(Vec3d);
 		const rotation: [3]f32 = try reader.readVec(Vec3f);
-		self.player.rot = rotation;
+		self.player().rot = rotation;
 		const time = try reader.readInt(i16);
 		self.timeDifference.addDataPoint(time);
 		self.interpolation.updatePosition(&position, &velocity, time);
 	}
 
 	pub fn sendMessage(self: *User, comptime fmt: []const u8, args: anytype) void {
-		const msg = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
+		const msg = main.stackAllocator.print(fmt, args);
 		defer main.stackAllocator.free(msg);
 		self.sendRawMessage(msg);
 	}
@@ -478,11 +548,12 @@ pub const User = struct { // MARK: User
 		main.network.protocols.chat.send(self.conn, msg);
 	}
 
-	pub fn hasPermission(user: *User, permissionPath: []const u8) bool {
-		return switch (user.permissions.hasPermission(permissionPath)) {
-			.yes => true,
-			.no, .neutral => false,
-		};
+	pub fn getSpawnPos(user: *User) Vec3d {
+		return user.spawnPos orelse @floatFromInt(main.server.world.?.spawn);
+	}
+
+	pub fn format(user: User, writer: *std.Io.Writer) std.Io.Writer.Error!void {
+		try writer.print("{s}@{d}", .{user.name, user.playerIndex});
 	}
 };
 
@@ -490,44 +561,47 @@ pub const updatesPerSec: u32 = 20;
 const updateTime: std.Io.Duration = .fromNanoseconds(1000000000/20);
 
 pub var world: ?*ServerWorld = null;
-var userMutex: std.Thread.Mutex = .{};
-var users: main.List(*User) = undefined;
+var userMutex: main.utils.Mutex = .{};
+var users: main.ListManaged(*User) = undefined;
 var userDeinitList: main.utils.ConcurrentQueue(*User) = undefined;
 var userConnectList: main.utils.ConcurrentQueue(*User) = undefined;
 
 pub var connectionManager: *ConnectionManager = undefined;
 
 pub var running: std.atomic.Value(bool) = .init(false);
+var restart: bool = true;
+
 var lastTime: std.Io.Timestamp = undefined;
 
 pub var thread: ?std.Thread = null;
 
-fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
+fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void { // MARK: init()
 	main.heap.allocators.createWorldArena();
 	std.debug.assert(world == null); // There can only be one world.
 	command.init();
 	users = .init(main.globalAllocator);
-	userDeinitList = .init(main.globalAllocator, 16);
-	userConnectList = .init(main.globalAllocator, 16);
 	lastTime = main.timestamp();
-	connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
-		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
-		@panic("Could not open Server.");
-	}; // TODO Configure the second argument in the server settings.
 
-	main.items.Inventory.ServerSide.init();
-	main.sync.ServerSide.init();
+	main.entity.server.init();
+	main.items.Inventory.server.init();
+	main.sync.server.init();
 
-	world = ServerWorld.init(name) catch |err| {
+	world = ServerWorld.init(name, mode) catch |err| {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
 		@panic("Can't create world.");
 	};
+
 	world.?.generate() catch |err| {
 		std.log.err("Failed to generate world: {s}", .{@errorName(err)});
 		@panic("Can't generate world.");
 	};
+
+	connectionManager.@"continue"() catch |err| {
+		std.log.err("Couldn't create thread: {s}", .{@errorName(err)});
+		@panic("Could not open Server.");
+	};
 	if (singlePlayerPort) |port| blk: {
-		const ipString = std.fmt.allocPrint(main.stackAllocator.allocator, "127.0.0.1:{}", .{port}) catch unreachable;
+		const ipString = main.stackAllocator.print("127.0.0.1:{}", .{port});
 		defer main.stackAllocator.free(ipString);
 		const user = User.initAndIncreaseRefCount(connectionManager, ipString) catch |err| {
 			std.log.err("Cannot create singleplayer user {s}", .{@errorName(err)});
@@ -535,32 +609,40 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		};
 		defer user.decreaseRefCount();
 		user.isLocal = true;
-		user.permissions.addPermission(.white, "/");
 	}
 }
 
 fn deinit() void {
+	connectionManager.pause();
+	main.threadPool.pause();
+	defer main.threadPool.@"continue"();
+
+	main.threadPool.unschedulePlayers();
+
 	users.clearAndFree();
+
 	while (userDeinitList.popFront()) |user| {
-		user.deinit();
+		user.clearJobQueue();
+		if (user.refCount.load(.monotonic) == 1) {
+			user.decreaseRefCount();
+		} else {
+			std.log.err("Leaked user {f}", .{user});
+			user.pause();
+			user.deinit();
+		}
 	}
-	userDeinitList.deinit();
-	userConnectList.deinit();
-	for (connectionManager.connections.items) |conn| {
-		conn.user.?.decreaseRefCount();
-	}
-	connectionManager.deinit();
-	connectionManager = undefined;
 
 	if (world) |_world| {
 		_world.deinit();
 	}
 	world = null;
 
-	main.sync.ServerSide.deinit();
-	main.items.Inventory.ServerSide.deinit();
+	main.sync.server.deinit();
+	main.items.Inventory.server.deinit();
+	main.entity.server.deinit();
 
 	command.deinit();
+
 	main.heap.allocators.destroyWorldArena();
 }
 
@@ -597,6 +679,7 @@ fn getInitialEntityList(allocator: main.heap.NeverFailingAllocator) []const u8 {
 
 fn update() void { // MARK: update()
 	world.?.update();
+	main.entity.server.update();
 
 	while (userConnectList.popFront()) |user| {
 		connectInternal(user);
@@ -613,24 +696,24 @@ fn update() void { // MARK: update()
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
 	defer main.stackAllocator.free(itemData);
 
-	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+	var entityData: main.ListManaged(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 	defer entityData.deinit();
 
 	for (userList) |user| {
 		const id = user.id; // TODO
 		entityData.append(.{
 			.id = id,
-			.pos = user.player.pos,
-			.vel = user.player.vel,
-			.rot = user.player.rot,
+			.pos = user.player().pos,
+			.vel = user.player().vel,
+			.rot = user.player().rot,
 		});
 	}
 	for (userList) |user| {
-		main.network.protocols.entityPosition.send(user.conn, user.player.pos, entityData.items, itemData);
+		main.network.protocols.entityPosition.send(user.conn, user.player().pos, entityData.items, itemData);
 	}
 
 	for (userList) |user| {
-		const pos = @as(Vec3i, @intFromFloat(user.player.pos));
+		const pos = @as(Vec3i, @trunc(user.player().pos));
 		const biomeId = world.?.getBiome(pos[0], pos[1], pos[2]).paletteId;
 		if (biomeId != user.lastSentBiomeId) {
 			user.lastSentBiomeId = biomeId;
@@ -648,33 +731,72 @@ fn update() void { // MARK: update()
 	}
 }
 
-pub fn startFromNewThread(name: []const u8, port: ?u16) void {
+pub fn startFromNewThread(name: []const u8, port: ?u16, mode: ServerWorld.Mode) void {
 	main.initThreadLocals();
 	defer main.deinitThreadLocals();
-	startFromExistingThread(name, port);
+	startFromExistingThread(name, port, mode);
 }
 
-pub fn startFromExistingThread(name: []const u8, port: ?u16) void {
+pub fn startFromExistingThread(name: []const u8, port: ?u16, mode: ServerWorld.Mode) void {
 	std.debug.assert(!running.load(.monotonic)); // There can only be one server.
-	init(name, port);
-	defer deinit();
-	running.store(true, .release);
-	while (running.load(.monotonic)) {
-		main.heap.GarbageCollection.syncPoint();
-		const newTime = main.timestamp();
-		if (lastTime.durationTo(newTime).nanoseconds < updateTime.nanoseconds) {
-			main.io.sleep(newTime.durationTo(lastTime.addDuration(updateTime)), .awake) catch {};
-			lastTime = lastTime.addDuration(updateTime);
-		} else {
-			std.log.warn("The server is lagging behind by {d:.1} ms", .{@as(f32, @floatFromInt(newTime.nanoseconds -% lastTime.nanoseconds -% updateTime.nanoseconds))/1000000.0});
-			lastTime = newTime;
+
+	const worldName: []const u8 = main.globalAllocator.dupe(u8, name);
+	defer main.globalAllocator.free(worldName);
+
+	connectionManager = ConnectionManager.init(main.settings.defaultPort, .{.allowNewConnections = mode == .multiplayer}) catch |err| {
+		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
+		@panic("Could not open Server.");
+	}; // TODO Configure the second argument in the server settings.
+	userDeinitList = .init(main.globalAllocator, 16);
+	userConnectList = .init(main.globalAllocator, 16);
+
+	defer {
+		connectionManager.deinit();
+		connectionManager = undefined;
+
+		while (userDeinitList.popFront()) |user| {
+			if (user.refCount.load(.monotonic) == 1) {
+				_ = user.refCount.fetchSub(1, .monotonic);
+				user.deinit();
+			} else {
+				std.log.err("Leaked user {f}", .{user});
+				user.deinit();
+			}
 		}
-		update();
+
+		userDeinitList.deinit();
+		userConnectList.deinit();
+	}
+
+	restart = true;
+	while (restart) {
+		restart = false;
+
+		init(worldName, port, mode);
+		defer deinit();
+
+		running.store(true, .release);
+		while (running.load(.monotonic)) {
+			main.heap.GarbageCollection.syncPoint();
+			const newTime = main.timestamp();
+			if (lastTime.durationTo(newTime).nanoseconds < updateTime.nanoseconds) {
+				main.io.sleep(newTime.durationTo(lastTime.addDuration(updateTime)), .awake) catch {};
+				lastTime = lastTime.addDuration(updateTime);
+			} else {
+				std.log.warn("The server is lagging behind by {d:.1} ms", .{@as(f32, @floatFromInt(newTime.nanoseconds -% lastTime.nanoseconds -% updateTime.nanoseconds))/1000000.0});
+				lastTime = newTime;
+			}
+			update();
+		}
 	}
 }
 
-pub fn stop() void {
-	running.store(false, .monotonic);
+pub const StopType = enum { stop, restart };
+pub fn stop(_restart: StopType) void {
+	if (_restart == .restart) {
+		restart = true;
+	}
+	running.store(false, .release);
 }
 
 pub fn disconnect(user: *User) void { // MARK: disconnect()
@@ -704,7 +826,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	// Let the other clients know about that this new one left.
 	const zonArray = main.ZonElement.initArray(main.stackAllocator);
 	defer zonArray.deinit(main.stackAllocator);
-	zonArray.array.append(.{.int = user.id});
+	zonArray.array.append(.{.int = @intFromEnum(user.id)});
 	const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 	defer main.stackAllocator.free(data);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
@@ -722,6 +844,8 @@ pub fn connect(user: *User) void {
 pub fn connectInternal(user: *User) void {
 	user.initPlayer();
 	main.network.protocols.handShake.sendServerPlayerData(user.conn);
+	user.conn.handShakeState.store(.complete, .monotonic);
+
 	// TODO: addEntity(player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
@@ -738,9 +862,8 @@ pub fn connectInternal(user: *User) void {
 	{
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
-		const entityZon = main.ZonElement.initObject(main.stackAllocator);
-		entityZon.put("id", user.id);
-		entityZon.put("name", user.name);
+
+		const entityZon = user.player().save(main.stackAllocator, .playerNearby);
 		zonArray.array.append(entityZon);
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
@@ -752,9 +875,7 @@ pub fn connectInternal(user: *User) void {
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
 		for (userList) |other| {
-			const entityZon = main.ZonElement.initObject(main.stackAllocator);
-			entityZon.put("id", other.id);
-			entityZon.put("name", other.name);
+			const entityZon = other.player().save(main.stackAllocator, .playerNearby);
 			zonArray.array.append(entityZon);
 		}
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
@@ -769,7 +890,6 @@ pub fn connectInternal(user: *User) void {
 	userMutex.lock();
 	users.append(user);
 	userMutex.unlock();
-	user.conn.handShakeState.store(.complete, .monotonic);
 }
 
 pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
@@ -779,7 +899,7 @@ pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
 fn sendRawMessage(msg: []const u8) void {
 	chatMutex.lock();
 	defer chatMutex.unlock();
-	std.log.info("Chat: {s}", .{msg}); // TODO use color \033[0;32m
+	main.log.chat("{s}", .{msg});
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 	for (userList) |user| {
@@ -787,9 +907,21 @@ fn sendRawMessage(msg: []const u8) void {
 	}
 }
 
-var chatMutex: std.Thread.Mutex = .{};
+var chatMutex: main.utils.Mutex = .{};
 pub fn sendMessage(comptime fmt: []const u8, args: anytype) void {
-	const msg = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
+	const msg = main.stackAllocator.print(fmt, args);
 	defer main.stackAllocator.free(msg);
 	sendRawMessage(msg);
+}
+
+pub fn getUserByIndexAndIncreaseRefCount(index: usize) ?*User {
+	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
+	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+	for (userList) |user| {
+		if (user.playerIndex == index) {
+			user.increaseRefCount();
+			return user;
+		}
+	}
+	return null;
 }

@@ -18,7 +18,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:dead_leaf_pile:1",
+			.blocks = .{"cubyz:dead_leaf_pile:1"},
 			.chance = 0.02,
 			.width = 4,
 			.variation = 3,
@@ -27,7 +27,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:dead_leaf_pile:0",
+			.blocks = .{"cubyz:dead_leaf_pile:0"},
 			.chance = 0.03,
 			.width = 4,
 			.variation = 3,
@@ -37,8 +37,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:air",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.log = "cubyz:log/oak",
 			.chance = 0.01,
 			.type = .round,
 			.height = 3,
@@ -46,8 +45,7 @@
 		},
 		.{
 			.id = "cubyz:fallen_tree",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_log",
+			.log = "cubyz:log/oak",
 			.chance = 0.025,
 			.height = 5,
 			.height_variation = 1,

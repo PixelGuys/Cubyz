@@ -1,5 +1,8 @@
 .{
 	.properties = .{},
+	.tags = .{
+		.oak,
+	},
 	.minHeightLimit = 7,
 	.minHeight = 22,
 	.maxHeight = 40,
@@ -10,31 +13,30 @@
 	.roughness = 1,
 	.hills = 5,
 	.chance = 2,
-	.music = "cubyz:sunrise",
+	.music = "cubyz:sinanimea/sunrise",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
-		"cubyz:grass",
+		"cubyz:grass/temperate",
 		"2 to 3 cubyz:soil",
 	},
 	.structures = .{
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.0002,
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.size = 5,
 			.size_variance = 1,
 		},
 		.{
 			.id = "cubyz:fallen_tree",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_log",
+			.log = "cubyz:log/oak",
 			.height = 6,
 			.height_variation = 3,
 			.chance = 0.0024,
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:daisies",
+			.blocks = .{"cubyz:daisies"},
 			.chance = 0.003,
 			.width = 10,
 			.variation = 6,
@@ -43,7 +45,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:dandelions",
+			.blocks = .{"cubyz:dandelions"},
 			.chance = 0.002,
 			.width = 6,
 			.variation = 4,
@@ -52,7 +54,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:grass_vegetation",
+			.blocks = .{"cubyz:grass/vegetation/temperate"},
 			.chance = 0.1,
 			.width = 5,
 			.variation = 8,
@@ -61,7 +63,7 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:grass_vegetation",
+			.block = "cubyz:grass/vegetation/temperate",
 			.chance = 0.4,
 			.height = 1,
 			.height_variation = 0,
@@ -70,7 +72,13 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/oak/white",
 			.placeMode = .degradable,
-			.chance = 0.03,
+			.chance = 0.015,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/young",
+			.placeMode = .degradable,
+			.chance = 0.015,
 		},
 	},
 }

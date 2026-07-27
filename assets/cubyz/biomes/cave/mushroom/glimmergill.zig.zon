@@ -1,11 +1,10 @@
 .{
 	.maxHeight = -200,
-	.minHeight = -48250,
 	.chance = 0.05,
 	.structures = .{
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:glimmergill",
+			.blocks = .{"cubyz:glimmergill"},
 			.chance = 0.35,
 			.width = 8,
 			.variation = 4,

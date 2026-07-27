@@ -4,6 +4,9 @@
 		.dry,
 		.barren,
 	},
+	.tags = .{
+		.cactus,
+	},
 	.chance = 1.0,
 	.minHeightLimit = 7,
 	.minHeight = 22,
@@ -13,7 +16,9 @@
 	.maxRadius = 640,
 	.hills = 20,
 	.validPlayerSpawn = false,
-	.music = "cubyz:EasternThought",
+
+	.music = "cubyz:mischol/desert_firefly",
+
 	.ground_structure = .{
 		"3 to 4 cubyz:sand",
 	},
@@ -32,7 +37,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:tussock",
+			.blocks = .{"cubyz:tussock"},
 			.chance = 0.03,
 			.width = 4,
 			.variation = 4,
@@ -40,5 +45,5 @@
 			.priority = 0.1,
 		},
 	},
-	.stoneBlock = "cubyz:sandstone/base",
+	.stoneBlock = "cubyz:sandstone/rough",
 }

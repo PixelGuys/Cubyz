@@ -1,6 +1,4 @@
 .{
-	.tags = .{.choppable, .wood},
-	.blockHealth = 6,
 	.item = .{
 		.material = .{
 			.durability = 24,
@@ -20,10 +18,5 @@
 		},
 	},
 
-	.drops = .{
-		.{.items = .{.auto}},
-	},
-	.model = "cubyz:cube",
-	.rotation = "cubyz:stairs",
 	.texture = "cubyz:planks/birch",
 }

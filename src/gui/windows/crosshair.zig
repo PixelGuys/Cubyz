@@ -5,11 +5,11 @@ const graphics = main.graphics;
 const Texture = graphics.Texture;
 const Vec2f = main.vec.Vec2f;
 
+const c = @import("c");
+
 const gui = @import("../gui.zig");
 const GuiWindow = gui.GuiWindow;
 const GuiComponent = gui.GuiComponent;
-
-const c = main.graphics.c;
 
 const size: f32 = 64;
 pub var window = GuiWindow{
@@ -38,6 +38,8 @@ pub fn init() void {
 		"assets/cubyz/shaders/graphics/Image.frag",
 		"",
 		&uniforms,
+		graphics.draw.SimpleVertex2D,
+		&.{},
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
 		.{.attachments = &.{.{
@@ -59,7 +61,6 @@ pub fn deinit() void {
 
 pub fn render() void {
 	texture.bindTo(0);
-	graphics.draw.setColor(0xffffffff);
 	pipeline.bind(graphics.draw.getScissor());
 	graphics.draw.customShadedImage(&uniforms, .{0, 0}, .{size, size});
 }

@@ -32,7 +32,7 @@
 	.ore = .{
 		.veins = 4.5,
 		.size = 3,
-		.height = -5000,
+		.maxHeight = -5000,
 		.minHeight = -15000,
 		.density = 0.05,
 	},

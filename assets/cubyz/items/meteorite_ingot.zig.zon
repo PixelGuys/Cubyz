@@ -1,0 +1,14 @@
+.{
+	.tags = .{.metal},
+	.texture = "meteorite_ingot.png",
+	.material = .{
+		.durability = 1700,
+		.massDamage = 2.0,
+		.hardnessDamage = 5.0,
+		.swingSpeed = 7.8,
+		.textureRoughness = 0.2,
+		.colors = .{
+			0xff5c403e, 0xff6c4c46, 0xff7d5654, 0xff8e615f, 0xffa67670,
+		},
+	},
+}

@@ -145,7 +145,7 @@ pub fn RandomRange(T: type) type {
 		}
 
 		pub fn fromZon(zon: ZonElement) ?@This() {
-			const vals: ?@Vector(2, T) = if (zon.as(?T, null)) |v| @splat(v) else zon.as(?@Vector(2, T), null);
+			const vals: ?@Vector(2, T) = if (zon.as(T)) |v| @splat(v) else zon.as(@Vector(2, T));
 
 			if (vals == null) return null;
 

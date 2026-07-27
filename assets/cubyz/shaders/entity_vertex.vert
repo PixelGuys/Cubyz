@@ -1,26 +1,25 @@
 #version 460
 
+#include "frame_uniforms.glsl"
+
+layout (location = 0) in vec3 inPos;
+layout (location = 1) in vec3 inNormal;
+layout (location = 2) in vec2 inUV;
+layout (location = 3) in uint inNodeId;
+
 layout(location = 0) out vec2 outTexCoord;
 layout(location = 1) out vec3 mvVertexPos;
 layout(location = 2) out vec3 outLight;
 layout(location = 3) flat out vec3 normal;
 
-layout(location = 0) uniform mat4 projectionMatrix;
-layout(location = 1) uniform mat4 viewMatrix;
+layout(location = 1) uniform mat4 modelViewMatrix;
 layout(location = 2) uniform vec3 ambientLight;
 layout(location = 3) uniform uint light;
+layout(location = 6) uniform uint nodeBufferOffset;
 
-struct QuadInfo {
-	vec3 normal;
-	float corners[4][3];
-	vec2 cornerUV[4];
-	uint textureSlot;
-	int opaqueInLod;
-};
-
-layout(std430, binding = 11) buffer _quads
+layout(std430, binding = 15) buffer _nodeMatrices
 {
-	QuadInfo quads[];
+	mat4 nodeMatrices[];
 };
 
 vec3 square(vec3 x) {
@@ -42,16 +41,11 @@ vec3 calcLight(uint fullLight) {
 }
 
 void main() {
-	int faceID = gl_VertexID >> 2;
-	int vertexID = gl_VertexID & 3;
+	normal = inNormal;
 
-	normal = quads[faceID].normal;
-
-	vec3 position = vec3(quads[faceID].corners[vertexID][0], quads[faceID].corners[vertexID][1], quads[faceID].corners[vertexID][2]);
-
-	vec4 mvPos = viewMatrix*vec4(position, 1);
+	vec4 mvPos = modelViewMatrix*nodeMatrices[nodeBufferOffset + inNodeId]*vec4(inPos, 1);
 	gl_Position = projectionMatrix*mvPos;
 	mvVertexPos = mvPos.xyz;
-	outTexCoord = quads[faceID].cornerUV[vertexID];
+	outTexCoord = inUV;
 	outLight = calcLight(light);
 }

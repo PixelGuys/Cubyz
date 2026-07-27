@@ -5,18 +5,24 @@ pub const gui = @import("gui/gui.zig");
 pub const server = @import("server/server.zig");
 
 pub const audio = @import("audio.zig");
+pub const argparse = @import("argparse.zig");
 pub const assets = @import("assets.zig");
 pub const block_entity = @import("block_entity.zig");
 pub const blocks = @import("blocks.zig");
 pub const blueprint = @import("blueprint.zig");
+const c = @import("c");
 pub const callbacks = @import("callbacks/callbacks.zig");
 pub const chunk = @import("chunk.zig");
+pub const client = @import("client.zig");
 pub const entity = @import("entity.zig");
+pub const entityModel = @import("entityModel.zig");
 pub const files = @import("files.zig");
+pub const fmt = @import("fmt.zig");
 pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
 pub const itemdrop = @import("itemdrop.zig");
 pub const items = @import("items.zig");
+pub const log = @import("log.zig");
 pub const meta = @import("meta.zig");
 pub const migrations = @import("migrations.zig");
 pub const models = @import("models.zig");
@@ -32,25 +38,26 @@ const tag = @import("tag.zig");
 pub const Tag = tag.Tag;
 pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
-pub const ZonElement = @import("zon.zig").ZonElement;
-
-pub const Window = @import("graphics/Window.zig");
-
-pub const heap = @import("utils/heap.zig");
-
-pub const List = @import("utils/list.zig").List;
-pub const ListUnmanaged = @import("utils/list.zig").ListUnmanaged;
-pub const MultiArray = @import("utils/list.zig").MultiArray;
+const zon = @import("zon.zig");
+pub const ZonElement = zon.ZonElement;
 
 const file_monitor = utils.file_monitor;
 
 const Vec2f = vec.Vec2f;
 const Vec3d = vec.Vec3d;
 
-pub threadlocal var stackAllocator: heap.NeverFailingAllocator = undefined;
+pub const Window = @import("graphics/Window.zig");
+
+pub const heap = @import("utils/heap.zig");
+
+pub const ListManaged = utils.list.ListManaged;
+pub const List = utils.list.List;
+pub const MultiArray = utils.list.MultiArray;
+
+pub threadlocal var stackAllocator: heap.NeverFailingAllocator = if (builtin.is_test) heap.testingAllocator else undefined;
 pub threadlocal var seed: u64 = undefined;
 threadlocal var stackAllocatorBase: heap.StackAllocator = undefined;
-pub const globalAllocator: heap.NeverFailingAllocator = heap.allocators.handledGpa.allocator();
+pub const globalAllocator: heap.NeverFailingAllocator = if (builtin.is_test) heap.testingAllocator else heap.allocators.handledGpa.allocator();
 pub const globalArena = heap.allocators.globalArenaAllocator.allocator();
 pub const worldArena = heap.allocators.worldArenaAllocator.allocator();
 pub var threadPool: *utils.ThreadPool = undefined;
@@ -70,214 +77,14 @@ pub fn deinitThreadLocals() void {
 }
 
 pub fn timestamp() std.Io.Timestamp {
-	return (std.Io.Clock.Timestamp.now(io, if (@import("builtin").os.tag == .windows) .real else .awake) catch unreachable).raw; // TODO: On windows the awake time is broken
+	return std.Io.Clock.Timestamp.now(io, .awake).raw;
 }
 
-fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
-	return str[0..len];
-}
-
-fn cacheString(comptime str: []const u8) []const u8 {
-	return cacheStringImpl(str.len, str[0..].*);
-}
-var logFile: ?std.fs.File = undefined;
-var logFileTs: ?std.fs.File = undefined;
-var supportsANSIColors: bool = undefined;
-var openingErrorWindow: bool = false;
 // overwrite the log function:
 pub const std_options: std.Options = .{ // MARK: std_options
 	.log_level = .debug,
-	.logFn = struct {
-		pub fn logFn(
-			comptime level: std.log.Level,
-			comptime _: @Type(.enum_literal),
-			comptime format: []const u8,
-			args: anytype,
-		) void {
-			const color = comptime switch (level) {
-				std.log.Level.err => "\x1b[31m",
-				std.log.Level.info => "",
-				std.log.Level.warn => "\x1b[33m",
-				std.log.Level.debug => "\x1b[37;44m",
-			};
-			const colorReset = "\x1b[0m\n";
-			const filePrefix = "[" ++ comptime level.asText() ++ "]" ++ ": ";
-			const fileSuffix = "\n";
-			comptime var formatString: []const u8 = "";
-			comptime var i: usize = 0;
-			comptime var mode: usize = 0;
-			comptime var sections: usize = 0;
-			comptime var sectionString: []const u8 = "";
-			comptime var sectionResults: []const []const u8 = &.{};
-			comptime var sectionId: []const usize = &.{};
-			inline while (i < format.len) : (i += 1) {
-				if (mode == 0) {
-					if (format[i] == '{') {
-						if (format[i + 1] == '{') {
-							sectionString = sectionString ++ "{{";
-							i += 1;
-							continue;
-						} else {
-							mode = 1;
-							formatString = formatString ++ "{s}{";
-							sectionResults = sectionResults ++ &[_][]const u8{sectionString};
-							sectionString = "";
-							sectionId = sectionId ++ &[_]usize{sections};
-							sections += 1;
-							continue;
-						}
-					} else {
-						sectionString = sectionString ++ format[i .. i + 1];
-					}
-				} else {
-					formatString = formatString ++ format[i .. i + 1];
-					if (format[i] == '}') {
-						sections += 1;
-						mode = 0;
-					}
-				}
-			}
-			formatString = formatString ++ "{s}";
-			sectionResults = sectionResults ++ &[_][]const u8{sectionString};
-			sectionId = sectionId ++ &[_]usize{sections};
-			sections += 1;
-			formatString = comptime cacheString("{s}" ++ formatString ++ "{s}");
-
-			comptime var types: []const type = &.{};
-			comptime var i_1: usize = 0;
-			comptime var i_2: usize = 0;
-			inline while (types.len != sections) {
-				if (i_2 < sectionResults.len) {
-					if (types.len == sectionId[i_2]) {
-						types = types ++ &[_]type{[]const u8};
-						i_2 += 1;
-						continue;
-					}
-				}
-				const TI = @typeInfo(@TypeOf(args[i_1]));
-				if (@TypeOf(args[i_1]) == comptime_int) {
-					types = types ++ &[_]type{i64};
-				} else if (@TypeOf(args[i_1]) == comptime_float) {
-					types = types ++ &[_]type{f64};
-				} else if (TI == .pointer and TI.pointer.size == .slice and TI.pointer.child == u8) {
-					types = types ++ &[_]type{[]const u8};
-				} else if (TI == .int and TI.int.bits <= 64) {
-					if (TI.int.signedness == .signed) {
-						types = types ++ &[_]type{i64};
-					} else {
-						types = types ++ &[_]type{u64};
-					}
-				} else {
-					types = types ++ &[_]type{@TypeOf(args[i_1])};
-				}
-				i_1 += 1;
-			}
-			types = &[_]type{[]const u8} ++ types ++ &[_]type{[]const u8};
-
-			const ArgsType = std.meta.Tuple(types);
-			comptime var comptimeTuple: ArgsType = undefined;
-			comptime var len: usize = 0;
-			i_1 = 0;
-			i_2 = 0;
-			inline while (len != sections) : (len += 1) {
-				if (i_2 < sectionResults.len) {
-					if (len == sectionId[i_2]) {
-						comptimeTuple[len + 1] = sectionResults[i_2];
-						i_2 += 1;
-						continue;
-					}
-				}
-				i_1 += 1;
-			}
-			comptimeTuple[0] = filePrefix;
-			comptimeTuple[comptimeTuple.len - 1] = fileSuffix;
-			var resultArgs: ArgsType = comptimeTuple;
-			len = 0;
-			i_1 = 0;
-			i_2 = 0;
-			inline while (len != sections) : (len += 1) {
-				if (i_2 < sectionResults.len) {
-					if (len == sectionId[i_2]) {
-						i_2 += 1;
-						continue;
-					}
-				}
-				resultArgs[len + 1] = args[i_1];
-				i_1 += 1;
-			}
-
-			logToFile(formatString, resultArgs);
-
-			if (supportsANSIColors) {
-				resultArgs[0] = color;
-				resultArgs[resultArgs.len - 1] = colorReset;
-			}
-			logToStdErr(formatString, resultArgs);
-			if (level == .err and !openingErrorWindow and !settings.launchConfig.headlessServer) {
-				openingErrorWindow = true;
-				gui.openWindow("error_prompt");
-				openingErrorWindow = false;
-			}
-		}
-	}.logFn,
+	.logFn = log.logFn,
 };
-
-fn initLogging() void {
-	logFile = null;
-	files.cwd().makePath("logs") catch |err| {
-		std.log.err("Couldn't create logs folder: {s}", .{@errorName(err)});
-		return;
-	};
-	logFile = std.fs.cwd().createFile("logs/latest.log", .{}) catch |err| {
-		std.log.err("Couldn't create logs/latest.log: {s}", .{@errorName(err)});
-		return;
-	};
-
-	const _timestamp = (std.Io.Clock.Timestamp.now(io, .real) catch unreachable).raw;
-
-	const _path_str = std.fmt.allocPrint(stackAllocator.allocator, "logs/ts_{}.log", .{_timestamp.nanoseconds}) catch unreachable;
-	defer stackAllocator.free(_path_str);
-
-	logFileTs = std.fs.cwd().createFile(_path_str, .{}) catch |err| {
-		std.log.err("Couldn't create {s}: {s}", .{_path_str, @errorName(err)});
-		return;
-	};
-
-	supportsANSIColors = std.fs.File.stdout().supportsAnsiEscapeCodes();
-}
-
-fn deinitLogging() void {
-	if (logFile) |_logFile| {
-		_logFile.close();
-		logFile = null;
-	}
-
-	if (logFileTs) |_logFileTs| {
-		_logFileTs.close();
-		logFileTs = null;
-	}
-}
-
-fn logToFile(comptime format: []const u8, args: anytype) void {
-	var buf: [65536]u8 = undefined;
-	var fba = std.heap.FixedBufferAllocator.init(&buf);
-	const allocator = fba.allocator();
-
-	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	(logFile orelse return).writeAll(string) catch {};
-	(logFileTs orelse return).writeAll(string) catch {};
-}
-
-fn logToStdErr(comptime format: []const u8, args: anytype) void {
-	var buf: [65536]u8 = undefined;
-	var fba = std.heap.FixedBufferAllocator.init(&buf);
-	const allocator = fba.allocator();
-
-	const string = std.fmt.allocPrint(allocator, format, args) catch format;
-	const writer = std.debug.lockStderrWriter(&.{});
-	defer std.debug.unlockStderrWriter();
-	nosuspend writer[0].writeAll(string) catch {};
-}
 
 // MARK: Callbacks
 fn escape(mods: Window.Key.Modifiers) void {
@@ -347,6 +154,9 @@ fn toggleNetworkDebugOverlay(_: Window.Key.Modifiers) void {
 fn toggleAdvancedNetworkDebugOverlay(_: Window.Key.Modifiers) void {
 	gui.toggleWindow("debug_network_advanced");
 }
+fn toggleVulkanDebugOverlay(_: Window.Key.Modifiers) void {
+	gui.toggleWindow("debug_vulkan_info");
+}
 fn cycleHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
 	return &struct {
 		fn set(_: Window.Key.Modifiers) void {
@@ -363,7 +173,6 @@ fn setHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
 }
 
 pub const KeyBoard = struct { // MARK: KeyBoard
-	const c = Window.c;
 	pub var keys = [_]Window.Key{
 		// Gameplay:
 		.{.name = "forward", .key = c.GLFW_KEY_W, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}},
@@ -442,6 +251,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .pressAction = &toggleGPUPerformanceOverlay},
 		.{.name = "networkDebugOverlay", .key = c.GLFW_KEY_F6, .pressAction = &toggleNetworkDebugOverlay},
 		.{.name = "advancedNetworkDebugOverlay", .key = c.GLFW_KEY_F7, .pressAction = &toggleAdvancedNetworkDebugOverlay},
+		.{.name = "vulkanDebugOverlay", .key = c.GLFW_KEY_F8, .pressAction = &toggleVulkanDebugOverlay},
 	};
 
 	fn findKey(name: []const u8) ?*Window.Key { // TODO: Maybe I should use a hashmap here?
@@ -480,36 +290,37 @@ pub var lastFrameTime = std.atomic.Value(f64).init(0);
 pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 
 var shouldExitToMenu = std.atomic.Value(bool).init(false);
+
 pub fn exitToMenu() void {
 	shouldExitToMenu.store(true, .monotonic);
 }
 
-fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
-	var iter = std.fs.path.componentIterator(path) catch |err| {
-		std.log.err("Cannot iterate on path {s}: {s}!", .{path, @errorName(err)});
-		return false;
-	};
-	while (iter.next()) |component| {
-		if (std.mem.eql(u8, component.name, ".") or std.mem.eql(u8, component.name, "..")) {
-			continue;
-		}
-		if (component.name.len > 0 and component.name[0] == '.') {
-			return true;
-		}
-	}
-	return false;
-}
-
-pub fn main() void { // MARK: main()
+pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	defer heap.allocators.deinit();
 	defer heap.GarbageCollection.assertAllThreadsStopped();
 	initThreadLocals();
 	defer deinitThreadLocals();
-	threadedIo = .init(globalAllocator.allocator);
+	threadedIo = .init(globalAllocator.allocator, .{});
 	defer threadedIo.deinit();
 
-	initLogging();
-	defer deinitLogging();
+	log.init();
+	defer log.deinit();
+
+	argCheck: {
+		var argIterator = args.args.iterateAllocator(stackAllocator.allocator) catch |err| {
+			std.log.err("Failed to read command line arguments: {s}", .{@errorName(err)});
+			break :argCheck;
+		};
+		defer argIterator.deinit();
+		_ = argIterator.skip();
+		if (argIterator.next() != null) {
+			std.log.info(
+				\\Cubyz does not accept any command line arguments.
+				\\All launch-time configuration is done through the "launchConfig.zon" file in the game's working directory. See that file for the available options.
+			, .{});
+			std.process.exit(0);
+		}
+	}
 
 	std.log.info("Starting game with version {s}", .{settings.version.version});
 
@@ -517,6 +328,7 @@ pub fn main() void { // MARK: main()
 		std.log.warn("Cubyz detected it's running on Windows. For optimal performance and reduced power usage please install Linux.", .{});
 	}
 
+	settings.environment.init(args.environ);
 	settings.launchConfig.init();
 
 	const headless = settings.launchConfig.headlessServer;
@@ -524,7 +336,14 @@ pub fn main() void { // MARK: main()
 	if (!headless) gui.initWindowList();
 	defer if (!headless) gui.deinitWindowList();
 
-	files.init();
+	{
+		const homePath = args.environ.getAlloc(stackAllocator.allocator, if (builtin.os.tag == .windows) "USERPROFILE" else "HOME") catch |err| {
+			std.log.err("Failed to get environment variable for home path: {s}", .{@errorName(err)});
+			@panic("Failed to get environment variable for home path");
+		};
+		defer stackAllocator.free(homePath);
+		files.init(homePath);
+	}
 	defer files.deinit();
 
 	settings.init();
@@ -548,9 +367,6 @@ pub fn main() void { // MARK: main()
 	utils.initDynamicIntArrayStorage();
 	defer utils.deinitDynamicIntArrayStorage();
 
-	chunk.init();
-	defer chunk.deinit();
-
 	rotation.init();
 	defer rotation.deinit();
 
@@ -563,10 +379,10 @@ pub fn main() void { // MARK: main()
 	defer models.deinit();
 
 	items.globalInit();
-	defer items.deinit();
+	defer items.globalDeinit();
 
-	if (!headless) sync.ClientSide.init();
-	defer if (!headless) sync.ClientSide.deinit();
+	if (!headless) sync.client.init();
+	defer if (!headless) sync.client.deinit();
 
 	if (!headless) itemdrop.ItemDropRenderer.init();
 	defer if (!headless) itemdrop.ItemDropRenderer.deinit();
@@ -582,8 +398,8 @@ pub fn main() void { // MARK: main()
 	network.init() catch @panic("Failed to initialize network");
 	defer network.deinit();
 
-	if (!headless) entity.ClientEntityManager.init();
-	defer if (!headless) entity.ClientEntityManager.deinit();
+	if (!headless) entity.client.init();
+	defer if (!headless) entity.client.deinit();
 
 	if (!headless) gui.init();
 	defer if (!headless) gui.deinit();
@@ -592,7 +408,6 @@ pub fn main() void { // MARK: main()
 	defer if (!headless) particles.ParticleManager.deinit();
 
 	server.terrain.globalInit();
-	defer server.terrain.globalDeinit();
 
 	if (headless and settings.launchConfig.autoEnterWorld.len == 0) {
 		std.log.err("Cannot run headless server without a world name provided via autoEnterworld in the launchConfig!", .{});
@@ -624,50 +439,27 @@ pub fn main() void { // MARK: main()
 	}
 
 	if (headless) {
-		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null);
+		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null, .multiplayer);
+		heap.GarbageCollection.waitForFreeCompletion();
 	} else {
 		clientMain();
 	}
 }
 
 pub fn clientMain() void { // MARK: clientMain()
-	switch (settings.storedAccount.typ) {
-		.none => blk: {
-			if (settings.storedAccount.data.len == 0) {
-				gui.openWindow("authentication/login");
-				break :blk;
-			}
-			var failureText: List(u8) = .init(stackAllocator);
-			defer failureText.deinit();
-			const accountCode = settings.storedAccount.decryptFromPassword(undefined, &failureText) catch |err| {
-				std.log.err("Got error while loading Account Code: {s}", .{@errorName(err)});
-				gui.openWindow("authentication/login");
-				break :blk;
-			};
-			defer accountCode.deinit();
-			if (failureText.items.len != 0) {
-				std.log.warn("Encountered errors while verifying your Account. This may happen if you created your account in a future version, in which case it's fine to continue.\n{s}", .{failureText.items});
-			}
-			network.authentication.KeyCollection.init(accountCode);
-			if (settings.playerName.len == 0) {
-				gui.openWindow("change_name");
-			} else if (settings.launchConfig.autoEnterWorld.len == 0) {
-				gui.openWindow("main");
-			} else {
-				// Speed up the dev process by entering the world directly.
-				gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
-			}
-		},
-		else => {
-			gui.openWindow("authentication/unlock");
-		},
+	if (settings.playerName.len == 0) {
+		gui.openWindow("change_name");
+	} else if (settings.launchConfig.autoEnterWorld.len == 0) {
+		gui.openWindow("main");
+	} else {
+		// Speed up the dev process by entering the world directly.
+		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
 	}
 
-	const c = Window.c;
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastBeginRendering = timestamp();
 
-	audio.setMusic("cubyz:TotalDemented/Cubyz");
+	audio.setMusic("cubyz:totaldemented/cubyz_remastered");
 
 	while (c.glfwWindowShouldClose(Window.window) == 0) {
 		heap.GarbageCollection.syncPoint();
@@ -735,7 +527,7 @@ pub fn clientMain() void { // MARK: clientMain()
 				game.world = null;
 			}
 			gui.openWindow("main");
-			audio.setMusic("cubyz:TotalDemented/Cubyz");
+			audio.setMusic("cubyz:totaldemented/cubyz_remastered");
 		}
 	}
 
@@ -768,4 +560,12 @@ test "abc" {
 	@setEvalBranchQuota(1000000);
 	refAllDeclsRecursiveExceptCImports(@This());
 	_ = @import("zon.zig");
+}
+
+test "allocators are usable in tests" {
+	const allocation1 = stackAllocator.create(u64);
+	stackAllocator.destroy(allocation1);
+
+	const allocation2 = globalAllocator.create(u64);
+	globalAllocator.destroy(allocation2);
 }

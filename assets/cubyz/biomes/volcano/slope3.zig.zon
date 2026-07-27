@@ -10,16 +10,17 @@
 
 	.chance = 0,
 
-	.music = "cubyz:out_of_breath",
+	.music = "cubyz:mrmayman/out_of_breath",
 
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:volcano/slope2",
 			.chance = 1,
+			.parentEdgeDistance = 16,
 		},
 	},
 
 	.maxSubBiomeCount = 1,
 
-	.stoneBlock = "cubyz:basalt/base",
+	.stoneBlock = "cubyz:basalt/smooth",
 }

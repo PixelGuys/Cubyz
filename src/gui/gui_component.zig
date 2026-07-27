@@ -5,6 +5,7 @@ const vec = main.vec;
 const Vec2f = vec.Vec2f;
 
 pub const GuiComponent = union(enum) {
+	pub const BagSlot = @import("components/BagSlot.zig");
 	pub const Button = @import("components/Button.zig");
 	pub const CheckBox = @import("components/CheckBox.zig");
 	pub const HorizontalList = @import("components/HorizontalList.zig");
@@ -18,6 +19,7 @@ pub const GuiComponent = union(enum) {
 	pub const TextInput = @import("components/TextInput.zig");
 	pub const VerticalList = @import("components/VerticalList.zig");
 
+	bagSlot: *BagSlot,
 	button: *Button,
 	checkBox: *CheckBox,
 	horizontalList: *HorizontalList,

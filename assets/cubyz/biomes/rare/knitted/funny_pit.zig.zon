@@ -19,7 +19,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:cloth/green",
+			.blocks = .{"cubyz:cloth/green"},
 			.chance = 0.5,
 			.width = 10,
 			.variation = 6,

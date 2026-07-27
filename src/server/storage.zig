@@ -19,7 +19,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 
 	chunks: [regionVolume][]u8 = @splat(&.{}),
 	pos: chunk.ChunkPosition,
-	mutex: std.Thread.Mutex = .{},
+	mutex: main.utils.Mutex = .{},
 	modified: bool = false,
 	refCount: Atomic(u16) = .init(1),
 	storedInHashMap: bool = false,
@@ -40,7 +40,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 			.saveFolder = main.globalAllocator.dupe(u8, saveFolder),
 		};
 
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}/{}.region", .{saveFolder, pos.voxelSize, pos.wx, pos.wy, pos.wz}) catch unreachable;
+		const path = main.stackAllocator.print("{s}/{}/{}/{}/{}.region", .{saveFolder, pos.voxelSize, pos.wx, pos.wy, pos.wz});
 		defer main.stackAllocator.free(path);
 		const data = main.files.cubyzDir().read(main.stackAllocator, path) catch {
 			return self;
@@ -48,7 +48,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 		defer main.stackAllocator.free(data);
 		self.load(path, data) catch {
 			std.log.err("Corrupted region file: {s}", .{path});
-			if (@errorReturnTrace()) |trace| std.log.info("{f}", .{std.debug.FormatStackTrace{.stack_trace = trace.*, .tty_config = .no_color}});
+			if (@errorReturnTrace()) |trace| std.log.info("{f}", .{main.fmt.FormatErrorTrace{.stackTrace = trace.*}});
 		};
 		return self;
 	}
@@ -143,9 +143,9 @@ pub const RegionFile = struct { // MARK: RegionFile
 		}
 		std.debug.assert(writer.data.items.len == totalSize + headerSize);
 
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}/{}.region", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy, self.pos.wz}) catch unreachable;
+		const path = main.stackAllocator.print("{s}/{}/{}/{}/{}.region", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy, self.pos.wz});
 		defer main.stackAllocator.free(path);
-		const folder = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy}) catch unreachable;
+		const folder = main.stackAllocator.print("{s}/{}/{}/{}", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy});
 		defer main.stackAllocator.free(folder);
 
 		main.files.cubyzDir().makePath(folder) catch |err| {
@@ -182,7 +182,6 @@ pub const RegionFile = struct { // MARK: RegionFile
 
 // MARK: cache
 const cacheSize = 1 << 8; // Must be a power of 2!
-const cacheMask = cacheSize - 1;
 const associativity = 8;
 var cache: main.utils.Cache(RegionFile, cacheSize, associativity, cacheDeinit) = .{};
 const HashContext = struct {
@@ -194,7 +193,7 @@ const HashContext = struct {
 	}
 };
 var stillUsedHashMap: std.HashMap(chunk.ChunkPosition, *RegionFile, HashContext, 50) = undefined;
-var hashMapMutex: std.Thread.Mutex = .{};
+var hashMapMutex: main.utils.Mutex = .{};
 
 fn cacheDeinit(region: *RegionFile) void {
 	if (region.refCount.load(.monotonic) != 1) { // Someone else might still use it, so we store it in the hashmap.
@@ -215,7 +214,7 @@ fn cacheInit(pos: chunk.ChunkPosition) *RegionFile {
 		return region;
 	}
 	hashMapMutex.unlock();
-	const path: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks", .{server.world.?.path}) catch unreachable;
+	const path: []const u8 = main.stackAllocator.print("saves/{s}/chunks", .{server.world.?.path});
 	defer main.stackAllocator.free(path);
 	return RegionFile.init(pos, path);
 }
@@ -275,7 +274,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		return writer.data.toOwnedSlice();
 	}
 
-	pub fn loadChunk(ch: *chunk.Chunk, comptime side: main.utils.Side, data: []const u8) !void {
+	pub fn loadChunk(ch: *chunk.Chunk, comptime side: main.sync.Side, data: []const u8) !void {
 		var reader = BinaryReader.init(data);
 		try decompressBlockData(ch, &reader);
 		try decompressBlockEntityData(ch, side, &reader);
@@ -429,7 +428,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		}
 	}
 
-	pub fn decompressBlockEntityData(ch: *chunk.Chunk, comptime side: main.utils.Side, reader: *BinaryReader) !void {
+	pub fn decompressBlockEntityData(ch: *chunk.Chunk, comptime side: main.sync.Side, reader: *BinaryReader) !void {
 		if (reader.remaining.len == 0) return;
 
 		const compressionAlgo = try reader.readEnum(BlockEntityCompressionAlgo);

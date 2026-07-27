@@ -1,0 +1,12 @@
+.{
+	.id = "cubyz:meteorite",
+	.tags = .{},
+	.chance = 0.00002,
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.placeMode = .all,
+			.structure = "cubyz:meteorite/base",
+		},
+	},
+}

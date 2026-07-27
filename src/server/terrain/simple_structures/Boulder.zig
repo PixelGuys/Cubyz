@@ -26,9 +26,9 @@ sizeVariation: f32,
 pub fn loadModel(parameters: ZonElement) ?*Boulder {
 	const self = main.worldArena.create(Boulder);
 	self.* = .{
-		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "cubyz:slate/base")),
-		.size = parameters.get(f32, "size", 4),
-		.sizeVariation = parameters.get(f32, "size_variation", 1),
+		.block = main.blocks.parseBlock(parameters.get([]const u8, "block") orelse "cubyz:slate/smooth"),
+		.size = parameters.get(f32, "size") orelse 4,
+		.sizeVariation = parameters.get(f32, "size_variation") orelse 1,
 	};
 	return self;
 }
@@ -48,7 +48,7 @@ pub fn generate(self: *Boulder, _: GenerationMode, x: i32, y: i32, z: i32, chunk
 	}
 	// My potential functions is ¹⁄ₙ Σ (radius/2)²/(x⃗ - x⃗ₚₒᵢₙₜ)²
 	// This ensures that the entire boulder is inside of a square with sidelength 2*radius.
-	const maxRadius: i32 = @intFromFloat(@ceil(radius));
+	const maxRadius: i32 = @ceil(radius);
 	var px = chunk.startIndex(x - maxRadius);
 	while (px < x + maxRadius) : (px += chunk.super.pos.voxelSize) {
 		var py = chunk.startIndex(y - maxRadius);

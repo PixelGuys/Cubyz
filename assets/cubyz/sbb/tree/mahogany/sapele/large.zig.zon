@@ -1,0 +1,15 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/mahogany/sapele/large/stem/0"},
+		.{.id = "cubyz:tree/mahogany/sapele/large/stem/1"},
+		.{.id = "cubyz:tree/mahogany/sapele/large/full/0"},
+		.{.id = "cubyz:tree/mahogany/sapele/large/full/1"},
+	},
+	.children = .{
+		.red = "cubyz:tree/mahogany/sapele/large/branch/red",
+		.green = "cubyz:tree/mahogany/sapele/large/branch/green",
+		.blue = "cubyz:tree/mahogany/sapele/large/branch/blue",
+		.white = "cubyz:tree/mahogany/sapele/large/top",
+		.yellow = "cubyz:tree/mahogany/deco",
+	},
+}
