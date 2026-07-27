@@ -274,8 +274,8 @@ pub const server = struct { // MARK: server
 						const workbenchInventory = getInventoryFromSource(callbackSource) orelse @panic("Could not find workbench Inventory");
 						const playerInventory = server.getInventoryFromSource(.{.playerInventory = callbackSource.workbench.playerId}) orelse @panic("Could not find player Inventory");
 
-						const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-						defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+						const userList = main.server.getUserList(main.stackAllocator);
+						defer main.stackAllocator.free(userList);
 						for (userList) |callbackUser| {
 							if (callbackUser.id == callbackSource.workbench.playerId) {
 								sync.server.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, callbackUser.player().pos)}, null);

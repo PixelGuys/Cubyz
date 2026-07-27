@@ -120,7 +120,6 @@ pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, source: S
 
 pub const Target = struct {
 	user: *User,
-	increasedRefCount: bool,
 
 	pub fn fromPlayerIndex(arg: ?PlayerIndex, source: Source) !Target {
 		if (arg == null and source != .user) {
@@ -129,19 +128,13 @@ pub const Target = struct {
 		}
 		const playerIndex = arg orelse return .{
 			.user = source.user,
-			.increasedRefCount = false,
 		};
 		return .{
-			.user = main.server.getUserByIndexAndIncreaseRefCount(playerIndex.index) orelse {
+			.user = main.server.getUserByIndex(playerIndex.index) orelse {
 				source.sendMessage("#ff0000Player with index {d} not found or not online", .{playerIndex.index});
 				return error.InvalidArg;
 			},
-			.increasedRefCount = true,
 		};
-	}
-
-	pub fn deinit(self: Target) void {
-		if (self.increasedRefCount) self.user.decreaseRefCount();
 	}
 };
 

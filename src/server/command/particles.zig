@@ -38,8 +38,8 @@ pub const Args = union(enum) {
 };
 
 pub fn execute(args: Args, source: Source) void {
-	const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-	defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
+	const users = main.server.getUserList(main.stackAllocator);
+	defer main.stackAllocator.free(users);
 	for (users) |user| {
 		main.network.protocols.genericUpdate.sendParticles(
 			user.conn,

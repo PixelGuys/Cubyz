@@ -196,8 +196,8 @@ pub const server = struct {
 		var binaryWriter = main.utils.BinaryWriter.init(main.stackAllocator);
 		defer binaryWriter.deinit();
 
-		const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
+		const users = main.server.getUserList(main.stackAllocator);
+		defer main.stackAllocator.free(users);
 
 		if (EntityComponent.server.get(entity)) |ptr| {
 			if (ptr.save(&binaryWriter, .playerNearby) == .save) {
