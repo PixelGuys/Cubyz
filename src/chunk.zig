@@ -467,9 +467,8 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	shouldStoreNeighbors: bool = false,
 
 	mutex: main.utils.Mutex = .{},
-	refCount: std.atomic.Value(u16),
 
-	pub fn initAndIncreaseRefCount(pos: ChunkPosition) *ServerChunk {
+	pub fn init(pos: ChunkPosition) *ServerChunk {
 		const self = serverPool.create();
 		std.debug.assert((pos.voxelSize - 1 & pos.voxelSize) == 0);
 		std.debug.assert(@mod(pos.wx, pos.voxelSize) == 0 and @mod(pos.wy, pos.voxelSize) == 0 and @mod(pos.wz, pos.voxelSize) == 0);
@@ -483,14 +482,12 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 				.blockPosToEntityDataMap = .{},
 				.blockPosToEntityDataMapMutex = .{},
 			},
-			.refCount = .init(1),
 		};
 		self.super.data.init();
 		return self;
 	}
 
-	pub fn deinit(self: *ServerChunk) void {
-		std.debug.assert(self.refCount.raw == 0);
+	pub fn privateDeinit(self: *ServerChunk) void {
 		const oldContext = main.sync.threadContext;
 		defer main.sync.threadContext = oldContext;
 		main.sync.threadContext = .chunkDeiniting;
@@ -502,25 +499,14 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		serverPool.destroy(@alignCast(self));
 	}
 
+	pub fn deferredDeinit(self: *ServerChunk) void {
+		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
+	}
 	pub fn setChanged(self: *ServerChunk) void {
 		self.mutex.assertLocked();
 		if (!self.wasChanged) {
 			self.wasChanged = true;
-			self.increaseRefCount();
-			main.server.world.?.queueChunkUpdateAndDecreaseRefCount(self);
-		}
-	}
-
-	pub fn increaseRefCount(self: *ServerChunk) void {
-		const prevVal = self.refCount.fetchAdd(1, .monotonic);
-		std.debug.assert(prevVal != 0);
-	}
-
-	pub fn decreaseRefCount(self: *ServerChunk) void {
-		const prevVal = self.refCount.fetchSub(1, .monotonic);
-		std.debug.assert(prevVal != 0);
-		if (prevVal == 1) {
-			self.deinit();
+			main.server.world.?.queueChunkUpdate(self);
 		}
 	}
 
@@ -690,13 +676,12 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 					var dz: i32 = -@as(i32, chunkSize);
 					while (dz <= chunkSize) : (dz += chunkSize) {
 						if (dx == 0 and dy == 0 and dz == 0) continue;
-						const ch = main.server.world.?.getOrGenerateChunkAndIncreaseRefCount(.{
+						const ch = main.server.world.?.getOrGenerateChunk(.{
 							.wx = self.super.pos.wx +% dx,
 							.wy = self.super.pos.wy +% dy,
 							.wz = self.super.pos.wz +% dz,
 							.voxelSize = 1,
 						});
-						defer ch.decreaseRefCount();
 						ch.mutex.lock();
 						defer ch.mutex.unlock();
 						if (!ch.wasStored) {
@@ -747,8 +732,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 				nextPos.wy &= ~@as(i32, pos.voxelSize*chunkSize);
 				nextPos.wz &= ~@as(i32, pos.voxelSize*chunkSize);
 				nextPos.voxelSize *= 2;
-				const nextHigherLod = world.getOrGenerateChunkAndIncreaseRefCount(nextPos);
-				defer nextHigherLod.decreaseRefCount();
+				const nextHigherLod = world.getOrGenerateChunk(nextPos);
 				nextHigherLod.updateFromLowerResolution(self);
 			}
 		}

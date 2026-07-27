@@ -127,7 +127,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 
 	// There will be at most 1 GiB of chunks in here. TODO: Allow configuring this in the server settings.
 	const reducedChunkCacheMask = 2047;
-	var chunkCache: Cache(ServerChunk, reducedChunkCacheMask + 1, 4, chunkDeinitFunctionForCache) = .{};
+	var chunkCache: Cache(ServerChunk, reducedChunkCacheMask + 1, 4, ServerChunk.deferredDeinit) = .{};
 	const HashContext = struct {
 		pub fn hash(_: HashContext, a: chunk.ChunkPosition) u64 {
 			return a.hashCode();
@@ -139,41 +139,35 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 	var simulationChunkHashMap: std.HashMap(chunk.ChunkPosition, *SimulationChunk, HashContext, 50) = undefined;
 	var mutex: main.utils.Mutex = .{};
 
-	fn getSimulationChunkAndIncreaseRefCount(pos: chunk.ChunkPosition) ?*SimulationChunk {
+	fn getSimulationChunk(pos: chunk.ChunkPosition) ?*SimulationChunk {
 		std.debug.assert(pos.voxelSize == 1);
 		mutex.lock();
 		defer mutex.unlock();
 		if (simulationChunkHashMap.get(pos)) |ch| {
-			ch.increaseRefCount();
 			return ch;
 		}
 		return null;
 	}
 
-	pub fn getOrGenerateSimulationChunkAndIncreaseRefCount(pos: chunk.ChunkPosition) *SimulationChunk {
+	pub fn getOrGenerateSimulationChunk(pos: chunk.ChunkPosition) *SimulationChunk {
 		std.debug.assert(pos.voxelSize == 1);
 		mutex.lock();
 		if (simulationChunkHashMap.get(pos)) |ch| {
-			ch.increaseRefCount();
 			mutex.unlock();
 			return ch;
 		}
-		const ch = SimulationChunk.initAndIncreaseRefCount(pos);
-		ch.increaseRefCount();
-		ch.increaseRefCount();
+		const ch = SimulationChunk.init(pos);
+
 		simulationChunkHashMap.put(pos, ch) catch unreachable;
 		mutex.unlock();
-		ChunkLoadTask.scheduleAndDecreaseRefCount(pos, .{.simulationChunk = ch});
+		ChunkLoadTask.schedule(pos, .{.simulationChunk = ch});
 		return ch;
 	}
 
 	pub fn tryRemoveSimulationChunk(ch: *SimulationChunk) void {
 		mutex.lock();
 		defer mutex.unlock();
-		if (ch.refCount.load(.monotonic) == 1) { // Only we hold it.
-			std.debug.assert(simulationChunkHashMap.remove(ch.pos));
-			ch.decreaseRefCount();
-		}
+		std.debug.assert(simulationChunkHashMap.remove(ch.pos));
 	}
 
 	const Source = union(enum) {
@@ -193,7 +187,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 			.taskType = .chunkgen,
 		};
 
-		pub fn scheduleAndDecreaseRefCount(pos: ChunkPosition, source: Source) void {
+		pub fn schedule(pos: ChunkPosition, source: Source) void {
 			const task = main.globalAllocator.create(ChunkLoadTask);
 			task.* = ChunkLoadTask{
 				.pos = pos,
@@ -219,7 +213,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		pub fn isStillNeeded(self: *ChunkLoadTask) bool {
 			switch (self.source) { // Remove the task if the player disconnected
 				.user => |user| if (!user.connected.load(.monotonic)) return false,
-				.simulationChunk => |ch| if (ch.refCount.load(.monotonic) == 2) return false,
+				.simulationChunk => {},
 			}
 			switch (self.source) { // Remove the task if it's far enough away from the player:
 				.user => |user| {
@@ -242,7 +236,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		pub fn clean(self: *ChunkLoadTask) void {
 			switch (self.source) {
 				.user => |user| user.decreaseRefCount(),
-				.simulationChunk => |ch| ch.decreaseRefCount(),
+				.simulationChunk => {},
 			}
 			main.globalAllocator.destroy(self);
 		}
@@ -260,7 +254,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 			.taskType = .misc,
 		};
 
-		pub fn scheduleAndDecreaseRefCount(pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
+		pub fn schedule(pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
 			const task = main.globalAllocator.create(LightMapLoadTask);
 			task.* = LightMapLoadTask{
 				.pos = pos,
@@ -330,35 +324,32 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		storage.deinit();
 	}
 
-	pub fn queueLightMapAndDecreaseRefCount(self: ChunkManager, pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
+	pub fn queueLightMap(self: ChunkManager, pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
 		_ = self;
-		LightMapLoadTask.scheduleAndDecreaseRefCount(pos, source);
+		LightMapLoadTask.schedule(pos, source);
 	}
 
-	pub fn queueChunkAndDecreaseRefCount(self: ChunkManager, pos: ChunkPosition, source: *User) void {
+	pub fn queueChunk(self: ChunkManager, pos: ChunkPosition, source: *User) void {
 		_ = self;
-		ChunkLoadTask.scheduleAndDecreaseRefCount(pos, .{.user = source});
+		ChunkLoadTask.schedule(pos, .{.user = source});
 	}
 
 	pub fn generateChunk(pos: ChunkPosition, source: Source) void { // MARK: generateChunk()
-		const ch = getOrGenerateChunkAndIncreaseRefCount(pos);
+		const ch = getOrGenerateChunk(pos);
 		switch (source) {
 			.user => |user| {
 				main.network.protocols.chunkTransmission.sendChunk(user.conn, ch);
-				ch.decreaseRefCount();
 			},
 			.simulationChunk => |simulationChunk| {
-				simulationChunk.setChunkAndDecreaseRefCount(ch);
+				simulationChunk.setChunk(ch);
 			},
 		}
 	}
 
-	fn chunkInitFunctionForCacheAndIncreaseRefCount(pos: ChunkPosition) *ServerChunk {
+	fn chunkInitFunctionForCache(pos: ChunkPosition) *ServerChunk {
 		if (pos.voxelSize == 1) {
-			if (getSimulationChunkAndIncreaseRefCount(pos)) |simulationChunk| { // Check if we already have it in memory.
-				defer simulationChunk.decreaseRefCount();
+			if (getSimulationChunk(pos)) |simulationChunk| { // Check if we already have it in memory.
 				if (simulationChunk.getChunk()) |ch| {
-					ch.increaseRefCount();
 					return ch;
 				}
 			}
@@ -367,7 +358,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		const regionMask: i32 = regionSize - 1;
 		const region = storage.loadRegionFileAndIncreaseRefCount(pos.wx & ~regionMask, pos.wy & ~regionMask, pos.wz & ~regionMask, pos.voxelSize);
 		defer region.decreaseRefCount();
-		const ch = ServerChunk.initAndIncreaseRefCount(pos);
+		const ch = ServerChunk.init(pos);
 		ch.mutex.lock();
 		defer ch.mutex.unlock();
 		if (region.getChunk(
@@ -399,22 +390,19 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		}
 		return ch;
 	}
-
-	fn chunkDeinitFunctionForCache(ch: *ServerChunk) void {
-		ch.decreaseRefCount();
-	}
+	fn chunkDeinitFunctionForCache(_: *ServerChunk) void {}
 	/// Generates a normal chunk at a given location, or if possible gets it from the cache.
-	pub fn getOrGenerateChunkAndIncreaseRefCount(pos: ChunkPosition) *ServerChunk {
+	pub fn getOrGenerateChunk(pos: ChunkPosition) *ServerChunk {
 		const mask = pos.voxelSize*chunk.chunkSize - 1;
 		std.debug.assert(pos.wx & mask == 0 and pos.wy & mask == 0 and pos.wz & mask == 0);
-		const result = chunkCache.findOrCreate(pos, chunkInitFunctionForCacheAndIncreaseRefCount, ServerChunk.increaseRefCount);
+		const result = chunkCache.findOrCreate(pos, chunkInitFunctionForCache, null);
 		return result;
 	}
 
-	pub fn getChunkFromCacheAndIncreaseRefCount(pos: ChunkPosition) ?*ServerChunk {
+	pub fn getChunkFromCache(pos: ChunkPosition) ?*ServerChunk {
 		const mask = pos.voxelSize*chunk.chunkSize - 1;
 		std.debug.assert(pos.wx & mask == 0 and pos.wy & mask == 0 and pos.wz & mask == 0);
-		const result = chunkCache.find(pos, ServerChunk.increaseRefCount) orelse return null;
+		const result = chunkCache.find(pos, null) orelse return null;
 		return result;
 	}
 };
@@ -554,7 +542,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		};
 		while (self.chunkUpdateQueue.popFront()) |updateRequest| {
 			updateRequest.ch.save(self);
-			updateRequest.ch.decreaseRefCount();
 		}
 		self.chunkUpdateQueue.deinit();
 		while (self.regionUpdateQueue.popFront()) |updateRequest| {
@@ -757,15 +744,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 								.wz = self.pos.wz + @as(i32, @intCast(z))*chunk.chunkSize,
 								.voxelSize = 1,
 							};
-							const ch = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(pos);
-							defer ch.decreaseRefCount();
+							const ch = ChunkManager.getOrGenerateChunk(pos);
 							var nextPos = pos;
 							nextPos.wx &= ~@as(i32, self.pos.voxelSize*chunk.chunkSize);
 							nextPos.wy &= ~@as(i32, self.pos.voxelSize*chunk.chunkSize);
 							nextPos.wz &= ~@as(i32, self.pos.voxelSize*chunk.chunkSize);
 							nextPos.voxelSize *= 2;
-							const nextHigherLod = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(nextPos);
-							defer nextHigherLod.decreaseRefCount();
+							const nextHigherLod = ChunkManager.getOrGenerateChunk(nextPos);
 							ch.mutex.lock();
 							defer ch.mutex.unlock();
 							nextHigherLod.updateFromLowerResolution(ch);
@@ -844,7 +829,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				self.mutex.unlock();
 				defer self.mutex.lock();
 				updateRequest.ch.save(self);
-				updateRequest.ch.decreaseRefCount();
 				main.heap.GarbageCollection.syncPoint();
 			}
 			while (self.regionUpdateQueue.popFront()) |updateRequest| {
@@ -1111,13 +1095,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		var currentChunks: main.List(*SimulationChunk) = .initCapacity(main.stackAllocator, iter.len);
 		defer currentChunks.deinit(main.stackAllocator);
 		while (iter.next()) |simulationChunk| {
-			simulationChunk.*.increaseRefCount();
 			currentChunks.append(main.stackAllocator, simulationChunk.*);
 		}
 		ChunkManager.mutex.unlock();
 
 		for (currentChunks.items) |simulationChunk| {
-			defer simulationChunk.decreaseRefCount();
 			simulationChunk.update(self.tickSpeed.load(.monotonic));
 		}
 	}
@@ -1166,7 +1148,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			self.mutex.unlock();
 			defer self.mutex.lock();
 			updateRequest.ch.save(self);
-			updateRequest.ch.decreaseRefCount();
 			if (updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() >= 0) break;
 		}
 		while (self.regionUpdateQueue.popFront()) |updateRequest| {
@@ -1178,27 +1159,27 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 	}
 
-	pub fn queueChunkAndDecreaseRefCount(self: *ServerWorld, pos: ChunkPosition, source: *User) void {
-		self.chunkManager.queueChunkAndDecreaseRefCount(pos, source);
+	pub fn queueChunk(self: *ServerWorld, pos: ChunkPosition, source: *User) void {
+		self.chunkManager.queueChunk(pos, source);
 	}
 
-	pub fn queueLightMapAndDecreaseRefCount(self: *ServerWorld, pos: terrain.SurfaceMap.MapFragmentPosition, source: *User) void {
-		self.chunkManager.queueLightMapAndDecreaseRefCount(pos, source);
+	pub fn queueLightMap(self: *ServerWorld, pos: terrain.SurfaceMap.MapFragmentPosition, source: *User) void {
+		self.chunkManager.queueLightMap(pos, source);
 	}
 
-	pub fn getSimulationChunkAndIncreaseRefCount(_: *ServerWorld, x: i32, y: i32, z: i32) ?*SimulationChunk {
-		if (ChunkManager.getSimulationChunkAndIncreaseRefCount(.{.wx = x & ~@as(i32, chunk.chunkMask), .wy = y & ~@as(i32, chunk.chunkMask), .wz = z & ~@as(i32, chunk.chunkMask), .voxelSize = 1})) |entityChunk| {
+	pub fn getSimulationChunk(_: *ServerWorld, x: i32, y: i32, z: i32) ?*SimulationChunk {
+		if (ChunkManager.getSimulationChunk(.{.wx = x & ~@as(i32, chunk.chunkMask), .wy = y & ~@as(i32, chunk.chunkMask), .wz = z & ~@as(i32, chunk.chunkMask), .voxelSize = 1})) |entityChunk| {
 			return entityChunk;
 		}
 		return null;
 	}
 
-	pub fn getOrGenerateChunkAndIncreaseRefCount(_: *ServerWorld, pos: chunk.ChunkPosition) *ServerChunk {
-		return ChunkManager.getOrGenerateChunkAndIncreaseRefCount(pos);
+	pub fn getOrGenerateChunk(_: *ServerWorld, pos: chunk.ChunkPosition) *ServerChunk {
+		return ChunkManager.getOrGenerateChunk(pos);
 	}
 
-	pub fn getChunkFromCacheAndIncreaseRefCount(_: *ServerWorld, pos: chunk.ChunkPosition) ?*ServerChunk {
-		return ChunkManager.getChunkFromCacheAndIncreaseRefCount(pos);
+	pub fn getChunkFromCache(_: *ServerWorld, pos: chunk.ChunkPosition) ?*ServerChunk {
+		return ChunkManager.getChunkFromCache(pos);
 	}
 
 	pub fn getBiome(_: *const ServerWorld, wx: i32, wy: i32, wz: i32) *const terrain.biomes.Biome {
@@ -1209,8 +1190,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	pub fn getBlock(self: *ServerWorld, x: i32, y: i32, z: i32) ?Block {
 		const chunkPos = Vec3i{x, y, z} & ~@as(Vec3i, @splat(main.chunk.chunkMask));
-		const otherChunk = self.getSimulationChunkAndIncreaseRefCount(chunkPos[0], chunkPos[1], chunkPos[2]) orelse return null;
-		defer otherChunk.decreaseRefCount();
+		const otherChunk = self.getSimulationChunk(chunkPos[0], chunkPos[1], chunkPos[2]) orelse return null;
 		const ch = otherChunk.getChunk() orelse return null;
 		ch.mutex.lock();
 		defer ch.mutex.unlock();
@@ -1219,8 +1199,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	pub fn getBlockAndBlockEntityData(self: *ServerWorld, x: i32, y: i32, z: i32, blockEntityDataWriter: *utils.BinaryWriter) ?Block {
 		const chunkPos = Vec3i{x, y, z} & ~@as(Vec3i, @splat(main.chunk.chunkMask));
-		const otherChunk = self.getSimulationChunkAndIncreaseRefCount(chunkPos[0], chunkPos[1], chunkPos[2]) orelse return null;
-		defer otherChunk.decreaseRefCount();
+		const otherChunk = self.getSimulationChunk(chunkPos[0], chunkPos[1], chunkPos[2]) orelse return null;
 		const ch = otherChunk.getChunk() orelse return null;
 		ch.mutex.lock();
 		defer ch.mutex.unlock();
@@ -1234,8 +1213,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	/// Returns the actual block on failure
 	pub fn cmpxchgBlock(self: *ServerWorld, wx: i32, wy: i32, wz: i32, oldBlock: ?Block, _newBlock: Block) ?Block {
 		main.sync.threadContext.assertCorrectContext(.server);
-		const baseChunk = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{.wx = wx & ~@as(i32, chunk.chunkMask), .wy = wy & ~@as(i32, chunk.chunkMask), .wz = wz & ~@as(i32, chunk.chunkMask), .voxelSize = 1});
-		defer baseChunk.decreaseRefCount();
+		const baseChunk = ChunkManager.getOrGenerateChunk(.{.wx = wx & ~@as(i32, chunk.chunkMask), .wy = wy & ~@as(i32, chunk.chunkMask), .wz = wz & ~@as(i32, chunk.chunkMask), .voxelSize = 1});
 		const pos: chunk.BlockPos = .fromWorldCoords(wx, wy, wz);
 		baseChunk.mutex.lock();
 		const currentBlock = baseChunk.getBlock(pos.x, pos.y, pos.z);
@@ -1252,16 +1230,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			const neighborPos, const chunkLocation = pos.neighbor(neighbor);
 			var ch = baseChunk;
 			if (chunkLocation == .inNeighborChunk) {
-				ch = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{
+				ch = ChunkManager.getOrGenerateChunk(.{
 					.wx = baseChunk.super.pos.wx +% pos.x +% neighbor.relX() & ~@as(i32, chunk.chunkMask),
 					.wy = baseChunk.super.pos.wy +% pos.y +% neighbor.relY() & ~@as(i32, chunk.chunkMask),
 					.wz = baseChunk.super.pos.wz +% pos.z +% neighbor.relZ() & ~@as(i32, chunk.chunkMask),
 					.voxelSize = 1,
 				});
 			}
-			defer if (ch != baseChunk) {
-				ch.decreaseRefCount();
-			};
 
 			ch.mutex.lock();
 			defer ch.mutex.unlock();
@@ -1321,8 +1296,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				wz + value.relZ(),
 			};
 
-			var ch = self.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse continue;
-			defer ch.decreaseRefCount();
+			var ch = self.getSimulationChunk(pos[0], pos[1], pos[2]) orelse continue;
 
 			ch.blockUpdateSystem.add(.{
 				.x = @truncate(@as(u32, @bitCast(pos[0]))),
@@ -1336,7 +1310,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		_ = self.cmpxchgBlock(wx, wy, wz, null, newBlock);
 	}
 
-	pub fn queueChunkUpdateAndDecreaseRefCount(self: *ServerWorld, ch: *ServerChunk) void {
+	pub fn queueChunkUpdate(self: *ServerWorld, ch: *ServerChunk) void {
 		self.mutex.lock();
 		self.chunkUpdateQueue.pushBack(.{.ch = ch, .milliTimeStamp = main.timestamp().toMilliseconds()});
 		self.mutex.unlock();

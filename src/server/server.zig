@@ -331,7 +331,6 @@ pub const User = struct { // MARK: User
 				while (z != lastBoxEnd[2]) : (z +%= chunk.chunkSize) {
 					const inZDistance = z -% newBoxStart[2] >= 0 and z -% newBoxEnd[2] < 0;
 					if (!inXDistance or !inYDistance or !inZDistance) {
-						self.loadedChunks[simArrIndex(x)][simArrIndex(y)][simArrIndex(z)].decreaseRefCount();
 						self.loadedChunks[simArrIndex(x)][simArrIndex(y)][simArrIndex(z)] = undefined;
 					}
 				}
@@ -355,7 +354,7 @@ pub const User = struct { // MARK: User
 				while (z != newBoxEnd[2]) : (z +%= chunk.chunkSize) {
 					const inZDistance = z -% lastBoxStart[2] >= 0 and z -% lastBoxEnd[2] < 0;
 					if (!inXDistance or !inYDistance or !inZDistance) {
-						self.loadedChunks[simArrIndex(x)][simArrIndex(y)][simArrIndex(z)] = world_zig.ChunkManager.getOrGenerateSimulationChunkAndIncreaseRefCount(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
+						self.loadedChunks[simArrIndex(x)][simArrIndex(y)][simArrIndex(z)] = world_zig.ChunkManager.getOrGenerateSimulationChunk(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
 					}
 				}
 			}

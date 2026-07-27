@@ -8,48 +8,32 @@ const BlockUpdateSystem = main.server.BlockUpdateSystem;
 const SimulationChunk = @This();
 
 chunk: std.atomic.Value(?*ServerChunk) = .init(null),
-refCount: std.atomic.Value(u32),
 pos: ChunkPosition,
 blockUpdateSystem: BlockUpdateSystem,
 
-pub fn initAndIncreaseRefCount(pos: ChunkPosition) *SimulationChunk {
+pub fn init(pos: ChunkPosition) *SimulationChunk {
 	const self = main.globalAllocator.create(SimulationChunk);
 	self.* = .{
-		.refCount = .init(1),
 		.pos = pos,
 		.blockUpdateSystem = .init(),
 	};
 	return self;
 }
 
-fn deinit(self: *SimulationChunk) void {
-	std.debug.assert(self.refCount.load(.monotonic) == 0);
+fn privateDeinit(self: *SimulationChunk) void {
 	self.blockUpdateSystem.deinit();
-	if (self.chunk.raw) |ch| ch.decreaseRefCount();
 	main.globalAllocator.destroy(self);
 }
 
-pub fn increaseRefCount(self: *SimulationChunk) void {
-	const prevVal = self.refCount.fetchAdd(1, .monotonic);
-	std.debug.assert(prevVal != 0);
-}
-
-pub fn decreaseRefCount(self: *SimulationChunk) void {
-	const prevVal = self.refCount.fetchSub(1, .monotonic);
-	std.debug.assert(prevVal != 0);
-	if (prevVal == 2) {
-		main.server.world_zig.ChunkManager.tryRemoveSimulationChunk(self);
-	}
-	if (prevVal == 1) {
-		self.deinit();
-	}
+pub fn deferredDeinit(self: *SimulationChunk) void {
+	main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaquep(privateDeinit)});
 }
 
 pub fn getChunk(self: *SimulationChunk) ?*ServerChunk {
 	return self.chunk.load(.acquire);
 }
 
-pub fn setChunkAndDecreaseRefCount(self: *SimulationChunk, ch: *ServerChunk) void {
+pub fn setChunk(self: *SimulationChunk, ch: *ServerChunk) void {
 	std.debug.assert(self.chunk.swap(ch, .release) == null);
 }
 
