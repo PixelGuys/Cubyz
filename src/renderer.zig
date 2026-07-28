@@ -220,11 +220,18 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		Vec4f{0, 0, 0, 1},
 	}}).mul(.scale(.{1, 1, -1}));
 
-	const lightOffset: Vec3f = Vec3f{
-		@floatCast(@mod(playerPos[0], 1.0) + @mod(xR/zR*@floor(playerPos[2]), 1.0)),
-		@floatCast(@mod(playerPos[1], 1.0) + @mod(yR/zR*@floor(playerPos[2]), 1.0)),
-		@floatCast(@mod(playerPos[2], 1.0))
-	};
+	const invLightProjection = Mat4f.scale(.{1, 1, -1}).mul(Mat4f{.rows = [4]Vec4f{
+		Vec4f{1, 0, -(far - near)*xR/zR, -near*xR/zR},
+		Vec4f{0, 1, -(far - near)*yR/zR, -near*yR/zR},
+		Vec4f{0, 0, far - near, near},
+		Vec4f{0, 0, 0, 1},
+	}}).mul(Mat4f.scale(.{shadowMapSize/2.0, shadowMapSize/2.0, 1.0}));
+
+	const playerPosLightSpace = lightProjection.mulVec(vec.combine(@as(Vec3f, @floatCast(playerPos)), 1.0));
+	const snapValue = @as(Vec4f, @splat(@as(f32, @floatFromInt(settings.shadowMapResolution))/2.0));
+	const playerPosLightSpaceSnapped = @floor(playerPosLightSpace*snapValue)/snapValue;
+	const playerPosSnapped = vec.xyz(invLightProjection.mulVec(playerPosLightSpaceSnapped));
+	const lightOffset = @as(Vec3f, @floatCast(playerPos - playerPosSnapped));
 
 	const lightView: Mat4f = Mat4f.identity().mul(.translation(lightOffset));
 

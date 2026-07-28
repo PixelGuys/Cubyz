@@ -13,8 +13,6 @@ layout(location = 7) flat in int textureIndex;
 layout(location = 8) flat in int isBackFace;
 layout(location = 9) flat in float distanceForLodCheck;
 layout(location = 10) flat in int opaqueInLod;
-layout(location = 11) flat in mat4 worldToQuad;
-layout(location = 15) flat in mat3 uvTransform;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -65,11 +63,20 @@ vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012
 
 float shadowCalculation() {
 	if (dot(lightDir, normal) > 0.0) return 1.0;
-	vec3 shadowPosUV = uvTransform * (worldToQuad * lightViewMatrix * vec4(shadowPos, 1.0)).xyz;
-	shadowPosUV.xy = (floor(shadowPosUV.xy * 16.0) + 0.5) / 16.0;
-	vec4 shadowPosSnapped = inverse(worldToQuad) * vec4(inverse(uvTransform) * shadowPosUV, 1.0);
+	
+	vec2 texSize = vec2(16.0);
+	vec2 textureOffset = (0.5 - fract(uv*texSize))/texSize;
+
+	mat2 uvGrad = mat2(dFdx(uv), dFdy(uv));
+
+	vec2 screenOffset = inverse(uvGrad)*textureOffset;
+
+	vec3 offset = dFdx(shadowPos)*screenOffset.x + dFdy(shadowPos)*screenOffset.y;
+
+	vec3 shadowPosSnapped = shadowPos + offset;
 	shadowPosSnapped.xy += normalize(lightDir.xy) * 0.02;
-	vec4 lightPos = lightProjectionMatrix * shadowPosSnapped;
+
+	vec4 lightPos = lightProjectionMatrix*lightViewMatrix*vec4(shadowPosSnapped, 1.0);
 	vec3 projCoords = lightPos.xyz;
 	projCoords = projCoords * 0.5 + 0.5;
 	float clipMargin = 0.05;
