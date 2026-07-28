@@ -25,7 +25,7 @@ pub fn update() void {
 	const result = readFromStdin();
 	if (result == 0) return;
 	if (result == readBuffer.len) {
-		std.log.warn("Input exceeded 10000 character limit", .{});
+		std.log.warn("Input exceeded {} character limit", .{readBuffer.len});
 		while (readFromStdin() != 0) {}
 		return;
 	}
