@@ -43,9 +43,9 @@ fn getOceanHeight(biome: *const Biome, chunk: *main.chunk.ServerChunk, airBlockB
 }
 
 fn isOceanEdge(chunk: *main.chunk.ServerChunk, relPos: Vec3i, biome: *const Biome, biomeOceanHeight: i32, biomeMap: CaveBiomeMap.CaveBiomeMapView, caveMap: CaveMap.CaveMapView) bool {
-	const neighborBiome = biomeMap.getBiome(relPos[0], relPos[1], relPos[2]);
-	const liquidMatches = biome.liquidBlock == neighborBiome.liquidBlock;
 	const neighborAirBlockBelow = caveMap.findTerrainChangeBelow(relPos[0], relPos[1], relPos[2]) + chunk.super.pos.voxelSize;
+	const neighborBiome = if (neighborAirBlockBelow -% 1 >= -32) biomeMap.getBiome(relPos[0], relPos[1], neighborAirBlockBelow -% 1) else biomeMap.getBiome(relPos[0], relPos[1], relPos[2]);
+	const liquidMatches = biome.liquidBlock == neighborBiome.liquidBlock;
 	const neighborOceanHeight = getOceanHeight(neighborBiome, chunk, neighborAirBlockBelow);
 	const neighborValidDepth = neighborOceanHeight -% neighborAirBlockBelow <= neighborBiome.oceanHeight;
 	if (!liquidMatches or neighborOceanHeight != biomeOceanHeight or (biome.isOceanRelative and neighborBiome.isOceanRelative and !neighborValidDepth)) {
