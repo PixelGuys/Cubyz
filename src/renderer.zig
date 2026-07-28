@@ -200,7 +200,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glClear(c.GL_DEPTH_BUFFER_BIT);
 	gpu_performance_measuring.stopQuery();
 
-
 	const xRot = std.math.pi*0.8;
 	const zRot = std.math.pi*0.1;
 
