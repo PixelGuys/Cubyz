@@ -3,7 +3,7 @@ const builtin = @import("builtin");
 
 const main = @import("main");
 
-var readBuffer: [10000]u8 = undefined;
+var readBuffer: [100_000]u8 = undefined;
 
 var running: bool = false;
 
