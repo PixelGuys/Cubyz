@@ -976,6 +976,7 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 
 		fn run(self: Swap, ctx: Context) error{serverFailure}!void {
+			if (self.dest.inv.id == self.source.inv.id and self.dest.slot == self.source.slot) return;
 			if (self.dest.inv.callbacks.canPutInto) |c| if (!c(self.dest.inv.source, self.source.ref().item, self.dest.slot)) return;
 			if (self.source.inv.callbacks.canPutInto) |c| if (!c(self.source.inv.source, self.dest.ref().item, self.source.slot)) return;
 			ctx.execute(.{.swap = .{
