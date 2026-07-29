@@ -92,8 +92,8 @@ fn openWorldWrap(index: usize) void { // TODO: Improve this situation. Maybe it 
 
 fn editWorld(index: usize) void {
 	main.gui.closeWindow("edit_world");
+	main.gui.windowlist.edit_world.setEditWorldName(worldList.items[index].fileName);
 	main.gui.openWindow("edit_world");
-	_ = index;
 }
 
 fn deleteWorld(index: usize) void {
