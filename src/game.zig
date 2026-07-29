@@ -116,7 +116,7 @@ pub const Player = struct { // MARK: Player
 	pub const jumpHeight = 1.25;
 
 	fn loadFrom(zon: ZonElement) !void {
-		try super.loadFrom(id, zon, .client);
+		try super.loadFrom(id, zon, .client, .{0, 0, 0});
 	}
 
 	pub fn setPosBlocking(newPos: Vec3d) void {

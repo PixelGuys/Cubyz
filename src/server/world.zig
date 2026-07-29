@@ -984,7 +984,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			}
 		}
 		const player = user.player();
-		const loadingError = player.loadFrom(user.id, playerData.getChild("entity"), .server);
+		const loadingError = player.loadFrom(user.id, playerData.getChild("entity"), .server, @floatFromInt(self.spawn));
 
 		// override the name for players.
 		if (player.name) |name| {
@@ -993,8 +993,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		player.name = main.globalAllocator.dupe(u8, user.name);
 
 		if (playerData == .null) {
-			player.pos = @floatFromInt(self.spawn);
-
 			user.gamemode = .init(self.settings.defaultGamemode);
 		} else {
 			user.gamemode = .init(std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode") orelse @tagName(self.settings.defaultGamemode)) orelse self.settings.defaultGamemode);

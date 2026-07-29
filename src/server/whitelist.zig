@@ -4,10 +4,9 @@ const std = @import("std");
 const main = @import("main");
 const ZonElement = main.ZonElement;
 const sync = main.sync;
-const Vec3d = main.vec.Vec3d;
 
-pub const AddResult = enum { added, alreadyAllowed };
-pub const RemoveResult = enum { blocked, alreadyBlocked };
+const AddResult = enum { added, alreadyAllowed };
+const RemoveResult = enum { blocked, alreadyBlocked };
 
 const EnsureResult = struct { index: usize, wasNew: bool };
 
@@ -20,71 +19,69 @@ fn ensurePlayerRecord(key: []const u8) EnsureResult {
 	const index = world.nextPlayerIndex.fetchAdd(1, .monotonic);
 	world.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, key), index) catch unreachable;
 
-	if (!builtin.is_test) {
-		const playersDir = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{world.path}) catch unreachable;
-		defer main.stackAllocator.free(playersDir);
-		main.files.cubyzDir().makePath(playersDir) catch |err| {
-			std.log.err("Couldn't create players directory: {t}", .{err});
-		};
+	if (builtin.is_test) return .{.index = index, .wasNew = true};
 
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{}.zon", .{world.path, index}) catch unreachable;
-		defer main.stackAllocator.free(path);
+	const playersDir = main.stackAllocator.print("saves/{s}/players", .{world.path});
+	defer main.stackAllocator.free(playersDir);
+	main.files.cubyzDir().makePath(playersDir) catch |err| {
+		std.log.err("Couldn't create players directory: {t}", .{err});
+	};
 
-		const zon: ZonElement = .initObject(main.stackAllocator);
-		defer zon.deinit(main.stackAllocator);
-		zon.put("publicKey", key);
-		const entityZon: ZonElement = .initObject(main.stackAllocator);
-		entityZon.put("position", @as(Vec3d, @floatFromInt(world.spawn)));
-		zon.put("entity", entityZon);
+	const path = main.stackAllocator.print("saves/{s}/players/{}.zon", .{world.path, index});
+	defer main.stackAllocator.free(path);
 
-		main.files.cubyzDir().writeZon(path, zon) catch |err| {
-			std.log.err("Couldn't create player file for pre-authorized key {s}: {t}", .{key, err});
-		};
-	}
+	const zon: ZonElement = .initObject(main.stackAllocator);
+	defer zon.deinit(main.stackAllocator);
+	zon.put("publicKey", key);
+
+	main.files.cubyzDir().writeZon(path, zon) catch |err| {
+		std.log.err("Couldn't create player file for pre-authorized key {s}: {t}", .{key, err});
+	};
 
 	return .{.index = index, .wasNew = true};
 }
 
-fn setBlocked(index: usize, value: bool) void {
+fn setBlocked(index: usize, value: bool) bool {
 	sync.threadContext.assertCorrectContext(.server);
 	const world = main.server.world.?;
 
 	if (value) {
-		world.blockedPlayers.put(main.worldArena.allocator, index, {}) catch unreachable;
+		const result = world.blockedPlayers.getOrPut(main.worldArena.allocator, index) catch unreachable;
+		if (result.found_existing) return false;
 	} else {
-		_ = world.blockedPlayers.remove(index);
+		if (!world.blockedPlayers.remove(index)) return false;
 	}
 
-	if (!builtin.is_test) {
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{}.zon", .{world.path, index}) catch unreachable;
-		defer main.stackAllocator.free(path);
+	if (builtin.is_test) return true;
 
-		var zon: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, path) catch .null;
-		defer zon.deinit(main.stackAllocator);
-		if (zon != .object) {
-			zon.deinit(main.stackAllocator);
-			zon = ZonElement.initObject(main.stackAllocator);
-		}
-		zon.put("blocked", value);
+	const path = main.stackAllocator.print("saves/{s}/players/{}.zon", .{world.path, index});
+	defer main.stackAllocator.free(path);
 
-		main.files.cubyzDir().writeZon(path, zon) catch |err| {
-			std.log.err("Couldn't update blocked state for player {}: {t}", .{index, err});
-		};
+	var zon: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, path) catch .null;
+	defer zon.deinit(main.stackAllocator);
+	if (zon != .object) {
+		zon.deinit(main.stackAllocator);
+		zon = .initObject(main.stackAllocator);
 	}
+	zon.put("blocked", value);
+
+	main.files.cubyzDir().writeZon(path, zon) catch |err| {
+		std.log.err("Couldn't update blocked state for player {}: {t}", .{index, err});
+	};
+
+	return true;
 }
 
 pub fn add(key: []const u8) AddResult {
 	const result = ensurePlayerRecord(key);
-	const wasBlocked = main.server.world.?.blockedPlayers.contains(result.index);
-	if (wasBlocked) setBlocked(result.index, false);
-	return if (result.wasNew or wasBlocked) .added else .alreadyAllowed;
+	const changed = setBlocked(result.index, false);
+	return if (result.wasNew or changed) .added else .alreadyAllowed;
 }
 
 pub fn remove(key: []const u8) RemoveResult {
 	const result = ensurePlayerRecord(key);
-	const wasBlocked = main.server.world.?.blockedPlayers.contains(result.index);
-	if (!wasBlocked) setBlocked(result.index, true);
-	return if (result.wasNew or !wasBlocked) .blocked else .alreadyBlocked;
+	const changed = setBlocked(result.index, true);
+	return if (result.wasNew or changed) .blocked else .alreadyBlocked;
 }
 
 pub fn contains(key: []const u8) bool {
