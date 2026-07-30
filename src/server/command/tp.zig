@@ -85,7 +85,6 @@ pub fn execute(args: Args, source: Source) void {
 		},
 		.@"/tp <playerIndex>" => |index| {
 			const target = command.Target.fromPlayerIndex(index.playerIndex, source) catch return;
-			defer target.deinit();
 			break :blk target.user.player().pos;
 		},
 	};

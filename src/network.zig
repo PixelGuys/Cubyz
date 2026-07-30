@@ -689,11 +689,10 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			if (data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
 				const ip = main.stackAllocator.print("{f}", .{source});
 				defer main.stackAllocator.free(ip);
-				const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ip) catch |err| {
+				const user = main.server.User.init(main.server.connectionManager, ip) catch |err| {
 					std.log.err("Cannot connect user from external IP {f}: {s}", .{source, @errorName(err)});
 					return;
 				};
-				user.decreaseRefCount();
 				user.conn.receive(data);
 			}
 		} else {

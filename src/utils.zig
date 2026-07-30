@@ -814,7 +814,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	threads: []std.Thread,
 	currentTasks: []Atomic(?*const VTable),
 	loadList: ConcurrentMaxHeap(Task),
-	playerJobQueue: ConcurrentQueue(*main.server.User),
+	playerJobQueue: ConcurrentQueue(main.server.PlayerIndex),
 	taskCountSemaphore: main.utils.Semaphore = .{},
 	stopSemaphore: main.utils.Semaphore = .{},
 	startSemaphore: main.utils.Semaphore = .{},
@@ -853,10 +853,6 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		// Clear the remaining tasks:
 		while (self.loadList.extractAny()) |task| {
 			task.vtable.clean(task.self);
-		}
-
-		while (self.playerJobQueue.popFront()) |player| {
-			player.decreaseRefCount();
 		}
 
 		for (self.threads) |thread| {
@@ -910,10 +906,9 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	}
 
 	pub fn unschedulePlayers(self: *ThreadPool) void {
-		while (self.playerJobQueue.popFront()) |player| {
+		while (self.playerJobQueue.popFront()) |_| {
 			self.taskCountSemaphore.timedWait(.zero) catch {};
 			_ = self.trueQueueSize.fetchSub(1, .monotonic);
-			player.decreaseRefCount();
 		}
 	}
 
@@ -923,15 +918,13 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		}
 		blk: {
 			const player = self.playerJobQueue.popFront() orelse break :blk;
-			const result, const hasMoreTasks = player.getTaskFromJobQueue() orelse {
+			const user = main.server.getUserByIndex(player) orelse break :blk;
+			const result, const hasMoreTasks = user.getTaskFromJobQueue() orelse {
 				_ = self.trueQueueSize.fetchSub(1, .monotonic);
-				player.decreaseRefCount();
 				break :blk;
 			};
 			switch (hasMoreTasks) {
-				.empty => {
-					player.decreaseRefCount();
-				},
+				.empty => {},
 				.hasMoreTasks => {
 					self.playerJobQueue.pushBack(player);
 					self.taskCountSemaphore.post();
@@ -1014,8 +1007,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	}
 
 	pub fn addPlayer(self: *ThreadPool, player: *main.server.User) void {
-		player.increaseRefCount();
-		self.playerJobQueue.pushBack(player);
+		self.playerJobQueue.pushBack(player.playerIndex);
 		self.taskCountSemaphore.post();
 		_ = self.trueQueueSize.fetchAdd(1, .monotonic);
 	}
