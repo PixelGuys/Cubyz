@@ -48,31 +48,41 @@ const Material = struct { // MARK: Material
 		};
 	}
 
-	fn loadColorsFromTexture(self: *Material, allocator: NeverFailingAllocator, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8) bool {
-		if (colorTexturePath.len == 0) return false;
+	const ColorSource = enum { loadedFromTexture, notLoaded };
+
+	fn loadColorsFromTexture(self: *Material, allocator: NeverFailingAllocator, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8) ColorSource {
+		if (colorTexturePath.len == 0) return .notLoaded;
 		const image = graphics.Image.readFromFile(main.stackAllocator, colorTexturePath, .{.orientation = .asIs}) catch |err| blk: {
 			if (err != error.FileNotFound) {
 				std.log.err("Error while reading material color texture '{s}': {s}", .{colorTexturePath, @errorName(err)});
 			}
 			break :blk graphics.Image.readFromFile(main.stackAllocator, colorReplacementTexturePath, .{.orientation = .asIs}) catch |err2| {
 				std.log.err("Error while reading material color texture. Tried '{s}' and '{s}': {s}", .{colorTexturePath, colorReplacementTexturePath, @errorName(err2)});
-				return false;
+				return .notLoaded;
 			};
 		};
 		defer image.deinit(main.stackAllocator);
-		if (image.width == 0 or image.height < 2) {
-			std.log.err("Material color texture '{s}' must be at least 1x2 pixels (got {}x{}).", .{colorTexturePath, image.width, image.height});
-			return false;
+		if (image.width < 2 or image.height < 2) {
+			std.log.err("Material color texture '{s}' must be at least 2x2 pixels (got {}x{}).", .{colorTexturePath, image.width, image.height});
+			return .notLoaded;
 		}
 		self.colorPalette = allocator.alloc(Color, image.width);
 		for (0..image.width) |x| {
 			self.colorPalette[x] = image.getRGB(x, 0);
 		}
 		const shadow = image.getRGB(0, 1);
-		self.outlineColorShadow = if (shadow.a != 0) shadow else darken(self.colorPalette[0], 0.5);
-		const light = if (image.width >= 2) image.getRGB(1, 1) else Color{.r = 0, .g = 0, .b = 0, .a = 0};
-		self.outlineColorLight = if (light.a != 0) light else darken(self.colorPalette[self.colorPalette.len - 1], 0.7);
-		return true;
+		if (shadow.a != 255) {
+			std.log.err("Material color texture '{s}': outlineColorShadow pixel (0,1) must be fully opaque, got alpha {}.", .{colorTexturePath, shadow.a});
+			return .notLoaded;
+		}
+		self.outlineColorShadow = shadow;
+		const light = image.getRGB(1, 1);
+		if (light.a != 255) {
+			std.log.err("Material color texture '{s}': outlineColorLight pixel (1,1) must be fully opaque, got alpha {}.", .{colorTexturePath, light.a});
+			return .notLoaded;
+		}
+		self.outlineColorLight = light;
+		return .loadedFromTexture;
 	}
 
 	pub fn init(self: *Material, allocator: NeverFailingAllocator, zon: ZonElement, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8) void {
@@ -93,22 +103,14 @@ const Material = struct { // MARK: Material
 			break :blk 0;
 		};
 		self.textureRoughness = @max(0, zon.get(f32, "textureRoughness") orelse 1.0);
-		if (!self.loadColorsFromTexture(allocator, colorTexturePath, colorReplacementTexturePath)) {
+		if (self.loadColorsFromTexture(allocator, colorTexturePath, colorReplacementTexturePath) == .notLoaded) {
 			const colors = zon.getChild("colors");
 			self.colorPalette = allocator.alloc(Color, colors.toSlice().len);
 			for (colors.toSlice(), self.colorPalette) |item, *color| {
 				color.* = Color.fromArgb(item.as(u32) orelse 0xff000000);
 			}
-			if (zon.get(u32, "outlineColorLight")) |colorInt| {
-				self.outlineColorLight = Color.fromArgb(colorInt);
-			} else {
-				self.outlineColorLight = darken(self.colorPalette[self.colorPalette.len - 1], 0.7);
-			}
-			if (zon.get(u32, "outlineColorShadow")) |colorInt| {
-				self.outlineColorShadow = Color.fromArgb(colorInt);
-			} else {
-				self.outlineColorShadow = darken(self.colorPalette[0], 0.5);
-			}
+			self.outlineColorLight = darken(self.colorPalette[self.colorPalette.len - 1], 0.7);
+			self.outlineColorShadow = darken(self.colorPalette[0], 0.5);
 		}
 		const modifiersZon = zon.getChild("modifiers");
 		self.modifiers = allocator.alloc(Modifier, modifiersZon.toSlice().len);

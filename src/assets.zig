@@ -410,8 +410,8 @@ fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void 
 	var colorReplacementTexturePath: []const u8 = &.{};
 	defer main.stackAllocator.free(colorReplacementTexturePath);
 	if (zon.get([]const u8, "colorTexture")) |colorTexture| {
-		colorTexturePath = main.stackAllocator.print("{s}/{s}/items/textures/{s}", .{assetFolder, mod, colorTexture});
-		colorReplacementTexturePath = main.stackAllocator.print("assets/{s}/items/textures/{s}", .{mod, colorTexture});
+		colorTexturePath = main.stackAllocator.print("{s}/{s}/materials/{s}", .{assetFolder, mod, colorTexture});
+		colorReplacementTexturePath = main.stackAllocator.print("assets/{s}/materials/{s}", .{mod, colorTexture});
 	}
 	_ = items.register(assetFolder, texturePath, replacementTexturePath, colorTexturePath, colorReplacementTexturePath, id, zon);
 }
