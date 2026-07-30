@@ -5,23 +5,15 @@ const main = @import("main");
 
 var readBuffer: [100_000]u8 = undefined;
 
-var running: bool = false;
-
-pub fn init() void {
-	if (builtin.os.tag == .windows) {
-		std.log.warn("Console per stdin is currently not supported on windows", .{});
-		running = false;
-	} else {
-		running = true;
-	}
-}
-
-pub fn deinit() void {
-	running = false;
-}
+var running: bool = true;
 
 pub fn update() void {
 	if (!running) return;
+	if (builtin.os.tag == .windows) {
+		std.log.warn("Console per stdin is currently not supported on windows", .{});
+		running = false;
+		return;
+	}
 	const result = readFromStdin();
 	if (result == 0) return;
 	if (result == readBuffer.len) {

@@ -583,7 +583,6 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 	users = .init(main.globalAllocator);
 	lastTime = main.timestamp();
 
-	stdin_handler.init();
 	main.entity.server.init();
 	main.items.Inventory.server.init();
 	main.sync.server.init();
@@ -639,7 +638,6 @@ fn deinit() void {
 	}
 	world = null;
 
-	stdin_handler.deinit();
 	main.sync.server.deinit();
 	main.items.Inventory.server.deinit();
 	main.entity.server.deinit();
