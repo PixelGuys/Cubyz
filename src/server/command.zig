@@ -11,16 +11,19 @@ pub const commandList = @import("command/_list.zig");
 
 pub const Source = union(enum) {
 	user: *User,
+	server: void,
 
 	pub fn sendMessage(self: Source, comptime fmt: []const u8, args: anytype) void {
 		switch (self) {
 			.user => |user| user.sendMessage(fmt, args),
+			.server => main.log.server(fmt, args),
 		}
 	}
 
 	pub fn hasPermission(self: Source, permissionPath: []const u8) bool {
 		return switch (self) {
 			.user => |user| main.entity.components.@"cubyz:permissions".server.hasPermission(user.id, permissionPath),
+			.server => true,
 		};
 	}
 };

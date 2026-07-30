@@ -26,6 +26,7 @@ pub const ServerWorld = world_zig.ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
+pub const stdin_handler = @import("stdin_handler.zig");
 pub const storage = @import("storage.zig");
 pub const permission = @import("permission.zig");
 
@@ -655,6 +656,7 @@ fn getInitialEntityList(allocator: main.heap.NeverFailingAllocator) []const u8 {
 fn update() void { // MARK: update()
 	world.?.update();
 	main.entity.server.update();
+	stdin_handler.update();
 
 	while (userConnectList.popFront()) |user| {
 		connectInternal(user);
