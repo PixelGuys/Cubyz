@@ -3,22 +3,35 @@ const std = @import("std");
 const main = @import("main");
 const ProceduralItem = main.items.ProceduralItem;
 
-pub const Data = packed struct(u128) { strength: f32, pad: u96 = undefined };
+pub const Data = packed struct(u128) { multStrength: f32, flatStrength: f32, pad: u64 = undefined };
 
 pub const priority = 1;
 
 pub fn loadData(zon: main.ZonElement) Data {
-	return .{.strength = std.math.clamp(zon.get(f32, "strength") orelse 0, 0, 1)};
+	return .{
+		.multStrength = std.math.clamp(zon.get(f32, "multStrength") orelse 0, 0, 1),
+		.flatStrength = @max(0, zon.get(f32, "flatStrength") orelse 0),
+	};
 }
 
 pub fn combineModifiers(data1: Data, data2: Data) ?Data {
-	return .{.strength = 1.0 - 1.0/(1.0 + std.math.hypot(1.0/(1.0 - data1.strength) - 1.0, 1.0/(1.0 - data2.strength) - 1.0))};
+	return .{
+		.multStrength = 1.0 - 1.0/(1.0 + std.math.hypot(1.0/(1.0 - data1.multStrength) - 1.0, 1.0/(1.0 - data2.multStrength) - 1.0)),
+		.flatStrength = 1.0 - 1.0/(1.0 + std.math.hypot(1.0/(1.0 - data1.flatStrength) - 1.0, 1.0/(1.0 - data2.flatStrength) - 1.0)),
+	};
 }
 
-pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Data) void {
-	proceduralItem.setProperty(.damage, proceduralItem.getProperty(.damage)*(1 - data.strength));
+pub fn changeProceduralItemParametersFlat(proceduralItem: *ProceduralItem, data: Data) void {
+	proceduralItem.setProperty(.damage, proceduralItem.getProperty(.damage) + data.flatStrength);
+}
+
+pub fn changeProceduralItemParametersMult(proceduralItem: *ProceduralItem, data: Data) void {
+	proceduralItem.setProperty(.damage, proceduralItem.getProperty(.damage)*(1 + data.multStrength));
 }
 
 pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
-	outString.print("#fcb5e3**Weak**#808080 *Decreases damage by **{d:.0}%", .{data.strength*100});
+	if (data.multStrength != 0 and data.flatStrength != 0) outString.print("#fcb5e3**Powerful**#808080 *Decreases damage by **{d:.0}%** and **-{d:.0}**", .{data.multStrength*100, data.flatStrength});
+	if (data.multStrength != 0 and data.flatStrength == 0) outString.print("#fcb5e3**Powerful**#808080 *Decreases damage by **{d:.0}%**", .{data.multStrength*100});
+	if (data.multStrength == 0 and data.flatStrength != 0) outString.print("#fcb5e3**Powerful**#808080 *Decreases damage by **-{d:.0}**", .{data.flatStrength});
+	if (data.multStrength == 0 and data.flatStrength == 0) outString.print("#ff0000**Powerful did not find any multStrength and Flatstrength**", .{});
 }

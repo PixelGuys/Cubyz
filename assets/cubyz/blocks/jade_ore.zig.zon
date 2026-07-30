@@ -16,7 +16,7 @@
 			.modifiers = .{
 				.{
 					.id = "durable",
-					.strength = 1.5,
+					.multStrength = 1.5,
 					.restriction = .{
 						.id = .encased,
 						.tag = .precious,

@@ -16,7 +16,7 @@
 			.modifiers = .{
 				.{
 					.id = "fragile",
-					.strength = 0.45,
+					.multStrength = 0.45,
 					.restriction = .{
 						.id = .not,
 						.child = .{
