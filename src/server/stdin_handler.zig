@@ -21,10 +21,14 @@ pub fn update() void {
 		while (readFromStdin() != 0) {}
 		return;
 	}
-	if (readBuffer[0] == '/') {
-		main.server.command.execute(readBuffer[1 .. result - 1], .server);
+	const msg = blk: {
+		if (readBuffer[result - 1] == '\n') break :blk readBuffer[0 .. result - 1];
+		break :blk readBuffer[0..result];
+	};
+	if (msg[0] == '/') {
+		main.server.command.execute(msg[1..], .server);
 	} else {
-		main.server.sendMessage("<Server> {s}", .{readBuffer[0 .. result - 1]});
+		main.server.sendMessage("<Server> {s}", .{msg});
 	}
 }
 
