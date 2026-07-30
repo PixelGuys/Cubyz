@@ -28,7 +28,7 @@ pub const Entity = @import("Entity.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const storage = @import("storage.zig");
 pub const permission = @import("permission.zig");
-pub const whitelist = @import("whitelist.zig");
+pub const players = @import("players.zig");
 
 pub const command = @import("command.zig");
 
@@ -248,7 +248,7 @@ pub const User = struct { // MARK: User
 			const keyBase64 = keys.get([]const u8, keyTypeName) orelse continue;
 			const keyWithType = main.stackAllocator.print("{s}:{s}", .{keyTypeName, keyBase64});
 			defer main.stackAllocator.free(keyWithType);
-			self.playerIndex = world.?.playerDatabase.get(keyWithType) orelse continue;
+			self.playerIndex = main.server.players.lookupIndex(keyWithType) orelse continue;
 			foundKey = true;
 			const keyType = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, keyTypeName).?;
 			if (keyType == self.key) break;
@@ -256,13 +256,13 @@ pub const User = struct { // MARK: User
 			break;
 		}
 		if (!foundKey) {
-			if (world.?.playerDatabase.size == 0) { // Claim the local player
+			if (main.server.players.isEmpty()) { // Claim the local player
 				std.log.info("Here", .{});
-				self.playerIndex = world.?.localPlayerIndex;
+				self.playerIndex = main.server.players.getLocalPlayerIndex();
 			} else {
 				const nameEntry = main.stackAllocator.print("name:{s}", .{name});
 				defer main.stackAllocator.free(nameEntry);
-				self.playerIndex = world.?.playerDatabase.get(nameEntry) orelse world.?.nextPlayerIndex.fetchAdd(1, .monotonic);
+				self.playerIndex = main.server.players.lookupIndex(nameEntry) orelse main.server.players.allocateNewIndex();
 			}
 		}
 	}
@@ -270,7 +270,7 @@ pub const User = struct { // MARK: User
 	pub fn identifyAsLocal(self: *User, name: []const u8) !void {
 		std.debug.assert(self.name.len == 0);
 		self.name = main.globalAllocator.dupe(u8, name);
-		self.playerIndex = world.?.localPlayerIndex;
+		self.playerIndex = main.server.players.getLocalPlayerIndex();
 	}
 
 	pub fn verifySignatures(self: *User, reader: *BinaryReader) !void {
