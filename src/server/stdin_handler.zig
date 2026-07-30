@@ -21,10 +21,7 @@ pub fn update() void {
 		while (readFromStdin() != 0) {}
 		return;
 	}
-	const msg = blk: {
-		if (readBuffer[result - 1] == '\n') break :blk readBuffer[0 .. result - 1];
-		break :blk readBuffer[0..result];
-	};
+	const msg = std.mem.trim(u8, readBuffer[0..result], "\n");
 	if (msg[0] == '/') {
 		main.server.command.execute(msg[1..], .server);
 	} else {
