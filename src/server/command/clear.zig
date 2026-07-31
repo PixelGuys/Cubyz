@@ -10,11 +10,8 @@ pub const Args = union(enum) {
 	@"/clear <target>": struct { target: enum { inventory, chat } },
 };
 
-pub fn execute(args: Args, source: Source) void {
-	if (source != .user) {
-		source.sendMessage("Command cannot be run without a user", .{});
-		return;
-	}
+pub fn execute(args: Args, source: Source) !void {
+	if (source != .user) return error.InvalidSource;
 	const user = source.user;
 	switch (args.@"/clear <target>".target) {
 		.inventory => main.items.Inventory.server.clearPlayerInventory(user),

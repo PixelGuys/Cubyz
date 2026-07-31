@@ -28,8 +28,12 @@ pub const Source = union(enum) {
 	}
 };
 
+pub const CommandError = error{
+	InvalidSource,
+};
+
 pub const Command = struct {
-	exec: *const fn (args: []const u8, source: Source) void,
+	exec: *const fn (args: []const u8, source: Source) CommandError!void,
 	name: []const u8,
 	description: []const u8,
 	usage: []const u8,
@@ -38,18 +42,18 @@ pub const Command = struct {
 
 pub var commands: std.StringHashMap(Command) = undefined;
 
-fn initExecutionFn(comptime name: []const u8) *const fn (args: []const u8, source: Source) void {
+fn initExecutionFn(comptime name: []const u8) *const fn (args: []const u8, source: Source) CommandError!void {
 	const ArgPaser = main.argparse.Parser(@field(commandList, name).Args, .{.commandName = name});
 	return struct {
-		fn exec(msg: []const u8, source: Source) void {
+		fn exec(msg: []const u8, source: Source) CommandError!void {
 			const arena: main.heap.NeverFailingAllocator = .createArena(main.stackAllocator);
 			defer main.stackAllocator.destroyArena(arena);
 			var errorMessage: main.ListManaged(u8) = .init(arena);
-			const result = ArgPaser.parse(arena, msg, &errorMessage) catch {
+			const args = ArgPaser.parse(arena, msg, &errorMessage) catch {
 				source.sendMessage("#ff0000{s}", .{errorMessage.items});
 				return;
 			};
-			@field(commandList, name).execute(result, source);
+			return @field(commandList, name).execute(args, source);
 		}
 	}.exec;
 }
@@ -81,7 +85,9 @@ pub fn execute(msg: []const u8, source: Source) void {
 			return;
 		}
 		source.sendMessage("#00ff00Executing Command /{s}", .{msg});
-		cmd.exec(msg[@min(end + 1, msg.len)..], source);
+		cmd.exec(msg[@min(end + 1, msg.len)..], source) catch |err| switch (err) {
+			error.InvalidSource => source.sendMessage("#ff0000Command cannot be run without a user", .{}),
+		};
 	} else {
 		source.sendMessage("#ff0000Unrecognized Command \"{s}\"", .{command});
 	}
