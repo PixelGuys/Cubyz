@@ -7,14 +7,17 @@ const Source = command.Source;
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
 
-pub const description = "Count blocks in selection.";
-pub const usage = "/count";
+pub const description = "Count block(s) appearance(s) in selection.";
+pub const usage =
+	\\/count <blockId>
+	\\/count
+;
 
 pub const Args = union(enum) {
-	@"/count": struct {},
+	@"/count": struct { block: ?command.BlockId },
 };
 
-pub fn execute(_: Args, source: Source) void {
+pub fn execute(args: Args, source: Source) void {
 	if (source != .user) {
 		source.sendMessage("Command cannot be run without a user", .{});
 		return;
@@ -31,11 +34,16 @@ pub fn execute(_: Args, source: Source) void {
 			var context: std.AutoHashMapUnmanaged(u16, u32) = .{};
 			defer context.deinit(main.stackAllocator.allocator);
 
-			success.apply(&context, count);
+			success.apply(&context, countBlocks);
 
-			var iterator = context.iterator();
-			while (iterator.next()) |next| {
-				user.sendMessage("#ffff00{s} #ffffff{d}", .{(Block{.typ = next.key_ptr.*, .data = 0}).id(), next.value_ptr.*});
+			if (args.@"/count".block) |block| {
+				const count = context.get(block.block.typ) orelse 0;
+				user.sendMessage("#ffff00{s} #ffffff{d}", .{block.block.id(), count});
+			} else {
+				var iterator = context.iterator();
+				while (iterator.next()) |next| {
+					user.sendMessage("#ffff00{s} #ffffff{d}", .{(Block{.typ = next.key_ptr.*, .data = 0}).id(), next.value_ptr.*});
+				}
 			}
 		},
 		.failure => |e| {
@@ -45,7 +53,7 @@ pub fn execute(_: Args, source: Source) void {
 	}
 }
 
-fn count(context: *std.AutoHashMapUnmanaged(u16, u32), current: Block) Block {
+fn countBlocks(context: *std.AutoHashMapUnmanaged(u16, u32), current: Block) Block {
 	const result = context.getOrPut(main.stackAllocator.allocator, current.typ) catch unreachable;
 	if (result.found_existing) {
 		result.value_ptr.* = result.value_ptr.* + 1;
