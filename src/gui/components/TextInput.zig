@@ -37,7 +37,6 @@ scrollBar: *ScrollBar,
 options: Options,
 lastBlinkTime: std.Io.Timestamp = .fromNanoseconds(0),
 showCursor: bool = true,
-disabled: bool = false,
 
 pub fn globalInit() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/text_input.png");
@@ -67,7 +66,6 @@ pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, options
 		.maxHeight = maxHeight,
 		.scrollBar = scrollBar,
 		.options = options,
-		.disabled = options.disabled,
 		.showCursor = !options.disabled,
 	};
 	self.currentString.appendSlice(text);
@@ -87,7 +85,7 @@ pub fn deinit(self: *const TextInput) void {
 }
 
 pub fn clear(self: *TextInput) void {
-	if (self.cursor != null and !self.disabled) {
+	if (self.cursor != null and !self.options.disabled) {
 		self.cursor = 0;
 		self.selectionStart = null;
 	}
@@ -390,7 +388,7 @@ pub fn gotoEnd(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 }
 
 fn deleteSelection(self: *TextInput) void {
-	if (self.disabled) return;
+	if (self.options.disabled) return;
 	if (self.selectionStart) |selectionStart| {
 		const start = @min(selectionStart, self.cursor.?);
 		const end = @max(selectionStart, self.cursor.?);
@@ -403,7 +401,7 @@ fn deleteSelection(self: *TextInput) void {
 }
 
 pub fn deleteLeft(self: *TextInput, mods: main.Window.Key.Modifiers) void {
-	if (self.cursor == null or self.disabled) return;
+	if (self.cursor == null or self.options.disabled) return;
 	if (self.selectionStart == null) {
 		self.selectionStart = self.cursor;
 		self.moveCursorLeft(mods);
@@ -414,7 +412,7 @@ pub fn deleteLeft(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 }
 
 pub fn deleteRight(self: *TextInput, mods: main.Window.Key.Modifiers) void {
-	if (self.cursor == null or self.disabled) return;
+	if (self.cursor == null or self.options.disabled) return;
 	if (self.selectionStart == null) {
 		self.selectionStart = self.cursor;
 		self.moveCursorRight(mods);
@@ -425,7 +423,7 @@ pub fn deleteRight(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 }
 
 pub fn inputCharacter(self: *TextInput, character: u21) void {
-	if (self.disabled) return;
+	if (self.options.disabled) return;
 	if (self.cursor) |*cursor| {
 		self.deleteSelection();
 		var buf: [4]u8 = undefined;
@@ -438,7 +436,7 @@ pub fn inputCharacter(self: *TextInput, character: u21) void {
 }
 
 pub fn setString(self: *TextInput, utf8EncodedString: []const u8) void {
-	if (self.disabled) return;
+	if (self.options.disabled) return;
 	self.clear();
 	self.currentString.insertSlice(0, utf8EncodedString);
 	self.reloadText();
@@ -479,7 +477,7 @@ pub fn paste(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 }
 
 pub fn cut(self: *TextInput, mods: main.Window.Key.Modifiers) void {
-	if (mods.control and !self.disabled) {
+	if (mods.control and !self.options.disabled) {
 		self.copy(mods);
 		self.deleteSelection();
 		self.reloadText();
@@ -488,7 +486,7 @@ pub fn cut(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 }
 
 pub fn newline(self: *TextInput, mods: main.Window.Key.Modifiers) void {
-	if (!mods.shift and self.options.onNewline.inner != null and !self.disabled) {
+	if (!mods.shift and self.options.onNewline.inner != null and !self.options.disabled) {
 		self.options.onNewline.run();
 		return;
 	}
@@ -497,7 +495,7 @@ pub fn newline(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 }
 
 fn ensureCursorVisibility(self: *TextInput) void {
-	self.showCursor = !self.disabled;
+	self.showCursor = !self.options.disabled;
 	self.lastBlinkTime = main.timestamp();
 	if (self.textSize[1] > self.maxHeight - 2*border) {
 		var y: f32 = 0;
@@ -547,7 +545,7 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 		self.scrollBar.pos = .{self.size[0] - self.scrollBar.size[0] - border, border};
 		self.scrollBar.render(mousePosition - self.pos);
 	}
-	const textColor = draw.setColor(if (self.disabled) 0xff808080 else 0xffffffff);
+	const textColor = draw.setColor(if (self.options.disabled) 0xff808080 else 0xffffffff);
 	defer draw.restoreColor(textColor);
 	textBuffer.render(textPos[0], textPos[1], fontSize);
 	if (self.pressed) {
@@ -564,7 +562,7 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 		}
 
 		const currentTime = main.timestamp();
-		if (!self.disabled) {
+		if (!self.options.disabled) {
 			if (self.lastBlinkTime.durationTo(currentTime).nanoseconds > blinkDuration.nanoseconds) {
 				self.lastBlinkTime = currentTime;
 				self.showCursor = !self.showCursor;
