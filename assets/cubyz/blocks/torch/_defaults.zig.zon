@@ -5,7 +5,6 @@
 		.{.items = .{.auto}},
 	},
 	.replaceable = true,
-	.emittedLight = 0x4392bf,
 	.viewThrough = true,
 	.absorbedLight = 0x010101,
 	.collide = false,
@@ -16,10 +15,6 @@
 	.model = .{
 		.base = "cubyz:torch",
 		.side = "cubyz:torch_side",
-	},
-	.texture = "cubyz:sulfur_torch",
-	.item = .{
-		.texture = "sulfur_torch.png",
 	},
 	.lodReplacement = "cubyz:air",
 }
