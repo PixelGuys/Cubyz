@@ -8,8 +8,6 @@ const Vec3i = main.vec.Vec3i;
 
 pub const description = "Operate on selection";
 pub const usage =
-	\\/selection normalize
-	\\  Ensure pos1 is set to minimal coordinates and pos2 is set to maximal coordinates from selection.
 	\\/selection shrink <limit=32>
 	\\  Automatically shrink the selection to fit a structure, non-air blocks stop shrinking process.
 	\\/selection grow <limit=32>
@@ -20,7 +18,6 @@ pub const usage =
 ;
 
 const Args = union(enum) {
-	@"/selection normalize": struct { subcommand: enum { normalize } },
 	@"/selection shrink <limit>": struct { subcommand: enum { shrink }, limit: ?u32 },
 	@"/selection grow <limit>": struct { subcommand: enum { grow }, limit: ?u32 },
 	@"/selection adjust <limit>": struct { subcommand: enum { adjust }, limit: ?u32 },
@@ -38,7 +35,6 @@ pub fn execute(args: []const u8, source: *User) void {
 	};
 
 	switch (result) {
-		.@"/selection normalize" => normalize(source),
 		.@"/selection shrink <limit>" => |cmd| adjust(.shrink, source, @intCast(@as(u31, @truncate(cmd.limit orelse 32)))),
 		.@"/selection grow <limit>" => |cmd| adjust(.grow, source, @intCast(@as(u31, @truncate(cmd.limit orelse 32)))),
 		.@"/selection adjust <limit>" => |cmd| {
@@ -46,14 +42,6 @@ pub fn execute(args: []const u8, source: *User) void {
 			adjust(.grow, source, @intCast(@as(u31, @truncate(cmd.limit orelse 32))));
 		},
 	}
-}
-
-fn normalize(source: *User) void {
-	const current = command.getCurrentSelection(source) catch return;
-	const minPos = current.minPos;
-	const maxPos = current.maxPos - Vec3i{1, 1, 1};
-
-	updateWorldEditPos(source, minPos, maxPos);
 }
 
 fn adjust(comptime mode: ScannerMode, source: *User, limit: i32) void {
