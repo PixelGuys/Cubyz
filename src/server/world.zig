@@ -492,6 +492,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const arena = main.stackAllocator.createArena();
 		defer main.stackAllocator.destroyArena(arena);
 
+		// openDir creates missing paths, so check that this is a real save first.
+		if (!files.cubyzDir().hasFile(arena.print("saves/{s}/world.zig.zon", .{path}))) {
+			std.log.err("World \"{s}\" not found. Expected \"{s}/saves/{s}/world.zig.zon\".", .{path, files.cubyzDirStr(), path});
+			return error.WorldNotFound;
+		}
+
 		var dir = try files.cubyzDir().openDir(arena.print("saves/{s}", .{path}));
 		defer dir.close();
 
@@ -513,13 +519,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.entityComponentPalette = try loadPalette(arena, path, "entity_component_palette", null);
 		errdefer self.entityComponentPalette.deinit();
 
-		errdefer main.assets.unloadAssets();
-
 		const worldData = try dir.readToZon(arena, "world.zig.zon");
 		try self.loadWorldConfig(arena, dir, worldData);
 		try self.loadPlayerLoginInfo(dir);
 
 		try main.assets.loadWorldAssets(arena.print("{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.proceduralItemPalette, self.biomePalette, self.entityModelPalette, self.entityComponentPalette);
+		errdefer main.assets.unloadAssets();
 		// Store the block palette now that everything is loaded.
 		try dir.writeZon("palette.zig.zon", self.blockPalette.storeToZon(arena));
 		try dir.writeZon("item_palette.zig.zon", self.itemPalette.storeToZon(arena));

@@ -581,7 +581,10 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 	main.sync.server.init();
 
 	world = ServerWorld.init(name, mode) catch |err| {
-		std.log.err("Failed to create world: {s}", .{@errorName(err)});
+		std.log.err("Failed to open world \"{s}\": {s}", .{name, @errorName(err)});
+		if (err == error.WorldNotFound) {
+			std.process.exit(1);
+		}
 		@panic("Can't create world.");
 	};
 
