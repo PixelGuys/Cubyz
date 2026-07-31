@@ -5,27 +5,19 @@ const main = @import("main");
 const ZonElement = main.ZonElement;
 const sync = main.sync;
 
-const PlayerRecord = struct { playerIndex: usize, blocked: bool = false };
+const PlayerRecord = struct { playerIndex: usize, blocked: bool };
 
-var playerDatabase: std.StringHashMapUnmanaged(PlayerRecord) = .{};
-var localPlayerIndex: usize = 0;
-var nextPlayerIndex: std.atomic.Value(usize) = .init(0);
-var worldPath: []const u8 = &.{};
+var playerDatabase: std.StringHashMapUnmanaged(PlayerRecord) = undefined;
+var localPlayerIndex: usize = undefined;
+var nextPlayerIndex: std.atomic.Value(usize) = undefined;
+var worldPath: []const u8 = undefined;
 
-pub fn init(path: []const u8, loadedLocalPlayerIndex: usize) void {
+fn init(path: []const u8, loadedLocalPlayerIndex: usize) void {
 	sync.threadContext.assertCorrectContext(.server);
 	worldPath = main.worldArena.dupe(u8, path);
 	localPlayerIndex = loadedLocalPlayerIndex;
 	playerDatabase = .{};
 	nextPlayerIndex = .init(0);
-}
-
-pub fn deinit() void {
-	sync.threadContext.assertCorrectContext(.server);
-	playerDatabase = .{};
-	localPlayerIndex = 0;
-	nextPlayerIndex = .init(0);
-	worldPath = &.{};
 }
 
 pub fn loadPlayerLoginInfo(dir: main.files.Dir, path: []const u8, loadedLocalPlayerIndex: usize) !void {
@@ -106,10 +98,26 @@ pub fn rebindKey(oldPublicKeyFromFile: ?[]const u8, oldNameFromFile: ?[]const u8
 	playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, newKey), .{.playerIndex = index, .blocked = blocked}) catch unreachable;
 }
 
-const AddResult = enum { added, alreadyAllowed };
-const RemoveResult = enum { blocked, alreadyBlocked };
-
 const EnsureResult = struct { entry: *PlayerRecord, wasNew: bool };
+
+fn saveNewPlayer(key: []const u8, index: usize) void {
+	const playersDir = main.stackAllocator.print("saves/{s}/players", .{worldPath});
+	defer main.stackAllocator.free(playersDir);
+	main.files.cubyzDir().makePath(playersDir) catch |err| {
+		std.log.err("Couldn't create players directory: {t}", .{err});
+	};
+
+	const path = main.stackAllocator.print("saves/{s}/players/{}.zon", .{worldPath, index});
+	defer main.stackAllocator.free(path);
+
+	const zon: ZonElement = .initObject(main.stackAllocator);
+	defer zon.deinit(main.stackAllocator);
+	zon.put("publicKey", key);
+
+	main.files.cubyzDir().writeZon(path, zon) catch |err| {
+		std.log.err("Couldn't create player file for pre-authorized key {s}: {t}", .{key, err});
+	};
+}
 
 fn ensurePlayerRecord(key: []const u8) EnsureResult {
 	sync.threadContext.assertCorrectContext(.server);
@@ -120,29 +128,14 @@ fn ensurePlayerRecord(key: []const u8) EnsureResult {
 	result.key_ptr.* = main.worldArena.dupe(u8, key);
 	result.value_ptr.* = .{.playerIndex = nextPlayerIndex.fetchAdd(1, .monotonic), .blocked = false};
 
-	if (builtin.is_test) return .{.entry = result.value_ptr, .wasNew = true};
-
-	const playersDir = main.stackAllocator.print("saves/{s}/players", .{worldPath});
-	defer main.stackAllocator.free(playersDir);
-	main.files.cubyzDir().makePath(playersDir) catch |err| {
-		std.log.err("Couldn't create players directory: {t}", .{err});
-	};
-
-	const path = main.stackAllocator.print("saves/{s}/players/{}.zon", .{worldPath, result.value_ptr.playerIndex});
-	defer main.stackAllocator.free(path);
-
-	const zon: ZonElement = .initObject(main.stackAllocator);
-	defer zon.deinit(main.stackAllocator);
-	zon.put("publicKey", key);
-
-	main.files.cubyzDir().writeZon(path, zon) catch |err| {
-		std.log.err("Couldn't create player file for pre-authorized key {s}: {t}", .{key, err});
-	};
+	if (!builtin.is_test) {
+		saveNewPlayer(key, result.value_ptr.playerIndex);
+	}
 
 	return .{.entry = result.value_ptr, .wasNew = true};
 }
 
-fn persistBlocked(index: usize, value: bool) void {
+fn saveBlocked(index: usize, value: bool) void {
 	if (builtin.is_test) return;
 	sync.threadContext.assertCorrectContext(.server);
 
@@ -162,23 +155,27 @@ fn persistBlocked(index: usize, value: bool) void {
 	};
 }
 
+const AddResult = enum { added, alreadyAllowed };
+
 pub fn add(key: []const u8) AddResult {
 	const result = ensurePlayerRecord(key);
 	const wasBlocked = result.entry.blocked;
 	result.entry.blocked = false;
-	if (wasBlocked) persistBlocked(result.entry.playerIndex, false);
+	if (wasBlocked) saveBlocked(result.entry.playerIndex, false);
 	return if (result.wasNew or wasBlocked) .added else .alreadyAllowed;
 }
 
-pub fn remove(key: []const u8) RemoveResult {
+const BlockResult = enum { blocked, alreadyBlocked };
+
+pub fn block(key: []const u8) BlockResult {
 	const result = ensurePlayerRecord(key);
 	const wasBlocked = result.entry.blocked;
 	result.entry.blocked = true;
-	if (!wasBlocked) persistBlocked(result.entry.playerIndex, true);
+	if (!wasBlocked) saveBlocked(result.entry.playerIndex, true);
 	return if (result.wasNew or !wasBlocked) .blocked else .alreadyBlocked;
 }
 
-pub fn contains(key: []const u8) bool {
+pub fn isAllowedToJoin(key: []const u8) bool {
 	sync.threadContext.assertCorrectContext(.server);
 	const entry = playerDatabase.get(key) orelse return false;
 	return !entry.blocked;
@@ -189,15 +186,14 @@ test "addContainsRemove" {
 	defer main.heap.allocators.destroyWorldArena();
 
 	init("test", 0);
-	defer deinit();
 
-	try std.testing.expectEqual(false, contains("ed25519:abc"));
+	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:abc"));
 	try std.testing.expectEqual(.added, add("ed25519:abc"));
 	try std.testing.expectEqual(.alreadyAllowed, add("ed25519:abc"));
-	try std.testing.expectEqual(true, contains("ed25519:abc"));
-	try std.testing.expectEqual(.blocked, remove("ed25519:abc"));
-	try std.testing.expectEqual(.alreadyBlocked, remove("ed25519:abc"));
-	try std.testing.expectEqual(false, contains("ed25519:abc"));
+	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:abc"));
+	try std.testing.expectEqual(.blocked, block("ed25519:abc"));
+	try std.testing.expectEqual(.alreadyBlocked, block("ed25519:abc"));
+	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:abc"));
 }
 
 test "addUnblocks" {
@@ -205,12 +201,11 @@ test "addUnblocks" {
 	defer main.heap.allocators.destroyWorldArena();
 
 	init("test", 0);
-	defer deinit();
 
-	try std.testing.expectEqual(.blocked, remove("ed25519:xyz"));
-	try std.testing.expectEqual(false, contains("ed25519:xyz"));
+	try std.testing.expectEqual(.blocked, block("ed25519:xyz"));
+	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:xyz"));
 	try std.testing.expectEqual(.added, add("ed25519:xyz"));
-	try std.testing.expectEqual(true, contains("ed25519:xyz"));
+	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:xyz"));
 }
 
 test "knownPlayerAllowedByDefaultButBlockable" {
@@ -218,16 +213,15 @@ test "knownPlayerAllowedByDefaultButBlockable" {
 	defer main.heap.allocators.destroyWorldArena();
 
 	init("test", 0);
-	defer deinit();
 
 	playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, "ed25519:known"), .{.playerIndex = 0, .blocked = false}) catch unreachable;
 
-	try std.testing.expectEqual(true, contains("ed25519:known"));
-	try std.testing.expectEqual(false, contains("ed25519:unknown"));
+	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:known"));
+	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:unknown"));
 
-	try std.testing.expectEqual(.blocked, remove("ed25519:known"));
-	try std.testing.expectEqual(false, contains("ed25519:known"));
+	try std.testing.expectEqual(.blocked, block("ed25519:known"));
+	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:known"));
 
 	try std.testing.expectEqual(.added, add("ed25519:known"));
-	try std.testing.expectEqual(true, contains("ed25519:known"));
+	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:known"));
 }

@@ -571,7 +571,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.entityModelPalette.deinit();
 		self.entityComponentPalette.deinit();
 		permission.deinit();
-		players.deinit();
 		main.globalAllocator.free(self.path);
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
