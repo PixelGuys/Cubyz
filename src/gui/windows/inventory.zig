@@ -42,17 +42,33 @@ pub fn deinit() void {
 var itemSlots: [20]*ItemSlot = undefined;
 
 pub fn onOpen() void {
-	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
+	const rootComponent = VerticalList.init(.{padding, padding + 16}, 300, 0);
 	// Some miscellanious slots and buttons:
 	// TODO: armor slots, backpack slot + stack-based backpack inventory, other items maybe?
 	{
 		const row = HorizontalList.init();
-		blk: {
-			row.add(GuiComponent.BagSlot.init(.{0, 0}, main.entity.components.@"cubyz:bag".client.getBag(main.game.Player.id) orelse break :blk));
-		}
 		row.add(Button.initIcon(.{32, 0}, .{32, 32}, craftingIcon, .{.onAction = gui.openWindowCallback("inventory_crafting")}));
-		list.add(row);
+		rootComponent.add(row);
 	}
+
+	const inventorySpace = HorizontalList.init();
+	blk: {
+		inventorySpace.add(GuiComponent.BagSlot.init(.{0, 0}, main.entity.components.@"cubyz:bag".client.getBag(main.game.Player.id) orelse break :blk));
+	}
+
+	const inventoryGrid = VerticalList.init(.{0, 0}, 200, 0);
+	makeInventoryGrid(inventoryGrid);
+
+	inventorySpace.add(inventoryGrid);
+	rootComponent.add(inventorySpace);
+
+	rootComponent.finish(.center);
+	window.rootComponent = rootComponent.toComponent();
+	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
+	gui.updateWindowPositions();
+}
+
+fn makeInventoryGrid(parent: *VerticalList) void {
 	for (0..2) |y| {
 		const row = HorizontalList.init();
 		for (0..10) |x| {
@@ -61,12 +77,8 @@ pub fn onOpen() void {
 			itemSlots[index - 12] = slot;
 			row.add(slot);
 		}
-		list.add(row);
+		parent.add(row);
 	}
-	list.finish(.center);
-	window.rootComponent = list.toComponent();
-	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
-	gui.updateWindowPositions();
 }
 
 pub fn onClose() void {
