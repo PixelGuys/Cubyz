@@ -3,6 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const Block = main.blocks.Block;
 const command = main.server.command;
+const Source = command.Source;
 const Neighbor = main.chunk.Neighbor;
 const User = main.server.User;
 const Vec3i = main.vec.Vec3i;
@@ -13,25 +14,19 @@ pub const usage =
 	\\  Same as grow followed by shrink.
 ;
 
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/selection adjust <limit>": struct { subcommand: enum { adjust }, limit: ?u32 },
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/selection"});
-
-pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
+pub fn execute(args: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
 		return;
-	};
-
-	switch (result) {
+	}
+	switch (args) {
 		.@"/selection adjust <limit>" => |cmd| {
-			adjust(.shrink, source, @intCast(@as(u31, @truncate(cmd.limit orelse 32))));
-			adjust(.grow, source, @intCast(@as(u31, @truncate(cmd.limit orelse 32))));
+			adjust(.shrink, source.user, @intCast(@as(u31, @truncate(cmd.limit orelse 32))));
+			adjust(.grow, source.user, @intCast(@as(u31, @truncate(cmd.limit orelse 32))));
 		},
 	}
 }
