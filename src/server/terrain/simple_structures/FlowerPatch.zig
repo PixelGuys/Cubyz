@@ -49,7 +49,7 @@ pub fn loadModel(parameters: ZonElement) ?*FlowerPatch {
 	return self;
 }
 
-pub fn generate(self: *FlowerPatch, mode: GenerationMode, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: CaveMapView, caveBiomeMap: CaveBiomeMapView, seed: *u64, _: bool) void {
+pub fn generate(self: *FlowerPatch, mode: GenerationMode, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: CaveMapView, caveBiomeMap: CaveBiomeMapView, seed: *u64, isCeiling: bool) void {
 	const width = self.width + (random.nextFloat(seed) - 0.5)*self.variation;
 	const orientation = 2*std.math.pi*random.nextFloat(seed);
 	const ellipseParam = 1 + random.nextFloat(seed);
@@ -68,10 +68,18 @@ pub fn generate(self: *FlowerPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 
 	var baseHeight = z;
 	if (mode != .water_surface) {
-		if (caveMap.isSolid(x, y, baseHeight)) {
-			baseHeight = caveMap.findTerrainChangeAbove(x, y, baseHeight) - 1;
+		if (isCeiling) {
+			if (caveMap.isSolid(x, y, baseHeight)) {
+				baseHeight = caveMap.findTerrainChangeBelow(x, y, baseHeight);
+			} else {
+				baseHeight = caveMap.findTerrainChangeAbove(x, y, baseHeight) -% 1;
+			}
 		} else {
-			baseHeight = caveMap.findTerrainChangeBelow(x, y, baseHeight);
+			if (caveMap.isSolid(x, y, baseHeight)) {
+				baseHeight = caveMap.findTerrainChangeAbove(x, y, baseHeight) -% 1;
+			} else {
+				baseHeight = caveMap.findTerrainChangeBelow(x, y, baseHeight);
+			}
 		}
 	}
 
@@ -90,10 +98,18 @@ pub fn generate(self: *FlowerPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 					if (caveBiomeMap.getSurfaceHeight(chunk.super.pos.wx + px, chunk.super.pos.wy + py) >= 0) continue;
 					startHeight = z -% 1;
 				} else {
-					if (caveMap.isSolid(px, py, startHeight)) {
-						startHeight = caveMap.findTerrainChangeAbove(px, py, startHeight) -% 1;
+					if (isCeiling) {
+						if (caveMap.isSolid(px, py, startHeight)) {
+							startHeight = caveMap.findTerrainChangeBelow(px, py, startHeight);
+						} else {
+							startHeight = caveMap.findTerrainChangeAbove(px, py, startHeight) -% 1;
+						}
 					} else {
-						startHeight = caveMap.findTerrainChangeBelow(px, py, startHeight);
+						if (caveMap.isSolid(px, py, startHeight)) {
+							startHeight = caveMap.findTerrainChangeAbove(px, py, startHeight) -% 1;
+						} else {
+							startHeight = caveMap.findTerrainChangeBelow(px, py, startHeight);
+						}
 					}
 				}
 

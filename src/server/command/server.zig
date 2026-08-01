@@ -1,31 +1,23 @@
 const std = @import("std");
 
 const main = @import("main");
-const User = main.server.User;
+const command = main.server.command;
+const Source = command.Source;
 
 pub const description = "Stop the server.";
 pub const usage =
 	\\/server <stop/restart>
 ;
 
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/server <action>": struct { action: main.server.StopType },
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/server"});
-
-pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
-		return;
-	};
-	if (result.@"/server <action>".action == .restart and !main.settings.launchConfig.headlessServer) {
+pub fn execute(args: Args, source: Source) void {
+	if (args.@"/server <action>".action == .restart and !main.settings.launchConfig.headlessServer) {
 		source.sendMessage("#ff0000Headfull restart isn't supported yet.", .{});
 		return;
 	}
 
-	main.server.stop(result.@"/server <action>".action);
+	main.server.stop(args.@"/server <action>".action);
 }

@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
+const Source = command.Source;
 const Vec3i = main.vec.Vec3i;
 const User = main.server.User;
 
@@ -21,81 +22,57 @@ const State = enum {
 	off,
 };
 
-const Args = struct {
-	target: Target,
-	decayState: State,
-
-	pub fn parse(args: []const u8, source: *User) !Args {
-		var argsSplit = std.mem.splitScalar(u8, args, ' ');
-
-		const targetString = argsSplit.next() orelse {
-			source.sendMessage("#ff0000Missing required <selection/clipboard> argument.", .{});
-			return error.ParsingFailed;
-		};
-		const target = std.meta.stringToEnum(Target, targetString) orelse {
-			source.sendMessage("#ff0000'{s}' as a target specifier was not recognized, use 'selection' or 'clipboard'", .{targetString});
-			return error.ParsingFailed;
-		};
-
-		const stateString = argsSplit.next() orelse {
-			source.sendMessage("#ff0000Missing required <on/off> argument.", .{});
-			return error.ParsingFailed;
-		};
-		const state = std.meta.stringToEnum(State, stateString) orelse {
-			source.sendMessage("#ff0000'{s}' as a state specifier was not recognized, use 'on' or 'off'", .{stateString});
-			return error.ParsingFailed;
-		};
-
-		if (argsSplit.next() != null) {
-			source.sendMessage("#ff0000Too many arguments for command /toggledecay. Expected two.", .{});
-			return error.ParsingFailed;
-		}
-
-		return .{.target = target, .decayState = state};
-	}
+pub const Args = union(enum) {
+	@"/toggledecay <target> <state>": struct {
+		target: Target,
+		state: State,
+	},
 };
 
-pub fn execute(argsString: []const u8, source: *User) void {
-	const args = Args.parse(argsString, source) catch return;
-
-	var blueprint: Blueprint = switch (args.target) {
+pub fn execute(args: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
+		return;
+	}
+	const user = source.user;
+	var blueprint: Blueprint = switch (args.@"/toggledecay <target> <state>".target) {
 		.selection => blk: {
-			const selection = command.getCurrentSelection(source) catch return;
+			const selection = command.getCurrentSelection(user) catch return;
 			const blueprint = switch (Blueprint.capture(main.globalAllocator, selection)) {
 				.success => |bp| bp,
 				.failure => |e| {
-					source.sendMessage("#ff0000Error while capturing block {}: {s}. Nothing was modified.", .{e.pos, e.message});
+					user.sendMessage("#ff0000Error while capturing block {}: {s}. Nothing was modified.", .{e.pos, e.message});
 					std.log.warn("Error while capturing block {}: {s}. Nothing was modified.", .{e.pos, e.message});
 					return;
 				},
 			};
 
-			source.worldEditData.undoHistory.push(.init(blueprint, selection.minPos, "toggledecay"));
-			source.worldEditData.redoHistory.clear();
+			user.worldEditData.undoHistory.push(.init(blueprint, selection.minPos, "toggledecay"));
+			user.worldEditData.redoHistory.clear();
 
 			break :blk blueprint.clone(main.stackAllocator);
 		},
-		.clipboard => source.worldEditData.clipboard orelse {
-			return source.sendMessage("#ff0000Clipboard is empty.", .{});
+		.clipboard => user.worldEditData.clipboard orelse {
+			return user.sendMessage("#ff0000Clipboard is empty.", .{});
 		},
 	};
 
-	blueprint.apply(args.decayState, toggledecay);
+	blueprint.apply(args.@"/toggledecay <target> <state>".state, toggledecay);
 
-	switch (args.target) {
+	switch (args.@"/toggledecay <target> <state>".target) {
 		.selection => {
-			const pos1 = source.worldEditData.selectionPosition1 orelse unreachable;
-			const pos2 = source.worldEditData.selectionPosition2 orelse unreachable;
+			const pos1 = user.worldEditData.selectionPosition1.?;
+			const pos2 = user.worldEditData.selectionPosition2.?;
 
 			const posStart: Vec3i = @min(pos1, pos2);
 
 			blueprint.paste(posStart, .{.preserveVoid = true});
 			blueprint.deinit(main.stackAllocator);
 
-			return source.sendMessage("#00ff00Selection modified. History entry created.", .{});
+			return user.sendMessage("#00ff00Selection modified. History entry created.", .{});
 		},
 		.clipboard => {
-			return source.sendMessage("#00ff00Clipboard modified.", .{});
+			return user.sendMessage("#00ff00Clipboard modified.", .{});
 		},
 	}
 }

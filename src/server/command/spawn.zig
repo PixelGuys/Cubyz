@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
+const Source = command.Source;
 const User = main.server.User;
 
 pub const description = "Get or set a player's / the world spawn point";
@@ -14,37 +15,25 @@ pub const usage =
 	\\/spawn world <x> <y> <z>
 ;
 
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/spawn <playerIndex> <x> <y> <z>": struct { playerIndex: ?command.PlayerIndex, x: command.Coordinate, y: command.Coordinate, z: command.Coordinate },
 	@"/spawn <world> <x> <y> <z>": struct { world: enum { world }, x: command.Coordinate, y: command.Coordinate, z: command.Coordinate },
 	@"/spawn <world>": struct { world: enum { world } },
 	@"/spawn <playerIndex>": struct { playerIndex: ?command.PlayerIndex },
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/spawn"});
-
-pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
-		return;
-	};
-
-	switch (result) {
+pub fn execute(args: Args, source: Source) void {
+	switch (args) {
 		.@"/spawn <playerIndex> <x> <y> <z>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
-			defer target.deinit();
-			target.user.spawnPos = command.resolveCoordinates(params.x, params.y, params.z, source);
+			target.user.spawnPos = command.resolveCoordinates(params.x, params.y, params.z, source) catch return;
 		},
 		.@"/spawn <playerIndex>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
-			defer target.deinit();
 			source.sendMessage("#ffff00{}", .{target.user.getSpawnPos()});
 		},
 		.@"/spawn <world> <x> <y> <z>" => |params| {
-			const pos = command.resolveCoordinates(params.x, params.y, params.z, source);
+			const pos = command.resolveCoordinates(params.x, params.y, params.z, source) catch return;
 			const world = main.server.world.?;
 			world.spawn = @trunc(pos);
 		},

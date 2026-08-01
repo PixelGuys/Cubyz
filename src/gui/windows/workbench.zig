@@ -86,7 +86,7 @@ fn openInventory() void {
 	verticalThing.add(proceduralItemButton);
 	const buttonHeight = verticalThing.size[1];
 	const craftingResultList = HorizontalList.init();
-	craftingResultList.add(Icon.init(.{0, 0}, .{32, 32}, inventory_crafting.arrowTexture, false));
+	craftingResultList.add(Icon.init(.{0, 0}, .{32, 32}, inventory_crafting.arrowTexture));
 	craftingResultList.add(ItemSlot.init(.{8, 0}, craftingResultInv, 0, .craftingResult, .takeOnly));
 	craftingResultList.finish(.{padding, padding}, .center);
 	verticalThing.add(craftingResultList);
@@ -124,9 +124,9 @@ pub fn render() void {
 	const offsetY = 4*ItemSlot.sizeWithBorder;
 	const fontSize = 16;
 
-	main.graphics.draw.print("{s}{} durability", .{if (currentResult.proceduralItem.getProperty(.maxDurability) != 0) "#ffffff" else "#ff0000", @as(usize, @trunc(currentResult.proceduralItem.getProperty(.maxDurability)))}, offsetX, offsetY, fontSize, .left);
-	main.graphics.draw.print("#ffffff{d:.1} swings/s", .{currentResult.proceduralItem.getProperty(.swingSpeed)}, offsetX, offsetY + fontSize, fontSize, .left);
-	main.graphics.draw.print("#ffffff{d:.1} damage", .{currentResult.proceduralItem.getProperty(.damage)}, offsetX, offsetY + 2*fontSize, fontSize, .left);
+	main.graphics.draw.print("{s}{} durability", .{if (currentResult.proceduralItem.getProperty(.maxDurability) != 0) "#ffffff" else "#ff0000", @as(usize, @trunc(currentResult.proceduralItem.getProperty(.maxDurability)))}, offsetX, offsetY, fontSize);
+	main.graphics.draw.print("#ffffff{d:.1} swings/s", .{currentResult.proceduralItem.getProperty(.swingSpeed)}, offsetX, offsetY + fontSize, fontSize);
+	main.graphics.draw.print("#ffffff{d:.1} damage", .{currentResult.proceduralItem.getProperty(.damage)}, offsetX, offsetY + 2*fontSize, fontSize);
 }
 
 pub fn onOpen() void {

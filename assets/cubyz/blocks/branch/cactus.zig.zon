@@ -1,5 +1,5 @@
 .{
-	.tags = .{.choppable, .cuttable, .branch},
+	.tags = .{.choppable, .cuttable, .sliceable, .branch},
 	.onUpdate = .{
 		.type = .decay,
 	},

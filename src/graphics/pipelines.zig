@@ -72,11 +72,66 @@ const Shader = struct { // MARK: Shader
 		return result;
 	}
 
-	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shaderStage: c_uint) !void {
-		const source = main.files.cwd().read(main.stackAllocator, filename) catch |err| {
+	fn loadShaderFile(allocator: main.heap.NeverFailingAllocator, filename: []const u8, defines: []const u8) ![]const u8 {
+		var result: main.ListManaged(u8) = .init(allocator);
+		errdefer result.deinit();
+
+		const arena = main.stackAllocator.createArena();
+		defer main.stackAllocator.destroyArena(arena);
+
+		const includePaths: [3]?[]const u8 = .{
+			blk: {
+				const end = std.mem.findScalarLast(u8, filename, '/') orelse break :blk null;
+				break :blk filename[0..end];
+			},
+			blk: {
+				const end = std.mem.find(u8, filename, "/shaders/") orelse break :blk null;
+				break :blk arena.print("{s}/shaders/include", .{filename[0..end]});
+			},
+			"assets/cubyz/shaders/include",
+		};
+
+		var source = main.files.cwd().read(arena, filename) catch |err| {
 			std.log.err("Couldn't read shader file: {s}", .{filename});
 			return err;
 		};
+
+		const versionLineEnd = if (std.mem.indexOfScalar(u8, source, '\n')) |len| len + 1 else 0;
+		result.appendSlice(source[0..versionLineEnd]);
+		result.appendSlice(defines);
+
+		var includeIterator = std.mem.splitSequence(u8, source[versionLineEnd..], "#include");
+		result.appendSlice(includeIterator.first());
+		while (includeIterator.next()) |next_| {
+			var next = next_;
+			while (next[0] == ' ') next = next[1..];
+			if (next[0] != '"') return error.MalformedInclude;
+			next = next[1..];
+			const includeEnd = std.mem.findScalar(u8, next, '"') orelse return error.MalformedInclude;
+			const includeFilename = next[0..includeEnd];
+			next = next[includeEnd + 1 ..];
+
+			for (includePaths) |includePath| {
+				const fullPath = main.stackAllocator.print("{s}/{s}", .{includePath orelse continue, includeFilename});
+				defer main.stackAllocator.free(fullPath);
+				if (main.files.cwd().hasFile(fullPath)) {
+					const code = try loadShaderFile(main.stackAllocator, fullPath, &.{});
+					defer main.stackAllocator.free(code);
+					result.appendSlice(code);
+					break;
+				}
+			}
+
+			result.appendSlice(next);
+		}
+
+		return result.toOwnedSlice();
+	}
+
+	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shaderStage: c_uint) !void {
+		const extraDefines = std.mem.concat(main.stackAllocator.allocator, u8, &.{defines, "#define gl_VertexIndex gl_VertexID\n#define OPEN_GL\n"}) catch unreachable;
+		defer main.stackAllocator.free(extraDefines);
+		const source = try loadShaderFile(main.stackAllocator, filename, extraDefines);
 		defer main.stackAllocator.free(source);
 
 		const shader = c.glCreateShader(shaderStage);
@@ -152,10 +207,7 @@ const Shader = struct { // MARK: Shader
 	}
 
 	fn createShaderModule(path: []const u8, defines: []const u8, stage: ShaderStage) !c.VkShaderModule {
-		const source = main.files.cwd().read(main.stackAllocator, path) catch |err| {
-			std.log.err("Couldn't read shader file: {s}", .{path});
-			return err;
-		};
+		const source = try loadShaderFile(main.stackAllocator, path, defines);
 		defer main.stackAllocator.free(source);
 
 		const spirv = try compileToSpirV(main.stackAllocator, source, path, defines, stage);
@@ -516,6 +568,32 @@ pub const DescriptorSetLayoutBinding = extern struct { // MARK: DescriptorSetLay
 		_: u26 = 0,
 	},
 	immutableSamplers: ?[*]const c.VkSampler = null,
+
+	pub fn sampler(binding: u32, options: struct { vertex: bool = false, fragment: bool = false, compute: bool = false, count: u32 = 1, typ: enum { combined, separate } = .combined }) DescriptorSetLayoutBinding {
+		return .{
+			.binding = binding,
+			.type = if (options.typ == .combined) .combinedImageSampler else .sampler,
+			.count = options.count,
+			.stageFlags = .{
+				.vertex = options.vertex,
+				.fragment = options.fragment,
+				.compute = options.compute,
+			},
+		};
+	}
+
+	pub fn ssbo(binding: u32, options: struct { vertex: bool = false, fragment: bool = false, compute: bool = false, count: u32 = 1, typ: enum { static, dynamic } = .static }) DescriptorSetLayoutBinding {
+		return .{
+			.binding = binding,
+			.type = if (options.typ == .static) .storageBuffer else .storageBufferDynamic,
+			.count = options.count,
+			.stageFlags = .{
+				.vertex = options.vertex,
+				.fragment = options.fragment,
+				.compute = options.compute,
+			},
+		};
+	}
 };
 
 pub const Pipeline = struct { // MARK: Pipeline
@@ -605,8 +683,8 @@ pub const Pipeline = struct { // MARK: Pipeline
 
 		const pipelineLayoutInfo = c.VkPipelineLayoutCreateInfo{ // TODO: Configure push constants
 			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-			.setLayoutCount = 1,
-			.pSetLayouts = &self.descriptorSetLayout,
+			.setLayoutCount = 2,
+			.pSetLayouts = &[_]c.VkDescriptorSetLayout{self.descriptorSetLayout, frameUnformDescriptorSetLayout},
 		};
 		try vulkan.checkResultErr(c.vkCreatePipelineLayout(vulkan.device, &pipelineLayoutInfo, null, &self.pipelineLayout));
 		errdefer c.vkDestroyPipelineLayout(vulkan.device, self.pipelineLayout, null);
@@ -761,10 +839,29 @@ pub const ComputePipeline = struct { // MARK: ComputePipeline
 	}
 };
 
+var frameUnformDescriptorSetLayout: c.VkDescriptorSetLayout = undefined;
+
 pub fn init() void { // MARK: init()
 	if (c.glslang_initialize_process() == c.false) std.log.err("glslang_initialize_process failed", .{});
+
+	if (main.settings.launchConfig.vulkanTestingMode) {
+		const descriptorSetLayoutInfo = c.VkDescriptorSetLayoutCreateInfo{
+			.sType = c.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+			.bindingCount = 1,
+			.pBindings = @ptrCast(&DescriptorSetLayoutBinding{
+				.binding = 0,
+				.count = 1,
+				.stageFlags = .{.fragment = true, .vertex = true, .compute = true},
+				.type = .uniformBuffer,
+			}),
+		};
+		vulkan.checkResultErr(c.vkCreateDescriptorSetLayout(vulkan.device, &descriptorSetLayoutInfo, null, &frameUnformDescriptorSetLayout)) catch @panic("Driver Bug");
+	}
 }
 
 pub fn deinit() void { // MARK: deinit()
 	c.glslang_finalize_process();
+	if (main.settings.launchConfig.vulkanTestingMode) {
+		c.vkDestroyDescriptorSetLayout(vulkan.device, frameUnformDescriptorSetLayout, null);
+	}
 }
