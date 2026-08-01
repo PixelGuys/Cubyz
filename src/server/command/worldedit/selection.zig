@@ -7,14 +7,16 @@ const Source = command.Source;
 const Neighbor = main.chunk.Neighbor;
 const User = main.server.User;
 const Vec3i = main.vec.Vec3i;
+const Mask = main.blueprint.Mask;
 
 pub const description = "Operate on selection";
 pub const usage =
-	\\/selection adjust <limit=32>
+	\\/selection adjust <mask> <limit=32>
 	\\  Same as grow followed by shrink.
 ;
 
 pub const Args = union(enum) {
+	@"/selection adjust <mask> <limit>": struct { subcommand: enum { adjust }, mask: command.MaskExpression, limit: ?u32 },
 	@"/selection adjust <limit>": struct { subcommand: enum { adjust }, limit: ?u32 },
 };
 
@@ -24,21 +26,28 @@ pub fn execute(args: Args, source: Source) void {
 		return;
 	}
 	switch (args) {
+		.@"/selection adjust <mask> <limit>" => |cmd| {
+			adjust(.shrink, source.user, cmd.mask.mask, @intCast(@as(u31, @truncate(cmd.limit orelse 32))));
+			adjust(.grow, source.user, cmd.mask.mask, @intCast(@as(u31, @truncate(cmd.limit orelse 32))));
+		},
 		.@"/selection adjust <limit>" => |cmd| {
-			adjust(.shrink, source.user, @intCast(@as(u31, @truncate(cmd.limit orelse 32))));
-			adjust(.grow, source.user, @intCast(@as(u31, @truncate(cmd.limit orelse 32))));
+			const mask = Mask.initFromString(main.stackAllocator, "!cubyz:air") catch unreachable;
+			defer mask.deinit(main.stackAllocator);
+
+			adjust(.shrink, source.user, mask, @intCast(@as(u31, @truncate(cmd.limit orelse 32))));
+			adjust(.grow, source.user, mask, @intCast(@as(u31, @truncate(cmd.limit orelse 32))));
 		},
 	}
 }
 
-fn adjust(comptime mode: ScannerMode, source: *User, limit: i32) void {
+fn adjust(comptime mode: ScannerMode, source: *User, mask: Mask, limit: i32) void {
 	if (limit <= 1) return;
 
 	const current = command.getCurrentSelection(source) catch return;
 	const minPos = current.minPos;
 	const maxPos = current.maxPos - Vec3i{1, 1, 1};
 
-	var scanner: Scanner3D(mode) = .init(minPos, maxPos, limit);
+	var scanner: Scanner3D(mode) = .init(minPos, maxPos, mask, limit);
 	const newMin, const newMax = scanner.scan3D();
 
 	updateWorldEditPos(source, newMin, newMax);
@@ -93,6 +102,7 @@ fn Scanner3D(comptime mode: ScannerMode) type {
 		max: [3]i32,
 
 		limit: i32,
+		mask: Mask,
 
 		originalMin: [3]i32 = @splat(0),
 		originalMax: [3]i32 = @splat(0),
@@ -106,8 +116,8 @@ fn Scanner3D(comptime mode: ScannerMode) type {
 			}
 		};
 
-		fn init(min: Vec3i, max: Vec3i, limit: i32) Self {
-			return .{.min = min, .max = max, .limit = limit};
+		fn init(min: Vec3i, max: Vec3i, mask: Mask, limit: i32) Self {
+			return .{.min = min, .max = max, .mask = mask, .limit = limit};
 		}
 
 		fn getRange(self: Self, axis: Neighbor.VectorComponentEnum) Range {
@@ -170,8 +180,8 @@ fn Scanner3D(comptime mode: ScannerMode) type {
 			const currentValue = self.getCurrentValue(neighbor);
 
 			switch (self.scanPerpendicularPlane(neighbor.vectorComponent(), currentValue)) {
-				.failure, .limitExceeded => return,
-				.success => {},
+				.stopScan, .limitExceeded => return,
+				.continueScan => {},
 			}
 
 			const newValue = self.getCandidate(neighbor);
@@ -191,8 +201,8 @@ fn Scanner3D(comptime mode: ScannerMode) type {
 			if (!self.isValidCandidate(neighbor, newValue)) return;
 
 			switch (self.scanPerpendicularPlane(neighbor.vectorComponent(), newValue)) {
-				.failure, .limitExceeded => return,
-				.success => {},
+				.stopScan, .limitExceeded => return,
+				.continueScan => {},
 			}
 
 			if (neighbor.isPositive()) {
@@ -231,21 +241,21 @@ fn Scanner3D(comptime mode: ScannerMode) type {
 		/// `currentValue` determines which of infinitely many planes to choose using a coordinate on `axis`.
 		fn scanPerpendicularPlane(self: Self, axis: Neighbor.VectorComponentEnum, currentValue: i32) ScanStatus {
 			return switch (axis) {
-				.x => Scanner2D(.yz, mode).scanPlane(currentValue, self.getRange(.y), self.getRange(.z), self.limit),
-				.y => Scanner2D(.xz, mode).scanPlane(currentValue, self.getRange(.x), self.getRange(.z), self.limit),
-				.z => Scanner2D(.yx, mode).scanPlane(currentValue, self.getRange(.y), self.getRange(.x), self.limit),
+				.x => Scanner2D(.yz, mode).scanPlane(currentValue, self.getRange(.y), self.getRange(.z), self.mask, self.limit),
+				.y => Scanner2D(.xz, mode).scanPlane(currentValue, self.getRange(.x), self.getRange(.z), self.mask, self.limit),
+				.z => Scanner2D(.yx, mode).scanPlane(currentValue, self.getRange(.y), self.getRange(.x), self.mask, self.limit),
 			};
 		}
 	};
 }
 
-const ScanStatus = enum { success, failure, limitExceeded };
+const ScanStatus = enum { continueScan, stopScan, limitExceeded };
 
 fn Scanner2D(comptime plane: enum { yz, xz, yx }, comptime mode: ScannerMode) type {
 	return struct {
 		const Self = @This();
 
-		fn scanPlane(i: i32, jRange: Range, kRange: Range, limit: i32) ScanStatus {
+		fn scanPlane(i: i32, jRange: Range, kRange: Range, mask: Mask, limit: i32) ScanStatus {
 			var jLimit: i32 = 0;
 
 			var jIterator = jRange.iter();
@@ -259,7 +269,7 @@ fn Scanner2D(comptime plane: enum { yz, xz, yx }, comptime mode: ScannerMode) ty
 					if (main.server.world.?.getBlock(x, y, z)) |block| {
 						// Finding a non-air block in shrink mode means we have to stop contracting,
 						// but in growing mode it means we can continue expading to possibly find more.
-						if (block.typ != 0) return if (mode == .shrink) .failure else .success;
+						if (mask.match(block)) return if (mode == .shrink) .stopScan else .continueScan;
 					}
 
 					kLimit += 1;
@@ -271,7 +281,7 @@ fn Scanner2D(comptime plane: enum { yz, xz, yx }, comptime mode: ScannerMode) ty
 				// We didn't even finish scanning one JK plane, so we can't return updated I
 				if (jLimit > limit) return .limitExceeded;
 			}
-			return if (mode == .shrink) .success else .failure;
+			return if (mode == .shrink) .continueScan else .stopScan;
 		}
 
 		fn mapCoordinates(i: i32, j: i32, k: i32) struct { i32, i32, i32 } {
