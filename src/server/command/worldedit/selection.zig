@@ -8,18 +8,11 @@ const Vec3i = main.vec.Vec3i;
 
 pub const description = "Operate on selection";
 pub const usage =
-	\\/selection shrink <limit=32>
-	\\  Automatically shrink the selection to fit a structure, non-air blocks stop shrinking process.
-	\\/selection grow <limit=32>
-	\\  Automatically grow the selection to fit a structure.
-	\\  Non-air blocks stop growing process.
 	\\/selection adjust <limit=32>
 	\\  Same as grow followed by shrink.
 ;
 
 const Args = union(enum) {
-	@"/selection shrink <limit>": struct { subcommand: enum { shrink }, limit: ?u32 },
-	@"/selection grow <limit>": struct { subcommand: enum { grow }, limit: ?u32 },
 	@"/selection adjust <limit>": struct { subcommand: enum { adjust }, limit: ?u32 },
 };
 
@@ -35,8 +28,6 @@ pub fn execute(args: []const u8, source: *User) void {
 	};
 
 	switch (result) {
-		.@"/selection shrink <limit>" => |cmd| adjust(.shrink, source, @intCast(@as(u31, @truncate(cmd.limit orelse 32)))),
-		.@"/selection grow <limit>" => |cmd| adjust(.grow, source, @intCast(@as(u31, @truncate(cmd.limit orelse 32)))),
 		.@"/selection adjust <limit>" => |cmd| {
 			adjust(.shrink, source, @intCast(@as(u31, @truncate(cmd.limit orelse 32))));
 			adjust(.grow, source, @intCast(@as(u31, @truncate(cmd.limit orelse 32))));
@@ -71,8 +62,6 @@ const Range = struct {
 
 	/// Initialize a range.
 	/// Start and stop are not allowed to be equal.
-	/// When start is smaller than stop, step has to be positive, negative otherwise.
-	/// Step is not allowed to be equal to 0.
 	pub fn init(start: i32, stop: i32) Range {
 		std.debug.assert(start != stop);
 
