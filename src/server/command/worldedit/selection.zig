@@ -68,18 +68,15 @@ fn updateWorldEditPos(source: *User, pos1: Vec3i, pos2: Vec3i) void {
 const Range = struct {
 	start: i32,
 	stop: i32,
-	step: i32,
 
 	/// Initialize a range.
 	/// Start and stop are not allowed to be equal.
 	/// When start is smaller than stop, step has to be positive, negative otherwise.
 	/// Step is not allowed to be equal to 0.
-	pub fn init(start: i32, stop: i32, step: i32) Range {
+	pub fn init(start: i32, stop: i32) Range {
 		std.debug.assert(start != stop);
-		std.debug.assert(step != 0);
-		std.debug.assert(if (start < stop) step > 0 else step < 0);
 
-		return .{.start = start, .stop = stop, .step = step};
+		return .{.start = start, .stop = stop};
 	}
 
 	const Iterator = struct {
@@ -88,7 +85,7 @@ const Range = struct {
 
 		fn next(self: *Iterator) ?i32 {
 			if (self.current != self.range.stop) {
-				defer self.current +|= self.range.step;
+				defer self.current +%= 1;
 				return self.current;
 			} else {
 				return null;
@@ -136,7 +133,7 @@ fn Scanner3D(comptime mode: ScannerMode) type {
 
 		fn getRange(self: Self, axis: Axis) Range {
 			const i: usize = @intFromEnum(axis);
-			return .init(self.min[i], self.max[i] + 1, 1);
+			return .init(self.min[i], self.max[i] + 1);
 		}
 
 		pub fn scan3D(self: *Self) struct { Vec3i, Vec3i } {
