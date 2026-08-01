@@ -3,6 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const Block = main.blocks.Block;
 const command = main.server.command;
+const Neighbor = main.chunk.Neighbor;
 const User = main.server.User;
 const Vec3i = main.vec.Vec3i;
 
@@ -101,26 +102,20 @@ fn Scanner3D(comptime mode: ScannerMode) type {
 		originalMin: [3]i32 = @splat(0),
 		originalMax: [3]i32 = @splat(0),
 
-		const Axis = enum(u2) {
-			x = 0,
-			y = 1,
-			z = 2,
-		};
-		const Candidate = enum(u1) {
-			min = 0,
-			max = 1,
-		};
-		const Stage = struct {
-			axis: Axis,
-			candidate: Candidate,
-			isComplete: bool,
+		const Box = struct {
+			min: [3]i32,
+			max: [3]i32,
+
+			fn eql(self: Box, other: Box) bool {
+				return self.min[0] == other.min[0] and self.min[1] == other.min[1] and self.min[2] == other.min[2] and self.max[0] == other.max[0] and self.max[1] == other.max[1] and self.max[2] == other.max[2];
+			}
 		};
 
 		fn init(min: Vec3i, max: Vec3i, limit: i32) Self {
 			return .{.min = min, .max = max, .limit = limit};
 		}
 
-		fn getRange(self: Self, axis: Axis) Range {
+		fn getRange(self: Self, axis: Neighbor.VectorComponentEnum) Range {
 			const i: usize = @intFromEnum(axis);
 			return .init(self.min[i], self.max[i] + 1);
 		}
@@ -128,15 +123,6 @@ fn Scanner3D(comptime mode: ScannerMode) type {
 		pub fn scan3D(self: *Self) struct { Vec3i, Vec3i } {
 			self.originalMin = self.min;
 			self.originalMax = self.max;
-
-			var scanningSequence: [6]Stage = .{
-				.{.axis = .x, .candidate = .min, .isComplete = false},
-				.{.axis = .x, .candidate = .max, .isComplete = false},
-				.{.axis = .y, .candidate = .min, .isComplete = false},
-				.{.axis = .y, .candidate = .max, .isComplete = false},
-				.{.axis = .z, .candidate = .min, .isComplete = false},
-				.{.axis = .z, .candidate = .max, .isComplete = false},
-			};
 
 			// For a simple shrinking process, this could have been much simpler: Just three nested loops in
 			// each out of 6 directions would be enough. However, if we want to properly implmenet growing,
@@ -165,108 +151,90 @@ fn Scanner3D(comptime mode: ScannerMode) type {
 			// Now, this code does an extra effort of altering between directions until all are saturated.
 			// This part might not be necessary, but I don't think it changes much in the design, so I did it this way.
 
-			while (true) doScan: {
-				for (&scanningSequence) |*stage| {
-					if (stage.isComplete) continue;
-
+			while (true) {
+				const selectionBefore: Box = .{.min = self.min, .max = self.max};
+				for (Neighbor.iterable) |neighbor| {
 					switch (mode) {
-						.shrink => self.shrink(stage),
-						.grow => self.grow(stage),
+						.shrink => self.shrink(neighbor),
+						.grow => self.grow(neighbor),
 					}
 				}
-				for (scanningSequence) |stage| if (!stage.isComplete) break :doScan;
-				break;
+				const selectionAfter: Box = .{.min = self.min, .max = self.max};
+				if (selectionBefore.eql(selectionAfter)) break;
 			}
 
 			return .{self.min, self.max};
 		}
 
-		fn getCurrentValue(self: Self, axis: Axis, candidate: Candidate) i32 {
-			const i: usize = @intFromEnum(axis);
-			return switch (candidate) {
-				.min => self.min[i],
-				.max => self.max[i],
-			};
+		fn getCurrentValue(self: Self, neighbor: Neighbor) i32 {
+			const i: usize = @intFromEnum(neighbor.vectorComponent());
+			return if (neighbor.isPositive()) self.max[i] else self.min[i];
 		}
 
-		fn shrink(self: *Self, stage: *Stage) void {
-			const currentValue = self.getCurrentValue(stage.axis, stage.candidate);
+		fn shrink(self: *Self, neighbor: Neighbor) void {
+			const currentValue = self.getCurrentValue(neighbor);
 
-			switch (self.scanPerpendicularPlane(stage.axis, currentValue)) {
-				.failure, .limitExceeded => {
-					stage.isComplete = true;
-					return;
-				},
+			switch (self.scanPerpendicularPlane(neighbor.vectorComponent(), currentValue)) {
+				.failure, .limitExceeded => return,
 				.success => {},
 			}
 
-			const newValue = self.getCandidate(stage.axis, stage.candidate);
+			const newValue = self.getCandidate(neighbor);
 
-			if (!self.isValidCandidate(stage.axis, stage.candidate, newValue)) {
-				stage.isComplete = true;
-				return;
-			}
+			if (!self.isValidCandidate(neighbor, newValue)) return;
 
-			switch (stage.candidate) {
-				.min => self.min[@intFromEnum(stage.axis)] = newValue,
-				.max => self.max[@intFromEnum(stage.axis)] = newValue,
+			if (neighbor.isPositive()) {
+				self.max[@intFromEnum(neighbor.vectorComponent())] = newValue;
+			} else {
+				self.min[@intFromEnum(neighbor.vectorComponent())] = newValue;
 			}
 		}
 
-		fn grow(self: *Self, stage: *Stage) void {
-			const newValue = self.getCandidate(stage.axis, stage.candidate);
+		fn grow(self: *Self, neighbor: Neighbor) void {
+			const newValue = self.getCandidate(neighbor);
 
-			if (!self.isValidCandidate(stage.axis, stage.candidate, newValue)) {
-				stage.isComplete = true;
-				return;
-			}
+			if (!self.isValidCandidate(neighbor, newValue)) return;
 
-			switch (self.scanPerpendicularPlane(stage.axis, newValue)) {
-				.failure, .limitExceeded => {
-					stage.isComplete = true;
-					return;
-				},
+			switch (self.scanPerpendicularPlane(neighbor.vectorComponent(), newValue)) {
+				.failure, .limitExceeded => return,
 				.success => {},
 			}
 
-			switch (stage.candidate) {
-				.min => self.min[@intFromEnum(stage.axis)] = newValue,
-				.max => self.max[@intFromEnum(stage.axis)] = newValue,
+			if (neighbor.isPositive()) {
+				self.max[@intFromEnum(neighbor.vectorComponent())] = newValue;
+			} else {
+				self.min[@intFromEnum(neighbor.vectorComponent())] = newValue;
 			}
 		}
 
-		fn getCandidate(self: Self, axis: Axis, candidate: Candidate) i32 {
-			const i: usize = @intFromEnum(axis);
+		fn getCandidate(self: Self, neighbor: Neighbor) i32 {
+			const i: usize = @intFromEnum(neighbor.vectorComponent());
 			return switch (mode) {
-				.shrink => switch (candidate) {
-					.min => self.min[i] + 1,
-					.max => self.max[i] - 1,
-				},
-				.grow => switch (candidate) {
-					.min => self.min[i] - 1,
-					.max => self.max[i] + 1,
-				},
+				.shrink => if (neighbor.isPositive()) self.max[i] - 1 else self.min[i] + 1,
+				.grow => if (neighbor.isPositive()) self.max[i] + 1 else self.min[i] - 1,
 			};
 		}
 
 		/// Check external limits to the iteration - fully collapsing the selection or exceeding the limit of iterations.
-		fn isValidCandidate(self: Self, axis: Axis, candidate: Candidate, newValue: i32) bool {
-			const i: usize = @intFromEnum(axis);
-			return switch (mode) {
-				.shrink => switch (candidate) {
-					.min => newValue < self.originalMax[i] and newValue < self.originalMin[i] + self.limit,
-					.max => newValue > self.originalMin[i] and newValue > self.originalMax[i] - self.limit,
+		fn isValidCandidate(self: Self, neighbor: Neighbor, newValue: i32) bool {
+			const i: usize = @intFromEnum(neighbor.vectorComponent());
+			switch (mode) {
+				.shrink => if (neighbor.isPositive()) {
+					return newValue < self.originalMax[i] and newValue < self.originalMin[i] + self.limit;
+				} else {
+					return newValue > self.originalMin[i] and newValue > self.originalMax[i] - self.limit;
 				},
-				.grow => switch (candidate) {
-					.min => newValue > self.originalMin[i] - self.limit,
-					.max => newValue < self.originalMax[i] + self.limit,
+				.grow => if (neighbor.isPositive()) {
+					return newValue < self.originalMax[i] + self.limit;
+				} else {
+					return newValue > self.originalMin[i] - self.limit;
 				},
-			};
+			}
 		}
 
 		/// Scan a 2D plane of blocks perpendicular to the given axis.
 		/// `currentValue` determines which of infinitely many planes to choose using a coordinate on `axis`.
-		fn scanPerpendicularPlane(self: Self, axis: Axis, currentValue: i32) ScanStatus {
+		fn scanPerpendicularPlane(self: Self, axis: Neighbor.VectorComponentEnum, currentValue: i32) ScanStatus {
 			return switch (axis) {
 				.x => Scanner2D(.yz, mode).scanPlane(currentValue, self.getRange(.y), self.getRange(.z), self.limit),
 				.y => Scanner2D(.xz, mode).scanPlane(currentValue, self.getRange(.x), self.getRange(.z), self.limit),
