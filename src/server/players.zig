@@ -98,8 +98,6 @@ pub fn rebindKey(oldPublicKeyFromFile: ?[]const u8, oldNameFromFile: ?[]const u8
 	playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, newKey), .{.playerIndex = index, .blocked = blocked}) catch unreachable;
 }
 
-const EnsureResult = struct { entry: *PlayerRecord, wasNew: bool };
-
 fn saveNewPlayer(key: []const u8, index: usize) void {
 	const playersDir = main.stackAllocator.print("saves/{s}/players", .{worldPath});
 	defer main.stackAllocator.free(playersDir);
@@ -118,6 +116,8 @@ fn saveNewPlayer(key: []const u8, index: usize) void {
 		std.log.err("Couldn't create player file for pre-authorized key {s}: {t}", .{key, err});
 	};
 }
+
+const EnsureResult = struct { entry: *PlayerRecord, wasNew: bool };
 
 fn ensurePlayerRecord(key: []const u8) EnsureResult {
 	sync.threadContext.assertCorrectContext(.server);
