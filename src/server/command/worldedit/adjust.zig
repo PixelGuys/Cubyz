@@ -9,10 +9,12 @@ const User = main.server.User;
 const Vec3i = main.vec.Vec3i;
 const Mask = main.blueprint.Mask;
 
-pub const description = "Operate on selection";
+pub const description = "Adjust current selection to fit blocks insite.";
 pub const usage =
-	\\/selection adjust <mask> <limit=32>
-	\\  Same as grow followed by shrink.
+	\\/adjust <limit=32>
+	\\  Adjust current selection to fit non air blocks inside.
+	\\/adjust <mask> <limit=32>
+	\\  Adjust current selection to fit blocks that match the provided mask.
 ;
 
 pub const Args = union(enum) {

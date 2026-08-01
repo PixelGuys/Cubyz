@@ -16,6 +16,7 @@ pub const avatar = @import("entity/avatar.zig");
 
 pub const perm = @import("permission/perm.zig");
 
+pub const adjust = @import("worldedit/adjust.zig");
 pub const undo = @import("worldedit/undo.zig");
 pub const redo = @import("worldedit/redo.zig");
 pub const pos1 = @import("worldedit/pos1.zig");
@@ -25,7 +26,6 @@ pub const copy = @import("worldedit/copy.zig");
 pub const paste = @import("worldedit/paste.zig");
 pub const blueprint = @import("worldedit/blueprint.zig");
 pub const rotate = @import("worldedit/rotate.zig");
-pub const selection = @import("worldedit/selection.zig");
 pub const set = @import("worldedit/set.zig");
 pub const mask = @import("worldedit/mask.zig");
 pub const replace = @import("worldedit/replace.zig");
