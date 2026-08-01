@@ -11,16 +11,19 @@ pub const commandList = @import("command/_list.zig");
 
 pub const Source = union(enum) {
 	user: *User,
+	server: void,
 
 	pub fn sendMessage(self: Source, comptime fmt: []const u8, args: anytype) void {
 		switch (self) {
 			.user => |user| user.sendMessage(fmt, args),
+			.server => main.log.server(fmt, args),
 		}
 	}
 
 	pub fn hasPermission(self: Source, permissionPath: []const u8) bool {
 		return switch (self) {
 			.user => |user| main.entity.components.@"cubyz:permissions".server.hasPermission(user.id, permissionPath),
+			.server => true,
 		};
 	}
 };
@@ -120,7 +123,6 @@ pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, source: S
 
 pub const Target = struct {
 	user: *User,
-	increasedRefCount: bool,
 
 	pub fn fromPlayerIndex(arg: ?PlayerIndex, source: Source) !Target {
 		if (arg == null and source != .user) {
@@ -129,19 +131,13 @@ pub const Target = struct {
 		}
 		const playerIndex = arg orelse return .{
 			.user = source.user,
-			.increasedRefCount = false,
 		};
 		return .{
-			.user = main.server.getUserByIndexAndIncreaseRefCount(playerIndex.index) orelse {
+			.user = main.server.getUserByIndex(playerIndex.index) orelse {
 				source.sendMessage("#ff0000Player with index {d} not found or not online", .{playerIndex.index});
 				return error.InvalidArg;
 			},
-			.increasedRefCount = true,
 		};
-	}
-
-	pub fn deinit(self: Target) void {
-		if (self.increasedRefCount) self.user.decreaseRefCount();
 	}
 };
 
