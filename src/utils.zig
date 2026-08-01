@@ -814,10 +814,13 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	threads: []std.Thread,
 	currentTasks: []Atomic(?*const VTable),
 	loadList: ConcurrentMaxHeap(Task),
-	playerJobQueue: ConcurrentQueue(*main.server.User),
-	semaphore: main.utils.Semaphore = .{},
+	playerJobQueue: ConcurrentQueue(main.server.PlayerIndex),
+	taskCountSemaphore: main.utils.Semaphore = .{},
+	stopSemaphore: main.utils.Semaphore = .{},
+	startSemaphore: main.utils.Semaphore = .{},
 	allocator: NeverFailingAllocator,
 	running: Atomic(bool) = .init(true),
+	paused: Atomic(bool) = .init(false),
 
 	performance: Performance,
 
@@ -852,10 +855,6 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			task.vtable.clean(task.self);
 		}
 
-		while (self.playerJobQueue.popFront()) |player| {
-			player.decreaseRefCount();
-		}
-
 		for (self.threads) |thread| {
 			thread.join();
 		}
@@ -869,6 +868,20 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		self.allocator.destroy(self);
 	}
 
+	pub fn @"continue"(self: *ThreadPool) void {
+		std.debug.assert(self.paused.swap(false, .monotonic));
+		for (0..self.threads.len) |_| {
+			self.startSemaphore.post();
+		}
+	}
+
+	pub fn pause(self: *ThreadPool) void {
+		std.debug.assert(!self.paused.swap(true, .monotonic));
+		for (0..self.threads.len) |_| {
+			self.stopSemaphore.wait();
+		}
+	}
+
 	pub fn closeAllTasksOfType(self: *ThreadPool, vtable: *const VTable) void {
 		std.debug.assert(vtable.taskType != .chunkgen);
 		self.loadList.mutex.lock();
@@ -879,7 +892,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			if (task.vtable == vtable) {
 				task.vtable.clean(task.self);
 				self.loadList.removeIndex(i);
-				self.semaphore.timedWait(.zero) catch {};
+				self.taskCountSemaphore.timedWait(.zero) catch {};
 			} else {
 				i += 1;
 			}
@@ -892,24 +905,29 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		}
 	}
 
+	pub fn unschedulePlayers(self: *ThreadPool) void {
+		while (self.playerJobQueue.popFront()) |_| {
+			self.taskCountSemaphore.timedWait(.zero) catch {};
+			_ = self.trueQueueSize.fetchSub(1, .monotonic);
+		}
+	}
+
 	fn getNextTask(self: *ThreadPool) ?Task {
 		blk: {
 			return self.loadList.extractMax() orelse break :blk;
 		}
 		blk: {
 			const player = self.playerJobQueue.popFront() orelse break :blk;
-			const result, const hasMoreTasks = player.getTaskFromJobQueue() orelse {
+			const user = main.server.getUserByIndex(player) orelse break :blk;
+			const result, const hasMoreTasks = user.getTaskFromJobQueue() orelse {
 				_ = self.trueQueueSize.fetchSub(1, .monotonic);
-				player.decreaseRefCount();
 				break :blk;
 			};
 			switch (hasMoreTasks) {
-				.empty => {
-					player.decreaseRefCount();
-				},
+				.empty => {},
 				.hasMoreTasks => {
 					self.playerJobQueue.pushBack(player);
-					self.semaphore.post();
+					self.taskCountSemaphore.post();
 					_ = self.trueQueueSize.fetchAdd(1, .monotonic);
 				},
 			}
@@ -926,43 +944,56 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		outer: while (self.running.load(.monotonic)) {
 			main.heap.GarbageCollection.syncPoint();
 
-			self.semaphore.timedWait(.fromMilliseconds(10)) catch continue :outer;
+			if (self.paused.load(.monotonic)) {
+				self.stopSemaphore.post();
+				while (true) {
+					main.heap.GarbageCollection.syncPoint();
+					self.startSemaphore.timedWait(.fromMilliseconds(10)) catch continue;
+					break;
+				}
+			}
+
+			self.taskCountSemaphore.timedWait(.fromMilliseconds(10)) catch continue :outer;
 
 			{
 				const task = self.getNextTask() orelse continue :outer;
 				self.currentTasks[id].store(task.vtable, .monotonic);
-				const start = main.timestamp();
+				const startTime = main.timestamp();
 				task.vtable.run(task.self);
-				const end = main.timestamp();
-				self.performance.add(task.vtable.taskType, @intCast(@divTrunc(start.durationTo(end).toNanoseconds(), 1000)));
+				const endTime = main.timestamp();
+				self.performance.add(task.vtable.taskType, @intCast(@divTrunc(startTime.durationTo(endTime).toNanoseconds(), 1000)));
 				self.currentTasks[id].store(null, .monotonic);
 				_ = self.trueQueueSize.fetchSub(1, .monotonic);
 			}
 
 			if (id == 0 and lastUpdate.durationTo(main.timestamp()).nanoseconds > refreshTime.nanoseconds) {
-				const start = main.timestamp();
-				var temporaryTaskList: main.List(Task) = .empty;
-				defer temporaryTaskList.deinit(main.stackAllocator);
-				while (self.loadList.extractAny()) |task| {
-					self.semaphore.timedWait(.zero) catch {};
-					if (!task.vtable.isStillNeeded(task.self)) {
-						task.vtable.clean(task.self);
-						_ = self.trueQueueSize.fetchSub(1, .monotonic);
-					} else {
-						const taskPtr = temporaryTaskList.addOne(main.stackAllocator);
-						taskPtr.* = task;
-						taskPtr.cachedPriority = task.vtable.getPriority(task.self);
-					}
-				}
-				self.loadList.addMany(temporaryTaskList.items);
-				for (0..temporaryTaskList.items.len) |_| {
-					self.semaphore.post();
-				}
-				const end = main.timestamp();
-				lastUpdate = end;
-				self.performance.add(.taskPriorityUpdate, @intCast(@divTrunc(start.durationTo(end).toNanoseconds(), 1000)));
+				self.updateTaskPriority();
+				lastUpdate = main.timestamp();
 			}
 		}
+	}
+
+	pub fn updateTaskPriority(self: *ThreadPool) void {
+		const startTime = main.timestamp();
+		var temporaryTaskList: main.List(Task) = .empty;
+		defer temporaryTaskList.deinit(main.stackAllocator);
+		while (self.loadList.extractAny()) |task| {
+			self.taskCountSemaphore.timedWait(.zero) catch {};
+			if (!task.vtable.isStillNeeded(task.self)) {
+				task.vtable.clean(task.self);
+				_ = self.trueQueueSize.fetchSub(1, .monotonic);
+			} else {
+				const taskPtr = temporaryTaskList.addOne(main.stackAllocator);
+				taskPtr.* = task;
+				taskPtr.cachedPriority = task.vtable.getPriority(task.self);
+			}
+		}
+		self.loadList.addMany(temporaryTaskList.items);
+		for (0..temporaryTaskList.items.len) |_| {
+			self.taskCountSemaphore.post();
+		}
+		const endTime = main.timestamp();
+		self.performance.add(.taskPriorityUpdate, @intCast(@divTrunc(startTime.durationTo(endTime).toNanoseconds(), 1000)));
 	}
 
 	pub fn addTask(self: *ThreadPool, task: *anyopaque, vtable: *const VTable) void {
@@ -971,36 +1002,14 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			.vtable = vtable,
 			.self = task,
 		});
-		self.semaphore.post();
+		self.taskCountSemaphore.post();
 		_ = self.trueQueueSize.fetchAdd(1, .monotonic);
 	}
 
 	pub fn addPlayer(self: *ThreadPool, player: *main.server.User) void {
-		player.increaseRefCount();
-		self.playerJobQueue.pushBack(player);
-		self.semaphore.post();
+		self.playerJobQueue.pushBack(player.playerIndex);
+		self.taskCountSemaphore.post();
 		_ = self.trueQueueSize.fetchAdd(1, .monotonic);
-	}
-
-	pub fn clear(self: *ThreadPool) void {
-		// Clear the remaining tasks:
-		while (self.loadList.extractAny()) |task| {
-			self.semaphore.timedWait(.zero) catch {};
-			task.vtable.clean(task.self);
-			_ = self.trueQueueSize.fetchSub(1, .monotonic);
-		}
-		while (self.playerJobQueue.popFront()) |player| {
-			while (player.getTaskFromJobQueue()) |task| {
-				task[0].vtable.clean(task[0].self);
-			}
-			self.semaphore.timedWait(.zero) catch {};
-			player.decreaseRefCount();
-			_ = self.trueQueueSize.fetchSub(1, .monotonic);
-		}
-		// Wait for the in-progress tasks to finish:
-		while (self.trueQueueSize.load(.monotonic) != 0) {
-			main.io.sleep(.fromMilliseconds(1), .awake) catch {};
-		}
 	}
 
 	pub fn queueSize(self: *const ThreadPool) usize {
@@ -2229,7 +2238,7 @@ test "SparseSet/reusing" {
 }
 
 pub fn panicWithMessage(comptime fmt: []const u8, args: anytype) noreturn {
-	const message = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
+	const message = main.stackAllocator.print(fmt, args);
 	@panic(message);
 }
 

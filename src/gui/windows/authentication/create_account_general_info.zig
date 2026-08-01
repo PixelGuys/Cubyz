@@ -50,7 +50,7 @@ pub fn update() void {
 			button.disabled = false;
 			button.child.label.updateText("Continue");
 		} else {
-			const newText = std.fmt.allocPrint(main.stackAllocator.allocator, "Continue ({})", .{remainTimeSeconds}) catch unreachable;
+			const newText = main.stackAllocator.print("Continue ({})", .{remainTimeSeconds});
 			defer main.stackAllocator.free(newText);
 			button.child.label.updateText(newText);
 		}

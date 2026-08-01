@@ -1,9 +1,9 @@
 #version 460
 
+#include "frame_uniforms.glsl"
+
 layout(location = 0) out vec3 mvVertexPos;
 
-layout(location = 0) uniform mat4 projectionMatrix;
-layout(location = 1) uniform mat4 viewMatrix;
 layout(location = 2) uniform vec3 modelPosition;
 layout(location = 3) uniform vec3 lowerBounds;
 layout(location = 4) uniform vec3 upperBounds;
@@ -68,8 +68,8 @@ vec3 lineVertices[] = vec3[] (
 );
 
 void main() {
-	int vertexIndex = gl_VertexID%24;
-	int lineIndex = gl_VertexID/24;
+	int vertexIndex = gl_VertexIndex%24;
+	int lineIndex = gl_VertexIndex/24;
 	vec3 lineStart = lineVertices[lineIndex*2];
 	vec3 lineEnd = lineVertices[lineIndex*2 + 1];
 	vec3 lineCenter = (lineStart + lineEnd)/2*(upperBounds - lowerBounds);

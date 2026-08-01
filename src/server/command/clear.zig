@@ -1,28 +1,23 @@
 const std = @import("std");
 
 const main = @import("main");
-const User = main.server.User;
+const Source = main.server.command.Source;
 
 pub const description = "Clears your inventory/chat";
 pub const usage = "/clear <inventory/chat>";
 
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/clear <target>": struct { target: enum { inventory, chat } },
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/clear"});
-
-pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
+pub fn execute(args: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
 		return;
-	};
-
-	switch (result.@"/clear <target>".target) {
-		.inventory => main.items.Inventory.server.clearPlayerInventory(source),
-		.chat => main.network.protocols.genericUpdate.sendClear(source.conn, .chat),
+	}
+	const user = source.user;
+	switch (args.@"/clear <target>".target) {
+		.inventory => main.items.Inventory.server.clearPlayerInventory(user),
+		.chat => main.network.protocols.genericUpdate.sendClear(user.conn, .chat),
 	}
 }
