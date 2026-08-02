@@ -68,18 +68,15 @@ pub fn getLocalPlayerIndex() usize {
 }
 
 pub fn lookupIndex(key: []const u8) ?usize {
-	sync.threadContext.assertCorrectContext(.server);
 	const entry = playerDatabase.get(key) orelse return null;
 	return entry.playerIndex;
 }
 
 pub fn isEmpty() bool {
-	sync.threadContext.assertCorrectContext(.server);
 	return playerDatabase.size == 0;
 }
 
 pub fn allocateNewIndex() usize {
-	sync.threadContext.assertCorrectContext(.server);
 	return nextPlayerIndex.fetchAdd(1, .monotonic);
 }
 
