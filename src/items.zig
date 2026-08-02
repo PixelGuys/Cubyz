@@ -39,50 +39,52 @@ const Material = struct { // MARK: Material
 	outlineColorShadow: Color = undefined,
 	modifiers: []Modifier = undefined,
 
-	fn darken(color: Color, factor: f32) Color {
-		return Color{
-			.r = @intFromFloat(@as(f32, @floatFromInt(color.r))*factor),
-			.g = @intFromFloat(@as(f32, @floatFromInt(color.g))*factor),
-			.b = @intFromFloat(@as(f32, @floatFromInt(color.b))*factor),
-			.a = color.a,
-		};
-	}
-
-	const ColorSource = enum { loadedFromTexture, notLoaded };
-
-	fn loadColorsFromTexture(self: *Material, allocator: NeverFailingAllocator, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8) ColorSource {
-		if (colorTexturePath.len == 0) return .notLoaded;
-		const image = graphics.Image.readFromFile(main.stackAllocator, colorTexturePath, .{.orientation = .asIs}) catch |err| blk: {
-			if (err != error.FileNotFound) {
-				std.log.err("Error while reading material color texture '{s}': {s}", .{colorTexturePath, @errorName(err)});
+	fn loadColorsFromTexture(self: *Material, allocator: NeverFailingAllocator, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8) void {
+		const loadedImage: ?graphics.Image = blk: {
+			if (colorTexturePath.len == 0) {
+				std.log.err("Couldn't find material attribute 'colorTexture'", .{});
+				break :blk null;
 			}
-			break :blk graphics.Image.readFromFile(main.stackAllocator, colorReplacementTexturePath, .{.orientation = .asIs}) catch |err2| {
-				std.log.err("Error while reading material color texture. Tried '{s}' and '{s}': {s}", .{colorTexturePath, colorReplacementTexturePath, @errorName(err2)});
-				return .notLoaded;
+			break :blk graphics.Image.readFromFile(main.stackAllocator, colorTexturePath, .{.orientation = .asIs}) catch |err| blk2: {
+				if (err != error.FileNotFound) {
+					std.log.err("Error while reading material color texture '{s}': {s}", .{colorTexturePath, @errorName(err)});
+				}
+				break :blk2 graphics.Image.readFromFile(main.stackAllocator, colorReplacementTexturePath, .{.orientation = .asIs}) catch |err2| {
+					std.log.err("Error while reading material color texture. Tried '{s}' and '{s}': {s}", .{colorTexturePath, colorReplacementTexturePath, @errorName(err2)});
+					break :blk2 null;
+				};
 			};
 		};
-		defer image.deinit(main.stackAllocator);
-		if (image.width < 2 or image.height < 2) {
-			std.log.err("Material color texture '{s}' must be at least 2x2 pixels (got {}x{}).", .{colorTexturePath, image.width, image.height});
-			return .notLoaded;
-		}
+		defer if (loadedImage) |img| img.deinit(main.stackAllocator);
+
+		const image: graphics.Image = if (loadedImage) |img| validate: {
+			if (img.width < 2 or img.height < 2) {
+				std.log.err("Material color texture '{s}' must be at least 2x2 pixels (got {}x{}).", .{colorTexturePath, img.width, img.height});
+				break :validate graphics.Image.defaultImage;
+			}
+			break :validate img;
+		} else graphics.Image.defaultImage;
+
 		self.colorPalette = allocator.alloc(Color, image.width);
 		for (0..image.width) |x| {
 			self.colorPalette[x] = image.getRGB(x, 0);
 		}
-		const shadow = image.getRGB(0, 1);
-		if (shadow.a != 255) {
-			std.log.err("Material color texture '{s}': outlineColorShadow pixel (0,1) must be fully opaque, got alpha {}.", .{colorTexturePath, shadow.a});
-			return .notLoaded;
-		}
-		self.outlineColorShadow = shadow;
-		const light = image.getRGB(1, 1);
-		if (light.a != 255) {
-			std.log.err("Material color texture '{s}': outlineColorLight pixel (1,1) must be fully opaque, got alpha {}.", .{colorTexturePath, light.a});
-			return .notLoaded;
-		}
-		self.outlineColorLight = light;
-		return .loadedFromTexture;
+		self.outlineColorShadow = blk: {
+			const shadow = image.getRGB(0, 1);
+			if (shadow.a != 255) {
+				std.log.err("Material color texture '{s}': outlineColorShadow pixel (0,1) must be fully opaque, got alpha {}.", .{colorTexturePath, shadow.a});
+				break :blk graphics.Image.defaultImage.getRGB(0, 1);
+			}
+			break :blk shadow;
+		};
+		self.outlineColorLight = blk: {
+			const light = image.getRGB(1, 1);
+			if (light.a != 255) {
+				std.log.err("Material color texture '{s}': outlineColorLight pixel (1,1) must be fully opaque, got alpha {}.", .{colorTexturePath, light.a});
+				break :blk graphics.Image.defaultImage.getRGB(1, 1);
+			}
+			break :blk light;
+		};
 	}
 
 	pub fn init(self: *Material, allocator: NeverFailingAllocator, zon: ZonElement, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8) void {
@@ -103,15 +105,7 @@ const Material = struct { // MARK: Material
 			break :blk 0;
 		};
 		self.textureRoughness = @max(0, zon.get(f32, "textureRoughness") orelse 1.0);
-		if (self.loadColorsFromTexture(allocator, colorTexturePath, colorReplacementTexturePath) == .notLoaded) {
-			const colors = zon.getChild("colors");
-			self.colorPalette = allocator.alloc(Color, colors.toSlice().len);
-			for (colors.toSlice(), self.colorPalette) |item, *color| {
-				color.* = Color.fromArgb(item.as(u32) orelse 0xff000000);
-			}
-			self.outlineColorLight = darken(self.colorPalette[self.colorPalette.len - 1], 0.7);
-			self.outlineColorShadow = darken(self.colorPalette[0], 0.5);
-		}
+		self.loadColorsFromTexture(allocator, colorTexturePath, colorReplacementTexturePath);
 		const modifiersZon = zon.getChild("modifiers");
 		self.modifiers = allocator.alloc(Modifier, modifiersZon.toSlice().len);
 		for (modifiersZon.toSlice(), self.modifiers) |item, *modifier| {
