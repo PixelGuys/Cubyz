@@ -190,8 +190,14 @@ pub const Group = struct { // MARK: Group
 	}
 };
 
+// Each group must have a unique ID to avoid stale membership issues.
+// Example scenario:
+// - User1 joins Group1
+// - Group1 is deleted while User1 is offline (so their data isn’t updated)
+// - A new Group1 is created
+// - When User1 reconnects, they are incorrectly treated as a member of the new Group1
 var groups: main.ListManaged(?*Group) = undefined;
-var groupNameToIdMap: std.StringHashMapUnmanaged(usize) = .{};
+var groupNameToIdMap: std.StringHashMapUnmanaged(u32) = .{};
 
 var groupsArena: NeverFailingArenaAllocator = undefined;
 
@@ -216,7 +222,7 @@ pub fn addGroupFromBin(id: usize, data: []const u8) void {
 		groups.append(null);
 		return;
 	};
-	groupNameToIdMap.put(groupsArena.allocator().allocator, group.name, groups.items.len) catch unreachable;
+	groupNameToIdMap.put(groupsArena.allocator().allocator, group.name, @truncate(groups.items.len)) catch unreachable;
 	groups.append(group);
 }
 
