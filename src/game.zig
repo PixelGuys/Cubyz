@@ -32,12 +32,15 @@ pub const camera = struct { // MARK: camera
 	pub var direction: Vec3f = Vec3f{0, 0, 0};
 	pub var viewMatrix: Mat4f = Mat4f.identity();
 	pub fn moveRotation(mouseX: f32, mouseY: f32) void {
+		const scale = std.math.lerp(1.0, zoom, settings.zoomRelativeSensitivity);
+		const scaledMouseX = mouseX/scale;
+		const scaledMouseY = mouseY/scale;
 		// Mouse movement along the y-axis rotates the image along the x-axis.
-		rotation[0] += mouseY;
+		rotation[0] += scaledMouseY;
 		const bound = std.math.pi/2.0 - 0.001;
 		rotation[0] = std.math.clamp(rotation[0], -bound, bound);
 		// Mouse movement along the x-axis rotates the image along the z-axis.
-		rotation[2] += mouseX;
+		rotation[2] += scaledMouseX;
 	}
 
 	pub fn updateViewMatrix() void {
@@ -518,6 +521,15 @@ pub const World = struct { // MARK: World
 pub var testWorld: World = undefined; // TODO:
 pub var world: ?*World = null;
 
+var zoom: f32 = 1.0;
+var zoomIsPressed: bool = false;
+var zoomStartTime: ?std.Io.Timestamp = null;
+var zoomNeededDurationSeconds: f32 = 0.0;
+var zoomNeededDuration: std.Io.Duration = std.Io.Duration.zero;
+var zoomStart: f32 = 1.0;
+var zoomEnd: f32 = 1.0;
+var zoomSScaled: f32 = 0.0;
+
 pub var projectionMatrix: Mat4f = Mat4f.identity();
 
 var nextBlockPlaceTime: ?std.Io.Timestamp = null;
@@ -577,6 +589,51 @@ pub fn getBlockWithSide(comptime side: main.sync.Side, x: i32, y: i32, z: i32) ?
 	} else {
 		return main.server.world.?.getBlock(x, y, z);
 	}
+}
+
+fn updateZoom() void {
+	const maxZoom = 10_000.0;
+	const currentTime = main.timestamp();
+	var startTime = currentTime;
+	var newZoomEnd: f32 = 1.0;
+	if (KeyBoard.key("zoom").pressed) {
+		if (zoomIsPressed) { // key already held
+			newZoomEnd = zoomEnd;
+		} else { // key just pressed
+			newZoomEnd = settings.zoomInitial;
+		}
+		const change = @as(f32, @floatFromInt(main.Window.scrollOffsetInteger));
+		newZoomEnd *= std.math.pow(f32, settings.zoomIncrease, change);
+		newZoomEnd = std.math.clamp(newZoomEnd, 1.0, maxZoom);
+		zoomIsPressed = true;
+	} else {
+		newZoomEnd = 1.0;
+		zoomIsPressed = false;
+	}
+	if (zoomEnd != newZoomEnd) { // interrupting zoom
+		zoomEnd = newZoomEnd;
+		zoomStartTime = currentTime;
+		zoomStart = zoom;
+		// https://vanwijk.win.tue.nl/zoompan.pdf
+		zoomSScaled = @log(zoomEnd/zoomStart);
+		zoomNeededDurationSeconds = @abs(zoomSScaled)/settings.zoomSpeed;
+		zoomNeededDuration = std.Io.Duration.fromNanoseconds(@as(i96, @trunc(zoomNeededDurationSeconds*1e9)));
+	} else if (zoomStartTime) |time| { // zooming in without interruptions
+		startTime = time;
+	} else { // ended zooming in
+		return;
+	}
+	const zoomDuration = startTime.durationTo(currentTime);
+	if (zoomDuration.nanoseconds < zoomNeededDuration.nanoseconds) {
+		const zoomSeconds = @as(f32, @floatFromInt(zoomDuration.toNanoseconds()))/1.0e9;
+		const t = std.math.clamp(zoomSeconds/zoomNeededDurationSeconds, 0, 1);
+		zoom = zoomStart*std.math.exp(zoomSScaled*t);
+		zoom = @max(zoom, 1);
+	} else {
+		zoom = zoomEnd;
+		zoomStartTime = null;
+	}
+	renderer.updateZoom(zoom);
 }
 
 pub fn update(deltaTime: f64) void { // MARK: update()
@@ -694,8 +751,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			acc += movementDir*@as(Vec3d, @splat(movementSpeed*fricMul));
 		}
 
-		const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% main.Window.scrollOffsetInteger;
-		Player.selectedSlot = @intCast(@mod(newSlot, 12));
+		updateZoom();
+
+		if (!zoomIsPressed) {
+			const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% main.Window.scrollOffsetInteger;
+			Player.selectedSlot = @intCast(@mod(newSlot, 12));
+		}
 
 		const newPos = Vec2f{
 			@floatCast(main.KeyBoard.key("cameraRight").value - main.KeyBoard.key("cameraLeft").value),
