@@ -231,7 +231,7 @@ pub fn loadGroups(dir: main.files.Dir) !void {
 	defer metaDataZon.deinit(main.stackAllocator);
 
 	init(main.globalAllocator);
-	const currentId = metaDataZon.get(usize, "currentId") orelse 0;
+	const currentId = metaDataZon.get(u32, "currentId") orelse 0;
 	groups.ensureCapacity(currentId);
 
 	for (0..currentId) |id| {
@@ -253,7 +253,7 @@ fn saveMetaData(allocator: NeverFailingAllocator) !void {
 	defer allocator.free(metadatPath);
 	var metadataZon: ZonElement = .initObject(main.stackAllocator);
 	defer metadataZon.deinit(main.stackAllocator);
-	metadataZon.put("currentId", groups.items.len);
+	metadataZon.put("currentId", @as(u32, @truncate(groups.items.len)));
 	try main.files.cubyzDir().writeZon(metadatPath, metadataZon);
 }
 
