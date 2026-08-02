@@ -264,7 +264,7 @@ pub fn createGroup(name: []const u8) error{AlreadyExists}!void {
 	if (result.found_existing) return error.AlreadyExists;
 
 	result.key_ptr.* = groupsArena.allocator().dupe(u8, name);
-	result.value_ptr.* = groups.items.len;
+	result.value_ptr.* = @truncate(groups.items.len);
 	groups.append(Group.init(groupsArena.allocator(), result.key_ptr.*));
 }
 
