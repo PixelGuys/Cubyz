@@ -7,31 +7,36 @@ const Source = command.Source;
 pub const description = "Teleport to location.";
 pub const usage =
 	\\/tp <biome>
-	\\/tp <x> <y> <z>
-	\\/tp @<playerIndex>
+	\\/tp @<playerIndex> <x> <y> <z>
+	\\/tp @<playerIndex> @<playerIndex>
 ;
 
 pub const Args = union(enum) {
 	@"/tp <biome>": struct { biome: command.BiomeId },
-	@"/tp <x> <y> <z>": struct {
+	@"/tp <playerIndex> <x> <y> <z>": struct {
+		playerIndex: ?command.PlayerIndex,
 		x: command.Coordinate,
 		y: command.Coordinate,
 		z: command.Coordinate,
 	},
-	@"/tp <playerIndex>": struct { playerIndex: command.PlayerIndex },
+	@"/tp <playerIndex1> <playerIndex2>": struct {
+		playerIndex1: ?command.PlayerIndex,
+		playerIndex2: command.PlayerIndex,
+	},
 };
 
 pub fn execute(args: Args, source: Source) void {
-	if (source != .user) {
-		source.sendMessage("Command cannot be run without a user", .{});
-		return;
-	}
-	const user = source.user;
+	const target = switch (args) {
+		.@"/tp <biome>" => command.Target.fromPlayerIndex(null, source) catch return,
+		.@"/tp <playerIndex> <x> <y> <z>" => |params| command.Target.fromPlayerIndex(params.playerIndex, source) catch return,
+		.@"/tp <playerIndex1> <playerIndex2>" => |params| command.Target.fromPlayerIndex(params.playerIndex1, source) catch return,
+	};
 	const pos: main.vec.Vec3d = blk: switch (args) {
 		.@"/tp <biome>" => |b| {
+			const user = target.user;
 			const biome = b.biome.biome;
 			if (biome.isCave) {
-				user.sendMessage("#ff0000Teleport to biome is only available for surface biomes.", .{});
+				source.sendMessage("#ff0000Teleport to biome is only available for surface biomes.", .{});
 				return;
 			}
 			const radius = 16384;
@@ -77,16 +82,16 @@ pub fn execute(args: Args, source: Source) void {
 					stepsRemaining = dirChanges/2;
 				}
 			}
-			user.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.", .{});
+			source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.", .{});
 			return;
 		},
-		.@"/tp <x> <y> <z>" => |pos| {
+		.@"/tp <playerIndex> <x> <y> <z>" => |pos| {
 			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source) catch return;
 		},
-		.@"/tp <playerIndex>" => |index| {
-			const target = command.Target.fromPlayerIndex(index.playerIndex, source) catch return;
-			break :blk target.user.player().pos;
+		.@"/tp <playerIndex1> <playerIndex2>" => |index| {
+			const dest = command.Target.fromPlayerIndex(index.playerIndex2, source) catch return;
+			break :blk dest.user.player().pos;
 		},
 	};
-	main.network.protocols.genericUpdate.sendTPCoordinates(user.conn, pos);
+	main.network.protocols.genericUpdate.sendTPCoordinates(target.user.conn, pos);
 }
