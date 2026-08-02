@@ -16,23 +16,23 @@ pub const usage =
 
 pub const Args = union(enum) {
 	@"/tp <biome>": struct { biome: command.BiomeId },
+	@"/tp <sourcePlayerIndex> <biome>": struct {
+		sourcePlayerIndex: command.PlayerIndex,
+		biome: command.BiomeId,
+	},
 	@"/tp <x> <y> <z>": struct {
 		x: command.Coordinate,
 		y: command.Coordinate,
 		z: command.Coordinate,
-	},
-	@"/tp <destinationPlayerIndex>": struct {
-		destinationPlayerIndex: command.PlayerIndex,
-	},
-	@"/tp <sourcePlayerIndex> <biome>": struct {
-		sourcePlayerIndex: command.PlayerIndex,
-		biome: command.BiomeId,
 	},
 	@"/tp <sourcePlayerIndex> <x> <y> <z>": struct {
 		sourcePlayerIndex: command.PlayerIndex,
 		x: command.Coordinate,
 		y: command.Coordinate,
 		z: command.Coordinate,
+	},
+	@"/tp <destinationPlayerIndex>": struct {
+		destinationPlayerIndex: command.PlayerIndex,
 	},
 	@"/tp <sourcePlayerIndex> <destinationPlayerIndex>": struct {
 		sourcePlayerIndex: command.PlayerIndex,
