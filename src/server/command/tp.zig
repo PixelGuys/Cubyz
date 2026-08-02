@@ -53,7 +53,7 @@ pub fn execute(args: Args, source: Source) void {
 			const user = target.user;
 			const biome = b.biome.biome;
 			if (biome.isCave) {
-				user.sendMessage("#ff0000Teleport to biome is only available for surface biomes.", .{});
+				source.sendMessage("#ff0000Teleport to biome is only available for surface biomes.", .{});
 				return;
 			}
 			const radius = 16384;
