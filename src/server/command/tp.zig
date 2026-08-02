@@ -8,7 +8,7 @@ pub const description = "Teleport to location.";
 pub const usage =
 	\\/tp <biome>
 	\\/tp @<playerIndex> <x> <y> <z>
-	\\/tp @<playerIndex> @<playerIndex>
+	\\/tp @<sourcePlayerIndex> @<destinationPlayerIndex>
 ;
 
 pub const Args = union(enum) {
