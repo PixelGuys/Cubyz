@@ -214,6 +214,15 @@ pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, entity: m
 	}
 }
 
+pub fn setSpawn(position: Vec3i, respawnEffeciency: f32, side: Side, entity: main.entity.Entity) void {
+	threadContext.assertCorrectContext(side);
+	if (side == .client) {
+		client.executeCommand(.{.setSpawn = .{.target = entity, .position = position, .respawnEffeciency = respawnEffeciency}});
+	} else {
+		server.executeCommand(.{.setSpawn = .{.target = entity, .position = position, .respawnEffeciency = respawnEffeciency}}, null);
+	}
+}
+
 pub fn setGamemode(user: ?*main.server.User, gamemode: Gamemode) void {
 	if (user == null) {
 		client.setGamemode(gamemode);
@@ -241,6 +250,7 @@ pub const Command = struct { // MARK: Command
 		updateBlock = 9,
 		addHealth = 10,
 		chatCommand = 12,
+		setSpawn = 18,
 	};
 	pub const Payload = union(PayloadType) {
 		open: Open,
@@ -261,6 +271,7 @@ pub const Command = struct { // MARK: Command
 		updateBlock: UpdateBlock,
 		addHealth: AddHealth,
 		chatCommand: ChatCommand,
+		setSpawn: SetSpawn,
 	};
 
 	const BaseOperationType = enum(u8) {
@@ -1759,6 +1770,48 @@ pub const Command = struct { // MARK: Command
 			return .{
 				.message = main.globalAllocator.dupe(u8, try reader.readSlice(len)),
 			};
+		}
+	};
+
+	const SetSpawn = struct { // MARK: SetSpawn
+		target: main.entity.Entity,
+		position: Vec3i,
+		respawnEffeciency: f32,
+
+		pub fn run(self: SetSpawn, ctx: Context) error{serverFailure}!void {
+			var target: ?*main.server.User = null;
+
+			if (ctx.side == .server) {
+				const userList = main.server.getUserList(main.stackAllocator);
+				defer main.stackAllocator.free(userList);
+				for (userList) |user| {
+					if (user.id == self.target) {
+						target = user;
+						break;
+					}
+				}
+
+				if (target == null) return error.serverFailure;
+
+				target.?.spawnPos = @floatFromInt(self.position);
+				target.?.sendRawMessage("Set New SpawnPoint");
+			}
+		}
+
+		fn serialize(self: SetSpawn, writer: *BinaryWriter) void {
+			writer.writeEnum(main.entity.Entity, self.target);
+			writer.writeVec(Vec3i, self.position);
+			writer.writeFloat(f32, self.respawnEffeciency);
+		}
+
+		fn deserialize(reader: *BinaryReader, _: Side, user: ?*main.server.User) !SetSpawn {
+			const result: SetSpawn = .{
+				.target = try reader.readEnum(main.entity.Entity),
+				.position = try reader.readVec(Vec3i),
+				.respawnEffeciency = try reader.readFloat(f32),
+			};
+			if (user.?.id != result.target) return error.Invalid;
+			return result;
 		}
 	};
 };
