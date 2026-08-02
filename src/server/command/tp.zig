@@ -44,7 +44,7 @@ pub fn execute(args: Args, source: Source) void {
 			const user = target.user;
 			const biome = b.biome.biome;
 			if (biome.isCave) {
-				source.sendMessage("#ff0000Teleport to biome is only available for surface biomes.", .{});
+				user.sendMessage("#ff0000Teleport to biome is only available for surface biomes.", .{});
 				return;
 			}
 			const radius = 16384;
@@ -90,7 +90,7 @@ pub fn execute(args: Args, source: Source) void {
 					stepsRemaining = dirChanges/2;
 				}
 			}
-			source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.", .{});
+			user.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.", .{});
 			return;
 		},
 		inline .@"/tp <x> <y> <z>", .@"/tp <playerIndex> <x> <y> <z>" => |pos| {
