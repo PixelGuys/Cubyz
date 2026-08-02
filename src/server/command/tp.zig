@@ -13,23 +13,31 @@ pub const usage =
 
 pub const Args = union(enum) {
 	@"/tp <biome>": struct { biome: command.BiomeId },
+	@"/tp <x> <y> <z>": struct {
+		x: command.Coordinate,
+		y: command.Coordinate,
+		z: command.Coordinate,
+	},
+	@"/tp <playerIndex>": struct {
+		playerIndex: command.PlayerIndex,
+	},
 	@"/tp <playerIndex> <x> <y> <z>": struct {
-		playerIndex: ?command.PlayerIndex,
+		playerIndex: command.PlayerIndex,
 		x: command.Coordinate,
 		y: command.Coordinate,
 		z: command.Coordinate,
 	},
 	@"/tp <playerIndex1> <playerIndex2>": struct {
-		playerIndex1: ?command.PlayerIndex,
+		playerIndex1: command.PlayerIndex,
 		playerIndex2: command.PlayerIndex,
 	},
 };
 
 pub fn execute(args: Args, source: Source) void {
 	const target = switch (args) {
-		.@"/tp <biome>" => command.Target.fromPlayerIndex(null, source) catch return,
 		.@"/tp <playerIndex> <x> <y> <z>" => |params| command.Target.fromPlayerIndex(params.playerIndex, source) catch return,
 		.@"/tp <playerIndex1> <playerIndex2>" => |params| command.Target.fromPlayerIndex(params.playerIndex1, source) catch return,
+		else => command.Target.fromPlayerIndex(null, source) catch return,
 	};
 	const pos: main.vec.Vec3d = blk: switch (args) {
 		.@"/tp <biome>" => |b| {
@@ -85,8 +93,12 @@ pub fn execute(args: Args, source: Source) void {
 			source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.", .{});
 			return;
 		},
-		.@"/tp <playerIndex> <x> <y> <z>" => |pos| {
-			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source) catch return;
+		inline .@"/tp <x> <y> <z>", .@"/tp <playerIndex> <x> <y> <z>" => |pos| {
+			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, target.user) catch return;
+		},
+		.@"/tp <playerIndex>" => |index| {
+			const dest = command.Target.fromPlayerIndex(index.playerIndex, source) catch return;
+			break :blk dest.user.player().pos;
 		},
 		.@"/tp <playerIndex1> <playerIndex2>" => |index| {
 			const dest = command.Target.fromPlayerIndex(index.playerIndex2, source) catch return;
