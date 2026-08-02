@@ -27,16 +27,16 @@ pub const Args = union(enum) {
 		y: command.Coordinate,
 		z: command.Coordinate,
 	},
-	@"/tp <playerIndex1> <playerIndex2>": struct {
-		playerIndex1: command.PlayerIndex,
-		playerIndex2: command.PlayerIndex,
+	@"/tp <sourcePlayerIndex> <destinationPlayerIndex>": struct {
+		sourcePlayerIndex: command.PlayerIndex,
+		destinationPlayerIndex: command.PlayerIndex,
 	},
 };
 
 pub fn execute(args: Args, source: Source) void {
 	const target = switch (args) {
 		.@"/tp <playerIndex> <x> <y> <z>" => |params| command.Target.fromPlayerIndex(params.playerIndex, source) catch return,
-		.@"/tp <playerIndex1> <playerIndex2>" => |params| command.Target.fromPlayerIndex(params.playerIndex1, source) catch return,
+		.@"/tp <sourcePlayerIndex> <destinationPlayerIndex>" => |params| command.Target.fromPlayerIndex(params.sourcePlayerIndex, source) catch return,
 		else => command.Target.fromPlayerIndex(null, source) catch return,
 	};
 	const pos: main.vec.Vec3d = blk: switch (args) {
@@ -94,14 +94,14 @@ pub fn execute(args: Args, source: Source) void {
 			return;
 		},
 		inline .@"/tp <x> <y> <z>", .@"/tp <playerIndex> <x> <y> <z>" => |pos| {
-			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, target.user) catch return;
+			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source) catch return;
 		},
 		.@"/tp <playerIndex>" => |index| {
 			const dest = command.Target.fromPlayerIndex(index.playerIndex, source) catch return;
 			break :blk dest.user.player().pos;
 		},
-		.@"/tp <playerIndex1> <playerIndex2>" => |index| {
-			const dest = command.Target.fromPlayerIndex(index.playerIndex2, source) catch return;
+		.@"/tp <sourcePlayerIndex> <destinationPlayerIndex>" => |index| {
+			const dest = command.Target.fromPlayerIndex(index.destinationPlayerIndex, source) catch return;
 			break :blk dest.user.player().pos;
 		},
 	};
