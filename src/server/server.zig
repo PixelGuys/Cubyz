@@ -549,7 +549,7 @@ pub const User = struct { // MARK: User
 		if (user.spawnPos == null) user.spawnPos = @floatFromInt(main.server.world.?.spawn);
 		const userSpawn = @as(Vec3i, @intFromFloat(user.spawnPos orelse defaultSpawn));
 		const targetBlock = main.game.getBlockWithSide(main.sync.Side.server, userSpawn[0], userSpawn[1], userSpawn[2]) orelse return defaultSpawn;
-		
+
 		if (targetBlock.blockEntity() == null) {
 			user.sendRawMessage("Could Not Find Spawnpoint, Teleporting back to world spawn");
 			return defaultSpawn;
@@ -564,7 +564,7 @@ pub const User = struct { // MARK: User
 		if (user.spawnPos == null) user.spawnPos = @floatFromInt(main.server.world.?.spawn);
 		const userSpawn = @as(Vec3i, @intFromFloat(user.spawnPos orelse defaultSpawn));
 		const targetBlock = main.game.getBlockWithSide(main.sync.Side.server, userSpawn[0], userSpawn[1], userSpawn[2]) orelse return defaultRespawnEffeciency;
-		
+
 		if (targetBlock.blockEntity() == null) return defaultRespawnEffeciency;
 		if (!std.mem.eql(u8, targetBlock.blockEntity().?.id, "cubyz:respawn_anchor")) user.respawnEffeciency = defaultRespawnEffeciency;
 		return user.respawnEffeciency orelse defaultRespawnEffeciency;
