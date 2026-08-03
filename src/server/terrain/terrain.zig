@@ -61,7 +61,7 @@ pub const BlockGenerator = struct {
 		var list: main.List(BlockGenerator) = .initCapacity(allocator, generatorRegistry.values().len);
 		for (generatorRegistry.keys(), generatorRegistry.values()) |id, generator| {
 			const generatorSettings = settings.getChild(id);
-			if (generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
+			if ((generatorSettings.get(GeneratorState, "state") orelse generator.defaultState) == .disabled) continue;
 			generator.init(generatorSettings);
 			list.appendAssumeCapacity(generator);
 		}
@@ -93,11 +93,11 @@ pub const TerrainGenerationProfile = struct {
 			.seed = seed,
 		};
 		var generator = settings.getChild("mapGenerator");
-		self.mapFragmentGenerator = try SurfaceMap.MapGenerator.getGeneratorById(generator.get([]const u8, "id", "cubyz:mapgen_v1"));
+		self.mapFragmentGenerator = try SurfaceMap.MapGenerator.getGeneratorById(generator.get([]const u8, "id") orelse "cubyz:mapgen_v1");
 		self.mapFragmentGenerator.init(generator);
 
 		generator = settings.getChild("climateGenerator");
-		self.climateGenerator = try ClimateMap.ClimateMapGenerator.getGeneratorById(generator.get([]const u8, "id", "cubyz:polar_circles"));
+		self.climateGenerator = try ClimateMap.ClimateMapGenerator.getGeneratorById(generator.get([]const u8, "id") orelse "cubyz:polar_circles");
 		self.climateGenerator.init(generator);
 
 		generator = settings.getChild("caveBiomeGenerators");
@@ -113,11 +113,11 @@ pub const TerrainGenerationProfile = struct {
 		self.generators = BlockGenerator.getAndInitGenerators(main.worldArena, generator);
 
 		const climateWavelengths = settings.getChild("climateWavelengths");
-		self.climateWavelengths[0] = climateWavelengths.get(f32, "hot_cold", 2400);
-		self.climateWavelengths[1] = climateWavelengths.get(f32, "land_ocean", 3200);
-		self.climateWavelengths[2] = climateWavelengths.get(f32, "wet_dry", 2400);
-		self.climateWavelengths[3] = climateWavelengths.get(f32, "vegetation", 2400);
-		self.climateWavelengths[4] = climateWavelengths.get(f32, "mountain", 500);
+		self.climateWavelengths[0] = climateWavelengths.get(f32, "hot_cold") orelse 2400;
+		self.climateWavelengths[1] = climateWavelengths.get(f32, "land_ocean") orelse 3200;
+		self.climateWavelengths[2] = climateWavelengths.get(f32, "wet_dry") orelse 2400;
+		self.climateWavelengths[3] = climateWavelengths.get(f32, "vegetation") orelse 2400;
+		self.climateWavelengths[4] = climateWavelengths.get(f32, "mountain") orelse 500;
 
 		return self;
 	}

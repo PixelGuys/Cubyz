@@ -25,11 +25,11 @@
 	.ground_structure = .{
 		"2 to 4 cubyz:ash",
 	},
-	.stoneBlock = "cubyz:basalt/base",
+	.stoneBlock = "cubyz:basalt/smooth",
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:basalt/base",
+			.block = "cubyz:basalt/smooth",
 			.chance = 0.1,
 			.width = 5,
 			.variation = 5,

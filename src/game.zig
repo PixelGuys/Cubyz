@@ -116,7 +116,7 @@ pub const Player = struct { // MARK: Player
 	pub const jumpHeight = 1.25;
 
 	fn loadFrom(zon: ZonElement) !void {
-		try super.loadFrom(id, zon, .client);
+		try super.loadFrom(id, zon, .client, undefined);
 	}
 
 	pub fn setPosBlocking(newPos: Vec3d) void {
@@ -272,6 +272,7 @@ pub const World = struct { // MARK: World
 	gameTime: Atomic(i64) = .init(0),
 	dayTime: DayTime = .{},
 	connected: bool = true,
+	paused: bool = true,
 	blockPalette: *assets.Palette = undefined,
 	itemPalette: *assets.Palette = undefined,
 	proceduralItemPalette: *assets.Palette = undefined,
@@ -281,34 +282,60 @@ pub const World = struct { // MARK: World
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
 
-	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
+	shouldRestart: std.atomic.Value(bool) = .init(false),
+	shouldReload: bool = false,
+
+	fn connect(self: *World) !ZonElement {
 		main.heap.allocators.createWorldArena();
 		errdefer main.heap.allocators.destroyWorldArena();
+
+		self.conn.handShakeState.store(if (self.shouldReload) .reload else .start, .monotonic);
+
 		self.* = .{
-			.conn = try Connection.init(manager, ip, null),
-			.manager = manager,
+			.conn = self.conn,
+			.manager = self.manager,
 			.name = "client",
 			.milliTime = main.timestamp().toMilliseconds(),
 		};
+
 		errdefer self.conn.deinit();
 
 		self.itemDrops.init(main.globalAllocator);
 		errdefer self.itemDrops.deinit();
 
-		try network.protocols.handShake.clientSide(self.conn, settings.playerName);
+		return try network.protocols.handShake.clientSide(self.conn, settings.playerName);
+	}
 
-		main.Window.setMouseGrabbed(true);
+	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !ZonElement {
+		self.conn = try Connection.init(manager, ip, null);
+		self.manager = manager;
+		return try self.connect();
+	}
 
-		main.blocks.meshes.generateTextureArray();
-		main.particles.ParticleManager.generateTextureArray();
-		main.models.uploadModels();
-		main.entityModel.loadModelsAndTexture();
+	pub fn @"continue"(self: *World) !void {
+		try self.finishHandshake(try self.connect());
 	}
 
 	pub fn deinit(self: *World) void {
+		main.server.stop(.stop);
+
+		if (main.server.thread) |serverThread| {
+			serverThread.join();
+			main.server.thread = null;
+		}
+
 		self.conn.deinit();
 
 		self.connected = false;
+		self.pause();
+		self.manager.deinit();
+	}
+	pub fn pause(self: *World) void {
+		main.threadPool.pause();
+		defer main.threadPool.@"continue"();
+		defer main.threadPool.updateTaskPriority();
+
+		self.paused = true;
 
 		// TODO: Close all world related guis.
 		main.gui.inventory.deinit();
@@ -317,7 +344,6 @@ pub const World = struct { // MARK: World
 		Player.inventory.deinit(main.globalAllocator);
 		main.sync.client.reset();
 
-		main.threadPool.clear();
 		Player.super.deinit(.client);
 		main.entity.client.clear();
 		self.itemDrops.deinit();
@@ -327,14 +353,6 @@ pub const World = struct { // MARK: World
 		self.biomePalette.deinit();
 		self.entityComponentPalette.deinit();
 		self.entityModelPalette.deinit();
-		self.manager.deinit();
-		main.server.stop(.stop);
-
-		if (main.server.thread) |serverThread| {
-			serverThread.join();
-			main.server.thread = null;
-		}
-		main.threadPool.clear();
 		renderer.mesh_storage.deinit();
 		renderer.mesh_storage.init();
 		assets.unloadAssets();
@@ -342,6 +360,12 @@ pub const World = struct { // MARK: World
 	}
 
 	pub fn finishHandshake(self: *World, zon: ZonElement) !void {
+		self.conn.manager.world = self;
+		main.game.world = self;
+		errdefer main.heap.allocators.destroyWorldArena();
+		errdefer self.conn.deinit();
+		errdefer self.itemDrops.deinit();
+
 		// TODO: Consider using a per-world allocator.
 		self.blockPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("blockPalette"), "cubyz:air");
 		errdefer self.blockPalette.deinit();
@@ -356,16 +380,25 @@ pub const World = struct { // MARK: World
 		self.entityComponentPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("entityComponentPalette"), null);
 		errdefer self.entityComponentPalette.deinit();
 
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/serverAssets", .{main.files.cubyzDirStr()}) catch unreachable;
+		const path = main.stackAllocator.print("{s}/serverAssets", .{main.files.cubyzDirStr()});
 		defer main.stackAllocator.free(path);
 		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.proceduralItemPalette, self.biomePalette, self.entityModelPalette, self.entityComponentPalette);
-		Player.id = @enumFromInt(zon.get(u32, "player_id", @intFromEnum(main.entity.Entity.noValue)));
+		Player.id = @enumFromInt(zon.get(u32, "player_id") orelse @intFromEnum(main.entity.Entity.noValue));
 		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .serverShared, .{.playerInventory = Player.id}, .{});
-		Player.setGamemode(std.enums.fromInt(Gamemode, zon.get(?u8, "gamemode", null) orelse return error.Invalid) orelse return error.Invalid);
+		Player.setGamemode(std.enums.fromInt(Gamemode, zon.get(u8, "gamemode") orelse return error.Invalid) orelse return error.Invalid);
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
 
+		main.Window.setMouseGrabbed(true);
+		main.blocks.meshes.generateTextureArray();
+		main.particles.ParticleManager.generateTextureArray();
+		main.models.uploadModels();
+		main.entityModel.loadModelsAndTexture();
+
 		try Player.loadFrom(zon.getChild("player"));
+		main.network.protocols.handShake.signalLoadedAssets();
+
+		self.paused = false;
 	}
 
 	pub fn update(self: *World, deltaTime: f64) void {
@@ -614,6 +647,10 @@ pub fn getBlockWithSide(comptime side: main.sync.Side, x: i32, y: i32, z: i32) ?
 }
 
 pub fn update(deltaTime: f64) void { // MARK: update()
+	if (world.?.shouldRestart.load(.acquire)) {
+		restart();
+	}
+
 	physics.calculateVolumeProperties(.client, &Player.volumeProperties, Player.super.pos, Player.outerBoundingBox, physics.playerAirTerminalVelocity);
 	if (Player.isFlying.load(.monotonic)) {
 		Player.friction = .{.current = 20, .mobile = 20};
@@ -823,4 +860,21 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	world.?.update(deltaTime);
 	particles.ParticleSystem.update(@floatCast(deltaTime));
+}
+pub fn restart() void {
+	if (world) |_world| {
+		_world.pause();
+
+		network.protocols.reload.informServerOfRestart(_world.conn);
+
+		_world.@"continue"() catch |err| {
+			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
+			main.gui.windowlist.notification.raiseNotification("Encountered error while opening world: {s}", .{@errorName(err)});
+			world = null;
+
+			main.gui.openWindow("main");
+			return;
+		};
+		main.gui.openHud();
+	}
 }

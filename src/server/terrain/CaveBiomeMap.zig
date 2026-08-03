@@ -124,7 +124,7 @@ pub const CaveBiomeGenerator = struct { // MARK: CaveBiomeGenerator
 		var list: main.List(CaveBiomeGenerator) = .initCapacity(allocator, generatorRegistry.values().len);
 		for (generatorRegistry.keys(), generatorRegistry.values()) |id, generator| {
 			const generatorSettings = settings.getChild(id);
-			if (generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
+			if ((generatorSettings.get(GeneratorState, "state") orelse generator.defaultState) == .disabled) continue;
 			generator.init(generatorSettings);
 			list.appendAssumeCapacity(generator);
 		}
@@ -529,7 +529,6 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 
 // MARK: cache
 const cacheSize = 1 << 8; // Must be a power of 2!
-const cacheMask = cacheSize - 1;
 const associativity = 8; // 128 MiB
 var cache: Cache(CaveBiomeMapFragment, cacheSize, associativity, CaveBiomeMapFragment.deferredDeinit) = .{};
 

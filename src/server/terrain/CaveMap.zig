@@ -114,7 +114,7 @@ pub const CaveGenerator = struct { // MARK: CaveGenerator
 		var list: main.List(CaveGenerator) = .initCapacity(allocator, generatorRegistry.values().len);
 		for (generatorRegistry.keys(), generatorRegistry.values()) |id, generator| {
 			const generatorSettings = settings.getChild(id);
-			if (generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
+			if ((generatorSettings.get(GeneratorState, "state") orelse generator.defaultState) == .disabled) continue;
 			generator.init(generatorSettings);
 			list.appendAssumeCapacity(generator);
 		}
@@ -271,7 +271,6 @@ pub const CaveMapView = struct { // MARK: CaveMapView
 
 // MARK: cache
 const cacheSize = 1 << 12; // Must be a power of 2!
-const cacheMask = cacheSize - 1;
 const associativity = 8; // 1024 MiB Cache size
 var cache: Cache(CaveMapFragment, cacheSize, associativity, CaveMapFragment.deferredDeinit) = .{};
 var profile: TerrainGenerationProfile = undefined;

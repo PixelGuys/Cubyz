@@ -30,7 +30,7 @@ const width: f32 = 420;
 
 fn discoverIpAddress() void {
 	main.server.connectionManager.makeOnline();
-	ipAddress = std.fmt.allocPrint(main.globalAllocator.allocator, "{f}", .{main.server.connectionManager.externalAddress}) catch unreachable;
+	ipAddress = main.globalAllocator.print("{f}", .{main.server.connectionManager.externalAddress});
 	gotIpAddress.store(true, .release);
 }
 
@@ -46,21 +46,16 @@ fn invite() void {
 		_thread.join();
 		thread = null;
 	}
-	const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ipAddressEntry.currentString.items) catch |err| {
+	_ = main.server.User.init(main.server.connectionManager, ipAddressEntry.currentString.items) catch |err| {
 		if (err != error.AlreadyConnected) {
 			std.log.err("Cannot connect user: {s}", .{@errorName(err)});
 		}
 		return;
 	};
-	user.decreaseRefCount();
 }
 
 fn copyIp() void {
 	main.Window.setClipboardString(ipAddress);
-}
-
-fn makePublic(public: bool) void {
-	main.server.connectionManager.allowNewConnections.store(public, .monotonic);
 }
 
 pub fn onOpen() void {
@@ -74,7 +69,6 @@ pub fn onOpen() void {
 	ipAddressEntry.obfuscated = main.settings.streamerMode;
 	list.add(ipAddressEntry);
 	list.add(Button.initText(.{0, 0}, 100, "Invite", .{.onAction = .init(invite)}));
-	list.add(CheckBox.init(.{0, 0}, width, "Allow anyone to join (requires a publicly visible IP address+port which may need some configuration in your router)", main.server.connectionManager.allowNewConnections.load(.monotonic), &makePublic));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

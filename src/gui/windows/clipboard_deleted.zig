@@ -37,5 +37,5 @@ pub fn render() void {
 	}
 	const oldColor = draw.setColor(0xffff8080);
 	defer draw.restoreColor(oldColor);
-	draw.print("Your clipboard was cleared.", .{}, 0, 0, 16, .left);
+	draw.print("Your clipboard was cleared.", .{}, 0, 0, 16);
 }

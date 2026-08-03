@@ -1,5 +1,7 @@
 #version 460
 
+#include "frame_uniforms.glsl"
+
 layout(location = 0) in vec3 startPosition;
 layout(location = 1) in vec3 direction;
 layout(location = 2) in vec3 cameraSpacePos;
@@ -17,8 +19,6 @@ layout(binding = 0) uniform sampler2DArray textureSampler;
 layout(binding = 1) uniform sampler2DArray emissionSampler;
 layout(binding = 2) uniform sampler2DArray reflectivityAndAbsorptionSampler;
 layout(binding = 4) uniform samplerCube reflectionMap;
-
-layout(location = 0) uniform mat4 projectionMatrix;
 
 layout(location = 5) uniform vec3 ambientLight;
 layout(location = 7) uniform float sizeScale;

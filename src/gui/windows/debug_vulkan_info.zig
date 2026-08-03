@@ -30,11 +30,11 @@ pub var window = GuiWindow{
 
 pub fn render() void {
 	var y: f32 = 0;
-	draw.print("Vulkan Version: {d}.{d}", .{vulkan.version.major, vulkan.version.minor}, 0, y, 8, .left);
+	draw.print("Vulkan Version: {d}.{d}", .{vulkan.version.major, vulkan.version.minor}, 0, y, 8);
 	y += 8;
 	inline for (comptime std.meta.fieldNames(@TypeOf(vulkan.interestingExtensions))) |extensionName| {
 		if (@field(vulkan.interestingExtensions, extensionName)) {
-			draw.print("{s} present", .{extensionName}, 0, y, 8, .left);
+			draw.print("{s} present", .{extensionName}, 0, y, 8);
 			y += 8;
 		}
 	}

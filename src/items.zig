@@ -35,44 +35,90 @@ const Material = struct { // MARK: Material
 
 	textureRoughness: f32 = undefined,
 	colorPalette: []Color = undefined,
+	outlineColorLight: Color = undefined,
+	outlineColorShadow: Color = undefined,
 	modifiers: []Modifier = undefined,
 
-	pub fn init(self: *Material, allocator: NeverFailingAllocator, zon: ZonElement) void {
-		self.massDamage = zon.get(?f32, "massDamage", null) orelse blk: {
+	fn darken(color: Color, factor: f32) Color {
+		return Color{
+			.r = @intFromFloat(@as(f32, @floatFromInt(color.r))*factor),
+			.g = @intFromFloat(@as(f32, @floatFromInt(color.g))*factor),
+			.b = @intFromFloat(@as(f32, @floatFromInt(color.b))*factor),
+			.a = color.a,
+		};
+	}
+
+	const ColorSource = enum { loadedFromTexture, notLoaded };
+
+	fn loadColorsFromTexture(self: *Material, allocator: NeverFailingAllocator, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8) ColorSource {
+		if (colorTexturePath.len == 0) return .notLoaded;
+		const image = graphics.Image.readFromFile(main.stackAllocator, colorTexturePath, .{.orientation = .asIs}) catch |err| blk: {
+			if (err != error.FileNotFound) {
+				std.log.err("Error while reading material color texture '{s}': {s}", .{colorTexturePath, @errorName(err)});
+			}
+			break :blk graphics.Image.readFromFile(main.stackAllocator, colorReplacementTexturePath, .{.orientation = .asIs}) catch |err2| {
+				std.log.err("Error while reading material color texture. Tried '{s}' and '{s}': {s}", .{colorTexturePath, colorReplacementTexturePath, @errorName(err2)});
+				return .notLoaded;
+			};
+		};
+		defer image.deinit(main.stackAllocator);
+		if (image.width < 2 or image.height < 2) {
+			std.log.err("Material color texture '{s}' must be at least 2x2 pixels (got {}x{}).", .{colorTexturePath, image.width, image.height});
+			return .notLoaded;
+		}
+		self.colorPalette = allocator.alloc(Color, image.width);
+		for (0..image.width) |x| {
+			self.colorPalette[x] = image.getRGB(x, 0);
+		}
+		const shadow = image.getRGB(0, 1);
+		if (shadow.a != 255) {
+			std.log.err("Material color texture '{s}': outlineColorShadow pixel (0,1) must be fully opaque, got alpha {}.", .{colorTexturePath, shadow.a});
+			return .notLoaded;
+		}
+		self.outlineColorShadow = shadow;
+		const light = image.getRGB(1, 1);
+		if (light.a != 255) {
+			std.log.err("Material color texture '{s}': outlineColorLight pixel (1,1) must be fully opaque, got alpha {}.", .{colorTexturePath, light.a});
+			return .notLoaded;
+		}
+		self.outlineColorLight = light;
+		return .loadedFromTexture;
+	}
+
+	pub fn init(self: *Material, allocator: NeverFailingAllocator, zon: ZonElement, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8) void {
+		self.massDamage = zon.get(f32, "massDamage") orelse blk: {
 			std.log.err("Couldn't find material attribute 'massDamage'", .{});
 			break :blk 0;
 		};
-		self.hardnessDamage = zon.get(?f32, "hardnessDamage", null) orelse blk: {
+		self.hardnessDamage = zon.get(f32, "hardnessDamage") orelse blk: {
 			std.log.err("Couldn't find material attribute 'hardnessDamage'", .{});
 			break :blk 0;
 		};
-		self.durability = zon.get(?f32, "durability", null) orelse blk: {
+		self.durability = zon.get(f32, "durability") orelse blk: {
 			std.log.err("Couldn't find material attribute 'durability'", .{});
 			break :blk 0;
 		};
-		self.swingSpeed = zon.get(?f32, "swingSpeed", null) orelse blk: {
+		self.swingSpeed = zon.get(f32, "swingSpeed") orelse blk: {
 			std.log.err("Couldn't find material attribute 'swingSpeed'", .{});
 			break :blk 0;
 		};
-		self.textureRoughness = @max(0, zon.get(f32, "textureRoughness", 1.0));
-		const colors = zon.getChild("colors");
-		self.colorPalette = allocator.alloc(Color, colors.toSlice().len);
-		for (colors.toSlice(), self.colorPalette) |item, *color| {
-			const colorInt: u32 = @intCast((item.as(i64) orelse 0xff000000) & 0xffffffff);
-			color.* = Color{
-				.r = @intCast(colorInt >> 16 & 0xff),
-				.g = @intCast(colorInt >> 8 & 0xff),
-				.b = @intCast(colorInt >> 0 & 0xff),
-				.a = @intCast(colorInt >> 24 & 0xff),
-			};
+		self.textureRoughness = @max(0, zon.get(f32, "textureRoughness") orelse 1.0);
+		if (self.loadColorsFromTexture(allocator, colorTexturePath, colorReplacementTexturePath) == .notLoaded) {
+			const colors = zon.getChild("colors");
+			self.colorPalette = allocator.alloc(Color, colors.toSlice().len);
+			for (colors.toSlice(), self.colorPalette) |item, *color| {
+				color.* = Color.fromArgb(item.as(u32) orelse 0xff000000);
+			}
+			self.outlineColorLight = darken(self.colorPalette[self.colorPalette.len - 1], 0.7);
+			self.outlineColorShadow = darken(self.colorPalette[0], 0.5);
 		}
 		const modifiersZon = zon.getChild("modifiers");
 		self.modifiers = allocator.alloc(Modifier, modifiersZon.toSlice().len);
 		for (modifiersZon.toSlice(), self.modifiers) |item, *modifier| {
-			const id = item.get([]const u8, "id", "not specified");
+			const id = item.get([]const u8, "id") orelse "not specified";
 			const vTable = modifiers.get(id) orelse blk: {
 				std.log.err("Couldn't find modifier with id '{s}'. Replacing it with 'durable'", .{id});
-				break :blk modifiers.get("durable") orelse unreachable;
+				break :blk modifiers.get("durable").?;
 			};
 			modifier.* = .{
 				.vTable = vTable,
@@ -104,7 +150,7 @@ const Material = struct { // MARK: Material
 			outString.appendSlice("§#808080Material\n");
 		}
 		for (self.modifiers) |modifier| {
-			if (modifier.restriction.vTable == modifierRestrictions.get("always") orelse unreachable) {
+			if (modifier.restriction.vTable == modifierRestrictions.get("always").?) {
 				modifier.printTooltip(outString);
 				outString.appendSlice("\n");
 			} else {
@@ -133,10 +179,10 @@ pub const ModifierRestriction = struct {
 	}
 
 	pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) ModifierRestriction {
-		const id = zon.get([]const u8, "id", "always");
+		const id = zon.get([]const u8, "id") orelse "always";
 		const vTable = modifierRestrictions.get(id) orelse blk: {
 			std.log.err("Couldn't find modifier restriction with id '{s}'. Replacing it with 'always'", .{id});
-			break :blk modifierRestrictions.get("always") orelse unreachable;
+			break :blk modifierRestrictions.get("always").?;
 		};
 		return .{
 			.vTable = vTable,
@@ -275,7 +321,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	block: ?u16,
 	foodValue: f32, // TODO: Effects.
 
-	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
+	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
 		self.id = allocator.dupe(u8, id);
 		if (texturePath.len == 0) {
 			self.image = graphics.Image.defaultImage;
@@ -285,21 +331,21 @@ pub const BaseItem = struct { // MARK: BaseItem
 				break :blk graphics.Image.defaultImage;
 			};
 		}
-		self.name = allocator.dupe(u8, zon.get([]const u8, "name", id));
+		self.name = allocator.dupe(u8, zon.get([]const u8, "name") orelse id);
 		self.tags = Tag.loadTagsFromZon(allocator, zon.getChild("tags"));
-		self.stackSize = zon.get(u16, "stackSize", 120);
+		self.stackSize = zon.get(u16, "stackSize") orelse 120;
 		const material = zon.getChild("material");
 		if (material == .object) {
 			self.material = Material{};
-			self.material.?.init(allocator, material);
+			self.material.?.init(allocator, material, colorTexturePath, colorReplacementTexturePath);
 		} else {
 			self.material = null;
 		}
 		self.block = blk: {
-			break :blk blocks.getTypeById(zon.get(?[]const u8, "block", null) orelse break :blk null);
+			break :blk blocks.getTypeById(zon.get([]const u8, "block") orelse break :blk null);
 		};
 		self.texture = null;
-		self.foodValue = zon.get(f32, "food", 0);
+		self.foodValue = zon.get(f32, "food") orelse 0;
 
 		var tooltip: main.ListManaged(u8) = .init(allocator);
 		tooltip.appendSlice(self.name);
@@ -358,6 +404,10 @@ pub const BaseItem = struct { // MARK: BaseItem
 	}
 };
 
+const allNeighborOffsets = [_][2]i8{.{-1, -1}, .{0, -1}, .{1, -1}, .{-1, 0}, .{1, 0}, .{-1, 1}, .{0, 1}, .{1, 1}};
+const orthogonalOffsets = [_][2]i8{.{0, -1}, .{-1, 0}, .{1, 0}, .{0, 1}};
+const diagonalOffsets = [_][2]i8{.{-1, -1}, .{1, -1}, .{-1, 1}, .{1, 1}};
+
 /// Generates the texture of a ProceduralItem using the material information.
 const TextureGenerator = struct { // MARK: TextureGenerator
 	fn generateHeightMap(itemGrid: *[16][16]?BaseItemIndex, seed: *u64) [17][17]f32 {
@@ -407,6 +457,128 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 		return heightMap;
 	}
 
+	fn calculateRawLight(heightMap: *const [17][17]f32, pos: [2]u8) f32 {
+		const lightTL = heightMap[pos[0] + 1][pos[1] + 1] - heightMap[pos[0]][pos[1]];
+		const lightTR = heightMap[pos[0]][pos[1] + 1] - heightMap[pos[0] + 1][pos[1]];
+		var light = (lightTL*2 + lightTR)/3; // value of this typically ranges from -7 to 5
+		light += 4; // illuminate everything by an amount
+		light /= 8; // near-normalize the light value
+		return light;
+	}
+
+	fn calculateLight(heightMap: *const [17][17]f32, pos: [2]u8) f32 {
+		return @max(@min(calculateRawLight(heightMap, pos), 1), 0);
+	}
+
+	fn materialAt(materialGrid: *const [16][16]?BaseItemIndex, pos: ?[2]u8) ?Material {
+		const p = pos orelse return null;
+		const item = materialGrid[p[0]][p[1]] orelse return null;
+		return item.material();
+	}
+
+	fn neighborCoord(pos: [2]u8, offset: [2]i8) ?[2]u8 {
+		const nx = @as(i32, pos[0]) + offset[0];
+		const ny = @as(i32, pos[1]) + offset[1];
+		if (nx < 0 or nx >= 16 or ny < 0 or ny >= 16) return null;
+		return .{@intCast(nx), @intCast(ny)};
+	}
+
+	fn tipCornerDirection(materialGrid: *const [16][16]?BaseItemIndex, pos: [2]u8) ?[2]i8 {
+		var found: ?[2]i8 = null;
+		var count: u32 = 0;
+		for (allNeighborOffsets) |offset| {
+			if (materialAt(materialGrid, neighborCoord(pos, offset)) != null) {
+				count += 1;
+				found = offset;
+			}
+		}
+
+		if (count == 1) {
+			const offset = found.?;
+			if (offset[0] != 0 and offset[1] != 0) return .{-offset[0], -offset[1]};
+			const turnDiagonals: [2][2]i8 = if (offset[0] != 0) .{.{offset[0], -1}, .{offset[0], 1}} else .{.{-1, offset[1]}, .{1, offset[1]}};
+			var current = neighborCoord(pos, offset).?;
+			while (true) {
+				const occ0 = materialAt(materialGrid, neighborCoord(current, turnDiagonals[0])) != null;
+				const occ1 = materialAt(materialGrid, neighborCoord(current, turnDiagonals[1])) != null;
+				if (occ0 and occ1) return null;
+				if (occ0 or occ1) {
+					const turn = if (occ0) turnDiagonals[0] else turnDiagonals[1];
+					return .{-turn[0], -turn[1]};
+				}
+				const next = neighborCoord(current, offset) orelse return null;
+				if (materialAt(materialGrid, next) == null) return null;
+				current = next;
+			}
+		}
+
+		if (count == 3) {
+			for (diagonalOffsets) |d| {
+				if (materialAt(materialGrid, neighborCoord(pos, d)) != null and
+					materialAt(materialGrid, neighborCoord(pos, .{d[0], 0})) != null and
+					materialAt(materialGrid, neighborCoord(pos, .{0, d[1]})) != null)
+				{
+					return .{-d[0], -d[1]};
+				}
+			}
+		}
+		return null;
+	}
+
+	fn isOutlinePixel(materialGrid: *const [16][16]?BaseItemIndex, pos: [2]u8) bool {
+		for (orthogonalOffsets) |offset| {
+			if (materialAt(materialGrid, neighborCoord(pos, offset)) != null) return true;
+		}
+		for (diagonalOffsets) |offset| {
+			const m = neighborCoord(pos, offset) orelse continue;
+			if (materialAt(materialGrid, m) == null) continue;
+			const corner = tipCornerDirection(materialGrid, m) orelse continue;
+			if (corner[0] == -offset[0] and corner[1] == -offset[1]) return true;
+		}
+		return false;
+	}
+
+	fn neighborWeight(offset: [2]i8) f32 {
+		return if (offset[0] != 0 and offset[1] != 0) 1.0/@sqrt(2.0) else 1.0;
+	}
+
+	fn mostCommonNeighborMaterial(materialGrid: *const [16][16]?BaseItemIndex, heightMap: *const [17][17]f32, pos: [2]u8, offsets: []const [2]i8) ?Material {
+		const Tally = struct { item: BaseItemIndex, score: f32, lightWeight: f32 };
+		var tallies: main.List(Tally) = .empty;
+		defer tallies.deinit(main.stackAllocator);
+
+		outer: for (offsets) |offset| {
+			const neighborPos = neighborCoord(pos, offset) orelse continue;
+			const item = materialGrid[neighborPos[0]][neighborPos[1]] orelse continue;
+			if (item.material() == null) continue;
+			const score = neighborWeight(offset);
+			const light = calculateRawLight(heightMap, neighborPos);
+
+			for (tallies.items) |*tally| {
+				if (tally.item == item) {
+					tally.score += score;
+					tally.lightWeight += light;
+					continue :outer;
+				}
+			}
+			tallies.append(main.stackAllocator, .{.item = item, .score = score, .lightWeight = light});
+		}
+
+		var best: ?Tally = null;
+		for (tallies.items) |tally| {
+			const better = best == null or tally.score > best.?.score or
+				(tally.score == best.?.score and tally.lightWeight > best.?.lightWeight) or
+				(tally.score == best.?.score and tally.lightWeight == best.?.lightWeight and @intFromEnum(tally.item) < @intFromEnum(best.?.item));
+			if (better) best = tally;
+		}
+		return if (best) |b| b.item.material() else null;
+	}
+
+	fn findNeighborMaterial(materialGrid: *const [16][16]?BaseItemIndex, heightMap: *const [17][17]f32, pos: [2]u8) ?Material {
+		if (!isOutlinePixel(materialGrid, pos)) return null;
+		return mostCommonNeighborMaterial(materialGrid, heightMap, pos, &allNeighborOffsets);
+	}
+
 	pub fn generate(proceduralItem: *ProceduralItem) void {
 		const img = proceduralItem.image;
 		for (0..16) |x| {
@@ -435,17 +607,15 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 				if (proceduralItem.materialGrid[x][y]) |item| {
 					if (item.material()) |material| {
 						// Calculate the lighting based on the nearest free space:
-						const lightTL = heightMap[x + 1][y + 1] - heightMap[x][y];
-						const lightTR = heightMap[x][y + 1] - heightMap[x + 1][y];
-						var light = (lightTL*2 + lightTR)/3; // value of this typically ranges from -7 to 5
-						light += 4; // illuminate everything by an amount
-						light /= 8; // near-normalize the light value
-						light = @max(@min(light, 1), 0);
+						const light = calculateLight(&heightMap, .{x, y});
 						const colorIndex: usize = @round(light*@as(f32, @floatFromInt(material.colorPalette.len - 1)));
 						img.setRGB(x, 15 - y, material.colorPalette[colorIndex]);
 					} else {
 						img.setRGB(x, 15 - y, if ((x ^ y) & 1 == 0) Color{.r = 255, .g = 0, .b = 255, .a = 255} else Color{.r = 0, .g = 0, .b = 0, .a = 255});
 					}
+				} else if (findNeighborMaterial(&proceduralItem.materialGrid, &heightMap, .{x, y})) |material| {
+					const light = calculateLight(&heightMap, .{x, y});
+					img.setRGB(x, 15 - y, if (light > 0.5) material.outlineColorLight else material.outlineColorShadow);
 				} else {
 					img.setRGB(x, 15 - y, Color{.r = 0, .g = 0, .b = 0, .a = 0});
 				}
@@ -532,7 +702,8 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 			}
 		}
 		while (floodfillQueue.popFront()) |pos| {
-			for ([4]Vec2i{.{-1, 0}, .{1, 0}, .{0, -1}, .{0, 1}}) |delta| {
+			for (allNeighborOffsets) |offset| {
+				const delta = Vec2i{offset[0], offset[1]};
 				const newPos = pos + delta;
 				if (newPos[0] < 0 or newPos[0] >= gridCellsReached.len) continue;
 				if (newPos[1] < 0 or newPos[1] >= gridCellsReached.len) continue;
@@ -592,6 +763,16 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 			return @enumFromInt(self.i);
 		}
 	};
+
+	pub fn toBytes(self: ProceduralItemTypeIndex, writer: *BinaryWriter) void {
+		writer.writeEnum(ProceduralItemTypeIndex, self);
+	}
+
+	pub fn fromBytes(reader: *BinaryReader) !ProceduralItemTypeIndex {
+		const result = try reader.readEnum(ProceduralItemTypeIndex);
+		if (@intFromEnum(result) >= proceduralItemTypeList.items.len) return error.InvalidEnumTag;
+		return result;
+	}
 
 	pub fn iterator() ProceduralItemTypeIterator {
 		return .{};
@@ -750,11 +931,11 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	}
 
 	pub fn initFromZon(zon: ZonElement) *ProceduralItem {
-		const self = initFromCraftingGrid(extractItemsFromZon(zon.getChild("grid")), zon.get(u32, "seed", 0), ProceduralItemTypeIndex.fromId(zon.get([]const u8, "type", "cubyz:pickaxe")) orelse blk: {
-			std.log.err("Couldn't find procedural item with type {s}. Replacing it with cubyz:pickaxe", .{zon.get([]const u8, "type", "cubyz:pickaxe")});
+		const self = initFromCraftingGrid(extractItemsFromZon(zon.getChild("grid")), zon.get(u32, "seed") orelse 0, ProceduralItemTypeIndex.fromId(zon.get([]const u8, "type") orelse "cubyz:pickaxe") orelse blk: {
+			std.log.err("Couldn't find procedural item with type {s}. Replacing it with cubyz:pickaxe", .{zon.get([]const u8, "type") orelse "cubyz:pickaxe"});
 			break :blk ProceduralItemTypeIndex.fromId("cubyz:pickaxe") orelse @panic("cubyz:pickaxe procedural item not found. Did you load the game with the correct assets?");
 		});
-		self.durability = zon.get(u32, "durability", std.math.lossyCast(u32, self.getProperty(.maxDurability)));
+		self.durability = zon.get(u32, "durability") orelse std.math.lossyCast(u32, self.getProperty(.maxDurability));
 		return self;
 	}
 
@@ -910,6 +1091,15 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		self.durability -|= 1;
 		return self.durability == 0;
 	}
+
+	pub fn canPutIntoWorkbenchCallback(source: Inventory.Source, item: Item, slot: usize) bool {
+		if (source.workbench.proceduralItemIndex.slotInfos()[slot].disabled) return false;
+		return switch (item) {
+			.null => true,
+			.baseItem => |baseItem| baseItem.material() != null,
+			.proceduralItem => false,
+		};
+	}
 };
 
 const ItemType = enum(u7) {
@@ -924,7 +1114,7 @@ pub const Item = union(ItemType) { // MARK: Item
 	null: void,
 
 	pub fn init(zon: ZonElement) !Item {
-		if (BaseItemIndex.fromId(zon.get([]const u8, "item", "null"))) |baseItem| {
+		if (BaseItemIndex.fromId(zon.get([]const u8, "item") orelse "null")) |baseItem| {
 			return Item{.baseItem = baseItem};
 		} else {
 			const proceduralItemZon = zon.getChild("tool");
@@ -1088,7 +1278,7 @@ pub const ItemStack = struct { // MARK: ItemStack
 	pub fn load(zon: ZonElement) !ItemStack {
 		return .{
 			.item = try Item.init(zon),
-			.amount = zon.get(?u16, "amount", null) orelse return error.InvalidAmount,
+			.amount = zon.get(u16, "amount") orelse return error.InvalidAmount,
 		};
 	}
 
@@ -1246,11 +1436,11 @@ pub fn reset() void {
 	itemListSize = 0;
 }
 
-pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) *BaseItem {
+pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8, id: []const u8, zon: ZonElement) *BaseItem {
 	const newItem = &itemList[itemListSize];
 	defer itemListSize += 1;
 
-	newItem.init(main.worldArena, texturePath, replacementTexturePath, id, zon);
+	newItem.init(main.worldArena, texturePath, replacementTexturePath, colorTexturePath, colorReplacementTexturePath, id, zon);
 	const result = reverseIndices.getOrPut(main.worldArena.allocator, newItem.id) catch unreachable;
 	if (!result.found_existing) {
 		result.value_ptr.* = @enumFromInt(itemListSize);
@@ -1265,13 +1455,13 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 	var split = std.mem.splitScalar(u8, id, ':');
 	const mod = split.first();
 	const proceduralItem = split.rest();
-	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/tools/{s}{s}.png", .{assetFolder, mod, proceduralItem, layerPostfix}) catch unreachable;
+	const path = main.stackAllocator.print("{s}/{s}/tools/{s}{s}.png", .{assetFolder, mod, proceduralItem, layerPostfix});
 	defer main.stackAllocator.free(path);
 	const image = main.graphics.Image.readFromFile(main.stackAllocator, path, .{.orientation = .openGl}) catch |err| blk: {
 		if (err != error.FileNotFound) {
 			std.log.err("Error while reading procedural item image '{s}': {s}", .{path, @errorName(err)});
 		}
-		const replacementPath = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/tools/{s}{s}.png", .{mod, proceduralItem, layerPostfix}) catch unreachable;
+		const replacementPath = main.stackAllocator.print("assets/{s}/tools/{s}{s}.png", .{mod, proceduralItem, layerPostfix});
 		defer main.stackAllocator.free(replacementPath);
 		break :blk main.graphics.Image.readFromFile(main.stackAllocator, replacementPath, .{.orientation = .openGl}) catch |err2| {
 			if (layerPostfix.len == 0 or err2 != error.FileNotFound) {
@@ -1317,10 +1507,10 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 	defer parameterMatrices.deinit(main.stackAllocator);
 	for (zon.getChild("parameters").toSlice()) |paramZon| {
 		const val = parameterMatrices.addOne(main.stackAllocator);
-		val.source = MaterialProperty.fromString(paramZon.get([]const u8, "source", "not specified"));
-		val.destination = ProceduralItemProperty.fromString(paramZon.get([]const u8, "destination", "not specified"));
-		val.resultScale = paramZon.get(f32, "factor", 1.0);
-		val.method = PropertyMatrix.Method.fromString(paramZon.get([]const u8, "method", "not specified")) orelse .sum;
+		val.source = MaterialProperty.fromString(paramZon.get([]const u8, "source") orelse "not specified");
+		val.destination = ProceduralItemProperty.fromString(paramZon.get([]const u8, "destination") orelse "not specified");
+		val.resultScale = paramZon.get(f32, "factor") orelse 1.0;
+		val.method = PropertyMatrix.Method.fromString(paramZon.get([]const u8, "method") orelse "not specified") orelse .sum;
 		const matrixZon = paramZon.getChild("matrix");
 		var total_weight: f32 = 0.0;
 		for (0..25) |i| {
@@ -1352,19 +1542,6 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 	proceduralItemTypeIdToIndex.put(main.worldArena.allocator, idDupe, @enumFromInt(proceduralItemTypeList.items.len - 1)) catch unreachable;
 
 	std.log.debug("Registered procedural item: '{s}'", .{id});
-}
-
-fn parseRecipeItem(zon: ZonElement) !ItemStack {
-	var id = zon.as([]const u8, "");
-	id = std.mem.trim(u8, id, &std.ascii.whitespace);
-	var result: ItemStack = .{.amount = 1};
-	if (std.mem.indexOfScalar(u8, id, ' ')) |index| blk: {
-		result.amount = std.fmt.parseInt(u16, id[0..index], 0) catch break :blk;
-		id = id[index + 1 ..];
-		id = std.mem.trim(u8, id, &std.ascii.whitespace);
-	}
-	result.item = .{.baseItem = BaseItemIndex.fromId(id) orelse return error.ItemNotFound};
-	return result;
 }
 
 pub fn registerRecipes(zon: ZonElement) void {

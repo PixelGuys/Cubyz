@@ -31,8 +31,8 @@ fn transform(quad: *main.models.QuadInfo, data: u16) void {
 }
 
 pub fn createBlockModel(block: Block, modeData: *u16, zon: ZonElement) ModelIndex {
-	const modelId = zon.get([]const u8, "model", "cubyz:cube");
-	const stateCount = zon.get(u16, "states", 2);
+	const modelId = zon.get([]const u8, "model") orelse "cubyz:cube";
+	const stateCount = zon.get(u16, "states") orelse 2;
 	const blockId = block.id();
 	if (stateCount <= 1) {
 		std.log.err("Block '{s}' uses texture pile with {} states. 'texturePile' should have at least 2 states, use 'no_rotation' instead", .{blockId, stateCount});

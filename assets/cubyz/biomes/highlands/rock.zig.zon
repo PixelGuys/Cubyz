@@ -8,7 +8,7 @@
 	.roughness = 0,
 	.mountains = 50,
 	.hills = 2,
-	.stoneBlock = "cubyz:slate/base",
+	.stoneBlock = "cubyz:slate/smooth",
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:highlands/base",
@@ -18,7 +18,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.chance = 0.08,
 			.size = 9,
 			.size_variation = 6,
@@ -27,7 +27,7 @@
 		},
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.chance = 0.01,
 			.size = 12,
 			.size_variation = 6,
