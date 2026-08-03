@@ -275,15 +275,52 @@ const deviceExtensions = blk: {
 	break :blk baseDeviceExtensions;
 };
 
-const deviceFeatures: c.VkPhysicalDeviceFeatures = .{
-	// needed for indirect chunk rendering
-	.multiDrawIndirect = c.VK_TRUE,
-	.vertexPipelineStoresAndAtomics = c.VK_TRUE,
-	.fragmentStoresAndAtomics = c.VK_TRUE,
-	// needed for colored glass
-	.dualSrcBlend = c.VK_TRUE,
-	// needed to prevent near-plane clipping
-	.depthClamp = c.VK_TRUE,
+const DeviceFeatures = struct {
+	v10: c.VkPhysicalDeviceFeatures,
+	v11: c.VkPhysicalDeviceVulkan11Features,
+	v12: c.VkPhysicalDeviceVulkan12Features,
+	v13: c.VkPhysicalDeviceVulkan13Features,
+
+	fn getFromDevice(dev: c.VkPhysicalDevice) DeviceFeatures {
+		var self: DeviceFeatures = undefined;
+		var features: c.VkPhysicalDeviceFeatures2 = .{
+			.sType = c.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+			.pNext = self.chain(),
+		};
+		c.vkGetPhysicalDeviceFeatures2(dev, &features);
+		self.v10 = features.features;
+		return self;
+	}
+
+	fn chain(self: *DeviceFeatures) *anyopaque {
+		self.v11.sType = c.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+		self.v11.pNext = &self.v12;
+		self.v12.sType = c.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+		self.v12.pNext = &self.v13;
+		self.v13.sType = c.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+		self.v13.pNext = null;
+		return &self.v11;
+	}
+};
+
+const deviceFeatures: DeviceFeatures = .{
+	.v10 = .{
+		// needed for indirect chunk rendering
+		.multiDrawIndirect = c.VK_TRUE,
+		.vertexPipelineStoresAndAtomics = c.VK_TRUE,
+		.fragmentStoresAndAtomics = c.VK_TRUE,
+		// needed for colored glass
+		.dualSrcBlend = c.VK_TRUE,
+		// needed to prevent near-plane clipping
+		.depthClamp = c.VK_TRUE,
+	},
+	.v11 = .{},
+	.v12 = .{},
+	.v13 = .{
+		// together they replace render passes, device support is basically at 100%
+		.synchronization2 = c.VK_TRUE,
+		.dynamicRendering = c.VK_TRUE,
+	},
 };
 
 const QueueFamilyIndidices = struct {
@@ -330,8 +367,7 @@ fn checkDeviceExtensionSupport(dev: c.VkPhysicalDevice) bool {
 fn getDeviceScore(dev: c.VkPhysicalDevice) f32 {
 	var properties: c.VkPhysicalDeviceProperties = undefined;
 	c.vkGetPhysicalDeviceProperties(dev, &properties);
-	var features: c.VkPhysicalDeviceFeatures = undefined;
-	c.vkGetPhysicalDeviceFeatures(dev, &features);
+	const features: DeviceFeatures = .getFromDevice(dev);
 	std.log.debug("Device: {s}", .{@as([*:0]const u8, @ptrCast(&properties.deviceName))});
 	std.log.debug("Properties: {}", .{properties});
 	std.log.debug("Features: {}", .{features});
@@ -351,10 +387,14 @@ fn getDeviceScore(dev: c.VkPhysicalDevice) f32 {
 	}
 	if (!findQueueFamilies(dev).isComplete() or !checkDeviceExtensionSupport(dev)) return 0;
 
-	inline for (comptime std.meta.fieldNames(@TypeOf(deviceFeatures))) |name| {
-		if (@field(deviceFeatures, name) == c.VK_TRUE and @field(features, name) == c.VK_FALSE) {
-			std.log.warn("Rejecting device: {s} is not supported", .{name});
-			return 0;
+	inline for (comptime std.meta.fieldNames(@TypeOf(deviceFeatures))) |ver| {
+		inline for (comptime std.meta.fieldNames(@TypeOf(@field(deviceFeatures, ver)))) |name| {
+			if (comptime std.mem.eql(u8, name, "sType")) continue;
+			if (comptime std.mem.eql(u8, name, "pNext")) continue;
+			if (@field(@field(deviceFeatures, ver), name) == c.VK_TRUE and @field(@field(features, ver), name) == c.VK_FALSE) {
+				std.log.warn("Rejecting device: {s} is not supported", .{name});
+				return 0;
+			}
 		}
 	}
 
@@ -418,11 +458,14 @@ fn createLogicalDevice() void {
 		});
 	}
 
+	var features = deviceFeatures;
+
 	const createInfo: c.VkDeviceCreateInfo = .{
 		.sType = c.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+		.pNext = features.chain(),
 		.pQueueCreateInfos = queueCreateInfos.items.ptr,
 		.queueCreateInfoCount = @intCast(queueCreateInfos.items.len),
-		.pEnabledFeatures = &deviceFeatures,
+		.pEnabledFeatures = &features.v10,
 		.ppEnabledLayerNames = validationLayers.ptr,
 		.enabledLayerCount = if (checkValidationLayerSupport()) validationLayers.len else 0,
 		.ppEnabledExtensionNames = &deviceExtensions,
