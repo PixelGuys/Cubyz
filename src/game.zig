@@ -449,31 +449,25 @@ pub const World = struct { // MARK: World
 		};
 
 		fn updateTimeOfDay(self: *DayTime) void {
-			var periodTime: i64 = @intCast(@mod(world.?.gameTime.load(.monotonic), dayCycleLength));
-			self.dayTime = periodTime;
+			const dayTime: i64 = @intCast(@mod(world.?.gameTime.load(.monotonic), dayCycleLength));
+			self.dayTime = dayTime;
 
-			if (periodTime < dayDuration) {
-				self.dayPhase = .{.day = 1 - @as(f32, @floatFromInt(dayDuration - periodTime))/@as(f32, @floatFromInt(dayDuration))};
+			if (dayTime < duskStart) {
+				self.dayPhase = .{.day = @as(f32, @floatFromInt(dayTime - dayStart))/@as(f32, @floatFromInt(dayDuration))};
 				return;
 			}
 
-			periodTime -= dayDuration;
-
-			if (periodTime < duskDuration) {
-				self.dayPhase = .{.dusk = 1 - @as(f32, @floatFromInt(duskDuration - periodTime))/@as(f32, @floatFromInt(duskDuration))};
+			if (dayTime < nightStart) {
+				self.dayPhase = .{.dusk = @as(f32, @floatFromInt(dayTime - duskStart))/@as(f32, @floatFromInt(duskDuration))};
 				return;
 			}
 
-			periodTime -= duskDuration;
-
-			if (periodTime < nightDuration) {
-				self.dayPhase = .{.night = 1 - @as(f32, @floatFromInt(nightDuration - periodTime))/@as(f32, @floatFromInt(nightDuration))};
+			if (dayTime < nightDuration) {
+				self.dayPhase = .{.night = @as(f32, @floatFromInt(dayTime - nightStart))/@as(f32, @floatFromInt(nightDuration))};
 				return;
 			}
 
-			periodTime -= nightDuration;
-
-			self.dayPhase = .{.dawn = 1 - @as(f32, @floatFromInt(dawnDuration - periodTime))/@as(f32, @floatFromInt(dawnDuration))};
+			self.dayPhase = .{.dawn = @as(f32, @floatFromInt(dayTime - dawnStart))/@as(f32, @floatFromInt(dawnDuration))};
 		}
 
 		pub fn getDayProgress(self: *DayTime) f32 {
