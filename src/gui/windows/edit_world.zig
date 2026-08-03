@@ -25,6 +25,8 @@ const WorldSettings = struct {
 	testingMode: bool,
 	localPlayerIndex: usize,
 
+	isUpated: bool = false,
+
 	pub fn init(name: []const u8, seed: i128, defaultgameMode: ?[]const u8, allowCheats: bool, testingMode: bool, localPlayerIndex: usize) WorldSettings {
 		return .{
 			.name = name,
@@ -69,7 +71,7 @@ var gamemodeInput: *Button = undefined;
 
 fn nameCallback() void {
 	const newName = nameInput.currentString.items;
-	_ = newName;
+	worldSettings.name = newName;
 }
 
 fn gameModeCallback() void {
@@ -94,7 +96,7 @@ pub fn init() void {
 }
 
 pub fn deinit() void {
-	main.stackAllocator.free(editWorldName);
+	main.globalAllocator.free(editWorldName);
 }
 
 pub fn setEditWorldName(name: []const u8) void {
@@ -103,7 +105,6 @@ pub fn setEditWorldName(name: []const u8) void {
 }
 
 pub fn onOpen() void {
-	std.debug.print("{s}", .{editWorldName});
 	const worldInfoPath = main.stackAllocator.print("saves/{s}/world.zig.zon", .{editWorldName});
 	defer main.stackAllocator.free(worldInfoPath);
 
@@ -111,10 +112,8 @@ pub fn onOpen() void {
 		std.log.err("Error while creating new world: {s}", .{@errorName(err)});
 		return;
 	};
-	defer worldInfo.deinit(main.stackAllocator);
 
 	worldInfoSettings = worldInfo.getChild("settings");
-	defer worldInfoSettings.deinit(main.stackAllocator);
 
 	worldSettings = WorldSettings.init(
 		worldInfo.get([]const u8, "name") orelse "",
