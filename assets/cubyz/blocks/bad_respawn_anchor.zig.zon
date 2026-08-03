@@ -6,9 +6,10 @@
 	},
 	.model = "cubyz:cube",
 	.rotation = "cubyz:stairs",
-	.texture = "cubyz:respawn_anchor",
+	.texture = "cubyz:bad_respawn_anchor",
 	.blockEntity = "cubyz:respawn_anchor",
 	.onInteract = .{
 		.type = .set_spawn,
+		.respawnEffeciency = 0.1,
 	},
 }

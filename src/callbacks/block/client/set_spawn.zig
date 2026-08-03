@@ -11,7 +11,7 @@ respawnEffeciency: f32,
 pub fn init(zon: ZonElement, _: main.callbacks.Creator) ?*anyopaque {
 	const result = main.worldArena.create(@This());
 	result.* = .{
-		.respawnEffeciency = zon.get(f32, "respawnEffecincy") orelse 1.0,
+		.respawnEffeciency = zon.get(f32, "respawnEffeciency") orelse 1.0,
 	};
 	return result;
 }

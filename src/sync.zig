@@ -366,6 +366,7 @@ pub const Command = struct { // MARK: Command
 		kill: struct {
 			target: ?*main.server.User,
 			spawnPoint: Vec3d,
+			respawnEffeciency: f32,
 		},
 		energy: struct {
 			target: ?*main.server.User,
@@ -412,7 +413,7 @@ pub const Command = struct { // MARK: Command
 					main.game.Player.super.health = std.math.clamp(main.game.Player.super.health + health.health, 0, main.game.Player.super.maxHealth);
 				},
 				.kill => |kill| {
-					main.game.Player.kill(kill.spawnPoint);
+					main.game.Player.kill(kill.spawnPoint, kill.respawnEffeciency);
 				},
 				.energy => |energy| {
 					main.game.Player.super.energy = std.math.clamp(main.game.Player.super.energy + energy.energy, 0, main.game.Player.super.maxEnergy);
@@ -483,6 +484,7 @@ pub const Command = struct { // MARK: Command
 					return .{.kill = .{
 						.target = null,
 						.spawnPoint = try reader.readVec(Vec3d),
+						.respawnEffeciency = try reader.readFloat(f32),
 					}};
 				},
 				.energy => {
@@ -518,6 +520,7 @@ pub const Command = struct { // MARK: Command
 				},
 				.kill => |kill| {
 					writer.writeVec(Vec3d, kill.spawnPoint);
+					writer.writeFloat(f32, kill.respawnEffeciency);
 				},
 				.energy => |energy| {
 					writer.writeFloat(f32, energy.energy);
@@ -799,6 +802,7 @@ pub const Command = struct { // MARK: Command
 						self.syncOperations.append(allocator, .{.kill = .{
 							.target = info.target.?,
 							.spawnPoint = info.target.?.getSpawnPos(),
+							.respawnEffeciency = info.target.?.getRespawnEffeciency(),
 						}});
 					} else {
 						self.syncOperations.append(allocator, .{.health = .{
@@ -1794,6 +1798,7 @@ pub const Command = struct { // MARK: Command
 				if (target == null) return error.serverFailure;
 
 				target.?.spawnPos = @floatFromInt(self.position);
+				target.?.respawnEffeciency = self.respawnEffeciency;
 				target.?.sendRawMessage("Set New SpawnPoint");
 			}
 		}

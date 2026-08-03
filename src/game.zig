@@ -200,11 +200,11 @@ pub const Player = struct { // MARK: Player
 		inventory.placeBlock(selectedSlot);
 	}
 
-	pub fn kill(spawnPos: Vec3d) void {
+	pub fn kill(spawnPos: Vec3d, respawnEffeciency: f32) void {
 		Player.super.pos = spawnPos;
 		Player.super.vel = .{0, 0, 0};
 
-		Player.super.health = Player.super.maxHealth;
+		Player.super.health = std.math.clamp(Player.super.maxHealth * respawnEffeciency, 0, Player.super.maxHealth);
 		Player.super.energy = Player.super.maxEnergy;
 
 		Player.eye = .{};
