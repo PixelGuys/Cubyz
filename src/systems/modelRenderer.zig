@@ -138,7 +138,7 @@ pub const client = struct {
 
 				component.matrices[i] = parentMat.mul(node.recalc(entModel.nodePivots[i])).transpose();
 			}
-			main.entity.systems.modelRenderer.client.nodeBuffer.uploadData(component.matrices, &component.bufferAllocation);
+			main.systems.systems.modelRenderer.client.nodeBuffer.uploadData(component.matrices, &component.bufferAllocation);
 		}
 
 		pipeline.bind(null);
@@ -146,7 +146,7 @@ pub const client = struct {
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
-		main.entity.systems.modelRenderer.client.nodeBuffer.beginRender();
+		main.systems.systems.modelRenderer.client.nodeBuffer.beginRender();
 
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |component, id| {
 			if (id == game.Player.id) continue; // don't render local player
@@ -183,7 +183,7 @@ pub const client = struct {
 			c.glDrawElements(c.GL_TRIANGLES, entModel.indexCount, c.GL_UNSIGNED_INT, null);
 		}
 
-		main.entity.systems.modelRenderer.client.nodeBuffer.endRender();
+		main.systems.systems.modelRenderer.client.nodeBuffer.endRender();
 	}
 };
 // ############################# Server only stuff ################################
