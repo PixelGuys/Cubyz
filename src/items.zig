@@ -379,7 +379,8 @@ pub const BaseItem = struct { // MARK: BaseItem
 		if (self.texture == null) {
 			if (self.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
 				if (self.block) |blockType| {
-					self.texture = graphics.generateBlockTexture(blockType);
+					const block: main.blocks.Block = .{.typ = blockType, .data = 0};
+					self.texture = graphics.generateBlockTexture(.{.typ = blockType, .data = block.itemTextureDisplayData()});
 				} else {
 					self.texture = graphics.Texture.init();
 					self.texture.?.generate(self.image);

@@ -141,6 +141,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		const properties = .{
 			zon.get(Vec3d, "pos") orelse .{0, 0, 0},
 			zon.get(Vec3d, "vel") orelse .{0, 0, 0},
+
 			random.nextFloatVector(3, &main.seed)*@as(Vec3f, @splat(2*std.math.pi)),
 			items.ItemStack{.item = item, .amount = zon.get(u16, "amount") orelse 1},
 			zon.get(i32, "despawnTime") orelse 60,
