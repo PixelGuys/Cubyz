@@ -48,7 +48,7 @@ pub fn globalDeinit() void {
 
 const Options = struct {
 	disabled: bool = false,
-	onNewline: main.callbacks.SimpleCallback,
+	onNewline: main.callbacks.SimpleCallback = .{},
 	onUp: main.callbacks.SimpleCallback = .{},
 	onDown: main.callbacks.SimpleCallback = .{},
 	onUpdate: main.callbacks.SimpleCallback = .{},
