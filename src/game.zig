@@ -449,11 +449,8 @@ pub const World = struct { // MARK: World
 		};
 
 		fn updateTimeOfDay(self: *DayTime) void {
-			self.dayTime = @intCast(@mod(world.?.gameTime.load(.monotonic), dayCycleLength));
-		}
-
-		fn updatePhaseOfDay(self: *DayTime) void {
-			var periodTime = self.dayTime;
+			var periodTime: i64 = @intCast(@mod(world.?.gameTime.load(.monotonic), dayCycleLength));
+			self.dayTime = periodTime;
 
 			if (periodTime < dayDuration) {
 				self.dayPhase = .{.day = 1 - @as(f32, @floatFromInt(dayDuration - periodTime))/@as(f32, @floatFromInt(dayDuration))};
@@ -560,7 +557,6 @@ pub const World = struct { // MARK: World
 
 		pub fn update(self: *DayTime, deltaTime: f64) void {
 			self.updateTimeOfDay();
-			self.updatePhaseOfDay();
 			const biome = world.?.playerBiome.load(.monotonic);
 
 			const t = 1 - @as(f32, @floatCast(@exp(-2*deltaTime)));
