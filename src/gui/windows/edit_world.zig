@@ -50,37 +50,6 @@ const WorldSettings = struct {
 	}
 };
 
-const WorldZonElement = struct {
-	worldInfo: ZonElement,
-	worldInfoSettings: ZonElement,
-
-	pub fn init(worldInfoPath: []const u8) *WorldZonElement {
-		const self = main.stackAllocator.create(WorldZonElement);
-		self.* = WorldZonElement{
-			.worldInfo = zon: {
-				if (main.files.cubyzDir().readToZon(main.stackAllocator, worldInfoPath)) |data| {
-					break :zon data;
-				} else |err| {
-					std.log.err("{ant}", .{err});
-					break :zon undefined;
-				}
-			},
-			.worldInfoSettings = undefined,
-		};
-		return self;
-	}
-
-	pub fn initSettings(self: *WorldZonElement) void {
-		self.worldInfoSettings = self.worldInfo.getChild("settings");
-	}
-
-	pub fn deinit(self: *WorldZonElement) void {
-		self.worldInfoSettings.deinit(main.stackAllocator);
-		self.worldInfo.deinit(main.stackAllocator);
-		main.stackAllocator.destroy(self);
-	}
-};
-
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
 };
