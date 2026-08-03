@@ -184,11 +184,13 @@ pub fn init(window: ?*c.GLFWwindow) !void {
 			@panic("GLAD failed to load Vulkan functions");
 		}
 	}
+	command_pool.init();
 	SwapChain.init();
 }
 
 pub fn deinit() void {
 	SwapChain.deinit();
+	command_pool.deinit();
 	c.vkDestroyDevice(device, null);
 	c.vkDestroySurfaceKHR(instance, surface, null);
 	c.vkDestroyInstance(instance, null);
@@ -608,5 +610,23 @@ pub const SwapChain = struct { // MARK: SwapChain
 		main.globalAllocator.free(imageViews);
 		main.globalAllocator.free(images);
 		c.vkDestroySwapchainKHR(device, swapChain, null);
+	}
+};
+
+pub const command_pool = struct { // MARK: command_pool
+	pub var handle: c.VkCommandPool = undefined;
+
+	fn init() void {
+		const queueFamilies = findQueueFamilies(physicalDevice);
+		const poolInfo = c.VkCommandPoolCreateInfo {
+			.sType = c.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+			.flags = c.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+			.queueFamilyIndex = queueFamilies.graphicsFamily.?,
+		};
+		checkResult(c.vkCreateCommandPool(device, &poolInfo, null, &handle));
+	}
+
+	fn deinit() void {
+		c.vkDestroyCommandPool(device, handle, null);
 	}
 };
