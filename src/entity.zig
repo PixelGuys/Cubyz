@@ -7,7 +7,7 @@ const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 
 pub const components = @import("entityComponent/_list.zig");
-pub const systems = @import("entitySystem/_list.zig");
+pub const systems = @import("systems/_list.zig");
 
 pub const EntityNetworkData = struct {
 	id: main.entity.Entity,
