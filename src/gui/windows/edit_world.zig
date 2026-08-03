@@ -18,14 +18,16 @@ const Gamemode = main.game.Gamemode;
 const DefaultSettings = main.server.world_zig.Settings.defaults;
 
 const WorldSettings = struct {
+	name: []const u8,
 	seed: i128,
 	defaultGamemode: Gamemode,
 	allowCheats: bool,
 	testingMode: bool,
 	localPlayerIndex: usize,
 
-	pub fn init(seed: i128, defaultgameMode: ?[]const u8, allowCheats: bool, testingMode: bool, localPlayerIndex: usize) WorldSettings {
+	pub fn init(name: []const u8, seed: i128, defaultgameMode: ?[]const u8, allowCheats: bool, testingMode: bool, localPlayerIndex: usize) WorldSettings {
 		return .{
+			.name = name,
 			.seed = seed,
 			.defaultGamemode = toEnum(defaultgameMode),
 			.allowCheats = allowCheats,
@@ -58,8 +60,8 @@ const padding: f32 = 8;
 
 var editWorldName: []const u8 = "";
 
-var worldInfo: *ZonElement = undefined;
-var worldInfoSettings: *ZonElement = undefined;
+var worldInfo: ZonElement = undefined;
+var worldInfoSettings: ZonElement = undefined;
 var worldSettings: WorldSettings = undefined;
 
 var nameInput: *TextInput = undefined;
@@ -87,25 +89,35 @@ fn saveChangesCallback() void {
 	worldSettings.print();
 }
 
+pub fn init() void {
+	editWorldName = "";
+}
+
+pub fn deinit() void {
+	main.stackAllocator.free(editWorldName);
+}
+
 pub fn setEditWorldName(name: []const u8) void {
 	main.globalAllocator.free(editWorldName);
 	editWorldName = main.globalAllocator.dupe(u8, name);
 }
 
 pub fn onOpen() void {
+	std.debug.print("{s}", .{editWorldName});
 	const worldInfoPath = main.stackAllocator.print("saves/{s}/world.zig.zon", .{editWorldName});
 	defer main.stackAllocator.free(worldInfoPath);
 
-	worldInfo.* = main.files.cubyzDir().readToZon(main.stackAllocator, worldInfoPath) catch |err| {
+	worldInfo = main.files.cubyzDir().readToZon(main.stackAllocator, worldInfoPath) catch |err| {
 		std.log.err("Error while creating new world: {s}", .{@errorName(err)});
 		return;
 	};
-	defer main.stackAllocator.destroy(worldInfo);
+	defer worldInfo.deinit(main.stackAllocator);
 
-	worldInfoSettings.* = worldInfo.getChild("settings");
-	defer main.stackAllocator.destroy(worldInfoSettings);
+	worldInfoSettings = worldInfo.getChild("settings");
+	defer worldInfoSettings.deinit(main.stackAllocator);
 
 	worldSettings = WorldSettings.init(
+		worldInfo.get([]const u8, "name") orelse "",
 		worldInfoSettings.get(i128, "seed") orelse 0,
 		worldInfoSettings.get([]const u8, "defaultGamemode"),
 		worldInfoSettings.get(bool, "allowCheats") orelse DefaultSettings.allowCheats,
@@ -115,9 +127,7 @@ pub fn onOpen() void {
 
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
 
-	const name = main.stackAllocator.print("{s}", .{worldInfo.get([]const u8, "name") orelse ""});
-	defer main.stackAllocator.free(name);
-	nameInput = TextInput.init(.{0, 0}, 128, 22, name, .{.onNewline = .init(nameCallback)});
+	nameInput = TextInput.init(.{0, 0}, 128, 22, worldSettings.name, .{.onNewline = .init(nameCallback)});
 	list.add(nameInput);
 
 	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(worldSettings.defaultGamemode), .{.onAction = .init(gameModeCallback)});
@@ -152,5 +162,4 @@ pub fn onClose() void {
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
-	main.stackAllocator.free(editWorldName);
 }
