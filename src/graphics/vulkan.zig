@@ -483,7 +483,7 @@ pub const Semaphore = struct { // MARK: Semaphore
 
 	fn init() Semaphore {
 		var result: c.VkSemaphore = undefined;
-		const semaphoreInfo = c.VkSemaphoreCreateInfo {
+		const semaphoreInfo = c.VkSemaphoreCreateInfo{
 			.sType = c.VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
 		};
 		checkResult(c.vkCreateSemaphore(device, &semaphoreInfo, null, &result));
@@ -499,9 +499,9 @@ pub const Fence = struct { // MARK: Fence
 
 	fn init(createSignaled: bool) Fence {
 		var result: c.VkFence = undefined;
-		const fenceInfo = c.VkFenceCreateInfo {
+		const fenceInfo = c.VkFenceCreateInfo{
 			.sType = c.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-			.flags = if(createSignaled) c.VK_FENCE_CREATE_SIGNALED_BIT else 0,
+			.flags = if (createSignaled) c.VK_FENCE_CREATE_SIGNALED_BIT else 0,
 		};
 		checkResult(c.vkCreateFence(device, &fenceInfo, null, &result));
 		return .{.handle = result};
@@ -716,7 +716,7 @@ pub const SwapChain = struct { // MARK: SwapChain
 				.oldLayout = c.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
 				.newLayout = c.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
 				.image = images[currentFrame.swapChainImageIndex],
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1 },
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
 			},
 		}});
 		currentFrame.guiCommands.endRecording();
@@ -747,7 +747,7 @@ pub const command_pool = struct { // MARK: command_pool
 
 	fn init() void {
 		const queueFamilies = findQueueFamilies(physicalDevice);
-		const poolInfo = c.VkCommandPoolCreateInfo {
+		const poolInfo = c.VkCommandPoolCreateInfo{
 			.sType = c.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 			.flags = c.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
 			.queueFamilyIndex = queueFamilies.graphicsFamily.?,
