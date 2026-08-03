@@ -15,11 +15,8 @@ pub const Args = union(enum) {
 	@"/rotate <rotation>": struct { rotation: Degrees },
 };
 
-pub fn execute(args: Args, source: Source) void {
-	if (source != .user) {
-		source.sendMessage("Command cannot be run without a user", .{});
-		return;
-	}
+pub fn execute(args: Args, source: Source) !void {
+	if (source != .user) return error.InvalidSource;
 	const user = source.user;
 	if (user.worldEditData.clipboard == null) {
 		source.sendMessage("#ff0000Error: No clipboard content to rotate.", .{});

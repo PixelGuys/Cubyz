@@ -30,11 +30,8 @@ pub const Args = union(enum) {
 	}
 };
 
-pub fn execute(args: Args, source: Source) void {
-	if (source != .user) {
-		source.sendMessage("Command cannot be run without a user", .{});
-		return;
-	}
+pub fn execute(args: Args, source: Source) !void {
+	if (source != .user) return error.InvalidSource;
 	const user = source.user;
 	switch (args) {
 		.@"/mask <mask>" => |cmd| {

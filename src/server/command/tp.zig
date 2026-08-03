@@ -21,11 +21,8 @@ pub const Args = union(enum) {
 	@"/tp <playerIndex>": struct { playerIndex: command.PlayerIndex },
 };
 
-pub fn execute(args: Args, source: Source) void {
-	if (source != .user) {
-		source.sendMessage("Command cannot be run without a user", .{});
-		return;
-	}
+pub fn execute(args: Args, source: Source) error{InvalidSource}!void {
+	if (source != .user) return error.InvalidSource;
 	const user = source.user;
 	const pos: main.vec.Vec3d = blk: switch (args) {
 		.@"/tp <biome>" => |b| {

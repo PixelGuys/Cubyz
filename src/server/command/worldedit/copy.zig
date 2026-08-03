@@ -14,11 +14,8 @@ pub const Args = union(enum) {
 	@"/copy": struct {},
 };
 
-pub fn execute(_: Args, source: Source) void {
-	if (source != .user) {
-		source.sendMessage("Command cannot be run without a user", .{});
-		return;
-	}
+pub fn execute(_: Args, source: Source) !void {
+	if (source != .user) return error.InvalidSource;
 	const user = source.user;
 	const selection = command.getCurrentSelection(user) catch return;
 	user.sendMessage("Copying: {f}", .{selection});
