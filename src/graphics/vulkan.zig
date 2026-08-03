@@ -222,7 +222,7 @@ pub fn createInstance() void {
 		.applicationVersion = c.VK_MAKE_VERSION(0, 0, 0),
 		.pEngineName = "Cubyz",
 		.engineVersion = c.VK_MAKE_VERSION(0, 0, 0),
-		.apiVersion = c.VK_API_VERSION_1_0,
+		.apiVersion = c.VK_API_VERSION_1_3,
 	};
 	var glfwExtensionCount: u32 = 0;
 	const glfwExtensions: [*c][*c]const u8 = c.glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
