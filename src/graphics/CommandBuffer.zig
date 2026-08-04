@@ -143,7 +143,7 @@ pub fn beginRendering(self: CommandBuffer, options: BeginRenderingOptions) void 
 
 	const depthTexture: ?c.VkRenderingAttachmentInfo = if (options.depthTexture) |d| d.toVulkan() else null;
 	const stencilTexture: ?c.VkRenderingAttachmentInfo = if (options.stencilTexture) |s| s.toVulkan() else null;
-	
+
 	const renderingInfo: c.VkRenderingInfo = .{
 		.sType = c.VK_STRUCTURE_TYPE_RENDERING_INFO,
 		.renderArea = options.renderArea,
