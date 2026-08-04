@@ -66,7 +66,6 @@ pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, options
 		.maxHeight = maxHeight,
 		.scrollBar = scrollBar,
 		.options = options,
-		.showCursor = !options.disabled,
 	};
 	self.currentString.appendSlice(text);
 	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, maxWidth - 2*border - scrollBarWidth);
@@ -436,7 +435,6 @@ pub fn inputCharacter(self: *TextInput, character: u21) void {
 }
 
 pub fn setString(self: *TextInput, utf8EncodedString: []const u8) void {
-	if (self.options.disabled) return;
 	self.clear();
 	self.currentString.insertSlice(0, utf8EncodedString);
 	self.reloadText();
@@ -569,7 +567,7 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 			}
 		}
 
-		if (self.showCursor) {
+		if (self.showCursor and !self.options.disabled) {
 			const oldColor = draw.setColor(0xff000000);
 			defer draw.restoreColor(oldColor);
 			const thickness = @min(@ceil(fontSize/8), 1);
