@@ -39,52 +39,23 @@ const Material = struct { // MARK: Material
 	outlineColorShadow: Color = undefined,
 	modifiers: []Modifier = undefined,
 
-	fn loadColorsFromTexture(self: *Material, allocator: NeverFailingAllocator, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8) void {
-		const loadedImage: ?graphics.Image = blk: {
-			if (colorTexturePath.len == 0) {
-				std.log.err("Couldn't find material attribute 'colorTexture'", .{});
-				break :blk null;
-			}
-			break :blk graphics.Image.readFromFile(main.stackAllocator, colorTexturePath, .{.orientation = .asIs}) catch |err| blk2: {
-				if (err != error.FileNotFound) {
-					std.log.err("Error while reading material color texture '{s}': {s}", .{colorTexturePath, @errorName(err)});
-				}
-				break :blk2 graphics.Image.readFromFile(main.stackAllocator, colorReplacementTexturePath, .{.orientation = .asIs}) catch |err2| {
-					std.log.err("Error while reading material color texture. Tried '{s}' and '{s}': {s}", .{colorTexturePath, colorReplacementTexturePath, @errorName(err2)});
-					break :blk2 null;
-				};
-			};
-		};
-		defer if (loadedImage) |img| img.deinit(main.stackAllocator);
+	fn loadColorsFromTexture(self: *Material, allocator: NeverFailingAllocator, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8) !void {
+		if (colorTexturePath.len == 0) return error.@"Missing attribute 'colorTexture'";
+		const image = graphics.Image.readFromFile(main.stackAllocator, colorTexturePath, .{.orientation = .asIs}) catch try graphics.Image.readFromFile(main.stackAllocator, colorReplacementTexturePath, .{.orientation = .asIs});
+		defer image.deinit(main.stackAllocator);
 
-		const image: graphics.Image = if (loadedImage) |img| validate: {
-			if (img.width < 2 or img.height < 2) {
-				std.log.err("Material color texture '{s}' must be at least 2x2 pixels (got {}x{}).", .{colorTexturePath, img.width, img.height});
-				break :validate graphics.Image.defaultImage;
-			}
-			break :validate img;
-		} else graphics.Image.defaultImage;
+		if (image.width < 2 or image.height < 2) return error.@"Color texture must be at least 2x2 pixels";
 
 		self.colorPalette = allocator.alloc(Color, image.width);
 		for (0..image.width) |x| {
 			self.colorPalette[x] = image.getRGB(x, 0);
 		}
-		self.outlineColorShadow = blk: {
-			const shadow = image.getRGB(0, 1);
-			if (shadow.a != 255) {
-				std.log.err("Material color texture '{s}': outlineColorShadow pixel (0,1) must be fully opaque, got alpha {}.", .{colorTexturePath, shadow.a});
-				break :blk graphics.Image.defaultImage.getRGB(0, 1);
-			}
-			break :blk shadow;
-		};
-		self.outlineColorLight = blk: {
-			const light = image.getRGB(1, 1);
-			if (light.a != 255) {
-				std.log.err("Material color texture '{s}': outlineColorLight pixel (1,1) must be fully opaque, got alpha {}.", .{colorTexturePath, light.a});
-				break :blk graphics.Image.defaultImage.getRGB(1, 1);
-			}
-			break :blk light;
-		};
+		const shadow = image.getRGB(0, 1);
+		if (shadow.a != 255) return error.@"outlineColorShadow pixel (0,1) must be fully opaque";
+		self.outlineColorShadow = shadow;
+		const light = image.getRGB(1, 1);
+		if (light.a != 255) return error.@"outlineColorLight pixel (1,1) must be fully opaque";
+		self.outlineColorLight = light;
 	}
 
 	pub fn init(self: *Material, allocator: NeverFailingAllocator, zon: ZonElement, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8) void {
@@ -105,7 +76,16 @@ const Material = struct { // MARK: Material
 			break :blk 0;
 		};
 		self.textureRoughness = @max(0, zon.get(f32, "textureRoughness") orelse 1.0);
-		self.loadColorsFromTexture(allocator, colorTexturePath, colorReplacementTexturePath);
+		self.loadColorsFromTexture(allocator, colorTexturePath, colorReplacementTexturePath) catch |err| {
+			std.log.err("Could not load material colors. Tried '{s}' and '{s}': {s}", .{colorTexturePath, colorReplacementTexturePath, @errorName(err)});
+			const defaultImage = graphics.Image.defaultImage;
+			self.colorPalette = allocator.alloc(Color, defaultImage.width);
+			for (0..defaultImage.width) |x| {
+				self.colorPalette[x] = defaultImage.getRGB(x, 0);
+			}
+			self.outlineColorShadow = defaultImage.getRGB(0, 1);
+			self.outlineColorLight = defaultImage.getRGB(1, 1);
+		};
 		const modifiersZon = zon.getChild("modifiers");
 		self.modifiers = allocator.alloc(Modifier, modifiersZon.toSlice().len);
 		for (modifiersZon.toSlice(), self.modifiers) |item, *modifier| {
