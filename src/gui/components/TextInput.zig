@@ -464,6 +464,7 @@ pub fn copy(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 }
 
 pub fn paste(self: *TextInput, mods: main.Window.Key.Modifiers) void {
+	if (self.options.disabled) return;
 	if (mods.control) {
 		const string = main.Window.getClipboardString();
 		self.deleteSelection();
