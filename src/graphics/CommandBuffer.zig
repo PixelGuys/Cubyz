@@ -52,7 +52,14 @@ pub fn submit(self: CommandBuffer, queue: c.VkQueue, waitSemaphores: []const c.V
 	vulkan.checkResult(c.vkQueueSubmit(queue, 1, &submitInfo, fence));
 }
 
-pub fn pipelineBarrier(self: CommandBuffer, options: struct { memoryBarriers: []const c.VkMemoryBarrier2 = &.{}, bufferMemoryBarriers: []const c.VkBufferMemoryBarrier2 = &.{}, imageMemoryBarriers: []const c.VkImageMemoryBarrier2 = &.{}, flags: c.VkDependencyFlagBits = 0 }) void {
+const PipelineBarrierOptions = struct {
+	memoryBarriers: []const c.VkMemoryBarrier2 = &.{},
+	bufferMemoryBarriers: []const c.VkBufferMemoryBarrier2 = &.{},
+	imageMemoryBarriers: []const c.VkImageMemoryBarrier2 = &.{},
+	flags: c.VkDependencyFlagBits = 0,
+};
+
+pub fn pipelineBarrier(self: CommandBuffer, options: PipelineBarrierOptions) void {
 	const dependencyInfo: c.VkDependencyInfo = .{
 		.sType = c.VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
 		.dependencyFlags = options.flags,
@@ -64,4 +71,93 @@ pub fn pipelineBarrier(self: CommandBuffer, options: struct { memoryBarriers: []
 		.pImageMemoryBarriers = options.imageMemoryBarriers.ptr,
 	};
 	c.vkCmdPipelineBarrier2(self.handle, &dependencyInfo);
+}
+
+const BeginRenderingOptions = struct {
+	const StoreOp = enum {
+		store,
+		dontCare,
+		none,
+
+		fn toVulkan(self: StoreOp) c.VkAttachmentStoreOp {
+			return switch (self) {
+				.store => c.VK_ATTACHMENT_STORE_OP_STORE,
+				.dontCare => c.VK_ATTACHMENT_STORE_OP_DONT_CARE,
+				.none => c.VK_ATTACHMENT_STORE_OP_NONE,
+			};
+		}
+	};
+	const LoadOp = union(enum) {
+		load: void,
+		dontCare: void,
+		clearColor: c.VkClearColorValue,
+		clearDepth: c.VkClearDepthStencilValue,
+
+		fn toVulkanEnum(self: LoadOp) c.VkAttachmentLoadOp {
+			return switch (self) {
+				.load => c.VK_ATTACHMENT_LOAD_OP_LOAD,
+				.dontCare => c.VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+				.clearColor, .clearDepth => c.VK_ATTACHMENT_LOAD_OP_CLEAR,
+			};
+		}
+		fn toVulkanValue(self: LoadOp) c.VkClearValue {
+			return switch (self) {
+				.load, .dontCare => undefined,
+				.clearColor => |color| .{.color = color},
+				.clearDepth => |depth| .{.depthStencil = depth},
+			};
+		}
+	};
+	const AttachmentInfo = struct {
+		imageView: c.VkImageView,
+		layout: c.VkImageLayout,
+		loadOp: LoadOp,
+		storeOp: StoreOp,
+
+		fn toVulkan(self: AttachmentInfo) c.VkRenderingAttachmentInfo {
+			return .{
+				.sType = c.VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+				.imageView = self.imageView,
+				.imageLayout = self.layout,
+				.loadOp = self.loadOp.toVulkanEnum(),
+				.storeOp = self.storeOp.toVulkan(),
+				.clearValue = self.loadOp.toVulkanValue(),
+			};
+		}
+	};
+
+	textures: []const AttachmentInfo = &.{},
+	depthTexture: ?AttachmentInfo = null,
+	stencilTexture: ?AttachmentInfo = null,
+	layers: u32 = 1,
+	viewMask: u32 = 0,
+	renderArea: c.VkRect2D,
+};
+
+pub fn beginRendering(self: CommandBuffer, options: BeginRenderingOptions) void {
+	const textures = main.stackAllocator.alloc(c.VkRenderingAttachmentInfo, options.textures.len);
+	defer main.stackAllocator.free(textures);
+	for (0..options.textures.len) |i| {
+		textures[i] = options.textures[i].toVulkan();
+	}
+
+	const depthTexture: ?c.VkRenderingAttachmentInfo = if (options.depthTexture) |d| d.toVulkan() else null;
+	const stencilTexture: ?c.VkRenderingAttachmentInfo = if (options.stencilTexture) |s| s.toVulkan() else null;
+	
+	const renderingInfo: c.VkRenderingInfo = .{
+		.sType = c.VK_STRUCTURE_TYPE_RENDERING_INFO,
+		.renderArea = options.renderArea,
+		.layerCount = options.layers,
+		.viewMask = options.viewMask,
+		.colorAttachmentCount = @intCast(textures.len),
+		.pColorAttachments = textures.ptr,
+		.pDepthAttachment = if (depthTexture) |*d| d else null,
+		.pStencilAttachment = if (stencilTexture) |*s| s else null,
+	};
+
+	c.vkCmdBeginRendering(self.handle, &renderingInfo);
+}
+
+pub fn endRendering(self: CommandBuffer) void {
+	c.vkCmdEndRendering(self.handle);
 }
