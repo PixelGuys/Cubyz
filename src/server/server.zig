@@ -891,3 +891,14 @@ pub fn getUserByIndex(index: PlayerIndex) ?*User {
 	}
 	return null;
 }
+
+pub fn getUserByKey(key: []const u8) ?*User {
+	const userList = getUserList(main.stackAllocator);
+	defer main.stackAllocator.free(userList);
+	for (userList) |user| {
+		if (user.newKeyString) |userKey| {
+			if (std.mem.eql(u8, userKey, key)) return user;
+		}
+	}
+	return null;
+}
