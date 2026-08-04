@@ -546,20 +546,20 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	pub fn sortItems(source: ClientInventory, options: SortOptions) void {
 		compressItems(source, options);
 		const InventorySize: usize = source.super.size() - options.ignoredSlotCount;
-		var SortList = main.ListManaged(usize).init(main.stackAllocator);
+		var sortList = main.ListManaged(usize).init(main.stackAllocator);
+		defer sortList.deinit();
 		var intermediaryList = main.ListManaged(usize).init(main.stackAllocator);
-		defer SortList.deinit();
 		defer intermediaryList.deinit();
 		for (0..InventorySize) |i| {
-			SortList.append(i + options.ignoredSlotCount);
+			sortList.append(i + options.ignoredSlotCount);
 			intermediaryList.append(i + options.ignoredSlotCount);
 		}
-		const ctx: SortContext = .{.inv = source, .sortlist = SortList};
-		std.sort.insertion(usize, SortList.items, ctx, SortContext.lessThan);
+		const ctx: SortContext = .{.inv = source, .sortlist = sortList};
+		std.sort.insertion(usize, sortList.items, ctx, SortContext.lessThan);
 		for (0..InventorySize) |i| {
-			if (SortList.items[i] == intermediaryList.items[i]) continue;
+			if (sortList.items[i] == intermediaryList.items[i]) continue;
 			var previousIndex: usize = i;
-			var checkedIndex = SortList.items[i] - options.ignoredSlotCount;
+			var checkedIndex = sortList.items[i] - options.ignoredSlotCount;
 			while (checkedIndex != i) {
 				main.sync.client.executeCommand(.{.depositOrSwap = .{
 					.dest = .{.inv = source.super, .slot = @intCast(previousIndex + options.ignoredSlotCount)},
@@ -567,7 +567,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 				}});
 				std.mem.swap(usize, &intermediaryList.items[previousIndex], &intermediaryList.items[checkedIndex]);
 				previousIndex = checkedIndex;
-				checkedIndex = SortList.items[checkedIndex] - options.ignoredSlotCount;
+				checkedIndex = sortList.items[checkedIndex] - options.ignoredSlotCount;
 			}
 		}
 	}
