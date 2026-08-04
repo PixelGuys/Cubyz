@@ -20,7 +20,7 @@ pub var window = GuiWindow{
 };
 
 const padding: f32 = 8;
-var userList: []*main.server.User = &.{};
+var lastLen: usize = 0;
 var entityCount: usize = 0;
 
 fn kickbyConnection(conn: *main.network.Connection) void {
@@ -54,12 +54,11 @@ pub fn onOpen() void {
 	} else {
 		main.server.connectionManager.mutex.lock();
 		defer main.server.connectionManager.mutex.unlock();
-		std.debug.assert(userList.len == 0);
-		userList = main.globalAllocator.alloc(*main.server.User, main.server.connectionManager.connections.items.len);
-		for (main.server.connectionManager.connections.items, 0..) |connection, i| {
-			userList[i] = connection.user.?;
-			userList[i].increaseRefCount();
-			if (userList[i].id == main.game.Player.id and connection.isConnected()) continue;
+		std.debug.assert(lastLen == 0);
+		lastLen = main.server.connectionManager.connections.items.len;
+		for (main.server.connectionManager.connections.items) |connection| {
+			const user = connection.user.?;
+			if (user.id == main.game.Player.id and connection.isConnected()) continue;
 			const row = HorizontalList.init();
 			if (connection.handShakeState.load(.monotonic) == .complete) {
 				const string = main.stackAllocator.print("{f}", .{connection.user.?});
@@ -74,7 +73,7 @@ pub fn onOpen() void {
 			}
 			list.add(row);
 		}
-		if (userList.len == 1) {
+		if (lastLen == 1) {
 			list.add(Label.init(.{0, 0}, 200, "No other players", .left));
 		}
 	}
@@ -86,11 +85,7 @@ pub fn onOpen() void {
 
 pub fn onClose() void {
 	if (main.server.world != null) {
-		for (userList) |user| {
-			user.decreaseRefCount();
-		}
-		main.globalAllocator.free(userList);
-		userList = &.{};
+		lastLen = 0;
 	}
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
@@ -107,7 +102,7 @@ pub fn update() void {
 		main.server.connectionManager.mutex.lock();
 		const serverListLen = main.server.connectionManager.connections.items.len;
 		main.server.connectionManager.mutex.unlock();
-		if (userList.len != serverListLen) {
+		if (lastLen != serverListLen) {
 			onClose();
 			onOpen();
 		}

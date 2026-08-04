@@ -1689,8 +1689,8 @@ pub const Command = struct { // MARK: Command
 			var target: ?*main.server.User = null;
 
 			if (ctx.side == .server) {
-				const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-				defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+				const userList = main.server.getUserList(main.stackAllocator);
+				defer main.stackAllocator.free(userList);
 				for (userList) |user| {
 					if (user.id == self.target) {
 						target = user;
@@ -1742,7 +1742,7 @@ pub const Command = struct { // MARK: Command
 				const user = ctx.user orelse return;
 				if (main.server.world.?.settings.allowCheats) {
 					main.log.server("User \"{f}§#ffffff\" executed command \"{s}\"", .{user, self.message});
-					main.server.command.execute(self.message, user);
+					main.server.command.execute(self.message, .{.user = user});
 				} else {
 					user.sendRawMessage("Commands are not allowed because cheats are disabled");
 				}

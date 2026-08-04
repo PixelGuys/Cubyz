@@ -21,6 +21,7 @@ const pipelines = @import("graphics/pipelines.zig");
 pub const ComputePipeline = pipelines.ComputePipeline;
 pub const Pipeline = pipelines.Pipeline;
 
+pub const CommandBuffer = @import("graphics/CommandBuffer.zig");
 pub const vulkan = @import("graphics/vulkan.zig");
 
 pub const draw = struct { // MARK: draw
@@ -2146,7 +2147,7 @@ pub const Image = struct { // MARK: Image
 		const nullTerminatedPath = main.stackAllocator.dupeZ(u8, path); // TODO: Find a more zig-friendly image loading library.
 		errdefer main.stackAllocator.free(nullTerminatedPath);
 		switch (options.orientation) {
-			.asIs => {},
+			.asIs => c.stbi_set_flip_vertically_on_load(0),
 			.openGl => c.stbi_set_flip_vertically_on_load(1),
 		}
 		const data = c.stbi_load(nullTerminatedPath.ptr, @ptrCast(&result.width), @ptrCast(&result.height), &channel, 4) orelse {

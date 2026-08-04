@@ -217,6 +217,7 @@ pub fn build(b: *std.Build) !void {
 
 	const options = b.addOptions();
 	const isRelease = b.option(bool, "release", "Removes the -dev flag from the version") orelse false;
+	const sanitizeThread = b.option(bool, "sanitizeThread", "enables the builtin thread sanitizer");
 	const version = b.fmt("0.4.0{s}", .{if (isRelease) "" else "-dev"});
 	if (b.option([]const u8, "version", "used by the CI to check if the git tag and game version match")) |tagVersion| {
 		const tagVersionUpperbound: usize = std.mem.indexOfScalar(u8, tagVersion, '-') orelse tagVersion.len;
@@ -251,12 +252,13 @@ pub fn build(b: *std.Build) !void {
 		.optimize = optimize,
 		.link_libc = true,
 		.link_libcpp = true,
+		.sanitize_thread = sanitizeThread,
 	});
 
 	const exe = b.addExecutable(.{
 		.name = "Cubyz",
 		.root_module = mainModule,
-		//.sanitize_thread = true,
+		.use_llvm = if (sanitizeThread orelse false) true else null,
 	});
 	exe.root_module.addOptions("build_options", options);
 	exe.root_module.addImport("main", mainModule);

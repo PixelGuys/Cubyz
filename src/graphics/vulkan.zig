@@ -184,11 +184,13 @@ pub fn init(window: ?*c.GLFWwindow) !void {
 			@panic("GLAD failed to load Vulkan functions");
 		}
 	}
+	command_pool.init();
 	SwapChain.init();
 }
 
 pub fn deinit() void {
 	SwapChain.deinit();
+	command_pool.deinit();
 	c.vkDestroyDevice(device, null);
 	c.vkDestroySurfaceKHR(instance, surface, null);
 	c.vkDestroyInstance(instance, null);
@@ -222,7 +224,7 @@ pub fn createInstance() void {
 		.applicationVersion = c.VK_MAKE_VERSION(0, 0, 0),
 		.pEngineName = "Cubyz",
 		.engineVersion = c.VK_MAKE_VERSION(0, 0, 0),
-		.apiVersion = c.VK_API_VERSION_1_0,
+		.apiVersion = c.VK_API_VERSION_1_3,
 	};
 	var glfwExtensionCount: u32 = 0;
 	const glfwExtensions: [*c][*c]const u8 = c.glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
@@ -275,15 +277,52 @@ const deviceExtensions = blk: {
 	break :blk baseDeviceExtensions;
 };
 
-const deviceFeatures: c.VkPhysicalDeviceFeatures = .{
-	// needed for indirect chunk rendering
-	.multiDrawIndirect = c.VK_TRUE,
-	.vertexPipelineStoresAndAtomics = c.VK_TRUE,
-	.fragmentStoresAndAtomics = c.VK_TRUE,
-	// needed for colored glass
-	.dualSrcBlend = c.VK_TRUE,
-	// needed to prevent near-plane clipping
-	.depthClamp = c.VK_TRUE,
+const DeviceFeatures = struct {
+	v10: c.VkPhysicalDeviceFeatures,
+	v11: c.VkPhysicalDeviceVulkan11Features,
+	v12: c.VkPhysicalDeviceVulkan12Features,
+	v13: c.VkPhysicalDeviceVulkan13Features,
+
+	fn getFromDevice(dev: c.VkPhysicalDevice) DeviceFeatures {
+		var self: DeviceFeatures = undefined;
+		var features: c.VkPhysicalDeviceFeatures2 = .{
+			.sType = c.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+			.pNext = self.chain(),
+		};
+		c.vkGetPhysicalDeviceFeatures2(dev, &features);
+		self.v10 = features.features;
+		return self;
+	}
+
+	fn chain(self: *DeviceFeatures) *anyopaque {
+		self.v11.sType = c.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+		self.v11.pNext = &self.v12;
+		self.v12.sType = c.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+		self.v12.pNext = &self.v13;
+		self.v13.sType = c.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+		self.v13.pNext = null;
+		return &self.v11;
+	}
+};
+
+const deviceFeatures: DeviceFeatures = .{
+	.v10 = .{
+		// needed for indirect chunk rendering
+		.multiDrawIndirect = c.VK_TRUE,
+		.vertexPipelineStoresAndAtomics = c.VK_TRUE,
+		.fragmentStoresAndAtomics = c.VK_TRUE,
+		// needed for colored glass
+		.dualSrcBlend = c.VK_TRUE,
+		// needed to prevent near-plane clipping
+		.depthClamp = c.VK_TRUE,
+	},
+	.v11 = .{},
+	.v12 = .{},
+	.v13 = .{
+		// together they replace render passes, device support is basically at 100%
+		.synchronization2 = c.VK_TRUE,
+		.dynamicRendering = c.VK_TRUE,
+	},
 };
 
 const QueueFamilyIndidices = struct {
@@ -330,8 +369,7 @@ fn checkDeviceExtensionSupport(dev: c.VkPhysicalDevice) bool {
 fn getDeviceScore(dev: c.VkPhysicalDevice) f32 {
 	var properties: c.VkPhysicalDeviceProperties = undefined;
 	c.vkGetPhysicalDeviceProperties(dev, &properties);
-	var features: c.VkPhysicalDeviceFeatures = undefined;
-	c.vkGetPhysicalDeviceFeatures(dev, &features);
+	const features: DeviceFeatures = .getFromDevice(dev);
 	std.log.debug("Device: {s}", .{@as([*:0]const u8, @ptrCast(&properties.deviceName))});
 	std.log.debug("Properties: {}", .{properties});
 	std.log.debug("Features: {}", .{features});
@@ -351,10 +389,14 @@ fn getDeviceScore(dev: c.VkPhysicalDevice) f32 {
 	}
 	if (!findQueueFamilies(dev).isComplete() or !checkDeviceExtensionSupport(dev)) return 0;
 
-	inline for (comptime std.meta.fieldNames(@TypeOf(deviceFeatures))) |name| {
-		if (@field(deviceFeatures, name) == c.VK_TRUE and @field(features, name) == c.VK_FALSE) {
-			std.log.warn("Rejecting device: {s} is not supported", .{name});
-			return 0;
+	inline for (comptime std.meta.fieldNames(@TypeOf(deviceFeatures))) |ver| {
+		inline for (comptime std.meta.fieldNames(@TypeOf(@field(deviceFeatures, ver)))) |name| {
+			if (comptime std.mem.eql(u8, name, "sType")) continue;
+			if (comptime std.mem.eql(u8, name, "pNext")) continue;
+			if (@field(@field(deviceFeatures, ver), name) == c.VK_TRUE and @field(@field(features, ver), name) == c.VK_FALSE) {
+				std.log.warn("Rejecting device: {s} is not supported", .{name});
+				return 0;
+			}
 		}
 	}
 
@@ -418,11 +460,14 @@ fn createLogicalDevice() void {
 		});
 	}
 
+	var features = deviceFeatures;
+
 	const createInfo: c.VkDeviceCreateInfo = .{
 		.sType = c.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+		.pNext = features.chain(),
 		.pQueueCreateInfos = queueCreateInfos.items.ptr,
 		.queueCreateInfoCount = @intCast(queueCreateInfos.items.len),
-		.pEnabledFeatures = &deviceFeatures,
+		.pEnabledFeatures = &features.v10,
 		.ppEnabledLayerNames = validationLayers.ptr,
 		.enabledLayerCount = if (checkValidationLayerSupport()) validationLayers.len else 0,
 		.ppEnabledExtensionNames = &deviceExtensions,
@@ -432,6 +477,73 @@ fn createLogicalDevice() void {
 	c.vkGetDeviceQueue(device, indices.graphicsFamily.?, 0, &graphicsQueue);
 	c.vkGetDeviceQueue(device, indices.presentFamily.?, 0, &presentQueue);
 }
+
+pub const Semaphore = struct { // MARK: Semaphore
+	handle: c.VkSemaphore,
+
+	fn init() Semaphore {
+		var result: c.VkSemaphore = undefined;
+		const semaphoreInfo = c.VkSemaphoreCreateInfo{
+			.sType = c.VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+		};
+		checkResult(c.vkCreateSemaphore(device, &semaphoreInfo, null, &result));
+		return .{.handle = result};
+	}
+	fn deinit(self: Semaphore) void {
+		c.vkDestroySemaphore(device, self.handle, null);
+	}
+};
+
+pub const Fence = struct { // MARK: Fence
+	handle: c.VkFence,
+
+	fn init(createSignaled: bool) Fence {
+		var result: c.VkFence = undefined;
+		const fenceInfo = c.VkFenceCreateInfo{
+			.sType = c.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+			.flags = if (createSignaled) c.VK_FENCE_CREATE_SIGNALED_BIT else 0,
+		};
+		checkResult(c.vkCreateFence(device, &fenceInfo, null, &result));
+		return .{.handle = result};
+	}
+	fn deinit(self: Fence) void {
+		c.vkDestroyFence(device, self.handle, null);
+	}
+
+	fn waitAndReset(self: Fence) void {
+		checkResult(c.vkWaitForFences(device, 1, &self.handle, c.VK_TRUE, c.UINT64_MAX));
+		checkResult(c.vkResetFences(device, 1, &self.handle));
+	}
+};
+
+const FrameData = struct {
+	fence: Fence,
+	imageAvailable: Semaphore,
+	renderFinished: Semaphore,
+	swapChainImageIndex: u32,
+
+	guiCommands: main.graphics.CommandBuffer,
+
+	fn init() FrameData {
+		return .{
+			.fence = .init(true),
+			.imageAvailable = .init(),
+			.renderFinished = .init(),
+			.swapChainImageIndex = undefined,
+			.guiCommands = .init(),
+		};
+	}
+
+	fn deinit(self: FrameData) void {
+		self.fence.deinit();
+		self.imageAvailable.deinit();
+		self.renderFinished.deinit();
+	}
+};
+
+var frames: []FrameData = undefined;
+
+var currentFrame: *const FrameData = undefined;
 
 pub const SwapChain = struct { // MARK: SwapChain
 	var swapChain: c.VkSwapchainKHR = null;
@@ -547,14 +659,19 @@ pub const SwapChain = struct { // MARK: SwapChain
 		}
 
 		checkResult(c.vkCreateSwapchainKHR(device, &createInfo, null, &swapChain));
-		images = main.globalAllocator.alloc(c.VkImage, imageCount);
+		images = main.globalArena.alloc(c.VkImage, imageCount);
 		var newImageCount = imageCount;
 		checkResult(c.vkGetSwapchainImagesKHR(device, swapChain, &newImageCount, images.ptr));
 		std.debug.assert(newImageCount == imageCount);
 
-		imageViews = main.globalAllocator.alloc(c.VkImageView, imageCount);
+		imageViews = main.globalArena.alloc(c.VkImageView, imageCount);
 		for (0..images.len) |i| {
 			imageViews[i] = createImageView(images[i]);
+		}
+
+		frames = main.globalArena.alloc(FrameData, imageCount);
+		for (frames) |*frame| {
+			frame.* = .init();
 		}
 	}
 
@@ -562,8 +679,94 @@ pub const SwapChain = struct { // MARK: SwapChain
 		for (imageViews) |imageView| {
 			c.vkDestroyImageView(device, imageView, null);
 		}
-		main.globalAllocator.free(imageViews);
-		main.globalAllocator.free(images);
+		for (frames) |frame| {
+			frame.deinit();
+		}
 		c.vkDestroySwapchainKHR(device, swapChain, null);
 	}
+
+	fn beginRender() void {
+		currentFrame.fence.waitAndReset();
+		checkResult(c.vkAcquireNextImageKHR(device, swapChain, c.UINT64_MAX, currentFrame.imageAvailable.handle, null, &frames[frameIndex].swapChainImageIndex));
+
+		currentFrame.guiCommands.beginRecording(0);
+		currentFrame.guiCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+				.srcAccessMask = 0,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+				.dstAccessMask = c.VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | c.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
+				.newLayout = c.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+				.image = images[currentFrame.swapChainImageIndex],
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
+			},
+		}});
+	}
+
+	fn endRender() void {
+		currentFrame.guiCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+				.srcAccessMask = c.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+				.dstAccessMask = 0,
+				.oldLayout = c.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+				.newLayout = c.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+				.image = images[currentFrame.swapChainImageIndex],
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
+			},
+		}});
+		currentFrame.guiCommands.endRecording();
+		currentFrame.guiCommands.submit(
+			graphicsQueue,
+			&.{currentFrame.imageAvailable.handle},
+			&.{c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT},
+			&.{currentFrame.renderFinished.handle},
+			currentFrame.fence.handle,
+		);
+
+		const presentInfo: c.VkPresentInfoKHR = .{
+			.sType = c.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+			.waitSemaphoreCount = 1,
+			.pWaitSemaphores = &currentFrame.renderFinished.handle,
+			.swapchainCount = 1,
+			.pSwapchains = &swapChain,
+			.pImageIndices = &currentFrame.swapChainImageIndex,
+		};
+		const result = c.vkQueuePresentKHR(presentQueue, &presentInfo);
+		frameIndex = (frameIndex + 1)%images.len;
+		checkResult(result); // TODO: swapchain recreation
+	}
 };
+
+pub const command_pool = struct { // MARK: command_pool
+	pub var handle: c.VkCommandPool = undefined;
+
+	fn init() void {
+		const queueFamilies = findQueueFamilies(physicalDevice);
+		const poolInfo = c.VkCommandPoolCreateInfo{
+			.sType = c.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+			.flags = c.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+			.queueFamilyIndex = queueFamilies.graphicsFamily.?,
+		};
+		checkResult(c.vkCreateCommandPool(device, &poolInfo, null, &handle));
+	}
+
+	fn deinit() void {
+		c.vkDestroyCommandPool(device, handle, null);
+	}
+};
+
+var frameIndex: usize = 0;
+
+pub fn beginRender() void {
+	currentFrame = &frames[frameIndex];
+	SwapChain.beginRender();
+}
+
+pub fn endRender() void {
+	SwapChain.endRender();
+}

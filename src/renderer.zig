@@ -243,7 +243,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
-	main.entity.client.render(ambientLight, playerPos, main.lastDeltaTime.load(.monotonic));
+	main.systems.client.render(ambientLight, playerPos, main.lastDeltaTime.load(.monotonic));
 
 	itemdrop.ItemDropRenderer.renderItemDrops(ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
@@ -329,7 +329,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-	if (!main.gui.hideGui) main.entity.client.renderHud(ambientLight, playerPos);
+	if (!main.gui.hideGui) main.systems.client.renderHud(ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
 }
 
@@ -364,7 +364,7 @@ const Bloom = struct { // MARK: Bloom
 			"",
 			null,
 			graphics.draw.SimpleVertex2D,
-			&.{.{.binding = 3, .count = 1, .type = .combinedImageSampler, .stageFlags = .{.fragment = true}}},
+			&.{.sampler(3, .{.fragment = true})},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.noBlending}},
@@ -375,7 +375,7 @@ const Bloom = struct { // MARK: Bloom
 			"",
 			null,
 			graphics.draw.SimpleVertex2D,
-			&.{.{.binding = 3, .count = 1, .type = .combinedImageSampler, .stageFlags = .{.fragment = true}}},
+			&.{.sampler(3, .{.fragment = true})},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.noBlending}},
@@ -506,7 +506,7 @@ pub const MenuBackGround = struct {
 			"",
 			null,
 			MenuBackgroundVertex,
-			&.{},
+			&.{.sampler(0, .{.fragment = true})},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.noBlending}},

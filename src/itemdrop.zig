@@ -255,8 +255,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			const updateData = list.toStringEfficient(main.stackAllocator, &.{});
 			defer main.stackAllocator.free(updateData);
 
-			const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+			const userList = main.server.getUserList(main.stackAllocator);
+			defer main.stackAllocator.free(userList);
 			for (userList) |user| {
 				main.network.protocols.entity.send(user.conn, updateData);
 			}
@@ -287,8 +287,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			const updateData = list.toStringEfficient(main.stackAllocator, &.{});
 			defer main.stackAllocator.free(updateData);
 
-			const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+			const userList = main.server.getUserList(main.stackAllocator);
+			defer main.stackAllocator.free(userList);
 			for (userList) |user| {
 				main.network.protocols.entity.send(user.conn, updateData);
 			}
@@ -343,8 +343,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		const updateData = list.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(updateData);
 
-		const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+		const userList = main.server.getUserList(main.stackAllocator);
+		defer main.stackAllocator.free(userList);
 		for (userList) |user| {
 			main.network.protocols.entity.send(user.conn, updateData);
 		}
@@ -519,7 +519,6 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	var itemModelSSBO: graphics.SSBO = undefined;
 	var modelData: main.ListManaged(u32) = undefined;
 	var freeSlots: main.ListManaged(*ItemVoxelModel) = undefined;
-	var displayItemUbo: graphics.frame_uniforms.StaticUbo = undefined;
 
 	const ItemVoxelModel = struct {
 		index: u31 = undefined,
@@ -627,13 +626,6 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
 		modelData = .init(main.globalAllocator);
 		freeSlots = .init(main.globalAllocator);
-
-		displayItemUbo = .init(.{
-			.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(main.renderer.lastWidth))/@as(f32, @floatFromInt(main.renderer.lastHeight)), 0.01, 3).toGl(),
-			.viewMatrix = Mat4f.identity().toGl(),
-			.playerPositionInteger = @splat(0),
-			.playerPositionFraction = @splat(0),
-		});
 	}
 
 	pub fn deinit() void {
@@ -735,6 +727,13 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	pub fn renderDisplayItems(ambientLight: Vec3f, playerPos: Vec3d) void {
 		if (!ItemDisplayManager.showItem) return;
 
+		const displayItemUbo = graphics.frame_uniforms.StaticUbo.init(.{
+			.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(main.renderer.lastWidth))/@as(f32, @floatFromInt(main.renderer.lastHeight)), 0.01, 3).toGl(),
+			.viewMatrix = Mat4f.identity().toGl(),
+			.playerPositionInteger = @splat(0),
+			.playerPositionFraction = @splat(0),
+		});
+		defer displayItemUbo.deinit();
 		displayItemUbo.bind();
 		defer displayItemUbo.unbind();
 		bindCommonUniforms(ambientLight);
