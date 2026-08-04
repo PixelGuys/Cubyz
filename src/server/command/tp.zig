@@ -107,11 +107,15 @@ pub fn execute(args: Args, source: Source) void {
 		.@"/tp <sourcePlayerIndex> <x> <y> <z>" => |pos| {
 			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source) catch return;
 		},
+		.@"/tp <sourcePlayerIndex> <x> <y> <z> <yaw> <pitch>" => |pos| {
+			main.network.protocols.genericUpdate.sendTPRotation(target.user.conn, command.resolveRotation(pos.yaw, pos.pitch, source) catch return);
+			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source) catch return;
+		},
 		inline .@"/tp <destinationPlayerIndex>", .@"/tp <sourcePlayerIndex> <destinationPlayerIndex>" => |index| {
 			const dest = command.Target.fromPlayerIndex(index.destinationPlayerIndex, source) catch return;
 			break :blk dest.user.player().pos;
 		},
 	};
 
-	if (!std.meta.eql(target.user.player().pos, pos)) main.network.protocols.genericUpdate.sendTPCoordinates(target.conn, pos);
+	if (!std.meta.eql(target.user.player().pos, pos)) main.network.protocols.genericUpdate.sendTPCoordinates(target.user.conn, pos);
 }
