@@ -449,6 +449,10 @@ pub fn clientMain() void { // MARK: clientMain()
 			c.glClearColor(0.5, 1, 1, 1);
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 			gui.windowlist.gpu_performance_measuring.stopQuery();
+
+			if (settings.launchConfig.vulkanTestingMode) {
+				graphics.vulkan.beginRender();
+			}
 		} else {
 			io.sleep(.fromMilliseconds(16), .awake) catch {};
 		}
@@ -492,6 +496,10 @@ pub fn clientMain() void { // MARK: clientMain()
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			gui.updateAndRenderGui();
 			gui.windowlist.gpu_performance_measuring.stopQuery();
+
+			if (settings.launchConfig.vulkanTestingMode) {
+				graphics.vulkan.endRender();
+			}
 		}
 
 		if (shouldExitToMenu.load(.monotonic)) {

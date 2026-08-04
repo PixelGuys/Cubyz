@@ -21,6 +21,7 @@ const pipelines = @import("graphics/pipelines.zig");
 pub const ComputePipeline = pipelines.ComputePipeline;
 pub const Pipeline = pipelines.Pipeline;
 
+pub const CommandBuffer = @import("graphics/CommandBuffer.zig");
 pub const vulkan = @import("graphics/vulkan.zig");
 
 pub const draw = struct { // MARK: draw
