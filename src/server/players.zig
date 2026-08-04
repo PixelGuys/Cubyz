@@ -185,7 +185,7 @@ pub fn block(key: []const u8) BlockResult {
 	return if (result.wasNew or !wasBlocked) .blocked else .alreadyBlocked;
 }
 
-pub const JoinResult = enum { allowed, neutral, blocked };
+const JoinResult = enum { allowed, neutral, blocked };
 
 pub fn isAllowedToJoin(key: []const u8) JoinResult {
 	mutex.lock();
