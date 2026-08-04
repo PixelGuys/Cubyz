@@ -27,13 +27,14 @@ pub const meta = @import("meta.zig");
 pub const migrations = @import("migrations.zig");
 pub const models = @import("models.zig");
 pub const network = @import("network.zig");
+pub const particles = @import("particles.zig");
 pub const physics = @import("physics.zig");
 pub const random = @import("random.zig");
 pub const renderer = @import("renderer.zig");
 pub const rotation = @import("rotation.zig");
 pub const settings = @import("settings.zig");
 pub const sync = @import("sync.zig");
-pub const particles = @import("particles.zig");
+pub const systems = @import("systems.zig");
 const tag = @import("tag.zig");
 pub const Tag = tag.Tag;
 pub const utils = @import("utils.zig");
@@ -397,6 +398,9 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 
 	network.init() catch @panic("Failed to initialize network");
 	defer network.deinit();
+
+	if (!headless) systems.client.init();
+	defer if (!headless) systems.client.deinit();
 
 	if (!headless) entity.client.init();
 	defer if (!headless) entity.client.deinit();
