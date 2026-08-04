@@ -18,7 +18,7 @@ const Gamemode = main.game.Gamemode;
 const DefaultSettings = main.server.world_zig.Settings.defaults;
 
 const WorldSettings = struct {
-	name: []const u8,
+	name: []const u8 = &.{},
 	seed: i128,
 	defaultGamemode: Gamemode,
 	allowCheats: bool,
@@ -52,6 +52,11 @@ const WorldSettings = struct {
 			self.testingMode,
 		});
 	}
+
+	pub fn update(self: *WorldSettings, value: bool) void {
+		self.isUpated = value;
+		saveChanges.disabled = !value;
+	}
 };
 
 pub var window = GuiWindow{
@@ -63,32 +68,54 @@ const padding: f32 = 8;
 var editWorldName: []const u8 = "";
 
 var worldInfo: ZonElement = undefined;
-var worldInfoSettings: ZonElement = undefined;
 var worldSettings: WorldSettings = undefined;
 
 var nameInput: *TextInput = undefined;
 var gamemodeInput: *Button = undefined;
+var saveChanges: *Button = undefined;
 
 fn nameCallback() void {
 	const newName = nameInput.currentString.items;
 	worldSettings.name = newName;
+	worldSettings.update(true);
 }
 
 fn gameModeCallback() void {
 	worldSettings.defaultGamemode = std.enums.fromInt(Gamemode, @intFromEnum(worldSettings.defaultGamemode) + 1) orelse @enumFromInt(0);
 	gamemodeInput.child.label.updateText(@tagName(worldSettings.defaultGamemode));
+	worldSettings.update(true);
 }
 
 fn allowCheatsCallback(allow: bool) void {
 	worldSettings.allowCheats = allow;
+	worldSettings.update(true);
 }
 
 fn testingModeCallback(enabled: bool) void {
 	worldSettings.testingMode = enabled;
+	worldSettings.update(true);
 }
 
 fn saveChangesCallback() void {
 	worldSettings.print();
+
+	const path = main.globalAllocator.print("saves/{s}/world.zig.zon", .{editWorldName});
+	defer main.globalAllocator.free(path);
+
+	const worldInfoSettings = worldInfo.getChild("settings");
+
+	worldInfoSettings.put("defaultGamemode", @tagName(worldSettings.defaultGamemode));
+	worldInfoSettings.put("allowCheats", worldSettings.allowCheats);
+	worldInfoSettings.put("testingMode", worldSettings.testingMode);
+
+	worldInfo.put("localPlayer", worldSettings.localPlayerIndex);
+	worldInfo.put("name", nameInput.currentString.items);
+	worldInfo.put("settings", worldInfoSettings.string);
+	main.files.cubyzDir().writeZon(path, worldInfo) catch |err| {
+		std.log.err("Error while creating new world: {s}", .{@errorName(err)});
+		return;
+	};
+	worldSettings.update(false);
 }
 
 pub fn init() void {
@@ -112,8 +139,9 @@ pub fn onOpen() void {
 		std.log.err("Error while creating new world: {s}", .{@errorName(err)});
 		return;
 	};
+	defer worldInfo.deinit(main.stackAllocator);
 
-	worldInfoSettings = worldInfo.getChild("settings");
+	const worldInfoSettings = worldInfo.getChild("settings");
 
 	worldSettings = WorldSettings.init(
 		worldInfo.get([]const u8, "name") orelse "",
@@ -148,7 +176,7 @@ pub fn onOpen() void {
 	const indexLabel = Label.init(.{0, 0}, 128, "Local Player Indiex", .left);
 	list.add(indexLabel);
 
-	const saveChanges = Button.initText(.{0, 0}, 128, "Save Changes", .{.onAction = .init(saveChangesCallback)});
+	saveChanges = Button.initText(.{0, 0}, 128, "Save Changes", .{.disabled = !worldSettings.isUpated, .onAction = .init(saveChangesCallback)});
 	list.add(saveChanges);
 
 	list.finish(.center);
