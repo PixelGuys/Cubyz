@@ -99,15 +99,20 @@ fn considerCoordinates(ore: *const main.blocks.Ore, relX: f32, relY: f32, relZ: 
 				while (curZ < zMax) : (curZ += 1) {
 					const distToCenterZ = (@as(f32, @floatFromInt(curZ)) - veinRelZ)/radius;
 					const distSqr = xyDistSqr + distToCenterZ*distToCenterZ;
-					if (distSqr < 1) {
-						// Add some roughness. The ore density gets smaller at the edges:
-						if ((1 - distSqr)*ore.density >= random.nextFloat(&veinSeed)) {
-							const stoneBlock = chunk.getBlock(curX, curY, curZ);
-							if (chunk.getBlock(curX, curY, curZ).allowOres()) {
-								chunk.updateBlockInGeneration(curX, curY, curZ, .{.typ = ore.blockType, .data = stoneBlock.typ});
-							}
+					if (distSqr >= 1) continue;
+					// Add some roughness. The ore density gets smaller at the edges:
+					if ((1 - distSqr)*ore.density < random.nextFloat(&veinSeed)) continue;
+					const stoneBlock = chunk.getBlock(curX, curY, curZ);
+					if (!stoneBlock.allowOres()) continue;
+					var hasCorrectTags: bool = true;
+					for (ore.targetTags) |tag| {
+						if (!stoneBlock.hasTag(tag)) {
+							hasCorrectTags = false;
+							break;
 						}
 					}
+					if (!hasCorrectTags) continue;
+					chunk.updateBlockInGeneration(curX, curY, curZ, .{.typ = ore.blockType, .data = stoneBlock.typ});
 				}
 			}
 		}
