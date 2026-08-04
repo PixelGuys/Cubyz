@@ -99,8 +99,8 @@ fn testingModeCallback(enabled: bool) void {
 fn saveChangesCallback() void {
 	worldSettings.print();
 
-	const path = main.globalAllocator.print("saves/{s}/world.zig.zon", .{editWorldName});
-	defer main.globalAllocator.free(path);
+	const path = main.stackAllocator.print("saves/{s}/world.zig.zon", .{editWorldName});
+	defer main.stackAllocator.free(path);
 
 	const worldInfoSettings = worldInfo.getChild("settings");
 
@@ -110,7 +110,7 @@ fn saveChangesCallback() void {
 
 	worldInfo.put("localPlayer", worldSettings.localPlayerIndex);
 	worldInfo.put("name", nameInput.currentString.items);
-	worldInfo.put("settings", worldInfoSettings.string);
+	worldInfo.put("settings", worldInfoSettings.clone(main.stackAllocator));
 	main.files.cubyzDir().writeZon(path, worldInfo) catch |err| {
 		std.log.err("Error while creating new world: {s}", .{@errorName(err)});
 		return;
@@ -135,11 +135,10 @@ pub fn onOpen() void {
 	const worldInfoPath = main.stackAllocator.print("saves/{s}/world.zig.zon", .{editWorldName});
 	defer main.stackAllocator.free(worldInfoPath);
 
-	worldInfo = main.files.cubyzDir().readToZon(main.stackAllocator, worldInfoPath) catch |err| {
+	worldInfo = main.files.cubyzDir().readToZon(main.globalAllocator, worldInfoPath) catch |err| {
 		std.log.err("Error while creating new world: {s}", .{@errorName(err)});
 		return;
 	};
-	defer worldInfo.deinit(main.stackAllocator);
 
 	const worldInfoSettings = worldInfo.getChild("settings");
 
@@ -189,4 +188,5 @@ pub fn onClose() void {
 	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
+	worldInfo.deinit(main.globalAllocator);
 }
