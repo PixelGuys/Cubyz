@@ -602,10 +602,6 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 
 			return std.mem.lessThan(u8, itemA.id().?, itemB.id().?);
 		}
-
-		pub fn swap(ctx: *@This(), a: usize, b: usize) void {
-			std.mem.swap(usize, ctx.sortlist[a], ctx.sortlist[b]);
-		}
 	};
 
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {
