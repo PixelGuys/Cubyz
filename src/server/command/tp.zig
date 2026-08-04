@@ -7,26 +7,20 @@ const Source = command.Source;
 pub const description = "Teleport to location.";
 pub const usage =
 	\\/tp <biome>
-	\\/tp @<playerIndex> <biome>
+	\\/tp @<sourcePlayerIndex> <biome>
 	\\/tp <x> <y> <z>
-	\\/tp @<playerIndex> <x> <y> <z>
+	\\/tp @<sourcePlayerIndex> <x> <y> <z>
 	\\/tp @<destinationPlayerIndex>
 	\\/tp @<sourcePlayerIndex> @<destinationPlayerIndex>
 ;
 
 pub const Args = union(enum) {
-	@"/tp <biome>": struct { biome: command.BiomeId },
 	@"/tp <sourcePlayerIndex> <biome>": struct {
-		sourcePlayerIndex: command.PlayerIndex,
+		sourcePlayerIndex: ?command.PlayerIndex,
 		biome: command.BiomeId,
 	},
-	@"/tp <x> <y> <z>": struct {
-		x: command.Coordinate,
-		y: command.Coordinate,
-		z: command.Coordinate,
-	},
 	@"/tp <sourcePlayerIndex> <x> <y> <z>": struct {
-		sourcePlayerIndex: command.PlayerIndex,
+		sourcePlayerIndex: ?command.PlayerIndex,
 		x: command.Coordinate,
 		y: command.Coordinate,
 		z: command.Coordinate,
@@ -49,7 +43,7 @@ pub fn execute(args: Args, source: Source) void {
 		else => command.Target.fromPlayerIndex(null, source) catch return,
 	};
 	const pos: main.vec.Vec3d = blk: switch (args) {
-		inline .@"/tp <biome>", .@"/tp <sourcePlayerIndex> <biome>" => |b| {
+		.@"/tp <sourcePlayerIndex> <biome>" => |b| {
 			const user = target.user;
 			const biome = b.biome.biome;
 			if (biome.isCave) {
@@ -102,7 +96,7 @@ pub fn execute(args: Args, source: Source) void {
 			source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.", .{});
 			return;
 		},
-		inline .@"/tp <x> <y> <z>", .@"/tp <sourcePlayerIndex> <x> <y> <z>" => |pos| {
+		.@"/tp <sourcePlayerIndex> <x> <y> <z>" => |pos| {
 			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source) catch return;
 		},
 		inline .@"/tp <destinationPlayerIndex>", .@"/tp <sourcePlayerIndex> <destinationPlayerIndex>" => |index| {
