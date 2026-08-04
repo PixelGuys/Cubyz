@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const build_options = @import("build_options");
+
 const main = @import("main");
 const Vec2f = main.vec.Vec2f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
@@ -18,7 +20,6 @@ const Gamemode = main.game.Gamemode;
 const DefaultSettings = main.server.world_zig.Settings.defaults;
 
 const WorldSettings = struct {
-	name: []const u8 = &.{},
 	seed: i128,
 	defaultGamemode: Gamemode,
 	allowCheats: bool,
@@ -27,9 +28,8 @@ const WorldSettings = struct {
 
 	isUpated: bool = false,
 
-	pub fn init(name: []const u8, seed: i128, defaultgameMode: ?[]const u8, allowCheats: bool, testingMode: bool, localPlayerIndex: usize) WorldSettings {
+	pub fn init(seed: i128, defaultgameMode: ?[]const u8, allowCheats: bool, testingMode: bool, localPlayerIndex: usize) WorldSettings {
 		return .{
-			.name = name,
 			.seed = seed,
 			.defaultGamemode = toEnum(defaultgameMode),
 			.allowCheats = allowCheats,
@@ -75,8 +75,6 @@ var gamemodeInput: *Button = undefined;
 var saveChanges: *Button = undefined;
 
 fn nameCallback() void {
-	const newName = nameInput.currentString.items;
-	worldSettings.name = newName;
 	worldSettings.update(true);
 }
 
@@ -106,16 +104,19 @@ fn saveChangesCallback() void {
 
 	worldInfoSettings.put("defaultGamemode", @tagName(worldSettings.defaultGamemode));
 	worldInfoSettings.put("allowCheats", worldSettings.allowCheats);
-	worldInfoSettings.put("testingMode", worldSettings.testingMode);
+	if (!build_options.isTaggedRelease) {
+		worldInfoSettings.put("testingMode", worldSettings.testingMode);
+	}
 
 	worldInfo.put("localPlayer", worldSettings.localPlayerIndex);
 	worldInfo.put("name", nameInput.currentString.items);
-	worldInfo.put("settings", worldInfoSettings.clone(main.stackAllocator));
+	worldInfo.put("settings", worldInfoSettings.clone(main.globalAllocator));
 	main.files.cubyzDir().writeZon(path, worldInfo) catch |err| {
 		std.log.err("Error while creating new world: {s}", .{@errorName(err)});
 		return;
 	};
 	worldSettings.update(false);
+	gui.closeWindowFromRef(&window);
 }
 
 pub fn init() void {
@@ -143,7 +144,6 @@ pub fn onOpen() void {
 	const worldInfoSettings = worldInfo.getChild("settings");
 
 	worldSettings = WorldSettings.init(
-		worldInfo.get([]const u8, "name") orelse "",
 		worldInfoSettings.get(i128, "seed") orelse 0,
 		worldInfoSettings.get([]const u8, "defaultGamemode"),
 		worldInfoSettings.get(bool, "allowCheats") orelse DefaultSettings.allowCheats,
@@ -153,7 +153,7 @@ pub fn onOpen() void {
 
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
 
-	nameInput = TextInput.init(.{0, 0}, 128, 22, worldSettings.name, .{.onNewline = .init(nameCallback)});
+	nameInput = TextInput.init(.{0, 0}, 128, 22, editWorldName, .{.onNewline = .init(saveChangesCallback)});
 	list.add(nameInput);
 
 	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(worldSettings.defaultGamemode), .{.onAction = .init(gameModeCallback)});
@@ -161,7 +161,9 @@ pub fn onOpen() void {
 
 	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", worldSettings.allowCheats, &allowCheatsCallback));
 
-	list.add(CheckBox.init(.{0, 0}, 128, "Testing Mode", worldSettings.testingMode, &testingModeCallback));
+	if (!build_options.isTaggedRelease) {
+		list.add(CheckBox.init(.{0, 0}, 128, "Testing Mode", worldSettings.testingMode, &testingModeCallback));
+	}
 
 	const seed = main.stackAllocator.print("{d}", .{worldSettings.seed});
 	defer main.stackAllocator.free(seed);
