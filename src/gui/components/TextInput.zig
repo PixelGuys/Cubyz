@@ -494,7 +494,7 @@ pub fn newline(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 }
 
 fn ensureCursorVisibility(self: *TextInput) void {
-	self.cursor = true;
+	self.showCursor = true;
 	if (self.options.disabled) return;
 	self.lastBlinkTime = main.timestamp();
 	if (self.textSize[1] > self.maxHeight - 2*border) {
