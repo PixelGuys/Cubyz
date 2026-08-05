@@ -703,9 +703,21 @@ pub const SwapChain = struct { // MARK: SwapChain
 				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
 			},
 		}});
+		currentFrame.guiCommands.beginRendering(.{
+			.textures = &.{
+				.{
+					.imageView = imageViews[currentFrame.swapChainImageIndex],
+					.layout = c.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+					.loadOp = .{.clearColor = .{.float32 = .{0.5, 1, 1, 1.0}}},
+					.storeOp = .store,
+				},
+			},
+			.renderArea = .{.extent = extent},
+		});
 	}
 
 	fn endRender() void {
+		currentFrame.guiCommands.endRendering();
 		currentFrame.guiCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
