@@ -702,8 +702,6 @@ pub const Pipeline = struct { // MARK: Pipeline
 			.pColorBlendState = &blendState,
 			.pDynamicState = &dynamicState,
 			.layout = self.pipelineLayout,
-			.renderPass = graphics.RenderPass.renderToWindow.renderPass, // TODO: Allow configuring this
-			.subpass = 0,
 		};
 		try vulkan.checkResultErr(c.vkCreateGraphicsPipelines(vulkan.device, null, 1, &pipelineInfo, null, &self.graphicsPipeline));
 		self.vulkanCreationSuccessful = true;
