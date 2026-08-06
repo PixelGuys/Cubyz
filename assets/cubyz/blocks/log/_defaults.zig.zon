@@ -7,5 +7,5 @@
 	.rotation = "cubyz:log",
 	.model = "cubyz:cube",
 	.decayProhibitor = true,
-	.itemTextureDisplayData = 3,
+	.itemTextureDisplayData = 0b11,
 }
