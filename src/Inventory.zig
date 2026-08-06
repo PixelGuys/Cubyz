@@ -455,7 +455,8 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 
 	pub fn swap(source: ClientInventory, sourceSlot: u32, dest: ClientInventory, destSlot: u32) void {
 		if (source.type == .creative) {
-			dest.fillFromCreative(sourceSlot, source.getItem(destSlot));
+			dest.fillFromCreative(destSlot, source.getItem(sourceSlot));
+			return;
 		}
 		std.debug.assert(source.type == .serverShared);
 		std.debug.assert(dest.type == .serverShared);
