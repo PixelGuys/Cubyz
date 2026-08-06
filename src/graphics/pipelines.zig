@@ -286,8 +286,8 @@ const RasterizationState = struct { // MARK: RasterizationState
 const MultisampleState = struct { // MARK: MultisampleState
 	rasterizationSamples: Count = .@"1",
 	sampleShading: bool = false,
-	minSampleShading: f32 = undefined,
-	sampleMask: [*]const c.VkSampleMask = &.{0, 0},
+	minSampleShading: f32 = 0,
+	sampleMask: ?[*]const c.VkSampleMask = null,
 	alphaToCoverage: bool = false,
 	alphaToOne: bool = false,
 
@@ -383,10 +383,10 @@ const DepthStencilState = struct { // MARK: DepthStencilState
 			.depthCompareOp = @intFromEnum(self.depthCompare),
 			.depthBoundsTestEnable = @intFromBool(self.depthBoundsTest != null),
 			.stencilTestEnable = @intFromBool(self.stencilTest != null),
-			.front = if (self.stencilTest) |s| s.front.toVulkan() else undefined,
-			.back = if (self.stencilTest) |s| s.back.toVulkan() else undefined,
-			.minDepthBounds = if (self.depthBoundsTest) |d| d.min else undefined,
-			.maxDepthBounds = if (self.depthBoundsTest) |d| d.max else undefined,
+			.front = if (self.stencilTest) |s| s.front.toVulkan() else .{},
+			.back = if (self.stencilTest) |s| s.back.toVulkan() else .{},
+			.minDepthBounds = if (self.depthBoundsTest) |d| d.min else 0,
+			.maxDepthBounds = if (self.depthBoundsTest) |d| d.max else 0,
 		};
 	}
 };
