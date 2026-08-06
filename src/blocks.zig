@@ -143,7 +143,6 @@ var _onBreak: [maxBlockCount]ServerBlockCallback = undefined;
 var _onUpdate: [maxBlockCount]ServerBlockCallback = undefined;
 var _mode: [maxBlockCount]*const RotationMode = undefined;
 var _modeData: [maxBlockCount]u16 = undefined;
-var _itemTextureDisplayData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
 var _opaqueVariant: [maxBlockCount]u16 = undefined;
 
@@ -171,7 +170,6 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	const rotationMode = rotation.getByID(zon.get([]const u8, "rotation") orelse "cubyz:no_rotation");
 
 	_mode[size] = rotationMode;
-	_itemTextureDisplayData[size] = zon.get(u16, "itemTextureDisplayData") orelse rotationMode.naturalStandard;
 	_blockHealth[size] = zon.get(f32, "blockHealth") orelse 1;
 	_blockResistance[size] = zon.get(f32, "blockResistance") orelse 0;
 	const rotation_tags = rotationMode.getBlockTags();
@@ -527,10 +525,6 @@ pub const Block = packed struct(u32) { // MARK: Block
 
 	pub inline fn modeData(self: Block) u16 {
 		return _modeData[self.typ];
-	}
-
-	pub inline fn itemTextureDisplayData(self: Block) u16 {
-		return _itemTextureDisplayData[self.typ];
 	}
 
 	pub inline fn rotateZ(self: Block, angle: Degrees) Block {
