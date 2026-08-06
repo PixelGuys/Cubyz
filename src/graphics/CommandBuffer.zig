@@ -161,3 +161,35 @@ pub fn beginRendering(self: CommandBuffer, options: BeginRenderingOptions) void 
 pub fn endRendering(self: CommandBuffer) void {
 	c.vkCmdEndRendering(self.handle);
 }
+
+pub fn bindPipeline(self: CommandBuffer, pipeline: main.graphics.Pipeline) void {
+	c.vkCmdBindPipeline(self.handle, c.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.graphicsPipeline);
+	self.setViewport(.{
+		.x = 0,
+		.y = 0,
+		.width = @floatFromInt(vulkan.SwapChain.extent.width),
+		.height = @floatFromInt(vulkan.SwapChain.extent.height),
+		.minDepth = 0,
+		.maxDepth = 1,
+	});
+	self.setScissor(.{
+		.offset = .{.x = 0, .y = 0},
+		.extent = vulkan.SwapChain.extent,
+	});
+}
+
+pub fn setViewport(self: CommandBuffer, viewport: c.VkViewport) void {
+	c.vkCmdSetViewport(self.handle, 0, 1, &viewport);
+}
+
+pub fn setScissor(self: CommandBuffer, scissor: c.VkRect2D) void {
+	c.vkCmdSetScissor(self.handle, 0, 1, &scissor);
+}
+
+pub fn drawIndexed(self: CommandBuffer, indexCount: u32, firstVertex: i32) void {
+	c.vkCmdDrawIndexed(self.handle, indexCount, 1, 0, firstVertex, 0);
+}
+
+pub fn draw(self: CommandBuffer, vertexCount: u32, firstVertex: u32) void {
+	c.vkCmdDraw(self.handle, vertexCount, 1, firstVertex, 0);
+}
