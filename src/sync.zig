@@ -241,6 +241,7 @@ pub const Command = struct { // MARK: Command
 		updateBlock = 9,
 		addHealth = 10,
 		chatCommand = 12,
+		setRotation = 18,
 	};
 	pub const Payload = union(PayloadType) {
 		open: Open,
@@ -261,6 +262,7 @@ pub const Command = struct { // MARK: Command
 		updateBlock: UpdateBlock,
 		addHealth: AddHealth,
 		chatCommand: ChatCommand,
+		setRotation: SetRotation,
 	};
 
 	const BaseOperationType = enum(u8) {
@@ -273,6 +275,7 @@ pub const Command = struct { // MARK: Command
 		useDurability = 4,
 		addHealth = 5,
 		addEnergy = 6,
+		setRotation = 9,
 	};
 
 	pub const BaseOperation = union(BaseOperationType) {
@@ -321,6 +324,11 @@ pub const Command = struct { // MARK: Command
 			target: ?*main.server.User,
 			energy: f32,
 			previous: f32,
+		},
+		setRotation: struct {
+			target: ?*main.server.User,
+			rotation: Vec3f,
+			previous: Vec3f,
 		},
 	};
 
@@ -618,6 +626,9 @@ pub const Command = struct { // MARK: Command
 				.addEnergy => |info| {
 					main.game.Player.super.energy = info.previous;
 				},
+				.setRotation => |info| {
+					main.game.camera.rotation = info.previous;
+				},
 			}
 		}
 	}
@@ -625,7 +636,7 @@ pub const Command = struct { // MARK: Command
 	fn finalize(self: Command, allocator: NeverFailingAllocator, side: Side, reader: *BinaryReader) !void {
 		for (self.baseOperations.items) |step| {
 			switch (step) {
-				.move, .swap, .create, .moveToBag, .takeFromBag, .addHealth, .addEnergy => {},
+				.move, .swap, .create, .moveToBag, .takeFromBag, .addHealth, .addEnergy, .setRotation => {},
 				.delete => |info| {
 					info.item.deinit();
 				},
@@ -812,6 +823,23 @@ pub const Command = struct { // MARK: Command
 				} else {
 					info.previous = main.game.Player.super.energy;
 					main.game.Player.super.energy = std.math.clamp(main.game.Player.super.energy + info.energy, 0, main.game.Player.super.maxEnergy);
+				}
+			},
+			.setRotation => |*info| {
+				if (side == .server) {
+					info.previous = info.target.?.player().rot;
+					std.log.debug("SetRotation executed on server; target=TRUNCATED, rotation={}", .{info.rotation});
+
+					info.target.?.player().rot = info.rotation;
+					self.baseOperations.append(allocator, .{.setRotation = .{
+						.target = info.target.?,
+						.rotation = info.rotation,
+						.previous = info.previous,
+					}});
+				} else {
+					std.log.debug("SetRotation executed on client; target=TRUNCATED, rotation={}", .{info.rotation});
+					info.previous = main.game.camera.rotation;
+					main.game.camera.rotation = info.rotation;
 				}
 			},
 		}
@@ -1724,6 +1752,49 @@ pub const Command = struct { // MARK: Command
 				.target = try reader.readEnum(main.entity.Entity),
 				.health = @bitCast(try reader.readInt(u32)),
 				.cause = try reader.readEnum(main.game.DamageType),
+			};
+			if (user.?.id != result.target) return error.Invalid;
+			return result;
+		}
+	};
+
+	const SetRotation = struct { // MARK: SetRotation
+		target: main.entity.Entity,
+		rotation: Vec3f,
+
+		fn run(self: SetRotation, ctx: Context) error{serverFailure}!void {
+			std.log.debug("SetRotation ran; target={}, rotation={}", .{self.target, self.rotation});
+			var target: ?*main.server.User = null;
+
+			if (ctx.side == .server) {
+				const userList = main.server.getUserList(main.stackAllocator);
+				defer main.stackAllocator.free(userList);
+				for (userList) |user| {
+					if (user.id == self.target) {
+						target = user;
+						break;
+					}
+				}
+
+				if (target == null) return error.serverFailure;
+			}
+
+			ctx.execute(.{.setRotation = .{
+				.target = target,
+				.rotation = self.rotation,
+				.previous = if (ctx.side == .server) target.?.player().rot else main.game.camera.rotation,
+			}});
+		}
+
+		fn serialize(self: SetRotation, writer: *BinaryWriter) void {
+			writer.writeEnum(main.entity.Entity, self.target);
+			writer.writeVec(Vec3f, self.rotation);
+		}
+
+		fn deserialize(reader: *BinaryReader, _: Side, user: ?*main.server.User) !SetRotation {
+			const result: SetRotation = .{
+				.target = try reader.readEnum(main.entity.Entity),
+				.rotation = try reader.readVec(Vec3f),
 			};
 			if (user.?.id != result.target) return error.Invalid;
 			return result;
