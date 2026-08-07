@@ -66,6 +66,8 @@ pub const client = struct { // MARK: client
 		defer mutex.unlock();
 		if (commands.popFront()) |cmd| {
 			try cmd.finalize(main.globalAllocator, .client, reader);
+		} else {
+			std.log.err("Received unexpected confirmation sync", .{});
 		}
 	}
 
