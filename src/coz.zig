@@ -166,7 +166,7 @@ const linux_coz_provider = struct {
 };
 
 const dummy_coz_provider = struct {
-	pub fn getCounter(@"type": CozCounterType, name: [*:0]u8) ?*CozCounter {
+	pub fn getCounter(@"type": CozCounterType, name: [:0]const u8) ?*CozCounter {
 		_ = @"type";
 		_ = name;
 		return null;
