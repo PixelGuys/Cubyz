@@ -342,6 +342,7 @@ pub const Command = struct { // MARK: Command
 		health = 3,
 		kill = 4,
 		energy = 5,
+		rotation = 6,
 	};
 
 	const SyncOperation = union(SyncOperationType) { // MARK: SyncOperation
@@ -370,6 +371,10 @@ pub const Command = struct { // MARK: Command
 		energy: struct {
 			target: ?*main.server.User,
 			energy: f32,
+		},
+		rotation: struct {
+			target: ?*main.server.User,
+			rotation: Vec3f,
 		},
 
 		pub fn executeFromData(reader: *BinaryReader) !void {
@@ -417,6 +422,9 @@ pub const Command = struct { // MARK: Command
 				.energy => |energy| {
 					main.game.Player.super.energy = std.math.clamp(main.game.Player.super.energy + energy.energy, 0, main.game.Player.super.maxEnergy);
 				},
+				.rotation => |rotation| {
+					main.game.camera.rotation = rotation.rotation;
+				},
 			}
 		}
 
@@ -430,7 +438,7 @@ pub const Command = struct { // MARK: Command
 					}
 					return result;
 				},
-				inline .health, .kill, .energy => |data| {
+				inline .health, .kill, .energy, .rotation => |data| {
 					const out = allocator.alloc(*main.server.User, 1);
 					out[0] = data.target.?;
 					return out;
@@ -440,7 +448,7 @@ pub const Command = struct { // MARK: Command
 
 		pub fn ignoreSource(self: SyncOperation) bool {
 			return switch (self) {
-				.create, .delete, .useDurability, .health, .energy => true,
+				.create, .delete, .useDurability, .health, .energy, .rotation => true,
 				.kill => false,
 			};
 		}
@@ -491,6 +499,12 @@ pub const Command = struct { // MARK: Command
 						.energy = try reader.readFloat(f32),
 					}};
 				},
+				.rotation => {
+					return .{.rotation = .{
+						.target = null,
+						.rotation = try reader.readVec(Vec3f),
+					}};
+				},
 			}
 		}
 
@@ -521,6 +535,9 @@ pub const Command = struct { // MARK: Command
 				},
 				.energy => |energy| {
 					writer.writeFloat(f32, energy.energy);
+				},
+				.rotation => |rotation| {
+					writer.writeVec(Vec3f, rotation.rotation);
 				},
 			}
 			return writer.data.toOwnedSlice();
@@ -834,10 +851,9 @@ pub const Command = struct { // MARK: Command
 					std.log.debug("SetRotation executed on server; target=TRUNCATED, rotation={}", .{info.rotation});
 
 					info.target.?.player().rot = info.rotation;
-					self.baseOperations.append(allocator, .{.setRotation = .{
+					self.syncOperations.append(allocator, .{.rotation = .{
 						.target = info.target.?,
 						.rotation = info.rotation,
-						.previous = info.previous,
 					}});
 				} else {
 					std.log.debug("SetRotation executed on client; target=TRUNCATED, rotation={}", .{info.rotation});
