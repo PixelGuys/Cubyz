@@ -83,8 +83,6 @@ pub fn isEmpty() bool {
 }
 
 pub fn allocateNewIndex() usize {
-	mutex.lock();
-	defer mutex.unlock();
 	return nextPlayerIndex.fetchAdd(1, .monotonic);
 }
 
@@ -128,6 +126,7 @@ const EnsureResult = struct { entry: *PlayerRecord, wasNew: bool };
 
 fn ensurePlayerRecord(key: []const u8) EnsureResult {
 	sync.threadContext.assertCorrectContext(.server);
+	mutex.assertLocked();
 
 	const result = playerDatabase.getOrPut(main.worldArena.allocator, key) catch unreachable;
 	if (result.found_existing) return .{.entry = result.value_ptr, .wasNew = false};
