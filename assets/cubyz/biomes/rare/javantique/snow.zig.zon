@@ -46,6 +46,15 @@
 			.height_variation = 4,
 		},
 		.{
+			.id = "cubyz:simple_tree",
+			.leaves = "cubyz:grass/temperate",
+			.log = "cubyz:soil",
+			.chance = 0.0002,
+			.type = .pyramid,
+			.height = 8,
+			.height_variation = 4,
+		},
+		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:rare/shoebox_house/base",
 			.placeMode = .all,
