@@ -37,13 +37,23 @@ var itemAmount: main.ListManaged(u32) = undefined;
 var inventories: main.ListManaged(ClientInventory) = undefined;
 
 pub var arrowTexture: Texture = undefined;
+pub var craftableFromTags: []main.Tag = undefined;
 
 pub fn init() void {
 	arrowTexture = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_arrow.png");
+	craftableFromTags = main.stackAllocator.alloc(main.Tag, 1);
+	craftableFromTags[0] = main.Tag.handCraftable;
 }
 
 pub fn deinit() void {
 	arrowTexture.deinit();
+}
+
+pub fn openFromCallback(craftingTags: []main.Tag) void {
+	gui.closeWindowFromRef(&window);
+	gui.openWindowFromRef(&window);
+	craftableFromTags = craftingTags;
+	main.Window.setMouseGrabbed(false);
 }
 
 fn addItemStackToAvailable(itemStack: ItemStack) void {
@@ -92,6 +102,14 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 				}
 			}
 			continue :outer; // Ingredient not found.
+		}
+		middle: for (recipe.craftingTags) |tag| {
+			for (craftableFromTags) |craftingStationTag| {
+				if (tag == craftingStationTag) {
+					continue :middle;
+				}
+			}
+			continue :outer; // Recipe not craftable by this.
 		}
 		// All ingredients found: Add it to the list.
 		const inv = ClientInventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .{.crafting = recipe}, .other, .{});
