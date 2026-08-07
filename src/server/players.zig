@@ -164,6 +164,7 @@ fn saveBlocked(index: usize, value: bool) void {
 const AddResult = enum { added, alreadyAllowed };
 
 pub fn add(key: []const u8) AddResult {
+	sync.threadContext.assertCorrectContext(.server);
 	mutex.lock();
 	defer mutex.unlock();
 	const result = ensurePlayerRecord(key);
@@ -176,6 +177,7 @@ pub fn add(key: []const u8) AddResult {
 const BlockResult = enum { blocked, alreadyBlocked };
 
 pub fn block(key: []const u8) BlockResult {
+	sync.threadContext.assertCorrectContext(.server);
 	mutex.lock();
 	defer mutex.unlock();
 	const result = ensurePlayerRecord(key);
