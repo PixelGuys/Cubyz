@@ -160,7 +160,7 @@ pub const draw = struct { // MARK: draw
 			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.alphaBlending}},
+			.{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
 		);
 		const rawData = [_]SimpleVertex2D{
 			.{.pos = .{0, 0}},
@@ -230,7 +230,7 @@ pub const draw = struct { // MARK: draw
 			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.alphaBlending}},
+			.{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
 		);
 		const rawData = [_]RectBorderVertex{
 			.{.pos = .{0, 0, 0, 0}},
@@ -297,7 +297,7 @@ pub const draw = struct { // MARK: draw
 			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.alphaBlending}},
+			.{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
 		);
 		const rawData = [_]SimpleVertex2D{
 			.{.pos = .{0, 0}},
@@ -374,7 +374,7 @@ pub const draw = struct { // MARK: draw
 			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.alphaBlending}},
+			.{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
 		);
 		const rawData = [_]SimpleVertex2D{
 			.{.pos = .{-1, -1}},
@@ -433,7 +433,7 @@ pub const draw = struct { // MARK: draw
 			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.alphaBlending}},
+			.{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
 		);
 	}
 
@@ -1168,7 +1168,7 @@ const TextRendering = struct { // MARK: TextRendering
 			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.alphaBlending}},
+			.{.attachments = &.{.alphaBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R8_UNORM}}},
 		);
 		pipeline.bind(null);
 		errdefer pipeline.deinit();
@@ -2212,7 +2212,7 @@ const block_texture = struct { // MARK: block_texture
 			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.noBlending}},
+			.{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R8G8B8A8_UNORM}}},
 		);
 		depthTexture = .init();
 		depthTexture.bind();

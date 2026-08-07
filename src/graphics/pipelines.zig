@@ -320,6 +320,8 @@ const DepthStencilState = struct { // MARK: DepthStencilState
 	depthCompare: CompareOp = .less,
 	depthBoundsTest: ?DepthBoundsTest = null,
 	stencilTest: ?StencilTest = null,
+	depthFormat: c.VkFormat = c.VK_FORMAT_D32_SFLOAT,
+	stencilFormat: c.VkFormat = c.VK_FORMAT_UNDEFINED,
 
 	const CompareOp = enum(c.VkCompareOp) {
 		never = c.VK_COMPARE_OP_NEVER,
@@ -509,7 +511,14 @@ const ColorBlendAttachmentState = struct { // MARK: ColorBlendAttachmentState
 const ColorBlendState = struct { // MARK: ColorBlendState
 	logicOp: ?LogicOp = null,
 	attachments: []const ColorBlendAttachmentState,
+	formats: []const ImageFormatHelper,
 	blendConstants: [4]f32 = .{0, 0, 0, 0},
+
+	const ImageFormatHelper = union(enum) {
+		swapChain: void,
+		world: void,
+		custom: c.VkFormat,
+	};
 
 	const LogicOp = enum(c.VkLogicOp) {
 		clear = c.VK_LOGIC_OP_CLEAR,
@@ -689,8 +698,28 @@ pub const Pipeline = struct { // MARK: Pipeline
 		try vulkan.checkResultErr(c.vkCreatePipelineLayout(vulkan.device, &pipelineLayoutInfo, null, &self.pipelineLayout));
 		errdefer c.vkDestroyPipelineLayout(vulkan.device, self.pipelineLayout, null);
 
+		const formats = main.stackAllocator.alloc(c.VkFormat, self.blendState.formats.len);
+		defer main.stackAllocator.free(formats);
+
+		for (self.blendState.formats, 0..) |format, i| {
+			formats[i] = switch (format) {
+				.swapChain => vulkan.SwapChain.imageFormat,
+				.world => main.renderer.worldFrameBufferFormat,
+				.custom => |custom| custom,
+			};
+		}
+
+		const dynamicRenderingInfo: c.VkPipelineRenderingCreateInfo = .{
+			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+			.colorAttachmentCount = @intCast(formats.len),
+			.pColorAttachmentFormats = formats.ptr,
+			.depthAttachmentFormat = self.depthStencilState.depthFormat,
+			.stencilAttachmentFormat = self.depthStencilState.stencilFormat,
+		};
+
 		const pipelineInfo = c.VkGraphicsPipelineCreateInfo{
 			.sType = c.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+			.pNext = &dynamicRenderingInfo,
 			.stageCount = @intCast(shaderStages.len),
 			.pStages = &shaderStages,
 			.pVertexInputState = &vertexInputInfo,

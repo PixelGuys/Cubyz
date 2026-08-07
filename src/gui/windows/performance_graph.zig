@@ -52,7 +52,7 @@ pub fn init() void {
 		&.{},
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
-		.{.attachments = &.{.alphaBlending}},
+		.{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
 	);
 }
 

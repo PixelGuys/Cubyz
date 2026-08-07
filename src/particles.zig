@@ -190,7 +190,7 @@ pub const ParticleSystem = struct {
 			&.{},
 			.{},
 			.{.depthTest = true, .depthWrite = true},
-			.{.attachments = &.{.noBlending}},
+			.{.attachments = &.{.noBlending}, .formats = &.{.world}},
 		);
 
 		particlesSSBO = SSBO.init();
