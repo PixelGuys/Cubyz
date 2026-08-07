@@ -8,6 +8,6 @@
 	.model = "cubyz:cube",
 	.decayProhibitor = true,
 	.item = .{
-		.blockData = 0b11,
-	}
+		.displayBlockData = 0b11,
+	},
 }

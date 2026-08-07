@@ -307,7 +307,7 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 		return itemList[@intFromEnum(self)].getTooltip();
 	}
 	pub fn getDefaultBlock(self: BaseItemIndex) ?Block {
-		return itemList[@intFromEnum(self)].getDefaultBlock();
+		return itemList[@intFromEnum(self)].getDisplayBlock();
 	}
 };
 
@@ -322,7 +322,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	stackSize: u16,
 	material: ?Material,
 	block: ?u16,
-	blockData: ?u16,
+	displayBlockData: ?u16,
 	foodValue: f32, // TODO: Effects.
 
 	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
@@ -348,7 +348,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 		self.block = blk: {
 			break :blk blocks.getTypeById(zon.get([]const u8, "block") orelse break :blk null);
 		};
-		self.blockData = zon.get(u16, "blockData");
+		self.displayBlockData = zon.get(u16, "displayBlockData");
 
 		self.texture = null;
 		self.foodValue = zon.get(f32, "food") orelse 0;
@@ -384,7 +384,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	pub fn getTexture(self: *BaseItem) graphics.Texture {
 		if (self.texture == null) {
 			if (self.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
-				if (self.getDefaultBlock()) |block| {
+				if (self.getDisplayBlock()) |block| {
 					self.texture = graphics.generateBlockTexture(block);
 				} else {
 					self.texture = graphics.Texture.init();
@@ -409,9 +409,9 @@ pub const BaseItem = struct { // MARK: BaseItem
 		return false;
 	}
 
-	pub fn getDefaultBlock(self: *const BaseItem) ?Block {
+	pub fn getDisplayBlock(self: *const BaseItem) ?Block {
 		if (self.block) |blockType| {
-			const data = if (self.blockData) |d| d else (Block{.typ = blockType, .data = 0}).mode().naturalStandard;
+			const data = if (self.displayBlockData) |d| d else (Block{.typ = blockType, .data = 0}).mode().naturalStandard;
 			return .{.typ = blockType, .data = data};
 		}
 		return null;
