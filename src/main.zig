@@ -14,6 +14,7 @@ const c = @import("c");
 pub const callbacks = @import("callbacks/callbacks.zig");
 pub const chunk = @import("chunk.zig");
 pub const client = @import("client.zig");
+const coz = @import("coz.zig");
 pub const entity = @import("entity.zig");
 pub const entityModel = @import("entityModel.zig");
 pub const files = @import("files.zig");
@@ -437,6 +438,8 @@ pub fn clientMain() void { // MARK: clientMain()
 	audio.setMusic("cubyz:totaldemented/cubyz_remastered");
 
 	while (c.glfwWindowShouldClose(Window.window) == 0) {
+		coz.begin("mainLoop");
+		defer coz.end("mainLoop");
 		heap.GarbageCollection.syncPoint();
 		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
 		if (!isHidden) {
