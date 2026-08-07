@@ -28,6 +28,8 @@ const resolutions = [_]u16{25, 50, 100};
 
 const leavesQualities = [_]u8{0, 1, 2, 3, 4};
 
+const shadowMapResolutions = [_]u16{0, 1024, 2048, 4096, 8192, 16384};
+
 const fpsPresetsValue = [_]u16{5, 10, 15, 30, 50, 60, 75, 90, 100, 120, 144, 165, 170, 180, 200, 240, 260, 280, 300, 360, 480};
 const fpsPresetsText = blk: {
 	var strings: [fpsPresetsValue.len + 1][]const u8 = undefined;
@@ -65,6 +67,13 @@ fn highestLodCallback(newValue: u16) void {
 
 fn leavesQualityCallback(newValue: u16) void {
 	settings.leavesQuality = newValue;
+	settings.save();
+}
+
+fn shadowMapResolutionCallback(index: u16) void {
+	std.log.info("{}", .{index});
+	settings.shadowMapResolution = shadowMapResolutions[index];
+	main.renderer.updateDepthFrameBufferSize();
 	settings.save();
 }
 
@@ -135,6 +144,14 @@ pub fn onOpen() void {
 	if (main.game.world == null) {
 		list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffHighest LOD: ", "{s}", &lodValues, @min(settings.highestLod, settings.highestSupportedLod), &highestLodCallback));
 	}
+	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffShadow Map Resolution: ", "{}", &shadowMapResolutions, switch (settings.shadowMapResolution) {
+		0 => 0,
+		1024 => 1,
+		2048 => 2,
+		4096 => 3,
+		8192 => 4,
+		else => 2,
+	}, &shadowMapResolutionCallback));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffLeaves Quality (TODO: requires reload): ", "{}", &leavesQualities, settings.leavesQuality - leavesQualities[0], &leavesQualityCallback));
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 50.0, 400.0, settings.@"lod0.5Distance", &lodDistanceCallback, &lodDistanceFormatter));
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 0.0, 0.5, settings.blockContrast, &contrastCallback, &contrastFormatter));
