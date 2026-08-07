@@ -12,6 +12,8 @@ var localPlayerIndex: usize = undefined;
 var nextPlayerIndex: std.atomic.Value(usize) = undefined;
 var worldPath: []const u8 = undefined;
 
+var mutex: main.utils.Mutex = .{};
+
 fn init(path: []const u8, loadedLocalPlayerIndex: usize) void {
 	sync.threadContext.assertCorrectContext(.server);
 	worldPath = main.worldArena.dupe(u8, path);
@@ -68,23 +70,26 @@ pub fn getLocalPlayerIndex() usize {
 }
 
 pub fn lookupIndex(key: []const u8) ?usize {
-	sync.threadContext.assertCorrectContext(.server);
+	mutex.lock();
+	defer mutex.unlock();
 	const entry = playerDatabase.get(key) orelse return null;
 	return entry.playerIndex;
 }
 
 pub fn isEmpty() bool {
-	sync.threadContext.assertCorrectContext(.server);
+	mutex.lock();
+	defer mutex.unlock();
 	return playerDatabase.size == 0;
 }
 
 pub fn allocateNewIndex() usize {
-	sync.threadContext.assertCorrectContext(.server);
 	return nextPlayerIndex.fetchAdd(1, .monotonic);
 }
 
 pub fn rebindKey(oldPublicKeyFromFile: ?[]const u8, oldNameFromFile: ?[]const u8, newKey: []const u8, index: usize) void {
 	sync.threadContext.assertCorrectContext(.server);
+	mutex.lock();
+	defer mutex.unlock();
 	var blocked = false;
 	if (oldPublicKeyFromFile) |publicKey| {
 		blocked = playerDatabase.fetchRemove(publicKey).?.value.blocked;
@@ -121,6 +126,7 @@ const EnsureResult = struct { entry: *PlayerRecord, wasNew: bool };
 
 fn ensurePlayerRecord(key: []const u8) EnsureResult {
 	sync.threadContext.assertCorrectContext(.server);
+	mutex.assertLocked();
 
 	const result = playerDatabase.getOrPut(main.worldArena.allocator, key) catch unreachable;
 	if (result.found_existing) return .{.entry = result.value_ptr, .wasNew = false};
@@ -158,6 +164,8 @@ fn saveBlocked(index: usize, value: bool) void {
 const AddResult = enum { added, alreadyAllowed };
 
 pub fn add(key: []const u8) AddResult {
+	mutex.lock();
+	defer mutex.unlock();
 	const result = ensurePlayerRecord(key);
 	const wasBlocked = result.entry.blocked;
 	result.entry.blocked = false;
@@ -168,6 +176,8 @@ pub fn add(key: []const u8) AddResult {
 const BlockResult = enum { blocked, alreadyBlocked };
 
 pub fn block(key: []const u8) BlockResult {
+	mutex.lock();
+	defer mutex.unlock();
 	const result = ensurePlayerRecord(key);
 	const wasBlocked = result.entry.blocked;
 	result.entry.blocked = true;
@@ -177,6 +187,8 @@ pub fn block(key: []const u8) BlockResult {
 
 pub fn isAllowedToJoin(key: []const u8) bool {
 	sync.threadContext.assertCorrectContext(.server);
+	mutex.lock();
+	defer mutex.unlock();
 	const entry = playerDatabase.get(key) orelse return false;
 	return !entry.blocked;
 }
