@@ -42,6 +42,7 @@
 			.type = .pyramid,
 			.height = 8,
 			.height_variation = 4,
+			.branched = false,
 		},
 		.{
 			.id = "cubyz:simple_tree",
@@ -51,12 +52,13 @@
 			.type = .pyramid,
 			.height = 8,
 			.height_variation = 4,
+			.branched = false,
 		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:rare/shoebox_house/base",
 			.placeMode = .all,
-			.chance = 0.002,
+			.chance = 0.001,
 		},
 	},
 }

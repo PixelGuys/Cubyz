@@ -30,7 +30,7 @@
 			.block = "cubyz:cactus",
 			.chance = 0.3,
 			.height = 4,
-			.height_variation = 2,
+			.height_variation = 3,
 		},
 	},
 	.parentBiomes = .{
