@@ -3,5 +3,7 @@
 		.{.id = "cubyz:meteorite/rock/0"},
 		.{.id = "cubyz:meteorite/rock/1"},
 		.{.id = "cubyz:meteorite/rock/2"},
+		.{.id = "cubyz:meteorite/rock/3"},
+		.{.id = "cubyz:meteorite/rock/4"},
 	},
 }
