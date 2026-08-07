@@ -4,7 +4,6 @@
 	.minRadius = 16,
 	.maxRadius = 28,
 	.chance = 0,
-	.roughness = 0,
 	.hills = 2,
 	.ground_structure = .{
 		"4 to 5 cubyz:sand",
