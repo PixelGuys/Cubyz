@@ -431,9 +431,6 @@ pub fn clientMain() void { // MARK: clientMain()
 		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
 	}
 
-	graphics.vulkan.init2();
-	defer graphics.vulkan.deinit2();
-
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastBeginRendering = timestamp();
 

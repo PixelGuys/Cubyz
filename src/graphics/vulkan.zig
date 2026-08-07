@@ -543,23 +543,7 @@ const FrameData = struct {
 
 var frames: []FrameData = undefined;
 
-pub var currentFrame: *const FrameData = &std.mem.zeroes(FrameData); // TODO: Remove default after vulkanTestingMode is removed
-
-var testPipeline: main.graphics.Pipeline = undefined;
-
-pub fn init2() void {
-	testPipeline = .init("assets/cubyz/shaders/test.vert", "assets/cubyz/shaders/test.frag", &.{}, null, 
-		main.graphics.VertexArray.EmptyVertex,
-		&.{},
-		.{},
-		.{.depthTest = false, .depthWrite = false},
-		.{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
-	);
-}
-
-pub fn deinit2() void {
-	testPipeline.deinit();
-}
+var currentFrame: *const FrameData = undefined;
 
 pub const SwapChain = struct { // MARK: SwapChain
 	var swapChain: c.VkSwapchainKHR = null;
@@ -730,8 +714,6 @@ pub const SwapChain = struct { // MARK: SwapChain
 			},
 			.renderArea = .{.extent = extent},
 		});
-		currentFrame.guiCommands.bindPipeline(testPipeline);
-		currentFrame.guiCommands.draw(3, 0);
 	}
 
 	fn endRender() void {
