@@ -12,7 +12,7 @@
 	.maxRadius = 275,
 	.roughness = 0,
 	.hills = 10,
-	.chance = 1,
+	.chance = 0.01,
 	.music = "cubyz:sinanimea/sunrise",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
