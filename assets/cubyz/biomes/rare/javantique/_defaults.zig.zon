@@ -1,0 +1,5 @@
+.{
+	.fogDensity = 20,
+	.skyColor = 0x0da3b5,
+	.fogColor = 0x0da3b5,
+}
