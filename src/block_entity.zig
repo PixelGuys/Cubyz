@@ -341,7 +341,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 					&.{},
 					.{},
 					.{.depthTest = true, .depthCompare = .equal, .depthWrite = false},
-					.{.attachments = &.{.alphaBlending}},
+					.{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
 				);
 			}
 		}

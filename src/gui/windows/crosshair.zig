@@ -49,7 +49,7 @@ pub fn init() void {
 			.srcAlphaBlendFactor = .one,
 			.dstAlphaBlendFactor = .one,
 			.alphaBlendOp = .subtract,
-		}}},
+		}}, .formats = &.{.swapChain}},
 	);
 	texture = Texture.initFromFile("assets/cubyz/ui/hud/crosshair.png");
 }

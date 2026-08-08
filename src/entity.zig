@@ -7,7 +7,6 @@ const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 
 pub const components = @import("entityComponent/_list.zig");
-pub const systems = @import("entitySystem/_list.zig");
 
 pub const EntityNetworkData = struct {
 	id: main.entity.Entity,
@@ -100,9 +99,6 @@ pub fn unloadComponent(comptime side: main.sync.Side, componentId: EntityCompone
 
 pub const client = struct {
 	pub fn init() void {
-		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).client.init();
-		}
 		inline for (@typeInfo(components).@"struct".decls) |decl| {
 			@field(components, decl.name).client.init();
 		}
@@ -113,17 +109,11 @@ pub const client = struct {
 		inline for (@typeInfo(components).@"struct".decls) |decl| {
 			@field(components, decl.name).client.deinit();
 		}
-		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).client.deinit();
-		}
 	}
 	pub fn clear() void {
 		main.client.entity_manager.clear();
 		inline for (@typeInfo(components).@"struct".decls) |decl| {
 			@field(components, decl.name).client.clear();
-		}
-		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).client.clear();
 		}
 	}
 	pub fn removeAllComponents(entity: Entity) void {
@@ -132,23 +122,9 @@ pub const client = struct {
 			@field(list, decl.name).client.unload(entity);
 		}
 	}
-	pub fn render(ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
-		main.client.entity_manager.update();
-		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).client.render(ambientLight, playerPos, deltaTime);
-		}
-	}
-	pub fn renderHud(ambientLight: Vec3f, playerPos: Vec3d) void {
-		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).client.renderHud(ambientLight, playerPos);
-		}
-	}
 };
 pub const server = struct {
 	pub fn init() void {
-		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).server.init();
-		}
 		inline for (@typeInfo(components).@"struct".decls) |decl| {
 			@field(components, decl.name).server.init();
 		}
@@ -156,14 +132,6 @@ pub const server = struct {
 	pub fn deinit() void {
 		inline for (@typeInfo(components).@"struct".decls) |decl| {
 			@field(components, decl.name).server.deinit();
-		}
-		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).server.deinit();
-		}
-	}
-	pub fn update() void {
-		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).server.update();
 		}
 	}
 	pub fn componentsToBase64(allocator: main.heap.NeverFailingAllocator, entity: Entity, audience: main.entity.AudienceInfo) main.utils.Base64 {

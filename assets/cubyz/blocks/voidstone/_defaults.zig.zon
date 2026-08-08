@@ -6,15 +6,13 @@
 		.{.items = .{.auto}},
 	},
 	.item = .{
+		.colorTexture = "voidstone_palette.png",
 		.material = .{
 			.durability = 200,
 			.massDamage = 3.0,
 			.hardnessDamage = 7.0,
 			.swingSpeed = 4.7,
 			.textureRoughness = 0.2,
-			.colors = .{
-				0xff030308, 0xff0a0913, 0xff0e0d1a, 0xff171a30, 0xff1f2c4a,
-			},
 			.modifiers = .{
 				.{
 					.id = "durable",

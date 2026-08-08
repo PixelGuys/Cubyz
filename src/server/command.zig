@@ -126,7 +126,7 @@ pub const Target = struct {
 
 	pub fn fromPlayerIndex(arg: ?PlayerIndex, source: Source) !Target {
 		if (arg == null and source != .user) {
-			source.sendMessage("ff0000Command was run without a user; unable to infer the player index", .{});
+			source.sendMessage("#ff0000Command was run without a user; unable to infer the player index", .{});
 			return error.InvalidArg;
 		}
 		const playerIndex = arg orelse return .{
