@@ -35,6 +35,7 @@ pub const Settings = struct {
 	defaultGamemode: Gamemode = .creative,
 	allowCheats: bool = true,
 	testingMode: bool = false,
+	whitelistEnabled: std.atomic.Value(bool) = .init(false),
 	seed: u64 = undefined,
 
 	pub const defaults: Settings = .{};
@@ -48,15 +49,17 @@ pub const Settings = struct {
 			.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "defaultGamemode") orelse @tagName(defaults.defaultGamemode)) orelse defaults.defaultGamemode,
 			.allowCheats = zon.get(bool, "allowCheats") orelse defaults.allowCheats,
 			.testingMode = zon.get(bool, "testingMode") orelse defaults.testingMode,
+			.whitelistEnabled = .init(zon.get(bool, "whitelistEnabled") orelse defaults.whitelistEnabled.load(.monotonic)),
 		};
 	}
 
-	pub fn toZon(self: Settings, allocator: NeverFailingAllocator) ZonElement {
+	pub fn toZon(self: *const Settings, allocator: NeverFailingAllocator) ZonElement {
 		const zon = main.ZonElement.initObject(allocator);
 
 		zon.put("defaultGamemode", @tagName(self.defaultGamemode));
 		zon.put("allowCheats", self.allowCheats);
 		zon.put("testingMode", self.testingMode);
+		zon.put("whitelistEnabled", self.whitelistEnabled.load(.monotonic));
 		zon.put("seed", self.seed);
 
 		return zon;
@@ -443,7 +446,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	doGameTimeCycle: bool = true,
 
 	tickSpeed: std.atomic.Value(u32) = .init(12),
-	whitelistEnabled: std.atomic.Value(bool) = .init(false),
 
 	settings: Settings = undefined,
 
@@ -651,7 +653,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.biomeChecksum = worldData.get(i64, "biomeChecksum") orelse 0;
 		self.name = main.globalAllocator.dupe(u8, worldData.get([]const u8, "name") orelse self.path);
 		self.tickSpeed = .init(worldData.get(u32, "tickSpeed") orelse 12);
-		self.whitelistEnabled = .init(worldData.get(bool, "whitelistEnabled") orelse false);
 	}
 
 	pub fn saveWorldConfig(self: *ServerWorld) !void {
@@ -667,7 +668,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		worldData.put("name", self.name);
 		worldData.put("lastUsedTime", std.Io.Clock.Timestamp.now(main.io, .real).raw.toMilliseconds());
 		worldData.put("tickSpeed", self.tickSpeed.load(.monotonic));
-		worldData.put("whitelistEnabled", self.whitelistEnabled.load(.monotonic));
+		worldData.put("settings", self.settings.toZon(main.stackAllocator));
 		worldData.put("localPlayer", players.getLocalPlayerIndex());
 
 		try files.cubyzDir().writeZon(path, worldData);
