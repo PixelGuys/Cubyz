@@ -1639,28 +1639,27 @@ pub const TimeDifference = struct { // MARK: TimeDifference
 
 /// A wrapper over Zig's mutex to avoid having to pass the io everywhere & for easy integration with Coz.
 pub const Mutex = struct { // MARK: Mutex
-	const coz = @import("coz.zig");
 	super: if (builtin.os.tag == .windows) @import("utils/Mutex.zig") else std.Io.Mutex = .init,
 
 	pub fn tryLock(self: *Mutex) bool {
-		coz.preBlock();
+		main.coz.preBlock();
 		const result = self.super.tryLock();
-		coz.postBlock(result);
+		main.coz.postBlock(result);
 		return result;
 	}
 
 	pub fn lock(self: *Mutex) void {
-		coz.preBlock();
+		main.coz.preBlock();
 		if (builtin.os.tag == .windows) {
 			self.super.lock();
 		} else {
 			self.super.lockUncancelable(main.io);
 		}
-		coz.postBlock(true);
+		main.coz.postBlock(true);
 	}
 
 	pub fn unlock(self: *Mutex) void {
-		coz.catchUp();
+		main.coz.catchUp();
 		if (builtin.os.tag == .windows) {
 			self.super.unlock();
 		} else {

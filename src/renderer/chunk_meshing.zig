@@ -6,7 +6,6 @@ const main = @import("main");
 const blocks = main.blocks;
 const Block = blocks.Block;
 const chunk = main.chunk;
-const coz = @import("../coz.zig");
 const game = main.game;
 const models = main.models;
 const QuadIndex = models.QuadIndex;
@@ -664,7 +663,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	pub fn generateMesh(self: *ChunkMesh, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
-		coz.progressNamed("renderer/chunk_meshing:generateMesh");
+		main.coz.progressNamed("renderer/chunk_meshing:generateMesh");
 		var alwaysViewThroughMask: [chunk.chunkSize][chunk.chunkSize]u32 = undefined;
 		@memset(std.mem.asBytes(&alwaysViewThroughMask), 0);
 		var alwaysViewThroughMask2: [chunk.chunkSize][chunk.chunkSize]u32 = undefined;
@@ -1146,8 +1145,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	fn updateBlockLightAndMesh(self: *ChunkMesh, blockUpdatePos: Vec3i, lightRefreshList: *main.ListManaged(chunk.ChunkPosition), regenerateMeshList: *main.ListManaged(*ChunkMesh)) void {
-		coz.begin("renderer/chunk_meshing:updateBlockAndLightMesh");
-		defer coz.end("renderer/chunk_meshing:updateBlockAndLightMesh");
+		main.coz.begin("renderer/chunk_meshing:updateBlockAndLightMesh");
+		defer main.coz.end("renderer/chunk_meshing:updateBlockAndLightMesh");
 
 		const blockPos = chunk.BlockPos.fromWorldCoords(blockUpdatePos[0], blockUpdatePos[1], blockUpdatePos[2]);
 		self.mutex.lock();
