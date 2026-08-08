@@ -257,6 +257,11 @@ pub const Biome = struct { // MARK: Biome
 	isValidPlayerSpawn: bool,
 	chance: f32,
 	tags: []const Tag,
+	oceanHeight: i32,
+	liquidBlock: main.blocks.Block,
+	isOceanRelative: bool,
+	relativeOceanGap: u32,
+	relativeOceanOffset: i32,
 
 	pub fn init(self: *Biome, id: []const u8, paletteId: u32, zon: ZonElement) void {
 		const minRadius = zon.get(f32, "radius") orelse zon.get(f32, "minRadius") orelse 256;
@@ -298,6 +303,11 @@ pub const Biome = struct { // MARK: Biome
 			.chance = zon.get(f32, "chance") orelse if (zon == .null) 0 else 1,
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount") orelse std.math.floatMax(f32),
 			.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
+			.oceanHeight = zon.get(i32, "oceanHeight") orelse 0,
+			.liquidBlock = blocks.parseBlock(zon.get([]const u8, "liquidBlock") orelse "cubyz:water"),
+			.isOceanRelative = zon.get(bool, "isOceanRelative") orelse false,
+			.relativeOceanGap = zon.get(u32, "relativeOceanGap") orelse 8,
+			.relativeOceanOffset = zon.get(i32, "relativeOceanOffset") orelse 0,
 		};
 		if (self.isCave) {
 			for (self.tags) |tag| {
@@ -390,6 +400,14 @@ pub const Biome = struct { // MARK: Biome
 		for (stripes.toSlice(), 0..) |elem, i| {
 			self.stripes[i] = Stripe.init(elem);
 		}
+		if (self.isOceanRelative and self.oceanHeight <= 0) {
+			std.log.err("Biome {s} has a relative ocean and an ocean height of {d}. Ocean height should be greater than 0.", .{self.id, self.oceanHeight});
+		}
+		if (self.relativeOceanGap == 0) {
+			std.log.err("Biome {s} cannot have relative ocean gap of 0. Setting to 1 instead.", .{self.id});
+			self.relativeOceanGap = 1;
+		}
+		self.relativeOceanOffset = @mod(self.relativeOceanOffset, @as(i32, @intCast(self.relativeOceanGap)));
 	}
 
 	fn getCheckSum(self: *Biome) u64 {

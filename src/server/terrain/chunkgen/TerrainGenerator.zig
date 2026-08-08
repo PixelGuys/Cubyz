@@ -31,6 +31,29 @@ pub fn init(parameters: ZonElement) void {
 	water = main.blocks.parseBlock("cubyz:water");
 }
 
+fn getOceanHeight(biome: *const Biome, chunk: *main.chunk.ServerChunk, airBlockBelow: i32) i32 {
+	if (!biome.isOceanRelative) {
+		return biome.oceanHeight -% chunk.super.pos.wz;
+	}
+	const snapped: i32 = @divFloor(airBlockBelow +% chunk.super.pos.wz, @as(i32, @intCast(biome.relativeOceanGap)))*@as(i32, @intCast(biome.relativeOceanGap)) -% chunk.super.pos.wz;
+	if (snapped + biome.relativeOceanOffset > airBlockBelow) {
+		return snapped -% @as(i32, @intCast(biome.relativeOceanGap)) +% @as(i32, @intCast(biome.relativeOceanOffset)) +% biome.oceanHeight;
+	}
+	return snapped + biome.relativeOceanOffset +% biome.oceanHeight;
+}
+
+fn isOceanEdge(chunk: *main.chunk.ServerChunk, relPos: Vec3i, biome: *const Biome, biomeOceanHeight: i32, biomeMap: CaveBiomeMap.CaveBiomeMapView, caveMap: CaveMap.CaveMapView) bool {
+	const neighborAirBlockBelow = caveMap.findTerrainChangeBelow(relPos[0], relPos[1], relPos[2]) + chunk.super.pos.voxelSize;
+	const neighborBiome = if (neighborAirBlockBelow -% 1 >= -32) biomeMap.getBiome(relPos[0], relPos[1], neighborAirBlockBelow -% 1) else biomeMap.getBiome(relPos[0], relPos[1], relPos[2]);
+	const liquidMatches = biome.liquidBlock == neighborBiome.liquidBlock;
+	const neighborOceanHeight = getOceanHeight(neighborBiome, chunk, neighborAirBlockBelow);
+	const neighborValidDepth = neighborOceanHeight -% neighborAirBlockBelow <= neighborBiome.oceanHeight;
+	if (!liquidMatches or neighborOceanHeight != biomeOceanHeight or (biome.isOceanRelative and neighborBiome.isOceanRelative and !neighborValidDepth)) {
+		return true;
+	}
+	return false;
+}
+
 pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void {
 	if (chunk.super.pos.voxelSize >= 8) {
 		var maxHeight: i32 = 0;
@@ -67,15 +90,14 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 				defer zBiome = chunk.startIndex(zBiome + biomeHeight - 1 + chunk.super.pos.voxelSize);
 				var z: i32 = @min(chunk.super.width - chunk.super.pos.voxelSize, chunk.startIndex(zBiome + biomeHeight - 1));
 				while (z >= zBiome) : (z -= chunk.super.pos.voxelSize) {
+					const cardinalDirections = [_]Vec3i{
+						Vec3i{1, 0, 0},
+						Vec3i{-1, 0, 0},
+						Vec3i{0, 1, 0},
+						Vec3i{0, -1, 0},
+					};
 					const mask = @as(u64, 1) << @intCast(z >> voxelSizeShift);
 					if (heightData & mask != 0) {
-						const cardinalDirections = [_]Vec3i{
-							Vec3i{1, 0, 0},
-							Vec3i{-1, 0, 0},
-							Vec3i{0, 1, 0},
-							Vec3i{0, -1, 0},
-						};
-
 						const surfaceBlock = caveMap.findTerrainChangeAbove(x, y, z) - chunk.super.pos.voxelSize;
 						var maxUp: i32 = 0;
 						var maxDown: i32 = 0;
@@ -142,17 +164,35 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 						}
 					} else {
 						const surface = biomeMap.getSurfaceHeight(x + chunk.super.pos.wx, y + chunk.super.pos.wy) - (chunk.super.pos.voxelSize - 1) -% chunk.super.pos.wz;
-						const oceanHeight = 0 -% chunk.super.pos.wz;
 						const airVolumeStart = caveMap.findTerrainChangeBelow(x, y, z) + chunk.super.pos.voxelSize;
 						const zStart = @max(airVolumeStart, zBiome);
-						if (z < surface or zStart >= oceanHeight) {
+						var airBlockBelow = surface;
+						if (biome.isOceanRelative) {
+							airBlockBelow = airVolumeStart;
+						}
+						const oceanHeight = getOceanHeight(biome, chunk, airBlockBelow);
+						const oceanSurfaceDifference = oceanHeight -% airBlockBelow;
+						if (z < airBlockBelow or zStart >= oceanHeight or (biome.isOceanRelative and oceanSurfaceDifference > biome.oceanHeight)) {
 							chunk.updateBlockColumnInGeneration(x, y, zStart, z, .{.typ = 0, .data = 0});
 						} else {
 							if (z >= oceanHeight) {
 								chunk.updateBlockColumnInGeneration(x, y, oceanHeight, z, .{.typ = 0, .data = 0});
-								z = oceanHeight - chunk.super.pos.voxelSize;
+								z = oceanHeight -% chunk.super.pos.voxelSize;
 							}
-							chunk.updateBlockColumnInGeneration(x, y, zStart, z, water);
+							var blockToPlace = biome.liquidBlock;
+							for (cardinalDirections) |cardinalDirection| {
+								const neighborCoords = Vec3i{x, y, z} + cardinalDirection;
+								if (isOceanEdge(chunk, neighborCoords, biome, oceanHeight, biomeMap, caveMap)) {
+									blockToPlace = biome.stoneBlock;
+									var bseed: u64 = random.initSeed3D(worldSeed, .{chunk.super.pos.wx + x, chunk.super.pos.wy + y, chunk.super.pos.wz + z});
+									z = @min(z + chunk.super.pos.voxelSize, biome.structure.addSubTerranian(chunk, oceanHeight -% 1, @max(airBlockBelow, zBiome - 1), 0, 1, x, y, &bseed));
+									z -= chunk.super.pos.voxelSize;
+									break;
+								}
+							}
+							if (zStart <= z) {
+								chunk.updateBlockColumnInGeneration(x, y, zStart, z, blockToPlace);
+							}
 						}
 						z = zStart;
 					}
