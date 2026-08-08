@@ -1,6 +1,6 @@
 .{
 	.blueprints = .{
-		.{.id = "cubyz:rare/shoebox_house/floor/air"},
+		.{.id = "cubyz:rare/shoebox_house/wall/air"},
 		.{.id = "cubyz:rare/shoebox_house/floor/workbench", .chance = 0.5},
 		.{.id = "cubyz:rare/shoebox_house/floor/chair", .chance = 0.25},
 		.{.id = "cubyz:rare/shoebox_house/floor/chest", .chance = 0.2},
