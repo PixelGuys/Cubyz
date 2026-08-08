@@ -118,7 +118,7 @@ const linux_coz_provider = struct {
 				getCounterFn = @ptrCast(@alignCast(dlsym.?(rltdDefault, "_coz_get_counter")));
 			}
 			getCounterFnInitialized = true;
-			std.log.debug("Initialized getCounter function pointer, which is {}", .{getCounterFn});
+			std.log.debug("Initialized getCounter function pointer, which is {?}", .{getCounterFn});
 		}
 		if (getCounterFn != null) {
 			return getCounterFn.?(@"type", name);
