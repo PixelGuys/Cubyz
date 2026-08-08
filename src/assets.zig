@@ -687,6 +687,12 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		try assignBlockItem(stringId);
 	}
 
+	for (items.itemList) |item| {
+		if (item.displayBlockData != null and item.block == null) {
+			std.log.err("displayBlockData field was set, but there is no block defined for item: '{s}'", .{item.id});
+		}
+	}
+
 	for (proceduralItemPalette.palette.items) |id| {
 		registerProceduralItem(assetFolder, id, worldAssets.proceduralItems.get(id) orelse .null);
 	}
