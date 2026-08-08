@@ -1,5 +1,6 @@
 const builtin = @import("builtin");
 const std = @import("std");
+const log = std.log.scoped(.coz);
 
 // This implementation is based on coz.h, which is a single-header 'library' for implementing coz integration for C.
 // The original coz.h is very C flavored and relies on macros, hence why translate-c was skipped in favor of just rewriting the whole thing in Zig.
@@ -34,7 +35,7 @@ fn incrementCounter(comptime counterType: CozCounterType, comptime name: [:0]con
 	if (!internal_counter_state.initialized) {
 		internal_counter_state.counter = coz_provider.getCounter(internal_counter_state.myCounterType, internal_counter_state.myName);
 		internal_counter_state.initialized = true;
-		std.log.debug("Initialized state for profile counter " ++ internal_counter_state.myName ++ " which is at 0x{0x}", .{@intFromPtr(internal_counter_state.counter)});
+		log.debug("Initialized state for profile counter " ++ internal_counter_state.myName ++ " which is at 0x{0x}", .{@intFromPtr(internal_counter_state.counter)});
 	}
 	if (internal_counter_state.counter != null) {
 		// Confirmed: this does compile to `lock incq` instructions in x86_64
@@ -109,7 +110,7 @@ const coz_provider = struct {
 				getCounterFn = @ptrCast(@alignCast(dlsym.?(rltdDefault, "_coz_get_counter")));
 			}
 			getCounterFnInitialized = true;
-			std.log.debug("Initialized getCounter function pointer, which is {?}", .{getCounterFn});
+			log.debug("Initialized _coz_get_counter function pointer, which is {?}", .{getCounterFn});
 		}
 		if (getCounterFn != null) {
 			return getCounterFn.?(@"type", name);
@@ -124,6 +125,7 @@ const coz_provider = struct {
 				addDelaysFn = @ptrCast(@alignCast(dlsym.?(rltdDefault, "_coz_add_delays")));
 			}
 			addDelaysFnInitialized = true;
+			log.debug("Initialized _coz_add_delays function pointer, which is {?}", .{addDelaysFn});
 		}
 		if (addDelaysFn != null) {
 			addDelaysFn.?();
@@ -136,6 +138,7 @@ const coz_provider = struct {
 				preBlockFn = @ptrCast(@alignCast(dlsym.?(rltdDefault, "_coz_pre_block")));
 			}
 			preBlockFnInitialized = true;
+			log.debug("Initialized _coz_pre_block function pointer, which is {?}", .{preBlockFn});
 		}
 		if (preBlockFn != null) {
 			preBlockFn.?();
@@ -149,6 +152,7 @@ const coz_provider = struct {
 				postBlockFn = @ptrCast(@alignCast(dlsym.?(rltdDefault, "_coz_post_block")));
 			}
 			postBlockFnInitialized = true;
+			log.debug("Initialized _coz_post_block function pointer, which is {?}", .{postBlockFn});
 		}
 		if (postBlockFn != null) {
 			postBlockFn.?(skip_delays_int);
