@@ -451,6 +451,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	path: []const u8,
 	name: []const u8 = &.{},
 	spawn: Vec3i = undefined,
+	respawnEffeciency: f32 = undefined,
 
 	mutex: main.utils.Mutex = .{},
 
@@ -647,6 +648,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.doGameTimeCycle = worldData.get(bool, "doGameTimeCycle") orelse true;
 		self.gameTime = worldData.get(i64, "gameTime") orelse 0;
 		self.spawn = worldData.get(Vec3i, "spawn") orelse .{0, 0, 0};
+		self.respawnEffeciency = worldData.get(f32, "respawnEffeciency") orelse 1.0;
 		self.biomeChecksum = worldData.get(i64, "biomeChecksum") orelse 0;
 		self.name = main.globalAllocator.dupe(u8, worldData.get([]const u8, "name") orelse self.path);
 		self.tickSpeed = .init(worldData.get(u32, "tickSpeed") orelse 12);
@@ -661,6 +663,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		worldData.put("doGameTimeCycle", self.doGameTimeCycle);
 		worldData.put("gameTime", self.gameTime);
 		worldData.put("spawn", self.spawn);
+		worldData.put("respawnEffeciency", self.respawnEffeciency);
 		worldData.put("biomeChecksum", self.biomeChecksum);
 		worldData.put("name", self.name);
 		worldData.put("lastUsedTime", std.Io.Clock.Timestamp.now(main.io, .real).raw.toMilliseconds());

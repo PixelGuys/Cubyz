@@ -122,6 +122,7 @@ pub const User = struct { // MARK: User
 	lastPos: Vec3i = @splat(0),
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
 	spawnPos: ?Vec3d = null,
+	respawnEffeciency: ?f32 = null,
 	worldEditData: WorldEditData = undefined,
 
 	playerIndex: PlayerIndex = undefined,
@@ -544,7 +545,29 @@ pub const User = struct { // MARK: User
 	}
 
 	pub fn getSpawnPos(user: *User) Vec3d {
-		return user.spawnPos orelse @floatFromInt(main.server.world.?.spawn);
+		const defaultSpawn = @as(Vec3d, @floatFromInt(main.server.world.?.spawn));
+		if (user.spawnPos == null) user.spawnPos = @floatFromInt(main.server.world.?.spawn);
+		const userSpawn = @as(Vec3i, @intFromFloat(user.spawnPos orelse defaultSpawn));
+		const targetBlock = main.game.getBlockWithSide(main.sync.Side.server, userSpawn[0], userSpawn[1], userSpawn[2]) orelse return defaultSpawn;
+
+		if (targetBlock.blockEntity() == null) {
+			user.sendRawMessage("Could Not Find Spawnpoint, Teleporting back to world spawn");
+			return defaultSpawn;
+		}
+		if (!std.mem.eql(u8, targetBlock.blockEntity().?.id, "cubyz:respawn_anchor")) user.spawnPos = defaultSpawn;
+		return user.spawnPos orelse defaultSpawn;
+	}
+
+	pub fn getRespawnEffeciency(user: *User) f32 {
+		const defaultSpawn = @as(Vec3d, @floatFromInt(main.server.world.?.spawn));
+		const defaultRespawnEffeciency = main.server.world.?.respawnEffeciency;
+		if (user.spawnPos == null) user.spawnPos = @floatFromInt(main.server.world.?.spawn);
+		const userSpawn = @as(Vec3i, @intFromFloat(user.spawnPos orelse defaultSpawn));
+		const targetBlock = main.game.getBlockWithSide(main.sync.Side.server, userSpawn[0], userSpawn[1], userSpawn[2]) orelse return defaultRespawnEffeciency;
+
+		if (targetBlock.blockEntity() == null) return defaultRespawnEffeciency;
+		if (!std.mem.eql(u8, targetBlock.blockEntity().?.id, "cubyz:respawn_anchor")) user.respawnEffeciency = defaultRespawnEffeciency;
+		return user.respawnEffeciency orelse defaultRespawnEffeciency;
 	}
 
 	pub fn format(user: User, writer: *std.Io.Writer) std.Io.Writer.Error!void {
