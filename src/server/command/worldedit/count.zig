@@ -28,7 +28,7 @@ pub fn execute(args: Args, source: Source) void {
 	var result = Blueprint.capture(main.stackAllocator, selection);
 
 	switch (result) {
-		.success => |*success| {
+		.success => |*blueprint| {
 			defer success.deinit(main.stackAllocator);
 
 			var context: std.AutoHashMapUnmanaged(u16, u32) = .{};
