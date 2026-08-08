@@ -153,7 +153,9 @@ pub fn onOpen() void {
 
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
 
-	nameInput = TextInput.init(.{0, 0}, 128, 22, editWorldName, .{.onNewline = .init(saveChangesCallback)});
+	list.add(Label.init(.{0, 0}, 128, "Edit World", .center));
+
+	nameInput = TextInput.init(.{0, 0}, 128, 22, "", .{.onNewline = .init(nameCallback)});
 	list.add(nameInput);
 
 	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(worldSettings.defaultGamemode), .{.onAction = .init(gameModeCallback)});
