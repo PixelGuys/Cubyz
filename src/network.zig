@@ -24,6 +24,7 @@ inline fn networkTimestamp() i64 {
 const Socket = struct {
 	const posix = std.posix;
 	socketID: if (builtin.os.tag == .windows) c.SOCKET else posix.socket_t,
+	mtu: u16 = Connection.maxMtu,
 
 	fn windowsError(err: c_int) !void {
 		if (err == 0) return;
@@ -57,7 +58,7 @@ const Socket = struct {
 	}
 
 	fn init(localPort: u16) !Socket {
-		const self = Socket{
+		var self = Socket{
 			.socketID = blk: {
 				if (builtin.os.tag == .windows) {
 					const socket = c.socket(c.AF_INET, c.SOCK_DGRAM, c.IPPROTO_UDP);
@@ -100,6 +101,7 @@ const Socket = struct {
 				},
 			}
 		}
+		self.mtu = self.getMaxMtu();
 		return self;
 	}
 
@@ -226,6 +228,23 @@ const Socket = struct {
 		}
 		return @byteSwap(addr.port);
 	}
+
+	fn getMaxMtu(self: Socket) u16 {
+		if (builtin.os.tag != .windows) {
+			var req: std.posix.ifreq = undefined;
+			req.ifrn.name = .{'l', 'o'} ++ @as([14]u8, @splat(0));
+			const result = std.c.ioctl(self.socketID, std.os.linux.SIOCGIFMTU, &req);
+			switch (std.posix.errno(result)) {
+				.SUCCESS => {
+					return @truncate(@as(u32, @bitCast(@min(req.ifru.mtu, 65535) - 20 - 8))); // its often reported to be 65536, but the IPv4 header has only a 16 bit length field
+				},
+				else => |err| {
+					std.log.warn("Failed to get the mtu of 'lo' interface from ioctl: {s}", .{@tagName(err)});
+				},
+			}
+		}
+		return Connection.minMtu;
+	}
 };
 
 pub fn init() !void {
@@ -291,6 +310,12 @@ pub const SocketAddress = struct {
 				.ip6 => |b_ip6| std.mem.eql(u8, &a_ip6.bytes, &b_ip6.bytes),
 				else => false,
 			},
+		};
+	}
+
+	fn isLoopBack(self: *const SocketAddress) bool {
+		return switch (self.address) {
+			inline else => |ip| ip.eql(.loopback(ip.port)),
 		};
 	}
 };
@@ -1554,6 +1579,7 @@ pub const Connection = struct { // MARK: Connection
 		if (result.connectionIdentifier == 0) result.connectionIdentifier = 1;
 		result.remoteAddress = try SocketAddress.resolve(ipPort, settings.defaultPort);
 		result.bruteforcingPort = result.remoteAddress.isSymmetricNAT;
+		if (result.remoteAddress.isLoopBack()) result.mtuEstimate = manager.socket.mtu;
 
 		try result.manager.addConnection(result);
 		return result;
