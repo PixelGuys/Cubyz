@@ -1,4 +1,5 @@
 // TODO: Remove after https://codeberg.org/ziglang/zig/issues/31912 was merged
+// Note: Be mindful of Coz integration
 
 // zig fmt: off
 
@@ -18,6 +19,7 @@ const builtin = @import("builtin");
 const windows = std.os.windows;
 const linux = std.os.linux;
 const c = std.c;
+const coz = @import("../coz.zig");
 
 const assert = std.debug.assert;
 const testing = std.testing;
@@ -35,9 +37,12 @@ const Futex = @This();
 pub fn wait(ptr: *const atomic.Value(u32), expect: u32) void {
 	@branchHint(.cold);
 
+	// We are assuming that whoever writes to 'ptr' remembers to call coz.catchUp() before setting the value.
+	coz.preBlock();
 	Impl.wait(ptr, expect, null) catch |err| switch (err) {
 		error.Timeout => unreachable, // null timeout meant to wait forever
 	};
+	coz.postBlock(true);
 }
 
 /// Checks if `ptr` still contains the value `expect` and, if so, blocks the caller until either:
@@ -57,7 +62,14 @@ pub fn timedWait(ptr: *const atomic.Value(u32), expect: u32, timeout_ns: u64) er
 		return error.Timeout;
 	}
 
-	return Impl.wait(ptr, expect, timeout_ns);
+	coz.preBlock();
+	const result = Impl.wait(ptr, expect, timeout_ns);
+	if(result == error.Timeout) {
+		coz.postBlock(false);
+	} else {
+		coz.postBlock(true);
+	}
+	return result;
 }
 
 /// Unblocks at most `max_waiters` callers blocked in a `wait()` call on `ptr`.
@@ -69,6 +81,7 @@ pub fn wake(ptr: *const atomic.Value(u32), max_waiters: u32) void {
 		return;
 	}
 
+	coz.catchUp();
 	Impl.wake(ptr, max_waiters);
 }
 
