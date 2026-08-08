@@ -4,6 +4,7 @@ const main = @import("main");
 const utils = main.utils;
 
 const c = @import("c");
+const coz = @import("coz.zig");
 
 const StbVorbisErrorEnum = enum(c_int) {
 	unknown_error = -1,
@@ -344,5 +345,10 @@ fn miniaudioCallback(
 	const valuesPerBuffer = 2*frameCount; // Stereo
 	const buffer = @as([*]f32, @ptrCast(@alignCast(output)))[0..valuesPerBuffer];
 	@memset(buffer, 0);
+	coz.progressNamed("audio_buffer");
+	for (0..frameCount) |_| {
+		// TODO: is the buffer size constant at runtime? If so, there is no reason to do this.
+		coz.progressNamed("audio_sample");
+	}
 	mixMusic(buffer);
 }

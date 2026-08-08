@@ -438,11 +438,12 @@ pub fn clientMain() void { // MARK: clientMain()
 	audio.setMusic("cubyz:totaldemented/cubyz_remastered");
 
 	while (c.glfwWindowShouldClose(Window.window) == 0) {
-		coz.begin("mainLoop");
-		defer coz.end("mainLoop");
 		heap.GarbageCollection.syncPoint();
 		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
 		if (!isHidden) {
+			coz.progressNamed("main:frame");
+			coz.begin("main:swap_and_clear");
+
 			c.glfwSwapBuffers(Window.window);
 			// Clear may also wait on vsync, so it's done before handling events:
 			gui.windowlist.gpu_performance_measuring.startQuery(.screenbuffer_clear);
@@ -452,6 +453,8 @@ pub fn clientMain() void { // MARK: clientMain()
 			c.glClearColor(0.5, 1, 1, 1);
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 			gui.windowlist.gpu_performance_measuring.stopQuery();
+
+			coz.end("main:swap_and_clear");
 
 			if (settings.launchConfig.vulkanTestingMode) {
 				graphics.vulkan.beginRender();
@@ -484,10 +487,13 @@ pub fn clientMain() void { // MARK: clientMain()
 		file_monitor.handleEvents();
 
 		if (game.world != null) { // Update the game
+			coz.begin("main:update");
 			game.update(deltaTime);
+			coz.end("main:update");
 		}
 
 		if (!isHidden) {
+			coz.begin("main:render");
 			if (game.world != null) {
 				renderer.updateFov(settings.fov);
 				renderer.render(game.Player.getEyePosBlocking(), deltaTime);
@@ -503,6 +509,7 @@ pub fn clientMain() void { // MARK: clientMain()
 			if (settings.launchConfig.vulkanTestingMode) {
 				graphics.vulkan.endRender();
 			}
+			coz.end("main:render");
 		}
 
 		if (shouldExitToMenu.load(.monotonic)) {
