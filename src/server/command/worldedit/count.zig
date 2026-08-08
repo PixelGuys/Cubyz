@@ -29,12 +29,12 @@ pub fn execute(args: Args, source: Source) void {
 
 	switch (result) {
 		.success => |*blueprint| {
-			defer success.deinit(main.stackAllocator);
+			defer blueprint.deinit(main.stackAllocator);
 
 			var context: std.AutoHashMapUnmanaged(u16, u32) = .{};
 			defer context.deinit(main.stackAllocator.allocator);
 
-			success.apply(&context, countBlocks);
+			blueprint.apply(&context, countBlocks);
 
 			if (args.@"/count".block) |block| {
 				const count = context.get(block.block.typ) orelse 0;
