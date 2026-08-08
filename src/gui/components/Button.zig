@@ -70,7 +70,7 @@ pub fn globalInit() void {
 		&.{},
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
-		.{.attachments = &.{.alphaBlending}},
+		.{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
 	);
 	normalTextures = Textures.init("assets/cubyz/ui/button");
 	hoveredTextures = Textures.init("assets/cubyz/ui/button_hovered");

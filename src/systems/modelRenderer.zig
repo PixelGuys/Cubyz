@@ -51,7 +51,7 @@ pub const client = struct {
 			&.{},
 			.{},
 			.{.depthTest = true},
-			.{.attachments = &.{.alphaBlending}},
+			.{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
 		);
 
 		nodeBuffer.init(main.globalAllocator, 1 << 20, 15);
