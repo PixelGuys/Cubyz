@@ -169,6 +169,26 @@ pub const PlayerIndex = struct {
 	}
 };
 
+pub const KeyString = struct {
+	key: []const u8,
+
+	pub fn parse(_: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!KeyString {
+		const colonIndex = std.mem.indexOfScalar(u8, arg, ':') orelse {
+			errorMessage.print("Expected a public key of the form \"<keyType>:<base64>\" for <{s}>, found \"{s}\"", .{name, arg});
+			return error.ParseError;
+		};
+		const keyType = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, arg[0..colonIndex]) orelse {
+			errorMessage.print("Unknown key type \"{s}\" for <{s}>", .{arg[0..colonIndex], name});
+			return error.ParseError;
+		};
+		_ = main.network.authentication.PublicKey.initFromBase64(arg[colonIndex + 1 ..], keyType) catch {
+			errorMessage.print("Invalid public key \"{s}\" for <{s}>", .{arg, name});
+			return error.ParseError;
+		};
+		return .{.key = arg};
+	}
+};
+
 pub const BiomeId = struct {
 	biome: *const main.server.terrain.biomes.Biome,
 

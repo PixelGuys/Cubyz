@@ -164,6 +164,7 @@ fn saveBlocked(index: usize, value: bool) void {
 const AddResult = enum { added, alreadyAllowed };
 
 pub fn add(key: []const u8) AddResult {
+	sync.threadContext.assertCorrectContext(.server);
 	mutex.lock();
 	defer mutex.unlock();
 	const result = ensurePlayerRecord(key);
@@ -176,6 +177,7 @@ pub fn add(key: []const u8) AddResult {
 const BlockResult = enum { blocked, alreadyBlocked };
 
 pub fn block(key: []const u8) BlockResult {
+	sync.threadContext.assertCorrectContext(.server);
 	mutex.lock();
 	defer mutex.unlock();
 	const result = ensurePlayerRecord(key);
@@ -185,11 +187,10 @@ pub fn block(key: []const u8) BlockResult {
 	return if (result.wasNew or !wasBlocked) .blocked else .alreadyBlocked;
 }
 
-pub fn isAllowedToJoin(key: []const u8) bool {
-	sync.threadContext.assertCorrectContext(.server);
+pub fn isAllowedToJoin(key: []const u8, whitelistEnabled: bool) bool {
 	mutex.lock();
 	defer mutex.unlock();
-	const entry = playerDatabase.get(key) orelse return false;
+	const entry = playerDatabase.get(key) orelse return !whitelistEnabled;
 	return !entry.blocked;
 }
 
@@ -199,13 +200,13 @@ test "addContainsRemove" {
 
 	init("test", 0);
 
-	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:abc"));
+	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:abc", true));
 	try std.testing.expectEqual(.added, add("ed25519:abc"));
 	try std.testing.expectEqual(.alreadyAllowed, add("ed25519:abc"));
-	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:abc"));
+	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:abc", true));
 	try std.testing.expectEqual(.blocked, block("ed25519:abc"));
 	try std.testing.expectEqual(.alreadyBlocked, block("ed25519:abc"));
-	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:abc"));
+	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:abc", true));
 }
 
 test "addUnblocks" {
@@ -215,12 +216,12 @@ test "addUnblocks" {
 	init("test", 0);
 
 	try std.testing.expectEqual(.blocked, block("ed25519:xyz"));
-	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:xyz"));
+	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:xyz", false));
 	try std.testing.expectEqual(.added, add("ed25519:xyz"));
-	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:xyz"));
+	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:xyz", false));
 }
 
-test "knownPlayerAllowedByDefaultButBlockable" {
+test "whitelistToggleAffectsUnknownKeysOnly" {
 	main.heap.allocators.createWorldArena();
 	defer main.heap.allocators.destroyWorldArena();
 
@@ -228,12 +229,13 @@ test "knownPlayerAllowedByDefaultButBlockable" {
 
 	playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, "ed25519:known"), .{.playerIndex = 0, .blocked = false}) catch unreachable;
 
-	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:known"));
-	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:unknown"));
+	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:known", true));
+	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:unknown", false));
+	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:unknown", true));
 
 	try std.testing.expectEqual(.blocked, block("ed25519:known"));
-	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:known"));
+	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:known", false));
 
 	try std.testing.expectEqual(.added, add("ed25519:known"));
-	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:known"));
+	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:known", false));
 }

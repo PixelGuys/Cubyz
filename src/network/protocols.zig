@@ -171,6 +171,11 @@ pub const handShake = struct { // MARK: handShake
 						const keys = zon.getChild("keys");
 						try conn.user.?.identifyFromKeysAndName(name, keys);
 
+						if (!main.server.players.isAllowedToJoin(conn.user.?.newKeyString.?, main.server.world.?.settings.whitelistEnabled.load(.monotonic))) {
+							std.log.info("Rejected connection from '{s}' ({s})", .{name, conn.user.?.newKeyString.?});
+							return error.NotWhitelisted;
+						}
+
 						var writer: utils.BinaryWriter = .init(main.stackAllocator);
 						defer writer.deinit();
 						writer.writeEnum(Connection.HandShakeState, .signatureRequest);
