@@ -315,7 +315,7 @@ pub const SocketAddress = struct {
 		};
 	}
 
-	fn isLoopBack(self: *const SocketAddress) bool {
+	fn isLoopback(self: *const SocketAddress) bool {
 		return switch (self.address) {
 			inline else => |ip| ip.eql(.loopback(ip.port)),
 		};
@@ -1581,7 +1581,7 @@ pub const Connection = struct { // MARK: Connection
 		if (result.connectionIdentifier == 0) result.connectionIdentifier = 1;
 		result.remoteAddress = try SocketAddress.resolve(ipPort, settings.defaultPort);
 		result.bruteforcingPort = result.remoteAddress.isSymmetricNAT;
-		if (result.remoteAddress.isLoopBack() and manager.socket.interfaceMtu != null) result.mtuEstimate = manager.socket.interfaceMtu.?;
+		if (result.remoteAddress.isLoopback() and manager.socket.interfaceMtu != null) result.mtuEstimate = manager.socket.interfaceMtu.?;
 
 		try result.manager.addConnection(result);
 		return result;
