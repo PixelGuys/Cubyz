@@ -2,7 +2,7 @@ const builtin = @import("builtin");
 const std = @import("std");
 
 // This implementation is based on coz.h, which is a single-header 'library' for implementing coz integration for C.
-// The original coz.h uses some macro garbage and makes some assumptions about the target platform, hence why translate-c was skipped in favor of just rewriting the whole thing in Zig.
+// The original coz.h is very C flavored and relies on macros, hence why translate-c was skipped in favor of just rewriting the whole thing in Zig.
 // The original coz.h header is less than 200 lines of C code (most of which is C/C++ boilerplate garbage) so this is not much of an investment.
 
 // This must be c_int in order to match the coz ABI
@@ -85,17 +85,8 @@ pub fn postBlock(skip_delays: bool) void {
 	coz_provider.postBlock(skip_delays);
 }
 
-// TODO(bluesillybeard): Coz does also support MacOS however I do not have the resources to test that, so it is not supported for now.
-const coz_provider = blk: {
-	if (builtin.os.tag == .linux) {
-		break :blk linux_coz_provider;
-	} else {
-		break :blk dummy_coz_provider;
-	}
-};
-
-const linux_coz_provider = struct {
-	// This needs to be weak in case dlsym is not available.
+const coz_provider = struct {
+	// This needs to be weak in case dlsym is not available (such as on Windows)
 	var dlsym: ?*const fn (?*anyopaque, [*:0]const u8) callconv(.c) ?*anyopaque = @extern(?*const fn (?*anyopaque, [*:0]const u8) callconv(.c) ?*anyopaque, .{
 		.name = "dlsym",
 		.linkage = .weak,
@@ -162,21 +153,5 @@ const linux_coz_provider = struct {
 		if (postBlockFn != null) {
 			postBlockFn.?(skip_delays_int);
 		}
-	}
-};
-
-const dummy_coz_provider = struct {
-	pub fn getCounter(@"type": CozCounterType, name: [:0]const u8) ?*CozCounter {
-		_ = @"type";
-		_ = name;
-		return null;
-	}
-
-	pub fn addDelays() void {}
-
-	pub fn preBlock() void {}
-
-	pub fn postBlock(skip_delays: bool) void {
-		_ = skip_delays;
 	}
 };
