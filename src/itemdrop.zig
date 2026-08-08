@@ -618,7 +618,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			&.{},
 			.{},
 			.{.depthTest = true},
-			.{.attachments = &.{.alphaBlending}},
+			.{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
 		);
 		itemModelSSBO = .init();
 		itemModelSSBO.bufferData(i32, &[3]i32{1, 1, 1});

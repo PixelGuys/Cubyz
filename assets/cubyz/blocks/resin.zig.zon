@@ -9,15 +9,13 @@
 	.texture = "cubyz:resin",
 	.item = .{
 		.texture = "resin.png",
+		.colorTexture = "resin_palette.png",
 		.material = .{
 			.durability = 200,
 			.massDamage = 1.2,
 			.hardnessDamage = 0.8,
 			.swingSpeed = 5.1,
 			.textureRoughness = 0.1,
-			.colors = .{
-				0xff7e331f, 0xffa03d25, 0xffc34b27, 0xffdf682d, 0xfffc813a,
-			},
 		},
 	},
 }

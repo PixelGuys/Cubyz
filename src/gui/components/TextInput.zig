@@ -66,7 +66,6 @@ pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, options
 		.maxHeight = maxHeight,
 		.scrollBar = scrollBar,
 		.options = options,
-		.showCursor = !options.disabled,
 	};
 	self.currentString.appendSlice(text);
 	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, maxWidth - 2*border - scrollBarWidth);
@@ -466,6 +465,7 @@ pub fn copy(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 }
 
 pub fn paste(self: *TextInput, mods: main.Window.Key.Modifiers) void {
+	if (self.options.disabled) return;
 	if (mods.control) {
 		const string = main.Window.getClipboardString();
 		self.deleteSelection();
@@ -495,7 +495,8 @@ pub fn newline(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 }
 
 fn ensureCursorVisibility(self: *TextInput) void {
-	self.showCursor = !self.options.disabled;
+	self.showCursor = true;
+	if (self.options.disabled) return;
 	self.lastBlinkTime = main.timestamp();
 	if (self.textSize[1] > self.maxHeight - 2*border) {
 		var y: f32 = 0;
@@ -568,8 +569,7 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 				self.showCursor = !self.showCursor;
 			}
 		}
-
-		if (self.showCursor) {
+		if (self.showCursor and !self.options.disabled) {
 			const oldColor = draw.setColor(0xff000000);
 			defer draw.restoreColor(oldColor);
 			const thickness = @min(@ceil(fontSize/8), 1);

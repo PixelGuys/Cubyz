@@ -73,7 +73,7 @@ pub fn init() void {
 		&.{},
 		.{},
 		.{.depthTest = true, .depthWrite = true},
-		.{.attachments = &.{.noBlending}},
+		.{.attachments = &.{.noBlending}, .formats = &.{.world}},
 	);
 	transparentPipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/chunks/chunk_vertex.vert",
@@ -91,7 +91,7 @@ pub fn init() void {
 			.srcAlphaBlendFactor = .one,
 			.dstAlphaBlendFactor = .src1Alpha,
 			.alphaBlendOp = .add,
-		}}},
+		}}, .formats = &.{.world}},
 	);
 	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms);
 	occlusionTestPipeline = graphics.Pipeline.init(
@@ -112,7 +112,7 @@ pub fn init() void {
 			.dstAlphaBlendFactor = .zero,
 			.alphaBlendOp = .add,
 			.colorWriteMask = .none,
-		}}},
+		}}, .formats = &.{.world}},
 	);
 
 	var rawData: [6*maxQuadsInIndexBuffer]u32 = undefined;
