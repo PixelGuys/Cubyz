@@ -31,7 +31,8 @@ fn next() void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	const width = 420;
-	list.add(Label.init(.{0, 0}, width, "An Account Code acts as a password and identity.", .left));
+	list.add(Label.init(.{0, 0}, width, "Cubyz does not store any of your personal data on a server. This makes account setup a bit unusual. Please continue carefully to make sure you don't lose access.", .left));
+	list.add(Label.init(.{0, 0}, width, "We will give you an Account Code which acts as a password and identity.", .left));
 	list.add(Label.init(.{0, 0}, width, "If you lose your Account Code, you lose your Account. There are no recovery options, so please store it somewhere safe.", .left));
 	button = Button.initText(.{0, 0}, 300, "Continue (8)", .{.onAction = .init(next), .disabled = true});
 	list.add(button);
