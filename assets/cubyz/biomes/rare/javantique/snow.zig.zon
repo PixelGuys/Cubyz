@@ -35,8 +35,8 @@
 		},
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:leaves/oak",
-			.log = "cubyz:log/oak",
+			.leaves = "cubyz:leaves/birch",
+			.log = "cubyz:log/mahogany",
 			.chance = 0.05,
 			.type = .pyramid,
 			.height = 8,
