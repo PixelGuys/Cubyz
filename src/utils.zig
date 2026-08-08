@@ -1637,23 +1637,29 @@ pub const TimeDifference = struct { // MARK: TimeDifference
 	}
 };
 
-/// A wrapper over Zig's mutex to avoid having to pass the io everywhere
+/// A wrapper over Zig's mutex to avoid having to pass the io everywhere & for easy integration with Coz.
 pub const Mutex = struct { // MARK: Mutex
 	super: if (builtin.os.tag == .windows) @import("utils/Mutex.zig") else std.Io.Mutex = .init,
 
 	pub fn tryLock(self: *Mutex) bool {
-		return self.super.tryLock();
+		main.coz.preBlock();
+		const result = self.super.tryLock();
+		main.coz.postBlock(result);
+		return result;
 	}
 
 	pub fn lock(self: *Mutex) void {
+		main.coz.preBlock();
 		if (builtin.os.tag == .windows) {
 			self.super.lock();
 		} else {
 			self.super.lockUncancelable(main.io);
 		}
+		main.coz.postBlock(true);
 	}
 
 	pub fn unlock(self: *Mutex) void {
+		main.coz.catchUp();
 		if (builtin.os.tag == .windows) {
 			self.super.unlock();
 		} else {
@@ -1663,6 +1669,7 @@ pub const Mutex = struct { // MARK: Mutex
 
 	pub fn assertLocked(self: *const main.utils.Mutex) void {
 		if (builtin.mode == .Debug) {
+			// TODO: does the fact that this calls preBlock/postBlock cause any issues with Coz?
 			std.debug.assert(!@constCast(self).tryLock());
 		}
 	}

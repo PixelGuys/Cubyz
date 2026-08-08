@@ -344,5 +344,12 @@ fn miniaudioCallback(
 	const valuesPerBuffer = 2*frameCount; // Stereo
 	const buffer = @as([*]f32, @ptrCast(@alignCast(output)))[0..valuesPerBuffer];
 	@memset(buffer, 0);
+	// TODO: is the buffer size constant at runtime? If so, there is no reason to do this weird frame loop thing.
+	// main.coz.progressNamed("audio:callback");
+	for (0..frameCount) |_| {
+		main.coz.progressNamed("audio:callback");
+	}
+	main.coz.begin("audio:mixMusic");
 	mixMusic(buffer);
+	main.coz.end("audio:mixMusic");
 }

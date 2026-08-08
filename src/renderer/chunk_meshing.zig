@@ -663,6 +663,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	pub fn generateMesh(self: *ChunkMesh, lightRefreshList: *main.ListManaged(chunk.ChunkPosition)) void {
+		main.coz.progressNamed("renderer/chunk_meshing:generateMesh");
 		var alwaysViewThroughMask: [chunk.chunkSize][chunk.chunkSize]u32 = undefined;
 		@memset(std.mem.asBytes(&alwaysViewThroughMask), 0);
 		var alwaysViewThroughMask2: [chunk.chunkSize][chunk.chunkSize]u32 = undefined;
@@ -1144,6 +1145,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	fn updateBlockLightAndMesh(self: *ChunkMesh, blockUpdatePos: Vec3i, lightRefreshList: *main.ListManaged(chunk.ChunkPosition), regenerateMeshList: *main.ListManaged(*ChunkMesh)) void {
+		main.coz.begin("renderer/chunk_meshing:updateBlockAndLightMesh");
+		defer main.coz.end("renderer/chunk_meshing:updateBlockAndLightMesh");
+
 		const blockPos = chunk.BlockPos.fromWorldCoords(blockUpdatePos[0], blockUpdatePos[1], blockUpdatePos[2]);
 		self.mutex.lock();
 		var newBlock = self.chunk.data.getValue(blockPos.toIndex());
