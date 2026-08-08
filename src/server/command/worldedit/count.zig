@@ -40,9 +40,20 @@ pub fn execute(args: Args, source: Source) void {
 				const count = context.get(block.block.typ) orelse 0;
 				user.sendMessage("#ffff00{s} #ffffff{d}", .{block.block.id(), count});
 			} else {
+				const TypAndCount = struct { typ: u16, count: u32 };
+				var items: main.List(TypAndCount) = .empty;
+
 				var iterator = context.iterator();
-				while (iterator.next()) |next| {
-					user.sendMessage("#ffff00{s} #ffffff{d}", .{(Block{.typ = next.key_ptr.*, .data = 0}).id(), next.value_ptr.*});
+				while (iterator.next()) |next| items.append(main.stackAllocator, .{.typ = next.key_ptr.*, .count = next.value_ptr.*});
+
+				std.sort.insertion(TypAndCount, items.items, {}, struct {
+					fn lessThan(_: void, a: TypAndCount, b: TypAndCount) bool {
+						return a.count > b.count;
+					}
+				}.lessThan);
+
+				for (items.items) |item| {
+					user.sendMessage("#ffffff{d: <6} #ffff00{s}", .{item.count, (Block{.typ = item.typ, .data = 0}).id()});
 				}
 			}
 		},
