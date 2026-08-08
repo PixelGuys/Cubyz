@@ -547,7 +547,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			};
 			if (self.item == .baseItem and self.item.baseItem.block() != null and self.item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
 				// Find sizes and free index:
-				const block = self.item.baseItem.getDefaultBlock().?;
+				const block = self.item.baseItem.getDisplayBlock().?;
 				const model = blocks.meshes.model(block).model();
 				var data: main.ListManaged(u32) = .init(main.stackAllocator);
 				defer data.deinit();

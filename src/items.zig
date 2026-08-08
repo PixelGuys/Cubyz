@@ -306,7 +306,7 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	pub fn getTooltip(self: BaseItemIndex) []const u8 {
 		return itemList[@intFromEnum(self)].getTooltip();
 	}
-	pub fn getDefaultBlock(self: BaseItemIndex) ?Block {
+	pub fn getDisplayBlock(self: BaseItemIndex) ?Block {
 		return itemList[@intFromEnum(self)].getDisplayBlock();
 	}
 };
