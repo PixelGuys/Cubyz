@@ -24,7 +24,7 @@ inline fn networkTimestamp() i64 {
 const Socket = struct {
 	const posix = std.posix;
 	socketID: if (builtin.os.tag == .windows) c.SOCKET else posix.socket_t,
-	mtu: u16 = Connection.maxMtu,
+	interfaceMtu: ?u16 = null,
 
 	fn windowsError(err: c_int) !void {
 		if (err == 0) return;
@@ -101,7 +101,7 @@ const Socket = struct {
 				},
 			}
 		}
-		self.mtu = self.getMaxMtu();
+		self.interfaceMtu = self.getInterfaceMtu();
 		return self;
 	}
 
@@ -229,8 +229,10 @@ const Socket = struct {
 		return @byteSwap(addr.port);
 	}
 
-	fn getMaxMtu(self: Socket) u16 {
-		if (builtin.os.tag != .windows) {
+	fn getInterfaceMtu(self: Socket) ?u16 {
+		if (builtin.os.tag == .windows) {
+			return null;
+		} else {
 			var req: std.posix.ifreq = undefined;
 			req.ifrn.name = .{'l', 'o'} ++ @as([14]u8, @splat(0));
 			const result = std.c.ioctl(self.socketID, std.os.linux.SIOCGIFMTU, &req);
@@ -240,10 +242,10 @@ const Socket = struct {
 				},
 				else => |err| {
 					std.log.warn("Failed to get the mtu of 'lo' interface from ioctl: {s}", .{@tagName(err)});
+					return null;
 				},
 			}
 		}
-		return Connection.minMtu;
 	}
 };
 
@@ -1579,7 +1581,7 @@ pub const Connection = struct { // MARK: Connection
 		if (result.connectionIdentifier == 0) result.connectionIdentifier = 1;
 		result.remoteAddress = try SocketAddress.resolve(ipPort, settings.defaultPort);
 		result.bruteforcingPort = result.remoteAddress.isSymmetricNAT;
-		if (result.remoteAddress.isLoopBack()) result.mtuEstimate = manager.socket.mtu;
+		if (result.remoteAddress.isLoopBack() and manager.socket.interfaceMtu != null) result.mtuEstimate = manager.socket.interfaceMtu.?;
 
 		try result.manager.addConnection(result);
 		return result;
