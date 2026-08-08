@@ -187,13 +187,11 @@ pub fn block(key: []const u8) BlockResult {
 	return if (result.wasNew or !wasBlocked) .blocked else .alreadyBlocked;
 }
 
-const JoinResult = enum { allowed, neutral, blocked };
-
-pub fn isAllowedToJoin(key: []const u8) JoinResult {
+pub fn isAllowedToJoin(key: []const u8, whitelistEnabled: bool) bool {
 	mutex.lock();
 	defer mutex.unlock();
-	const entry = playerDatabase.get(key) orelse return .neutral;
-	return if (entry.blocked) .blocked else .allowed;
+	const entry = playerDatabase.get(key) orelse return !whitelistEnabled;
+	return !entry.blocked;
 }
 
 test "addContainsRemove" {
@@ -202,13 +200,13 @@ test "addContainsRemove" {
 
 	init("test", 0);
 
-	try std.testing.expectEqual(.neutral, isAllowedToJoin("ed25519:abc"));
+	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:abc", true));
 	try std.testing.expectEqual(.added, add("ed25519:abc"));
 	try std.testing.expectEqual(.alreadyAllowed, add("ed25519:abc"));
-	try std.testing.expectEqual(.allowed, isAllowedToJoin("ed25519:abc"));
+	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:abc", true));
 	try std.testing.expectEqual(.blocked, block("ed25519:abc"));
 	try std.testing.expectEqual(.alreadyBlocked, block("ed25519:abc"));
-	try std.testing.expectEqual(.blocked, isAllowedToJoin("ed25519:abc"));
+	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:abc", true));
 }
 
 test "addUnblocks" {
@@ -218,12 +216,12 @@ test "addUnblocks" {
 	init("test", 0);
 
 	try std.testing.expectEqual(.blocked, block("ed25519:xyz"));
-	try std.testing.expectEqual(.blocked, isAllowedToJoin("ed25519:xyz"));
+	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:xyz", false));
 	try std.testing.expectEqual(.added, add("ed25519:xyz"));
-	try std.testing.expectEqual(.allowed, isAllowedToJoin("ed25519:xyz"));
+	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:xyz", false));
 }
 
-test "allowedNeutralAndBlockedStates" {
+test "whitelistToggleAffectsUnknownKeysOnly" {
 	main.heap.allocators.createWorldArena();
 	defer main.heap.allocators.destroyWorldArena();
 
@@ -231,12 +229,13 @@ test "allowedNeutralAndBlockedStates" {
 
 	playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, "ed25519:known"), .{.playerIndex = 0, .blocked = false}) catch unreachable;
 
-	try std.testing.expectEqual(.allowed, isAllowedToJoin("ed25519:known"));
-	try std.testing.expectEqual(.neutral, isAllowedToJoin("ed25519:unknown"));
+	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:known", true));
+	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:unknown", false));
+	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:unknown", true));
 
 	try std.testing.expectEqual(.blocked, block("ed25519:known"));
-	try std.testing.expectEqual(.blocked, isAllowedToJoin("ed25519:known"));
+	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:known", false));
 
 	try std.testing.expectEqual(.added, add("ed25519:known"));
-	try std.testing.expectEqual(.allowed, isAllowedToJoin("ed25519:known"));
+	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:known", false));
 }

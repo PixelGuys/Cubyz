@@ -177,8 +177,12 @@ pub const KeyString = struct {
 			errorMessage.print("Expected a public key of the form \"<keyType>:<base64>\" for <{s}>, found \"{s}\"", .{name, arg});
 			return error.ParseError;
 		};
-		_ = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, arg[0..colonIndex]) orelse {
+		const keyType = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, arg[0..colonIndex]) orelse {
 			errorMessage.print("Unknown key type \"{s}\" for <{s}>", .{arg[0..colonIndex], name});
+			return error.ParseError;
+		};
+		_ = main.network.authentication.PublicKey.initFromBase64(arg[colonIndex + 1 ..], keyType) catch {
+			errorMessage.print("Invalid public key \"{s}\" for <{s}>", .{arg, name});
 			return error.ParseError;
 		};
 		return .{.key = arg};

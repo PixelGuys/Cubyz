@@ -1737,16 +1737,11 @@ pub const Connection = struct { // MARK: Connection
 
 	pub fn receive(self: *Connection, data: []const u8) void {
 		self.tryReceive(data) catch |err| {
-			switch (err) {
-				error.NotWhitelisted => {},
-				else => {
-					std.log.err("Got error while processing received network data: {s}", .{@errorName(err)});
-					if (@errorReturnTrace()) |trace| {
-						std.log.info("{f}", .{main.fmt.FormatErrorTrace{.stackTrace = trace.*}});
-					}
-					std.log.debug("Packet data: {any}", .{data});
-				},
+			std.log.warn("Got error while processing received network data: {s}", .{@errorName(err)});
+			if (@errorReturnTrace()) |trace| {
+				std.log.info("{f}", .{main.fmt.FormatErrorTrace{.stackTrace = trace.*}});
 			}
+			std.log.debug("Packet data: {any}", .{data});
 			self.disconnect();
 		};
 	}
