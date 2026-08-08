@@ -39,12 +39,19 @@ pub const Settings = struct {
 
 	pub const defaults: Settings = .{};
 
-	pub fn fromZon(zon: ZonElement) error{NoSeed}!Settings {
+	pub fn chooseSeed(seedStr: []const u8) u64 {
+		if (seedStr.len == 0) {
+			return main.random.nextInt(u64, &main.seed);
+		} else {
+			return std.fmt.parseInt(u64, seedStr, 0) catch {
+				return std.hash.Wyhash.hash(0, seedStr);
+			};
+		}
+	}
+	pub fn fromZon(zon: ZonElement) Settings {
 		return .{
-			.seed = zon.get(u64, "seed") orelse {
-				std.log.err("Cannot load world. World has no seed!", .{});
-				return error.NoSeed;
-			},
+			.seed = zon.get(u64, "seed") orelse
+				chooseSeed(zon.get([]const u8, "seed") orelse ""),
 			.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "defaultGamemode") orelse @tagName(defaults.defaultGamemode)) orelse defaults.defaultGamemode,
 			.allowCheats = zon.get(bool, "allowCheats") orelse defaults.allowCheats,
 			.testingMode = zon.get(bool, "testingMode") orelse defaults.testingMode,
@@ -83,7 +90,12 @@ fn findValidFolderName(allocator: main.heap.NeverFailingAllocator, name: []const
 		const resultPath = main.stackAllocator.print("saves/{s}", .{resultName});
 		defer main.stackAllocator.free(resultPath);
 
-		if (!main.files.cubyzDir().hasDir(resultPath)) break;
+		const pathExists: bool = main.files.cubyzDir().hasDir(resultPath) catch |err| blk: {
+			std.log.err("Encountered error accessing directory at path {s}: {s}", .{resultPath, @errorName(err)});
+			break :blk true;
+		};
+
+		if (!pathExists) break;
 
 		main.stackAllocator.free(resultName);
 		resultName = main.stackAllocator.print("{s}_{}", .{escapedName, i});
@@ -642,7 +654,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version") orelse 0, worldDataVersion});
 			return error.OldWorld;
 		}
-		self.settings = try .fromZon(worldData.getChild("settings"));
+
+		self.settings = .fromZon(worldData.getChild("settings"));
 
 		self.doGameTimeCycle = worldData.get(bool, "doGameTimeCycle") orelse true;
 		self.gameTime = worldData.get(i64, "gameTime") orelse 0;
@@ -744,7 +757,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		std.log.info("Biomes have changed. Regenerating LODs... (this might take some time)", .{});
 		const mapsPath = main.stackAllocator.print("saves/{s}/maps", .{self.path});
 		defer main.stackAllocator.free(mapsPath);
-		const hasSurfaceMaps = main.files.cubyzDir().hasDir(mapsPath);
+		const hasSurfaceMaps = main.files.cubyzDir().hasDir(mapsPath) catch |err| blk: {
+			std.log.err("Error accessing {s}, ignoring surface map LOD regeneration: {s}", .{mapsPath, @errorName(err)});
+			break :blk false;
+		};
 		if (hasSurfaceMaps) {
 			try terrain.SurfaceMap.regenerateLOD(self.path);
 		}
