@@ -653,8 +653,8 @@ pub const Pipeline = struct { // MARK: Pipeline
 		};
 		const vertexInputInfo: c.VkPipelineVertexInputStateCreateInfo = .{
 			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-			.vertexBindingDescriptionCount = if(VertexType == graphics.VertexArray.EmptyVertex) 0 else 1,
-			.pVertexBindingDescriptions = if(VertexType == graphics.VertexArray.EmptyVertex) null else &bindingDescription,
+			.vertexBindingDescriptionCount = if (VertexType == graphics.VertexArray.EmptyVertex) 0 else 1,
+			.pVertexBindingDescriptions = if (VertexType == graphics.VertexArray.EmptyVertex) null else &bindingDescription,
 			.vertexAttributeDescriptionCount = VertexType.attributeDescriptions.len,
 			.pVertexAttributeDescriptions = VertexType.attributeDescriptions.ptr,
 		};
