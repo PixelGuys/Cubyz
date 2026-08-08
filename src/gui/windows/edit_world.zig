@@ -17,7 +17,7 @@ const VerticalList = @import("../components/VerticalList.zig");
 const CheckBox = @import("../components/CheckBox.zig");
 
 const Gamemode = main.game.Gamemode;
-const DefaultSettings = main.server.world_zig.Settings.defaults;
+const defaults = main.server.world_zig.Settings.defaults;
 
 const WorldSettings = struct {
 	seed: i128,
@@ -39,7 +39,7 @@ const WorldSettings = struct {
 	}
 
 	fn toEnum(gamemode: ?[]const u8) Gamemode {
-		const mode = gamemode orelse @tagName(DefaultSettings.defaultGamemode);
+		const mode = gamemode orelse @tagName(defaults.defaultGamemode);
 		return std.meta.stringToEnum(Gamemode, mode).?;
 	}
 
@@ -146,8 +146,8 @@ pub fn onOpen() void {
 	worldSettings = WorldSettings.init(
 		worldInfoSettings.get(i128, "seed") orelse 0,
 		worldInfoSettings.get([]const u8, "defaultGamemode"),
-		worldInfoSettings.get(bool, "allowCheats") orelse DefaultSettings.allowCheats,
-		worldInfoSettings.get(bool, "testingMode") orelse DefaultSettings.testingMode,
+		worldInfoSettings.get(bool, "allowCheats") orelse defaults.allowCheats,
+		worldInfoSettings.get(bool, "testingMode") orelse defaults.testingMode,
 		worldInfo.get(usize, "localPlayer") orelse 0,
 	);
 
