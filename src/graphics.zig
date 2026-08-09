@@ -1926,7 +1926,7 @@ pub const Texture = struct { // MARK: Texture
 
 	pub fn size(self: Texture) Vec2i {
 		self.bind();
-		var result: Vec2i = undefined;
+		var result: [2]i32 = undefined;
 		c.glGetTexLevelParameteriv(c.GL_TEXTURE_2D, 0, c.GL_TEXTURE_WIDTH, &result[0]);
 		c.glGetTexLevelParameteriv(c.GL_TEXTURE_2D, 0, c.GL_TEXTURE_HEIGHT, &result[1]);
 		return result;
