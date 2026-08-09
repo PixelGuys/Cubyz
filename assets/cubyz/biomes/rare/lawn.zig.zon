@@ -1,7 +1,6 @@
 .{
 	.properties = .{
 		.hot,
-		.barren,
 		.wet,
 	},
 	.tags = .{},
