@@ -27,7 +27,7 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:rare/snale_head/head",
 			.placeMode = .all,
-			.chance = 0.03,
+			.chance = 0.015,
 		},
 		.{
 			.id = "cubyz:boulder",
@@ -81,6 +81,24 @@
 			.structure = "cubyz:tree/baobab/grandidieri",
 			.placeMode = .degradable,
 			.chance = 0.0012,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:dirt",
+			.chance = 0.15,
+			.width = 5,
+			.variation = 4,
+			.depth = 1,
+			.smoothness = 0.1,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:grass/dry",
+			.chance = 0.15,
+			.width = 5,
+			.variation = 4,
+			.depth = 1,
+			.smoothness = 0.1,
 		},
 	},
 }

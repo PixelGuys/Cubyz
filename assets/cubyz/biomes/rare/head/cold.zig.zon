@@ -27,7 +27,7 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:rare/snale_head/head",
 			.placeMode = .all,
-			.chance = 0.015,
+			.chance = 0.008,
 		},
 		.{
 			.id = "cubyz:boulder",
