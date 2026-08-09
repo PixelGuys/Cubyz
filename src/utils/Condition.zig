@@ -219,7 +219,7 @@ const FutexImpl = struct {
 		mutex.unlock();
 		defer mutex.lock();
 
-		var futex_deadline = Futex.Deadline.init(timeout);
+		var futex_deadline = Futex.Deadline(main.timestamp).init(timeout);
 
 		while (true) {
 			futex_deadline.wait(&self.epoch, epoch) catch |err| switch (err) {

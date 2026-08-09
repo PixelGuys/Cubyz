@@ -14,11 +14,11 @@
 //! efficiently wait for cross-thread events or signals.
 
 const std = @import("std");
-const main = @import("main");
 const builtin = @import("builtin");
 const windows = std.os.windows;
 const linux = std.os.linux;
 const c = std.c;
+const coz = @import("../coz.zig");
 
 const assert = std.debug.assert;
 const testing = std.testing;
@@ -37,11 +37,11 @@ pub fn wait(ptr: *const atomic.Value(u32), expect: u32) void {
 	@branchHint(.cold);
 
 	// We are assuming that whoever writes to 'ptr' remembers to call coz.catchUp() before setting the value.
-	main.coz.preBlock();
+	coz.preBlock();
 	Impl.wait(ptr, expect, null) catch |err| switch (err) {
 		error.Timeout => unreachable, // null timeout meant to wait forever
 	};
-	main.coz.postBlock(true);
+	coz.postBlock(true);
 }
 
 /// Checks if `ptr` still contains the value `expect` and, if so, blocks the caller until either:
@@ -61,12 +61,12 @@ pub fn timedWait(ptr: *const atomic.Value(u32), expect: u32, timeout_ns: u64) er
 		return error.Timeout;
 	}
 
-	main.coz.preBlock();
+	coz.preBlock();
 	const result = Impl.wait(ptr, expect, timeout_ns);
 	if(result == error.Timeout) {
-		main.coz.postBlock(false);
+		coz.postBlock(false);
 	} else {
-		main.coz.postBlock(true);
+		coz.postBlock(true);
 	}
 	return result;
 }
@@ -80,7 +80,7 @@ pub fn wake(ptr: *const atomic.Value(u32), max_waiters: u32) void {
 		return;
 	}
 
-	main.coz.catchUp();
+	coz.catchUp();
 	Impl.wake(ptr, max_waiters);
 }
 
@@ -831,43 +831,47 @@ const PosixImpl = struct {
 ///
 /// Deadline instead converts the relative timeout to an absolute one so that multiple calls
 /// to Futex timedWait() can block for and report more accurate error.Timeouts.
-pub const Deadline = struct {
-	timeout: ?u64,
-	started: std.Io.Timestamp,
+pub fn Deadline(comptime timestampProvider: fn() std.Io.Timestamp) type {
+	return struct {
+		const DeadlineType = @This();
 
-	/// Create the deadline to expire after the given amount of time in nanoseconds passes.
-	/// Pass in `null` to have the deadline call `Futex.wait()` and never expire.
-	pub fn init(expires_in_ns: ?u64) Deadline {
-		var deadline: Deadline = undefined;
-		deadline.timeout = expires_in_ns;
+		timeout: ?u64,
+		started: std.Io.Timestamp,
 
-		// std.time.Timer is required to be supported for somewhat accurate reportings of error.Timeout.
-		if (deadline.timeout != null) {
-			deadline.started = main.timestamp();
+		/// Create the deadline to expire after the given amount of time in nanoseconds passes.
+		/// Pass in `null` to have the deadline call `Futex.wait()` and never expire.
+		pub fn init(expires_in_ns: ?u64) DeadlineType {
+			var deadline: DeadlineType = undefined;
+			deadline.timeout = expires_in_ns;
+
+			// std.time.Timer is required to be supported for somewhat accurate reportings of error.Timeout.
+			if (deadline.timeout != null) {
+				deadline.started = timestampProvider();
+			}
+
+			return deadline;
 		}
 
-		return deadline;
-	}
+		/// Wait until either:
+		/// - the `ptr`'s value changes from `expect`.
+		/// - `Futex.wake()` is called on the `ptr`.
+		/// - A spurious wake occurs.
+		/// - The deadline expires; In which case `error.Timeout` is returned.
+		pub fn wait(self: *DeadlineType, ptr: *const atomic.Value(u32), expect: u32) error{Timeout}!void {
+			@branchHint(.cold);
 
-	/// Wait until either:
-	/// - the `ptr`'s value changes from `expect`.
-	/// - `Futex.wake()` is called on the `ptr`.
-	/// - A spurious wake occurs.
-	/// - The deadline expires; In which case `error.Timeout` is returned.
-	pub fn wait(self: *Deadline, ptr: *const atomic.Value(u32), expect: u32) error{Timeout}!void {
-		@branchHint(.cold);
+			// Check if we actually have a timeout to wait until.
+			// If not just wait "forever".
+			const timeout_ns = self.timeout orelse {
+				return Futex.wait(ptr, expect);
+			};
 
-		// Check if we actually have a timeout to wait until.
-		// If not just wait "forever".
-		const timeout_ns = self.timeout orelse {
-			return Futex.wait(ptr, expect);
-		};
-
-		// Get how much time has passed since we started waiting
-		// then subtract that from the init() timeout to get how much longer to wait.
-		// Use overflow to detect when we've been waiting longer than the init() timeout.
-		const elapsed_ns: u64 = @intCast(self.started.durationTo(main.timestamp()).nanoseconds);
-		const until_timeout_ns = std.math.sub(u64, timeout_ns, elapsed_ns) catch 0;
-		return Futex.timedWait(ptr, expect, until_timeout_ns);
-	}
-};
+			// Get how much time has passed since we started waiting
+			// then subtract that from the init() timeout to get how much longer to wait.
+			// Use overflow to detect when we've been waiting longer than the init() timeout.
+			const elapsed_ns: u64 = @intCast(self.started.durationTo(timestampProvider()).nanoseconds);
+			const until_timeout_ns = std.math.sub(u64, timeout_ns, elapsed_ns) catch 0;
+			return Futex.timedWait(ptr, expect, until_timeout_ns);
+		}
+	};
+}
