@@ -67,7 +67,7 @@ pub fn execute(args: Args, source: Source) void {
 fn countBlocks(context: *std.AutoHashMapUnmanaged(u16, u32), current: Block) Block {
 	const result = context.getOrPut(main.stackAllocator.allocator, current.typ) catch unreachable;
 	if (result.found_existing) {
-		result.value_ptr.* = result.value_ptr.* + 1;
+		result.value_ptr.* += 1;
 	} else {
 		result.value_ptr.* = 1;
 	}
