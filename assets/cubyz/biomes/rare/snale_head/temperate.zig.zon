@@ -13,7 +13,7 @@
 	.roughness = 1,
 	.hills = 10,
 	.chance = 0.01,
-	.music = "cubyz:sinanimea/sunrise",
+	.music = "cubyz:totaldemented/adventurous",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"cubyz:grass/temperate",

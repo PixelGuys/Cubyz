@@ -31,6 +31,13 @@
 			.chance = 0.005,
 		},
 		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:ice",
+			.chance = 0.02,
+			.size = 4,
+			.size_variation = 5,
+		},
+		.{
 			.id = "cubyz:boulder",
 			.chance = 0.0005,
 			.block = "cubyz:slate/smooth",
@@ -42,6 +49,15 @@
 			.structure = "cubyz:rare/snow_snale",
 			.placeMode = .degradable,
 			.chance = 0.001,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:permafrost",
+			.chance = 0.008,
+			.width = 7,
+			.variation = 4,
+			.depth = 1,
+			.smoothness = 0.1,
 		},
 	},
 }

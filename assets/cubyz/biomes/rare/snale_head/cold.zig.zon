@@ -16,7 +16,7 @@
 	.roughness = 1,
 	.hills = 10,
 	.chance = 0.05,
-	.music = "cubyz:sinanimea/sunrise",
+	.music = "cubyz:d3viousrodent/reflect_infinity",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"cubyz:grass/cold",
