@@ -255,6 +255,24 @@ pub fn build(b: *std.Build) !void {
 		.sanitize_thread = sanitizeThread,
 	});
 
+	const cozModule = b.addModule("coz", .{
+		.root_source_file = b.path("src/coz.zig"),
+		.target = target,
+		.optimize = optimize,
+		.link_libc = true,
+		.link_libcpp = true,
+		.sanitize_thread = sanitizeThread,
+	});
+
+	const coz_testing_exe = b.addExecutable(.{
+		.name = "cozTest",
+		.root_module = cozModule,
+		.use_llvm = if (sanitizeThread orelse false) true else null,
+	});
+	coz_testing_exe.root_module.addOptions("build_options", options);
+	const cozInstallStep = b.addInstallArtifact(coz_testing_exe, .{});
+	b.getInstallStep().dependOn(&cozInstallStep.step);
+
 	const exe = b.addExecutable(.{
 		.name = "Cubyz",
 		.root_module = mainModule,

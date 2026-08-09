@@ -35,7 +35,7 @@ fn incrementCounter(comptime counterType: CozCounterType, comptime name: [:0]con
 	if (!internal_counter_state.initialized) {
 		internal_counter_state.counter = coz_provider.getCounter(internal_counter_state.myCounterType, internal_counter_state.myName);
 		internal_counter_state.initialized = true;
-		log.debug("Initialized state for profile counter " ++ internal_counter_state.myName ++ " which is at 0x{0x}", .{@intFromPtr(internal_counter_state.counter)});
+		log.info("Initialized state for profile counter " ++ internal_counter_state.myName ++ " which is at 0x{0x}", .{@intFromPtr(internal_counter_state.counter)});
 	}
 	if (internal_counter_state.counter != null) {
 		// Confirmed: this does compile to `lock incq` instructions in x86_64
@@ -110,7 +110,7 @@ const coz_provider = struct {
 				getCounterFn = @ptrCast(@alignCast(dlsym.?(rltdDefault, "_coz_get_counter")));
 			}
 			getCounterFnInitialized = true;
-			log.debug("Initialized _coz_get_counter function pointer, which is {?}", .{getCounterFn});
+			log.info("Initialized _coz_get_counter function pointer, which is {?}", .{getCounterFn});
 		}
 		if (getCounterFn != null) {
 			return getCounterFn.?(@"type", name);
@@ -125,7 +125,7 @@ const coz_provider = struct {
 				addDelaysFn = @ptrCast(@alignCast(dlsym.?(rltdDefault, "_coz_add_delays")));
 			}
 			addDelaysFnInitialized = true;
-			log.debug("Initialized _coz_add_delays function pointer, which is {?}", .{addDelaysFn});
+			log.info("Initialized _coz_add_delays function pointer, which is {?}", .{addDelaysFn});
 		}
 		if (addDelaysFn != null) {
 			addDelaysFn.?();
@@ -138,7 +138,7 @@ const coz_provider = struct {
 				preBlockFn = @ptrCast(@alignCast(dlsym.?(rltdDefault, "_coz_pre_block")));
 			}
 			preBlockFnInitialized = true;
-			log.debug("Initialized _coz_pre_block function pointer, which is {?}", .{preBlockFn});
+			log.info("Initialized _coz_pre_block function pointer, which is {?}", .{preBlockFn});
 		}
 		if (preBlockFn != null) {
 			preBlockFn.?();
@@ -152,10 +152,126 @@ const coz_provider = struct {
 				postBlockFn = @ptrCast(@alignCast(dlsym.?(rltdDefault, "_coz_post_block")));
 			}
 			postBlockFnInitialized = true;
-			log.debug("Initialized _coz_post_block function pointer, which is {?}", .{postBlockFn});
+			log.info("Initialized _coz_post_block function pointer, which is {?}", .{postBlockFn});
 		}
 		if (postBlockFn != null) {
 			postBlockFn.?(skip_delays_int);
 		}
 	}
 };
+
+// A port of the sem_toy example from Coz
+// This is for testing purposes to ensure that our mutex and futex implementations integrate into Coz properly.
+// Below is the comment copied directly from sem_toy.cpp:
+
+// This is the regression test for semaphore interposition. A thread blocked on
+// a semaphore is not running, so it must not be charged for virtual delays
+// inserted while it slept. Before libcoz wrapped sem_wait/semaphore_wait, the
+// main thread -- the one that visits the progress point -- paid all of them on
+// wake-up, and the profile came out with a slope near zero or negative
+// (measured: +0.13 with R^2 0.01, and -0.57 with R^2 0.18) instead of the ~1.0
+// this program should show.
+//
+// Both loops inline the same xorshift, so the expected result is a single hot
+// line with a slope near 1.0: removing that work removes the program.
+
+// Note: Zig is apparently much better about preserving line numbers for inline functions, as each line in xorshift show up in the profile as expected.
+
+// This actually outlines an infuriating problem of Coz: it does not consider upstream callers of a line of code.
+// In the original toy example, if xorshift is not inlined, the resulting profile just says "xorshift is slow" and doesn't even mention the blatant bottleneck.
+
+const utils = @import("utils.zig");
+
+const Mutex = utils.Mutex;
+const Futex = utils.Futex;
+
+inline fn xorshift1(v: u64) u64 {
+	var value = v;
+	value ^= value << 13;
+	value ^= value >> 7;
+	value ^= value << 17;
+	return value;
+}
+
+inline fn xorshift2(v: u64) u64 {
+	var value = v;
+	value ^= value << 13;
+	value ^= value >> 7;
+	value ^= value << 17;
+	return value;
+}
+
+const iterations = 40000000;
+
+// For whatever unknown reason, volatile cannot be applied to a variable (I suppose it is intended for exclusively memory-mapped IO)
+// Volatile is needed so the compiler doesn't optimize the entire benchmark into a noop (TODO: does zig have a better way to do that?)
+var slow_sink: u64 = undefined;
+var fast_sink: u64 = undefined;
+
+var slow_sink_ptr: *volatile u64 = &slow_sink;
+var fast_sink_ptr: *volatile u64 = &fast_sink;
+
+var futex_holder: std.atomic.Value(u32) = std.atomic.Value(u32){.raw = 0};
+var futex: *const std.atomic.Value(u32) = &futex_holder;
+
+pub const heap = @import("utils/heap.zig");
+
+pub const globalAllocator: heap.NeverFailingAllocator = if (builtin.is_test) heap.testingAllocator else heap.allocators.handledGpa.allocator();
+
+var threadedIo: std.Io.Threaded = undefined;
+var io: std.Io = threadedIo.io();
+
+fn toy_futex_slow_work() ?*anyopaque {
+	// TODO: make sure the compiler doesn't just hard-code the final result (I suspect it will)
+	var acc: u64 = 0x9E3779B97F4A7C15;
+	for (0..iterations) |_| {
+		acc = xorshift1(acc);
+	}
+	slow_sink_ptr.* = acc;
+	Futex.wake(futex, 1);
+	return null;
+}
+
+fn toy_futex_fast_work() ?*anyopaque {
+	// TODO: make sure the compiler doesn't just hard-code the final result (I suspect it will)
+	var acc: u64 = 0x9E3779B97F4A7C15;
+	for (0..iterations/2) |_| {
+		acc = xorshift2(acc);
+	}
+	fast_sink_ptr.* = acc;
+	Futex.wake(futex, 1);
+	return null;
+}
+
+pub fn toy_futex() void {
+	threadedIo = .init(globalAllocator.allocator, .{});
+	defer threadedIo.deinit();
+
+	const num_rounds = 1000;
+	std.log.info("Started toy_futex", .{});
+	for (0..num_rounds) |round| {
+		var t1 = io.concurrent(toy_futex_slow_work, .{}) catch |e| {
+			std.log.err("Error: {any}", .{e});
+			return;
+		};
+		var t2 = io.concurrent(toy_futex_fast_work, .{}) catch |e| {
+			std.log.err("Error: {any}", .{e});
+			return;
+		};
+		Futex.wait(futex, 0);
+		Futex.wait(futex, 0);
+		_ = t1.await(io);
+		_ = t2.await(io);
+		progressNamed("toy_futex");
+		std.log.info("Round {}", .{round});
+	}
+	std.log.info("Finished", .{});
+}
+
+pub fn toy_mutex() void {
+	// TODO
+}
+
+pub fn main() void {
+	toy_futex();
+}
