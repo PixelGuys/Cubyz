@@ -14,7 +14,7 @@
 	.music = "cubyz:ikabod/behind",
 	.validPlayerSpawn = true,
 	.stoneBlock = "cubyz:grass/lush",
-	.fogDensity = 15,
+	.fogDensity = 25,
 	.fogColor = 0x9ed3f7,
 	.stripes = .{
 		.{
@@ -37,13 +37,13 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:rare/fence/fence",
 			.placeMode = .degradable,
-			.chance = 0.003,
+			.chance = 0.005,
 		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:rare/picnic/picnic",
 			.placeMode = .degradable,
-			.chance = 0.0015,
+			.chance = 0.002,
 		},
 	},
 }
