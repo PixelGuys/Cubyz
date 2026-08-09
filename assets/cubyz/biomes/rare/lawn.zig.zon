@@ -10,7 +10,7 @@
 	.minRadius = 320,
 	.maxRadius = 350,
 	.hills = 1,
-	.chance = 0.5,
+	.chance = 0.01,
 	.music = "cubyz:ikabod/behind",
 	.validPlayerSpawn = true,
 	.stoneBlock = "cubyz:grass/lush",
