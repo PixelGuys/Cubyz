@@ -1,0 +1,47 @@
+.{
+	.properties = .{
+		.cold,
+		.barren,
+		.wet,
+	},
+	.tags = .{
+		.snowy,
+	},
+	.minHeightLimit = 4,
+	.minHeight = 10,
+	.maxHeight = 30,
+	.maxHeightLimit = 35,
+	.smoothBeaches = true,
+	.minRadius = 150,
+	.maxRadius = 280,
+	.roughness = 1,
+	.hills = 10,
+	.chance = 0.05,
+	.music = "cubyz:sinanimea/sunrise",
+	.validPlayerSpawn = true,
+	.ground_structure = .{
+		"3 to 5 cubyz:snow",
+		"2 to 3 cubyz:permafrost",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:rare/snale_head/head",
+			.placeMode = .all,
+			.chance = 0.008,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.0005,
+			.block = "cubyz:slate/smooth",
+			.size = 5,
+			.size_variance = 1,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:rare/snow_snale",
+			.placeMode = .degradable,
+			.chance = 0.001,
+		},
+	},
+}

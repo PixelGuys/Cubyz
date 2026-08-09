@@ -1,0 +1,10 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:rare/snale_head/0"},
+		.{.id = "cubyz:rare/snale_head/1"},
+		.{.id = "cubyz:rare/snale_head/2"},
+		.{.id = "cubyz:rare/snale_head/3"},
+		.{.id = "cubyz:rare/snale_head/4"},
+		.{.id = "cubyz:rare/snale_head/5"},
+	},
+}
