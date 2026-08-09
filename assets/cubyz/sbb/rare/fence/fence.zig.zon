@@ -1,0 +1,8 @@
+.{
+	.blueprints = .{
+		.{.id = "lawn:rare/fence/0",},
+		.{.id = "lawn:rare/fence/1",},
+		.{.id = "lawn:rare/fence/2",},
+		.{.id = "lawn:rare/fence/3",},
+	},
+}

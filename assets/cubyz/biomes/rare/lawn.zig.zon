@@ -1,0 +1,49 @@
+.{
+	.properties = .{.hot, .barren, .wet,},
+	.tags = .{
+	},
+	.minHeightLimit = 35,
+	.minHeight = 36,
+	.maxHeight = 36,
+	.maxHeightLimit = 37,
+	.smoothBeaches = true,
+	.minRadius = 320,
+	.maxRadius = 350,
+	.hills = 1,
+	.chance = 0.01,
+	.music = "cubyz:sinanimea/sunrise",
+	.validPlayerSpawn = true,
+	.stoneBlock = "cubyz:grass/lush",
+	.fogDensity = 15,
+	.fogColor = 0x9ed3f7,
+	.stripes = .{
+		.{
+			.direction = .{3, 2, 1},
+			.block = "cubyz:grass/temperate",
+			.distance = 12,
+			.offset = 3,
+			.width = 5,
+		},
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:grass/vegetation/temperate",
+			.chance = 2,
+			.height = 1,
+			.height_variation = 0,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "lawn:fence/fence",
+			.placeMode = .degradable,
+			.chance = 0.003,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "lawn:picnic/picnic",
+			.placeMode = .degradable,
+			.chance = 0.0015,
+		},
+	},
+}
