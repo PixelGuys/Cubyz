@@ -35,13 +35,13 @@
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:fence/fence",
+			.structure = "cubyz:rare/fence/fence",
 			.placeMode = .degradable,
 			.chance = 0.003,
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:picnic/picnic",
+			.structure = "cubyz:rare/picnic/picnic",
 			.placeMode = .degradable,
 			.chance = 0.0015,
 		},
