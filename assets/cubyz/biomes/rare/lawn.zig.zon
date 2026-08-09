@@ -1,7 +1,10 @@
 .{
-	.properties = .{.hot, .barren, .wet,},
-	.tags = .{
-	},
+	.properties = .{
+		.hot,
+		.barren,
+		.wet,
+		},
+	.tags = .{},
 	.minHeightLimit = 35,
 	.minHeight = 36,
 	.maxHeight = 36,
