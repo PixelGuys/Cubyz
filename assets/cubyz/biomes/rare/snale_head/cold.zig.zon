@@ -15,7 +15,7 @@
 	.maxRadius = 280,
 	.roughness = 1,
 	.hills = 10,
-	.chance = 0.05,
+	.chance = 0.01,
 	.music = "cubyz:d3viousrodent/reflect_infinity",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
