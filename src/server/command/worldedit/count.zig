@@ -42,6 +42,7 @@ pub fn execute(args: Args, source: Source) void {
 			} else {
 				const TypAndCount = struct { typ: u16, count: u32 };
 				var items: main.List(TypAndCount) = .empty;
+				defer items.deinit(main.stackAllocator);
 
 				var iterator = context.iterator();
 				while (iterator.next()) |next| items.append(main.stackAllocator, .{.typ = next.key_ptr.*, .count = next.value_ptr.*});
