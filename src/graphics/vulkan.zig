@@ -550,7 +550,7 @@ pub const SwapChain = struct { // MARK: SwapChain
 	var images: []c.VkImage = undefined;
 	var imageViews: []c.VkImageView = undefined;
 	pub var imageFormat: c.VkFormat = undefined;
-	var extent: c.VkExtent2D = undefined;
+	pub var extent: c.VkExtent2D = undefined;
 
 	const SupportDetails = struct {
 		capabilities: c.VkSurfaceCapabilitiesKHR,
@@ -631,7 +631,7 @@ pub const SwapChain = struct { // MARK: SwapChain
 		imageFormat = surfaceFormat.format;
 		const presentMode = support.chooseSwapPresentMode();
 		extent = support.chooseSwapExtent();
-		const imageCount = @min(support.capabilities.minImageCount + 1, support.capabilities.maxImageCount -% 1 +| 1);
+		const imageCount: u32 = @max(2, support.capabilities.minImageCount);
 
 		var createInfo: c.VkSwapchainCreateInfoKHR = .{
 			.sType = c.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
@@ -659,17 +659,17 @@ pub const SwapChain = struct { // MARK: SwapChain
 		}
 
 		checkResult(c.vkCreateSwapchainKHR(device, &createInfo, null, &swapChain));
-		images = main.globalArena.alloc(c.VkImage, imageCount);
 		var newImageCount = imageCount;
+		checkResult(c.vkGetSwapchainImagesKHR(device, swapChain, &newImageCount, null));
+		images = main.globalArena.alloc(c.VkImage, newImageCount);
 		checkResult(c.vkGetSwapchainImagesKHR(device, swapChain, &newImageCount, images.ptr));
-		std.debug.assert(newImageCount == imageCount);
 
-		imageViews = main.globalArena.alloc(c.VkImageView, imageCount);
+		imageViews = main.globalArena.alloc(c.VkImageView, newImageCount);
 		for (0..images.len) |i| {
 			imageViews[i] = createImageView(images[i]);
 		}
 
-		frames = main.globalArena.alloc(FrameData, imageCount);
+		frames = main.globalArena.alloc(FrameData, newImageCount);
 		for (frames) |*frame| {
 			frame.* = .init();
 		}

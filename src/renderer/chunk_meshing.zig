@@ -73,7 +73,7 @@ pub fn init() void {
 		&.{},
 		.{},
 		.{.depthTest = true, .depthWrite = true},
-		.{.attachments = &.{.noBlending}},
+		.{.attachments = &.{.noBlending}, .formats = &.{.world}},
 	);
 	transparentPipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/chunks/chunk_vertex.vert",
@@ -91,7 +91,7 @@ pub fn init() void {
 			.srcAlphaBlendFactor = .one,
 			.dstAlphaBlendFactor = .src1Alpha,
 			.alphaBlendOp = .add,
-		}}},
+		}}, .formats = &.{.world}},
 	);
 	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms);
 	occlusionTestPipeline = graphics.Pipeline.init(
@@ -112,7 +112,7 @@ pub fn init() void {
 			.dstAlphaBlendFactor = .zero,
 			.alphaBlendOp = .add,
 			.colorWriteMask = .none,
-		}}},
+		}}, .formats = &.{.world}},
 	);
 
 	var rawData: [6*maxQuadsInIndexBuffer]u32 = undefined;
@@ -285,10 +285,10 @@ pub const FaceData = extern struct {
 };
 
 pub const ChunkData = extern struct {
-	position: Vec3i align(16),
-	min: Vec3f align(16),
-	max: Vec3f align(16),
-	voxelSize: i32,
+	position: [3]i32 align(16),
+	min: [3]f32 align(16),
+	max: [3]f32 align(16),
+	voxelSize: i32 align(16),
 	lightStart: u32,
 	vertexStartOpaque: u32,
 	faceCountsByNormalOpaque: [14]u32,

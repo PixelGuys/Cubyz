@@ -141,6 +141,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		const properties = .{
 			zon.get(Vec3d, "pos") orelse .{0, 0, 0},
 			zon.get(Vec3d, "vel") orelse .{0, 0, 0},
+
 			random.nextFloatVector(3, &main.seed)*@as(Vec3f, @splat(2*std.math.pi)),
 			items.ItemStack{.item = item, .amount = zon.get(u16, "amount") orelse 1},
 			zon.get(i32, "despawnTime") orelse 60,
@@ -546,8 +547,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			};
 			if (self.item == .baseItem and self.item.baseItem.block() != null and self.item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
 				// Find sizes and free index:
-				var block = blocks.Block{.typ = self.item.baseItem.block().?, .data = 0};
-				block.data = block.mode().naturalStandard;
+				const block = self.item.baseItem.getDisplayBlock().?;
 				const model = blocks.meshes.model(block).model();
 				var data: main.ListManaged(u32) = .init(main.stackAllocator);
 				defer data.deinit();
@@ -618,7 +618,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			&.{},
 			.{},
 			.{.depthTest = true},
-			.{.attachments = &.{.alphaBlending}},
+			.{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
 		);
 		itemModelSSBO = .init();
 		itemModelSSBO.bufferData(i32, &[3]i32{1, 1, 1});
