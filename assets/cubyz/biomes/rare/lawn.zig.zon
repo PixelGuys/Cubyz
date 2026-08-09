@@ -3,7 +3,7 @@
 		.hot,
 		.barren,
 		.wet,
-		},
+	},
 	.tags = .{},
 	.minHeightLimit = 35,
 	.minHeight = 36,
