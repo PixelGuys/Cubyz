@@ -428,6 +428,7 @@ pub fn clientMain() void { // MARK: clientMain()
 		gui.openWindow("main");
 	} else {
 		// Speed up the dev process by entering the world directly.
+		gui.windowlist.save_selection.mode = .singleplayer;
 		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
 	}
 
