@@ -35,9 +35,12 @@ pub const command = @import("command.zig");
 
 pub const WorldEditData = struct {
 	const maxWorldEditHistoryCapacity: u32 = 1024;
+	pub const Pos = enum(u1) {
+		@"1" = 0,
+		@"2" = 1,
+	};
 
-	selectionPosition1: ?Vec3i = null,
-	selectionPosition2: ?Vec3i = null,
+	selectionPosition: [2]?Vec3i = .{null, null},
 	clipboard: ?Blueprint = null,
 	undoHistory: History,
 	redoHistory: History,
@@ -570,10 +573,13 @@ var lastTime: std.Io.Timestamp = undefined;
 
 pub var thread: ?std.Thread = null;
 
+pub var worldEditData: WorldEditData = undefined;
+
 fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void { // MARK: init()
 	main.heap.allocators.createWorldArena();
 	std.debug.assert(world == null); // There can only be one world.
 	command.init();
+	worldEditData = .init();
 	users = .init(main.globalAllocator);
 	lastTime = main.timestamp();
 
@@ -631,6 +637,7 @@ fn deinit() void {
 	main.entity.server.deinit();
 	main.systems.server.deinit();
 
+	worldEditData.deinit();
 	command.deinit();
 
 	main.heap.allocators.destroyWorldArena();

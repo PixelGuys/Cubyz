@@ -23,7 +23,7 @@ pub fn update() void {
 	}
 	const msg = std.mem.trim(u8, readBuffer[0..result], "\n");
 	if (msg[0] == '/') {
-		main.server.command.execute(msg[1..], .server);
+		main.server.command.execute(msg[1..], .{.server = main.server});
 	} else {
 		main.server.sendMessage("<Server> {s}", .{msg});
 	}

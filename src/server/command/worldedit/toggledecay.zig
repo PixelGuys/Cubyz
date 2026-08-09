@@ -61,8 +61,8 @@ pub fn execute(args: Args, source: Source) void {
 
 	switch (args.@"/toggledecay <target> <state>".target) {
 		.selection => {
-			const pos1 = user.worldEditData.selectionPosition1.?;
-			const pos2 = user.worldEditData.selectionPosition2.?;
+			const pos1 = user.worldEditData.selectionPosition[0].?;
+			const pos2 = user.worldEditData.selectionPosition[1].?;
 
 			const posStart: Vec3i = @min(pos1, pos2);
 

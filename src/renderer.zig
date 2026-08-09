@@ -1030,7 +1030,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						}
 					}
 					if (std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) {
-						game.Player.selectionPosition2 = selectedPos;
+						game.Player.selectionPosition[1] = selectedPos;
 						main.network.protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos2, selectedPos);
 						return;
 					}
@@ -1048,7 +1048,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			const stack = inventory.getStack(slot);
 			const isSelectionWand = stack.item == .baseItem and std.mem.eql(u8, stack.item.baseItem.id(), "cubyz:selection_wand");
 			if (isSelectionWand) {
-				game.Player.selectionPosition1 = selectedPos;
+				game.Player.selectionPosition[0] = selectedPos;
 				main.network.protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selectedPos);
 				return;
 			}
@@ -1165,8 +1165,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		if (selectedBlockPos) |_selectedBlockPos| {
 			drawCube(@as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, selectionMin, selectionMax);
 		}
-		if (game.Player.selectionPosition1) |pos1| {
-			if (game.Player.selectionPosition2) |pos2| {
+		if (game.Player.selectionPosition[0]) |pos1| {
+			if (game.Player.selectionPosition[1]) |pos2| {
 				const bottomLeft: Vec3i = @min(pos1, pos2);
 				const topRight: Vec3i = @max(pos1, pos2);
 				drawCube(@as(Vec3d, @floatFromInt(bottomLeft)) - playerPos, .{0, 0, 0}, @floatFromInt(topRight - bottomLeft + Vec3i{1, 1, 1}));
