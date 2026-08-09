@@ -11,7 +11,7 @@
 	.maxRadius = 350,
 	.hills = 1,
 	.chance = 0.01,
-	.music = "cubyz:sinanimea/sunrise",
+	.music = "cubyz:ikabod/behind",
 	.validPlayerSpawn = true,
 	.stoneBlock = "cubyz:grass/lush",
 	.fogDensity = 15,
