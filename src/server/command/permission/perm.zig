@@ -3,10 +3,10 @@ const std = @import("std");
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ListManaged = main.ListManaged;
-const User = main.server.User;
 const permission = main.server.permission;
 const ListType = permission.Permissions.ListType;
 const command = main.server.command;
+const Source = command.Source;
 
 pub const description = "Performs changes on the permissions of the player or shows the if has permission for a specific permission path";
 pub const usage =
@@ -26,11 +26,10 @@ pub const Args = union(enum) {
 	@"/perm <playerIndex> <permissionPath>": struct { playerIndex: ?command.PlayerIndex, permissionPath: Path },
 };
 
-pub fn execute(args: Args, source: *User) void {
+pub fn execute(args: Args, source: Source) void {
 	switch (args) {
 		.@"/perm <action> <list> <playerIndex> <permissionPath>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
-			defer target.deinit();
 
 			const listType: ListType = switch (params.list) {
 				.whitelist => .white,
@@ -48,7 +47,6 @@ pub fn execute(args: Args, source: *User) void {
 		},
 		.@"/perm <playerIndex> <permissionPath>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
-			defer target.deinit();
 
 			if (main.entity.components.@"cubyz:permissions".server.hasPermission(target.user.id, params.permissionPath.path)) {
 				source.sendMessage("#00ff00Player {s}§#00ff00 has permission for path: {s}", .{target.user.name, params.permissionPath.path});

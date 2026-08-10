@@ -9,8 +9,27 @@ const ListManaged = main.ListManaged;
 const User = main.server.User;
 pub const commandList = @import("command/_list.zig");
 
+pub const Source = union(enum) {
+	user: *User,
+	server: void,
+
+	pub fn sendMessage(self: Source, comptime fmt: []const u8, args: anytype) void {
+		switch (self) {
+			.user => |user| user.sendMessage(fmt, args),
+			.server => main.log.server(fmt, args),
+		}
+	}
+
+	pub fn hasPermission(self: Source, permissionPath: []const u8) bool {
+		return switch (self) {
+			.user => |user| main.entity.components.@"cubyz:permissions".server.hasPermission(user.id, permissionPath),
+			.server => true,
+		};
+	}
+};
+
 pub const Command = struct {
-	exec: *const fn (args: []const u8, source: *User) void,
+	exec: *const fn (args: []const u8, source: Source) void,
 	name: []const u8,
 	description: []const u8,
 	usage: []const u8,
@@ -19,10 +38,10 @@ pub const Command = struct {
 
 pub var commands: std.StringHashMap(Command) = undefined;
 
-fn initExecutionFn(comptime name: []const u8) *const fn (args: []const u8, source: *User) void {
+fn initExecutionFn(comptime name: []const u8) *const fn (args: []const u8, source: Source) void {
 	const ArgPaser = main.argparse.Parser(@field(commandList, name).Args, .{.commandName = name});
 	return struct {
-		fn exec(msg: []const u8, source: *User) void {
+		fn exec(msg: []const u8, source: Source) void {
 			const arena: main.heap.NeverFailingAllocator = .createArena(main.stackAllocator);
 			defer main.stackAllocator.destroyArena(arena);
 			var errorMessage: main.ListManaged(u8) = .init(arena);
@@ -53,11 +72,11 @@ pub fn deinit() void {
 	commands.deinit();
 }
 
-pub fn execute(msg: []const u8, source: *User) void {
+pub fn execute(msg: []const u8, source: Source) void {
 	const end = std.mem.indexOfScalar(u8, msg, ' ') orelse msg.len;
 	const command = msg[0..end];
 	if (commands.get(command)) |cmd| {
-		if (!main.entity.components.@"cubyz:permissions".server.hasPermission(source.id, cmd.permissionPath)) {
+		if (!source.hasPermission(cmd.permissionPath)) {
 			source.sendMessage("#ff0000No permission to use Command \"{s}\"", .{command});
 			return;
 		}
@@ -89,35 +108,36 @@ pub const Coordinate = union(enum) {
 	}
 };
 
-pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, player: *User) main.vec.Vec3d {
+pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, source: Source) error{InvalidArg}!main.vec.Vec3d {
+	if (source != .user and (x == .relative or y == .relative or z == .relative)) {
+		source.sendMessage("Command was run without a user; unable to interpret relative coordinates.", .{});
+		return error.InvalidArg;
+	}
 	return .{
 		// TODO: Remove clamp after #310 is implemented
-		std.math.clamp(if (x == .relative) player.player().pos[0] + x.relative else x.absolute, -1e9, 1e9),
-		std.math.clamp(if (y == .relative) player.player().pos[1] + y.relative else y.absolute, -1e9, 1e9),
-		std.math.clamp(if (z == .relative) player.player().pos[2] + z.relative else z.absolute, -1e9, 1e9),
+		std.math.clamp(if (x == .relative) source.user.player().pos[0] + x.relative else x.absolute, -1e9, 1e9),
+		std.math.clamp(if (y == .relative) source.user.player().pos[1] + y.relative else y.absolute, -1e9, 1e9),
+		std.math.clamp(if (z == .relative) source.user.player().pos[2] + z.relative else z.absolute, -1e9, 1e9),
 	};
 }
 
 pub const Target = struct {
 	user: *User,
-	increasedRefCount: bool,
 
-	pub fn fromPlayerIndex(arg: ?PlayerIndex, source: *User) !Target {
+	pub fn fromPlayerIndex(arg: ?PlayerIndex, source: Source) !Target {
+		if (arg == null and source != .user) {
+			source.sendMessage("#ff0000Command was run without a user; unable to infer the player index", .{});
+			return error.InvalidArg;
+		}
 		const playerIndex = arg orelse return .{
-			.user = source,
-			.increasedRefCount = false,
+			.user = source.user,
 		};
 		return .{
-			.user = main.server.getUserByIndexAndIncreaseRefCount(playerIndex.index) orelse {
+			.user = main.server.getUserByIndex(playerIndex.index) orelse {
 				source.sendMessage("#ff0000Player with index {d} not found or not online", .{playerIndex.index});
 				return error.InvalidArg;
 			},
-			.increasedRefCount = true,
 		};
-	}
-
-	pub fn deinit(self: Target) void {
-		if (self.increasedRefCount) self.user.decreaseRefCount();
 	}
 };
 

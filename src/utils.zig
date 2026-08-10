@@ -814,7 +814,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	threads: []std.Thread,
 	currentTasks: []Atomic(?*const VTable),
 	loadList: ConcurrentMaxHeap(Task),
-	playerJobQueue: ConcurrentQueue(*main.server.User),
+	playerJobQueue: ConcurrentQueue(main.server.PlayerIndex),
 	taskCountSemaphore: main.utils.Semaphore = .{},
 	stopSemaphore: main.utils.Semaphore = .{},
 	startSemaphore: main.utils.Semaphore = .{},
@@ -853,10 +853,6 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		// Clear the remaining tasks:
 		while (self.loadList.extractAny()) |task| {
 			task.vtable.clean(task.self);
-		}
-
-		while (self.playerJobQueue.popFront()) |player| {
-			player.decreaseRefCount();
 		}
 
 		for (self.threads) |thread| {
@@ -910,10 +906,9 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	}
 
 	pub fn unschedulePlayers(self: *ThreadPool) void {
-		while (self.playerJobQueue.popFront()) |player| {
+		while (self.playerJobQueue.popFront()) |_| {
 			self.taskCountSemaphore.timedWait(.zero) catch {};
 			_ = self.trueQueueSize.fetchSub(1, .monotonic);
-			player.decreaseRefCount();
 		}
 	}
 
@@ -923,15 +918,13 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		}
 		blk: {
 			const player = self.playerJobQueue.popFront() orelse break :blk;
-			const result, const hasMoreTasks = player.getTaskFromJobQueue() orelse {
+			const user = main.server.getUserByIndex(player) orelse break :blk;
+			const result, const hasMoreTasks = user.getTaskFromJobQueue() orelse {
 				_ = self.trueQueueSize.fetchSub(1, .monotonic);
-				player.decreaseRefCount();
 				break :blk;
 			};
 			switch (hasMoreTasks) {
-				.empty => {
-					player.decreaseRefCount();
-				},
+				.empty => {},
 				.hasMoreTasks => {
 					self.playerJobQueue.pushBack(player);
 					self.taskCountSemaphore.post();
@@ -1014,8 +1007,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	}
 
 	pub fn addPlayer(self: *ThreadPool, player: *main.server.User) void {
-		player.increaseRefCount();
-		self.playerJobQueue.pushBack(player);
+		self.playerJobQueue.pushBack(player.playerIndex);
 		self.taskCountSemaphore.post();
 		_ = self.trueQueueSize.fetchAdd(1, .monotonic);
 	}
@@ -1628,19 +1620,26 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type { // MARK: Gen
 
 pub const TimeDifference = struct { // MARK: TimeDifference
 	difference: Atomic(i16) = .init(0),
-	firstValue: bool = true,
+	// Checks how many times in a row we are off in the same direction
+	biasCounter: Atomic(i16) = .init(std.math.maxInt(i16)),
 
 	pub fn addDataPoint(self: *TimeDifference, time: i16) void {
 		const currentTime: i16 = @truncate(main.timestamp().toMilliseconds());
 		const timeDifference = currentTime -% time;
-		if (self.firstValue) {
+		if (@abs(self.biasCounter.load(.monotonic)) > main.server.updatesPerSec*5) {
 			self.difference.store(timeDifference, .monotonic);
-			self.firstValue = false;
+			self.biasCounter.store(0, .monotonic);
 		}
 		if (timeDifference -% self.difference.load(.monotonic) > 0) {
 			_ = @atomicRmw(i16, &self.difference.raw, .Add, 1, .monotonic);
+			if (self.biasCounter.fetchAdd(1, .monotonic) < 0) {
+				self.biasCounter.store(0, .monotonic);
+			}
 		} else if (timeDifference -% self.difference.load(.monotonic) < 0) {
 			_ = @atomicRmw(i16, &self.difference.raw, .Add, -1, .monotonic);
+			if (self.biasCounter.fetchAdd(-1, .monotonic) > 0) {
+				self.biasCounter.store(0, .monotonic);
+			}
 		}
 	}
 };

@@ -167,10 +167,12 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_id[size] = main.worldArena.dupe(u8, id);
 	reverseIndices.put(main.worldArena.allocator, _id[size], @intCast(size)) catch unreachable;
 
-	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation") orelse "cubyz:no_rotation");
+	const rotationMode = rotation.getByID(zon.get([]const u8, "rotation") orelse "cubyz:no_rotation");
+
+	_mode[size] = rotationMode;
 	_blockHealth[size] = zon.get(f32, "blockHealth") orelse 1;
 	_blockResistance[size] = zon.get(f32, "blockResistance") orelse 0;
-	const rotation_tags = _mode[size].getBlockTags();
+	const rotation_tags = rotationMode.getBlockTags();
 	const block_tags = Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("tags"));
 	defer main.stackAllocator.free(block_tags);
 	_tags[size] = std.mem.concat(main.worldArena.allocator, Tag, &.{rotation_tags, block_tags}) catch unreachable;

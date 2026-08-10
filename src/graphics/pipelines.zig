@@ -129,7 +129,7 @@ const Shader = struct { // MARK: Shader
 	}
 
 	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shaderStage: c_uint) !void {
-		const extraDefines = std.mem.concat(main.stackAllocator.allocator, u8, &.{defines, "#define gl_VertexIndex gl_VertexID\n"}) catch unreachable;
+		const extraDefines = std.mem.concat(main.stackAllocator.allocator, u8, &.{defines, "#define gl_VertexIndex gl_VertexID\n#define OPEN_GL\n"}) catch unreachable;
 		defer main.stackAllocator.free(extraDefines);
 		const source = try loadShaderFile(main.stackAllocator, filename, extraDefines);
 		defer main.stackAllocator.free(source);
@@ -286,8 +286,8 @@ const RasterizationState = struct { // MARK: RasterizationState
 const MultisampleState = struct { // MARK: MultisampleState
 	rasterizationSamples: Count = .@"1",
 	sampleShading: bool = false,
-	minSampleShading: f32 = undefined,
-	sampleMask: [*]const c.VkSampleMask = &.{0, 0},
+	minSampleShading: f32 = 0,
+	sampleMask: ?[*]const c.VkSampleMask = null,
 	alphaToCoverage: bool = false,
 	alphaToOne: bool = false,
 
@@ -320,6 +320,8 @@ const DepthStencilState = struct { // MARK: DepthStencilState
 	depthCompare: CompareOp = .less,
 	depthBoundsTest: ?DepthBoundsTest = null,
 	stencilTest: ?StencilTest = null,
+	depthFormat: c.VkFormat = c.VK_FORMAT_D32_SFLOAT,
+	stencilFormat: c.VkFormat = c.VK_FORMAT_UNDEFINED,
 
 	const CompareOp = enum(c.VkCompareOp) {
 		never = c.VK_COMPARE_OP_NEVER,
@@ -383,10 +385,10 @@ const DepthStencilState = struct { // MARK: DepthStencilState
 			.depthCompareOp = @intFromEnum(self.depthCompare),
 			.depthBoundsTestEnable = @intFromBool(self.depthBoundsTest != null),
 			.stencilTestEnable = @intFromBool(self.stencilTest != null),
-			.front = if (self.stencilTest) |s| s.front.toVulkan() else undefined,
-			.back = if (self.stencilTest) |s| s.back.toVulkan() else undefined,
-			.minDepthBounds = if (self.depthBoundsTest) |d| d.min else undefined,
-			.maxDepthBounds = if (self.depthBoundsTest) |d| d.max else undefined,
+			.front = if (self.stencilTest) |s| s.front.toVulkan() else .{},
+			.back = if (self.stencilTest) |s| s.back.toVulkan() else .{},
+			.minDepthBounds = if (self.depthBoundsTest) |d| d.min else 0,
+			.maxDepthBounds = if (self.depthBoundsTest) |d| d.max else 0,
 		};
 	}
 };
@@ -509,7 +511,14 @@ const ColorBlendAttachmentState = struct { // MARK: ColorBlendAttachmentState
 const ColorBlendState = struct { // MARK: ColorBlendState
 	logicOp: ?LogicOp = null,
 	attachments: []const ColorBlendAttachmentState,
+	formats: []const ImageFormatHelper,
 	blendConstants: [4]f32 = .{0, 0, 0, 0},
+
+	const ImageFormatHelper = union(enum) {
+		swapChain: void,
+		world: void,
+		custom: c.VkFormat,
+	};
 
 	const LogicOp = enum(c.VkLogicOp) {
 		clear = c.VK_LOGIC_OP_CLEAR,
@@ -562,12 +571,38 @@ pub const DescriptorSetLayoutBinding = extern struct { // MARK: DescriptorSetLay
 		vertex: bool = false,
 		tessellationControl: bool = false,
 		tessellationEvaluation: bool = false,
-		geometriy: bool = false,
+		geometry: bool = false,
 		fragment: bool = false,
 		compute: bool = false,
 		_: u26 = 0,
 	},
 	immutableSamplers: ?[*]const c.VkSampler = null,
+
+	pub fn sampler(binding: u32, options: struct { vertex: bool = false, fragment: bool = false, compute: bool = false, count: u32 = 1, typ: enum { combined, separate } = .combined }) DescriptorSetLayoutBinding {
+		return .{
+			.binding = binding,
+			.type = if (options.typ == .combined) .combinedImageSampler else .sampler,
+			.count = options.count,
+			.stageFlags = .{
+				.vertex = options.vertex,
+				.fragment = options.fragment,
+				.compute = options.compute,
+			},
+		};
+	}
+
+	pub fn ssbo(binding: u32, options: struct { vertex: bool = false, fragment: bool = false, compute: bool = false, count: u32 = 1, typ: enum { static, dynamic } = .static }) DescriptorSetLayoutBinding {
+		return .{
+			.binding = binding,
+			.type = if (options.typ == .static) .storageBuffer else .storageBufferDynamic,
+			.count = options.count,
+			.stageFlags = .{
+				.vertex = options.vertex,
+				.fragment = options.fragment,
+				.compute = options.compute,
+			},
+		};
+	}
 };
 
 pub const Pipeline = struct { // MARK: Pipeline
@@ -618,8 +653,8 @@ pub const Pipeline = struct { // MARK: Pipeline
 		};
 		const vertexInputInfo: c.VkPipelineVertexInputStateCreateInfo = .{
 			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-			.vertexBindingDescriptionCount = 1,
-			.pVertexBindingDescriptions = &bindingDescription,
+			.vertexBindingDescriptionCount = if (VertexType == graphics.VertexArray.EmptyVertex) 0 else 1,
+			.pVertexBindingDescriptions = if (VertexType == graphics.VertexArray.EmptyVertex) null else &bindingDescription,
 			.vertexAttributeDescriptionCount = VertexType.attributeDescriptions.len,
 			.pVertexAttributeDescriptions = VertexType.attributeDescriptions.ptr,
 		};
@@ -657,14 +692,34 @@ pub const Pipeline = struct { // MARK: Pipeline
 
 		const pipelineLayoutInfo = c.VkPipelineLayoutCreateInfo{ // TODO: Configure push constants
 			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-			.setLayoutCount = 1,
-			.pSetLayouts = &self.descriptorSetLayout,
+			.setLayoutCount = 2,
+			.pSetLayouts = &[_]c.VkDescriptorSetLayout{self.descriptorSetLayout, frameUnformDescriptorSetLayout},
 		};
 		try vulkan.checkResultErr(c.vkCreatePipelineLayout(vulkan.device, &pipelineLayoutInfo, null, &self.pipelineLayout));
 		errdefer c.vkDestroyPipelineLayout(vulkan.device, self.pipelineLayout, null);
 
+		const formats = main.stackAllocator.alloc(c.VkFormat, self.blendState.formats.len);
+		defer main.stackAllocator.free(formats);
+
+		for (self.blendState.formats, 0..) |format, i| {
+			formats[i] = switch (format) {
+				.swapChain => vulkan.SwapChain.imageFormat,
+				.world => main.renderer.worldFrameBufferFormat,
+				.custom => |custom| custom,
+			};
+		}
+
+		const dynamicRenderingInfo: c.VkPipelineRenderingCreateInfo = .{
+			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+			.colorAttachmentCount = @intCast(formats.len),
+			.pColorAttachmentFormats = formats.ptr,
+			.depthAttachmentFormat = self.depthStencilState.depthFormat,
+			.stencilAttachmentFormat = self.depthStencilState.stencilFormat,
+		};
+
 		const pipelineInfo = c.VkGraphicsPipelineCreateInfo{
 			.sType = c.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+			.pNext = &dynamicRenderingInfo,
 			.stageCount = @intCast(shaderStages.len),
 			.pStages = &shaderStages,
 			.pVertexInputState = &vertexInputInfo,
@@ -676,8 +731,6 @@ pub const Pipeline = struct { // MARK: Pipeline
 			.pColorBlendState = &blendState,
 			.pDynamicState = &dynamicState,
 			.layout = self.pipelineLayout,
-			.renderPass = graphics.RenderPass.renderToWindow.renderPass, // TODO: Allow configuring this
-			.subpass = 0,
 		};
 		try vulkan.checkResultErr(c.vkCreateGraphicsPipelines(vulkan.device, null, 1, &pipelineInfo, null, &self.graphicsPipeline));
 		self.vulkanCreationSuccessful = true;
@@ -813,10 +866,29 @@ pub const ComputePipeline = struct { // MARK: ComputePipeline
 	}
 };
 
+var frameUnformDescriptorSetLayout: c.VkDescriptorSetLayout = undefined;
+
 pub fn init() void { // MARK: init()
 	if (c.glslang_initialize_process() == c.false) std.log.err("glslang_initialize_process failed", .{});
+
+	if (main.settings.launchConfig.vulkanTestingMode) {
+		const descriptorSetLayoutInfo = c.VkDescriptorSetLayoutCreateInfo{
+			.sType = c.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+			.bindingCount = 1,
+			.pBindings = @ptrCast(&DescriptorSetLayoutBinding{
+				.binding = 0,
+				.count = 1,
+				.stageFlags = .{.fragment = true, .vertex = true, .compute = true},
+				.type = .uniformBuffer,
+			}),
+		};
+		vulkan.checkResultErr(c.vkCreateDescriptorSetLayout(vulkan.device, &descriptorSetLayoutInfo, null, &frameUnformDescriptorSetLayout)) catch @panic("Driver Bug");
+	}
 }
 
 pub fn deinit() void { // MARK: deinit()
 	c.glslang_finalize_process();
+	if (main.settings.launchConfig.vulkanTestingMode) {
+		c.vkDestroyDescriptorSetLayout(vulkan.device, frameUnformDescriptorSetLayout, null);
+	}
 }
