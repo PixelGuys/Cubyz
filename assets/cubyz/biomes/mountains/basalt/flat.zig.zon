@@ -1,0 +1,60 @@
+.{
+	.radius = 64,
+	.chance = 0,
+	.hills = 2,
+	.mountains = 10,
+	.minHeight = 170,
+	.maxHeight = 200,
+	.keepOriginalTerrain = 0.5,
+	.tags = .{
+		.mahogany,
+	},
+	.ground_structure = .{
+		"cubyz:grass/dew",
+		"3 to 6 cubyz:soil",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/mahogany/sapele/large",
+			.placeMode = .degradable,
+			.chance = 0.005,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/mahogany/sapele/medium",
+			.placeMode = .degradable,
+			.chance = 0.02,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/mahogany/sapele/small",
+			.placeMode = .degradable,
+			.chance = 0.05,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:grass/vegetation/dew"},
+			.chance = 0.2,
+			.width = 15,
+			.variation = 3,
+			.density = 0.05,
+			.priority = 0.2,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:grass/vegetation/dew", "cubyz:hibiscus", "cubyz:fern"},
+			.chance = 0.01,
+			.width = 12,
+			.variation = 3,
+			.density = 0.1,
+			.priority = 0.1,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:mountains/basalt/base",
+			.chance = 8,
+		},
+	},
+}

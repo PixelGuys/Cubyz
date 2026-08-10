@@ -16,6 +16,10 @@
 			.id = "cubyz:mountains",
 			.chance = 0.1,
 		},
+		.{
+			.id = "cubyz:mountains/basalt/base",
+			.chance = 2,
+		},
 	},
 
 	.maxSubBiomeCount = 1,
