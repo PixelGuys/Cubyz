@@ -11,7 +11,6 @@
 	.hills = 1,
 	.chance = 0.01,
 	.music = "cubyz:ikabod/behind",
-	.validPlayerSpawn = true,
 	.stoneBlock = "cubyz:grass/dew",
 	.fogDensity = 25,
 	.fogColor = 0x9ed3f7,
