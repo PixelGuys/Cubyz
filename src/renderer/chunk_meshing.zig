@@ -71,7 +71,7 @@ pub fn init() void {
 		&uniforms,
 		graphics.VertexArray.EmptyVertex,
 		&.{},
-		.{},
+		.{.depthBias = .{.slopeFactor = -0.002, .constantFactor = -1, .clamp = 0}},
 		.{.depthTest = true, .depthWrite = true},
 		.{.attachments = &.{.noBlending}, .formats = &.{.world}},
 	);
@@ -83,7 +83,7 @@ pub fn init() void {
 		graphics.VertexArray.EmptyVertex,
 		&.{},
 		.{},
-		.{.depthTest = true, .depthWrite = false, .depthCompare = .lessOrEqual},
+		.{.depthTest = true, .depthWrite = false, .depthCompare = .less},
 		.{.attachments = &.{.{
 			.srcColorBlendFactor = .one,
 			.dstColorBlendFactor = .src1Color,
