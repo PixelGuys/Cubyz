@@ -1,21 +1,17 @@
 .{
-	.properties = .{
-		.hot,
-		.wet,
-	},
+	.properties = .{},
 	.tags = .{},
 	.minHeightLimit = 35,
 	.minHeight = 36,
 	.maxHeight = 36,
 	.maxHeightLimit = 37,
 	.smoothBeaches = true,
-	.minRadius = 320,
-	.maxRadius = 350,
+	.minRadius = 310,
+	.maxRadius = 330,
 	.hills = 1,
 	.chance = 0.01,
 	.music = "cubyz:ikabod/behind",
-	.validPlayerSpawn = true,
-	.stoneBlock = "cubyz:grass/lush",
+	.stoneBlock = "cubyz:grass/dew",
 	.fogDensity = 25,
 	.fogColor = 0x9ed3f7,
 	.stripes = .{
@@ -46,6 +42,12 @@
 			.structure = "cubyz:rare/picnic/picnic",
 			.placeMode = .degradable,
 			.chance = 0.002,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:rare/red_house/base",
+			.placeMode = .all,
+			.chance = 0.00015,
 		},
 	},
 }
