@@ -268,9 +268,19 @@ pub fn createGroup(name: []const u8) error{AlreadyExists}!void {
 	groups.append(Group.init(groupsArena.allocator(), result.key_ptr.*));
 }
 
-pub fn getGroup(name: []const u8) error{GroupNotFound}!*Group {
+pub fn getGroupByName(name: []const u8) error{GroupNotFound}!*Group {
 	sync.threadContext.assertCorrectContext(.server);
 	return groups.items[groupNameToIdMap.get(name) orelse return error.GroupNotFound].?;
+}
+
+pub fn getGroupById(id: u32) error{GroupNotFound}!*Group {
+	sync.threadContext.assertCorrectContext(.server);
+	return groups.items[id] orelse error.GroupNotFound;
+}
+
+pub fn getGroupIdByName(name: []const u8) error{GroupNotFound}!*u32 {
+	sync.threadContext.assertCorrectContext(.server);
+	return groupNameToIdMap.get(name) orelse error.GroupNotFound;
 }
 
 pub fn deleteGroup(allocator: NeverFailingAllocator, name: []const u8) bool {
@@ -369,7 +379,7 @@ test "groupCreation" {
 	defer deinit();
 
 	try createGroup("test");
-	_ = try getGroup("test");
+	_ = try getGroupByName("test");
 }
 
 test "groupPermissions" {
@@ -377,7 +387,7 @@ test "groupPermissions" {
 	defer deinit();
 
 	try createGroup("test");
-	const group = try getGroup("test");
+	const group = try getGroupByName("test");
 	group.addPermission(main.heap.testingAllocator, .white, "/command/test");
 	try std.testing.expectEqual(Permissions.PermissionResult.yes, group.hasPermission("/command/test"));
 }
@@ -387,7 +397,7 @@ test "groupRemovePermissions" {
 	defer deinit();
 
 	try createGroup("test");
-	const group = try getGroup("test");
+	const group = try getGroupByName("test");
 	group.addPermission(main.heap.testingAllocator, .white, "/command/test");
 	try std.testing.expectEqual(true, group.removePermission(main.heap.testingAllocator, .white, "/command/test"));
 }
@@ -397,14 +407,14 @@ test "invalidGroup" {
 	defer deinit();
 
 	try createGroup("test");
-	try std.testing.expectError(error.GroupNotFound, getGroup("root"));
+	try std.testing.expectError(error.GroupNotFound, getGroupByName("root"));
 }
 
 test "invalidGroupEmptyGroups" {
 	init(main.heap.testingAllocator);
 	defer deinit();
 
-	try std.testing.expectError(error.GroupNotFound, getGroup("root"));
+	try std.testing.expectError(error.GroupNotFound, getGroupByName("root"));
 }
 
 test "invalidGroupCreation" {
@@ -445,7 +455,7 @@ test "permissionGroupToFromBytes" {
 	defer deinit();
 
 	try createGroup("test");
-	const group = try getGroup("test");
+	const group = try getGroupByName("test");
 
 	group.addPermission(main.heap.testingAllocator, .white, "/command/test");
 	group.addPermission(main.heap.testingAllocator, .white, "/command/spawn");
