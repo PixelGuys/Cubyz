@@ -88,7 +88,7 @@ pub const server = struct {
 
 	pub fn addToGroupByName(entity: Entity, groupName: []const u8) error{GroupNotFound}!void {
 		const groupId = try main.server.permission.getGroupIdByName(groupName);
-		_ = (getPermissionGroups(entity) orelse return).put(main.globalAllocator.allocator, groupId) catch unreachable;
+		_ = (getPermissionGroups(entity) orelse return).put(main.globalAllocator.allocator, groupId, {}) catch unreachable;
 	}
 
 	pub fn addToGroupById(entity: Entity, groupId: u32) error{GroupNotFound}!void {
@@ -97,12 +97,11 @@ pub const server = struct {
 	}
 
 	pub fn removeFromGroupByName(entity: Entity, groupName: []const u8) bool {
-		return removeFromGroupById(entity, main.server.permission.getGroupIdByName(groupName));
+		return removeFromGroupById(entity, main.server.permission.getGroupIdByName(groupName) catch return false);
 	}
 
 	pub fn removeFromGroupById(entity: Entity, id: u32) bool {
-		getPermissionGroups(entity).?.remove(id) orelse return false;
-		return true;
+		return getPermissionGroups(entity).?.remove(id);
 	}
 
 	pub fn loadFromData(entity: Entity, reader: *BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {

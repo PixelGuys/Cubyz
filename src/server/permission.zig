@@ -278,7 +278,7 @@ pub fn getGroupById(id: u32) error{GroupNotFound}!*Group {
 	return groups.items[id] orelse error.GroupNotFound;
 }
 
-pub fn getGroupIdByName(name: []const u8) error{GroupNotFound}!*u32 {
+pub fn getGroupIdByName(name: []const u8) error{GroupNotFound}!u32 {
 	sync.threadContext.assertCorrectContext(.server);
 	return groupNameToIdMap.get(name) orelse error.GroupNotFound;
 }
