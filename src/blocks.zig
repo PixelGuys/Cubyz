@@ -155,6 +155,7 @@ var _mobility: [maxBlockCount]f32 = undefined;
 var _allowOres: [maxBlockCount]bool = undefined;
 var _onTick: [maxBlockCount]ServerBlockCallback = undefined;
 var _onTouch: [maxBlockCount]BlockTouchCallback = undefined;
+var _onClientUpdate: [maxBlockCount]ClientBlockCallback = undefined;
 var _blockEntity: [maxBlockCount]?*const BlockEntityType = undefined;
 
 var reverseIndices: std.StringHashMapUnmanaged(u16) = .{};
@@ -328,6 +329,12 @@ fn registerCallbacks(typ: u16, zon: ZonElement) void {
 	_onTouch[typ] = blk: {
 		break :blk BlockTouchCallback.init(zon.getChildOrNull("onTouch") orelse break :blk .noop, .{.block = .{.typ = typ, .data = 0}}) orelse {
 			std.log.err("Failed to load onTouch event for block {s}", .{_id[typ]});
+			break :blk .noop;
+		};
+	};
+	_onClientUpdate[typ] = blk: {
+		break :blk ClientBlockCallback.init(zon.getChildOrNull("onClientUpdate") orelse break :blk .noop, .{.block = .{.typ = typ, .data = 0}}) orelse {
+			std.log.err("Failed to load onClientUpdate event for block {s}", .{_id[typ]});
 			break :blk .noop;
 		};
 	};
@@ -569,6 +576,10 @@ pub const Block = packed struct(u32) { // MARK: Block
 
 	pub inline fn onTouch(self: Block) BlockTouchCallback {
 		return _onTouch[self.typ];
+	}
+
+	pub inline fn onClientUpdate(self: Block) ClientBlockCallback {
+		return _onClientUpdate[self.typ];
 	}
 
 	pub fn blockEntity(self: Block) ?*const BlockEntityType {

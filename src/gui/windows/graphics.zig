@@ -38,6 +38,8 @@ const fpsPresetsText = blk: {
 	break :blk strings;
 };
 
+const visualRandomTickRadius = [_]u8{1, 2, 3, 4, 5, 6};
+
 fn fpsCapGetIndex(fpsOptional: ?u32) u16 {
 	const fps: u16 = @truncate(fpsOptional orelse return fpsPresetsValue.len);
 	return @intCast(std.sort.lowerBound(u16, &fpsPresetsValue, fps, struct {
@@ -128,6 +130,11 @@ fn resolutionScaleCallback(newValue: u16) void {
 	main.Window.GLFWCallbacks.framebufferSize(null, main.Window.width, main.Window.height);
 }
 
+fn visualRandomTickRadiusCallback(newValue: u16) void {
+	settings.visualRandomTickRadius = newValue;
+	settings.save();
+}
+
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffFPS Limit:\n", "{s}", &fpsPresetsText, fpsCapGetIndex(settings.fpsCap), &fpsCapCallback));
@@ -151,6 +158,7 @@ pub fn onOpen() void {
 		else => 2,
 	}, &anisotropicFilteringCallback));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffResolution Scale: ", "{}%", &resolutions, @as(u16, @trunc(@log2(settings.resolutionScale) + 2.0)), &resolutionScaleCallback));
+	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffVisual random tick radius: ", "{} chunks", &visualRandomTickRadius, settings.visualRandomTickRadius, &visualRandomTickRadiusCallback));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
