@@ -33,7 +33,7 @@
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:rare/fence/fence",
+			.structure = "cubyz:rare/lawn_fence/fence",
 			.placeMode = .degradable,
 			.chance = 0.005,
 		},
