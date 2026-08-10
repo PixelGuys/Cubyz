@@ -1,15 +1,12 @@
 .{
-	.properties = .{
-		.hot,
-		.wet,
-	},
+	.properties = .{},
 	.tags = .{},
 	.minHeightLimit = 35,
 	.minHeight = 36,
 	.maxHeight = 36,
 	.maxHeightLimit = 37,
 	.smoothBeaches = true,
-	.minRadius = 270,
+	.minRadius = 260,
 	.maxRadius = 300,
 	.hills = 1,
 	.chance = 0.01,
