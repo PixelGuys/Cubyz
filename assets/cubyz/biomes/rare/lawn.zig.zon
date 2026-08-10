@@ -12,7 +12,7 @@
 	.chance = 0.01,
 	.music = "cubyz:ikabod/behind",
 	.stoneBlock = "cubyz:grass/dew",
-	.fogDensity = 25,
+	.fogDensity = 35,
 	.fogColor = 0x9ed3f7,
 	.stripes = .{
 		.{
