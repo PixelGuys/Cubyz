@@ -33,19 +33,19 @@
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:rare/lawn_fence/fence",
+			.structure = "cubyz:rare/lawn/fence/fence",
 			.placeMode = .degradable,
 			.chance = 0.005,
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:rare/picnic/picnic",
+			.structure = "cubyz:rare/lawn/picnic/picnic",
 			.placeMode = .degradable,
 			.chance = 0.002,
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:rare/red_house/base",
+			.structure = "cubyz:rare/lawn/red_house/base",
 			.placeMode = .all,
 			.chance = 0.0003,
 		},
