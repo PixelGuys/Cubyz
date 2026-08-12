@@ -39,8 +39,12 @@ pub fn unprotect(allocator: NeverFailingAllocator, data: []u8) error{ syserr, In
 		cipherblob.cbData = @intCast(data.len);
 		cipherblob.pbData = @as([*c]u8, data.ptr);
 		if (c.CryptUnprotectData(&cipherblob, @as([*c][*c]c_ushort, null), @as([*c]c.DATA_BLOB, null), null, @as([*c]c.CRYPTPROTECT_PROMPTSTRUCT, null), @as(c_ulong, 0), &plainblob) == 0) {
-			std.log.err("CryptUnprotectData syscall failed. Errorcode: {}", .{c.GetLastError()});
-			return error.Invalid; // Will assume the error to be caused by wrong input
+			const err = c.GetLastError();
+			if (err == 13) {
+				return error.Invalid;
+			}
+			std.log.err("CryptUnprotectData syscall failed. Errorcode: {}", .{err});
+			return error.syserr;
 		}
 		var pbDataSlice: []u8 = undefined;
 		pbDataSlice.len = plainblob.cbData;
@@ -54,5 +58,31 @@ pub fn unprotect(allocator: NeverFailingAllocator, data: []u8) error{ syserr, In
 		return out;
 	} else {
 		return error.Invalid;
+	}
+}
+
+test "slice==unprotect(protect(slice))" {
+	const slice: []u8 = @as([]u8, @constCast("Test"));
+	if (canProtect()) {
+		const protected = try protect(main.stackAllocator, slice);
+		defer main.stackAllocator.free(protected);
+		const unprotected = try unprotect(main.stackAllocator, protected);
+		defer main.stackAllocator.free(unprotected);
+		try std.testing.expectEqualSlices(u8, slice, unprotected);
+	}
+}
+
+test "Protect fails on unsupported platforms" {
+	const slice: []u8 = @as([]u8, @constCast("Test"));
+	if (!canProtect()) {
+		try std.testing.expectError(error.Unsupported, protect(main.stackAllocator, slice));
+		try std.testing.expectError(error.Invalid, unprotect(main.stackAllocator, slice));
+	}
+}
+
+test "Unprotect fails when supplied with garbage" {
+	const slice: []u8 = @as([]u8, @constCast("TestdwadadÖOUWHdöouHIOSUdhöoUHNWLJDKNOÖPAHUIwdoöJKNSdlkjöwuHOÖIhso8zpo9IKj"));
+	if (canProtect()) {
+		try std.testing.expectError(error.Invalid, unprotect(main.stackAllocator, slice));
 	}
 }
