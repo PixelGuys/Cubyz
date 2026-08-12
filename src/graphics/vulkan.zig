@@ -809,6 +809,7 @@ pub const Buffer = struct {
 		hostAccessible: bool = false,
 	};
 	pub fn init(size: usize, options: BufferOptions) Buffer {
+		std.debug.assert(size != 0); // Vulkan cannot handle empty buffers
 		var self: Buffer = undefined;
 		const bufferInfo: c.VkBufferCreateInfo = .{
 			.sType = c.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -832,6 +833,7 @@ pub const Buffer = struct {
 	}
 
 	pub fn uploadData(self: Buffer, offset: usize, data: []const u8) void {
+		if (data.len == 0) return;
 		const stagingBuffer: Buffer = .init(data.len, .{.usage = c.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, .hostAccessible = true});
 		defer stagingBuffer.deferredDeinit();
 		var gpuMemory: ?*anyopaque = undefined;
