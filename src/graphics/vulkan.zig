@@ -186,9 +186,11 @@ pub fn init(window: ?*c.GLFWwindow) !void {
 	}
 	command_pool.init();
 	SwapChain.init();
+	gpu_allocator.init();
 }
 
 pub fn deinit() void {
+	gpu_allocator.deinit();
 	SwapChain.deinit();
 	command_pool.deinit();
 	c.vkDestroyDevice(device, null);
@@ -770,6 +772,33 @@ pub const command_pool = struct { // MARK: command_pool
 	fn deinit() void {
 		c.vkDestroyCommandPool(device, handle, null);
 	}
+};
+
+pub const gpu_allocator = struct {
+	var handle: c.VmaAllocator = undefined;
+
+	fn init() void {
+		const vkFunctions: c.VmaVulkanFunctions = .{
+			.glad_vkGetInstanceProcAddr = c.glad_vkGetInstanceProcAddr,
+			.glad_vkGetDeviceProcAddr = c.glad_vkGetDeviceProcAddr,
+			.glad_vkCreateImage = c.glad_vkCreateImage,
+		};
+		const allocatorCreateInfo: c.VmaAllocatorCreateInfo = .{
+			.flags = 0,
+			.physicalDevice = physicalDevice,
+			.device = device,
+			.preferredLargeHeapBlockSize = 128 << 9, // TODO: What does this do?
+			.pVulkanFunctions = &vkFunctions,
+			.instance = instance,
+		};
+		checkResult(c.vmaCreateAllocator(&allocatorCreateInfo, &gpu_allocator.handle));
+	}
+
+	fn deinit() void {
+		c.vmaDestroyAllocator(gpu_allocator.handle);
+	}
+
+
 };
 
 var frameIndex: usize = 0;
