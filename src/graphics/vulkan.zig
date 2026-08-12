@@ -521,6 +521,7 @@ pub const Fence = struct { // MARK: Fence
 
 const FrameData = struct {
 	fence: Fence,
+	uploadFence: Fence,
 	swapChainImageIndex: u32,
 
 	imageAvailable: Semaphore,
@@ -533,6 +534,7 @@ const FrameData = struct {
 	fn init() FrameData {
 		return .{
 			.fence = .init(true),
+			.uploadFence = .init(true),
 			.imageAvailable = .init(),
 			.uploadFinished = .init(),
 			.renderFinished = .init(),
@@ -544,6 +546,7 @@ const FrameData = struct {
 
 	fn deinit(self: FrameData) void {
 		self.fence.deinit();
+		self.uploadFence.deinit();
 		self.imageAvailable.deinit();
 		self.uploadFinished.deinit();
 		self.renderFinished.deinit();
@@ -683,6 +686,9 @@ pub const SwapChain = struct { // MARK: SwapChain
 		for (&frames) |*frame| {
 			frame.* = .init();
 		}
+		currentFrame = &frames[frameIndex];
+		currentFrame.uploadFence.waitAndReset();
+		currentFrame.uploadCommands.beginRecording(0);
 	}
 
 	fn deinit() void {
@@ -699,7 +705,6 @@ pub const SwapChain = struct { // MARK: SwapChain
 		currentFrame.fence.waitAndReset();
 		checkResult(c.vkAcquireNextImageKHR(device, swapChain, c.UINT64_MAX, currentFrame.imageAvailable.handle, null, &frames[frameIndex].swapChainImageIndex));
 
-		currentFrame.uploadCommands.beginRecording(0);
 		currentFrame.guiCommands.beginRecording(0);
 		currentFrame.guiCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
 			.{
@@ -734,7 +739,7 @@ pub const SwapChain = struct { // MARK: SwapChain
 			&.{},
 			&.{},
 			&.{currentFrame.uploadFinished.handle},
-			null,
+			currentFrame.uploadFence.handle,
 		);
 
 		currentFrame.guiCommands.endRendering();
@@ -770,6 +775,9 @@ pub const SwapChain = struct { // MARK: SwapChain
 		};
 		const result = c.vkQueuePresentKHR(presentQueue, &presentInfo);
 		frameIndex = (frameIndex + 1)%frames.len;
+		currentFrame = &frames[frameIndex];
+		currentFrame.uploadFence.waitAndReset();
+		currentFrame.uploadCommands.beginRecording(0);
 		checkResult(result); // TODO: swapchain recreation
 	}
 };
@@ -895,7 +903,6 @@ pub const gpu_garbage_collection = struct {
 var frameIndex: usize = 0;
 
 pub fn beginRender() void {
-	currentFrame = &frames[frameIndex];
 	SwapChain.beginRender();
 }
 
