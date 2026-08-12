@@ -58,7 +58,7 @@
 // Used for platform-speciffic keystorage
 #ifdef _WIN32
 #pragma comment(lib, "crypt32.lib")
-#include <Wincrypt.h>
+#include <wincrypt.h>
 #include <errhandlingapi.h>
 #endif
 
