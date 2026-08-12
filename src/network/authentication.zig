@@ -308,20 +308,26 @@ pub const PasswordEncodedAccountCode = struct {
 		keyFromPassword(.argon2_aes_gcm, saltBase64, password, &key);
 
 		const encryptedBuffer = allocator.alloc(u8, accountCode.text.len);
-		defer if (shouldProtect) allocator.free(encryptedBuffer);
 		var authenticationTag: [std.crypto.aead.aes_gcm.Aes256Gcm.tag_length]u8 = undefined;
 		var nonce: [std.crypto.aead.aes_gcm.Aes256Gcm.nonce_length]u8 = undefined;
 		main.io.random(&nonce);
 		std.crypto.aead.aes_gcm.Aes256Gcm.encrypt(encryptedBuffer, &authenticationTag, accountCode.text, &.{}, nonce, key);
 
 		const protected = shouldProtect and protect.canProtect();
+		var data: []u8 = undefined;
+		if (protected) {
+			data = protect.protect(allocator, encryptedBuffer) catch |err| {
+				if (err == error.syserr) return error.syserr else unreachable;
+			};
+			defer allocator.free(encryptedBuffer); // Deferred, because that way even if a syserr is thrown it will still get freed
+		} else {
+			data = encryptedBuffer;
+		}
 		return .{
 			.typ = .argon2_aes_gcm,
 			.protected = protected,
 			.salt = saltBase64,
-			.data = if (protected) protect.protect(allocator, encryptedBuffer) catch |err| {
-				if (err == error.syserr) return error.syserr else unreachable;
-			} else encryptedBuffer,
+			.data = data,
 			.nonce = allocator.dupe(u8, &nonce),
 			.authenticationTag = allocator.dupe(u8, &authenticationTag),
 		};
@@ -329,14 +335,20 @@ pub const PasswordEncodedAccountCode = struct {
 
 	pub fn initUnencoded(allocator: NeverFailingAllocator, accountCode: AccountCode, shouldProtect: bool) error{syserr}!PasswordEncodedAccountCode {
 		const protected = shouldProtect and protect.canProtect();
+		var data: []u8 = undefined;
+		if (protected) {
+			data = protect.protect(allocator, accountCode.text) catch |err| {
+				if (err == error.syserr) return error.syserr else unreachable;
+			};
+		} else {
+			data = allocator.dupe(u8, accountCode.text);
+		}
 		return .{
 			.typ = .none,
 			.protected = protected,
 			.salt = &.{},
 			.nonce = &.{},
-			.data = if (protected) protect.protect(allocator, accountCode.text) catch |err| {
-				if (err == error.syserr) return error.syserr else unreachable;
-			} else allocator.dupe(u8, accountCode.text),
+			.data = data,
 			.authenticationTag = &.{},
 		};
 	}
