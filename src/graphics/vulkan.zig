@@ -847,7 +847,6 @@ pub const gpu_allocator = struct {
 			.flags = 0,
 			.physicalDevice = physicalDevice,
 			.device = device,
-			.preferredLargeHeapBlockSize = 128 << 9, // TODO: What does this do?
 			.pVulkanFunctions = &vkFunctions,
 			.instance = instance,
 		};
