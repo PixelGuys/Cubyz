@@ -285,16 +285,17 @@ pub const AccountCode = struct {
 	}
 };
 
-pub const EncodingType = enum { none, winProtect, argon2_aes_gcm, winProtect_argon2_aes_gcm };
+pub const EncodingType = enum { none, argon2_aes_gcm };
 
 pub const PasswordEncodedAccountCode = struct {
 	typ: EncodingType,
+	protected: bool,
 	salt: []u8,
 	nonce: []u8,
 	data: []u8,
 	authenticationTag: []u8,
 
-	pub const empty: PasswordEncodedAccountCode = .{.typ = .none, .salt = &.{}, .nonce = &.{}, .data = &.{}, .authenticationTag = &.{}};
+	pub const empty: PasswordEncodedAccountCode = .{.typ = .none, .protected = false, .salt = &.{}, .nonce = &.{}, .data = &.{}, .authenticationTag = &.{}};
 
 	pub fn initFromPassword(allocator: NeverFailingAllocator, accountCode: AccountCode, password: []const u8, shouldProtect: bool) error{syserr}!PasswordEncodedAccountCode {
 		var salt: [32]u8 = undefined;
@@ -313,21 +314,25 @@ pub const PasswordEncodedAccountCode = struct {
 		main.io.random(&nonce);
 		std.crypto.aead.aes_gcm.Aes256Gcm.encrypt(encryptedBuffer, &authenticationTag, accountCode.text, &.{}, nonce, key);
 
+		const protected = shouldProtect and protect.canProtect();
 		return .{
-			.typ = if (shouldProtect) protect.getRecommendedEncoding(true) else .argon2_aes_gcm,
+			.typ = .argon2_aes_gcm,
+			.protected = protected,
 			.salt = saltBase64,
-			.data = if (shouldProtect) try protect.protect(allocator, encryptedBuffer) else encryptedBuffer,
+			.data = if (protected) protect.protect(allocator, encryptedBuffer) catch |err| {if (err==error.syserr) return error.syserr else unreachable;} else encryptedBuffer,
 			.nonce = allocator.dupe(u8, &nonce),
 			.authenticationTag = allocator.dupe(u8, &authenticationTag),
 		};
 	}
 
 	pub fn initUnencoded(allocator: NeverFailingAllocator, accountCode: AccountCode, shouldProtect: bool) error{syserr}!PasswordEncodedAccountCode {
+		const protected = shouldProtect and protect.canProtect();
 		return .{
-			.typ = if (shouldProtect) protect.getRecommendedEncoding(false) else .none,
+			.typ = .none,
+			.protected = protected,
 			.salt = &.{},
 			.nonce = &.{},
-			.data = if (shouldProtect) try protect.protect(allocator, accountCode.text) else allocator.dupe(u8, accountCode.text),
+			.data = if (protected) protect.protect(allocator, accountCode.text) catch |err| {if (err == error.syserr) return error.syserr else unreachable;} else allocator.dupe(u8, accountCode.text),
 			.authenticationTag = &.{},
 		};
 	}
@@ -340,16 +345,16 @@ pub const PasswordEncodedAccountCode = struct {
 	}
 
 	pub fn decryptFromPassword(self: PasswordEncodedAccountCode, password: []const u8, failureText: *main.ListManaged(u8)) !AccountCode {
+		if (self.protected and !protect.canProtect()) return error.Invalid;
 		if (self.typ == .none) {
-			return AccountCode.initFromUserInput(self.data, failureText);
-		}
-		if (self.typ == protect.getRecommendedEncoding(false)) {
-			const data = try protect.unprotect(main.stackAllocator, self.data);
-			defer {
+			var data = self.data;
+			if (self.protected) {
+				data = try protect.unprotect(main.stackAllocator, data);
+			}
+			defer if (self.protected) {
 				std.crypto.secureZero(u8, data);
 				main.stackAllocator.free(data);
-			}
-
+			};
 			return AccountCode.initFromUserInput(data, failureText);
 		}
 		var key: [32]u8 = undefined;
@@ -358,12 +363,12 @@ pub const PasswordEncodedAccountCode = struct {
 
 		switch (self.typ) {
 			.none => unreachable,
-			protect.getRecommendedEncoding(true), .argon2_aes_gcm => {
+			.argon2_aes_gcm => {
 				var data = self.data;
-				if (self.typ == protect.getRecommendedEncoding(true)) {
+				if (self.protected) {
 					data = try protect.unprotect(main.stackAllocator, data);
 				}
-				defer if (self.typ == protect.getRecommendedEncoding(true)) {
+				defer if (self.protected) {
 					std.crypto.secureZero(u8, data);
 					main.stackAllocator.free(data);
 				};
@@ -378,14 +383,13 @@ pub const PasswordEncodedAccountCode = struct {
 				try std.crypto.aead.aes_gcm.Aes256Gcm.decrypt(decryptedBuffer, data, authenticationTag.*, &.{}, nonce.*, key);
 				return AccountCode.initFromUserInput(decryptedBuffer, failureText);
 			},
-			else => return error.platformIncompatibleWithProtectionEncoding,
 		}
 	}
 
 	fn keyFromPassword(typ: EncodingType, salt: []const u8, password: []const u8, key: *[32]u8) void {
 		switch (typ) {
-			.none, .winProtect => unreachable,
-			.winProtect_argon2_aes_gcm, .argon2_aes_gcm => {
+			.none => unreachable,
+			.argon2_aes_gcm => {
 				std.crypto.pwhash.argon2.kdf(main.globalAllocator.allocator, key, password, salt, .{
 					.t = 10,
 					.m = 32000,
@@ -400,6 +404,7 @@ pub const PasswordEncodedAccountCode = struct {
 		var self: PasswordEncodedAccountCode = undefined;
 
 		self.typ = std.meta.stringToEnum(EncodingType, zon.get([]const u8, "type") orelse return error.Invalid) orelse return error.Invalid;
+		self.protected = zon.get(bool, "protected") orelse false;
 		self.salt = allocator.dupe(u8, zon.get([]const u8, "salt") orelse "");
 		errdefer allocator.free(self.salt);
 		if (self.salt.len < 32 and self.typ != .none) return error.Invalid;
@@ -428,6 +433,7 @@ pub const PasswordEncodedAccountCode = struct {
 	pub fn toZon(self: PasswordEncodedAccountCode, allocator: NeverFailingAllocator) ZonElement {
 		const zon = ZonElement.initObject(allocator);
 		zon.put("type", @tagName(self.typ));
+		zon.put("protected", self.protected);
 		zon.putOwnedString("salt", self.salt);
 
 		const base64EncodedData = main.stackAllocator.alloc(u8, std.base64.standard.Encoder.calcSize(self.data.len));

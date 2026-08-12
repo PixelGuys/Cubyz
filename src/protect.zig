@@ -6,21 +6,14 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const EncodingType = main.network.authentication.EncodingType;
 const c = @import("c");
 
-pub fn canProtect() bool {
+pub inline fn canProtect() bool {
 	switch (builtin.os.tag) {
 		.windows => return true,
 		else => return false,
 	}
 }
 
-pub inline fn getRecommendedEncoding(comptime encrypted: bool) EncodingType {
-	switch (builtin.os.tag) {
-		.windows => if (encrypted) return .winProtect_argon2_aes_gcm else return .winProtect,
-		else => if (encrypted) return .argon2_aes_gcm else return .none,
-	}
-}
-
-pub fn protect(allocator: NeverFailingAllocator, data: []u8) error{syserr}![]u8 {
+pub fn protect(allocator: NeverFailingAllocator, data: []u8) error{ syserr, Unsupported }![]u8 {
 	if (builtin.os.tag == .windows) {
 		var plainblob: c.DATA_BLOB = undefined;
 		var cipherblob: c.DATA_BLOB = undefined;
@@ -35,7 +28,7 @@ pub fn protect(allocator: NeverFailingAllocator, data: []u8) error{syserr}![]u8 
 		@memcpy(out, cipherblob.pbData);
 		return out;
 	} else {
-		return allocator.dupe(u8, data);
+		return error.Unsupported;
 	}
 }
 
@@ -60,6 +53,6 @@ pub fn unprotect(allocator: NeverFailingAllocator, data: []u8) error{ syserr, In
 		@memcpy(out, plainblob.pbData);
 		return out;
 	} else {
-		return allocator.dupe(u8, data);
+		return error.Invalid;
 	}
 }
