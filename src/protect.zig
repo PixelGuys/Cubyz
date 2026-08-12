@@ -40,7 +40,7 @@ pub fn unprotect(allocator: NeverFailingAllocator, data: []u8) error{ syserr, In
 		cipherblob.pbData = @as([*c]u8, data.ptr);
 		if (c.CryptUnprotectData(&cipherblob, @as([*c][*c]c_ushort, null), @as([*c]c.DATA_BLOB, null), null, @as([*c]c.CRYPTPROTECT_PROMPTSTRUCT, null), @as(c_ulong, 0), &plainblob) == 0) {
 			const err = c.GetLastError();
-			if (err == 13) {
+			if (err == 13 or err == 87) {
 				return error.Invalid;
 			}
 			std.log.err("CryptUnprotectData syscall failed. Errorcode: {}", .{err});
@@ -81,8 +81,10 @@ test "Protect fails on unsupported platforms" {
 }
 
 test "Unprotect fails when supplied with garbage" {
-	const slice: []u8 = @as([]u8, @constCast("TestdwadadÖOUWHdöouHIOSUdhöoUHNWLJDKNOÖPAHUIwdoöJKNSdlkjöwuHOÖIhso8zpo9IKj"));
-	if (canProtect()) {
-		try std.testing.expectError(error.Invalid, unprotect(main.stackAllocator, slice));
+	const slices: [5][]u8 = .{@as([]u8, @constCast("TestdwadadÖOUWHdöouHIOSUdhöoUHNWLJDKNOÖPAHUIwdoöJKNSdlkjöwuHOÖIhso8zpo9IKj")), @as([]u8, @constCast("Test")), @as([]u8, @constCast("Testd")), @as([]u8, @constCast("")), @as([]u8, @constCast("WIJDp8iU)(du098UÜ=JHd0ü8hz=Ü(HJ0isidjowi8h=(Z\"ß08IJUISdhd0w98hdoi8uoIWUJDoikjsoIKHJOwiuhdOISHNdo9i8H(UIHNASUJhdnbiuJBWGiudjhbIAKUJHnbsiudjkhiWUAHNIUDshjliuAHELIUHFILUHNIUJBDIUHwiuHushoujhdiiuwhIUHsouhdUHwiuhdUAHLsuidhlHU)"))};
+	for (slices) |slice| {
+		if (canProtect()) {
+			try std.testing.expectError(error.Invalid, unprotect(main.stackAllocator, slice));
+		}
 	}
 }
