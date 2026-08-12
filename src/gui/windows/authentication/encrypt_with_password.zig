@@ -13,7 +13,7 @@ const Label = GuiComponent.Label;
 const HorizontalList = GuiComponent.HorizontalList;
 const TextInput = GuiComponent.TextInput;
 const VerticalList = GuiComponent.VerticalList;
-const PEAC = main.network.authentication.PasswordEncodedAccountCode;
+const PasswordEncodedAccountCode = main.network.authentication.PasswordEncodedAccountCode;
 
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
@@ -41,10 +41,10 @@ pub fn setAccountCode(accountCode_: main.network.authentication.AccountCode) voi
 fn confirm() void {
 	if (encryptAccountCode) {
 		settings.storedAccount.deinit(main.globalAllocator);
-		settings.storedAccount = PEAC.initFromPassword(main.globalAllocator, accountCode, passwordTextField.currentString.items, true) catch PEAC.initFromPassword(main.globalAllocator, accountCode, passwordTextField.currentString.items, false) catch unreachable;
+		settings.storedAccount = PasswordEncodedAccountCode.initFromPassword(main.globalAllocator, accountCode, passwordTextField.currentString.items, true) catch PasswordEncodedAccountCode.initFromPassword(main.globalAllocator, accountCode, passwordTextField.currentString.items, false) catch unreachable;
 	} else {
 		settings.storedAccount.deinit(main.globalAllocator);
-		settings.storedAccount = PEAC.initUnencoded(main.globalAllocator, accountCode, true) catch PEAC.initUnencoded(main.globalAllocator, accountCode, false) catch unreachable;
+		settings.storedAccount = PasswordEncodedAccountCode.initUnencoded(main.globalAllocator, accountCode, true) catch PasswordEncodedAccountCode.initUnencoded(main.globalAllocator, accountCode, false) catch unreachable;
 	}
 	settings.save();
 
