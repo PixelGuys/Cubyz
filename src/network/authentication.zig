@@ -319,7 +319,9 @@ pub const PasswordEncodedAccountCode = struct {
 			.typ = .argon2_aes_gcm,
 			.protected = protected,
 			.salt = saltBase64,
-			.data = if (protected) protect.protect(allocator, encryptedBuffer) catch |err| {if (err==error.syserr) return error.syserr else unreachable;} else encryptedBuffer,
+			.data = if (protected) protect.protect(allocator, encryptedBuffer) catch |err| {
+				if (err == error.syserr) return error.syserr else unreachable;
+			} else encryptedBuffer,
 			.nonce = allocator.dupe(u8, &nonce),
 			.authenticationTag = allocator.dupe(u8, &authenticationTag),
 		};
@@ -332,7 +334,9 @@ pub const PasswordEncodedAccountCode = struct {
 			.protected = protected,
 			.salt = &.{},
 			.nonce = &.{},
-			.data = if (protected) protect.protect(allocator, accountCode.text) catch |err| {if (err == error.syserr) return error.syserr else unreachable;} else allocator.dupe(u8, accountCode.text),
+			.data = if (protected) protect.protect(allocator, accountCode.text) catch |err| {
+				if (err == error.syserr) return error.syserr else unreachable;
+			} else allocator.dupe(u8, accountCode.text),
 			.authenticationTag = &.{},
 		};
 	}
