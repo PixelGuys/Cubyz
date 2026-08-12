@@ -180,6 +180,18 @@ pub const BiomeId = struct {
 	}
 };
 
+pub const BlockId = struct {
+	block: main.blocks.Block,
+
+	pub fn parse(_: NeverFailingAllocator, name: []const u8, args: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!@This() {
+		const blockTyp = main.blocks.getBlockById(args) catch {
+			errorMessage.print("Couldn't find block for <{s}> with id \"{s}\"", .{name, args});
+			return error.ParseError;
+		};
+		return .{.block = .{.typ = blockTyp, .data = 0}};
+	}
+};
+
 pub const EntityModel = struct {
 	index: main.entityModel.EntityModelIndex,
 

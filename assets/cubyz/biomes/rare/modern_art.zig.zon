@@ -1,5 +1,5 @@
 .{
-	.chance = 0.02,
+	.chance = 0.01,
 	.properties = .{},
 	.minHeightLimit = 7,
 	.minHeight = 22,
