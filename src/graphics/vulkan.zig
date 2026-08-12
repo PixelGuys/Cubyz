@@ -520,18 +520,23 @@ pub const Fence = struct { // MARK: Fence
 
 const FrameData = struct {
 	fence: Fence,
-	imageAvailable: Semaphore,
-	renderFinished: Semaphore,
 	swapChainImageIndex: u32,
 
+	imageAvailable: Semaphore,
+	uploadFinished: Semaphore,
+	renderFinished: Semaphore,
+
+	uploadCommands: main.graphics.CommandBuffer,
 	guiCommands: main.graphics.CommandBuffer,
 
 	fn init() FrameData {
 		return .{
 			.fence = .init(true),
 			.imageAvailable = .init(),
+			.uploadFinished = .init(),
 			.renderFinished = .init(),
 			.swapChainImageIndex = undefined,
+			.uploadCommands = .init(),
 			.guiCommands = .init(),
 		};
 	}
@@ -539,11 +544,14 @@ const FrameData = struct {
 	fn deinit(self: FrameData) void {
 		self.fence.deinit();
 		self.imageAvailable.deinit();
+		self.uploadFinished.deinit();
 		self.renderFinished.deinit();
+		self.uploadCommands.deinit();
+		self.guiCommands.deinit();
 	}
 };
 
-var frames: []FrameData = undefined;
+var frames: [2]FrameData = undefined;
 
 var currentFrame: *const FrameData = undefined;
 
@@ -671,8 +679,7 @@ pub const SwapChain = struct { // MARK: SwapChain
 			imageViews[i] = createImageView(images[i]);
 		}
 
-		frames = main.globalArena.alloc(FrameData, newImageCount);
-		for (frames) |*frame| {
+		for (&frames) |*frame| {
 			frame.* = .init();
 		}
 	}
@@ -681,7 +688,7 @@ pub const SwapChain = struct { // MARK: SwapChain
 		for (imageViews) |imageView| {
 			c.vkDestroyImageView(device, imageView, null);
 		}
-		for (frames) |frame| {
+		for (&frames) |frame| {
 			frame.deinit();
 		}
 		c.vkDestroySwapchainKHR(device, swapChain, null);
@@ -691,6 +698,7 @@ pub const SwapChain = struct { // MARK: SwapChain
 		currentFrame.fence.waitAndReset();
 		checkResult(c.vkAcquireNextImageKHR(device, swapChain, c.UINT64_MAX, currentFrame.imageAvailable.handle, null, &frames[frameIndex].swapChainImageIndex));
 
+		currentFrame.uploadCommands.beginRecording(0);
 		currentFrame.guiCommands.beginRecording(0);
 		currentFrame.guiCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
 			.{
@@ -719,6 +727,15 @@ pub const SwapChain = struct { // MARK: SwapChain
 	}
 
 	fn endRender() void {
+		currentFrame.uploadCommands.endRecording();
+		currentFrame.uploadCommands.submit(
+			graphicsQueue,
+			&.{},
+			&.{},
+			&.{currentFrame.uploadFinished.handle},
+			null,
+		);
+
 		currentFrame.guiCommands.endRendering();
 		currentFrame.guiCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
 			.{
@@ -736,8 +753,8 @@ pub const SwapChain = struct { // MARK: SwapChain
 		currentFrame.guiCommands.endRecording();
 		currentFrame.guiCommands.submit(
 			graphicsQueue,
-			&.{currentFrame.imageAvailable.handle},
-			&.{c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT},
+			&.{currentFrame.imageAvailable.handle, currentFrame.uploadFinished.handle},
+			&.{c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, c.VK_PIPELINE_STAGE_TRANSFER_BIT},
 			&.{currentFrame.renderFinished.handle},
 			currentFrame.fence.handle,
 		);
@@ -751,7 +768,7 @@ pub const SwapChain = struct { // MARK: SwapChain
 			.pImageIndices = &currentFrame.swapChainImageIndex,
 		};
 		const result = c.vkQueuePresentKHR(presentQueue, &presentInfo);
-		frameIndex = (frameIndex + 1)%images.len;
+		frameIndex = (frameIndex + 1)%frames.len;
 		checkResult(result); // TODO: swapchain recreation
 	}
 };
