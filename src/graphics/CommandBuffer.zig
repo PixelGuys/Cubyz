@@ -208,5 +208,4 @@ pub fn copyBuffer(self: CommandBuffer, dest: vulkan.Buffer, destOffset: usize, s
 		},
 	};
 	c.vkCmdCopyBuffer2(self.handle, &info);
-
 }

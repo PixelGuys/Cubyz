@@ -856,8 +856,6 @@ pub const gpu_allocator = struct {
 	fn deinit() void {
 		c.vmaDestroyAllocator(gpu_allocator.handle);
 	}
-
-
 };
 
 pub const gpu_garbage_collection = struct {
