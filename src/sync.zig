@@ -64,7 +64,11 @@ pub const client = struct { // MARK: client
 	pub fn receiveConfirmation(reader: *BinaryReader) !void {
 		mutex.lock();
 		defer mutex.unlock();
-		try commands.popFront().?.finalize(main.globalAllocator, .client, reader);
+		if (commands.popFront()) |cmd| {
+			try cmd.finalize(main.globalAllocator, .client, reader);
+		} else {
+			std.log.err("Received unexpected confirmation sync", .{});
+		}
 	}
 
 	pub fn receiveFailure() void {
