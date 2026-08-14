@@ -40,11 +40,13 @@ pub fn unprotect(allocator: NeverFailingAllocator, data: []u8) error{ syserr, In
 		cipherblob.pbData = @as([*c]u8, data.ptr);
 		if (c.CryptUnprotectData(&cipherblob, @as([*c][*c]c_ushort, null), @as([*c]c.DATA_BLOB, null), null, @as([*c]c.CRYPTPROTECT_PROMPTSTRUCT, null), @as(c_ulong, 0), &plainblob) == 0) {
 			const err = c.GetLastError();
-			if (err == 13 or err == 87) {
-				return error.Invalid;
+			switch (err) {
+				c.ERROR_INVALID_DATA, c.ERROR_INVALID_PARAMETER => return error.Invalid,
+				else => {
+					std.log.err("CryptUnprotectData syscall failed. Errorcode: {}", .{err});
+					return error.syserr;
+				}
 			}
-			std.log.err("CryptUnprotectData syscall failed. Errorcode: {}", .{err});
-			return error.syserr;
 		}
 		var pbDataSlice: []u8 = undefined;
 		pbDataSlice.len = plainblob.cbData;
@@ -69,6 +71,8 @@ test "slice==unprotect(protect(slice))" {
 		const unprotected = try unprotect(main.stackAllocator, protected);
 		defer main.stackAllocator.free(unprotected);
 		try std.testing.expectEqualSlices(u8, slice, unprotected);
+	} else {
+		return error.SkipZigTest;
 	}
 }
 
@@ -77,14 +81,18 @@ test "Protect fails on unsupported platforms" {
 	if (!canProtect()) {
 		try std.testing.expectError(error.Unsupported, protect(main.stackAllocator, slice));
 		try std.testing.expectError(error.Invalid, unprotect(main.stackAllocator, slice));
+	} else {
+		return error.SkipZigTest;
 	}
 }
 
 test "Unprotect fails when supplied with garbage" {
-	const slices: [5][]u8 = .{@as([]u8, @constCast("TestdwadadÖOUWHdöouHIOSUdhöoUHNWLJDKNOÖPAHUIwdoöJKNSdlkjöwuHOÖIhso8zpo9IKj")), @as([]u8, @constCast("Test")), @as([]u8, @constCast("Testd")), @as([]u8, @constCast("")), @as([]u8, @constCast("WIJDp8iU)(du098UÜ=JHd0ü8hz=Ü(HJ0isidjowi8h=(Z\"ß08IJUISdhd0w98hdoi8uoIWUJDoikjsoIKHJOwiuhdOISHNdo9i8H(UIHNASUJhdnbiuJBWGiudjhbIAKUJHnbsiudjkhiWUAHNIUDshjliuAHELIUHFILUHNIUJBDIUHwiuHushoujhdiiuwhIUHsouhdUHwiuhdUAHLsuidhlHU)"))};
-	for (slices) |slice| {
-		if (canProtect()) {
+	if (canProtect()) {
+		const slices: [5][]u8 = .{@as([]u8, @constCast("TestdwadadÖOUWHdöouHIOSUdhöoUHNWLJDKNOÖPAHUIwdoöJKNSdlkjöwuHOÖIhso8zpo9IKj")), @as([]u8, @constCast("Test")), @as([]u8, @constCast("Testd")), @as([]u8, @constCast("")), @as([]u8, @constCast("WIJDp8iU)(du098UÜ=JHd0ü8hz=Ü(HJ0isidjowi8h=(Z\"ß08IJUISdhd0w98hdoi8uoIWUJDoikjsoIKHJOwiuhdOISHNdo9i8H(UIHNASUJhdnbiuJBWGiudjhbIAKUJHnbsiudjkhiWUAHNIUDshjliuAHELIUHFILUHNIUJBDIUHwiuHushoujhdiiuwhIUHsouhdUHwiuhdUAHLsuidhlHU)"))};
+		for (slices) |slice| {
 			try std.testing.expectError(error.Invalid, unprotect(main.stackAllocator, slice));
 		}
+	} else {
+		return error.SkipZigTest;
 	}
 }
