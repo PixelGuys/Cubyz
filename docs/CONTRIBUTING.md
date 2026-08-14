@@ -92,6 +92,25 @@ Often the simplest code is easier to read, easier to maintain and more efficient
 - Use the simplest data structure for the job: e.g. use a slice instead of List if you know the size upfront
 - Don't make things public if they don't need to be
 
+## Beware of multi-threading
+
+Cubyz is a multi-threaded engine. This comes with some pitfalls, but it's not as scary as it may sound. Most of the time you don't even need to worry about it, but when you do we follow some simple patterns to make it easier.
+
+If you are new to concurrency, then I recommend playing [The Deadlock Empire](https://deadlockempire.github.io/), a little browser game that teaches you the right mindset to find concurrency bugs.
+
+- try to keep things local, if your data is only used for the scope of a function, then your life is much easier
+- if it needs to live longer, try to keep it in a single thread (enforced with assertions)
+- never store pointers that you didn't allocate yourself, if you need to store it, store a proxy (→entity id, chunk position, player index, ...) and look it up when you need it
+- most of the time a mutex is the easiest solution to protect your data, but other techniques (atomics) should be considered in performance sensitive areas.
+- avoid recursive mutexes
+  - they encourage lazy designs that end up being harder to predict and understand
+  - instead use mutex.assertLocked when a calling function is already locking the mutex
+- avoid using reference counting when a resource is shared
+  - reference counting is error prone and bloats the code (due to not being automatic), and quite slow too
+  - when you really need reference counting, you can instead use the garbage collection mechanism
+- use the thread sanitizier (`-DsanitizeThread` to enable it, it doesn't work on all machines though) to double check your design when you are not sure
+- lock-free designs are often too complex, but lock-free-readable (only one thread can write, but multiple other threads can read while its writing) designs are much easier to pull off with the garbage collector and an atomic pointer
+
 ## A note on performance optimizations
 
 I like to follow Casey Muratori's optimization philosophy as outlined here: https://www.youtube.com/watch?v=pgoetgxecw8

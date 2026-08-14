@@ -22,6 +22,7 @@ const server = @import("server.zig");
 const User = server.User;
 const Entity = server.Entity;
 const permission = server.permission;
+const players = server.players;
 const Palette = main.assets.Palette;
 
 const storage = @import("storage.zig");
@@ -177,7 +178,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 	}
 
 	const Source = union(enum) {
-		user: *User,
+		player: server.PlayerIndex,
 		simulationChunk: *SimulationChunk,
 	};
 
@@ -200,7 +201,11 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 				.source = source,
 			};
 			switch (source) {
-				.user => |user| {
+				.player => |player| {
+					const user = server.getUserByIndex(player) orelse {
+						main.globalAllocator.destroy(task);
+						return;
+					};
 					user.addTask(task, &vtable);
 				},
 				else => {
@@ -211,25 +216,25 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn getPriority(self: *ChunkLoadTask) f32 {
 			switch (self.source) {
-				.user => |user| return self.pos.getPriority(user.player().pos),
+				.player => |player| {
+					const user = server.getUserByIndex(player) orelse return 0;
+					return self.pos.getPriority(user.player().pos);
+				},
 				else => return std.math.floatMax(f32),
 			}
 		}
 
 		pub fn isStillNeeded(self: *ChunkLoadTask) bool {
-			switch (self.source) { // Remove the task if the player disconnected
-				.user => |user| if (!user.connected.load(.monotonic)) return false,
-				.simulationChunk => |ch| if (ch.refCount.load(.monotonic) == 2) return false,
-			}
 			switch (self.source) { // Remove the task if it's far enough away from the player:
-				.user => |user| {
+				.player => |player| {
+					const user = server.getUserByIndex(player) orelse return false;
 					const minDistSquare = self.pos.getMinDistanceSquared(user.clientUpdatePos);
 					//                                                                              ↓ Margin for error. (diagonal of 1 chunk)
 					var targetRenderDistance: i64 = @as(i64, user.renderDistance)*chunk.chunkSize + @as(i64, @ceil(@as(comptime_int, chunk.chunkSize)*@sqrt(3.0)));
 					targetRenderDistance *= self.pos.voxelSize;
 					return minDistSquare <= targetRenderDistance*targetRenderDistance;
 				},
-				.simulationChunk => {},
+				.simulationChunk => |ch| if (ch.refCount.load(.monotonic) == 2) return false,
 			}
 			return true;
 		}
@@ -241,7 +246,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn clean(self: *ChunkLoadTask) void {
 			switch (self.source) {
-				.user => |user| user.decreaseRefCount(),
+				.player => {},
 				.simulationChunk => |ch| ch.decreaseRefCount(),
 			}
 			main.globalAllocator.destroy(self);
@@ -250,7 +255,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 
 	const LightMapLoadTask = struct { // MARK: LightMapLoadTask
 		pos: terrain.SurfaceMap.MapFragmentPosition,
-		source: ?*User,
+		source: ?main.server.PlayerIndex,
 
 		const vtable = utils.ThreadPool.VTable{
 			.getPriority = main.meta.castFunctionSelfToAnyopaque(getPriority),
@@ -260,11 +265,11 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 			.taskType = .misc,
 		};
 
-		pub fn scheduleAndDecreaseRefCount(pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
+		pub fn schedule(pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
 			const task = main.globalAllocator.create(LightMapLoadTask);
 			task.* = LightMapLoadTask{
 				.pos = pos,
-				.source = source,
+				.source = if (source) |u| u.playerIndex else null,
 			};
 			if (source) |user| {
 				user.addTask(task, &vtable);
@@ -274,7 +279,8 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		}
 
 		pub fn getPriority(self: *LightMapLoadTask) f32 {
-			if (self.source) |user| {
+			if (self.source) |playerIndex| {
+				const user = server.getUserByIndex(playerIndex) orelse return 0;
 				return self.pos.getPriority(user.player().pos, terrain.LightMap.LightMapFragment.mapSize) + 100;
 			} else {
 				return std.math.floatMax(f32);
@@ -290,10 +296,11 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 			defer self.clean();
 			const map = terrain.LightMap.getOrGenerateFragment(self.pos.wx, self.pos.wy, self.pos.voxelSize);
 			if (self.source) |source| {
-				if (source.connected.load(.monotonic)) main.network.protocols.lightMapTransmission.sendLightMap(source.conn, map);
+				const user = server.getUserByIndex(source) orelse return;
+				if (user.connected.load(.monotonic)) main.network.protocols.lightMapTransmission.sendLightMap(user.conn, map);
 			} else {
-				const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
-				defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+				const userList = server.getUserList(main.stackAllocator);
+				defer main.stackAllocator.free(userList);
 				for (userList) |user| {
 					main.network.protocols.lightMapTransmission.sendLightMap(user.conn, map);
 				}
@@ -301,9 +308,6 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		}
 
 		pub fn clean(self: *LightMapLoadTask) void {
-			if (self.source) |source| {
-				source.decreaseRefCount();
-			}
 			main.globalAllocator.destroy(self);
 		}
 	};
@@ -330,20 +334,21 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		storage.deinit();
 	}
 
-	pub fn queueLightMapAndDecreaseRefCount(self: ChunkManager, pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
+	pub fn queueLightMap(self: ChunkManager, pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
 		_ = self;
-		LightMapLoadTask.scheduleAndDecreaseRefCount(pos, source);
+		LightMapLoadTask.schedule(pos, source);
 	}
 
-	pub fn queueChunkAndDecreaseRefCount(self: ChunkManager, pos: ChunkPosition, source: *User) void {
+	pub fn queueChunk(self: ChunkManager, pos: ChunkPosition, source: *User) void {
 		_ = self;
-		ChunkLoadTask.scheduleAndDecreaseRefCount(pos, .{.user = source});
+		ChunkLoadTask.scheduleAndDecreaseRefCount(pos, .{.player = source.playerIndex});
 	}
 
 	pub fn generateChunk(pos: ChunkPosition, source: Source) void { // MARK: generateChunk()
 		const ch = getOrGenerateChunkAndIncreaseRefCount(pos);
 		switch (source) {
-			.user => |user| {
+			.player => |player| {
+				const user = server.getUserByIndex(player) orelse return;
 				main.network.protocols.chunkTransmission.sendChunk(user.conn, ch);
 				ch.decreaseRefCount();
 			},
@@ -452,10 +457,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	chunkUpdateQueue: main.utils.CircularBufferQueue(ChunkUpdateRequest),
 	regionUpdateQueue: main.utils.CircularBufferQueue(RegionUpdateRequest),
 
-	playerDatabase: std.StringHashMapUnmanaged(usize) = .{},
-	localPlayerIndex: usize = 0,
-	nextPlayerIndex: std.atomic.Value(usize) = .init(0),
-
 	biomeChecksum: i64 = 0,
 
 	const ChunkUpdateRequest = struct {
@@ -513,7 +514,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		const worldData = try dir.readToZon(arena, "world.zig.zon");
 		try self.loadWorldConfig(arena, dir, worldData);
-		try self.loadPlayerLoginInfo(dir);
+		try players.loadPlayerLoginInfo(dir, self.path, worldData.get(usize, "localPlayer") orelse 0);
 
 		try main.assets.loadWorldAssets(arena.print("{s}/saves/{s}/assets/", .{files.cubyzDirStr(), path}), self.blockPalette, self.itemPalette, self.proceduralItemPalette, self.biomePalette, self.entityModelPalette, self.entityComponentPalette);
 		// Store the block palette now that everything is loaded.
@@ -649,7 +650,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.biomeChecksum = worldData.get(i64, "biomeChecksum") orelse 0;
 		self.name = main.globalAllocator.dupe(u8, worldData.get([]const u8, "name") orelse self.path);
 		self.tickSpeed = .init(worldData.get(u32, "tickSpeed") orelse 12);
-		self.localPlayerIndex = worldData.get(usize, "localPlayer") orelse 0;
 	}
 
 	pub fn saveWorldConfig(self: *ServerWorld) !void {
@@ -665,49 +665,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		worldData.put("name", self.name);
 		worldData.put("lastUsedTime", std.Io.Clock.Timestamp.now(main.io, .real).raw.toMilliseconds());
 		worldData.put("tickSpeed", self.tickSpeed.load(.monotonic));
-		worldData.put("localPlayer", self.localPlayerIndex);
+		worldData.put("localPlayer", players.getLocalPlayerIndex());
 
 		try files.cubyzDir().writeZon(path, worldData);
-	}
-
-	pub fn loadPlayerLoginInfo(self: *ServerWorld, dir: main.files.Dir) !void {
-		var playerDir = try dir.openIterableDir("players");
-		defer playerDir.close();
-		var iterator = playerDir.iterate();
-		while (try iterator.next(main.io)) |file| {
-			if (file.kind == .file and std.mem.endsWith(u8, file.name, ".zon")) {
-				const zon = try playerDir.readToZon(main.stackAllocator, file.name);
-				defer zon.deinit(main.stackAllocator);
-				const fileNameBase = file.name[0..std.mem.findScalar(u8, file.name, '.').?];
-				if (fileNameBase[0] == '0' and fileNameBase.len != 1) {
-					std.log.err("Player file {s} contains leading zeroes. Skipping.", .{file.name});
-					continue;
-				}
-				const index = std.fmt.parseInt(usize, fileNameBase, 10) catch |err| {
-					std.log.err("Couldn't parse player file {s}: {s} Skipping.", .{file.name, @errorName(err)});
-					continue;
-				};
-				_ = self.nextPlayerIndex.fetchMax(index + 1, .monotonic);
-				if (zon.get([]const u8, "publicKey")) |key| {
-					const keyType = key[0 .. std.mem.findScalar(u8, key, ':') orelse {
-						std.log.err("Player file {s} has invalid key entry {s}: Type is missing. Skipping.", .{file.name, key});
-						continue;
-					}];
-					_ = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, keyType) orelse {
-						std.log.err("Player file {s} has invalid key type {s}. Skipping.", .{file.name, keyType});
-						continue;
-					};
-					self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, key), index) catch unreachable;
-				} else if (index != self.localPlayerIndex) {
-					const name = zon.get([]const u8, "name") orelse {
-						std.log.err("Couldn't read player file {s}. Skipping.", .{file.name});
-						continue;
-					};
-					const fullEntry = main.worldArena.print("name:{s}", .{name});
-					self.playerDatabase.put(main.worldArena.allocator, fullEntry, index) catch unreachable;
-				}
-			}
-		}
 	}
 
 	const RegenerateLODTask = struct { // MARK: RegenerateLODTask
@@ -962,22 +922,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const playerData = files.cubyzDir().readToZon(main.stackAllocator, path) catch .null;
 		defer playerData.deinit(main.stackAllocator);
 		if (user.newKeyString) |userKey| {
-			if (playerData.get([]const u8, "publicKey")) |publicKey| {
-				if (!std.mem.eql(u8, publicKey, userKey)) {
-					std.debug.assert(self.playerDatabase.remove(publicKey));
-					self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, userKey), user.playerIndex) catch unreachable;
-				}
-			} else {
-				removeOld: {
-					const nameEntry = main.stackAllocator.print("name:{s}", .{playerData.get([]const u8, "name") orelse break :removeOld});
-					defer main.stackAllocator.free(nameEntry);
-					_ = self.playerDatabase.remove(nameEntry);
-				}
-				self.playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, userKey), user.playerIndex) catch unreachable;
+			const oldPublicKey = playerData.get([]const u8, "publicKey");
+			if (oldPublicKey == null or !std.mem.eql(u8, oldPublicKey.?, userKey)) {
+				players.rebindKey(oldPublicKey, playerData.get([]const u8, "name"), userKey, user.playerIndex);
 			}
 		}
 		const player = user.player();
-		const loadingError = player.loadFrom(user.id, playerData.getChild("entity"), .server);
+		const loadingError = player.loadFrom(user.id, playerData.getChild("entity"), .server, @floatFromInt(self.spawn));
 
 		// override the name for players.
 		if (player.name) |name| {
@@ -986,8 +937,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		player.name = main.globalAllocator.dupe(u8, user.name);
 
 		if (playerData == .null) {
-			player.pos = @floatFromInt(self.spawn);
-
 			user.gamemode = .init(self.settings.defaultGamemode);
 		} else {
 			user.gamemode = .init(std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode") orelse @tagName(self.settings.defaultGamemode)) orelse self.settings.defaultGamemode);
@@ -1073,8 +1022,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn saveAllPlayers(self: *ServerWorld) !void {
-		const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
-		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+		const userList = server.getUserList(main.stackAllocator);
+		defer main.stackAllocator.free(userList);
 
 		for (userList) |user| {
 			try savePlayer(self, user);
@@ -1137,8 +1086,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 		if (self.lastUnimportantDataSent.durationTo(newTime).toSeconds() > 2) {
 			self.lastUnimportantDataSent = newTime;
-			const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
-			defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+			const userList = server.getUserList(main.stackAllocator);
+			defer main.stackAllocator.free(userList);
 			for (userList) |user| {
 				main.network.protocols.genericUpdate.sendTime(user.conn, self);
 			}
@@ -1149,8 +1098,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		// Item Entities
 		self.itemDropManager.update(deltaTime);
 		{ // Collect item entities:
-			const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
-			defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+			const userList = server.getUserList(main.stackAllocator);
+			defer main.stackAllocator.free(userList);
 			for (userList) |user| {
 				self.itemDropManager.checkEntity(user);
 			}
@@ -1178,12 +1127,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 	}
 
-	pub fn queueChunkAndDecreaseRefCount(self: *ServerWorld, pos: ChunkPosition, source: *User) void {
-		self.chunkManager.queueChunkAndDecreaseRefCount(pos, source);
+	pub fn queueChunk(self: *ServerWorld, pos: ChunkPosition, source: *User) void {
+		self.chunkManager.queueChunk(pos, source);
 	}
 
-	pub fn queueLightMapAndDecreaseRefCount(self: *ServerWorld, pos: terrain.SurfaceMap.MapFragmentPosition, source: *User) void {
-		self.chunkManager.queueLightMapAndDecreaseRefCount(pos, source);
+	pub fn queueLightMap(self: *ServerWorld, pos: terrain.SurfaceMap.MapFragmentPosition, source: *User) void {
+		self.chunkManager.queueLightMap(pos, source);
 	}
 
 	pub fn getSimulationChunkAndIncreaseRefCount(_: *ServerWorld, x: i32, y: i32, z: i32) ?*SimulationChunk {
@@ -1270,8 +1219,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			if (neighborBlock.mode().dependsOnNeighbors and neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
 				ch.updateBlockAndSetChanged(neighborPos.x, neighborPos.y, neighborPos.z, neighborBlock);
 
-				const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
-				defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+				const userList = server.getUserList(main.stackAllocator);
+				defer main.stackAllocator.free(userList);
 
 				for (userList) |user| {
 					main.network.protocols.blockUpdate.send(user.conn, &.{.{.pos = .{wx +% neighbor.relX(), wy +% neighbor.relY(), wz +% neighbor.relZ()}, .newBlock = neighborBlock, .blockEntityData = &.{}}});
@@ -1293,8 +1242,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 		baseChunk.updateBlockAndSetChanged(pos.x, pos.y, pos.z, newBlock);
 
-		const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
-		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+		const userList = server.getUserList(main.stackAllocator);
+		defer main.stackAllocator.free(userList);
 
 		for (userList) |user| {
 			main.network.protocols.blockUpdate.send(user.conn, &.{.{.pos = .{wx, wy, wz}, .newBlock = newBlock, .blockEntityData = &.{}}});

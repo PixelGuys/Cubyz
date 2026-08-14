@@ -11,16 +11,19 @@ pub const commandList = @import("command/_list.zig");
 
 pub const Source = union(enum) {
 	user: *User,
+	server: void,
 
 	pub fn sendMessage(self: Source, comptime fmt: []const u8, args: anytype) void {
 		switch (self) {
 			.user => |user| user.sendMessage(fmt, args),
+			.server => main.log.server(fmt, args),
 		}
 	}
 
 	pub fn hasPermission(self: Source, permissionPath: []const u8) bool {
 		return switch (self) {
 			.user => |user| main.entity.components.@"cubyz:permissions".server.hasPermission(user.id, permissionPath),
+			.server => true,
 		};
 	}
 };
@@ -120,28 +123,21 @@ pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, source: S
 
 pub const Target = struct {
 	user: *User,
-	increasedRefCount: bool,
 
 	pub fn fromPlayerIndex(arg: ?PlayerIndex, source: Source) !Target {
 		if (arg == null and source != .user) {
-			source.sendMessage("ff0000Command was run without a user; unable to infer the player index", .{});
+			source.sendMessage("#ff0000Command was run without a user; unable to infer the player index", .{});
 			return error.InvalidArg;
 		}
 		const playerIndex = arg orelse return .{
 			.user = source.user,
-			.increasedRefCount = false,
 		};
 		return .{
-			.user = main.server.getUserByIndexAndIncreaseRefCount(playerIndex.index) orelse {
+			.user = main.server.getUserByIndex(playerIndex.index) orelse {
 				source.sendMessage("#ff0000Player with index {d} not found or not online", .{playerIndex.index});
 				return error.InvalidArg;
 			},
-			.increasedRefCount = true,
 		};
-	}
-
-	pub fn deinit(self: Target) void {
-		if (self.increasedRefCount) self.user.decreaseRefCount();
 	}
 };
 
@@ -181,6 +177,18 @@ pub const BiomeId = struct {
 			errorMessage.print("Couldn't find biome for <{s}> with id \"{s}\"", .{name, args});
 			return error.ParseError;
 		}};
+	}
+};
+
+pub const BlockId = struct {
+	block: main.blocks.Block,
+
+	pub fn parse(_: NeverFailingAllocator, name: []const u8, args: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!@This() {
+		const blockTyp = main.blocks.getBlockById(args) catch {
+			errorMessage.print("Couldn't find block for <{s}> with id \"{s}\"", .{name, args});
+			return error.ParseError;
+		};
+		return .{.block = .{.typ = blockTyp, .data = 0}};
 	}
 };
 

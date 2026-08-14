@@ -60,6 +60,8 @@ pub var activeFrameBuffer: c_uint = 0;
 pub const reflectionCubeMapSize = 64;
 var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
+pub const worldFrameBufferFormat = c.VK_FORMAT_R16G16B16A16_SFLOAT;
+
 pub fn init() void {
 	deferredRenderPassPipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/deferred_render_pass.vert",
@@ -70,7 +72,7 @@ pub fn init() void {
 		&.{},
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
-		.{.attachments = &.{.noBlending}},
+		.{.attachments = &.{.noBlending}, .formats = &.{.world}},
 	);
 	fakeReflectionPipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/fake_reflection.vert",
@@ -81,7 +83,7 @@ pub fn init() void {
 		&.{},
 		.{.cullMode = .none},
 		.{.depthTest = false, .depthWrite = false},
-		.{.attachments = &.{.noBlending}},
+		.{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R8G8B8A8_UNORM}}},
 	);
 	worldFrameBuffer.init(true, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGB16F);
@@ -243,7 +245,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
-	main.entity.client.render(ambientLight, playerPos, main.lastDeltaTime.load(.monotonic));
+	main.systems.client.render(ambientLight, playerPos, main.lastDeltaTime.load(.monotonic));
 
 	itemdrop.ItemDropRenderer.renderItemDrops(ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
@@ -329,7 +331,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-	if (!main.gui.hideGui) main.entity.client.renderHud(ambientLight, playerPos);
+	if (!main.gui.hideGui) main.systems.client.renderHud(ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
 }
 
@@ -364,10 +366,10 @@ const Bloom = struct { // MARK: Bloom
 			"",
 			null,
 			graphics.draw.SimpleVertex2D,
-			&.{.{.binding = 3, .count = 1, .type = .combinedImageSampler, .stageFlags = .{.fragment = true}}},
+			&.{.sampler(3, .{.fragment = true})},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.noBlending}},
+			.{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R16G16B16A16_SFLOAT}}},
 		);
 		secondPassPipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/bloom/second_pass.vert",
@@ -375,10 +377,10 @@ const Bloom = struct { // MARK: Bloom
 			"",
 			null,
 			graphics.draw.SimpleVertex2D,
-			&.{.{.binding = 3, .count = 1, .type = .combinedImageSampler, .stageFlags = .{.fragment = true}}},
+			&.{.sampler(3, .{.fragment = true})},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.noBlending}},
+			.{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R16G16B16A16_SFLOAT}}},
 		);
 		colorExtractAndDownsamplePipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/bloom/color_extractor_downsample.vert",
@@ -389,7 +391,7 @@ const Bloom = struct { // MARK: Bloom
 			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.noBlending}},
+			.{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R16G16B16A16_SFLOAT}}},
 		);
 	}
 
@@ -506,10 +508,10 @@ pub const MenuBackGround = struct {
 			"",
 			null,
 			MenuBackgroundVertex,
-			&.{},
+			&.{.sampler(0, .{.fragment = true})},
 			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.noBlending}},
+			.{.attachments = &.{.noBlending}, .formats = &.{.swapChain}},
 		);
 		// 4 sides of a simple cube with some panorama texture on it.
 		const rawData = [_]MenuBackgroundVertex{
@@ -738,7 +740,7 @@ pub const Skybox = struct {
 				.srcAlphaBlendFactor = .one,
 				.dstAlphaBlendFactor = .one,
 				.alphaBlendOp = .add,
-			}}},
+			}}, .formats = &.{.world}},
 		);
 
 		var starData: [numStars*20]f32 = undefined;
@@ -886,7 +888,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			&.{},
 			.{.cullMode = .none},
 			.{.depthTest = true, .depthWrite = true},
-			.{.attachments = &.{.alphaBlending}},
+			.{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
 		);
 	}
 

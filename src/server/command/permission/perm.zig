@@ -30,7 +30,6 @@ pub fn execute(args: Args, source: Source) void {
 	switch (args) {
 		.@"/perm <action> <list> <playerIndex> <permissionPath>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
-			defer target.deinit();
 
 			const listType: ListType = switch (params.list) {
 				.whitelist => .white,
@@ -48,7 +47,6 @@ pub fn execute(args: Args, source: Source) void {
 		},
 		.@"/perm <playerIndex> <permissionPath>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
-			defer target.deinit();
 
 			if (main.entity.components.@"cubyz:permissions".server.hasPermission(target.user.id, params.permissionPath.path)) {
 				source.sendMessage("#00ff00Player {s}§#00ff00 has permission for path: {s}", .{target.user.name, params.permissionPath.path});

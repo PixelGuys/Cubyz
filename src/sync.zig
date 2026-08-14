@@ -226,6 +226,7 @@ pub const Command = struct { // MARK: Command
 		open = 0,
 		close = 1,
 		depositOrSwap = 2,
+		swap = 18,
 		deposit = 3,
 		takeHalf = 4,
 		drop = 5,
@@ -246,6 +247,7 @@ pub const Command = struct { // MARK: Command
 		open: Open,
 		close: Close,
 		depositOrSwap: DepositOrSwap,
+		swap: Swap,
 		deposit: Deposit,
 		takeHalf: TakeHalf,
 		drop: Drop,
@@ -962,6 +964,33 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !DepositOrSwap {
+			return .{
+				.dest = try InventoryAndSlot.read(reader, side, user),
+				.source = try InventoryAndSlot.read(reader, side, user),
+			};
+		}
+	};
+
+	const Swap = struct { // MARK: Swap
+		dest: InventoryAndSlot,
+		source: InventoryAndSlot,
+
+		fn run(self: Swap, ctx: Context) error{serverFailure}!void {
+			if (self.dest.inv.id == self.source.inv.id and self.dest.slot == self.source.slot) return;
+			if (self.dest.inv.callbacks.canPutInto) |c| if (!c(self.dest.inv.source, self.source.ref().item, self.dest.slot)) return;
+			if (self.source.inv.callbacks.canPutInto) |c| if (!c(self.source.inv.source, self.dest.ref().item, self.source.slot)) return;
+			ctx.execute(.{.swap = .{
+				.dest = self.dest,
+				.source = self.source,
+			}});
+		}
+
+		fn serialize(self: Swap, writer: *BinaryWriter) void {
+			self.dest.write(writer);
+			self.source.write(writer);
+		}
+
+		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !Swap {
 			return .{
 				.dest = try InventoryAndSlot.read(reader, side, user),
 				.source = try InventoryAndSlot.read(reader, side, user),
@@ -1689,8 +1718,8 @@ pub const Command = struct { // MARK: Command
 			var target: ?*main.server.User = null;
 
 			if (ctx.side == .server) {
-				const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-				defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+				const userList = main.server.getUserList(main.stackAllocator);
+				defer main.stackAllocator.free(userList);
 				for (userList) |user| {
 					if (user.id == self.target) {
 						target = user;
