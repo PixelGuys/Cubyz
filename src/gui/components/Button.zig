@@ -93,7 +93,8 @@ const Options = struct {
 };
 
 pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *Button {
-	const label = Label.init(undefined, width - 3*border, text, .center);
+	const borderWidth = if (options.hideBackground) 0 else 3*border;
+	const label = Label.init(undefined, width - borderWidth, text, .center);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
@@ -103,16 +104,17 @@ pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *But
 		.disabled = options.disabled,
 		.hideBackground = options.hideBackground,
 	};
-	if (self.hideBackground) self.child.mutSize().* = self.size;
 	return self;
 }
 
 pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, options: Options) *Button {
-	const icon = Icon.init(undefined, iconSize, iconTexture);
+	const borderSize: Vec2f = @splat(3*border);
+	const newIconSize = if (options.hideBackground) iconSize + borderSize else iconSize;
+	const icon = Icon.init(undefined, newIconSize, iconTexture);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
-		.size = icon.size + @as(Vec2f, @splat(3*border)),
+		.size = icon.size + borderSize,
 		.onAction = options.onAction,
 		.child = icon.toComponent(),
 		.disabled = options.disabled,
