@@ -538,7 +538,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		main.sync.client.executeCommand(.{.craftProceduralItem = .init(destinations, workbenchInv)});
 	}
 
-	pub const SortOptions = struct {
+	const SortOptions = struct {
 		ignoredSlotCount: usize,
 	};
 
