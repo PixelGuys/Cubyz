@@ -45,7 +45,7 @@ pub fn unprotect(allocator: NeverFailingAllocator, data: []u8) error{ syserr, In
 				else => {
 					std.log.err("CryptUnprotectData syscall failed. Errorcode: {}", .{err});
 					return error.syserr;
-				}
+				},
 			}
 		}
 		var pbDataSlice: []u8 = undefined;
