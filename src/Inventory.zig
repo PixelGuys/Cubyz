@@ -7,7 +7,6 @@ const Item = main.items.Item;
 const ItemStack = main.items.ItemStack;
 const ProceduralItem = main.items.ProceduralItem;
 const utils = main.utils;
-const Tag = main.Tag;
 const BinaryWriter = utils.BinaryWriter;
 const BinaryReader = utils.BinaryReader;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;

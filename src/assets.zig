@@ -14,7 +14,6 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const NeverFailingArenaAllocator = main.heap.NeverFailingArenaAllocator;
 const List = main.List;
 const files = main.files;
-const Tag = main.Tag;
 
 var common: Assets = undefined;
 
