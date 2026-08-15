@@ -400,8 +400,13 @@ pub const Biome = struct { // MARK: Biome
 		for (stripes.toSlice(), 0..) |elem, i| {
 			self.stripes[i] = Stripe.init(elem);
 		}
-		if (self.isOceanRelative and self.oceanHeight <= 0) {
-			std.log.err("Biome {s} has a relative ocean and an ocean height of {d}. Ocean height should be greater than 0.", .{self.id, self.oceanHeight});
+		if (self.isOceanRelative) {
+			if (self.oceanHeight <= 0) {
+				std.log.err("Biome {s} has a relative ocean and an ocean height of {d}. Ocean height should be greater than 0.", .{self.id, self.oceanHeight});
+			} else if (self.oceanHeight > 32) {
+				std.log.err("Biome {s} has a relative ocean and an ocean height of {d}. Ocean height cannot be greater than 32. Setting to 32 instead.", .{self.id, self.oceanHeight});
+				self.oceanHeight = 32;
+			}
 		}
 		if (self.relativeOceanGap == 0) {
 			std.log.err("Biome {s} cannot have relative ocean gap of 0. Setting to 1 instead.", .{self.id});
