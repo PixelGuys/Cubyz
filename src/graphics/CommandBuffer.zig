@@ -193,3 +193,19 @@ pub fn drawIndexed(self: CommandBuffer, indexCount: u32, firstVertex: i32) void 
 pub fn draw(self: CommandBuffer, vertexCount: u32, firstVertex: u32) void {
 	c.vkCmdDraw(self.handle, vertexCount, 1, firstVertex, 0);
 }
+
+pub fn copyBuffer(self: CommandBuffer, dest: vulkan.Buffer, destOffset: usize, source: vulkan.Buffer, sourceOffset: usize, size: usize) void {
+	const info: c.VkCopyBufferInfo2 = .{
+		.sType = c.VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
+		.dstBuffer = dest.handle,
+		.srcBuffer = source.handle,
+		.regionCount = 1,
+		.pRegions = &.{
+			.sType = c.VK_STRUCTURE_TYPE_BUFFER_COPY_2,
+			.dstOffset = destOffset,
+			.srcOffset = sourceOffset,
+			.size = size,
+		},
+	};
+	c.vkCmdCopyBuffer2(self.handle, &info);
+}

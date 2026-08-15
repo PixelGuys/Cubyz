@@ -186,9 +186,12 @@ pub fn init(window: ?*c.GLFWwindow) !void {
 	}
 	command_pool.init();
 	SwapChain.init();
+	gpu_allocator.init();
 }
 
 pub fn deinit() void {
+	gpu_garbage_collection.deinit();
+	gpu_allocator.deinit();
 	SwapChain.deinit();
 	command_pool.deinit();
 	c.vkDestroyDevice(device, null);
@@ -518,30 +521,41 @@ pub const Fence = struct { // MARK: Fence
 
 const FrameData = struct {
 	fence: Fence,
-	imageAvailable: Semaphore,
-	renderFinished: Semaphore,
+	uploadFence: Fence,
 	swapChainImageIndex: u32,
 
+	imageAvailable: Semaphore,
+	uploadFinished: Semaphore,
+	renderFinished: Semaphore,
+
+	uploadCommands: main.graphics.CommandBuffer,
 	guiCommands: main.graphics.CommandBuffer,
 
 	fn init() FrameData {
 		return .{
 			.fence = .init(true),
+			.uploadFence = .init(true),
 			.imageAvailable = .init(),
+			.uploadFinished = .init(),
 			.renderFinished = .init(),
 			.swapChainImageIndex = undefined,
+			.uploadCommands = .init(),
 			.guiCommands = .init(),
 		};
 	}
 
 	fn deinit(self: FrameData) void {
 		self.fence.deinit();
+		self.uploadFence.deinit();
 		self.imageAvailable.deinit();
+		self.uploadFinished.deinit();
 		self.renderFinished.deinit();
+		self.uploadCommands.deinit();
+		self.guiCommands.deinit();
 	}
 };
 
-var frames: []FrameData = undefined;
+var frames: [2]FrameData = undefined;
 
 var currentFrame: *const FrameData = undefined;
 
@@ -669,17 +683,19 @@ pub const SwapChain = struct { // MARK: SwapChain
 			imageViews[i] = createImageView(images[i]);
 		}
 
-		frames = main.globalArena.alloc(FrameData, newImageCount);
-		for (frames) |*frame| {
+		for (&frames) |*frame| {
 			frame.* = .init();
 		}
+		currentFrame = &frames[frameIndex];
+		currentFrame.uploadFence.waitAndReset();
+		currentFrame.uploadCommands.beginRecording(0);
 	}
 
 	fn deinit() void {
 		for (imageViews) |imageView| {
 			c.vkDestroyImageView(device, imageView, null);
 		}
-		for (frames) |frame| {
+		for (&frames) |frame| {
 			frame.deinit();
 		}
 		c.vkDestroySwapchainKHR(device, swapChain, null);
@@ -717,6 +733,15 @@ pub const SwapChain = struct { // MARK: SwapChain
 	}
 
 	fn endRender() void {
+		currentFrame.uploadCommands.endRecording();
+		currentFrame.uploadCommands.submit(
+			graphicsQueue,
+			&.{},
+			&.{},
+			&.{currentFrame.uploadFinished.handle},
+			currentFrame.uploadFence.handle,
+		);
+
 		currentFrame.guiCommands.endRendering();
 		currentFrame.guiCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
 			.{
@@ -734,8 +759,8 @@ pub const SwapChain = struct { // MARK: SwapChain
 		currentFrame.guiCommands.endRecording();
 		currentFrame.guiCommands.submit(
 			graphicsQueue,
-			&.{currentFrame.imageAvailable.handle},
-			&.{c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT},
+			&.{currentFrame.imageAvailable.handle, currentFrame.uploadFinished.handle},
+			&.{c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, c.VK_PIPELINE_STAGE_TRANSFER_BIT},
 			&.{currentFrame.renderFinished.handle},
 			currentFrame.fence.handle,
 		);
@@ -749,7 +774,10 @@ pub const SwapChain = struct { // MARK: SwapChain
 			.pImageIndices = &currentFrame.swapChainImageIndex,
 		};
 		const result = c.vkQueuePresentKHR(presentQueue, &presentInfo);
-		frameIndex = (frameIndex + 1)%images.len;
+		frameIndex = (frameIndex + 1)%frames.len;
+		currentFrame = &frames[frameIndex];
+		currentFrame.uploadFence.waitAndReset();
+		currentFrame.uploadCommands.beginRecording(0);
 		checkResult(result); // TODO: swapchain recreation
 	}
 };
@@ -772,13 +800,115 @@ pub const command_pool = struct { // MARK: command_pool
 	}
 };
 
+pub const Buffer = struct {
+	handle: c.VkBuffer,
+	allocation: c.VmaAllocation,
+
+	const BufferOptions = struct {
+		usage: c.VkBufferUsageFlags,
+		hostAccessible: bool = false,
+	};
+	pub fn init(size: usize, options: BufferOptions) Buffer {
+		std.debug.assert(size != 0); // Vulkan cannot handle empty buffers
+		var self: Buffer = undefined;
+		const bufferInfo: c.VkBufferCreateInfo = .{
+			.sType = c.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+			.size = size,
+			.usage = options.usage,
+		};
+		const allocCreateInfo: c.VmaAllocationCreateInfo = .{
+			.usage = c.VMA_MEMORY_USAGE_AUTO,
+			.flags = if (options.hostAccessible) c.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT else 0,
+		};
+		checkResult(c.vmaCreateBuffer(gpu_allocator.handle, &bufferInfo, &allocCreateInfo, &self.handle, &self.allocation, null));
+		return self;
+	}
+
+	fn privateDeinit(self: Buffer) void {
+		c.vmaDestroyBuffer(gpu_allocator.handle, self.handle, self.allocation);
+	}
+
+	pub fn deferredDeinit(self: Buffer) void {
+		gpu_garbage_collection.deferredFree(.{.buf = self});
+	}
+
+	pub fn uploadData(self: Buffer, offset: usize, data: []const u8) void {
+		if (data.len == 0) return;
+		const stagingBuffer: Buffer = .init(data.len, .{.usage = c.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, .hostAccessible = true});
+		defer stagingBuffer.deferredDeinit();
+		var gpuMemory: ?*anyopaque = undefined;
+		checkResult(c.vmaMapMemory(gpu_allocator.handle, stagingBuffer.allocation, &gpuMemory));
+		@memcpy(@as([*]u8, @ptrCast(gpuMemory.?)), data);
+		c.vmaUnmapMemory(gpu_allocator.handle, stagingBuffer.allocation);
+		currentFrame.uploadCommands.copyBuffer(self, offset, stagingBuffer, 0, data.len);
+	}
+};
+
+pub const gpu_allocator = struct {
+	var handle: c.VmaAllocator = undefined;
+
+	fn init() void {
+		const vkFunctions: c.VmaVulkanFunctions = .{
+			.glad_vkGetInstanceProcAddr = c.glad_vkGetInstanceProcAddr,
+			.glad_vkGetDeviceProcAddr = c.glad_vkGetDeviceProcAddr,
+			.glad_vkCreateImage = c.glad_vkCreateImage,
+		};
+		const allocatorCreateInfo: c.VmaAllocatorCreateInfo = .{
+			.flags = 0,
+			.physicalDevice = physicalDevice,
+			.device = device,
+			.pVulkanFunctions = &vkFunctions,
+			.instance = instance,
+		};
+		checkResult(c.vmaCreateAllocator(&allocatorCreateInfo, &gpu_allocator.handle));
+	}
+
+	fn deinit() void {
+		c.vmaDestroyAllocator(gpu_allocator.handle);
+	}
+};
+
+pub const gpu_garbage_collection = struct {
+	const Entry = union(enum) {
+		buf: Buffer,
+	};
+	var currentList: usize = 0;
+	var lists: [frames.len + 1]main.List(Entry) = @splat(.empty);
+
+	fn deinit() void {
+		for (lists) |list| {
+			for (list.items) |entry| {
+				switch (entry) {
+					inline else => |item| item.privateDeinit(),
+				}
+			}
+			list.deinit(main.globalAllocator);
+		}
+	}
+
+	fn cleanupFrame() void {
+		currentList += 1;
+		if (currentList == lists.len) currentList = 0;
+		for (lists[currentList].items) |entry| {
+			switch (entry) {
+				inline else => |item| item.privateDeinit(),
+			}
+		}
+		lists[currentList].clearRetainingCapacity();
+	}
+
+	pub fn deferredFree(entry: Entry) void {
+		lists[currentList].append(main.globalAllocator, entry);
+	}
+};
+
 var frameIndex: usize = 0;
 
 pub fn beginRender() void {
-	currentFrame = &frames[frameIndex];
 	SwapChain.beginRender();
 }
 
 pub fn endRender() void {
 	SwapChain.endRender();
+	gpu_garbage_collection.cleanupFrame();
 }
