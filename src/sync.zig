@@ -742,11 +742,11 @@ pub const Command = struct { // MARK: Command
 			.moveToBag => |*info| {
 				const source = info.source.ref();
 				const amount = @min(source.amount, info.amount);
-				source.amount = info.dest.push(.{.item = source.item, .amount = amount});
+				info.amount = amount - info.dest.push(.{.item = source.item, .amount = amount});
+				source.amount -= info.amount;
 				if (source.amount == 0) {
 					source.item = .null;
 				}
-				info.amount = amount - source.amount;
 			},
 			.takeFromBag => |*info| {
 				const dest = info.dest.ref();
