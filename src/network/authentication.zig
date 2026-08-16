@@ -330,9 +330,7 @@ pub const protection = struct {
 				return error.SystemError;
 			}
 			defer if (c.LocalFree(cipherblob.pbData) != null) std.log.err("LocalFree syscall failed to free previously allocated memory. Errorcode: {}. This should never happen. Please report it to the maintainers.", .{c.GetLastError()});
-			const out: []u8 = allocator.alloc(u8, @intCast(cipherblob.cbData));
-			@memcpy(out, cipherblob.pbData);
-			return out;
+			return allocator.dupe(u8, cipherblob.pbData[0..cipherblob.cbData]);
 		}
 
 		fn unprotect(allocator: NeverFailingAllocator, data: []const u8) error{ SystemError, Invalid }![]u8 {
