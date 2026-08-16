@@ -189,6 +189,49 @@ pub fn bindVertexArray(self: CommandBuffer, buffer: main.graphics.VertexArray) v
 	}
 }
 
+const DescriptorBindPoint = enum(c.VkPipelineBindPoint) {
+	graphics = c.VK_PIPELINE_BIND_POINT_GRAPHICS,
+    compute = c.VK_PIPELINE_BIND_POINT_COMPUTE,
+};
+
+const BindingInfo = union(enum) {
+	ssbo: struct {
+		binding: u32,
+		dynamic: bool = false,
+		ssbo: main.graphics.SSBO,
+		offset: usize = 0,
+		range: usize = c.VK_WHOLE_SIZE,
+	},
+};
+
+pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bindPoint: enum{ graphics, compute }, set: u32, bindings: []const BindingInfo) void {
+	const arena = main.stackAllocator.createArena();
+	defer main.stackAllocator.destroyArena(arena);
+	const writeInfo = arena.alloc(c.VkWriteDescriptorSet, bindings.len);
+	for (0..bindings.len) |i| {
+		writeInfo[i] = .{
+			.sType = c.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			.dstBinding = switch (bindings[i]) {
+				inline else => |b| b.binding,
+			},
+			.descriptorCount = 1,
+		};
+		switch (bindings[i]) {
+			.ssbo => |ssbo| {
+				writeInfo[i].descriptorType = if (ssbo.dynamic) c.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC else c.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+				const bufferInfo = arena.create(c.VkDescriptorBufferInfo);
+				bufferInfo.* = .{
+					.buffer = ssbo.ssbo.buffer.?.handle,
+					.offset = ssbo.offset,
+					.range = ssbo.range,
+				};
+				writeInfo[i].pBufferInfo = bufferInfo;
+			},
+		}
+	}
+	c.vkCmdPushDescriptorSetKHR(self.handle, @intFromEnum(bindPoint), pipeline.pipelineLayout, set, @intCast(writeInfo.len), writeInfo.ptr);
+}
+
 pub fn pushConstants(self: CommandBuffer, pipeline: main.graphics.Pipeline, constants: anytype) void {
 	c.vkCmdPushConstants(self.handle, pipeline.pipelineLayout, c.VK_SHADER_STAGE_ALL, 0, @sizeOf(@TypeOf(constants.*)), constants);
 }
