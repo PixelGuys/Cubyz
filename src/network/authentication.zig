@@ -474,17 +474,20 @@ pub const PasswordEncodedAccountCode = struct {
 	}
 
 	pub fn decryptFromPassword(self: PasswordEncodedAccountCode, password: []const u8, failureText: *main.ListManaged(u8)) !AccountCode {
-		if (self.protected and !protection.canProtect()) return error.Invalid;
-		if (self.typ == .none) {
-			var data = self.data;
-			if (self.protected) {
-				data = try protection.unprotect(main.stackAllocator, data);
+		if (self.protected) {
+			if (!protection.canProtect()) return error.Invalid;
+
+			var copy: PasswordEncodedAccountCode = self;
+			copy.protected = false;
+			copy.data = try protection.unprotect(main.stackAllocator, self.data);
+			defer {
+				std.crypto.secureZero(u8, copy.data);
+				main.stackAllocator.free(copy.data);
 			}
-			defer if (self.protected) {
-				std.crypto.secureZero(u8, data);
-				main.stackAllocator.free(data);
-			};
-			return AccountCode.initFromUserInput(data, failureText);
+			return decryptFromPassword(copy, password, failureText);
+		}
+		if (self.typ == .none) {
+			return AccountCode.initFromUserInput(self.data, failureText);
 		}
 		var key: [32]u8 = undefined;
 		defer std.crypto.secureZero(u8, &key);
@@ -493,23 +496,14 @@ pub const PasswordEncodedAccountCode = struct {
 		switch (self.typ) {
 			.none => unreachable,
 			.argon2_aes_gcm => {
-				var data = self.data;
-				if (self.protected) {
-					data = try protection.unprotect(main.stackAllocator, data);
-				}
-				defer if (self.protected) {
-					std.crypto.secureZero(u8, data);
-					main.stackAllocator.free(data);
-				};
-
 				if (self.authenticationTag.len != std.crypto.aead.aes_gcm.Aes256Gcm.tag_length) return error.Invalid;
 				if (self.nonce.len != std.crypto.aead.aes_gcm.Aes256Gcm.nonce_length) return error.Invalid;
 				const authenticationTag = self.authenticationTag[0..std.crypto.aead.aes_gcm.Aes256Gcm.tag_length];
 				const nonce = self.nonce[0..std.crypto.aead.aes_gcm.Aes256Gcm.nonce_length];
-				const decryptedBuffer = main.stackAllocator.alloc(u8, data.len);
+				const decryptedBuffer = main.stackAllocator.alloc(u8, self.data.len);
 				defer main.stackAllocator.free(decryptedBuffer);
 				defer std.crypto.secureZero(u8, decryptedBuffer);
-				try std.crypto.aead.aes_gcm.Aes256Gcm.decrypt(decryptedBuffer, data, authenticationTag.*, &.{}, nonce.*, key);
+				try std.crypto.aead.aes_gcm.Aes256Gcm.decrypt(decryptedBuffer, self.data, authenticationTag.*, &.{}, nonce.*, key);
 				return AccountCode.initFromUserInput(decryptedBuffer, failureText);
 			},
 		}
