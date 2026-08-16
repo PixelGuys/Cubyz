@@ -212,7 +212,7 @@ pub const draw = struct { // MARK: draw
 				.size = dim,
 				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
 				.rectColor = @bitCast(getColor()),
-			}, .{.stageFlags = c.VK_SHADER_STAGE_VERTEX_BIT});
+			});
 			vulkan.currentFrame.guiCommands.bindVertexArray(rectVao);
 			vulkan.currentFrame.guiCommands.draw(4, 0);
 		}
@@ -314,7 +314,7 @@ pub const draw = struct { // MARK: draw
 				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
 				.lineWidth = width,
 				.rectColor = @bitCast(getColor()),
-			}, .{.stageFlags = c.VK_SHADER_STAGE_VERTEX_BIT});
+			});
 			vulkan.currentFrame.guiCommands.bindVertexArray(rectBorderVao);
 			vulkan.currentFrame.guiCommands.draw(10, 0);
 		}
@@ -392,7 +392,7 @@ pub const draw = struct { // MARK: draw
 				.direction = pos2 - pos1,
 				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
 				.lineColor = @bitCast(getColor()),
-			}, .{.stageFlags = c.VK_SHADER_STAGE_VERTEX_BIT});
+			});
 			vulkan.currentFrame.guiCommands.bindVertexArray(rectBorderVao);
 			vulkan.currentFrame.guiCommands.draw(10, 0);
 		}

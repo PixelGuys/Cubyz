@@ -189,8 +189,8 @@ pub fn bindVertexArray(self: CommandBuffer, buffer: main.graphics.VertexArray) v
 	}
 }
 
-pub fn pushConstants(self: CommandBuffer, pipeline: main.graphics.Pipeline, constants: anytype, options: struct { stageFlags: u32, offset: u32 = 0 }) void {
-	c.vkCmdPushConstants(self.handle, pipeline.pipelineLayout, options.stageFlags, options.offset, @sizeOf(@TypeOf(constants.*)), constants);
+pub fn pushConstants(self: CommandBuffer, pipeline: main.graphics.Pipeline, constants: anytype) void {
+	c.vkCmdPushConstants(self.handle, pipeline.pipelineLayout, c.VK_SHADER_STAGE_ALL, 0, @sizeOf(@TypeOf(constants.*)), constants);
 }
 
 pub fn setViewport(self: CommandBuffer, viewport: c.VkViewport) void {

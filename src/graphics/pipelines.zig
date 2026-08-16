@@ -722,7 +722,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 			.pSetLayouts = descriptorSetLayouts.items.ptr,
 			.pushConstantRangeCount = if (options.pushConstantSize == 0) 0 else 1,
 			.pPushConstantRanges = &.{
-				.stageFlags = c.VK_SHADER_STAGE_ALL_GRAPHICS,
+				.stageFlags = c.VK_SHADER_STAGE_ALL,
 				.offset = 0,
 				.size = @intCast(options.pushConstantSize),
 			},
