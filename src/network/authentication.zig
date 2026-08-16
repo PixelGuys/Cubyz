@@ -364,13 +364,15 @@ pub const protection = struct {
 	};
 
 	test "slice==unprotect(protect(slice))" {
-		const slice: []u8 = @as([]u8, @constCast("Test"));
 		if (canProtect()) {
-			const protected = try protect(main.stackAllocator, slice);
-			defer main.stackAllocator.free(protected);
-			const unprotected = try unprotect(main.stackAllocator, protected);
-			defer main.stackAllocator.free(unprotected);
-			try std.testing.expectEqualSlices(u8, slice, unprotected);
+			const slices: [5][]const u8 = .{"TestdwadadÖOUWHdöouHIOSUdhöoUHNWLJDKNOÖPAHUIwdoöJKNSdlkjöwuHOÖIhso8zpo9IKj", "Test", "Testd", "", "WIJDp8iU)(du098UÜ=JHd0ü8hz=Ü(HJ0isidjowi8h=(Z\"ß08IJUISdhd0w98hdoi8uoIWUJDoikjsoIKHJOwiuhdOISHNdo9i8H(UIHNASUJhdnbiuJBWGiudjhbIAKUJHnbsiudjkhiWUAHNIUDshjliuAHELIUHFILUHNIUJBDIUHwiuHushoujhdiiuwhIUHsouhdUHwiuhdUAHLsuidhlHU)"};
+			for (slices) |slice| {
+				const protected = try protect(main.stackAllocator, slice);
+				defer main.stackAllocator.free(protected);
+				const unprotected = try unprotect(main.stackAllocator, protected);
+				defer main.stackAllocator.free(unprotected);
+				try std.testing.expectEqualSlices(u8, slice, unprotected);
+			}
 		} else {
 			return error.SkipZigTest;
 		}
