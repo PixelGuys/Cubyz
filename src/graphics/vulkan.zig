@@ -557,7 +557,7 @@ const FrameData = struct {
 
 var frames: [2]FrameData = undefined;
 
-var currentFrame: *const FrameData = undefined;
+pub var currentFrame: *const FrameData = undefined;
 
 pub const SwapChain = struct { // MARK: SwapChain
 	var swapChain: c.VkSwapchainKHR = null;

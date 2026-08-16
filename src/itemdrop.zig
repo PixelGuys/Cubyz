@@ -615,10 +615,11 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			"",
 			&itemUniforms,
 			graphics.VertexArray.EmptyVertex,
-			&.{},
-			.{},
-			.{.depthTest = true},
-			.{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
+			.{
+				.rasterState = .{},
+				.depthStencilState = .{.depthTest = true},
+				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
+			},
 		);
 		itemModelSSBO = .init();
 		itemModelSSBO.bufferData(i32, &[3]i32{1, 1, 1});
