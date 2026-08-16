@@ -1298,6 +1298,9 @@ pub const VertexArray = struct { // MARK: VertexArray
 	vao: c_uint,
 	vbo: c_uint,
 	ibo: ?c_uint,
+	buffer: vulkan.Buffer,
+	indicesOffset: usize,
+	hasIndices: bool,
 
 	pub const EmptyVertex = struct {
 		pub const attributeDescriptions: []const c.VkVertexInputAttributeDescription = &.{};
@@ -1311,12 +1314,15 @@ pub const VertexArray = struct { // MARK: VertexArray
 		c.glBindBuffer(c.GL_ARRAY_BUFFER, result.vbo);
 		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(data.len*@sizeOf(T)), data.ptr, c.GL_STATIC_DRAW);
 		if (indices_) |indices| {
+			std.debug.assert(indices.len != 0);
+			result.hasIndices = true;
 			result.ibo = 0;
 			c.glGenBuffers(1, &result.ibo.?);
 			c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, result.ibo.?);
 			c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(u32)), indices.ptr, c.GL_STATIC_DRAW);
 		} else {
 			result.ibo = null;
+			result.hasIndices = false;
 		}
 
 		const attributeDescriptions: []const c.VkVertexInputAttributeDescription = T.attributeDescriptions;
@@ -1347,6 +1353,16 @@ pub const VertexArray = struct { // MARK: VertexArray
 		}
 
 		c.glBindVertexArray(0);
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			const indices = indices_ orelse &.{};
+			result.indicesOffset = std.mem.alignForward(usize, data.len*@sizeOf(T), @alignOf(u32));
+			result.buffer = .init(
+				result.indicesOffset + indices.len*@sizeOf(u32),
+				.{.usage = c.VK_BUFFER_USAGE_TRANSFER_DST_BIT | c.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | c.VK_BUFFER_USAGE_INDEX_BUFFER_BIT},
+			);
+			result.buffer.uploadData(0, std.mem.sliceAsBytes(data));
+			result.buffer.uploadData(result.indicesOffset, std.mem.sliceAsBytes(indices));
+		}
 		return result;
 	}
 
@@ -1355,6 +1371,9 @@ pub const VertexArray = struct { // MARK: VertexArray
 		c.glDeleteBuffers(1, &self.vbo);
 		if (self.ibo != null) {
 			c.glDeleteBuffers(1, &self.ibo.?);
+		}
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			self.buffer.deferredDeinit();
 		}
 	}
 

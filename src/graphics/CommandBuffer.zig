@@ -178,6 +178,13 @@ pub fn bindPipeline(self: CommandBuffer, pipeline: main.graphics.Pipeline) void 
 	});
 }
 
+pub fn bindVertexArray(self: CommandBuffer, buffer: main.graphics.VertexArray) void {
+	c.vkCmdBindVertexBuffers(self.handle, 0, 1, &buffer.buffer.handle, &@as(usize, 0));
+	if (buffer.hasIndices) {
+		c.vkCmdBindIndexBuffer(self.handle, buffer.buffer.handle, buffer.indicesOffset, c.VK_INDEX_TYPE_UINT32);
+	}
+}
+
 pub fn pushConstants(self: CommandBuffer, pipeline: main.graphics.Pipeline, constants: anytype, options: struct {stageFlags: u32, offset: u32 = 0}) void {
 	c.vkCmdPushConstants(self.handle, pipeline.pipelineLayout, options.stageFlags, options.offset, @sizeOf(@TypeOf(constants.*)), constants);
 }
