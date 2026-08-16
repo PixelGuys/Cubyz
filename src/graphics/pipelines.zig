@@ -716,6 +716,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 
 		descriptorSetLayouts.append(main.stackAllocator, frameUniformDescriptorSetLayout);
 
+		std.debug.assert(options.pushConstantSize <= 128); // Some devices have a limit of just 128 bytes for push constants
 		const pipelineLayoutInfo = c.VkPipelineLayoutCreateInfo{ // TODO: Configure push constants
 			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 			.setLayoutCount = @intCast(descriptorSetLayouts.items.len),
