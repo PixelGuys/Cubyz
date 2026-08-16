@@ -34,6 +34,9 @@ pub fn execute(args: Args, source: Source) void {
 		},
 		.@"/whitelist <enable/disable>" => |params| {
 			main.server.world.?.settings.whitelistEnabled.store(params.toggle == .enable, .monotonic);
+			main.server.world.?.saveWorldConfig() catch |err| {
+				std.log.err("Error while saving world config: {s}", .{@errorName(err)});
+			};
 			source.sendMessage("#00ff00Whitelist {s}", .{if (params.toggle == .enable) "enabled" else "disabled"});
 		},
 	}

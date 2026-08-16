@@ -169,9 +169,9 @@ pub const handShake = struct { // MARK: handShake
 
 					if (main.server.world.?.mode != .singleplayer) {
 						const keys = zon.getChild("keys");
-						try conn.user.?.identifyFromKeysAndName(name, keys);
+						try conn.user.?.identifyFromKeysAndName(name, keys, main.server.world.?.settings.whitelistEnabled.load(.monotonic));
 
-						if (!main.server.players.isAllowedToJoin(conn.user.?.newKeyString.?, main.server.world.?.settings.whitelistEnabled.load(.monotonic))) {
+						if (!conn.user.?.allowedToJoin) {
 							std.log.info("Rejected connection from '{s}' ({s})", .{name, conn.user.?.newKeyString.?});
 							return error.NotWhitelisted;
 						}
