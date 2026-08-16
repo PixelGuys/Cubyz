@@ -605,6 +605,23 @@ pub const DescriptorSetLayoutBinding = extern struct { // MARK: DescriptorSetLay
 	}
 };
 
+pub const InputAssemblyState = struct { // MARK: InputAssemblyState
+	topology: enum(c.VkPrimitiveTopology) {
+		pointList = c.VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
+		lineList = c.VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
+		lineStrip = c.VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,
+		triangleList = c.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+		triangleStrip = c.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+		triangleFan = c.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN,
+		lineListWithAdjacency = c.VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY,
+		lineStripWithAdjacency = c.VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY,
+		triangleListWithAdjacency = c.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY,
+		triangleStripWithAdjacency = c.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY,
+		patchList = c.VK_PRIMITIVE_TOPOLOGY_PATCH_LIST,
+	} = .triangleList,
+	primitiveRestartEnable: bool = false,
+};
+
 pub const Pipeline = struct { // MARK: Pipeline
 	shader: Shader,
 	rasterState: RasterizationState,
@@ -660,8 +677,8 @@ pub const Pipeline = struct { // MARK: Pipeline
 		};
 		const inputAssembly: c.VkPipelineInputAssemblyStateCreateInfo = .{
 			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-			.topology = c.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, // TODO: Make this an input
-			.primitiveRestartEnable = c.VK_FALSE, // TODO: Make this an input
+			.topology = @intFromEnum(options.inputAssemblyState.topology),
+			.primitiveRestartEnable = if (options.inputAssemblyState.primitiveRestartEnable) c.VK_TRUE else c.VK_FALSE,
 		};
 		const viewport: c.VkViewport = .{}; // overwritten dynamically
 		const scissor: c.VkRect2D = .{}; // overwritten dynamically
@@ -740,6 +757,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 		rasterState: RasterizationState,
 		depthStencilState: DepthStencilState,
 		blendState: ColorBlendState,
+		inputAssemblyState: InputAssemblyState = .{},
 		bindings: []const DescriptorSetLayoutBinding = &.{},
 	};
 
