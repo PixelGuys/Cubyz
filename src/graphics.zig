@@ -147,6 +147,12 @@ pub const draw = struct { // MARK: draw
 		size: c_int,
 		rectColor: c_int,
 	} = undefined;
+	const RectUniforms = struct {
+		start: [2]f32 align(8),
+		size: [2]f32 align(8),
+		screen: [2]f32 align(8),
+		rectColor: i32,
+	};
 	var rectPipeline: Pipeline = undefined;
 	pub var rectVao: VertexArray = undefined;
 
@@ -161,6 +167,12 @@ pub const draw = struct { // MARK: draw
 				.rasterState = .{.cullMode = .none},
 				.depthStencilState = .{.depthTest = false, .depthWrite = false},
 				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+				.inputAssemblyState = .{.topology = .triangleStrip},
+				.pushConstantRanges = &.{.{
+					.stageFlags = c.VK_SHADER_STAGE_VERTEX_BIT,
+					.offset = 0,
+					.size = @sizeOf(RectUniforms),
+				}},
 			},
 		);
 		const rawData = [_]SimpleVertex2D{
@@ -196,6 +208,18 @@ pub const draw = struct { // MARK: draw
 
 		rectVao.bind();
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			vulkan.currentFrame.guiCommands.bindPipeline(rectPipeline, getScissor());
+			vulkan.currentFrame.guiCommands.pushConstants(rectPipeline, &RectUniforms{
+				.start = pos,
+				.size = dim,
+				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.rectColor = @bitCast(getColor()),
+			}, .{.stageFlags = c.VK_SHADER_STAGE_VERTEX_BIT});
+			vulkan.currentFrame.guiCommands.bindVertexArray(rectVao);
+			vulkan.currentFrame.guiCommands.draw(4, 0);
+		}
 	}
 
 	// ----------------------------------------------------------------------------
@@ -207,6 +231,13 @@ pub const draw = struct { // MARK: draw
 		rectColor: c_int,
 		lineWidth: c_int,
 	} = undefined;
+	const RectBorderUniforms = struct {
+		start: [2]f32 align(8),
+		size: [2]f32 align(8),
+		screen: [2]f32 align(8),
+		lineWidth: f32,
+		rectColor: i32,
+	};
 	var rectBorderPipeline: Pipeline = undefined;
 	var rectBorderVao: VertexArray = undefined;
 
@@ -232,6 +263,12 @@ pub const draw = struct { // MARK: draw
 				.rasterState = .{.cullMode = .none},
 				.depthStencilState = .{.depthTest = false, .depthWrite = false},
 				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+				.inputAssemblyState = .{.topology = .triangleStrip},
+				.pushConstantRanges = &.{.{
+					.stageFlags = c.VK_SHADER_STAGE_VERTEX_BIT,
+					.offset = 0,
+					.size = @sizeOf(RectBorderUniforms),
+				}},
 			},
 		);
 		const rawData = [_]RectBorderVertex{
@@ -276,6 +313,19 @@ pub const draw = struct { // MARK: draw
 
 		rectBorderVao.bind();
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 10);
+
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			vulkan.currentFrame.guiCommands.bindPipeline(rectBorderPipeline, getScissor());
+			vulkan.currentFrame.guiCommands.pushConstants(rectBorderPipeline, &RectBorderUniforms{
+				.start = pos,
+				.size = dim,
+				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.lineWidth = width,
+				.rectColor = @bitCast(getColor()),
+			}, .{.stageFlags = c.VK_SHADER_STAGE_VERTEX_BIT});
+			vulkan.currentFrame.guiCommands.bindVertexArray(rectBorderVao);
+			vulkan.currentFrame.guiCommands.draw(10, 0);
+		}
 	}
 
 	// ----------------------------------------------------------------------------
@@ -286,6 +336,12 @@ pub const draw = struct { // MARK: draw
 		direction: c_int,
 		lineColor: c_int,
 	} = undefined;
+	const LineUniforms = struct {
+		start: [2]f32 align(8),
+		direction: [2]f32 align(8),
+		screen: [2]f32 align(8),
+		lineColor: i32,
+	};
 	var linePipeline: Pipeline = undefined;
 	var lineVao: VertexArray = undefined;
 
@@ -300,6 +356,12 @@ pub const draw = struct { // MARK: draw
 				.rasterState = .{.cullMode = .none},
 				.depthStencilState = .{.depthTest = false, .depthWrite = false},
 				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+				.inputAssemblyState = .{.topology = .lineStrip},
+				.pushConstantRanges = &.{.{
+					.stageFlags = c.VK_SHADER_STAGE_VERTEX_BIT,
+					.offset = 0,
+					.size = @sizeOf(LineUniforms),
+				}},
 			},
 		);
 		const rawData = [_]SimpleVertex2D{
@@ -334,6 +396,18 @@ pub const draw = struct { // MARK: draw
 
 		lineVao.bind();
 		c.glDrawArrays(c.GL_LINE_STRIP, 0, 2);
+
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			vulkan.currentFrame.guiCommands.bindPipeline(linePipeline, getScissor());
+			vulkan.currentFrame.guiCommands.pushConstants(linePipeline, &LineUniforms{
+				.start = pos1,
+				.direction = pos2 - pos1,
+				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.lineColor = @bitCast(getColor()),
+			}, .{.stageFlags = c.VK_SHADER_STAGE_VERTEX_BIT});
+			vulkan.currentFrame.guiCommands.bindVertexArray(rectBorderVao);
+			vulkan.currentFrame.guiCommands.draw(10, 0);
+		}
 	}
 
 	// ----------------------------------------------------------------------------
