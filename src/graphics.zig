@@ -157,10 +157,11 @@ pub const draw = struct { // MARK: draw
 			"",
 			&rectUniforms,
 			SimpleVertex2D,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			.{
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			},
 		);
 		const rawData = [_]SimpleVertex2D{
 			.{.pos = .{0, 0}},
@@ -227,10 +228,11 @@ pub const draw = struct { // MARK: draw
 			"",
 			&rectBorderUniforms,
 			RectBorderVertex,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			.{
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			},
 		);
 		const rawData = [_]RectBorderVertex{
 			.{.pos = .{0, 0, 0, 0}},
@@ -294,10 +296,11 @@ pub const draw = struct { // MARK: draw
 			"",
 			&lineUniforms,
 			SimpleVertex2D,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			.{
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			},
 		);
 		const rawData = [_]SimpleVertex2D{
 			.{.pos = .{0, 0}},
@@ -371,10 +374,11 @@ pub const draw = struct { // MARK: draw
 			"",
 			&circleUniforms,
 			SimpleVertex2D,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			.{
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			},
 		);
 		const rawData = [_]SimpleVertex2D{
 			.{.pos = .{-1, -1}},
@@ -430,10 +434,11 @@ pub const draw = struct { // MARK: draw
 			"",
 			&imageUniforms,
 			SimpleVertex2D,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			.{
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			},
 		);
 	}
 
@@ -1165,10 +1170,11 @@ const TextRendering = struct { // MARK: TextRendering
 			"",
 			&uniforms,
 			draw.SimpleVertex2D,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.alphaBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R8_UNORM}}},
+			.{
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R8_UNORM}}},
+			},
 		);
 		pipeline.bind(null);
 		errdefer pipeline.deinit();
@@ -2209,10 +2215,11 @@ const block_texture = struct { // MARK: block_texture
 			"",
 			&uniforms,
 			VertexArray.EmptyVertex,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R8G8B8A8_UNORM}}},
+			.{
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R8G8B8A8_UNORM}}},
+			},
 		);
 		depthTexture = .init();
 		depthTexture.bind();
