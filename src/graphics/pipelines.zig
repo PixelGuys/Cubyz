@@ -798,7 +798,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 		if (self.vulkanCreationSuccessful) {
 			c.vkDestroyPipeline(vulkan.device, self.graphicsPipeline, null);
 			c.vkDestroyPipelineLayout(vulkan.device, self.pipelineLayout, null);
-			if(self.descriptorSetLayout) |layout| c.vkDestroyDescriptorSetLayout(vulkan.device, layout, null);
+			if (self.descriptorSetLayout) |layout| c.vkDestroyDescriptorSetLayout(vulkan.device, layout, null);
 		}
 	}
 

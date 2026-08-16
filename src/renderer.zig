@@ -386,7 +386,7 @@ const Bloom = struct { // MARK: Bloom
 				.rasterState = .{.cullMode = .none},
 				.depthStencilState = .{.depthTest = false, .depthWrite = false},
 				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R16G16B16A16_SFLOAT}}},
-			}
+			},
 		);
 		colorExtractAndDownsamplePipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/bloom/color_extractor_downsample.vert",
@@ -810,7 +810,7 @@ pub const Skybox = struct {
 		}
 
 		starSsbo = graphics.SSBO.initStatic(f32, &starData);
-		
+
 		c.glGenVertexArrays(1, &starVao);
 	}
 

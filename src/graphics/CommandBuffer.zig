@@ -189,7 +189,7 @@ pub fn bindVertexArray(self: CommandBuffer, buffer: main.graphics.VertexArray) v
 	}
 }
 
-pub fn pushConstants(self: CommandBuffer, pipeline: main.graphics.Pipeline, constants: anytype, options: struct {stageFlags: u32, offset: u32 = 0}) void {
+pub fn pushConstants(self: CommandBuffer, pipeline: main.graphics.Pipeline, constants: anytype, options: struct { stageFlags: u32, offset: u32 = 0 }) void {
 	c.vkCmdPushConstants(self.handle, pipeline.pipelineLayout, options.stageFlags, options.offset, @sizeOf(@TypeOf(constants.*)), constants);
 }
 
