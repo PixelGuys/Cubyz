@@ -191,7 +191,7 @@ pub fn bindVertexArray(self: CommandBuffer, buffer: main.graphics.VertexArray) v
 
 const DescriptorBindPoint = enum(c.VkPipelineBindPoint) {
 	graphics = c.VK_PIPELINE_BIND_POINT_GRAPHICS,
-    compute = c.VK_PIPELINE_BIND_POINT_COMPUTE,
+	compute = c.VK_PIPELINE_BIND_POINT_COMPUTE,
 };
 
 const BindingInfo = union(enum) {
@@ -204,7 +204,7 @@ const BindingInfo = union(enum) {
 	},
 };
 
-pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bindPoint: enum{ graphics, compute }, set: u32, bindings: []const BindingInfo) void {
+pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bindPoint: enum { graphics, compute }, set: u32, bindings: []const BindingInfo) void {
 	const arena = main.stackAllocator.createArena();
 	defer main.stackAllocator.destroyArena(arena);
 	const writeInfo = arena.alloc(c.VkWriteDescriptorSet, bindings.len);
