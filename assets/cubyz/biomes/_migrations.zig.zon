@@ -1,7 +1,4 @@
 .{
-	.{.old = "cave/curl_forest", .new = "cave/rare/curl_forest"},
-	.{.old = "cave/stone_forest", .new = "cave/rare/stone_forest"},
-	.{.old = "cave/crystal_forest", .new = "cave/rare/crystal_forest"},
 	.{.old = "cave/void_cavern", .new = "cave/void/void_cavern"},
 	.{.old = "cave/void_roots", .new = "cave/void/void_roots"},
 	.{.old = "clearing", .new = "forest/clearing"},
@@ -35,4 +32,7 @@
 	.{.old = "cave/cave", .new = "cave/slate/base"},
 	.{.old = "tall_mountain/peak", .new = "tall_mountain/summit1"},
 	.{.old = "bush_lands", .new = "bushlands/base"},
+	.{.old = "cave/curl_forest", .new = "cave/rare/curl_forest"},
+	.{.old = "cave/stone_forest", .new = "cave/rare/stone_forest"},
+	.{.old = "cave/crystal_forest", .new = "cave/rare/crystal_forest"},
 }
