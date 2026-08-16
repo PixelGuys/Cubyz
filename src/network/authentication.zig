@@ -288,15 +288,39 @@ pub const AccountCode = struct {
 };
 
 pub const protection = struct {
+	const Impl = switch (builtin.os.tag) {
+		.windows => WindowsImpl,
+		else => NoImpl,
+	};
+
 	pub inline fn canProtect() bool {
-		switch (builtin.os.tag) {
-			.windows => return true,
-			else => return false,
-		}
+		return Impl.canProtect;
 	}
 
 	pub fn protect(allocator: NeverFailingAllocator, data: []u8) error{ syserr, Unsupported }![]u8 {
-		if (builtin.os.tag == .windows) {
+		return Impl.protect(allocator, data);
+	}
+
+	pub fn unprotect(allocator: NeverFailingAllocator, data: []u8) error{ syserr, Invalid }![]u8 {
+		return Impl.unprotect(allocator, data);
+	}
+
+	const NoImpl = struct {
+		const canProtect = false;
+
+		fn protect(_: NeverFailingAllocator, _: []u8) error{ syserr, Unsupported }![]u8 {
+			return error.Unsupported;
+		}
+
+		fn unprotect(_: NeverFailingAllocator, _: []u8) error{ syserr, Invalid }![]u8 {
+			return error.Invalid;
+		}
+	};
+
+	const WindowsImpl = struct {
+		const canProtect = true;
+
+		fn protect(allocator: NeverFailingAllocator, data: []u8) error{ syserr, Unsupported }![]u8 {
 			var plainblob: c.DATA_BLOB = undefined;
 			var cipherblob: c.DATA_BLOB = undefined;
 			plainblob.cbData = @intCast(data.len);
@@ -309,13 +333,9 @@ pub const protection = struct {
 			const out: []u8 = allocator.alloc(u8, @intCast(cipherblob.cbData));
 			@memcpy(out, cipherblob.pbData);
 			return out;
-		} else {
-			return error.Unsupported;
 		}
-	}
 
-	pub fn unprotect(allocator: NeverFailingAllocator, data: []u8) error{ syserr, Invalid }![]u8 {
-		if (builtin.os.tag == .windows) {
+		fn unprotect(allocator: NeverFailingAllocator, data: []u8) error{ syserr, Invalid }![]u8 {
 			var plainblob: c.DATA_BLOB = undefined;
 			var cipherblob: c.DATA_BLOB = undefined;
 			cipherblob.cbData = @intCast(data.len);
@@ -340,10 +360,8 @@ pub const protection = struct {
 			const out: []u8 = allocator.alloc(u8, @intCast(plainblob.cbData));
 			@memcpy(out, plainblob.pbData);
 			return out;
-		} else {
-			return error.Invalid;
 		}
-	}
+	};
 
 	test "slice==unprotect(protect(slice))" {
 		const slice: []u8 = @as([]u8, @constCast("Test"));
