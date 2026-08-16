@@ -96,7 +96,7 @@ fn considerCoordinates(ore: *const main.blocks.Ore, relX: f32, relY: f32, relZ: 
 				zMin = @max(zMin, 0);
 				zMax = @min(zMax, chunk.super.width);
 				var curZ = zMin;
-				while (curZ < zMax) : (curZ += 1) {
+				outer: while (curZ < zMax) : (curZ += 1) {
 					const distToCenterZ = (@as(f32, @floatFromInt(curZ)) - veinRelZ)/radius;
 					const distSqr = xyDistSqr + distToCenterZ*distToCenterZ;
 					if (distSqr >= 1) continue;
@@ -104,13 +104,11 @@ fn considerCoordinates(ore: *const main.blocks.Ore, relX: f32, relY: f32, relZ: 
 					if ((1 - distSqr)*ore.density < random.nextFloat(&veinSeed)) continue;
 					const stoneBlock = chunk.getBlock(curX, curY, curZ);
 					if (!stoneBlock.allowOres()) continue;
-					var hasCorrectTags: bool = true;
 					for (ore.targetTags) |tag| {
 						if (!stoneBlock.hasTag(tag)) {
 							continue :outer;
 						}
 					}
-					if (!hasCorrectTags) continue;
 					chunk.updateBlockInGeneration(curX, curY, curZ, .{.typ = ore.blockType, .data = stoneBlock.typ});
 				}
 			}
