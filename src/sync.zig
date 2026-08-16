@@ -1550,18 +1550,6 @@ pub const Command = struct { // MARK: Command
 			min: Vec3f,
 			max: Vec3f,
 
-			pub fn drop(self: BlockDropLocation, pos: Vec3i, newBlock: Block, _drop: BlockDrop) void {
-				if (newBlock.collide()) {
-					for (_drop.items) |itemStack| {
-						main.server.world.?.drop(itemStack.clone(), self.outsidePos(pos), self.dropDir(), self.dropVelocity());
-					}
-				} else {
-					for (_drop.itemStacks) |itemStack| {
-						main.server.world.?.drop(itemStack.clone(), self.insidePos(pos), self.dropDir(), self.dropVelocity());
-					}
-				}
-			}
-
 			fn insidePos(self: BlockDropLocation, _pos: Vec3i) Vec3d {
 				const pos: Vec3d = @floatFromInt(_pos);
 				return pos + self.randomOffset();
@@ -1673,7 +1661,15 @@ pub const Command = struct { // MARK: Command
 						if (!drop.isDroppedWhenBrokenWithItem(handItem)) continue;
 
 						if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-							self.dropLocation.drop(self.pos, self.newBlock, drop);
+							if (self.newBlock.collide()) {
+								for (drop.items) |itemStack| {
+									main.server.world.?.drop(itemStack.clone(), self.dropLocation.outsidePos(self.pos), self.dropLocation.dropDir(), self.dropLocation.dropVelocity());
+								}
+							} else {
+								for (drop.items) |itemStack| {
+									main.server.world.?.drop(itemStack.clone(), self.dropLocation.insidePos(self.pos), self.dropLocation.dropDir(), self.dropLocation.dropVelocity());
+								}
+							}
 						}
 					}
 				}
