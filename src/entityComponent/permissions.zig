@@ -28,10 +28,17 @@ pub const client = struct {
 pub const server = struct {
 	pub const Component = struct {
 		permissions: main.server.permission.Permissions,
+		permissionGroups: std.AutoHashMapUnmanaged(u32, void),
 
 		pub fn save(self: Component, writer: *BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			if (audience != .disk) return .discard;
 			self.permissions.toBytes(writer);
+
+			writer.writeInt(u32, self.permissionGroups.count());
+			var it = self.permissionGroups.keyIterator();
+			while (it.next()) |groupId| {
+				writer.writeInt(u32, groupId.*);
+			}
 			return .save;
 		}
 	};
@@ -53,11 +60,22 @@ pub const server = struct {
 		return &(components.get(entity) orelse return null).permissions;
 	}
 
+	pub fn getPermissionGroups(entity: Entity) ?*std.AutoHashMapUnmanaged(u32, void) {
+		return &(components.get(entity) orelse return null).permissionGroups;
+	}
+
 	pub fn hasPermission(entity: Entity, permissionPath: []const u8) bool {
-		return switch ((getPermissions(entity) orelse return false).hasPermission(permissionPath)) {
-			.yes => true,
-			.no, .neutral => false,
-		};
+		switch ((getPermissions(entity) orelse return false).hasPermission(permissionPath)) {
+			.yes => return true,
+			.no => return false,
+			.neutral => {},
+		}
+		var groupIt = (getPermissionGroups(entity).?).keyIterator();
+		while (groupIt.next()) |id| {
+			const group = main.server.permission.getGroupById(id.*) catch continue; // in theory the group can be removed here. Instead its for now only removed only on load
+			if (group.hasPermission(permissionPath) == .yes) return true;
+		}
+		return false;
 	}
 
 	pub fn addPermission(entity: Entity, listType: main.server.permission.Permissions.ListType, permissionPath: []const u8) void {
@@ -68,20 +86,46 @@ pub const server = struct {
 		return (getPermissions(entity) orelse return false).removePermission(listType, permissionPath);
 	}
 
+	pub fn addToGroupByName(entity: Entity, groupName: []const u8) error{GroupNotFound}!void {
+		const groupId = try main.server.permission.getGroupIdByName(groupName);
+		_ = (getPermissionGroups(entity) orelse return).put(main.globalAllocator.allocator, groupId, {}) catch unreachable;
+	}
+
+	pub fn addToGroupById(entity: Entity, groupId: u32) error{GroupNotFound}!void {
+		_ = try main.server.permission.getGroupById(groupId);
+		(getPermissionGroups(entity) orelse return).put(main.globalAllocator.allocator, groupId, {}) catch unreachable;
+	}
+
+	pub fn removeFromGroupByName(entity: Entity, groupName: []const u8) bool {
+		return removeFromGroupById(entity, main.server.permission.getGroupIdByName(groupName) catch return false);
+	}
+
+	pub fn removeFromGroupById(entity: Entity, id: u32) bool {
+		return getPermissionGroups(entity).?.remove(id);
+	}
+
 	pub fn loadFromData(entity: Entity, reader: *BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != entityComponentVersion) return error.InvalidComponentVersion;
-		const permissions = &components.add(main.globalAllocator, entity).permissions;
-		permissions.* = .init(main.globalAllocator);
-		permissions.fromBytes(reader) catch return error.UnreadableComponentData;
+		const component = components.add(main.globalAllocator, entity);
+		component.permissions = .init(main.globalAllocator);
+		component.permissions.fromBytes(reader) catch return error.UnreadableComponentData;
+		component.permissionGroups = .empty;
+		const len = reader.readInt(u32) catch return;
+		for (0..len) |_| {
+			const id = reader.readInt(u32) catch return error.UnreadableComponentData;
+			addToGroupById(entity, id) catch continue; // if the group is not found we just skip it.
+		}
 	}
 
 	pub fn loadEmpty(entity: Entity) void {
-		const permissions = &components.add(main.globalAllocator, entity).permissions;
-		permissions.* = .init(main.globalAllocator);
+		const component = components.add(main.globalAllocator, entity);
+		component.permissions = .init(main.globalAllocator);
+		component.permissionGroups = .empty;
 	}
 
 	pub fn unload(entity: Entity) void {
-		const permissions = components.fetchRemove(entity) catch return;
-		permissions.permissions.deinit();
+		var component = components.fetchRemove(entity) catch return;
+		component.permissions.deinit();
+		component.permissionGroups.deinit(main.globalAllocator.allocator);
 	}
 };
