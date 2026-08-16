@@ -711,6 +711,8 @@ pub const Pipeline = struct { // MARK: Pipeline
 			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 			.setLayoutCount = 2,
                        .pSetLayouts = &[_]c.VkDescriptorSetLayout{self.descriptorSetLayout, frameUniformDescriptorSetLayout},
+			.pushConstantRangeCount = @intCast(options.pushConstantRanges.len),
+			.pPushConstantRanges = options.pushConstantRanges.ptr,
 		};
 		try vulkan.checkResultErr(c.vkCreatePipelineLayout(vulkan.device, &pipelineLayoutInfo, null, &self.pipelineLayout));
 		errdefer c.vkDestroyPipelineLayout(vulkan.device, self.pipelineLayout, null);
@@ -759,6 +761,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 		blendState: ColorBlendState,
 		inputAssemblyState: InputAssemblyState = .{},
 		bindings: []const DescriptorSetLayoutBinding = &.{},
+		pushConstantRanges: []const c.VkPushConstantRange = &.{},
 	};
 
 	pub fn init(vertexPath: []const u8, fragmentPath: []const u8, defines: []const u8, uniformStruct: anytype, VertexType: type, options: Options) Pipeline {

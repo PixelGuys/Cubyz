@@ -178,6 +178,10 @@ pub fn bindPipeline(self: CommandBuffer, pipeline: main.graphics.Pipeline) void 
 	});
 }
 
+pub fn pushConstants(self: CommandBuffer, pipeline: main.graphics.Pipeline, constants: anytype, options: struct {stageFlags: u32, offset: u32 = 0}) void {
+	c.vkCmdPushConstants(self.handle, pipeline.pipelineLayout, options.stageFlags, options.offset, @sizeOf(@TypeOf(constants.*)), constants);
+}
+
 pub fn setViewport(self: CommandBuffer, viewport: c.VkViewport) void {
 	c.vkCmdSetViewport(self.handle, 0, 1, &viewport);
 }
