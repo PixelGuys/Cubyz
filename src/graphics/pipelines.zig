@@ -567,7 +567,7 @@ pub const DescriptorSetLayoutBinding = extern struct { // MARK: DescriptorSetLay
 		inputAttachment = c.VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
 	},
 	count: u32,
-	stageFlags: packed struct(c_int) {
+	stageFlags: packed struct(c.VkShaderStageFlags) {
 		vertex: bool = false,
 		tessellationControl: bool = false,
 		tessellationEvaluation: bool = false,
@@ -693,7 +693,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 		const pipelineLayoutInfo = c.VkPipelineLayoutCreateInfo{ // TODO: Configure push constants
 			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 			.setLayoutCount = 2,
-			.pSetLayouts = &[_]c.VkDescriptorSetLayout{self.descriptorSetLayout, frameUnformDescriptorSetLayout},
+                       .pSetLayouts = &[_]c.VkDescriptorSetLayout{self.descriptorSetLayout, frameUniformDescriptorSetLayout},
 		};
 		try vulkan.checkResultErr(c.vkCreatePipelineLayout(vulkan.device, &pipelineLayoutInfo, null, &self.pipelineLayout));
 		errdefer c.vkDestroyPipelineLayout(vulkan.device, self.pipelineLayout, null);
@@ -873,7 +873,7 @@ pub const ComputePipeline = struct { // MARK: ComputePipeline
 	}
 };
 
-var frameUnformDescriptorSetLayout: c.VkDescriptorSetLayout = undefined;
+var frameUniformDescriptorSetLayout: c.VkDescriptorSetLayout = undefined;
 
 pub fn init() void { // MARK: init()
 	if (c.glslang_initialize_process() == c.false) std.log.err("glslang_initialize_process failed", .{});
@@ -889,13 +889,13 @@ pub fn init() void { // MARK: init()
 				.type = .uniformBuffer,
 			}),
 		};
-		vulkan.checkResultErr(c.vkCreateDescriptorSetLayout(vulkan.device, &descriptorSetLayoutInfo, null, &frameUnformDescriptorSetLayout)) catch @panic("Driver Bug");
+		vulkan.checkResultErr(c.vkCreateDescriptorSetLayout(vulkan.device, &descriptorSetLayoutInfo, null, &frameUniformDescriptorSetLayout)) catch @panic("Driver Bug");
 	}
 }
 
 pub fn deinit() void { // MARK: deinit()
 	c.glslang_finalize_process();
 	if (main.settings.launchConfig.vulkanTestingMode) {
-		c.vkDestroyDescriptorSetLayout(vulkan.device, frameUnformDescriptorSetLayout, null);
+		c.vkDestroyDescriptorSetLayout(vulkan.device, frameUniformDescriptorSetLayout, null);
 	}
 }

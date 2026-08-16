@@ -336,26 +336,6 @@ pub const draw = struct { // MARK: draw
 		c.glDrawArrays(c.GL_LINE_STRIP, 0, 2);
 	}
 
-	pub fn rectOutline(_pos: Vec2f, _dim: Vec2f) void {
-		var pos = _pos;
-		var dim = _dim;
-		pos *= @splat(scale);
-		pos += translation;
-		dim *= @splat(scale);
-
-		linePipeline.bind(getScissor());
-
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-		c.glUniform2f(lineUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
-		c.glUniform2f(lineUniforms.start, pos[0], pos[1]); // Move the coordinates, so they are in the center of a pixel.
-		c.glUniform2f(lineUniforms.direction, dim[0] - 1, dim[1] - 1); // The height is a lot smaller because the inner edge of the rect is drawn.
-		c.glUniform1i(lineUniforms.lineColor, @bitCast(getColor()));
-
-		lineVao.bind();
-		c.glDrawArrays(c.GL_LINE_LOOP, 0, 5);
-	}
-
 	// ----------------------------------------------------------------------------
 	// MARK: fillCircle()
 	var circleUniforms: struct {
@@ -1289,6 +1269,7 @@ const TextRendering = struct { // MARK: TextRendering
 };
 
 pub fn init() void { // MARK: init()
+	pipelines.init();
 	draw.initCircle();
 	draw.initImage();
 	draw.initLine();
@@ -1298,7 +1279,6 @@ pub fn init() void { // MARK: init()
 		std.log.err("Error while initializing TextRendering: {s}", .{@errorName(err)});
 	};
 	block_texture.init();
-	pipelines.init();
 	frame_uniforms.init();
 }
 

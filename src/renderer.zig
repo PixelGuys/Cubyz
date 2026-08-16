@@ -695,7 +695,7 @@ pub const Skybox = struct {
 		starOpacity: c_int,
 	} = undefined;
 
-	var starVao: graphics.VertexArray = undefined;
+	var starVao: c_uint = undefined;
 
 	var starSsbo: graphics.SSBO = undefined;
 
@@ -810,14 +810,14 @@ pub const Skybox = struct {
 		}
 
 		starSsbo = graphics.SSBO.initStatic(f32, &starData);
-
-		starVao = .init(graphics.VertexArray.EmptyVertex, &.{}, null);
+		
+		c.glGenVertexArrays(1, &starVao);
 	}
 
 	pub fn deinit() void {
 		starPipeline.deinit();
 		starSsbo.deinit();
-		starVao.deinit();
+		c.glDeleteVertexArrays(1, &starVao);
 	}
 
 	pub fn render() void {
@@ -835,7 +835,7 @@ pub const Skybox = struct {
 			c.glUniform1f(starUniforms.starOpacity, starOpacity);
 			c.glUniformMatrix4fv(starUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&starMatrix));
 
-			starVao.bind();
+			c.glBindVertexArray(starVao);
 			c.glDrawArrays(c.GL_TRIANGLES, 0, numStars*3);
 
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
