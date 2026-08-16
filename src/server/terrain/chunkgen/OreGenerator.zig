@@ -107,8 +107,7 @@ fn considerCoordinates(ore: *const main.blocks.Ore, relX: f32, relY: f32, relZ: 
 					var hasCorrectTags: bool = true;
 					for (ore.targetTags) |tag| {
 						if (!stoneBlock.hasTag(tag)) {
-							hasCorrectTags = false;
-							break;
+							continue :outer;
 						}
 					}
 					if (!hasCorrectTags) continue;
