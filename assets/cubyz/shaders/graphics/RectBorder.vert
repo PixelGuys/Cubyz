@@ -14,7 +14,7 @@ layout(location = 3) uniform float lineWidth;
 layout(location = 4) uniform int rectColor;
 #else
 layout(push_constant, std430) uniform _ {
-    vec2 start;
+	vec2 start;
 	vec2 size;
 	vec2 screen;
 	float lineWidth;

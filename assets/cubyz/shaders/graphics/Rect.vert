@@ -13,7 +13,7 @@ layout(location = 2) uniform vec2 screen;
 layout(location = 3) uniform int rectColor;
 #else
 layout(push_constant, std430) uniform _ {
-    vec2 start;
+	vec2 start;
 	vec2 size;
 	vec2 screen;
 	int rectColor;
