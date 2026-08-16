@@ -1554,14 +1554,12 @@ pub const Command = struct { // MARK: Command
 				if (newBlock.collide()) {
 					self.dropOutside(pos, _drop);
 				} else {
-					self.dropInside(pos, _drop);
+					for (_drop.itemStacks) |itemStack| {
+						main.server.world.?.drop(itemStack.clone(), self.insidePos(pos), self.dropDir(), self.dropVelocity());
+					}
 				}
 			}
-			fn dropInside(self: BlockDropLocation, pos: Vec3i, _drop: BlockDrop) void {
-				for (_drop.itemStacks) |itemStack| {
-					main.server.world.?.drop(itemStack.clone(), self.insidePos(pos), self.dropDir(), self.dropVelocity());
-				}
-			}
+
 			fn insidePos(self: BlockDropLocation, _pos: Vec3i) Vec3d {
 				const pos: Vec3d = @floatFromInt(_pos);
 				return pos + self.randomOffset();
