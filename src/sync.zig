@@ -1659,26 +1659,14 @@ pub const Command = struct { // MARK: Command
 					const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
 					for (0..dropAmount) |_| {
 						for (self.oldBlock.blockDrops()) |drop| {
-							if (!drop.isDroppedWhenBrokenWithItem(handItem)) continue;
-
-							if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-								for (drop.items) |itemStack| {
-									main.server.world.?.drop(itemStack.clone(), self.dropLocation.outsidePos(self.pos), self.dropLocation.dropDir(), self.dropLocation.dropVelocity());
-								}
-							}
+							drop.dropFromPosition(handItem, self.dropLocation.outsidePos(self.pos), self.dropLocation.dropDir(), self.dropLocation.dropVelocity());
 						}
 					}
 				} else {
 					const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
 					for (0..dropAmount) |_| {
 						for (self.oldBlock.blockDrops()) |drop| {
-							if (!drop.isDroppedWhenBrokenWithItem(handItem)) continue;
-
-							if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-								for (drop.items) |itemStack| {
-									main.server.world.?.drop(itemStack.clone(), self.dropLocation.insidePos(self.pos), self.dropLocation.dropDir(), self.dropLocation.dropVelocity());
-								}
-							}
+							drop.dropFromPosition(handItem, self.dropLocation.insidePos(self.pos), self.dropLocation.dropDir(), self.dropLocation.dropVelocity());
 						}
 					}
 				}		

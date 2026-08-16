@@ -2,6 +2,9 @@ const main = @import("main");
 const Tag = main.Tag;
 const items = main.items;
 const Item = items.Item;
+const vec = main.vec;
+const Vec3d = vec.Vec3d;
+const Vec3f = vec.Vec3f;
 
 itemStacks: []const items.ItemStack,
 chance: f32,
@@ -19,4 +22,14 @@ pub fn isDroppedWhenBrokenWithItem(self: @This(), item: Item) bool {
 	}
 
 	return true;
+}
+
+pub fn dropFromPosition(self: @This(), item: Item, pos: Vec3d, dir: Vec3f, velocity: f32) void {
+	if (!self.isDroppedWhenBrokenWithItem(item)) return;
+
+	if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
+		for (self.items) |itemStack| {
+			main.server.world.?.drop(itemStack.clone(), pos, dir, velocity);
+		}
+	}
 }
