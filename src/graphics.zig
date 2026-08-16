@@ -399,64 +399,6 @@ pub const draw = struct { // MARK: draw
 	}
 
 	// ----------------------------------------------------------------------------
-	// MARK: fillCircle()
-	var circleUniforms: struct {
-		screen: c_int,
-		center: c_int,
-		radius: c_int,
-		circleColor: c_int,
-	} = undefined;
-	var circlePipeline: Pipeline = undefined;
-	var circleVao: VertexArray = undefined;
-
-	fn initCircle() void {
-		circlePipeline = Pipeline.init(
-			"assets/cubyz/shaders/graphics/Circle.vert",
-			"assets/cubyz/shaders/graphics/Circle.frag",
-			"",
-			&circleUniforms,
-			SimpleVertex2D,
-			.{
-				.rasterState = .{.cullMode = .none},
-				.depthStencilState = .{.depthTest = false, .depthWrite = false},
-				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
-			},
-		);
-		const rawData = [_]SimpleVertex2D{
-			.{.pos = .{-1, -1}},
-			.{.pos = .{-1, 1}},
-			.{.pos = .{1, -1}},
-			.{.pos = .{1, 1}},
-		};
-
-		circleVao = .init(SimpleVertex2D, &rawData, null);
-	}
-
-	fn deinitCircle() void {
-		circlePipeline.deinit();
-		circleVao.deinit();
-	}
-
-	pub fn circle(_center: Vec2f, _radius: f32) void {
-		var center = _center;
-		var radius = _radius;
-		center *= @splat(scale);
-		center += translation;
-		radius *= scale;
-		circlePipeline.bind(getScissor());
-
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-		c.glUniform2f(circleUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
-		c.glUniform2f(circleUniforms.center, center[0], center[1]); // Move the coordinates, so they are in the center of a pixel.
-		c.glUniform1f(circleUniforms.radius, radius); // The height is a lot smaller because the inner edge of the rect is drawn.
-		c.glUniform1i(circleUniforms.circleColor, @bitCast(getColor()));
-
-		circleVao.bind();
-		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
-	}
-
-	// ----------------------------------------------------------------------------
 	// MARK: drawImage()
 	// Luckily the vao of the regular rect can used.
 	var imageUniforms: struct {
@@ -1332,7 +1274,6 @@ const TextRendering = struct { // MARK: TextRendering
 
 pub fn init() void { // MARK: init()
 	pipelines.init();
-	draw.initCircle();
 	draw.initImage();
 	draw.initLine();
 	draw.initRect();
@@ -1346,7 +1287,6 @@ pub fn init() void { // MARK: init()
 
 pub fn deinit() void {
 	frame_uniforms.deinit();
-	draw.deinitCircle();
 	draw.deinitImage();
 	draw.deinitLine();
 	draw.deinitRect();
