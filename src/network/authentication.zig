@@ -297,22 +297,22 @@ pub const protection = struct {
 		return Impl.canProtect;
 	}
 
-	pub fn protect(allocator: NeverFailingAllocator, data: []u8) error{ syserr, Unsupported }![]u8 {
+	pub fn protect(allocator: NeverFailingAllocator, data: []u8) error{ SystemError, Unsupported }![]u8 {
 		return Impl.protect(allocator, data);
 	}
 
-	pub fn unprotect(allocator: NeverFailingAllocator, data: []u8) error{ syserr, Invalid }![]u8 {
+	pub fn unprotect(allocator: NeverFailingAllocator, data: []u8) error{ SystemError, Invalid }![]u8 {
 		return Impl.unprotect(allocator, data);
 	}
 
 	const NoImpl = struct {
 		const canProtect = false;
 
-		fn protect(_: NeverFailingAllocator, _: []u8) error{ syserr, Unsupported }![]u8 {
+		fn protect(_: NeverFailingAllocator, _: []u8) error{ SystemError, Unsupported }![]u8 {
 			return error.Unsupported;
 		}
 
-		fn unprotect(_: NeverFailingAllocator, _: []u8) error{ syserr, Invalid }![]u8 {
+		fn unprotect(_: NeverFailingAllocator, _: []u8) error{ SystemError, Invalid }![]u8 {
 			return error.Invalid;
 		}
 	};
@@ -320,14 +320,14 @@ pub const protection = struct {
 	const WindowsImpl = struct {
 		const canProtect = true;
 
-		fn protect(allocator: NeverFailingAllocator, data: []u8) error{ syserr, Unsupported }![]u8 {
+		fn protect(allocator: NeverFailingAllocator, data: []u8) error{ SystemError, Unsupported }![]u8 {
 			var plainblob: c.DATA_BLOB = undefined;
 			var cipherblob: c.DATA_BLOB = undefined;
 			plainblob.cbData = @intCast(data.len);
-			plainblob.pbData = @as([*c]u8, data.ptr);
-			if (c.CryptProtectData(&plainblob, @as([*c]const c_ushort, null), @as([*c]c.DATA_BLOB, null), null, @as([*c]c.CRYPTPROTECT_PROMPTSTRUCT, null), @as(c_ulong, 0), &cipherblob) == 0) {
+			plainblob.pbData = data.ptr;
+			if (c.CryptProtectData(&plainblob, null, null, null, null, 0, &cipherblob) == 0) {
 				std.log.err("CryptProtectData syscall failed. Errorcode: {}. This should never happen. Please report it to the maintainers.", .{c.GetLastError()});
-				return error.syserr;
+				return error.SystemError;
 			}
 			defer if (c.LocalFree(cipherblob.pbData) != null) std.log.err("LocalFree syscall failed to free previously allocated memory. Errorcode: {}. This should never happen. Please report it to the maintainers.", .{c.GetLastError()});
 			const out: []u8 = allocator.alloc(u8, @intCast(cipherblob.cbData));
@@ -335,7 +335,7 @@ pub const protection = struct {
 			return out;
 		}
 
-		fn unprotect(allocator: NeverFailingAllocator, data: []u8) error{ syserr, Invalid }![]u8 {
+		fn unprotect(allocator: NeverFailingAllocator, data: []u8) error{ SystemError, Invalid }![]u8 {
 			var plainblob: c.DATA_BLOB = undefined;
 			var cipherblob: c.DATA_BLOB = undefined;
 			cipherblob.cbData = @intCast(data.len);
@@ -346,7 +346,7 @@ pub const protection = struct {
 					c.ERROR_INVALID_DATA, c.ERROR_INVALID_PARAMETER => return error.Invalid,
 					else => {
 						std.log.err("CryptUnprotectData syscall failed. Errorcode: {}", .{err});
-						return error.syserr;
+						return error.SystemError;
 					},
 				}
 			}
@@ -410,7 +410,7 @@ pub const PasswordEncodedAccountCode = struct {
 
 	pub const empty: PasswordEncodedAccountCode = .{.typ = .none, .protected = false, .salt = &.{}, .nonce = &.{}, .data = &.{}, .authenticationTag = &.{}};
 
-	pub fn initFromPassword(allocator: NeverFailingAllocator, accountCode: AccountCode, password: []const u8, shouldProtect: bool) error{syserr}!PasswordEncodedAccountCode {
+	pub fn initFromPassword(allocator: NeverFailingAllocator, accountCode: AccountCode, password: []const u8, shouldProtect: bool) error{SystemError}!PasswordEncodedAccountCode {
 		var salt: [32]u8 = undefined;
 		main.io.random(&salt);
 		const saltBase64 = allocator.alloc(u8, std.base64.standard.Encoder.calcSize(salt.len));
@@ -430,9 +430,9 @@ pub const PasswordEncodedAccountCode = struct {
 		var data: []u8 = undefined;
 		if (protected) {
 			data = protection.protect(allocator, encryptedBuffer) catch |err| {
-				if (err == error.syserr) return error.syserr else unreachable;
+				if (err == error.SystemError) return error.SystemError else unreachable;
 			};
-			defer allocator.free(encryptedBuffer); // Deferred, because that way even if a syserr is thrown it will still get freed
+			defer allocator.free(encryptedBuffer); // Deferred, because that way even if a SystemError is thrown it will still get freed
 		} else {
 			data = encryptedBuffer;
 		}
@@ -446,12 +446,12 @@ pub const PasswordEncodedAccountCode = struct {
 		};
 	}
 
-	pub fn initUnencoded(allocator: NeverFailingAllocator, accountCode: AccountCode, shouldProtect: bool) error{syserr}!PasswordEncodedAccountCode {
+	pub fn initUnencoded(allocator: NeverFailingAllocator, accountCode: AccountCode, shouldProtect: bool) error{SystemError}!PasswordEncodedAccountCode {
 		const protected = shouldProtect and protection.canProtect();
 		var data: []u8 = undefined;
 		if (protected) {
 			data = protection.protect(allocator, accountCode.text) catch |err| {
-				if (err == error.syserr) return error.syserr else unreachable;
+				if (err == error.SystemError) return error.SystemError else unreachable;
 			};
 		} else {
 			data = allocator.dupe(u8, accountCode.text);
