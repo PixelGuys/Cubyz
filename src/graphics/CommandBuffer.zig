@@ -204,7 +204,7 @@ const BindingInfo = union(enum) {
 	},
 };
 
-pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bindPoint: enum { graphics, compute }, set: u32, bindings: []const BindingInfo) void {
+pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bindPoint: DescriptorBindPoint, set: u32, bindings: []const BindingInfo) void {
 	const arena = main.stackAllocator.createArena();
 	defer main.stackAllocator.destroyArena(arena);
 	const writeInfo = arena.alloc(c.VkWriteDescriptorSet, bindings.len);
