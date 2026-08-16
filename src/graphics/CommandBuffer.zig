@@ -162,7 +162,7 @@ pub fn endRendering(self: CommandBuffer) void {
 	c.vkCmdEndRendering(self.handle);
 }
 
-pub fn bindPipeline(self: CommandBuffer, pipeline: main.graphics.Pipeline) void {
+pub fn bindPipeline(self: CommandBuffer, pipeline: main.graphics.Pipeline, scissor: ?c.VkRect2D) void {
 	c.vkCmdBindPipeline(self.handle, c.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.graphicsPipeline);
 	self.setViewport(.{
 		.x = 0,
@@ -172,10 +172,14 @@ pub fn bindPipeline(self: CommandBuffer, pipeline: main.graphics.Pipeline) void 
 		.minDepth = 0,
 		.maxDepth = 1,
 	});
-	self.setScissor(.{
-		.offset = .{.x = 0, .y = 0},
-		.extent = vulkan.SwapChain.extent,
-	});
+	if (scissor) |s| {
+		self.setScissor(s);
+	} else {
+		self.setScissor(.{
+			.offset = .{.x = 0, .y = 0},
+			.extent = vulkan.SwapChain.extent,
+		});
+	}
 }
 
 pub fn bindVertexArray(self: CommandBuffer, buffer: main.graphics.VertexArray) void {
