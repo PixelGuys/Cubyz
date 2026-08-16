@@ -321,10 +321,11 @@ pub const protection = struct {
 		const canProtect = true;
 
 		fn protect(allocator: NeverFailingAllocator, data: []const u8) error{ SystemError, Unsupported }![]u8 {
-			var plainblob: c.DATA_BLOB = undefined;
+			var plainblob: c.DATA_BLOB = .{
+				.cbData = @intCast(data.len),
+				.pbData = @constCast(data.ptr),
+			};
 			var cipherblob: c.DATA_BLOB = undefined;
-			plainblob.cbData = @intCast(data.len);
-			plainblob.pbData = @constCast(data.ptr);
 			if (c.CryptProtectData(&plainblob, null, null, null, null, 0, &cipherblob) == 0) {
 				std.log.err("CryptProtectData syscall failed. Errorcode: {}. This should never happen. Please report it to the maintainers.", .{c.GetLastError()});
 				return error.SystemError;
@@ -335,9 +336,10 @@ pub const protection = struct {
 
 		fn unprotect(allocator: NeverFailingAllocator, data: []const u8) error{ SystemError, Invalid }![]u8 {
 			var plainblob: c.DATA_BLOB = undefined;
-			var cipherblob: c.DATA_BLOB = undefined;
-			cipherblob.cbData = @intCast(data.len);
-			cipherblob.pbData = @constCast(data.ptr);
+			var cipherblob: c.DATA_BLOB = .{
+				.cbData = @intCast(data.len),
+				.pbData = @constCast(data.ptr),
+			};
 			if (c.CryptUnprotectData(&cipherblob, null, null, null, null, 0, &plainblob) == 0) {
 				const err = c.GetLastError();
 				switch (err) {
@@ -355,9 +357,7 @@ pub const protection = struct {
 				std.crypto.secureZero(u8, pbDataSlice);
 				if (c.LocalFree(plainblob.pbData) != null) std.log.err("LocalFree syscall failed to free previously allocated memory. Errorcode: {}. This should never happen. Please report it to the maintainers.", .{c.GetLastError()});
 			}
-			const out: []u8 = allocator.alloc(u8, @intCast(plainblob.cbData));
-			@memcpy(out, plainblob.pbData);
-			return out;
+			return allocator.dupe(u8, plainblob.pbData[0..plainblob.cbData]);
 		}
 	};
 
