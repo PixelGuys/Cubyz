@@ -297,22 +297,22 @@ pub const protection = struct {
 		return Impl.canProtect;
 	}
 
-	pub fn protect(allocator: NeverFailingAllocator, data: []u8) error{ SystemError, Unsupported }![]u8 {
+	pub fn protect(allocator: NeverFailingAllocator, data: []const u8) error{ SystemError, Unsupported }![]u8 {
 		return Impl.protect(allocator, data);
 	}
 
-	pub fn unprotect(allocator: NeverFailingAllocator, data: []u8) error{ SystemError, Invalid }![]u8 {
+	pub fn unprotect(allocator: NeverFailingAllocator, data: []const u8) error{ SystemError, Invalid }![]u8 {
 		return Impl.unprotect(allocator, data);
 	}
 
 	const NoImpl = struct {
 		const canProtect = false;
 
-		fn protect(_: NeverFailingAllocator, _: []u8) error{ SystemError, Unsupported }![]u8 {
+		fn protect(_: NeverFailingAllocator, _: []const u8) error{ SystemError, Unsupported }![]u8 {
 			return error.Unsupported;
 		}
 
-		fn unprotect(_: NeverFailingAllocator, _: []u8) error{ SystemError, Invalid }![]u8 {
+		fn unprotect(_: NeverFailingAllocator, _: []const u8) error{ SystemError, Invalid }![]u8 {
 			return error.Invalid;
 		}
 	};
@@ -320,11 +320,11 @@ pub const protection = struct {
 	const WindowsImpl = struct {
 		const canProtect = true;
 
-		fn protect(allocator: NeverFailingAllocator, data: []u8) error{ SystemError, Unsupported }![]u8 {
+		fn protect(allocator: NeverFailingAllocator, data: []const u8) error{ SystemError, Unsupported }![]u8 {
 			var plainblob: c.DATA_BLOB = undefined;
 			var cipherblob: c.DATA_BLOB = undefined;
 			plainblob.cbData = @intCast(data.len);
-			plainblob.pbData = data.ptr;
+			plainblob.pbData = @constCast(data.ptr);
 			if (c.CryptProtectData(&plainblob, null, null, null, null, 0, &cipherblob) == 0) {
 				std.log.err("CryptProtectData syscall failed. Errorcode: {}. This should never happen. Please report it to the maintainers.", .{c.GetLastError()});
 				return error.SystemError;
@@ -335,12 +335,12 @@ pub const protection = struct {
 			return out;
 		}
 
-		fn unprotect(allocator: NeverFailingAllocator, data: []u8) error{ SystemError, Invalid }![]u8 {
+		fn unprotect(allocator: NeverFailingAllocator, data: []const u8) error{ SystemError, Invalid }![]u8 {
 			var plainblob: c.DATA_BLOB = undefined;
 			var cipherblob: c.DATA_BLOB = undefined;
 			cipherblob.cbData = @intCast(data.len);
-			cipherblob.pbData = @as([*c]u8, data.ptr);
-			if (c.CryptUnprotectData(&cipherblob, @as([*c][*c]c_ushort, null), @as([*c]c.DATA_BLOB, null), null, @as([*c]c.CRYPTPROTECT_PROMPTSTRUCT, null), @as(c_ulong, 0), &plainblob) == 0) {
+			cipherblob.pbData = @constCast(data.ptr);
+			if (c.CryptUnprotectData(&cipherblob, null, null, null, null, 0, &plainblob) == 0) {
 				const err = c.GetLastError();
 				switch (err) {
 					c.ERROR_INVALID_DATA, c.ERROR_INVALID_PARAMETER => return error.Invalid,
@@ -377,7 +377,7 @@ pub const protection = struct {
 	}
 
 	test "Protect fails on unsupported platforms" {
-		const slice: []u8 = @as([]u8, @constCast("Test"));
+		const slice = "Test";
 		if (!canProtect()) {
 			try std.testing.expectError(error.Unsupported, protect(main.stackAllocator, slice));
 			try std.testing.expectError(error.Invalid, unprotect(main.stackAllocator, slice));
@@ -388,7 +388,7 @@ pub const protection = struct {
 
 	test "Unprotect fails when supplied with garbage" {
 		if (canProtect()) {
-			const slices: [5][]u8 = .{@as([]u8, @constCast("TestdwadadÖOUWHdöouHIOSUdhöoUHNWLJDKNOÖPAHUIwdoöJKNSdlkjöwuHOÖIhso8zpo9IKj")), @as([]u8, @constCast("Test")), @as([]u8, @constCast("Testd")), @as([]u8, @constCast("")), @as([]u8, @constCast("WIJDp8iU)(du098UÜ=JHd0ü8hz=Ü(HJ0isidjowi8h=(Z\"ß08IJUISdhd0w98hdoi8uoIWUJDoikjsoIKHJOwiuhdOISHNdo9i8H(UIHNASUJhdnbiuJBWGiudjhbIAKUJHnbsiudjkhiWUAHNIUDshjliuAHELIUHFILUHNIUJBDIUHwiuHushoujhdiiuwhIUHsouhdUHwiuhdUAHLsuidhlHU)"))};
+			const slices: [5][]const u8 = .{"TestdwadadÖOUWHdöouHIOSUdhöoUHNWLJDKNOÖPAHUIwdoöJKNSdlkjöwuHOÖIhso8zpo9IKj", "Test", "Testd", "", "WIJDp8iU)(du098UÜ=JHd0ü8hz=Ü(HJ0isidjowi8h=(Z\"ß08IJUISdhd0w98hdoi8uoIWUJDoikjsoIKHJOwiuhdOISHNdo9i8H(UIHNASUJhdnbiuJBWGiudjhbIAKUJHnbsiudjkhiWUAHNIUDshjliuAHELIUHFILUHNIUJBDIUHwiuHushoujhdiiuwhIUHsouhdUHwiuhdUAHLsuidhlHU)"};
 			for (slices) |slice| {
 				try std.testing.expectError(error.Invalid, unprotect(main.stackAllocator, slice));
 			}
