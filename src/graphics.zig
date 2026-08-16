@@ -168,11 +168,7 @@ pub const draw = struct { // MARK: draw
 				.depthStencilState = .{.depthTest = false, .depthWrite = false},
 				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
 				.inputAssemblyState = .{.topology = .triangleStrip},
-				.pushConstantRanges = &.{.{
-					.stageFlags = c.VK_SHADER_STAGE_VERTEX_BIT,
-					.offset = 0,
-					.size = @sizeOf(RectUniforms),
-				}},
+				.pushConstantSize = @sizeOf(RectUniforms),
 			},
 		);
 		const rawData = [_]SimpleVertex2D{
@@ -264,11 +260,7 @@ pub const draw = struct { // MARK: draw
 				.depthStencilState = .{.depthTest = false, .depthWrite = false},
 				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
 				.inputAssemblyState = .{.topology = .triangleStrip},
-				.pushConstantRanges = &.{.{
-					.stageFlags = c.VK_SHADER_STAGE_VERTEX_BIT,
-					.offset = 0,
-					.size = @sizeOf(RectBorderUniforms),
-				}},
+				.pushConstantSize = @sizeOf(RectUniforms),
 			},
 		);
 		const rawData = [_]RectBorderVertex{
@@ -357,11 +349,7 @@ pub const draw = struct { // MARK: draw
 				.depthStencilState = .{.depthTest = false, .depthWrite = false},
 				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
 				.inputAssemblyState = .{.topology = .lineStrip},
-				.pushConstantRanges = &.{.{
-					.stageFlags = c.VK_SHADER_STAGE_VERTEX_BIT,
-					.offset = 0,
-					.size = @sizeOf(LineUniforms),
-				}},
+				.pushConstantSize = @sizeOf(RectUniforms),
 			},
 		);
 		const rawData = [_]SimpleVertex2D{
