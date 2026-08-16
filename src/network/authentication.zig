@@ -1,11 +1,13 @@
 const std = @import("std");
 
 const main = @import("main");
+const builtin = @import("builtin");
 const BinaryWriter = main.utils.BinaryWriter;
 const BinaryReader = main.utils.BinaryReader;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ZonElement = main.ZonElement;
-const protect = main.protect;
+
+const c = @import("c");
 
 var wordlist: ?[2048][]const u8 = null;
 
@@ -285,6 +287,99 @@ pub const AccountCode = struct {
 	}
 };
 
+pub const protection = struct {
+	pub inline fn canProtect() bool {
+		switch (builtin.os.tag) {
+			.windows => return true,
+			else => return false,
+		}
+	}
+
+	pub fn protect(allocator: NeverFailingAllocator, data: []u8) error{ syserr, Unsupported }![]u8 {
+		if (builtin.os.tag == .windows) {
+			var plainblob: c.DATA_BLOB = undefined;
+			var cipherblob: c.DATA_BLOB = undefined;
+			plainblob.cbData = @intCast(data.len);
+			plainblob.pbData = @as([*c]u8, data.ptr);
+			if (c.CryptProtectData(&plainblob, @as([*c]const c_ushort, null), @as([*c]c.DATA_BLOB, null), null, @as([*c]c.CRYPTPROTECT_PROMPTSTRUCT, null), @as(c_ulong, 0), &cipherblob) == 0) {
+				std.log.err("CryptProtectData syscall failed. Errorcode: {}. This should never happen. Please report it to the maintainers.", .{c.GetLastError()});
+				return error.syserr;
+			}
+			defer if (c.LocalFree(cipherblob.pbData) != null) std.log.err("LocalFree syscall failed to free previously allocated memory. Errorcode: {}. This should never happen. Please report it to the maintainers.", .{c.GetLastError()});
+			const out: []u8 = allocator.alloc(u8, @intCast(cipherblob.cbData));
+			@memcpy(out, cipherblob.pbData);
+			return out;
+		} else {
+			return error.Unsupported;
+		}
+	}
+
+	pub fn unprotect(allocator: NeverFailingAllocator, data: []u8) error{ syserr, Invalid }![]u8 {
+		if (builtin.os.tag == .windows) {
+			var plainblob: c.DATA_BLOB = undefined;
+			var cipherblob: c.DATA_BLOB = undefined;
+			cipherblob.cbData = @intCast(data.len);
+			cipherblob.pbData = @as([*c]u8, data.ptr);
+			if (c.CryptUnprotectData(&cipherblob, @as([*c][*c]c_ushort, null), @as([*c]c.DATA_BLOB, null), null, @as([*c]c.CRYPTPROTECT_PROMPTSTRUCT, null), @as(c_ulong, 0), &plainblob) == 0) {
+				const err = c.GetLastError();
+				switch (err) {
+					c.ERROR_INVALID_DATA, c.ERROR_INVALID_PARAMETER => return error.Invalid,
+					else => {
+						std.log.err("CryptUnprotectData syscall failed. Errorcode: {}", .{err});
+						return error.syserr;
+					},
+				}
+			}
+			var pbDataSlice: []u8 = undefined;
+			pbDataSlice.len = plainblob.cbData;
+			pbDataSlice.ptr = plainblob.pbData;
+			defer {
+				std.crypto.secureZero(u8, pbDataSlice);
+				if (c.LocalFree(plainblob.pbData) != null) std.log.err("LocalFree syscall failed to free previously allocated memory. Errorcode: {}. This should never happen. Please report it to the maintainers.", .{c.GetLastError()});
+			}
+			const out: []u8 = allocator.alloc(u8, @intCast(plainblob.cbData));
+			@memcpy(out, plainblob.pbData);
+			return out;
+		} else {
+			return error.Invalid;
+		}
+	}
+
+	test "slice==unprotect(protect(slice))" {
+		const slice: []u8 = @as([]u8, @constCast("Test"));
+		if (canProtect()) {
+			const protected = try protect(main.stackAllocator, slice);
+			defer main.stackAllocator.free(protected);
+			const unprotected = try unprotect(main.stackAllocator, protected);
+			defer main.stackAllocator.free(unprotected);
+			try std.testing.expectEqualSlices(u8, slice, unprotected);
+		} else {
+			return error.SkipZigTest;
+		}
+	}
+
+	test "Protect fails on unsupported platforms" {
+		const slice: []u8 = @as([]u8, @constCast("Test"));
+		if (!canProtect()) {
+			try std.testing.expectError(error.Unsupported, protect(main.stackAllocator, slice));
+			try std.testing.expectError(error.Invalid, unprotect(main.stackAllocator, slice));
+		} else {
+			return error.SkipZigTest;
+		}
+	}
+
+	test "Unprotect fails when supplied with garbage" {
+		if (canProtect()) {
+			const slices: [5][]u8 = .{@as([]u8, @constCast("TestdwadadÖOUWHdöouHIOSUdhöoUHNWLJDKNOÖPAHUIwdoöJKNSdlkjöwuHOÖIhso8zpo9IKj")), @as([]u8, @constCast("Test")), @as([]u8, @constCast("Testd")), @as([]u8, @constCast("")), @as([]u8, @constCast("WIJDp8iU)(du098UÜ=JHd0ü8hz=Ü(HJ0isidjowi8h=(Z\"ß08IJUISdhd0w98hdoi8uoIWUJDoikjsoIKHJOwiuhdOISHNdo9i8H(UIHNASUJhdnbiuJBWGiudjhbIAKUJHnbsiudjkhiWUAHNIUDshjliuAHELIUHFILUHNIUJBDIUHwiuHushoujhdiiuwhIUHsouhdUHwiuhdUAHLsuidhlHU)"))};
+			for (slices) |slice| {
+				try std.testing.expectError(error.Invalid, unprotect(main.stackAllocator, slice));
+			}
+		} else {
+			return error.SkipZigTest;
+		}
+	}
+};
+
 pub const EncodingType = enum { none, argon2_aes_gcm };
 
 pub const PasswordEncodedAccountCode = struct {
@@ -313,10 +408,10 @@ pub const PasswordEncodedAccountCode = struct {
 		main.io.random(&nonce);
 		std.crypto.aead.aes_gcm.Aes256Gcm.encrypt(encryptedBuffer, &authenticationTag, accountCode.text, &.{}, nonce, key);
 
-		const protected = shouldProtect and protect.canProtect();
+		const protected = shouldProtect and protection.canProtect();
 		var data: []u8 = undefined;
 		if (protected) {
-			data = protect.protect(allocator, encryptedBuffer) catch |err| {
+			data = protection.protect(allocator, encryptedBuffer) catch |err| {
 				if (err == error.syserr) return error.syserr else unreachable;
 			};
 			defer allocator.free(encryptedBuffer); // Deferred, because that way even if a syserr is thrown it will still get freed
@@ -334,10 +429,10 @@ pub const PasswordEncodedAccountCode = struct {
 	}
 
 	pub fn initUnencoded(allocator: NeverFailingAllocator, accountCode: AccountCode, shouldProtect: bool) error{syserr}!PasswordEncodedAccountCode {
-		const protected = shouldProtect and protect.canProtect();
+		const protected = shouldProtect and protection.canProtect();
 		var data: []u8 = undefined;
 		if (protected) {
-			data = protect.protect(allocator, accountCode.text) catch |err| {
+			data = protection.protect(allocator, accountCode.text) catch |err| {
 				if (err == error.syserr) return error.syserr else unreachable;
 			};
 		} else {
@@ -361,11 +456,11 @@ pub const PasswordEncodedAccountCode = struct {
 	}
 
 	pub fn decryptFromPassword(self: PasswordEncodedAccountCode, password: []const u8, failureText: *main.ListManaged(u8)) !AccountCode {
-		if (self.protected and !protect.canProtect()) return error.Invalid;
+		if (self.protected and !protection.canProtect()) return error.Invalid;
 		if (self.typ == .none) {
 			var data = self.data;
 			if (self.protected) {
-				data = try protect.unprotect(main.stackAllocator, data);
+				data = try protection.unprotect(main.stackAllocator, data);
 			}
 			defer if (self.protected) {
 				std.crypto.secureZero(u8, data);
@@ -382,7 +477,7 @@ pub const PasswordEncodedAccountCode = struct {
 			.argon2_aes_gcm => {
 				var data = self.data;
 				if (self.protected) {
-					data = try protect.unprotect(main.stackAllocator, data);
+					data = try protection.unprotect(main.stackAllocator, data);
 				}
 				defer if (self.protected) {
 					std.crypto.secureZero(u8, data);
