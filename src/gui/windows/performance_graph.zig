@@ -4,6 +4,7 @@ const main = @import("main");
 const graphics = main.graphics;
 const draw = graphics.draw;
 const Texture = graphics.Texture;
+const vulkan = graphics.vulkan;
 const Vec2f = main.vec.Vec2f;
 
 const c = @import("c");
@@ -40,9 +41,17 @@ var uniforms: struct {
 	offset: c_int,
 	lineColor: c_int,
 } = undefined;
+const Uniforms = extern struct {
+	start: [2]f32 align(8),
+	dimension: [2]f32 align(8),
+	screen: [2]f32 align(8),
+	points: c_int,
+	offset: c_int,
+	lineColor: [3]f32 align(16),
+};
 
 pub fn init() void {
-	ssbo = graphics.SSBO.init();
+	ssbo = graphics.SSBO.initDynamicSize(f32, lastFrameTime.len);
 	pipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/graphics/graph.vert",
 		"assets/cubyz/shaders/graphics/graph.frag",
@@ -50,9 +59,12 @@ pub fn init() void {
 		&uniforms,
 		graphics.VertexArray.EmptyVertex,
 		.{
+			.bindings = &.{.ssbo(5, .{.vertex = true})},
 			.rasterState = .{.cullMode = .none},
 			.depthStencilState = .{.depthTest = false, .depthWrite = false},
 			.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			.inputAssemblyState = .{.topology = .lineStrip},
+			.pushConstantSize = @sizeOf(Uniforms),
 		},
 	);
 }
@@ -93,4 +105,20 @@ pub fn render() void {
 	ssbo.bufferData(f32, &lastFrameTime);
 	ssbo.bind(5);
 	c.glDrawArrays(c.GL_LINE_STRIP, 0, lastFrameTime.len);
+
+	if (main.settings.launchConfig.vulkanTestingMode) {
+		vulkan.currentFrame.guiCommands.bindPipeline(pipeline, null);
+		vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, 0, &.{
+			.{.ssbo = .{.binding = 5, .ssbo = ssbo}},
+		});
+		vulkan.currentFrame.guiCommands.pushConstants(pipeline, &Uniforms{
+			.start = pos,
+			.dimension = .{dim[0], draw.setScale(1)},
+			.screen = .{@floatFromInt(main.Window.width), @floatFromInt(main.Window.height)},
+			.points = lastFrameTime.len,
+			.offset = index,
+			.lineColor = .{1, 1, 1},
+		});
+		vulkan.currentFrame.guiCommands.draw(lastFrameTime.len, 0);
+	}
 }
