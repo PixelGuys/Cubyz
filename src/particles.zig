@@ -194,8 +194,7 @@ pub const ParticleSystem = struct {
 			},
 		);
 
-		particlesSSBO = SSBO.init();
-		particlesSSBO.createDynamicBuffer(Particle, maxCapacity);
+		particlesSSBO = SSBO.initDynamicSize(Particle, maxCapacity);
 		particlesSSBO.bind(13);
 	}
 
