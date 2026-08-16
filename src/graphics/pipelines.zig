@@ -630,7 +630,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 	blendState: ColorBlendState,
 	vulkanCreationSuccessful: bool = false, // TODO: Remove after all Vulkan pipelines compile
 	pipelineLayout: c.VkPipelineLayout = undefined,
-	descriptorSetLayout: c.VkDescriptorSetLayout = undefined,
+	descriptorSetLayout: ?c.VkDescriptorSetLayout = null,
 	graphicsPipeline: c.VkPipeline = undefined,
 
 	fn initVulkan(self: *Pipeline, vertexPath: []const u8, fragmentPath: []const u8, defines: []const u8, VertexType: type, options: Options) !void {
@@ -699,18 +699,27 @@ pub const Pipeline = struct { // MARK: Pipeline
 		}
 		const blendState = self.blendState.toVulkan(attachments);
 
-		const descriptorSetLayoutInfo = c.VkDescriptorSetLayoutCreateInfo{
-			.sType = c.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-			.bindingCount = @intCast(options.bindings.len),
-			.pBindings = @ptrCast(options.bindings.ptr),
-		};
-		try vulkan.checkResultErr(c.vkCreateDescriptorSetLayout(vulkan.device, &descriptorSetLayoutInfo, null, &self.descriptorSetLayout));
-		errdefer c.vkDestroyDescriptorSetLayout(vulkan.device, self.descriptorSetLayout, null);
+		var descriptorSetLayouts: main.List(c.VkDescriptorSetLayout) = .empty;
+		defer descriptorSetLayouts.deinit(main.stackAllocator);
+
+		if (options.bindings.len != 0) {
+			self.descriptorSetLayout = @as(c.VkDescriptorSetLayout, undefined);
+
+			const descriptorSetLayoutInfo = c.VkDescriptorSetLayoutCreateInfo{
+				.sType = c.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+				.bindingCount = @intCast(options.bindings.len),
+				.pBindings = @ptrCast(options.bindings.ptr),
+			};
+			try vulkan.checkResultErr(c.vkCreateDescriptorSetLayout(vulkan.device, &descriptorSetLayoutInfo, null, &self.descriptorSetLayout.?));
+			descriptorSetLayouts.append(main.stackAllocator, self.descriptorSetLayout.?);
+		}
+
+		descriptorSetLayouts.append(main.stackAllocator, frameUniformDescriptorSetLayout);
 
 		const pipelineLayoutInfo = c.VkPipelineLayoutCreateInfo{ // TODO: Configure push constants
 			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-			.setLayoutCount = 2,
-                       .pSetLayouts = &[_]c.VkDescriptorSetLayout{self.descriptorSetLayout, frameUniformDescriptorSetLayout},
+			.setLayoutCount = @intCast(descriptorSetLayouts.items.len),
+			.pSetLayouts = descriptorSetLayouts.items.ptr,
 			.pushConstantRangeCount = @intCast(options.pushConstantRanges.len),
 			.pPushConstantRanges = options.pushConstantRanges.ptr,
 		};
@@ -789,7 +798,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 		if (self.vulkanCreationSuccessful) {
 			c.vkDestroyPipeline(vulkan.device, self.graphicsPipeline, null);
 			c.vkDestroyPipelineLayout(vulkan.device, self.pipelineLayout, null);
-			c.vkDestroyDescriptorSetLayout(vulkan.device, self.descriptorSetLayout, null);
+			if(self.descriptorSetLayout) |layout| c.vkDestroyDescriptorSetLayout(vulkan.device, layout, null);
 		}
 	}
 
