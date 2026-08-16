@@ -147,7 +147,7 @@ pub const draw = struct { // MARK: draw
 		size: c_int,
 		rectColor: c_int,
 	} = undefined;
-	const RectUniforms = struct {
+	const RectUniforms = extern struct {
 		start: [2]f32 align(8),
 		size: [2]f32 align(8),
 		screen: [2]f32 align(8),
@@ -227,7 +227,7 @@ pub const draw = struct { // MARK: draw
 		rectColor: c_int,
 		lineWidth: c_int,
 	} = undefined;
-	const RectBorderUniforms = struct {
+	const RectBorderUniforms = extern struct {
 		start: [2]f32 align(8),
 		size: [2]f32 align(8),
 		screen: [2]f32 align(8),
@@ -328,7 +328,7 @@ pub const draw = struct { // MARK: draw
 		direction: c_int,
 		lineColor: c_int,
 	} = undefined;
-	const LineUniforms = struct {
+	const LineUniforms = extern struct {
 		start: [2]f32 align(8),
 		direction: [2]f32 align(8),
 		screen: [2]f32 align(8),
