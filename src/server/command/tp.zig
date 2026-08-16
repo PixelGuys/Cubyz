@@ -12,6 +12,8 @@ pub const usage =
 	\\/tp @<sourcePlayerIndex> <x> <y> <z>
 	\\/tp @<destinationPlayerIndex>
 	\\/tp @<sourcePlayerIndex> @<destinationPlayerIndex>
+	\\/tp <x> <y> <z> <yaw> <pitch>
+	\\/tp @<sourcePlayerIndex> <x> <y> <z> <yaw> <pitch>
 ;
 
 pub const Args = union(enum) {
