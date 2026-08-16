@@ -41,10 +41,16 @@ pub fn setAccountCode(accountCode_: main.network.authentication.AccountCode) voi
 fn confirm() void {
 	if (encryptAccountCode) {
 		settings.storedAccount.deinit(main.globalAllocator);
-		settings.storedAccount = PasswordEncodedAccountCode.initFromPassword(main.globalAllocator, accountCode, passwordTextField.currentString.items, true) catch PasswordEncodedAccountCode.initFromPassword(main.globalAllocator, accountCode, passwordTextField.currentString.items, false) catch unreachable;
+		settings.storedAccount = PasswordEncodedAccountCode.initFromPassword(main.globalAllocator, accountCode, passwordTextField.currentString.items, true) catch |err| {
+			std.log.err("Could not protect: {}", .{err});
+			return;
+		};
 	} else {
 		settings.storedAccount.deinit(main.globalAllocator);
-		settings.storedAccount = PasswordEncodedAccountCode.initUnencoded(main.globalAllocator, accountCode, true) catch PasswordEncodedAccountCode.initUnencoded(main.globalAllocator, accountCode, false) catch unreachable;
+		settings.storedAccount = PasswordEncodedAccountCode.initUnencoded(main.globalAllocator, accountCode, true) catch |err| {
+			std.log.err("Could not protect: {}", .{err});
+			return;
+		};
 	}
 	settings.save();
 
