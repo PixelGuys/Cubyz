@@ -273,6 +273,7 @@ pub fn createInstance() void {
 const deviceExtensions = blk: {
 	const baseDeviceExtensions = [_][*:0]const u8{
 		c.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+		c.VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
 	};
 	if (builtin.target.os.tag == .macos) {
 		break :blk baseDeviceExtensions ++ [_][*:0]const u8{c.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME};

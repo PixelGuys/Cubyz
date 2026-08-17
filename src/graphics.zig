@@ -1386,6 +1386,7 @@ pub const VertexArray = struct { // MARK: VertexArray
 
 pub const SSBO = struct { // MARK: SSBO
 	bufferID: c_uint,
+	buffer: ?vulkan.Buffer = null,
 	pub fn init() SSBO {
 		var self = SSBO{.bufferID = undefined};
 		c.glGenBuffers(1, &self.bufferID);
@@ -1408,7 +1409,22 @@ pub const SSBO = struct { // MARK: SSBO
 		return self;
 	}
 
+	pub fn initDynamicSize(comptime T: type, len: usize) SSBO {
+		var self = SSBO{.bufferID = undefined};
+		c.glGenBuffers(1, &self.bufferID);
+		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
+		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(len*@sizeOf(T)), null, c.GL_DYNAMIC_DRAW);
+		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			self.buffer = .init(len*@sizeOf(T), .{.usage = c.VK_BUFFER_USAGE_TRANSFER_DST_BIT | c.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT});
+		}
+		return self;
+	}
+
 	pub fn deinit(self: SSBO) void {
+		if (self.buffer) |buffer| {
+			buffer.deferredDeinit();
+		}
 		c.glDeleteBuffers(1, &self.bufferID);
 	}
 
@@ -1420,18 +1436,18 @@ pub const SSBO = struct { // MARK: SSBO
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
 		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(data.len*@sizeOf(T)), data.ptr, c.GL_STATIC_DRAW);
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
+		if (self.buffer) |buffer| {
+			buffer.uploadData(0, std.mem.sliceAsBytes(data));
+		}
 	}
 
 	pub fn bufferSubData(self: SSBO, comptime T: type, data: []const T, length: usize) void {
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
 		c.glBufferSubData(c.GL_SHADER_STORAGE_BUFFER, 0, @intCast(length*@sizeOf(T)), data.ptr);
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
-	}
-
-	pub fn createDynamicBuffer(self: SSBO, comptime T: type, size: usize) void {
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
-		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(size*@sizeOf(T)), null, c.GL_DYNAMIC_DRAW);
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
+		if (self.buffer) |buffer| {
+			buffer.uploadData(0, std.mem.sliceAsBytes(data));
+		}
 	}
 };
 
