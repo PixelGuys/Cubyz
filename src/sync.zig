@@ -280,7 +280,6 @@ pub const Command = struct { // MARK: Command
 		useDurability = 4,
 		addHealth = 5,
 		addEnergy = 6,
-		setRotation = 9,
 	};
 
 	pub const BaseOperation = union(BaseOperationType) {
@@ -329,11 +328,6 @@ pub const Command = struct { // MARK: Command
 			target: ?*main.server.User,
 			energy: f32,
 			previous: f32,
-		},
-		setRotation: struct {
-			target: ?*main.server.User,
-			rotation: Vec3f,
-			previous: Vec3f,
 		},
 	};
 
@@ -648,9 +642,6 @@ pub const Command = struct { // MARK: Command
 				.addEnergy => |info| {
 					main.game.Player.super.energy = info.previous;
 				},
-				.setRotation => |info| {
-					main.game.camera.rotation = info.previous;
-				},
 			}
 		}
 	}
@@ -658,7 +649,7 @@ pub const Command = struct { // MARK: Command
 	fn finalize(self: Command, allocator: NeverFailingAllocator, side: Side, reader: *BinaryReader) !void {
 		for (self.baseOperations.items) |step| {
 			switch (step) {
-				.move, .swap, .create, .moveToBag, .takeFromBag, .addHealth, .addEnergy, .setRotation => {},
+				.move, .swap, .create, .moveToBag, .takeFromBag, .addHealth, .addEnergy => {},
 				.delete => |info| {
 					info.item.deinit();
 				},
@@ -845,22 +836,6 @@ pub const Command = struct { // MARK: Command
 				} else {
 					info.previous = main.game.Player.super.energy;
 					main.game.Player.super.energy = std.math.clamp(main.game.Player.super.energy + info.energy, 0, main.game.Player.super.maxEnergy);
-				}
-			},
-			.setRotation => |*info| {
-				if (side == .server) {
-					info.previous = info.target.?.player().rot;
-					std.log.debug("SetRotation executed on server; target=TRUNCATED, rotation={}", .{info.rotation}); // MARK: Remove before merging
-
-					info.target.?.player().rot = info.rotation;
-					self.syncOperations.append(allocator, .{.rotation = .{
-						.target = info.target.?,
-						.rotation = info.rotation,
-					}});
-				} else {
-					std.log.debug("SetRotation executed on client; target=TRUNCATED, rotation={}", .{info.rotation});
-					info.previous = main.game.camera.rotation;
-					main.game.camera.rotation = info.rotation;
 				}
 			},
 		}
