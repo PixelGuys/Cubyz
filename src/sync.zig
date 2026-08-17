@@ -247,7 +247,6 @@ pub const Command = struct { // MARK: Command
 		updateBlock = 9,
 		addHealth = 10,
 		chatCommand = 12,
-		setRotation = 18,
 	};
 	pub const Payload = union(PayloadType) {
 		open: Open,
@@ -269,7 +268,6 @@ pub const Command = struct { // MARK: Command
 		updateBlock: UpdateBlock,
 		addHealth: AddHealth,
 		chatCommand: ChatCommand,
-		setRotation: SetRotation,
 	};
 
 	const BaseOperationType = enum(u8) {
@@ -1802,49 +1800,6 @@ pub const Command = struct { // MARK: Command
 				.target = try reader.readEnum(main.entity.Entity),
 				.health = @bitCast(try reader.readInt(u32)),
 				.cause = try reader.readEnum(main.game.DamageType),
-			};
-			if (user.?.id != result.target) return error.Invalid;
-			return result;
-		}
-	};
-
-	const SetRotation = struct { // MARK: SetRotation
-		target: main.entity.Entity,
-		rotation: Vec3f,
-
-		fn run(self: SetRotation, ctx: Context) error{serverFailure}!void {
-			std.log.debug("SetRotation ran; target={}, rotation={}", .{self.target, self.rotation});
-			var target: ?*main.server.User = null;
-
-			if (ctx.side == .server) {
-				const userList = main.server.getUserList(main.stackAllocator);
-				defer main.stackAllocator.free(userList);
-				for (userList) |user| {
-					if (user.id == self.target) {
-						target = user;
-						break;
-					}
-				}
-
-				if (target == null) return error.serverFailure;
-			}
-
-			ctx.execute(.{.setRotation = .{
-				.target = target,
-				.rotation = self.rotation,
-				.previous = if (ctx.side == .server) target.?.player().rot else main.game.camera.rotation,
-			}});
-		}
-
-		fn serialize(self: SetRotation, writer: *BinaryWriter) void {
-			writer.writeEnum(main.entity.Entity, self.target);
-			writer.writeVec(Vec3f, self.rotation);
-		}
-
-		fn deserialize(reader: *BinaryReader, _: Side, user: ?*main.server.User) !SetRotation {
-			const result: SetRotation = .{
-				.target = try reader.readEnum(main.entity.Entity),
-				.rotation = try reader.readVec(Vec3f),
 			};
 			if (user.?.id != result.target) return error.Invalid;
 			return result;
