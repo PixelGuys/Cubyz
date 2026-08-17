@@ -48,6 +48,7 @@ pub fn execute(args: Args, source: Source) void {
 	const target = switch (args) {
 		inline .@"/tp <sourcePlayerIndex> <biome>",
 		.@"/tp <sourcePlayerIndex> <x> <y> <z>",
+		.@"/tp <sourcePlayerIndex> <x> <y> <z> <yaw> <pitch>",
 		.@"/tp <sourcePlayerIndex> <destinationPlayerIndex>",
 		=> |params| command.Target.fromPlayerIndex(params.sourcePlayerIndex, source) catch return,
 		else => command.Target.fromPlayerIndex(null, source) catch return,
