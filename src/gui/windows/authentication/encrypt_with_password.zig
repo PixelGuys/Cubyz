@@ -23,12 +23,14 @@ pub var window = GuiWindow{
 
 var innerList: *VerticalList = undefined;
 var encryptWithPasswordCheckbox: *CheckBox = undefined;
+var protectCheckbox: *CheckBox = undefined;
 var passwordTextField: *TextInput = undefined;
 var passwordRow: *HorizontalList = undefined;
 
 var confirmButton: *Button = undefined;
 
 var encryptAccountCode: bool = true;
+var protectAccountCode: bool = main.network.authentication.protection.canProtect();
 
 const padding: f32 = 8;
 
@@ -41,13 +43,13 @@ pub fn setAccountCode(accountCode_: main.network.authentication.AccountCode) voi
 fn confirm() void {
 	if (encryptAccountCode) {
 		settings.storedAccount.deinit(main.globalAllocator);
-		settings.storedAccount = PasswordEncodedAccountCode.initFromPassword(main.globalAllocator, accountCode, passwordTextField.currentString.items, true) catch |err| {
+		settings.storedAccount = PasswordEncodedAccountCode.initFromPassword(main.globalAllocator, accountCode, passwordTextField.currentString.items, protectAccountCode) catch |err| {
 			std.log.err("Could not protect: {}", .{err});
 			return;
 		};
 	} else {
 		settings.storedAccount.deinit(main.globalAllocator);
-		settings.storedAccount = PasswordEncodedAccountCode.initUnencoded(main.globalAllocator, accountCode, true) catch |err| {
+		settings.storedAccount = PasswordEncodedAccountCode.initUnencoded(main.globalAllocator, accountCode, protectAccountCode) catch |err| {
 			std.log.err("Could not protect: {}", .{err});
 			return;
 		};
@@ -63,9 +65,15 @@ fn encryptAccountCodeCallback(encryptAccountCode_: bool) void {
 	refreshInner();
 }
 
+fn protectAccountCodeCallback(protectAccountCode_: bool) void {
+	protectAccountCode = protectAccountCode_;
+	refreshInner();
+}
+
 fn refreshInner() void {
 	innerList.children.clearRetainingCapacity();
 	innerList.children.append(encryptWithPasswordCheckbox.toComponent());
+	if (main.network.authentication.protection.canProtect()) innerList.children.append(protectCheckbox.toComponent());
 	if (encryptAccountCode) {
 		innerList.children.append(passwordRow.toComponent());
 	}
@@ -83,6 +91,10 @@ pub fn onOpen() void {
 	const width = 480;
 	list.add(Label.init(.{0, 0}, width, "Your Account Code will be stored in your settings to allow you to stay logged in. Please decide how we should store it:", .left));
 	innerList = VerticalList.init(.{0, 0}, 100, 16);
+	if (main.network.authentication.protection.canProtect()) {
+		protectCheckbox = CheckBox.init(.{0, 0}, width, "Protect with system api (recommended)", protectAccountCode, &protectAccountCodeCallback);
+		innerList.add(protectCheckbox);
+	}
 	encryptWithPasswordCheckbox = CheckBox.init(.{0, 0}, width, "Encrypt it with a password (recommended)\n(The password needs to be entered every time)", encryptAccountCode, &encryptAccountCodeCallback);
 	innerList.add(encryptWithPasswordCheckbox);
 	passwordRow = HorizontalList.init();
