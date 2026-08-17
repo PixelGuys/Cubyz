@@ -110,7 +110,8 @@ pub fn execute(args: Args, source: Source) void {
 			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source) catch return;
 		},
 		.@"/tp <sourcePlayerIndex> <x> <y> <z> <yaw> <pitch>" => |pos| {
-			main.sync.server.executeCommand(.{.setRotation = .{.target = target.user.id, .rotation = command.resolveRotation(pos.yaw, pos.pitch, source) catch return}}, null);
+			//main.sync.server.executeCommand(.{.setRotation = .{.target = target.user.id, .rotation = command.resolveRotation(pos.yaw, pos.pitch, source) catch return}}, null);
+			main.sync.server.sendSyncOperation(.{.rotation = .{.target = source.user, .rotation = command.resolveRotation(pos.yaw, pos.pitch, source) catch return}}, null);
 			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source) catch return;
 		},
 		inline .@"/tp <destinationPlayerIndex>", .@"/tp <sourcePlayerIndex> <destinationPlayerIndex>" => |index| {

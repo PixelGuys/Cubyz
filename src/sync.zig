@@ -140,6 +140,19 @@ pub const server = struct { // MARK: server
 		threadContext = .other;
 	}
 
+	pub fn sendSyncOperation(op: Command.SyncOperation, source: ?*main.server.User) void {
+		const syncData = op.serialize(main.stackAllocator);
+		defer main.stackAllocator.free(syncData);
+
+		const users = op.getUsers(main.stackAllocator);
+		defer main.stackAllocator.free(users);
+
+		for (users) |user| {
+			if (user == source and op.ignoreSource()) continue;
+			main.network.protocols.inventory.sendSyncOperation(user.conn, syncData);
+		}
+	}
+
 	pub fn executeCommand(payload: Command.Payload, source: ?*main.server.User) void {
 		var command = Command{
 			.payload = payload,
@@ -154,16 +167,7 @@ pub const server = struct { // MARK: server
 			main.network.protocols.inventory.sendConfirmation(source.?.conn, confirmationData);
 		}
 		for (command.syncOperations.items) |op| {
-			const syncData = op.serialize(main.stackAllocator);
-			defer main.stackAllocator.free(syncData);
-
-			const users = op.getUsers(main.stackAllocator);
-			defer main.stackAllocator.free(users);
-
-			for (users) |user| {
-				if (user == source and op.ignoreSource()) continue;
-				main.network.protocols.inventory.sendSyncOperation(user.conn, syncData);
-			}
+			sendSyncOperation(op, source);
 		}
 		if (source != null and command.payload == .open) { // Send initial items
 			for (command.payload.open.inv._items, 0..) |stack, slot| {
@@ -848,7 +852,7 @@ pub const Command = struct { // MARK: Command
 			.setRotation => |*info| {
 				if (side == .server) {
 					info.previous = info.target.?.player().rot;
-					std.log.debug("SetRotation executed on server; target=TRUNCATED, rotation={}", .{info.rotation});
+					std.log.debug("SetRotation executed on server; target=TRUNCATED, rotation={}", .{info.rotation}); // MARK: Remove before merging
 
 					info.target.?.player().rot = info.rotation;
 					self.syncOperations.append(allocator, .{.rotation = .{
