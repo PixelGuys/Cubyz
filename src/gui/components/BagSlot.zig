@@ -14,14 +14,15 @@ const GuiComponent = gui.GuiComponent;
 
 const BagSlot = @This();
 
-const border: f32 = 2;
-
-pub const sizeWithBorder = 32 + 2*border;
+const borderSize: f32 = 2;
+pub const tileSize = 32;
+const widgetWidth = 2*borderSize + tileSize;
+const widgetHeight = 4*borderSize + 2*tileSize;
 
 var texture: Texture = undefined;
 
 pos: Vec2f,
-size: Vec2f = .{sizeWithBorder, sizeWithBorder + 8},
+size: Vec2f = .{widgetWidth, widgetHeight + 8},
 inventory: *BagInventory,
 hovered: bool = false,
 pressed: bool = false,
@@ -82,16 +83,17 @@ pub fn mainButtonReleased(self: *BagSlot, mousePosition: Vec2f) void {
 
 pub fn render(self: *BagSlot, _: Vec2f) void {
 	texture.bindTo(0);
-	draw.boundImage(self.pos, @splat(sizeWithBorder));
+	draw.boundImage(self.pos, Vec2f{widgetWidth, widgetHeight});
 
-	for (0..5) |_i| {
-		const i = 4 - _i;
+	for (0..5) |j| {
+		const i = 4 - j;
+		const isEven = j%2 == 0;
 		const item = self.inventory.peek(i).item;
 		if (item == .null) continue;
-		const opacity: f32 = std.math.pow(f32, 0.5, @as(f32, @floatFromInt(i)));
+		const opacity: f32 = if (i == 0) 1.0 else 0.8;
 		const oldColor = draw.setColor(0xffffff | @as(u32, @trunc(opacity*255)) << 24);
 		defer draw.restoreColor(oldColor);
-		item.render(self.pos, @splat(sizeWithBorder), border);
+		item.render(self.pos + Vec2f{borderSize - if (isEven) borderSize else 0.0, @as(f32, @floatFromInt(i*8))}, @splat(widgetWidth), borderSize);
 	}
 
 	const topItem = self.inventory.peek(0);
@@ -112,16 +114,16 @@ pub fn render(self: *BagSlot, _: Vec2f) void {
 			.right,
 		);
 		defer text.deinit();
-		const textSize = text.calculateLineBreaks(8, self.size[0] - 2*border);
-		text.render(self.pos[0] + sizeWithBorder - textSize[0] - border, self.pos[1] + sizeWithBorder - textSize[1] - border, 8);
+		const textSize = text.calculateLineBreaks(8, self.size[0] - 2*borderSize);
+		text.render(self.pos[0] + widgetWidth - textSize[0] - borderSize, self.pos[1] + widgetHeight - textSize[1] - borderSize, 8);
 	}
 
-	draw.print("{}/{}", .{self.inventory.slots.items.len, self.inventory.sizeLimit}, self.pos[0], self.pos[1] + sizeWithBorder, 8);
+	draw.print("{}/{}", .{self.inventory.slots.items.len, self.inventory.sizeLimit}, self.pos[0], self.pos[1] + widgetHeight, 8);
 
 	if (self.hovered) {
 		self.hovered = false;
 		const oldColor = draw.setColor(0x300000ff);
 		defer draw.restoreColor(oldColor);
-		draw.rect(self.pos, @splat(sizeWithBorder));
+		draw.rect(self.pos, Vec2f{widgetWidth, widgetHeight});
 	}
 }
