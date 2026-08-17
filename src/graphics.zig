@@ -193,17 +193,8 @@ pub const draw = struct { // MARK: draw
 		pos += translation;
 		dim *= @splat(scale);
 
-		rectPipeline.bind(getScissor());
-
 		var viewport: [4]c_int = undefined;
 		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-		c.glUniform2f(rectUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
-		c.glUniform2f(rectUniforms.start, pos[0], pos[1]);
-		c.glUniform2f(rectUniforms.size, dim[0], dim[1]);
-		c.glUniform1i(rectUniforms.rectColor, @bitCast(getColor()));
-
-		rectVao.bind();
-		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 
 		if (main.settings.launchConfig.vulkanTestingMode) {
 			vulkan.currentFrame.guiCommands.bindPipeline(rectPipeline, getScissor());
@@ -215,6 +206,16 @@ pub const draw = struct { // MARK: draw
 			});
 			vulkan.currentFrame.guiCommands.bindVertexArray(rectVao);
 			vulkan.currentFrame.guiCommands.draw(4, 0);
+		} else {
+			rectPipeline.bind(getScissor());
+
+			c.glUniform2f(rectUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
+			c.glUniform2f(rectUniforms.start, pos[0], pos[1]);
+			c.glUniform2f(rectUniforms.size, dim[0], dim[1]);
+			c.glUniform1i(rectUniforms.rectColor, @bitCast(getColor()));
+
+			rectVao.bind();
+			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 		}
 	}
 
@@ -293,18 +294,8 @@ pub const draw = struct { // MARK: draw
 		dim *= @splat(scale);
 		width *= scale;
 
-		rectBorderPipeline.bind(getScissor());
-
 		var viewport: [4]c_int = undefined;
 		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-		c.glUniform2f(rectBorderUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
-		c.glUniform2f(rectBorderUniforms.start, pos[0], pos[1]);
-		c.glUniform2f(rectBorderUniforms.size, dim[0], dim[1]);
-		c.glUniform1i(rectBorderUniforms.rectColor, @bitCast(getColor()));
-		c.glUniform1f(rectBorderUniforms.lineWidth, width);
-
-		rectBorderVao.bind();
-		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 10);
 
 		if (main.settings.launchConfig.vulkanTestingMode) {
 			vulkan.currentFrame.guiCommands.bindPipeline(rectBorderPipeline, getScissor());
@@ -317,6 +308,17 @@ pub const draw = struct { // MARK: draw
 			});
 			vulkan.currentFrame.guiCommands.bindVertexArray(rectBorderVao);
 			vulkan.currentFrame.guiCommands.draw(10, 0);
+		} else {
+			rectBorderPipeline.bind(getScissor());
+
+			c.glUniform2f(rectBorderUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
+			c.glUniform2f(rectBorderUniforms.start, pos[0], pos[1]);
+			c.glUniform2f(rectBorderUniforms.size, dim[0], dim[1]);
+			c.glUniform1i(rectBorderUniforms.rectColor, @bitCast(getColor()));
+			c.glUniform1f(rectBorderUniforms.lineWidth, width);
+
+			rectBorderVao.bind();
+			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 10);
 		}
 	}
 
@@ -373,17 +375,8 @@ pub const draw = struct { // MARK: draw
 		pos2 *= @splat(scale);
 		pos2 += translation;
 
-		linePipeline.bind(getScissor());
-
 		var viewport: [4]c_int = undefined;
 		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-		c.glUniform2f(lineUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
-		c.glUniform2f(lineUniforms.start, pos1[0], pos1[1]);
-		c.glUniform2f(lineUniforms.direction, pos2[0] - pos1[0], pos2[1] - pos1[1]);
-		c.glUniform1i(lineUniforms.lineColor, @bitCast(getColor()));
-
-		lineVao.bind();
-		c.glDrawArrays(c.GL_LINE_STRIP, 0, 2);
 
 		if (main.settings.launchConfig.vulkanTestingMode) {
 			vulkan.currentFrame.guiCommands.bindPipeline(linePipeline, getScissor());
@@ -395,6 +388,16 @@ pub const draw = struct { // MARK: draw
 			});
 			vulkan.currentFrame.guiCommands.bindVertexArray(rectBorderVao);
 			vulkan.currentFrame.guiCommands.draw(10, 0);
+		} else {
+			linePipeline.bind(getScissor());
+
+			c.glUniform2f(lineUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
+			c.glUniform2f(lineUniforms.start, pos1[0], pos1[1]);
+			c.glUniform2f(lineUniforms.direction, pos2[0] - pos1[0], pos2[1] - pos1[1]);
+			c.glUniform1i(lineUniforms.lineColor, @bitCast(getColor()));
+
+			lineVao.bind();
+			c.glDrawArrays(c.GL_LINE_STRIP, 0, 2);
 		}
 	}
 
