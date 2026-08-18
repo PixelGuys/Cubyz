@@ -8,6 +8,7 @@ const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const blocks = main.blocks;
 const Block = blocks.Block;
+const ModelIndex = main.models.ModelIndex;
 
 itemStacks: []const items.ItemStack,
 chance: f32,
@@ -35,14 +36,14 @@ pub fn drop(self: @This(), pos: Vec3d, dir: Vec3f, velocity: f32) void {
 	}
 }
 
-pub fn tryDropFromBlock(self: @This(), block: Block, worldPos: Vec3i) void {
+pub fn tryDropNaturally(self: @This(), modelIndex: ModelIndex, worldPos: Vec3i) void {
 	if (!self.isDroppedWhenBrokenWithItem(.null)) return;
 	if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
 		for (self.itemStacks) |stack| {
 			var dir = main.vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));
 			// Bias upwards
 			dir[2] += main.random.nextFloat(&main.seed)*4.0;
-			const model = block.mode().model(block).model();
+			const model = modelIndex.model();
 			const pos = Vec3f{
 				@as(f32, @floatFromInt(worldPos[0])) + model.min[0] + main.random.nextFloat(&main.seed)*(model.max[0] - model.min[0]),
 				@as(f32, @floatFromInt(worldPos[1])) + model.min[1] + main.random.nextFloat(&main.seed)*(model.max[1] - model.min[1]),
