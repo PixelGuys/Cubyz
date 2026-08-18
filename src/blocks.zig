@@ -563,6 +563,15 @@ pub const Block = packed struct(u32) { // MARK: Block
 	pub inline fn isSelectableByItem(self: Block, item: Item) bool {
 		return self.selectionCapabilities().allowsSelectionByItem(self, item);
 	}
+
+	pub fn dropFromPosition(self: Block, newBlock: Block, item: items.Item, pos: Vec3d, dir: Vec3f, velocity: f32) void {
+		const dropAmount = self.mode().itemDropsOnChange(self, newBlock);
+		for (0..dropAmount) |_| {
+			for (self.blockDrops()) |drop| {
+				drop.dropFromPosition(item, pos, dir, velocity);
+			}
+		}
+	}
 };
 
 pub const meshes = struct { // MARK: meshes

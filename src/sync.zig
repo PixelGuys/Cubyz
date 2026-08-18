@@ -1656,19 +1656,9 @@ pub const Command = struct { // MARK: Command
 			}
 			if (ctx.side == .server and ctx.gamemode != .creative and shouldDropSourceBlockOnSuccess) {
 				if (self.newBlock.collide()) {
-					const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
-					for (0..dropAmount) |_| {
-						for (self.oldBlock.blockDrops()) |drop| {
-							drop.dropFromPosition(handItem, self.dropLocation.outsidePos(self.pos), self.dropLocation.dropDir(), self.dropLocation.dropVelocity());
-						}
-					}
+					self.oldBlock.dropFromPosition(self.newBlock, handItem, self.dropLocation.outsidePos(self.pos), self.dropLocation.dropDir(), self.dropLocation.dropVelocity());
 				} else {
-					const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
-					for (0..dropAmount) |_| {
-						for (self.oldBlock.blockDrops()) |drop| {
-							drop.dropFromPosition(handItem, self.dropLocation.insidePos(self.pos), self.dropLocation.dropDir(), self.dropLocation.dropVelocity());
-						}
-					}
+					self.oldBlock.dropFromPosition(self.newBlock, handItem, self.dropLocation.insidePos(self.pos), self.dropLocation.dropDir(), self.dropLocation.dropVelocity());
 				}		
 			}
 		}
