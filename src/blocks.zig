@@ -29,6 +29,9 @@ const sbb = main.server.terrain.sbb;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
 const BlockDrop = main.server.BlockDrop;
+const vec = main.vec;
+const Vec3d = vec.Vec3d;
+const Vec3f = vec.Vec3f;
 
 const c = @import("c");
 
