@@ -1537,7 +1537,7 @@ pub const Command = struct { // MARK: Command
 	const UpdateBlock = struct { // MARK: UpdateBlock
 		source: InventoryAndSlot,
 		pos: Vec3i,
-		dropLocation: BlockDrop.BlockDropLocation,
+		dropLocation: BlockDrop.Location,
 		oldBlock: Block,
 		newBlock: Block,
 
