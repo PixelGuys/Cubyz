@@ -30,6 +30,7 @@ const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
 const BlockDrop = main.server.BlockDrop;
 const vec = main.vec;
+const Vec3i = vec.Vec3i;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 
@@ -567,7 +568,7 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return self.selectionCapabilities().allowsSelectionByItem(self, item);
 	}
 
-	pub fn tryDropWhenBrokenWithItem(self: Block, newBlock: Block, item: items.Item, ctx: BlockDrop.Location.Context) void {
+	pub fn tryDropWhenBrokenWithItem(self: Block, newBlock: Block, item: Item, ctx: BlockDrop.Location.Context) void {
 		const dropAmount = self.mode().itemDropsOnChange(self, newBlock);
 		for (0..dropAmount) |_| {
 			for (self.blockDrops()) |drop| {

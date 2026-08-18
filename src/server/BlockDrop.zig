@@ -51,7 +51,6 @@ pub const Location = struct {
 	};
 	pub fn getContext(self: Location, pos: Vec3i, collide: bool) Context {
 		const dropPos = if (collide) self.outsidePos(pos) else self.insidePos(pos);
-
 		return .{
 			.pos = dropPos,
 			.dir = self.dropDir(),
