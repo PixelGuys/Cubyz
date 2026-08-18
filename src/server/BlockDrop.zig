@@ -38,6 +38,7 @@ pub fn drop(self: @This(), pos: Vec3d, dir: Vec3f, velocity: f32) void {
 
 pub fn tryDropNaturally(self: @This(), modelIndex: ModelIndex, worldPos: Vec3i) void {
 	if (!self.isDroppedWhenBrokenWithItem(.null)) return;
+
 	if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
 		const model = modelIndex.model();
 		for (self.itemStacks) |stack| {
