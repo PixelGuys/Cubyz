@@ -30,11 +30,11 @@ pub fn isDroppedWhenBrokenWithItem(self: @This(), item: Item) bool {
 pub fn tryDropNaturally(self: @This(), modelIndex: ModelIndex, worldPos: Vec3i) void {
 	if (!self.isDroppedWhenBrokenWithItem(.null)) return;
 	if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
+		const model = modelIndex.model();
 		for (self.itemStacks) |stack| {
 			var dir = main.vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));
 			// Bias upwards
 			dir[2] += main.random.nextFloat(&main.seed)*4.0;
-			const model = modelIndex.model();
 			const pos = Vec3f{
 				@as(f32, @floatFromInt(worldPos[0])) + model.min[0] + main.random.nextFloat(&main.seed)*(model.max[0] - model.min[0]),
 				@as(f32, @floatFromInt(worldPos[1])) + model.min[1] + main.random.nextFloat(&main.seed)*(model.max[1] - model.min[1]),
