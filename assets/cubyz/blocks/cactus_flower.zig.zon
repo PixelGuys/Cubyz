@@ -10,7 +10,7 @@
 	.collide = false,
 	.alwaysViewThrough = true,
 	.absorbedLight = 0x121012,
-	.model = "cubyz:cactus_flower",
+	.model = "cubyz:flower/cactus",
 	.rotation = "cubyz:direction",
 	.texture = "cubyz:cactus_flower",
 	.texture_top = "cubyz:cactus_flower_top",

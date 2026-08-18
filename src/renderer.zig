@@ -69,10 +69,11 @@ pub fn init() void {
 		"",
 		&deferredUniforms,
 		graphics.draw.SimpleVertex2D,
-		&.{},
-		.{.cullMode = .none},
-		.{.depthTest = false, .depthWrite = false},
-		.{.attachments = &.{.noBlending}, .formats = &.{.world}},
+		.{
+			.rasterState = .{.cullMode = .none},
+			.depthStencilState = .{.depthTest = false, .depthWrite = false},
+			.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.world}},
+		},
 	);
 	fakeReflectionPipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/fake_reflection.vert",
@@ -80,10 +81,11 @@ pub fn init() void {
 		"",
 		&fakeReflectionUniforms,
 		graphics.draw.SimpleVertex2D,
-		&.{},
-		.{.cullMode = .none},
-		.{.depthTest = false, .depthWrite = false},
-		.{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R8G8B8A8_UNORM}}},
+		.{
+			.rasterState = .{.cullMode = .none},
+			.depthStencilState = .{.depthTest = false, .depthWrite = false},
+			.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R8G8B8A8_UNORM}}},
+		},
 	);
 	worldFrameBuffer.init(true, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGB16F);
@@ -366,10 +368,12 @@ const Bloom = struct { // MARK: Bloom
 			"",
 			null,
 			graphics.draw.SimpleVertex2D,
-			&.{.sampler(3, .{.fragment = true})},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R16G16B16A16_SFLOAT}}},
+			.{
+				.bindings = &.{.sampler(3, .{.fragment = true})},
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R16G16B16A16_SFLOAT}}},
+			},
 		);
 		secondPassPipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/bloom/second_pass.vert",
@@ -377,10 +381,12 @@ const Bloom = struct { // MARK: Bloom
 			"",
 			null,
 			graphics.draw.SimpleVertex2D,
-			&.{.sampler(3, .{.fragment = true})},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R16G16B16A16_SFLOAT}}},
+			.{
+				.bindings = &.{.sampler(3, .{.fragment = true})},
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R16G16B16A16_SFLOAT}}},
+			},
 		);
 		colorExtractAndDownsamplePipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/bloom/color_extractor_downsample.vert",
@@ -388,10 +394,11 @@ const Bloom = struct { // MARK: Bloom
 			"",
 			&colorExtractUniforms,
 			graphics.draw.SimpleVertex2D,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R16G16B16A16_SFLOAT}}},
+			.{
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R16G16B16A16_SFLOAT}}},
+			},
 		);
 	}
 
@@ -508,10 +515,12 @@ pub const MenuBackGround = struct {
 			"",
 			null,
 			MenuBackgroundVertex,
-			&.{.sampler(0, .{.fragment = true})},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.noBlending}, .formats = &.{.swapChain}},
+			.{
+				.bindings = &.{.sampler(0, .{.fragment = true})},
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.swapChain}},
+			},
 		);
 		// 4 sides of a simple cube with some panorama texture on it.
 		const rawData = [_]MenuBackgroundVertex{
@@ -686,7 +695,7 @@ pub const Skybox = struct {
 		starOpacity: c_int,
 	} = undefined;
 
-	var starVao: graphics.VertexArray = undefined;
+	var starVao: c_uint = undefined;
 
 	var starSsbo: graphics.SSBO = undefined;
 
@@ -730,17 +739,19 @@ pub const Skybox = struct {
 			"",
 			&starUniforms,
 			graphics.VertexArray.EmptyVertex,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.{
-				.srcColorBlendFactor = .one,
-				.dstColorBlendFactor = .one,
-				.colorBlendOp = .add,
-				.srcAlphaBlendFactor = .one,
-				.dstAlphaBlendFactor = .one,
-				.alphaBlendOp = .add,
-			}}, .formats = &.{.world}},
+			.{
+				.bindings = &.{},
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.{
+					.srcColorBlendFactor = .one,
+					.dstColorBlendFactor = .one,
+					.colorBlendOp = .add,
+					.srcAlphaBlendFactor = .one,
+					.dstAlphaBlendFactor = .one,
+					.alphaBlendOp = .add,
+				}}, .formats = &.{.world}},
+			},
 		);
 
 		var starData: [numStars*20]f32 = undefined;
@@ -800,13 +811,13 @@ pub const Skybox = struct {
 
 		starSsbo = graphics.SSBO.initStatic(f32, &starData);
 
-		starVao = .init(graphics.VertexArray.EmptyVertex, &.{}, null);
+		c.glGenVertexArrays(1, &starVao);
 	}
 
 	pub fn deinit() void {
 		starPipeline.deinit();
 		starSsbo.deinit();
-		starVao.deinit();
+		c.glDeleteVertexArrays(1, &starVao);
 	}
 
 	pub fn render() void {
@@ -824,7 +835,7 @@ pub const Skybox = struct {
 			c.glUniform1f(starUniforms.starOpacity, starOpacity);
 			c.glUniformMatrix4fv(starUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&starMatrix));
 
-			starVao.bind();
+			c.glBindVertexArray(starVao);
 			c.glDrawArrays(c.GL_TRIANGLES, 0, numStars*3);
 
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
@@ -885,10 +896,11 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			"",
 			&uniforms,
 			graphics.VertexArray.EmptyVertex,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = true, .depthWrite = true},
-			.{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
+			.{
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = true, .depthWrite = true},
+				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
+			},
 		);
 	}
 

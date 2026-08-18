@@ -147,6 +147,12 @@ pub const draw = struct { // MARK: draw
 		size: c_int,
 		rectColor: c_int,
 	} = undefined;
+	const RectUniforms = extern struct {
+		start: [2]f32 align(8),
+		size: [2]f32 align(8),
+		screen: [2]f32 align(8),
+		rectColor: i32,
+	};
 	var rectPipeline: Pipeline = undefined;
 	pub var rectVao: VertexArray = undefined;
 
@@ -157,10 +163,13 @@ pub const draw = struct { // MARK: draw
 			"",
 			&rectUniforms,
 			SimpleVertex2D,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			.{
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+				.inputAssemblyState = .{.topology = .triangleStrip},
+				.pushConstantSize = @sizeOf(RectUniforms),
+			},
 		);
 		const rawData = [_]SimpleVertex2D{
 			.{.pos = .{0, 0}},
@@ -195,6 +204,18 @@ pub const draw = struct { // MARK: draw
 
 		rectVao.bind();
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			vulkan.currentFrame.guiCommands.bindPipeline(rectPipeline, getScissor());
+			vulkan.currentFrame.guiCommands.pushConstants(rectPipeline, &RectUniforms{
+				.start = pos,
+				.size = dim,
+				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.rectColor = @bitCast(getColor()),
+			});
+			vulkan.currentFrame.guiCommands.bindVertexArray(rectVao);
+			vulkan.currentFrame.guiCommands.draw(4, 0);
+		}
 	}
 
 	// ----------------------------------------------------------------------------
@@ -206,6 +227,13 @@ pub const draw = struct { // MARK: draw
 		rectColor: c_int,
 		lineWidth: c_int,
 	} = undefined;
+	const RectBorderUniforms = extern struct {
+		start: [2]f32 align(8),
+		size: [2]f32 align(8),
+		screen: [2]f32 align(8),
+		lineWidth: f32,
+		rectColor: i32,
+	};
 	var rectBorderPipeline: Pipeline = undefined;
 	var rectBorderVao: VertexArray = undefined;
 
@@ -227,10 +255,13 @@ pub const draw = struct { // MARK: draw
 			"",
 			&rectBorderUniforms,
 			RectBorderVertex,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			.{
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+				.inputAssemblyState = .{.topology = .triangleStrip},
+				.pushConstantSize = @sizeOf(RectUniforms),
+			},
 		);
 		const rawData = [_]RectBorderVertex{
 			.{.pos = .{0, 0, 0, 0}},
@@ -274,6 +305,19 @@ pub const draw = struct { // MARK: draw
 
 		rectBorderVao.bind();
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 10);
+
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			vulkan.currentFrame.guiCommands.bindPipeline(rectBorderPipeline, getScissor());
+			vulkan.currentFrame.guiCommands.pushConstants(rectBorderPipeline, &RectBorderUniforms{
+				.start = pos,
+				.size = dim,
+				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.lineWidth = width,
+				.rectColor = @bitCast(getColor()),
+			});
+			vulkan.currentFrame.guiCommands.bindVertexArray(rectBorderVao);
+			vulkan.currentFrame.guiCommands.draw(10, 0);
+		}
 	}
 
 	// ----------------------------------------------------------------------------
@@ -284,6 +328,12 @@ pub const draw = struct { // MARK: draw
 		direction: c_int,
 		lineColor: c_int,
 	} = undefined;
+	const LineUniforms = extern struct {
+		start: [2]f32 align(8),
+		direction: [2]f32 align(8),
+		screen: [2]f32 align(8),
+		lineColor: i32,
+	};
 	var linePipeline: Pipeline = undefined;
 	var lineVao: VertexArray = undefined;
 
@@ -294,10 +344,13 @@ pub const draw = struct { // MARK: draw
 			"",
 			&lineUniforms,
 			SimpleVertex2D,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			.{
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+				.inputAssemblyState = .{.topology = .lineStrip},
+				.pushConstantSize = @sizeOf(RectUniforms),
+			},
 		);
 		const rawData = [_]SimpleVertex2D{
 			.{.pos = .{0, 0}},
@@ -331,83 +384,18 @@ pub const draw = struct { // MARK: draw
 
 		lineVao.bind();
 		c.glDrawArrays(c.GL_LINE_STRIP, 0, 2);
-	}
 
-	pub fn rectOutline(_pos: Vec2f, _dim: Vec2f) void {
-		var pos = _pos;
-		var dim = _dim;
-		pos *= @splat(scale);
-		pos += translation;
-		dim *= @splat(scale);
-
-		linePipeline.bind(getScissor());
-
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-		c.glUniform2f(lineUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
-		c.glUniform2f(lineUniforms.start, pos[0], pos[1]); // Move the coordinates, so they are in the center of a pixel.
-		c.glUniform2f(lineUniforms.direction, dim[0] - 1, dim[1] - 1); // The height is a lot smaller because the inner edge of the rect is drawn.
-		c.glUniform1i(lineUniforms.lineColor, @bitCast(getColor()));
-
-		lineVao.bind();
-		c.glDrawArrays(c.GL_LINE_LOOP, 0, 5);
-	}
-
-	// ----------------------------------------------------------------------------
-	// MARK: fillCircle()
-	var circleUniforms: struct {
-		screen: c_int,
-		center: c_int,
-		radius: c_int,
-		circleColor: c_int,
-	} = undefined;
-	var circlePipeline: Pipeline = undefined;
-	var circleVao: VertexArray = undefined;
-
-	fn initCircle() void {
-		circlePipeline = Pipeline.init(
-			"assets/cubyz/shaders/graphics/Circle.vert",
-			"assets/cubyz/shaders/graphics/Circle.frag",
-			"",
-			&circleUniforms,
-			SimpleVertex2D,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
-		);
-		const rawData = [_]SimpleVertex2D{
-			.{.pos = .{-1, -1}},
-			.{.pos = .{-1, 1}},
-			.{.pos = .{1, -1}},
-			.{.pos = .{1, 1}},
-		};
-
-		circleVao = .init(SimpleVertex2D, &rawData, null);
-	}
-
-	fn deinitCircle() void {
-		circlePipeline.deinit();
-		circleVao.deinit();
-	}
-
-	pub fn circle(_center: Vec2f, _radius: f32) void {
-		var center = _center;
-		var radius = _radius;
-		center *= @splat(scale);
-		center += translation;
-		radius *= scale;
-		circlePipeline.bind(getScissor());
-
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-		c.glUniform2f(circleUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
-		c.glUniform2f(circleUniforms.center, center[0], center[1]); // Move the coordinates, so they are in the center of a pixel.
-		c.glUniform1f(circleUniforms.radius, radius); // The height is a lot smaller because the inner edge of the rect is drawn.
-		c.glUniform1i(circleUniforms.circleColor, @bitCast(getColor()));
-
-		circleVao.bind();
-		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			vulkan.currentFrame.guiCommands.bindPipeline(linePipeline, getScissor());
+			vulkan.currentFrame.guiCommands.pushConstants(linePipeline, &LineUniforms{
+				.start = pos1,
+				.direction = pos2 - pos1,
+				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.lineColor = @bitCast(getColor()),
+			});
+			vulkan.currentFrame.guiCommands.bindVertexArray(rectBorderVao);
+			vulkan.currentFrame.guiCommands.draw(10, 0);
+		}
 	}
 
 	// ----------------------------------------------------------------------------
@@ -430,10 +418,11 @@ pub const draw = struct { // MARK: draw
 			"",
 			&imageUniforms,
 			SimpleVertex2D,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			.{
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			},
 		);
 	}
 
@@ -1165,10 +1154,11 @@ const TextRendering = struct { // MARK: TextRendering
 			"",
 			&uniforms,
 			draw.SimpleVertex2D,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.alphaBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R8_UNORM}}},
+			.{
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R8_UNORM}}},
+			},
 		);
 		pipeline.bind(null);
 		errdefer pipeline.deinit();
@@ -1283,7 +1273,7 @@ const TextRendering = struct { // MARK: TextRendering
 };
 
 pub fn init() void { // MARK: init()
-	draw.initCircle();
+	pipelines.init();
 	draw.initImage();
 	draw.initLine();
 	draw.initRect();
@@ -1292,13 +1282,11 @@ pub fn init() void { // MARK: init()
 		std.log.err("Error while initializing TextRendering: {s}", .{@errorName(err)});
 	};
 	block_texture.init();
-	pipelines.init();
 	frame_uniforms.init();
 }
 
 pub fn deinit() void {
 	frame_uniforms.deinit();
-	draw.deinitCircle();
 	draw.deinitImage();
 	draw.deinitLine();
 	draw.deinitRect();
@@ -1312,6 +1300,9 @@ pub const VertexArray = struct { // MARK: VertexArray
 	vao: c_uint,
 	vbo: c_uint,
 	ibo: ?c_uint,
+	buffer: vulkan.Buffer,
+	indicesOffset: usize,
+	hasIndices: bool,
 
 	pub const EmptyVertex = struct {
 		pub const attributeDescriptions: []const c.VkVertexInputAttributeDescription = &.{};
@@ -1325,12 +1316,15 @@ pub const VertexArray = struct { // MARK: VertexArray
 		c.glBindBuffer(c.GL_ARRAY_BUFFER, result.vbo);
 		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(data.len*@sizeOf(T)), data.ptr, c.GL_STATIC_DRAW);
 		if (indices_) |indices| {
+			std.debug.assert(indices.len != 0);
+			result.hasIndices = true;
 			result.ibo = 0;
 			c.glGenBuffers(1, &result.ibo.?);
 			c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, result.ibo.?);
 			c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(u32)), indices.ptr, c.GL_STATIC_DRAW);
 		} else {
 			result.ibo = null;
+			result.hasIndices = false;
 		}
 
 		const attributeDescriptions: []const c.VkVertexInputAttributeDescription = T.attributeDescriptions;
@@ -1361,6 +1355,16 @@ pub const VertexArray = struct { // MARK: VertexArray
 		}
 
 		c.glBindVertexArray(0);
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			const indices = indices_ orelse &.{};
+			result.indicesOffset = std.mem.alignForward(usize, data.len*@sizeOf(T), @alignOf(u32));
+			result.buffer = .init(
+				result.indicesOffset + indices.len*@sizeOf(u32),
+				.{.usage = c.VK_BUFFER_USAGE_TRANSFER_DST_BIT | c.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | c.VK_BUFFER_USAGE_INDEX_BUFFER_BIT},
+			);
+			result.buffer.uploadData(0, std.mem.sliceAsBytes(data));
+			result.buffer.uploadData(result.indicesOffset, std.mem.sliceAsBytes(indices));
+		}
 		return result;
 	}
 
@@ -1369,6 +1373,9 @@ pub const VertexArray = struct { // MARK: VertexArray
 		c.glDeleteBuffers(1, &self.vbo);
 		if (self.ibo != null) {
 			c.glDeleteBuffers(1, &self.ibo.?);
+		}
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			self.buffer.deferredDeinit();
 		}
 	}
 
@@ -1379,6 +1386,7 @@ pub const VertexArray = struct { // MARK: VertexArray
 
 pub const SSBO = struct { // MARK: SSBO
 	bufferID: c_uint,
+	buffer: ?vulkan.Buffer = null,
 	pub fn init() SSBO {
 		var self = SSBO{.bufferID = undefined};
 		c.glGenBuffers(1, &self.bufferID);
@@ -1401,7 +1409,22 @@ pub const SSBO = struct { // MARK: SSBO
 		return self;
 	}
 
+	pub fn initDynamicSize(comptime T: type, len: usize) SSBO {
+		var self = SSBO{.bufferID = undefined};
+		c.glGenBuffers(1, &self.bufferID);
+		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
+		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(len*@sizeOf(T)), null, c.GL_DYNAMIC_DRAW);
+		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			self.buffer = .init(len*@sizeOf(T), .{.usage = c.VK_BUFFER_USAGE_TRANSFER_DST_BIT | c.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT});
+		}
+		return self;
+	}
+
 	pub fn deinit(self: SSBO) void {
+		if (self.buffer) |buffer| {
+			buffer.deferredDeinit();
+		}
 		c.glDeleteBuffers(1, &self.bufferID);
 	}
 
@@ -1413,18 +1436,18 @@ pub const SSBO = struct { // MARK: SSBO
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
 		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(data.len*@sizeOf(T)), data.ptr, c.GL_STATIC_DRAW);
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
+		if (self.buffer) |buffer| {
+			buffer.uploadData(0, std.mem.sliceAsBytes(data));
+		}
 	}
 
 	pub fn bufferSubData(self: SSBO, comptime T: type, data: []const T, length: usize) void {
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
 		c.glBufferSubData(c.GL_SHADER_STORAGE_BUFFER, 0, @intCast(length*@sizeOf(T)), data.ptr);
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
-	}
-
-	pub fn createDynamicBuffer(self: SSBO, comptime T: type, size: usize) void {
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
-		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(size*@sizeOf(T)), null, c.GL_DYNAMIC_DRAW);
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
+		if (self.buffer) |buffer| {
+			buffer.uploadData(0, std.mem.sliceAsBytes(data));
+		}
 	}
 };
 
@@ -2209,10 +2232,11 @@ const block_texture = struct { // MARK: block_texture
 			"",
 			&uniforms,
 			VertexArray.EmptyVertex,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R8G8B8A8_UNORM}}},
+			.{
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R8G8B8A8_UNORM}}},
+			},
 		);
 		depthTexture = .init();
 		depthTexture.bind();

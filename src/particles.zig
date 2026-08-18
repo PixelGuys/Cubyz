@@ -187,14 +187,14 @@ pub const ParticleSystem = struct {
 			"",
 			&uniforms,
 			graphics.VertexArray.EmptyVertex,
-			&.{},
-			.{},
-			.{.depthTest = true, .depthWrite = true},
-			.{.attachments = &.{.noBlending}, .formats = &.{.world}},
+			.{
+				.rasterState = .{},
+				.depthStencilState = .{.depthTest = true, .depthWrite = true},
+				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.world}},
+			},
 		);
 
-		particlesSSBO = SSBO.init();
-		particlesSSBO.createDynamicBuffer(Particle, maxCapacity);
+		particlesSSBO = SSBO.initDynamicSize(Particle, maxCapacity);
 		particlesSSBO.bind(13);
 	}
 

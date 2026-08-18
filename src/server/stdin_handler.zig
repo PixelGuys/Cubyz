@@ -15,13 +15,13 @@ pub fn update() void {
 		return;
 	}
 	const result = readFromStdin();
-	if (result == 0) return;
 	if (result == readBuffer.len) {
 		std.log.warn("Input exceeded {} character limit", .{readBuffer.len});
 		while (readFromStdin() != 0) {}
 		return;
 	}
 	const msg = std.mem.trim(u8, readBuffer[0..result], "\n");
+	if (msg.len == 0) return;
 	if (msg[0] == '/') {
 		main.server.command.execute(msg[1..], .{.server = main.server});
 	} else {
