@@ -1596,11 +1596,8 @@ pub const Command = struct { // MARK: Command
 				},
 			}
 			if (ctx.side == .server and ctx.gamemode != .creative and shouldDropSourceBlockOnSuccess) {
-				if (self.newBlock.collide()) {
-					self.oldBlock.tryDropWithItem(self.newBlock, handItem, self.dropLocation.outsidePos(self.pos), self.dropLocation.dropDir(), self.dropLocation.dropVelocity());
-				} else {
-					self.oldBlock.tryDropWithItem(self.newBlock, handItem, self.dropLocation.insidePos(self.pos), self.dropLocation.dropDir(), self.dropLocation.dropVelocity());
-				}		
+				const dropCtx = self.dropLocation.getContext(self.pos, self.newBlock.collide());
+				self.oldBlock.tryDropWithItem(self.newBlock, handItem, dropCtx);
 			}
 		}
 

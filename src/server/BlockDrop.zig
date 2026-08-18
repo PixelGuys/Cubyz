@@ -25,12 +25,12 @@ pub fn isDroppedWhenBrokenWithItem(self: @This(), item: Item) bool {
 	return true;
 }
 
-pub fn tryDropWithItem(self: @This(), item: Item, pos: Vec3d, dir: Vec3f, velocity: f32) void {
+pub fn tryDropWithItem(self: @This(), item: Item, ctx: BlockDropLocation.DropContext) void {
 	if (!self.isDroppedWhenBrokenWithItem(item)) return;
 
 	if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
 		for (self.itemStacks) |itemStack| {
-			main.server.world.?.drop(itemStack.clone(), pos, dir, velocity);
+			main.server.world.?.drop(itemStack.clone(), ctx.pos, ctx.dir, ctx.velocity);
 		}
 	}
 }
@@ -43,6 +43,21 @@ pub const BlockDropLocation = struct {
 	const half = @as(Vec3f, @splat(0.5));
 	const itemHitBoxMargin: f32 = @floatCast(main.itemdrop.ItemDropManager.radius);
 	const itemHitBoxMarginVec: Vec3f = @splat(itemHitBoxMargin);
+
+	pub const DropContext = struct {
+		pos: Vec3d,
+		dir: Vec3f,
+		velocity: f32,
+	};
+	pub fn getContext(self: BlockDropLocation, pos: Vec3i, collide: bool) DropContext {
+		const dropPos = if (collide) self.outsidePos(pos) else self.insidePos(pos);
+
+		return .{
+			.pos = dropPos,
+			.dir = self.dropDir(),
+			.velocity = self.dropVelocity(),
+		};
+	}
 
 	pub fn insidePos(self: BlockDropLocation, _pos: Vec3i) Vec3d {
 		const pos: Vec3d = @floatFromInt(_pos);
