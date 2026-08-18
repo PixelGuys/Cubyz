@@ -593,12 +593,16 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		pub fn lessThan(ctx: @This(), a: usize, b: usize) bool {
 			const itemA: Item = ctx.inv.getItem(a);
 			const itemB: Item = ctx.inv.getItem(b);
-
+			// Sorts between ProceduralItems and Baseitems
+			// Then by Id
+			// then by the items properties (eg; durability, ammount, dps)
 			if (itemA == .null) return false;
 			if (itemB == .null) return true;
 			if ((itemA != .proceduralItem) and (itemB == .proceduralItem)) return false;
 			if ((itemA == .proceduralItem) and (itemB != .proceduralItem)) return true;
 			if ((itemA == .proceduralItem) and (itemB == .proceduralItem)) {
+				if (std.mem.lessThan(u8, itemA.id().?, itemB.id().?)) return true;
+				if (!std.mem.lessThan(u8, itemA.id().?, itemB.id().?) and !std.mem.eql(u8, itemA.id().?, itemB.id().?)) return false;
 				const itemADurabilityPercent: f32 = @as(f32, @floatFromInt(itemA.proceduralItem.durability))/itemA.proceduralItem.getProperty(.maxDurability);
 				const itemBDurabilityPercent: f32 = @as(f32, @floatFromInt(itemB.proceduralItem.durability))/itemB.proceduralItem.getProperty(.maxDurability);
 				if (itemADurabilityPercent > itemBDurabilityPercent) return true;
