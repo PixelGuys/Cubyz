@@ -43,13 +43,7 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 	if (newBlock == params.block) return .ignored;
 
 	if (main.server.world.?.cmpxchgBlock(wx, wy, wz, params.block, newBlock) == null) {
-		const dropAmount = params.block.mode().itemDropsOnChange(params.block, newBlock);
-		const drops = params.block.blockDrops();
-		for (0..dropAmount) |_| {
-			for (drops) |drop| {
-				drop.dropRandomly(params.block, wx, wy, wz);
-			}
-		}
+		params.block.dropRandomly(newBlock, wx, wy, wz);
 		return .handled;
 	}
 	return .ignored;

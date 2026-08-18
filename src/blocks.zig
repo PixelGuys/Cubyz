@@ -563,6 +563,15 @@ pub const Block = packed struct(u32) { // MARK: Block
 	pub inline fn isSelectableByItem(self: Block, item: Item) bool {
 		return self.selectionCapabilities().allowsSelectionByItem(self, item);
 	}
+
+	pub fn dropRandomly(self: Block, newBlock: Block, wx: i32, wy: i32, wz: i32) void {
+		const dropAmount = self.mode().itemDropsOnChange(self, newBlock);
+		for (0..dropAmount) |_| {
+			for (self.blockDrops()) |drop| {
+				drop.dropRandomly(self, wx, wy, wz);
+			}
+		}
+	}
 };
 
 pub const meshes = struct { // MARK: meshes
