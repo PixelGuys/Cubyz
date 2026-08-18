@@ -24,7 +24,7 @@ pub fn isDroppedWhenBrokenWithItem(self: @This(), item: Item) bool {
 	return true;
 }
 
-pub fn dropFromPosition(self: @This(), item: Item, pos: Vec3d, dir: Vec3f, velocity: f32) void {
+pub fn tryDropWithItem(self: @This(), item: Item, pos: Vec3d, dir: Vec3f, velocity: f32) void {
 	if (!self.isDroppedWhenBrokenWithItem(item)) return;
 
 	if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
