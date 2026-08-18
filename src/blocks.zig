@@ -566,11 +566,14 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return self.selectionCapabilities().allowsSelectionByItem(self, item);
 	}
 
-	pub fn tryDropFromBlock(self: Block, newBlock: Block, worldPos: Vec3i) void {
+	pub fn tryDropNaturally(self: Block, newBlock: Block, worldPos: Vec3i) void {
 		const dropAmount = self.mode().itemDropsOnChange(self, newBlock);
+		if (dropAmount == 0) return;
+
+		const modelIndex = self.mode().model(self);
 		for (0..dropAmount) |_| {
 			for (self.blockDrops()) |drop| {
-				drop.tryDropFromBlock(self, worldPos);
+				drop.tryDropNaturally(modelIndex, worldPos);
 			}
 		}
 	}

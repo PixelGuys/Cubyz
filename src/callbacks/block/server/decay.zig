@@ -135,8 +135,9 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 
 			// no, there is no log in proximity
 			if (world.cmpxchgBlock(wx, wy, wz, leaf, self.decayReplacement) == null) {
+				const modelIndex = params.block.mode().model(params.block);
 				for (self.blockDrops) |drop| {
-					drop.tryDropFromBlock(params.block, .{wx, wy, wz});
+					drop.tryDropNaturally(modelIndex,.{wx, wy, wz});
 				}
 				return .handled;
 			}
