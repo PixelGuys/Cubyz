@@ -44,7 +44,7 @@ pub const Location = struct {
 	const itemHitBoxMargin: f32 = @floatCast(main.itemdrop.ItemDropManager.radius);
 	const itemHitBoxMarginVec: Vec3f = @splat(itemHitBoxMargin);
 
-	pub const Context = struct {
+	const Context = struct {
 		pos: Vec3d,
 		dir: Vec3f,
 		velocity: f32,
