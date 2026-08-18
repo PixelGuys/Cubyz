@@ -43,7 +43,7 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 	if (newBlock == params.block) return .ignored;
 
 	if (main.server.world.?.cmpxchgBlock(wx, wy, wz, params.block, newBlock) == null) {
-		params.block.dropRandomly(newBlock, wx, wy, wz);
+		params.block.tryDropFromBlock(newBlock, .{wx, wy, wz});
 		return .handled;
 	}
 	return .ignored;
