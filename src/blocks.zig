@@ -567,11 +567,11 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return self.selectionCapabilities().allowsSelectionByItem(self, item);
 	}
 
-	pub fn tryDropWithItem(self: Block, newBlock: Block, item: items.Item, ctx: BlockDrop.Location.Context) void {
+	pub fn tryDropWhenBrokenWithItem(self: Block, newBlock: Block, item: items.Item, ctx: BlockDrop.Location.Context) void {
 		const dropAmount = self.mode().itemDropsOnChange(self, newBlock);
 		for (0..dropAmount) |_| {
 			for (self.blockDrops()) |drop| {
-				drop.tryDropWithItem(item, ctx);
+				drop.tryDropWhenBrokenWithItem(item, ctx);
 			}
 		}
 	}

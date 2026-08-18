@@ -25,7 +25,7 @@ pub fn isDroppedWhenBrokenWithItem(self: @This(), item: Item) bool {
 	return true;
 }
 
-pub fn tryDropWithItem(self: @This(), item: Item, ctx: Location.Context) void {
+pub fn tryDropWhenBrokenWithItem(self: @This(), item: Item, ctx: Location.Context) void {
 	if (!self.isDroppedWhenBrokenWithItem(item)) return;
 
 	if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
@@ -44,7 +44,7 @@ pub const Location = struct {
 	const itemHitBoxMargin: f32 = @floatCast(main.itemdrop.ItemDropManager.radius);
 	const itemHitBoxMarginVec: Vec3f = @splat(itemHitBoxMargin);
 
-	const Context = struct {
+	pub const Context = struct {
 		pos: Vec3d,
 		dir: Vec3f,
 		velocity: f32,
