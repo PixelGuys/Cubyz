@@ -29,6 +29,8 @@ const sbb = main.server.terrain.sbb;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
 const BlockDrop = main.server.BlockDrop;
+const vec = main.vec;
+const Vec3i = vec.Vec3i;
 
 const c = @import("c");
 
@@ -564,11 +566,11 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return self.selectionCapabilities().allowsSelectionByItem(self, item);
 	}
 
-	pub fn dropRandomly(self: Block, newBlock: Block, wx: i32, wy: i32, wz: i32) void {
+	pub fn tryDropFromBlock(self: Block, newBlock: Block, worldPos: Vec3i) void {
 		const dropAmount = self.mode().itemDropsOnChange(self, newBlock);
 		for (0..dropAmount) |_| {
 			for (self.blockDrops()) |drop| {
-				drop.dropRandomly(self, wx, wy, wz);
+				drop.tryDropFromBlock(self, worldPos);
 			}
 		}
 	}
