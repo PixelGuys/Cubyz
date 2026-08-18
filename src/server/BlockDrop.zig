@@ -29,6 +29,7 @@ pub fn isDroppedWhenBrokenWithItem(self: @This(), item: Item) bool {
 
 pub fn tryDropNaturally(self: @This(), modelIndex: ModelIndex, worldPos: Vec3i) void {
 	if (!self.isDroppedWhenBrokenWithItem(.null)) return;
+
 	if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
 		const model = modelIndex.model();
 		for (self.itemStacks) |stack| {
