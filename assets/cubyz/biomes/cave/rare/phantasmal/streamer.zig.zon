@@ -1,4 +1,6 @@
 .{
+	.maxHeight = -30000,
+
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
@@ -16,10 +18,10 @@
 	.caveModels = .{
 		.{
 			.id = "cubyz:partial_sphere",
-			.minAmount = 5,
-			.maxAmount = 10,
-			.minRadius = 30,
-			.maxRadius = 40,
+			.minAmount = 1,
+			.maxAmount = 3,
+			.minRadius = 45,
+			.maxRadius = 60,
 		},
 	},
 }

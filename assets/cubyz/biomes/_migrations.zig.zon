@@ -32,4 +32,7 @@
 	.{.old = "cave/cave", .new = "cave/slate/base"},
 	.{.old = "tall_mountain/peak", .new = "tall_mountain/summit1"},
 	.{.old = "bush_lands", .new = "bushlands/base"},
+	.{.old = "cave/rare/phantasmal", .new = "cave/rare/phantasmal/base"},
+	.{.old = "cave/void/rare/phantasmal/streamer", .new = "cave/void/void_roots"},
+	.{.old = "cave/void/rare/phantasmal/starlight", .new = "cave/void/void_roots"},
 }
