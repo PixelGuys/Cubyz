@@ -1558,7 +1558,7 @@ pub const Command = struct { // MARK: Command
 				}
 			}
 			fn dropInside(self: BlockDropLocation, pos: Vec3i, _drop: BlockDrop) void {
-				for (_drop.items) |itemStack| {
+				for (_drop.itemStacks) |itemStack| {
 					main.server.world.?.drop(itemStack.clone(), self.insidePos(pos), self.dropDir(), self.dropVelocity());
 				}
 			}
@@ -1574,7 +1574,7 @@ pub const Command = struct { // MARK: Command
 				return center + width*main.random.nextFloatVectorSigned(3, &main.seed)*half;
 			}
 			fn dropOutside(self: BlockDropLocation, pos: Vec3i, _drop: BlockDrop) void {
-				for (_drop.items) |itemStack| {
+				for (_drop.itemStacks) |itemStack| {
 					main.server.world.?.drop(itemStack.clone(), self.outsidePos(pos), self.dropDir(), self.dropVelocity());
 				}
 			}

@@ -252,7 +252,7 @@ pub fn loadBlockDrop(blockId: []const u8, zon: ZonElement) []const BlockDrop {
 		}
 
 		blockDrops[i] = .{
-			.items = resultItems.items,
+			.itemStacks = resultItems.items,
 			.chance = blockDrop.get(f32, "chance") orelse 1,
 			.forbiddenToolTags = Tag.loadTagsFromZon(main.worldArena, blockDrop.getChild("forbiddenToolTags")),
 			.allowedToolTags = allowedToolTags,

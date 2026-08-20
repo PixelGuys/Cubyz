@@ -1,9 +1,9 @@
 const main = @import("main");
 const Tag = main.Tag;
-const Items = main.items;
-const Item = Items.Item;
+const items = main.items;
+const Item = items.Item;
 
-items: []const Items.ItemStack,
+itemStacks: []const items.ItemStack,
 chance: f32,
 forbiddenToolTags: []Tag,
 allowedToolTags: ?[]Tag = null,
