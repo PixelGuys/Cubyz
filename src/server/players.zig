@@ -69,13 +69,10 @@ pub fn getLocalPlayerIndex() usize {
 	return localPlayerIndex;
 }
 
-const LookupResult = struct { playerIndex: usize, blocked: bool };
-
-pub fn lookupIndex(key: []const u8) ?LookupResult {
+pub fn lookupIndex(key: []const u8) ?PlayerRecord {
 	mutex.lock();
 	defer mutex.unlock();
-	const entry = playerDatabase.get(key) orelse return null;
-	return .{.playerIndex = entry.playerIndex, .blocked = entry.blocked};
+	return playerDatabase.get(key);
 }
 
 pub fn isEmpty() bool {

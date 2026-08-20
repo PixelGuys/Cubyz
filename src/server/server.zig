@@ -135,7 +135,6 @@ pub const User = struct { // MARK: User
 	newKeyString: ?[]const u8 = null,
 	key: network.authentication.PublicKey = undefined,
 	legacyKey: ?network.authentication.PublicKey = null,
-	allowedToJoin: bool = false,
 
 	inventoryClientToServerIdMap: std.AutoHashMap(InventoryId, InventoryId) = undefined,
 	inventory: ?InventoryId = null,
@@ -236,7 +235,7 @@ pub const User = struct { // MARK: User
 	pub fn identifyFromKeysAndName(self: *User, name: []const u8, keys: main.ZonElement, whitelistEnabled: bool) !void {
 		std.debug.assert(self.name.len == 0);
 		self.name = main.globalAllocator.dupe(u8, name);
-		self.allowedToJoin = !whitelistEnabled;
+		var allowedToJoin = !whitelistEnabled;
 		{
 			const keyBase64 = keys.get([]const u8, @tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm)) orelse return error.PublicKeyNotPresent;
 			self.key = try .initFromBase64(keyBase64, main.settings.launchConfig.preferredAuthenticationAlgorithm);
@@ -249,7 +248,7 @@ pub const User = struct { // MARK: User
 			defer main.stackAllocator.free(keyWithType);
 			const lookup = main.server.players.lookupIndex(keyWithType) orelse continue;
 			self.playerIndex = lookup.playerIndex;
-			self.allowedToJoin = !lookup.blocked;
+			allowedToJoin = !lookup.blocked;
 			foundKey = true;
 			const keyType = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, keyTypeName).?;
 			if (keyType == self.key) break;
@@ -260,17 +259,21 @@ pub const User = struct { // MARK: User
 			if (main.server.players.isEmpty()) { // Claim the local player
 				std.log.info("Here", .{});
 				self.playerIndex = main.server.players.getLocalPlayerIndex();
-				self.allowedToJoin = true;
+				allowedToJoin = true;
 			} else {
 				const nameEntry = main.stackAllocator.print("name:{s}", .{name});
 				defer main.stackAllocator.free(nameEntry);
 				if (main.server.players.lookupIndex(nameEntry)) |lookup| {
 					self.playerIndex = lookup.playerIndex;
-					self.allowedToJoin = !lookup.blocked;
+					allowedToJoin = !lookup.blocked;
 				} else {
 					self.playerIndex = main.server.players.allocateNewIndex();
 				}
 			}
+		}
+		if (!allowedToJoin) {
+			std.log.info("Rejected connection from '{s}' ({s})", .{name, self.newKeyString.?});
+			return error.NotWhitelisted;
 		}
 	}
 
