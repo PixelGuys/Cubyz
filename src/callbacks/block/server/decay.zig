@@ -10,10 +10,11 @@ const Vec3f = vec.Vec3f;
 const ZonElement = main.ZonElement;
 const server = main.server;
 const branch = main.rotation.rotations.@"cubyz:branch";
+const BlockDrop = main.server.BlockDrop;
 
 decayReplacement: blocks.Block,
 prevention: []const main.Tag,
-blockDrops: []const blocks.BlockDrop,
+blockDrops: []const BlockDrop,
 
 pub fn init(zon: ZonElement, creator: main.callbacks.Creator) ?*@This() {
 	const block = switch (creator) {

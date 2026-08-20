@@ -30,6 +30,7 @@ pub const stdin_handler = @import("stdin_handler.zig");
 pub const storage = @import("storage.zig");
 pub const permission = @import("permission.zig");
 pub const players = @import("players.zig");
+pub const BlockDrop = @import("BlockDrop.zig");
 
 pub const command = @import("command.zig");
 
