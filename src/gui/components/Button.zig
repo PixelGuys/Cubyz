@@ -57,6 +57,7 @@ size: Vec2f,
 disabled: bool = false,
 pressed: bool = false,
 hovered: bool = false,
+hideBackground: bool = false,
 onAction: main.callbacks.SimpleCallback,
 child: GuiComponent,
 
@@ -89,10 +90,12 @@ pub fn globalDeinit() void {
 const Options = struct {
 	onAction: main.callbacks.SimpleCallback = .{},
 	disabled: bool = false,
+	hideBackground: bool = false,
 };
 
 pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *Button {
-	const label = Label.init(undefined, width - 3*border, text, .center);
+	const borderWidth = if (options.hideBackground) 0 else 3*border;
+	const label = Label.init(undefined, width - borderWidth, text, .center);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
@@ -100,20 +103,24 @@ pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *But
 		.onAction = options.onAction,
 		.child = label.toComponent(),
 		.disabled = options.disabled,
+		.hideBackground = options.hideBackground,
 	};
 	return self;
 }
 
-pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, options: Options) *Button {
-	const icon = Icon.init(undefined, iconSize, iconTexture);
+pub fn initIcon(pos: Vec2f, givenIconSize: Vec2f, iconTexture: Texture, options: Options) *Button {
+	const calculatedIconSize: Vec2f = if (options.hideBackground) givenIconSize + @as(Vec2f, @splat(3*border)) else givenIconSize;
+	const icon = Icon.init(undefined, calculatedIconSize, iconTexture);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
-		.size = icon.size + @as(Vec2f, @splat(3*border)),
+		.size = givenIconSize + @as(Vec2f, @splat(3*border)),
 		.onAction = options.onAction,
 		.child = icon.toComponent(),
 		.disabled = options.disabled,
+		.hideBackground = options.hideBackground,
 	};
+	if (self.hideBackground) self.child.mutSize().* = self.size;
 	return self;
 }
 
@@ -146,6 +153,16 @@ pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 }
 
 pub fn render(self: *Button, mousePosition: Vec2f) void {
+	if (!self.hideBackground) renderBackground(self, mousePosition);
+
+	const oldColor = draw.setColor(if (self.disabled) 0xff808080 else 0xffffffff);
+	defer draw.restoreColor(oldColor);
+	const textPos = self.pos + self.size/@as(Vec2f, @splat(2.0)) - self.child.size()/@as(Vec2f, @splat(2.0));
+	self.child.mutPos().* = textPos;
+	self.child.render(mousePosition - self.pos);
+}
+
+fn renderBackground(self: *Button, mousePosition: Vec2f) void {
 	const textures = blk: {
 		if (self.disabled) break :blk disabledTextures;
 		if (self.pressed) break :blk pressedTextures;
@@ -165,10 +182,4 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 
 	textures.outlineTexture.bindTo(0);
 	graphics.draw.bound9SliceImage(self.pos, self.size, textures.outlineTextureSize, cornerSize, 2);
-
-	const oldColor = draw.setColor(if (self.disabled) 0xff808080 else 0xffffffff);
-	defer draw.restoreColor(oldColor);
-	const textPos = self.pos + self.size/@as(Vec2f, @splat(2.0)) - self.child.size()/@as(Vec2f, @splat(2.0));
-	self.child.mutPos().* = textPos;
-	self.child.render(mousePosition - self.pos);
 }
