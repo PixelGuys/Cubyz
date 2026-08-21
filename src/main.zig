@@ -463,9 +463,6 @@ pub fn clientMain() void { // MARK: clientMain()
 			io.sleep(.fromMilliseconds(16), .awake) catch {};
 		}
 
-		const texture = graphics.Texture.initFromFile("test.png");
-		defer texture.deinit();
-
 		const endRendering = timestamp();
 		const frameTime = @as(f64, @floatFromInt(endRendering.nanoseconds -% lastBeginRendering.nanoseconds))/1.0e9;
 		lastFrameTime.store(frameTime, .monotonic);
