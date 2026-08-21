@@ -6,22 +6,22 @@ const builtin = @import("builtin");
 
 const c = @import("c");
 
-const Impl = switch (builtin.os.tag) {
-	.windows => WindowsImpl,
-	else => NoImpl,
+const impl = switch (builtin.os.tag) {
+	.windows => windows_impl,
+	else => no_impl,
 };
 
-pub const canProtect: bool = Impl.canProtect;
+pub const canProtect: bool = impl.canProtect;
 
 pub fn protect(allocator: NeverFailingAllocator, data: []const u8) error{ SystemError, Unsupported }![]u8 {
-	return Impl.protect(allocator, data);
+	return impl.protect(allocator, data);
 }
 
 pub fn unprotect(allocator: NeverFailingAllocator, data: []const u8) error{ SystemError, Invalid }![]u8 {
-	return Impl.unprotect(allocator, data);
+	return impl.unprotect(allocator, data);
 }
 
-const NoImpl = struct {
+const no_impl = struct {
 	const canProtect = false;
 
 	fn protect(_: NeverFailingAllocator, _: []const u8) error{ SystemError, Unsupported }![]u8 {
@@ -33,7 +33,7 @@ const NoImpl = struct {
 	}
 };
 
-const WindowsImpl = struct {
+const windows_impl = struct {
 	const canProtect = true;
 
 	fn protect(allocator: NeverFailingAllocator, data: []const u8) error{ SystemError, Unsupported }![]u8 {
