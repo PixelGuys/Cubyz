@@ -38,5 +38,21 @@ jobs:
       - run: zig build -Dtarget=x86_64-windows-gnu
       - run: zig build -Dtarget=aarch64-linux-gnu
       - run: zig build -Dtarget=aarch64-windows-gnu
-      - run: zig build test
       - run: 'find assets/cubyz/shaders -type f ! -name "*.glsl" | xargs -L1 glslangValidator -G100 -P"#extension GL_GOOGLE_include_directive : enable" -Iassets/cubyz/shaders/include -Dgl_VertexIndex=gl_VertexID -DOPEN_GL'
+
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    name: Unit Tests (${{ matrix.os }})
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v3
+      - run: echo "VERSION=$(cat .zigversion)" >> $GITHUB_ENV
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.VERSION }}
+      - run: zig build test
