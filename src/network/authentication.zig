@@ -314,7 +314,7 @@ pub const PasswordEncodedAccountCode = struct {
 		main.io.random(&nonce);
 		std.crypto.aead.aes_gcm.Aes256Gcm.encrypt(encryptedBuffer, &authenticationTag, accountCode.text, &.{}, nonce, key);
 
-		const protected = shouldProtect and protection.canProtect();
+		const protected = shouldProtect and protection.canProtect;
 		var data: []u8 = undefined;
 		if (protected) {
 			data = protection.protect(allocator, encryptedBuffer) catch |err| {
@@ -335,7 +335,7 @@ pub const PasswordEncodedAccountCode = struct {
 	}
 
 	pub fn initUnencoded(allocator: NeverFailingAllocator, accountCode: AccountCode, shouldProtect: bool) error{SystemError}!PasswordEncodedAccountCode {
-		const protected = shouldProtect and protection.canProtect();
+		const protected = shouldProtect and protection.canProtect;
 		var data: []u8 = undefined;
 		if (protected) {
 			data = protection.protect(allocator, accountCode.text) catch |err| {
@@ -363,7 +363,7 @@ pub const PasswordEncodedAccountCode = struct {
 
 	pub fn decryptFromPassword(self: PasswordEncodedAccountCode, password: []const u8, failureText: *main.ListManaged(u8)) !AccountCode {
 		if (self.protected) {
-			if (!protection.canProtect()) return error.Invalid;
+			if (!protection.canProtect) return error.Invalid;
 
 			var copy: PasswordEncodedAccountCode = self;
 			copy.protected = false;
