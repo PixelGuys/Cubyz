@@ -497,7 +497,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 				finalFrameBuffer.updateSize(textureWidth, textureHeight, c.GL_RGBA8);
 				finalFrameBuffer.bind();
 				finalFrameBuffer.clear(.{0, 0, 0, 0});
-				signData.renderedTexture = .{.textureID = finalFrameBuffer.texture};
+				signData.renderedTexture = .{.textureID = finalFrameBuffer.texture, .vulkanImage = null};
 				defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
 
 				const oldTranslation = graphics.draw.setTranslation(.{textureMargin, textureMargin});

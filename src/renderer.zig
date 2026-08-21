@@ -551,7 +551,7 @@ pub const MenuBackGround = struct {
 
 		const backgroundPath = chooseBackgroundImagePath(main.stackAllocator) catch |err| {
 			std.log.err("Couldn't open background path: {s}", .{@errorName(err)});
-			texture = .{.textureID = 0};
+			texture = .{.textureID = 0, .vulkanImage = null};
 			return;
 		};
 		defer main.stackAllocator.free(backgroundPath);
