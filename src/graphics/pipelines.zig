@@ -707,6 +707,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 
 			const descriptorSetLayoutInfo = c.VkDescriptorSetLayoutCreateInfo{
 				.sType = c.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+				.flags = c.VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR,
 				.bindingCount = @intCast(options.bindings.len),
 				.pBindings = @ptrCast(options.bindings.ptr),
 			};

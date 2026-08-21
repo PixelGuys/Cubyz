@@ -18,6 +18,7 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
+const BlockDrop = main.server.BlockDrop;
 
 const @"cubyz:bag" = main.entity.components.@"cubyz:bag";
 
@@ -1549,15 +1550,15 @@ pub const Command = struct { // MARK: Command
 			min: Vec3f,
 			max: Vec3f,
 
-			pub fn drop(self: BlockDropLocation, pos: Vec3i, newBlock: Block, _drop: main.blocks.BlockDrop) void {
+			pub fn drop(self: BlockDropLocation, pos: Vec3i, newBlock: Block, _drop: BlockDrop) void {
 				if (newBlock.collide()) {
 					self.dropOutside(pos, _drop);
 				} else {
 					self.dropInside(pos, _drop);
 				}
 			}
-			fn dropInside(self: BlockDropLocation, pos: Vec3i, _drop: main.blocks.BlockDrop) void {
-				for (_drop.items) |itemStack| {
+			fn dropInside(self: BlockDropLocation, pos: Vec3i, _drop: BlockDrop) void {
+				for (_drop.itemStacks) |itemStack| {
 					main.server.world.?.drop(itemStack.clone(), self.insidePos(pos), self.dropDir(), self.dropVelocity());
 				}
 			}
@@ -1572,8 +1573,8 @@ pub const Command = struct { // MARK: Command
 				const width = (max - min)*half;
 				return center + width*main.random.nextFloatVectorSigned(3, &main.seed)*half;
 			}
-			fn dropOutside(self: BlockDropLocation, pos: Vec3i, _drop: main.blocks.BlockDrop) void {
-				for (_drop.items) |itemStack| {
+			fn dropOutside(self: BlockDropLocation, pos: Vec3i, _drop: BlockDrop) void {
+				for (_drop.itemStacks) |itemStack| {
 					main.server.world.?.drop(itemStack.clone(), self.outsidePos(pos), self.dropDir(), self.dropVelocity());
 				}
 			}
