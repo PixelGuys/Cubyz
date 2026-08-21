@@ -30,7 +30,7 @@ var passwordRow: *HorizontalList = undefined;
 var confirmButton: *Button = undefined;
 
 var encryptAccountCode: bool = true;
-var protectAccountCode: bool = main.network.authentication.protection.canProtect();
+var protectAccountCode: bool = main.network.authentication.protection.canProtect;
 
 const padding: f32 = 8;
 
@@ -73,7 +73,7 @@ fn protectAccountCodeCallback(protectAccountCode_: bool) void {
 fn refreshInner() void {
 	innerList.children.clearRetainingCapacity();
 	innerList.children.append(encryptWithPasswordCheckbox.toComponent());
-	if (main.network.authentication.protection.canProtect()) innerList.children.append(protectCheckbox.toComponent());
+	if (main.network.authentication.protection.canProtect) innerList.children.append(protectCheckbox.toComponent());
 	if (encryptAccountCode) {
 		innerList.children.append(passwordRow.toComponent());
 	}
@@ -91,7 +91,7 @@ pub fn onOpen() void {
 	const width = 480;
 	list.add(Label.init(.{0, 0}, width, "Your Account Code will be stored in your settings to allow you to stay logged in. Please decide how we should store it:", .left));
 	innerList = VerticalList.init(.{0, 0}, 100, 16);
-	if (main.network.authentication.protection.canProtect()) {
+	if (main.network.authentication.protection.canProtect) {
 		protectCheckbox = CheckBox.init(.{0, 0}, width, "Protect with system api (recommended)", protectAccountCode, &protectAccountCodeCallback);
 		innerList.add(protectCheckbox);
 	}

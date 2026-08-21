@@ -11,9 +11,7 @@ const Impl = switch (builtin.os.tag) {
 	else => NoImpl,
 };
 
-pub inline fn canProtect() bool {
-	return Impl.canProtect;
-}
+pub const canProtect: bool = Impl.canProtect;
 
 pub fn protect(allocator: NeverFailingAllocator, data: []const u8) error{ SystemError, Unsupported }![]u8 {
 	return Impl.protect(allocator, data);
@@ -80,7 +78,7 @@ const WindowsImpl = struct {
 };
 
 test "slice==unprotect(protect(slice))" {
-	if (canProtect()) {
+	if (canProtect) {
 		const slices: [5][]const u8 = .{"TestdwadadÖOUWHdöouHIOSUdhöoUHNWLJDKNOÖPAHUIwdoöJKNSdlkjöwuHOÖIhso8zpo9IKj", "Test", "Testd", "", "WIJDp8iU)(du098UÜ=JHd0ü8hz=Ü(HJ0isidjowi8h=(Z\"ß08IJUISdhd0w98hdoi8uoIWUJDoikjsoIKHJOwiuhdOISHNdo9i8H(UIHNASUJhdnbiuJBWGiudjhbIAKUJHnbsiudjkhiWUAHNIUDshjliuAHELIUHFILUHNIUJBDIUHwiuHushoujhdiiuwhIUHsouhdUHwiuhdUAHLsuidhlHU)"};
 		for (slices) |slice| {
 			const protected = try protect(main.stackAllocator, slice);
@@ -96,7 +94,7 @@ test "slice==unprotect(protect(slice))" {
 
 test "Protect fails on unsupported platforms" {
 	const slice = "Test";
-	if (!canProtect()) {
+	if (!canProtect) {
 		try std.testing.expectError(error.Unsupported, protect(main.stackAllocator, slice));
 		try std.testing.expectError(error.Invalid, unprotect(main.stackAllocator, slice));
 	} else {
@@ -105,7 +103,7 @@ test "Protect fails on unsupported platforms" {
 }
 
 test "Unprotect fails when supplied with garbage" {
-	if (canProtect()) {
+	if (canProtect) {
 		const slices: [5][]const u8 = .{"TestdwadadÖOUWHdöouHIOSUdhöoUHNWLJDKNOÖPAHUIwdoöJKNSdlkjöwuHOÖIhso8zpo9IKj", "Test", "Testd", "", "WIJDp8iU)(du098UÜ=JHd0ü8hz=Ü(HJ0isidjowi8h=(Z\"ß08IJUISdhd0w98hdoi8uoIWUJDoikjsoIKHJOwiuhdOISHNdo9i8H(UIHNASUJhdnbiuJBWGiudjhbIAKUJHnbsiudjkhiWUAHNIUDshjliuAHELIUHFILUHNIUJBDIUHwiuHushoujhdiiuwhIUHsouhdUHwiuhdUAHLsuidhlHU)"};
 		for (slices) |slice| {
 			try std.testing.expectError(error.Invalid, unprotect(main.stackAllocator, slice));
