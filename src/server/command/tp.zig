@@ -111,7 +111,7 @@ pub fn execute(args: Args, source: Source) void {
 			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source) catch return;
 		},
 		.@"/tp <sourcePlayerIndex> <x> <y> <z> <yaw> <pitch>" => |pos| {
-			main.sync.server.sendSyncOperation(.{.rotation = .{.target = target.user, .rotation = command.resolveRotation(pos.yaw, pos.pitch, source) catch return}}, null);
+			main.sync.server.sendSyncOperation(.{.rotation = .{.target = target.user, .rotation = command.resolveRotation(pos.yaw, pos.pitch, source) catch return}}, target.user);
 			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source) catch return;
 		},
 		inline .@"/tp <destinationPlayerIndex>", .@"/tp <sourcePlayerIndex> <destinationPlayerIndex>" => |index| {

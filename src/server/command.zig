@@ -117,15 +117,15 @@ pub const Rotation = union(enum) {
 		const numberSlice = if (isRelative) arg[1..] else arg;
 		if (isRelative and numberSlice.len == 0) return .{.relative = 0};
 		if (isRelative) {
-			return .{.relative = std.fmt.parseFloat(f32, numberSlice) catch {
+			return .{.relative = std.math.degreesToRadians(std.fmt.parseFloat(f32, numberSlice) catch {
 				errorMessage.print("Expected number for <{s}>, found \"{s}\"", .{name, numberSlice});
 				return error.ParseError;
-			}};
+			})};
 		}
-		return .{.absolute = std.fmt.parseFloat(f32, numberSlice) catch {
+		return .{.absolute = std.math.degreesToRadians(std.fmt.parseFloat(f32, numberSlice) catch {
 			errorMessage.print("Expected number or \"~\" for <{s}>, found \"{s}\"", .{name, arg});
 			return error.ParseError;
-		}};
+		})};
 	}
 };
 
@@ -149,9 +149,9 @@ pub fn resolveRotation(yaw: Rotation, pitch: Rotation, source: Source) error{Inv
 	}
 	const bound = std.math.pi/2.0 - 0.001;
 	return .{
-		std.math.clamp(if (yaw == .relative) source.user.player().rot[0] + yaw.relative*std.math.pi/180 else yaw.absolute*std.math.pi/180, -bound, bound),
+		std.math.clamp(if (yaw == .relative) source.user.player().rot[0] + yaw.relative else yaw.absolute, -bound, bound),
 		0,
-		if (pitch == .relative) source.user.player().rot[2] + @mod(pitch.relative, 360)*std.math.pi/180 else @mod(pitch.absolute, 360)*std.math.pi/180,
+		if (pitch == .relative) source.user.player().rot[2] + pitch.relative else pitch.absolute,
 	};
 }
 

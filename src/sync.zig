@@ -140,17 +140,11 @@ pub const server = struct { // MARK: server
 		threadContext = .other;
 	}
 
-	pub fn sendSyncOperation(op: Command.SyncOperation, source: ?*main.server.User) void {
+	pub fn sendSyncOperation(op: Command.SyncOperation, target: *main.server.User) void {
 		const syncData = op.serialize(main.stackAllocator);
 		defer main.stackAllocator.free(syncData);
 
-		const users = op.getUsers(main.stackAllocator);
-		defer main.stackAllocator.free(users);
-
-		for (users) |user| {
-			if (user == source and op.ignoreSource()) continue;
-			main.network.protocols.inventory.sendSyncOperation(user.conn, syncData);
-		}
+		main.network.protocols.inventory.sendSyncOperation(target.conn, syncData);
 	}
 
 	pub fn executeCommand(payload: Command.Payload, source: ?*main.server.User) void {
@@ -167,7 +161,16 @@ pub const server = struct { // MARK: server
 			main.network.protocols.inventory.sendConfirmation(source.?.conn, confirmationData);
 		}
 		for (command.syncOperations.items) |op| {
-			sendSyncOperation(op, source);
+			const syncData = op.serialize(main.stackAllocator);
+			defer main.stackAllocator.free(syncData);
+
+			const users = op.getUsers(main.stackAllocator);
+			defer main.stackAllocator.free(users);
+
+			for (users) |user| {
+				if (user == source and op.ignoreSource()) continue;
+				main.network.protocols.inventory.sendSyncOperation(user.conn, syncData);
+			}
 		}
 		if (source != null and command.payload == .open) { // Send initial items
 			for (command.payload.open.inv._items, 0..) |stack, slot| {
