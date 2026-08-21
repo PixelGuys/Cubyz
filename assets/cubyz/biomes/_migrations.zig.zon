@@ -32,10 +32,10 @@
 	.{.old = "cave/cave", .new = "cave/slate/base"},
 	.{.old = "tall_mountain/peak", .new = "tall_mountain/summit1"},
 	.{.old = "bush_lands", .new = "bushlands/base"},
-	.{.old = "cave/rare/phantasmal", .new = "cave/rare/phantasmal/base"},
 	.{.old = "cave/curl_forest", .new = "cave/rare/curl_forest"},
 	.{.old = "cave/stone_forest", .new = "cave/rare/stone_forest"},
 	.{.old = "cave/crystal_forest", .new = "cave/rare/crystal_forest"},
  	.{.old = "cave/void/rare/phantasmal/streamer", .new = "cave/void/void_roots"},
 	.{.old = "cave/void/rare/phantasmal/starlight", .new = "cave/void/void_roots"},
+	.{.old = "cave/rare/phantasmal", .new = "cave/rare/phantasmal/base"},
 }
