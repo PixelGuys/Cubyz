@@ -1,0 +1,57 @@
+.{
+	.ground_structure = .{
+		"cubyz:grass/arid",
+		"1 to 2 cubyz:sand",
+	},
+	.chance = 0,
+	.minRadius = 25,
+	.maxRadius = 50,
+	.keepOriginalTerrain = 1,
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:savannah/fields/base",
+			.chance = 4,
+		},
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/baobab/young",
+			.placeMode = .degradable,
+			.chance = 0.01,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/baobab/young",
+			.placeMode = .degradable,
+			.chance = 0.015,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:grass/vegetation/dry"},
+			.chance = 0.05,
+			.width = 3,
+			.variation = 4,
+			.density = 0.3,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:grass/vegetation/arid"},
+			.chance = 0.2,
+			.width = 5,
+			.variation = 8,
+			.density = 0.35,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:tussock"},
+			.chance = 0.02,
+			.width = 5,
+			.variation = 3,
+			.density = 0.2,
+			.priority = 0.1,
+		},
+	},
+}

@@ -67,10 +67,11 @@ pub fn globalInit() void {
 		"",
 		&buttonUniforms,
 		graphics.draw.SimpleVertex2D,
-		&.{},
-		.{.cullMode = .none},
-		.{.depthTest = false, .depthWrite = false},
-		.{.attachments = &.{.alphaBlending}},
+		.{
+			.rasterState = .{.cullMode = .none},
+			.depthStencilState = .{.depthTest = false, .depthWrite = false},
+			.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+		},
 	);
 	normalTextures = Textures.init("assets/cubyz/ui/button");
 	hoveredTextures = Textures.init("assets/cubyz/ui/button_hovered");
