@@ -29,6 +29,7 @@ var accountCodeLabel: *Label = undefined;
 var accountCode: ?main.network.authentication.AccountCode = null;
 var fileNameEntry: *Label = undefined;
 var fileName: []const u8 = undefined;
+var fileSaved: bool = undefined;
 
 pub const StorageMethod = enum(usize) {
 	file = 0,
@@ -45,15 +46,6 @@ pub fn setStorageMethod(method: StorageMethod) void {
 }
 
 fn next() void {
-	switch (storageMethod) {
-		.file => {
-			main.files.cwd().write(fileName, accountCode.?.text) catch |err| {
-				std.log.err("Failed to write Account Code to file: {s}", .{@errorName(err)});
-				return;
-			};
-		},
-		.paper, .passwordManager => {},
-	}
 	gui.closeWindowFromRef(&window);
 	gui.openWindow("authentication/login");
 	// Make sure there remains no trace of the account code in memory
@@ -73,7 +65,19 @@ fn copy() void {
 fn selectFile() void {
 	const result: [*:0]const u8 = c.tinyfd_saveFileDialog("Select File to save Account Code", "Cubyz Account.txt", 1, @as([*]const [*:0]const u8, &.{"*.txt"}), "Text Files") orelse return;
 	fileName = std.mem.span(result);
-	fileNameEntry.updateText(fileName);
+	main.files.cwd().write(fileName, accountCode.?.text) catch |err| {
+		std.log.err("Failed to write Account Code to file: {s}", .{@errorName(err)});
+		fileSaved = false;
+		fileNameEntry.updateText("Failed to save, please pick a different location.");
+		return;
+	};
+	fileSaved = true;
+	const displayName = main.stackAllocator.dupe(u8, fileName);
+	defer main.stackAllocator.free(displayName);
+	if (builtin.os.tag == .windows) {
+		std.mem.replaceScalar(u8, displayName, '\\', '/');
+	}
+	fileNameEntry.updateText(displayName);
 }
 
 pub fn onOpen() void {
@@ -89,11 +93,13 @@ pub fn onOpen() void {
 	list.add(row);
 	switch (storageMethod) {
 		.file => {
+			fileName = "";
+			fileSaved = false;
 			list.add(Label.init(.{0, 0}, width, "Please enter a file name, we will store it there.", .left));
 			list.add(Button.initText(.{0, 0}, 250, "Select File", .{.onAction = .init(selectFile)}));
 			fileNameEntry = Label.init(.{0, 0}, width, "", .center);
 			list.add(fileNameEntry);
-			button = Button.initText(.{0, 0}, 250, "Save and return to login", .{.onAction = .init(next), .disabled = true});
+			button = Button.initText(.{0, 0}, 250, "Return to login", .{.onAction = .init(next), .disabled = true});
 		},
 		.paper, .passwordManager => {
 			if (storageMethod == .paper) list.add(Label.init(.{0, 0}, width, "We will give you some time to write it down.", .left));
@@ -117,7 +123,7 @@ pub fn onOpen() void {
 pub fn update() void {
 	switch (storageMethod) {
 		.file => {
-			button.disabled = fileName.len == 0;
+			button.disabled = !fileSaved;
 		},
 		.paper, .passwordManager => {
 			if (button.disabled) {
