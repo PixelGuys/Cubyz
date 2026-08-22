@@ -638,6 +638,13 @@ pub const Model = struct {
 		return Model.init(quadList.items);
 	}
 
+	pub fn dupeModel(model: Model) ModelIndex {
+		var quadList = main.ListManaged(QuadInfo).init(main.stackAllocator);
+		defer quadList.deinit();
+		model.getRawFaces(&quadList);
+		return Model.init(quadList.items);
+	}
+
 	fn appendQuadsToList(quadList: []const QuadIndex, list: *main.ListManaged(FaceData), block: main.blocks.Block, pos: main.chunk.BlockPos, comptime backFace: bool) void {
 		for (quadList) |quadIndex| {
 			const texture = main.blocks.meshes.textureIndex(block, quadIndex.quadInfo().textureSlot);
