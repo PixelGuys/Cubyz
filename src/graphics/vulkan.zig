@@ -801,7 +801,7 @@ pub const command_pool = struct { // MARK: command_pool
 	}
 };
 
-pub const Buffer = struct {
+pub const Buffer = struct { // MARK: Buffer
 	handle: c.VkBuffer,
 	allocation: c.VmaAllocation,
 
@@ -845,6 +845,108 @@ pub const Buffer = struct {
 	}
 };
 
+pub const Image = struct { // MARK: Image
+	handle: c.VkImage = undefined,
+	allocation: c.VmaAllocation = undefined,
+	mipLevels: u32,
+	size: main.vec.Vec3i,
+
+	const ImageOptions = struct {
+		usage: c.VkImageUsageFlags,
+		hostAccessible: bool = false,
+		flags: c.VkImageCreateFlags = 0,
+		imageType: c.VkImageType = c.VK_IMAGE_TYPE_2D,
+		format: c.VkFormat = c.VK_FORMAT_R8G8B8A8_UNORM,
+		mipLevels: u32 = 1,
+		arrayLayers: u32 = 1,
+		samples: c.VkSampleCountFlags = c.VK_SAMPLE_COUNT_1_BIT,
+	};
+	pub fn init(size: main.vec.Vec3i, options: ImageOptions) Image {
+		var self: Image = .{
+			.mipLevels = options.mipLevels,
+			.size = size,
+		};
+		const imageInfo: c.VkImageCreateInfo = .{
+			.sType = c.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+			.flags = options.flags,
+			.imageType = options.imageType,
+			.format = options.format,
+			.extent = .{.width = @intCast(size[0]), .height = @intCast(size[1]), .depth = @intCast(size[2])},
+			.mipLevels = options.mipLevels,
+			.arrayLayers = options.arrayLayers,
+			.samples = options.samples,
+			.tiling = c.VK_IMAGE_TILING_OPTIMAL,
+			.usage = options.usage,
+			.sharingMode = c.VK_SHARING_MODE_EXCLUSIVE,
+			.initialLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
+		};
+		const allocCreateInfo: c.VmaAllocationCreateInfo = .{
+			.usage = c.VMA_MEMORY_USAGE_AUTO,
+			.flags = if (options.hostAccessible) c.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT else 0,
+		};
+		checkResult(c.vmaCreateImage(gpu_allocator.handle, &imageInfo, &allocCreateInfo, &self.handle, &self.allocation, null));
+		return self;
+	}
+
+	fn privateDeinit(self: Image) void {
+		c.vmaDestroyImage(gpu_allocator.handle, self.handle, self.allocation);
+	}
+
+	pub fn deferredDeinit(self: Image) void {
+		gpu_garbage_collection.deferredFree(.{.image = self});
+	}
+
+	pub fn uploadData(self: Image, offset: usize, data: []const u8) void {
+		if (data.len == 0) return;
+		const stagingBuffer: Buffer = .init(data.len, .{.usage = c.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, .hostAccessible = true});
+		defer stagingBuffer.deferredDeinit();
+		var gpuMemory: ?*anyopaque = undefined;
+		checkResult(c.vmaMapMemory(gpu_allocator.handle, stagingBuffer.allocation, &gpuMemory));
+		@memcpy(@as([*]u8, @ptrCast(gpuMemory.?)), data);
+		c.vmaUnmapMemory(gpu_allocator.handle, stagingBuffer.allocation);
+		currentFrame.uploadCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_NONE,
+				.srcAccessMask = c.VK_ACCESS_2_NONE,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+				.dstAccessMask = c.VK_ACCESS_2_TRANSFER_WRITE_BIT,
+				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
+				.newLayout = c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				.image = self.handle,
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = self.mipLevels, .layerCount = 1},
+			},
+		}});
+		currentFrame.uploadCommands.copyBufferToImage(self, c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, stagingBuffer, &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2,
+				.bufferOffset = offset,
+				.imageSubresource = .{
+					.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
+					.mipLevel = 0,
+					.baseArrayLayer = 0,
+					.layerCount = 1,
+				},
+				.imageOffset = .{.x = 0, .y = 0, .z = 0},
+				.imageExtent = .{.width = @intCast(self.size[0]), .height = @intCast(self.size[1]), .depth = @intCast(self.size[2])},
+			},
+		});
+		currentFrame.uploadCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+				.srcAccessMask = c.VK_ACCESS_2_TRANSFER_WRITE_BIT,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+				.dstAccessMask = c.VK_ACCESS_SHADER_READ_BIT,
+				.oldLayout = c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				.newLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
+				.image = self.handle,
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = self.mipLevels, .layerCount = 1},
+			},
+		}});
+	}
+};
+
 pub const gpu_allocator = struct {
 	var handle: c.VmaAllocator = undefined;
 
@@ -872,6 +974,7 @@ pub const gpu_allocator = struct {
 pub const gpu_garbage_collection = struct {
 	const Entry = union(enum) {
 		buf: Buffer,
+		image: Image,
 	};
 	var currentList: usize = 0;
 	var lists: [frames.len + 1]main.List(Entry) = @splat(.empty);
