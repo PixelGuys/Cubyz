@@ -29,6 +29,8 @@ const sbb = main.server.terrain.sbb;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
 const BlockDrop = main.server.BlockDrop;
+const vec = main.vec;
+const Vec3i = vec.Vec3i;
 
 const c = @import("c");
 
@@ -562,6 +564,18 @@ pub const Block = packed struct(u32) { // MARK: Block
 
 	pub inline fn isSelectableByItem(self: Block, item: Item) bool {
 		return self.selectionCapabilities().allowsSelectionByItem(self, item);
+	}
+
+	pub fn tryDropNaturally(self: Block, newBlock: Block, worldPos: Vec3i) void {
+		const dropAmount = self.mode().itemDropsOnChange(self, newBlock);
+		if (dropAmount == 0) return;
+
+		const modelIndex = self.mode().model(self);
+		for (0..dropAmount) |_| {
+			for (self.blockDrops()) |drop| {
+				drop.tryDropNaturally(modelIndex, worldPos);
+			}
+		}
 	}
 };
 
