@@ -18,8 +18,8 @@ pub const usage =
 ;
 
 pub const Args = union(enum) {
-	@"/selection adjust <mask> <limit>": struct { subcommand: enum { adjust }, mask: command.MaskExpression, limit: ?u32 },
-	@"/selection adjust <limit>": struct { subcommand: enum { adjust }, limit: ?u32 },
+	@"/adjust <mask> <limit>": struct { subcommand: enum { adjust }, mask: command.MaskExpression, limit: ?u32 },
+	@"/adjust <limit>": struct { subcommand: enum { adjust }, limit: ?u32 },
 };
 
 pub fn execute(args: Args, source: Source) void {
@@ -28,11 +28,11 @@ pub fn execute(args: Args, source: Source) void {
 		return;
 	}
 	switch (args) {
-		.@"/selection adjust <mask> <limit>" => |cmd| {
+		.@"/adjust <mask> <limit>" => |cmd| {
 			adjust(.shrink, source.user, cmd.mask.mask, @intCast(@as(u31, @truncate(cmd.limit orelse 32))));
 			adjust(.grow, source.user, cmd.mask.mask, @intCast(@as(u31, @truncate(cmd.limit orelse 32))));
 		},
-		.@"/selection adjust <limit>" => |cmd| {
+		.@"/adjust <limit>" => |cmd| {
 			const mask = Mask.initFromString(main.stackAllocator, "!cubyz:air") catch unreachable;
 			defer mask.deinit(main.stackAllocator);
 
