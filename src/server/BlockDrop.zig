@@ -6,6 +6,8 @@ const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
+const blocks = main.blocks;
+const Block = blocks.Block;
 
 itemStacks: []const items.ItemStack,
 chance: f32,
@@ -25,12 +27,12 @@ pub fn isDroppedWhenBrokenWithItem(self: @This(), item: Item) bool {
 	return true;
 }
 
-pub fn tryDropWhenBrokenWithItem(self: @This(), item: Item, ctx: Location.Context) void {
+pub fn tryDropWhenBrokenWithItem(self: @This(), item: Item, pos: Vec3d, dir: Vec3f, velocity: f32) void {
 	if (!self.isDroppedWhenBrokenWithItem(item)) return;
 
 	if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
 		for (self.itemStacks) |itemStack| {
-			main.server.world.?.drop(itemStack.clone(), ctx.pos, ctx.dir, ctx.velocity);
+			main.server.world.?.drop(itemStack.clone(), pos, dir, velocity);
 		}
 	}
 }
@@ -43,20 +45,6 @@ pub const Location = struct {
 	const half = @as(Vec3f, @splat(0.5));
 	const itemHitBoxMargin: f32 = @floatCast(main.itemdrop.ItemDropManager.radius);
 	const itemHitBoxMarginVec: Vec3f = @splat(itemHitBoxMargin);
-
-	pub const Context = struct {
-		pos: Vec3d,
-		dir: Vec3f,
-		velocity: f32,
-	};
-	pub fn getContext(self: Location, pos: Vec3i, collide: bool) Context {
-		const dropPos = if (collide) self.outsidePos(pos) else self.insidePos(pos);
-		return .{
-			.pos = dropPos,
-			.dir = self.dropDir(),
-			.velocity = self.dropVelocity(),
-		};
-	}
 
 	fn insidePos(self: Location, _pos: Vec3i) Vec3d {
 		const pos: Vec3d = @floatFromInt(_pos);
@@ -105,5 +93,28 @@ pub const Location = struct {
 		const velocity = 3.5 + main.random.nextFloatSigned(&main.seed)*0.5;
 		if (self.direction()[2] < -0.5) return velocity*0.333;
 		return velocity;
+	}
+};
+
+pub const Context = struct {
+	oldBlock: Block,
+	newBlock: Block,
+	item: ?Item,
+
+	pub fn drop(self: Context, location: Location, pos: Vec3i) void {
+		const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
+		if (dropAmount == 0) return;
+
+		const dropPos = if (self.newBlock.collide()) location.outsidePos(pos) else location.insidePos(pos);
+		const dropDir = location.dropDir();
+		const dropVelocity = location.dropVelocity();
+
+		if (self.item) |item| {
+			for (0..dropAmount) |_| {
+				for (self.oldBlock.blockDrops()) |blockDrop| {
+					blockDrop.tryDropWhenBrokenWithItem(item, dropPos, dropDir, dropVelocity);
+				}
+			}
+		}
 	}
 };

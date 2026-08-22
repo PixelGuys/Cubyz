@@ -1596,8 +1596,12 @@ pub const Command = struct { // MARK: Command
 				},
 			}
 			if (ctx.side == .server and ctx.gamemode != .creative and shouldDropSourceBlockOnSuccess) {
-				const dropCtx = self.dropLocation.getContext(self.pos, self.newBlock.collide());
-				self.oldBlock.tryDropWhenBrokenWithItem(self.newBlock, handItem, dropCtx);
+				const dropCtx = BlockDrop.Context{
+					.oldBlock = self.oldBlock,
+					.newBlock = self.newBlock,
+					.item = handItem,
+				};
+				dropCtx.drop(self.dropLocation, self.pos);
 			}
 		}
 

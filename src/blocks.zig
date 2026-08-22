@@ -563,15 +563,6 @@ pub const Block = packed struct(u32) { // MARK: Block
 	pub inline fn isSelectableByItem(self: Block, item: Item) bool {
 		return self.selectionCapabilities().allowsSelectionByItem(self, item);
 	}
-
-	pub fn tryDropWhenBrokenWithItem(self: Block, newBlock: Block, item: Item, ctx: BlockDrop.Location.Context) void {
-		const dropAmount = self.mode().itemDropsOnChange(self, newBlock);
-		for (0..dropAmount) |_| {
-			for (self.blockDrops()) |drop| {
-				drop.tryDropWhenBrokenWithItem(item, ctx);
-			}
-		}
-	}
 };
 
 pub const meshes = struct { // MARK: meshes
