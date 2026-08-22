@@ -16,8 +16,8 @@ pub fn execute(_: Args, source: Source) void {
 		return;
 	}
 	const user = source.user;
-	user.worldEditData.selectionPosition1 = null;
-	user.worldEditData.selectionPosition2 = null;
+	user.worldEditData.selectionPosition[0] = null;
+	user.worldEditData.selectionPosition[1] = null;
 
 	main.network.protocols.genericUpdate.sendWorldEditPos(user.conn, .clear, null);
 	user.sendMessage("Cleared selection.", .{});

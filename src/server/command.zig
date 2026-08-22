@@ -143,11 +143,11 @@ pub const Target = struct {
 
 /// Get current selection from user data. This function will output appropriate error to chat upon failure.
 pub fn getCurrentSelection(source: *User) !Blueprint.Selection {
-	const pos1 = source.worldEditData.selectionPosition1 orelse {
+	const pos1 = source.worldEditData.selectionPosition[0] orelse {
 		source.sendMessage("#ff0000Position 1 isn't set", .{});
 		return error.SelectionPartiallyUnset;
 	};
-	const pos2 = source.worldEditData.selectionPosition2 orelse {
+	const pos2 = source.worldEditData.selectionPosition[1] orelse {
 		source.sendMessage("#ff0000Position 2 isn't set", .{});
 		return error.SelectionPartiallyUnset;
 	};

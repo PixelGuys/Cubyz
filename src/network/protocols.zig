@@ -633,11 +633,10 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 					.clear => null,
 				};
 				switch (typ) {
-					.selectedPos1 => game.Player.selectionPosition1 = pos,
-					.selectedPos2 => game.Player.selectionPosition2 = pos,
+					.selectedPos1 => game.Player.selectionPosition[0] = pos,
+					.selectedPos2 => game.Player.selectionPosition[1] = pos,
 					.clear => {
-						game.Player.selectionPosition1 = null;
-						game.Player.selectionPosition2 = null;
+						game.Player.selectionPosition = @splat(null);
 					},
 				}
 			},
@@ -712,11 +711,11 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 					.clear => null,
 				};
 				switch (typ) {
-					.selectedPos1 => conn.user.?.worldEditData.selectionPosition1 = pos.?,
-					.selectedPos2 => conn.user.?.worldEditData.selectionPosition2 = pos.?,
+					.selectedPos1 => conn.user.?.worldEditData.selectionPosition[0] = pos.?,
+					.selectedPos2 => conn.user.?.worldEditData.selectionPosition[1] = pos.?,
 					.clear => {
-						conn.user.?.worldEditData.selectionPosition1 = null;
-						conn.user.?.worldEditData.selectionPosition2 = null;
+						conn.user.?.worldEditData.selectionPosition[0] = null;
+						conn.user.?.worldEditData.selectionPosition[1] = null;
 					},
 				}
 			},
