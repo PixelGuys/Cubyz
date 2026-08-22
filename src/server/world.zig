@@ -884,9 +884,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 					}
 				}
 				std.log.err("Found no valid spawn location", .{});
+				const map = terrain.SurfaceMap.getOrGenerateFragment(self.spawn[0], self.spawn[1], 1);
+				self.spawn[2] = map.getHeight(self.spawn[0], self.spawn[1]) + 1;
 			}
-			const map = terrain.SurfaceMap.getOrGenerateFragment(self.spawn[0], self.spawn[1], 1);
-			self.spawn[2] = map.getHeight(self.spawn[0], self.spawn[1]) + 1;
 		}
 		const newBiomeCheckSum: i64 = @bitCast(terrain.biomes.getBiomeCheckSum(self.settings.seed));
 		if (newBiomeCheckSum != self.biomeChecksum) {
@@ -1045,9 +1045,18 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try files.cubyzDir().write(itemsPath, itemDropData.data.items);
 	}
 
-	fn isValidSpawnLocation(_: *ServerWorld, wx: i32, wy: i32) bool {
+	fn isValidSpawnLocation(self: *ServerWorld, wx: i32, wy: i32) bool {
 		const map = terrain.SurfaceMap.getOrGenerateFragment(wx, wy, 1);
-		return map.getBiome(wx, wy).isValidPlayerSpawn;
+		if (!map.getBiome(wx, wy).isValidPlayerSpawn) return false;
+		const height = map.getHeight(wx, wy);
+
+		const caveMap = terrain.CaveMap.CaveMapView.init(main.stackAllocator, .{.wx = wx, .wy = wy, .wz = height, .voxelSize = 1}, 0, 1);
+		defer caveMap.deinit(main.stackAllocator);
+		if (!caveMap.isSolid(0, 0, -1)) return false;
+		if (caveMap.isSolid(0, 0, 0) or caveMap.isSolid(0, 0, 1)) return false;
+
+		self.spawn[2] = height + 1;
+		return true;
 	}
 
 	pub fn dropWithCooldown(self: *ServerWorld, stack: ItemStack, pos: Vec3d, dir: Vec3f, velocity: f32, pickupCooldown: i32) void {
