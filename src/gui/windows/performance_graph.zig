@@ -86,10 +86,6 @@ pub fn render() void {
 		draw.line(.{border, 40}, .{window.contentSize[0] - border, 40});
 		draw.line(.{border, 56}, .{window.contentSize[0] - border, 56});
 	}
-	pipeline.bind(null);
-	c.glUniform1i(uniforms.points, lastFrameTime.len);
-	c.glUniform1i(uniforms.offset, index);
-	c.glUniform3f(uniforms.lineColor, 1, 1, 1);
 	var pos = Vec2f{border, border};
 	var dim = window.contentSize - @as(Vec2f, @splat(2*border));
 	pos *= @splat(draw.setScale(1));
@@ -99,12 +95,7 @@ pub fn render() void {
 	dim = @ceil(dim);
 	pos[1] += dim[1];
 
-	c.glUniform2f(uniforms.screen, @floatFromInt(main.Window.width), @floatFromInt(main.Window.height));
-	c.glUniform2f(uniforms.start, pos[0], pos[1]);
-	c.glUniform2f(uniforms.dimension, dim[0], draw.setScale(1));
 	ssbo.bufferData(f32, &lastFrameTime);
-	ssbo.bind(5);
-	c.glDrawArrays(c.GL_LINE_STRIP, 0, lastFrameTime.len);
 
 	if (main.settings.launchConfig.vulkanTestingMode) {
 		vulkan.currentFrame.guiCommands.bindPipeline(pipeline, null);
@@ -120,5 +111,15 @@ pub fn render() void {
 			.lineColor = .{1, 1, 1},
 		});
 		vulkan.currentFrame.guiCommands.draw(lastFrameTime.len, 0);
+	} else {
+		pipeline.bind(null);
+		c.glUniform1i(uniforms.points, lastFrameTime.len);
+		c.glUniform1i(uniforms.offset, index);
+		c.glUniform3f(uniforms.lineColor, 1, 1, 1);
+		c.glUniform2f(uniforms.screen, @floatFromInt(main.Window.width), @floatFromInt(main.Window.height));
+		c.glUniform2f(uniforms.start, pos[0], pos[1]);
+		c.glUniform2f(uniforms.dimension, dim[0], draw.setScale(1));
+		ssbo.bind(5);
+		c.glDrawArrays(c.GL_LINE_STRIP, 0, lastFrameTime.len);
 	}
 }
