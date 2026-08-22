@@ -137,11 +137,11 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 		draw.boundImage(self.pos, self.size);
 	}
 	const item = self.inventory.getItem(self.itemSlot);
-	const isValidMaterial = item==.null or (item==.baseItem and item.baseItem.material()!=null);
-	if(self.mode==.normal and gui.isWindowOpen("workbench") and !isValidMaterial){
-		self.mode=.unfocused;
-	}else if(self.mode==.unfocused and (!gui.isWindowOpen("workbench") or isValidMaterial)){
-		self.mode=.normal;
+	const isValidMaterial = item == .null or (item == .baseItem and item.baseItem.material() != null);
+	if (self.mode == .normal and gui.isWindowOpen("workbench") and !isValidMaterial) {
+		self.mode = .unfocused;
+	} else if (self.mode == .unfocused and (!gui.isWindowOpen("workbench") or isValidMaterial)) {
+		self.mode = .normal;
 	}
 
 	if (item != .null) {
@@ -157,8 +157,7 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 			const oldColor = draw.setColor(0x300000ff);
 			defer draw.restoreColor(oldColor);
 			draw.rect(self.pos, self.size);
-		}
-		else if (self.mode == .unfocused and self.renderFrame){
+		} else if (self.mode == .unfocused and self.renderFrame) {
 			const oldColor = draw.setColor(0x600f0f0f);
 			defer draw.restoreColor(oldColor);
 			draw.rect(self.pos, self.size);
