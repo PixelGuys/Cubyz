@@ -6,6 +6,8 @@ const BinaryReader = main.utils.BinaryReader;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ZonElement = main.ZonElement;
 
+pub const protection = @import("protection.zig");
+
 var wordlist: ?[2048][]const u8 = null;
 
 fn wordToIndex(word: []const u8) ?u11 {
@@ -284,18 +286,19 @@ pub const AccountCode = struct {
 	}
 };
 
-const EncodingType = enum { none, argon2_aes_gcm };
+pub const EncodingType = enum { none, argon2_aes_gcm };
 
 pub const PasswordEncodedAccountCode = struct {
 	typ: EncodingType,
+	protected: bool,
 	salt: []u8,
 	nonce: []u8,
 	data: []u8,
 	authenticationTag: []u8,
 
-	pub const empty: PasswordEncodedAccountCode = .{.typ = .none, .salt = &.{}, .nonce = &.{}, .data = &.{}, .authenticationTag = &.{}};
+	pub const empty: PasswordEncodedAccountCode = .{.typ = .none, .protected = false, .salt = &.{}, .nonce = &.{}, .data = &.{}, .authenticationTag = &.{}};
 
-	pub fn initFromPassword(allocator: NeverFailingAllocator, accountCode: AccountCode, password: []const u8) PasswordEncodedAccountCode {
+	pub fn initFromPassword(allocator: NeverFailingAllocator, accountCode: AccountCode, password: []const u8, shouldProtect: bool) error{SystemError}!PasswordEncodedAccountCode {
 		var salt: [32]u8 = undefined;
 		main.io.random(&salt);
 		const saltBase64 = allocator.alloc(u8, std.base64.standard.Encoder.calcSize(salt.len));
@@ -311,21 +314,42 @@ pub const PasswordEncodedAccountCode = struct {
 		main.io.random(&nonce);
 		std.crypto.aead.aes_gcm.Aes256Gcm.encrypt(encryptedBuffer, &authenticationTag, accountCode.text, &.{}, nonce, key);
 
+		const protected = shouldProtect and protection.canProtect;
+		var data: []u8 = undefined;
+		if (protected) {
+			data = protection.protect(allocator, encryptedBuffer) catch |err| {
+				if (err == error.SystemError) return error.SystemError else unreachable;
+			};
+			defer allocator.free(encryptedBuffer); // Deferred, because that way even if a SystemError is thrown it will still get freed
+		} else {
+			data = encryptedBuffer;
+		}
 		return .{
 			.typ = .argon2_aes_gcm,
+			.protected = protected,
 			.salt = saltBase64,
-			.data = encryptedBuffer,
+			.data = data,
 			.nonce = allocator.dupe(u8, &nonce),
 			.authenticationTag = allocator.dupe(u8, &authenticationTag),
 		};
 	}
 
-	pub fn initUnencoded(allocator: NeverFailingAllocator, accountCode: AccountCode) PasswordEncodedAccountCode {
+	pub fn initUnencoded(allocator: NeverFailingAllocator, accountCode: AccountCode, shouldProtect: bool) error{SystemError}!PasswordEncodedAccountCode {
+		const protected = shouldProtect and protection.canProtect;
+		var data: []u8 = undefined;
+		if (protected) {
+			data = protection.protect(allocator, accountCode.text) catch |err| {
+				if (err == error.SystemError) return error.SystemError else unreachable;
+			};
+		} else {
+			data = allocator.dupe(u8, accountCode.text);
+		}
 		return .{
 			.typ = .none,
+			.protected = protected,
 			.salt = &.{},
 			.nonce = &.{},
-			.data = allocator.dupe(u8, accountCode.text),
+			.data = data,
 			.authenticationTag = &.{},
 		};
 	}
@@ -338,6 +362,18 @@ pub const PasswordEncodedAccountCode = struct {
 	}
 
 	pub fn decryptFromPassword(self: PasswordEncodedAccountCode, password: []const u8, failureText: *main.ListManaged(u8)) !AccountCode {
+		if (self.protected) {
+			if (!protection.canProtect) return error.Invalid;
+
+			var copy: PasswordEncodedAccountCode = self;
+			copy.protected = false;
+			copy.data = try protection.unprotect(main.stackAllocator, self.data);
+			defer {
+				std.crypto.secureZero(u8, copy.data);
+				main.stackAllocator.free(copy.data);
+			}
+			return decryptFromPassword(copy, password, failureText);
+		}
 		if (self.typ == .none) {
 			return AccountCode.initFromUserInput(self.data, failureText);
 		}
@@ -379,6 +415,7 @@ pub const PasswordEncodedAccountCode = struct {
 		var self: PasswordEncodedAccountCode = undefined;
 
 		self.typ = std.meta.stringToEnum(EncodingType, zon.get([]const u8, "type") orelse return error.Invalid) orelse return error.Invalid;
+		self.protected = zon.get(bool, "protected") orelse false;
 		self.salt = allocator.dupe(u8, zon.get([]const u8, "salt") orelse "");
 		errdefer allocator.free(self.salt);
 		if (self.salt.len < 32 and self.typ != .none) return error.Invalid;
@@ -407,6 +444,7 @@ pub const PasswordEncodedAccountCode = struct {
 	pub fn toZon(self: PasswordEncodedAccountCode, allocator: NeverFailingAllocator) ZonElement {
 		const zon = ZonElement.initObject(allocator);
 		zon.put("type", @tagName(self.typ));
+		zon.put("protected", self.protected);
 		zon.putOwnedString("salt", self.salt);
 
 		const base64EncodedData = main.stackAllocator.alloc(u8, std.base64.standard.Encoder.calcSize(self.data.len));
