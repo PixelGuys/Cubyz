@@ -1486,7 +1486,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 	}
 	for (zon.getChild("optional").toSlice(), 0..) |zonDisabled, i| {
 		if (i >= 25) {
-			std.log.err("disabled array of {s} has too many entries", .{id});
+			std.log.err("optional array of {s} has too many entries", .{id});
 			break;
 		}
 		slotInfos[i].optional = (zonDisabled.as(usize) orelse 0) != 0;
