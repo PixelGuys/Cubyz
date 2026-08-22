@@ -30,7 +30,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:magma",
+			.block = "cubyz:magma/rough",
 			.chance = 0.03,
 			.width = 4,
 			.variation = 2,
@@ -39,7 +39,7 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:magma",
+			.block = "cubyz:magma/rough",
 			.chance = 0.08,
 			.width = 2,
 			.variation = 1,
