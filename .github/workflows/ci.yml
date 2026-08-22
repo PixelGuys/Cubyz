@@ -51,9 +51,6 @@ jobs:
       - uses: mlugg/setup-zig@v2
         with:
           version: ${{ env.VERSION }}
-      - run: zig build
-      - if: matrix.os == 'ubuntu-latest'
-        run: zig build -Dtarget=aarch64-linux-gnu
-      - if: matrix.os == 'windows-latest'
-        run: zig build -Dtarget=aarch64-windows-gnu
+      - run: zig build -Dtarget=x86_64-native
+      - run: zig build -Dtarget=aarch64-native-gnu
       - run: zig build test
