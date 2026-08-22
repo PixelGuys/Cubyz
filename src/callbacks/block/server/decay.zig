@@ -19,11 +19,10 @@ blockDrops: []const BlockDrop,
 pub fn init(zon: ZonElement, creator: main.callbacks.Creator) ?*@This() {
 	const block = switch (creator) {
 		.block => |b| b,
-		// TODO: Add when a new creator type exists
-		// else => {
-		// std.log.err("decay callback can only be used for blocks", .{});
-		// return null;
-		// },
+		else => {
+			std.log.err("decay callback can only be used for blocks", .{});
+			return null;
+		},
 	};
 	const result = main.worldArena.create(@This());
 	// replacement

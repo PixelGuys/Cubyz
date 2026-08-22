@@ -25,21 +25,17 @@ const ServerWorld = main.server.ServerWorld;
 const items = main.items;
 const ItemStack = items.ItemStack;
 const random = main.random;
+const AppliedStatusEffects = main.statusEffects.AppliedStatusEffects;
 
 const c = @import("c");
 
 pub var entityComponentID: main.entity.EntityComponentId = undefined;
 pub const entityComponentVersion = 0;
 
-const StatusEffect = struct {
-	id: u32,
-	stacks: u32,
-	timeLeft: f32,
-};
 // ############################# Client only stuff ################################
 pub const client = struct {
 	const Component = struct {
-		statusEffects: main.ListManaged(StatusEffect),
+		statusEffects: AppliedStatusEffects,
 	};
 	pub var components: main.utils.SparseSet(Component, Entity) = .{};
 
@@ -51,14 +47,14 @@ pub const client = struct {
 		components.clear();
 	}
 
-	pub fn getStatusEffects(entity: Entity) ?*main.ListManaged(StatusEffect) {
+	pub fn getStatusEffects(entity: Entity) ?*AppliedStatusEffects {
 		return &(components.get(entity) orelse return null).statusEffects;
 	}
 
 	pub fn load(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != entityComponentVersion) return error.InvalidComponentVersion;
 		const statusEffects = &components.add(main.globalAllocator, entity).statusEffects;
-		statusEffects.* = .init(main.globalAllocator);
+		statusEffects.* = statusEffects.init(main.globalAllocator, .empty);
 		statusEffects.fromBytes(reader) catch return error.UnreadableComponentData;
 	}
 	pub fn unload(entity: Entity) void {
@@ -70,7 +66,7 @@ pub const client = struct {
 // ############################# Server only stuff ################################
 pub const server = struct {
 	pub const Component = struct {
-		statusEffects: main.ListManaged(StatusEffect),
+		statusEffects: AppliedStatusEffects,
 		pub fn save(self: Component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			if (audience != .disk and audience != .playerHimself) return .discard;
 			self.statusEffects.toBytes(writer);
@@ -89,13 +85,13 @@ pub const server = struct {
 	pub fn get(entity: Entity) ?Component {
 		return (components.get(entity) orelse return null).*;
 	}
-	pub fn getStatusEffects(entity: Entity) ?*main.ListManaged(StatusEffect) {
+	pub fn getStatusEffects(entity: Entity) ?*AppliedStatusEffects {
 		return &(components.get(entity) orelse return null).statusEffects;
 	}
 	pub fn loadFromData(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != entityComponentVersion) return error.InvalidComponentVersion;
 		const statusEffects = &components.add(main.globalAllocator, entity).statusEffects;
-		statusEffects.* = .init(main.globalAllocator);
+		statusEffects.* = statusEffects.init(main.globalAllocator);
 		statusEffects.fromBytes(reader) catch return error.UnreadableComponentData;
 	}
 	pub fn loadEmpty(entity: Entity) void {
