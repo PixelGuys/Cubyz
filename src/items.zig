@@ -268,6 +268,9 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	pub fn block(self: BaseItemIndex) ?u16 {
 		return itemList[@intFromEnum(self)].block;
 	}
+	pub fn displayBlockData(self: BaseItemIndex) ?u16 {
+		return itemList[@intFromEnum(self)].displayBlockData;
+	}
 	pub fn hasTag(self: BaseItemIndex, tag: Tag) bool {
 		return itemList[@intFromEnum(self)].hasTag(tag);
 	}

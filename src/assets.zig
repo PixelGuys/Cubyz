@@ -687,9 +687,10 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		try assignBlockItem(stringId);
 	}
 
-	for (items.itemList) |item| {
-		if (item.displayBlockData != null and item.block == null) {
-			std.log.err("displayBlockData field was set, but there is no block defined for item: '{s}'", .{item.id});
+	var itemIndexIterator = items.iterator();
+	while (itemIndexIterator.next()) |index| {
+		if (index.displayBlockData() != null and index.block() == null) {
+			std.log.err("displayBlockData field was set, but there is no block defined for item: '{s}'", .{index.id()});
 		}
 	}
 
