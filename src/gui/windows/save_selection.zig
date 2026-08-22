@@ -30,6 +30,7 @@ pub var mode: main.server.ServerWorld.Mode = undefined;
 
 var deleteIcon: Texture = undefined;
 var fileExplorerIcon: Texture = undefined;
+var editIcon: Texture = undefined;
 
 const WorldInfo = struct {
 	lastUsedTime: i64,
@@ -41,11 +42,13 @@ var worldList: main.List(WorldInfo) = .empty;
 pub fn init() void {
 	deleteIcon = Texture.initFromFile("assets/cubyz/ui/delete_icon.png");
 	fileExplorerIcon = Texture.initFromFile("assets/cubyz/ui/file_explorer_icon.png");
+	editIcon = Texture.initFromFile("assets/cubyz/ui/edit_icon.png");
 }
 
 pub fn deinit() void {
 	deleteIcon.deinit();
 	fileExplorerIcon.deinit();
+	editIcon.deinit();
 }
 
 pub fn openWorld(name: []const u8) void {
@@ -98,6 +101,12 @@ fn openFolder(index: usize) void {
 	defer main.stackAllocator.free(path);
 
 	main.files.openDirInWindow(path);
+}
+
+fn editWorld(index: usize) void {
+	main.gui.closeWindow("edit_world");
+	main.gui.windowlist.edit_world.setEditWorldName(worldList.items[index].fileName);
+	main.gui.openWindow("edit_world");
 }
 
 pub fn update() void {
@@ -154,8 +163,9 @@ pub fn onOpen() void {
 	for (worldList.items, 0..) |worldInfo, i| {
 		const row = HorizontalList.init();
 		row.add(Button.initText(.{0, 0}, 128, worldInfo.name, .{.onAction = .initWithInt(openWorldWrap, i)}));
-		row.add(Button.initIcon(.{8, 0}, .{16, 16}, fileExplorerIcon, .{.onAction = .initWithInt(openFolder, i)}));
-		row.add(Button.initIcon(.{8, 0}, .{16, 16}, deleteIcon, .{.onAction = .initWithInt(deleteWorld, i)}));
+		row.add(Button.initIcon(.{4, 0}, .{16, 16}, editIcon, .{.onAction = .initWithInt(editWorld, i)}));
+		row.add(Button.initIcon(.{4, 0}, .{16, 16}, fileExplorerIcon, .{.onAction = .initWithInt(openFolder, i)}));
+		row.add(Button.initIcon(.{4, 0}, .{16, 16}, deleteIcon, .{.onAction = .initWithInt(deleteWorld, i)}));
 		row.finish(.{0, 0}, .center);
 		list.add(row);
 	}
