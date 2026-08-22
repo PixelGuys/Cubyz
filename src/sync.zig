@@ -1537,85 +1537,9 @@ pub const Command = struct { // MARK: Command
 	const UpdateBlock = struct { // MARK: UpdateBlock
 		source: InventoryAndSlot,
 		pos: Vec3i,
-		dropLocation: BlockDropLocation,
+		dropLocation: BlockDrop.Location,
 		oldBlock: Block,
 		newBlock: Block,
-
-		const half = @as(Vec3f, @splat(0.5));
-		const itemHitBoxMargin: f32 = @floatCast(main.itemdrop.ItemDropManager.radius);
-		const itemHitBoxMarginVec: Vec3f = @splat(itemHitBoxMargin);
-
-		const BlockDropLocation = struct {
-			normalDir: Vec3f,
-			min: Vec3f,
-			max: Vec3f,
-
-			pub fn drop(self: BlockDropLocation, pos: Vec3i, newBlock: Block, _drop: BlockDrop) void {
-				if (newBlock.collide()) {
-					self.dropOutside(pos, _drop);
-				} else {
-					self.dropInside(pos, _drop);
-				}
-			}
-			fn dropInside(self: BlockDropLocation, pos: Vec3i, _drop: BlockDrop) void {
-				for (_drop.itemStacks) |itemStack| {
-					main.server.world.?.drop(itemStack.clone(), self.insidePos(pos), self.dropDir(), self.dropVelocity());
-				}
-			}
-			fn insidePos(self: BlockDropLocation, _pos: Vec3i) Vec3d {
-				const pos: Vec3d = @floatFromInt(_pos);
-				return pos + self.randomOffset();
-			}
-			fn randomOffset(self: BlockDropLocation) Vec3f {
-				const max = @min(@as(Vec3f, @splat(1.0)) - itemHitBoxMarginVec, @max(itemHitBoxMarginVec, self.max - itemHitBoxMarginVec));
-				const min = @min(max, @max(itemHitBoxMarginVec, self.min + itemHitBoxMarginVec));
-				const center = (max + min)*half;
-				const width = (max - min)*half;
-				return center + width*main.random.nextFloatVectorSigned(3, &main.seed)*half;
-			}
-			fn dropOutside(self: BlockDropLocation, pos: Vec3i, _drop: BlockDrop) void {
-				for (_drop.itemStacks) |itemStack| {
-					main.server.world.?.drop(itemStack.clone(), self.outsidePos(pos), self.dropDir(), self.dropVelocity());
-				}
-			}
-			fn outsidePos(self: BlockDropLocation, _pos: Vec3i) Vec3d {
-				const pos: Vec3d = @floatFromInt(_pos);
-				const random = self.randomOffset();
-				const minorVectors = minors(self);
-				const minor1Offset = @as(Vec3f, @splat(vec.dot(random, minorVectors[0])))*minorVectors[0];
-				const minor2Offset = @as(Vec3f, @splat(vec.dot(random, minorVectors[1])))*minorVectors[1];
-				return pos + minor1Offset + minor2Offset + self.directionOffset()*self.major() + self.direction()*itemHitBoxMarginVec;
-			}
-			fn directionOffset(self: BlockDropLocation) Vec3d {
-				return half + self.direction()*half;
-			}
-			inline fn direction(self: BlockDropLocation) Vec3f {
-				return self.normalDir;
-			}
-			inline fn major(self: BlockDropLocation) Vec3f {
-				return @abs(self.normalDir);
-			}
-			inline fn minors(self: BlockDropLocation) struct { Vec3f, Vec3f } {
-				const minor1 = vec.normalize(vec.cross(self.normalDir, if (@reduce(.And, @abs(self.normalDir) == Vec3f{1.0, 0.0, 0.0})) Vec3f{0.0, 1.0, 0.0} else Vec3f{1.0, 0.0, 0.0}));
-				const minor2 = vec.normalize(vec.cross(self.normalDir, minor1));
-				return .{minor1, minor2};
-			}
-			fn dropDir(self: BlockDropLocation) Vec3f {
-				const randomnessVec: Vec3f = main.random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(0.25));
-				const directionVec: Vec3f = @as(Vec3f, @floatCast(self.direction())) + randomnessVec;
-				const z: f32 = directionVec[2];
-				return vec.normalize(Vec3f{
-					directionVec[0],
-					directionVec[1],
-					if (z < -0.5) 0 else if (z < 0.0) (z + 0.5)*4.0 else z + 2.0,
-				});
-			}
-			fn dropVelocity(self: BlockDropLocation) f32 {
-				const velocity = 3.5 + main.random.nextFloatSigned(&main.seed)*0.5;
-				if (self.direction()[2] < -0.5) return velocity*0.333;
-				return velocity;
-			}
-		};
 
 		fn run(self: UpdateBlock, ctx: Context) error{serverFailure}!void {
 			const stack = self.source.ref();
@@ -1672,16 +1596,12 @@ pub const Command = struct { // MARK: Command
 				},
 			}
 			if (ctx.side == .server and ctx.gamemode != .creative and shouldDropSourceBlockOnSuccess) {
-				const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
-				for (0..dropAmount) |_| {
-					for (self.oldBlock.blockDrops()) |drop| {
-						if (!drop.isDroppedWhenBrokenWithItem(handItem)) continue;
-
-						if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-							self.dropLocation.drop(self.pos, self.newBlock, drop);
-						}
-					}
-				}
+				const dropCtx = BlockDrop.Context{
+					.oldBlock = self.oldBlock,
+					.newBlock = self.newBlock,
+					.item = handItem,
+				};
+				dropCtx.drop(self.dropLocation, self.pos);
 			}
 		}
 
