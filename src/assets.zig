@@ -144,7 +144,7 @@ pub const Assets = struct {
 	fn log(self: *Assets, typ: enum { common, world }) void {
 		std.log.info(
 			"Finished {s} assets reading with {} blocks, {} items, {} procedural items, {} statuses, {} biomes, {} cave layers, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, {} world presets, block models {}, and {} block model ZONs",
-			.{@tagName(typ), self.blocks.count(), self.items.count(), self.proceduralItems.count(), self.statusEffects.count(), self.biomes.count(), self.biomes.count(), self.caveLayers.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count(), self.blockModels.count(), self.blockModelsZon.count()},
+			.{@tagName(typ), self.blocks.count(), self.items.count(), self.proceduralItems.count(), self.statusEffects.count(), self.biomes.count(), self.caveLayers.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count(), self.blockModels.count(), self.blockModelsZon.count()},
 		);
 	}
 

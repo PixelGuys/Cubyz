@@ -54,7 +54,7 @@ pub const client = struct {
 	pub fn load(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != entityComponentVersion) return error.InvalidComponentVersion;
 		const statusEffects = &components.add(main.globalAllocator, entity).statusEffects;
-		statusEffects.* = statusEffects.init(main.globalAllocator, .empty);
+		statusEffects.* = statusEffects.init(main.globalAllocator);
 		statusEffects.fromBytes(reader) catch return error.UnreadableComponentData;
 	}
 	pub fn unload(entity: Entity) void {

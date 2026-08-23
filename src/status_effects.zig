@@ -73,7 +73,7 @@ pub const StatusEffectTracker = struct {
 	pub fn fromBytes(self: *StatusEffectTracker, reader: *BinaryReader) !void {
 		self.id = try reader.readVarInt(u32);
 		self.stacks = try reader.readVarInt(u32);
-		self.timeLeft = try reader.readVarInt(f32);
+		self.timeLeft = try reader.readFloat(f32);
 	}
 
 	pub fn toBytes(self: StatusEffectTracker, writer: *BinaryWriter) void {
@@ -86,7 +86,7 @@ pub const StatusEffectTracker = struct {
 pub const AppliedStatusEffects = struct {
 	statusEffects: main.ListManaged(StatusEffectTracker),
 
-	pub fn init(allocator: NeverFailingAllocator) AppliedStatusEffects {
+	pub fn init(_: AppliedStatusEffects, allocator: NeverFailingAllocator) AppliedStatusEffects {
 		return .{.statusEffects = .init(allocator)};
 	}
 
@@ -97,7 +97,9 @@ pub const AppliedStatusEffects = struct {
 	pub fn fromBytes(self: *AppliedStatusEffects, reader: *BinaryReader) !void {
 		const amount = try reader.readVarInt(u32);
 		for (0..amount) |_| {
-			self.statusEffects.append(try StatusEffectTracker.fromBytes(reader));
+			var statusTracker: StatusEffectTracker = StatusEffectTracker{.id = 0, .stacks = 0, .timeLeft = 0};
+			try statusTracker.fromBytes(reader);
+			self.statusEffects.append(statusTracker);
 		}
 	}
 
