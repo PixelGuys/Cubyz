@@ -26,15 +26,18 @@ pub const client = struct { // MARK: client
 	var maxId: InventoryId = @enumFromInt(0);
 	var freeIdList: main.List(InventoryId) = .empty;
 	var serverToClientMap: std.AutoHashMap(InventoryId, Inventory) = undefined;
+	var loadingInventories: std.AutoHashMap(InventoryId, u32) = undefined;
 
 	pub fn init() void {
 		serverToClientMap = .init(main.globalAllocator.allocator);
+		loadingInventories = .init(main.globalAllocator.allocator);
 	}
 
 	pub fn deinit() void {
 		std.debug.assert(freeIdList.items.len == @intFromEnum(maxId)); // leak
 		freeIdList.clearAndFree(main.globalAllocator);
 		serverToClientMap.deinit();
+		loadingInventories.deinit();
 	}
 
 	fn nextId() InventoryId {
@@ -65,6 +68,7 @@ pub const client = struct { // MARK: client
 
 	pub fn unmapServerIdByClientId(clientId: InventoryId) void {
 		main.sync.client.mutex.assertLocked();
+		_ = loadingInventories.remove(clientId);
 		const serverId = blk: {
 			var it = serverToClientMap.iterator();
 			while (it.next()) |entry| {
@@ -73,6 +77,34 @@ pub const client = struct { // MARK: client
 			return;
 		};
 		unmapServerId(serverId, clientId);
+	}
+
+	fn startLoadTracking(clientId: InventoryId) void {
+		main.sync.client.mutex.lock();
+		defer main.sync.client.mutex.unlock();
+		loadingInventories.put(clientId, 1) catch unreachable;
+	}
+
+	pub fn setExpectedItemCount(clientId: InventoryId, count: u32) void {
+		main.sync.client.mutex.assertLocked();
+		if (count == 0) {
+			_ = loadingInventories.remove(clientId);
+		} else {
+			loadingInventories.put(clientId, count) catch unreachable;
+		}
+	}
+
+	pub fn recordInitialItemReceived(clientId: InventoryId) void {
+		main.sync.client.mutex.assertLocked();
+		const entry = loadingInventories.getPtr(clientId) orelse return;
+		entry.* -= 1;
+		if (entry.* == 0) _ = loadingInventories.remove(clientId);
+	}
+
+	fn isLoaded(clientId: InventoryId) bool {
+		main.sync.client.mutex.lock();
+		defer main.sync.client.mutex.unlock();
+		return !loadingInventories.contains(clientId);
 	}
 
 	fn getInventory(serverId: InventoryId) ?Inventory {
@@ -428,9 +460,15 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			.type = clientType,
 		};
 		if (clientType == .serverShared) {
+			client.startLoadTracking(self.super.id);
 			sync.client.executeCommand(.{.open = .{.inv = self.super, .source = source}});
 		}
 		return self;
+	}
+
+	pub fn isLoaded(self: ClientInventory) bool {
+		if (self.type != .serverShared) return true;
+		return client.isLoaded(self.super.id);
 	}
 
 	pub fn deinit(self: ClientInventory, allocator: NeverFailingAllocator) void {
