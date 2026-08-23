@@ -285,6 +285,12 @@ pub const Command = struct { // MARK: Command
 		addEnergy = 6,
 	};
 
+	/// The BaseOperation is the primitive operation used by Command. It is responsible for executing the operation as
+	/// well as storing undo information (for client-side prediction) or sync operations (for the server to send to other clients)
+	///
+	/// Implementation-wise the main difference (between BaseOperation and SyncOperation) is that the BaseOperation can assume
+	/// that the server knows all the inventories involved, whereas the SyncOperation cannot assume that the client
+	/// knows the contents of all inventories involved, so e.g. swap base operations are decomposed into create and delete sync operations.
 	pub const BaseOperation = union(BaseOperationType) {
 		move: struct {
 			dest: InventoryAndSlot,
@@ -344,6 +350,8 @@ pub const Command = struct { // MARK: Command
 		rotation = 6,
 	};
 
+	/// The SyncOperation is responsible for informing (other) clients of the results of e.g. a base operation, or, more
+	/// generally, other things that are happening on the server.
 	const SyncOperation = union(SyncOperationType) { // MARK: SyncOperation
 		// Since the client doesn't know about all inventories, we can only use create(+amount)/delete(-amount) and use durability operations to apply the server side updates.
 		create: struct {
