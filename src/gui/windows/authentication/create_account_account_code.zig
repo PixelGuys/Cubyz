@@ -77,7 +77,9 @@ fn selectFile() void {
 	if (builtin.os.tag == .windows) {
 		std.mem.replaceScalar(u8, displayName, '\\', '/');
 	}
-	fileNameEntry.updateText(displayName);
+	const labelText = main.stackAllocator.print("Saved to: {s}", .{displayName});
+	defer main.stackAllocator.free(labelText);
+	fileNameEntry.updateText(labelText);
 }
 
 pub fn onOpen() void {
