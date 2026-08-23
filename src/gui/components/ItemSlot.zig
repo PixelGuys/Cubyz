@@ -21,8 +21,12 @@ pub const sizeWithBorder = 32 + 2*border;
 const Mode = enum {
 	normal,
 	takeOnly,
-	unfocused,
 	immutable,
+};
+
+const Style = enum {
+	normal,
+	unfocused,
 };
 
 pos: Vec2f,
@@ -37,6 +41,7 @@ pressed: bool = false,
 renderFrame: bool = true,
 texture: ?Texture,
 mode: Mode,
+style: Style,
 
 var defaultTexture: Texture = undefined;
 var immutableTexture: Texture = undefined;
@@ -82,6 +87,7 @@ pub fn init(pos: Vec2f, inventory: ClientInventory, itemSlot: u32, texture: Text
 		.lastItemAmount = amount,
 		.texture = texture.value(),
 		.mode = mode,
+		.style = Style.normal,
 	};
 	self.textSize = self.text.calculateLineBreaks(8, self.size[0] - 2*border);
 	return self;
@@ -137,11 +143,14 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 		draw.boundImage(self.pos, self.size);
 	}
 	const item = self.inventory.getItem(self.itemSlot);
+	const inventorySource = self.inventory.super.source;
+
 	const isValidMaterial = item == .null or (item == .baseItem and item.baseItem.material() != null);
-	if (self.mode == .normal and gui.isWindowOpen("workbench") and !isValidMaterial) {
-		self.mode = .unfocused;
-	} else if (self.mode == .unfocused and (!gui.isWindowOpen("workbench") or isValidMaterial)) {
-		self.mode = .normal;
+	const applyWorkbenchFocus = gui.isWindowOpen("workbench") and (inventorySource == .playerInventory or inventorySource == .other);
+	if (self.style == .normal and applyWorkbenchFocus and !isValidMaterial) {
+		self.style = .unfocused;
+	} else if (self.style == .unfocused and (!applyWorkbenchFocus or isValidMaterial)) {
+		self.style = .normal;
 	}
 
 	if (item != .null) {
@@ -157,8 +166,8 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 			const oldColor = draw.setColor(0x300000ff);
 			defer draw.restoreColor(oldColor);
 			draw.rect(self.pos, self.size);
-		} else if (self.mode == .unfocused and self.renderFrame) {
-			const oldColor = draw.setColor(0x600f0f0f);
+		} else if (self.style == .unfocused and self.renderFrame) {
+			const oldColor = draw.setColor(0x800f0f0f);
 			defer draw.restoreColor(oldColor);
 			draw.rect(self.pos, self.size);
 		}
