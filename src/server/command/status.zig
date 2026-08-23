@@ -18,8 +18,8 @@ pub const Args = union(enum) {
 
 pub fn execute(args: Args, _: Source) void {
 	switch (args) {
-		.@"/whitelist <effect> <stacks> <time>" => {
-			main.sync.client.executeCommand(.{.craftProceduralItem = .init()});
+		.@"/status <effect> <stacks> <time>" => {
+			main.sync.client.executeCommand(.{.addStatusEffect = .{.id = 1, .stacks = 1, .timeLeft = 1}});
 		},
 	}
 }

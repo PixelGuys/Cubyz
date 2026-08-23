@@ -243,6 +243,7 @@ pub const Command = struct { // MARK: Command
 		clear = 8,
 		updateBlock = 9,
 		addHealth = 10,
+		addStatusEffect = 19,
 		chatCommand = 12,
 	};
 	pub const Payload = union(PayloadType) {
@@ -264,6 +265,7 @@ pub const Command = struct { // MARK: Command
 		clear: Clear,
 		updateBlock: UpdateBlock,
 		addHealth: AddHealth,
+		addStatusEffect: AddStatusEffect,
 		chatCommand: ChatCommand,
 	};
 
@@ -277,6 +279,7 @@ pub const Command = struct { // MARK: Command
 		useDurability = 4,
 		addHealth = 5,
 		addEnergy = 6,
+		addStatusEffect = 9,
 	};
 
 	pub const BaseOperation = union(BaseOperationType) {
@@ -325,6 +328,12 @@ pub const Command = struct { // MARK: Command
 			target: ?*main.server.User,
 			energy: f32,
 			previous: f32,
+		},
+		addStatusEffect: struct {
+			target: ?*main.statusEffects.AppliedStatusEffects,
+			id: u32,
+			stacks: u32,
+			timeLeft: f32,
 		},
 	};
 
@@ -622,6 +631,9 @@ pub const Command = struct { // MARK: Command
 				.addEnergy => |info| {
 					main.game.Player.super.energy = info.previous;
 				},
+				.addStatusEffect => |info| {
+					_ = info.target.?.statusEffects.pop();
+				},
 			}
 		}
 	}
@@ -629,7 +641,7 @@ pub const Command = struct { // MARK: Command
 	fn finalize(self: Command, allocator: NeverFailingAllocator, side: Side, reader: *BinaryReader) !void {
 		for (self.baseOperations.items) |step| {
 			switch (step) {
-				.move, .swap, .create, .moveToBag, .takeFromBag, .addHealth, .addEnergy => {},
+				.move, .swap, .create, .moveToBag, .takeFromBag, .addHealth, .addEnergy, .addStatusEffect => {},
 				.delete => |info| {
 					info.item.deinit();
 				},
@@ -817,6 +829,9 @@ pub const Command = struct { // MARK: Command
 					info.previous = main.game.Player.super.energy;
 					main.game.Player.super.energy = std.math.clamp(main.game.Player.super.energy + info.energy, 0, main.game.Player.super.maxEnergy);
 				}
+			},
+			.addStatusEffect => |*info| {
+				info.target.?.statusEffects.append(main.statusEffects.StatusEffectTracker{.id = info.id, .stacks = info.stacks, .timeLeft = info.timeLeft});
 			},
 		}
 		self.baseOperations.append(allocator, op);
@@ -1762,29 +1777,30 @@ pub const Command = struct { // MARK: Command
 	};
 
 	const AddStatusEffect = struct { // MARK: AddStatusEffect
-		source: main.statusEffects.AppliedStatusEffects,
 		id: u32,
 		stacks: u32,
 		timeLeft: f32,
 
-		fn run(self: MoveToPlayerBag, ctx: Context) error{serverFailure}!void {
+		fn run(self: AddStatusEffect, ctx: Context) error{serverFailure}!void {
 			std.debug.assert(ctx.side == .client or ctx.user != null);
 			const StatusEffects = switch (ctx.side) {
 				.client => @"cubyz:status_effects".client.getStatusEffects(main.game.Player.id).?,
 				.server => @"cubyz:status_effects".server.getStatusEffects((ctx.user orelse return error.serverFailure).id) orelse return error.serverFailure,
 			};
-			ctx.execute(.{.moveToBag = .{.dest = StatusEffects, .source = self.source, .amount = self.amount}});
+			ctx.execute(.{.addStatusEffect = .{.target = StatusEffects, .id = self.id, .stacks = self.stacks, .timeLeft = self.timeLeft}});
 		}
 
-		fn serialize(self: MoveToPlayerBag, writer: *BinaryWriter) void {
-			self.source.write(writer);
-			writer.writeInt(u16, self.amount);
+		fn serialize(self: AddStatusEffect, writer: *BinaryWriter) void {
+			writer.writeInt(u32, self.id);
+			writer.writeInt(u32, self.stacks);
+			writer.writeFloat(f32, self.timeLeft);
 		}
 
-		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !MoveToPlayerBag {
+		fn deserialize(reader: *BinaryReader, _: Side, _: ?*main.server.User) !AddStatusEffect {
 			return .{
-				.source = try InventoryAndSlot.read(reader, side, user),
-				.amount = try reader.readInt(u16),
+				.id = try reader.readInt(u32),
+				.stacks = try reader.readInt(u32),
+				.timeLeft = try reader.readFloat(f32),
 			};
 		}
 	};
