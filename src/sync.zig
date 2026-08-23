@@ -21,6 +21,7 @@ const ZonElement = main.ZonElement;
 const BlockDrop = main.server.BlockDrop;
 
 const @"cubyz:bag" = main.entity.components.@"cubyz:bag";
+const @"cubyz:status_effects" = main.entity.components.@"cubyz:status_effects";
 
 pub const Side = enum { client, server };
 
@@ -1757,6 +1758,34 @@ pub const Command = struct { // MARK: Command
 			};
 			if (user.?.id != result.target) return error.Invalid;
 			return result;
+		}
+	};
+
+	const AddStatusEffect = struct { // MARK: AddStatusEffect
+		source: main.statusEffects.AppliedStatusEffects,
+		id: u32,
+		stacks: u32,
+		timeLeft: f32,
+
+		fn run(self: MoveToPlayerBag, ctx: Context) error{serverFailure}!void {
+			std.debug.assert(ctx.side == .client or ctx.user != null);
+			const StatusEffects = switch (ctx.side) {
+				.client => @"cubyz:status_effects".client.getStatusEffects(main.game.Player.id).?,
+				.server => @"cubyz:status_effects".server.getStatusEffects((ctx.user orelse return error.serverFailure).id) orelse return error.serverFailure,
+			};
+			ctx.execute(.{.moveToBag = .{.dest = StatusEffects, .source = self.source, .amount = self.amount}});
+		}
+
+		fn serialize(self: MoveToPlayerBag, writer: *BinaryWriter) void {
+			self.source.write(writer);
+			writer.writeInt(u16, self.amount);
+		}
+
+		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !MoveToPlayerBag {
+			return .{
+				.source = try InventoryAndSlot.read(reader, side, user),
+				.amount = try reader.readInt(u16),
+			};
 		}
 	};
 

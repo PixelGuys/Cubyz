@@ -12,6 +12,7 @@ pub const tickspeed = @import("tickspeed.zig");
 pub const time = @import("time.zig");
 pub const tp = @import("tp.zig");
 pub const whitelist = @import("whitelist.zig");
+pub const status = @import("status.zig");
 
 pub const avatar = @import("entity/avatar.zig");
 
