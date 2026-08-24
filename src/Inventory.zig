@@ -600,6 +600,8 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			if (itemB == .null) return true;
 			if ((itemA != .proceduralItem) and (itemB == .proceduralItem)) return false;
 			if ((itemA == .proceduralItem) and (itemB != .proceduralItem)) return true;
+			if (std.mem.lessThan(u8, itemA.id().?, itemB.id().?)) return true;
+			if (!std.mem.lessThan(u8, itemA.id().?, itemB.id().?) and !std.mem.eql(u8, itemA.id().?, itemB.id().?)) return false;
 			if ((itemA == .proceduralItem) and (itemB == .proceduralItem)) {
 				if (std.mem.lessThan(u8, itemA.id().?, itemB.id().?)) return true;
 				if (!std.mem.lessThan(u8, itemA.id().?, itemB.id().?) and !std.mem.eql(u8, itemA.id().?, itemB.id().?)) return false;
@@ -612,8 +614,6 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 				if (itemADps < itemBDps) return true;
 				if (itemADps > itemBDps) return false;
 			}
-			if (std.mem.lessThan(u8, itemA.id().?, itemB.id().?)) return true;
-			if (!std.mem.lessThan(u8, itemA.id().?, itemB.id().?) and !std.mem.eql(u8, itemA.id().?, itemB.id().?)) return false;
 
 			return (ctx.inv.getAmount(a) > ctx.inv.getAmount(b));
 		}
