@@ -10,7 +10,7 @@ pub const ServerBlockCallback = Callback(struct { block: Block, chunk: *main.chu
 
 pub const BlockTouchCallback = Callback(struct { entity: *main.server.Entity, source: Block, blockPos: Vec3i, deltaTime: f64 }, @import("block/touch/_list.zig"));
 
-pub const StatusUpdateCallback = Callback(struct { entity: *main.server.Entity, deltaTime: f64 }, @import("status/_list.zig"));
+pub const StatusUpdateCallback = Callback(struct { entity: *main.server.Entity, stacks: u32, deltaTime: f64 }, @import("status/_list.zig"));
 
 pub const Result = enum { handled, ignored };
 
