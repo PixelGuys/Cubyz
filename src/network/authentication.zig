@@ -320,8 +320,8 @@ pub const PasswordEncodedAccountCode = struct { // MARK: PasswordEncodedAccountC
 			defer allocator.free(encryptedBuffer);
 			data = protection.protect(allocator, encryptedBuffer) catch |err| {
 				switch (err) {
-					.SystemError => return error.SystemError,
-					.Unsupported => unreachable,
+					error.SystemError => return error.SystemError,
+					error.Unsupported => unreachable,
 				}
 			};
 		} else {
@@ -343,8 +343,8 @@ pub const PasswordEncodedAccountCode = struct { // MARK: PasswordEncodedAccountC
 		if (protected) {
 			data = protection.protect(allocator, accountCode.text) catch |err| {
 				switch (err) {
-					.SystemError => return error.SystemError,
-					.Unsupported => unreachable,
+					error.SystemError => return error.SystemError,
+					error.Unsupported => unreachable,
 				}
 			};
 		} else {
