@@ -66,7 +66,7 @@ pub const client = struct {
 		const statusEffects = &(components.get(main.game.Player.id) orelse return).statusEffects;
 		for (statusEffects.statusEffects.items) |status| {
 			const foundStatus = main.statusEffects.StatusEffect.fromInt(status.id);
-			std.log.err("what? {} {}", .{statusEffects.statusEffects.items.len, status, foundStatus});
+			std.log.err("what? {} {} {}", .{statusEffects.statusEffects.items.len, status, foundStatus.onUpdate()});
 			_ = foundStatus.onUpdate().run(.{.entity = entity, .deltaTime = deltaTime});
 		}
 	}
