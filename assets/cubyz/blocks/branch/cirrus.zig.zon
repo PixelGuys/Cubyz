@@ -26,11 +26,11 @@
 					.strength = 0.15,
 				},
 				.{
-					.id = "fragile",
+					.id = "durable",
 					.strength = 0.1,
 					.restriction = .{
 						.id = .on_top_of,
-						.tag = .head,
+						.tag = .handle,
 					},
 				},
 			},
