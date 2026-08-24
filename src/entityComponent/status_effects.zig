@@ -64,9 +64,13 @@ pub const client = struct {
 
 	pub fn updateStatusEffects(entity: *main.server.Entity, deltaTime: f64) void {
 		const statusEffects = &(components.get(main.game.Player.id) orelse return).statusEffects;
-		for (statusEffects.statusEffects.items) |status| {
+		for (statusEffects.statusEffects.items) |*status| {
 			const foundStatus = main.statusEffects.StatusEffect.fromInt(status.id);
 			_ = foundStatus.onUpdate().run(.{.entity = entity, .stacks = status.stacks, .deltaTime = deltaTime});
+			status.timeLeft -= @floatCast(deltaTime);
+			if (status.timeLeft <= 0) {
+				main.sync.client.executeCommand(.{.removeStatusEffect = .{.id = status.id, .stacks = 1, .timeLeft = 1}});
+			}
 		}
 	}
 };

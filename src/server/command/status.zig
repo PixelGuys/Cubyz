@@ -13,13 +13,13 @@ pub const usage =
 const Action = enum { add, block };
 
 pub const Args = union(enum) {
-	@"/status <effect> <stacks> <time>": struct { effect: Action, stacks: u32, time: f32 },
+	@"/status <effect> <stacks> <time>": struct { id: u32, stacks: u32, time: f32 },
 };
 
 pub fn execute(args: Args, _: Source) void {
 	switch (args) {
-		.@"/status <effect> <stacks> <time>" => {
-			main.sync.client.executeCommand(.{.addStatusEffect = .{.id = 1, .stacks = 1, .timeLeft = 1}});
+		.@"/status <effect> <stacks> <time>" => |params| {
+			main.sync.client.executeCommand(.{.addStatusEffect = .{.id = params.id, .stacks = params.stacks, .timeLeft = params.time}});
 		},
 	}
 }

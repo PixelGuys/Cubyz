@@ -244,6 +244,7 @@ pub const Command = struct { // MARK: Command
 		updateBlock = 9,
 		addHealth = 10,
 		addStatusEffect = 19,
+		removeStatusEffect = 20,
 		chatCommand = 12,
 	};
 	pub const Payload = union(PayloadType) {
@@ -266,6 +267,7 @@ pub const Command = struct { // MARK: Command
 		updateBlock: UpdateBlock,
 		addHealth: AddHealth,
 		addStatusEffect: AddStatusEffect,
+		removeStatusEffect: RemoveStatusEffect,
 		chatCommand: ChatCommand,
 	};
 
@@ -280,6 +282,7 @@ pub const Command = struct { // MARK: Command
 		addHealth = 5,
 		addEnergy = 6,
 		addStatusEffect = 9,
+		removeStatusEffect = 10,
 	};
 
 	pub const BaseOperation = union(BaseOperationType) {
@@ -330,6 +333,12 @@ pub const Command = struct { // MARK: Command
 			previous: f32,
 		},
 		addStatusEffect: struct {
+			target: ?*main.statusEffects.AppliedStatusEffects,
+			id: u32,
+			stacks: u32,
+			timeLeft: f32,
+		},
+		removeStatusEffect: struct {
 			target: ?*main.statusEffects.AppliedStatusEffects,
 			id: u32,
 			stacks: u32,
@@ -632,7 +641,25 @@ pub const Command = struct { // MARK: Command
 					main.game.Player.super.energy = info.previous;
 				},
 				.addStatusEffect => |info| {
-					_ = info.target.?.statusEffects.pop();
+					var foundSimilarStatus: bool = false;
+					for (info.target.?.statusEffects.items) |*status| {
+						if (status.id == info.id) {
+							status.stacks += info.stacks;
+							foundSimilarStatus = true;
+							break;
+						}
+					}
+					if (!foundSimilarStatus) info.target.?.statusEffects.append(main.statusEffects.StatusEffectTracker{.id = info.id, .stacks = info.stacks, .timeLeft = info.timeLeft});
+				},
+				.removeStatusEffect => |info| {
+					for (info.target.?.statusEffects.items, 0..) |*status, i| {
+						if (status.id == info.id) {
+							status.stacks -= info.stacks;
+							status.timeLeft = info.timeLeft;
+							if (status.stacks == 0) _ = info.target.?.statusEffects.swapRemove(i);
+							break;
+						}
+					}
 				},
 			}
 		}
@@ -641,7 +668,7 @@ pub const Command = struct { // MARK: Command
 	fn finalize(self: Command, allocator: NeverFailingAllocator, side: Side, reader: *BinaryReader) !void {
 		for (self.baseOperations.items) |step| {
 			switch (step) {
-				.move, .swap, .create, .moveToBag, .takeFromBag, .addHealth, .addEnergy, .addStatusEffect => {},
+				.move, .swap, .create, .moveToBag, .takeFromBag, .addHealth, .addEnergy, .addStatusEffect, .removeStatusEffect => {},
 				.delete => |info| {
 					info.item.deinit();
 				},
@@ -831,7 +858,25 @@ pub const Command = struct { // MARK: Command
 				}
 			},
 			.addStatusEffect => |*info| {
-				info.target.?.statusEffects.append(main.statusEffects.StatusEffectTracker{.id = info.id, .stacks = info.stacks, .timeLeft = info.timeLeft});
+				var foundSimilarStatus: bool = false;
+				for (info.target.?.statusEffects.items) |*status| {
+					if (status.id == info.id) {
+						status.stacks += info.stacks;
+						foundSimilarStatus = true;
+						break;
+					}
+				}
+				if (!foundSimilarStatus) info.target.?.statusEffects.append(main.statusEffects.StatusEffectTracker{.id = info.id, .stacks = info.stacks, .timeLeft = info.timeLeft});
+			},
+			.removeStatusEffect => |*info| {
+				for (info.target.?.statusEffects.items, 0..) |*status, i| {
+					if (status.id == info.id) {
+						status.stacks -= info.stacks;
+						status.timeLeft = info.timeLeft;
+						if (status.stacks == 0) _ = info.target.?.statusEffects.swapRemove(i);
+						break;
+					}
+				}
 			},
 		}
 		self.baseOperations.append(allocator, op);
@@ -1797,6 +1842,35 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn deserialize(reader: *BinaryReader, _: Side, _: ?*main.server.User) !AddStatusEffect {
+			return .{
+				.id = try reader.readInt(u32),
+				.stacks = try reader.readInt(u32),
+				.timeLeft = try reader.readFloat(f32),
+			};
+		}
+	};
+
+	const RemoveStatusEffect = struct { // MARK: AddStatusEffect
+		id: u32,
+		stacks: u32,
+		timeLeft: f32,
+
+		fn run(self: RemoveStatusEffect, ctx: Context) error{serverFailure}!void {
+			std.debug.assert(ctx.side == .client or ctx.user != null);
+			const StatusEffects = switch (ctx.side) {
+				.client => @"cubyz:status_effects".client.getStatusEffects(main.game.Player.id).?,
+				.server => @"cubyz:status_effects".server.getStatusEffects((ctx.user orelse return error.serverFailure).id) orelse return error.serverFailure,
+			};
+			ctx.execute(.{.removeStatusEffect = .{.target = StatusEffects, .id = self.id, .stacks = self.stacks, .timeLeft = self.timeLeft}});
+		}
+
+		fn serialize(self: RemoveStatusEffect, writer: *BinaryWriter) void {
+			writer.writeInt(u32, self.id);
+			writer.writeInt(u32, self.stacks);
+			writer.writeFloat(f32, self.timeLeft);
+		}
+
+		fn deserialize(reader: *BinaryReader, _: Side, _: ?*main.server.User) !RemoveStatusEffect {
 			return .{
 				.id = try reader.readInt(u32),
 				.stacks = try reader.readInt(u32),
