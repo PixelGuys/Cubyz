@@ -13,7 +13,7 @@ const impl = switch (builtin.os.tag) {
 
 pub const canProtect: bool = impl.canProtect;
 
-pub fn protect(allocator: NeverFailingAllocator, data: []const u8) error{ SystemError, Unsupported }![]u8 {
+pub fn protect(allocator: NeverFailingAllocator, data: []const u8) error{SystemError}![]u8 {
 	return impl.protect(allocator, data);
 }
 
@@ -24,8 +24,8 @@ pub fn unprotect(allocator: NeverFailingAllocator, data: []const u8) error{ Syst
 const no_impl = struct {
 	const canProtect = false;
 
-	fn protect(_: NeverFailingAllocator, _: []const u8) error{ SystemError, Unsupported }![]u8 {
-		return error.Unsupported;
+	fn protect(_: NeverFailingAllocator, _: []const u8) error{SystemError}![]u8 {
+		@panic("Protection API not implemented on this device. Always check protection.canProtect before trying to use this API.");
 	}
 
 	fn unprotect(_: NeverFailingAllocator, _: []const u8) error{ SystemError, Invalid }![]u8 {
@@ -36,7 +36,7 @@ const no_impl = struct {
 const windows_impl = struct {
 	const canProtect = true;
 
-	fn protect(allocator: NeverFailingAllocator, data: []const u8) error{ SystemError, Unsupported }![]u8 {
+	fn protect(allocator: NeverFailingAllocator, data: []const u8) error{SystemError}![]u8 {
 		var plainblob: c.DATA_BLOB = .{
 			.cbData = @intCast(data.len),
 			.pbData = @constCast(data.ptr),
@@ -92,10 +92,9 @@ test "slice==unprotect(protect(slice))" {
 	}
 }
 
-test "Protect fails on unsupported platforms" {
+test "unprotect fails on unsupported platforms" {
 	const slice = "Test";
 	if (!canProtect) {
-		try std.testing.expectError(error.Unsupported, protect(main.stackAllocator, slice));
 		try std.testing.expectError(error.Invalid, unprotect(main.stackAllocator, slice));
 	} else {
 		return error.SkipZigTest;
