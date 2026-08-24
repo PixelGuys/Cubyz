@@ -560,7 +560,7 @@ const SlotInfo = packed struct { // MARK: SlotInfo
 	optional: bool = false,
 };
 
-const TagField = struct { // MARK: TagField
+const SlotTag = struct { // MARK: SlotTag
 	hasTagMatrix: [25]bool,
 	tagType: main.Tag,
 };
@@ -623,8 +623,8 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 	pub fn properties(self: ProceduralItemTypeIndex) []const PropertyMatrix {
 		return proceduralItemTypeList.items[@intFromEnum(self)].properties;
 	}
-	pub fn tagfields(self: ProceduralItemTypeIndex) []const TagField {
-		return proceduralItemTypeList.items[@intFromEnum(self)].tagfields;
+	pub fn slotTags(self: ProceduralItemTypeIndex) []const SlotTag {
+		return proceduralItemTypeList.items[@intFromEnum(self)].slotTags;
 	}
 	pub fn slotInfos(self: ProceduralItemTypeIndex) *const [25]SlotInfo {
 		return &proceduralItemTypeList.items[@intFromEnum(self)].slotInfos;
@@ -642,7 +642,7 @@ pub const ProceduralItemType = struct { // MARK: ProceduralItemType
 	tags: []main.Tag,
 	properties: []PropertyMatrix,
 	slotInfos: [25]SlotInfo,
-	tagfields: []TagField,
+	slotTags: []SlotTag,
 	pixelSources: [16][16]u8,
 	pixelSourcesOverlay: [16][16]u8,
 };
@@ -858,13 +858,13 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		return self.craftingGrid[@intCast(x + y*5)];
 	}
 
-	pub fn checkForTagAt(self: *const ProceduralItem, x: i32, y: i32, checkedTag: main.Tag) bool {
+	pub fn hasMaterialOrSlotTagAt(self: *const ProceduralItem, x: i32, y: i32, checkedTag: main.Tag) bool {
 		if (x < 0 or x >= 5) return false;
 		if (y < 0 or y >= 5) return false;
 
-		for (self.type.tagfields()) |specificTagField| {
-			if (specificTagField.tagType != checkedTag) continue;
-			if (specificTagField.hasTagMatrix[@intCast(x + y*5)]) return true;
+		for (self.type.slotTags()) |specificSlotTag| {
+			if (specificSlotTag.tagType != checkedTag) continue;
+			if (specificSlotTag.hasTagMatrix[@intCast(x + y*5)]) return true;
 		}
 		if ((self.getItemAt(x, y) orelse return false).hasTag(checkedTag)) return true;
 		return false;
@@ -1349,19 +1349,19 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 			}
 		}
 	}
-	var tagfields: main.List(TagField) = .empty;
+	var slotTags: main.List(SlotTag) = .empty;
 	{
-		defer tagfields.deinit(main.stackAllocator);
+		defer slotTags.deinit(main.stackAllocator);
 		var it = zon.object.iterator();
 		while (it.next()) |entry| {
 			if (std.mem.eql(u8, entry.key_ptr.*, "optional")) continue;
 			if (std.mem.eql(u8, entry.key_ptr.*, "disabled")) continue;
-			const tagFieldVal = tagfields.addOne(main.stackAllocator);
+			const slotTagVal = slotTags.addOne(main.stackAllocator);
 			const matrixZon = entry.value_ptr;
 			for (0..25) |i| {
-				tagFieldVal.hasTagMatrix[i] = (matrixZon.as(usize) != 0);
+				slotTagVal.hasTagMatrix[i] = (matrixZon.as(usize) != 0);
 			}
-			tagFieldVal.tagType = main.Tag.find(entry.key_ptr.*);
+			slotTagVal.tagType = main.Tag.find(entry.key_ptr.*);
 		}
 	}
 	var parameterMatrices: main.List(PropertyMatrix) = .empty;
@@ -1396,7 +1396,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 		.id = idDupe,
 		.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
 		.slotInfos = slotInfos,
-		.tagfields = main.worldArena.dupe(TagField, tagfields.items),
+		.slotTags = main.worldArena.dupe(SlotTag, slotTags.items),
 		.properties = main.worldArena.dupe(PropertyMatrix, parameterMatrices.items),
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
