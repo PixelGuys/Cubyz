@@ -92,7 +92,7 @@ pub fn onOpen() void {
 	list.add(Label.init(.{0, 0}, width, "Your Account Code will be stored in your settings to allow you to stay logged in. Please decide how we should store it:", .left));
 	innerList = VerticalList.init(.{0, 0}, 100, 16);
 	if (main.network.authentication.protection.canProtect) {
-		protectCheckbox = CheckBox.init(.{0, 0}, width, "Protect with system api (recommended)", protectAccountCode, &protectAccountCodeCallback);
+		protectCheckbox = CheckBox.init(.{0, 0}, width, "Protect from theft (recommended)\nForces re-authentication when device changes", protectAccountCode, &protectAccountCodeCallback);
 		innerList.add(protectCheckbox);
 	}
 	encryptWithPasswordCheckbox = CheckBox.init(.{0, 0}, width, "Encrypt it with a password (recommended)\n(The password needs to be entered every time)", encryptAccountCode, &encryptAccountCodeCallback);
