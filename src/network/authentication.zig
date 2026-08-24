@@ -318,12 +318,7 @@ pub const PasswordEncodedAccountCode = struct {
 		var data: []u8 = undefined;
 		if (protected) {
 			defer allocator.free(encryptedBuffer);
-			data = protection.protect(allocator, encryptedBuffer) catch |err| {
-				switch (err) {
-					error.SystemError => return error.SystemError,
-					error.Unsupported => unreachable,
-				}
-			};
+			data = try protection.protect(allocator, encryptedBuffer);
 		} else {
 			data = encryptedBuffer;
 		}
@@ -341,12 +336,7 @@ pub const PasswordEncodedAccountCode = struct {
 		const protected = shouldProtect and protection.canProtect;
 		var data: []u8 = undefined;
 		if (protected) {
-			data = protection.protect(allocator, accountCode.text) catch |err| {
-				switch (err) {
-					error.SystemError => return error.SystemError,
-					error.Unsupported => unreachable,
-				}
-			};
+			data = try protection.protect(allocator, accountCode.text);
 		} else {
 			data = allocator.dupe(u8, accountCode.text);
 		}
