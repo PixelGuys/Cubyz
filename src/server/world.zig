@@ -1045,6 +1045,16 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try files.cubyzDir().write(itemsPath, itemDropData.data.items);
 	}
 
+	fn getGeneratedBlock(wx: i32, wy: i32, wz: i32) Block {
+		const pos = chunk.ChunkPosition.initFromWorldPos(.{wx, wy, wz}, 1);
+		const ch = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(pos);
+		defer ch.decreaseRefCount();
+		ch.mutex.lock();
+		defer ch.mutex.unlock();
+		const relPos = chunk.BlockPos.fromWorldCoords(wx, wy, wz);
+		return ch.getBlock(relPos.x, relPos.y, relPos.z);
+	}
+
 	fn isValidSpawnLocation(self: *ServerWorld, wx: i32, wy: i32) bool {
 		const map = terrain.SurfaceMap.getOrGenerateFragment(wx, wy, 1);
 		if (!map.getBiome(wx, wy).isValidPlayerSpawn) return false;
@@ -1054,6 +1064,14 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer caveMap.deinit(main.stackAllocator);
 		if (!caveMap.isSolid(0, 0, -1)) return false;
 		if (caveMap.isSolid(0, 0, 0) or caveMap.isSolid(0, 0, 1)) return false;
+
+		const groundBlock = getGeneratedBlock(wx, wy, height - 1);
+		if (!groundBlock.collide() or !groundBlock.onTouch().isNoop()) return false;
+		const feetBlock = getGeneratedBlock(wx, wy, height);
+		const headBlock = getGeneratedBlock(wx, wy, height + 1);
+		inline for (.{feetBlock, headBlock}) |block| {
+			if (block.collide() or !block.onTouch().isNoop()) return false;
+		}
 
 		self.spawn[2] = height + 1;
 		return true;
