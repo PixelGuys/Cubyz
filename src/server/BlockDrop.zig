@@ -27,9 +27,7 @@ pub fn isDroppedWhenBrokenWithItem(self: @This(), item: Item) bool {
 	return true;
 }
 
-pub fn tryDropWhenBrokenWithItem(self: @This(), item: Item, pos: Vec3d, dir: Vec3f, velocity: f32) void {
-	if (!self.isDroppedWhenBrokenWithItem(item)) return;
-
+pub fn drop(self: @This(), pos: Vec3d, dir: Vec3f, velocity: f32) void {
 	if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
 		for (self.itemStacks) |itemStack| {
 			main.server.world.?.drop(itemStack.clone(), pos, dir, velocity);
@@ -105,14 +103,14 @@ pub const Context = struct {
 		const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
 		if (dropAmount == 0) return;
 
-		if (self.item) |item| {
-			const dropPos = if (self.newBlock.collide()) location.outsidePos(pos) else location.insidePos(pos);
-			const dropDir = location.dropDir();
-			const dropVelocity = location.dropVelocity();
+		const dropPos = if (self.newBlock.collide()) location.outsidePos(pos) else location.insidePos(pos);
+		const dropDir = location.dropDir();
+		const dropVelocity = location.dropVelocity();
 
-			for (0..dropAmount) |_| {
-				for (self.oldBlock.blockDrops()) |blockDrop| {
-					blockDrop.tryDropWhenBrokenWithItem(item, dropPos, dropDir, dropVelocity);
+		for (0..dropAmount) |_| {
+			for (self.oldBlock.blockDrops()) |blockDrop| {
+				if (self.item == null or blockDrop.isDroppedWhenBrokenWithItem(self.item.?)) {
+					blockDrop.drop(dropPos, dropDir, dropVelocity);
 				}
 			}
 		}
