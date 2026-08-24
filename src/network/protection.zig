@@ -92,7 +92,7 @@ test "slice==unprotect(protect(slice))" {
 	}
 }
 
-test "unprotect fails on unsupported platforms" {
+test "Unprotect fails on unsupported platforms" {
 	const slice = "Test";
 	if (!canProtect) {
 		try std.testing.expectError(error.Invalid, unprotect(main.stackAllocator, slice));
