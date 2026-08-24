@@ -317,10 +317,13 @@ pub const PasswordEncodedAccountCode = struct {
 		const protected = shouldProtect and protection.canProtect;
 		var data: []u8 = undefined;
 		if (protected) {
+			defer allocator.free(encryptedBuffer);
 			data = protection.protect(allocator, encryptedBuffer) catch |err| {
-				if (err == error.SystemError) return error.SystemError else unreachable;
+				switch (err) {
+					.SystemError => return error.SystemError,
+					.Unsupported => unreachable,
+				}
 			};
-			defer allocator.free(encryptedBuffer); // Deferred, because that way even if a SystemError is thrown it will still get freed
 		} else {
 			data = encryptedBuffer;
 		}
@@ -339,7 +342,10 @@ pub const PasswordEncodedAccountCode = struct {
 		var data: []u8 = undefined;
 		if (protected) {
 			data = protection.protect(allocator, accountCode.text) catch |err| {
-				if (err == error.SystemError) return error.SystemError else unreachable;
+				switch (err) {
+					.SystemError => return error.SystemError,
+					.Unsupported => unreachable,
+				}
 			};
 		} else {
 			data = allocator.dupe(u8, accountCode.text);
