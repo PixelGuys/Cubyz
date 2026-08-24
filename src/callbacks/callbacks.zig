@@ -18,6 +18,7 @@ pub fn init() void {
 	ClientBlockCallback.globalInit();
 	ServerBlockCallback.globalInit();
 	BlockTouchCallback.globalInit();
+	StatusUpdateCallback.globalInit();
 }
 
 pub const Creator = union(enum) {

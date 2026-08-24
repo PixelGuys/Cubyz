@@ -61,6 +61,15 @@ pub const client = struct {
 		const statusEffects = components.fetchRemove(entity) catch return;
 		statusEffects.statusEffects.deinit();
 	}
+
+	pub fn updateStatusEffects(entity: *main.server.Entity, deltaTime: f64) void {
+		const statusEffects = &(components.get(main.game.Player.id) orelse return).statusEffects;
+		for (statusEffects.statusEffects.items) |status| {
+			const foundStatus = main.statusEffects.StatusEffect.fromInt(status.id);
+			std.log.err("what? {} {}", .{statusEffects.statusEffects.items.len, status, foundStatus});
+			_ = foundStatus.onUpdate().run(.{.entity = entity, .deltaTime = deltaTime});
+		}
+	}
 };
 
 // ############################# Server only stuff ################################
@@ -96,7 +105,7 @@ pub const server = struct {
 	}
 	pub fn loadEmpty(entity: Entity) void {
 		const statusEffects = &components.add(main.globalAllocator, entity).statusEffects;
-		statusEffects.* = .init(main.globalAllocator);
+		statusEffects.* = statusEffects.init(main.globalAllocator);
 	}
 	pub fn unload(entity: Entity) void {
 		const statusEffects = components.fetchRemove(entity) catch return;

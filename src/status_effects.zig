@@ -22,13 +22,13 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 
 	_onUpdate[size] = blk: {
 		break :blk StatusUpdateCallback.init(zon.getChildOrNull("onUpdate") orelse break :blk .noop, .{.statusEffect = .{.typ = size}}) orelse {
-			std.log.err("Failed to load onInteract event for status {s}", .{_id[size]});
+			std.log.err("Failed to load onUpdate event for status {s}", .{_id[size]});
 			break :blk .noop;
 		};
 	};
 
 	defer size += 1;
-	std.log.debug("Registered block: {d: >5} '{s}'", .{size, id});
+	std.log.debug("Registered status: {d: >5} '{s}'", .{size, id});
 	return @intCast(size);
 }
 

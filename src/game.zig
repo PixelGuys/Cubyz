@@ -27,6 +27,8 @@ const Block = main.blocks.Block;
 const physics = main.physics;
 const KeyBoard = main.KeyBoard;
 
+const @"cubyz:status_effects" = main.entity.components.@"cubyz:status_effects";
+
 pub const camera = struct { // MARK: camera
 	pub var rotation: Vec3f = Vec3f{0, 0, 0};
 	pub var direction: Vec3f = Vec3f{0, 0, 0};
@@ -606,6 +608,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const forward = vec.normalize(std.math.lerp(horizontalForward, camera.direction, @as(Vec3d, @splat(density/@max(1.0, maxDensity)))));
 	const right = Vec3d{-horizontalForward[1], horizontalForward[0], 0};
 	var movementDir: Vec3d = .{0, 0, 0};
+
+	@"cubyz:status_effects".client.updateStatusEffects(&Player.super, deltaTime);
 
 	if (main.Window.grabbed) {
 		const walkingSpeed: f64 = if (Player.crouching) 2.5 else 4.5;
