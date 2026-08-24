@@ -23,10 +23,9 @@ pub fn init(zon: main.ZonElement, _: main.callbacks.Creator) ?*@This() {
 	return result;
 }
 
-pub fn run(_: *@This(), _: main.callbacks.StatusUpdateCallback.Params) main.callbacks.Result {
-	//std.debug.assert(params.entity == &main.game.Player.super); // TODO: Implement on the server side
-	//const damage = self.dps*@as(f32, @floatCast(params.deltaTime));
-	//main.sync.addHealth(-damage, self.damageType, .client, main.game.Player.id);
-	std.log.err("why no run",.{});
+pub fn run(self: *@This(), params: main.callbacks.StatusUpdateCallback.Params) main.callbacks.Result {
+	std.debug.assert(params.entity == &main.game.Player.super); // TODO: Implement on the server side
+	const damage = self.dps*@as(f32, @floatCast(params.deltaTime));
+	main.sync.addHealth(-damage, self.damageType, .client, main.game.Player.id);
 	return .handled;
 }

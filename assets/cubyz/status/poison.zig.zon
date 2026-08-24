@@ -1,0 +1,7 @@
+.{
+	.onUpdate = .{
+		.type = .hurt,
+		.dps = 0.5,
+		.damageType = .heat,
+	},
+}

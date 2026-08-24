@@ -40,8 +40,6 @@ pub fn reset() void {
 pub const StatusEffect = packed struct(u32) { // MARK: StatusEffect
 	typ: u32,
 
-	pub const NoEffect = StatusEffect{.typ = 0};
-
 	pub fn toInt(self: StatusEffect) u32 {
 		return @as(u32, self.typ) | @as(u32, self.data) << 16;
 	}
