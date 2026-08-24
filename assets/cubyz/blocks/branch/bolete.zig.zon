@@ -27,7 +27,7 @@
 					.strength = 0.1,
 					.restriction = .{
 						.id = .on_top_of,
-						.tag = .handle,
+						.tag = .handle_slot,
 					},
 				},
 			},
