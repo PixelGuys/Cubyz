@@ -286,7 +286,7 @@ pub const AccountCode = struct {
 	}
 };
 
-pub const EncodingType = enum { none, argon2_aes_gcm };
+const EncodingType = enum { none, argon2_aes_gcm };
 
 pub const PasswordEncodedAccountCode = struct {
 	typ: EncodingType,
