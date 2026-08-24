@@ -22,7 +22,7 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const OnT
 	const result = allocator.create(OnTopOf);
 	result.* = .{
 		.tag = main.Tag.find(zon.get([]const u8, "tag") orelse blk: {
-			std.log.err("Missing tag field for encased restriction.", .{});
+			std.log.err("Missing tag field for on top of restriction.", .{});
 			break :blk "not specified";
 		}),
 	};
