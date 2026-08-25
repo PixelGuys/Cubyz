@@ -16,8 +16,6 @@ const Label = GuiComponent.Label;
 
 const ScrollBar = @This();
 
-const fontSize: f32 = 16;
-
 var texture: Texture = undefined;
 
 pos: Vec2f,
@@ -99,7 +97,6 @@ pub fn mainButtonReleased(self: *ScrollBar, mousePosition: Vec2f) void {
 pub fn render(self: *ScrollBar, mousePosition: Vec2f) void {
 	texture.bindTo(0);
 	Button.pipeline.bind(draw.getScissor());
-	draw.setColor(0xff000000);
 	draw.customShadedRect(Button.buttonUniforms, self.pos, self.size);
 
 	const range: f32 = self.size[1] - self.button.size[1];

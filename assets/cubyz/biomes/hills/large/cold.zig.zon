@@ -6,9 +6,10 @@
 		.pine,
 	},
 	.ground_structure = .{
-		"cubyz:cold_grass",
+		"cubyz:grass/cold",
 		"cubyz:soil",
 	},
+	.music = "cubyz:totaldemented/hypoxia",
 	.structures = .{
 		.{
 			.id = "cubyz:fallen_tree",
@@ -19,7 +20,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:cold_grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/cold"},
 			.chance = 0.1,
 			.width = 5,
 			.variation = 8,
@@ -28,7 +29,7 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:cold_grass_vegetation",
+			.block = "cubyz:grass/vegetation/cold",
 			.chance = 0.4,
 			.height = 1,
 			.height_variation = 0,

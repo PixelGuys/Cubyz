@@ -48,30 +48,30 @@ branched: bool,
 
 pub fn loadModel(parameters: ZonElement) ?*SimpleTreeModel {
 	const self = main.worldArena.create(SimpleTreeModel);
-	const woodBlock = main.blocks.parseBlock(parameters.get(?[]const u8, "log", null) orelse {
+	const woodBlock = main.blocks.parseBlock(parameters.get([]const u8, "log") orelse {
 		std.log.err("Missing required 'log' field for cubyz:simple_tree rotation", .{});
 		return null;
 	});
 	self.* = .{
-		.typ = std.meta.stringToEnum(Type, parameters.get([]const u8, "type", "")) orelse blk: {
-			if (parameters.get(?[]const u8, "type", null)) |typ| std.log.err("Unknown tree type \"{s}\"", .{typ});
+		.typ = std.meta.stringToEnum(Type, parameters.get([]const u8, "type") orelse "") orelse blk: {
+			if (parameters.get([]const u8, "type")) |typ| std.log.err("Unknown tree type \"{s}\"", .{typ});
 			break :blk .round;
 		},
-		.leavesBlock = main.blocks.parseBlock(parameters.get(?[]const u8, "leaves", null) orelse {
+		.leavesBlock = main.blocks.parseBlock(parameters.get([]const u8, "leaves") orelse {
 			std.log.err("Missing required 'leaves' field for cubyz:simple_tree rotation", .{});
 			return null;
 		}),
 		.woodBlock = woodBlock,
 		.topWoodBlock = blk: {
-			break :blk main.blocks.parseBlock(parameters.get(?[]const u8, "top", null) orelse break :blk woodBlock);
+			break :blk main.blocks.parseBlock(parameters.get([]const u8, "top") orelse break :blk woodBlock);
 		},
-		.height0 = parameters.get(i32, "height", 6),
-		.deltaHeight = parameters.get(u31, "height_variation", 3),
-		.leafRadius = parameters.get(f32, "leafRadius", (1 + parameters.get(f32, "height", 6))/2),
-		.deltaLeafRadius = parameters.get(f32, "leafRadius_variation", parameters.get(f32, "height_variation", 3)/2),
-		.leafElongation = parameters.get(f32, "leafElongation", 1),
-		.deltaLeafElongation = parameters.get(f32, "deltaLeafElongation", 0),
-		.branched = parameters.get(bool, "branched", true),
+		.height0 = parameters.get(i32, "height") orelse 6,
+		.deltaHeight = parameters.get(u31, "height_variation") orelse 3,
+		.leafRadius = parameters.get(f32, "leafRadius") orelse ((1 + (parameters.get(f32, "height") orelse 6))/2),
+		.deltaLeafRadius = parameters.get(f32, "leafRadius_variation") orelse ((parameters.get(f32, "height_variation") orelse 3)/2),
+		.leafElongation = parameters.get(f32, "leafElongation") orelse 1,
+		.deltaLeafElongation = parameters.get(f32, "deltaLeafElongation") orelse 0,
+		.branched = parameters.get(bool, "branched") orelse true,
 	};
 	if (self.woodBlock.mode() == main.rotation.getByID("cubyz:branch")) self.woodRotationModeType = .branch;
 	if (self.woodBlock.mode() == main.rotation.getByID("cubyz:log")) self.woodRotationModeType = .log;
@@ -107,21 +107,21 @@ pub fn generateStem(self: *SimpleTreeModel, x: i32, y: i32, z: i32, height: i32,
 	if (chunk.super.pos.voxelSize <= 2) {
 		var pz: i32 = chunk.startIndex(z);
 		while (pz < z + height) : (pz += chunk.super.pos.voxelSize) {
-			if (chunk.liesInChunk(x, y, pz)) {
-				var block = if (pz == z + height - 1) self.topWoodBlock else self.woodBlock;
-				const rotationModeType = if (pz == z + height - 1) self.topRotationModeType else self.woodRotationModeType;
-				block = initalOrientation(block, .dirUp, rotationModeType);
-				if (pz != z + height - 1) block = addNeighbor(block, .dirUp, rotationModeType);
+			var block = if (pz == z + height - 1) self.topWoodBlock else self.woodBlock;
+			const rotationModeType = if (pz == z + height - 1) self.topRotationModeType else self.woodRotationModeType;
+			block = initalOrientation(block, .dirUp, rotationModeType);
+			if (pz != z + height - 1) block = addNeighbor(block, .dirUp, rotationModeType);
 
-				if (self.branched) {
-					const chance = @sqrt(@as(f32, @floatFromInt(pz - z))/@as(f32, @floatFromInt(height*2)));
-					if (main.random.nextFloat(seed) < chance) {
-						const dir: Neighbor = @enumFromInt(main.random.nextIntBounded(u32, seed, 4) + 2);
-						generateBranch(self, x, y, pz, dir, chunk);
-						block = addNeighbor(block, dir, rotationModeType);
-					}
+			if (self.branched) {
+				const chance = @sqrt(@as(f32, @floatFromInt(pz - z))/@as(f32, @floatFromInt(height*2)));
+				if (main.random.nextFloat(seed) < chance) {
+					const dir: Neighbor = @enumFromInt(main.random.nextIntBounded(u32, seed, 4) + 2);
+					generateBranch(self, x, y, pz, dir, chunk);
+					block = addNeighbor(block, dir, rotationModeType);
 				}
+			}
 
+			if (chunk.liesInChunk(x, y, pz)) {
 				chunk.updateBlockIfDegradable(x, y, pz, block);
 			}
 		}

@@ -54,7 +54,7 @@ pub fn onOpen() void {
 	const width = 128 + padding;
 	textComponent = TextInput.init(.{0, 0}, width, 16*4 + 8, oldText, .{.onNewline = .init(apply)});
 	list.add(textComponent);
-	list.add(Button.initText(.{0, 0}, 100, "Apply", .init(apply)));
+	list.add(Button.initText(.{0, 0}, 100, "Apply", .{.onAction = .init(apply)}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

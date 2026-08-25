@@ -92,6 +92,25 @@ Often the simplest code is easier to read, easier to maintain and more efficient
 - Use the simplest data structure for the job: e.g. use a slice instead of List if you know the size upfront
 - Don't make things public if they don't need to be
 
+## Beware of multi-threading
+
+Cubyz is a multi-threaded engine. This comes with some pitfalls, but it's not as scary as it may sound. Most of the time you don't even need to worry about it, but when you do we follow some simple patterns to make it easier.
+
+If you are new to concurrency, then I recommend playing [The Deadlock Empire](https://deadlockempire.github.io/), a little browser game that teaches you the right mindset to find concurrency bugs.
+
+- try to keep things local, if your data is only used for the scope of a function, then your life is much easier
+- if it needs to live longer, try to keep it in a single thread (enforced with assertions)
+- never store pointers that you didn't allocate yourself, if you need to store it, store a proxy (→entity id, chunk position, player index, ...) and look it up when you need it
+- most of the time a mutex is the easiest solution to protect your data, but other techniques (atomics) should be considered in performance sensitive areas.
+- avoid recursive mutexes
+  - they encourage lazy designs that end up being harder to predict and understand
+  - instead use mutex.assertLocked when a calling function is already locking the mutex
+- avoid using reference counting when a resource is shared
+  - reference counting is error prone and bloats the code (due to not being automatic), and quite slow too
+  - when you really need reference counting, you can instead use the garbage collection mechanism
+- use the thread sanitizier (`-DsanitizeThread` to enable it, it doesn't work on all machines though) to double check your design when you are not sure
+- lock-free designs are often too complex, but lock-free-readable (only one thread can write, but multiple other threads can read while its writing) designs are much easier to pull off with the garbage collector and an atomic pointer
+
 ## A note on performance optimizations
 
 I like to follow Casey Muratori's optimization philosophy as outlined here: https://www.youtube.com/watch?v=pgoetgxecw8
@@ -156,3 +175,28 @@ With a more thorough review of your changes you can sometimes catch small mistak
 
 And of course make sure to check the CI results, you should also get an e-mail notification if the CI fails. **I will not review a PR if the CI failed!**
 
+# Participate in the review process
+
+After you are done we will review your submission and suggest changes. Don't feel overwhelmed if you get many change requests.
+It does not mean that you messed up. And it does not mean that we are criticizing you personally.
+It means that we are perfectionists, we have high standards for ourselves, and in extension for other contributors.
+This is one of the things that made Cubyz into the stable and efficient engine that it is today.
+
+So please apply the requested changes and try to learn from them for future PRs.
+
+# Seek help when you get stuck
+
+When you don't know how to fix some issue or how to make a difficult design decision, then it's best if you ask for other people's opinions and ideas.
+Other people can often see the things that you are blind to.
+
+The right place to do this is on our [discord server](https://discord.gg/XtqCRRG) where we coordinate most things.
+
+# Take care of yourself
+
+Cubyz is not your job, and shouldn't feel like one. You can take a break whenever you want, and for however long you want.
+
+If you feel like you are obligated to finish your work (or if you took over more work than you can chew), then reevaluate.
+Who are you doing this for? Does it really need to be done now? Can someone else do this?
+
+Cubyz is a long-term project. Whether your features arrive a few months late makes little difference in the grand scheme of things.
+What's important is that you are enjoying the process, that you are learning things and becoming a better programmer, and that you stay healthy.

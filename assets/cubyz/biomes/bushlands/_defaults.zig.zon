@@ -1,0 +1,22 @@
+.{
+	.properties = .{
+		.hot,
+	},
+	.tags = .{
+		.oak,
+		.baobab,
+	},
+	.minHeightLimit = 7,
+	.minHeight = 24,
+	.maxHeight = 60,
+	.smoothBeaches = true,
+	.maxHeightLimit = 100,
+	.minRadius = 256,
+	.maxRadius = 320,
+	.roughness = 6,
+	.hills = 10,
+	.rivers = true,
+	.music = "cubyz:mischol/desert_firefly",
+
+	.stoneBlock = "cubyz:limestone/smooth",
+}

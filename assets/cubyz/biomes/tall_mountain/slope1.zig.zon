@@ -1,27 +1,90 @@
 .{
-	.properties = .{.mountain},
-	.radius = 280,
-	.minHeight = 256,
-	.maxHeight = 256,
-
-	.interpolation = .linear,
-	.mountains = 75,
-
+	.properties = .{
+		.mountain,
+	},
+	.tags = .{
+		.oak,
+		.birch,
+	},
+	.minHeight = 238,
+	.maxHeight = 238,
+	.smoothBeaches = true,
+	.radius = 340,
+	.mountains = 150,
 	.chance = 0,
-
+	.maxSubBiomeCount = 1,
+	.stoneBlock = "cubyz:slate/smooth",
 	.music = "cubyz:mrmayman/out_of_breath",
-
+	.validPlayerSpawn = false,
+	.ground_structure = .{
+		"cubyz:grass/temperate",
+		"4 to 6 cubyz:soil",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/young",
+			.placeMode = .degradable,
+			.chance = 0.07,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/birch/silver/1",
+			.placeMode = .degradable,
+			.chance = 0.015,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/birch/silver/2",
+			.placeMode = .degradable,
+			.chance = 0.015,
+		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:grass/vegetation/temperate",
+			.chance = 0.5,
+			.height = 1,
+			.height_variation = 0,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:daisies"},
+			.chance = 0.008,
+			.width = 6,
+			.variation = 3,
+			.density = 0.3,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:daffodil"},
+			.chance = 0.01,
+			.width = 6,
+			.variation = 3,
+			.density = 0.1,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:castilleja"},
+			.chance = 0.006,
+			.width = 8,
+			.variation = 3,
+			.density = 0.1,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.032,
+			.block = "cubyz:slate/smooth",
+			.size = 4,
+			.size_variance = 5,
+		},
+	},
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:tall_mountain/base",
 			.chance = 1,
-			.parentEdgeDistance = 0,
 		},
-	},
-
-	.maxSubBiomeCount = 1,
-
-	.ground_structure = .{
-		"cubyz:slate/cobble",
 	},
 }

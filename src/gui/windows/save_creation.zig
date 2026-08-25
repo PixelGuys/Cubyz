@@ -106,17 +106,17 @@ pub fn onOpen() void {
 
 	var num: usize = 1;
 	while (true) {
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/Save{}", .{num}) catch unreachable;
+		const path = main.stackAllocator.print("saves/Save{}", .{num});
 		defer main.stackAllocator.free(path);
 		if (!main.files.cubyzDir().hasDir(path)) break;
 		num += 1;
 	}
-	const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
+	const name = main.stackAllocator.print("Save{}", .{num});
 	defer main.stackAllocator.free(name);
 	nameInput = TextInput.init(.{0, 0}, 128, 22, name, .{.onNewline = .init(createWorld)});
 	list.add(nameInput);
 
-	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(worldSettings.defaultGamemode), .init(gamemodeCallback));
+	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(worldSettings.defaultGamemode), .{.onAction = .init(gamemodeCallback)});
 	list.add(gamemodeInput);
 
 	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", worldSettings.allowCheats, &allowCheatsCallback));
@@ -125,7 +125,7 @@ pub fn onOpen() void {
 		list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", worldSettings.testingMode, &testingModeCallback));
 	}
 
-	presetButton = Button.initText(.{0, 0}, 128, worldPresets[selectedPreset].key_ptr.*, .init(worldPresetCallback));
+	presetButton = Button.initText(.{0, 0}, 128, worldPresets[selectedPreset].key_ptr.*, .{.onAction = .init(worldPresetCallback)});
 	list.add(presetButton);
 
 	const seedLabel = Label.init(.{0, 0}, 48, "Seed:", .left);
@@ -136,7 +136,7 @@ pub fn onOpen() void {
 	seedRow.finish(.{0, 0}, .center);
 	list.add(seedRow);
 
-	list.add(Button.initText(.{0, 0}, 128, "Create World", .init(createWorld)));
+	list.add(Button.initText(.{0, 0}, 128, "Create World", .{.onAction = .init(createWorld)}));
 
 	list.finish(.center);
 	window.rootComponent = list.toComponent();

@@ -9,7 +9,7 @@
 		.cactus,
 	},
 
-	.music = "cubyz:totaldemented/hypoxia",
+	.music = "cubyz:mischol/desert_firefly",
 
 	.minHeightLimit = 7,
 	.minHeight = 80,
@@ -27,20 +27,20 @@
 	.stripes = .{
 		.{
 			.direction = .{1, 1, 5},
-			.block = "cubyz:limestone/base",
+			.block = "cubyz:limestone/smooth",
 			.distance = 12,
 			.offset = 6,
 			.width = 6,
 		},
 		.{
 			.direction = .{1, 1, 5},
-			.block = "cubyz:sandstone/base",
+			.block = "cubyz:sandstone/rough",
 			.distance = 10,
 			.offset = 6,
 			.width = 2,
 		},
 	},
-	.stoneBlock = "cubyz:ferrock/base",
+	.stoneBlock = "cubyz:ferrock/smooth",
 	.structures = .{
 		.{
 			.id = "cubyz:simple_vegetation",
@@ -52,7 +52,7 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.016,
-			.block = "cubyz:ferrock/base",
+			.block = "cubyz:ferrock/smooth",
 			.size = 2,
 			.size_variance = 7,
 		},

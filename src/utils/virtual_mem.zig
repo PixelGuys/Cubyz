@@ -208,7 +208,7 @@ pub fn VirtualList(T: type, maxSize: u32) type {
 		}
 
 		pub fn pop(self: *@This()) T {
-			return self.popOrNull() orelse unreachable;
+			return self.popOrNull().?;
 		}
 
 		pub fn replaceRange(self: *@This(), start: usize, len: usize, new_items: []const T) void {
@@ -233,11 +233,6 @@ pub fn VirtualList(T: type, maxSize: u32) type {
 
 				self.len -= len - new_items.len;
 			}
-		}
-
-		fn appendWrite(self: *@This(), m: []const u8) !usize {
-			self.appendSlice(m);
-			return m.len;
 		}
 	};
 }

@@ -51,18 +51,12 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		}
 	}
 
-	pub fn get(self: *const ZonElement, comptime T: type, key: []const u8, replacement: T) T {
-		if (self.* != .object) {
-			return replacement;
+	pub fn get(self: *const ZonElement, comptime T: type, key: []const u8) ?T {
+		if (self.* != .object) return null;
+		if (self.object.get(key)) |elem| {
+			return elem.as(T);
 		} else {
-			if (self.object.get(key)) |elem| {
-				if (@typeInfo(T) == .optional) {
-					return elem.as(@typeInfo(T).optional.child) orelse replacement;
-				}
-				return elem.as(T) orelse replacement;
-			} else {
-				return replacement;
-			}
+			return null;
 		}
 	}
 
@@ -158,7 +152,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		switch (typeInfo) {
 			.int => {
 				switch (self.*) {
-					.int => return std.math.cast(T, self.int) orelse null,
+					.int => return std.math.cast(T, self.int),
 					.float => return std.math.lossyCast(T, std.math.round(self.float)),
 					else => return null,
 				}
@@ -181,7 +175,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 				return result;
 			},
 			.@"enum" => {
-				return std.meta.stringToEnum(T, self.as([]const u8) orelse return null) orelse return null;
+				return std.meta.stringToEnum(T, self.as([]const u8) orelse return null);
 			},
 			else => {
 				switch (T) {
@@ -505,6 +499,21 @@ const Parser = struct { // MARK: Parser
 					},
 					'A', 'B', 'C', 'D', 'E', 'F' => {
 						intPart = (chars[index.*] - 'A' + 10) +% intPart*%16;
+					},
+					else => {
+						break;
+					},
+				}
+			}
+			return .{.int = sign*intPart};
+		}
+		if (index.* + 1 < chars.len and chars[index.*] == '0' and chars[index.* + 1] == 'b') {
+			// Parse binary int
+			index.* += 2;
+			while (index.* < chars.len) : (index.* += 1) {
+				switch (chars[index.*]) {
+					'0', '1' => {
+						intPart = (chars[index.*] - '0') +% intPart*%2;
 					},
 					else => {
 						break;
@@ -856,6 +865,8 @@ test "number parsing" {
 	try std.testing.expectEqual(Parser.parseNumber(" abcd185473896", &index), ZonElement{.int = 185473896});
 	index = 0;
 	try std.testing.expectEqual(Parser.parseNumber("0xff34786056.0", &index), ZonElement{.int = 0xff34786056});
+	index = 0;
+	try std.testing.expectEqual(Parser.parseNumber("0b01010010", &index), ZonElement{.int = 0b01010010});
 	// Floats:
 	index = 0;
 	try std.testing.expectEqual(Parser.parseNumber("0.0", &index), ZonElement{.float = 0.0});
@@ -993,18 +1004,18 @@ test "merging" {
 	const zon10 = ZonElement.parseFromString(allocator, null, ".{.c = \"foo\", .b = .{.a = \"bar\"}}");
 	defer zon10.deinit(allocator);
 	zon9.join(.preferLeft, zon10);
-	try std.testing.expectEqual(zon9.get(?i32, "a", null), 1);
-	try std.testing.expectEqualSlices(u8, zon9.get(?[]const u8, "c", null).?, "foo");
-	try std.testing.expectEqual(zon9.getChild("b").get(?i32, "a", null), 2);
-	try std.testing.expectEqual(zon9.getChild("b").get(?i32, "b", null), 3);
+	try std.testing.expectEqual(zon9.get(i32, "a"), 1);
+	try std.testing.expectEqualSlices(u8, zon9.get([]const u8, "c").?, "foo");
+	try std.testing.expectEqual(zon9.getChild("b").get(i32, "a"), 2);
+	try std.testing.expectEqual(zon9.getChild("b").get(i32, "b"), 3);
 
 	const zon11 = ZonElement.parseFromString(allocator, null, ".{.a = 1, .b = .{.a = 2, .b = 3}}");
 	defer zon11.deinit(allocator);
 	const zon12 = ZonElement.parseFromString(allocator, null, ".{.c = \"foo\", .b = .{.a = \"bar\"}}");
 	defer zon12.deinit(allocator);
 	zon11.join(.preferRight, zon12);
-	try std.testing.expectEqual(zon11.get(?i32, "a", null), 1);
-	try std.testing.expectEqualSlices(u8, zon11.get(?[]const u8, "c", null).?, "foo");
-	try std.testing.expectEqualSlices(u8, zon11.getChild("b").get(?[]const u8, "a", null).?, "bar");
-	try std.testing.expectEqual(zon11.getChild("b").get(?i32, "b", null), 3);
+	try std.testing.expectEqual(zon11.get(i32, "a"), 1);
+	try std.testing.expectEqualSlices(u8, zon11.get([]const u8, "c").?, "foo");
+	try std.testing.expectEqualSlices(u8, zon11.getChild("b").get([]const u8, "a").?, "bar");
+	try std.testing.expectEqual(zon11.getChild("b").get(i32, "b"), 3);
 }

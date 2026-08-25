@@ -15,7 +15,7 @@ const FaceData = main.renderer.chunk_meshing.FaceData;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const Box = main.physics.collision.Box;
 
-var quadSSBO: graphics.SSBO = undefined;
+var quadSSBO: ?graphics.SSBO = null;
 
 pub const QuadInfo = extern struct {
 	normal: [3]f32 align(16),
@@ -427,20 +427,8 @@ pub const Model = struct {
 		};
 	}
 
-	fn addVert(vert: Vec3f, vertList: *main.List(Vec3f)) usize {
-		const ind = for (vertList.*.items, 0..) |vertex, index| {
-			if (vertex == vert) break index;
-		} else vertList.*.items.len;
-
-		if (ind == vertList.*.items.len) {
-			vertList.*.append(vert);
-		}
-
-		return ind;
-	}
-
-	pub fn loadModel(data: []const u8) ModelIndex {
-		const quadInfos = loadRawModelDataFromObj(main.stackAllocator, data);
+	pub fn loadModel(data: []const u8, coordinateSystem: vec.CoordinateSystem) ModelIndex {
+		const quadInfos = loadRawModelDataFromObj(main.stackAllocator, data, coordinateSystem);
 		defer main.stackAllocator.free(quadInfos);
 		for (quadInfos) |*quad| {
 			var minUv: Vec2f = @splat(std.math.inf(f32));
@@ -462,7 +450,7 @@ pub const Model = struct {
 		return Model.init(quadInfos);
 	}
 
-	pub fn loadRawModelDataFromObj(allocator: main.heap.NeverFailingAllocator, data: []const u8) []QuadInfo {
+	pub fn loadRawModelDataFromObj(allocator: main.heap.NeverFailingAllocator, data: []const u8, coordinateSystem: vec.CoordinateSystem) []QuadInfo {
 		var vertices: main.ListManaged(Vec3f) = .init(main.stackAllocator);
 		defer vertices.deinit();
 
@@ -499,7 +487,7 @@ pub const Model = struct {
 						break :blk 0;
 					};
 				}
-				vertices.append(coords);
+				vertices.append(coordinateSystem.convertVec(coords, @splat(0.5)));
 			} else if (std.mem.eql(u8, line[0..3], "vn ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[3..], ' ');
 				var norm: [3]f32 = undefined;
@@ -510,7 +498,7 @@ pub const Model = struct {
 						break :blk 0;
 					};
 				}
-				normals.append(norm);
+				normals.append(coordinateSystem.convertVec(norm, @splat(0)));
 			} else if (std.mem.eql(u8, line[0..3], "vt ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[3..], ' ');
 				var uv: [2]f32 = undefined;
@@ -801,66 +789,9 @@ fn addCornerLightSamples(lightSamples: *main.List(LightSample), pos: Vec3i, dire
 	}
 }
 
-fn box(min: Vec3f, max: Vec3f, uvOffset: Vec2f) [6]QuadInfo {
-	const corner000: Vec3f = .{min[0], min[1], min[2]};
-	const corner001: Vec3f = .{min[0], min[1], max[2]};
-	const corner010: Vec3f = .{min[0], max[1], min[2]};
-	const corner011: Vec3f = .{min[0], max[1], max[2]};
-	const corner100: Vec3f = .{max[0], min[1], min[2]};
-	const corner101: Vec3f = .{max[0], min[1], max[2]};
-	const corner110: Vec3f = .{max[0], max[1], min[2]};
-	const corner111: Vec3f = .{max[0], max[1], max[2]};
-	return .{
-		.{
-			.normal = .{-1, 0, 0},
-			.corners = .{corner010, corner011, corner000, corner001},
-			.cornerUV = .{uvOffset + Vec2f{1 - max[1], min[2]}, uvOffset + Vec2f{1 - max[1], max[2]}, uvOffset + Vec2f{1 - min[1], min[2]}, uvOffset + Vec2f{1 - min[1], max[2]}},
-			.textureSlot = Neighbor.dirNegX.toInt(),
-		},
-		.{
-			.normal = .{1, 0, 0},
-			.corners = .{corner100, corner101, corner110, corner111},
-			.cornerUV = .{uvOffset + Vec2f{min[1], min[2]}, uvOffset + Vec2f{min[1], max[2]}, uvOffset + Vec2f{max[1], min[2]}, uvOffset + Vec2f{max[1], max[2]}},
-			.textureSlot = Neighbor.dirPosX.toInt(),
-		},
-		.{
-			.normal = .{0, -1, 0},
-			.corners = .{corner000, corner001, corner100, corner101},
-			.cornerUV = .{uvOffset + Vec2f{min[0], min[2]}, uvOffset + Vec2f{min[0], max[2]}, uvOffset + Vec2f{max[0], min[2]}, uvOffset + Vec2f{max[0], max[2]}},
-			.textureSlot = Neighbor.dirNegY.toInt(),
-		},
-		.{
-			.normal = .{0, 1, 0},
-			.corners = .{corner110, corner111, corner010, corner011},
-			.cornerUV = .{uvOffset + Vec2f{1 - max[0], min[2]}, uvOffset + Vec2f{1 - max[0], max[2]}, uvOffset + Vec2f{1 - min[0], min[2]}, uvOffset + Vec2f{1 - min[0], max[2]}},
-			.textureSlot = Neighbor.dirPosY.toInt(),
-		},
-		.{
-			.normal = .{0, 0, -1},
-			.corners = .{corner010, corner000, corner110, corner100},
-			.cornerUV = .{uvOffset + Vec2f{min[0], 1 - max[1]}, uvOffset + Vec2f{min[0], 1 - min[1]}, uvOffset + Vec2f{max[0], 1 - max[1]}, uvOffset + Vec2f{max[0], 1 - min[1]}},
-			.textureSlot = Neighbor.dirDown.toInt(),
-		},
-		.{
-			.normal = .{0, 0, 1},
-			.corners = .{corner111, corner101, corner011, corner001},
-			.cornerUV = .{uvOffset + Vec2f{1 - max[0], 1 - max[1]}, uvOffset + Vec2f{1 - max[0], 1 - min[1]}, uvOffset + Vec2f{1 - min[0], 1 - max[1]}, uvOffset + Vec2f{1 - min[0], 1 - min[1]}},
-			.textureSlot = Neighbor.dirUp.toInt(),
-		},
-	};
-}
-
-fn openBox(min: Vec3f, max: Vec3f, uvOffset: Vec2f, openSide: enum { x, y, z }) [4]QuadInfo {
-	const fullBox = box(min, max, uvOffset);
-	switch (openSide) {
-		.x => return fullBox[2..6].*,
-		.y => return fullBox[0..2].* ++ fullBox[4..6].*,
-		.z => return fullBox[0..4].*,
-	}
-}
-
-pub fn registerModel(id: []const u8, data: []const u8) ModelIndex {
-	const model = Model.loadModel(data);
+pub fn registerModel(id: []const u8, data: []const u8, zon: ?main.ZonElement) ModelIndex {
+	const coordinateSystem: vec.CoordinateSystem = if (zon) |z| z.get(vec.CoordinateSystem, "coordinateSystem") orelse .right_handed_z_up else .right_handed_z_up;
+	const model = Model.loadModel(data, coordinateSystem);
 	nameToIndex.put(id, model) catch unreachable;
 	return model;
 }
@@ -888,7 +819,9 @@ pub fn reset() void {
 }
 
 pub fn deinit() void {
-	quadSSBO.deinit();
+	if (quadSSBO) |_quadSSBO| {
+		_quadSSBO.deinit();
+	}
 	nameToIndex.deinit();
 	for (models.items()) |model| {
 		model.deinit();
@@ -901,5 +834,5 @@ pub fn deinit() void {
 
 pub fn uploadModels() void {
 	quadSSBO = graphics.SSBO.initStatic(QuadInfo, quads.items);
-	quadSSBO.bind(4);
+	quadSSBO.?.bind(4);
 }

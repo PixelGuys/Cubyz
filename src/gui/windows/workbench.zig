@@ -61,7 +61,7 @@ fn updateResult(_: main.items.Inventory.Source) void {
 }
 
 fn openInventory() void {
-	craftingGridInv = ClientInventory.init(main.globalAllocator, 25, .serverShared, .{.workbench = .{.playerId = main.game.Player.id, .proceduralItemIndex = proceduralItemTypes.items[currentProceduralItemType]}}, .{.onUpdateCallback = &updateResult});
+	craftingGridInv = ClientInventory.init(main.globalAllocator, 25, .serverShared, .{.workbench = .{.playerId = main.game.Player.id, .proceduralItemIndex = proceduralItemTypes.items[currentProceduralItemType]}}, .{.onUpdateCallback = &updateResult, .canPutInto = items.ProceduralItem.canPutIntoWorkbenchCallback});
 	craftingResultInv = ClientInventory.init(main.globalAllocator, 1, .{.workbenchResult = craftingGridInv.super.id}, .other, .{});
 	const list = HorizontalList.init();
 	{ // crafting grid
@@ -82,11 +82,11 @@ fn openInventory() void {
 		list.add(grid);
 	}
 	const verticalThing = VerticalList.init(.{0, 0}, 300, padding);
-	proceduralItemButton = Button.initText(.{8, 0}, 116, proceduralItemTypes.items[currentProceduralItemType].id(), .init(toggleProceduralItem));
+	proceduralItemButton = Button.initText(.{8, 0}, 116, proceduralItemTypes.items[currentProceduralItemType].id(), .{.onAction = .init(toggleProceduralItem)});
 	verticalThing.add(proceduralItemButton);
 	const buttonHeight = verticalThing.size[1];
 	const craftingResultList = HorizontalList.init();
-	craftingResultList.add(Icon.init(.{0, 0}, .{32, 32}, inventory_crafting.arrowTexture, false));
+	craftingResultList.add(Icon.init(.{0, 0}, .{32, 32}, inventory_crafting.arrowTexture));
 	craftingResultList.add(ItemSlot.init(.{8, 0}, craftingResultInv, 0, .craftingResult, .takeOnly));
 	craftingResultList.finish(.{padding, padding}, .center);
 	verticalThing.add(craftingResultList);
@@ -124,9 +124,9 @@ pub fn render() void {
 	const offsetY = 4*ItemSlot.sizeWithBorder;
 	const fontSize = 16;
 
-	main.graphics.draw.print("{s}{} durability", .{if (currentResult.proceduralItem.getProperty(.maxDurability) != 0) "#ffffff" else "#ff0000", @as(usize, @trunc(currentResult.proceduralItem.getProperty(.maxDurability)))}, offsetX, offsetY, fontSize, .left);
-	main.graphics.draw.print("#ffffff{d:.1} swings/s", .{currentResult.proceduralItem.getProperty(.swingSpeed)}, offsetX, offsetY + fontSize, fontSize, .left);
-	main.graphics.draw.print("#ffffff{d:.1} damage", .{currentResult.proceduralItem.getProperty(.damage)}, offsetX, offsetY + 2*fontSize, fontSize, .left);
+	main.graphics.draw.print("{s}{} durability", .{if (currentResult.proceduralItem.getProperty(.maxDurability) != 0) "#ffffff" else "#ff0000", @as(usize, @trunc(currentResult.proceduralItem.getProperty(.maxDurability)))}, offsetX, offsetY, fontSize);
+	main.graphics.draw.print("#ffffff{d:.1} swings/s", .{currentResult.proceduralItem.getProperty(.swingSpeed)}, offsetX, offsetY + fontSize, fontSize);
+	main.graphics.draw.print("#ffffff{d:.1} damage", .{currentResult.proceduralItem.getProperty(.damage)}, offsetX, offsetY + 2*fontSize, fontSize);
 }
 
 pub fn onOpen() void {

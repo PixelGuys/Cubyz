@@ -578,9 +578,9 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 	defer searchList.deinit();
 	{
 		var firstPos = chunk.ChunkPosition{
-			.wx = @floor(playerPos[0]),
-			.wy = @floor(playerPos[1]),
-			.wz = @floor(playerPos[2]),
+			.wx = playerPosInt[0],
+			.wy = playerPosInt[1],
+			.wz = playerPosInt[2],
 			.voxelSize = 1,
 		};
 		const lod: u3 = settings.highestLod;
@@ -606,15 +606,14 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 
 		const pos = node.pos;
 
-		const relPos: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{pos.wx, pos.wy, pos.wz})) - playerPos;
-		const relPosFloat: Vec3f = @floatCast(relPos);
+		const relPos: Vec3i = Vec3i{pos.wx, pos.wy, pos.wz} - playerPosInt;
 
 		const chunkSizeVector: Vec3i = @splat(chunk.chunkSize*pos.voxelSize);
 
 		if (pos.voxelSize == @as(i32, 1) << settings.highestLod) {
 			for (chunk.Neighbor.iterable) |neighbor| {
-				const component = neighbor.extractDirectionComponent(relPosFloat);
-				if (neighbor.isPositive() and component + @as(f32, @floatFromInt(chunk.chunkSize*pos.voxelSize)) <= 0) continue;
+				const component = neighbor.extractDirectionComponent(relPos);
+				if (neighbor.isPositive() and component + chunk.chunkSize*pos.voxelSize <= 0) continue;
 				if (!neighbor.isPositive() and component > 0) continue;
 				const neighborPos = chunk.ChunkPosition{
 					.wx = pos.wx +% neighbor.relX()*chunk.chunkSize*pos.voxelSize,
@@ -624,6 +623,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 				};
 				const node2 = getNodePointer(neighborPos);
 				if (!node2.active and node2.finishedMeshing) {
+					const relPosFloat: Vec3f = @floatCast(@as(Vec3d, @floatFromInt(Vec3i{pos.wx, pos.wy, pos.wz})) - playerPos);
 					if (!frustum.testAAB(relPosFloat + @as(Vec3f, @floatFromInt(neighbor.relPos()*chunkSizeVector)), @floatFromInt(chunkSizeVector))) continue;
 					node2.active = true;
 					node2.rendered = true;
