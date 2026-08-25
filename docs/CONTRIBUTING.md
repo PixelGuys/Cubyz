@@ -55,7 +55,7 @@ And it is probably pretty easy to get the basics going, but at the end of the da
 New systems are of course still required, but they should be approached cautiously. Sometimes a bold leap forward is the right approach, but some discussions ahead of time can prevent a lot of frustration and wasted effort. And even if you are the best programmer in the world, a system that only you understand is just a waste of time in Open Source.
 
 At the same time we already have many half-baked systems and half-finished refactorings, some completely abandoned, that are justing waiting for someone like you to finish them.
-So instead of going out on your own to implement something new that may get stalled for months, maybe take a look around the codebase, the issue tracker, and talk to some fellow contributors on [Discord](https://discord.gg/XtqCRRG) on how you can best collaborate and bring value to the project.
+So instead of going out on your own to implement something new that may get stalled for months, maybe take a look around the codebase, the issue tracker, existing PRs, and talk to some fellow contributors on [Discord](https://discord.gg/XtqCRRG) on how you can best collaborate and bring value to the project.
 
 The best and most useful pull requests, are the ones that were made by multiple people.
 
