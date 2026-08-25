@@ -119,7 +119,6 @@ pub fn initIcon(pos: Vec2f, givenIconSize: Vec2f, iconTexture: Texture, options:
 		.disabled = options.disabled,
 		.hideBackground = options.hideBackground,
 	};
-	if (self.hideBackground) self.child.mutSize().* = self.size;
 	return self;
 }
 
