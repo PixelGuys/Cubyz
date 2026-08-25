@@ -21,8 +21,8 @@ pub fn deinit() void {}
 pub fn reset() void {}
 
 pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
-	const topModelIndex = main.models.getModelIndex(zon.get([]const u8, "top", "cubyz:cube"));
-	const bottomModelIndex = main.models.getModelIndex(zon.get([]const u8, "bottom", "cubyz:cube"));
+	const topModelIndex = main.models.getModelIndex(zon.get([]const u8, "top") orelse "cubyz:cube");
+	const bottomModelIndex = main.models.getModelIndex(zon.get([]const u8, "bottom") orelse "cubyz:cube");
 
 	const modelIndex = topModelIndex.model().transformModel(transform, .{});
 	_ = bottomModelIndex.model().transformModel(transform, .{});
@@ -36,7 +36,7 @@ pub fn model(block: Block) ModelIndex {
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, blockPlacing: bool) bool {
 	const sameBlock = neighborBlock.typ == currentData.typ;
 	if (blockPlacing) {
-		if (neighbor != Neighbor.dirUp) return false;
+		if (neighbor != Neighbor.dirDown) return false;
 		if (!sameBlock) {
 			const neighborModel = neighborBlock.mode().model(neighborBlock).model();
 			const support = !neighborBlock.replaceable() and neighborModel.neighborFacingQuads[Neighbor.dirUp.toInt()].len != 0;
