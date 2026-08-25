@@ -97,7 +97,7 @@ pub const Location = struct {
 pub const Context = struct {
 	oldBlock: Block,
 	newBlock: Block,
-	item: ?Item,
+	item: Item = .null,
 
 	pub fn drop(self: Context, location: Location, pos: Vec3i) void {
 		const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
@@ -109,7 +109,7 @@ pub const Context = struct {
 
 		for (0..dropAmount) |_| {
 			for (self.oldBlock.blockDrops()) |blockDrop| {
-				if (self.item == null or blockDrop.isDroppedWhenBrokenWithItem(self.item.?)) {
+				if (blockDrop.isDroppedWhenBrokenWithItem(self.item)) {
 					blockDrop.drop(dropPos, dropDir, dropVelocity);
 				}
 			}
