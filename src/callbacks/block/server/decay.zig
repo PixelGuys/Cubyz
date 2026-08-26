@@ -137,7 +137,7 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 			if (world.cmpxchgBlock(wx, wy, wz, leaf, self.decayReplacement) == null) {
 				const modelIndex = params.block.mode().model(params.block);
 				for (self.blockDrops) |drop| {
-					drop.tryDropNaturally(modelIndex, .{wx, wy, wz});
+					drop.dropNaturally(modelIndex, .{wx, wy, wz});
 				}
 				return .handled;
 			}
