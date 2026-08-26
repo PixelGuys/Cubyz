@@ -1105,3 +1105,69 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 		conn.send(.secure, id, writer.data.items);
 	}
 };
+
+pub const chestOpen = struct {
+	pub const id: u8 = 16;
+
+	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+		const InventoryId = items.Inventory.InventoryId;
+		const success = try reader.readInt(u8);
+		const clientId = try reader.readEnum(InventoryId);
+		if (success == 0) {
+			items.Inventory.client.cancelChestOpen(clientId);
+			return;
+		}
+		const pos = try reader.readVec(Vec3i);
+		const serverId = try reader.readEnum(InventoryId);
+		items.Inventory.client.receiveChestOpenResponse(clientId, pos, serverId, reader);
+	}
+	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
+		const user = conn.user.?;
+		user.receiveChestOpenRequest(reader.remaining);
+	}
+
+	pub fn sendRequest(conn: *Connection, clientId: items.Inventory.InventoryId, pos: Vec3i) void {
+		std.debug.assert(conn.user == null);
+		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 16);
+		defer writer.deinit();
+		writer.writeEnum(items.Inventory.InventoryId, clientId);
+		writer.writeVec(Vec3i, pos);
+		conn.send(.secure, id, writer.data.items);
+	}
+
+	pub fn process(user: *main.server.User, reader: *utils.BinaryReader) void {
+		const InventoryId = items.Inventory.InventoryId;
+		const clientId = reader.readEnum(InventoryId) catch return;
+		const pos = reader.readVec(Vec3i) catch return;
+		main.items.Inventory.server.createInventory(user, clientId, main.block_entity.BlockEntityTypes.@"cubyz:chest".inventorySize, .{.blockInventory = pos}) catch {
+			sendFailure(user.conn, clientId);
+			return;
+		};
+		const inv = main.items.Inventory.server.getInventory(user, clientId) orelse {
+			sendFailure(user.conn, clientId);
+			return;
+		};
+		sendResponse(user.conn, clientId, pos, inv);
+	}
+
+	fn sendResponse(conn: *Connection, clientId: items.Inventory.InventoryId, pos: Vec3i, inv: items.Inventory) void {
+		std.debug.assert(conn.isServerSide());
+		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 32);
+		defer writer.deinit();
+		writer.writeInt(u8, 1);
+		writer.writeEnum(items.Inventory.InventoryId, clientId);
+		writer.writeVec(Vec3i, pos);
+		writer.writeEnum(items.Inventory.InventoryId, inv.id);
+		inv.toBytes(&writer);
+		conn.send(.secure, id, writer.data.items);
+	}
+
+	fn sendFailure(conn: *Connection, clientId: items.Inventory.InventoryId) void {
+		std.debug.assert(conn.isServerSide());
+		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 8);
+		defer writer.deinit();
+		writer.writeInt(u8, 0);
+		writer.writeEnum(items.Inventory.InventoryId, clientId);
+		conn.send(.secure, id, writer.data.items);
+	}
+};

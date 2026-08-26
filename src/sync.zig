@@ -379,7 +379,6 @@ pub const Command = struct { // MARK: Command
 					create.inv.ref().amount += create.amount;
 
 					create.inv.inv.update();
-					Inventory.client.recordInitialItemReceived(create.inv.inv.id);
 				},
 				.delete => |delete| {
 					if (delete.inv.ref().amount < delete.amount) {
@@ -857,19 +856,12 @@ pub const Command = struct { // MARK: Command
 			if (reader.remaining.len != 0) {
 				const serverId = try reader.readEnum(InventoryId);
 				Inventory.client.mapServerId(serverId, self.inv);
-				const itemCount = try reader.readInt(u32);
-				Inventory.client.setExpectedItemCount(self.inv.id, itemCount);
 			}
 		}
 
 		fn confirmationData(self: Open, allocator: NeverFailingAllocator) []const u8 {
-			var writer = BinaryWriter.initCapacity(allocator, 8);
+			var writer = BinaryWriter.initCapacity(allocator, 4);
 			writer.writeEnum(InventoryId, self.inv.id);
-			var itemCount: u32 = 0;
-			for (self.inv._items) |stack| {
-				if (stack.item != .null) itemCount += 1;
-			}
-			writer.writeInt(u32, itemCount);
 			return writer.data.toOwnedSlice();
 		}
 
