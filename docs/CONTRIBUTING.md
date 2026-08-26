@@ -167,6 +167,8 @@ There are a few more things not covered by the formatter:
   assignment ops < bool ops < compare ops < bitwise ops < shift ops < add/sub < mul/div < unary ops<br>
   Only add parenthesis if you need them. Precedence on the right side of the spectrum (unary and mul/div/mod) is also shown visually (enforced by the formatter) through spacing: `x = -a + b*c` instead of `x = - a + b * c`
 
+Some of these things may be checked for by the linter. Generally violations of these guidelines that the linter can detect are rare, but in case you do find yourself needing to check your code frequently you can download the precompiled binaries [here](https://github.com/PixelGuys/Cubyz-linter/releases/latest).
+
 # Don't put multiple changes into one pull request
 
 This includes introduction of non-trivial helper functions, refactoring existing code.
