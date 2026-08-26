@@ -39,7 +39,7 @@ pub fn drop(self: @This(), pos: Vec3d, dir: Vec3f, velocity: f32) void {
 pub fn tryDropNaturally(self: @This(), modelIndex: ModelIndex, worldPos: Vec3i) void {
 	if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
 		const model = modelIndex.model();
-		for (self.itemStacks) |stack| {
+		for (self.itemStacks) |itemStack| {
 			var dir = main.vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));
 			// Bias upwards
 			dir[2] += main.random.nextFloat(&main.seed)*4.0;
@@ -48,7 +48,7 @@ pub fn tryDropNaturally(self: @This(), modelIndex: ModelIndex, worldPos: Vec3i) 
 				@as(f32, @floatFromInt(worldPos[1])) + model.min[1] + main.random.nextFloat(&main.seed)*(model.max[1] - model.min[1]),
 				@as(f32, @floatFromInt(worldPos[2])) + model.min[2] + main.random.nextFloat(&main.seed)*(model.max[2] - model.min[2]),
 			};
-			main.server.world.?.drop(stack.clone(), pos, dir, 1);
+			main.server.world.?.drop(itemStack.clone(), pos, dir, 1);
 		}
 	}
 }
