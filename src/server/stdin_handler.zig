@@ -22,6 +22,10 @@ pub fn update() void {
 	}
 	const msg = std.mem.trim(u8, readBuffer[0..result], "\n");
 	if (msg.len == 0) return;
+	if (!std.unicode.utf8ValidateSlice(msg)) {
+		std.log.err("Server message contains invalid UTF-8 characters.", .{});
+		return;
+	}
 	if (msg[0] == '/') {
 		main.server.command.execute(msg[1..], .server);
 	} else {
