@@ -29,7 +29,7 @@ pub fn isDroppedWhenBrokenWithItem(self: @This(), item: Item) bool {
 }
 
 pub fn drop(self: @This(), pos: Vec3d, dir: Vec3f, velocity: f32) void {
-	if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
+	if (self.shouldDrop()) {
 		for (self.itemStacks) |itemStack| {
 			main.server.world.?.drop(itemStack.clone(), pos, dir, velocity);
 		}
@@ -37,7 +37,7 @@ pub fn drop(self: @This(), pos: Vec3d, dir: Vec3f, velocity: f32) void {
 }
 
 pub fn dropNaturally(self: @This(), modelIndex: ModelIndex, pos: Vec3i) void {
-	if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
+	if (self.shouldDrop()) {
 		const model = modelIndex.model();
 		for (self.itemStacks) |itemStack| {
 			var randomDir = main.vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));
@@ -51,6 +51,10 @@ pub fn dropNaturally(self: @This(), modelIndex: ModelIndex, pos: Vec3i) void {
 			main.server.world.?.drop(itemStack.clone(), randomPos, randomDir, 1);
 		}
 	}
+}
+
+inline fn shouldDrop(self: @This()) bool {
+	return self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance;
 }
 
 pub const Location = struct {
