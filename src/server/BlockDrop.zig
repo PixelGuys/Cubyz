@@ -121,14 +121,14 @@ pub const Context = struct {
 	modelIndex: ?ModelIndex = null,
 
 	pub fn drop(self: Context, location: Location, pos: Vec3i) void {
-		const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
-		if (dropAmount == 0) return;
+		const amount = self.dropAmount();
+		if (amount == 0) return;
 
 		const dropPos = if (self.newBlock.collide()) location.outsidePos(pos) else location.insidePos(pos);
 		const dropDir = location.dropDir();
 		const dropVelocity = location.dropVelocity();
 
-		for (0..dropAmount) |_| {
+		for (0..amount) |_| {
 			for (self.oldBlock.blockDrops()) |blockDrop| {
 				if (blockDrop.isDroppedWhenBrokenWithItem(self.item)) {
 					blockDrop.drop(dropPos, dropDir, dropVelocity);
@@ -138,15 +138,19 @@ pub const Context = struct {
 	}
 
 	pub fn dropNaturally(self: Context, pos: Vec3i) void {
-		const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
-		if (dropAmount == 0) return;
+		const amount = self.dropAmount();
+		if (amount == 0) return;
 
 		if (self.modelIndex) |modelIndex| {
-			for (0..dropAmount) |_| {
+			for (0..amount) |_| {
 				for (self.oldBlock.blockDrops()) |blockDrop| {
 					blockDrop.tryDropNaturally(modelIndex, pos);
 				}
 			}
 		}
+	}
+
+	inline fn dropAmount(self: Context) u16 {
+		return self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
 	}
 };
