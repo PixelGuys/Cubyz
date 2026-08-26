@@ -10,6 +10,7 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const ZonElement = main.ZonElement;
 const server = main.server;
+const BlockDrop = main.server.BlockDrop;
 
 pub fn init(_: ZonElement, _: main.callbacks.Creator) ?*@This() {
 	return @as(*@This(), undefined);
@@ -43,7 +44,12 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 	if (newBlock == params.block) return .ignored;
 
 	if (main.server.world.?.cmpxchgBlock(wx, wy, wz, params.block, newBlock) == null) {
-		params.block.tryDropNaturally(newBlock, .{wx, wy, wz});
+		const dropCtx = BlockDrop.Context{
+			.oldBlock = params.block,
+			.newBlock = newBlock,
+			.modelIndex = params.block.mode().model(params.block),
+		};
+		dropCtx.dropNaturally(.{wx, wy, wz});
 		return .handled;
 	}
 	return .ignored;
