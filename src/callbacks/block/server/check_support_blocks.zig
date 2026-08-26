@@ -47,7 +47,6 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 		const dropCtx = BlockDrop.Context{
 			.oldBlock = params.block,
 			.newBlock = newBlock,
-			.modelIndex = params.block.mode().model(params.block),
 		};
 		dropCtx.dropNaturally(.{wx, wy, wz});
 		return .handled;
