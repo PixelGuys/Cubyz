@@ -9,7 +9,7 @@
 	.maxSubBiomeCount = 1,
 	.chance = 0.5,
 	.stoneBlock = "cubyz:glacite/smooth",
-	.music = "cubyz:sunrise",
+	.music = "cubyz:sinanimea/sunrise",
 	.ground_structure = .{
 		"cubyz:snow",
 		"4 to 6 cubyz:permafrost",
