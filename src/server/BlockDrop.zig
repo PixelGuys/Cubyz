@@ -137,8 +137,6 @@ pub const Context = struct {
 
 	pub fn dropNaturally(self: Context, pos: Vec3i) void {
 		const amount = self.dropAmount();
-		if (amount == 0) return;
-
 		if (self.modelIndex) |modelIndex| {
 			for (0..amount) |_| {
 				for (self.oldBlock.blockDrops()) |blockDrop| {
