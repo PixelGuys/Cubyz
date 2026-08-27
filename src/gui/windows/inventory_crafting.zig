@@ -41,13 +41,11 @@ pub var craftableFromTags: []main.Tag = undefined;
 
 pub fn init() void {
 	arrowTexture = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_arrow.png");
-	craftableFromTags = main.stackAllocator.alloc(main.Tag, 1);
-	craftableFromTags[0] = main.Tag.handCraftable;
+	craftableFromTags = .{main.Tag.handCraftable};
 }
 
 pub fn deinit() void {
 	arrowTexture.deinit();
-	main.stackAllocator.free(craftableFromTags);
 }
 
 pub fn openFromCallback(craftingTags: []main.Tag) void {
@@ -190,8 +188,9 @@ pub fn onClose() void {
 	inventories.deinit();
 }
 
-pub fn onToggleWindowFn() void {
-	craftableFromTags[0] = main.Tag.handCraftable;
+pub fn onToggleWindow() void {
+	craftableFromTags[0] = .{main.Tag.handCraftable};
+	std.log.debug("hello", .{});
 	refresh();
 }
 
