@@ -131,7 +131,7 @@ pub fn initWindowList() void {
 		const windowStruct = @field(windowlist, decl.name);
 		windowStruct.window.id = decl.name;
 		addWindow(&windowStruct.window);
-		const functionNames = [_][]const u8{"render", "update", "updateSelected", "updateHovered", "onOpen", "onClose"};
+		const functionNames = [_][]const u8{"render", "update", "updateSelected", "updateHovered", "onOpen", "onClose", "onToggleWindow"};
 		inline for (functionNames) |function| {
 			if (@hasDecl(windowStruct, function)) {
 				@field(windowStruct.window, function ++ "Fn") = &@field(windowStruct, function);
