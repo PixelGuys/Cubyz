@@ -28,8 +28,6 @@ const padding: f32 = 8;
 var accountCodeLabel: *Label = undefined;
 var accountCode: ?main.network.authentication.AccountCode = null;
 var fileNameEntry: *Label = undefined;
-var fileName: []const u8 = undefined;
-var fileSaved: bool = undefined;
 
 pub const StorageMethod = enum(usize) {
 	file = 0,
@@ -64,14 +62,14 @@ fn copy() void {
 
 fn selectFile() void {
 	const result: [*:0]const u8 = c.tinyfd_saveFileDialog("Select File to save Account Code", "Cubyz Account.txt", 1, @as([*]const [*:0]const u8, &.{"*.txt"}), "Text Files") orelse return;
-	fileName = std.mem.span(result);
+	const fileName = std.mem.span(result);
 	main.files.cwd().write(fileName, accountCode.?.text) catch |err| {
 		std.log.err("Failed to write Account Code to file: {s}", .{@errorName(err)});
-		fileSaved = false;
+		button.disabled = true;
 		fileNameEntry.updateText("Failed to save, please pick a different location.");
 		return;
 	};
-	fileSaved = true;
+	button.disabled = false;
 	const displayName = main.stackAllocator.dupe(u8, fileName);
 	defer main.stackAllocator.free(displayName);
 	if (builtin.os.tag == .windows) {
@@ -95,8 +93,6 @@ pub fn onOpen() void {
 	list.add(row);
 	switch (storageMethod) {
 		.file => {
-			fileName = "";
-			fileSaved = false;
 			list.add(Label.init(.{0, 0}, width, "Please enter a file name, we will store it there.", .left));
 			list.add(Button.initText(.{0, 0}, 250, "Select File", .{.onAction = .init(selectFile)}));
 			fileNameEntry = Label.init(.{0, 0}, width, "", .center);
@@ -124,9 +120,7 @@ pub fn onOpen() void {
 
 pub fn update() void {
 	switch (storageMethod) {
-		.file => {
-			button.disabled = !fileSaved;
-		},
+		.file => {},
 		.paper, .passwordManager => {
 			if (button.disabled) {
 				const remainingTime = enableTime.nanoseconds -% main.timestamp().nanoseconds;
