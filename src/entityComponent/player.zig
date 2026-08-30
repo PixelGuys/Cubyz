@@ -51,6 +51,11 @@ pub const client = struct {
 	pub fn get(entity: Entity) ?*Component {
 		return components.get(entity);
 	}
+
+	pub fn modifyComponent(entity: Entity, reader: *utils.BinaryReader) void {
+		_ = entity;
+		_ = reader;
+	}
 };
 
 // ############################# Server only stuff ################################
@@ -91,5 +96,10 @@ pub const server = struct {
 	}
 	pub fn get(entity: Entity) ?*Component {
 		return components.get(entity);
+	}
+
+	pub fn modifyComponent(entity: Entity, reader: *utils.BinaryReader) void {
+		_ = entity;
+		_ = reader;
 	}
 };

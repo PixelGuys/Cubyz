@@ -27,16 +27,18 @@ const ItemStack = items.ItemStack;
 const random = main.random;
 
 const c = @import("c");
+const Self = @This();
 
 pub var entityComponentID: main.entity.EntityComponentId = undefined;
 pub const entityComponentVersion = 0;
 
-const playerBagSizeLimit = 120;
+var playerBagSizeLimit = 120;
 
 // ############################# Client only stuff ################################
 pub const client = struct {
 	const Component = struct {
-		bag: items.Inventory.BagInventory,
+		health: f32,
+		maxHealth: f32,
 	};
 	pub var components: main.utils.SparseSet(Component, Entity) = .{};
 
@@ -48,19 +50,29 @@ pub const client = struct {
 		components.clear();
 	}
 
-	pub fn getBag(entity: Entity) ?*items.Inventory.BagInventory {
-		return &(components.get(entity) orelse return null).bag;
+	pub fn getHealth(entity: Entity) ?f32 {
+		return (components.get(entity) orelse return null).health;
+	}
+	pub fn getMaxHealth(entity: Entity) ?f32 {
+		return (components.get(entity) orelse return null).maxHealth;
+	}
+	pub fn addHealth(entity: Entity, healthChange: f32) void {
+		var binaryWriter = main.utils.BinaryWriter.init(main.stackAllocator);
+		defer binaryWriter.deinit();
+		binaryWriter.writeFloat(f32, healthChange);
+		main.network.protocols.EntityComponentUpdate.modify(main.game.world.?.conn, entity, Self.entityComponentID, binaryWriter.data.items);
 	}
 
 	pub fn load(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != entityComponentVersion) return error.InvalidComponentVersion;
-		const bag = &components.add(main.globalAllocator, entity).bag;
-		bag.* = .init(main.globalAllocator, playerBagSizeLimit);
-		bag.fromBytes(reader) catch return error.UnreadableComponentData;
+		const component = components.add(main.globalAllocator, entity);
+		const health = &component.health;
+		const maxHealth = &component.maxHealth;
+		health.* = reader.readFloat(f32) catch return error.UnreadableComponentData;
+		maxHealth.* = reader.readFloat(f32) catch return error.UnreadableComponentData;
 	}
 	pub fn unload(entity: Entity) void {
-		const bag = components.fetchRemove(entity) catch return;
-		bag.bag.deinit();
+		components.remove(entity) catch {};
 	}
 	pub fn modifyComponent(entity: Entity, reader: *utils.BinaryReader) void {
 		_ = entity;
@@ -71,10 +83,12 @@ pub const client = struct {
 // ############################# Server only stuff ################################
 pub const server = struct {
 	pub const Component = struct {
-		bag: items.Inventory.BagInventory,
+		health: f32,
+		maxHealth: f32,
 		pub fn save(self: Component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			if (audience != .disk and audience != .playerHimself) return .discard;
-			self.bag.toBytes(writer);
+			writer.writeFloat(f32, self.health);
+			writer.writeFloat(f32, self.maxHealth);
 			return .save;
 		}
 	};
@@ -90,25 +104,49 @@ pub const server = struct {
 	pub fn get(entity: Entity) ?Component {
 		return (components.get(entity) orelse return null).*;
 	}
-	pub fn getBag(entity: Entity) ?*items.Inventory.BagInventory {
-		return &(components.get(entity) orelse return null).bag;
+	pub fn getHealth(entity: Entity) ?f32 {
+		return (components.get(entity) orelse return null).health;
 	}
+	pub fn getMaxHealth(entity: Entity) ?f32 {
+		return (components.get(entity) orelse return null).maxHealth;
+	}
+	
 	pub fn loadFromData(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != entityComponentVersion) return error.InvalidComponentVersion;
-		const bag = &components.add(main.globalAllocator, entity).bag;
-		bag.* = .init(main.globalAllocator, playerBagSizeLimit);
-		bag.fromBytes(reader) catch return error.UnreadableComponentData;
+		const component = components.add(main.globalAllocator, entity);
+		const health = &component.health;
+		const maxHealth = &component.maxHealth;
+		health.* = reader.readFloat(f32) catch return error.UnreadableComponentData;
+		maxHealth.* = reader.readFloat(f32) catch return error.UnreadableComponentData;
 	}
-	pub fn loadEmpty(entity: Entity) void {
-		const bag = &components.add(main.globalAllocator, entity).bag;
-		bag.* = .init(main.globalAllocator, playerBagSizeLimit);
+	pub fn loadFromNum(entity: Entity, givenHealth: f32) void {
+		const component = components.add(main.globalAllocator, entity);
+		const health = &component.health;
+		const maxHealth = &component.maxHealth;
+		health.* = givenHealth;
+		maxHealth.* = givenHealth;
 	}
 	pub fn unload(entity: Entity) void {
-		const bag = components.fetchRemove(entity) catch return;
-		bag.bag.deinit();
+		components.remove(entity) catch {};
 	}
+
 	pub fn modifyComponent(entity: Entity, reader: *utils.BinaryReader) void {
-		_ = entity;
-		_ = reader;
+		const addedHealth = reader.readFloat(f32);
+		const health = &(components.get(entity) orelse return).health;
+		health.* += addedHealth catch return;
+		std.log.debug("modifed component {}", .{health});
+
+		if (health.* <= 0) {
+			die(entity);
+		}
+
+		main.entity.server.transmitChange(Self, entity);
+	}
+
+	fn die(entity: Entity) void {
+		const component = components.get(entity) orelse return;
+		const health = &component.health;
+		const maxHealth = &component.maxHealth;
+		health.* = maxHealth.*;
 	}
 };

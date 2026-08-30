@@ -1067,8 +1067,18 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 	const ActionType = enum(u8) {
 		unload = 0,
 		load = 1,
+		modify = 2,
 	};
-
+	
+	fn serverReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+		const entityId: main.entity.Entity = @enumFromInt(try reader.readVarInt(u32));
+		const componentId = try reader.readVarInt(u32);
+		const actionType: ActionType = try reader.readEnum(ActionType);
+		if (reader.remaining[0] == 0xff) return error.Invalid;
+		if (actionType == .modify) {
+			try main.entity.modifyComponent(.server, componentId, entityId,reader.remaining);
+		}
+	}
 	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const entityId: main.entity.Entity = @enumFromInt(try reader.readVarInt(u32));
 		const componentId = try reader.readVarInt(u32);
@@ -1079,6 +1089,8 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 			try main.entity.loadComponent(.client, componentId, entityId, reader.remaining, componentVersion);
 		} else if (actionType == .unload) {
 			try main.entity.unloadComponent(.client, componentId, entityId);
+		} else if (actionType == .modify) {
+			try main.entity.modifyComponent(.client, componentId, entityId, reader.remaining);
 		}
 	}
 	pub fn unload(conn: *Connection, entityId: main.entity.Entity, componentId: u32) void {
@@ -1100,6 +1112,18 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 		writer.writeEnum(ActionType, ActionType.load);
 		// specific to `load`
 		writer.writeVarInt(u32, version);
+		writer.writeSlice(componentData);
+
+		conn.send(.secure, id, writer.data.items);
+	}
+	pub fn modify(conn: *Connection, entityId: main.entity.Entity, componentId: u32, componentData: []const u8) void {
+		var writer = utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
+
+		writer.writeVarInt(u32, @intFromEnum(entityId));
+		writer.writeVarInt(u32, componentId);
+		writer.writeEnum(ActionType, ActionType.modify);
+		// specific to `modify`
 		writer.writeSlice(componentData);
 
 		conn.send(.secure, id, writer.data.items);

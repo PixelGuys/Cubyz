@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
+const @"cubyz:health" = main.entity.components.@"cubyz:health";
 
 dps: f32,
 damageType: main.game.DamageType,
@@ -27,5 +28,6 @@ pub fn run(self: *@This(), params: main.callbacks.BlockTouchCallback.Params) mai
 	std.debug.assert(params.entity == &main.game.Player.super); // TODO: Implement on the server side
 	const damage = self.dps*@as(f32, @floatCast(params.deltaTime));
 	main.sync.addHealth(-damage, self.damageType, .client, main.game.Player.id);
+	@"cubyz:health".client.addHealth(main.game.Player.id, -damage);
 	return .handled;
 }

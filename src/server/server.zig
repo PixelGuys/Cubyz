@@ -299,6 +299,9 @@ pub const User = struct { // MARK: User
 		world.?.loadPlayer(self) catch {
 			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
 		};
+		if (main.entity.components.@"cubyz:health".server.get(self.id) == null) {
+			main.entity.components.@"cubyz:health".server.loadFromNum(self.id, 8);
+		}
 		if (main.entity.components.@"cubyz:model".server.get(self.id) == null) {
 			if (main.entityModel.playerEntityModels.items.len != 0) {
 				const defaultModel = main.entityModel.playerEntityModels.items[main.random.nextIntBounded(u32, &main.seed, @intCast(main.entityModel.playerEntityModels.items.len))];
