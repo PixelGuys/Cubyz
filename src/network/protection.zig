@@ -43,10 +43,10 @@ const windows_impl = struct {
 		};
 		var cipherblob: c.DATA_BLOB = undefined;
 		if (c.CryptProtectData(&plainblob, null, null, null, null, 0, &cipherblob) == 0) {
-			std.log.err("CryptProtectData syscall failed. Errorcode: {}. This should never happen. Please report it to the maintainers.", .{c.GetLastError()});
+			std.log.err("CryptProtectData syscall failed. Errorcode: {}. This should never happen.", .{c.GetLastError()});
 			return error.SystemError;
 		}
-		defer if (c.LocalFree(cipherblob.pbData) != null) std.log.err("LocalFree syscall failed to free previously allocated memory. Errorcode: {}. This should never happen. Please report it to the maintainers.", .{c.GetLastError()});
+		defer if (c.LocalFree(cipherblob.pbData) != null) std.log.err("LocalFree syscall failed to free previously allocated memory. Errorcode: {}. This should never happen.", .{c.GetLastError()});
 		return allocator.dupe(u8, cipherblob.pbData[0..cipherblob.cbData]);
 	}
 
@@ -71,7 +71,7 @@ const windows_impl = struct {
 		pbDataSlice.ptr = plainblob.pbData;
 		defer {
 			std.crypto.secureZero(u8, pbDataSlice);
-			if (c.LocalFree(plainblob.pbData) != null) std.log.err("LocalFree syscall failed to free previously allocated memory. Errorcode: {}. This should never happen. Please report it to the maintainers.", .{c.GetLastError()});
+			if (c.LocalFree(plainblob.pbData) != null) std.log.err("LocalFree syscall failed to free previously allocated memory. Errorcode: {}. This should never happen.", .{c.GetLastError()});
 		}
 		return allocator.dupe(u8, plainblob.pbData[0..plainblob.cbData]);
 	}
