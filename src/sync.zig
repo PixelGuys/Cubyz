@@ -18,6 +18,7 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
+const BlockDrop = main.server.BlockDrop;
 
 const @"cubyz:bag" = main.entity.components.@"cubyz:bag";
 
@@ -143,6 +144,13 @@ pub const server = struct { // MARK: server
 		threadContext = .other;
 	}
 
+	pub fn sendSyncOperation(op: Command.SyncOperation, target: *main.server.User) void {
+		const syncData = op.serialize(main.stackAllocator);
+		defer main.stackAllocator.free(syncData);
+
+		main.network.protocols.inventory.sendSyncOperation(target.conn, syncData);
+	}
+
 	pub fn executeCommand(payload: Command.Payload, source: ?*main.server.User) void {
 		var command = Command{
 			.payload = payload,
@@ -230,6 +238,7 @@ pub const Command = struct { // MARK: Command
 		open = 0,
 		close = 1,
 		depositOrSwap = 2,
+		swap = 18,
 		deposit = 3,
 		takeHalf = 4,
 		drop = 5,
@@ -250,6 +259,7 @@ pub const Command = struct { // MARK: Command
 		open: Open,
 		close: Close,
 		depositOrSwap: DepositOrSwap,
+		swap: Swap,
 		deposit: Deposit,
 		takeHalf: TakeHalf,
 		drop: Drop,
@@ -279,6 +289,12 @@ pub const Command = struct { // MARK: Command
 		addEnergy = 6,
 	};
 
+	/// The BaseOperation is the primitive operation used by Command. It is responsible for executing the operation as
+	/// well as storing undo information (for client-side prediction) or sync operations (for the server to send to other clients)
+	///
+	/// Implementation-wise the main difference (between BaseOperation and SyncOperation) is that the BaseOperation can assume
+	/// that the server knows all the inventories involved, whereas the SyncOperation cannot assume that the client
+	/// knows the contents of all inventories involved, so e.g. swap base operations are decomposed into create and delete sync operations.
 	pub const BaseOperation = union(BaseOperationType) {
 		move: struct {
 			dest: InventoryAndSlot,
@@ -335,8 +351,11 @@ pub const Command = struct { // MARK: Command
 		health = 3,
 		kill = 4,
 		energy = 5,
+		rotation = 6,
 	};
 
+	/// The SyncOperation is responsible for informing (other) clients of the results of e.g. a base operation, or, more
+	/// generally, other things that are happening on the server.
 	const SyncOperation = union(SyncOperationType) { // MARK: SyncOperation
 		// Since the client doesn't know about all inventories, we can only use create(+amount)/delete(-amount) and use durability operations to apply the server side updates.
 		create: struct {
@@ -363,6 +382,10 @@ pub const Command = struct { // MARK: Command
 		energy: struct {
 			target: ?*main.server.User,
 			energy: f32,
+		},
+		rotation: struct {
+			target: ?*main.server.User,
+			rotation: Vec3f,
 		},
 
 		pub fn executeFromData(reader: *BinaryReader) !void {
@@ -410,6 +433,9 @@ pub const Command = struct { // MARK: Command
 				.energy => |energy| {
 					main.game.Player.super.energy = std.math.clamp(main.game.Player.super.energy + energy.energy, 0, main.game.Player.super.maxEnergy);
 				},
+				.rotation => |rotation| {
+					main.game.camera.rotation = rotation.rotation;
+				},
 			}
 		}
 
@@ -423,7 +449,7 @@ pub const Command = struct { // MARK: Command
 					}
 					return result;
 				},
-				inline .health, .kill, .energy => |data| {
+				inline .health, .kill, .energy, .rotation => |data| {
 					const out = allocator.alloc(*main.server.User, 1);
 					out[0] = data.target.?;
 					return out;
@@ -433,7 +459,7 @@ pub const Command = struct { // MARK: Command
 
 		pub fn ignoreSource(self: SyncOperation) bool {
 			return switch (self) {
-				.create, .delete, .useDurability, .health, .energy => true,
+				.create, .delete, .useDurability, .health, .energy, .rotation => true,
 				.kill => false,
 			};
 		}
@@ -484,6 +510,12 @@ pub const Command = struct { // MARK: Command
 						.energy = try reader.readFloat(f32),
 					}};
 				},
+				.rotation => {
+					return .{.rotation = .{
+						.target = null,
+						.rotation = try reader.readVec(Vec3f),
+					}};
+				},
 			}
 		}
 
@@ -514,6 +546,9 @@ pub const Command = struct { // MARK: Command
 				},
 				.energy => |energy| {
 					writer.writeFloat(f32, energy.energy);
+				},
+				.rotation => |rotation| {
+					writer.writeVec(Vec3f, rotation.rotation);
 				},
 			}
 			return writer.data.toOwnedSlice();
@@ -744,11 +779,11 @@ pub const Command = struct { // MARK: Command
 			.moveToBag => |*info| {
 				const source = info.source.ref();
 				const amount = @min(source.amount, info.amount);
-				source.amount = info.dest.push(.{.item = source.item, .amount = amount});
+				info.amount = amount - info.dest.push(.{.item = source.item, .amount = amount});
+				source.amount -= info.amount;
 				if (source.amount == 0) {
 					source.item = .null;
 				}
-				info.amount = amount - source.amount;
 			},
 			.takeFromBag => |*info| {
 				const dest = info.dest.ref();
@@ -966,6 +1001,33 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !DepositOrSwap {
+			return .{
+				.dest = try InventoryAndSlot.read(reader, side, user),
+				.source = try InventoryAndSlot.read(reader, side, user),
+			};
+		}
+	};
+
+	const Swap = struct { // MARK: Swap
+		dest: InventoryAndSlot,
+		source: InventoryAndSlot,
+
+		fn run(self: Swap, ctx: Context) error{serverFailure}!void {
+			if (self.dest.inv.id == self.source.inv.id and self.dest.slot == self.source.slot) return;
+			if (self.dest.inv.callbacks.canPutInto) |c| if (!c(self.dest.inv.source, self.source.ref().item, self.dest.slot)) return;
+			if (self.source.inv.callbacks.canPutInto) |c| if (!c(self.source.inv.source, self.dest.ref().item, self.source.slot)) return;
+			ctx.execute(.{.swap = .{
+				.dest = self.dest,
+				.source = self.source,
+			}});
+		}
+
+		fn serialize(self: Swap, writer: *BinaryWriter) void {
+			self.dest.write(writer);
+			self.source.write(writer);
+		}
+
+		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !Swap {
 			return .{
 				.dest = try InventoryAndSlot.read(reader, side, user),
 				.source = try InventoryAndSlot.read(reader, side, user),
@@ -1511,85 +1573,9 @@ pub const Command = struct { // MARK: Command
 	const UpdateBlock = struct { // MARK: UpdateBlock
 		source: InventoryAndSlot,
 		pos: Vec3i,
-		dropLocation: BlockDropLocation,
+		dropLocation: BlockDrop.Location,
 		oldBlock: Block,
 		newBlock: Block,
-
-		const half = @as(Vec3f, @splat(0.5));
-		const itemHitBoxMargin: f32 = @floatCast(main.itemdrop.ItemDropManager.radius);
-		const itemHitBoxMarginVec: Vec3f = @splat(itemHitBoxMargin);
-
-		const BlockDropLocation = struct {
-			normalDir: Vec3f,
-			min: Vec3f,
-			max: Vec3f,
-
-			pub fn drop(self: BlockDropLocation, pos: Vec3i, newBlock: Block, _drop: main.blocks.BlockDrop) void {
-				if (newBlock.collide()) {
-					self.dropOutside(pos, _drop);
-				} else {
-					self.dropInside(pos, _drop);
-				}
-			}
-			fn dropInside(self: BlockDropLocation, pos: Vec3i, _drop: main.blocks.BlockDrop) void {
-				for (_drop.items) |itemStack| {
-					main.server.world.?.drop(itemStack.clone(), self.insidePos(pos), self.dropDir(), self.dropVelocity());
-				}
-			}
-			fn insidePos(self: BlockDropLocation, _pos: Vec3i) Vec3d {
-				const pos: Vec3d = @floatFromInt(_pos);
-				return pos + self.randomOffset();
-			}
-			fn randomOffset(self: BlockDropLocation) Vec3f {
-				const max = @min(@as(Vec3f, @splat(1.0)) - itemHitBoxMarginVec, @max(itemHitBoxMarginVec, self.max - itemHitBoxMarginVec));
-				const min = @min(max, @max(itemHitBoxMarginVec, self.min + itemHitBoxMarginVec));
-				const center = (max + min)*half;
-				const width = (max - min)*half;
-				return center + width*main.random.nextFloatVectorSigned(3, &main.seed)*half;
-			}
-			fn dropOutside(self: BlockDropLocation, pos: Vec3i, _drop: main.blocks.BlockDrop) void {
-				for (_drop.items) |itemStack| {
-					main.server.world.?.drop(itemStack.clone(), self.outsidePos(pos), self.dropDir(), self.dropVelocity());
-				}
-			}
-			fn outsidePos(self: BlockDropLocation, _pos: Vec3i) Vec3d {
-				const pos: Vec3d = @floatFromInt(_pos);
-				const random = self.randomOffset();
-				const minorVectors = minors(self);
-				const minor1Offset = @as(Vec3f, @splat(vec.dot(random, minorVectors[0])))*minorVectors[0];
-				const minor2Offset = @as(Vec3f, @splat(vec.dot(random, minorVectors[1])))*minorVectors[1];
-				return pos + minor1Offset + minor2Offset + self.directionOffset()*self.major() + self.direction()*itemHitBoxMarginVec;
-			}
-			fn directionOffset(self: BlockDropLocation) Vec3d {
-				return half + self.direction()*half;
-			}
-			inline fn direction(self: BlockDropLocation) Vec3f {
-				return self.normalDir;
-			}
-			inline fn major(self: BlockDropLocation) Vec3f {
-				return @abs(self.normalDir);
-			}
-			inline fn minors(self: BlockDropLocation) struct { Vec3f, Vec3f } {
-				const minor1 = vec.normalize(vec.cross(self.normalDir, if (@reduce(.And, @abs(self.normalDir) == Vec3f{1.0, 0.0, 0.0})) Vec3f{0.0, 1.0, 0.0} else Vec3f{1.0, 0.0, 0.0}));
-				const minor2 = vec.normalize(vec.cross(self.normalDir, minor1));
-				return .{minor1, minor2};
-			}
-			fn dropDir(self: BlockDropLocation) Vec3f {
-				const randomnessVec: Vec3f = main.random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(0.25));
-				const directionVec: Vec3f = @as(Vec3f, @floatCast(self.direction())) + randomnessVec;
-				const z: f32 = directionVec[2];
-				return vec.normalize(Vec3f{
-					directionVec[0],
-					directionVec[1],
-					if (z < -0.5) 0 else if (z < 0.0) (z + 0.5)*4.0 else z + 2.0,
-				});
-			}
-			fn dropVelocity(self: BlockDropLocation) f32 {
-				const velocity = 3.5 + main.random.nextFloatSigned(&main.seed)*0.5;
-				if (self.direction()[2] < -0.5) return velocity*0.333;
-				return velocity;
-			}
-		};
 
 		fn run(self: UpdateBlock, ctx: Context) error{serverFailure}!void {
 			const stack = self.source.ref();
@@ -1646,16 +1632,12 @@ pub const Command = struct { // MARK: Command
 				},
 			}
 			if (ctx.side == .server and ctx.gamemode != .creative and shouldDropSourceBlockOnSuccess) {
-				const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
-				for (0..dropAmount) |_| {
-					for (self.oldBlock.blockDrops()) |drop| {
-						if (!drop.isDroppedWhenBrokenWithItem(handItem)) continue;
-
-						if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-							self.dropLocation.drop(self.pos, self.newBlock, drop);
-						}
-					}
-				}
+				const dropCtx = BlockDrop.Context{
+					.oldBlock = self.oldBlock,
+					.newBlock = self.newBlock,
+					.item = handItem,
+				};
+				dropCtx.drop(self.dropLocation, self.pos);
 			}
 		}
 

@@ -35,6 +35,7 @@ pub const Settings = struct {
 	defaultGamemode: Gamemode = .creative,
 	allowCheats: bool = true,
 	testingMode: bool = false,
+	whitelistEnabled: std.atomic.Value(bool) = .init(false),
 	seed: u64 = undefined,
 
 	pub const defaults: Settings = .{};
@@ -48,15 +49,17 @@ pub const Settings = struct {
 			.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "defaultGamemode") orelse @tagName(defaults.defaultGamemode)) orelse defaults.defaultGamemode,
 			.allowCheats = zon.get(bool, "allowCheats") orelse defaults.allowCheats,
 			.testingMode = zon.get(bool, "testingMode") orelse defaults.testingMode,
+			.whitelistEnabled = .init(zon.get(bool, "whitelistEnabled") orelse defaults.whitelistEnabled.load(.monotonic)),
 		};
 	}
 
-	pub fn toZon(self: Settings, allocator: NeverFailingAllocator) ZonElement {
+	pub fn toZon(self: *const Settings, allocator: NeverFailingAllocator) ZonElement {
 		const zon = main.ZonElement.initObject(allocator);
 
 		zon.put("defaultGamemode", @tagName(self.defaultGamemode));
 		zon.put("allowCheats", self.allowCheats);
 		zon.put("testingMode", self.testingMode);
+		zon.put("whitelistEnabled", self.whitelistEnabled.load(.monotonic));
 		zon.put("seed", self.seed);
 
 		return zon;
@@ -440,6 +443,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	milliTime: std.Io.Timestamp,
 	lastUpdateTime: std.Io.Timestamp,
 	lastUnimportantDataSent: std.Io.Timestamp,
+	lastItemDropSaveTime: std.Io.Timestamp,
 	doGameTimeCycle: bool = true,
 
 	tickSpeed: std.atomic.Value(u32) = .init(12),
@@ -478,6 +482,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			.lastUpdateTime = main.timestamp(),
 			.milliTime = main.timestamp(),
 			.lastUnimportantDataSent = main.timestamp(),
+			.lastItemDropSaveTime = main.timestamp(),
 			.path = main.globalAllocator.dupe(u8, path),
 			.chunkUpdateQueue = .init(main.globalAllocator, 256),
 			.regionUpdateQueue = .init(main.globalAllocator, 256),
@@ -665,6 +670,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		worldData.put("name", self.name);
 		worldData.put("lastUsedTime", std.Io.Clock.Timestamp.now(main.io, .real).raw.toMilliseconds());
 		worldData.put("tickSpeed", self.tickSpeed.load(.monotonic));
+		worldData.put("settings", self.settings.toZon(main.stackAllocator));
 		worldData.put("localPlayer", players.getLocalPlayerIndex());
 
 		try files.cubyzDir().writeZon(path, worldData);
@@ -1103,6 +1109,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			for (userList) |user| {
 				self.itemDropManager.checkEntity(user);
 			}
+		}
+		if (self.lastItemDropSaveTime.durationTo(newTime).toSeconds() > 5) {
+			self.lastItemDropSaveTime = newTime;
+			self.saveItemdrops() catch |err| {
+				std.log.err("Error while saving item data: {s}", .{@errorName(err)});
+			};
 		}
 
 		// Store chunks and regions.

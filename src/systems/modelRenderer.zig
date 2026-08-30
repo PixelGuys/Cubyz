@@ -48,10 +48,11 @@ pub const client = struct {
 			"",
 			&uniforms,
 			main.entityModel.EntityModel.Vertex,
-			&.{},
-			.{},
-			.{.depthTest = true},
-			.{.attachments = &.{.alphaBlending}},
+			.{
+				.rasterState = .{},
+				.depthStencilState = .{.depthTest = true},
+				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
+			},
 		);
 
 		nodeBuffer.init(main.globalAllocator, 1 << 20, 15);

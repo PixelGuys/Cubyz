@@ -12,6 +12,8 @@ pub const usage =
 	\\/tp @<sourcePlayerIndex> <x> <y> <z>
 	\\/tp @<destinationPlayerIndex>
 	\\/tp @<sourcePlayerIndex> @<destinationPlayerIndex>
+	\\/tp <x> <y> <z> <yaw> <pitch>
+	\\/tp @<sourcePlayerIndex> <x> <y> <z> <yaw> <pitch>
 ;
 
 pub const Args = union(enum) {
@@ -32,12 +34,21 @@ pub const Args = union(enum) {
 		sourcePlayerIndex: command.PlayerIndex,
 		destinationPlayerIndex: command.PlayerIndex,
 	},
+	@"/tp <sourcePlayerIndex> <x> <y> <z> <yaw> <pitch>": struct {
+		sourcePlayerIndex: ?command.PlayerIndex,
+		x: command.Coordinate,
+		y: command.Coordinate,
+		z: command.Coordinate,
+		yaw: command.Rotation,
+		pitch: command.Rotation,
+	},
 };
 
 pub fn execute(args: Args, source: Source) void {
 	const target = switch (args) {
 		inline .@"/tp <sourcePlayerIndex> <biome>",
 		.@"/tp <sourcePlayerIndex> <x> <y> <z>",
+		.@"/tp <sourcePlayerIndex> <x> <y> <z> <yaw> <pitch>",
 		.@"/tp <sourcePlayerIndex> <destinationPlayerIndex>",
 		=> |params| command.Target.fromPlayerIndex(params.sourcePlayerIndex, source) catch return,
 		else => command.Target.fromPlayerIndex(null, source) catch return,
@@ -99,10 +110,15 @@ pub fn execute(args: Args, source: Source) void {
 		.@"/tp <sourcePlayerIndex> <x> <y> <z>" => |pos| {
 			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source) catch return;
 		},
+		.@"/tp <sourcePlayerIndex> <x> <y> <z> <yaw> <pitch>" => |pos| {
+			main.sync.server.sendSyncOperation(.{.rotation = .{.target = target.user, .rotation = command.resolveRotation(pos.yaw, pos.pitch, source) catch return}}, target.user);
+			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source) catch return;
+		},
 		inline .@"/tp <destinationPlayerIndex>", .@"/tp <sourcePlayerIndex> <destinationPlayerIndex>" => |index| {
 			const dest = command.Target.fromPlayerIndex(index.destinationPlayerIndex, source) catch return;
 			break :blk dest.user.player().pos;
 		},
 	};
-	main.network.protocols.genericUpdate.sendTPCoordinates(target.user.conn, pos);
+
+	if (!std.meta.eql(target.user.player().pos, pos)) main.network.protocols.genericUpdate.sendTPCoordinates(target.user.conn, pos);
 }
