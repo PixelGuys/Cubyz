@@ -1871,15 +1871,17 @@ pub const TextureArray = struct { // MARK: TextureArray
 
 pub const Texture = struct { // MARK: Texture
 	textureID: c_uint,
+	vulkanImage: ?vulkan.Image,
 
 	pub fn init() Texture {
 		var self: Texture = undefined;
 		c.glGenTextures(1, &self.textureID);
+		self.vulkanImage = null;
 		return self;
 	}
 
 	pub fn initFromFile(path: []const u8) Texture {
-		const self = Texture.init();
+		var self = Texture.init();
 		const image = Image.readFromFile(main.stackAllocator, path, .{.orientation = .openGl}) catch |err| blk: {
 			std.log.err("Couldn't read image from {s}: {s}", .{path, @errorName(err)});
 			break :blk Image.defaultImage;
@@ -1923,6 +1925,9 @@ pub const Texture = struct { // MARK: Texture
 
 	pub fn deinit(self: Texture) void {
 		c.glDeleteTextures(1, &self.textureID);
+		if (self.vulkanImage) |image| {
+			image.deferredDeinit();
+		}
 	}
 
 	pub fn bindTo(self: Texture, binding: u5) void {
@@ -1935,7 +1940,7 @@ pub const Texture = struct { // MARK: Texture
 	}
 
 	/// (Re-)Generates the GPU buffer.
-	pub fn generate(self: Texture, image: Image) void {
+	pub fn generate(self: *Texture, image: Image) void {
 		self.bind();
 
 		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_RGBA8, image.width, image.height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
@@ -1943,6 +1948,14 @@ pub const Texture = struct { // MARK: Texture
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
+
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			std.debug.assert(self.vulkanImage == null);
+			self.vulkanImage = vulkan.Image.init(.{image.width, image.height, 1}, .{
+				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
+			});
+			self.vulkanImage.?.uploadData(0, std.mem.sliceAsBytes(image.imageData));
+		}
 	}
 
 	pub fn render(self: Texture, pos: Vec2f, dim: Vec2f) void {
@@ -2366,7 +2379,7 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 	finalFrameBuffer.init(false, c.GL_NEAREST, c.GL_REPEAT);
 	finalFrameBuffer.updateSize(textureSize, textureSize, c.GL_RGBA8);
 	finalFrameBuffer.bind();
-	const texture = Texture{.textureID = finalFrameBuffer.texture};
+	const texture = Texture{.textureID = finalFrameBuffer.texture, .vulkanImage = null};
 	defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
 	block_texture.pipeline.bind(null);
 	c.glUniform1i(block_texture.uniforms.transparent, if (block.transparent()) c.GL_TRUE else c.GL_FALSE);
