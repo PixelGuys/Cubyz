@@ -630,7 +630,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		}
 	}
 
-	pub const Parser = struct {
+	pub const Parser = struct { // MARK: Parser
 		unicodeIterator: std.unicode.Utf8Iterator,
 		currentFontEffect: FontEffect,
 		parsedText: main.ListManaged(u32),
