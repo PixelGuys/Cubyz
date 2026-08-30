@@ -131,9 +131,13 @@ pub const server = struct {
 	}
 
 	pub fn modifyComponent(entity: Entity, reader: *utils.BinaryReader) void {
-		const addedHealth = reader.readFloat(f32);
+		const addedHealth = reader.readFloat(f32) catch return;
+		addHealth(entity, addedHealth);
+	}
+
+	pub fn addHealth(entity: Entity, healthChange: f32) void {
 		const health = &(components.get(entity) orelse return).health;
-		health.* += addedHealth catch return;
+		health.* += healthChange;
 		std.log.debug("modifed component {}", .{health});
 
 		if (health.* <= 0) {

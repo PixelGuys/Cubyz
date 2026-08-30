@@ -4,6 +4,8 @@ const main = @import("main");
 const command = main.server.command;
 const Source = command.Source;
 
+const @"cubyz:health" = main.entity.components.@"cubyz:health";
+
 pub const description = "Kills the player";
 pub const usage =
 	\\/kill
@@ -17,5 +19,5 @@ pub const Args = union(enum) {
 pub fn execute(args: Args, source: Source) void {
 	const target = command.Target.fromPlayerIndex(args.@"/kill <playerIndex>".playerIndex, source) catch return;
 
-	main.sync.addHealth(-std.math.floatMax(f32), .kill, .server, target.user.id);
+	@"cubyz:health".server.addHealth(target.user.id, -std.math.floatMax(f32));
 }

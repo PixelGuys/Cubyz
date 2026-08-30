@@ -213,15 +213,6 @@ pub const server = struct { // MARK: server
 	}
 };
 
-pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, entity: main.entity.Entity) void {
-	threadContext.assertCorrectContext(side);
-	if (side == .client) {
-		client.executeCommand(.{.addHealth = .{.target = entity, .health = health, .cause = cause}});
-	} else {
-		server.executeCommand(.{.addHealth = .{.target = entity, .health = health, .cause = cause}}, null);
-	}
-}
-
 pub fn setGamemode(user: ?*main.server.User, gamemode: Gamemode) void {
 	if (user == null) {
 		client.setGamemode(gamemode);
@@ -248,7 +239,6 @@ pub const Command = struct { // MARK: Command
 		craftProceduralItem = 15,
 		clear = 8,
 		updateBlock = 9,
-		addHealth = 10,
 		chatCommand = 12,
 	};
 	pub const Payload = union(PayloadType) {
@@ -269,7 +259,6 @@ pub const Command = struct { // MARK: Command
 		craftProceduralItem: CraftProceduralItem,
 		clear: Clear,
 		updateBlock: UpdateBlock,
-		addHealth: AddHealth,
 		chatCommand: ChatCommand,
 	};
 
@@ -281,7 +270,6 @@ pub const Command = struct { // MARK: Command
 		moveToBag = 7,
 		takeFromBag = 8,
 		useDurability = 4,
-		addHealth = 5,
 		addEnergy = 6,
 	};
 
@@ -327,12 +315,6 @@ pub const Command = struct { // MARK: Command
 			durability: u31,
 			previousDurability: u32 = undefined,
 		},
-		addHealth: struct {
-			target: ?*main.server.User,
-			health: f32,
-			cause: main.game.DamageType,
-			previous: f32,
-		},
 		addEnergy: struct {
 			target: ?*main.server.User,
 			energy: f32,
@@ -344,7 +326,6 @@ pub const Command = struct { // MARK: Command
 		create = 0,
 		delete = 1,
 		useDurability = 2,
-		health = 3,
 		kill = 4,
 		energy = 5,
 		rotation = 6,
@@ -366,10 +347,6 @@ pub const Command = struct { // MARK: Command
 		useDurability: struct {
 			inv: InventoryAndSlot,
 			durability: u32,
-		},
-		health: struct {
-			target: ?*main.server.User,
-			health: f32,
 		},
 		kill: struct {
 			target: ?*main.server.User,
@@ -420,9 +397,6 @@ pub const Command = struct { // MARK: Command
 
 					durability.inv.inv.update();
 				},
-				.health => |health| {
-					main.game.Player.super.health = std.math.clamp(main.game.Player.super.health + health.health, 0, main.game.Player.super.maxHealth);
-				},
 				.kill => |kill| {
 					main.game.Player.kill(kill.spawnPoint);
 				},
@@ -445,7 +419,7 @@ pub const Command = struct { // MARK: Command
 					}
 					return result;
 				},
-				inline .health, .kill, .energy, .rotation => |data| {
+				inline .kill, .energy, .rotation => |data| {
 					const out = allocator.alloc(*main.server.User, 1);
 					out[0] = data.target.?;
 					return out;
@@ -455,7 +429,7 @@ pub const Command = struct { // MARK: Command
 
 		pub fn ignoreSource(self: SyncOperation) bool {
 			return switch (self) {
-				.create, .delete, .useDurability, .health, .energy, .rotation => true,
+				.create, .delete, .useDurability, .energy, .rotation => true,
 				.kill => false,
 			};
 		}
@@ -487,12 +461,6 @@ pub const Command = struct { // MARK: Command
 					}};
 
 					return out;
-				},
-				.health => {
-					return .{.health = .{
-						.target = null,
-						.health = try reader.readFloat(f32),
-					}};
 				},
 				.kill => {
 					return .{.kill = .{
@@ -533,9 +501,6 @@ pub const Command = struct { // MARK: Command
 				.useDurability => |durability| {
 					durability.inv.write(&writer);
 					writer.writeInt(u32, durability.durability);
-				},
-				.health => |health| {
-					writer.writeFloat(f32, health.health);
 				},
 				.kill => |kill| {
 					writer.writeVec(Vec3d, kill.spawnPoint);
@@ -647,9 +612,6 @@ pub const Command = struct { // MARK: Command
 					info.item.proceduralItem.durability = info.previousDurability;
 					info.source.inv.update();
 				},
-				.addHealth => |info| {
-					main.game.Player.super.health = info.previous;
-				},
 				.addEnergy => |info| {
 					main.game.Player.super.energy = info.previous;
 				},
@@ -660,7 +622,7 @@ pub const Command = struct { // MARK: Command
 	fn finalize(self: Command, allocator: NeverFailingAllocator, side: Side, reader: *BinaryReader) !void {
 		for (self.baseOperations.items) |step| {
 			switch (step) {
-				.move, .swap, .create, .moveToBag, .takeFromBag, .addHealth, .addEnergy => {},
+				.move, .swap, .create, .moveToBag, .takeFromBag, .addEnergy => {},
 				.delete => |info| {
 					info.item.deinit();
 				},
@@ -809,31 +771,6 @@ pub const Command = struct { // MARK: Command
 				info.previousDurability = info.item.proceduralItem.durability;
 				self.executeDurabilityUseOperation(allocator, side, info.source, info.durability);
 				info.source.inv.update();
-			},
-			.addHealth => |*info| {
-				if (side == .server) {
-					info.previous = info.target.?.player().health;
-
-					info.target.?.player().health = std.math.clamp(info.target.?.player().health + info.health, 0, info.target.?.player().maxHealth);
-
-					if (info.target.?.player().health <= 0) {
-						info.target.?.player().health = info.target.?.player().maxHealth;
-						info.cause.sendMessage(info.target.?.name);
-
-						self.syncOperations.append(allocator, .{.kill = .{
-							.target = info.target.?,
-							.spawnPoint = info.target.?.getSpawnPos(),
-						}});
-					} else {
-						self.syncOperations.append(allocator, .{.health = .{
-							.target = info.target.?,
-							.health = info.health,
-						}});
-					}
-				} else {
-					info.previous = main.game.Player.super.health;
-					main.game.Player.super.health = std.math.clamp(main.game.Player.super.health + info.health, 0, main.game.Player.super.maxHealth);
-				}
 			},
 			.addEnergy => |*info| {
 				if (side == .server) {
@@ -1739,56 +1676,6 @@ pub const Command = struct { // MARK: Command
 				.oldBlock = @bitCast(try reader.readInt(u32)),
 				.newBlock = @bitCast(try reader.readInt(u32)),
 			};
-		}
-	};
-
-	const AddHealth = struct { // MARK: AddHealth
-		target: main.entity.Entity,
-		health: f32,
-		cause: main.game.DamageType,
-
-		pub fn run(self: AddHealth, ctx: Context) error{serverFailure}!void {
-			var target: ?*main.server.User = null;
-
-			if (ctx.side == .server) {
-				const userList = main.server.getUserList(main.stackAllocator);
-				defer main.stackAllocator.free(userList);
-				for (userList) |user| {
-					if (user.id == self.target) {
-						target = user;
-						break;
-					}
-				}
-
-				if (target == null) return error.serverFailure;
-
-				if (target.?.gamemode.raw == .creative) return;
-			} else {
-				if (main.game.Player.gamemode.raw == .creative) return;
-			}
-
-			ctx.execute(.{.addHealth = .{
-				.target = target,
-				.health = self.health,
-				.cause = self.cause,
-				.previous = if (ctx.side == .server) target.?.player().health else main.game.Player.super.health,
-			}});
-		}
-
-		fn serialize(self: AddHealth, writer: *BinaryWriter) void {
-			writer.writeEnum(main.entity.Entity, self.target);
-			writer.writeInt(u32, @bitCast(self.health));
-			writer.writeEnum(main.game.DamageType, self.cause);
-		}
-
-		fn deserialize(reader: *BinaryReader, _: Side, user: ?*main.server.User) !AddHealth {
-			const result: AddHealth = .{
-				.target = try reader.readEnum(main.entity.Entity),
-				.health = @bitCast(try reader.readInt(u32)),
-				.cause = try reader.readEnum(main.game.DamageType),
-			};
-			if (user.?.id != result.target) return error.Invalid;
-			return result;
 		}
 	};
 
