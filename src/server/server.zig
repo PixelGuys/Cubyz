@@ -622,9 +622,10 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 }
 
 fn deinit() void {
-	connectionManager.pause();
 	main.threadPool.pause();
 	defer main.threadPool.@"continue"();
+
+	connectionManager.pause();
 
 	main.threadPool.unschedulePlayers();
 
