@@ -308,7 +308,8 @@ pub const PasswordEncodedAccountCode = struct {
 		defer std.crypto.secureZero(u8, &key);
 		keyFromPassword(.argon2_aes_gcm, saltBase64, password, &key);
 
-		const encryptedBuffer = allocator.alloc(u8, accountCode.text.len);
+		const encryptedBuffer = main.stackAllocator.alloc(u8, accountCode.text.len);
+		defer main.stackAllocator.free(encryptedBuffer);
 		var authenticationTag: [std.crypto.aead.aes_gcm.Aes256Gcm.tag_length]u8 = undefined;
 		var nonce: [std.crypto.aead.aes_gcm.Aes256Gcm.nonce_length]u8 = undefined;
 		main.io.random(&nonce);
@@ -317,10 +318,9 @@ pub const PasswordEncodedAccountCode = struct {
 		const protected = shouldProtect and protection.canProtect;
 		var data: []u8 = undefined;
 		if (protected) {
-			defer allocator.free(encryptedBuffer);
 			data = try protection.protect(allocator, encryptedBuffer);
 		} else {
-			data = encryptedBuffer;
+			data = allocator.dupe(u8, encryptedBuffer);
 		}
 		return .{
 			.typ = .argon2_aes_gcm,
