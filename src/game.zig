@@ -585,6 +585,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		restart();
 	}
 
+	main.gui.windowlist.chest.checkPendingOpen();
+
 	physics.calculateVolumeProperties(.client, &Player.volumeProperties, Player.super.pos, Player.outerBoundingBox, physics.playerAirTerminalVelocity);
 	if (Player.isFlying.load(.monotonic)) {
 		Player.friction = .{.current = 20, .mobile = 20};
