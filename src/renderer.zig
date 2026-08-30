@@ -483,7 +483,7 @@ const Bloom = struct { // MARK: Bloom
 	}
 };
 
-pub const MenuBackGround = struct {
+pub const MenuBackGround = struct { // MARK: MenuBackGround
 	var pipeline: graphics.Pipeline = undefined;
 
 	var vao: graphics.VertexArray = undefined;
@@ -688,7 +688,7 @@ pub const MenuBackGround = struct {
 	}
 };
 
-pub const Skybox = struct {
+pub const Skybox = struct { // MARK: Skybox
 	var starPipeline: graphics.Pipeline = undefined;
 	var starUniforms: struct {
 		mvp: c_int,

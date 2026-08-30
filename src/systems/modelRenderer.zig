@@ -29,7 +29,7 @@ const entity = main.entity;
 const c = @import("c");
 
 // ############################# Client only stuff ################################
-pub const client = struct {
+pub const client = struct { // MARK: client
 	var pipeline: graphics.Pipeline = undefined;
 	pub var nodeBuffer: graphics.LargeBuffer(Mat4f) = undefined;
 
