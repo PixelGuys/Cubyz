@@ -28,7 +28,7 @@ pub const client = struct {
 pub const server = struct {
 	pub const Component = struct {
 		permissions: main.server.permission.Permissions,
-		permissionGroups: std.AutoHashMapUnmanaged(u32, void),
+		permissionGroups: std.AutoHashMapUnmanaged(main.server.permission.Group, void),
 
 		pub fn save(self: Component, writer: *BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			if (audience != .disk) return .discard;
@@ -36,8 +36,8 @@ pub const server = struct {
 
 			writer.writeInt(u32, self.permissionGroups.count());
 			var it = self.permissionGroups.keyIterator();
-			while (it.next()) |groupId| {
-				writer.writeInt(u32, groupId.*);
+			while (it.next()) |group| {
+				group.toBytes(writer);
 			}
 			return .save;
 		}
@@ -60,7 +60,7 @@ pub const server = struct {
 		return &(components.get(entity) orelse return null).permissions;
 	}
 
-	pub fn getPermissionGroups(entity: Entity) ?*std.AutoHashMapUnmanaged(u32, void) {
+	pub fn getPermissionGroups(entity: Entity) ?*std.AutoHashMapUnmanaged(main.server.permission.Group, void) {
 		return &(components.get(entity) orelse return null).permissionGroups;
 	}
 
@@ -71,8 +71,7 @@ pub const server = struct {
 			.neutral => {},
 		}
 		var groupIt = (getPermissionGroups(entity).?).keyIterator();
-		while (groupIt.next()) |id| {
-			const group = main.server.permission.getGroupById(id.*) catch continue; // in theory the group can be removed here. Instead its for now only removed only on load
+		while (groupIt.next()) |group| {
 			if (group.hasPermission(permissionPath) == .yes) return true;
 		}
 		return false;
@@ -86,22 +85,12 @@ pub const server = struct {
 		return (getPermissions(entity) orelse return false).removePermission(listType, permissionPath);
 	}
 
-	pub fn addToGroupByName(entity: Entity, groupName: []const u8) error{GroupNotFound}!void {
-		const groupId = try main.server.permission.getGroupIdByName(groupName);
-		_ = (getPermissionGroups(entity) orelse return).put(main.globalAllocator.allocator, groupId, {}) catch unreachable;
+	pub fn addToGroup(entity: Entity, group: main.server.permission.Group) void {
+		(getPermissionGroups(entity) orelse return).put(main.globalAllocator.allocator, group, {}) catch unreachable;
 	}
 
-	pub fn addToGroupById(entity: Entity, groupId: u32) error{GroupNotFound}!void {
-		_ = try main.server.permission.getGroupById(groupId);
-		(getPermissionGroups(entity) orelse return).put(main.globalAllocator.allocator, groupId, {}) catch unreachable;
-	}
-
-	pub fn removeFromGroupByName(entity: Entity, groupName: []const u8) bool {
-		return removeFromGroupById(entity, main.server.permission.getGroupIdByName(groupName) catch return false);
-	}
-
-	pub fn removeFromGroupById(entity: Entity, id: u32) bool {
-		return getPermissionGroups(entity).?.remove(id);
+	pub fn removeFromGroup(entity: Entity, group: main.server.permission.Group) bool {
+		return getPermissionGroups(entity).?.remove(group);
 	}
 
 	pub fn loadFromData(entity: Entity, reader: *BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
@@ -112,8 +101,11 @@ pub const server = struct {
 		component.permissionGroups = .empty;
 		const len = reader.readInt(u32) catch return;
 		for (0..len) |_| {
-			const id = reader.readInt(u32) catch return error.UnreadableComponentData;
-			addToGroupById(entity, id) catch continue; // if the group is not found we just skip it.
+			const group = main.server.permission.Group.fromBytes(reader) catch |err| {
+				if (err == error.GroupNotFound) continue; // if the group is not found we just skip it.
+				return error.UnreadableComponentData;
+			};
+			addToGroup(entity, group);
 		}
 	}
 
