@@ -90,7 +90,7 @@ pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 320, 8);
 	const width = 480;
 	list.add(Label.init(.{0, 0}, width, "Your Account Code will be stored in your settings to allow you to stay logged in. Please decide how we should store it:", .left));
-	innerList = VerticalList.init(.{0, 0}, 100, 16);
+	innerList = VerticalList.init(.{0, 0}, 120, 16);
 	if (main.network.authentication.protection.canProtect) {
 		protectCheckbox = CheckBox.init(.{0, 0}, width, "Protect from theft (recommended)\nForces re-authentication when device changes", protectAccountCode, &protectAccountCodeCallback);
 		innerList.add(protectCheckbox);
