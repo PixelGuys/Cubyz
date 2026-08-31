@@ -28,10 +28,10 @@ pub fn isDroppedWhenBrokenWithItem(self: @This(), item: Item) bool {
 	return true;
 }
 
-pub fn drop(self: @This(), pos: Vec3d, dir: Vec3f, velocity: f32) void {
+pub fn drop(self: @This(), pos: Vec3d, dir: Vec3f) void {
 	if (self.shouldDrop()) {
 		for (self.itemStacks) |itemStack| {
-			main.server.world.?.drop(itemStack.clone(), pos, dir, velocity);
+			main.server.world.?.drop(itemStack.clone(), pos, dir, randomVelocity(dir));
 		}
 	}
 }
@@ -51,6 +51,12 @@ pub fn dropNaturally(self: @This(), modelIndex: ModelIndex, pos: Vec3i) void {
 			main.server.world.?.drop(itemStack.clone(), randomPos, randomDir, 1);
 		}
 	}
+}
+
+fn randomVelocity(dir: Vec3f) f32 {
+	const velocity = 3.5 + main.random.nextFloatSigned(&main.seed)*0.5;
+	if (dir[2] < -0.5) return velocity*0.333;
+	return velocity;
 }
 
 inline fn shouldDrop(self: @This()) bool {
@@ -117,11 +123,6 @@ pub const Location = struct {
 			if (z < -0.5) 0 else if (z < 0.0) (z + 0.5)*4.0 else z + 2.0,
 		});
 	}
-	fn dropVelocity(self: Location) f32 {
-		const velocity = 3.5 + main.random.nextFloatSigned(&main.seed)*0.5;
-		if (self.direction()[2] < -0.5) return velocity*0.333;
-		return velocity;
-	}
 };
 
 pub const Context = struct {
@@ -139,9 +140,8 @@ pub const Context = struct {
 			for (self.oldBlock.blockDrops()) |blockDrop| {
 				if (blockDrop.isDroppedWhenBrokenWithItem(self.item)) {
 					const dropDir = location.dropDir();
-					const dropVelocity = location.dropVelocity();
 
-					blockDrop.drop(dropPos, dropDir, dropVelocity);
+					blockDrop.drop(dropPos, dropDir);
 				}
 			}
 		}
