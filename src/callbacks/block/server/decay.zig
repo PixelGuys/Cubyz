@@ -135,17 +135,12 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 
 			// no, there is no log in proximity
 			if (world.cmpxchgBlock(wx, wy, wz, leaf, self.decayReplacement) == null) {
-				const model = params.block.mode().model(params.block).model();
-				const location = BlockDrop.Location{
-					.normalDir = main.vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed)),
-					.min = model.min,
-					.max = model.max,
-				};
 				const dropCtx = BlockDrop.Context{
 					.oldBlock = params.block,
 					.newBlock = self.decayReplacement,
 				};
-				dropCtx.drop(location, .{wx, wy, wz});
+				const model = params.block.mode().model(params.block).model();
+				dropCtx.drop(.natural(model.min, model.max), .{wx, wy, wz});
 				return .handled;
 			}
 		}
