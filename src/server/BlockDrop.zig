@@ -126,12 +126,13 @@ pub const Context = struct {
 		if (amount == 0) return;
 
 		const dropPos = if (self.newBlock.collide()) location.outsidePos(pos) else location.insidePos(pos);
-		const dropDir = location.dropDir();
-		const dropVelocity = location.dropVelocity();
 
 		for (0..amount) |_| {
 			for (self.oldBlock.blockDrops()) |blockDrop| {
 				if (blockDrop.isDroppedWhenBrokenWithItem(self.item)) {
+					const dropDir = location.dropDir();
+					const dropVelocity = location.dropVelocity();
+
 					blockDrop.drop(dropPos, dropDir, dropVelocity);
 				}
 			}
