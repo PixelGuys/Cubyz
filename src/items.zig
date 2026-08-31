@@ -933,7 +933,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	fn extractItemsFromZon(zonArray: ZonElement) [craftingGridSize]?BaseItemIndex {
 		var items: [craftingGridSize]?BaseItemIndex = undefined;
 		for (&items, 0..) |*item, i| {
-			item.* = .fromId(zonArray.getAtIndex([]const u8, i, "null"));
+			item.* = .fromId(zonArray.getAtIndex([]const u8, i) orelse "null");
 			if (item.* != null and item.*.?.material() == null) item.* = null;
 		}
 		return items;
@@ -1505,7 +1505,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 		const matrixZon = paramZon.getChild("matrix");
 		var total_weight: f32 = 0.0;
 		for (0..25) |i| {
-			val.weights[i] = matrixZon.getAtIndex(f32, i, 0.0);
+			val.weights[i] = matrixZon.getAtIndex(f32, i) orelse 0.0;
 		}
 		for (0..25) |i| {
 			total_weight += val.weights[i];
