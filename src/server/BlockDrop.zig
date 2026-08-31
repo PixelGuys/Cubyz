@@ -31,7 +31,7 @@ pub fn isDroppedWhenBrokenWithItem(self: @This(), item: Item) bool {
 pub fn drop(self: @This(), pos: Vec3d, dir: Vec3f) void {
 	if (self.shouldDrop()) {
 		for (self.itemStacks) |itemStack| {
-			main.server.world.?.drop(itemStack.clone(), pos, dir, randomVelocity(dir));
+			main.server.world.?.drop(itemStack.clone(), pos, randomDir(dir), randomVelocity(dir));
 		}
 	}
 }
@@ -40,19 +40,29 @@ pub fn dropNaturally(self: @This(), modelIndex: ModelIndex, pos: Vec3i) void {
 	if (self.shouldDrop()) {
 		const model = modelIndex.model();
 		for (self.itemStacks) |itemStack| {
-			var randomDir = main.vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));
+			var randomDir1 = main.vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));
 			// Bias upwards
-			randomDir[2] += main.random.nextFloat(&main.seed)*4.0;
+			randomDir1[2] += main.random.nextFloat(&main.seed)*4.0;
 			const randomPos = Vec3f{
 				@as(f32, @floatFromInt(pos[0])) + model.min[0] + main.random.nextFloat(&main.seed)*(model.max[0] - model.min[0]),
 				@as(f32, @floatFromInt(pos[1])) + model.min[1] + main.random.nextFloat(&main.seed)*(model.max[1] - model.min[1]),
 				@as(f32, @floatFromInt(pos[2])) + model.min[2] + main.random.nextFloat(&main.seed)*(model.max[2] - model.min[2]),
 			};
-			main.server.world.?.drop(itemStack.clone(), randomPos, randomDir, 1);
+			main.server.world.?.drop(itemStack.clone(), randomPos, randomDir1, 1);
 		}
 	}
 }
 
+fn randomDir(dir: Vec3f) Vec3f {
+	const randomnessVec: Vec3f = main.random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(0.25));
+	const directionVec: Vec3f = @as(Vec3f, @floatCast(dir)) + randomnessVec;
+	const z: f32 = directionVec[2];
+	return vec.normalize(Vec3f{
+		directionVec[0],
+		directionVec[1],
+		if (z < -0.5) 0 else if (z < 0.0) (z + 0.5)*4.0 else z + 2.0,
+	});
+}
 fn randomVelocity(dir: Vec3f) f32 {
 	const velocity = 3.5 + main.random.nextFloatSigned(&main.seed)*0.5;
 	if (dir[2] < -0.5) return velocity*0.333;
@@ -113,16 +123,6 @@ pub const Location = struct {
 		const minor2 = vec.normalize(vec.cross(self.normalDir, minor1));
 		return .{minor1, minor2};
 	}
-	fn dropDir(self: Location) Vec3f {
-		const randomnessVec: Vec3f = main.random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(0.25));
-		const directionVec: Vec3f = @as(Vec3f, @floatCast(self.direction())) + randomnessVec;
-		const z: f32 = directionVec[2];
-		return vec.normalize(Vec3f{
-			directionVec[0],
-			directionVec[1],
-			if (z < -0.5) 0 else if (z < 0.0) (z + 0.5)*4.0 else z + 2.0,
-		});
-	}
 };
 
 pub const Context = struct {
@@ -139,9 +139,7 @@ pub const Context = struct {
 		for (0..dropAmount) |_| {
 			for (self.oldBlock.blockDrops()) |blockDrop| {
 				if (blockDrop.isDroppedWhenBrokenWithItem(self.item)) {
-					const dropDir = location.dropDir();
-
-					blockDrop.drop(dropPos, dropDir);
+					blockDrop.drop(dropPos, location.normalDir);
 				}
 			}
 		}
