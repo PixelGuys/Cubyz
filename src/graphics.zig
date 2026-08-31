@@ -412,6 +412,14 @@ pub const draw = struct { // MARK: draw
 		uvOffset: c_int,
 		uvDim: c_int,
 	} = undefined;
+	const ImageUniforms = extern struct {
+		start: [2]f32 align(8),
+		size: [2]f32 align(8),
+		screen: [2]f32 align(8),
+		color: i32,
+		uvOffset: [2]f32 align(8),
+		uvDim: [2]f32 align(8),
+	};
 	var imagePipeline: Pipeline = undefined;
 
 	fn initImage() void {
@@ -422,9 +430,12 @@ pub const draw = struct { // MARK: draw
 			&imageUniforms,
 			SimpleVertex2D,
 			.{
+				.bindings = &.{.sampler(0, .{.fragment = true})},
 				.rasterState = .{.cullMode = .none},
 				.depthStencilState = .{.depthTest = false, .depthWrite = false},
 				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+				.inputAssemblyState = .{.topology = .triangleStrip},
+				.pushConstantSize = @sizeOf(ImageUniforms),
 			},
 		);
 	}
@@ -433,10 +444,52 @@ pub const draw = struct { // MARK: draw
 		imagePipeline.deinit();
 	}
 
-	pub fn boundImage(_pos: Vec2f, _dim: Vec2f) void {
+	pub fn image(texture: Texture, _pos: Vec2f, _dim: Vec2f) void {
+		texture.bindTo(0);
 		imagePipeline.bind(getScissor());
 
-		customShadedImage(&imageUniforms, _pos, _dim);
+		var pos = _pos;
+		var dim = _dim;
+		pos *= @splat(scale);
+		pos += translation;
+		dim *= @splat(scale);
+		pos = @floor(pos);
+		dim = @ceil(dim);
+
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+
+		if (main.settings.launchConfig.vulkanTestingMode and texture.vulkanImage != null) {
+
+			vulkan.currentFrame.guiCommands.bindPipeline(imagePipeline, getScissor());
+			vulkan.currentFrame.guiCommands.bindDescriptors(imagePipeline, .graphics, 0, &.{
+				.{ .image = .{
+					.binding = 0,
+					.imageView = texture.vulkanImage.?.view,
+					.sampler = texture.vulkanImage.?.sampler,
+				}},
+			});
+			vulkan.currentFrame.guiCommands.pushConstants(imagePipeline, &ImageUniforms{
+				.start = pos,
+				.size = dim,
+				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.color = @bitCast(getColor()),
+				.uvOffset = .{0, 0},
+				.uvDim = .{1, 1},
+			});
+			vulkan.currentFrame.guiCommands.bindVertexArray(rectVao);
+			vulkan.currentFrame.guiCommands.draw(4, 0);
+		} else {
+			c.glUniform2f(imageUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
+			c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
+			c.glUniform2f(imageUniforms.size, dim[0], dim[1]);
+			c.glUniform1i(imageUniforms.color, @bitCast(getColor()));
+			c.glUniform2f(imageUniforms.uvOffset, 0, 0);
+			c.glUniform2f(imageUniforms.uvDim, 1, 1);
+
+			rectVao.bind();
+			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+		}
 	}
 
 	pub fn boundSubImage(_pos: Vec2f, _dim: Vec2f, uvOffset: Vec2f, uvDim: Vec2f) void {
@@ -1959,8 +2012,7 @@ pub const Texture = struct { // MARK: Texture
 	}
 
 	pub fn render(self: Texture, pos: Vec2f, dim: Vec2f) void {
-		self.bindTo(0);
-		draw.boundImage(pos, dim);
+		draw.image(self, pos, dim);
 	}
 
 	pub fn size(self: Texture) Vec2i {
