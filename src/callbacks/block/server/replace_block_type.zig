@@ -8,6 +8,10 @@ blockType: u16,
 pub fn init(zon: main.ZonElement, creator: main.callbacks.Creator) ?*@This() {
 	const replacedBlock = switch (creator) {
 		.block => |b| b,
+		else => {
+			std.log.err("decay callback can only be used for blocks", .{});
+			return null;
+		},
 	};
 	const result = main.worldArena.create(@This());
 	const blockId = zon.get([]const u8, "block") orelse {

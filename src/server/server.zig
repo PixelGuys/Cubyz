@@ -316,6 +316,9 @@ pub const User = struct { // MARK: User
 		if (self.isLocal) {
 			main.entity.components.@"cubyz:permissions".server.addPermission(self.id, .white, "/");
 		}
+		if (main.entity.components.@"cubyz:status_effects".server.get(self.id) == null) {
+			main.entity.components.@"cubyz:status_effects".server.loadEmpty(self.id);
+		}
 
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();

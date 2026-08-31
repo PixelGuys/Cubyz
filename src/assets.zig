@@ -3,6 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const blocks = @import("blocks.zig");
 const items = @import("items.zig");
+const statusEffects = @import("status_effects.zig");
 const migrations = @import("migrations.zig");
 const blueprint = @import("blueprint.zig");
 const Blueprint = blueprint.Blueprint;
@@ -27,6 +28,7 @@ pub const Assets = struct { // MARK: Assets
 	items: ZonHashMap,
 	itemMigrations: ZonHashMap,
 	proceduralItems: ZonHashMap,
+	statusEffects: ZonHashMap,
 	biomes: ZonHashMap,
 	biomeMigrations: AddonNameToZonMap,
 	caveLayers: ZonHashMap,
@@ -50,6 +52,7 @@ pub const Assets = struct { // MARK: Assets
 			.items = .{},
 			.itemMigrations = .{},
 			.proceduralItems = .{},
+			.statusEffects = .{},
 			.biomes = .{},
 			.biomeMigrations = .{},
 			.caveLayers = .{},
@@ -73,6 +76,7 @@ pub const Assets = struct { // MARK: Assets
 		self.items.deinit(allocator.allocator);
 		self.itemMigrations.deinit(allocator.allocator);
 		self.proceduralItems.deinit(allocator.allocator);
+		self.statusEffects.deinit(allocator.allocator);
 		self.biomes.deinit(allocator.allocator);
 		self.biomeMigrations.deinit(allocator.allocator);
 		self.caveLayers.deinit(allocator.allocator);
@@ -96,6 +100,7 @@ pub const Assets = struct { // MARK: Assets
 			.items = self.items.clone(allocator.allocator) catch unreachable,
 			.itemMigrations = self.itemMigrations.clone(allocator.allocator) catch unreachable,
 			.proceduralItems = self.proceduralItems.clone(allocator.allocator) catch unreachable,
+			.statusEffects = self.statusEffects.clone(allocator.allocator) catch unreachable,
 			.biomes = self.biomes.clone(allocator.allocator) catch unreachable,
 			.biomeMigrations = self.biomeMigrations.clone(allocator.allocator) catch unreachable,
 			.caveLayers = self.caveLayers.clone(allocator.allocator) catch unreachable,
@@ -121,6 +126,7 @@ pub const Assets = struct { // MARK: Assets
 		for (addons) |addon| {
 			addon.readAllZon(allocator, "blocks", true, &self.blocks, &self.blockMigrations);
 			addon.readAllZon(allocator, "items", true, &self.items, &self.itemMigrations);
+			addon.readAllZon(allocator, "status", true, &self.statusEffects, null);
 			addon.readAllZon(allocator, "tools", true, &self.proceduralItems, null);
 			addon.readAllZon(allocator, "structure_tables", false, &self.structureTables, null);
 			addon.readAllZon(allocator, "biomes", true, &self.biomes, &self.biomeMigrations);
@@ -137,8 +143,8 @@ pub const Assets = struct { // MARK: Assets
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks, {} items, {} procedural items, {} biomes, {} cave layers, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, {} world presets, block models {}, and {} block model ZONs",
-			.{@tagName(typ), self.blocks.count(), self.items.count(), self.proceduralItems.count(), self.biomes.count(), self.caveLayers.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count(), self.blockModels.count(), self.blockModelsZon.count()},
+			"Finished {s} assets reading with {} blocks, {} items, {} procedural items, {} statuses, {} biomes, {} cave layers, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, {} world presets, block models {}, and {} block model ZONs",
+			.{@tagName(typ), self.blocks.count(), self.items.count(), self.proceduralItems.count(), self.statusEffects.count(), self.biomes.count(), self.caveLayers.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count(), self.blockModels.count(), self.blockModelsZon.count()},
 		);
 	}
 
@@ -427,6 +433,12 @@ fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void
 	blocks.meshes.register(assetFolder, id, zon);
 }
 
+fn registerStatus(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
+	if (zon == .null) std.log.err("Missing status: {s}. Replacing it with default status.", .{id});
+
+	_ = statusEffects.register(assetFolder, id, zon);
+}
+
 fn assignBlockItem(stringId: []const u8) !void {
 	const block = blocks.getTypeById(stringId);
 	// TODO: This must be gone in PixelGuys/Cubyz#1205
@@ -710,6 +722,12 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	// block drops:
 	blocks.finishBlocks(worldAssets.blocks);
 
+	iterator = worldAssets.statusEffects.iterator();
+	while (iterator.next()) |entry| {
+		const id = entry.key_ptr.*;
+		try registerStatus(assetFolder, id, entry.value_ptr.*);
+	}
+
 	iterator = worldAssets.recipes.iterator();
 	while (iterator.next()) |entry| {
 		registerRecipesFromZon(entry.value_ptr.*);
@@ -800,6 +818,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	sbb.reset();
 	blocks.reset();
 	items.reset();
+	statusEffects.reset();
 	migrations.reset();
 	biomes.reset();
 	main.server.terrain.cave_layers.reset();

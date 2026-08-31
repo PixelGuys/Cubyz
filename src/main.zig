@@ -9,6 +9,7 @@ pub const argparse = @import("argparse.zig");
 pub const assets = @import("assets.zig");
 pub const block_entity = @import("block_entity.zig");
 pub const blocks = @import("blocks.zig");
+pub const statusEffects = @import("status_effects.zig");
 pub const blueprint = @import("blueprint.zig");
 const c = @import("c");
 pub const callbacks = @import("callbacks/callbacks.zig");
