@@ -163,8 +163,7 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 
 	const cornerSize = (textures.outlineTextureSize - Vec2f{1, 1})/Vec2f{2, 2};
 
-	textures.outlineTexture.bindTo(0);
-	graphics.draw.bound9SliceImage(self.pos, self.size, textures.outlineTextureSize, cornerSize, 2);
+	graphics.draw.nineSliceImage(textures.outlineTexture, self.pos, self.size, textures.outlineTextureSize, cornerSize, 2);
 
 	const oldColor = draw.setColor(if (self.disabled) 0xff808080 else 0xffffffff);
 	defer draw.restoreColor(oldColor);

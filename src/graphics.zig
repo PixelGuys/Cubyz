@@ -457,7 +457,6 @@ pub const draw = struct { // MARK: draw
 		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 
 		if (main.settings.launchConfig.vulkanTestingMode and texture.vulkanImage != null) {
-
 			vulkan.currentFrame.guiCommands.bindPipeline(imagePipeline, getScissor());
 			vulkan.currentFrame.guiCommands.bindDescriptors(imagePipeline, .graphics, 0, &.{
 				.{ .image = .{
@@ -492,7 +491,7 @@ pub const draw = struct { // MARK: draw
 		}
 	}
 
-	pub fn boundSubImage(_pos: Vec2f, _dim: Vec2f, uvOffset: Vec2f, uvDim: Vec2f) void {
+	pub fn subImage(texture: Texture, _pos: Vec2f, _dim: Vec2f, uvOffset: Vec2f, uvDim: Vec2f) void {
 		var pos = _pos;
 		var dim = _dim;
 		pos *= @splat(scale);
@@ -501,26 +500,49 @@ pub const draw = struct { // MARK: draw
 		pos = @floor(pos);
 		dim = @ceil(dim);
 
-		imagePipeline.bind(getScissor());
-
 		var viewport: [4]c_int = undefined;
 		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-		c.glUniform2f(imageUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
-		c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
-		c.glUniform2f(imageUniforms.size, dim[0], dim[1]);
-		c.glUniform1i(imageUniforms.color, @bitCast(getColor()));
-		c.glUniform2f(imageUniforms.uvOffset, uvOffset[0], 1 - uvOffset[1] - uvDim[1]);
-		c.glUniform2f(imageUniforms.uvDim, uvDim[0], uvDim[1]);
 
-		rectVao.bind();
-		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+		if (main.settings.launchConfig.vulkanTestingMode and texture.vulkanImage != null) {
+			vulkan.currentFrame.guiCommands.bindPipeline(imagePipeline, getScissor());
+			vulkan.currentFrame.guiCommands.bindDescriptors(imagePipeline, .graphics, 0, &.{
+				.{ .image = .{
+					.binding = 0,
+					.imageView = texture.vulkanImage.?.view,
+					.sampler = texture.vulkanImage.?.sampler,
+				}},
+			});
+			vulkan.currentFrame.guiCommands.pushConstants(imagePipeline, &ImageUniforms{
+				.start = pos,
+				.size = dim,
+				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.color = @bitCast(getColor()),
+				.uvOffset = .{uvOffset[0], 1 - uvOffset[1] - uvDim[1]},
+				.uvDim = .{uvDim[0], uvDim[1]},
+			});
+			vulkan.currentFrame.guiCommands.bindVertexArray(rectVao);
+			vulkan.currentFrame.guiCommands.draw(4, 0);
+		} else {
+			imagePipeline.bind(getScissor());
+			texture.bindTo(0);
+
+			c.glUniform2f(imageUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
+			c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
+			c.glUniform2f(imageUniforms.size, dim[0], dim[1]);
+			c.glUniform1i(imageUniforms.color, @bitCast(getColor()));
+			c.glUniform2f(imageUniforms.uvOffset, uvOffset[0], 1 - uvOffset[1] - uvDim[1]);
+			c.glUniform2f(imageUniforms.uvDim, uvDim[0], uvDim[1]);
+
+			rectVao.bind();
+			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+		}
 	}
 
-	fn drawSlice(destMin: Vec2f, destMax: Vec2f, uvMin: Vec2f, uvMax: Vec2f) void {
-		boundSubImage(destMin, destMax - destMin, uvMin, uvMax - uvMin);
+	fn drawSlice(texture: Texture, destMin: Vec2f, destMax: Vec2f, uvMin: Vec2f, uvMax: Vec2f) void {
+		subImage(texture, destMin, destMax - destMin, uvMin, uvMax - uvMin);
 	}
 
-	pub fn bound9SliceImage(pos: Vec2f, dim: Vec2f, textureSize: Vec2f, slices: Vec2f, sliceScale: f32) void {
+	pub fn nineSliceImage(texture: Texture, pos: Vec2f, dim: Vec2f, textureSize: Vec2f, slices: Vec2f, sliceScale: f32) void {
 		const widthSlice = slices[0]*sliceScale;
 		const heightSlice = slices[1]*sliceScale;
 
@@ -529,15 +551,15 @@ pub const draw = struct { // MARK: draw
 		const v: Vec2f = .{slices[1]/textureSize[1], (textureSize[1] - slices[1])/textureSize[1]};
 
 		// Draw all Slices
-		drawSlice(.{pos[0], pos[1]}, .{pos[0] + widthSlice, pos[1] + heightSlice}, .{0, 0}, .{u[0], v[0]});
-		drawSlice(.{pos[0] + widthSlice, pos[1]}, .{pos[0] + dim[0] - widthSlice, pos[1] + heightSlice}, .{u[0], 0}, .{u[1], v[0]});
-		drawSlice(.{pos[0] + dim[0] - widthSlice, pos[1]}, .{pos[0] + dim[0], pos[1] + heightSlice}, .{u[1], 0}, .{1, v[0]});
-		drawSlice(.{pos[0], pos[1] + heightSlice}, .{pos[0] + widthSlice, pos[1] + dim[1] - heightSlice}, .{0, v[0]}, .{u[0], v[1]});
-		drawSlice(.{pos[0] + widthSlice, pos[1] + heightSlice}, .{pos[0] + dim[0] - widthSlice, pos[1] + dim[1] - heightSlice}, .{u[0], v[0]}, .{u[1], v[1]});
-		drawSlice(.{pos[0] + dim[0] - widthSlice, pos[1] + heightSlice}, .{pos[0] + dim[0], pos[1] + dim[1] - heightSlice}, .{u[1], v[0]}, .{1, v[1]});
-		drawSlice(.{pos[0], pos[1] + dim[1] - heightSlice}, .{pos[0] + widthSlice, pos[1] + dim[1]}, .{0, v[1]}, .{u[0], 1});
-		drawSlice(.{pos[0] + widthSlice, pos[1] + dim[1] - heightSlice}, .{pos[0] + dim[0] - widthSlice, pos[1] + dim[1]}, .{u[0], v[1]}, .{u[1], 1});
-		drawSlice(.{pos[0] + dim[0] - widthSlice, pos[1] + dim[1] - heightSlice}, .{pos[0] + dim[0], pos[1] + dim[1]}, .{u[1], v[1]}, .{1, 1});
+		drawSlice(texture, .{pos[0], pos[1]}, .{pos[0] + widthSlice, pos[1] + heightSlice}, .{0, 0}, .{u[0], v[0]});
+		drawSlice(texture, .{pos[0] + widthSlice, pos[1]}, .{pos[0] + dim[0] - widthSlice, pos[1] + heightSlice}, .{u[0], 0}, .{u[1], v[0]});
+		drawSlice(texture, .{pos[0] + dim[0] - widthSlice, pos[1]}, .{pos[0] + dim[0], pos[1] + heightSlice}, .{u[1], 0}, .{1, v[0]});
+		drawSlice(texture, .{pos[0], pos[1] + heightSlice}, .{pos[0] + widthSlice, pos[1] + dim[1] - heightSlice}, .{0, v[0]}, .{u[0], v[1]});
+		drawSlice(texture, .{pos[0] + widthSlice, pos[1] + heightSlice}, .{pos[0] + dim[0] - widthSlice, pos[1] + dim[1] - heightSlice}, .{u[0], v[0]}, .{u[1], v[1]});
+		drawSlice(texture, .{pos[0] + dim[0] - widthSlice, pos[1] + heightSlice}, .{pos[0] + dim[0], pos[1] + dim[1] - heightSlice}, .{u[1], v[0]}, .{1, v[1]});
+		drawSlice(texture, .{pos[0], pos[1] + dim[1] - heightSlice}, .{pos[0] + widthSlice, pos[1] + dim[1]}, .{0, v[1]}, .{u[0], 1});
+		drawSlice(texture, .{pos[0] + widthSlice, pos[1] + dim[1] - heightSlice}, .{pos[0] + dim[0] - widthSlice, pos[1] + dim[1]}, .{u[0], v[1]}, .{u[1], 1});
+		drawSlice(texture, .{pos[0] + dim[0] - widthSlice, pos[1] + dim[1] - heightSlice}, .{pos[0] + dim[0], pos[1] + dim[1]}, .{u[1], v[1]}, .{1, 1});
 	}
 
 	pub fn customShadedImage(uniforms: anytype, _pos: Vec2f, _dim: Vec2f) void {
