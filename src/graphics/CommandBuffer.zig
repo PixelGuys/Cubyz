@@ -233,6 +233,7 @@ pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bi
 }
 
 pub fn pushConstants(self: CommandBuffer, pipeline: main.graphics.Pipeline, constants: anytype) void {
+	comptime std.debug.assert(@typeInfo(@TypeOf(constants.*)).@"struct".layout == .@"extern");
 	c.vkCmdPushConstants(self.handle, pipeline.pipelineLayout, c.VK_SHADER_STAGE_ALL, 0, @sizeOf(@TypeOf(constants.*)), constants);
 }
 
