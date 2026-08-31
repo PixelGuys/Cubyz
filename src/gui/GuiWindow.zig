@@ -73,6 +73,8 @@ onOpenFn: *const fn () void = &defaultFunction,
 
 onCloseFn: *const fn () void = &defaultFunction,
 
+onToggleWindowFn: *const fn () void = &defaultFunction,
+
 var grabbedWindow: *const GuiWindow = undefined;
 var windowMoving: bool = false;
 var grabPosition: ?Vec2f = null;
