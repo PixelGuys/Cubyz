@@ -445,9 +445,6 @@ pub const draw = struct { // MARK: draw
 	}
 
 	pub fn image(texture: Texture, _pos: Vec2f, _dim: Vec2f) void {
-		texture.bindTo(0);
-		imagePipeline.bind(getScissor());
-
 		var pos = _pos;
 		var dim = _dim;
 		pos *= @splat(scale);
@@ -480,6 +477,9 @@ pub const draw = struct { // MARK: draw
 			vulkan.currentFrame.guiCommands.bindVertexArray(rectVao);
 			vulkan.currentFrame.guiCommands.draw(4, 0);
 		} else {
+			texture.bindTo(0);
+			imagePipeline.bind(getScissor());
+
 			c.glUniform2f(imageUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 			c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
 			c.glUniform2f(imageUniforms.size, dim[0], dim[1]);
