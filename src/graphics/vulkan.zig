@@ -587,11 +587,11 @@ pub const SwapChain = struct { // MARK: SwapChain
 
 		fn chooseFormat(self: SupportDetails) c.VkSurfaceFormatKHR {
 			for (self.formats) |format| {
-				if (format.format == c.VK_FORMAT_B8G8R8A8_SRGB and format.colorSpace == c.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+				if (format.format == c.VK_FORMAT_B8G8R8A8_UNORM and format.colorSpace == c.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
 					return format;
 				}
 			}
-			@panic("Couldn't find swapchain format BGRA8 SRGB");
+			@panic("Couldn't find swapchain format BGRA8 UNORM");
 		}
 
 		fn chooseSwapPresentMode(self: SupportDetails) c.VkPresentModeKHR {
