@@ -29,7 +29,7 @@ pub fn isDroppedWhenBrokenWithItem(self: @This(), item: Item) bool {
 }
 
 pub fn drop(self: @This(), pos: Vec3d, dir: Vec3f) void {
-	if (self.shouldDrop()) {
+	if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
 		for (self.itemStacks) |itemStack| {
 			main.server.world.?.drop(itemStack.clone(), pos, randomDir(dir), randomVelocity(dir));
 		}
@@ -50,10 +50,6 @@ fn randomVelocity(dir: Vec3f) f32 {
 	const velocity = 3.5 + main.random.nextFloatSigned(&main.seed)*0.5;
 	if (dir[2] < -0.5) return velocity*0.333;
 	return velocity;
-}
-
-inline fn shouldDrop(self: @This()) bool {
-	return self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance;
 }
 
 pub const Location = struct {
