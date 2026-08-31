@@ -850,6 +850,8 @@ pub const Image = struct { // MARK: Image
 	allocation: c.VmaAllocation = undefined,
 	mipLevels: u32,
 	size: main.vec.Vec3i,
+	view: c.VkImageView = undefined,
+	sampler: c.VkSampler = undefined,
 
 	const ImageOptions = struct {
 		usage: c.VkImageUsageFlags,
@@ -860,6 +862,26 @@ pub const Image = struct { // MARK: Image
 		mipLevels: u32 = 1,
 		arrayLayers: u32 = 1,
 		samples: c.VkSampleCountFlags = c.VK_SAMPLE_COUNT_1_BIT,
+
+		magFilter: Filter = .nearest,
+		minFilter: Filter = .nearest,
+		mipmapFilter: Filter = .nearest,
+		addressMode: AddressMode = .repeat,
+		mipLodBias: f32 = 0,
+		maxAnisotropy: ?f32 = null,
+
+		const Filter = enum(c.VkFilter) {
+			nearest = c.VK_FILTER_NEAREST,
+			linear = c.VK_FILTER_LINEAR,
+		};
+
+		const AddressMode = enum(c.VkSamplerAddressMode) {
+			repeat = c.VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			mirroredRepeat = c.VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
+			clampToEdge = c.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+			clampToBorder = c.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+			mirrorClampToEdge = c.VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE,
+		};
 	};
 	pub fn init(size: main.vec.Vec3i, options: ImageOptions) Image {
 		var self: Image = .{
@@ -885,10 +907,55 @@ pub const Image = struct { // MARK: Image
 			.flags = if (options.hostAccessible) c.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT else 0,
 		};
 		checkResult(c.vmaCreateImage(gpu_allocator.handle, &imageInfo, &allocCreateInfo, &self.handle, &self.allocation, null));
+
+		const imageViewInfo: c.VkImageViewCreateInfo = .{
+			.sType = c.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+			.image = self.handle,
+			.format = options.format,
+			.subresourceRange = .{
+				.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
+				.baseMipLevel = 0,
+				.levelCount = options.mipLevels,
+				.baseArrayLayer = 0,
+				.layerCount = options.arrayLayers,
+			},
+			.viewType = switch (options.imageType) {
+				c.VK_IMAGE_TYPE_1D => c.VK_IMAGE_VIEW_TYPE_1D,
+				c.VK_IMAGE_TYPE_2D => c.VK_IMAGE_VIEW_TYPE_2D,
+				c.VK_IMAGE_TYPE_3D => c.VK_IMAGE_VIEW_TYPE_3D,
+				else => unreachable,
+			}
+		};
+		checkResult(c.vkCreateImageView(device, &imageViewInfo, null, &self.view));
+
+		const samplerInfo: c.VkSamplerCreateInfo = .{
+			.sType = c.VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+			.magFilter = @intFromEnum(options.magFilter),
+			.minFilter = @intFromEnum(options.minFilter),
+			.mipmapMode = switch (options.mipmapFilter) {
+				.nearest => c.VK_SAMPLER_MIPMAP_MODE_NEAREST,
+				.linear => c.VK_SAMPLER_MIPMAP_MODE_LINEAR,
+			},
+			.addressModeU = @intFromEnum(options.addressMode),
+			.addressModeV = @intFromEnum(options.addressMode),
+			.addressModeW = @intFromEnum(options.addressMode),
+			.mipLodBias = options.mipLodBias,
+			.anisotropyEnable = if (options.maxAnisotropy != null) c.VK_TRUE else c.VK_FALSE,
+			.maxAnisotropy = options.maxAnisotropy orelse 0,
+			.compareEnable = c.VK_FALSE, // TODO: This may be useful for shadow map sampling
+			.minLod = 0,
+			.maxLod = c.VK_LOD_CLAMP_NONE,
+			.borderColor = c.VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
+			.unnormalizedCoordinates = c.VK_FALSE,
+		};
+		checkResult(c.vkCreateSampler(device, &samplerInfo, null, &self.sampler));
+		
 		return self;
 	}
 
 	fn privateDeinit(self: Image) void {
+		c.vkDestroySampler(device, self.sampler, null);
+		c.vkDestroyImageView(device, self.view, null);
 		c.vmaDestroyImage(gpu_allocator.handle, self.handle, self.allocation);
 	}
 
