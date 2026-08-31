@@ -147,20 +147,6 @@ pub const Context = struct {
 		}
 	}
 
-	pub fn dropNaturally(self: Context, pos: Vec3i) void {
-		const amount = self.dropAmount();
-		if (amount == 0) return;
-
-		const modelIndex = self.oldBlock.mode().model(self.oldBlock);
-		for (0..amount) |_| {
-			for (self.oldBlock.blockDrops()) |blockDrop| {
-				if (blockDrop.isDroppedWhenBrokenWithItem(.null)) {
-					blockDrop.dropNaturally(modelIndex, pos);
-				}
-			}
-		}
-	}
-
 	inline fn dropAmount(self: Context) u16 {
 		return self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
 	}
