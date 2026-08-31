@@ -36,23 +36,6 @@ pub fn drop(self: @This(), pos: Vec3d, dir: Vec3f) void {
 	}
 }
 
-pub fn dropNaturally(self: @This(), modelIndex: ModelIndex, pos: Vec3i) void {
-	if (self.shouldDrop()) {
-		const model = modelIndex.model();
-		for (self.itemStacks) |itemStack| {
-			var randomDir1 = main.vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));
-			// Bias upwards
-			randomDir1[2] += main.random.nextFloat(&main.seed)*4.0;
-			const randomPos = Vec3f{
-				@as(f32, @floatFromInt(pos[0])) + model.min[0] + main.random.nextFloat(&main.seed)*(model.max[0] - model.min[0]),
-				@as(f32, @floatFromInt(pos[1])) + model.min[1] + main.random.nextFloat(&main.seed)*(model.max[1] - model.min[1]),
-				@as(f32, @floatFromInt(pos[2])) + model.min[2] + main.random.nextFloat(&main.seed)*(model.max[2] - model.min[2]),
-			};
-			main.server.world.?.drop(itemStack.clone(), randomPos, randomDir1, 1);
-		}
-	}
-}
-
 fn randomDir(dir: Vec3f) Vec3f {
 	const randomnessVec: Vec3f = main.random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(0.25));
 	const directionVec: Vec3f = @as(Vec3f, @floatCast(dir)) + randomnessVec;
