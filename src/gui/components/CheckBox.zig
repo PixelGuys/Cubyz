@@ -117,11 +117,7 @@ pub fn render(self: *CheckBox, mousePosition: Vec2f) void {
 	if (main.settings.launchConfig.vulkanTestingMode and texture.vulkanImage != null) {
 		graphics.vulkan.currentFrame.guiCommands.bindPipeline(Button.pipeline, graphics.draw.getScissor());
 		graphics.vulkan.currentFrame.guiCommands.bindDescriptors(Button.pipeline, .graphics, 0, &.{
-			.{ .image = .{
-				.binding = 0,
-				.imageView = texture.vulkanImage.?.view,
-				.sampler = texture.vulkanImage.?.sampler,
-			}},
+			.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
 		});
 		draw.customShadedRect(@as(Button.ButtonUniforms, undefined), Button.pipeline, self.pos + Vec2f{0, self.size[1]/2 - boxSize/2}, @as(Vec2f, @splat(boxSize)));
 	} else {

@@ -451,11 +451,7 @@ pub const draw = struct { // MARK: draw
 		if (main.settings.launchConfig.vulkanTestingMode and texture.vulkanImage != null) {
 			vulkan.currentFrame.guiCommands.bindPipeline(imagePipeline, getScissor());
 			vulkan.currentFrame.guiCommands.bindDescriptors(imagePipeline, .graphics, 0, &.{
-				.{ .image = .{
-					.binding = 0,
-					.imageView = texture.vulkanImage.?.view,
-					.sampler = texture.vulkanImage.?.sampler,
-				}},
+				.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
 			});
 			customShadedImage(@as(ImageUniforms, undefined), imagePipeline, _pos, _dim);
 		} else {
@@ -480,11 +476,7 @@ pub const draw = struct { // MARK: draw
 		if (main.settings.launchConfig.vulkanTestingMode and texture.vulkanImage != null) {
 			vulkan.currentFrame.guiCommands.bindPipeline(imagePipeline, getScissor());
 			vulkan.currentFrame.guiCommands.bindDescriptors(imagePipeline, .graphics, 0, &.{
-				.{ .image = .{
-					.binding = 0,
-					.imageView = texture.vulkanImage.?.view,
-					.sampler = texture.vulkanImage.?.sampler,
-				}},
+				.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
 			});
 			vulkan.currentFrame.guiCommands.pushConstants(imagePipeline, &ImageUniforms{
 				.start = pos,

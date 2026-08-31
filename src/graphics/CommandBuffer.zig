@@ -204,8 +204,7 @@ const BindingInfo = union(enum) {
 	},
 	image: struct {
 		binding: u32,
-		imageView: c.VkImageView,
-		sampler: c.VkSampler,
+		image: vulkan.Image,
 		imageLayout: c.VkImageLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
 	},
 };
@@ -237,8 +236,8 @@ pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bi
 				writeInfo[i].descriptorType = c.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 				const imageInfo = arena.create(c.VkDescriptorImageInfo);
 				imageInfo.* = .{
-					.sampler = image.sampler,
-					.imageView = image.imageView,
+					.sampler = image.image.sampler,
+					.imageView = image.image.view,
 					.imageLayout = image.imageLayout,
 				};
 				writeInfo[i].pImageInfo = imageInfo;
