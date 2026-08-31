@@ -1955,6 +1955,33 @@ pub const Connection = struct { // MARK: Connection
 	}
 };
 
+fn getLocalIpAddress() !IpAddress {
+	const distanstAddr: std.Io.net.IpAddress = try .parse("8.8.8.8", 80);
+	const stream = try distanstAddr.connect(main.io, .{.mode = .dgram, .protocol = .udp});
+	defer stream.close(main.io);
+
+	var addr: std.posix.sockaddr.in = undefined;
+	if (builtin.os.tag == .windows) {
+		var addrLen: c_int = @sizeOf(std.posix.sockaddr.in);
+		if (std.c.getsockname(stream.socket.handle, @ptrCast(&addr), &addrLen) == c.SOCKET_ERROR) {
+			try Socket.windowsError(c.WSAGetLastError());
+		}
+	} else {
+		var addrLen: std.posix.socklen_t = @sizeOf(std.posix.sockaddr.in);
+		const result = std.c.getsockname(stream.socket.handle, @ptrCast(&addr), &addrLen);
+		switch (std.c.errno(result)) {
+			.SUCCESS => {},
+			else => |err| {
+				std.log.warn("Failed to get the addr from getsockname: {s}", .{@tagName(err)});
+				return error.Failed;
+			},
+		}
+	}
+	var ipAddress = std.Io.Threaded.addressFromPosix(&std.Io.Threaded.PosixAddress{.in = addr});
+	ipAddress.setPort(settings.defaultPort);
+	return ipAddress;
+}
+
 test "Resolve address" {
 	const addresses: [4][]const u8 = .{
 		"127.0.0.1",
