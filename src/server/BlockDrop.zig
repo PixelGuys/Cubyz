@@ -66,7 +66,7 @@ pub const Location = struct {
 	const itemHitBoxMargin: f32 = @floatCast(main.itemdrop.ItemDropManager.radius);
 	const itemHitBoxMarginVec: Vec3f = @splat(itemHitBoxMargin);
 
-	pub fn natural(modelMin: Vec3f, modelMax: Vec3f) Location {
+	pub inline fn natural(modelMin: Vec3f, modelMax: Vec3f) Location {
 		return .{
 			.normalDir = .{0, 0, 1},
 			.min = modelMin,
