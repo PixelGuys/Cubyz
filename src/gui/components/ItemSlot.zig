@@ -24,6 +24,11 @@ const Mode = enum {
 	immutable,
 };
 
+const Style = enum {
+	normal,
+	unfocused,
+};
+
 pos: Vec2f,
 size: Vec2f = @splat(sizeWithBorder),
 inventory: ClientInventory,
@@ -36,6 +41,7 @@ pressed: bool = false,
 renderFrame: bool = true,
 texture: ?Texture,
 mode: Mode,
+style: Style,
 
 var defaultTexture: Texture = undefined;
 var immutableTexture: Texture = undefined;
@@ -81,6 +87,7 @@ pub fn init(pos: Vec2f, inventory: ClientInventory, itemSlot: u32, texture: Text
 		.lastItemAmount = amount,
 		.texture = texture.value(),
 		.mode = mode,
+		.style = Style.normal,
 	};
 	self.textSize = self.text.calculateLineBreaks(8, self.size[0] - 2*border);
 	return self;
@@ -136,6 +143,16 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 		draw.boundImage(self.pos, self.size);
 	}
 	const item = self.inventory.getItem(self.itemSlot);
+	const inventorySource = self.inventory.super.source;
+
+	const isValidMaterial = item == .null or (item == .baseItem and item.baseItem.material() != null);
+	const applyWorkbenchFocus = gui.isWindowOpen("workbench") and (inventorySource == .playerInventory or inventorySource == .other);
+	if (self.style == .normal and applyWorkbenchFocus and !isValidMaterial) {
+		self.style = .unfocused;
+	} else if (self.style == .unfocused and (!applyWorkbenchFocus or isValidMaterial)) {
+		self.style = .normal;
+	}
+
 	if (item != .null) {
 		item.render(self.pos, self.size, border);
 		const shouldRenderStackSizeText = item.stackSize() > 1 and self.inventory.type != .creative;
@@ -147,6 +164,10 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 		if (self.hovered) {
 			self.hovered = false;
 			const oldColor = draw.setColor(0x300000ff);
+			defer draw.restoreColor(oldColor);
+			draw.rect(self.pos, self.size);
+		} else if (self.style == .unfocused and self.renderFrame) {
+			const oldColor = draw.setColor(0x800f0f0f);
 			defer draw.restoreColor(oldColor);
 			draw.rect(self.pos, self.size);
 		}
