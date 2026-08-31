@@ -445,14 +445,6 @@ pub const draw = struct { // MARK: draw
 	}
 
 	pub fn image(texture: Texture, _pos: Vec2f, _dim: Vec2f) void {
-		var pos = _pos;
-		var dim = _dim;
-		pos *= @splat(scale);
-		pos += translation;
-		dim *= @splat(scale);
-		pos = @floor(pos);
-		dim = @ceil(dim);
-
 		var viewport: [4]c_int = undefined;
 		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 
@@ -465,29 +457,11 @@ pub const draw = struct { // MARK: draw
 					.sampler = texture.vulkanImage.?.sampler,
 				}},
 			});
-			vulkan.currentFrame.guiCommands.pushConstants(imagePipeline, &ImageUniforms{
-				.start = pos,
-				.size = dim,
-				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
-				.color = @bitCast(getColor()),
-				.uvOffset = .{0, 0},
-				.uvDim = .{1, 1},
-			});
-			vulkan.currentFrame.guiCommands.bindVertexArray(rectVao);
-			vulkan.currentFrame.guiCommands.draw(4, 0);
+			customShadedImage(@as(ImageUniforms, undefined), imagePipeline, _pos, _dim);
 		} else {
 			texture.bindTo(0);
 			imagePipeline.bind(getScissor());
-
-			c.glUniform2f(imageUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
-			c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
-			c.glUniform2f(imageUniforms.size, dim[0], dim[1]);
-			c.glUniform1i(imageUniforms.color, @bitCast(getColor()));
-			c.glUniform2f(imageUniforms.uvOffset, 0, 0);
-			c.glUniform2f(imageUniforms.uvDim, 1, 1);
-
-			rectVao.bind();
-			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+			customShadedImageOpenGl(imageUniforms, _pos, _dim);
 		}
 	}
 
