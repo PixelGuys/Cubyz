@@ -47,6 +47,8 @@ pub const Ore = struct {
 	maxHeight: i32,
 	minHeight: i32,
 
+	targetTags: []const Tag,
+
 	blockType: u16,
 	seed: u64,
 };
@@ -197,6 +199,8 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			std.log.err("Ore must have rotation mode \"cubyz:ore\"!", .{});
 			break :blk;
 		}
+		const targetBlockTags = Tag.loadTagsFromZon(main.stackAllocator, oreProperties.getChild("targetTags"));
+		defer main.stackAllocator.free(targetBlockTags);
 		ores.append(main.worldArena, .{
 			.veins = oreProperties.get(f32, "veins") orelse 0,
 			.size = oreProperties.get(f32, "size") orelse 0,
@@ -204,6 +208,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			.minHeight = oreProperties.get(i32, "minHeight") orelse std.math.minInt(i32),
 			.density = oreProperties.get(f32, "density") orelse 0.5,
 			.blockType = @intCast(size),
+			.targetTags = targetBlockTags,
 			.seed = std.hash.Wyhash.hash(0, id),
 		});
 	}
