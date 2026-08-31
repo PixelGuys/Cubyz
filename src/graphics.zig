@@ -562,7 +562,7 @@ pub const draw = struct { // MARK: draw
 		drawSlice(texture, .{pos[0] + dim[0] - widthSlice, pos[1] + dim[1] - heightSlice}, .{pos[0] + dim[0], pos[1] + dim[1]}, .{u[1], v[1]}, .{1, 1});
 	}
 
-	pub fn customShadedImage(uniforms: anytype, _pos: Vec2f, _dim: Vec2f) void {
+	pub fn customShadedImageOpenGl(uniforms: anytype, _pos: Vec2f, _dim: Vec2f) void {
 		var pos = _pos;
 		var dim = _dim;
 		pos *= @splat(scale);
@@ -582,6 +582,31 @@ pub const draw = struct { // MARK: draw
 
 		rectVao.bind();
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+	}
+
+	pub fn customShadedImage(_uniforms: anytype, pipeline: Pipeline, _pos: Vec2f, _dim: Vec2f) void {
+		var pos = _pos;
+		var dim = _dim;
+		pos *= @splat(scale);
+		pos += translation;
+		dim *= @splat(scale);
+		pos = @floor(pos);
+		dim = @ceil(dim);
+
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+
+		var uniforms = _uniforms;
+		uniforms.start = pos;
+		uniforms.size = dim;
+		uniforms.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])};
+		uniforms.color = @bitCast(getColor());
+		uniforms.uvOffset = .{0, 0};
+		uniforms.uvDim = .{1, 1};
+
+		vulkan.currentFrame.guiCommands.pushConstants(pipeline, &uniforms);
+		vulkan.currentFrame.guiCommands.bindVertexArray(rectVao);
+		vulkan.currentFrame.guiCommands.draw(4, 0);
 	}
 
 	// ----------------------------------------------------------------------------
