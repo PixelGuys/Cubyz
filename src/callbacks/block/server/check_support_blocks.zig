@@ -48,7 +48,8 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 			.oldBlock = params.block,
 			.newBlock = newBlock,
 		};
-		dropCtx.dropNaturally(.{wx, wy, wz});
+		const model = params.block.mode().model(params.block).model();
+		dropCtx.drop(.natural(model.min, model.max), .{wx, wy, wz});
 		return .handled;
 	}
 	return .ignored;
