@@ -130,12 +130,12 @@ pub const Context = struct {
 	item: Item = .null,
 
 	pub fn drop(self: Context, location: Location, pos: Vec3i) void {
-		const amount = self.dropAmount();
-		if (amount == 0) return;
+		const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
+		if (dropAmount == 0) return;
 
 		const dropPos = if (self.newBlock.collide()) location.outsidePos(pos) else location.insidePos(pos);
 
-		for (0..amount) |_| {
+		for (0..dropAmount) |_| {
 			for (self.oldBlock.blockDrops()) |blockDrop| {
 				if (blockDrop.isDroppedWhenBrokenWithItem(self.item)) {
 					const dropDir = location.dropDir();
@@ -145,9 +145,5 @@ pub const Context = struct {
 				}
 			}
 		}
-	}
-
-	inline fn dropAmount(self: Context) u16 {
-		return self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
 	}
 };
