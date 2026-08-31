@@ -91,6 +91,13 @@ var windowUniforms: struct {
 	color: c_int,
 	scale: c_int,
 } = undefined;
+pub const WindowUniforms = extern struct {
+	start: [2]f32 align(8),
+	size: [2]f32 align(8),
+	screen: [2]f32 align(8),
+	color: i32,
+	scale: f32,
+};
 pub var borderPipeline: graphics.Pipeline = undefined;
 pub var borderUniforms: struct {
 	screen: c_int,
@@ -100,6 +107,14 @@ pub var borderUniforms: struct {
 	scale: c_int,
 	effectLength: c_int,
 } = undefined;
+pub const BorderUniforms = extern struct {
+	start: [2]f32 align(8),
+	size: [2]f32 align(8),
+	screen: [2]f32 align(8),
+	color: i32,
+	scale: f32,
+	effectLength: [2]f32 align(8),
+};
 
 pub fn globalInit() void {
 	pipeline = graphics.Pipeline.init(
@@ -109,9 +124,12 @@ pub fn globalInit() void {
 		&windowUniforms,
 		graphics.draw.SimpleVertex2D,
 		.{
+			.bindings = &.{.sampler(0, .{.fragment = true})},
 			.rasterState = .{.cullMode = .none},
 			.depthStencilState = .{.depthTest = false, .depthWrite = false},
 			.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			.inputAssemblyState = .{.topology = .triangleStrip},
+			.pushConstantSize = @sizeOf(WindowUniforms),
 		},
 	);
 	borderPipeline = graphics.Pipeline.init(
@@ -124,6 +142,8 @@ pub fn globalInit() void {
 			.rasterState = .{.cullMode = .none},
 			.depthStencilState = .{.depthTest = false, .depthWrite = false},
 			.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			.inputAssemblyState = .{.topology = .triangleStrip},
+			.pushConstantSize = @sizeOf(BorderUniforms),
 		},
 	);
 
@@ -519,18 +539,42 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 	const oldTranslation = draw.setTranslation(self.pos);
 	const oldScale = draw.setScale(self.scale);
 	if (self.hasBackground) {
-		pipeline.bind(draw.getScissor());
-		backgroundTexture.bindTo(0);
-		draw.customShadedRect(windowUniforms, .{0, 0}, self.size/@as(Vec2f, @splat(self.scale)));
+		if (main.settings.launchConfig.vulkanTestingMode and backgroundTexture.vulkanImage != null) {
+			graphics.vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
+			graphics.vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, 0, &.{
+				.{ .image = .{
+					.binding = 0,
+					.imageView = backgroundTexture.vulkanImage.?.view,
+					.sampler = backgroundTexture.vulkanImage.?.sampler,
+				}},
+			});
+			draw.customShadedRect(@as(WindowUniforms, undefined), pipeline, .{0, 0}, self.size/@as(Vec2f, @splat(self.scale)));
+		} else {
+			pipeline.bind(draw.getScissor());
+			backgroundTexture.bindTo(0);
+			draw.customShadedRectOpenGl(windowUniforms, .{0, 0}, self.size/@as(Vec2f, @splat(self.scale)));
+		}
 	}
 	self.renderFn();
 	if (self.rootComponent) |*component| {
 		component.render((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
 	}
 	if (self.showTitleBar or gui.reorderWindows) {
-		pipeline.bind(draw.getScissor());
-		titleTexture.bindTo(0);
-		draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, titleBarHeight});
+		if (main.settings.launchConfig.vulkanTestingMode and titleTexture.vulkanImage != null) {
+			graphics.vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
+			graphics.vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, 0, &.{
+				.{ .image = .{
+					.binding = 0,
+					.imageView = titleTexture.vulkanImage.?.view,
+					.sampler = titleTexture.vulkanImage.?.sampler,
+				}},
+			});
+			draw.customShadedRect(@as(WindowUniforms, undefined), pipeline, .{0, 0}, .{self.size[0]/self.scale, titleBarHeight});
+		} else {
+			pipeline.bind(draw.getScissor());
+			titleTexture.bindTo(0);
+			draw.customShadedRectOpenGl(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, titleBarHeight});
+		}
 		self.drawIcons();
 	}
 	if (self.hasBackground or (!main.Window.grabbed and gui.reorderWindows)) {

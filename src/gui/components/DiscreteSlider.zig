@@ -152,9 +152,21 @@ pub fn mainButtonReleased(self: *DiscreteSlider, _: Vec2f) void {
 }
 
 pub fn render(self: *DiscreteSlider, mousePosition: Vec2f) void {
-	texture.bindTo(0);
-	Button.pipeline.bind(draw.getScissor());
-	draw.customShadedRect(Button.buttonUniforms, self.pos, self.size);
+	if (main.settings.launchConfig.vulkanTestingMode and texture.vulkanImage != null) {
+		graphics.vulkan.currentFrame.guiCommands.bindPipeline(Button.pipeline, graphics.draw.getScissor());
+		graphics.vulkan.currentFrame.guiCommands.bindDescriptors(Button.pipeline, .graphics, 0, &.{
+			.{ .image = .{
+				.binding = 0,
+				.imageView = texture.vulkanImage.?.view,
+				.sampler = texture.vulkanImage.?.sampler,
+			}},
+		});
+		draw.customShadedRect(@as(Button.ButtonUniforms, undefined), Button.pipeline, self.pos, self.size);
+	} else {
+		Button.pipeline.bind(draw.getScissor());
+		texture.bindTo(0);
+		draw.customShadedRectOpenGl(Button.buttonUniforms, self.pos, self.size);
+	}
 
 	{
 		const oldColor = draw.setColor(0x80000000);
