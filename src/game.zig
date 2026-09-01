@@ -429,10 +429,14 @@ pub const World = struct { // MARK: World
 
 		const dayCycleLength = dawnStart + dawnDuration; // 24 minutes or 14400 ticks
 
-		const lightFraction = @as(f32, @floatFromInt(dawnDuration/2 + dayDuration + duskDuration/2))/@as(f32, @floatFromInt(dayCycleLength));
-		const halfDayArc: f32 = std.math.pi*lightFraction;
-		const axialTilt = 0.409106; // same as earth
-		pub const celestialTilt = std.math.atan(-@cos(halfDayArc)/@tan(axialTilt));
+		// The celestial sphere spins about an axis raised celestialPoleAltitude above the horizon,
+		// with the sun solarDeclination radians off the sphere's equator.
+		// We can use the sunrise equation when the sun sits on the horizon:
+		//     cos(sunsetHourAngle) = -tan(celestialPoleAltitude)*tan(solarDeclination)
+		const daylightFraction = @as(f32, @floatFromInt(2*dayDuration + dawnDuration + duskDuration))/@as(f32, @floatFromInt(2*dayCycleLength));
+		const sunsetHourAngle: f32 = std.math.pi*daylightFraction;
+		const solarDeclination = 0.409106; // equals Earth's axial tilt since it's always the solstice, can later be used to position sun in the sky
+		pub const celestialPoleAltitude = std.math.atan(-@cos(sunsetHourAngle)/@tan(solarDeclination));
 
 		const minimumAmbientLight: f32 = 0.1;
 
