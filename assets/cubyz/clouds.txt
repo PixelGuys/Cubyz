@@ -1,0 +1,40 @@
+# Configuración de nubes.
+# Guarda este archivo y espera medio segundo: los cambios se aplican en el juego.
+
+# Altura de la base de las nubes (eje Z, hacia arriba)
+height = 256
+
+# Velocidad del viento en bloques por segundo
+speed = 5.0
+
+# Dirección del viento. (1, 0) = +X
+wind_x = 1.0
+wind_y = 0.0
+
+# Tamaño de cada celda de la cuadrícula. Más grande = nubes más separadas
+cell_size = 96
+
+# Probabilidad de que una celda tenga nube (0 a 1). Más alto = más juntas
+density = 0.55
+
+# Tamaño horizontal mínimo y máximo (X e Y). Cada nube elige X e Y por separado
+min_size_xy = 24
+max_size_xy = 88
+
+# Grosor mínimo y máximo (Z)
+min_size_z = 4
+max_size_z = 22
+
+# Opacidad (0 = invisible, 1 = opaco)
+opacity = 0.7
+
+# Color RGB (0 a 1)
+color_r = 1.0
+color_g = 1.0
+color_b = 1.0
+
+# Semilla de colocación. Cambia este número para otra disposición
+seed = 1
+
+# 1 = ignora tests de profundidad y escribe en la consola cuántas nubes se dibujan
+debug = 0

@@ -29,6 +29,7 @@ const c = @import("c");
 pub const chunk_meshing = @import("renderer/chunk_meshing.zig");
 pub const lighting = @import("renderer/lighting.zig");
 pub const mesh_storage = @import("renderer/mesh_storage.zig");
+pub const clouds = @import("renderer/clouds.zig");
 
 /// Time after which no more chunk meshes are created. This allows the game to run smoother on movement.
 const maximumMeshTime: std.Io.Duration = .fromMilliseconds(12);
@@ -95,6 +96,7 @@ pub fn init() void {
 	Skybox.init();
 	chunk_meshing.init();
 	mesh_storage.init();
+	clouds.init();
 	reflectionCubeMap = .init();
 	reflectionCubeMap.generate(reflectionCubeMapSize, reflectionCubeMapSize);
 	initReflectionCubeMap();
@@ -108,6 +110,7 @@ pub fn deinit() void {
 	MeshSelection.deinit();
 	MenuBackGround.deinit();
 	Skybox.deinit();
+	clouds.deinit();
 	mesh_storage.deinit();
 	chunk_meshing.deinit();
 	reflectionCubeMap.deinit();
@@ -133,6 +136,10 @@ fn initReflectionCubeMap() void {
 }
 
 var worldFrameBuffer: graphics.FrameBuffer = undefined;
+
+pub fn bindWorldDepthTexture(target: c_uint) void {
+	worldFrameBuffer.bindDepthTexture(target);
+}
 
 pub var lastWidth: u31 = 0;
 pub var lastHeight: u31 = 0;
@@ -160,7 +167,7 @@ pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 	const ambient = @max(nightColor*@as(Vec3f, @splat(settings.nightBrightness)), @as(Vec3f, @splat(game.world.?.dayTime.ambientLight)));
 
 	itemdrop.ItemDisplayManager.update(deltaTime);
-	renderWorld(game.world.?, ambient, game.world.?.dayTime.fog.skyColor, playerPosition);
+	renderWorld(game.world.?, ambient, game.world.?.dayTime.fog.skyColor, playerPosition, deltaTime);
 	const startTime = main.timestamp();
 	mesh_storage.updateMeshes(startTime.addDuration(maximumMeshTime));
 }
@@ -188,7 +195,7 @@ pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: 
 	return adjusted;
 }
 
-pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) void { // MARK: renderWorld()
+pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d, deltaTime: f64) void { // MARK: renderWorld()
 	worldFrameBuffer.bind();
 	c.glViewport(0, 0, lastWidth, lastHeight);
 	gpu_performance_measuring.startQuery(.clear);
@@ -330,6 +337,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	graphics.draw.rectVao.bind();
 	c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+
+	clouds.render(&frustum, playerPos, ambientLight, deltaTime);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
