@@ -42,6 +42,7 @@ fn discoverIpAddressFromNewThread() void {
 }
 
 fn invite() void {
+	ipAddress = ipAddressEntry.currentString.items;
 	ipAddressEntry.clear();
 	if (thread) |_thread| {
 		_thread.join();
