@@ -6,15 +6,13 @@
 		.{.items = .{.auto}},
 	},
 	.item = .{
+		.colorTexture = "obsidian_palette.png",
 		.material = .{
 			.durability = 55,
 			.massDamage = 1.7,
 			.hardnessDamage = 5.7,
 			.swingSpeed = 2.5,
 			.textureRoughness = 0.1,
-			.colors = .{
-				0xff0F0811, 0xff19121C, 0xff312436, 0xff69486B, 0xff462F47,
-			},
 			.modifiers = .{
 				.{
 					.id = "fragile",

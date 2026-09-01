@@ -5,7 +5,7 @@ const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ListManaged = main.ListManaged;
 
-pub const ZonElement = union(enum) { // MARK: Zon
+pub const ZonElement = union(enum) { // MARK: ZonElement
 	int: i128,
 	float: f64,
 	string: []const u8,
@@ -507,6 +507,21 @@ const Parser = struct { // MARK: Parser
 			}
 			return .{.int = sign*intPart};
 		}
+		if (index.* + 1 < chars.len and chars[index.*] == '0' and chars[index.* + 1] == 'b') {
+			// Parse binary int
+			index.* += 2;
+			while (index.* < chars.len) : (index.* += 1) {
+				switch (chars[index.*]) {
+					'0', '1' => {
+						intPart = (chars[index.*] - '0') +% intPart*%2;
+					},
+					else => {
+						break;
+					},
+				}
+			}
+			return .{.int = sign*intPart};
+		}
 		while (index.* < chars.len) : (index.* += 1) {
 			switch (chars[index.*]) {
 				'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => {
@@ -850,6 +865,8 @@ test "number parsing" {
 	try std.testing.expectEqual(Parser.parseNumber(" abcd185473896", &index), ZonElement{.int = 185473896});
 	index = 0;
 	try std.testing.expectEqual(Parser.parseNumber("0xff34786056.0", &index), ZonElement{.int = 0xff34786056});
+	index = 0;
+	try std.testing.expectEqual(Parser.parseNumber("0b01010010", &index), ZonElement{.int = 0b01010010});
 	// Floats:
 	index = 0;
 	try std.testing.expectEqual(Parser.parseNumber("0.0", &index), ZonElement{.float = 0.0});

@@ -35,6 +35,7 @@ pub const Settings = struct {
 	defaultGamemode: Gamemode = .creative,
 	allowCheats: bool = true,
 	testingMode: bool = false,
+	whitelistEnabled: std.atomic.Value(bool) = .init(false),
 	seed: u64 = undefined,
 
 	pub const defaults: Settings = .{};
@@ -48,15 +49,17 @@ pub const Settings = struct {
 			.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, zon.get([]const u8, "defaultGamemode") orelse @tagName(defaults.defaultGamemode)) orelse defaults.defaultGamemode,
 			.allowCheats = zon.get(bool, "allowCheats") orelse defaults.allowCheats,
 			.testingMode = zon.get(bool, "testingMode") orelse defaults.testingMode,
+			.whitelistEnabled = .init(zon.get(bool, "whitelistEnabled") orelse defaults.whitelistEnabled.load(.monotonic)),
 		};
 	}
 
-	pub fn toZon(self: Settings, allocator: NeverFailingAllocator) ZonElement {
+	pub fn toZon(self: *const Settings, allocator: NeverFailingAllocator) ZonElement {
 		const zon = main.ZonElement.initObject(allocator);
 
 		zon.put("defaultGamemode", @tagName(self.defaultGamemode));
 		zon.put("allowCheats", self.allowCheats);
 		zon.put("testingMode", self.testingMode);
+		zon.put("whitelistEnabled", self.whitelistEnabled.load(.monotonic));
 		zon.put("seed", self.seed);
 
 		return zon;
@@ -440,6 +443,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	milliTime: std.Io.Timestamp,
 	lastUpdateTime: std.Io.Timestamp,
 	lastUnimportantDataSent: std.Io.Timestamp,
+	lastItemDropSaveTime: std.Io.Timestamp,
 	doGameTimeCycle: bool = true,
 
 	tickSpeed: std.atomic.Value(u32) = .init(12),
@@ -478,6 +482,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			.lastUpdateTime = main.timestamp(),
 			.milliTime = main.timestamp(),
 			.lastUnimportantDataSent = main.timestamp(),
+			.lastItemDropSaveTime = main.timestamp(),
 			.path = main.globalAllocator.dupe(u8, path),
 			.chunkUpdateQueue = .init(main.globalAllocator, 256),
 			.regionUpdateQueue = .init(main.globalAllocator, 256),
@@ -665,6 +670,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		worldData.put("name", self.name);
 		worldData.put("lastUsedTime", std.Io.Clock.Timestamp.now(main.io, .real).raw.toMilliseconds());
 		worldData.put("tickSpeed", self.tickSpeed.load(.monotonic));
+		worldData.put("settings", self.settings.toZon(main.stackAllocator));
 		worldData.put("localPlayer", players.getLocalPlayerIndex());
 
 		try files.cubyzDir().writeZon(path, worldData);
@@ -878,9 +884,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 					}
 				}
 				std.log.err("Found no valid spawn location", .{});
+				const map = terrain.SurfaceMap.getOrGenerateFragment(self.spawn[0], self.spawn[1], 1);
+				self.spawn[2] = map.getHeight(self.spawn[0], self.spawn[1]) + 1;
 			}
-			const map = terrain.SurfaceMap.getOrGenerateFragment(self.spawn[0], self.spawn[1], 1);
-			self.spawn[2] = map.getHeight(self.spawn[0], self.spawn[1]) + 1;
 		}
 		const newBiomeCheckSum: i64 = @bitCast(terrain.biomes.getBiomeCheckSum(self.settings.seed));
 		if (newBiomeCheckSum != self.biomeChecksum) {
@@ -1039,9 +1045,30 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try files.cubyzDir().write(itemsPath, itemDropData.data.items);
 	}
 
-	fn isValidSpawnLocation(_: *ServerWorld, wx: i32, wy: i32) bool {
+	fn getOrGenerateBlock(wx: i32, wy: i32, wz: i32) Block {
+		const pos = chunk.ChunkPosition.initFromWorldPos(.{wx, wy, wz}, 1);
+		const ch = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(pos);
+		defer ch.decreaseRefCount();
+		ch.mutex.lock();
+		defer ch.mutex.unlock();
+		const relPos = chunk.BlockPos.fromWorldCoords(wx, wy, wz);
+		return ch.getBlock(relPos.x, relPos.y, relPos.z);
+	}
+
+	fn isValidSpawnLocation(self: *ServerWorld, wx: i32, wy: i32) bool {
 		const map = terrain.SurfaceMap.getOrGenerateFragment(wx, wy, 1);
-		return map.getBiome(wx, wy).isValidPlayerSpawn;
+		if (!map.getBiome(wx, wy).isValidPlayerSpawn) return false;
+		const height = map.getHeight(wx, wy);
+
+		const groundBlock = getOrGenerateBlock(wx, wy, height - 1);
+		if (!groundBlock.collide() or !groundBlock.onTouch().isNoop()) return false;
+		inline for (.{height, height + 1}) |h| {
+			const block = getOrGenerateBlock(wx, wy, h);
+			if (block.collide() or !block.onTouch().isNoop()) return false;
+		}
+
+		self.spawn[2] = height + 1;
+		return true;
 	}
 
 	pub fn dropWithCooldown(self: *ServerWorld, stack: ItemStack, pos: Vec3d, dir: Vec3f, velocity: f32, pickupCooldown: i32) void {
@@ -1103,6 +1130,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			for (userList) |user| {
 				self.itemDropManager.checkEntity(user);
 			}
+		}
+		if (self.lastItemDropSaveTime.durationTo(newTime).toSeconds() > 5) {
+			self.lastItemDropSaveTime = newTime;
+			self.saveItemdrops() catch |err| {
+				std.log.err("Error while saving item data: {s}", .{@errorName(err)});
+			};
 		}
 
 		// Store chunks and regions.

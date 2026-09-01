@@ -27,13 +27,14 @@ pub const meta = @import("meta.zig");
 pub const migrations = @import("migrations.zig");
 pub const models = @import("models.zig");
 pub const network = @import("network.zig");
+pub const particles = @import("particles.zig");
 pub const physics = @import("physics.zig");
 pub const random = @import("random.zig");
 pub const renderer = @import("renderer.zig");
 pub const rotation = @import("rotation.zig");
 pub const settings = @import("settings.zig");
 pub const sync = @import("sync.zig");
-pub const particles = @import("particles.zig");
+pub const systems = @import("systems.zig");
 const tag = @import("tag.zig");
 pub const Tag = tag.Tag;
 pub const utils = @import("utils.zig");
@@ -167,6 +168,11 @@ fn cycleHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
 fn setHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
 	return &struct {
 		fn set(_: Window.Key.Modifiers) void {
+			if (gui.hoveredItemSlot) |hovered| {
+				if (hovered.inventory.type == .crafting or hovered.inventory.type == .workbenchResult) return;
+				hovered.inventory.swap(hovered.itemSlot, game.Player.inventory, i - 1);
+				return;
+			}
 			game.Player.selectedSlot = i - 1;
 		}
 	}.set;
@@ -398,6 +404,9 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	network.init() catch @panic("Failed to initialize network");
 	defer network.deinit();
 
+	if (!headless) systems.client.init();
+	defer if (!headless) systems.client.deinit();
+
 	if (!headless) entity.client.init();
 	defer if (!headless) entity.client.deinit();
 
@@ -424,6 +433,7 @@ pub fn clientMain() void { // MARK: clientMain()
 		gui.openWindow("main");
 	} else {
 		// Speed up the dev process by entering the world directly.
+		gui.windowlist.save_selection.mode = .singleplayer;
 		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
 	}
 
@@ -445,6 +455,10 @@ pub fn clientMain() void { // MARK: clientMain()
 			c.glClearColor(0.5, 1, 1, 1);
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 			gui.windowlist.gpu_performance_measuring.stopQuery();
+
+			if (settings.launchConfig.vulkanTestingMode) {
+				graphics.vulkan.beginRender();
+			}
 		} else {
 			io.sleep(.fromMilliseconds(16), .awake) catch {};
 		}
@@ -488,6 +502,10 @@ pub fn clientMain() void { // MARK: clientMain()
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			gui.updateAndRenderGui();
 			gui.windowlist.gpu_performance_measuring.stopQuery();
+
+			if (settings.launchConfig.vulkanTestingMode) {
+				graphics.vulkan.endRender();
+			}
 		}
 
 		if (shouldExitToMenu.load(.monotonic)) {

@@ -21,7 +21,7 @@ inline fn networkTimestamp() i64 {
 	return @truncate(@divTrunc(main.timestamp().toNanoseconds(), 1000));
 }
 
-const Socket = struct {
+const Socket = struct { // MARK: Socket
 	const posix = std.posix;
 	socketID: if (builtin.os.tag == .windows) c.SOCKET else posix.socket_t,
 
@@ -1711,6 +1711,7 @@ pub const Connection = struct { // MARK: Connection
 			self.rttUncertainty = (1 - beta)*self.rttUncertainty + beta*largestDifference;
 			self.lastRttSampleTime = timestamp;
 			if (!self.hasRttEstimate) { // Kill the 1 second delay caused by the first packet
+				self.rttEstimate = averageRtt;
 				self.nextPacketTimestamp = timestamp;
 				self.hasRttEstimate = true;
 			}
@@ -1737,7 +1738,7 @@ pub const Connection = struct { // MARK: Connection
 
 	pub fn receive(self: *Connection, data: []const u8) void {
 		self.tryReceive(data) catch |err| {
-			std.log.err("Got error while processing received network data: {s}", .{@errorName(err)});
+			std.log.warn("Got error while processing received network data: {s}", .{@errorName(err)});
 			if (@errorReturnTrace()) |trace| {
 				std.log.info("{f}", .{main.fmt.FormatErrorTrace{.stackTrace = trace.*}});
 			}

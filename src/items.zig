@@ -39,50 +39,23 @@ const Material = struct { // MARK: Material
 	outlineColorShadow: Color = undefined,
 	modifiers: []Modifier = undefined,
 
-	fn darken(color: Color, factor: f32) Color {
-		return Color{
-			.r = @intFromFloat(@as(f32, @floatFromInt(color.r))*factor),
-			.g = @intFromFloat(@as(f32, @floatFromInt(color.g))*factor),
-			.b = @intFromFloat(@as(f32, @floatFromInt(color.b))*factor),
-			.a = color.a,
-		};
-	}
-
-	const ColorSource = enum { loadedFromTexture, notLoaded };
-
-	fn loadColorsFromTexture(self: *Material, allocator: NeverFailingAllocator, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8) ColorSource {
-		if (colorTexturePath.len == 0) return .notLoaded;
-		const image = graphics.Image.readFromFile(main.stackAllocator, colorTexturePath, .{.orientation = .asIs}) catch |err| blk: {
-			if (err != error.FileNotFound) {
-				std.log.err("Error while reading material color texture '{s}': {s}", .{colorTexturePath, @errorName(err)});
-			}
-			break :blk graphics.Image.readFromFile(main.stackAllocator, colorReplacementTexturePath, .{.orientation = .asIs}) catch |err2| {
-				std.log.err("Error while reading material color texture. Tried '{s}' and '{s}': {s}", .{colorTexturePath, colorReplacementTexturePath, @errorName(err2)});
-				return .notLoaded;
-			};
-		};
+	fn loadColorsFromTexture(self: *Material, allocator: NeverFailingAllocator, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8) !void {
+		if (colorTexturePath.len == 0) return error.@"Missing attribute 'colorTexture'";
+		const image = graphics.Image.readFromFile(main.stackAllocator, colorTexturePath, .{.orientation = .asIs}) catch try graphics.Image.readFromFile(main.stackAllocator, colorReplacementTexturePath, .{.orientation = .asIs});
 		defer image.deinit(main.stackAllocator);
-		if (image.width < 2 or image.height < 2) {
-			std.log.err("Material color texture '{s}' must be at least 2x2 pixels (got {}x{}).", .{colorTexturePath, image.width, image.height});
-			return .notLoaded;
-		}
+
+		if (image.width < 2 or image.height < 2) return error.@"Color texture must be at least 2x2 pixels";
+
 		self.colorPalette = allocator.alloc(Color, image.width);
 		for (0..image.width) |x| {
 			self.colorPalette[x] = image.getRGB(x, 0);
 		}
 		const shadow = image.getRGB(0, 1);
-		if (shadow.a != 255) {
-			std.log.err("Material color texture '{s}': outlineColorShadow pixel (0,1) must be fully opaque, got alpha {}.", .{colorTexturePath, shadow.a});
-			return .notLoaded;
-		}
+		if (shadow.a != 255) return error.@"outlineColorShadow pixel (0,1) must be fully opaque";
 		self.outlineColorShadow = shadow;
 		const light = image.getRGB(1, 1);
-		if (light.a != 255) {
-			std.log.err("Material color texture '{s}': outlineColorLight pixel (1,1) must be fully opaque, got alpha {}.", .{colorTexturePath, light.a});
-			return .notLoaded;
-		}
+		if (light.a != 255) return error.@"outlineColorLight pixel (1,1) must be fully opaque";
 		self.outlineColorLight = light;
-		return .loadedFromTexture;
 	}
 
 	pub fn init(self: *Material, allocator: NeverFailingAllocator, zon: ZonElement, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8) void {
@@ -103,15 +76,16 @@ const Material = struct { // MARK: Material
 			break :blk 0;
 		};
 		self.textureRoughness = @max(0, zon.get(f32, "textureRoughness") orelse 1.0);
-		if (self.loadColorsFromTexture(allocator, colorTexturePath, colorReplacementTexturePath) == .notLoaded) {
-			const colors = zon.getChild("colors");
-			self.colorPalette = allocator.alloc(Color, colors.toSlice().len);
-			for (colors.toSlice(), self.colorPalette) |item, *color| {
-				color.* = Color.fromArgb(item.as(u32) orelse 0xff000000);
+		self.loadColorsFromTexture(allocator, colorTexturePath, colorReplacementTexturePath) catch |err| {
+			std.log.err("Could not load material colors. Tried '{s}' and '{s}': {s}", .{colorTexturePath, colorReplacementTexturePath, @errorName(err)});
+			const defaultImage = graphics.Image.defaultImage;
+			self.colorPalette = allocator.alloc(Color, defaultImage.width);
+			for (0..defaultImage.width) |x| {
+				self.colorPalette[x] = defaultImage.getRGB(x, 0);
 			}
-			self.outlineColorLight = darken(self.colorPalette[self.colorPalette.len - 1], 0.7);
-			self.outlineColorShadow = darken(self.colorPalette[0], 0.5);
-		}
+			self.outlineColorShadow = defaultImage.getRGB(0, 1);
+			self.outlineColorLight = defaultImage.getRGB(1, 1);
+		};
 		const modifiersZon = zon.getChild("modifiers");
 		self.modifiers = allocator.alloc(Modifier, modifiersZon.toSlice().len);
 		for (modifiersZon.toSlice(), self.modifiers) |item, *modifier| {
@@ -294,6 +268,9 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	pub fn block(self: BaseItemIndex) ?u16 {
 		return itemList[@intFromEnum(self)].block;
 	}
+	pub fn displayBlockData(self: BaseItemIndex) ?u16 {
+		return itemList[@intFromEnum(self)].displayBlockData;
+	}
 	pub fn hasTag(self: BaseItemIndex, tag: Tag) bool {
 		return itemList[@intFromEnum(self)].hasTag(tag);
 	}
@@ -305,6 +282,9 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 	}
 	pub fn getTooltip(self: BaseItemIndex) []const u8 {
 		return itemList[@intFromEnum(self)].getTooltip();
+	}
+	pub fn getDisplayBlock(self: BaseItemIndex) ?Block {
+		return itemList[@intFromEnum(self)].getDisplayBlock();
 	}
 };
 
@@ -319,6 +299,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	stackSize: u16,
 	material: ?Material,
 	block: ?u16,
+	displayBlockData: ?u16,
 	foodValue: f32, // TODO: Effects.
 
 	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
@@ -344,6 +325,8 @@ pub const BaseItem = struct { // MARK: BaseItem
 		self.block = blk: {
 			break :blk blocks.getTypeById(zon.get([]const u8, "block") orelse break :blk null);
 		};
+		self.displayBlockData = zon.get(u16, "displayBlockData");
+
 		self.texture = null;
 		self.foodValue = zon.get(f32, "food") orelse 0;
 
@@ -378,8 +361,8 @@ pub const BaseItem = struct { // MARK: BaseItem
 	pub fn getTexture(self: *BaseItem) graphics.Texture {
 		if (self.texture == null) {
 			if (self.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
-				if (self.block) |blockType| {
-					self.texture = graphics.generateBlockTexture(blockType);
+				if (self.getDisplayBlock()) |block| {
+					self.texture = graphics.generateBlockTexture(block);
 				} else {
 					self.texture = graphics.Texture.init();
 					self.texture.?.generate(self.image);
@@ -401,6 +384,14 @@ pub const BaseItem = struct { // MARK: BaseItem
 			if (other == tag) return true;
 		}
 		return false;
+	}
+
+	pub fn getDisplayBlock(self: *const BaseItem) ?Block {
+		if (self.block) |blockType| {
+			const data = if (self.displayBlockData) |d| d else (Block{.typ = blockType, .data = 0}).mode().naturalStandard;
+			return .{.typ = blockType, .data = data};
+		}
+		return null;
 	}
 };
 
@@ -1381,8 +1372,8 @@ var proceduralItemTypeIdToIndex: std.StringHashMapUnmanaged(ProceduralItemTypeIn
 var reverseIndices: std.StringHashMapUnmanaged(BaseItemIndex) = .{};
 var modifiers: std.StringHashMapUnmanaged(*const Modifier.VTable) = .{};
 var modifierRestrictions: std.StringHashMapUnmanaged(*const ModifierRestriction.VTable) = .{};
-pub var itemList: [65536]BaseItem = undefined;
 pub var itemListSize: u16 = 0;
+pub var itemList: [65536]BaseItem = undefined;
 
 // Due to migrations multiple indices can map to the same item. This must be resolved during inventory loading using this map.
 var itemDeduplicationMap: [65536]BaseItemIndex = undefined;
