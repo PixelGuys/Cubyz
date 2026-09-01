@@ -1,0 +1,12 @@
+.{
+	.id = "cubyz:oak",
+	.tags = .{.oak},
+	.chance = 0.00005,
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.placeMode = .all,
+			.structure = "cubyz:rare/tree/oak",
+		},
+	},
+}
