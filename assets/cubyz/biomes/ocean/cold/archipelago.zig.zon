@@ -1,5 +1,5 @@
 .{
-	.chance = 0.1,
+	.chance = 1,
 	.properties = .{
 		.cold,
 		.ocean,
