@@ -42,6 +42,7 @@ fn discoverIpAddressFromNewThread() void {
 }
 
 fn invite() void {
+	ipAddressEntry.clear();
 	if (thread) |_thread| {
 		_thread.join();
 		thread = null;
@@ -50,7 +51,6 @@ fn invite() void {
 		if (err != error.AlreadyConnected) {
 			std.log.err("Cannot connect user: {s}", .{@errorName(err)});
 		}
-		ipAddressEntry.clear();
 		return;
 	};
 }
