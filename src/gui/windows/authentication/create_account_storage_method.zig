@@ -32,8 +32,8 @@ fn next(storageMethod: usize) void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(Label.init(.{0, 0}, 300, "Please select how you would like to store your Account Code", .left));
-	list.add(Button.initText(.{0, 0}, 300, "Password Manager (recommended)", .{.onAction = .initWithInt(next, @intFromEnum(StorageMethod.passwordManager))}));
 	list.add(Button.initText(.{0, 0}, 300, "Save as file", .{.onAction = .initWithInt(next, @intFromEnum(StorageMethod.file))}));
+	list.add(Button.initText(.{0, 0}, 300, "Password Manager (recommended)", .{.onAction = .initWithInt(next, @intFromEnum(StorageMethod.passwordManager))}));
 	list.add(Button.initText(.{0, 0}, 300, "Write it down yourself", .{.onAction = .initWithInt(next, @intFromEnum(StorageMethod.paper))}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
