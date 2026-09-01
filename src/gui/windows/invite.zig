@@ -50,6 +50,7 @@ fn invite() void {
 		if (err != error.AlreadyConnected) {
 			std.log.err("Cannot connect user: {s}", .{@errorName(err)});
 		}
+		ipAddressEntry.clear();
 		return;
 	};
 }
