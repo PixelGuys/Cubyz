@@ -149,6 +149,15 @@ pub fn makeModFeature(io: std.Io, step: *std.Build.Step, name: []const u8) !void
 		try featureList.append(step.owner.allocator, '\n');
 	}
 
+	try featureList.appendSlice(step.owner.allocator,
+		\\
+		\\const main = @import("main");
+		\\test "abc" {
+		\\  @setEvalBranchQuota(1000000);
+		\\  main.refAllDeclsRecursiveExceptCImports(@This());
+		\\}
+	);
+
 	const file_path = step.owner.fmt("mods/{s}.zig", .{name});
 	try std.Io.Dir.cwd().writeFile(io, .{.data = featureList.items, .sub_path = file_path});
 }
@@ -159,6 +168,15 @@ pub fn addModFeatureModule(b: *std.Build, exe: *std.Build.Step.Compile, name: []
 		.target = exe.root_module.resolved_target,
 		.optimize = exe.root_module.optimize,
 	});
+
+	if (exe.kind == .@"test") {
+		const exe_tests = b.addTest(.{
+			.root_module = module,
+			.test_runner = exe.test_runner,
+		});
+		const run_exe_tests = b.addRunArtifact(exe_tests);
+		exe.step.dependOn(&run_exe_tests.step);
+	}
 	module.addImport("main", exe.root_module);
 	exe.root_module.addImport(name, module);
 }
