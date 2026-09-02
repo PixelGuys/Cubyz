@@ -101,8 +101,6 @@ pub fn updateHovered(self: *TextInput, mousePosition: Vec2f) main.callbacks.Resu
 		const diff = self.textSize[1] - (self.maxHeight - 2*border);
 		self.scrollBar.scroll(-main.Window.scrollOffset*32/diff);
 		main.Window.scrollOffset = 0;
-	}
-	if (self.textSize[1] > self.maxHeight - 2*border) {
 		self.scrollBar.pos = Vec2f{self.size[0] - border - scrollBarWidth, border};
 		if (GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
 			if (self.scrollBar.updateHovered(mousePosition - self.pos) == .handled) return .handled;
