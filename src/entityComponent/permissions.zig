@@ -34,7 +34,7 @@ pub const server = struct {
 			if (audience != .disk) return .discard;
 			self.permissions.toBytes(writer);
 
-			writer.writeInt(u32, self.permissionGroups.count());
+			writer.writeVarInt(usize, self.permissionGroups.count());
 			var it = self.permissionGroups.keyIterator();
 			while (it.next()) |group| {
 				group.toBytes(writer);
@@ -99,7 +99,7 @@ pub const server = struct {
 		component.permissions = .init(main.globalAllocator);
 		component.permissions.fromBytes(reader) catch return error.UnreadableComponentData;
 		component.permissionGroups = .empty;
-		const len = reader.readInt(u32) catch return;
+		const len = reader.readVarInt(usize) catch return;
 		for (0..len) |_| {
 			const group = main.server.permission.Group.fromBytes(reader) catch |err| {
 				if (err == error.GroupNotFound) continue; // if the group is not found we just skip it.

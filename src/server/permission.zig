@@ -204,17 +204,6 @@ var groupsArena: NeverFailingArenaAllocator = undefined;
 pub const Group = enum(u32) { // MARK: Group
 	_,
 
-	pub fn addGroupFromBin(self: Group, data: []const u8) void {
-		var reader: main.utils.BinaryReader = .init(data);
-		const groupInstance = GroupInstance.fromBytes(groupsArena.allocator(), &reader) catch |err| {
-			std.log.err("Group with id {d} has invalid content skipping: {t}", .{@intFromEnum(self), err});
-			groups.append(null);
-			return;
-		};
-		groupNameToIdMap.put(groupsArena.allocator().allocator, groupInstance.name, self) catch unreachable;
-		groups.append(groupInstance);
-	}
-
 	pub fn createGroup(name: []const u8) error{AlreadyExists}!Group {
 		sync.threadContext.assertCorrectContext(.server);
 
@@ -237,18 +226,18 @@ pub const Group = enum(u32) { // MARK: Group
 		writer.writeEnum(main.server.permission.Group, self);
 	}
 
-	pub fn getGroupByName(name: []const u8) error{GroupNotFound}!Group {
+	pub fn getByName(name: []const u8) error{GroupNotFound}!Group {
 		sync.threadContext.assertCorrectContext(.server);
 		return groupNameToIdMap.get(name) orelse error.GroupNotFound;
 	}
 
-	fn getGroupInstance(self: Group) *GroupInstance {
+	fn getInstance(self: Group) *GroupInstance {
 		return groups.items[@intFromEnum(self)].?;
 	}
 
-	pub fn deleteGroup(self: Group, allocator: NeverFailingAllocator) bool {
+	pub fn delete(self: Group, allocator: NeverFailingAllocator) bool {
 		sync.threadContext.assertCorrectContext(.server);
-		std.debug.assert(groupNameToIdMap.remove(self.getGroupInstance().name));
+		std.debug.assert(groupNameToIdMap.remove(self.getInstance().name));
 		groups.items[@intFromEnum(self)] = null;
 
 		const path = allocator.print("saves/{s}/permission/{d}.group", .{main.server.world.?.path, @intFromEnum(self)});
@@ -260,17 +249,28 @@ pub const Group = enum(u32) { // MARK: Group
 	}
 
 	pub fn addPermission(self: Group, allocator: NeverFailingAllocator, listType: Permissions.ListType, permissionPath: []const u8) void {
-		self.getGroupInstance().addPermission(allocator, listType, permissionPath);
+		self.getInstance().addPermission(allocator, listType, permissionPath);
 	}
 
 	pub fn removePermission(self: Group, allocator: NeverFailingAllocator, listType: Permissions.ListType, permissionPath: []const u8) bool {
-		return self.getGroupInstance().removePermission(allocator, listType, permissionPath);
+		return self.getInstance().removePermission(allocator, listType, permissionPath);
 	}
 
 	pub fn hasPermission(self: Group, permissionPath: []const u8) Permissions.PermissionResult {
-		return self.getGroupInstance().hasPermission(permissionPath);
+		return self.getInstance().hasPermission(permissionPath);
 	}
 };
+
+fn addGroupFromBin(group: Group, data: []const u8) void {
+	var reader: main.utils.BinaryReader = .init(data);
+	const groupInstance = GroupInstance.fromBytes(groupsArena.allocator(), &reader) catch |err| {
+		std.log.err("Group with id {d} has invalid content skipping: {t}", .{@intFromEnum(group), err});
+		groups.append(null);
+		return;
+	};
+	groupNameToIdMap.put(groupsArena.allocator().allocator, groupInstance.name, group) catch unreachable;
+	groups.append(groupInstance);
+}
 
 pub fn loadGroups(dir: main.files.Dir) !void {
 	const metaDataZon: ZonElement = dir.readToZon(main.stackAllocator, "metadata.zon") catch .initObject(main.stackAllocator);
@@ -289,7 +289,7 @@ pub fn loadGroups(dir: main.files.Dir) !void {
 			continue;
 		}
 		const data = try dir.read(main.stackAllocator, path);
-		Group.addGroupFromBin(@enumFromInt(id), data);
+		addGroupFromBin(@enumFromInt(id), data);
 	}
 }
 
@@ -400,7 +400,7 @@ test "groupCreation" {
 	defer deinit();
 
 	const id = try Group.createGroup("test");
-	try std.testing.expectEqual(id, try Group.getGroupByName("test"));
+	try std.testing.expectEqual(id, try Group.getByName("test"));
 }
 
 test "groupPermissions" {
@@ -426,14 +426,14 @@ test "invalidGroup" {
 	defer deinit();
 
 	_ = try Group.createGroup("test");
-	try std.testing.expectError(error.GroupNotFound, Group.getGroupByName("root"));
+	try std.testing.expectError(error.GroupNotFound, Group.getByName("root"));
 }
 
 test "invalidGroupEmptyGroups" {
 	init(main.heap.testingAllocator);
 	defer deinit();
 
-	try std.testing.expectError(error.GroupNotFound, Group.getGroupByName("root"));
+	try std.testing.expectError(error.GroupNotFound, Group.getByName("root"));
 }
 
 test "invalidGroupCreation" {
@@ -480,7 +480,7 @@ test "permissionGroupToFromBytes" {
 
 	var writer: main.utils.BinaryWriter = .init(main.heap.testingAllocator);
 	defer writer.deinit();
-	group.getGroupInstance().toBytes(&writer);
+	group.getInstance().toBytes(&writer);
 
 	var reader: main.utils.BinaryReader = .init(writer.data.items);
 	var testGroup: *GroupInstance = try .fromBytes(main.heap.testingAllocator, &reader);
@@ -490,6 +490,6 @@ test "permissionGroupToFromBytes" {
 
 	var it = testGroup.permissions.whitelist.map.keyIterator();
 	while (it.next()) |item| {
-		try std.testing.expectEqual(true, group.getGroupInstance().permissions.whitelist.map.contains(item.*));
+		try std.testing.expectEqual(true, group.getInstance().permissions.whitelist.map.contains(item.*));
 	}
 }
