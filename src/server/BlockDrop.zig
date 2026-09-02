@@ -8,7 +8,6 @@ const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const blocks = main.blocks;
 const Block = blocks.Block;
-const ModelIndex = main.models.ModelIndex;
 
 itemStacks: []const items.ItemStack,
 chance: f32,
