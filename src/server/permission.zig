@@ -261,6 +261,20 @@ pub const Group = enum(u32) { // MARK: Group
 	}
 };
 
+pub fn init(allocator: NeverFailingAllocator) void {
+	sync.threadContext.assertCorrectContext(.server);
+	groupsArena = .init(allocator);
+	groups = .init(groupsArena.allocator());
+	groupNameToIdMap = .{};
+}
+
+pub fn deinit() void {
+	sync.threadContext.assertCorrectContext(.server);
+	groupsArena.deinit();
+	groups = undefined;
+	groupNameToIdMap = .{};
+}
+
 fn addGroupFromBin(group: Group, data: []const u8) void {
 	var reader: main.utils.BinaryReader = .init(data);
 	const groupInstance = GroupInstance.fromBytes(groupsArena.allocator(), &reader) catch |err| {
@@ -301,20 +315,6 @@ fn saveMetaData(allocator: NeverFailingAllocator) !void {
 	defer metadataZon.deinit(main.stackAllocator);
 	metadataZon.put("currentId", @as(u32, @truncate(groups.items.len)));
 	try main.files.cubyzDir().writeZon(metadatPath, metadataZon);
-}
-
-pub fn init(allocator: NeverFailingAllocator) void {
-	sync.threadContext.assertCorrectContext(.server);
-	groupsArena = .init(allocator);
-	groups = .init(groupsArena.allocator());
-	groupNameToIdMap = .{};
-}
-
-pub fn deinit() void {
-	sync.threadContext.assertCorrectContext(.server);
-	groupsArena.deinit();
-	groups = undefined;
-	groupNameToIdMap = .{};
 }
 
 // ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
