@@ -14,26 +14,13 @@ const BlockDrop = main.server.BlockDrop;
 
 decayReplacement: blocks.Block,
 prevention: []const main.Tag,
-blockDrops: []const BlockDrop,
 
-pub fn init(zon: ZonElement, creator: main.callbacks.Creator) ?*@This() {
-	const block = switch (creator) {
-		.block => |b| b,
-		// TODO: Add when a new creator type exists
-		// else => {
-		// std.log.err("decay callback can only be used for blocks", .{});
-		// return null;
-		// },
-	};
+pub fn init(zon: ZonElement, _: main.callbacks.Creator) ?*@This() {
 	const result = main.worldArena.create(@This());
 	// replacement
 	if (zon.get([]const u8, "replacement")) |blockname| {
 		result.decayReplacement = main.blocks.parseBlock(blockname);
 	} else result.decayReplacement = main.blocks.Block.air;
-	// custom drop
-	if (zon.getChildOrNull("drops")) |_| {
-		result.blockDrops = blocks.loadBlockDrop(block.id(), zon);
-	} else result.blockDrops = block.blockDrops();
 	// prevention
 	result.prevention = &.{};
 	if (zon.getChildOrNull("prevention")) |tagNames| {
