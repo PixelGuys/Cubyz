@@ -57,7 +57,7 @@ const SelectionCapabilities = union(enum) {
 		toolEffective: bool = false,
 
 		pub fn allowsSelectionByItem(self: @This(), block: Block, item: Item) bool {
-			// Hardcoded cases
+			// Hardcoded cases should come first
 			if (item == .baseItem) {
 				const baseItem = item.baseItem;
 				if (std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) return true;
