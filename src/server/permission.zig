@@ -113,7 +113,7 @@ const GroupInstance = struct { // MARK: GroupInstance
 	permissions: Permissions,
 	name: []const u8,
 
-	fn init(allocator: NeverFailingAllocator, name: []const u8) *GroupInstance {
+	fn init(allocator: NeverFailingAllocator, id: Group, name: []const u8) *GroupInstance {
 		sync.threadContext.assertCorrectContext(.server);
 		saveMetaData(allocator) catch |err| {
 			std.log.err("Couldn't save permission groups metadata: {t}", .{err});
@@ -123,7 +123,7 @@ const GroupInstance = struct { // MARK: GroupInstance
 			.permissions = .init(allocator),
 			.name = name,
 		};
-		self.save(allocator);
+		self.save(allocator, id);
 		return self;
 	}
 
@@ -156,13 +156,13 @@ const GroupInstance = struct { // MARK: GroupInstance
 		self.permissions.toBytes(writer);
 	}
 
-	fn save(self: *GroupInstance, allocator: NeverFailingAllocator) void {
+	fn save(self: *GroupInstance, allocator: NeverFailingAllocator, id: Group) void {
 		if (builtin.is_test) return;
 		sync.threadContext.assertCorrectContext(.server);
-		const path = allocator.print("saves/{s}/permission/{d}.group", .{main.server.world.?.path, self.id});
+		const path = allocator.print("saves/{s}/permission/{d}.group", .{main.server.world.?.path, @intFromEnum(id)});
 		defer allocator.free(path);
 
-		const writer: main.utils.BinaryWriter = .init(allocator);
+		var writer: main.utils.BinaryWriter = .init(allocator);
 		defer writer.deinit();
 
 		self.toBytes(&writer);
@@ -171,16 +171,16 @@ const GroupInstance = struct { // MARK: GroupInstance
 		};
 	}
 
-	pub fn addPermission(self: *GroupInstance, allocator: NeverFailingAllocator, listType: Permissions.ListType, permissionPath: []const u8) void {
+	pub fn addPermission(self: *GroupInstance, allocator: NeverFailingAllocator, id: Group, listType: Permissions.ListType, permissionPath: []const u8) void {
 		sync.threadContext.assertCorrectContext(.server);
 		self.permissions.addPermission(listType, permissionPath);
-		self.save(allocator);
+		self.save(allocator, id);
 	}
 
-	pub fn removePermission(self: *GroupInstance, allocator: NeverFailingAllocator, listType: Permissions.ListType, permissionPath: []const u8) bool {
+	pub fn removePermission(self: *GroupInstance, allocator: NeverFailingAllocator, id: Group, listType: Permissions.ListType, permissionPath: []const u8) bool {
 		sync.threadContext.assertCorrectContext(.server);
 		const result = self.permissions.removePermission(listType, permissionPath);
-		if (result) self.save(allocator);
+		if (result) self.save(allocator, id);
 		return result;
 	}
 
@@ -201,6 +201,11 @@ var groupNameToIdMap: std.StringHashMapUnmanaged(Group) = .{};
 
 var groupsArena: NeverFailingArenaAllocator = undefined;
 
+/// Wrapper for permission groups.
+/// Creation of this via @enumFromInt should only be done if you are sure the group exists. The safer way is to go over one of the these functions:
+/// - fromBytes
+/// - getByName
+/// - getById (this does @enumFromInt just with a safety check)
 pub const Group = enum(u32) { // MARK: Group
 	_,
 
@@ -212,7 +217,7 @@ pub const Group = enum(u32) { // MARK: Group
 
 		result.key_ptr.* = groupsArena.allocator().dupe(u8, name);
 		result.value_ptr.* = @enumFromInt(groups.items.len);
-		groups.append(GroupInstance.init(groupsArena.allocator(), result.key_ptr.*));
+		groups.append(GroupInstance.init(groupsArena.allocator(), result.value_ptr.*, result.key_ptr.*));
 		return result.value_ptr.*;
 	}
 
@@ -231,17 +236,23 @@ pub const Group = enum(u32) { // MARK: Group
 		return groupNameToIdMap.get(name) orelse error.GroupNotFound;
 	}
 
+	pub fn getById(id: u32) error{GroupNotFound}!Group {
+		sync.threadContext.assertCorrectContext(.server);
+		if (groups.items[id] == null) return error.GroupNotFound;
+		return @enumFromInt(id);
+	}
+
 	fn getInstance(self: Group) *GroupInstance {
 		return groups.items[@intFromEnum(self)].?;
 	}
 
-	pub fn delete(self: Group, allocator: NeverFailingAllocator) bool {
+	pub fn delete(self: Group) bool {
 		sync.threadContext.assertCorrectContext(.server);
 		std.debug.assert(groupNameToIdMap.remove(self.getInstance().name));
 		groups.items[@intFromEnum(self)] = null;
 
-		const path = allocator.print("saves/{s}/permission/{d}.group", .{main.server.world.?.path, @intFromEnum(self)});
-		defer allocator.free(path);
+		const path = main.stackAllocator.print("saves/{s}/permission/{d}.group", .{main.server.world.?.path, @intFromEnum(self)});
+		defer main.stackAllocator.free(path);
 		main.files.cubyzDir().deleteFile(path) catch |err| {
 			std.log.err("Couldn't delete group file even though it exits: {t}", .{err});
 		};
@@ -249,15 +260,19 @@ pub const Group = enum(u32) { // MARK: Group
 	}
 
 	pub fn addPermission(self: Group, allocator: NeverFailingAllocator, listType: Permissions.ListType, permissionPath: []const u8) void {
-		self.getInstance().addPermission(allocator, listType, permissionPath);
+		self.getInstance().addPermission(allocator, self, listType, permissionPath);
 	}
 
 	pub fn removePermission(self: Group, allocator: NeverFailingAllocator, listType: Permissions.ListType, permissionPath: []const u8) bool {
-		return self.getInstance().removePermission(allocator, listType, permissionPath);
+		return self.getInstance().removePermission(allocator, self, listType, permissionPath);
 	}
 
 	pub fn hasPermission(self: Group, permissionPath: []const u8) Permissions.PermissionResult {
 		return self.getInstance().hasPermission(permissionPath);
+	}
+
+	pub fn format(self: Group, writer: *std.Io.Writer) std.Io.Writer.Error!void {
+		try writer.print("{s}", .{self.getInstance().name});
 	}
 };
 
