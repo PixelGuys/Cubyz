@@ -281,7 +281,7 @@ pub const PatternExpression = struct {
 	}
 };
 
-const PermissionPath = struct {
+pub const PermissionPath = struct {
 	path: []const u8,
 
 	pub fn parse(_: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!PermissionPath {
