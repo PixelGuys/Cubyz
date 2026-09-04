@@ -36,8 +36,6 @@ pub const Args = union(enum) {
 	},
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/group"});
-
 pub fn execute(args: Args, source: Source) void {
 	switch (args) {
 		.@"/group <create> <groupName>" => |params| {
