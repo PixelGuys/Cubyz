@@ -433,7 +433,7 @@ const WasmImpl = struct {
 /// Modified version of linux's futex and Go's sema to implement userspace wait queues with pthread:
 /// https://code.woboq.org/linux/linux/kernel/futex.c.html
 /// https://go.dev/src/runtime/sema.go
-const PosixImpl = struct {
+const PosixImpl = struct { // MARK: PosixImpl
 	const Event = struct {
 		cond: c.pthread_cond_t,
 		mutex: c.pthread_mutex_t,
@@ -559,7 +559,7 @@ const PosixImpl = struct {
 		}
 	};
 
-	const WaitQueue = struct {
+	const WaitQueue = struct { // MARK: WaitQueue
 		fn insert(treap: *Treap, address: usize, waiter: *Waiter) void {
 			// prepare the waiter to be inserted.
 			waiter.next = null;

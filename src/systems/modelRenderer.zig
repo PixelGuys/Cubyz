@@ -29,7 +29,7 @@ const entity = main.entity;
 const c = @import("c");
 
 // ############################# Client only stuff ################################
-pub const client = struct {
+pub const client = struct { // MARK: client
 	var pipeline: graphics.Pipeline = undefined;
 	pub var nodeBuffer: graphics.LargeBuffer(Mat4f) = undefined;
 
@@ -48,10 +48,11 @@ pub const client = struct {
 			"",
 			&uniforms,
 			main.entityModel.EntityModel.Vertex,
-			&.{},
-			.{},
-			.{.depthTest = true},
-			.{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
+			.{
+				.rasterState = .{},
+				.depthStencilState = .{.depthTest = true},
+				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
+			},
 		);
 
 		nodeBuffer.init(main.globalAllocator, 1 << 20, 15);

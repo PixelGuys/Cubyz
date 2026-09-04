@@ -28,30 +28,11 @@ const BlockTouchCallback = main.callbacks.BlockTouchCallback;
 const sbb = main.server.terrain.sbb;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
+const BlockDrop = main.server.BlockDrop;
 
 const c = @import("c");
 
 pub const maxBlockCount: usize = 65536; // 16 bit limit
-
-pub const BlockDrop = struct {
-	items: []const items.ItemStack,
-	chance: f32,
-	forbiddenToolTags: []Tag,
-	allowedToolTags: ?[]Tag = null,
-
-	pub fn isDroppedWhenBrokenWithItem(self: BlockDrop, item: Item) bool {
-		if (item != .proceduralItem) return self.allowedToolTags == null;
-
-		const proceduralItem = item.proceduralItem;
-		for (self.forbiddenToolTags) |tag| if (proceduralItem.hasTag(tag)) return false;
-		if (self.allowedToolTags) |tags| {
-			for (tags) |tag| if (proceduralItem.hasTag(tag)) return true;
-			return false;
-		}
-
-		return true;
-	}
-};
 
 /// Ores can be found underground in veins.
 /// TODO: Add support for non-stone ores.
@@ -271,7 +252,7 @@ pub fn loadBlockDrop(blockId: []const u8, zon: ZonElement) []const BlockDrop {
 		}
 
 		blockDrops[i] = .{
-			.items = resultItems.items,
+			.itemStacks = resultItems.items,
 			.chance = blockDrop.get(f32, "chance") orelse 1,
 			.forbiddenToolTags = Tag.loadTagsFromZon(main.worldArena, blockDrop.getChild("forbiddenToolTags")),
 			.allowedToolTags = allowedToolTags,
