@@ -141,6 +141,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		const properties = .{
 			zon.get(Vec3d, "pos") orelse .{0, 0, 0},
 			zon.get(Vec3d, "vel") orelse .{0, 0, 0},
+
 			random.nextFloatVector(3, &main.seed)*@as(Vec3f, @splat(2*std.math.pi)),
 			items.ItemStack{.item = item, .amount = zon.get(u16, "amount") orelse 1},
 			zon.get(i32, "despawnTime") orelse 60,
@@ -255,8 +256,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			const updateData = list.toStringEfficient(main.stackAllocator, &.{});
 			defer main.stackAllocator.free(updateData);
 
-			const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+			const userList = main.server.getUserList(main.stackAllocator);
+			defer main.stackAllocator.free(userList);
 			for (userList) |user| {
 				main.network.protocols.entity.send(user.conn, updateData);
 			}
@@ -287,8 +288,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			const updateData = list.toStringEfficient(main.stackAllocator, &.{});
 			defer main.stackAllocator.free(updateData);
 
-			const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+			const userList = main.server.getUserList(main.stackAllocator);
+			defer main.stackAllocator.free(userList);
 			for (userList) |user| {
 				main.network.protocols.entity.send(user.conn, updateData);
 			}
@@ -343,8 +344,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		const updateData = list.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(updateData);
 
-		const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+		const userList = main.server.getUserList(main.stackAllocator);
+		defer main.stackAllocator.free(userList);
 		for (userList) |user| {
 			main.network.protocols.entity.send(user.conn, updateData);
 		}
@@ -507,9 +508,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	var itemPipeline: graphics.Pipeline = undefined;
 	var itemUniforms: struct {
-		projectionMatrix: c_int,
 		modelMatrix: c_int,
-		viewMatrix: c_int,
 		ambientLight: c_int,
 		modelIndex: c_int,
 		block: c_int,
@@ -548,8 +547,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			};
 			if (self.item == .baseItem and self.item.baseItem.block() != null and self.item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
 				// Find sizes and free index:
-				var block = blocks.Block{.typ = self.item.baseItem.block().?, .data = 0};
-				block.data = block.mode().naturalStandard;
+				const block = self.item.baseItem.getDisplayBlock().?;
 				const model = blocks.meshes.model(block).model();
 				var data: main.ListManaged(u32) = .init(main.stackAllocator);
 				defer data.deinit();
@@ -617,10 +615,11 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			"",
 			&itemUniforms,
 			graphics.VertexArray.EmptyVertex,
-			&.{},
-			.{},
-			.{.depthTest = true},
-			.{.attachments = &.{.alphaBlending}},
+			.{
+				.rasterState = .{},
+				.depthStencilState = .{.depthTest = true},
+				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
+			},
 		);
 		itemModelSSBO = .init();
 		itemModelSSBO.bufferData(i32, &[3]i32{1, 1, 1});
@@ -648,12 +647,10 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		return voxelModels.findOrCreate(compareObject, ItemVoxelModel.init, null);
 	}
 
-	fn bindCommonUniforms(projMatrix: Mat4f, viewMatrix: Mat4f, ambientLight: Vec3f) void {
+	fn bindCommonUniforms(ambientLight: Vec3f) void {
 		itemPipeline.bind(null);
 		c.glUniform1f(itemUniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
-		c.glUniformMatrix4fv(itemUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
-		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniform1f(itemUniforms.contrast, 0.12);
 		var depthRange: [2]f32 = undefined;
 		c.glGetFloatv(c.GL_DEPTH_RANGE, &depthRange);
@@ -677,10 +674,10 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		c.glDrawElements(c.GL_TRIANGLES, vertices, c.GL_UNSIGNED_INT, null);
 	}
 
-	pub fn renderItemDrops(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
+	pub fn renderItemDrops(ambientLight: Vec3f, playerPos: Vec3d) void {
 		game.world.?.itemDrops.updateInterpolationData();
 
-		bindCommonUniforms(projMatrix, game.camera.viewMatrix, ambientLight);
+		bindCommonUniforms(ambientLight);
 		const itemDrops = &game.world.?.itemDrops.super;
 		for (itemDrops.indices[0..itemDrops.size]) |i| {
 			const item = itemDrops.list.items(.itemStack)[i].item;
@@ -731,9 +728,16 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	pub fn renderDisplayItems(ambientLight: Vec3f, playerPos: Vec3d) void {
 		if (!ItemDisplayManager.showItem) return;
 
-		const projMatrix: Mat4f = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(main.renderer.lastWidth))/@as(f32, @floatFromInt(main.renderer.lastHeight)), 0.01, 3);
-		const viewMatrix = Mat4f.identity();
-		bindCommonUniforms(projMatrix, viewMatrix, ambientLight);
+		const displayItemUbo = graphics.frame_uniforms.StaticUbo.init(.{
+			.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(main.renderer.lastWidth))/@as(f32, @floatFromInt(main.renderer.lastHeight)), 0.01, 3).toGl(),
+			.viewMatrix = Mat4f.identity().toGl(),
+			.playerPositionInteger = @splat(0),
+			.playerPositionFraction = @splat(0),
+		});
+		defer displayItemUbo.deinit();
+		displayItemUbo.bind();
+		defer displayItemUbo.unbind();
+		bindCommonUniforms(ambientLight);
 
 		const item = game.Player.inventory.getItem(game.Player.selectedSlot);
 		if (item != .null) {

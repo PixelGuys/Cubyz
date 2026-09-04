@@ -16,7 +16,6 @@ const Label = GuiComponent.Label;
 const Button = @This();
 
 const border: f32 = 3;
-const fontSize: f32 = 16;
 
 const Textures = struct {
 	texture: Texture,
@@ -25,10 +24,10 @@ const Textures = struct {
 
 	pub fn init(basePath: []const u8) Textures {
 		var self: Textures = undefined;
-		const buttonPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}.png", .{basePath}) catch unreachable;
+		const buttonPath = main.stackAllocator.print("{s}.png", .{basePath});
 		defer main.stackAllocator.free(buttonPath);
 		self.texture = Texture.initFromFile(buttonPath);
-		const outlinePath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}_outline.png", .{basePath}) catch unreachable;
+		const outlinePath = main.stackAllocator.print("{s}_outline.png", .{basePath});
 		defer main.stackAllocator.free(outlinePath);
 		self.outlineTexture = Texture.initFromFile(outlinePath);
 		self.outlineTextureSize = @floatFromInt(self.outlineTexture.size());
@@ -68,10 +67,11 @@ pub fn globalInit() void {
 		"",
 		&buttonUniforms,
 		graphics.draw.SimpleVertex2D,
-		&.{},
-		.{.cullMode = .none},
-		.{.depthTest = false, .depthWrite = false},
-		.{.attachments = &.{.alphaBlending}},
+		.{
+			.rasterState = .{.cullMode = .none},
+			.depthStencilState = .{.depthTest = false, .depthWrite = false},
+			.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+		},
 	);
 	normalTextures = Textures.init("assets/cubyz/ui/button");
 	hoveredTextures = Textures.init("assets/cubyz/ui/button_hovered");
@@ -85,8 +85,6 @@ pub fn globalDeinit() void {
 	hoveredTextures.deinit();
 	pressedTextures.deinit();
 }
-
-fn defaultOnAction(_: usize) void {}
 
 const Options = struct {
 	onAction: main.callbacks.SimpleCallback = .{},
@@ -106,8 +104,8 @@ pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *But
 	return self;
 }
 
-pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, hasShadow: bool, options: Options) *Button {
-	const icon = Icon.init(undefined, iconSize, iconTexture, hasShadow);
+pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, options: Options) *Button {
+	const icon = Icon.init(undefined, iconSize, iconTexture);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,

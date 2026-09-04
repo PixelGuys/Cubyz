@@ -274,8 +274,8 @@ pub const server = struct { // MARK: server
 						const workbenchInventory = getInventoryFromSource(callbackSource) orelse @panic("Could not find workbench Inventory");
 						const playerInventory = server.getInventoryFromSource(.{.playerInventory = callbackSource.workbench.playerId}) orelse @panic("Could not find player Inventory");
 
-						const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-						defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+						const userList = main.server.getUserList(main.stackAllocator);
+						defer main.stackAllocator.free(userList);
 						for (userList) |callbackUser| {
 							if (callbackUser.id == callbackSource.workbench.playerId) {
 								sync.server.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, callbackUser.player().pos)}, null);
@@ -453,6 +453,16 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		main.sync.client.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = dest.super, .slot = destSlot}, .source = .{.inv = carried.super, .slot = 0}}});
 	}
 
+	pub fn swap(source: ClientInventory, sourceSlot: u32, dest: ClientInventory, destSlot: u32) void {
+		if (source.type == .creative) {
+			dest.fillFromCreative(destSlot, source.getItem(sourceSlot));
+			return;
+		}
+		std.debug.assert(source.type == .serverShared);
+		std.debug.assert(dest.type == .serverShared);
+		main.sync.client.executeCommand(.{.swap = .{.dest = .{.inv = dest.super, .slot = destSlot}, .source = .{.inv = source.super, .slot = sourceSlot}}});
+	}
+
 	pub fn deposit(dest: ClientInventory, destSlot: u32, source: ClientInventory, sourceSlot: u32, amount: u16) void {
 		if (source.type == .creative) {
 			std.debug.assert(dest.type == .serverShared);
@@ -494,6 +504,11 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 	pub fn dropStack(source: ClientInventory, sourceSlot: u32) void {
 		if (source.type != .serverShared) return;
 		main.sync.client.executeCommand(.{.drop = .{.source = .{.inv = source.super, .slot = sourceSlot}}});
+	}
+
+	pub fn depositToBag(source: ClientInventory, sourseSlot: u32, amount: u16) void {
+		std.debug.assert(source.type == .serverShared);
+		main.sync.client.executeCommand(.{.moveToPlayerBag = .{.amount = amount, .source = .{.inv = source.super, .slot = sourseSlot}}});
 	}
 
 	pub fn dropOne(source: ClientInventory, sourceSlot: u32) void {

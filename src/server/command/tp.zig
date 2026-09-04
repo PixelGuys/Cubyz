@@ -2,38 +2,60 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
-const User = main.server.User;
+const Source = command.Source;
 
 pub const description = "Teleport to location.";
 pub const usage =
 	\\/tp <biome>
+	\\/tp @<sourcePlayerIndex> <biome>
 	\\/tp <x> <y> <z>
-	\\/tp @<playerIndex>
+	\\/tp @<sourcePlayerIndex> <x> <y> <z>
+	\\/tp @<destinationPlayerIndex>
+	\\/tp @<sourcePlayerIndex> @<destinationPlayerIndex>
+	\\/tp <x> <y> <z> <yaw> <pitch>
+	\\/tp @<sourcePlayerIndex> <x> <y> <z> <yaw> <pitch>
 ;
 
-const Args = union(enum) {
-	@"/tp <biome>": struct { biome: command.BiomeId },
-	@"/tp <x> <y> <z>": struct {
+pub const Args = union(enum) {
+	@"/tp <sourcePlayerIndex> <biome>": struct {
+		sourcePlayerIndex: ?command.PlayerIndex,
+		biome: command.BiomeId,
+	},
+	@"/tp <sourcePlayerIndex> <x> <y> <z>": struct {
+		sourcePlayerIndex: ?command.PlayerIndex,
 		x: command.Coordinate,
 		y: command.Coordinate,
 		z: command.Coordinate,
 	},
-	@"/tp <playerIndex>": struct { playerIndex: command.PlayerIndex },
+	@"/tp <destinationPlayerIndex>": struct {
+		destinationPlayerIndex: command.PlayerIndex,
+	},
+	@"/tp <sourcePlayerIndex> <destinationPlayerIndex>": struct {
+		sourcePlayerIndex: command.PlayerIndex,
+		destinationPlayerIndex: command.PlayerIndex,
+	},
+	@"/tp <sourcePlayerIndex> <x> <y> <z> <yaw> <pitch>": struct {
+		sourcePlayerIndex: ?command.PlayerIndex,
+		x: command.Coordinate,
+		y: command.Coordinate,
+		z: command.Coordinate,
+		yaw: command.Rotation,
+		pitch: command.Rotation,
+	},
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/tp"});
-
-pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
-		return;
+pub fn execute(args: Args, source: Source) void {
+	const target = switch (args) {
+		inline .@"/tp <sourcePlayerIndex> <biome>",
+		.@"/tp <sourcePlayerIndex> <x> <y> <z>",
+		.@"/tp <sourcePlayerIndex> <x> <y> <z> <yaw> <pitch>",
+		.@"/tp <sourcePlayerIndex> <destinationPlayerIndex>",
+		=> |params| command.Target.fromPlayerIndex(params.sourcePlayerIndex, source) catch return,
+		else => command.Target.fromPlayerIndex(null, source) catch return,
 	};
-
-	const pos: main.vec.Vec3d = blk: switch (result) {
-		.@"/tp <biome>" => |b| {
+	const pos: main.vec.Vec3d = blk: switch (args) {
+		.@"/tp <sourcePlayerIndex> <biome>" => |b| {
+			const user = target.user;
 			const biome = b.biome.biome;
 			if (biome.isCave) {
 				source.sendMessage("#ff0000Teleport to biome is only available for surface biomes.", .{});
@@ -43,8 +65,8 @@ pub fn execute(args: []const u8, source: *User) void {
 			const mapSize: i32 = main.server.terrain.ClimateMap.ClimateMapFragment.mapSize;
 			// Explore chunks in a spiral from the center:
 			const spiralLen = 2*radius/mapSize*2*radius/mapSize;
-			var wx = source.lastPos[0] & ~(mapSize - 1);
-			var wy = source.lastPos[1] & ~(mapSize - 1);
+			var wx = user.lastPos[0] & ~(mapSize - 1);
+			var wy = user.lastPos[1] & ~(mapSize - 1);
 			var dirChanges: usize = 1;
 			var dir: main.chunk.Neighbor = .dirNegX;
 			var stepsRemaining: usize = 1;
@@ -57,7 +79,7 @@ pub fn execute(args: []const u8, source: *User) void {
 					if (sample.biome == biome) {
 						const z = sample.height + sample.hills + sample.mountains + sample.roughness;
 						const biomeSize = main.server.terrain.SurfaceMap.MapFragment.biomeSize;
-						main.network.protocols.genericUpdate.sendTPCoordinates(source.conn, .{@floatFromInt(wx + x*biomeSize + biomeSize/2), @floatFromInt(wy + y*biomeSize + biomeSize/2), @floatCast(z + biomeSize/2)});
+						main.network.protocols.genericUpdate.sendTPCoordinates(user.conn, .{@floatFromInt(wx + x*biomeSize + biomeSize/2), @floatFromInt(wy + y*biomeSize + biomeSize/2), @floatCast(z + biomeSize/2)});
 						return;
 					}
 				}
@@ -85,14 +107,18 @@ pub fn execute(args: []const u8, source: *User) void {
 			source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.", .{});
 			return;
 		},
-		.@"/tp <x> <y> <z>" => |pos| {
-			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source);
+		.@"/tp <sourcePlayerIndex> <x> <y> <z>" => |pos| {
+			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source) catch return;
 		},
-		.@"/tp <playerIndex>" => |index| {
-			const target = command.Target.fromPlayerIndex(index.playerIndex, source) catch return;
-			defer target.deinit();
-			break :blk target.user.player().pos;
+		.@"/tp <sourcePlayerIndex> <x> <y> <z> <yaw> <pitch>" => |pos| {
+			main.sync.server.sendSyncOperation(.{.rotation = .{.target = target.user, .rotation = command.resolveRotation(pos.yaw, pos.pitch, source) catch return}}, target.user);
+			break :blk command.resolveCoordinates(pos.x, pos.y, pos.z, source) catch return;
+		},
+		inline .@"/tp <destinationPlayerIndex>", .@"/tp <sourcePlayerIndex> <destinationPlayerIndex>" => |index| {
+			const dest = command.Target.fromPlayerIndex(index.destinationPlayerIndex, source) catch return;
+			break :blk dest.user.player().pos;
 		},
 	};
-	main.network.protocols.genericUpdate.sendTPCoordinates(source.conn, pos);
+
+	if (!std.meta.eql(target.user.player().pos, pos)) main.network.protocols.genericUpdate.sendTPCoordinates(target.user.conn, pos);
 }

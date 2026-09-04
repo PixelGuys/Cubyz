@@ -61,6 +61,31 @@ pub fn onReceive(conn: *Connection, protocolIndex: u8, data: []const u8) !void {
 	_ = bytesReceived[protocolIndex].fetchAdd(data.len, .monotonic);
 }
 
+pub const reload = struct { // MARK: reload
+	pub const id: u8 = 0;
+
+	pub fn informClientOfRestart(conn: *Connection) void {
+		var writer = utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
+
+		writer.writeInt(u32, conn.restartCounter);
+		writer.writeEnum(main.server.User.State, conn.user.?.state);
+
+		conn.send(.secure, id, writer.data.items);
+		conn.send(.lossy, id, writer.data.items);
+		conn.send(.slow, id, writer.data.items);
+	}
+	pub fn informServerOfRestart(conn: *Connection) void {
+		var writer = utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
+
+		writer.writeInt(u32, conn.restartCounter);
+		conn.send(.secure, id, writer.data.items);
+		conn.send(.lossy, id, writer.data.items);
+		conn.send(.slow, id, writer.data.items);
+	}
+};
+
 pub const handShake = struct { // MARK: handShake
 	pub const id: u8 = 1;
 	var assetsLoadedCondition: main.utils.Condition = .{};
@@ -72,7 +97,7 @@ pub const handShake = struct { // MARK: handShake
 		if (@intFromEnum(conn.handShakeState.load(.monotonic)) < @intFromEnum(newState)) {
 			conn.handShakeState.store(newState, .monotonic);
 			switch (newState) {
-				.userData, .signatureResponse => return error.InvalidSide,
+				.userData, .signatureResponse, .reload => return error.InvalidSide,
 				.signatureRequest => {
 					const signature1Len = try reader.readVarInt(usize);
 					const signature1 = try reader.readSlice(signature1Len);
@@ -144,7 +169,7 @@ pub const handShake = struct { // MARK: handShake
 
 					if (main.server.world.?.mode != .singleplayer) {
 						const keys = zon.getChild("keys");
-						try conn.user.?.identifyFromKeysAndName(name, keys);
+						try conn.user.?.identifyFromKeysAndName(name, keys, main.server.world.?.settings.whitelistEnabled.load(.monotonic));
 
 						var writer: utils.BinaryWriter = .init(main.stackAllocator);
 						defer writer.deinit();
@@ -164,13 +189,18 @@ pub const handShake = struct { // MARK: handShake
 						continue :stateSwitch .signatureResponse;
 					}
 				},
-				.signatureResponse => {
-					if (main.server.world.?.mode != .singleplayer) {
-						try conn.user.?.verifySignatures(reader);
+				.signatureResponse, .reload => {
+					if (newState != .reload) {
+						if (main.server.world.?.mode != .singleplayer) {
+							try conn.user.?.verifySignatures(reader);
+						}
+						conn.user.?.state = .connectedVerified;
+					} else {
+						// check if player is attempting to reload without logging in (or in an otherwise unexpected state).
+						if (conn.user.?.state != .awaitingReloadVerified) return error.KeysNotVerified;
 					}
-
 					{
-						const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.path}) catch unreachable;
+						const path = main.stackAllocator.print("saves/{s}/assets/", .{main.server.world.?.path});
 						defer main.stackAllocator.free(path);
 						var dir = try main.files.cubyzDir().openIterableDir(path);
 						defer dir.close();
@@ -215,30 +245,44 @@ pub const handShake = struct { // MARK: handShake
 	}
 
 	pub fn clientSide(conn: *Connection, name: []const u8) !ZonElement {
-		const zonObject = ZonElement.initObject(main.stackAllocator);
-		defer zonObject.deinit(main.stackAllocator);
-		zonObject.putOwnedString("version", settings.version.version);
-		zonObject.putOwnedString("name", name);
-		if (main.network.authentication.KeyCollection.initialized) {
-			zonObject.put("keys", main.network.authentication.KeyCollection.getPublicKeys(main.stackAllocator));
-		}
-		const prefix = [1]u8{@intFromEnum(Connection.HandShakeState.userData)};
-		const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
-		defer main.stackAllocator.free(data);
-		try conn.secureChannel.startTlsHandshake();
-		conn.secureChannel.finishedCollectingClientVerificationData = true;
-		conn.send(.secure, id, data);
+		switch (conn.handShakeState.load(.monotonic)) {
+			.start => {
+				const zonObject = ZonElement.initObject(main.stackAllocator);
+				defer zonObject.deinit(main.stackAllocator);
 
-		conn.mutex.lock();
-		while (true) {
-			conn.handShakeWaiting.timedWait(&conn.mutex, .fromMilliseconds(16)) catch {
-				main.heap.GarbageCollection.syncPoint();
-				continue;
-			};
-			break;
+				zonObject.putOwnedString("version", settings.version.version);
+				zonObject.putOwnedString("name", name);
+				if (main.network.authentication.KeyCollection.initialized) {
+					zonObject.put("keys", main.network.authentication.KeyCollection.getPublicKeys(main.stackAllocator));
+				}
+				try conn.secureChannel.startTlsHandshake();
+				conn.secureChannel.finishedCollectingClientVerificationData = true;
+
+				const prefix: [1]u8 = .{@intFromEnum(Connection.HandShakeState.userData)};
+				const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
+				defer main.stackAllocator.free(data);
+
+				conn.send(.secure, id, data);
+			},
+			.reload => {
+				conn.send(.secure, id, &.{@intFromEnum(Connection.HandShakeState.reload)});
+			},
+			else => unreachable,
 		}
-		if (conn.connectionState.load(.monotonic) == .disconnected) return error.DisconnectedByServer;
-		conn.mutex.unlock();
+
+		{
+			conn.mutex.lock();
+			defer conn.mutex.unlock();
+			while (true) {
+				try main.io.checkCancel();
+				conn.handShakeWaiting.timedWait(&conn.mutex, .fromMilliseconds(16)) catch {
+					main.heap.GarbageCollection.syncPoint();
+					continue;
+				};
+				break;
+			}
+			if (conn.connectionState.load(.monotonic) == .disconnected) return error.DisconnectedByServer;
+		}
 
 		return handshakeZon;
 	}
@@ -268,8 +312,7 @@ pub const chunkRequest = struct { // MARK: chunkRequest
 				.wz = (z << voxelSizeShift + chunk.chunkShift) +% (basePosition[2] & positionMask),
 				.voxelSize = @as(u31, 1) << voxelSizeShift,
 			};
-			conn.user.?.increaseRefCount();
-			main.server.world.?.queueChunkAndDecreaseRefCount(request, conn.user.?);
+			main.server.world.?.queueChunk(request, conn.user.?);
 		}
 	}
 	pub fn sendRequest(conn: *Connection, requests: []chunk.ChunkPosition, basePosition: Vec3i, renderDistance: u16) void {
@@ -305,19 +348,12 @@ pub const chunkTransmission = struct { // MARK: chunkTransmission
 			.taskType = .meshgenAndLighting,
 		};
 
-		fn schedule(mesh: *chunk.Chunk) void {
-			const task = main.globalAllocator.create(MeshGenerationTask);
-			task.* = MeshGenerationTask{
-				.mesh = mesh,
-			};
-			main.threadPool.addTask(task, &vtable);
-		}
-
 		pub fn getPriority(self: *MeshGenerationTask) f32 {
 			return self.pos.getPriority(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 		}
 
 		pub fn isStillNeeded(self: *MeshGenerationTask) bool {
+			if (main.game.world == null or main.game.world.?.paused) return false;
 			const distanceSqr = self.pos.getMinDistanceSquared(@trunc(game.Player.getPosBlocking())); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 			var maxRenderDistance = settings.renderDistance*chunk.chunkSize*self.pos.voxelSize;
 			maxRenderDistance += 2*self.pos.voxelSize*chunk.chunkSize;
@@ -403,8 +439,6 @@ pub const playerPosition = struct { // MARK: playerPosition
 
 pub const entityPosition = struct { // MARK: entityPosition
 	pub const id: u8 = 6;
-	const type_entity: u8 = 0;
-	const type_item: u8 = 1;
 	const Type = enum(u8) {
 		noVelocityEntity = 0,
 		f16VelocityEntity = 1,
@@ -803,8 +837,7 @@ pub const lightMapRequest = struct { // MARK: lightMapRequest
 				.voxelSizeShift = voxelSizeShift,
 			};
 			if (conn.user) |user| {
-				user.increaseRefCount();
-				main.server.world.?.queueLightMapAndDecreaseRefCount(request, user);
+				main.server.world.?.queueLightMap(request, user);
 			}
 		}
 	}
@@ -843,6 +876,7 @@ pub const lightMapTransmission = struct { // MARK: lightMapTransmission
 		}
 
 		pub fn isStillNeeded(_: *LightMapTask) bool {
+			if (main.game.world == null or main.game.world.?.paused) return false;
 			return true;
 		}
 
@@ -1006,8 +1040,8 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 		defer writer.deinit();
 		blockEntity.getServerToClientData(pos, ch, &writer);
 
-		const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
+		const users = main.server.getUserList(main.stackAllocator);
+		defer main.stackAllocator.free(users);
 
 		for (users) |user| {
 			blockUpdate.send(user.conn, &.{.{.pos = pos, .newBlock = block, .blockEntityData = writer.data.items}});

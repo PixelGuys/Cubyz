@@ -21,12 +21,6 @@ pub const AttachmentPoint = enum(u8) {
 	upper = 2,
 };
 
-const OrientationLine = struct {
-	pos: f32,
-	start: f32,
-	end: f32,
-};
-
 const RelativePosition = union(enum) {
 	ratio: f32,
 	attachedToFrame: struct {
@@ -114,10 +108,11 @@ pub fn globalInit() void {
 		"",
 		&windowUniforms,
 		graphics.draw.SimpleVertex2D,
-		&.{},
-		.{.cullMode = .none},
-		.{.depthTest = false, .depthWrite = false},
-		.{.attachments = &.{.alphaBlending}},
+		.{
+			.rasterState = .{.cullMode = .none},
+			.depthStencilState = .{.depthTest = false, .depthWrite = false},
+			.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+		},
 	);
 	borderPipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/ui/window_border.vert",
@@ -125,10 +120,11 @@ pub fn globalInit() void {
 		"",
 		&borderUniforms,
 		graphics.draw.SimpleVertex2D,
-		&.{},
-		.{.cullMode = .none},
-		.{.depthTest = false, .depthWrite = false},
-		.{.attachments = &.{.alphaBlending}},
+		.{
+			.rasterState = .{.cullMode = .none},
+			.depthStencilState = .{.depthTest = false, .depthWrite = false},
+			.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+		},
 	);
 
 	backgroundTexture = Texture.initFromFile("assets/cubyz/ui/window_background.png");

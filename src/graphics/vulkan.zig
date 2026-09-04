@@ -184,11 +184,16 @@ pub fn init(window: ?*c.GLFWwindow) !void {
 			@panic("GLAD failed to load Vulkan functions");
 		}
 	}
+	command_pool.init();
 	SwapChain.init();
+	gpu_allocator.init();
 }
 
 pub fn deinit() void {
+	gpu_garbage_collection.deinit();
+	gpu_allocator.deinit();
 	SwapChain.deinit();
+	command_pool.deinit();
 	c.vkDestroyDevice(device, null);
 	c.vkDestroySurfaceKHR(instance, surface, null);
 	c.vkDestroyInstance(instance, null);
@@ -222,7 +227,7 @@ pub fn createInstance() void {
 		.applicationVersion = c.VK_MAKE_VERSION(0, 0, 0),
 		.pEngineName = "Cubyz",
 		.engineVersion = c.VK_MAKE_VERSION(0, 0, 0),
-		.apiVersion = c.VK_API_VERSION_1_0,
+		.apiVersion = c.VK_API_VERSION_1_3,
 	};
 	var glfwExtensionCount: u32 = 0;
 	const glfwExtensions: [*c][*c]const u8 = c.glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
@@ -268,6 +273,7 @@ pub fn createInstance() void {
 const deviceExtensions = blk: {
 	const baseDeviceExtensions = [_][*:0]const u8{
 		c.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+		c.VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
 	};
 	if (builtin.target.os.tag == .macos) {
 		break :blk baseDeviceExtensions ++ [_][*:0]const u8{c.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME};
@@ -275,10 +281,52 @@ const deviceExtensions = blk: {
 	break :blk baseDeviceExtensions;
 };
 
-const deviceFeatures: c.VkPhysicalDeviceFeatures = .{
-	.multiDrawIndirect = c.VK_TRUE,
-	.dualSrcBlend = c.VK_TRUE,
-	.depthClamp = c.VK_TRUE,
+const DeviceFeatures = struct {
+	v10: c.VkPhysicalDeviceFeatures,
+	v11: c.VkPhysicalDeviceVulkan11Features,
+	v12: c.VkPhysicalDeviceVulkan12Features,
+	v13: c.VkPhysicalDeviceVulkan13Features,
+
+	fn getFromDevice(dev: c.VkPhysicalDevice) DeviceFeatures {
+		var self: DeviceFeatures = undefined;
+		var features: c.VkPhysicalDeviceFeatures2 = .{
+			.sType = c.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+			.pNext = self.chain(),
+		};
+		c.vkGetPhysicalDeviceFeatures2(dev, &features);
+		self.v10 = features.features;
+		return self;
+	}
+
+	fn chain(self: *DeviceFeatures) *anyopaque {
+		self.v11.sType = c.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+		self.v11.pNext = &self.v12;
+		self.v12.sType = c.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+		self.v12.pNext = &self.v13;
+		self.v13.sType = c.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+		self.v13.pNext = null;
+		return &self.v11;
+	}
+};
+
+const deviceFeatures: DeviceFeatures = .{
+	.v10 = .{
+		// needed for indirect chunk rendering
+		.multiDrawIndirect = c.VK_TRUE,
+		.vertexPipelineStoresAndAtomics = c.VK_TRUE,
+		.fragmentStoresAndAtomics = c.VK_TRUE,
+		// needed for colored glass
+		.dualSrcBlend = c.VK_TRUE,
+		// needed to prevent near-plane clipping
+		.depthClamp = c.VK_TRUE,
+	},
+	.v11 = .{},
+	.v12 = .{},
+	.v13 = .{
+		// together they replace render passes, device support is basically at 100%
+		.synchronization2 = c.VK_TRUE,
+		.dynamicRendering = c.VK_TRUE,
+	},
 };
 
 const QueueFamilyIndidices = struct {
@@ -325,8 +373,7 @@ fn checkDeviceExtensionSupport(dev: c.VkPhysicalDevice) bool {
 fn getDeviceScore(dev: c.VkPhysicalDevice) f32 {
 	var properties: c.VkPhysicalDeviceProperties = undefined;
 	c.vkGetPhysicalDeviceProperties(dev, &properties);
-	var features: c.VkPhysicalDeviceFeatures = undefined;
-	c.vkGetPhysicalDeviceFeatures(dev, &features);
+	const features: DeviceFeatures = .getFromDevice(dev);
 	std.log.debug("Device: {s}", .{@as([*:0]const u8, @ptrCast(&properties.deviceName))});
 	std.log.debug("Properties: {}", .{properties});
 	std.log.debug("Features: {}", .{features});
@@ -346,10 +393,14 @@ fn getDeviceScore(dev: c.VkPhysicalDevice) f32 {
 	}
 	if (!findQueueFamilies(dev).isComplete() or !checkDeviceExtensionSupport(dev)) return 0;
 
-	inline for (comptime std.meta.fieldNames(@TypeOf(deviceFeatures))) |name| {
-		if (@field(deviceFeatures, name) == c.VK_TRUE and @field(features, name) == c.VK_FALSE) {
-			std.log.warn("Rejecting device: {s} is not supported", .{name});
-			return 0;
+	inline for (comptime std.meta.fieldNames(@TypeOf(deviceFeatures))) |ver| {
+		inline for (comptime std.meta.fieldNames(@TypeOf(@field(deviceFeatures, ver)))) |name| {
+			if (comptime std.mem.eql(u8, name, "sType")) continue;
+			if (comptime std.mem.eql(u8, name, "pNext")) continue;
+			if (@field(@field(deviceFeatures, ver), name) == c.VK_TRUE and @field(@field(features, ver), name) == c.VK_FALSE) {
+				std.log.warn("Rejecting device: {s} is not supported", .{name});
+				return 0;
+			}
 		}
 	}
 
@@ -413,11 +464,14 @@ fn createLogicalDevice() void {
 		});
 	}
 
+	var features = deviceFeatures;
+
 	const createInfo: c.VkDeviceCreateInfo = .{
 		.sType = c.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+		.pNext = features.chain(),
 		.pQueueCreateInfos = queueCreateInfos.items.ptr,
 		.queueCreateInfoCount = @intCast(queueCreateInfos.items.len),
-		.pEnabledFeatures = &deviceFeatures,
+		.pEnabledFeatures = &features.v10,
 		.ppEnabledLayerNames = validationLayers.ptr,
 		.enabledLayerCount = if (checkValidationLayerSupport()) validationLayers.len else 0,
 		.ppEnabledExtensionNames = &deviceExtensions,
@@ -428,12 +482,90 @@ fn createLogicalDevice() void {
 	c.vkGetDeviceQueue(device, indices.presentFamily.?, 0, &presentQueue);
 }
 
+pub const Semaphore = struct { // MARK: Semaphore
+	handle: c.VkSemaphore,
+
+	fn init() Semaphore {
+		var result: c.VkSemaphore = undefined;
+		const semaphoreInfo = c.VkSemaphoreCreateInfo{
+			.sType = c.VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+		};
+		checkResult(c.vkCreateSemaphore(device, &semaphoreInfo, null, &result));
+		return .{.handle = result};
+	}
+	fn deinit(self: Semaphore) void {
+		c.vkDestroySemaphore(device, self.handle, null);
+	}
+};
+
+pub const Fence = struct { // MARK: Fence
+	handle: c.VkFence,
+
+	fn init(createSignaled: bool) Fence {
+		var result: c.VkFence = undefined;
+		const fenceInfo = c.VkFenceCreateInfo{
+			.sType = c.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+			.flags = if (createSignaled) c.VK_FENCE_CREATE_SIGNALED_BIT else 0,
+		};
+		checkResult(c.vkCreateFence(device, &fenceInfo, null, &result));
+		return .{.handle = result};
+	}
+	fn deinit(self: Fence) void {
+		c.vkDestroyFence(device, self.handle, null);
+	}
+
+	fn waitAndReset(self: Fence) void {
+		checkResult(c.vkWaitForFences(device, 1, &self.handle, c.VK_TRUE, c.UINT64_MAX));
+		checkResult(c.vkResetFences(device, 1, &self.handle));
+	}
+};
+
+const FrameData = struct {
+	fence: Fence,
+	uploadFence: Fence,
+	swapChainImageIndex: u32,
+
+	imageAvailable: Semaphore,
+	uploadFinished: Semaphore,
+	renderFinished: Semaphore,
+
+	uploadCommands: main.graphics.CommandBuffer,
+	guiCommands: main.graphics.CommandBuffer,
+
+	fn init() FrameData {
+		return .{
+			.fence = .init(true),
+			.uploadFence = .init(true),
+			.imageAvailable = .init(),
+			.uploadFinished = .init(),
+			.renderFinished = .init(),
+			.swapChainImageIndex = undefined,
+			.uploadCommands = .init(),
+			.guiCommands = .init(),
+		};
+	}
+
+	fn deinit(self: FrameData) void {
+		self.fence.deinit();
+		self.uploadFence.deinit();
+		self.imageAvailable.deinit();
+		self.uploadFinished.deinit();
+		self.renderFinished.deinit();
+		self.uploadCommands.deinit();
+		self.guiCommands.deinit();
+	}
+};
+
+var frames: [2]FrameData = undefined;
+
+pub var currentFrame: *const FrameData = undefined;
+
 pub const SwapChain = struct { // MARK: SwapChain
 	var swapChain: c.VkSwapchainKHR = null;
 	var images: []c.VkImage = undefined;
 	var imageViews: []c.VkImageView = undefined;
 	pub var imageFormat: c.VkFormat = undefined;
-	var extent: c.VkExtent2D = undefined;
+	pub var extent: c.VkExtent2D = undefined;
 
 	const SupportDetails = struct {
 		capabilities: c.VkSurfaceCapabilitiesKHR,
@@ -514,7 +646,7 @@ pub const SwapChain = struct { // MARK: SwapChain
 		imageFormat = surfaceFormat.format;
 		const presentMode = support.chooseSwapPresentMode();
 		extent = support.chooseSwapExtent();
-		const imageCount = @min(support.capabilities.minImageCount + 1, support.capabilities.maxImageCount -% 1 +| 1);
+		const imageCount: u32 = @max(2, support.capabilities.minImageCount);
 
 		var createInfo: c.VkSwapchainCreateInfoKHR = .{
 			.sType = c.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
@@ -542,23 +674,345 @@ pub const SwapChain = struct { // MARK: SwapChain
 		}
 
 		checkResult(c.vkCreateSwapchainKHR(device, &createInfo, null, &swapChain));
-		images = main.globalAllocator.alloc(c.VkImage, imageCount);
 		var newImageCount = imageCount;
+		checkResult(c.vkGetSwapchainImagesKHR(device, swapChain, &newImageCount, null));
+		images = main.globalArena.alloc(c.VkImage, newImageCount);
 		checkResult(c.vkGetSwapchainImagesKHR(device, swapChain, &newImageCount, images.ptr));
-		std.debug.assert(newImageCount == imageCount);
 
-		imageViews = main.globalAllocator.alloc(c.VkImageView, imageCount);
+		imageViews = main.globalArena.alloc(c.VkImageView, newImageCount);
 		for (0..images.len) |i| {
 			imageViews[i] = createImageView(images[i]);
 		}
+
+		for (&frames) |*frame| {
+			frame.* = .init();
+		}
+		currentFrame = &frames[frameIndex];
+		currentFrame.uploadFence.waitAndReset();
+		currentFrame.uploadCommands.beginRecording(0);
 	}
 
 	fn deinit() void {
 		for (imageViews) |imageView| {
 			c.vkDestroyImageView(device, imageView, null);
 		}
-		main.globalAllocator.free(imageViews);
-		main.globalAllocator.free(images);
+		for (&frames) |frame| {
+			frame.deinit();
+		}
 		c.vkDestroySwapchainKHR(device, swapChain, null);
 	}
+
+	fn beginRender() void {
+		currentFrame.fence.waitAndReset();
+		checkResult(c.vkAcquireNextImageKHR(device, swapChain, c.UINT64_MAX, currentFrame.imageAvailable.handle, null, &frames[frameIndex].swapChainImageIndex));
+
+		currentFrame.guiCommands.beginRecording(0);
+		currentFrame.guiCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+				.srcAccessMask = 0,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+				.dstAccessMask = c.VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | c.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
+				.newLayout = c.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+				.image = images[currentFrame.swapChainImageIndex],
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
+			},
+		}});
+		currentFrame.guiCommands.beginRendering(.{
+			.textures = &.{
+				.{
+					.imageView = imageViews[currentFrame.swapChainImageIndex],
+					.layout = c.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+					.loadOp = .{.clearColor = .{.float32 = .{0.5, 1, 1, 1.0}}},
+					.storeOp = .store,
+				},
+			},
+			.renderArea = .{.extent = extent},
+		});
+	}
+
+	fn endRender() void {
+		currentFrame.uploadCommands.endRecording();
+		currentFrame.uploadCommands.submit(
+			graphicsQueue,
+			&.{},
+			&.{},
+			&.{currentFrame.uploadFinished.handle},
+			currentFrame.uploadFence.handle,
+		);
+
+		currentFrame.guiCommands.endRendering();
+		currentFrame.guiCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+				.srcAccessMask = c.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+				.dstAccessMask = 0,
+				.oldLayout = c.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+				.newLayout = c.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+				.image = images[currentFrame.swapChainImageIndex],
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
+			},
+		}});
+		currentFrame.guiCommands.endRecording();
+		currentFrame.guiCommands.submit(
+			graphicsQueue,
+			&.{currentFrame.imageAvailable.handle, currentFrame.uploadFinished.handle},
+			&.{c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, c.VK_PIPELINE_STAGE_TRANSFER_BIT},
+			&.{currentFrame.renderFinished.handle},
+			currentFrame.fence.handle,
+		);
+
+		const presentInfo: c.VkPresentInfoKHR = .{
+			.sType = c.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+			.waitSemaphoreCount = 1,
+			.pWaitSemaphores = &currentFrame.renderFinished.handle,
+			.swapchainCount = 1,
+			.pSwapchains = &swapChain,
+			.pImageIndices = &currentFrame.swapChainImageIndex,
+		};
+		const result = c.vkQueuePresentKHR(presentQueue, &presentInfo);
+		frameIndex = (frameIndex + 1)%frames.len;
+		currentFrame = &frames[frameIndex];
+		currentFrame.uploadFence.waitAndReset();
+		currentFrame.uploadCommands.beginRecording(0);
+		checkResult(result); // TODO: swapchain recreation
+	}
 };
+
+pub const command_pool = struct { // MARK: command_pool
+	pub var handle: c.VkCommandPool = undefined;
+
+	fn init() void {
+		const queueFamilies = findQueueFamilies(physicalDevice);
+		const poolInfo = c.VkCommandPoolCreateInfo{
+			.sType = c.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+			.flags = c.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+			.queueFamilyIndex = queueFamilies.graphicsFamily.?,
+		};
+		checkResult(c.vkCreateCommandPool(device, &poolInfo, null, &handle));
+	}
+
+	fn deinit() void {
+		c.vkDestroyCommandPool(device, handle, null);
+	}
+};
+
+pub const Buffer = struct { // MARK: Buffer
+	handle: c.VkBuffer,
+	allocation: c.VmaAllocation,
+
+	const BufferOptions = struct {
+		usage: c.VkBufferUsageFlags,
+		hostAccessible: bool = false,
+	};
+	pub fn init(size: usize, options: BufferOptions) Buffer {
+		std.debug.assert(size != 0); // Vulkan cannot handle empty buffers
+		var self: Buffer = undefined;
+		const bufferInfo: c.VkBufferCreateInfo = .{
+			.sType = c.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+			.size = size,
+			.usage = options.usage,
+		};
+		const allocCreateInfo: c.VmaAllocationCreateInfo = .{
+			.usage = c.VMA_MEMORY_USAGE_AUTO,
+			.flags = if (options.hostAccessible) c.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT else 0,
+		};
+		checkResult(c.vmaCreateBuffer(gpu_allocator.handle, &bufferInfo, &allocCreateInfo, &self.handle, &self.allocation, null));
+		return self;
+	}
+
+	fn privateDeinit(self: Buffer) void {
+		c.vmaDestroyBuffer(gpu_allocator.handle, self.handle, self.allocation);
+	}
+
+	pub fn deferredDeinit(self: Buffer) void {
+		gpu_garbage_collection.deferredFree(.{.buf = self});
+	}
+
+	pub fn uploadData(self: Buffer, offset: usize, data: []const u8) void {
+		if (data.len == 0) return;
+		const stagingBuffer: Buffer = .init(data.len, .{.usage = c.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, .hostAccessible = true});
+		defer stagingBuffer.deferredDeinit();
+		var gpuMemory: ?*anyopaque = undefined;
+		checkResult(c.vmaMapMemory(gpu_allocator.handle, stagingBuffer.allocation, &gpuMemory));
+		@memcpy(@as([*]u8, @ptrCast(gpuMemory.?)), data);
+		c.vmaUnmapMemory(gpu_allocator.handle, stagingBuffer.allocation);
+		currentFrame.uploadCommands.copyBuffer(self, offset, stagingBuffer, 0, data.len);
+	}
+};
+
+pub const Image = struct { // MARK: Image
+	handle: c.VkImage = undefined,
+	allocation: c.VmaAllocation = undefined,
+	mipLevels: u32,
+	size: main.vec.Vec3i,
+
+	const ImageOptions = struct {
+		usage: c.VkImageUsageFlags,
+		hostAccessible: bool = false,
+		flags: c.VkImageCreateFlags = 0,
+		imageType: c.VkImageType = c.VK_IMAGE_TYPE_2D,
+		format: c.VkFormat = c.VK_FORMAT_R8G8B8A8_UNORM,
+		mipLevels: u32 = 1,
+		arrayLayers: u32 = 1,
+		samples: c.VkSampleCountFlags = c.VK_SAMPLE_COUNT_1_BIT,
+	};
+	pub fn init(size: main.vec.Vec3i, options: ImageOptions) Image {
+		var self: Image = .{
+			.mipLevels = options.mipLevels,
+			.size = size,
+		};
+		const imageInfo: c.VkImageCreateInfo = .{
+			.sType = c.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+			.flags = options.flags,
+			.imageType = options.imageType,
+			.format = options.format,
+			.extent = .{.width = @intCast(size[0]), .height = @intCast(size[1]), .depth = @intCast(size[2])},
+			.mipLevels = options.mipLevels,
+			.arrayLayers = options.arrayLayers,
+			.samples = options.samples,
+			.tiling = c.VK_IMAGE_TILING_OPTIMAL,
+			.usage = options.usage,
+			.sharingMode = c.VK_SHARING_MODE_EXCLUSIVE,
+			.initialLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
+		};
+		const allocCreateInfo: c.VmaAllocationCreateInfo = .{
+			.usage = c.VMA_MEMORY_USAGE_AUTO,
+			.flags = if (options.hostAccessible) c.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT else 0,
+		};
+		checkResult(c.vmaCreateImage(gpu_allocator.handle, &imageInfo, &allocCreateInfo, &self.handle, &self.allocation, null));
+		return self;
+	}
+
+	fn privateDeinit(self: Image) void {
+		c.vmaDestroyImage(gpu_allocator.handle, self.handle, self.allocation);
+	}
+
+	pub fn deferredDeinit(self: Image) void {
+		gpu_garbage_collection.deferredFree(.{.image = self});
+	}
+
+	pub fn uploadData(self: Image, offset: usize, data: []const u8) void {
+		if (data.len == 0) return;
+		const stagingBuffer: Buffer = .init(data.len, .{.usage = c.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, .hostAccessible = true});
+		defer stagingBuffer.deferredDeinit();
+		var gpuMemory: ?*anyopaque = undefined;
+		checkResult(c.vmaMapMemory(gpu_allocator.handle, stagingBuffer.allocation, &gpuMemory));
+		@memcpy(@as([*]u8, @ptrCast(gpuMemory.?)), data);
+		c.vmaUnmapMemory(gpu_allocator.handle, stagingBuffer.allocation);
+		currentFrame.uploadCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_NONE,
+				.srcAccessMask = c.VK_ACCESS_2_NONE,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+				.dstAccessMask = c.VK_ACCESS_2_TRANSFER_WRITE_BIT,
+				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
+				.newLayout = c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				.image = self.handle,
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = self.mipLevels, .layerCount = 1},
+			},
+		}});
+		currentFrame.uploadCommands.copyBufferToImage(self, c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, stagingBuffer, &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2,
+				.bufferOffset = offset,
+				.imageSubresource = .{
+					.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
+					.mipLevel = 0,
+					.baseArrayLayer = 0,
+					.layerCount = 1,
+				},
+				.imageOffset = .{.x = 0, .y = 0, .z = 0},
+				.imageExtent = .{.width = @intCast(self.size[0]), .height = @intCast(self.size[1]), .depth = @intCast(self.size[2])},
+			},
+		});
+		currentFrame.uploadCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+				.srcAccessMask = c.VK_ACCESS_2_TRANSFER_WRITE_BIT,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+				.dstAccessMask = c.VK_ACCESS_SHADER_READ_BIT,
+				.oldLayout = c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				.newLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
+				.image = self.handle,
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = self.mipLevels, .layerCount = 1},
+			},
+		}});
+	}
+};
+
+pub const gpu_allocator = struct {
+	var handle: c.VmaAllocator = undefined;
+
+	fn init() void {
+		const vkFunctions: c.VmaVulkanFunctions = .{
+			.glad_vkGetInstanceProcAddr = c.glad_vkGetInstanceProcAddr,
+			.glad_vkGetDeviceProcAddr = c.glad_vkGetDeviceProcAddr,
+			.glad_vkCreateImage = c.glad_vkCreateImage,
+		};
+		const allocatorCreateInfo: c.VmaAllocatorCreateInfo = .{
+			.flags = 0,
+			.physicalDevice = physicalDevice,
+			.device = device,
+			.pVulkanFunctions = &vkFunctions,
+			.instance = instance,
+		};
+		checkResult(c.vmaCreateAllocator(&allocatorCreateInfo, &gpu_allocator.handle));
+	}
+
+	fn deinit() void {
+		c.vmaDestroyAllocator(gpu_allocator.handle);
+	}
+};
+
+pub const gpu_garbage_collection = struct {
+	const Entry = union(enum) {
+		buf: Buffer,
+		image: Image,
+	};
+	var currentList: usize = 0;
+	var lists: [frames.len + 1]main.List(Entry) = @splat(.empty);
+
+	fn deinit() void {
+		for (lists) |list| {
+			for (list.items) |entry| {
+				switch (entry) {
+					inline else => |item| item.privateDeinit(),
+				}
+			}
+			list.deinit(main.globalAllocator);
+		}
+	}
+
+	fn cleanupFrame() void {
+		currentList += 1;
+		if (currentList == lists.len) currentList = 0;
+		for (lists[currentList].items) |entry| {
+			switch (entry) {
+				inline else => |item| item.privateDeinit(),
+			}
+		}
+		lists[currentList].clearRetainingCapacity();
+	}
+
+	pub fn deferredFree(entry: Entry) void {
+		lists[currentList].append(main.globalAllocator, entry);
+	}
+};
+
+var frameIndex: usize = 0;
+
+pub fn beginRender() void {
+	SwapChain.beginRender();
+}
+
+pub fn endRender() void {
+	SwapChain.endRender();
+	gpu_garbage_collection.cleanupFrame();
+}

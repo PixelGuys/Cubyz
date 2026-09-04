@@ -28,30 +28,11 @@ const BlockTouchCallback = main.callbacks.BlockTouchCallback;
 const sbb = main.server.terrain.sbb;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
+const BlockDrop = main.server.BlockDrop;
 
 const c = @import("c");
 
 pub const maxBlockCount: usize = 65536; // 16 bit limit
-
-pub const BlockDrop = struct {
-	items: []const items.ItemStack,
-	chance: f32,
-	forbiddenToolTags: []Tag,
-	allowedToolTags: ?[]Tag = null,
-
-	pub fn isDroppedWhenBrokenWithItem(self: BlockDrop, item: Item) bool {
-		if (item != .proceduralItem) return self.allowedToolTags == null;
-
-		const proceduralItem = item.proceduralItem;
-		for (self.forbiddenToolTags) |tag| if (proceduralItem.hasTag(tag)) return false;
-		if (self.allowedToolTags) |tags| {
-			for (tags) |tag| if (proceduralItem.hasTag(tag)) return true;
-			return false;
-		}
-
-		return true;
-	}
-};
 
 /// Ores can be found underground in veins.
 /// TODO: Add support for non-stone ores.
@@ -167,10 +148,12 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_id[size] = main.worldArena.dupe(u8, id);
 	reverseIndices.put(main.worldArena.allocator, _id[size], @intCast(size)) catch unreachable;
 
-	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation") orelse "cubyz:no_rotation");
+	const rotationMode = rotation.getByID(zon.get([]const u8, "rotation") orelse "cubyz:no_rotation");
+
+	_mode[size] = rotationMode;
 	_blockHealth[size] = zon.get(f32, "blockHealth") orelse 1;
 	_blockResistance[size] = zon.get(f32, "blockResistance") orelse 0;
-	const rotation_tags = _mode[size].getBlockTags();
+	const rotation_tags = rotationMode.getBlockTags();
 	const block_tags = Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("tags"));
 	defer main.stackAllocator.free(block_tags);
 	_tags[size] = std.mem.concat(main.worldArena.allocator, Tag, &.{rotation_tags, block_tags}) catch unreachable;
@@ -269,7 +252,7 @@ pub fn loadBlockDrop(blockId: []const u8, zon: ZonElement) []const BlockDrop {
 		}
 
 		blockDrops[i] = .{
-			.items = resultItems.items,
+			.itemStacks = resultItems.items,
 			.chance = blockDrop.get(f32, "chance") orelse 1,
 			.forbiddenToolTags = Tag.loadTagsFromZon(main.worldArena, blockDrop.getChild("forbiddenToolTags")),
 			.allowedToolTags = allowedToolTags,
@@ -711,8 +694,8 @@ pub const meshes = struct { // MARK: meshes
 		}
 	}
 
-	fn extendedPath(_allocator: main.heap.NeverFailingAllocator, path: []const u8, ending: []const u8) []const u8 {
-		return std.fmt.allocPrint(_allocator.allocator, "{s}{s}", .{path, ending}) catch unreachable;
+	fn extendedPath(allocator: main.heap.NeverFailingAllocator, path: []const u8, ending: []const u8) []const u8 {
+		return std.mem.concat(allocator.allocator, u8, &.{path, ending}) catch unreachable;
 	}
 
 	fn readTextureFile(_path: []const u8, ending: []const u8, default: Image) Image {
@@ -765,7 +748,7 @@ pub const meshes = struct { // MARK: meshes
 		var splitter = std.mem.splitScalar(u8, textureId, ':');
 		const mod = splitter.first();
 		const id = splitter.rest();
-		var path = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
+		var path = main.stackAllocator.print("{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
 		defer main.stackAllocator.free(path);
 		// Test if it's already in the list:
 		for (textureIds.items, 0..) |other, j| {
@@ -779,7 +762,7 @@ pub const meshes = struct { // MARK: meshes
 				std.log.err("Could not open file {s}: {s}", .{path, @errorName(err)});
 			}
 			main.stackAllocator.free(path);
-			path = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
+			path = main.stackAllocator.print("assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
 			break :blk main.files.cwd().openFile(path) catch |err2| {
 				if (err2 != error.FileNotFound) {
 					std.log.err("Could not open file {s}: {s}", .{path, @errorName(err2)});
@@ -824,13 +807,13 @@ pub const meshes = struct { // MARK: meshes
 	pub fn registerBlockBreakingAnimation(assetFolder: []const u8) void {
 		var i: usize = 0;
 		while (true) : (i += 1) {
-			const path1 = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/cubyz/blocks/textures/breaking/{}.png", .{i}) catch unreachable;
+			const path1 = main.stackAllocator.print("assets/cubyz/blocks/textures/breaking/{}.png", .{i});
 			defer main.stackAllocator.free(path1);
-			const path2 = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/cubyz/blocks/textures/breaking/{}.png", .{assetFolder, i}) catch unreachable;
+			const path2 = main.stackAllocator.print("{s}/cubyz/blocks/textures/breaking/{}.png", .{assetFolder, i});
 			defer main.stackAllocator.free(path2);
 			if (!main.files.cwd().hasFile(path1) and !main.files.cwd().hasFile(path2)) break;
 
-			const id = std.fmt.allocPrint(main.stackAllocator.allocator, "cubyz:breaking/{}", .{i}) catch unreachable;
+			const id = main.stackAllocator.print("cubyz:breaking/{}", .{i});
 			defer main.stackAllocator.free(id);
 			blockBreakingTextures.append(main.worldArena, findTexture(id, assetFolder) catch break);
 		}

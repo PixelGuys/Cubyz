@@ -17,7 +17,7 @@ const files = main.files;
 
 var common: Assets = undefined;
 
-pub const Assets = struct {
+pub const Assets = struct { // MARK: Assets
 	pub const ZonHashMap = std.StringHashMapUnmanaged(ZonElement);
 	pub const BytesHashMap = std.StringHashMapUnmanaged([]const u8);
 	pub const AddonNameToZonMap = std.StringHashMapUnmanaged(ZonElement);
@@ -132,7 +132,7 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "models", true, &self.blockModelsZon, null);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
-			addon.readAllZon(allocator, "entityModels", true, &self.entityModelDescriptions, &self.entityModelMigrations);
+			addon.readAllZon(allocator, "entity_models", true, &self.entityModelDescriptions, &self.entityModelMigrations);
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
@@ -142,7 +142,7 @@ pub const Assets = struct {
 		);
 	}
 
-	const Addon = struct {
+	const Addon = struct { // MARK: Addon
 		name: []const u8,
 		dir: files.Dir,
 
@@ -402,10 +402,18 @@ fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void 
 	var replacementTexturePath: []const u8 = &.{};
 	defer main.stackAllocator.free(replacementTexturePath);
 	if (zon.get([]const u8, "texture")) |texture| {
-		texturePath = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/items/textures/{s}", .{assetFolder, mod, texture});
-		replacementTexturePath = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/items/textures/{s}", .{mod, texture});
+		texturePath = main.stackAllocator.print("{s}/{s}/items/textures/{s}", .{assetFolder, mod, texture});
+		replacementTexturePath = main.stackAllocator.print("assets/{s}/items/textures/{s}", .{mod, texture});
 	}
-	_ = items.register(assetFolder, texturePath, replacementTexturePath, id, zon);
+	var colorTexturePath: []const u8 = &.{};
+	defer main.stackAllocator.free(colorTexturePath);
+	var colorReplacementTexturePath: []const u8 = &.{};
+	defer main.stackAllocator.free(colorReplacementTexturePath);
+	if (zon.get([]const u8, "colorTexture")) |colorTexture| {
+		colorTexturePath = main.stackAllocator.print("{s}/{s}/materials/{s}", .{assetFolder, mod, colorTexture});
+		colorReplacementTexturePath = main.stackAllocator.print("assets/{s}/materials/{s}", .{mod, colorTexture});
+	}
+	_ = items.register(assetFolder, texturePath, replacementTexturePath, colorTexturePath, colorReplacementTexturePath, id, zon);
 }
 
 fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
@@ -422,7 +430,7 @@ fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void
 fn assignBlockItem(stringId: []const u8) !void {
 	const block = blocks.getTypeById(stringId);
 	// TODO: This must be gone in PixelGuys/Cubyz#1205
-	const index = items.BaseItemIndex.fromId(stringId) orelse unreachable;
+	const index = items.BaseItemIndex.fromId(stringId).?;
 	const item = &items.itemList[@intFromEnum(index)];
 	item.block = block;
 }
@@ -679,6 +687,13 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		try assignBlockItem(stringId);
 	}
 
+	var itemIndexIterator = items.iterator();
+	while (itemIndexIterator.next()) |index| {
+		if (index.displayBlockData() != null and index.block() == null) {
+			std.log.err("displayBlockData field was set, but there is no block defined for item: '{s}'", .{index.id()});
+		}
+	}
+
 	for (proceduralItemPalette.palette.items) |id| {
 		registerProceduralItem(assetFolder, id, worldAssets.proceduralItems.get(id) orelse .null);
 	}
@@ -765,7 +780,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		break :blk null;
 	}) |addon| {
 		if (addon.kind == .directory) {
-			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
+			const path = main.stackAllocator.printSentinel("assets/{s}/blocks/textures", .{addon.name}, 0);
 			defer main.stackAllocator.free(path);
 			// Check for access rights
 			if (!main.files.cwd().hasDir(path)) continue;
@@ -807,7 +822,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 		break :blk null;
 	}) |addon| {
 		if (addon.kind == .directory) {
-			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
+			const path = main.stackAllocator.printSentinel("assets/{s}/blocks/textures", .{addon.name}, 0);
 			defer main.stackAllocator.free(path);
 			// Check for access rights
 			if (!main.files.cwd().hasDir(path)) continue;
@@ -819,13 +834,13 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 pub fn readAsset(allocator: NeverFailingAllocator, subPath: []const u8, id: []const u8, fileEnding: []const u8) ![]const u8 {
 	var split = std.mem.splitScalar(u8, id, ':');
 	const mod = split.first();
-	const name = split.next() orelse unreachable;
+	const name = split.next().?;
 
-	var path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/{s}/{s}{s}", .{worldAssetFolder, mod, subPath, name, fileEnding}) catch unreachable;
+	var path = main.stackAllocator.print("{s}/{s}/{s}/{s}{s}", .{worldAssetFolder, mod, subPath, name, fileEnding});
 	defer main.stackAllocator.free(path);
 	if (!main.files.cwd().hasFile(path)) {
 		main.stackAllocator.free(path);
-		path = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/{s}/{s}{s}", .{mod, subPath, name, fileEnding}) catch unreachable;
+		path = main.stackAllocator.print("assets/{s}/{s}/{s}{s}", .{mod, subPath, name, fileEnding});
 	}
 
 	const data = main.files.cwd().read(allocator, path) catch |err| {

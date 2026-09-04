@@ -22,7 +22,7 @@ pub var scrollOffset: f32 = 0;
 pub var scrollOffsetInteger: i32 = 0;
 var scrollOffsetFraction: f32 = 0;
 
-pub const Gamepad = struct {
+pub const Gamepad = struct { // MARK: Gamepad
 	pub var gamepadState: std.AutoHashMap(c_int, *c.GLFWgamepadstate) = undefined;
 	pub var controllerMappingsDownloaded: std.atomic.Value(bool) = std.atomic.Value(bool).init(false);
 	var controllerConnectedPreviously: bool = false;
@@ -205,7 +205,7 @@ pub const Gamepad = struct {
 				std.log.err("Failed to write controller mappings: {s}", .{@errorName(err)});
 				return;
 			};
-			const timeStampStr = std.fmt.allocPrint(main.stackAllocator.allocator, "{x}", .{self.*.curTimestamp}) catch unreachable;
+			const timeStampStr = main.stackAllocator.print("{x}", .{self.*.curTimestamp});
 			defer main.stackAllocator.free(timeStampStr);
 			files.cwd().write("gamecontrollerdb.stamp", timeStampStr) catch |err| {
 				std.log.err("Failed to write controller mappings: {s}", .{@errorName(err)});

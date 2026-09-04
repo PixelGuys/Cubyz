@@ -27,13 +27,14 @@ pub const meta = @import("meta.zig");
 pub const migrations = @import("migrations.zig");
 pub const models = @import("models.zig");
 pub const network = @import("network.zig");
+pub const particles = @import("particles.zig");
 pub const physics = @import("physics.zig");
 pub const random = @import("random.zig");
 pub const renderer = @import("renderer.zig");
 pub const rotation = @import("rotation.zig");
 pub const settings = @import("settings.zig");
 pub const sync = @import("sync.zig");
-pub const particles = @import("particles.zig");
+pub const systems = @import("systems.zig");
 const tag = @import("tag.zig");
 pub const Tag = tag.Tag;
 pub const utils = @import("utils.zig");
@@ -78,14 +79,6 @@ pub fn deinitThreadLocals() void {
 
 pub fn timestamp() std.Io.Timestamp {
 	return std.Io.Clock.Timestamp.now(io, .awake).raw;
-}
-
-fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
-	return str[0..len];
-}
-
-fn cacheString(comptime str: []const u8) []const u8 {
-	return cacheStringImpl(str.len, str[0..].*);
 }
 
 // overwrite the log function:
@@ -175,6 +168,11 @@ fn cycleHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
 fn setHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
 	return &struct {
 		fn set(_: Window.Key.Modifiers) void {
+			if (gui.hoveredItemSlot) |hovered| {
+				if (hovered.inventory.type == .crafting or hovered.inventory.type == .workbenchResult) return;
+				hovered.inventory.swap(hovered.itemSlot, game.Player.inventory, i - 1);
+				return;
+			}
 			game.Player.selectedSlot = i - 1;
 		}
 	}.set;
@@ -298,24 +296,9 @@ pub var lastFrameTime = std.atomic.Value(f64).init(0);
 pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 
 var shouldExitToMenu = std.atomic.Value(bool).init(false);
+
 pub fn exitToMenu() void {
 	shouldExitToMenu.store(true, .monotonic);
-}
-
-fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
-	var iter = std.fs.path.componentIterator(path) catch |err| {
-		std.log.err("Cannot iterate on path {s}: {s}!", .{path, @errorName(err)});
-		return false;
-	};
-	while (iter.next()) |component| {
-		if (std.mem.eql(u8, component.name, ".") or std.mem.eql(u8, component.name, "..")) {
-			continue;
-		}
-		if (component.name.len > 0 and component.name[0] == '.') {
-			return true;
-		}
-	}
-	return false;
 }
 
 pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
@@ -328,6 +311,22 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 
 	log.init();
 	defer log.deinit();
+
+	argCheck: {
+		var argIterator = args.args.iterateAllocator(stackAllocator.allocator) catch |err| {
+			std.log.err("Failed to read command line arguments: {s}", .{@errorName(err)});
+			break :argCheck;
+		};
+		defer argIterator.deinit();
+		_ = argIterator.skip();
+		if (argIterator.next() != null) {
+			std.log.info(
+				\\Cubyz does not accept any command line arguments.
+				\\All launch-time configuration is done through the "launchConfig.zon" file in the game's working directory. See that file for the available options.
+			, .{});
+			std.process.exit(0);
+		}
+	}
 
 	std.log.info("Starting game with version {s}", .{settings.version.version});
 
@@ -405,6 +404,9 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	network.init() catch @panic("Failed to initialize network");
 	defer network.deinit();
 
+	if (!headless) systems.client.init();
+	defer if (!headless) systems.client.deinit();
+
 	if (!headless) entity.client.init();
 	defer if (!headless) entity.client.deinit();
 
@@ -431,6 +433,7 @@ pub fn clientMain() void { // MARK: clientMain()
 		gui.openWindow("main");
 	} else {
 		// Speed up the dev process by entering the world directly.
+		gui.windowlist.save_selection.mode = .singleplayer;
 		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
 	}
 
@@ -452,6 +455,10 @@ pub fn clientMain() void { // MARK: clientMain()
 			c.glClearColor(0.5, 1, 1, 1);
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 			gui.windowlist.gpu_performance_measuring.stopQuery();
+
+			if (settings.launchConfig.vulkanTestingMode) {
+				graphics.vulkan.beginRender();
+			}
 		} else {
 			io.sleep(.fromMilliseconds(16), .awake) catch {};
 		}
@@ -495,7 +502,12 @@ pub fn clientMain() void { // MARK: clientMain()
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			gui.updateAndRenderGui();
 			gui.windowlist.gpu_performance_measuring.stopQuery();
+
+			if (settings.launchConfig.vulkanTestingMode) {
+				graphics.vulkan.endRender();
+			}
 		}
+
 		if (shouldExitToMenu.load(.monotonic)) {
 			shouldExitToMenu.store(false, .monotonic);
 			Window.setMouseGrabbed(false);

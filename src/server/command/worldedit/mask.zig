@@ -2,8 +2,8 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
+const Source = command.Source;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const User = main.server.User;
 
 pub const description = "Set edit mask. When used with no mask expression it will clear current mask.";
 pub const usage =
@@ -11,7 +11,7 @@ pub const usage =
 	\\/mask
 ;
 
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/mask": struct {
 		fn deinit(_: @This(), _: NeverFailingAllocator) void {}
 	},
@@ -30,28 +30,20 @@ const Args = union(enum) {
 	}
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/mask"});
-
-pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
+pub fn execute(args: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
 		return;
-	};
-	defer result.deinit(main.stackAllocator);
-
-	if (source.worldEditData.mask) |mask| mask.deinit(main.globalAllocator);
-
-	switch (result) {
+	}
+	const user = source.user;
+	switch (args) {
 		.@"/mask <mask>" => |cmd| {
-			source.worldEditData.mask = cmd.mask.mask.clone(main.globalAllocator);
-			source.sendMessage("#00ff00Mask set.", .{});
+			user.worldEditData.mask = cmd.mask.mask.clone(main.globalAllocator);
+			user.sendMessage("#00ff00Mask set.", .{});
 		},
 		.@"/mask" => {
-			source.worldEditData.mask = null;
-			source.sendMessage("#00ff00Mask cleared.", .{});
+			user.worldEditData.mask = null;
+			user.sendMessage("#00ff00Mask cleared.", .{});
 		},
 	}
 }

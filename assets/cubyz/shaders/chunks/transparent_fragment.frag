@@ -1,5 +1,7 @@
 #version 460
 
+#include "frame_uniforms.glsl"
+
 layout(location = 0) in vec3 mvVertexPos;
 layout(location = 1) in vec3 direction;
 layout(location = 2) in vec3 light;
@@ -18,9 +20,6 @@ layout(binding = 1) uniform sampler2DArray emissionSampler;
 layout(binding = 2) uniform sampler2DArray reflectivityAndAbsorptionSampler;
 layout(binding = 4) uniform samplerCube reflectionMap;
 layout(binding = 5) uniform sampler2D depthTexture;
-
-layout(location = 3) uniform ivec3 playerPositionInteger;
-layout(location = 4) uniform vec3 playerPositionFraction;
 
 layout(location = 5) uniform float reflectionMapSize;
 layout(location = 6) uniform float contrast;
