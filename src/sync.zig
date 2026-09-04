@@ -240,6 +240,7 @@ pub const Command = struct { // MARK: Command
 		clear = 8,
 		updateBlock = 9,
 		chatCommand = 12,
+		modifyComponent = 10,
 	};
 	pub const Payload = union(PayloadType) {
 		open: Open,
@@ -260,6 +261,7 @@ pub const Command = struct { // MARK: Command
 		clear: Clear,
 		updateBlock: UpdateBlock,
 		chatCommand: ChatCommand,
+		modifyComponent: ModifyComponent,
 	};
 
 	const BaseOperationType = enum(u8) {
@@ -271,6 +273,7 @@ pub const Command = struct { // MARK: Command
 		takeFromBag = 8,
 		useDurability = 4,
 		addEnergy = 6,
+		modifyComponent = 9,
 	};
 
 	/// The BaseOperation is the primitive operation used by Command. It is responsible for executing the operation as
@@ -320,6 +323,12 @@ pub const Command = struct { // MARK: Command
 			energy: f32,
 			previous: f32,
 		},
+		modifyComponent: struct {
+			target: ?*main.server.User,
+			componentId: u32,
+			modification: []const u8,
+			previous: []const u8,
+		}
 	};
 
 	const SyncOperationType = enum(u8) {
@@ -615,6 +624,14 @@ pub const Command = struct { // MARK: Command
 				.addEnergy => |info| {
 					main.game.Player.super.energy = info.previous;
 				},
+				.modifyComponent => |info| {
+					var reader = BinaryReader.init(info.previous);
+					const entityId: main.entity.Entity = @enumFromInt(reader.readVarInt(u32) catch return);
+					const componentId = info.componentId;
+					const componentVersion = reader.readVarInt(u32) catch return;
+
+					main.entity.loadComponent(.client, componentId, entityId, reader.remaining, componentVersion) catch return;
+				},
 			}
 		}
 	}
@@ -622,7 +639,7 @@ pub const Command = struct { // MARK: Command
 	fn finalize(self: Command, allocator: NeverFailingAllocator, side: Side, reader: *BinaryReader) !void {
 		for (self.baseOperations.items) |step| {
 			switch (step) {
-				.move, .swap, .create, .moveToBag, .takeFromBag, .addEnergy => {},
+				.move, .swap, .create, .moveToBag, .takeFromBag, .addEnergy, .modifyComponent => {},
 				.delete => |info| {
 					info.item.deinit();
 				},
@@ -786,6 +803,61 @@ pub const Command = struct { // MARK: Command
 					main.game.Player.super.energy = std.math.clamp(main.game.Player.super.energy + info.energy, 0, main.game.Player.super.maxEnergy);
 				}
 			},
+			.modifyComponent => |*info| {
+				if (side == .server) {
+					var reader = BinaryReader.init(info.modification);
+					const entityId: main.entity.Entity = @enumFromInt(reader.readVarInt(u32) catch return);
+					const componentId = info.componentId;
+					const actionType: main.entity.ComponentActionType = reader.readEnum(main.entity.ComponentActionType) catch return;
+
+					inline for (@typeInfo(main.entity.components).@"struct".decls) |decl| {
+						if (@field(main.entity.components, decl.name).server.get(entityId)) |component| {
+							var binaryWriter = main.utils.BinaryWriter.init(main.stackAllocator);
+							defer binaryWriter.deinit();
+
+							binaryWriter.writeInt(u32, @intFromEnum(entityId));
+							binaryWriter.writeVarInt(u32, @field(main.entity.components, decl.name).entityComponentVersion);
+							if (component.save(&binaryWriter, .playerNearby) == .save) {
+								info.previous = binaryWriter.data.items;
+							}
+						}
+					}
+					std.log.debug("servermessagetype {}", .{actionType});
+
+					if (actionType == .modify) {
+						main.entity.modifyComponent(.server, componentId, entityId,reader.remaining) catch return;
+					}
+				} else {
+					var reader = BinaryReader.init(info.modification);
+					const entityId: main.entity.Entity = @enumFromInt(reader.readVarInt(u32) catch return);
+					const componentId = info.componentId;
+					const actionType: main.entity.ComponentActionType = reader.readEnum(main.entity.ComponentActionType) catch return;
+
+					inline for (@typeInfo(main.entity.components).@"struct".decls) |decl| {
+						if (@field(main.entity.components, decl.name).server.get(entityId)) |component| {
+							var binaryWriter = main.utils.BinaryWriter.init(main.stackAllocator);
+							defer binaryWriter.deinit();
+
+							binaryWriter.writeInt(u32, @intFromEnum(entityId));
+							binaryWriter.writeVarInt(u32, @field(main.entity.components, decl.name).entityComponentVersion);
+							if (component.save(&binaryWriter, .playerNearby) == .save) {
+								info.previous = binaryWriter.data.items;
+							}
+						}
+					}
+
+					std.log.debug("clientMessage {}", .{actionType});
+					if (actionType == .load) {
+						std.log.debug("AAAAAAAAAAAAAAAAA {}", .{actionType});
+						const componentVersion = reader.readVarInt(u32) catch return;
+						main.entity.loadComponent(.client, componentId, entityId, reader.remaining, componentVersion) catch return;
+					} else if (actionType == .unload) {
+						main.entity.unloadComponent(.client, componentId, entityId) catch return;
+					} else if (actionType == .modify) {
+						main.entity.modifyComponent(.client, componentId, entityId, reader.remaining) catch return;
+					}
+				}
+			}
 		}
 		self.baseOperations.append(allocator, op);
 	}
@@ -1708,6 +1780,56 @@ pub const Command = struct { // MARK: Command
 			return .{
 				.message = main.globalAllocator.dupe(u8, try reader.readSlice(len)),
 			};
+		}
+	};
+
+	const ModifyComponent = struct { // MARK: ModifyComponent
+		target: main.entity.Entity,
+		componentId: u32,
+		modification: []const u8,
+
+		pub fn run(self: ModifyComponent, ctx: Context) error{serverFailure}!void {
+			var target: ?*main.server.User = null;
+
+			if (ctx.side == .server) {
+				const userList = main.server.getUserList(main.stackAllocator);
+				defer main.stackAllocator.free(userList);
+				for (userList) |user| {
+					if (user.id == self.target) {
+						target = user;
+						break;
+					}
+				}
+
+				if (target == null) return error.serverFailure;
+
+				if (target.?.gamemode.raw == .creative) return;
+			} else {
+				if (main.game.Player.gamemode.raw == .creative) return;
+			}
+
+			ctx.execute(.{.modifyComponent = .{
+				.target = target,
+				.componentId = self.componentId,
+				.modification = self.modification,
+				.previous = "",
+			}});
+		}
+
+		fn serialize(self: ModifyComponent, writer: *BinaryWriter) void {
+			writer.writeEnum(main.entity.Entity, self.target);
+			writer.writeInt(u32, @bitCast(self.componentId));
+			writer.writeSliceWithSize(self.modification);
+		}
+
+		fn deserialize(reader: *BinaryReader, _: Side, user: ?*main.server.User) !ModifyComponent {
+			const result: ModifyComponent = .{
+				.target = try reader.readEnum(main.entity.Entity),
+				.componentId = @bitCast(try reader.readInt(u32)),
+				.modification = try reader.readSliceWithSize(),
+			};
+			if (user.?.id != result.target) return error.Invalid;
+			return result;
 		}
 	};
 };
