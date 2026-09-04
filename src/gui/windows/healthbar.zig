@@ -59,15 +59,17 @@ pub fn render() void {
 			y += 20;
 		}
 
-		if (i < wholeHearts) {
-			heartTexture.bindTo(0);
-		} else if (i < wholeHearts + halfHeart) {
-			halfHeartTexture.bindTo(0);
-		} else {
-			deadHeartTexture.bindTo(0);
-		}
+		const texture = blk: {
+			if (i < wholeHearts) {
+				break :blk heartTexture;
+			} else if (i < wholeHearts + halfHeart) {
+				break :blk halfHeartTexture;
+			} else {
+				break :blk deadHeartTexture;
+			}
+		};
 
-		draw.boundImage(Vec2f{x, window.contentSize[1] - y - 20}, .{20, 20});
+		draw.image(texture, Vec2f{x, window.contentSize[1] - y - 20}, .{20, 20});
 		x += 20;
 	}
 

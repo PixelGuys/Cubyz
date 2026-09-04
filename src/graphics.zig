@@ -412,6 +412,14 @@ pub const draw = struct { // MARK: draw
 		uvOffset: c_int,
 		uvDim: c_int,
 	} = undefined;
+	const ImageUniforms = extern struct {
+		start: [2]f32 align(8),
+		size: [2]f32 align(8),
+		screen: [2]f32 align(8),
+		color: i32,
+		uvOffset: [2]f32 align(8),
+		uvDim: [2]f32 align(8),
+	};
 	var imagePipeline: Pipeline = undefined;
 
 	fn initImage() void {
@@ -422,9 +430,12 @@ pub const draw = struct { // MARK: draw
 			&imageUniforms,
 			SimpleVertex2D,
 			.{
+				.bindings = &.{.sampler(0, .{.fragment = true})},
 				.rasterState = .{.cullMode = .none},
 				.depthStencilState = .{.depthTest = false, .depthWrite = false},
 				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+				.inputAssemblyState = .{.topology = .triangleStrip},
+				.pushConstantSize = @sizeOf(ImageUniforms),
 			},
 		);
 	}
@@ -433,13 +444,24 @@ pub const draw = struct { // MARK: draw
 		imagePipeline.deinit();
 	}
 
-	pub fn boundImage(_pos: Vec2f, _dim: Vec2f) void {
-		imagePipeline.bind(getScissor());
+	pub fn image(texture: Texture, _pos: Vec2f, _dim: Vec2f) void {
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 
-		customShadedImage(&imageUniforms, _pos, _dim);
+		if (main.settings.launchConfig.vulkanTestingMode and texture.vulkanImage != null) {
+			vulkan.currentFrame.guiCommands.bindPipeline(imagePipeline, getScissor());
+			vulkan.currentFrame.guiCommands.bindDescriptors(imagePipeline, .graphics, 0, &.{
+				.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
+			});
+			customShadedImage(@as(ImageUniforms, undefined), imagePipeline, _pos, _dim);
+		} else {
+			texture.bindTo(0);
+			imagePipeline.bind(getScissor());
+			customShadedImageOpenGl(imageUniforms, _pos, _dim);
+		}
 	}
 
-	pub fn boundSubImage(_pos: Vec2f, _dim: Vec2f, uvOffset: Vec2f, uvDim: Vec2f) void {
+	pub fn subImage(texture: Texture, _pos: Vec2f, _dim: Vec2f, uvOffset: Vec2f, uvDim: Vec2f) void {
 		var pos = _pos;
 		var dim = _dim;
 		pos *= @splat(scale);
@@ -448,26 +470,45 @@ pub const draw = struct { // MARK: draw
 		pos = @floor(pos);
 		dim = @ceil(dim);
 
-		imagePipeline.bind(getScissor());
-
 		var viewport: [4]c_int = undefined;
 		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-		c.glUniform2f(imageUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
-		c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
-		c.glUniform2f(imageUniforms.size, dim[0], dim[1]);
-		c.glUniform1i(imageUniforms.color, @bitCast(getColor()));
-		c.glUniform2f(imageUniforms.uvOffset, uvOffset[0], 1 - uvOffset[1] - uvDim[1]);
-		c.glUniform2f(imageUniforms.uvDim, uvDim[0], uvDim[1]);
 
-		rectVao.bind();
-		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+		if (main.settings.launchConfig.vulkanTestingMode and texture.vulkanImage != null) {
+			vulkan.currentFrame.guiCommands.bindPipeline(imagePipeline, getScissor());
+			vulkan.currentFrame.guiCommands.bindDescriptors(imagePipeline, .graphics, 0, &.{
+				.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
+			});
+			vulkan.currentFrame.guiCommands.pushConstants(imagePipeline, &ImageUniforms{
+				.start = pos,
+				.size = dim,
+				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.color = @bitCast(getColor()),
+				.uvOffset = .{uvOffset[0], 1 - uvOffset[1] - uvDim[1]},
+				.uvDim = .{uvDim[0], uvDim[1]},
+			});
+			vulkan.currentFrame.guiCommands.bindVertexArray(rectVao);
+			vulkan.currentFrame.guiCommands.draw(4, 0);
+		} else {
+			imagePipeline.bind(getScissor());
+			texture.bindTo(0);
+
+			c.glUniform2f(imageUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
+			c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
+			c.glUniform2f(imageUniforms.size, dim[0], dim[1]);
+			c.glUniform1i(imageUniforms.color, @bitCast(getColor()));
+			c.glUniform2f(imageUniforms.uvOffset, uvOffset[0], 1 - uvOffset[1] - uvDim[1]);
+			c.glUniform2f(imageUniforms.uvDim, uvDim[0], uvDim[1]);
+
+			rectVao.bind();
+			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+		}
 	}
 
-	fn drawSlice(destMin: Vec2f, destMax: Vec2f, uvMin: Vec2f, uvMax: Vec2f) void {
-		boundSubImage(destMin, destMax - destMin, uvMin, uvMax - uvMin);
+	fn drawSlice(texture: Texture, destMin: Vec2f, destMax: Vec2f, uvMin: Vec2f, uvMax: Vec2f) void {
+		subImage(texture, destMin, destMax - destMin, uvMin, uvMax - uvMin);
 	}
 
-	pub fn bound9SliceImage(pos: Vec2f, dim: Vec2f, textureSize: Vec2f, slices: Vec2f, sliceScale: f32) void {
+	pub fn nineSliceImage(texture: Texture, pos: Vec2f, dim: Vec2f, textureSize: Vec2f, slices: Vec2f, sliceScale: f32) void {
 		const widthSlice = slices[0]*sliceScale;
 		const heightSlice = slices[1]*sliceScale;
 
@@ -476,18 +517,18 @@ pub const draw = struct { // MARK: draw
 		const v: Vec2f = .{slices[1]/textureSize[1], (textureSize[1] - slices[1])/textureSize[1]};
 
 		// Draw all Slices
-		drawSlice(.{pos[0], pos[1]}, .{pos[0] + widthSlice, pos[1] + heightSlice}, .{0, 0}, .{u[0], v[0]});
-		drawSlice(.{pos[0] + widthSlice, pos[1]}, .{pos[0] + dim[0] - widthSlice, pos[1] + heightSlice}, .{u[0], 0}, .{u[1], v[0]});
-		drawSlice(.{pos[0] + dim[0] - widthSlice, pos[1]}, .{pos[0] + dim[0], pos[1] + heightSlice}, .{u[1], 0}, .{1, v[0]});
-		drawSlice(.{pos[0], pos[1] + heightSlice}, .{pos[0] + widthSlice, pos[1] + dim[1] - heightSlice}, .{0, v[0]}, .{u[0], v[1]});
-		drawSlice(.{pos[0] + widthSlice, pos[1] + heightSlice}, .{pos[0] + dim[0] - widthSlice, pos[1] + dim[1] - heightSlice}, .{u[0], v[0]}, .{u[1], v[1]});
-		drawSlice(.{pos[0] + dim[0] - widthSlice, pos[1] + heightSlice}, .{pos[0] + dim[0], pos[1] + dim[1] - heightSlice}, .{u[1], v[0]}, .{1, v[1]});
-		drawSlice(.{pos[0], pos[1] + dim[1] - heightSlice}, .{pos[0] + widthSlice, pos[1] + dim[1]}, .{0, v[1]}, .{u[0], 1});
-		drawSlice(.{pos[0] + widthSlice, pos[1] + dim[1] - heightSlice}, .{pos[0] + dim[0] - widthSlice, pos[1] + dim[1]}, .{u[0], v[1]}, .{u[1], 1});
-		drawSlice(.{pos[0] + dim[0] - widthSlice, pos[1] + dim[1] - heightSlice}, .{pos[0] + dim[0], pos[1] + dim[1]}, .{u[1], v[1]}, .{1, 1});
+		drawSlice(texture, .{pos[0], pos[1]}, .{pos[0] + widthSlice, pos[1] + heightSlice}, .{0, 0}, .{u[0], v[0]});
+		drawSlice(texture, .{pos[0] + widthSlice, pos[1]}, .{pos[0] + dim[0] - widthSlice, pos[1] + heightSlice}, .{u[0], 0}, .{u[1], v[0]});
+		drawSlice(texture, .{pos[0] + dim[0] - widthSlice, pos[1]}, .{pos[0] + dim[0], pos[1] + heightSlice}, .{u[1], 0}, .{1, v[0]});
+		drawSlice(texture, .{pos[0], pos[1] + heightSlice}, .{pos[0] + widthSlice, pos[1] + dim[1] - heightSlice}, .{0, v[0]}, .{u[0], v[1]});
+		drawSlice(texture, .{pos[0] + widthSlice, pos[1] + heightSlice}, .{pos[0] + dim[0] - widthSlice, pos[1] + dim[1] - heightSlice}, .{u[0], v[0]}, .{u[1], v[1]});
+		drawSlice(texture, .{pos[0] + dim[0] - widthSlice, pos[1] + heightSlice}, .{pos[0] + dim[0], pos[1] + dim[1] - heightSlice}, .{u[1], v[0]}, .{1, v[1]});
+		drawSlice(texture, .{pos[0], pos[1] + dim[1] - heightSlice}, .{pos[0] + widthSlice, pos[1] + dim[1]}, .{0, v[1]}, .{u[0], 1});
+		drawSlice(texture, .{pos[0] + widthSlice, pos[1] + dim[1] - heightSlice}, .{pos[0] + dim[0] - widthSlice, pos[1] + dim[1]}, .{u[0], v[1]}, .{u[1], 1});
+		drawSlice(texture, .{pos[0] + dim[0] - widthSlice, pos[1] + dim[1] - heightSlice}, .{pos[0] + dim[0], pos[1] + dim[1]}, .{u[1], v[1]}, .{1, 1});
 	}
 
-	pub fn customShadedImage(uniforms: anytype, _pos: Vec2f, _dim: Vec2f) void {
+	pub fn customShadedImageOpenGl(uniforms: anytype, _pos: Vec2f, _dim: Vec2f) void {
 		var pos = _pos;
 		var dim = _dim;
 		pos *= @splat(scale);
@@ -509,10 +550,35 @@ pub const draw = struct { // MARK: draw
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
+	pub fn customShadedImage(_uniforms: anytype, pipeline: Pipeline, _pos: Vec2f, _dim: Vec2f) void {
+		var pos = _pos;
+		var dim = _dim;
+		pos *= @splat(scale);
+		pos += translation;
+		dim *= @splat(scale);
+		pos = @floor(pos);
+		dim = @ceil(dim);
+
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+
+		var uniforms = _uniforms;
+		uniforms.start = pos;
+		uniforms.size = dim;
+		uniforms.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])};
+		uniforms.color = @bitCast(getColor());
+		uniforms.uvOffset = .{0, 0};
+		uniforms.uvDim = .{1, 1};
+
+		vulkan.currentFrame.guiCommands.pushConstants(pipeline, &uniforms);
+		vulkan.currentFrame.guiCommands.bindVertexArray(rectVao);
+		vulkan.currentFrame.guiCommands.draw(4, 0);
+	}
+
 	// ----------------------------------------------------------------------------
 	// MARK: customShadedRect()
 
-	pub fn customShadedRect(uniforms: anytype, _pos: Vec2f, _dim: Vec2f) void {
+	pub fn customShadedRectOpenGl(uniforms: anytype, _pos: Vec2f, _dim: Vec2f) void {
 		var pos = _pos;
 		var dim = _dim;
 		pos *= @splat(scale);
@@ -531,6 +597,29 @@ pub const draw = struct { // MARK: draw
 
 		rectVao.bind();
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+	}
+
+	pub fn customShadedRect(_uniforms: anytype, pipeline: Pipeline, _pos: Vec2f, _dim: Vec2f) void {
+		var pos = _pos;
+		var dim = _dim;
+		pos *= @splat(scale);
+		pos += translation;
+		dim *= @splat(scale);
+		pos = @floor(pos);
+		dim = @ceil(dim);
+
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		var uniforms = _uniforms;
+		uniforms.start = pos;
+		uniforms.size = dim;
+		uniforms.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])};
+		uniforms.color = @bitCast(getColor());
+		uniforms.scale = scale;
+
+		vulkan.currentFrame.guiCommands.pushConstants(pipeline, &uniforms);
+		vulkan.currentFrame.guiCommands.bindVertexArray(rectVao);
+		vulkan.currentFrame.guiCommands.draw(4, 0);
 	}
 
 	// ----------------------------------------------------------------------------
@@ -1959,8 +2048,7 @@ pub const Texture = struct { // MARK: Texture
 	}
 
 	pub fn render(self: Texture, pos: Vec2f, dim: Vec2f) void {
-		self.bindTo(0);
-		draw.boundImage(pos, dim);
+		draw.image(self, pos, dim);
 	}
 
 	pub fn size(self: Texture) Vec2i {
