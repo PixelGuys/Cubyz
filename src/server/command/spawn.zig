@@ -16,11 +16,9 @@ pub const usage =
 	\\/spawn world <x> <y> <z>
 ;
 
-pub const ResetType = enum { reset };
-
 pub const Args = union(enum) {
 	@"/spawn <playerIndex> <x> <y> <z>": struct { playerIndex: ?command.PlayerIndex, x: command.Coordinate, y: command.Coordinate, z: command.Coordinate },
-	@"/spawn <playerIndex> <reset>": struct { playerIndex: ?command.PlayerIndex, reset: ResetType },
+	@"/spawn <playerIndex> <reset>": struct { playerIndex: ?command.PlayerIndex, reset: enum { reset } },
 	@"/spawn <world> <x> <y> <z>": struct { world: enum { world }, x: command.Coordinate, y: command.Coordinate, z: command.Coordinate },
 	@"/spawn <world>": struct { world: enum { world } },
 	@"/spawn <playerIndex>": struct { playerIndex: ?command.PlayerIndex },
