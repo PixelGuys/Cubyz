@@ -600,8 +600,7 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 			if (itemB == .null) return true;
 			if ((itemA != .proceduralItem) and (itemB == .proceduralItem)) return false;
 			if ((itemA == .proceduralItem) and (itemB != .proceduralItem)) return true;
-			if (std.mem.lessThan(u8, itemA.id().?, itemB.id().?)) return true;
-			if (!std.mem.eql(u8, itemA.id().?, itemB.id().?)) return false;
+			if (!std.mem.eql(u8, itemA.id().?, itemB.id().?)) return std.mem.lessThan(u8, itemA.id().?, itemB.id().?);
 			if ((itemA == .proceduralItem) and (itemB == .proceduralItem)) {
 				const itemADurabilityPercent: f32 = @as(f32, @floatFromInt(itemA.proceduralItem.durability))/itemA.proceduralItem.getProperty(.maxDurability);
 				const itemBDurabilityPercent: f32 = @as(f32, @floatFromInt(itemB.proceduralItem.durability))/itemB.proceduralItem.getProperty(.maxDurability);
