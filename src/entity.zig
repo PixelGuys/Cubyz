@@ -17,6 +17,13 @@ pub const EntityNetworkData = struct {
 	rot: Vec3f,
 };
 
+pub const ComponentActionType = enum(u8) {
+	unload = 0,
+	load = 1,
+	modifyServer = 2,
+	modifyClient = 3,
+};
+
 pub const EntityComponentLoadError = error{
 	DecodingBase64,
 	UnreadableId,
@@ -35,8 +42,8 @@ const EntityComponentVTable = struct {
 	clientLoad: *const fn (entity: Entity, reader: *BinaryReader, version: u32) EntityComponentLoadError!void,
 	serverUnload: *const fn (entity: Entity) void,
 	clientUnload: *const fn (entity: Entity) void,
-	modifyServerComponent: *const fn (entity: Entity, reader: *BinaryReader) void,
-	modifyClientComponent: *const fn (entity: Entity, reader: *BinaryReader) void,
+	serverModifyComponent: *const fn (entity: Entity, reader: *BinaryReader) void,
+	clientModifyComponent: *const fn (entity: Entity, reader: *BinaryReader) void,
 };
 var componentList: []?EntityComponentVTable = undefined;
 
@@ -55,8 +62,8 @@ pub fn initComponents() void {
 				.clientLoad = @field(components, decl.name).client.load,
 				.serverUnload = @field(components, decl.name).server.unload,
 				.clientUnload = @field(components, decl.name).client.unload,
-				.modifyServerComponent = @field(components, decl.name).server.modifyComponent,
-				.modifyClientComponent = @field(components, decl.name).client.modifyComponent,
+				.serverModifyComponent = @field(components, decl.name).server.modifyComponent,
+				.clientModifyComponent = @field(components, decl.name).client.modifyComponent,
 			};
 		} else {
 			std.log.err("entity components: Duplicate list id {}.", .{componentId});
@@ -72,6 +79,7 @@ pub fn loadComponent(comptime side: main.sync.Side, componentId: EntityComponent
 		std.log.err("unknown Component Id {} ", .{componentId});
 		return error.UnknownComponentId;
 	}
+	std.log.debug("is this recording properly", .{});
 	var componentReader = BinaryReader.init(componentData);
 	if (componentList[componentId]) |vtable| {
 		switch (side) {
@@ -111,8 +119,8 @@ pub fn modifyComponent(comptime side: main.sync.Side, componentId: EntityCompone
 	var componentReader = BinaryReader.init(componentData);
 	if (componentList[componentId]) |vtable| {
 		switch (side) {
-			.server => vtable.modifyServerComponent(entity, &componentReader),
-			.client => vtable.modifyClientComponent(entity, &componentReader),
+			.server => vtable.serverModifyComponent(entity, &componentReader),
+			.client => vtable.clientModifyComponent(entity, &componentReader),
 		}
 	} else {
 		std.log.err("unknown Component Id {} ", .{componentId});
@@ -193,6 +201,7 @@ pub const server = struct {
 		if (EntityComponent.server.get(entity)) |ptr| {
 			if (ptr.save(&binaryWriter, .playerNearby) == .save) {
 				for (users) |user| {
+					std.log.debug("testing this {}", .{user.conn.isServerSide()});
 					main.network.protocols.EntityComponentUpdate.load(user.conn, entity, EntityComponent.entityComponentID, EntityComponent.entityComponentVersion, binaryWriter.data.items);
 				}
 			}
