@@ -26,6 +26,7 @@ const settings = @import("settings.zig");
 const Block = main.blocks.Block;
 const physics = main.physics;
 const KeyBoard = main.KeyBoard;
+const @"cubyz:health" = main.entity.components.@"cubyz:health";
 
 pub const camera = struct { // MARK: camera
 	pub var rotation: Vec3f = Vec3f{0, 0, 0};
@@ -204,7 +205,6 @@ pub const Player = struct { // MARK: Player
 		Player.super.pos = spawnPos;
 		Player.super.vel = .{0, 0, 0};
 
-		Player.super.health = Player.super.maxHealth;
 		Player.super.energy = Player.super.maxEnergy;
 
 		Player.eye = .{};
@@ -764,7 +764,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				const velocityChange = @abs(@abs(prevVel[2]) - @abs(Player.super.vel[2]));
 				const damage: f32 = @floatCast(@round(@max((velocityChange*velocityChange)/(2*physics.baseGravity) - 7, 0))/2);
 				if (damage > 0.01) {
-					main.sync.addHealth(-damage, .fall, .client, Player.id);
+					@"cubyz:health".server.addHealth(Player.id, -damage);
 				}
 			}
 			physics.calculateVerticalCollisionEyeMovement(deltaTime, &Player.eye, didCollide, Player.onGround, wasOnGround, prevPos, Player.super.pos, prevVel, Player.super.vel, motion, Player.steppingHeight()[2]);

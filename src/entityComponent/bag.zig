@@ -62,6 +62,10 @@ pub const client = struct {
 		const bag = components.fetchRemove(entity) catch return;
 		bag.bag.deinit();
 	}
+	pub fn modifyComponent(entity: Entity, reader: *utils.BinaryReader) void {
+		_ = entity;
+		_ = reader;
+	}
 };
 
 // ############################# Server only stuff ################################
@@ -102,5 +106,9 @@ pub const server = struct {
 	pub fn unload(entity: Entity) void {
 		const bag = components.fetchRemove(entity) catch return;
 		bag.bag.deinit();
+	}
+	pub fn modifyComponent(entity: Entity, reader: *utils.BinaryReader) void {
+		_ = entity;
+		_ = reader;
 	}
 };

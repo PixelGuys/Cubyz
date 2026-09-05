@@ -23,6 +23,11 @@ pub const client = struct {
 	pub fn init() void {}
 	pub fn deinit() void {}
 	pub fn clear() void {}
+
+	pub fn modifyComponent(entity: Entity, reader: *utils.BinaryReader) void {
+		_ = entity;
+		_ = reader;
+	}
 };
 // ############################# Server only stuff ################################
 pub const server = struct {
@@ -83,5 +88,10 @@ pub const server = struct {
 	pub fn unload(entity: Entity) void {
 		const permissions = components.fetchRemove(entity) catch return;
 		permissions.permissions.deinit();
+	}
+
+	pub fn modifyComponent(entity: Entity, reader: *utils.BinaryReader) void {
+		_ = entity;
+		_ = reader;
 	}
 };

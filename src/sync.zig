@@ -218,15 +218,6 @@ pub const server = struct { // MARK: server
 	}
 };
 
-pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, entity: main.entity.Entity) void {
-	threadContext.assertCorrectContext(side);
-	if (side == .client) {
-		client.executeCommand(.{.addHealth = .{.target = entity, .health = health, .cause = cause}});
-	} else {
-		server.executeCommand(.{.addHealth = .{.target = entity, .health = health, .cause = cause}}, null);
-	}
-}
-
 pub fn setGamemode(user: ?*main.server.User, gamemode: Gamemode) void {
 	if (user == null) {
 		client.setGamemode(gamemode);
@@ -253,8 +244,8 @@ pub const Command = struct { // MARK: Command
 		craftProceduralItem = 15,
 		clear = 8,
 		updateBlock = 9,
-		addHealth = 10,
 		chatCommand = 12,
+		modifyComponent = 10,
 	};
 	pub const Payload = union(PayloadType) {
 		open: Open,
@@ -274,8 +265,8 @@ pub const Command = struct { // MARK: Command
 		craftProceduralItem: CraftProceduralItem,
 		clear: Clear,
 		updateBlock: UpdateBlock,
-		addHealth: AddHealth,
 		chatCommand: ChatCommand,
+		modifyComponent: ModifyComponent,
 	};
 
 	const BaseOperationType = enum(u8) {
@@ -286,8 +277,8 @@ pub const Command = struct { // MARK: Command
 		moveToBag = 7,
 		takeFromBag = 8,
 		useDurability = 4,
-		addHealth = 5,
 		addEnergy = 6,
+		modifyComponent = 9,
 	};
 
 	/// The BaseOperation is the primitive operation used by Command. It is responsible for executing the operation as
@@ -332,24 +323,23 @@ pub const Command = struct { // MARK: Command
 			durability: u31,
 			previousDurability: u32 = undefined,
 		},
-		addHealth: struct {
-			target: ?*main.server.User,
-			health: f32,
-			cause: main.game.DamageType,
-			previous: f32,
-		},
 		addEnergy: struct {
 			target: ?*main.server.User,
 			energy: f32,
 			previous: f32,
 		},
+		modifyComponent: struct {
+			target: ?*main.server.User,
+			componentId: u32,
+			modification: []const u8,
+			previous: []const u8,
+		}
 	};
 
 	const SyncOperationType = enum(u8) {
 		create = 0,
 		delete = 1,
 		useDurability = 2,
-		health = 3,
 		kill = 4,
 		energy = 5,
 		rotation = 6,
@@ -371,10 +361,6 @@ pub const Command = struct { // MARK: Command
 		useDurability: struct {
 			inv: InventoryAndSlot,
 			durability: u32,
-		},
-		health: struct {
-			target: ?*main.server.User,
-			health: f32,
 		},
 		kill: struct {
 			target: ?*main.server.User,
@@ -417,6 +403,7 @@ pub const Command = struct { // MARK: Command
 					delete.inv.inv.update();
 				},
 				.useDurability => |durability| {
+					std.log.err("does this work at least", .{});
 					durability.inv.ref().item.proceduralItem.durability -|= durability.durability;
 					if (durability.inv.ref().item.proceduralItem.durability == 0) {
 						durability.inv.ref().item = .null;
@@ -424,9 +411,6 @@ pub const Command = struct { // MARK: Command
 					}
 
 					durability.inv.inv.update();
-				},
-				.health => |health| {
-					main.game.Player.super.health = std.math.clamp(main.game.Player.super.health + health.health, 0, main.game.Player.super.maxHealth);
 				},
 				.kill => |kill| {
 					main.game.Player.kill(kill.spawnPoint);
@@ -450,7 +434,7 @@ pub const Command = struct { // MARK: Command
 					}
 					return result;
 				},
-				inline .health, .kill, .energy, .rotation => |data| {
+				inline .kill, .energy, .rotation => |data| {
 					const out = allocator.alloc(*main.server.User, 1);
 					out[0] = data.target.?;
 					return out;
@@ -460,7 +444,7 @@ pub const Command = struct { // MARK: Command
 
 		pub fn ignoreSource(self: SyncOperation) bool {
 			return switch (self) {
-				.create, .delete, .useDurability, .health, .energy, .rotation => true,
+				.create, .delete, .useDurability, .energy, .rotation => true,
 				.kill => false,
 			};
 		}
@@ -492,12 +476,6 @@ pub const Command = struct { // MARK: Command
 					}};
 
 					return out;
-				},
-				.health => {
-					return .{.health = .{
-						.target = null,
-						.health = try reader.readFloat(f32),
-					}};
 				},
 				.kill => {
 					return .{.kill = .{
@@ -538,9 +516,6 @@ pub const Command = struct { // MARK: Command
 				.useDurability => |durability| {
 					durability.inv.write(&writer);
 					writer.writeInt(u32, durability.durability);
-				},
-				.health => |health| {
-					writer.writeFloat(f32, health.health);
 				},
 				.kill => |kill| {
 					writer.writeVec(Vec3d, kill.spawnPoint);
@@ -652,11 +627,16 @@ pub const Command = struct { // MARK: Command
 					info.item.proceduralItem.durability = info.previousDurability;
 					info.source.inv.update();
 				},
-				.addHealth => |info| {
-					main.game.Player.super.health = info.previous;
-				},
 				.addEnergy => |info| {
 					main.game.Player.super.energy = info.previous;
+				},
+				.modifyComponent => |info| {
+					var reader = BinaryReader.init(info.previous);
+					const entityId: main.entity.Entity = @enumFromInt(reader.readVarInt(u32) catch return);
+					const componentId = info.componentId;
+					const componentVersion = reader.readVarInt(u32) catch return;
+
+					main.entity.loadComponent(.client, componentId, entityId, reader.remaining, componentVersion) catch return;
 				},
 			}
 		}
@@ -665,7 +645,7 @@ pub const Command = struct { // MARK: Command
 	fn finalize(self: Command, allocator: NeverFailingAllocator, side: Side, reader: *BinaryReader) !void {
 		for (self.baseOperations.items) |step| {
 			switch (step) {
-				.move, .swap, .create, .moveToBag, .takeFromBag, .addHealth, .addEnergy => {},
+				.move, .swap, .create, .moveToBag, .takeFromBag, .addEnergy, .modifyComponent => {},
 				.delete => |info| {
 					info.item.deinit();
 				},
@@ -815,31 +795,6 @@ pub const Command = struct { // MARK: Command
 				self.executeDurabilityUseOperation(allocator, side, info.source, info.durability);
 				info.source.inv.update();
 			},
-			.addHealth => |*info| {
-				if (side == .server) {
-					info.previous = info.target.?.player().health;
-
-					info.target.?.player().health = std.math.clamp(info.target.?.player().health + info.health, 0, info.target.?.player().maxHealth);
-
-					if (info.target.?.player().health <= 0) {
-						info.target.?.player().health = info.target.?.player().maxHealth;
-						info.cause.sendMessage(info.target.?.name);
-
-						self.syncOperations.append(allocator, .{.kill = .{
-							.target = info.target.?,
-							.spawnPoint = info.target.?.getSpawnPos(),
-						}});
-					} else {
-						self.syncOperations.append(allocator, .{.health = .{
-							.target = info.target.?,
-							.health = info.health,
-						}});
-					}
-				} else {
-					info.previous = main.game.Player.super.health;
-					main.game.Player.super.health = std.math.clamp(main.game.Player.super.health + info.health, 0, main.game.Player.super.maxHealth);
-				}
-			},
 			.addEnergy => |*info| {
 				if (side == .server) {
 					info.previous = info.target.?.player().energy;
@@ -852,6 +807,60 @@ pub const Command = struct { // MARK: Command
 				} else {
 					info.previous = main.game.Player.super.energy;
 					main.game.Player.super.energy = std.math.clamp(main.game.Player.super.energy + info.energy, 0, main.game.Player.super.maxEnergy);
+				}
+			},
+			.modifyComponent => |*info| {
+				if (side == .server) {
+					var reader = BinaryReader.init(info.modification);
+					const entityId: main.entity.Entity = @enumFromInt(reader.readVarInt(u32) catch return);
+					const componentId = info.componentId;
+					const actionType: main.entity.ComponentActionType = reader.readEnum(main.entity.ComponentActionType) catch return;
+
+					inline for (@typeInfo(main.entity.components).@"struct".decls) |decl| {
+						if (@field(main.entity.components, decl.name).server.get(entityId)) |component| {
+							var binaryWriter = main.utils.BinaryWriter.init(main.stackAllocator);
+							defer binaryWriter.deinit();
+
+							binaryWriter.writeInt(u32, @intFromEnum(entityId));
+							binaryWriter.writeVarInt(u32, @field(main.entity.components, decl.name).entityComponentVersion);
+							if (component.save(&binaryWriter, .playerNearby) == .save) {
+								info.previous = binaryWriter.data.items;
+							}
+						}
+					}
+
+					if (actionType == .modifyServer) {
+						main.entity.modifyComponent(.server, componentId, entityId,reader.remaining) catch return;
+					}
+				} else {
+					std.log.debug("hello right here", .{});
+					var binaryReader = BinaryReader.init(info.modification);
+					const entityId: main.entity.Entity = @enumFromInt(binaryReader.readVarInt(u32) catch return);
+					const componentId = info.componentId;
+					const actionType: main.entity.ComponentActionType = binaryReader.readEnum(main.entity.ComponentActionType) catch return;
+
+					inline for (@typeInfo(main.entity.components).@"struct".decls) |decl| {
+						if (@field(main.entity.components, decl.name).server.get(entityId)) |component| {
+							var binaryWriter = main.utils.BinaryWriter.init(main.stackAllocator);
+							defer binaryWriter.deinit();
+
+							binaryWriter.writeInt(u32, @intFromEnum(entityId));
+							binaryWriter.writeVarInt(u32, @field(main.entity.components, decl.name).entityComponentVersion);
+							if (component.save(&binaryWriter, .playerNearby) == .save) {
+								info.previous = binaryWriter.data.items;
+							}
+						}
+					}
+
+										
+					if (actionType == .load) {
+						const componentVersion = binaryReader.readVarInt(u32) catch return;
+						main.entity.loadComponent(.client, componentId, entityId, binaryReader.remaining, componentVersion) catch return;
+					} else if (actionType == .unload) {
+						main.entity.unloadComponent(.client, componentId, entityId) catch return;
+					} else if (actionType == .modifyClient) {
+						main.entity.modifyComponent(.client, componentId, entityId, binaryReader.remaining) catch return;
+					}
 				}
 			},
 		}
@@ -1574,9 +1583,85 @@ pub const Command = struct { // MARK: Command
 	const UpdateBlock = struct { // MARK: UpdateBlock
 		source: InventoryAndSlot,
 		pos: Vec3i,
-		dropLocation: BlockDrop.Location,
+		dropLocation: BlockDropLocation,
 		oldBlock: Block,
 		newBlock: Block,
+
+		const half = @as(Vec3f, @splat(0.5));
+		const itemHitBoxMargin: f32 = @floatCast(main.itemdrop.ItemDropManager.radius);
+		const itemHitBoxMarginVec: Vec3f = @splat(itemHitBoxMargin);
+
+		const BlockDropLocation = struct {
+			normalDir: Vec3f,
+			min: Vec3f,
+			max: Vec3f,
+
+			pub fn drop(self: BlockDropLocation, pos: Vec3i, newBlock: Block, _drop: BlockDrop) void {
+				if (newBlock.collide()) {
+					self.dropOutside(pos, _drop);
+				} else {
+					self.dropInside(pos, _drop);
+				}
+			}
+			fn dropInside(self: BlockDropLocation, pos: Vec3i, _drop: BlockDrop) void {
+				for (_drop.itemStacks) |itemStack| {
+					main.server.world.?.drop(itemStack.clone(), self.insidePos(pos), self.dropDir(), self.dropVelocity());
+				}
+			}
+			fn insidePos(self: BlockDropLocation, _pos: Vec3i) Vec3d {
+				const pos: Vec3d = @floatFromInt(_pos);
+				return pos + self.randomOffset();
+			}
+			fn randomOffset(self: BlockDropLocation) Vec3f {
+				const max = @min(@as(Vec3f, @splat(1.0)) - itemHitBoxMarginVec, @max(itemHitBoxMarginVec, self.max - itemHitBoxMarginVec));
+				const min = @min(max, @max(itemHitBoxMarginVec, self.min + itemHitBoxMarginVec));
+				const center = (max + min)*half;
+				const width = (max - min)*half;
+				return center + width*main.random.nextFloatVectorSigned(3, &main.seed)*half;
+			}
+			fn dropOutside(self: BlockDropLocation, pos: Vec3i, _drop: BlockDrop) void {
+				for (_drop.itemStacks) |itemStack| {
+					main.server.world.?.drop(itemStack.clone(), self.outsidePos(pos), self.dropDir(), self.dropVelocity());
+				}
+			}
+			fn outsidePos(self: BlockDropLocation, _pos: Vec3i) Vec3d {
+				const pos: Vec3d = @floatFromInt(_pos);
+				const random = self.randomOffset();
+				const minorVectors = minors(self);
+				const minor1Offset = @as(Vec3f, @splat(vec.dot(random, minorVectors[0])))*minorVectors[0];
+				const minor2Offset = @as(Vec3f, @splat(vec.dot(random, minorVectors[1])))*minorVectors[1];
+				return pos + minor1Offset + minor2Offset + self.directionOffset()*self.major() + self.direction()*itemHitBoxMarginVec;
+			}
+			fn directionOffset(self: BlockDropLocation) Vec3d {
+				return half + self.direction()*half;
+			}
+			inline fn direction(self: BlockDropLocation) Vec3f {
+				return self.normalDir;
+			}
+			inline fn major(self: BlockDropLocation) Vec3f {
+				return @abs(self.normalDir);
+			}
+			inline fn minors(self: BlockDropLocation) struct { Vec3f, Vec3f } {
+				const minor1 = vec.normalize(vec.cross(self.normalDir, if (@reduce(.And, @abs(self.normalDir) == Vec3f{1.0, 0.0, 0.0})) Vec3f{0.0, 1.0, 0.0} else Vec3f{1.0, 0.0, 0.0}));
+				const minor2 = vec.normalize(vec.cross(self.normalDir, minor1));
+				return .{minor1, minor2};
+			}
+			fn dropDir(self: BlockDropLocation) Vec3f {
+				const randomnessVec: Vec3f = main.random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(0.25));
+				const directionVec: Vec3f = @as(Vec3f, @floatCast(self.direction())) + randomnessVec;
+				const z: f32 = directionVec[2];
+				return vec.normalize(Vec3f{
+					directionVec[0],
+					directionVec[1],
+					if (z < -0.5) 0 else if (z < 0.0) (z + 0.5)*4.0 else z + 2.0,
+				});
+			}
+			fn dropVelocity(self: BlockDropLocation) f32 {
+				const velocity = 3.5 + main.random.nextFloatSigned(&main.seed)*0.5;
+				if (self.direction()[2] < -0.5) return velocity*0.333;
+				return velocity;
+			}
+		};
 
 		fn run(self: UpdateBlock, ctx: Context) error{serverFailure}!void {
 			const stack = self.source.ref();
@@ -1633,12 +1718,16 @@ pub const Command = struct { // MARK: Command
 				},
 			}
 			if (ctx.side == .server and ctx.gamemode != .creative and shouldDropSourceBlockOnSuccess) {
-				const dropCtx = BlockDrop.Context{
-					.oldBlock = self.oldBlock,
-					.newBlock = self.newBlock,
-					.item = handItem,
-				};
-				dropCtx.drop(self.dropLocation, self.pos);
+				const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
+				for (0..dropAmount) |_| {
+					for (self.oldBlock.blockDrops()) |drop| {
+						if (!drop.isDroppedWhenBrokenWithItem(handItem)) continue;
+
+						if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
+							self.dropLocation.drop(self.pos, self.newBlock, drop);
+						}
+					}
+				}
 			}
 		}
 
@@ -1664,56 +1753,6 @@ pub const Command = struct { // MARK: Command
 				.oldBlock = @bitCast(try reader.readInt(u32)),
 				.newBlock = @bitCast(try reader.readInt(u32)),
 			};
-		}
-	};
-
-	const AddHealth = struct { // MARK: AddHealth
-		target: main.entity.Entity,
-		health: f32,
-		cause: main.game.DamageType,
-
-		pub fn run(self: AddHealth, ctx: Context) error{serverFailure}!void {
-			var target: ?*main.server.User = null;
-
-			if (ctx.side == .server) {
-				const userList = main.server.getUserList(main.stackAllocator);
-				defer main.stackAllocator.free(userList);
-				for (userList) |user| {
-					if (user.id == self.target) {
-						target = user;
-						break;
-					}
-				}
-
-				if (target == null) return error.serverFailure;
-
-				if (target.?.gamemode.raw == .creative) return;
-			} else {
-				if (main.game.Player.gamemode.raw == .creative) return;
-			}
-
-			ctx.execute(.{.addHealth = .{
-				.target = target,
-				.health = self.health,
-				.cause = self.cause,
-				.previous = if (ctx.side == .server) target.?.player().health else main.game.Player.super.health,
-			}});
-		}
-
-		fn serialize(self: AddHealth, writer: *BinaryWriter) void {
-			writer.writeEnum(main.entity.Entity, self.target);
-			writer.writeInt(u32, @bitCast(self.health));
-			writer.writeEnum(main.game.DamageType, self.cause);
-		}
-
-		fn deserialize(reader: *BinaryReader, _: Side, user: ?*main.server.User) !AddHealth {
-			const result: AddHealth = .{
-				.target = try reader.readEnum(main.entity.Entity),
-				.health = @bitCast(try reader.readInt(u32)),
-				.cause = try reader.readEnum(main.game.DamageType),
-			};
-			if (user.?.id != result.target) return error.Invalid;
-			return result;
 		}
 	};
 
@@ -1746,6 +1785,52 @@ pub const Command = struct { // MARK: Command
 			return .{
 				.message = main.globalAllocator.dupe(u8, try reader.readSlice(len)),
 			};
+		}
+	};
+
+	const ModifyComponent = struct { // MARK: ModifyComponent
+		target: main.entity.Entity,
+		componentId: u32,
+		modification: []const u8,
+
+		pub fn run(self: ModifyComponent, ctx: Context) error{serverFailure}!void {
+			var target: ?*main.server.User = null;
+
+			if (ctx.side == .server) {
+				const userList = main.server.getUserList(main.stackAllocator);
+				defer main.stackAllocator.free(userList);
+				for (userList) |user| {
+					if (user.id == self.target) {
+						target = user;
+						break;
+					}
+				}
+
+				if (target == null) return error.serverFailure;
+			}
+
+			ctx.execute(.{.modifyComponent = .{
+				.target = target,
+				.componentId = self.componentId,
+				.modification = self.modification,
+				.previous = "",
+			}});
+		}
+
+		fn serialize(self: ModifyComponent, writer: *BinaryWriter) void {
+			writer.writeEnum(main.entity.Entity, self.target);
+			writer.writeInt(u32, @bitCast(self.componentId));
+			writer.writeSliceWithSize(self.modification);
+		}
+
+		fn deserialize(reader: *BinaryReader, _: Side, user: ?*main.server.User) !ModifyComponent {
+			const result: ModifyComponent = .{
+				.target = try reader.readEnum(main.entity.Entity),
+				.componentId = @bitCast(try reader.readInt(u32)),
+				.modification = try reader.readSliceWithSize(),
+			};
+			if (user.?.id != result.target) return error.Invalid;
+			return result;
 		}
 	};
 };
