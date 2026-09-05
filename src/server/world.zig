@@ -884,9 +884,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 					}
 				}
 				std.log.err("Found no valid spawn location", .{});
+				const map = terrain.SurfaceMap.getOrGenerateFragment(self.spawn[0], self.spawn[1], 1);
+				self.spawn[2] = map.getHeight(self.spawn[0], self.spawn[1]) + 1;
 			}
-			const map = terrain.SurfaceMap.getOrGenerateFragment(self.spawn[0], self.spawn[1], 1);
-			self.spawn[2] = map.getHeight(self.spawn[0], self.spawn[1]) + 1;
 		}
 		const newBiomeCheckSum: i64 = @bitCast(terrain.biomes.getBiomeCheckSum(self.settings.seed));
 		if (newBiomeCheckSum != self.biomeChecksum) {
@@ -1045,9 +1045,30 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try files.cubyzDir().write(itemsPath, itemDropData.data.items);
 	}
 
-	fn isValidSpawnLocation(_: *ServerWorld, wx: i32, wy: i32) bool {
+	fn getOrGenerateBlock(wx: i32, wy: i32, wz: i32) Block {
+		const pos = chunk.ChunkPosition.initFromWorldPos(.{wx, wy, wz}, 1);
+		const ch = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(pos);
+		defer ch.decreaseRefCount();
+		ch.mutex.lock();
+		defer ch.mutex.unlock();
+		const relPos = chunk.BlockPos.fromWorldCoords(wx, wy, wz);
+		return ch.getBlock(relPos.x, relPos.y, relPos.z);
+	}
+
+	fn isValidSpawnLocation(self: *ServerWorld, wx: i32, wy: i32) bool {
 		const map = terrain.SurfaceMap.getOrGenerateFragment(wx, wy, 1);
-		return map.getBiome(wx, wy).isValidPlayerSpawn;
+		if (!map.getBiome(wx, wy).isValidPlayerSpawn) return false;
+		const height = map.getHeight(wx, wy);
+
+		const groundBlock = getOrGenerateBlock(wx, wy, height - 1);
+		if (!groundBlock.collide() or !groundBlock.onTouch().isNoop()) return false;
+		inline for (.{height, height + 1}) |h| {
+			const block = getOrGenerateBlock(wx, wy, h);
+			if (block.collide() or !block.onTouch().isNoop()) return false;
+		}
+
+		self.spawn[2] = height + 1;
+		return true;
 	}
 
 	pub fn dropWithCooldown(self: *ServerWorld, stack: ItemStack, pos: Vec3d, dir: Vec3f, velocity: f32, pickupCooldown: i32) void {

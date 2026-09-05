@@ -21,7 +21,7 @@ inline fn networkTimestamp() i64 {
 	return @truncate(@divTrunc(main.timestamp().toNanoseconds(), 1000));
 }
 
-const Socket = struct {
+const Socket = struct { // MARK: Socket
 	const posix = std.posix;
 	socketID: if (builtin.os.tag == .windows) c.SOCKET else posix.socket_t,
 
