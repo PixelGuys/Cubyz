@@ -32,17 +32,13 @@ const Self = @This();
 pub var entityComponentID: main.entity.EntityComponentId = undefined;
 pub const entityComponentVersion = 0;
 
+var playerBagSizeLimit = 120;
+
 // ############################# Client only stuff ################################
 pub const client = struct {
 	const Component = struct {
 		health: f32,
 		maxHealth: f32,
-		pub fn save(self: Component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
-			_ = audience;
-			writer.writeFloat(f32, self.health);
-			writer.writeFloat(f32, self.maxHealth);
-			return .save;
-		}
 	};
 	pub var components: main.utils.SparseSet(Component, Entity) = .{};
 
@@ -54,9 +50,6 @@ pub const client = struct {
 		components.clear();
 	}
 
-	pub fn get(entity: Entity) ?Component {
-		return (components.get(entity) orelse return null).*;
-	}
 	pub fn getHealth(entity: Entity) ?f32 {
 		return (components.get(entity) orelse return null).health;
 	}
@@ -67,11 +60,10 @@ pub const client = struct {
 		var binaryWriter = main.utils.BinaryWriter.init(main.stackAllocator);
 		defer binaryWriter.deinit();
 		binaryWriter.writeFloat(f32, healthChange);
-		main.network.protocols.EntityComponentUpdate.modify(.client, entity, Self.entityComponentID, binaryWriter.data.items);
+		main.network.protocols.EntityComponentUpdate.modify(main.game.world.?.conn, entity, Self.entityComponentID, binaryWriter.data.items);
 	}
 
 	pub fn load(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
-		std.log.debug("dpes tje client recieve the massage", .{});
 		if (version != entityComponentVersion) return error.InvalidComponentVersion;
 		const component = components.add(main.globalAllocator, entity);
 		const health = &component.health;
@@ -85,7 +77,6 @@ pub const client = struct {
 	pub fn modifyComponent(entity: Entity, reader: *utils.BinaryReader) void {
 		_ = entity;
 		_ = reader;
-		std.log.debug("what?", .{});
 	}
 };
 
@@ -95,7 +86,7 @@ pub const server = struct {
 		health: f32,
 		maxHealth: f32,
 		pub fn save(self: Component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
-			_ = audience;
+			if (audience != .disk and audience != .playerHimself) return .discard;
 			writer.writeFloat(f32, self.health);
 			writer.writeFloat(f32, self.maxHealth);
 			return .save;

@@ -17,7 +17,6 @@ const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const BlockUpdate = renderer.mesh_storage.BlockUpdate;
-const ComponentActionType = main.entity.ComponentActionType;
 
 const network = main.network;
 const Connection = network.Connection;
@@ -1065,43 +1064,68 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 	pub const id: u8 = 15;
 
-	pub fn unload(side: main.sync.Side, entityId: main.entity.Entity, componentId: u32) void {
-		var writer = utils.BinaryWriter.init(main.stackAllocator);
-		defer writer.deinit();
-
-		writer.writeVarInt(u32, @intFromEnum(entityId));
-		writer.writeEnum(ComponentActionType, ComponentActionType.unload);
-
-		execute(side, entityId, componentId, writer.data.items);
+	const ActionType = enum(u8) {
+		unload = 0,
+		load = 1,
+		modify = 2,
+	};
+	
+	fn serverReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+		const entityId: main.entity.Entity = @enumFromInt(try reader.readVarInt(u32));
+		const componentId = try reader.readVarInt(u32);
+		const actionType: ActionType = try reader.readEnum(ActionType);
+		if (reader.remaining[0] == 0xff) return error.Invalid;
+		if (actionType == .modify) {
+			try main.entity.modifyComponent(.server, componentId, entityId,reader.remaining);
+		}
 	}
-	pub fn load(side: main.sync.Side, entityId: main.entity.Entity, componentId: u32, version: u32, componentData: []const u8) void {
+	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+		const entityId: main.entity.Entity = @enumFromInt(try reader.readVarInt(u32));
+		const componentId = try reader.readVarInt(u32);
+		const actionType: ActionType = try reader.readEnum(ActionType);
+
+		if (actionType == .load) {
+			const componentVersion = try reader.readVarInt(u32);
+			try main.entity.loadComponent(.client, componentId, entityId, reader.remaining, componentVersion);
+		} else if (actionType == .unload) {
+			try main.entity.unloadComponent(.client, componentId, entityId);
+		} else if (actionType == .modify) {
+			try main.entity.modifyComponent(.client, componentId, entityId, reader.remaining);
+		}
+	}
+	pub fn unload(conn: *Connection, entityId: main.entity.Entity, componentId: u32) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
 		writer.writeVarInt(u32, @intFromEnum(entityId));
-		writer.writeEnum(ComponentActionType, ComponentActionType.load);
+		writer.writeVarInt(u32, componentId);
+		writer.writeEnum(ActionType, ActionType.unload);
+
+		conn.send(.secure, id, writer.data.items);
+	}
+	pub fn load(conn: *Connection, entityId: main.entity.Entity, componentId: u32, version: u32, componentData: []const u8) void {
+		var writer = utils.BinaryWriter.init(main.stackAllocator);
+		defer writer.deinit();
+
+		writer.writeVarInt(u32, @intFromEnum(entityId));
+		writer.writeVarInt(u32, componentId);
+		writer.writeEnum(ActionType, ActionType.load);
 		// specific to `load`
 		writer.writeVarInt(u32, version);
 		writer.writeSlice(componentData);
 
-		execute(side, entityId, componentId, writer.data.items);
+		conn.send(.secure, id, writer.data.items);
 	}
-	pub fn modify(side: main.sync.Side, entityId: main.entity.Entity, componentId: u32, componentData: []const u8) void {
+	pub fn modify(conn: *Connection, entityId: main.entity.Entity, componentId: u32, componentData: []const u8) void {
 		var writer = utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
 		writer.writeVarInt(u32, @intFromEnum(entityId));
-		writer.writeEnum(ComponentActionType, ComponentActionType.modify);
+		writer.writeVarInt(u32, componentId);
+		writer.writeEnum(ActionType, ActionType.modify);
 		// specific to `modify`
 		writer.writeSlice(componentData);
 
-		execute(side, entityId, componentId, writer.data.items);
-	}
-
-	fn execute(side: main.sync.Side, entityId: main.entity.Entity, componentId: u32, data: []const u8) void {
-		switch (side) {
-			.server => main.sync.server.executeCommand(.{.modifyComponent = .{.target = entityId, .componentId = componentId, .modification = data}}, null),
-			.client => main.sync.client.executeCommand(.{.modifyComponent = .{.target = entityId, .componentId = componentId, .modification = data}}),
-		}
+		conn.send(.secure, id, writer.data.items);
 	}
 };
