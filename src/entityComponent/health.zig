@@ -166,6 +166,6 @@ pub const server = struct {
 		const component = components.get(entity) orelse return;
 		const health = &component.health;
 		const maxHealth = &component.maxHealth;
-		health.* = maxHealth.*;
+		component.health = component.maxHealth;
 	}
 };
