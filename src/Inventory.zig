@@ -548,6 +548,84 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		main.sync.client.executeCommand(.{.craftProceduralItem = .init(destinations, workbenchInv)});
 	}
 
+	const SortOptions = struct {
+		ignoredSlotCount: usize,
+	};
+
+	pub fn sortItems(source: ClientInventory, options: SortOptions) void {
+		compressItems(source, options);
+		const InventorySize: usize = source.super.size() - options.ignoredSlotCount;
+		var sortList = main.ListManaged(usize).init(main.stackAllocator);
+		defer sortList.deinit();
+		var intermediaryList = main.ListManaged(usize).init(main.stackAllocator);
+		defer intermediaryList.deinit();
+		for (0..InventorySize) |i| {
+			sortList.append(i + options.ignoredSlotCount);
+			intermediaryList.append(i + options.ignoredSlotCount);
+		}
+		const ctx: SortContext = .{.inv = source, .sortlist = sortList};
+		std.sort.insertion(usize, sortList.items, ctx, SortContext.lessThan);
+		for (0..InventorySize) |i| {
+			if (sortList.items[i] == intermediaryList.items[i]) continue;
+			var previousIndex: usize = i;
+			var checkedIndex = sortList.items[i] - options.ignoredSlotCount;
+			while (checkedIndex != i) {
+				main.sync.client.executeCommand(.{.depositOrSwap = .{
+					.dest = .{.inv = source.super, .slot = @intCast(previousIndex + options.ignoredSlotCount)},
+					.source = .{.inv = source.super, .slot = @intCast(checkedIndex + options.ignoredSlotCount)},
+				}});
+				std.mem.swap(usize, &intermediaryList.items[previousIndex], &intermediaryList.items[checkedIndex]);
+				previousIndex = checkedIndex;
+				checkedIndex = sortList.items[checkedIndex] - options.ignoredSlotCount;
+			}
+		}
+	}
+
+	pub fn compressItems(source: ClientInventory, options: SortOptions) void {
+		for (source.super._items, 0..) |invStack, slot| {
+			if (invStack.item == .null) continue;
+			if (slot < options.ignoredSlotCount) continue;
+			for (source.super._items, 0..) |checkedInvStack, checkedSlot| {
+				if (checkedInvStack.item == .null) continue;
+				if (checkedSlot < slot) continue;
+				if (checkedSlot < options.ignoredSlotCount) continue;
+				if (std.meta.eql(invStack.item, checkedInvStack.item)) {
+					main.sync.client.executeCommand(.{.deposit = .{.dest = .{.inv = source.super, .slot = @intCast(checkedSlot)}, .source = .{.inv = source.super, .slot = @intCast(slot)}, .amount = checkedInvStack.item.stackSize()}});
+				}
+			}
+		}
+	}
+
+	const SortContext = struct {
+		inv: ClientInventory,
+		sortlist: main.ListManaged(usize),
+
+		pub fn lessThan(ctx: @This(), a: usize, b: usize) bool {
+			const itemA: Item = ctx.inv.getItem(a);
+			const itemB: Item = ctx.inv.getItem(b);
+			// Sorts between ProceduralItems and Baseitems
+			// Then by Id
+			// then by the items properties (eg; durability, ammount, dps)
+			if (itemA == .null) return false;
+			if (itemB == .null) return true;
+			if ((itemA != .proceduralItem) and (itemB == .proceduralItem)) return false;
+			if ((itemA == .proceduralItem) and (itemB != .proceduralItem)) return true;
+			if (!std.mem.eql(u8, itemA.id().?, itemB.id().?)) return std.mem.lessThan(u8, itemA.id().?, itemB.id().?);
+			if ((itemA == .proceduralItem) and (itemB == .proceduralItem)) {
+				const itemADurabilityPercent: f32 = @as(f32, @floatFromInt(itemA.proceduralItem.durability))/itemA.proceduralItem.getProperty(.maxDurability);
+				const itemBDurabilityPercent: f32 = @as(f32, @floatFromInt(itemB.proceduralItem.durability))/itemB.proceduralItem.getProperty(.maxDurability);
+				if (itemADurabilityPercent > itemBDurabilityPercent) return true;
+				if (itemADurabilityPercent < itemBDurabilityPercent) return false;
+				const itemADps: f32 = itemA.proceduralItem.getProperty(.damage)*itemA.proceduralItem.getProperty(.swingSpeed);
+				const itemBDps: f32 = itemB.proceduralItem.getProperty(.damage)*itemB.proceduralItem.getProperty(.swingSpeed);
+				if (itemADps < itemBDps) return true;
+				if (itemADps > itemBDps) return false;
+			}
+
+			return (ctx.inv.getAmount(a) > ctx.inv.getAmount(b));
+		}
+	};
+
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {
 		std.debug.assert(self.type == .serverShared);
 		main.renderer.MeshSelection.placeBlock(self, slot);
