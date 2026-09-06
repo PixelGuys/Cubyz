@@ -72,10 +72,11 @@ pub const server = struct {
 		}
 		var groupIt = (getPermissionGroups(entity).?).keyIterator();
 		while (groupIt.next()) |group| {
-			if (group.hasPermission(permissionPath) catch blk: {
+			const result = group.hasPermission(permissionPath) catch blk: {
 				std.debug.assert(removeFromGroup(entity, group.*) == true);
 				break :blk .no;
-			} == .yes) return true;
+			};
+			if (result == .yes) return true;
 		}
 		return false;
 	}
