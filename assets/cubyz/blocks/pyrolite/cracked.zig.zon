@@ -1,0 +1,17 @@
+.{
+	.onUpdate = .{
+		.type = .decay,
+		.drops = .{
+			.{.chance = 0.00, .items = .{"cubyz:apple"}},
+		},
+	},
+	.drops = .{
+		.{.chance = 0.00, .items = .{"cubyz:apple"}},
+	},
+	.rotation = "cubyz:decayable",
+	.blockHealth = 0.5,
+	.degradable = true,
+	.absorbedLight = 0x363436,
+	.model = "cubyz:cube",
+	.texture = "cubyz:pyrolite/cracked",
+}
