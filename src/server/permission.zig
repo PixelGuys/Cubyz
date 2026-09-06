@@ -242,13 +242,15 @@ pub const Group = enum(u32) { // MARK: Group
 		return @enumFromInt(id);
 	}
 
-	fn getInstance(self: Group) *GroupInstance {
-		return groups.items[@intFromEnum(self)].?;
+	fn getInstance(self: Group) error{GroupNotFound}!*GroupInstance {
+		return groups.items[@intFromEnum(self)] orelse return error.GroupNotFound;
 	}
 
 	pub fn delete(self: Group) bool {
 		sync.threadContext.assertCorrectContext(.server);
-		std.debug.assert(groupNameToIdMap.remove(self.getInstance().name));
+		// if the group already doens't exist anymore we can skip.
+		// but if the group still exists and is not deleted from the groupNameToIdMap then something is wrong, which is why we assert it here
+		std.debug.assert(groupNameToIdMap.remove((self.getInstance() catch return true).name));
 		groups.items[@intFromEnum(self)] = null;
 
 		const path = main.stackAllocator.print("saves/{s}/permission/{d}.group", .{main.server.world.?.path, @intFromEnum(self)});
@@ -259,16 +261,16 @@ pub const Group = enum(u32) { // MARK: Group
 		return true;
 	}
 
-	pub fn addPermission(self: Group, allocator: NeverFailingAllocator, listType: Permissions.ListType, permissionPath: []const u8) void {
-		self.getInstance().addPermission(allocator, self, listType, permissionPath);
+	pub fn addPermission(self: Group, allocator: NeverFailingAllocator, listType: Permissions.ListType, permissionPath: []const u8) error{GroupNotFound}!void {
+		(try self.getInstance()).addPermission(allocator, self, listType, permissionPath);
 	}
 
-	pub fn removePermission(self: Group, allocator: NeverFailingAllocator, listType: Permissions.ListType, permissionPath: []const u8) bool {
-		return self.getInstance().removePermission(allocator, self, listType, permissionPath);
+	pub fn removePermission(self: Group, allocator: NeverFailingAllocator, listType: Permissions.ListType, permissionPath: []const u8) error{GroupNotFound}!bool {
+		return (try self.getInstance()).removePermission(allocator, self, listType, permissionPath);
 	}
 
-	pub fn hasPermission(self: Group, permissionPath: []const u8) Permissions.PermissionResult {
-		return self.getInstance().hasPermission(permissionPath);
+	pub fn hasPermission(self: Group, permissionPath: []const u8) error{GroupNotFound}!Permissions.PermissionResult {
+		return (try self.getInstance()).hasPermission(permissionPath);
 	}
 
 	pub fn format(self: Group, writer: *std.Io.Writer) std.Io.Writer.Error!void {
