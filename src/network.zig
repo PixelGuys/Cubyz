@@ -1716,6 +1716,10 @@ pub const Connection = struct { // MARK: Connection
 				self.nextPacketTimestamp = timestamp;
 				self.hasRttEstimate = true;
 			}
+			if (self.rttEstimate/averageRtt > 10) { // Quickly recover from spikes in RTT, as e.g. caused by /server restart
+				self.rttEstimate = averageRtt;
+				self.nextPacketTimestamp = timestamp;
+			}
 		}
 	}
 
