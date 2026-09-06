@@ -158,8 +158,8 @@ pub fn makeModFeature(io: std.Io, step: *std.Build.Step, name: []const u8) !void
 		\\}
 	;
 	try featureList.appendSlice(step.owner.allocator, try std.mem.replaceOwned(u8, step.owner.allocator, testTextSpaces, "    ", "\t"));
-	
-        const file_path = step.owner.fmt("mods/{s}.zig", .{name});
+
+	const file_path = step.owner.fmt("mods/{s}.zig", .{name});
 	try std.Io.Dir.cwd().writeFile(io, .{.data = featureList.items, .sub_path = file_path});
 }
 
