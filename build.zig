@@ -149,20 +149,17 @@ pub fn makeModFeature(io: std.Io, step: *std.Build.Step, name: []const u8) !void
 		try featureList.append(step.owner.allocator, '\n');
 	}
 
-	try featureList.appendSlice(step.owner.allocator,
+	const testTextSpaces =
 		\\
 		\\const main = @import("main");
 		\\test "abc" {
-		\\
-	++ "\t" ++
-		\\@setEvalBranchQuota(1000000);
-		\\
-	++ "\t" ++
-		\\main.refAllDeclsRecursiveExceptCImports(@This());
+		\\    @setEvalBranchQuota(1000000);
+		\\    main.refAllDeclsRecursiveExceptCImports(@This());
 		\\}
-	);
-
-	const file_path = step.owner.fmt("mods/{s}.zig", .{name});
+	;
+	try featureList.appendSlice(step.owner.allocator, try std.mem.replaceOwned(u8, step.owner.allocator, testTextSpaces, "    ", "\t"));
+	
+        const file_path = step.owner.fmt("mods/{s}.zig", .{name});
 	try std.Io.Dir.cwd().writeFile(io, .{.data = featureList.items, .sub_path = file_path});
 }
 
