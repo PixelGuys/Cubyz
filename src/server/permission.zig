@@ -432,7 +432,7 @@ test "groupPermissions" {
 	defer deinit();
 
 	const group = try Group.createGroup("test");
-	group.addPermission(main.heap.testingAllocator, .white, "/command/test");
+	try group.addPermission(main.heap.testingAllocator, .white, "/command/test");
 	try std.testing.expectEqual(Permissions.PermissionResult.yes, group.hasPermission("/command/test"));
 }
 
@@ -441,7 +441,7 @@ test "groupRemovePermissions" {
 	defer deinit();
 
 	const group = try Group.createGroup("test");
-	group.addPermission(main.heap.testingAllocator, .white, "/command/test");
+	try group.addPermission(main.heap.testingAllocator, .white, "/command/test");
 	try std.testing.expectEqual(true, group.removePermission(main.heap.testingAllocator, .white, "/command/test"));
 }
 
@@ -499,12 +499,12 @@ test "permissionGroupToFromBytes" {
 
 	const group = try Group.createGroup("test");
 
-	group.addPermission(main.heap.testingAllocator, .white, "/command/test");
-	group.addPermission(main.heap.testingAllocator, .white, "/command/spawn");
+	try group.addPermission(main.heap.testingAllocator, .white, "/command/test");
+	try group.addPermission(main.heap.testingAllocator, .white, "/command/spawn");
 
 	var writer: main.utils.BinaryWriter = .init(main.heap.testingAllocator);
 	defer writer.deinit();
-	group.getInstance().toBytes(&writer);
+	(try group.getInstance()).toBytes(&writer);
 
 	var reader: main.utils.BinaryReader = .init(writer.data.items);
 	var testGroup: *GroupInstance = try .fromBytes(main.heap.testingAllocator, &reader);
@@ -514,6 +514,6 @@ test "permissionGroupToFromBytes" {
 
 	var it = testGroup.permissions.whitelist.map.keyIterator();
 	while (it.next()) |item| {
-		try std.testing.expectEqual(true, group.getInstance().permissions.whitelist.map.contains(item.*));
+		try std.testing.expectEqual(true, (try group.getInstance()).permissions.whitelist.map.contains(item.*));
 	}
 }
