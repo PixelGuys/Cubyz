@@ -306,7 +306,7 @@ pub const World = struct { // MARK: World
 		errdefer self.conn.deinit();
 		self.manager = manager;
 		while (true) {
-			return self.connect() catch |err| switch(err) {
+			return self.connect() catch |err| switch (err) {
 				error.RestartAgain => {
 					std.log.warn("Server restarted while joining", .{});
 					continue;
