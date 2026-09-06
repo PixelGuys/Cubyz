@@ -15,6 +15,7 @@ pub const whitelist = @import("whitelist.zig");
 
 pub const avatar = @import("entity/avatar.zig");
 
+pub const group = @import("permission/group.zig");
 pub const perm = @import("permission/perm.zig");
 
 pub const undo = @import("worldedit/undo.zig");
