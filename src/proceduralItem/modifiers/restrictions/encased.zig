@@ -24,15 +24,15 @@ pub fn satisfied(self: *const Encased, proceduralItem: *const ProceduralItem, x:
 pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Encased {
 	const result = allocator.create(Encased);
 	result.* = .{
-		.tag = main.Tag.find(zon.get(?[]const u8, "tag", null) orelse blk: {
+		.tag = main.Tag.find(zon.get([]const u8, "tag") orelse blk: {
 			std.log.err("Missing tag field for encased restriction.", .{});
 			break :blk "not specified";
 		}),
-		.amount = zon.get(usize, "amount", 8),
+		.amount = zon.get(usize, "amount") orelse 8,
 	};
 	return result;
 }
 
-pub fn printTooltip(self: *const Encased, outString: *main.List(u8)) void {
+pub fn printTooltip(self: *const Encased, outString: *main.ListManaged(u8)) void {
 	outString.print("encased in {} .{s}", .{self.amount, self.tag.getName()});
 }

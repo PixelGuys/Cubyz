@@ -82,10 +82,11 @@ fn considerCrystal(x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, seed:
 			const y2 = relY + delY*j;
 			const z2 = relZ + delZ*j;
 			var size: f32 = 0;
-			if (useNeedles)
-				size = 0.7
-			else
+			if (useNeedles) {
+				size = 0.7;
+			} else {
 				size = 12*(length - j)/length/spikes;
+			}
 			const xMin: i32 = @trunc(x2 - size);
 			const xMax: i32 = @trunc(x2 + size);
 			const yMin: i32 = @trunc(y2 - size);

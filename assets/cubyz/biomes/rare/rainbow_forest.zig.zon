@@ -13,12 +13,12 @@
 
 	.chance = 0.01,
 
-	.music = "cubyz:leaves",
+	.music = "cubyz:zeahtrix/foggy_memories",
 
 	.validPlayerSpawn = true,
 
 	.ground_structure = .{
-		"cubyz:grass",
+		"cubyz:grass/temperate",
 		"2 to 3 cubyz:soil",
 	},
 	.structures = .{

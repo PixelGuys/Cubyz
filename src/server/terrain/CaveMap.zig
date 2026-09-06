@@ -111,10 +111,10 @@ pub const CaveGenerator = struct { // MARK: CaveGenerator
 	});
 
 	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []CaveGenerator {
-		var list: main.ListUnmanaged(CaveGenerator) = .initCapacity(allocator, generatorRegistry.values().len);
+		var list: main.List(CaveGenerator) = .initCapacity(allocator, generatorRegistry.values().len);
 		for (generatorRegistry.keys(), generatorRegistry.values()) |id, generator| {
 			const generatorSettings = settings.getChild(id);
-			if (generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
+			if ((generatorSettings.get(GeneratorState, "state") orelse generator.defaultState) == .disabled) continue;
 			generator.init(generatorSettings);
 			list.appendAssumeCapacity(generator);
 		}
@@ -271,12 +271,11 @@ pub const CaveMapView = struct { // MARK: CaveMapView
 
 // MARK: cache
 const cacheSize = 1 << 12; // Must be a power of 2!
-const cacheMask = cacheSize - 1;
 const associativity = 8; // 1024 MiB Cache size
 var cache: Cache(CaveMapFragment, cacheSize, associativity, CaveMapFragment.deferredDeinit) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
-var memoryPool: main.heap.MemoryPool(CaveMapFragment) = undefined;
+var memoryPool: main.heap.MemoryPool(CaveMapFragment) = .init(main.globalArena);
 
 fn cacheInit(pos: ChunkPosition) *CaveMapFragment {
 	const mapFragment = memoryPool.create();
@@ -285,14 +284,6 @@ fn cacheInit(pos: ChunkPosition) *CaveMapFragment {
 		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
 	}
 	return mapFragment;
-}
-
-pub fn globalInit() void {
-	memoryPool = .init(main.globalAllocator);
-}
-
-pub fn globalDeinit() void {
-	memoryPool.deinit();
 }
 
 pub fn init(_profile: TerrainGenerationProfile) void {

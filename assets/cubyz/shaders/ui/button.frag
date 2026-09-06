@@ -11,6 +11,5 @@ layout(location = 4) uniform float scale;
 
 void main() {
 	frag_color = texture(image, (gl_FragCoord.xy - startCoord)/(2*scale)/textureSize(image, 0));
-	frag_color.a *= fColor.a;
-	frag_color.rgb += fColor.rgb;
+	frag_color *= fColor;
 }

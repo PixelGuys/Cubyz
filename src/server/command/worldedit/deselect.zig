@@ -1,20 +1,24 @@
 const std = @import("std");
 
 const main = @import("main");
-const User = main.server.User;
+const Source = main.server.command.Source;
 
 pub const description = "Clears pos1 and pos2 of selection.";
 pub const usage = "/deselect";
 
-pub fn execute(args: []const u8, source: *User) void {
-	if (args.len != 0) {
-		source.sendMessage("#ff0000Too many arguments for command /deselect. Expected no arguments.", .{});
+pub const Args = union(enum) {
+	@"/deselect": struct {},
+};
+
+pub fn execute(_: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
 		return;
 	}
+	const user = source.user;
+	user.worldEditData.selectionPosition1 = null;
+	user.worldEditData.selectionPosition2 = null;
 
-	source.worldEditData.selectionPosition1 = null;
-	source.worldEditData.selectionPosition2 = null;
-
-	main.network.protocols.genericUpdate.sendWorldEditPos(source.conn, .clear, null);
-	source.sendMessage("Cleared selection.", .{});
+	main.network.protocols.genericUpdate.sendWorldEditPos(user.conn, .clear, null);
+	user.sendMessage("Cleared selection.", .{});
 }

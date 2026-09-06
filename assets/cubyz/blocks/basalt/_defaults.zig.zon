@@ -6,15 +6,13 @@
 		.{.items = .{.auto}},
 	},
 	.item = .{
+		.colorTexture = "basalt_palette.png",
 		.material = .{
 			.durability = 75,
 			.massDamage = 2.0,
 			.hardnessDamage = 4.0,
 			.swingSpeed = 2.9,
 			.textureRoughness = 5.0,
-			.colors = .{
-				0xff282328, 0xff353135, 0xff434041, 0xff4A4849, 0xff605E5F,
-			},
 			.modifiers = .{
 				.{
 					.id = "good_at",

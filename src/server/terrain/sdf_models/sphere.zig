@@ -21,8 +21,8 @@ const Instance = struct {
 
 pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
 	const self = main.worldArena.create(@This());
-	self.minRadius = zon.get(f32, "minRadius", 16);
-	self.maxRadius = zon.get(f32, "maxRadius", self.minRadius);
+	self.minRadius = zon.get(f32, "minRadius") orelse 16;
+	self.maxRadius = zon.get(f32, "maxRadius") orelse self.minRadius;
 
 	return .{.model = self, .maxExtend = .{
 		.min = @splat(@floor(-self.maxRadius)),

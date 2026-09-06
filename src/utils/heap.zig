@@ -486,6 +486,32 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 		return self.allocator.dupeZ(T, m) catch unreachable;
 	}
 
+	/// Allocates a formatted string which is returned on success.
+	///
+	/// Returned slice can be deallocated with `free`. If an arena-style allocator
+	/// is used instead, such as `std.heap.ArenaAllocator`, then no call to `free`
+	/// is necessary.
+	///
+	/// See `std.Io.Writer.print`.
+	pub fn print(a: NeverFailingAllocator, comptime format: []const u8, args: anytype) []u8 {
+		return std.fmt.allocPrint(a.allocator, format, args) catch unreachable;
+	}
+
+	/// Like `print` but returned slice has the provided sentinel.
+	///
+	/// Returned slice can be deallocated with `free`. If an arena-style allocator
+	/// is used instead, such as `std.heap.ArenaAllocator`, then no call to `free`
+	/// is necessary. Illegal behavior occurs if the returned slice is type-coerced
+	/// to a slice without the sentinel and then passed to `free`.
+	pub fn printSentinel(
+		a: NeverFailingAllocator,
+		comptime format: []const u8,
+		args: anytype,
+		comptime sentinel: u8,
+	) [:sentinel]u8 {
+		return std.fmt.allocPrintSentinel(a.allocator, format, args, sentinel) catch unreachable;
+	}
+
 	pub fn createArena(self: NeverFailingAllocator) NeverFailingAllocator {
 		const arenaPtr = self.create(NeverFailingArenaAllocator);
 		arenaPtr.* = NeverFailingArenaAllocator.init(self);
@@ -567,15 +593,16 @@ pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 		const NodePtr = *align(item_alignment) Node;
 		const ItemPtr = *align(item_alignment) Item;
 
-		arena: NeverFailingArenaAllocator,
+		arena: NeverFailingAllocator,
 		free_list: ?NodePtr = null,
 		freeAllocations: usize = 0,
 		totalAllocations: usize = 0,
 		mutex: main.utils.Mutex = .{},
 
 		/// Creates a new memory pool.
-		pub fn init(allocator: NeverFailingAllocator) Pool {
-			return .{.arena = NeverFailingArenaAllocator.init(allocator)};
+		pub fn init(arena: NeverFailingAllocator) Pool {
+			std.debug.assert(arena.allocator.vtable.alloc == comptime NeverFailingArenaAllocator.allocator(@ptrFromInt(1024)).allocator.vtable.alloc);
+			return .{.arena = arena};
 		}
 
 		/// Destroys the memory pool and frees all allocated memory.
@@ -585,7 +612,6 @@ pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 			} else if (pool.totalAllocations != 0) {
 				std.log.info("{} MiB ({} elements) in {s} Memory pool", .{pool.totalAllocations*item_size >> 20, pool.totalAllocations, @typeName(Item)});
 			}
-			pool.arena.deinit();
 			pool.* = undefined;
 		}
 
@@ -623,7 +649,7 @@ pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 			pool.mutex.assertLocked();
 			pool.totalAllocations += 1;
 			pool.freeAllocations += 1;
-			const mem = pool.arena.allocator().alignedAlloc(u8, .fromByteUnits(item_alignment), item_size);
+			const mem = pool.arena.alignedAlloc(u8, .fromByteUnits(item_alignment), item_size);
 			return mem[0..item_size]; // coerce slice to array pointer
 		}
 	};
@@ -637,7 +663,7 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		ptr: *anyopaque,
 		freeFunction: *const fn (*anyopaque) void,
 	};
-	threadlocal var lists: [4]main.ListUnmanaged(FreeItem) = undefined;
+	threadlocal var lists: [4]main.List(FreeItem) = undefined;
 
 	const State = packed struct {
 		waitingThreads: u15 = 0,
@@ -658,7 +684,7 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		}
 	}
 
-	fn freeItemsFromList(list: *main.ListUnmanaged(FreeItem)) void {
+	fn freeItemsFromList(list: *main.List(FreeItem)) void {
 		while (list.popOrNull()) |item| {
 			item.freeFunction(item.ptr);
 		}

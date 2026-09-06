@@ -25,41 +25,41 @@ const Stripe = struct { // MARK: Stripe
 	maxWidth: f64,
 
 	pub fn init(parameters: ZonElement) Stripe {
-		var dir: ?Vec3d = parameters.get(?Vec3d, "direction", null);
+		var dir: ?Vec3d = parameters.get(Vec3d, "direction");
 		if (dir != null) {
 			dir = main.vec.normalize(dir.?);
 		}
 
-		const block: main.blocks.Block = blocks.parseBlock(parameters.get([]const u8, "block", ""));
+		const block: main.blocks.Block = blocks.parseBlock(parameters.get([]const u8, "block") orelse "");
 
 		var minDistance: f64 = 0;
 		var maxDistance: f64 = 0;
-		if (parameters.object.get("distance")) |dist| {
-			minDistance = dist.as(f64, 0);
-			maxDistance = dist.as(f64, 0);
+		if (parameters.get(f64, "distance")) |dist| {
+			minDistance = dist;
+			maxDistance = dist;
 		} else {
-			minDistance = parameters.get(f64, "minDistance", 0);
-			maxDistance = parameters.get(f64, "maxDistance", 0);
+			minDistance = parameters.get(f64, "minDistance") orelse 0;
+			maxDistance = parameters.get(f64, "maxDistance") orelse 0;
 		}
 
 		var minOffset: f64 = 0;
 		var maxOffset: f64 = 0;
-		if (parameters.object.get("offset")) |off| {
-			minOffset = off.as(f64, 0);
-			maxOffset = off.as(f64, 0);
+		if (parameters.get(f64, "offset")) |off| {
+			minOffset = off;
+			maxOffset = off;
 		} else {
-			minOffset = parameters.get(f64, "minOffset", 0);
-			maxOffset = parameters.get(f64, "maxOffset", 0);
+			minOffset = parameters.get(f64, "minOffset") orelse 0;
+			maxOffset = parameters.get(f64, "maxOffset") orelse 0;
 		}
 
 		var minWidth: f64 = 0;
 		var maxWidth: f64 = 0;
-		if (parameters.object.get("width")) |width| {
-			minWidth = width.as(f64, 0);
-			maxWidth = width.as(f64, 0);
+		if (parameters.get(f64, "width")) |width| {
+			minWidth = width;
+			maxWidth = width;
 		} else {
-			minWidth = parameters.get(f64, "minWidth", 0);
-			maxWidth = parameters.get(f64, "maxWidth", 0);
+			minWidth = parameters.get(f64, "minWidth") orelse 0;
+			maxWidth = parameters.get(f64, "maxWidth") orelse 0;
 		}
 
 		return Stripe{
@@ -195,7 +195,7 @@ pub const Biome = struct { // MARK: Biome
 		pub fn fromZon(zon: ZonElement, initMidValues: bool) GenerationProperties {
 			var result: GenerationProperties = .{};
 			for (zon.toSlice()) |child| {
-				const property = child.as([]const u8, "");
+				const property = child.as([]const u8) orelse "";
 				inline for (@typeInfo(GenerationProperties).@"struct".fields) |field| {
 					if (std.mem.eql(u8, field.name, property)) {
 						@field(result, field.name) = true;
@@ -259,44 +259,44 @@ pub const Biome = struct { // MARK: Biome
 	tags: []const Tag,
 
 	pub fn init(self: *Biome, id: []const u8, paletteId: u32, zon: ZonElement) void {
-		const minRadius = zon.get(f32, "radius", zon.get(f32, "minRadius", 256));
-		const maxRadius = zon.get(f32, "maxRadius", minRadius);
+		const minRadius = zon.get(f32, "radius") orelse zon.get(f32, "minRadius") orelse 256;
+		const maxRadius = zon.get(f32, "maxRadius") orelse minRadius;
 		self.* = Biome{
 			.id = main.worldArena.dupe(u8, id),
 			.paletteId = paletteId,
 			.properties = GenerationProperties.fromZon(zon.getChild("properties"), true),
-			.isCave = zon.get(bool, "isCave", false),
+			.isCave = zon.get(bool, "isCave") orelse false,
 			.radius = (maxRadius + minRadius)/2,
 			.radiusVariation = (maxRadius - minRadius)/2,
-			.stoneBlock = blocks.parseBlock(zon.get([]const u8, "stoneBlock", "cubyz:slate/base")),
-			.fogColor = u32ToVec3(zon.get(u32, "fogColor", 0xffbfe2ff)),
+			.stoneBlock = blocks.parseBlock(zon.get([]const u8, "stoneBlock") orelse "cubyz:slate/smooth"),
+			.fogColor = u32ToVec3(zon.get(u32, "fogColor") orelse 0xffbfe2ff),
 			.skyColor = blk: {
-				break :blk u32ToVec3(zon.get(?u32, "skyColor", null) orelse break :blk .{0.46, 0.7, 1.0});
+				break :blk u32ToVec3(zon.get(u32, "skyColor") orelse break :blk .{0.46, 0.7, 1.0});
 			},
-			.fogDensity = zon.get(f32, "fogDensity", 1.0)/15.0/128.0,
-			.fogLower = zon.get(f32, "fogLower", 100.0),
-			.fogHigher = zon.get(f32, "fogHigher", 1000.0),
-			.roughness = zon.get(f32, "roughness", 0),
-			.hills = zon.get(f32, "hills", 0),
-			.mountains = zon.get(f32, "mountains", 0),
-			.keepOriginalTerrain = zon.get(f32, "keepOriginalTerrain", 0),
-			.interpolation = std.meta.stringToEnum(Interpolation, zon.get([]const u8, "interpolation", "square")) orelse .square,
-			.interpolationWeight = @max(zon.get(f32, "interpolationWeight", 1), std.math.floatMin(f32)),
-			.caveSmoothness = std.math.clamp(zon.get(f32, "caveSmoothness", 4.0), 0.00001, 4.0),
-			.caveNoiseStrength = zon.get(f32, "caveNoiseStrength", 8),
-			.caveRadiusFactor = @max(-2, @min(2, zon.get(f32, "caveRadiusFactor", 1))),
-			.crystals = zon.get(u32, "crystals", 0),
-			.soilCreep = zon.get(f32, "soilCreep", 0.5),
-			.minHeight = zon.get(i32, "minHeight", std.math.minInt(i32)),
-			.maxHeight = zon.get(i32, "maxHeight", std.math.maxInt(i32)),
-			.minHeightLimit = zon.get(i32, "minHeightLimit", std.math.minInt(i32)),
-			.maxHeightLimit = zon.get(i32, "maxHeightLimit", std.math.maxInt(i32)),
-			.smoothBeaches = zon.get(bool, "smoothBeaches", false),
-			.supportsRivers = zon.get(bool, "rivers", false),
-			.preferredMusic = main.worldArena.dupe(u8, zon.get([]const u8, "music", "cubyz:totaldemented/cubyz")),
-			.isValidPlayerSpawn = zon.get(bool, "validPlayerSpawn", false),
-			.chance = zon.get(f32, "chance", if (zon == .null) 0 else 1),
-			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
+			.fogDensity = (zon.get(f32, "fogDensity") orelse 1.0)/15.0/128.0,
+			.fogLower = zon.get(f32, "fogLower") orelse 100.0,
+			.fogHigher = zon.get(f32, "fogHigher") orelse 1000.0,
+			.roughness = zon.get(f32, "roughness") orelse 0,
+			.hills = zon.get(f32, "hills") orelse 0,
+			.mountains = zon.get(f32, "mountains") orelse 0,
+			.keepOriginalTerrain = zon.get(f32, "keepOriginalTerrain") orelse 0,
+			.interpolation = std.meta.stringToEnum(Interpolation, zon.get([]const u8, "interpolation") orelse "square") orelse .square,
+			.interpolationWeight = @max(zon.get(f32, "interpolationWeight") orelse 1, std.math.floatMin(f32)),
+			.caveSmoothness = std.math.clamp(zon.get(f32, "caveSmoothness") orelse 4.0, 0.00001, 4.0),
+			.caveNoiseStrength = zon.get(f32, "caveNoiseStrength") orelse 8,
+			.caveRadiusFactor = @max(-2, @min(2, zon.get(f32, "caveRadiusFactor") orelse 1)),
+			.crystals = zon.get(u32, "crystals") orelse 0,
+			.soilCreep = zon.get(f32, "soilCreep") orelse 0.5,
+			.minHeight = zon.get(i32, "minHeight") orelse std.math.minInt(i32),
+			.maxHeight = zon.get(i32, "maxHeight") orelse std.math.maxInt(i32),
+			.minHeightLimit = zon.get(i32, "minHeightLimit") orelse std.math.minInt(i32),
+			.maxHeightLimit = zon.get(i32, "maxHeightLimit") orelse std.math.maxInt(i32),
+			.smoothBeaches = zon.get(bool, "smoothBeaches") orelse false,
+			.supportsRivers = zon.get(bool, "rivers") orelse false,
+			.preferredMusic = main.worldArena.dupe(u8, zon.get([]const u8, "music") orelse "cubyz:totaldemented/cubyz"),
+			.isValidPlayerSpawn = zon.get(bool, "validPlayerSpawn") orelse false,
+			.chance = zon.get(f32, "chance") orelse if (zon == .null) 0 else 1,
+			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount") orelse std.math.floatMax(f32),
 			.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
 		};
 		if (self.isCave) {
@@ -317,11 +317,11 @@ pub const Biome = struct { // MARK: Biome
 		}
 		const parentBiomeList = zon.getChild("parentBiomes");
 		for (parentBiomeList.toSlice()) |parent| {
-			const result = unfinishedSubBiomes.getOrPutValue(main.globalAllocator.allocator, parent.get([]const u8, "id", ""), .{}) catch unreachable;
+			const result = unfinishedSubBiomes.getOrPutValue(main.globalAllocator.allocator, parent.get([]const u8, "id") orelse "", .empty) catch unreachable;
 			result.value_ptr.append(main.globalAllocator, .{
 				.biomeId = self.id,
-				.chance = parent.get(f32, "chance", 1),
-				.parentEdgeDistance = parent.get(f32, "parentEdgeDistance", terrain.SurfaceMap.MapFragment.biomeSize),
+				.chance = parent.get(f32, "chance") orelse 1,
+				.parentEdgeDistance = parent.get(f32, "parentEdgeDistance") orelse terrain.SurfaceMap.MapFragment.biomeSize,
 			});
 		}
 
@@ -330,10 +330,10 @@ pub const Biome = struct { // MARK: Biome
 			const transitionBiomes = main.globalAllocator.alloc(UnfinishedTransitionBiomeData, transitionBiomeList.len);
 			for (transitionBiomes, transitionBiomeList) |*dst, src| {
 				dst.* = .{
-					.biomeId = src.get([]const u8, "id", ""),
-					.chance = src.get(f32, "chance", 1),
+					.biomeId = src.get([]const u8, "id") orelse "",
+					.chance = src.get(f32, "chance") orelse 1,
 					.propertyMask = GenerationProperties.fromZon(src.getChild("properties"), false),
-					.width = src.get(u8, "width", 2),
+					.width = src.get(u8, "width") orelse 2,
 				};
 				// Fill all unspecified property groups:
 				var properties: u15 = @bitCast(dst.propertyMask);
@@ -347,7 +347,7 @@ pub const Biome = struct { // MARK: Biome
 		self.structure = BlockStructure.init(main.worldArena, zon.getChild("ground_structure"));
 
 		const structures = zon.getChild("structures");
-		var vegetation: main.ListUnmanaged(SimpleStructureModel) = .{};
+		var vegetation: main.List(SimpleStructureModel) = .empty;
 		var totalChance: f32 = 0;
 		defer vegetation.deinit(main.stackAllocator);
 		// Add structures from the biome's internal structure table
@@ -375,7 +375,7 @@ pub const Biome = struct { // MARK: Biome
 		self.vegetationModels = main.worldArena.dupe(SimpleStructureModel, vegetation.items);
 
 		const caves = zon.getChild("caveModels");
-		var caveSdfs: main.ListUnmanaged(terrain.sdf.SdfModel) = .{};
+		var caveSdfs: main.List(terrain.sdf.SdfModel) = .empty;
 		defer caveSdfs.deinit(main.stackAllocator);
 		for (caves.toSlice()) |elem| {
 			const model = terrain.sdf.SdfModel.initModel(elem) orelse continue;
@@ -440,8 +440,12 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 			.structure = allocator.alloc(BlockStack, blockStackDescriptions.len),
 		};
 		for (blockStackDescriptions, self.structure) |zonString, *blockStack| {
-			blockStack.init(zonString.as([]const u8, "That's not a zon string.")) catch |err| {
-				std.log.err("Couldn't parse blockStack '{s}': {s} Removing it.", .{zonString.as([]const u8, "(not a zon string)"), @errorName(err)});
+			blockStack.init(zonString.as([]const u8) orelse {
+				std.log.err("Couldn't parse blockStack zon: Expected string type found {s}", .{@tagName(zonString)});
+				blockStack.* = .{};
+				continue;
+			}) catch |err| {
+				std.log.err("Couldn't parse blockStack '{s}': {s} Removing it.", .{zonString.as([]const u8).?, @errorName(err)});
 				blockStack.* = .{};
 			};
 		}
@@ -466,8 +470,9 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 					chunk.updateBlockInGeneration(x, y, depth, blockStack.block);
 				}
 				depth -%= chunk.super.pos.voxelSize;
-				if (depth -% minDepth <= 0)
+				if (depth -% minDepth <= 0) {
 					return depth +% chunk.super.pos.voxelSize;
+				}
 			}
 		}
 		return depth +% chunk.super.pos.voxelSize;
@@ -525,7 +530,7 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 		var lowerIndex: usize = undefined;
 		var upperIndex: usize = undefined;
 		{
-			var lists: [3]main.ListUnmanaged(Biome) = .{
+			var lists: [3]main.List(Biome) = .{
 				.initCapacity(main.stackAllocator, currentSlice.len),
 				.initCapacity(main.stackAllocator, currentSlice.len),
 				.initCapacity(main.stackAllocator, currentSlice.len),
@@ -579,10 +584,10 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 
 // MARK: init/register
 var finishedLoading: bool = false;
-var biomes: main.ListUnmanaged(Biome) = .{};
-var caveBiomes: main.ListUnmanaged(Biome) = .{};
+var biomes: main.List(Biome) = .empty;
+var caveBiomes: main.List(Biome) = .empty;
 var biomesById: std.StringHashMapUnmanaged(*Biome) = .{};
-var biomesByIndex: main.ListUnmanaged(*Biome) = .{};
+var biomesByIndex: main.List(*Biome) = .empty;
 pub var byTypeBiomes: *TreeNode = undefined;
 
 const SubBiomeData = struct {
@@ -598,7 +603,7 @@ const UnfinishedSubBiomeData = struct {
 		return .{.biome = getById(self.biomeId), .parentEdgeDistance = self.parentEdgeDistance};
 	}
 };
-var unfinishedSubBiomes: std.StringHashMapUnmanaged(main.ListUnmanaged(UnfinishedSubBiomeData)) = .{};
+var unfinishedSubBiomes: std.StringHashMapUnmanaged(main.List(UnfinishedSubBiomeData)) = .{};
 
 const UnfinishedTransitionBiomeData = struct {
 	biomeId: []const u8,
@@ -616,10 +621,10 @@ var unfinishedTransitionBiomes: std.StringHashMapUnmanaged([]UnfinishedTransitio
 
 pub fn reset() void {
 	finishedLoading = false;
-	biomes = .{};
-	caveBiomes = .{};
+	biomes = .empty;
+	caveBiomes = .empty;
 	biomesById = .{};
-	biomesByIndex = .{};
+	biomesByIndex = .empty;
 	byTypeBiomes = undefined;
 }
 
@@ -680,7 +685,7 @@ pub fn finishLoading() void {
 
 	var transitionBiomeIterator = unfinishedTransitionBiomes.iterator();
 	while (transitionBiomeIterator.next()) |transitionBiomeData| {
-		const parentBiome = biomesById.get(transitionBiomeData.key_ptr.*) orelse unreachable;
+		const parentBiome = biomesById.get(transitionBiomeData.key_ptr.*).?;
 		const transitionBiomes = transitionBiomeData.value_ptr.*;
 		parentBiome.transitionBiomes = main.worldArena.alloc(TransitionBiome, transitionBiomes.len);
 		for (parentBiome.transitionBiomes, transitionBiomes) |*res, src| {

@@ -39,17 +39,18 @@ pub fn init() void {
 		"",
 		&uniforms,
 		graphics.draw.SimpleVertex2D,
-		&.{},
-		.{.cullMode = .none},
-		.{.depthTest = false, .depthWrite = false},
-		.{.attachments = &.{.{
-			.srcColorBlendFactor = .one,
-			.dstColorBlendFactor = .one,
-			.colorBlendOp = .subtract,
-			.srcAlphaBlendFactor = .one,
-			.dstAlphaBlendFactor = .one,
-			.alphaBlendOp = .subtract,
-		}}},
+		.{
+			.rasterState = .{.cullMode = .none},
+			.depthStencilState = .{.depthTest = false, .depthWrite = false},
+			.blendState = .{.attachments = &.{.{
+				.srcColorBlendFactor = .one,
+				.dstColorBlendFactor = .one,
+				.colorBlendOp = .subtract,
+				.srcAlphaBlendFactor = .one,
+				.dstAlphaBlendFactor = .one,
+				.alphaBlendOp = .subtract,
+			}}, .formats = &.{.swapChain}},
+		},
 	);
 	texture = Texture.initFromFile("assets/cubyz/ui/hud/crosshair.png");
 }
@@ -61,7 +62,6 @@ pub fn deinit() void {
 
 pub fn render() void {
 	texture.bindTo(0);
-	graphics.draw.setColor(0xffffffff);
 	pipeline.bind(graphics.draw.getScissor());
 	graphics.draw.customShadedImage(&uniforms, .{0, 0}, .{size, size});
 }

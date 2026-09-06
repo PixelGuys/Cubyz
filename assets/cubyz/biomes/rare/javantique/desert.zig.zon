@@ -1,0 +1,40 @@
+.{
+	.properties = .{
+		.dry,
+		.hot,
+	},
+	.minHeight = 6,
+	.maxHeight = 10,
+	.maxHeightLimit = 50,
+	.minRadius = 32,
+	.maxRadius = 100,
+	.keepOriginalTerrain = 1,
+	.chance = 0,
+	.music = "cubyz:sinanimea/sunrise",
+	.ground_structure = .{
+		"2 to 3 cubyz:sand",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:castilleja",
+			.chance = 0.01,
+			.height = 1,
+			.height_variation = 0,
+		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:cactus",
+			.chance = 0.3,
+			.height = 4,
+			.height_variation = 3,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:rare/javantique/base",
+			.chance = 2,
+			.parentEdgeDistance = 25,
+		},
+	},
+}

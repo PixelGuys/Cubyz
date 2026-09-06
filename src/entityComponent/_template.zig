@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const chunk = main.chunk;
+const Entity = main.entity.Entity;
 const ServerChunk = chunk.ServerChunk;
 const game = main.game;
 const graphics = main.graphics;
@@ -32,13 +33,13 @@ pub const entityComponentVersion = 0;
 
 // ############################# Client only stuff ################################
 pub const client = struct {
-	pub fn load(entityId: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
-		_ = entityId;
+	pub fn load(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
+		_ = entity;
 		_ = reader;
 		_ = version;
 	}
-	pub fn unload(entityId: u32) void {
-		_ = entityId;
+	pub fn unload(entity: Entity) void {
+		_ = entity;
 	}
 	pub fn init() void {}
 	pub fn deinit() void {}
@@ -57,16 +58,16 @@ pub const server = struct {
 	};
 	pub fn init() void {}
 	pub fn deinit() void {}
-	pub fn get(entityId: u32) ?ExampleComponent {
-		_ = entityId;
+	pub fn get(entity: Entity) ?ExampleComponent {
+		_ = entity;
 		return null;
 	}
-	pub fn loadFromData(entityId: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
-		_ = entityId;
+	pub fn loadFromData(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
+		_ = entity;
 		_ = reader;
 		_ = version;
 	}
-	pub fn unload(entityId: u32) void {
-		_ = entityId;
+	pub fn unload(entity: Entity) void {
+		_ = entity;
 	}
 };

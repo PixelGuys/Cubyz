@@ -5,7 +5,9 @@
 	.chance = 0.2,
 	.fogDensity = 8,
 
-	.stoneBlock = "cubyz:basalt/base",
+	.music = "cubyz:totaldemented/scoria",
+
+	.stoneBlock = "cubyz:basalt/smooth",
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
@@ -15,7 +17,7 @@
 		},
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:basalt/base",
+			.block = "cubyz:basalt/smooth",
 			.chance = 0.1,
 			.size = 4,
 			.size_variation = 10,

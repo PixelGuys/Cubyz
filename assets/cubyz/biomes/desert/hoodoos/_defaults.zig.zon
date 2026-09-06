@@ -4,12 +4,15 @@
 		.dry,
 		.barren,
 	},
+
+	.music = "cubyz:mischol/desert_firefly",
+
 	.fogDensity = 1.5,
 	.fogColor = 0xe9f2e2,
 	.stripes = .{
 		.{
 			.direction = .{1, 1, 6},
-			.block = "cubyz:limestone/base",
+			.block = "cubyz:limestone/smooth",
 			.distance = 10,
 			.offset = 6,
 			.width = 2,

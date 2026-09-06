@@ -1,7 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
-const User = main.server.User;
+const command = main.server.command;
+const Source = command.Source;
 
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
@@ -9,32 +10,31 @@ const Blueprint = main.blueprint.Blueprint;
 pub const description = "Copy selection to clipboard.";
 pub const usage = "/copy";
 
-pub fn execute(args: []const u8, source: *User) void {
-	if (args.len != 0) {
-		source.sendMessage("#ff0000Too many arguments for command /copy. Expected no arguments.", .{});
+pub const Args = union(enum) {
+	@"/copy": struct {},
+};
+
+pub fn execute(_: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
 		return;
 	}
-	const pos1 = source.worldEditData.selectionPosition1 orelse {
-		return source.sendMessage("#ff0000Position 1 isn't set", .{});
-	};
-	const pos2 = source.worldEditData.selectionPosition2 orelse {
-		return source.sendMessage("#ff0000Position 2 isn't set", .{});
-	};
+	const user = source.user;
+	const selection = command.getCurrentSelection(user) catch return;
+	user.sendMessage("Copying: {f}", .{selection});
 
-	source.sendMessage("Copying: {} {}", .{pos1, pos2});
-
-	const result = Blueprint.capture(main.globalAllocator, pos1, pos2);
+	const result = Blueprint.capture(main.globalAllocator, selection);
 	switch (result) {
 		.success => {
-			if (source.worldEditData.clipboard != null) {
-				source.worldEditData.clipboard.?.deinit(main.globalAllocator);
+			if (user.worldEditData.clipboard != null) {
+				user.worldEditData.clipboard.?.deinit(main.globalAllocator);
 			}
-			source.worldEditData.clipboard = result.success;
+			user.worldEditData.clipboard = result.success;
 
-			source.sendMessage("Copied selection to clipboard.", .{});
+			user.sendMessage("Copied selection to clipboard.", .{});
 		},
 		.failure => |e| {
-			source.sendMessage("#ff0000Error while copying block {}: {s}", .{e.pos, e.message});
+			user.sendMessage("#ff0000Error while copying block {}: {s}", .{e.pos, e.message});
 			std.log.warn("Error while copying block {}: {s}", .{e.pos, e.message});
 		},
 	}

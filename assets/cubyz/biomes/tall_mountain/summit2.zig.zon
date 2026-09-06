@@ -1,0 +1,36 @@
+.{
+	.properties = .{
+		.mountain,
+	},
+	.tags = .{
+		.snowy,
+	},
+	.minHeight = 925,
+	.maxHeight = 955,
+	.smoothBeaches = true,
+	.radius = 35,
+	.hills = 10,
+	.chance = 0,
+	.stoneBlock = "cubyz:glacite/smooth",
+	.validPlayerSpawn = false,
+	.music = "cubyz:mischol/sunshower",
+	.ground_structure = .{
+		"5 to 11 cubyz:snow",
+		"1 to 3 cubyz:permafrost",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.02,
+			.block = "cubyz:snow",
+			.size = 6,
+			.size_variance = 2,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:tall_mountain/slope7",
+			.chance = 1,
+		},
+	},
+}

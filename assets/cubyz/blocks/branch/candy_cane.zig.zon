@@ -8,15 +8,13 @@
 	.texture4 = "cubyz:branch/candy_cane/intersection",
 	.texture5 = "cubyz:branch/candy_cane/cross",
 	.item = .{
+		.colorTexture = "candy_cane_branch_palette.png",
 		.material = .{
 			.durability = 260,
 			.massDamage = 1.5,
 			.hardnessDamage = 0.5,
 			.swingSpeed = 4.2,
 			.textureRoughness = 0.7,
-			.colors = .{
-				0xffc4a6a8, 0xffce2632, 0xfffff1ec, 0xfff0424e, 0xffffffff,
-			},
 		},
 		.texture = "candy_cane.png",
 	},

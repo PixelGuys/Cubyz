@@ -1,0 +1,16 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/oak/old_growth/trunk/0"},
+		.{.id = "cubyz:tree/oak/old_growth/trunk/1"},
+		.{.id = "cubyz:tree/oak/old_growth/trunk/2"},
+		.{.id = "cubyz:tree/oak/old_growth/trunk/3"},
+		.{.id = "cubyz:tree/oak/old_growth/trunk/4"},
+	},
+	.children = .{
+		.brown = "cubyz:tree/oak/old_growth/root",
+		.green = "cubyz:tree/oak/old_growth/branch_extender",
+		.lime = "cubyz:tree/oak/old_growth/top",
+		.red = "cubyz:tree/oak/old_growth/deco",
+		.pink = "cubyz:tree/oak/old_growth/small_branch",
+	},
+}

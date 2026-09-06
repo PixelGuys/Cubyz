@@ -23,15 +23,18 @@ pub fn reset() void {
 	modelCache = null;
 }
 
-pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
-	const modelId = zon.as([]const u8, "cubyz:cube");
+pub fn createBlockModel(block: Block, _: *u16, zon: ZonElement) ModelIndex {
+	const modelId = zon.as([]const u8) orelse blk: {
+		std.log.err("Invalid model data for block {s} found {s}, expected string", .{block.id(), @tagName(zon)});
+		break :blk "cubyz:cube";
+	};
 	if (!std.mem.eql(u8, modelId, "cubyz:cube")) {
 		std.log.err("Ores can only be use on cube models, found '{s}'", .{modelId});
 	}
 	if (modelCache) |modelIndex| return modelIndex;
 
 	const baseModel = main.models.getModelIndex("cubyz:cube").model();
-	var quadList = main.List(main.models.QuadInfo).init(main.stackAllocator);
+	var quadList = main.ListManaged(main.models.QuadInfo).init(main.stackAllocator);
 	defer quadList.deinit();
 	baseModel.getRawFaces(&quadList);
 	const len = quadList.items.len;
@@ -73,6 +76,6 @@ pub fn onBlockBreaking(_: main.items.Item, _: Vec3f, _: Vec3f, currentData: *Blo
 	currentData.data = 0;
 }
 
-pub fn formatBlockData(block: Block, _list: *main.List(u8)) void {
+pub fn formatBlockData(block: Block, _list: *main.ListManaged(u8)) void {
 	_list.appendSlice((Block{.typ = block.data, .data = 0}).id());
 }

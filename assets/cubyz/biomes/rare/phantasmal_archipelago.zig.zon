@@ -6,7 +6,7 @@
 	.minHeight = -128,
 	.maxHeight = -64,
 	.maxHeightLimit = -48,
-	.music = "cubyz:cubyz",
+	.music = "cubyz:totaldemented/tides",
 	.hills = 35,
 	.roughness = 55,
 	.stoneBlock = "cubyz:chalk/black",

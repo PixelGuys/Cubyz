@@ -14,7 +14,7 @@
 	.fogColor = 0xe2f2ff,
 	.mountains = 125,
 
-	.music = "cubyz:DarkTimes",
+	.music = "cubyz:totaldemented/frigid_feeling",
 
 	.soilCreep = 1.0,
 
@@ -22,7 +22,7 @@
 		"3 to 6 cubyz:snow",
 		"1 to 3 cubyz:permafrost",
 	},
-	.stoneBlock = "cubyz:glacite/base",
+	.stoneBlock = "cubyz:glacite/smooth",
 	.structures = .{
 		.{
 			.id = "cubyz:stalagmite",

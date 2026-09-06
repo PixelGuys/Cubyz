@@ -1,20 +1,18 @@
 .{
-	.tags = .{.stone, .mineable, .voidStone},
+	.tags = .{.stone, .mineable, .voidstone},
 	.blockHealth = 60,
 	.blockResistance = 5,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
 	.item = .{
+		.colorTexture = "voidstone_palette.png",
 		.material = .{
 			.durability = 200,
 			.massDamage = 3.0,
 			.hardnessDamage = 7.0,
 			.swingSpeed = 4.7,
-			.textureRoughness = 1.0,
-			.colors = .{
-				0xff030308, 0xff0D0C11, 0xff151420, 0xff1C1A2B, 0xff28253D,
-			},
+			.textureRoughness = 0.2,
 			.modifiers = .{
 				.{
 					.id = "durable",
@@ -23,7 +21,7 @@
 				.{
 					.id = "good_at",
 					.strength = 0.5,
-					.tag = .voidStone,
+					.tag = .voidstone,
 					.restriction = .{
 						.id = .encased,
 						.tag = .precious,

@@ -1,0 +1,11 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:rare/shoebox_house/houses/0"},
+		.{.id = "cubyz:rare/shoebox_house/houses/1"},
+		.{.id = "cubyz:rare/shoebox_house/houses/2"},
+	},
+	.children = .{
+		.brown = "cubyz:rare/shoebox_house/wall",
+		.white = "cubyz:rare/shoebox_house/floor",
+	},
+}

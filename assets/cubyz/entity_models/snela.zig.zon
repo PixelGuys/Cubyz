@@ -1,0 +1,9 @@
+.{
+	.tags = .{
+		.playerModel,
+	},
+	.model = "cubyz:snela",
+	.defaultTexture = "cubyz:snela",
+	.height = 2,
+	.coordinateSystem = .left_handed_y_up,
+}

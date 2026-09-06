@@ -41,6 +41,9 @@ Cubyz is not a realistic game. The world is very whimsical and has rules of its 
 ### Avoid Excessive Additions
 Unless there is a genuine functional reason for a variant or addition to be added, they should be avoided. Try to use or modify existing content first before creating new stuff.
 
+### Function over Form
+When designing anything, it's important to consider its function to the overall gameplay before its design/theme is finalized. This will help keep new features from feeling pointless.
+
 ## Player Engagement
 ### "How would the player feel?"
 Put yourself in the shoes of a player encountering a mechanic for the first time and ask yourself this. The goal is to make the player feel how you want them to, whether that be satisfaction, fear, or intrigue.

@@ -13,7 +13,7 @@
 	.hills = 3.5,
 	.minRadius = 64,
 	.maxRadius = 128,
-	.music = "cubyz:sunrise",
+	.music = "cubyz:sinanimea/sunrise",
 	.ground_structure = .{
 		"6 to 8 cubyz:mud",
 	},

@@ -1,0 +1,36 @@
+.{
+	.isCave = true,
+	.tags = .{
+		.cave_layer,
+		.oak,
+	},
+	.maxHeight = -512,
+	.chance = 0.01,
+
+	.crystals = 32,
+
+	.music = "cubyz:mischol/crystals",
+
+	.stoneBlock = "cubyz:slate/smooth",
+	.ground_structure = .{
+		"cubyz:grass/temperate",
+		"2 to 3 cubyz:soil",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/young",
+			.placeMode = .degradable,
+			.chance = 0.32,
+		},
+	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:partial_sphere",
+			.minAmount = 10,
+			.maxAmount = 20,
+			.minRadius = 20,
+			.maxRadius = 30,
+		},
+	},
+}

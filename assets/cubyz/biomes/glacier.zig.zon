@@ -5,6 +5,9 @@
 		.barren,
 	},
 	.tags = .{.snowy},
+
+	.music = "cubyz:totaldemented/frigid_feeling",
+
 	.minHeightLimit = 7,
 	.minHeight = 80,
 	.maxHeight = 256,

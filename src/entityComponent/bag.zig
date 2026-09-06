@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const chunk = main.chunk;
+const Entity = main.entity.Entity;
 const ServerChunk = chunk.ServerChunk;
 const game = main.game;
 const graphics = main.graphics;
@@ -37,30 +38,28 @@ pub const client = struct {
 	const Component = struct {
 		bag: items.Inventory.BagInventory,
 	};
-	pub var components: main.utils.SparseSet(Component, main.entity.Entity) = .{};
+	pub var components: main.utils.SparseSet(Component, Entity) = .{};
 
 	pub fn init() void {}
 	pub fn deinit() void {
-		for (components.dense.items) |bag| bag.bag.deinit();
 		components.deinit(main.globalAllocator);
 	}
 	pub fn clear() void {
-		for (components.dense.items) |bag| bag.bag.deinit();
 		components.clear();
 	}
 
-	pub fn getBag(entityId: u32) ?*items.Inventory.BagInventory {
-		return &(components.get(@enumFromInt(entityId)) orelse return null).bag;
+	pub fn getBag(entity: Entity) ?*items.Inventory.BagInventory {
+		return &(components.get(entity) orelse return null).bag;
 	}
 
-	pub fn load(entityId: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
+	pub fn load(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != entityComponentVersion) return error.InvalidComponentVersion;
-		const bag = &components.add(main.globalAllocator, @enumFromInt(entityId)).bag;
+		const bag = &components.add(main.globalAllocator, entity).bag;
 		bag.* = .init(main.globalAllocator, playerBagSizeLimit);
 		bag.fromBytes(reader) catch return error.UnreadableComponentData;
 	}
-	pub fn unload(entityId: u32) void {
-		const bag = components.fetchRemove(@enumFromInt(entityId)) catch return;
+	pub fn unload(entity: Entity) void {
+		const bag = components.fetchRemove(entity) catch return;
 		bag.bag.deinit();
 	}
 };
@@ -75,34 +74,33 @@ pub const server = struct {
 			return .save;
 		}
 	};
-	pub var components: main.utils.SparseSet(Component, main.entity.Entity) = .{};
+	pub var components: main.utils.SparseSet(Component, Entity) = .{};
 
 	pub fn init() void {
 		components = .{};
 	}
 	pub fn deinit() void {
-		for (components.dense.items) |bag| bag.bag.deinit();
 		components.deinit(main.globalAllocator);
 	}
 
-	pub fn get(entityId: u32) ?Component {
-		return (components.get(@enumFromInt(entityId)) orelse return null).*;
+	pub fn get(entity: Entity) ?Component {
+		return (components.get(entity) orelse return null).*;
 	}
-	pub fn getBag(entityId: u32) ?*items.Inventory.BagInventory {
-		return &(components.get(@enumFromInt(entityId)) orelse return null).bag;
+	pub fn getBag(entity: Entity) ?*items.Inventory.BagInventory {
+		return &(components.get(entity) orelse return null).bag;
 	}
-	pub fn loadFromData(entityId: u32, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
+	pub fn loadFromData(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != entityComponentVersion) return error.InvalidComponentVersion;
-		const bag = &components.add(main.globalAllocator, @enumFromInt(entityId)).bag;
+		const bag = &components.add(main.globalAllocator, entity).bag;
 		bag.* = .init(main.globalAllocator, playerBagSizeLimit);
 		bag.fromBytes(reader) catch return error.UnreadableComponentData;
 	}
-	pub fn loadEmpty(entityId: u32) void {
-		const bag = &components.add(main.globalAllocator, @enumFromInt(entityId)).bag;
+	pub fn loadEmpty(entity: Entity) void {
+		const bag = &components.add(main.globalAllocator, entity).bag;
 		bag.* = .init(main.globalAllocator, playerBagSizeLimit);
 	}
-	pub fn unload(entityId: u32) void {
-		const bag = components.fetchRemove(@enumFromInt(entityId)) catch return;
+	pub fn unload(entity: Entity) void {
+		const bag = components.fetchRemove(entity) catch return;
 		bag.bag.deinit();
 	}
 };

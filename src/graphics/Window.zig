@@ -22,7 +22,7 @@ pub var scrollOffset: f32 = 0;
 pub var scrollOffsetInteger: i32 = 0;
 var scrollOffsetFraction: f32 = 0;
 
-pub const Gamepad = struct {
+pub const Gamepad = struct { // MARK: Gamepad
 	pub var gamepadState: std.AutoHashMap(c_int, *c.GLFWgamepadstate) = undefined;
 	pub var controllerMappingsDownloaded: std.atomic.Value(bool) = std.atomic.Value(bool).init(false);
 	var controllerConnectedPreviously: bool = false;
@@ -205,7 +205,7 @@ pub const Gamepad = struct {
 				std.log.err("Failed to write controller mappings: {s}", .{@errorName(err)});
 				return;
 			};
-			const timeStampStr = std.fmt.allocPrint(main.stackAllocator.allocator, "{x}", .{self.*.curTimestamp}) catch unreachable;
+			const timeStampStr = main.stackAllocator.print("{x}", .{self.*.curTimestamp});
 			defer main.stackAllocator.free(timeStampStr);
 			files.cwd().write("gamecontrollerdb.stamp", timeStampStr) catch |err| {
 				std.log.err("Failed to write controller mappings: {s}", .{@errorName(err)});
@@ -664,8 +664,9 @@ fn updateCursor() void {
 		// Behavior seems much more intended without this line on MacOS.
 		// Perhaps this is an inconsistency in GLFW due to its fresh XQuartz support?
 		if (@import("builtin").target.os.tag != .macos) {
-			if (c.glfwRawMouseMotionSupported() != 0)
+			if (c.glfwRawMouseMotionSupported() != 0) {
 				c.glfwSetInputMode(window, c.GLFW_RAW_MOUSE_MOTION, c.GLFW_TRUE);
+			}
 		}
 		GLFWCallbacks.ignoreDataAfterRecentGrab = true;
 	} else {
@@ -757,7 +758,7 @@ pub fn init() void { // MARK: init()
 
 	window = c.glfwCreateWindow(width, height, windowTitle, null, null) orelse @panic("Failed to create GLFW window");
 	iconBlock: {
-		const image = main.graphics.Image.readUnflippedFromFile(main.stackAllocator, "assets/cubyz/logo.png") catch |err| {
+		const image = main.graphics.Image.readFromFile(main.stackAllocator, "assets/cubyz/logo.png", .{.orientation = .asIs}) catch |err| {
 			std.log.err("Error loading logo: {s}", .{@errorName(err)});
 			break :iconBlock;
 		};

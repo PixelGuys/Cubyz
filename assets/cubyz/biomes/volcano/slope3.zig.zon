@@ -10,7 +10,7 @@
 
 	.chance = 0,
 
-	.music = "cubyz:out_of_breath",
+	.music = "cubyz:mrmayman/out_of_breath",
 
 	.parentBiomes = .{
 		.{
@@ -22,5 +22,5 @@
 
 	.maxSubBiomeCount = 1,
 
-	.stoneBlock = "cubyz:basalt/base",
+	.stoneBlock = "cubyz:basalt/smooth",
 }

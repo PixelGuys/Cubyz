@@ -32,9 +32,9 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 
-var availableItems: main.List(BaseItemIndex) = undefined;
-var itemAmount: main.List(u32) = undefined;
-var inventories: main.List(ClientInventory) = undefined;
+var availableItems: main.ListManaged(BaseItemIndex) = undefined;
+var itemAmount: main.ListManaged(u32) = undefined;
+var inventories: main.ListManaged(ClientInventory) = undefined;
 
 pub var arrowTexture: Texture = undefined;
 
@@ -120,7 +120,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 			columnList.finish(.center);
 			rowList.add(columnList);
 		}
-		rowList.add(Icon.init(.{8, 0}, .{32, 32}, arrowTexture, false));
+		rowList.add(Icon.init(.{8, 0}, .{32, 32}, arrowTexture));
 		const itemSlot = ItemSlot.init(.{8, 0}, inv, @intCast(recipe.sourceItems.len), .craftingResult, .takeOnly);
 		rowList.add(itemSlot);
 		rowList.finish(.{0, 0}, .center);

@@ -17,7 +17,6 @@ const Label = GuiComponent.Label;
 const CheckBox = @This();
 
 const border: f32 = 3;
-const fontSize: f32 = 16;
 const boxSize: f32 = 16;
 
 var textureCheckedNormal: Texture = undefined;

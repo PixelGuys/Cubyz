@@ -14,7 +14,7 @@ const HorizontalList = @This();
 
 pos: Vec2f,
 size: Vec2f,
-children: main.List(GuiComponent),
+children: main.ListManaged(GuiComponent),
 
 pub fn init() *HorizontalList {
 	const self = main.globalAllocator.create(HorizontalList);

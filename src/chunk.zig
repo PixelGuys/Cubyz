@@ -135,18 +135,8 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 	}
 };
 
-var memoryPool: main.heap.MemoryPool(Chunk) = undefined;
-var serverPool: main.heap.MemoryPool(ServerChunk) = undefined;
-
-pub fn init() void {
-	memoryPool = .init(main.globalAllocator);
-	serverPool = .init(main.globalAllocator);
-}
-
-pub fn deinit() void {
-	memoryPool.deinit();
-	serverPool.deinit();
-}
+var memoryPool: main.heap.MemoryPool(Chunk) = .init(main.globalArena);
+var serverPool: main.heap.MemoryPool(ServerChunk) = .init(main.globalArena);
 
 pub const Lod = enum(u5) {
 	@"1" = 0,
@@ -418,7 +408,7 @@ pub const Chunk = struct { // MARK: Chunk
 			const pos = elem.key_ptr.*;
 			const entity = elem.value_ptr.*;
 			const block = self.data.getValue(pos.toIndex());
-			const blockEntity = block.blockEntity() orelse unreachable;
+			const blockEntity = block.blockEntity().?;
 			switch (side) {
 				.client => {
 					blockEntity.onUnloadClient(entity);

@@ -8,7 +8,7 @@
 	.maxHeight = 10,
 	.rivers = false,
 	.roughness = 1,
-	.stoneBlock = "cubyz:sandstone/base",
+	.stoneBlock = "cubyz:sandstone/rough",
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",

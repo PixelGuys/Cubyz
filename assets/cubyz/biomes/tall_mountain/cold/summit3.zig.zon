@@ -1,0 +1,40 @@
+.{
+	.properties = .{.mountain, .cold, .wet},
+	.tags = .{.snowy},
+	.minHeight = 1040,
+	.maxHeight = 1070,
+	.smoothBeaches = true,
+	.radius = 22,
+	.hills = 15,
+	.chance = 0,
+	.maxSubBiomeCount = 1,
+	.stoneBlock = "cubyz:glacite/smooth",
+	.validPlayerSpawn = false,
+	.music = "cubyz:totaldemented/midnight_melody",
+	.ground_structure = .{
+		"8 to 14 cubyz:snow",
+		"1 to 2 cubyz:permafrost",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.003,
+			.block = "cubyz:snow",
+			.size = 6,
+			.size_variance = 2,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:snow",
+			.chance = 0.04,
+			.size = 4,
+			.size_variation = 4,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:tall_mountain/cold/slope8",
+			.chance = 1,
+		},
+	},
+}

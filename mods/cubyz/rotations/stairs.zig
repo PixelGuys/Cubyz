@@ -13,6 +13,7 @@ const vec = main.vec;
 const Mat4f = vec.Mat4f;
 const Tag = main.Tag;
 const Vec2f = vec.Vec2f;
+const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
@@ -127,7 +128,7 @@ fn mergeFaces(faceVisible: [2][2]bool, mem: []GreedyFaceInfo) []GreedyFaceInfo {
 pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 	if (modelIndex) |idx| return idx;
 	for (0..256) |i| {
-		var quads = main.List(main.models.QuadInfo).init(main.stackAllocator);
+		var quads = main.ListManaged(main.models.QuadInfo).init(main.stackAllocator);
 		defer quads.deinit();
 		for (Neighbor.iterable) |neighbor| {
 			const xComponent = @abs(neighbor.textureX());
@@ -233,7 +234,38 @@ pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 				});
 			}
 		}
-		const index = main.models.Model.init(quads.items);
+		var boxes: main.List(main.physics.collision.Box) = .initCapacity(main.stackAllocator, 4);
+		defer boxes.deinit(main.stackAllocator);
+		var remaining: u8 = ~@as(u8, @intCast(i));
+		for (0..2) |dx| {
+			for (0..2) |dy| {
+				for (0..2) |dz| {
+					var mask = subBlockMask(@intCast(dx), @intCast(dy), @intCast(dz));
+					if (remaining & mask == 0) continue;
+					var dx2 = dx + 1;
+					var dy2 = dy + 1;
+					var dz2 = dz + 1;
+					if (dz == 0 and remaining & (mask << 1) == (mask << 1)) {
+						dz2 += 1;
+						mask |= mask << 1;
+					}
+					if (dy == 0 and remaining & (mask << 2) == (mask << 2)) {
+						dy2 += 1;
+						mask |= mask << 2;
+					}
+					if (dx == 0 and remaining & (mask << 4) == (mask << 4)) {
+						dx2 += 1;
+						mask |= mask << 4;
+					}
+					boxes.appendAssumeCapacity(.{
+						.min = @as(Vec3d, @floatFromInt(@Vector(3, usize){dx, dy, dz}))/@as(Vec3d, @splat(2)),
+						.max = @as(Vec3d, @floatFromInt(@Vector(3, usize){dx2, dy2, dz2}))/@as(Vec3d, @splat(2)),
+					});
+					remaining &= ~mask;
+				}
+			}
+		}
+		const index = main.models.Model.initWithCollisionModel(quads.items, boxes.items);
 		if (i == 0) {
 			modelIndex = index;
 		}

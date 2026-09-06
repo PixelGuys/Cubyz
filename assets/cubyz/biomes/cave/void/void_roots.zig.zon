@@ -6,7 +6,7 @@
 	.chance = 1,
 	.caveRadiusFactor = -1,
 
-	.music = "cubyz:heart-of-the-beast",
+	.music = "cubyz:totaldemented/root",
 
 	.structures = .{
 		.{
@@ -34,7 +34,7 @@
 		},
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.chance = 0.048,
 			.size = 3,
 			.size_variation = 6,
@@ -42,14 +42,14 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.016,
-			.block = "cubyz:slate/cobble",
+			.block = "cubyz:slate/rough",
 			.size = 4,
 			.size_variance = 3,
 		},
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.016,
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.size = 2,
 			.size_variance = 5,
 		},
