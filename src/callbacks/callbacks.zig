@@ -30,6 +30,7 @@ pub fn init() void {
 
 pub const Creator = union(enum) {
 	block: main.blocks.Block,
+	none: void,
 };
 
 fn Callback(_Params: type, list: type) type {

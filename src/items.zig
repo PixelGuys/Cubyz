@@ -1120,7 +1120,7 @@ pub const ItemCallbacks = struct {
 		return .{.onLeftClick = blk: {
 			break :blk ItemUsedCallback.init(zon.getChildOrNull("onLeftClick") orelse {
 				break :blk defaultItemUsedCallback.onLeftClick;
-			}) orelse {
+			}, .none) orelse {
 				std.log.err("Failed to load onLeftClick event for item", .{});
 				break :blk .noop;
 			};
