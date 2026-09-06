@@ -298,18 +298,22 @@ pub const World = struct { // MARK: World
 			.milliTime = main.timestamp().toMilliseconds(),
 		};
 
-		errdefer self.conn.deinit();
-
-		self.itemDrops.init(main.globalAllocator);
-		errdefer self.itemDrops.deinit();
-
 		return try network.protocols.handShake.clientSide(self.conn, settings.playerName);
 	}
 
 	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !ZonElement {
 		self.conn = try Connection.init(manager, ip, null);
+		errdefer self.conn.deinit();
 		self.manager = manager;
-		return try self.connect();
+		while (true) {
+			return self.connect() catch |err| switch(err) {
+				error.RestartAgain => {
+					std.log.warn("Server restarted while joining", .{});
+					continue;
+				},
+				inline else => |e| return e,
+			};
+		}
 	}
 
 	pub fn @"continue"(self: *World) !void {
@@ -365,6 +369,7 @@ pub const World = struct { // MARK: World
 		main.game.world = self;
 		errdefer main.heap.allocators.destroyWorldArena();
 		errdefer self.conn.deinit();
+		self.itemDrops.init(main.globalAllocator);
 		errdefer self.itemDrops.deinit();
 
 		// TODO: Consider using a per-world allocator.
@@ -799,16 +804,26 @@ pub fn restart() void {
 	if (world) |_world| {
 		_world.pause();
 
-		network.protocols.reload.informServerOfRestart(_world.conn);
+		while (true) {
+			network.protocols.reload.informServerOfRestart(_world.conn);
 
-		_world.@"continue"() catch |err| {
-			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
-			main.gui.windowlist.notification.raiseNotification("Encountered error while opening world: {s}", .{@errorName(err)});
-			world = null;
+			_world.@"continue"() catch |err| switch (err) {
+				error.RestartAgain => {
+					std.log.warn("Server restarted multiple times", .{});
+					continue;
+				},
+				else => {
+					std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
+					main.gui.windowlist.notification.raiseNotification("Encountered error while opening world: {s}", .{@errorName(err)});
+					world = null;
 
-			main.gui.openWindow("main");
-			return;
-		};
+					main.gui.openWindow("main");
+					return;
+				},
+			};
+
+			break;
+		}
 		main.gui.openHud();
 	}
 }

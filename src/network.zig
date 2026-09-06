@@ -1617,6 +1617,7 @@ pub const Connection = struct { // MARK: Connection
 					.connectedVerified, .awaitingReloadVerified => main.game.world.?.shouldReload = true,
 				}
 				main.game.world.?.shouldRestart.store(true, .release);
+				conn.handShakeWaiting.broadcast();
 			}
 		}
 		if (conn.restartChannelCounter[@intFromEnum(channelId)] < restartCounter) {
