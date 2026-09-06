@@ -533,7 +533,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));
 		errdefer self.chunkManager.deinit();
 
-		try permission.loadGroups(try dir.openIterableDir("groups"));
+		try permission.loadGroups(try dir.openIterableDir("permission"));
 		std.debug.assert(main.entityModel.getById("cubyz:missing") != null);
 
 		return self;

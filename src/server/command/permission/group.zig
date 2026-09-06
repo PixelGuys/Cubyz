@@ -47,10 +47,10 @@ pub fn execute(args: Args, source: Source) void {
 		},
 		.@"/group <delete> <group>" => |params| {
 			if (!params.group.group.delete()) {
-				source.sendMessage("#ff0000Could not delete group {f}§#ff0000 as it already didn't exists / was renamed", .{params.group.group});
+				source.sendMessage("#ff0000Could not delete group {f}§#ff0000 as it was already deleted", .{params.group.group});
 				return;
 			}
-			source.sendMessage("#00ff00Group {f}§#00ff00 deleted", .{params.group.group});
+			source.sendMessage("#00ff00Group deleted", .{});
 		},
 		.@"/group <group> <add/remove> @<playerIndex>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
@@ -78,11 +78,17 @@ pub fn execute(args: Args, source: Source) void {
 			if (params.action) |action| {
 				switch (action) {
 					.add => {
-						group.addPermission(main.stackAllocator, listType, params.path.path);
+						group.addPermission(main.stackAllocator, listType, params.path.path) catch {
+							source.sendMessage("#00ff00Group has been deleted while processing the command.", .{});
+							return;
+						};
 						source.sendMessage("#00ff00Permission path {s} added to group {f}§#00ff00's permission {s}list", .{params.path.path, group, @tagName(listType)});
 					},
 					.remove => {
-						if (!group.removePermission(main.stackAllocator, listType, params.path.path)) {
+						if (!(group.removePermission(main.stackAllocator, listType, params.path.path) catch {
+							source.sendMessage("#00ff00Group has been deleted while processing the command.", .{});
+							return;
+						})) {
 							source.sendMessage("#ff0000Permission path {s} is not present inside group {f}§#ff0000 permission {s}list", .{params.path.path, group, @tagName(listType)});
 							return;
 						}
@@ -90,7 +96,10 @@ pub fn execute(args: Args, source: Source) void {
 					},
 				}
 			} else {
-				if (group.hasPermission(params.path.path) == .yes) {
+				if ((group.hasPermission(params.path.path) catch {
+					source.sendMessage("#00ff00Group has been deleted while processing the command.", .{});
+					return;
+				}) == .yes) {
 					source.sendMessage("#00ff00Group {f}§#00ff00 has permission for path: {s}", .{group, params.path.path});
 				} else {
 					source.sendMessage("#ff0000Group {f}§#ff0000 has no permission for path: {s}", .{group, params.path.path});
@@ -132,18 +141,18 @@ const GroupArg = struct {
 
 	fn parseId(name: []const u8, arg: []const u8, errorMessage: *main.ListManaged(u8)) error{ParseError}!GroupArg {
 		const id = std.fmt.parseInt(u32, arg, 10) catch {
-			errorMessage.print("id: '{s}' for <{s}> not a valid number", .{arg[idArg.len..], name});
+			errorMessage.print("id: '{s}' for <{s}> not a valid number", .{arg, name});
 			return error.ParseError;
 		};
 		return .{.group = Group.getById(id) catch {
-			errorMessage.print("id: '{s}' for <{s}> is not a valid group", .{arg[idArg.len..], name});
+			errorMessage.print("id: '{s}' for <{s}> is not a valid group", .{arg, name});
 			return error.ParseError;
 		}};
 	}
 
 	fn parseName(name: []const u8, arg: []const u8, errorMessage: *main.ListManaged(u8)) error{ParseError}!GroupArg {
 		return .{.group = Group.getByName(arg) catch {
-			errorMessage.print("name: '{s}' for <{s}> is not a valid group", .{arg[idArg.len..], name});
+			errorMessage.print("name: '{s}' for <{s}> is not a valid group", .{arg, name});
 			return error.ParseError;
 		}};
 	}

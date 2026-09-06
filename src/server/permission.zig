@@ -115,9 +115,6 @@ const GroupInstance = struct { // MARK: GroupInstance
 
 	fn init(allocator: NeverFailingAllocator, id: Group, name: []const u8) *GroupInstance {
 		sync.threadContext.assertCorrectContext(.server);
-		saveMetaData(allocator) catch |err| {
-			std.log.err("Couldn't save permission groups metadata: {t}", .{err});
-		};
 		const self = allocator.create(GroupInstance);
 		self.* = .{
 			.permissions = .init(allocator),
@@ -218,6 +215,9 @@ pub const Group = enum(u32) { // MARK: Group
 		result.key_ptr.* = groupsArena.allocator().dupe(u8, name);
 		result.value_ptr.* = @enumFromInt(groups.items.len);
 		groups.append(GroupInstance.init(groupsArena.allocator(), result.value_ptr.*, result.key_ptr.*));
+		saveMetaData(groupsArena.allocator()) catch |err| {
+			std.log.err("Couldn't save permission groups metadata: {t}", .{err});
+		};
 		return result.value_ptr.*;
 	}
 
@@ -238,6 +238,7 @@ pub const Group = enum(u32) { // MARK: Group
 
 	pub fn getById(id: u32) error{GroupNotFound}!Group {
 		sync.threadContext.assertCorrectContext(.server);
+		if (id >= groups.items.len) return error.GroupNotFound;
 		if (groups.items[id] == null) return error.GroupNotFound;
 		return @enumFromInt(id);
 	}
@@ -274,11 +275,9 @@ pub const Group = enum(u32) { // MARK: Group
 	}
 
 	pub fn format(self: Group, writer: *std.Io.Writer) std.Io.Writer.Error!void {
-		try writer.print("{s}", .{self.getInstance().name});
-	}
-
-	pub fn format(self: Group, writer: *std.Io.Writer) std.Io.Writer.Error!void {
-		try writer.print("{s}", .{self.getInstance().name});
+		try writer.print("{s}", .{blk: {
+			break :blk (self.getInstance() catch break :blk "[Deleted]").name;
+		}});
 	}
 };
 
@@ -308,6 +307,9 @@ fn addGroupFromBin(group: Group, data: []const u8) void {
 }
 
 pub fn loadGroups(dir: main.files.Dir) !void {
+	dir.makePath(".") catch |err| {
+		std.log.err("Couldn't create permission directory: {t}", .{err});
+	};
 	const metaDataZon: ZonElement = dir.readToZon(main.stackAllocator, "metadata.zon") catch .initObject(main.stackAllocator);
 	defer metaDataZon.deinit(main.stackAllocator);
 
@@ -324,6 +326,7 @@ pub fn loadGroups(dir: main.files.Dir) !void {
 			continue;
 		}
 		const data = try dir.read(main.stackAllocator, path);
+		defer main.stackAllocator.free(data);
 		addGroupFromBin(@enumFromInt(id), data);
 	}
 }
