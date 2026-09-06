@@ -202,7 +202,6 @@ var groupsArena: NeverFailingArenaAllocator = undefined;
 /// Creation of this via @enumFromInt should only be done if you are sure the group exists. The safer way is to go over one of the these functions:
 /// - fromBytes
 /// - getByName
-/// - getById (this does @enumFromInt just with a safety check)
 pub const Group = enum(u32) { // MARK: Group
 	_,
 
@@ -234,13 +233,6 @@ pub const Group = enum(u32) { // MARK: Group
 	pub fn getByName(name: []const u8) error{GroupNotFound}!Group {
 		sync.threadContext.assertCorrectContext(.server);
 		return groupNameToIdMap.get(name) orelse error.GroupNotFound;
-	}
-
-	pub fn getById(id: u32) error{GroupNotFound}!Group {
-		sync.threadContext.assertCorrectContext(.server);
-		if (id >= groups.items.len) return error.GroupNotFound;
-		if (groups.items[id] == null) return error.GroupNotFound;
-		return @enumFromInt(id);
 	}
 
 	fn getInstance(self: Group) error{GroupNotFound}!*GroupInstance {
