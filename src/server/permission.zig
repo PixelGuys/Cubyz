@@ -247,13 +247,15 @@ pub const Group = enum(u32) { // MARK: Group
 		return groups.items[@intFromEnum(self)] orelse return error.GroupNotFound;
 	}
 
+	/// If the group still exists, this deletes the group and returns true. Otherwise returns false
 	pub fn delete(self: Group) bool {
 		sync.threadContext.assertCorrectContext(.server);
 		// if the group already doens't exist anymore we can skip.
 		// but if the group still exists and is not deleted from the groupNameToIdMap then something is wrong, which is why we assert it here
-		std.debug.assert(groupNameToIdMap.remove((self.getInstance() catch return true).name));
+		std.debug.assert(groupNameToIdMap.remove((self.getInstance() catch return false).name));
 		groups.items[@intFromEnum(self)] = null;
 
+		if (builtin.is_test) return true;
 		const path = main.stackAllocator.print("saves/{s}/permission/{d}.group", .{main.server.world.?.path, @intFromEnum(self)});
 		defer main.stackAllocator.free(path);
 		main.files.cubyzDir().deleteFile(path) catch |err| {
@@ -458,6 +460,15 @@ test "invalidGroupEmptyGroups" {
 	defer deinit();
 
 	try std.testing.expectError(error.GroupNotFound, Group.getByName("root"));
+}
+
+test "acessDeletedGroup" {
+	init(main.heap.testingAllocator);
+	defer deinit();
+
+	const group = try Group.createGroup("test");
+	try std.testing.expectEqual(true, group.delete());
+	try std.testing.expectError(error.GroupNotFound, group.getInstance());
 }
 
 test "invalidGroupCreation" {
