@@ -153,8 +153,12 @@ pub fn makeModFeature(io: std.Io, step: *std.Build.Step, name: []const u8) !void
 		\\
 		\\const main = @import("main");
 		\\test "abc" {
-		\\  @setEvalBranchQuota(1000000);
-		\\  main.refAllDeclsRecursiveExceptCImports(@This());
+		\\
+	++ "\t" ++
+		\\@setEvalBranchQuota(1000000);
+		\\
+	++ "\t" ++
+		\\main.refAllDeclsRecursiveExceptCImports(@This());
 		\\}
 	);
 
