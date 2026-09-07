@@ -43,6 +43,14 @@ However, both of them lost interest at some point, and now Cubyz is maintained b
 3. Run `run_linux.sh` or `run_windows.bat`, if you already have Zig installed on your computer (it must be a compatible version) you can also just use `zig build run`
 4. When you want to update your local version you can use `git pull`. This keeps everything in one place, avoiding repeatedly downloading the compiler on every update.
 
+### For Nix/NixOS users
+
+Follow the download steps above, except instead of running `run_linux.sh`:
+1. Run `nix-build cubyz-fhs-dev.nix` once (you do not need to do this again to recompile)
+2. Run `./result/bin/cubyz-fhs-dev run_linux.sh`
+
+This will install the required libraries and compile the game from the code on your local machine.
+
 # Contributing
 ### Code
 Check out the [Contributing Guidelines](https://github.com/PixelGuys/Cubyz/blob/master/docs/CONTRIBUTING.md)
