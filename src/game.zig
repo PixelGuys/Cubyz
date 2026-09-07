@@ -435,7 +435,7 @@ pub const World = struct { // MARK: World
 		//     cos(sunsetHourAngle) = -tan(celestialPoleAltitude)*tan(solarDeclination)
 		const daylightFraction = @as(f32, @floatFromInt(dayDuration + (dawnDuration + duskDuration)/2))/@as(f32, @floatFromInt(dayCycleLength));
 		const sunsetHourAngle: f32 = std.math.pi*daylightFraction;
-		const solarDeclination = 0.409106; // equals Earth's axial tilt since it's always the solstice, can later be used to position sun in the sky
+		const solarDeclination = std.math.degreesToRadians(23); // equals Earth's axial tilt since it's always the solstice, can later be used to position sun in the sky
 		pub const celestialPoleAltitude = std.math.atan(-@cos(sunsetHourAngle)/@tan(solarDeclination));
 
 		const minimumAmbientLight: f32 = 0.1;
@@ -467,7 +467,7 @@ pub const World = struct { // MARK: World
 				return;
 			}
 
-			if (dayTime < nightDuration) {
+			if (dayTime < dawnStart) {
 				self.dayPhase = .{.night = @as(f32, @floatFromInt(dayTime - nightStart))/@as(f32, @floatFromInt(nightDuration))};
 				return;
 			}
@@ -500,51 +500,28 @@ pub const World = struct { // MARK: World
 		fn getSkyColorFactor(self: *DayTime) Vec3f {
 			return switch (self.dayPhase) {
 				.day => @splat(1),
-				.dusk => |dusk| {
-					var skyColorFactor: Vec3f = undefined;
-					// b:
-					if (dusk < 0.5) {
-						skyColorFactor[2] = (0.5 - dusk)/0.5;
-					} else {
-						skyColorFactor[2] = 0;
-					}
-					// g:
-					if (dusk < 0.25) {
-						skyColorFactor[1] = 1;
-					} else if (dusk < 0.75) {
-						skyColorFactor[1] = (0.75 - dusk)/0.5;
-					} else {
-						skyColorFactor[1] = 0;
-					}
-					// r:
-					if (dusk < 0.5) {
-						skyColorFactor[0] = 1;
-					} else {
-						skyColorFactor[0] = (1 - dusk)/0.5;
-					}
-
-					return skyColorFactor;
-				},
 				.night => @splat(0),
-				.dawn => |dawn| {
+				.dusk, .dawn => |progress| {
+					const solarPresence = if (self.dayPhase == .dusk) 1 - progress else progress;
+
 					var skyColorFactor: Vec3f = undefined;
 					// b:
-					if (dawn < 0.5) {
+					if (solarPresence < 0.5) {
 						skyColorFactor[2] = 0;
 					} else {
-						skyColorFactor[2] = (dawn - 0.5)/0.5;
+						skyColorFactor[2] = (solarPresence - 0.5)/0.5;
 					}
 					// g:
-					if (dawn < 0.25) {
+					if (solarPresence < 0.25) {
 						skyColorFactor[1] = 0;
-					} else if (dawn < 0.75) {
-						skyColorFactor[1] = (dawn - 0.25)/0.5;
+					} else if (solarPresence < 0.75) {
+						skyColorFactor[1] = (solarPresence - 0.25)/0.5;
 					} else {
 						skyColorFactor[1] = 1;
 					}
 					// r:
-					if (dawn < 0.5) {
-						skyColorFactor[0] = dawn/0.5;
+					if (solarPresence < 0.5) {
+						skyColorFactor[0] = solarPresence/0.5;
 					} else {
 						skyColorFactor[0] = 1;
 					}
