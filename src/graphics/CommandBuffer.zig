@@ -241,8 +241,7 @@ pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bi
 					.imageLayout = image.imageLayout,
 				};
 				writeInfo[i].pImageInfo = imageInfo;
-
-			}
+			},
 		}
 	}
 	c.vkCmdPushDescriptorSetKHR(self.handle, @intFromEnum(bindPoint), pipeline.pipelineLayout, set, @intCast(writeInfo.len), writeInfo.ptr);

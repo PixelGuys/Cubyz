@@ -908,24 +908,18 @@ pub const Image = struct { // MARK: Image
 		};
 		checkResult(c.vmaCreateImage(gpu_allocator.handle, &imageInfo, &allocCreateInfo, &self.handle, &self.allocation, null));
 
-		const imageViewInfo: c.VkImageViewCreateInfo = .{
-			.sType = c.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-			.image = self.handle,
-			.format = options.format,
-			.subresourceRange = .{
-				.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
-				.baseMipLevel = 0,
-				.levelCount = options.mipLevels,
-				.baseArrayLayer = 0,
-				.layerCount = options.arrayLayers,
-			},
-			.viewType = switch (options.imageType) {
-				c.VK_IMAGE_TYPE_1D => c.VK_IMAGE_VIEW_TYPE_1D,
-				c.VK_IMAGE_TYPE_2D => c.VK_IMAGE_VIEW_TYPE_2D,
-				c.VK_IMAGE_TYPE_3D => c.VK_IMAGE_VIEW_TYPE_3D,
-				else => unreachable,
-			}
-		};
+		const imageViewInfo: c.VkImageViewCreateInfo = .{.sType = c.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, .image = self.handle, .format = options.format, .subresourceRange = .{
+			.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
+			.baseMipLevel = 0,
+			.levelCount = options.mipLevels,
+			.baseArrayLayer = 0,
+			.layerCount = options.arrayLayers,
+		}, .viewType = switch (options.imageType) {
+			c.VK_IMAGE_TYPE_1D => c.VK_IMAGE_VIEW_TYPE_1D,
+			c.VK_IMAGE_TYPE_2D => c.VK_IMAGE_VIEW_TYPE_2D,
+			c.VK_IMAGE_TYPE_3D => c.VK_IMAGE_VIEW_TYPE_3D,
+			else => unreachable,
+		}};
 		checkResult(c.vkCreateImageView(device, &imageViewInfo, null, &self.view));
 
 		const samplerInfo: c.VkSamplerCreateInfo = .{
@@ -949,7 +943,7 @@ pub const Image = struct { // MARK: Image
 			.unnormalizedCoordinates = c.VK_FALSE,
 		};
 		checkResult(c.vkCreateSampler(device, &samplerInfo, null, &self.sampler));
-		
+
 		return self;
 	}
 
@@ -996,6 +990,69 @@ pub const Image = struct { // MARK: Image
 				},
 				.imageOffset = .{.x = 0, .y = 0, .z = 0},
 				.imageExtent = .{.width = @intCast(self.size[0]), .height = @intCast(self.size[1]), .depth = @intCast(self.size[2])},
+			},
+		});
+		currentFrame.uploadCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+				.srcAccessMask = c.VK_ACCESS_2_TRANSFER_WRITE_BIT,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+				.dstAccessMask = c.VK_ACCESS_SHADER_READ_BIT,
+				.oldLayout = c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				.newLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
+				.image = self.handle,
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = self.mipLevels, .layerCount = 1},
+			},
+		}});
+	}
+
+	pub fn uploadGlyphs(self: Image, offset: i32, width: i32, height: i32, pitch: i32, data: []const u8) void {
+		if (data.len == 0) return;
+		const rowSize: usize = @intCast(width);
+		const rows: usize = @intCast(height);
+		const sourceRowSize: usize = @intCast(@abs(pitch));
+		std.debug.assert(data.len == sourceRowSize*rows);
+		const stagingBuffer: Buffer = .init(rowSize*rows, .{.usage = c.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, .hostAccessible = true});
+		defer stagingBuffer.deferredDeinit();
+		var gpuMemory: ?*anyopaque = undefined;
+		checkResult(c.vmaMapMemory(gpu_allocator.handle, stagingBuffer.allocation, &gpuMemory));
+
+		const dest = @as([*]u8, @ptrCast(gpuMemory.?));
+
+		for (0..rows) |y| {
+			const sourceOffset = y*sourceRowSize;
+			const destOffset = y*rowSize;
+			@memcpy(dest[destOffset .. destOffset + rowSize], data[sourceOffset .. sourceOffset + rowSize]);
+		}
+
+		c.vmaUnmapMemory(gpu_allocator.handle, stagingBuffer.allocation);
+
+		currentFrame.uploadCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_NONE,
+				.srcAccessMask = c.VK_ACCESS_2_NONE,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+				.dstAccessMask = c.VK_ACCESS_2_TRANSFER_WRITE_BIT,
+				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
+				.newLayout = c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				.image = self.handle,
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = self.mipLevels, .layerCount = 1},
+			},
+		}});
+		currentFrame.uploadCommands.copyBufferToImage(self, c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, stagingBuffer, &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2,
+				.bufferOffset = 0,
+				.imageSubresource = .{
+					.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
+					.mipLevel = 0,
+					.baseArrayLayer = 0,
+					.layerCount = 1,
+				},
+				.imageOffset = .{.x = offset, .y = 0, .z = 0},
+				.imageExtent = .{.width = @intCast(width), .height = @intCast(height), .depth = 1},
 			},
 		});
 		currentFrame.uploadCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{

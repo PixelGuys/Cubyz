@@ -1098,6 +1098,9 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 				.inColor = @bitCast(draw.getColor()),
 				.fontSize = .{@floatFromInt(TextRendering.textureWidth), @floatFromInt(TextRendering.textureHeight)},
 			});
+			vulkan.currentFrame.guiCommands.bindDescriptors(TextRendering.pipeline, .graphics, 0, &.{
+				.{.image = .{.binding = 0, .image = TextRendering.glyphTexture[0].vulkanImage.?}},
+			});
 
 			vulkan.currentFrame.guiCommands.bindVertexArray(draw.rectVao);
 		} else {
@@ -1169,15 +1172,36 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		defer draw.restoreScale(oldScale);
 		var x: f32 = 0;
 		var y: f32 = 0;
-		TextRendering.pipeline.bind(draw.getScissor());
 		var viewport: [4]c_int = undefined;
 		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-		c.glUniform2f(TextRendering.uniforms.scene, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
-		c.glUniform1f(TextRendering.uniforms.ratio, draw.scale);
-		c.glUniform1ui(TextRendering.uniforms.inColor, @bitCast(draw.getColor()));
-		c.glActiveTexture(c.GL_TEXTURE0);
-		c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0].textureID);
-		draw.rectVao.bind();
+
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			vulkan.currentFrame.guiCommands.bindPipeline(TextRendering.pipeline, draw.getScissor());
+			vulkan.currentFrame.guiCommands.pushConstants(TextRendering.pipeline, &TextRendering.CompleteUniforms{
+				.textureRect = .{0, 0, 0, 0},
+				.offset = .{0, 0},
+				.fontEffects = 0,
+				.textureBounds = .{0, 0, 0, 0},
+				.scene = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.ratio = draw.scale,
+				.inColor = @bitCast(draw.getColor()),
+				.fontSize = .{@floatFromInt(TextRendering.textureWidth), @floatFromInt(TextRendering.textureHeight)},
+			});
+			vulkan.currentFrame.guiCommands.bindDescriptors(TextRendering.pipeline, .graphics, 0, &.{
+				.{.image = .{.binding = 0, .image = TextRendering.glyphTexture[0].vulkanImage.?}},
+			});
+
+			vulkan.currentFrame.guiCommands.bindVertexArray(draw.rectVao);
+		} else {
+			TextRendering.pipeline.bind(draw.getScissor());
+
+			c.glUniform2f(TextRendering.uniforms.scene, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
+			c.glUniform1f(TextRendering.uniforms.ratio, draw.scale);
+			c.glUniform1ui(TextRendering.uniforms.inColor, @bitCast(draw.getColor()));
+			c.glActiveTexture(c.GL_TEXTURE0);
+			c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0].textureID);
+			draw.rectVao.bind();
+		}
 		const lineWraps: []f32 = main.stackAllocator.alloc(f32, self.lineBreaks.items.len - 1);
 		defer main.stackAllocator.free(lineWraps);
 		var i: usize = 0;
@@ -1284,9 +1308,10 @@ const TextRendering = struct { // MARK: TextRendering
 			&uniforms,
 			draw.SimpleVertex2D,
 			.{
+				.bindings = &.{.sampler(0, .{.fragment = true})},
 				.rasterState = .{.cullMode = .none},
 				.depthStencilState = .{.depthTest = false, .depthWrite = false},
-				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R8_UNORM}}},
+				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
 				.inputAssemblyState = .{.topology = .triangleStrip},
 				.pushConstantSize = @sizeOf(CompleteUniforms),
 			},
@@ -1305,28 +1330,27 @@ const TextRendering = struct { // MARK: TextRendering
 			.init(),
 			.init(),
 		};
-		glyphTexture[0].bind();
-		glyphTexture[1].bind();
 
 		if (main.settings.launchConfig.vulkanTestingMode) {
-			vulkan.currentFrame.guiCommands.bindPipeline(pipeline, null);
+			vulkan.currentFrame.guiCommands.bindPipeline(TextRendering.pipeline, null);
 			errdefer pipeline.deinit();
 
-			for (&glyphTexture) |*texture| {
-				texture.vulkanImage = vulkan.Image.init(.{textureWidth, textureHeight, 1}, .{
-					.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
-				});
-			}
+			glyphTexture[0].vulkanImage = vulkan.Image.init(.{textureWidth, textureHeight, 1}, .{
+				.format = c.VK_FORMAT_R8_UNORM,
+				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
+			});
 		} else {
 			pipeline.bind(null);
 			errdefer pipeline.deinit();
 			c.glUniform2f(uniforms.fontSize, @floatFromInt(textureWidth), @floatFromInt(textureHeight));
+			glyphTexture[0].bind();
 
 			c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_R8, textureWidth, textureHeight, 0, c.GL_RED, c.GL_UNSIGNED_BYTE, null);
 			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
 			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
 			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
 			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
+			glyphTexture[1].bind();
 
 			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
 			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
@@ -1347,16 +1371,22 @@ const TextRendering = struct { // MARK: TextRendering
 
 	fn resizeTexture(newWidth: i32) void {
 		textureWidth = newWidth;
-		const swap = glyphTexture[1];
-		glyphTexture[1] = glyphTexture[0];
-		glyphTexture[0] = swap;
-		if (main.settings.launchConfig.vulkanTestingMode) {} else {
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			glyphTexture[0].vulkanImage = vulkan.Image.init(.{textureWidth, textureHeight, 1}, .{
+				.format = c.VK_FORMAT_R8_UNORM,
+				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
+			});
+		} else {
+			const swap = glyphTexture[1];
+			glyphTexture[1] = glyphTexture[0];
+			glyphTexture[0] = swap;
+
 			c.glActiveTexture(c.GL_TEXTURE0);
 			c.glBindTexture(c.GL_TEXTURE_2D, glyphTexture[0].textureID);
 			c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_R8, newWidth, textureHeight, 0, c.GL_RED, c.GL_UNSIGNED_BYTE, null);
 			c.glCopyImageSubData(glyphTexture[1].textureID, c.GL_TEXTURE_2D, 0, 0, 0, 0, glyphTexture[0].textureID, c.GL_TEXTURE_2D, 0, 0, 0, 0, textureOffset, textureHeight, 1);
-		
-                        pipeline.bind(draw.getScissor());
+
+			pipeline.bind(draw.getScissor());
 			c.glUniform2f(uniforms.fontSize, @floatFromInt(textureWidth), @floatFromInt(textureHeight));
 		}
 	}
@@ -1364,11 +1394,14 @@ const TextRendering = struct { // MARK: TextRendering
 	fn uploadData(bitmap: c.FT_Bitmap) void {
 		const width: i32 = @bitCast(bitmap.width);
 		const height: i32 = @bitCast(bitmap.rows);
+		const pitch: i32 = @bitCast(bitmap.pitch);
 		const buffer = bitmap.buffer orelse return;
 		if (textureOffset + width > textureWidth) {
 			resizeTexture(textureWidth*2);
 		}
-		if (main.settings.launchConfig.vulkanTestingMode) {} else {
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			glyphTexture[0].vulkanImage.?.uploadGlyphs(textureOffset, width, height, bitmap.pitch, buffer[0..@intCast(pitch*height)]);
+		} else {
 			c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 1);
 			c.glTexSubImage2D(c.GL_TEXTURE_2D, 0, textureOffset, 0, width, height, c.GL_RED, c.GL_UNSIGNED_BYTE, buffer);
 		}
