@@ -924,7 +924,7 @@ pub const Image = struct { // MARK: Image
 				c.VK_IMAGE_TYPE_2D => c.VK_IMAGE_VIEW_TYPE_2D,
 				c.VK_IMAGE_TYPE_3D => c.VK_IMAGE_VIEW_TYPE_3D,
 				else => unreachable,
-			}
+			},
 		};
 		checkResult(c.vkCreateImageView(device, &imageViewInfo, null, &self.view));
 
@@ -949,7 +949,7 @@ pub const Image = struct { // MARK: Image
 			.unnormalizedCoordinates = c.VK_FALSE,
 		};
 		checkResult(c.vkCreateSampler(device, &samplerInfo, null, &self.sampler));
-		
+
 		return self;
 	}
 
