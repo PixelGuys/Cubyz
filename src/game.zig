@@ -433,7 +433,7 @@ pub const World = struct { // MARK: World
 		// with the sun solarDeclination radians off the sphere's equator.
 		// We can use the sunrise equation when the sun sits on the horizon:
 		//     cos(sunsetHourAngle) = -tan(celestialPoleAltitude)*tan(solarDeclination)
-		const daylightFraction = @as(f32, @floatFromInt(2*dayDuration + dawnDuration + duskDuration))/@as(f32, @floatFromInt(2*dayCycleLength));
+		const daylightFraction = @as(f32, @floatFromInt(dayDuration + (dawnDuration + duskDuration)/2))/@as(f32, @floatFromInt(dayCycleLength));
 		const sunsetHourAngle: f32 = std.math.pi*daylightFraction;
 		const solarDeclination = 0.409106; // equals Earth's axial tilt since it's always the solstice, can later be used to position sun in the sky
 		pub const celestialPoleAltitude = std.math.atan(-@cos(sunsetHourAngle)/@tan(solarDeclination));
