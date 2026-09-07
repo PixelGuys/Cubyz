@@ -908,18 +908,24 @@ pub const Image = struct { // MARK: Image
 		};
 		checkResult(c.vmaCreateImage(gpu_allocator.handle, &imageInfo, &allocCreateInfo, &self.handle, &self.allocation, null));
 
-		const imageViewInfo: c.VkImageViewCreateInfo = .{.sType = c.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, .image = self.handle, .format = options.format, .subresourceRange = .{
-			.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
-			.baseMipLevel = 0,
-			.levelCount = options.mipLevels,
-			.baseArrayLayer = 0,
-			.layerCount = options.arrayLayers,
-		}, .viewType = switch (options.imageType) {
-			c.VK_IMAGE_TYPE_1D => c.VK_IMAGE_VIEW_TYPE_1D,
-			c.VK_IMAGE_TYPE_2D => c.VK_IMAGE_VIEW_TYPE_2D,
-			c.VK_IMAGE_TYPE_3D => c.VK_IMAGE_VIEW_TYPE_3D,
-			else => unreachable,
-		}};
+		const imageViewInfo: c.VkImageViewCreateInfo = .{
+			.sType = c.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+			.image = self.handle,
+			.format = options.format,
+			.subresourceRange = .{
+				.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
+				.baseMipLevel = 0,
+				.levelCount = options.mipLevels,
+				.baseArrayLayer = 0,
+				.layerCount = options.arrayLayers,
+			},
+			.viewType = switch (options.imageType) {
+				c.VK_IMAGE_TYPE_1D => c.VK_IMAGE_VIEW_TYPE_1D,
+				c.VK_IMAGE_TYPE_2D => c.VK_IMAGE_VIEW_TYPE_2D,
+				c.VK_IMAGE_TYPE_3D => c.VK_IMAGE_VIEW_TYPE_3D,
+				else => unreachable,
+			},
+		};
 		checkResult(c.vkCreateImageView(device, &imageViewInfo, null, &self.view));
 
 		const samplerInfo: c.VkSamplerCreateInfo = .{
