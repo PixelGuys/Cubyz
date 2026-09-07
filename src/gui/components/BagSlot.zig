@@ -25,6 +25,7 @@ size: Vec2f = .{sizeWithBorder, sizeWithBorder + 8},
 inventory: *BagInventory,
 hovered: bool = false,
 pressed: bool = false,
+itemColor: u32 = 0xffffffff,
 
 pub fn globalInit() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/inventory/bag_slot.png");
@@ -91,7 +92,7 @@ pub fn render(self: *BagSlot, _: Vec2f) void {
 		const opacity: f32 = std.math.pow(f32, 0.5, @as(f32, @floatFromInt(i)));
 		const oldColor = draw.setColor(0xffffff | @as(u32, @trunc(opacity*255)) << 24);
 		defer draw.restoreColor(oldColor);
-		item.render(self.pos, @splat(sizeWithBorder), border);
+		item.render(self.pos, @splat(sizeWithBorder), border, self.itemColor);
 	}
 
 	const topItem = self.inventory.peek(0);

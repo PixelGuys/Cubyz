@@ -29,6 +29,8 @@ size: Vec2f = @splat(sizeWithBorder),
 inventory: ClientInventory,
 itemSlot: u32,
 lastItemAmount: u16 = 0,
+itemColor: u32 = 0xffffffff,
+onHover: main.callbacks.SimpleCallback,
 text: TextBuffer,
 textSize: Vec2f = .{0, 0},
 hovered: bool = false,
@@ -57,6 +59,12 @@ const TextureParamType = union(enum) {
 	}
 };
 
+const Options = struct {
+	texture: TextureParamType = .default,
+	mode: Mode = .normal,
+	onHover: main.callbacks.SimpleCallback = .{},
+};
+
 pub fn globalInit() void {
 	defaultTexture = Texture.initFromFile("assets/cubyz/ui/inventory/slot.png");
 	immutableTexture = Texture.initFromFile("assets/cubyz/ui/inventory/immutable_slot.png");
@@ -69,7 +77,7 @@ pub fn globalDeinit() void {
 	craftingResultTexture.deinit();
 }
 
-pub fn init(pos: Vec2f, inventory: ClientInventory, itemSlot: u32, texture: TextureParamType, mode: Mode) *ItemSlot {
+pub fn init(pos: Vec2f, inventory: ClientInventory, itemSlot: u32, options: Options) *ItemSlot {
 	const self = main.globalAllocator.create(ItemSlot);
 	const amount = inventory.getAmount(itemSlot);
 	var buf: [16]u8 = undefined;
@@ -79,8 +87,9 @@ pub fn init(pos: Vec2f, inventory: ClientInventory, itemSlot: u32, texture: Text
 		.pos = pos,
 		.text = TextBuffer.init(main.globalAllocator, std.fmt.bufPrint(&buf, "{}", .{amount}) catch "∞", .{}, false, .right),
 		.lastItemAmount = amount,
-		.texture = texture.value(),
-		.mode = mode,
+		.texture = options.texture.value(),
+		.mode = options.mode,
+		.onHover = options.onHover,
 	};
 	self.textSize = self.text.calculateLineBreaks(8, self.size[0] - 2*border);
 	return self;
@@ -115,6 +124,7 @@ pub fn toComponent(self: *ItemSlot) GuiComponent {
 pub fn updateHovered(self: *ItemSlot, _: Vec2f) main.callbacks.Result {
 	self.hovered = true;
 	gui.hoveredItemSlot = self;
+	self.onHover.run();
 	return .handled;
 }
 
@@ -137,7 +147,7 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 	}
 	const item = self.inventory.getItem(self.itemSlot);
 	if (item != .null) {
-		item.render(self.pos, self.size, border);
+		item.render(self.pos, self.size, border, self.itemColor);
 		const shouldRenderStackSizeText = item.stackSize() > 1 and self.inventory.type != .creative;
 		if (shouldRenderStackSizeText) {
 			self.text.render(self.pos[0] + self.size[0] - self.textSize[0] - border, self.pos[1] + self.size[1] - self.textSize[1] - border, 8);
