@@ -533,7 +533,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));
 		errdefer self.chunkManager.deinit();
 
-		try permission.loadGroups(try dir.openIterableDir("groups"));
+		try permission.loadGroups(try dir.openIterableDir("permission"));
 		std.debug.assert(main.entityModel.getById("cubyz:missing") != null);
 
 		return self;
@@ -754,6 +754,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		if (hasSurfaceMaps) {
 			try terrain.SurfaceMap.regenerateLOD(self.path);
 		}
+		std.log.info("Regenerating chunk LODs...", .{});
 		// Delete old LODs:
 		for (1..main.settings.highestSupportedLod + 1) |i| {
 			const lod = @as(u32, 1) << @intCast(i);

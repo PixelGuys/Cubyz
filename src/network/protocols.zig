@@ -270,9 +270,10 @@ pub const handShake = struct { // MARK: handShake
 			else => unreachable,
 		}
 
-		{
+		while (true) {
 			conn.mutex.lock();
 			defer conn.mutex.unlock();
+			const expectedRestartCounter = conn.restartCounter;
 			while (true) {
 				try main.io.checkCancel();
 				conn.handShakeWaiting.timedWait(&conn.mutex, .fromMilliseconds(16)) catch {
@@ -281,7 +282,10 @@ pub const handShake = struct { // MARK: handShake
 				};
 				break;
 			}
+			if (conn.restartCounter != expectedRestartCounter) return error.RestartAgain;
 			if (conn.connectionState.load(.monotonic) == .disconnected) return error.DisconnectedByServer;
+			if (conn.connectionState.load(.monotonic) != .connected) continue;
+			break;
 		}
 
 		return handshakeZon;

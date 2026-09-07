@@ -11,7 +11,7 @@
 			.massDamage = 1.0,
 			.hardnessDamage = 3.0,
 			.swingSpeed = 3.0,
-			.textureRoughness = 3.0,
+			.textureRoughness = 0.9,
 			.modifiers = .{
 				.{
 					.id = "fragile",
