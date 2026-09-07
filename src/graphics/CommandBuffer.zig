@@ -202,6 +202,11 @@ const BindingInfo = union(enum) {
 		offset: usize = 0,
 		range: usize = c.VK_WHOLE_SIZE,
 	},
+	image: struct {
+		binding: u32,
+		image: vulkan.Image,
+		imageLayout: c.VkImageLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
+	},
 };
 
 pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bindPoint: DescriptorBindPoint, set: u32, bindings: []const BindingInfo) void {
@@ -227,12 +232,24 @@ pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bi
 				};
 				writeInfo[i].pBufferInfo = bufferInfo;
 			},
+			.image => |image| {
+				writeInfo[i].descriptorType = c.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				const imageInfo = arena.create(c.VkDescriptorImageInfo);
+				imageInfo.* = .{
+					.sampler = image.image.sampler,
+					.imageView = image.image.view,
+					.imageLayout = image.imageLayout,
+				};
+				writeInfo[i].pImageInfo = imageInfo;
+
+			}
 		}
 	}
 	c.vkCmdPushDescriptorSetKHR(self.handle, @intFromEnum(bindPoint), pipeline.pipelineLayout, set, @intCast(writeInfo.len), writeInfo.ptr);
 }
 
 pub fn pushConstants(self: CommandBuffer, pipeline: main.graphics.Pipeline, constants: anytype) void {
+	comptime std.debug.assert(@typeInfo(@TypeOf(constants.*)).@"struct".layout == .@"extern");
 	c.vkCmdPushConstants(self.handle, pipeline.pipelineLayout, c.VK_SHADER_STAGE_ALL, 0, @sizeOf(@TypeOf(constants.*)), constants);
 }
 
