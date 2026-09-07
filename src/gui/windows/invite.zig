@@ -42,13 +42,13 @@ fn discoverIpAddressFromNewThread() void {
 }
 
 fn invite() void {
-	ipAddress = ipAddressEntry.currentString.items;
+	const storeIpAddressEntry = ipAddressEntry.currentString;
 	ipAddressEntry.clear();
 	if (thread) |_thread| {
 		_thread.join();
 		thread = null;
 	}
-	_ = main.server.User.init(main.server.connectionManager, ipAddressEntry.currentString.items) catch |err| {
+	_ = main.server.User.init(main.server.connectionManager, storeIpAddressEntry.items) catch |err| {
 		if (err != error.AlreadyConnected) {
 			std.log.err("Cannot connect user: {s}", .{@errorName(err)});
 		}
