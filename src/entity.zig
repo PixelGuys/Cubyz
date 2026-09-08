@@ -5,6 +5,7 @@ const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
+const BinaryReader = main.utils.BinaryReader;
 
 pub const components = @import("entityComponent/_list.zig");
 
@@ -13,6 +14,13 @@ pub const EntityNetworkData = struct {
 	pos: Vec3d,
 	vel: Vec3d,
 	rot: Vec3f,
+};
+
+pub const ComponentActionType = enum(u8) {
+	unload = 0,
+	load = 1,
+	modifyServer = 2,
+	modifyClient = 3,
 };
 
 pub const EntityComponentLoadError = error{
@@ -29,10 +37,12 @@ pub const Entity = enum(u32) {
 };
 pub const EntityComponentId = u32;
 const EntityComponentVTable = struct {
-	serverLoad: *const fn (entity: Entity, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
-	clientLoad: *const fn (entity: Entity, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
+	serverLoad: *const fn (entity: Entity, reader: *BinaryReader, version: u32) EntityComponentLoadError!void,
+	clientLoad: *const fn (entity: Entity, reader: *BinaryReader, version: u32) EntityComponentLoadError!void,
 	serverUnload: *const fn (entity: Entity) void,
 	clientUnload: *const fn (entity: Entity) void,
+	serverModifyComponent: *const fn (entity: Entity, reader: *BinaryReader) void,
+	clientModifyComponent: *const fn (entity: Entity, reader: *BinaryReader) void,
 };
 var componentList: []?EntityComponentVTable = undefined;
 
@@ -51,6 +61,8 @@ pub fn initComponents() void {
 				.clientLoad = @field(components, decl.name).client.load,
 				.serverUnload = @field(components, decl.name).server.unload,
 				.clientUnload = @field(components, decl.name).client.unload,
+				.serverModifyComponent = @field(components, decl.name).server.modifyComponent,
+				.clientModifyComponent = @field(components, decl.name).client.modifyComponent,
 			};
 		} else {
 			std.log.err("entity components: Duplicate list id {}.", .{componentId});
@@ -90,6 +102,23 @@ pub fn unloadComponent(comptime side: main.sync.Side, componentId: EntityCompone
 		switch (side) {
 			.server => vtable.serverUnload(entity),
 			.client => vtable.clientUnload(entity),
+		}
+	} else {
+		std.log.err("unknown Component Id {} ", .{componentId});
+		return error.UnknownComponentId;
+	}
+}
+
+pub fn modifyComponent(comptime side: main.sync.Side, componentId: EntityComponentId, entity: Entity, componentData: []const u8) EntityComponentLoadError!void {
+	if (componentId >= componentList.len) {
+		std.log.err("unknown Component Id {} ", .{componentId});
+		return error.UnknownComponentId;
+	}
+	var componentReader = BinaryReader.init(componentData);
+	if (componentList[componentId]) |vtable| {
+		switch (side) {
+			.server => vtable.serverModifyComponent(entity, &componentReader),
+			.client => vtable.clientModifyComponent(entity, &componentReader),
 		}
 	} else {
 		std.log.err("unknown Component Id {} ", .{componentId});
