@@ -37,6 +37,11 @@ const playerBagSizeLimit = 120;
 pub const client = struct {
 	const Component = struct {
 		bag: items.Inventory.BagInventory,
+		pub fn save(self: Component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
+			if (audience != .disk and audience != .playerHimself) return .discard;
+			self.bag.toBytes(writer);
+			return .save;
+		}
 	};
 	pub var components: main.utils.SparseSet(Component, Entity) = .{};
 
@@ -48,6 +53,9 @@ pub const client = struct {
 		components.clear();
 	}
 
+	pub fn get(entity: Entity) ?Component {
+		return (components.get(entity) orelse return null).*;
+	}
 	pub fn getBag(entity: Entity) ?*items.Inventory.BagInventory {
 		return &(components.get(entity) orelse return null).bag;
 	}
@@ -61,6 +69,10 @@ pub const client = struct {
 	pub fn unload(entity: Entity) void {
 		const bag = components.fetchRemove(entity) catch return;
 		bag.bag.deinit();
+	}
+	pub fn modifyComponent(entity: Entity, reader: *utils.BinaryReader) void {
+		_ = entity;
+		_ = reader;
 	}
 };
 
@@ -102,5 +114,9 @@ pub const server = struct {
 	pub fn unload(entity: Entity) void {
 		const bag = components.fetchRemove(entity) catch return;
 		bag.bag.deinit();
+	}
+	pub fn modifyComponent(entity: Entity, reader: *utils.BinaryReader) void {
+		_ = entity;
+		_ = reader;
 	}
 };

@@ -38,6 +38,11 @@ pub const client = struct {
 
 			main.systems.systems.modelRenderer.client.nodeBuffer.free(self.bufferAllocation);
 		}
+		pub fn save(self: Component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
+			_ = audience;
+			writer.writeVarInt(u32, self.entityModel.index);
+			return .save;
+		}
 	};
 	pub var components: main.utils.SparseSet(Component, Entity) = .{};
 
@@ -74,6 +79,10 @@ pub const client = struct {
 	}
 	pub fn get(entity: Entity) ?*Component {
 		return components.get(entity);
+	}
+	pub fn modifyComponent(entity: Entity, reader: *utils.BinaryReader) void {
+		_ = entity;
+		_ = reader;
 	}
 };
 
@@ -113,5 +122,9 @@ pub const server = struct {
 	}
 	pub fn get(entity: Entity) ?*const Component {
 		return components.get(entity);
+	}
+	pub fn modifyComponent(entity: Entity, reader: *utils.BinaryReader) void {
+		_ = entity;
+		_ = reader;
 	}
 };
