@@ -5,6 +5,7 @@ const blocks = @import("blocks.zig");
 const chunk = @import("chunk.zig");
 const entity = @import("entity.zig");
 const graphics = @import("graphics.zig");
+const vulkan = graphics.vulkan;
 const particles = @import("particles.zig");
 const game = @import("game.zig");
 const World = game.World;
@@ -616,12 +617,22 @@ pub const MenuBackGround = struct { // MARK: MenuBackGround
 			.projectionMatrix = game.projectionMatrix.toGl(),
 			.viewMatrix = viewMatrix.toGl(),
 		});
-		pipeline.bind(null);
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
+			vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, 0, &.{
+				.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
+			});
+			graphics.frame_uniforms.bindToPipeline(vulkan.currentFrame.guiCommands, pipeline);
+			vulkan.currentFrame.guiCommands.bindVertexArray(vao);
+			vulkan.currentFrame.guiCommands.drawIndexed(24, 0);
+		} else {
+			pipeline.bind(null);
 
-		texture.bindTo(0);
+			texture.bindTo(0);
 
-		vao.bind();
-		c.glDrawElements(c.GL_TRIANGLES, 24, c.GL_UNSIGNED_INT, null);
+			vao.bind();
+			c.glDrawElements(c.GL_TRIANGLES, 24, c.GL_UNSIGNED_INT, null);
+		}
 	}
 
 	pub fn takeBackgroundImage() void {
