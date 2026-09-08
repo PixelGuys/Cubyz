@@ -1019,7 +1019,6 @@ pub const Image = struct { // MARK: Image
 	}
 
 	pub fn uploadImage(dest: Image, source: Image) void {
-		std.debug.print("dest size: {any}, source size: {any}\n", .{dest.size, source.size});
 		currentFrame.uploadCommands.copyImageToImage(dest, c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, source, c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, &.{
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_IMAGE_COPY_2,
