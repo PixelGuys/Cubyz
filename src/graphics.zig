@@ -2247,6 +2247,7 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 	};
 
 	var buffers: [3]c_uint = undefined;
+	var vulkanBuffers: [3]vulkan.Buffer = undefined;
 	var fences: [3]c.GLsync = undefined;
 	var currentFrame: usize = 0;
 	var currentData: Data = undefined;
@@ -2256,6 +2257,13 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 		for (buffers) |buffer| {
 			c.glBindBuffer(c.GL_UNIFORM_BUFFER, buffer);
 			c.glBufferStorage(c.GL_UNIFORM_BUFFER, @sizeOf(Data), null, c.GL_DYNAMIC_STORAGE_BIT);
+		}
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			for (&vulkanBuffers) |*buf| {
+				buf.* = .init(@sizeOf(Data), .{
+					.usage = c.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | c.VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+				});
+			}
 		}
 		for (&fences) |*fence| {
 			fence.* = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
@@ -2267,6 +2275,11 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 		c.glDeleteBuffers(buffers.len, &buffers);
 		for (fences) |fence| {
 			c.glDeleteSync(fence);
+		}
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			for (vulkanBuffers) |buf| {
+				buf.deferredDeinit();
+			}
 		}
 	}
 
@@ -2284,6 +2297,15 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 		c.glBufferSubData(c.GL_UNIFORM_BUFFER, 0, @sizeOf(Data), &data);
 		c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
 		c.glBindBufferBase(c.GL_UNIFORM_BUFFER, 0, buffers[currentFrame]);
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			vulkanBuffers[currentFrame].uploadData(0, std.mem.asBytes(&data));
+		}
+	}
+
+	pub fn bindToPipeline(buf: CommandBuffer, pipeline: Pipeline) void {
+		buf.bindDescriptors(pipeline, .graphics, 0, &.{
+			.{.ubo = .{.binding = 31, .buffer = vulkanBuffers[currentFrame]}},
+		});
 	}
 
 	pub const StaticUbo = struct {
