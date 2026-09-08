@@ -1089,10 +1089,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		if (main.settings.launchConfig.vulkanTestingMode) {
 			vulkan.currentFrame.guiCommands.bindPipeline(TextRendering.pipeline, draw.getScissor());
 			vulkan.currentFrame.guiCommands.pushConstants(TextRendering.pipeline, &TextRendering.CompleteUniforms{
-				.textureRect = .{0, 0, 0, 0},
-				.offset = .{0, 0},
-				.fontEffects = 0,
-				.textureBounds = .{0, 0, 0, 0},
+				.glyphData = undefined,
 				.scene = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
 				.ratio = draw.scale,
 				.inColor = @bitCast(draw.getColor()),
@@ -1178,10 +1175,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		if (main.settings.launchConfig.vulkanTestingMode) {
 			vulkan.currentFrame.guiCommands.bindPipeline(TextRendering.pipeline, draw.getScissor());
 			vulkan.currentFrame.guiCommands.pushConstants(TextRendering.pipeline, &TextRendering.CompleteUniforms{
-				.textureRect = .{0, 0, 0, 0},
-				.offset = .{0, 0},
-				.fontEffects = 0,
-				.textureBounds = .{0, 0, 0, 0},
+				.glyphData = undefined,
 				.scene = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
 				.ratio = draw.scale,
 				.inColor = @bitCast(draw.getColor()),
@@ -1264,10 +1258,7 @@ const TextRendering = struct { // MARK: TextRendering
 	} = undefined;
 
 	const CompleteUniforms = extern struct {
-		textureRect: [4]f32 align(16),
-		offset: [2]f32 align(8),
-		fontEffects: c_int,
-		textureBounds: [4]f32 align(16),
+		glyphData: GlypUniforms,
 		scene: [2]f32 align(8),
 		ratio: f32,
 		inColor: c_uint,
@@ -1400,7 +1391,10 @@ const TextRendering = struct { // MARK: TextRendering
 			resizeTexture(textureWidth*2);
 		}
 		if (main.settings.launchConfig.vulkanTestingMode) {
-			glyphTexture[0].vulkanImage.?.uploadGlyphs(textureOffset, width, height, bitmap.pitch, buffer[0..@intCast(pitch*height)]);
+			glyphTexture[0].vulkanImage.?.size = .{width, height, 1};
+			glyphTexture[0].vulkanImage.?.uploadData(buffer[0..@intCast(pitch*height)], .{
+				.imageOffset = .{.x = textureOffset},
+			});
 		} else {
 			c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 1);
 			c.glTexSubImage2D(c.GL_TEXTURE_2D, 0, textureOffset, 0, width, height, c.GL_RED, c.GL_UNSIGNED_BYTE, buffer);
@@ -2163,7 +2157,7 @@ pub const Texture = struct { // MARK: Texture
 			self.vulkanImage = vulkan.Image.init(.{image.width, image.height, 1}, .{
 				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
 			});
-			self.vulkanImage.?.uploadData(0, std.mem.sliceAsBytes(image.imageData));
+			self.vulkanImage.?.uploadData(std.mem.sliceAsBytes(image.imageData), .{});
 		}
 	}
 
