@@ -419,6 +419,10 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	server.terrain.globalInit();
 
 	if (headless) {
+		if (std.mem.eql(u8, settings.launchConfig.autoEnterWorld, "")) {
+			std.log.err("did you forget to put a name into .autoEnterWorld", .{});
+			unreachable;
+		}
 		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null, .multiplayer);
 		heap.GarbageCollection.waitForFreeCompletion();
 	} else {
