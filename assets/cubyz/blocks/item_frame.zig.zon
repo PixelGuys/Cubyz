@@ -1,0 +1,18 @@
+.{
+	.tags = .{.choppable, .wood},
+	.blockHealth = 2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.viewThrough = true,
+	.alwaysViewThrough = true,
+	.collide = false,
+	.model = "cubyz:carpet",
+	.rotation = "cubyz:direction",
+	.blockEntity = "cubyz:item_frame",
+	.onInteract = .{
+		.type = .edit_item_frame,
+	},
+	.lodReplacement = "cubyz:air",
+	.texture = "cubyz:item_frame",
+}
