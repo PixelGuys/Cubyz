@@ -1016,6 +1016,29 @@ pub const Image = struct { // MARK: Image
 			},
 		}});
 	}
+
+	pub fn uploadImage(self: Image, other: Image) void {
+		currentFrame.uploadCommands.copyImageToImage(self, c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, other, c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_COPY_2,
+				.srcSubresource = .{
+					.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
+					.mipLevel = 0,
+					.baseArrayLayer = 0,
+					.layerCount = 1,
+				},
+				.srcOffset = .{},
+				.dstSubresource = .{
+					.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
+					.mipLevel = 0,
+					.baseArrayLayer = 0,
+					.layerCount = 1,
+				},
+				.dstOffset = .{},
+				.extent = .{.width = @intCast(other.size[0]), .height = @intCast(other.size[1]), .depth = @intCast(other.size[2])},
+			},
+		});
+	}
 };
 
 pub const gpu_allocator = struct {

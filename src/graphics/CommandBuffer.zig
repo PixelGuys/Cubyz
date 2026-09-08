@@ -295,3 +295,16 @@ pub fn copyBufferToImage(self: CommandBuffer, dest: vulkan.Image, destLayout: c.
 	};
 	c.vkCmdCopyBufferToImage2(self.handle, &info);
 }
+
+pub fn copyImageToImage(self: CommandBuffer, dest: vulkan.Image, destLayout: c.VkImageLayout, source: vulkan.Image, sourceLayout: c.VkImageLayout, regions: []const c.VkImageCopy2) void {
+	const info: c.VkCopyImageInfo2 = .{
+		.sType = c.VK_STRUCTURE_TYPE_COPY_IMAGE_INFO_2,
+		.srcImage = source.handle,
+		.srcImageLayout = sourceLayout,
+		.dstImage = dest.handle,
+		.dstImageLayout = destLayout,
+		.regionCount = @intCast(regions.len),
+		.pRegions = regions.ptr,
+	};
+	c.vkCmdCopyImage2(self.handle, &info);
+}

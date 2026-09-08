@@ -1328,7 +1328,7 @@ const TextRendering = struct { // MARK: TextRendering
 
 			glyphTexture[0].vulkanImage = vulkan.Image.init(.{textureWidth, textureHeight, 1}, .{
 				.format = c.VK_FORMAT_R8_UNORM,
-				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
+				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT | c.VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
 			});
 		} else {
 			pipeline.bind(null);
@@ -1362,16 +1362,17 @@ const TextRendering = struct { // MARK: TextRendering
 
 	fn resizeTexture(newWidth: i32) void {
 		textureWidth = newWidth;
+		const swap = glyphTexture[1];
+		glyphTexture[1] = glyphTexture[0];
+		glyphTexture[0] = swap;
 		if (main.settings.launchConfig.vulkanTestingMode) {
 			glyphTexture[0].vulkanImage = vulkan.Image.init(.{textureWidth, textureHeight, 1}, .{
 				.format = c.VK_FORMAT_R8_UNORM,
-				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
+				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT | c.VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
 			});
+			glyphTexture[0].vulkanImage.?.uploadImage(glyphTexture[1].vulkanImage.?);
+			glyphTexture[1].vulkanImage.?.deferredDeinit();
 		} else {
-			const swap = glyphTexture[1];
-			glyphTexture[1] = glyphTexture[0];
-			glyphTexture[0] = swap;
-
 			c.glActiveTexture(c.GL_TEXTURE0);
 			c.glBindTexture(c.GL_TEXTURE_2D, glyphTexture[0].textureID);
 			c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_R8, newWidth, textureHeight, 0, c.GL_RED, c.GL_UNSIGNED_BYTE, null);
