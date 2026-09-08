@@ -964,7 +964,6 @@ pub const Image = struct { // MARK: Image
 	}
 
 	const UploadDataConfig = struct {
-		bufferOffset: usize = 0,
 		imageOffset: c.struct_VkOffset3D = .{},
 	};
 
@@ -992,7 +991,7 @@ pub const Image = struct { // MARK: Image
 		currentFrame.uploadCommands.copyBufferToImage(self, c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, stagingBuffer, &.{
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2,
-				.bufferOffset = config.bufferOffset,
+				.bufferOffset = 0,
 				.imageSubresource = .{
 					.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
 					.mipLevel = 0,
