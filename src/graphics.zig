@@ -1393,9 +1393,7 @@ const TextRendering = struct { // MARK: TextRendering
 		}
 		if (main.settings.launchConfig.vulkanTestingMode) {
 			glyphTexture[0].vulkanImage.?.size = .{width, height, 1};
-			glyphTexture[0].vulkanImage.?.uploadData(buffer[0..@intCast(pitch*height)], .{
-				.imageOffset = .{.x = textureOffset},
-			});
+			glyphTexture[0].vulkanImage.?.uploadData(buffer[0..@intCast(pitch*height)], .{.imageOffset = .{.x = textureOffset}, .imageExtent = .{.width = @intCast(width), .height = @intCast(height), .depth = 1}});
 		} else {
 			c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 1);
 			c.glTexSubImage2D(c.GL_TEXTURE_2D, 0, textureOffset, 0, width, height, c.GL_RED, c.GL_UNSIGNED_BYTE, buffer);
@@ -2158,7 +2156,7 @@ pub const Texture = struct { // MARK: Texture
 			self.vulkanImage = vulkan.Image.init(.{image.width, image.height, 1}, .{
 				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
 			});
-			self.vulkanImage.?.uploadData(std.mem.sliceAsBytes(image.imageData), .{});
+			self.vulkanImage.?.uploadData(std.mem.sliceAsBytes(image.imageData), .{.imageExtent = .{.width = image.width, .height = image.height, .depth = 1}});
 		}
 	}
 

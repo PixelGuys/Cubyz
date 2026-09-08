@@ -965,6 +965,7 @@ pub const Image = struct { // MARK: Image
 
 	const UploadDataConfig = struct {
 		imageOffset: c.struct_VkOffset3D = .{},
+		imageExtent: c.struct_VkExtent3D = .{},
 	};
 
 	pub fn uploadData(self: Image, data: []const u8, config: UploadDataConfig) void {
@@ -999,7 +1000,7 @@ pub const Image = struct { // MARK: Image
 					.layerCount = 1,
 				},
 				.imageOffset = config.imageOffset,
-				.imageExtent = .{.width = @intCast(self.size[0]), .height = @intCast(self.size[1]), .depth = @intCast(self.size[2])},
+				.imageExtent = config.imageExtent,
 			},
 		});
 		currentFrame.uploadCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
@@ -1017,8 +1018,9 @@ pub const Image = struct { // MARK: Image
 		}});
 	}
 
-	pub fn uploadImage(self: Image, other: Image) void {
-		currentFrame.uploadCommands.copyImageToImage(self, c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, other, c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, &.{
+	pub fn uploadImage(dest: Image, source: Image) void {
+		std.debug.print("dest size: {any}, source size: {any}\n", .{dest.size, source.size});
+		currentFrame.uploadCommands.copyImageToImage(dest, c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, source, c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, &.{
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_IMAGE_COPY_2,
 				.srcSubresource = .{
@@ -1035,7 +1037,7 @@ pub const Image = struct { // MARK: Image
 					.layerCount = 1,
 				},
 				.dstOffset = .{},
-				.extent = .{.width = @intCast(other.size[0]), .height = @intCast(other.size[1]), .depth = @intCast(other.size[2])},
+				.extent = .{.width = @intCast(dest.size[0]), .height = @intCast(dest.size[1]), .depth = @intCast(dest.size[2])},
 			},
 		});
 	}
