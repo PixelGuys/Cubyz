@@ -27,29 +27,25 @@ pub fn isDroppedWhenBrokenWithItem(self: @This(), item: Item) bool {
 	return true;
 }
 
-pub fn drop(self: @This(), pos: Vec3d, dir: Vec3f) void {
+pub fn drop(self: @This(), loc: Location, pos: Vec3i, spread: Spread) void {
 	if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
 		for (self.itemStacks) |itemStack| {
-			main.server.world.?.drop(itemStack.clone(), pos, randomDir(dir), randomVelocity(dir));
+			main.server.world.?.drop(itemStack.clone(), spread.dropPos(loc, pos), loc.dropDir(), loc.dropVelocity());
 		}
 	}
 }
 
-fn randomDir(dir: Vec3f) Vec3f {
-	const randomnessVec: Vec3f = main.random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(0.25));
-	const directionVec: Vec3f = @as(Vec3f, @floatCast(dir)) + randomnessVec;
-	const z: f32 = directionVec[2];
-	return vec.normalize(Vec3f{
-		directionVec[0],
-		directionVec[1],
-		if (z < -0.5) 0 else if (z < 0.0) (z + 0.5)*4.0 else z + 2.0,
-	});
-}
-fn randomVelocity(dir: Vec3f) f32 {
-	const velocity = 3.5 + main.random.nextFloatSigned(&main.seed)*0.5;
-	if (dir[2] < -0.5) return velocity*0.333;
-	return velocity;
-}
+pub const Spread = enum {
+	inside,
+	outside,
+
+	pub inline fn dropPos(self: Spread, loc: Location, pos: Vec3i) Vec3d {
+		return switch (self) {
+			.inside => loc.insidePos(pos),
+			.outside => loc.outsidePos(pos),
+		};
+	}
+};
 
 pub const Location = struct {
 	normalDir: Vec3f,
@@ -101,6 +97,21 @@ pub const Location = struct {
 		const minor2 = vec.normalize(vec.cross(self.normalDir, minor1));
 		return .{minor1, minor2};
 	}
+	fn dropDir(self: Location) Vec3f {
+		const randomnessVec: Vec3f = main.random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(0.25));
+		const directionVec: Vec3f = @as(Vec3f, @floatCast(self.direction())) + randomnessVec;
+		const z: f32 = directionVec[2];
+		return vec.normalize(Vec3f{
+			directionVec[0],
+			directionVec[1],
+			if (z < -0.5) 0 else if (z < 0.0) (z + 0.5)*4.0 else z + 2.0,
+		});
+	}
+	fn dropVelocity(self: Location) f32 {
+		const velocity = 3.5 + main.random.nextFloatSigned(&main.seed)*0.5;
+		if (self.direction()[2] < -0.5) return velocity*0.333;
+		return velocity;
+	}
 };
 
 pub const Context = struct {
@@ -112,12 +123,12 @@ pub const Context = struct {
 		const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
 		if (dropAmount == 0) return;
 
-		const dropPos = if (self.newBlock.collide()) location.outsidePos(pos) else location.insidePos(pos);
+		const spread: Spread = if (self.newBlock.collide()) .outside else .inside;
 
 		for (0..dropAmount) |_| {
 			for (self.oldBlock.blockDrops()) |blockDrop| {
 				if (blockDrop.isDroppedWhenBrokenWithItem(self.item)) {
-					blockDrop.drop(dropPos, location.normalDir);
+					blockDrop.drop(location, pos, spread);
 				}
 			}
 		}
