@@ -492,7 +492,7 @@ pub const MenuBackGround = struct { // MARK: MenuBackGround
 	var angle: f32 = 0;
 
 	fn init() void {
-		const MenuBackgroundVertex = struct {
+		const MenuBackgroundVertex = extern struct {
 			pos: [3]f32,
 			uv: [2]f32,
 
