@@ -1019,6 +1019,32 @@ pub const Image = struct { // MARK: Image
 	}
 
 	pub fn uploadImage(dest: Image, source: Image) void {
+		currentFrame.uploadCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_NONE,
+				.srcAccessMask = c.VK_ACCESS_2_NONE,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+				.dstAccessMask = c.VK_ACCESS_2_TRANSFER_WRITE_BIT,
+				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
+				.newLayout = c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				.image = dest.handle,
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = dest.mipLevels, .layerCount = 1},
+			},
+		}});
+		currentFrame.uploadCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_NONE,
+				.srcAccessMask = c.VK_ACCESS_2_NONE,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+				.dstAccessMask = c.VK_ACCESS_2_TRANSFER_WRITE_BIT,
+				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
+				.newLayout = c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				.image = source.handle,
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = dest.mipLevels, .layerCount = 1},
+			},
+		}});
 		currentFrame.uploadCommands.copyImageToImage(dest, c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, source, c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, &.{
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_IMAGE_COPY_2,
@@ -1039,6 +1065,32 @@ pub const Image = struct { // MARK: Image
 				.extent = .{.width = @intCast(source.size[0]), .height = @intCast(source.size[1]), .depth = @intCast(source.size[2])},
 			},
 		});
+		currentFrame.uploadCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+				.srcAccessMask = c.VK_ACCESS_2_TRANSFER_WRITE_BIT,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+				.dstAccessMask = c.VK_ACCESS_SHADER_READ_BIT,
+				.oldLayout = c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				.newLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
+				.image = dest.handle,
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = dest.mipLevels, .layerCount = 1},
+			},
+		}});
+		currentFrame.uploadCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+				.srcAccessMask = c.VK_ACCESS_2_TRANSFER_WRITE_BIT,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+				.dstAccessMask = c.VK_ACCESS_SHADER_READ_BIT,
+				.oldLayout = c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				.newLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
+				.image = source.handle,
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = dest.mipLevels, .layerCount = 1},
+			},
+		}});
 	}
 };
 
