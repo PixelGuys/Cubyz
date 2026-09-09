@@ -14,6 +14,6 @@ void main() {
 	directions[2] = (invViewMatrix * vec4(-1*tanXY.x, 1, 1*tanXY.y, 0)).xyz;
 	directions[3] = (invViewMatrix * vec4(-1*tanXY.x, 1, -1*tanXY.y, 0)).xyz;
 	texCoords = inTexCoords;
-	vec2 position = inTexCoords*2 - vec2(1, 1);
+	vec2 position = inTexCoords*2 + vec2(-1, -1);
 	gl_Position = vec4(position, 0, 1);
 }
