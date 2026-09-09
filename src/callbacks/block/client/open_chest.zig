@@ -12,7 +12,7 @@ pub fn init(_: ZonElement, _: main.callbacks.Creator) ?*anyopaque {
 
 pub fn run(_: *anyopaque, params: main.callbacks.ClientBlockCallback.Params) main.callbacks.Result {
 	if (params.block.blockEntity() == null or !std.mem.eql(u8, params.block.blockEntity().?.id, "cubyz:chest")) {
-		std.log.err("Can only open chest if block entity of the block is a chest.", .{});
+		std.log.err("Error: Can only open chest if block entity of the block is a chest.", .{});
 		return .ignored;
 	}
 	main.network.protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, params.blockPos);
