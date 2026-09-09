@@ -2,9 +2,6 @@
 	.onUpdate = .{
 		.type = .decay,
 		.prevention = .{.log, .branch},
-		.drops = .{
-			.{.chance = 0.01, .items = .{"cubyz:apple"}},
-		},
 	},
 	.drops = .{
 		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},

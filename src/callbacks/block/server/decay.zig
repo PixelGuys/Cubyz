@@ -14,26 +14,13 @@ const BlockDrop = main.server.BlockDrop;
 
 decayReplacement: blocks.Block,
 prevention: []const main.Tag,
-blockDrops: []const BlockDrop,
 
-pub fn init(zon: ZonElement, creator: main.callbacks.Creator) ?*@This() {
-	const block = switch (creator) {
-		.block => |b| b,
-		// TODO: Add when a new creator type exists
-		// else => {
-		// std.log.err("decay callback can only be used for blocks", .{});
-		// return null;
-		// },
-	};
+pub fn init(zon: ZonElement, _: main.callbacks.Creator) ?*@This() {
 	const result = main.worldArena.create(@This());
 	// replacement
 	if (zon.get([]const u8, "replacement")) |blockname| {
 		result.decayReplacement = main.blocks.parseBlock(blockname);
 	} else result.decayReplacement = main.blocks.Block.air;
-	// custom drop
-	if (zon.getChildOrNull("drops")) |_| {
-		result.blockDrops = blocks.loadBlockDrop(block.id(), zon);
-	} else result.blockDrops = block.blockDrops();
 	// prevention
 	result.prevention = &.{};
 	if (zon.getChildOrNull("prevention")) |tagNames| {
@@ -135,22 +122,12 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 
 			// no, there is no log in proximity
 			if (world.cmpxchgBlock(wx, wy, wz, leaf, self.decayReplacement) == null) {
-				for (self.blockDrops) |drop| {
-					if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-						for (drop.itemStacks) |stack| {
-							var dir = main.vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));
-							// Bias upwards
-							dir[2] += main.random.nextFloat(&main.seed)*4.0;
-							const model = leaf.mode().model(leaf).model();
-							const pos = Vec3f{
-								@as(f32, @floatFromInt(wx)) + model.min[0] + main.random.nextFloat(&main.seed)*(model.max[0] - model.min[0]),
-								@as(f32, @floatFromInt(wy)) + model.min[1] + main.random.nextFloat(&main.seed)*(model.max[1] - model.min[1]),
-								@as(f32, @floatFromInt(wz)) + model.min[2] + main.random.nextFloat(&main.seed)*(model.max[2] - model.min[2]),
-							};
-							main.server.world.?.drop(stack.clone(), pos, dir, 1);
-						}
-					}
-				}
+				const dropCtx = BlockDrop.Context{
+					.oldBlock = params.block,
+					.newBlock = self.decayReplacement,
+				};
+				const model = params.block.mode().model(params.block).model();
+				dropCtx.drop(.natural(model.min, model.max), .{wx, wy, wz});
 				return .handled;
 			}
 		}

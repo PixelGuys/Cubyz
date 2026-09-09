@@ -27,13 +27,25 @@ pub fn isDroppedWhenBrokenWithItem(self: @This(), item: Item) bool {
 	return true;
 }
 
-pub fn drop(self: @This(), pos: Vec3d, dir: Vec3f, velocity: f32) void {
+pub fn drop(self: @This(), loc: Location, pos: Vec3i, spread: Spread) void {
 	if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
 		for (self.itemStacks) |itemStack| {
-			main.server.world.?.drop(itemStack.clone(), pos, dir, velocity);
+			main.server.world.?.drop(itemStack.clone(), spread.dropPos(loc, pos), loc.dropDir(), loc.dropVelocity());
 		}
 	}
 }
+
+pub const Spread = enum {
+	inside,
+	outside,
+
+	pub inline fn dropPos(self: Spread, loc: Location, pos: Vec3i) Vec3d {
+		return switch (self) {
+			.inside => loc.insidePos(pos),
+			.outside => loc.outsidePos(pos),
+		};
+	}
+};
 
 pub const Location = struct {
 	normalDir: Vec3f,
@@ -43,6 +55,14 @@ pub const Location = struct {
 	const half = @as(Vec3f, @splat(0.5));
 	const itemHitBoxMargin: f32 = @floatCast(main.itemdrop.ItemDropManager.radius);
 	const itemHitBoxMarginVec: Vec3f = @splat(itemHitBoxMargin);
+
+	pub inline fn natural(modelMin: Vec3f, modelMax: Vec3f) Location {
+		return .{
+			.normalDir = .{0, 0, 1},
+			.min = modelMin,
+			.max = modelMax,
+		};
+	}
 
 	fn insidePos(self: Location, _pos: Vec3i) Vec3d {
 		const pos: Vec3d = @floatFromInt(_pos);
@@ -103,14 +123,12 @@ pub const Context = struct {
 		const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
 		if (dropAmount == 0) return;
 
-		const dropPos = if (self.newBlock.collide()) location.outsidePos(pos) else location.insidePos(pos);
-		const dropDir = location.dropDir();
-		const dropVelocity = location.dropVelocity();
+		const spread: Spread = if (self.newBlock.collide()) .outside else .inside;
 
 		for (0..dropAmount) |_| {
 			for (self.oldBlock.blockDrops()) |blockDrop| {
 				if (blockDrop.isDroppedWhenBrokenWithItem(self.item)) {
-					blockDrop.drop(dropPos, dropDir, dropVelocity);
+					blockDrop.drop(location, pos, spread);
 				}
 			}
 		}
