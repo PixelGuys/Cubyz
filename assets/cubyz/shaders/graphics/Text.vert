@@ -5,6 +5,7 @@ layout(location = 0) in vec2 face_pos;
 layout(location = 0) out vec2 frag_face_pos;
 layout(location = 1) flat out vec4 color;
 
+#ifdef OPEN_GL
 // in pixels
 layout(location = 0) uniform vec4 textureRect;
 layout(location = 1) uniform vec2 scene;
@@ -12,6 +13,18 @@ layout(location = 2) uniform vec2 offset;
 layout(location = 3) uniform float ratio;
 layout(location = 4) uniform int fontEffects;
 layout(location = 5) uniform uint inColor;
+#else
+layout(push_constant, std430) uniform _ {
+	vec4 textureRect;
+	vec2 offset;
+	int fontEffects;
+	vec4 textureBounds;
+	vec2 scene;
+	float ratio;
+	uint inColor;
+	vec2 fontSize;
+};
+#endif
 
 vec2 convert2Proportional(vec2 original, vec2 full) {
 	return vec2(original.x/full.x, original.y/full.y);
