@@ -6,21 +6,20 @@ const vec = main.vec;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 
-windowName: []const u8,
+craftingTags: []main.Tag,
 
 pub fn init(zon: ZonElement, _: main.callbacks.Creator) ?*@This() {
 	const result = main.worldArena.create(@This());
+	const craftingTags = main.Tag.loadTagsFromZon(main.worldArena, zon.getChild("craftingTags"));
+	if (craftingTags.len == 0) std.log.err("Error: Missing craftingTags \"name\" for open_crafting_window event.", .{});
 	result.* = .{
-		.windowName = main.worldArena.dupe(u8, zon.get([]const u8, "name") orelse {
-			std.log.err("Error: Missing field \"name\" for open_window event.", .{});
-			return null;
-		}),
+		.craftingTags = craftingTags,
 	};
 	return result;
 }
 
 pub fn run(self: *@This(), _: main.callbacks.ClientBlockCallback.Params) main.callbacks.Result {
-	main.gui.openWindow(self.windowName);
+	main.gui.windowlist.inventory_crafting.openFromCallback(self.craftingTags);
 	main.Window.setMouseGrabbed(false);
 	return .handled;
 }
