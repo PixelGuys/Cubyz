@@ -25,14 +25,13 @@ layout(push_constant, std430) uniform _ {
 #endif
 
 void main() {
-	// Convert to opengl coordinates:
 	vec2 position_percentage = (start + vertex_pos*size)/screen;
 	startCoord.x = start.x;
 	startCoord.y = screen.y - start.y - size.y;
 	endCoord.x = start.x + size.x;
 	endCoord.y = screen.y - start.y;
 
-	vec2 position = vec2(position_percentage.x, -position_percentage.y)*2+vec2(-1, 1);
+	vec2 position = vec2(position_percentage.x, position_percentage.y)*2+vec2(-1, -1);
 
 	gl_Position = vec4(position, 0, 1);
 
