@@ -31,7 +31,7 @@ void main() {
 	endCoord.x = start.x + size.x;
 	endCoord.y = screen.y - start.y;
 
-	vec2 position = vec2(position_percentage.x, position_percentage.y)*2+vec2(-1, -1);
+	vec2 position = position_percentage*2+vec2(-1, -1);
 
 	gl_Position = vec4(position, 0, 1);
 
