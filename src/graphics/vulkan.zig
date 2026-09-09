@@ -1036,7 +1036,7 @@ pub const Image = struct { // MARK: Image
 					.layerCount = 1,
 				},
 				.dstOffset = .{},
-				.extent = .{.width = @intCast(dest.size[0]), .height = @intCast(dest.size[1]), .depth = @intCast(dest.size[2])},
+				.extent = .{.width = @intCast(source.size[0]), .height = @intCast(source.size[1]), .depth = @intCast(source.size[2])},
 			},
 		});
 	}

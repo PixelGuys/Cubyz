@@ -1362,17 +1362,18 @@ const TextRendering = struct { // MARK: TextRendering
 
 	fn resizeTexture(newWidth: i32) void {
 		textureWidth = newWidth;
-		const swap = glyphTexture[1];
-		glyphTexture[1] = glyphTexture[0];
-		glyphTexture[0] = swap;
 		if (main.settings.launchConfig.vulkanTestingMode) {
+			const old = glyphTexture[0];
 			glyphTexture[0].vulkanImage = vulkan.Image.init(.{textureWidth, textureHeight, 1}, .{
 				.format = c.VK_FORMAT_R8_UNORM,
 				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT | c.VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
 			});
-			glyphTexture[0].vulkanImage.?.uploadImage(glyphTexture[1].vulkanImage.?);
-			glyphTexture[1].vulkanImage.?.deferredDeinit();
+			glyphTexture[0].vulkanImage.?.uploadImage(old.vulkanImage.?);
+			old.vulkanImage.?.deferredDeinit();
 		} else {
+			const swap = glyphTexture[1];
+			glyphTexture[1] = glyphTexture[0];
+			glyphTexture[0] = swap;
 			c.glActiveTexture(c.GL_TEXTURE0);
 			c.glBindTexture(c.GL_TEXTURE_2D, glyphTexture[0].textureID);
 			c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_R8, newWidth, textureHeight, 0, c.GL_RED, c.GL_UNSIGNED_BYTE, null);
@@ -1384,21 +1385,20 @@ const TextRendering = struct { // MARK: TextRendering
 	}
 
 	fn uploadData(bitmap: c.FT_Bitmap) void {
-		const width: i32 = @bitCast(bitmap.width);
-		const height: i32 = @bitCast(bitmap.rows);
-		const pitch: i32 = @bitCast(bitmap.pitch);
+		const width: u32 = @intCast(bitmap.width);
+		const height: u32 = @intCast(bitmap.rows);
+		const pitch: u32 = @intCast(bitmap.pitch);
 		const buffer = bitmap.buffer orelse return;
-		if (textureOffset + width > textureWidth) {
+		if (textureOffset + @as(i32, @intCast(width)) > textureWidth) {
 			resizeTexture(textureWidth*2);
 		}
 		if (main.settings.launchConfig.vulkanTestingMode) {
-			glyphTexture[0].vulkanImage.?.size = .{width, height, 1};
-			glyphTexture[0].vulkanImage.?.uploadData(buffer[0..@intCast(pitch*height)], .{.imageOffset = .{.x = textureOffset}, .imageExtent = .{.width = @intCast(width), .height = @intCast(height), .depth = 1}});
+			glyphTexture[0].vulkanImage.?.uploadData(buffer[0 .. pitch*height], .{.imageOffset = .{.x = textureOffset}, .imageExtent = .{.width = width, .height = height, .depth = 1}});
 		} else {
 			c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 1);
-			c.glTexSubImage2D(c.GL_TEXTURE_2D, 0, textureOffset, 0, width, height, c.GL_RED, c.GL_UNSIGNED_BYTE, buffer);
+			c.glTexSubImage2D(c.GL_TEXTURE_2D, 0, textureOffset, 0, @intCast(width), @intCast(height), c.GL_RED, c.GL_UNSIGNED_BYTE, buffer);
 		}
-		textureOffset += width;
+		textureOffset += @intCast(width);
 	}
 
 	fn getGlyph(index: u32) !Glyph {
