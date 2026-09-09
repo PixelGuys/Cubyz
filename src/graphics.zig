@@ -1433,38 +1433,25 @@ const TextRendering = struct { // MARK: TextRendering
 		x = @floor(x);
 		y = @ceil(y);
 
+		var glypUniforms: GlypUniforms = .{
+			.textureRect = .{@floatFromInt(glyph.textureX), 0, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1])},
+			.offset = .{@as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y},
+			.fontEffects = fontEffects,
+			.textureBounds = .{@floatFromInt(glyph.textureX), 0, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1])},
+		};
 		if (fontEffects & 0x1000000 != 0) { // bold
-			if (main.settings.launchConfig.vulkanTestingMode) {
-				vulkan.currentFrame.guiCommands.pushConstants(TextRendering.pipeline, &GlypUniforms{
-					.textureRect = .{@floatFromInt(glyph.textureX - 1), -1, @floatFromInt(glyph.size[0] + 2), @floatFromInt(glyph.size[1] + 2)},
-					.offset = .{@as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x - 1, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y - 1},
-					.fontEffects = fontEffects,
-					.textureBounds = .{@floatFromInt(glyph.textureX), 0, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1])},
-				});
-			} else {
-				c.glUniform1i(uniforms.fontEffects, fontEffects);
-				c.glUniform4f(uniforms.textureBounds, @floatFromInt(glyph.textureX), 0, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1]));
-				c.glUniform2f(uniforms.offset, @as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x - 1, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y - 1);
-				c.glUniform4f(uniforms.textureRect, @floatFromInt(glyph.textureX - 1), -1, @floatFromInt(glyph.size[0] + 2), @floatFromInt(glyph.size[1] + 2));
-			}
-		} else {
-			if (main.settings.launchConfig.vulkanTestingMode) {
-				vulkan.currentFrame.guiCommands.pushConstants(TextRendering.pipeline, &GlypUniforms{
-					.textureRect = .{@floatFromInt(glyph.textureX), 0, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1])},
-					.offset = .{@as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y},
-					.fontEffects = fontEffects,
-					.textureBounds = .{@floatFromInt(glyph.textureX), 0, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1])},
-				});
-			} else {
-				c.glUniform1i(uniforms.fontEffects, fontEffects);
-				c.glUniform4f(uniforms.textureBounds, @floatFromInt(glyph.textureX), 0, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1]));
-				c.glUniform2f(uniforms.offset, @as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y);
-				c.glUniform4f(uniforms.textureRect, @floatFromInt(glyph.textureX), 0, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1]));
-			}
+			glypUniforms.textureRect = .{@floatFromInt(glyph.textureX - 1), -1, @floatFromInt(glyph.size[0] + 2), @floatFromInt(glyph.size[1] + 2)};
+			glypUniforms.offset = .{@as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x - 1, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y - 1};
 		}
+
 		if (main.settings.launchConfig.vulkanTestingMode) {
+			vulkan.currentFrame.guiCommands.pushConstants(TextRendering.pipeline, &glypUniforms);
 			vulkan.currentFrame.guiCommands.draw(4, 0);
 		} else {
+			c.glUniform1i(uniforms.fontEffects, glypUniforms.fontEffects);
+			c.glUniform4f(uniforms.textureBounds, glypUniforms.textureBounds[0], glypUniforms.textureBounds[1], glypUniforms.textureBounds[2], glypUniforms.textureBounds[3]);
+			c.glUniform2f(uniforms.offset, glypUniforms.offset[0], glypUniforms.offset[1]);
+			c.glUniform4f(uniforms.textureRect, glypUniforms.textureRect[0], glypUniforms.textureRect[1], glypUniforms.textureRect[2], glypUniforms.textureRect[3]);
 			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 		}
 	}
