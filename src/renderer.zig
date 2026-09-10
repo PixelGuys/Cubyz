@@ -324,7 +324,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glUniformMatrix4fv(deferredUniforms.invViewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix.transpose()));
 	c.glUniform1f(deferredUniforms.zNear, zNear);
 	c.glUniform1f(deferredUniforms.zFar, zFar);
-	c.glUniform2f(deferredUniforms.tanXY, 1.0/game.projectionMatrix.rows[0][0], 1.0/game.projectionMatrix.rows[1][2]);
+	c.glUniform2f(deferredUniforms.tanXY, 1.0/game.projectionMatrix.rows[0][0], -1.0/game.projectionMatrix.rows[1][2]);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, activeFrameBuffer);
 
