@@ -64,8 +64,8 @@ vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012
 float shadowCalculation() {
 	if (dot(lightDir, normal) > 0.0) return 1.0;
 	
-	vec2 texSize = vec2(16.0);
-	vec2 textureOffset = (0.5 - fract(uv*texSize))/texSize;
+	vec2 textureSize = vec2(16.0);
+	vec2 textureOffset = (0.5 - fract(uv*textureSize))/textureSize;
 
 	mat2 uvGrad = mat2(dFdx(uv), dFdy(uv));
 
@@ -74,7 +74,6 @@ float shadowCalculation() {
 	vec3 offset = dFdx(shadowPos)*screenOffset.x + dFdy(shadowPos)*screenOffset.y;
 
 	vec3 shadowPosSnapped = shadowPos + offset;
-	shadowPosSnapped.xy += normalize(lightDir.xy) * 0.02;
 
 	vec4 lightPos = lightProjectionMatrix*lightViewMatrix*vec4(shadowPosSnapped, 1.0);
 	vec3 projCoords = lightPos.xyz;
@@ -83,7 +82,6 @@ float shadowCalculation() {
 	if(projCoords.z >= 1.0 - clipMargin || projCoords.z <= clipMargin) {
 		return 0.0;
 	}
-	vec2 projCoords2 = projCoords.xy + 1.0/textureSize(shadowMap, 0);
 	float closestDepth = texture(shadowMap, projCoords.xy).r;
 	float currentDepth = projCoords.z;
 	float shadow = currentDepth > closestDepth ? 1.0 : 0.0;

@@ -109,10 +109,14 @@ pub fn init() void {
 		"",
 		&depthUniforms,
 		graphics.VertexArray.EmptyVertex,
-		&.{},
-		.{.cullMode = .front},
-		.{.depthTest = true, .depthWrite = true, .depthCompare = .lessOrEqual},
-		.{.attachments = &.{.noBlending}},
+		.{
+			.rasterState = .{.cullMode = .front},
+			.depthStencilState = .{.depthTest = true, .depthWrite = true, .depthCompare = .lessOrEqual},
+			.blendState = .{
+				.attachments = &.{.noBlending},
+				.formats = &.{.world}
+			},
+		},
 	);
 	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms);
 	occlusionTestPipeline = graphics.Pipeline.init(

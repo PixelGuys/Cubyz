@@ -234,7 +234,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	const snapValue = @as(Vec4f, @splat(@as(f32, @floatFromInt(settings.shadowMapResolution))/2.0));
 	const playerPosLightSpaceSnapped = @floor(playerPosLightSpace*snapValue)/snapValue;
 	const playerPosSnapped = vec.xyz(invLightProjection.mulVec(playerPosLightSpaceSnapped));
-	const lightOffset = @as(Vec3f, @floatCast(playerPos - playerPosSnapped));
+	const lightOffset = @as(Vec3f, @floatCast(playerPos)) - playerPosSnapped;
 
 	const lightView: Mat4f = Mat4f.identity().mul(.translation(lightOffset));
 
