@@ -302,8 +302,8 @@ pub const Mat4f = struct { // MARK: Mat4f
 		return Mat4f{
 			.rows = [4]Vec4f{
 				Vec4f{1/tanX, 0,                          0,      0},
-				Vec4f{0,      0,                          1/tanY, 0},
-				Vec4f{0,      -(far + near)/(near - far), 0,      2*near*far/(near - far)},
+				Vec4f{0,      0,                          -1/tanY, 0},
+				Vec4f{0,      (far + near)/(far - near), 0,      2*near*far/(near - far)},
 				Vec4f{0,      1,                          0,      0},
 			},
 		};

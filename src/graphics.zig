@@ -81,7 +81,7 @@ pub const draw = struct { // MARK: draw
 		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 		var newClip = Vec4i{
 			std.math.lossyCast(i32, translation[0]),
-			viewport[3] - std.math.lossyCast(i32, translation[1] + clipRect[1]*scale),
+			std.math.lossyCast(i32, translation[1]),
 			std.math.lossyCast(i32, clipRect[0]*scale),
 			std.math.lossyCast(i32, clipRect[1]*scale),
 		};

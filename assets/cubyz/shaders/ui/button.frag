@@ -1,5 +1,9 @@
 #version 460
 
+#ifdef OPEN_GL
+layout(origin_upper_left) in vec4 gl_FragCoord;
+#endif
+
 layout(location = 0) out vec4 frag_color;
 
 layout(location = 0) in vec2 startCoord;
@@ -20,6 +24,7 @@ layout(push_constant, std430) uniform _ {
 #endif
 
 void main() {
-	frag_color = texture(image, (gl_FragCoord.xy - startCoord)/(2*scale)/textureSize(image, 0));
+	vec2 textureCoords = (gl_FragCoord.xy - startCoord)/(2*scale)/textureSize(image, 0);
+	frag_color = texture(image, vec2(textureCoords.x, -textureCoords.y));
 	frag_color *= fColor;
 }

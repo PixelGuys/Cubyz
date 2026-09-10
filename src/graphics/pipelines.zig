@@ -820,7 +820,11 @@ pub const Pipeline = struct { // MARK: Pipeline
 		self.shader.bind();
 		if (scissor) |s| {
 			c.glEnable(c.GL_SCISSOR_TEST);
-			c.glScissor(s.offset.x, s.offset.y, @intCast(s.extent.width), @intCast(s.extent.height));
+			var viewport: [4]c_int = undefined;
+			c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+			const width: c_int = @intCast(s.extent.width);
+			const height: c_int = @intCast(s.extent.height);
+			c.glScissor(s.offset.x, viewport[1] + viewport[3] - (s.offset.y + height), width, height);
 		} else {
 			c.glDisable(c.GL_SCISSOR_TEST);
 		}
@@ -845,8 +849,8 @@ pub const Pipeline = struct { // MARK: Pipeline
 			c.glDisable(c.GL_CULL_FACE);
 		}
 		c.glFrontFace(switch (self.rasterState.frontFace) {
-			.counterClockwise => c.GL_CCW,
-			.clockwise => c.GL_CW,
+			.counterClockwise => c.GL_CW,
+			.clockwise => c.GL_CCW,
 		});
 		if (self.rasterState.depthBias) |depthBias| {
 			c.glEnable(c.GL_POLYGON_OFFSET_FILL);

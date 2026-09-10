@@ -25,10 +25,9 @@ void main() {
 		vertex_pos.x += vertex_pos.y/textureRect.z;
 	}
 
-	// convert glyph coords to opengl coords
 	vec4 rect = vec4(position_percentage, size_percentage);
 
-	vec2 position = vec2(rect.x+vertex_pos.x*rect.z, -rect.y+vertex_pos.y*rect.w)*2+vec2(-1, 1);
+	vec2 position = vec2(rect.x+vertex_pos.x*rect.z, rect.y-vertex_pos.y*rect.w)*2+vec2(-1, -1);
 
 	gl_Position = vec4(position, 0, 1);
 	frag_face_pos = face_pos;
