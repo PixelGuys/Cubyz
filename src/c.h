@@ -21,6 +21,8 @@
 #include <glad/vulkan.h>
 #endif
 #include <GLFW/glfw3.h>
+// vulkan memory allocator
+#include <vk_mem_alloc_extended.h>
 
 // used for reading and writing image files
 #include <stb/stb_image.h>

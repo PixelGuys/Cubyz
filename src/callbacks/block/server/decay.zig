@@ -10,10 +10,11 @@ const Vec3f = vec.Vec3f;
 const ZonElement = main.ZonElement;
 const server = main.server;
 const branch = main.rotation.rotations.@"cubyz:branch";
+const BlockDrop = main.server.BlockDrop;
 
 decayReplacement: blocks.Block,
 prevention: []const main.Tag,
-blockDrops: []const blocks.BlockDrop,
+blockDrops: []const BlockDrop,
 
 pub fn init(zon: ZonElement, creator: main.callbacks.Creator) ?*@This() {
 	const block = switch (creator) {
@@ -136,7 +137,7 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 			if (world.cmpxchgBlock(wx, wy, wz, leaf, self.decayReplacement) == null) {
 				for (self.blockDrops) |drop| {
 					if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-						for (drop.items) |stack| {
+						for (drop.itemStacks) |stack| {
 							var dir = main.vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));
 							// Bias upwards
 							dir[2] += main.random.nextFloat(&main.seed)*4.0;

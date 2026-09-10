@@ -14,7 +14,6 @@ pub const Args = union(enum) {
 
 pub fn execute(args: Args, source: Source) void {
 	const target = command.Target.fromPlayerIndex(args.@"/kick <playerIndex>".playerIndex, source) catch return;
-	defer target.deinit();
 
 	target.user.conn.disconnect();
 	main.server.sendMessage("{s}§#ffff00 has been kicked from the server", .{target.user.name});

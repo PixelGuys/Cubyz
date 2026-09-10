@@ -12,11 +12,8 @@ pub const Args = union(enum) {
 };
 
 pub fn execute(args: Args, source: Source) void {
-	const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, args.@"/invite <ip>".ip) catch |err| {
+	_ = main.server.User.init(main.server.connectionManager, args.@"/invite <ip>".ip) catch |err| {
 		std.log.err("Error while trying to connect: {s}", .{@errorName(err)});
 		source.sendMessage("#ff0000Error while trying to connect: {s}", .{@errorName(err)});
-		return;
 	};
-	user.decreaseRefCount();
-	return;
 }

@@ -28,30 +28,11 @@ const BlockTouchCallback = main.callbacks.BlockTouchCallback;
 const sbb = main.server.terrain.sbb;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
+const BlockDrop = main.server.BlockDrop;
 
 const c = @import("c");
 
 pub const maxBlockCount: usize = 65536; // 16 bit limit
-
-pub const BlockDrop = struct {
-	items: []const items.ItemStack,
-	chance: f32,
-	forbiddenToolTags: []Tag,
-	allowedToolTags: ?[]Tag = null,
-
-	pub fn isDroppedWhenBrokenWithItem(self: BlockDrop, item: Item) bool {
-		if (item != .proceduralItem) return self.allowedToolTags == null;
-
-		const proceduralItem = item.proceduralItem;
-		for (self.forbiddenToolTags) |tag| if (proceduralItem.hasTag(tag)) return false;
-		if (self.allowedToolTags) |tags| {
-			for (tags) |tag| if (proceduralItem.hasTag(tag)) return true;
-			return false;
-		}
-
-		return true;
-	}
-};
 
 /// Ores can be found underground in veins.
 /// TODO: Add support for non-stone ores.
@@ -66,6 +47,8 @@ pub const Ore = struct {
 	maxHeight: i32,
 	minHeight: i32,
 
+	targetTags: []const Tag,
+
 	blockType: u16,
 	seed: u64,
 };
@@ -76,20 +59,21 @@ const SelectionCapabilities = union(enum) {
 		toolEffective: bool = false,
 
 		pub fn allowsSelectionByItem(self: @This(), block: Block, item: Item) bool {
-			if (self == @This(){}) return false;
-
-			if (self.toolEffective) {
-				if (item == .proceduralItem and item.proceduralItem.isEffectiveOn(block)) {
-					return true;
-				}
-			}
-
+			// Hardcoded cases should come first
 			if (item == .baseItem) {
 				const baseItem = item.baseItem;
 				if (std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) return true;
 				if (block.hasTag(.fluid) and baseItem.hasTag(.fluidPlaceable)) return true;
 				if (baseItem.block()) |blockType| {
 					if (blockType == block.typ) return true;
+				}
+			}
+
+			if (self == @This(){}) return false;
+
+			if (self.toolEffective) {
+				if (item == .proceduralItem and item.proceduralItem.isEffectiveOn(block)) {
+					return true;
 				}
 			}
 
@@ -167,10 +151,12 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_id[size] = main.worldArena.dupe(u8, id);
 	reverseIndices.put(main.worldArena.allocator, _id[size], @intCast(size)) catch unreachable;
 
-	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation") orelse "cubyz:no_rotation");
+	const rotationMode = rotation.getByID(zon.get([]const u8, "rotation") orelse "cubyz:no_rotation");
+
+	_mode[size] = rotationMode;
 	_blockHealth[size] = zon.get(f32, "blockHealth") orelse 1;
 	_blockResistance[size] = zon.get(f32, "blockResistance") orelse 0;
-	const rotation_tags = _mode[size].getBlockTags();
+	const rotation_tags = rotationMode.getBlockTags();
 	const block_tags = Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("tags"));
 	defer main.stackAllocator.free(block_tags);
 	_tags[size] = std.mem.concat(main.worldArena.allocator, Tag, &.{rotation_tags, block_tags}) catch unreachable;
@@ -214,6 +200,8 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			std.log.err("Ore must have rotation mode \"cubyz:ore\"!", .{});
 			break :blk;
 		}
+		const targetBlockTags = Tag.loadTagsFromZon(main.stackAllocator, oreProperties.getChild("targetTags"));
+		defer main.stackAllocator.free(targetBlockTags);
 		ores.append(main.worldArena, .{
 			.veins = oreProperties.get(f32, "veins") orelse 0,
 			.size = oreProperties.get(f32, "size") orelse 0,
@@ -221,6 +209,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			.minHeight = oreProperties.get(i32, "minHeight") orelse std.math.minInt(i32),
 			.density = oreProperties.get(f32, "density") orelse 0.5,
 			.blockType = @intCast(size),
+			.targetTags = targetBlockTags,
 			.seed = std.hash.Wyhash.hash(0, id),
 		});
 	}
@@ -269,7 +258,7 @@ pub fn loadBlockDrop(blockId: []const u8, zon: ZonElement) []const BlockDrop {
 		}
 
 		blockDrops[i] = .{
-			.items = resultItems.items,
+			.itemStacks = resultItems.items,
 			.chance = blockDrop.get(f32, "chance") orelse 1,
 			.forbiddenToolTags = Tag.loadTagsFromZon(main.worldArena, blockDrop.getChild("forbiddenToolTags")),
 			.allowedToolTags = allowedToolTags,

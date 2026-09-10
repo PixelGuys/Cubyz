@@ -94,7 +94,7 @@ pub const QuadIndex = enum(u16) {
 	}
 };
 
-pub const Model = struct {
+pub const Model = struct { // MARK: Model
 	min: Vec3f,
 	max: Vec3f,
 	internalQuads: []QuadIndex,

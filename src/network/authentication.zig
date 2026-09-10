@@ -169,7 +169,7 @@ pub const PublicKey = union(KeyTypeEnum) {
 };
 
 /// Also known as a seed phrase, implementation is based on BIP39 with some minor changes and limited to one word list
-pub const AccountCode = struct {
+pub const AccountCode = struct { // MARK: AccountCode
 	text: []u8,
 
 	fn printInvalidCharError(failureText: *main.ListManaged(u8), codepoint: u21) void {
@@ -286,7 +286,7 @@ pub const AccountCode = struct {
 
 const EncodingType = enum { none, argon2_aes_gcm };
 
-pub const PasswordEncodedAccountCode = struct {
+pub const PasswordEncodedAccountCode = struct { // MARK: PasswordEncodedAccountCode
 	typ: EncodingType,
 	salt: []u8,
 	nonce: []u8,

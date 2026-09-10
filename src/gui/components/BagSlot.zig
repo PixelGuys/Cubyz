@@ -82,7 +82,7 @@ pub fn mainButtonReleased(self: *BagSlot, mousePosition: Vec2f) void {
 
 pub fn render(self: *BagSlot, _: Vec2f) void {
 	texture.bindTo(0);
-	draw.boundImage(self.pos, @splat(sizeWithBorder));
+	draw.image(texture, self.pos, @splat(sizeWithBorder));
 
 	for (0..5) |_i| {
 		const i = 4 - _i;

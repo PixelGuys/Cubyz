@@ -169,7 +169,7 @@ pub const handShake = struct { // MARK: handShake
 
 					if (main.server.world.?.mode != .singleplayer) {
 						const keys = zon.getChild("keys");
-						try conn.user.?.identifyFromKeysAndName(name, keys);
+						try conn.user.?.identifyFromKeysAndName(name, keys, main.server.world.?.settings.whitelistEnabled.load(.monotonic));
 
 						var writer: utils.BinaryWriter = .init(main.stackAllocator);
 						defer writer.deinit();
@@ -270,9 +270,10 @@ pub const handShake = struct { // MARK: handShake
 			else => unreachable,
 		}
 
-		{
+		while (true) {
 			conn.mutex.lock();
 			defer conn.mutex.unlock();
+			const expectedRestartCounter = conn.restartCounter;
 			while (true) {
 				try main.io.checkCancel();
 				conn.handShakeWaiting.timedWait(&conn.mutex, .fromMilliseconds(16)) catch {
@@ -281,7 +282,10 @@ pub const handShake = struct { // MARK: handShake
 				};
 				break;
 			}
+			if (conn.restartCounter != expectedRestartCounter) return error.RestartAgain;
 			if (conn.connectionState.load(.monotonic) == .disconnected) return error.DisconnectedByServer;
+			if (conn.connectionState.load(.monotonic) != .connected) continue;
+			break;
 		}
 
 		return handshakeZon;
@@ -312,8 +316,7 @@ pub const chunkRequest = struct { // MARK: chunkRequest
 				.wz = (z << voxelSizeShift + chunk.chunkShift) +% (basePosition[2] & positionMask),
 				.voxelSize = @as(u31, 1) << voxelSizeShift,
 			};
-			conn.user.?.increaseRefCount();
-			main.server.world.?.queueChunkAndDecreaseRefCount(request, conn.user.?);
+			main.server.world.?.queueChunk(request, conn.user.?);
 		}
 	}
 	pub fn sendRequest(conn: *Connection, requests: []chunk.ChunkPosition, basePosition: Vec3i, renderDistance: u16) void {
@@ -838,8 +841,7 @@ pub const lightMapRequest = struct { // MARK: lightMapRequest
 				.voxelSizeShift = voxelSizeShift,
 			};
 			if (conn.user) |user| {
-				user.increaseRefCount();
-				main.server.world.?.queueLightMapAndDecreaseRefCount(request, user);
+				main.server.world.?.queueLightMap(request, user);
 			}
 		}
 	}
@@ -1042,8 +1044,8 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 		defer writer.deinit();
 		blockEntity.getServerToClientData(pos, ch, &writer);
 
-		const users = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, users);
+		const users = main.server.getUserList(main.stackAllocator);
+		defer main.stackAllocator.free(users);
 
 		for (users) |user| {
 			blockUpdate.send(user.conn, &.{.{.pos = pos, .newBlock = block, .blockEntityData = writer.data.items}});

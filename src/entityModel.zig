@@ -20,7 +20,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const c = @import("c");
 
-pub const EntityModel = struct {
+pub const EntityModel = struct { // MARK: EntityModel
 	height: f32,
 	texturePath: []const u8,
 	modelId: ?[]const u8,

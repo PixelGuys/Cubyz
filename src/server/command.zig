@@ -11,16 +11,19 @@ pub const commandList = @import("command/_list.zig");
 
 pub const Source = union(enum) {
 	user: *User,
+	server: void,
 
 	pub fn sendMessage(self: Source, comptime fmt: []const u8, args: anytype) void {
 		switch (self) {
 			.user => |user| user.sendMessage(fmt, args),
+			.server => main.log.server(fmt, args),
 		}
 	}
 
 	pub fn hasPermission(self: Source, permissionPath: []const u8) bool {
 		return switch (self) {
 			.user => |user| main.entity.components.@"cubyz:permissions".server.hasPermission(user.id, permissionPath),
+			.server => true,
 		};
 	}
 };
@@ -105,6 +108,27 @@ pub const Coordinate = union(enum) {
 	}
 };
 
+pub const Rotation = union(enum) {
+	relative: f32, // Relative rotations are indicated by leading `~`.
+	absolute: f32,
+
+	pub fn parse(_: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!Rotation {
+		const isRelative = arg[0] == '~';
+		const numberSlice = if (isRelative) arg[1..] else arg;
+		if (isRelative and numberSlice.len == 0) return .{.relative = 0};
+		if (isRelative) {
+			return .{.relative = std.math.degreesToRadians(std.fmt.parseFloat(f32, numberSlice) catch {
+				errorMessage.print("Expected number for <{s}>, found \"{s}\"", .{name, numberSlice});
+				return error.ParseError;
+			})};
+		}
+		return .{.absolute = std.math.degreesToRadians(std.fmt.parseFloat(f32, numberSlice) catch {
+			errorMessage.print("Expected number or \"~\" for <{s}>, found \"{s}\"", .{name, arg});
+			return error.ParseError;
+		})};
+	}
+};
+
 pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, source: Source) error{InvalidArg}!main.vec.Vec3d {
 	if (source != .user and (x == .relative or y == .relative or z == .relative)) {
 		source.sendMessage("Command was run without a user; unable to interpret relative coordinates.", .{});
@@ -118,30 +142,36 @@ pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, source: S
 	};
 }
 
+pub fn resolveRotation(yaw: Rotation, pitch: Rotation, source: Source) error{InvalidArg}!main.vec.Vec3f {
+	if (source != .user and (yaw == .relative or pitch == .relative)) {
+		source.sendMessage("Command was run without a user; unable to interpret relative rotation.", .{});
+		return error.InvalidArg;
+	}
+	const bound = std.math.pi/2.0 - 0.001;
+	return .{
+		std.math.clamp(if (yaw == .relative) source.user.player().rot[0] + yaw.relative else yaw.absolute, -bound, bound),
+		0,
+		if (pitch == .relative) source.user.player().rot[2] + pitch.relative else pitch.absolute,
+	};
+}
+
 pub const Target = struct {
 	user: *User,
-	increasedRefCount: bool,
 
 	pub fn fromPlayerIndex(arg: ?PlayerIndex, source: Source) !Target {
 		if (arg == null and source != .user) {
-			source.sendMessage("ff0000Command was run without a user; unable to infer the player index", .{});
+			source.sendMessage("#ff0000Command was run without a user; unable to infer the player index", .{});
 			return error.InvalidArg;
 		}
 		const playerIndex = arg orelse return .{
 			.user = source.user,
-			.increasedRefCount = false,
 		};
 		return .{
-			.user = main.server.getUserByIndexAndIncreaseRefCount(playerIndex.index) orelse {
+			.user = main.server.getUserByIndex(playerIndex.index) orelse {
 				source.sendMessage("#ff0000Player with index {d} not found or not online", .{playerIndex.index});
 				return error.InvalidArg;
 			},
-			.increasedRefCount = true,
 		};
-	}
-
-	pub fn deinit(self: Target) void {
-		if (self.increasedRefCount) self.user.decreaseRefCount();
 	}
 };
 
@@ -173,6 +203,26 @@ pub const PlayerIndex = struct {
 	}
 };
 
+pub const KeyString = struct {
+	key: []const u8,
+
+	pub fn parse(_: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!KeyString {
+		const colonIndex = std.mem.indexOfScalar(u8, arg, ':') orelse {
+			errorMessage.print("Expected a public key of the form \"<keyType>:<base64>\" for <{s}>, found \"{s}\"", .{name, arg});
+			return error.ParseError;
+		};
+		const keyType = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, arg[0..colonIndex]) orelse {
+			errorMessage.print("Unknown key type \"{s}\" for <{s}>", .{arg[0..colonIndex], name});
+			return error.ParseError;
+		};
+		_ = main.network.authentication.PublicKey.initFromBase64(arg[colonIndex + 1 ..], keyType) catch {
+			errorMessage.print("Invalid public key \"{s}\" for <{s}>", .{arg, name});
+			return error.ParseError;
+		};
+		return .{.key = arg};
+	}
+};
+
 pub const BiomeId = struct {
 	biome: *const main.server.terrain.biomes.Biome,
 
@@ -181,6 +231,18 @@ pub const BiomeId = struct {
 			errorMessage.print("Couldn't find biome for <{s}> with id \"{s}\"", .{name, args});
 			return error.ParseError;
 		}};
+	}
+};
+
+pub const BlockId = struct {
+	block: main.blocks.Block,
+
+	pub fn parse(_: NeverFailingAllocator, name: []const u8, args: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!@This() {
+		const blockTyp = main.blocks.getBlockById(args) catch {
+			errorMessage.print("Couldn't find block for <{s}> with id \"{s}\"", .{name, args});
+			return error.ParseError;
+		};
+		return .{.block = .{.typ = blockTyp, .data = 0}};
 	}
 };
 

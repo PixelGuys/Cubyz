@@ -23,20 +23,16 @@ pub fn openDirInWindow(path: []const u8) void {
 		break :blk std.process.Environ.Map.init(main.stackAllocator.allocator);
 	};
 	defer envMap.deinit();
-	const result = std.process.run(main.stackAllocator.allocator, main.io, .{
+	_ = std.process.spawn(main.io, .{
 		.argv = &command,
 		.environ_map = &envMap,
+		.stderr = .ignore,
+		.stdout = .ignore,
+		.stdin = .ignore,
 	}) catch |err| {
 		std.log.err("Got error while trying to open file explorer: {s}", .{@errorName(err)});
 		return;
 	};
-	defer {
-		main.stackAllocator.free(result.stderr);
-		main.stackAllocator.free(result.stdout);
-	}
-	if (result.stderr.len != 0) {
-		std.log.err("Got error while trying to open file explorer: {s}", .{result.stderr});
-	}
 }
 
 pub fn cwd() Dir {

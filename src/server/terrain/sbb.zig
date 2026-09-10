@@ -222,7 +222,7 @@ pub const Rotation = union(RotationMode) {
 	}
 };
 
-pub const StructureBuildingBlock = struct {
+pub const StructureBuildingBlock = struct { // MARK: StructureBuildingBlock
 	id: []const u8,
 	children: []?*StructureBuildingBlock,
 	blueprints: AliasTable(Blueprints),

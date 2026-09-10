@@ -26,12 +26,10 @@ pub fn execute(args: Args, source: Source) void {
 	switch (args) {
 		.@"/spawn <playerIndex> <x> <y> <z>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
-			defer target.deinit();
 			target.user.spawnPos = command.resolveCoordinates(params.x, params.y, params.z, source) catch return;
 		},
 		.@"/spawn <playerIndex>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
-			defer target.deinit();
 			source.sendMessage("#ffff00{}", .{target.user.getSpawnPos()});
 		},
 		.@"/spawn <world> <x> <y> <z>" => |params| {

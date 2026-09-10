@@ -20,7 +20,6 @@ pub fn execute(args: Args, source: Source) void {
 	switch (args) {
 		.@"/gamemode <playerIndex> <mode>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
-			defer target.deinit();
 
 			if (params.mode) |mode| {
 				main.sync.setGamemode(target.user, mode);

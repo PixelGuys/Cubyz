@@ -17,7 +17,7 @@ const files = main.files;
 
 var common: Assets = undefined;
 
-pub const Assets = struct {
+pub const Assets = struct { // MARK: Assets
 	pub const ZonHashMap = std.StringHashMapUnmanaged(ZonElement);
 	pub const BytesHashMap = std.StringHashMapUnmanaged([]const u8);
 	pub const AddonNameToZonMap = std.StringHashMapUnmanaged(ZonElement);
@@ -142,7 +142,7 @@ pub const Assets = struct {
 		);
 	}
 
-	const Addon = struct {
+	const Addon = struct { // MARK: Addon
 		name: []const u8,
 		dir: files.Dir,
 
@@ -405,7 +405,15 @@ fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void 
 		texturePath = main.stackAllocator.print("{s}/{s}/items/textures/{s}", .{assetFolder, mod, texture});
 		replacementTexturePath = main.stackAllocator.print("assets/{s}/items/textures/{s}", .{mod, texture});
 	}
-	_ = items.register(assetFolder, texturePath, replacementTexturePath, id, zon);
+	var colorTexturePath: []const u8 = &.{};
+	defer main.stackAllocator.free(colorTexturePath);
+	var colorReplacementTexturePath: []const u8 = &.{};
+	defer main.stackAllocator.free(colorReplacementTexturePath);
+	if (zon.get([]const u8, "colorTexture")) |colorTexture| {
+		colorTexturePath = main.stackAllocator.print("{s}/{s}/materials/{s}", .{assetFolder, mod, colorTexture});
+		colorReplacementTexturePath = main.stackAllocator.print("assets/{s}/materials/{s}", .{mod, colorTexture});
+	}
+	_ = items.register(assetFolder, texturePath, replacementTexturePath, colorTexturePath, colorReplacementTexturePath, id, zon);
 }
 
 fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
@@ -677,6 +685,13 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		std.debug.assert(items.hasRegistered(stringId));
 
 		try assignBlockItem(stringId);
+	}
+
+	var itemIndexIterator = items.iterator();
+	while (itemIndexIterator.next()) |index| {
+		if (index.displayBlockData() != null and index.block() == null) {
+			std.log.err("displayBlockData field was set, but there is no block defined for item: '{s}'", .{index.id()});
+		}
 	}
 
 	for (proceduralItemPalette.palette.items) |id| {

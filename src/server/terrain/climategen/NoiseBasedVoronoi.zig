@@ -156,7 +156,7 @@ const Chunk = struct {
 	}
 };
 
-const GenerationStructure = struct {
+const GenerationStructure = struct { // MARK: GenerationStructure
 	chunks: Array2D(*Chunk) = undefined, // Implemented as slices into the original array!
 
 	pub fn init(allocator: NeverFailingAllocator, wx: i32, wy: i32, width: u31, height: u31, tree: *TreeNode, worldSeed: u64) GenerationStructure {

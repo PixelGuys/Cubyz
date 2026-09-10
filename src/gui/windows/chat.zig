@@ -8,7 +8,6 @@ const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
 const Button = @import("../components/Button.zig");
 const Label = GuiComponent.Label;
-const MutexComponent = GuiComponent.MutexComponent;
 const TextInput = GuiComponent.TextInput;
 const VerticalList = @import("../components/VerticalList.zig");
 const FixedSizeCircularBuffer = main.utils.FixedSizeCircularBuffer;

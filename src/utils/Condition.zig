@@ -190,7 +190,7 @@ const WindowsImpl = struct {
 	}
 };
 
-const FutexImpl = struct {
+const FutexImpl = struct { // MARK: FutexImpl
 	state: std.atomic.Value(u32) = std.atomic.Value(u32).init(0),
 	epoch: std.atomic.Value(u32) = std.atomic.Value(u32).init(0),
 

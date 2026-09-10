@@ -11,6 +11,7 @@
 	.texture4 = "cubyz:branch/birch/intersection",
 	.texture5 = "cubyz:branch/birch/cross",
 	.item = .{
+		.colorTexture = "birch_branch_palette.png",
 		.material = .{
 			.durability = 32,
 			.massDamage = 1.2,
@@ -20,9 +21,6 @@
 			.elasticity = 3.5,
 			.hardness = 1.25,
 			.textureRoughness = 0.7,
-			.colors = .{
-				0xffb8aa9e, 0xffd0c2b5, 0xffeedfd0, 0xfffff6ed, 0xffeedfd0,
-			},
 			.modifiers = .{
 				.{
 					.id = "durable",
