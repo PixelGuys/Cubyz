@@ -13,7 +13,10 @@ void main() {
 	directions[1] = (invViewMatrix * vec4(1*tanXY.x, 1, -1*tanXY.y, 0)).xyz;
 	directions[2] = (invViewMatrix * vec4(-1*tanXY.x, 1, 1*tanXY.y, 0)).xyz;
 	directions[3] = (invViewMatrix * vec4(-1*tanXY.x, 1, -1*tanXY.y, 0)).xyz;
+#ifdef OPEN_GL
+	texCoords = vec2(inTexCoords.x, 1 - inTexCoords.y);
+#else
 	texCoords = inTexCoords;
-	vec2 position = inTexCoords*2 + vec2(-1, -1);
-	gl_Position = vec4(position, 0, 1);
+#endif
+	gl_Position = vec4(inTexCoords*2 + vec2(-1, -1), 0, 1);
 }

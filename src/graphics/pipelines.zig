@@ -849,8 +849,8 @@ pub const Pipeline = struct { // MARK: Pipeline
 			c.glDisable(c.GL_CULL_FACE);
 		}
 		c.glFrontFace(switch (self.rasterState.frontFace) {
-			.counterClockwise => c.GL_CCW,
-			.clockwise => c.GL_CW,
+			.counterClockwise => c.GL_CW,
+			.clockwise => c.GL_CCW,
 		});
 		if (self.rasterState.depthBias) |depthBias| {
 			c.glEnable(c.GL_POLYGON_OFFSET_FILL);
