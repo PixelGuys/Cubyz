@@ -17,11 +17,8 @@ pub fn run(_: *anyopaque, params: main.callbacks.ClientBlockCallback.Params) mai
 	}
 	main.network.protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, params.blockPos);
 
-	const inventory = main.items.Inventory.ClientInventory.init(main.globalAllocator, main.block_entity.BlockEntityTypes.@"cubyz:chest".inventorySize, .serverShared, .{.blockInventory = params.blockPos}, .{});
-
-	main.gui.windowlist.chest.setInventory(inventory);
-	main.gui.openWindow("chest");
-	main.Window.setMouseGrabbed(false);
+	const clientId = main.items.Inventory.client.nextId();
+	main.network.protocols.chestOpen.sendRequest(main.game.world.?.conn, clientId, params.blockPos);
 
 	return .handled;
 }

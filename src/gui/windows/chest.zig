@@ -39,6 +39,13 @@ pub fn setInventory(selectedInventory: main.items.Inventory.ClientInventory) voi
 	openInventory = selectedInventory;
 }
 
+pub fn checkPendingOpen() void {
+	const inv = main.items.Inventory.client.takePendingChestOpen() orelse return;
+	setInventory(inv);
+	main.gui.openWindow("chest");
+	main.Window.setMouseGrabbed(false);
+}
+
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
 
