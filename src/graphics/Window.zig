@@ -313,7 +313,11 @@ pub const Key = struct { // MARK: Key
 		capsLock: bool = false,
 		numLock: bool = false,
 
-		fn toInt(self: Modifiers) u6 {
+		pub fn toInt(self: Modifiers) u6 {
+			return @bitCast(self);
+		}
+
+		pub fn fromInt(self: u6) Modifiers {
 			return @bitCast(self);
 		}
 

@@ -1,4 +1,7 @@
 .{
 	.texture = "selection_wand.png",
 	.stackSize = 1,
+	.onLeftClick = .{
+		.type = .select,
+	},
 }
