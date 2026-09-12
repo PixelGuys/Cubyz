@@ -1528,6 +1528,7 @@ pub const Connection = struct { // MARK: Connection
 	pub fn init(manager: *ConnectionManager, ipPort: []const u8, user: ?*main.server.User) !*Connection {
 		const result: *Connection = main.globalAllocator.create(Connection);
 		errdefer main.globalAllocator.destroy(result);
+		defer main.stackAllocator.free(ipPort);
 		result.* = Connection{
 			.manager = manager,
 			.user = user,
