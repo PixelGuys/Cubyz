@@ -483,7 +483,7 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 
 	/// Copies `m` to newly allocated memory, with a null-terminated element. Caller owns the memory.
 	pub fn dupeZ(self: NeverFailingAllocator, comptime T: type, m: []const T) [:0]T {
-		return self.allocator.dupeZ(T, m) catch unreachable;
+		return self.allocator.dupeSentinel(T, m, 0) catch unreachable;
 	}
 
 	/// Allocates a formatted string which is returned on success.
