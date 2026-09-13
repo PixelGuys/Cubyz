@@ -168,8 +168,8 @@ fn u32ToVec3(color: u32) Vec3f {
 
 /// A climate region with special ground, plants and structures.
 pub const Biome = struct { // MARK: Biome
-	pub const GenerationProperties = packed struct(u15) {
-		// pairs of opposite properties. In-between values are allowed.
+	pub const ClimateProperties = packed struct(u15) {
+		// pairs of opposite climate properties. In-between values are allowed.
 		hot: bool = false,
 		temperate: bool = false,
 		cold: bool = false,
@@ -192,12 +192,12 @@ pub const Biome = struct { // MARK: Biome
 
 		pub const mask: u15 = 0b001001001001001;
 
-		pub fn fromZon(zon: ZonElement, initMidValues: bool) GenerationProperties {
-			var result: GenerationProperties = .{};
+		pub fn fromZon(zon: ZonElement, initMidValues: bool) ClimateProperties {
+			var result: ClimateProperties = .{};
 			for (zon.toSlice()) |child| {
-				const property = child.as([]const u8) orelse "";
-				inline for (@typeInfo(GenerationProperties).@"struct".fields) |field| {
-					if (std.mem.eql(u8, field.name, property)) {
+				const climate = child.as([]const u8) orelse "";
+				inline for (@typeInfo(ClimateProperties).@"struct".fields) |field| {
+					if (std.mem.eql(u8, field.name, climate)) {
 						@field(result, field.name) = true;
 					}
 				}
@@ -212,7 +212,7 @@ pub const Biome = struct { // MARK: Biome
 		}
 	};
 
-	properties: GenerationProperties,
+	climate: ClimateProperties,
 	isCave: bool,
 	radius: f32,
 	radiusVariation: f32,
@@ -264,7 +264,7 @@ pub const Biome = struct { // MARK: Biome
 		self.* = Biome{
 			.id = main.worldArena.dupe(u8, id),
 			.paletteId = paletteId,
-			.properties = GenerationProperties.fromZon(zon.getChild("properties"), true),
+			.climate = ClimateProperties.fromZon(zon.getChild("climate"), true),
 			.isCave = zon.get(bool, "isCave") orelse false,
 			.radius = (maxRadius + minRadius)/2,
 			.radiusVariation = (maxRadius - minRadius)/2,
@@ -332,14 +332,14 @@ pub const Biome = struct { // MARK: Biome
 				dst.* = .{
 					.biomeId = src.get([]const u8, "id") orelse "",
 					.chance = src.get(f32, "chance") orelse 1,
-					.propertyMask = GenerationProperties.fromZon(src.getChild("properties"), false),
+					.climateMask = ClimateProperties.fromZon(src.getChild("climate"), false),
 					.width = src.get(u8, "width") orelse 2,
 				};
-				// Fill all unspecified property groups:
-				var properties: u15 = @bitCast(dst.propertyMask);
-				const empty = ~properties & ~properties >> 1 & ~properties >> 2 & GenerationProperties.mask;
-				properties |= empty | empty << 1 | empty << 2;
-				dst.propertyMask = @bitCast(properties);
+				// Fill all unspecified climate groups:
+				var climate: u15 = @bitCast(dst.climateMask);
+				const empty = ~climate & ~climate >> 1 & ~climate >> 2 & ClimateProperties.mask;
+				climate |= empty | empty << 1 | empty << 2;
+				dst.climateMask = @bitCast(climate);
 			}
 			unfinishedTransitionBiomes.put(main.globalAllocator.allocator, self.id, transitionBiomes) catch unreachable;
 		}
@@ -492,7 +492,7 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 
 	pub fn init(arena: NeverFailingAllocator, currentSlice: []Biome, parameterShift: u5) *TreeNode {
 		const self = arena.create(TreeNode);
-		if (currentSlice.len <= 1 or parameterShift >= @bitSizeOf(Biome.GenerationProperties)) {
+		if (currentSlice.len <= 1 or parameterShift >= @bitSizeOf(Biome.ClimateProperties)) {
 			self.* = .{.leaf = .{}};
 			for (currentSlice) |biome| {
 				self.leaf.totalChance += biome.chance;
@@ -504,12 +504,12 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 		var chanceMiddle: f32 = 0;
 		var chanceUpper: f32 = 0;
 		for (currentSlice) |*biome| {
-			var properties: u32 = @as(u15, @bitCast(biome.properties));
-			properties >>= parameterShift;
-			properties = properties & 7;
-			if (properties == 1) {
+			var climate: u32 = @as(u15, @bitCast(biome.climate));
+			climate >>= parameterShift;
+			climate = climate & 7;
+			if (climate == 1) {
 				chanceLower += biome.chance;
-			} else if (properties == 4) {
+			} else if (climate == 4) {
 				chanceUpper += biome.chance;
 			} else {
 				chanceMiddle += biome.chance;
@@ -539,10 +539,10 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 				list.deinit(main.stackAllocator);
 			};
 			for (currentSlice) |biome| {
-				var properties: u32 = @as(u15, @bitCast(biome.properties));
-				properties >>= parameterShift;
+				var climate: u32 = @as(u15, @bitCast(biome.climate));
+				climate >>= parameterShift;
 				const valueMap = [8]usize{1, 0, 1, 1, 2, 1, 1, 1};
-				lists[valueMap[properties & 7]].appendAssumeCapacity(biome);
+				lists[valueMap[climate & 7]].appendAssumeCapacity(biome);
 			}
 			lowerIndex = lists[0].items.len;
 			@memcpy(currentSlice[0..lowerIndex], lists[0].items);
@@ -608,13 +608,13 @@ var unfinishedSubBiomes: std.StringHashMapUnmanaged(main.List(UnfinishedSubBiome
 const UnfinishedTransitionBiomeData = struct {
 	biomeId: []const u8,
 	chance: f32,
-	propertyMask: Biome.GenerationProperties,
+	climateMask: Biome.ClimateProperties,
 	width: u8,
 };
 const TransitionBiome = struct {
 	biome: *const Biome,
 	chance: f32,
-	propertyMask: Biome.GenerationProperties,
+	climateMask: Biome.ClimateProperties,
 	width: u8,
 };
 var unfinishedTransitionBiomes: std.StringHashMapUnmanaged([]UnfinishedTransitionBiomeData) = .{};
@@ -695,17 +695,17 @@ pub fn finishLoading() void {
 					res.* = .{
 						.biome = &biomes.items[0],
 						.chance = 0,
-						.propertyMask = .{},
+						.climateMask = .{},
 						.width = 0,
 					};
 					continue;
 				},
 				.chance = src.chance,
-				.propertyMask = src.propertyMask,
+				.climateMask = src.climateMask,
 				.width = src.width,
 			};
-			if (@as(u15, @bitCast(res.biome.properties)) & @as(u15, @bitCast(src.propertyMask)) == @as(u15, @bitCast(res.biome.properties))) {
-				std.log.err("Transition biome {s} for parent biome {s} have overlapping generation properties, this will cause the entire parent area to be replaced. Please restrict the properties field in the transitionBiomes list further to prevent this", .{res.biome.id, parentBiome.id});
+			if (@as(u15, @bitCast(res.biome.climate)) & @as(u15, @bitCast(src.climateMask)) == @as(u15, @bitCast(res.biome.climate))) {
+				std.log.err("Transition biome {s} for parent biome {s} have overlapping climates, this will cause the entire parent area to be replaced. Please restrict the climate field in the transitionBiomes list further to prevent this", .{res.biome.id, parentBiome.id});
 			}
 		}
 		main.globalAllocator.free(transitionBiomes);
