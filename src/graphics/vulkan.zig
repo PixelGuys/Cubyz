@@ -1031,18 +1031,16 @@ pub const Image = struct { // MARK: Image
 				.image = dest.handle,
 				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = dest.mipLevels, .layerCount = 1},
 			},
-		}});
-		currentFrame.uploadCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
 				.srcStageMask = c.VK_PIPELINE_STAGE_2_NONE,
 				.srcAccessMask = c.VK_ACCESS_2_NONE,
 				.dstStageMask = c.VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-				.dstAccessMask = c.VK_ACCESS_2_TRANSFER_WRITE_BIT,
+				.dstAccessMask = c.VK_ACCESS_2_TRANSFER_READ_BIT,
 				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
 				.newLayout = c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 				.image = source.handle,
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = dest.mipLevels, .layerCount = 1},
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = source.mipLevels, .layerCount = 1},
 			},
 		}});
 		currentFrame.uploadCommands.copyImageToImage(dest, c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, source, c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, &.{
@@ -1077,18 +1075,16 @@ pub const Image = struct { // MARK: Image
 				.image = dest.handle,
 				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = dest.mipLevels, .layerCount = 1},
 			},
-		}});
-		currentFrame.uploadCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
 				.srcStageMask = c.VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-				.srcAccessMask = c.VK_ACCESS_2_TRANSFER_WRITE_BIT,
+				.srcAccessMask = c.VK_ACCESS_2_TRANSFER_READ_BIT,
 				.dstStageMask = c.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
 				.dstAccessMask = c.VK_ACCESS_SHADER_READ_BIT,
 				.oldLayout = c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 				.newLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
 				.image = source.handle,
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = dest.mipLevels, .layerCount = 1},
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = source.mipLevels, .layerCount = 1},
 			},
 		}});
 	}
