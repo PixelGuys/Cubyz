@@ -194,13 +194,17 @@ pub const Biome = struct { // MARK: Biome
 
 		pub fn fromZon(zon: ZonElement, initMidValues: bool) ClimateProperties {
 			var result: ClimateProperties = .{};
-			for (zon.toSlice()) |child| {
+			outer: for (zon.toSlice()) |child| {
 				const climate = child.as([]const u8) orelse "";
 				inline for (@typeInfo(ClimateProperties).@"struct".fields) |field| {
 					if (std.mem.eql(u8, field.name, climate)) {
 						@field(result, field.name) = true;
+						continue :outer;
 					}
 				}
+				const allowedValues = std.mem.join(main.stackAllocator.allocator, ", ", std.meta.fieldNames(ClimateProperties)) catch unreachable;
+				defer main.stackAllocator.free(allowedValues);
+				std.log.err("Climate value \"{s}\" not allowed. Allowed values are: {s}", .{climate, allowedValues});
 			}
 			if (initMidValues) {
 				// Fill all mid values if no value was specified in a group:
