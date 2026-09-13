@@ -816,7 +816,7 @@ const ProceduralItemProperty = enum {
 
 pub const ProceduralItem = struct { // MARK: ProceduralItem
 	const craftingGridSize = 25;
-	const CraftingGridMask = std.meta.Int(.unsigned, craftingGridSize);
+	const CraftingGridMask = @Int(.unsigned, craftingGridSize);
 
 	craftingGrid: [craftingGridSize]?BaseItemIndex,
 	materialGrid: [16][16]?BaseItemIndex,
