@@ -619,7 +619,7 @@ pub const MenuBackGround = struct { // MARK: MenuBackGround
 		});
 		if (main.settings.launchConfig.vulkanTestingMode) {
 			vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
-			vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, 0, &.{
+			vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
 				.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
 			});
 			graphics.frame_uniforms.bindToPipeline(vulkan.currentFrame.guiCommands, pipeline);

@@ -450,7 +450,7 @@ pub const draw = struct { // MARK: draw
 
 		if (main.settings.launchConfig.vulkanTestingMode and texture.vulkanImage != null) {
 			vulkan.currentFrame.guiCommands.bindPipeline(imagePipeline, getScissor());
-			vulkan.currentFrame.guiCommands.bindDescriptors(imagePipeline, .graphics, 0, &.{
+			vulkan.currentFrame.guiCommands.bindDescriptors(imagePipeline, .graphics, &.{
 				.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
 			});
 			customShadedImage(@as(ImageUniforms, undefined), imagePipeline, _pos, _dim);
@@ -475,7 +475,7 @@ pub const draw = struct { // MARK: draw
 
 		if (main.settings.launchConfig.vulkanTestingMode and texture.vulkanImage != null) {
 			vulkan.currentFrame.guiCommands.bindPipeline(imagePipeline, getScissor());
-			vulkan.currentFrame.guiCommands.bindDescriptors(imagePipeline, .graphics, 0, &.{
+			vulkan.currentFrame.guiCommands.bindDescriptors(imagePipeline, .graphics, &.{
 				.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
 			});
 			vulkan.currentFrame.guiCommands.pushConstants(imagePipeline, &ImageUniforms{
@@ -1095,7 +1095,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 				.inColor = @bitCast(draw.getColor()),
 				.fontSize = .{@floatFromInt(TextRendering.textureWidth), @floatFromInt(TextRendering.textureHeight)},
 			});
-			vulkan.currentFrame.guiCommands.bindDescriptors(TextRendering.pipeline, .graphics, 0, &.{
+			vulkan.currentFrame.guiCommands.bindDescriptors(TextRendering.pipeline, .graphics, &.{
 				.{.image = .{.binding = 0, .image = TextRendering.glyphTexture[0].vulkanImage.?}},
 			});
 
@@ -1181,7 +1181,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 				.inColor = @bitCast(draw.getColor()),
 				.fontSize = .{@floatFromInt(TextRendering.textureWidth), @floatFromInt(TextRendering.textureHeight)},
 			});
-			vulkan.currentFrame.guiCommands.bindDescriptors(TextRendering.pipeline, .graphics, 0, &.{
+			vulkan.currentFrame.guiCommands.bindDescriptors(TextRendering.pipeline, .graphics, &.{
 				.{.image = .{.binding = 0, .image = TextRendering.glyphTexture[0].vulkanImage.?}},
 			});
 
@@ -2404,7 +2404,7 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 	}
 
 	pub fn bindToPipeline(buf: CommandBuffer, pipeline: Pipeline) void {
-		buf.bindDescriptors(pipeline, .graphics, 0, &.{
+		buf.bindDescriptors(pipeline, .graphics, &.{
 			.{.ubo = .{.binding = 31, .buffer = vulkanBuffers[currentFrame]}},
 		});
 	}
