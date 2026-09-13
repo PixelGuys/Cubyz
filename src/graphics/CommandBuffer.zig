@@ -258,8 +258,7 @@ pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bi
 					.range = ubo.range,
 				};
 				writeInfo[i].pBufferInfo = bufferInfo;
-
-			}
+			},
 		}
 	}
 	c.vkCmdPushDescriptorSetKHR(self.handle, @intFromEnum(bindPoint), pipeline.pipelineLayout, set, @intCast(writeInfo.len), writeInfo.ptr);
