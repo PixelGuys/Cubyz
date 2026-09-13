@@ -699,7 +699,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 		}
 		const blendState = self.blendState.toVulkan(attachments);
 
-		const fullBindings = std.mem.concat(main.stackAllocator.allocator, DescriptorSetLayoutBinding, &.{options.bindings, &.{frameUniformDescriptorSetLayoutBinding}}) catch unreachable;
+		const fullBindings = std.mem.concat(main.stackAllocator.allocator, DescriptorSetLayoutBinding, &.{options.bindings, &.{graphics.frame_uniforms.descriptorSetLayoutBinding}}) catch unreachable;
 		defer main.stackAllocator.free(fullBindings);
 
 		const descriptorSetLayoutInfo = c.VkDescriptorSetLayoutCreateInfo{
@@ -900,13 +900,6 @@ pub const ComputePipeline = struct { // MARK: ComputePipeline
 	pub fn bind(self: ComputePipeline) void {
 		self.shader.bind();
 	}
-};
-
-var frameUniformDescriptorSetLayoutBinding: DescriptorSetLayoutBinding = .{
-	.binding = 31,
-	.count = 1,
-	.stageFlags = .{.fragment = true, .vertex = true, .compute = true},
-	.type = .uniformBuffer,
 };
 
 pub fn init() void { // MARK: init()

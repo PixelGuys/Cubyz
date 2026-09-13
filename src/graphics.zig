@@ -2403,11 +2403,20 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 		}
 	}
 
+	const binding = 31; // maxPushDescriptors is at least 32 for all devices that support it
+
 	pub fn bindToPipeline(buf: CommandBuffer, pipeline: Pipeline) void {
 		buf.bindDescriptors(pipeline, .graphics, &.{
-			.{.ubo = .{.binding = 31, .buffer = vulkanBuffers[currentFrame]}},
+			.{.ubo = .{.binding = binding, .buffer = vulkanBuffers[currentFrame]}},
 		});
 	}
+
+	pub const descriptorSetLayoutBinding: pipelines.DescriptorSetLayoutBinding = .{
+		.binding = binding,
+		.count = 1,
+		.stageFlags = .{.fragment = true, .vertex = true, .compute = true},
+		.type = .uniformBuffer,
+	};
 
 	pub const StaticUbo = struct {
 		id: c_uint,
