@@ -630,7 +630,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 	blendState: ColorBlendState,
 	vulkanCreationSuccessful: bool = false, // TODO: Remove after all Vulkan pipelines compile
 	pipelineLayout: c.VkPipelineLayout = undefined,
-	descriptorSetLayout: ?c.VkDescriptorSetLayout = null,
+	descriptorSetLayout: c.VkDescriptorSetLayout = undefined,
 	graphicsPipeline: c.VkPipeline = undefined,
 
 	fn initVulkan(self: *Pipeline, vertexPath: []const u8, fragmentPath: []const u8, defines: []const u8, VertexType: type, options: Options) !void {
@@ -699,29 +699,22 @@ pub const Pipeline = struct { // MARK: Pipeline
 		}
 		const blendState = self.blendState.toVulkan(attachments);
 
-		var descriptorSetLayouts: main.List(c.VkDescriptorSetLayout) = .empty;
-		defer descriptorSetLayouts.deinit(main.stackAllocator);
+		const fullBindings = std.mem.concat(main.stackAllocator.allocator, DescriptorSetLayoutBinding, &.{options.bindings, &.{graphics.frame_uniforms.descriptorSetLayoutBinding}}) catch unreachable;
+		defer main.stackAllocator.free(fullBindings);
 
-		if (options.bindings.len != 0) {
-			self.descriptorSetLayout = @as(c.VkDescriptorSetLayout, undefined);
-
-			const descriptorSetLayoutInfo = c.VkDescriptorSetLayoutCreateInfo{
-				.sType = c.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-				.flags = c.VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR,
-				.bindingCount = @intCast(options.bindings.len),
-				.pBindings = @ptrCast(options.bindings.ptr),
-			};
-			try vulkan.checkResultErr(c.vkCreateDescriptorSetLayout(vulkan.device, &descriptorSetLayoutInfo, null, &self.descriptorSetLayout.?));
-			descriptorSetLayouts.append(main.stackAllocator, self.descriptorSetLayout.?);
-		}
-
-		descriptorSetLayouts.append(main.stackAllocator, frameUniformDescriptorSetLayout);
+		const descriptorSetLayoutInfo = c.VkDescriptorSetLayoutCreateInfo{
+			.sType = c.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+			.flags = c.VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR,
+			.bindingCount = @intCast(fullBindings.len),
+			.pBindings = @ptrCast(fullBindings.ptr),
+		};
+		try vulkan.checkResultErr(c.vkCreateDescriptorSetLayout(vulkan.device, &descriptorSetLayoutInfo, null, &self.descriptorSetLayout));
 
 		std.debug.assert(options.pushConstantSize <= 128); // Some devices have a limit of just 128 bytes for push constants
 		const pipelineLayoutInfo = c.VkPipelineLayoutCreateInfo{ // TODO: Configure push constants
 			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-			.setLayoutCount = @intCast(descriptorSetLayouts.items.len),
-			.pSetLayouts = descriptorSetLayouts.items.ptr,
+			.setLayoutCount = 1,
+			.pSetLayouts = &self.descriptorSetLayout,
 			.pushConstantRangeCount = if (options.pushConstantSize == 0) 0 else 1,
 			.pPushConstantRanges = &.{
 				.stageFlags = c.VK_SHADER_STAGE_ALL,
@@ -804,7 +797,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 		if (self.vulkanCreationSuccessful) {
 			c.vkDestroyPipeline(vulkan.device, self.graphicsPipeline, null);
 			c.vkDestroyPipelineLayout(vulkan.device, self.pipelineLayout, null);
-			if (self.descriptorSetLayout) |layout| c.vkDestroyDescriptorSetLayout(vulkan.device, layout, null);
+			c.vkDestroyDescriptorSetLayout(vulkan.device, self.descriptorSetLayout, null);
 		}
 	}
 
@@ -909,29 +902,10 @@ pub const ComputePipeline = struct { // MARK: ComputePipeline
 	}
 };
 
-var frameUniformDescriptorSetLayout: c.VkDescriptorSetLayout = undefined;
-
 pub fn init() void { // MARK: init()
 	if (c.glslang_initialize_process() == c.false) std.log.err("glslang_initialize_process failed", .{});
-
-	if (main.settings.launchConfig.vulkanTestingMode) {
-		const descriptorSetLayoutInfo = c.VkDescriptorSetLayoutCreateInfo{
-			.sType = c.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-			.bindingCount = 1,
-			.pBindings = @ptrCast(&DescriptorSetLayoutBinding{
-				.binding = 0,
-				.count = 1,
-				.stageFlags = .{.fragment = true, .vertex = true, .compute = true},
-				.type = .uniformBuffer,
-			}),
-		};
-		vulkan.checkResultErr(c.vkCreateDescriptorSetLayout(vulkan.device, &descriptorSetLayoutInfo, null, &frameUniformDescriptorSetLayout)) catch @panic("Driver Bug");
-	}
 }
 
 pub fn deinit() void { // MARK: deinit()
 	c.glslang_finalize_process();
-	if (main.settings.launchConfig.vulkanTestingMode) {
-		c.vkDestroyDescriptorSetLayout(vulkan.device, frameUniformDescriptorSetLayout, null);
-	}
 }

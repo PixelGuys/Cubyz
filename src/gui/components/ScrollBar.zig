@@ -97,7 +97,7 @@ pub fn mainButtonReleased(self: *ScrollBar, mousePosition: Vec2f) void {
 pub fn render(self: *ScrollBar, mousePosition: Vec2f) void {
 	if (main.settings.launchConfig.vulkanTestingMode and texture.vulkanImage != null) {
 		graphics.vulkan.currentFrame.guiCommands.bindPipeline(Button.pipeline, graphics.draw.getScissor());
-		graphics.vulkan.currentFrame.guiCommands.bindDescriptors(Button.pipeline, .graphics, 0, &.{
+		graphics.vulkan.currentFrame.guiCommands.bindDescriptors(Button.pipeline, .graphics, &.{
 			.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
 		});
 		draw.customShadedRect(@as(Button.ButtonUniforms, undefined), Button.pipeline, self.pos, self.size);
