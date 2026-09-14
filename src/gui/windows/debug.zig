@@ -101,15 +101,15 @@ pub fn render() void {
 			const biome = main.game.world.?.playerBiome.load(.monotonic);
 			var tags = main.ListManaged(u8).init(main.stackAllocator);
 			defer tags.deinit();
-			inline for (comptime std.meta.fieldNames(main.server.terrain.biomes.Biome.GenerationProperties)) |name| {
-				if (@field(biome.properties, name)) {
+			inline for (comptime std.meta.fieldNames(main.server.terrain.biomes.Biome.ClimateProperties)) |name| {
+				if (@field(biome.climate, name)) {
 					if (tags.items.len != 0) tags.appendSlice(", ");
 					tags.appendSlice(name);
 				}
 			}
 			draw.print("Biome: {s}", .{biome.id}, 0, y, 8);
 			y += 8;
-			draw.print("Biome Properties: {s}", .{tags.items}, 0, y, 8);
+			draw.print("Biome Climate: {s}", .{tags.items}, 0, y, 8);
 			y += 8;
 		}
 		draw.print("Opaque faces: {}, Transparent faces: {}", .{main.renderer.chunk_meshing.quadsDrawn, main.renderer.chunk_meshing.transparentQuadsDrawn}, 0, y, 8);
