@@ -1,0 +1,4 @@
+.{
+	.audio = "cubyz:block_hit",
+	.volume = 0.25,
+}
