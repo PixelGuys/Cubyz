@@ -33,6 +33,15 @@ pub const entityComponentVersion = 0;
 
 // ############################# Client only stuff ################################
 pub const client = struct {
+	pub const ExampleComponent = struct {
+		pub fn save(self: ExampleComponent, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
+			_ = self;
+			_ = writer;
+			_ = audience;
+			// do i want to be saved?
+			return .save;
+		}
+	};
 	pub fn load(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		_ = entity;
 		_ = reader;
@@ -44,6 +53,15 @@ pub const client = struct {
 	pub fn init() void {}
 	pub fn deinit() void {}
 	pub fn clear() void {}
+	pub fn get(entity: Entity) ?ExampleComponent {
+		_ = entity;
+		return null;
+	}
+
+	pub fn modifyComponent(entity: Entity, reader: *utils.BinaryReader) void {
+		_ = entity;
+		_ = reader;
+	}
 };
 // ############################# Server only stuff ################################
 pub const server = struct {
@@ -69,5 +87,9 @@ pub const server = struct {
 	}
 	pub fn unload(entity: Entity) void {
 		_ = entity;
+	}
+	pub fn modifyComponent(entity: Entity, reader: *utils.BinaryReader) void {
+		_ = entity;
+		_ = reader;
 	}
 };
