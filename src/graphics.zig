@@ -2305,7 +2305,7 @@ pub const Image = struct { // MARK: Image
 	pub fn readFromFile(allocator: NeverFailingAllocator, path: []const u8, options: struct { orientation: enum { asIs, openGl } }) !Image {
 		var result: Image = undefined;
 		var channel: c_int = undefined;
-		const nullTerminatedPath = main.stackAllocator.dupeZ(u8, path); // TODO: Find a more zig-friendly image loading library.
+		const nullTerminatedPath = main.stackAllocator.dupeSentinel(u8, path, 0); // TODO: Find a more zig-friendly image loading library.
 		errdefer main.stackAllocator.free(nullTerminatedPath);
 		switch (options.orientation) {
 			.asIs => c.stbi_set_flip_vertically_on_load(0),
@@ -2321,7 +2321,7 @@ pub const Image = struct { // MARK: Image
 		return result;
 	}
 	pub fn exportToFile(self: Image, path: []const u8) !void {
-		const nullTerminated = main.stackAllocator.dupeZ(u8, path);
+		const nullTerminated = main.stackAllocator.dupeSentinel(u8, path, 0);
 		defer main.stackAllocator.free(nullTerminated);
 		_ = c.stbi_write_png(nullTerminated.ptr, self.width, self.height, 4, self.imageData.ptr, self.width*4); // TODO: Handle the return type.
 	}
