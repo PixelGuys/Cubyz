@@ -627,6 +627,11 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	if (world.?.shouldRestart.load(.acquire)) {
 		restart();
 	}
+	main.sync.client.update() catch |err| {
+		std.log.err("Got error while processing server sync commands: {s}. Disconnecting", .{@errorName(err)});
+		main.exitToMenu();
+		return;
+	};
 
 	physics.calculateVolumeProperties(.client, &Player.volumeProperties, Player.super.pos, Player.outerBoundingBox, physics.playerAirTerminalVelocity);
 	if (Player.isFlying.load(.monotonic)) {
