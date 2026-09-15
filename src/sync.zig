@@ -621,6 +621,7 @@ pub const Command = struct { // MARK: Command
 					info.dest.inv.update();
 				},
 				.moveToBag => |info| {
+					if (info.amount == 0) continue;
 					const item = info.dest.peek(0).item;
 					std.debug.assert(std.meta.eql(info.source.ref().item, item) or info.source.ref().item == .null);
 
