@@ -321,12 +321,7 @@ pub const World = struct { // MARK: World
 	}
 
 	pub fn deinit(self: *World) void {
-		main.server.stop(.stop);
-
-		if (main.server.thread) |serverThread| {
-			serverThread.join();
-			main.server.thread = null;
-		}
+		main.server.stop(.stopAndWait);
 
 		self.conn.deinit();
 
