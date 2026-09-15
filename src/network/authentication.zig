@@ -6,7 +6,7 @@ const BinaryReader = main.utils.BinaryReader;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ZonElement = main.ZonElement;
 
-pub const protection = @import("protection.zig");
+pub const protection = @import("authentication/protection.zig");
 
 var wordlist: ?[2048][]const u8 = null;
 
