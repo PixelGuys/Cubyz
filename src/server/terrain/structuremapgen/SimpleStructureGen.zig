@@ -124,8 +124,8 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 							.isCeiling = heightFinalized.isCeiling,
 						};
 						if (model.generationMode == .water_surface) {
-							if (wpz != 0) break;
-							data.wz = 0;
+							if (wpz != 0 or biome.isOceanRelative) break;
+							data.wz = biome.oceanHeight;
 						}
 						map.addStructure(.{
 							.internal = .{
@@ -170,7 +170,7 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 							.model = model,
 							.isCeiling = heightFinalized.isCeiling,
 						};
-						if (model.generationMode == .water_surface) data.wz = 0;
+						if (model.generationMode == .water_surface and biome.isOceanRelative) data.wz = biome.oceanHeight;
 						map.addStructure(.{
 							.internal = .{
 								.data = data,
