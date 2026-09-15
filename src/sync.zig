@@ -105,7 +105,7 @@ pub const client = struct { // MARK: client
 			defer sync.deinit();
 			var reader = BinaryReader.init(sync.data);
 
-			switch(sync.typ) {
+			switch (sync.typ) {
 				.confirmation => {
 					if (tempData.popOrNull()) |_cmd| {
 						var cmd = _cmd;
