@@ -1,5 +1,5 @@
 .{
-	.properties = .{},
+	.climate = .{},
 	.radius = 16,
 	.chance = 0,
 	.minHeight = 1500,
@@ -7,7 +7,7 @@
 	.keepOriginalTerrain = 0.99,
 	.mountains = 50,
 	.hills = 20,
-	.stoneBlock = "cubyz:glacite/base",
+	.stoneBlock = "cubyz:glacite/smooth",
 	.ground_structure = .{
 		"1 cubyz:snow",
 	},

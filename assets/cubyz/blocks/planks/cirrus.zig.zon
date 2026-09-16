@@ -1,0 +1,20 @@
+.{
+	.item = .{
+		.colorTexture = "cirrus_planks_palette.png",
+		.material = .{
+			.durability = 40,
+			.massDamage = 2.1,
+			.hardnessDamage = 2.4,
+			.swingSpeed = 4.8,
+			.textureRoughness = 0.7,
+			.modifiers = .{
+				.{
+					.id = "light",
+					.strength = 0.1,
+				},
+			},
+		},
+	},
+
+	.texture = "cubyz:planks/cirrus",
+}

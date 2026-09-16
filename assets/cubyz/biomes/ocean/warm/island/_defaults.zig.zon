@@ -1,11 +1,11 @@
 .{
 	.chance = 0,
-	.properties = .{
+	.climate = .{
 		.ocean,
 		.hot,
 	},
-	.music = "cubyz:Sincerely",
-	.stoneBlock = "cubyz:sandstone/base",
+	.music = "cubyz:totaldemented/tides",
+	.stoneBlock = "cubyz:sandstone/rough",
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",

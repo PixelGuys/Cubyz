@@ -18,7 +18,7 @@ const border: f32 = 3;
 
 pos: Vec2f,
 size: Vec2f,
-children: main.List(GuiComponent),
+children: main.ListManaged(GuiComponent),
 padding: f32,
 maxHeight: f32,
 childrenHeight: f32 = 0,

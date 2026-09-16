@@ -9,29 +9,25 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const ZonElement = main.ZonElement;
 const server = main.server;
-const Branch = main.rotation.list.@"cubyz:branch";
+const branch = main.rotation.rotations.@"cubyz:branch";
+const BlockDrop = main.server.BlockDrop;
 
 decayReplacement: blocks.Block,
 prevention: []const main.Tag,
-blockDrops: ?[]const blocks.BlockDrop,
 
-pub fn init(zon: ZonElement) ?*@This() {
+pub fn init(zon: ZonElement, _: main.callbacks.Creator) ?*@This() {
 	const result = main.worldArena.create(@This());
 	// replacement
-	if (zon.get(?[]const u8, "replacement", null)) |blockname| {
+	if (zon.get([]const u8, "replacement")) |blockname| {
 		result.decayReplacement = main.blocks.parseBlock(blockname);
 	} else result.decayReplacement = main.blocks.Block.air;
-	// custom drop
-	if (zon.getChildOrNull("drops")) |_| {
-		result.blockDrops = blocks.loadBlockDrop(null, zon);
-	} else result.blockDrops = null;
 	// prevention
 	result.prevention = &.{};
 	if (zon.getChildOrNull("prevention")) |tagNames| {
 		if (tagNames == .array) {
-			var prevention = main.ListUnmanaged(main.Tag).initCapacity(main.worldArena, tagNames.array.items.len);
+			var prevention = main.List(main.Tag).initCapacity(main.worldArena, tagNames.array.items.len);
 			for (tagNames.array.items) |value| {
-				const tagName = value.as(?[]const u8, null) orelse {
+				const tagName = value.as([]const u8) orelse {
 					std.log.err("Invalid TagName for decay prevention.", .{});
 					continue;
 				};
@@ -52,8 +48,7 @@ fn getIndexInCheckArray(relativePosition: Vec3i, checkRange: comptime_int) usize
 }
 fn preventsDecay(self: *@This(), log: Block) bool {
 	for (self.prevention) |tag| {
-		if (log.hasTag(tag))
-			return true;
+		if (log.hasTag(tag)) return true;
 	}
 	return false;
 }
@@ -88,20 +83,17 @@ fn foundWayToLog(self: *@This(), world: *server.ServerWorld, leaf: Block, wx: i3
 			// it is the same type of leaf? continue search! (Don't do it for branches. We've got isConnected instead!)
 			if (!sourceIsBranch and log.typ != leaf.typ) continue;
 			if (sourceIsBranch and log.mode() != branchRotation and !log.viewThrough()) return true;
-			const branchData = Branch.BranchData.init(log.data);
+			const branchData = branch.BranchData.init(log.data);
 
 			for (main.chunk.Neighbor.iterable) |offset| {
 				const relativePosition = value + offset.relPos();
 
 				// out of range
-				if (vec.lengthSquare(relativePosition) > checkRange*checkRange)
-					continue;
-				if (sourceIsBranch and !branchData.isConnected(offset))
-					continue;
+				if (vec.lengthSquare(relativePosition) > checkRange*checkRange) continue;
+				if (sourceIsBranch and !branchData.isConnected(offset)) continue;
 
 				// mark as checked
-				if (checked[getIndexInCheckArray(relativePosition, checkRange)])
-					continue;
+				if (checked[getIndexInCheckArray(relativePosition, checkRange)]) continue;
 				checked[getIndexInCheckArray(relativePosition, checkRange)] = true;
 				queue.pushBack(relativePosition);
 			}
@@ -115,12 +107,10 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 	const wz = params.chunk.super.pos.wz + params.blockPos.z;
 
 	if (params.block.mode() == main.rotation.getByID("cubyz:decayable")) {
-		if (params.block.data != 0)
-			return .ignored;
+		if (params.block.data != 0) return .ignored;
 	} else if (params.block.mode() == main.rotation.getByID("cubyz:branch")) {
-		const bd = Branch.BranchData.init(params.block.data);
-		if (bd.placedByHuman)
-			return .ignored;
+		const bd = branch.BranchData.init(params.block.data);
+		if (bd.placedByHuman) return .ignored;
 	} else {
 		std.log.err("Expected {s} to have cubyz:decayable or cubyz:branch as rotation", .{params.block.id()});
 	}
@@ -128,28 +118,16 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 	if (server.world) |world| {
 		if (world.getBlock(wx, wy, wz)) |leaf| {
 			// check if there is any log in the proximity?^
-			if (self.foundWayToLog(world, leaf, wx, wy, wz))
-				return .ignored;
+			if (self.foundWayToLog(world, leaf, wx, wy, wz)) return .ignored;
 
 			// no, there is no log in proximity
 			if (world.cmpxchgBlock(wx, wy, wz, leaf, self.decayReplacement) == null) {
-				const drops = if (self.blockDrops) |blockDrops| blockDrops else params.block.blockDrops();
-				for (drops) |drop| {
-					if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-						for (drop.items) |stack| {
-							var dir = main.vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));
-							// Bias upwards
-							dir[2] += main.random.nextFloat(&main.seed)*4.0;
-							const model = leaf.mode().model(leaf).model();
-							const pos = Vec3f{
-								@as(f32, @floatFromInt(wx)) + model.min[0] + main.random.nextFloat(&main.seed)*(model.max[0] - model.min[0]),
-								@as(f32, @floatFromInt(wy)) + model.min[1] + main.random.nextFloat(&main.seed)*(model.max[1] - model.min[1]),
-								@as(f32, @floatFromInt(wz)) + model.min[2] + main.random.nextFloat(&main.seed)*(model.max[2] - model.min[2]),
-							};
-							main.server.world.?.drop(stack.clone(), pos, dir, 1);
-						}
-					}
-				}
+				const dropCtx = BlockDrop.Context{
+					.oldBlock = params.block,
+					.newBlock = self.decayReplacement,
+				};
+				const model = params.block.mode().model(params.block).model();
+				dropCtx.drop(.natural(model.min, model.max), .{wx, wy, wz});
 				return .handled;
 			}
 		}

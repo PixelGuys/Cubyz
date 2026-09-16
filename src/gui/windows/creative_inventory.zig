@@ -26,7 +26,7 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 const slotsPerRow: u32 = 10;
-var items: main.List(Item) = undefined;
+var items: main.ListManaged(Item) = undefined;
 var inventory: ClientInventory = undefined;
 var searchInput: *TextInput = undefined;
 var searchString: []const u8 = undefined;
@@ -85,7 +85,7 @@ fn initContent() void {
 		if (searchString.len > 1 and searchString[0] == '.') {
 			const tag = searchString[1..];
 			while (itemIterator.next()) |item| {
-				if (hasMatchingTag(item.tags(), tag) or (item.block() != null and hasMatchingTag((main.blocks.Block{.typ = item.block().?, .data = undefined}).blockTags(), tag))) {
+				if (hasMatchingTag(item.tags(), tag) or (item.block() != null and hasMatchingTag((main.blocks.Block{.typ = item.block().?, .data = undefined}).tags(), tag))) {
 					items.append(Item{.baseItem = item.*});
 				}
 			}

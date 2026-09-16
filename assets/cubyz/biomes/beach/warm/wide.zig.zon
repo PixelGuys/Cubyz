@@ -1,6 +1,9 @@
 .{
-	.properties = .{
+	.climate = .{
 		.ocean,
+	},
+	.tags = .{
+		.palm,
 	},
 	.radius = 500,
 	.minHeight = 5,
@@ -11,9 +14,9 @@
 
 	.hills = 5,
 
-	.music = "cubyz:tides",
+	.music = "cubyz:totaldemented/tides",
 
-	.stoneBlock = "cubyz:sandstone/base",
+	.stoneBlock = "cubyz:sandstone/rough",
 	.ground_structure = .{
 		"2 to 4 cubyz:sand",
 	},

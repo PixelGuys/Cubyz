@@ -24,7 +24,7 @@ pub const id = "cubyz:single_biome";
 var biome: *const Biome = undefined;
 
 pub fn init(parameters: ZonElement) void {
-	biome = terrain.biomes.getById(parameters.get([]const u8, "biome", "missing parameter 'biome'"));
+	biome = terrain.biomes.getById(parameters.get([]const u8, "biome") orelse "missing parameter 'biome'");
 }
 
 pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) void {

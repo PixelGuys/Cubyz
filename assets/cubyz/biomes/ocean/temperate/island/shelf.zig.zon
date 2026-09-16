@@ -1,7 +1,7 @@
 .{
 	.minHeight = -10,
 	.maxHeight = -1,
-	.radius = 77,
+	.radius = 70,
 	.hills = 3,
 	.maxSubBiomeCount = 1,
 	.ground_structure = .{
@@ -22,6 +22,10 @@
 		.{
 			.id = "cubyz:ocean/temperate/base",
 			.chance = 1,
+		},
+		.{
+			.id = "cubyz:ocean/temperate/archipelago",
+			.chance = 15,
 		},
 	},
 }

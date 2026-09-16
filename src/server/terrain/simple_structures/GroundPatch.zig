@@ -28,11 +28,11 @@ smoothness: f32,
 pub fn loadModel(parameters: ZonElement) ?*GroundPatch {
 	const self = main.worldArena.create(GroundPatch);
 	self.* = .{
-		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "")),
-		.width = parameters.get(f32, "width", 5),
-		.variation = parameters.get(f32, "variation", 1),
-		.depth = parameters.get(i32, "depth", 2),
-		.smoothness = parameters.get(f32, "smoothness", 0),
+		.block = main.blocks.parseBlock(parameters.get([]const u8, "block") orelse ""),
+		.width = parameters.get(f32, "width") orelse 5,
+		.variation = parameters.get(f32, "variation") orelse 1,
+		.depth = parameters.get(i32, "depth") orelse 2,
+		.smoothness = parameters.get(f32, "smoothness") orelse 0,
 	};
 	return self;
 }
@@ -49,10 +49,10 @@ pub fn generate(self: *GroundPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 	const xSecn = ellipseParam*@cos(orientation)/width;
 	const ySecn = -ellipseParam*@sin(orientation)/width;
 
-	const xMin = @max(0, x - @as(i32, @intFromFloat(@ceil(width))));
-	const xMax = @min(chunk.super.width, x + @as(i32, @intFromFloat(@ceil(width))));
-	const yMin = @max(0, y - @as(i32, @intFromFloat(@ceil(width))));
-	const yMax = @min(chunk.super.width, y + @as(i32, @intFromFloat(@ceil(width))));
+	const xMin = @max(0, x - @as(i32, @ceil(width)));
+	const xMax = @min(chunk.super.width, x + @as(i32, @ceil(width)));
+	const yMin = @max(0, y - @as(i32, @ceil(width)));
+	const yMax = @min(chunk.super.width, y + @as(i32, @ceil(width)));
 
 	var baseHeight = z;
 	if (mode != .water_surface) {

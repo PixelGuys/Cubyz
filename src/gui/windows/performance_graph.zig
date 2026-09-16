@@ -4,7 +4,10 @@ const main = @import("main");
 const graphics = main.graphics;
 const draw = graphics.draw;
 const Texture = graphics.Texture;
+const vulkan = graphics.vulkan;
 const Vec2f = main.vec.Vec2f;
+
+const c = @import("c");
 
 const gui = @import("../gui.zig");
 const GuiWindow = gui.GuiWindow;
@@ -38,17 +41,31 @@ var uniforms: struct {
 	offset: c_int,
 	lineColor: c_int,
 } = undefined;
+const Uniforms = extern struct {
+	start: [2]f32 align(8),
+	dimension: [2]f32 align(8),
+	screen: [2]f32 align(8),
+	points: c_int,
+	offset: c_int,
+	lineColor: [3]f32 align(16),
+};
 
 pub fn init() void {
-	ssbo = graphics.SSBO.init();
+	ssbo = graphics.SSBO.initDynamicSize(f32, lastFrameTime.len);
 	pipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/graphics/graph.vert",
 		"assets/cubyz/shaders/graphics/graph.frag",
 		"",
 		&uniforms,
-		.{.cullMode = .none},
-		.{.depthTest = false, .depthWrite = false},
-		.{.attachments = &.{.alphaBlending}},
+		graphics.VertexArray.EmptyVertex,
+		.{
+			.bindings = &.{.ssbo(5, .{.vertex = true})},
+			.rasterState = .{.cullMode = .none},
+			.depthStencilState = .{.depthTest = false, .depthWrite = false},
+			.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			.inputAssemblyState = .{.topology = .lineStrip},
+			.pushConstantSize = @sizeOf(Uniforms),
+		},
 	);
 }
 
@@ -59,19 +76,16 @@ pub fn deinit() void {
 pub fn render() void {
 	lastFrameTime[index] = @floatCast(main.lastFrameTime.load(.monotonic)*1000.0);
 	index = (index + 1)%@as(u31, @intCast(lastFrameTime.len));
-	draw.setColor(0xffffffff);
-	draw.text("32 ms", 0, 16, 8, .left);
-	draw.text("16 ms", 0, 32, 8, .left);
-	draw.text("00 ms", 0, 48, 8, .left);
-	draw.setColor(0x80ffffff);
-	draw.line(.{border, 24}, .{window.contentSize[0] - border, 24});
-	draw.line(.{border, 40}, .{window.contentSize[0] - border, 40});
-	draw.line(.{border, 56}, .{window.contentSize[0] - border, 56});
-	draw.setColor(0xffffffff);
-	pipeline.bind(null);
-	graphics.c.glUniform1i(uniforms.points, lastFrameTime.len);
-	graphics.c.glUniform1i(uniforms.offset, index);
-	graphics.c.glUniform3f(uniforms.lineColor, 1, 1, 1);
+	draw.text("32 ms", 0, 16, 8);
+	draw.text("16 ms", 0, 32, 8);
+	draw.text("00 ms", 0, 48, 8);
+	{
+		const oldColor = draw.setColor(0x80ffffff);
+		defer draw.restoreColor(oldColor);
+		draw.line(.{border, 24}, .{window.contentSize[0] - border, 24});
+		draw.line(.{border, 40}, .{window.contentSize[0] - border, 40});
+		draw.line(.{border, 56}, .{window.contentSize[0] - border, 56});
+	}
 	var pos = Vec2f{border, border};
 	var dim = window.contentSize - @as(Vec2f, @splat(2*border));
 	pos *= @splat(draw.setScale(1));
@@ -81,10 +95,31 @@ pub fn render() void {
 	dim = @ceil(dim);
 	pos[1] += dim[1];
 
-	graphics.c.glUniform2f(uniforms.screen, @floatFromInt(main.Window.width), @floatFromInt(main.Window.height));
-	graphics.c.glUniform2f(uniforms.start, pos[0], pos[1]);
-	graphics.c.glUniform2f(uniforms.dimension, dim[0], draw.setScale(1));
 	ssbo.bufferData(f32, &lastFrameTime);
-	ssbo.bind(5);
-	graphics.c.glDrawArrays(graphics.c.GL_LINE_STRIP, 0, lastFrameTime.len);
+
+	if (main.settings.launchConfig.vulkanTestingMode) {
+		vulkan.currentFrame.guiCommands.bindPipeline(pipeline, null);
+		vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
+			.{.ssbo = .{.binding = 5, .ssbo = ssbo}},
+		});
+		vulkan.currentFrame.guiCommands.pushConstants(pipeline, &Uniforms{
+			.start = pos,
+			.dimension = .{dim[0], draw.setScale(1)},
+			.screen = .{@floatFromInt(main.Window.width), @floatFromInt(main.Window.height)},
+			.points = lastFrameTime.len,
+			.offset = index,
+			.lineColor = .{1, 1, 1},
+		});
+		vulkan.currentFrame.guiCommands.draw(lastFrameTime.len, 0);
+	} else {
+		pipeline.bind(null);
+		c.glUniform1i(uniforms.points, lastFrameTime.len);
+		c.glUniform1i(uniforms.offset, index);
+		c.glUniform3f(uniforms.lineColor, 1, 1, 1);
+		c.glUniform2f(uniforms.screen, @floatFromInt(main.Window.width), @floatFromInt(main.Window.height));
+		c.glUniform2f(uniforms.start, pos[0], pos[1]);
+		c.glUniform2f(uniforms.dimension, dim[0], draw.setScale(1));
+		ssbo.bind(5);
+		c.glDrawArrays(c.GL_LINE_STRIP, 0, lastFrameTime.len);
+	}
 }

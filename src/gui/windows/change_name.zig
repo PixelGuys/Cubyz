@@ -43,7 +43,7 @@ pub fn onOpen() void {
 		list.add(Label.init(.{0, 0}, width, "Please enter your name!", .center));
 		window.closeable = false;
 	} else {
-		list.add(Label.init(.{0, 0}, width, "#ff0000Warning: #ffffffYou lose access to your inventory data when changing the name!", .center));
+		list.add(Label.init(.{0, 0}, width, "#ff0000Warning: #ffff00__For worlds from versions 0.1.0 and earlier__. #ffffffYou may lose access to your inventory data when changing the name!", .center));
 		window.closeable = true;
 	}
 	list.add(Label.init(.{0, 0}, width, "Cubyz supports formatting your username using a markdown-like syntax:", .center));
@@ -52,7 +52,7 @@ pub fn onOpen() void {
 	list.add(Label.init(.{0, 0}, width, "\\##ff0000ff#ffffff00#ffffff00#ff0000red#ffffff \\##ff0000ff#00770077#ffffff00#ff7700orange#ffffff \\##ffffff00#00ff00ff#ffffff00#00ff00green#ffffff \\##ffffff00#ffffff00#0000ffff#0000ffblue", .center));
 	textComponent = TextInput.init(.{0, 0}, width, 32, if (settings.playerName.len == 0) "quanturmdoelvloper" else settings.playerName, .{.onNewline = .init(apply)});
 	list.add(textComponent);
-	list.add(Button.initText(.{0, 0}, 100, "Apply", .init(apply)));
+	list.add(Button.initText(.{0, 0}, 100, "Apply", .{.onAction = .init(apply)}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

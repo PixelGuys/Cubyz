@@ -25,7 +25,7 @@ pub fn deinit() void {
 
 fn setNotificationText(comptime formatText: []const u8, args: anytype) void {
 	main.globalAllocator.free(text);
-	text = std.fmt.allocPrint(main.globalAllocator.allocator, formatText, args) catch unreachable;
+	text = main.globalAllocator.print(formatText, args);
 }
 
 pub fn raiseNotification(comptime formatText: []const u8, args: anytype) void {
@@ -41,7 +41,7 @@ fn ack() void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(Label.init(.{0, 0}, width, text, .left));
-	list.add(Button.initText(.{0, 0}, 100, "OK", .init(ack)));
+	list.add(Button.initText(.{0, 0}, 100, "OK", .{.onAction = .init(ack)}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

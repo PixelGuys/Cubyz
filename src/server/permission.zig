@@ -1,3 +1,4 @@
+const builtin = @import("builtin");
 const std = @import("std");
 
 const main = @import("main");
@@ -11,23 +12,25 @@ const sync = main.sync;
 const PermissionMap = struct { // MARK: PermissionMap
 	map: std.StringHashMapUnmanaged(void) = .{},
 
-	pub fn fromZon(self: *PermissionMap, arena: NeverFailingAllocator, zon: ZonElement) void {
+	pub fn fromBytes(self: *PermissionMap, arena: NeverFailingAllocator, reader: *main.utils.BinaryReader) !void {
 		sync.threadContext.assertCorrectContext(.server);
-		for (zon.toSlice()) |item| {
-			const string = item.as(?[]const u8, null) orelse continue;
-			self.put(arena, string);
+		const len = try reader.readInt(u32);
+		self.map.ensureUnusedCapacity(arena.allocator, len) catch unreachable;
+		for (0..len) |_| {
+			const read = try reader.readSliceWithSize();
+			if (read.len == 0 or read[0] != '/') return error.Invalid;
+			self.map.putAssumeCapacity(arena.dupe(u8, read), {});
 		}
 	}
 
-	pub fn toZon(self: *PermissionMap, arena: NeverFailingAllocator) ZonElement {
+	pub fn toBytes(self: PermissionMap, writer: *main.utils.BinaryWriter) void {
 		sync.threadContext.assertCorrectContext(.server);
-		const zon: ZonElement = .initArray(arena);
+		writer.writeInt(u32, self.map.count());
 
 		var it = self.map.keyIterator();
 		while (it.next()) |key| {
-			zon.append(key.*);
+			writer.writeSliceWithSize(key.*);
 		}
-		return zon;
 	}
 
 	pub fn put(self: *PermissionMap, arena: NeverFailingAllocator, key: []const u8) void {
@@ -52,7 +55,7 @@ pub const Permissions = struct { // MARK: Permissions
 		};
 	}
 
-	pub fn deinit(self: *Permissions) void {
+	pub fn deinit(self: Permissions) void {
 		sync.threadContext.assertCorrectContext(.server);
 		self.arena.deinit();
 	}
@@ -70,16 +73,16 @@ pub const Permissions = struct { // MARK: Permissions
 		};
 	}
 
-	pub fn fromZon(self: *Permissions, zon: ZonElement) void {
+	pub fn fromBytes(self: *Permissions, reader: *main.utils.BinaryReader) !void {
 		sync.threadContext.assertCorrectContext(.server);
-		self.list(.white).fromZon(self.arena.allocator(), zon.getChild("permissionWhitelist"));
-		self.list(.black).fromZon(self.arena.allocator(), zon.getChild("permissionBlacklist"));
+		try self.list(.white).fromBytes(self.arena.allocator(), reader);
+		try self.list(.black).fromBytes(self.arena.allocator(), reader);
 	}
 
-	pub fn toZon(self: *Permissions, allocator: NeverFailingAllocator, zon: *ZonElement) void {
+	pub fn toBytes(self: Permissions, writer: *main.utils.BinaryWriter) void {
 		sync.threadContext.assertCorrectContext(.server);
-		zon.put("permissionWhitelist", self.list(.white).toZon(allocator));
-		zon.put("permissionBlacklist", self.list(.black).toZon(allocator));
+		self.whitelist.toBytes(writer);
+		self.blacklist.toBytes(writer);
 	}
 
 	pub fn addPermission(self: *Permissions, listType: ListType, permissionPath: []const u8) void {
@@ -106,11 +109,237 @@ pub const Permissions = struct { // MARK: Permissions
 	}
 };
 
+const GroupInstance = struct { // MARK: GroupInstance
+	permissions: Permissions,
+	name: []const u8,
+
+	fn init(allocator: NeverFailingAllocator, id: Group, name: []const u8) *GroupInstance {
+		sync.threadContext.assertCorrectContext(.server);
+		const self = allocator.create(GroupInstance);
+		self.* = .{
+			.permissions = .init(allocator),
+			.name = name,
+		};
+		self.save(allocator, id);
+		return self;
+	}
+
+	fn deinit(self: *GroupInstance, allocator: NeverFailingAllocator) void {
+		sync.threadContext.assertCorrectContext(.server);
+		allocator.free(self.name);
+		self.permissions.deinit();
+		allocator.destroy(self);
+	}
+
+	pub fn fromBytes(allocator: NeverFailingAllocator, reader: *main.utils.BinaryReader) !*GroupInstance {
+		const version = try reader.readInt(u8);
+		if (version != 0) return error.UnsupportedVersion;
+
+		const self = allocator.create(GroupInstance);
+		errdefer allocator.destroy(self);
+		self.* = .{
+			.permissions = .init(allocator),
+			.name = allocator.dupe(u8, try reader.readSliceWithSize()),
+		};
+		try self.permissions.fromBytes(reader);
+		return self;
+	}
+
+	pub fn toBytes(self: *GroupInstance, writer: *main.utils.BinaryWriter) void {
+		sync.threadContext.assertCorrectContext(.server);
+		const version = 0;
+		writer.writeInt(u8, version);
+		writer.writeSliceWithSize(self.name);
+		self.permissions.toBytes(writer);
+	}
+
+	fn save(self: *GroupInstance, allocator: NeverFailingAllocator, id: Group) void {
+		if (builtin.is_test) return;
+		sync.threadContext.assertCorrectContext(.server);
+		const path = allocator.print("saves/{s}/permission/{d}.group", .{main.server.world.?.path, @intFromEnum(id)});
+		defer allocator.free(path);
+
+		var writer: main.utils.BinaryWriter = .init(allocator);
+		defer writer.deinit();
+
+		self.toBytes(&writer);
+		main.files.cubyzDir().write(path, writer.data.items) catch |err| {
+			std.log.err("Couldn't save permission group: {s} {t}", .{self.name, err});
+		};
+	}
+
+	pub fn addPermission(self: *GroupInstance, allocator: NeverFailingAllocator, id: Group, listType: Permissions.ListType, permissionPath: []const u8) void {
+		sync.threadContext.assertCorrectContext(.server);
+		self.permissions.addPermission(listType, permissionPath);
+		self.save(allocator, id);
+	}
+
+	pub fn removePermission(self: *GroupInstance, allocator: NeverFailingAllocator, id: Group, listType: Permissions.ListType, permissionPath: []const u8) bool {
+		sync.threadContext.assertCorrectContext(.server);
+		const result = self.permissions.removePermission(listType, permissionPath);
+		if (result) self.save(allocator, id);
+		return result;
+	}
+
+	pub fn hasPermission(self: *GroupInstance, permissionPath: []const u8) Permissions.PermissionResult {
+		sync.threadContext.assertCorrectContext(.server);
+		return self.permissions.hasPermission(permissionPath);
+	}
+};
+
+// Each group must have a unique ID to avoid stale membership issues.
+// Example scenario:
+// - User1 joins Group1
+// - Group1 is deleted while User1 is offline (so their data isn’t updated)
+// - A new Group1 is created
+// - When User1 reconnects, they are incorrectly treated as a member of the new Group1
+var groups: main.ListManaged(?*GroupInstance) = undefined;
+var groupNameToIdMap: std.StringHashMapUnmanaged(Group) = .{};
+
+var groupsArena: NeverFailingArenaAllocator = undefined;
+
+/// Wrapper for permission groups.
+/// Creation of this via @enumFromInt should only be done if you are sure the group exists. The safer way is to go over one of the these functions:
+/// - fromBytes
+/// - getByName
+pub const Group = enum(u32) { // MARK: Group
+	_,
+
+	pub fn createGroup(name: []const u8) error{AlreadyExists}!Group {
+		sync.threadContext.assertCorrectContext(.server);
+
+		const result = groupNameToIdMap.getOrPut(groupsArena.allocator().allocator, name) catch unreachable;
+		if (result.found_existing) return error.AlreadyExists;
+
+		result.key_ptr.* = groupsArena.allocator().dupe(u8, name);
+		result.value_ptr.* = @enumFromInt(groups.items.len);
+		groups.append(GroupInstance.init(groupsArena.allocator(), result.value_ptr.*, result.key_ptr.*));
+		saveMetaData(groupsArena.allocator()) catch |err| {
+			std.log.err("Couldn't save permission groups metadata: {t}", .{err});
+		};
+		return result.value_ptr.*;
+	}
+
+	pub fn fromBytes(reader: *main.utils.BinaryReader) !Group {
+		const group = try reader.readEnum(Group);
+		if (groups.items[@intFromEnum(group)] == null) return error.GroupNotFound;
+		return group;
+	}
+
+	pub fn toBytes(self: Group, writer: *main.utils.BinaryWriter) void {
+		writer.writeEnum(main.server.permission.Group, self);
+	}
+
+	pub fn getByName(name: []const u8) error{GroupNotFound}!Group {
+		sync.threadContext.assertCorrectContext(.server);
+		return groupNameToIdMap.get(name) orelse error.GroupNotFound;
+	}
+
+	fn getInstance(self: Group) error{GroupNotFound}!*GroupInstance {
+		return groups.items[@intFromEnum(self)] orelse return error.GroupNotFound;
+	}
+
+	/// If the group still exists, this deletes the group and returns true. Otherwise returns false
+	pub fn delete(self: Group) bool {
+		sync.threadContext.assertCorrectContext(.server);
+		// if the group already doens't exist anymore we can skip.
+		// but if the group still exists and is not deleted from the groupNameToIdMap then something is wrong, which is why we assert it here
+		std.debug.assert(groupNameToIdMap.remove((self.getInstance() catch return false).name));
+		groups.items[@intFromEnum(self)] = null;
+
+		if (builtin.is_test) return true;
+		const path = main.stackAllocator.print("saves/{s}/permission/{d}.group", .{main.server.world.?.path, @intFromEnum(self)});
+		defer main.stackAllocator.free(path);
+		main.files.cubyzDir().deleteFile(path) catch |err| {
+			std.log.err("Couldn't delete group file even though it exits: {t}", .{err});
+		};
+		return true;
+	}
+
+	pub fn addPermission(self: Group, allocator: NeverFailingAllocator, listType: Permissions.ListType, permissionPath: []const u8) error{GroupNotFound}!void {
+		(try self.getInstance()).addPermission(allocator, self, listType, permissionPath);
+	}
+
+	pub fn removePermission(self: Group, allocator: NeverFailingAllocator, listType: Permissions.ListType, permissionPath: []const u8) error{GroupNotFound}!bool {
+		return (try self.getInstance()).removePermission(allocator, self, listType, permissionPath);
+	}
+
+	pub fn hasPermission(self: Group, permissionPath: []const u8) error{GroupNotFound}!Permissions.PermissionResult {
+		return (try self.getInstance()).hasPermission(permissionPath);
+	}
+
+	pub fn format(self: Group, writer: *std.Io.Writer) std.Io.Writer.Error!void {
+		try writer.print("{s}", .{blk: {
+			break :blk (self.getInstance() catch break :blk "[Deleted]").name;
+		}});
+	}
+};
+
+pub fn init(allocator: NeverFailingAllocator) void {
+	sync.threadContext.assertCorrectContext(.server);
+	groupsArena = .init(allocator);
+	groups = .init(groupsArena.allocator());
+	groupNameToIdMap = .{};
+}
+
+pub fn deinit() void {
+	sync.threadContext.assertCorrectContext(.server);
+	groupsArena.deinit();
+	groups = undefined;
+	groupNameToIdMap = .{};
+}
+
+fn addGroupFromBin(group: Group, data: []const u8) void {
+	var reader: main.utils.BinaryReader = .init(data);
+	const groupInstance = GroupInstance.fromBytes(groupsArena.allocator(), &reader) catch |err| {
+		std.log.err("Group with id {d} has invalid content skipping: {t}", .{@intFromEnum(group), err});
+		groups.append(null);
+		return;
+	};
+	groupNameToIdMap.put(groupsArena.allocator().allocator, groupInstance.name, group) catch unreachable;
+	groups.append(groupInstance);
+}
+
+pub fn loadGroups(dir: main.files.Dir) !void {
+	dir.makePath(".") catch |err| {
+		std.log.err("Couldn't create permission directory: {t}", .{err});
+	};
+	const metaDataZon: ZonElement = dir.readToZon(main.stackAllocator, "metadata.zon") catch .initObject(main.stackAllocator);
+	defer metaDataZon.deinit(main.stackAllocator);
+
+	init(main.globalAllocator);
+	const currentId = metaDataZon.get(u32, "currentId") orelse 0;
+	groups.ensureCapacity(currentId);
+
+	for (0..currentId) |id| {
+		const path = main.stackAllocator.print("{d}.group", .{id});
+		defer main.stackAllocator.free(path);
+
+		if (!dir.hasFile(path)) {
+			groups.append(null);
+			continue;
+		}
+		const data = try dir.read(main.stackAllocator, path);
+		defer main.stackAllocator.free(data);
+		addGroupFromBin(@enumFromInt(id), data);
+	}
+}
+
+fn saveMetaData(allocator: NeverFailingAllocator) !void {
+	if (builtin.is_test) return;
+	const metadatPath = allocator.print("saves/{s}/permission/metadata.zon", .{main.server.world.?.path});
+	defer allocator.free(metadatPath);
+	var metadataZon: ZonElement = .initObject(main.stackAllocator);
+	defer metadataZon.deinit(main.stackAllocator);
+	metadataZon.put("currentId", @as(u32, @truncate(groups.items.len)));
+	try main.files.cubyzDir().writeZon(metadatPath, metadataZon);
+}
+
 // ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 // MARK: Testing
 // ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 
-test "WhitePermission" {
+test "whitePermission" {
 	var permissions: Permissions = .init(main.heap.testingAllocator);
 	defer permissions.deinit();
 
@@ -120,7 +349,7 @@ test "WhitePermission" {
 	try std.testing.expectEqual(.neutral, permissions.hasPermission("/"));
 }
 
-test "Blacklist" {
+test "blacklist" {
 	var permissions: Permissions = .init(main.heap.testingAllocator);
 	defer permissions.deinit();
 
@@ -132,7 +361,7 @@ test "Blacklist" {
 	try std.testing.expectEqual(.neutral, permissions.hasPermission("/"));
 }
 
-test "DeepPermission" {
+test "deepPermission" {
 	var permissions: Permissions = .init(main.heap.testingAllocator);
 	defer permissions.deinit();
 
@@ -146,7 +375,7 @@ test "DeepPermission" {
 	try std.testing.expectEqual(.neutral, permissions.hasPermission("/server/command/testing/test2"));
 }
 
-test "RootPermission" {
+test "rootPermission" {
 	var permissions: Permissions = .init(main.heap.testingAllocator);
 	defer permissions.deinit();
 
@@ -155,7 +384,7 @@ test "RootPermission" {
 	try std.testing.expectEqual(.yes, permissions.hasPermission("/command/test"));
 }
 
-test "RootBlackPermission" {
+test "rootBlackPermission" {
 	var permissions: Permissions = .init(main.heap.testingAllocator);
 	defer permissions.deinit();
 
@@ -175,7 +404,7 @@ test "addRemovePermission" {
 	try std.testing.expectEqual(true, permissions.removePermission(.white, "/command/test"));
 }
 
-test "RemoveNonExistentPermission" {
+test "removeNonExistentPermission" {
 	var permissions: Permissions = .init(main.heap.testingAllocator);
 	defer permissions.deinit();
 
@@ -184,25 +413,110 @@ test "RemoveNonExistentPermission" {
 	try std.testing.expectEqual(false, permissions.removePermission(.white, "/command/test2"));
 }
 
-test "PermissionListToFromZon" {
+test "groupCreation" {
+	init(main.heap.testingAllocator);
+	defer deinit();
+
+	const id = try Group.createGroup("test");
+	try std.testing.expectEqual(id, try Group.getByName("test"));
+}
+
+test "groupPermissions" {
+	init(main.heap.testingAllocator);
+	defer deinit();
+
+	const group = try Group.createGroup("test");
+	try group.addPermission(main.heap.testingAllocator, .white, "/command/test");
+	try std.testing.expectEqual(Permissions.PermissionResult.yes, group.hasPermission("/command/test"));
+}
+
+test "groupRemovePermissions" {
+	init(main.heap.testingAllocator);
+	defer deinit();
+
+	const group = try Group.createGroup("test");
+	try group.addPermission(main.heap.testingAllocator, .white, "/command/test");
+	try std.testing.expectEqual(true, group.removePermission(main.heap.testingAllocator, .white, "/command/test"));
+}
+
+test "invalidGroup" {
+	init(main.heap.testingAllocator);
+	defer deinit();
+
+	_ = try Group.createGroup("test");
+	try std.testing.expectError(error.GroupNotFound, Group.getByName("root"));
+}
+
+test "invalidGroupEmptyGroups" {
+	init(main.heap.testingAllocator);
+	defer deinit();
+
+	try std.testing.expectError(error.GroupNotFound, Group.getByName("root"));
+}
+
+test "acessDeletedGroup" {
+	init(main.heap.testingAllocator);
+	defer deinit();
+
+	const group = try Group.createGroup("test");
+	try std.testing.expectEqual(true, group.delete());
+	try std.testing.expectError(error.GroupNotFound, group.getInstance());
+}
+
+test "invalidGroupCreation" {
+	init(main.heap.testingAllocator);
+	defer deinit();
+
+	_ = try Group.createGroup("test");
+	try std.testing.expectError(error.AlreadyExists, Group.createGroup("test"));
+}
+
+test "permissionListToFromBytes" {
 	var permissions: Permissions = .init(main.heap.testingAllocator);
 	defer permissions.deinit();
 
 	permissions.addPermission(.white, "/command/test");
 	permissions.addPermission(.white, "/command/spawn");
 
-	const zon = permissions.whitelist.toZon(main.heap.testingAllocator);
-	defer zon.deinit(main.heap.testingAllocator);
+	var writer = main.utils.BinaryWriter.init(main.heap.testingAllocator);
+	defer writer.deinit();
+	permissions.toBytes(&writer);
 
 	var testPermissions: Permissions = .init(main.heap.testingAllocator);
 	defer testPermissions.deinit();
 
-	testPermissions.whitelist.fromZon(testPermissions.arena.allocator(), zon);
+	var reader: main.utils.BinaryReader = .init(writer.data.items);
+	try testPermissions.fromBytes(&reader);
 
 	try std.testing.expectEqual(2, testPermissions.whitelist.map.size);
 
 	var it = testPermissions.whitelist.map.keyIterator();
 	while (it.next()) |item| {
 		try std.testing.expectEqual(true, permissions.whitelist.map.contains(item.*));
+	}
+}
+
+test "permissionGroupToFromBytes" {
+	init(main.heap.testingAllocator);
+	defer deinit();
+
+	const group = try Group.createGroup("test");
+
+	try group.addPermission(main.heap.testingAllocator, .white, "/command/test");
+	try group.addPermission(main.heap.testingAllocator, .white, "/command/spawn");
+
+	var writer: main.utils.BinaryWriter = .init(main.heap.testingAllocator);
+	defer writer.deinit();
+	(try group.getInstance()).toBytes(&writer);
+
+	var reader: main.utils.BinaryReader = .init(writer.data.items);
+	var testGroup: *GroupInstance = try .fromBytes(main.heap.testingAllocator, &reader);
+	defer testGroup.deinit(main.heap.testingAllocator);
+
+	try std.testing.expectEqual(2, testGroup.permissions.whitelist.map.size);
+
+	var it = testGroup.permissions.whitelist.map.keyIterator();
+	while (it.next()) |item| {
+		try std.testing.expectEqual(true, (try group.getInstance()).permissions.whitelist.map.contains(item.*));
 	}
 }

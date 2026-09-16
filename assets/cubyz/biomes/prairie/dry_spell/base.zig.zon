@@ -10,7 +10,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:dry_grass",
+			.block = "cubyz:grass/dry",
 			.chance = 0.05,
 			.width = 15,
 			.variation = 7,
@@ -44,7 +44,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:dry_grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/dry"},
 			.chance = 0.05,
 			.width = 6,
 			.variation = 4,
@@ -54,8 +54,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:air",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.log = "cubyz:log/oak",
 			.chance = 0.01,
 			.type = .round,
 			.height = 3,
@@ -63,8 +62,7 @@
 		},
 		.{
 			.id = "cubyz:fallen_tree",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_log",
+			.log = "cubyz:log/oak",
 			.chance = 0.025,
 			.height = 5,
 			.height_variation = 1,

@@ -1,5 +1,8 @@
 .{
-	.properties = .{},
+	.climate = .{},
+	.tags = .{
+		.birch,
+	},
 	.minHeightLimit = 7,
 	.minHeight = 20,
 	.maxHeight = 48,
@@ -10,10 +13,10 @@
 	.roughness = 10,
 	.hills = 12,
 	.chance = 0.66,
-	.music = "cubyz:leaves",
+	.music = "cubyz:totaldemented/leaves",
 	.validPlayerSpawn = true,
 	.ground_structure = .{
-		"cubyz:grass",
+		"cubyz:grass/temperate",
 		"1 to 2 cubyz:soil",
 	},
 	.structures = .{
@@ -40,8 +43,7 @@
 		},
 		.{
 			.id = "cubyz:fallen_tree",
-			.log = "cubyz:birch_log",
-			.top = "cubyz:birch_log",
+			.log = "cubyz:log/birch",
 			.chance = 0.005,
 			.height = 6,
 			.height_variation = 3,
@@ -93,7 +95,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/temperate"},
 			.chance = 0.1,
 			.width = 8,
 			.variation = 3,

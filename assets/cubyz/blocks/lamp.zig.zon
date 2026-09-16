@@ -5,6 +5,7 @@
 		.{.items = .{.auto}},
 	},
 	.emittedLight = 0xd9cab4,
+	.model = "cubyz:cube",
 	.texture = "cubyz:lamp",
 	.texture_top = "cubyz:lamp_top",
 	.texture_bottom = "cubyz:lamp_top",

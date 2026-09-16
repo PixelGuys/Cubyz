@@ -2,7 +2,7 @@
 	.interpolation = .none,
 	.interpolationWeight = 0.7,
 	.keepOriginalTerrain = 0.99,
-	.properties = .{},
+	.climate = .{},
 	.minHeightLimit = 7,
 	.minHeight = 2000,
 	.maxHeight = 2100,
@@ -14,12 +14,11 @@
 	.hills = 2,
 	.chance = 0,
 	.soilCreep = 1,
-	.music = "cubyz:sunrise",
 	.structures = .{
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.003,
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.size = 5,
 			.size_variance = 1,
 		},

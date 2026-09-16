@@ -49,13 +49,14 @@
 const std = @import("std");
 const main = @import("main");
 const builtin = @import("builtin");
-const Condition = @This();
 const Mutex = main.utils.Mutex;
 
 const os = std.os;
 const assert = std.debug.assert;
 const testing = std.testing;
 const Futex = main.utils.Futex;
+
+const Condition = @This();
 
 impl: Impl = .{},
 
@@ -112,12 +113,7 @@ pub fn broadcast(self: *Condition) void {
 	self.impl.wake(.all);
 }
 
-const Impl = if (builtin.single_threaded)
-	SingleThreadedImpl
-else if (builtin.os.tag == .windows)
-	WindowsImpl
-else
-	FutexImpl;
+const Impl = if (builtin.single_threaded) SingleThreadedImpl else if (builtin.os.tag == .windows) WindowsImpl else FutexImpl;
 
 const Notify = enum {
 	one, // wake up only one thread
@@ -194,7 +190,7 @@ const WindowsImpl = struct {
 	}
 };
 
-const FutexImpl = struct {
+const FutexImpl = struct { // MARK: FutexImpl
 	state: std.atomic.Value(u32) = std.atomic.Value(u32).init(0),
 	epoch: std.atomic.Value(u32) = std.atomic.Value(u32).init(0),
 
