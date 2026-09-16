@@ -16,8 +16,6 @@ const Label = GuiComponent.Label;
 
 const ScrollBar = @This();
 
-const fontSize: f32 = 16;
-
 var texture: Texture = undefined;
 
 pos: Vec2f,
@@ -30,7 +28,7 @@ pub fn globalInit() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/scrollbar.png");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	texture.deinit();
 }
 
@@ -97,10 +95,17 @@ pub fn mainButtonReleased(self: *ScrollBar, mousePosition: Vec2f) void {
 }
 
 pub fn render(self: *ScrollBar, mousePosition: Vec2f) void {
-	texture.bindTo(0);
-	Button.pipeline.bind(draw.getScissor());
-	draw.setColor(0xff000000);
-	draw.customShadedRect(Button.buttonUniforms, self.pos, self.size);
+	if (main.settings.launchConfig.vulkanTestingMode and texture.vulkanImage != null) {
+		graphics.vulkan.currentFrame.guiCommands.bindPipeline(Button.pipeline, graphics.draw.getScissor());
+		graphics.vulkan.currentFrame.guiCommands.bindDescriptors(Button.pipeline, .graphics, &.{
+			.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
+		});
+		draw.customShadedRect(@as(Button.ButtonUniforms, undefined), Button.pipeline, self.pos, self.size);
+	} else {
+		Button.pipeline.bind(draw.getScissor());
+		texture.bindTo(0);
+		draw.customShadedRectOpenGl(Button.buttonUniforms, self.pos, self.size);
+	}
 
 	const range: f32 = self.size[1] - self.button.size[1];
 	self.setButtonPosFromValue();

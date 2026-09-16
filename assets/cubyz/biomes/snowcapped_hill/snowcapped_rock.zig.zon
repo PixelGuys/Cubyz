@@ -1,5 +1,5 @@
 .{
-	.properties = .{},
+	.climate = .{},
 	.radius = 20,
 	.chance = 0,
 	.minHeight = 3000,
@@ -11,7 +11,7 @@
 	.ground_structure = .{
 		"2 to 4 cubyz:snow",
 	},
-	.stoneBlock = "cubyz:glacite/base",
+	.stoneBlock = "cubyz:glacite/smooth",
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:snowcapped_hill/base",

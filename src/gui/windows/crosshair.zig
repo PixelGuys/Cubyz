@@ -5,11 +5,11 @@ const graphics = main.graphics;
 const Texture = graphics.Texture;
 const Vec2f = main.vec.Vec2f;
 
+const c = @import("c");
+
 const gui = @import("../gui.zig");
 const GuiWindow = gui.GuiWindow;
 const GuiComponent = gui.GuiComponent;
-
-const c = main.graphics.c;
 
 const size: f32 = 64;
 pub var window = GuiWindow{
@@ -31,6 +31,14 @@ var uniforms: struct {
 	uvOffset: c_int,
 	uvDim: c_int,
 } = undefined;
+const Uniforms = extern struct {
+	start: [2]f32 align(8),
+	size: [2]f32 align(8),
+	screen: [2]f32 align(8),
+	color: i32,
+	uvOffset: [2]f32 align(8),
+	uvDim: [2]f32 align(8),
+};
 
 pub fn init() void {
 	pipeline = graphics.Pipeline.init(
@@ -38,16 +46,22 @@ pub fn init() void {
 		"assets/cubyz/shaders/graphics/Image.frag",
 		"",
 		&uniforms,
-		.{.cullMode = .none},
-		.{.depthTest = false, .depthWrite = false},
-		.{.attachments = &.{.{
-			.srcColorBlendFactor = .one,
-			.dstColorBlendFactor = .one,
-			.colorBlendOp = .subtract,
-			.srcAlphaBlendFactor = .one,
-			.dstAlphaBlendFactor = .one,
-			.alphaBlendOp = .subtract,
-		}}},
+		graphics.draw.SimpleVertex2D,
+		.{
+			.bindings = &.{.sampler(0, .{.fragment = true})},
+			.rasterState = .{.cullMode = .none},
+			.depthStencilState = .{.depthTest = false, .depthWrite = false},
+			.blendState = .{.attachments = &.{.{
+				.srcColorBlendFactor = .one,
+				.dstColorBlendFactor = .one,
+				.colorBlendOp = .subtract,
+				.srcAlphaBlendFactor = .one,
+				.dstAlphaBlendFactor = .one,
+				.alphaBlendOp = .subtract,
+			}}, .formats = &.{.swapChain}},
+			.inputAssemblyState = .{.topology = .triangleStrip},
+			.pushConstantSize = @sizeOf(Uniforms),
+		},
 	);
 	texture = Texture.initFromFile("assets/cubyz/ui/hud/crosshair.png");
 }
@@ -58,8 +72,15 @@ pub fn deinit() void {
 }
 
 pub fn render() void {
-	texture.bindTo(0);
-	graphics.draw.setColor(0xffffffff);
-	pipeline.bind(graphics.draw.getScissor());
-	graphics.draw.customShadedImage(&uniforms, .{0, 0}, .{size, size});
+	if (main.settings.launchConfig.vulkanTestingMode and texture.vulkanImage != null) {
+		graphics.vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
+		graphics.vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
+			.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
+		});
+		graphics.draw.customShadedImage(@as(Uniforms, undefined), pipeline, .{0, 0}, .{size, size});
+	} else {
+		texture.bindTo(0);
+		pipeline.bind(graphics.draw.getScissor());
+		graphics.draw.customShadedImageOpenGl(&uniforms, .{0, 0}, .{size, size});
+	}
 }

@@ -1,4 +1,7 @@
 .{
+	.tags = .{
+		.palm,
+	},
 	.minHeight = 5,
 	.maxHeight = 6,
 	.radius = 32,
@@ -42,7 +45,7 @@
 		.{
 			.id = "cubyz:ocean/warm/island/shelf",
 			.chance = 1,
-			.parentEdgeDistance = 45,
+			.parentEdgeDistance = 37,
 		},
 	},
 }

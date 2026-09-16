@@ -8,7 +8,6 @@ const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
 const Button = @import("../components/Button.zig");
 const Label = GuiComponent.Label;
-const MutexComponent = GuiComponent.MutexComponent;
 const TextInput = GuiComponent.TextInput;
 const VerticalList = @import("../components/VerticalList.zig");
 const FixedSizeCircularBuffer = main.utils.FixedSizeCircularBuffer;
@@ -32,9 +31,9 @@ const messageTimeout: i32 = 10000;
 const messageFade = 1000;
 const reusableHistoryMaxSize = 8192;
 
-var history: main.List(*Label) = undefined;
+var history: main.ListManaged(*Label) = undefined;
 var messageQueue: main.utils.ConcurrentQueue([]const u8) = undefined;
-var expirationTime: main.List(i32) = undefined;
+var expirationTime: main.ListManaged(i32) = undefined;
 var historyStart: u32 = 0;
 var fadeOutEnd: u32 = 0;
 pub var input: *TextInput = undefined;
@@ -242,7 +241,8 @@ pub fn update() void {
 
 pub fn render() void {
 	if (!hideInput) {
-		main.graphics.draw.setColor(0x80000000);
+		const oldColor = main.graphics.draw.setColor(0x80000000);
+		defer main.graphics.draw.restoreColor(oldColor);
 		main.graphics.draw.rect(.{0, 0}, window.contentSize);
 	}
 }
@@ -263,7 +263,7 @@ pub fn sendMessage() void {
 			}
 
 			if (input.currentString.items[0] == '/') {
-				main.sync.ClientSide.executeCommand(.{.chatCommand = .{.message = main.globalAllocator.dupe(u8, input.currentString.items[1..])}});
+				main.sync.client.executeCommand(.{.chatCommand = .{.message = main.globalAllocator.dupe(u8, input.currentString.items[1..])}});
 			} else {
 				main.network.protocols.chat.send(main.game.world.?.conn, data);
 			}

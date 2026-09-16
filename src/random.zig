@@ -38,7 +38,7 @@ pub fn nextInt(comptime T: type, seed: *u64) T {
 
 pub fn nextIntBounded(comptime T: type, seed: *u64, bound: T) T {
 	if (@typeInfo(T) != .int) @compileError("Type must be integer.");
-	if (@typeInfo(T).int.signedness == .signed) return nextIntBounded(std.meta.Int(.unsigned, @bitSizeOf(T) - 1), seed, @intCast(bound));
+	if (@typeInfo(T).int.signedness == .signed) return nextIntBounded(@Int(.unsigned, @bitSizeOf(T) - 1), seed, @intCast(bound));
 	const bitSize = std.math.log2_int_ceil(T, bound);
 	var result = nextWithBitSize(T, seed, bitSize);
 	while (result >= bound) {
@@ -145,7 +145,7 @@ pub fn RandomRange(T: type) type {
 		}
 
 		pub fn fromZon(zon: ZonElement) ?@This() {
-			const vals: ?@Vector(2, T) = if (zon.as(?T, null)) |v| @splat(v) else zon.as(?@Vector(2, T), null);
+			const vals: ?@Vector(2, T) = if (zon.as(T)) |v| @splat(v) else zon.as(@Vector(2, T));
 
 			if (vals == null) return null;
 

@@ -1,8 +1,8 @@
 .{
-	.tags = .{.cuttable},
+	.tags = .{.cuttable, .sliceable},
 	.blockHealth = 0.2,
 	.drops = .{
-		.{.items = .{.auto}},
+		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
 	},
 	.degradable = true,
 	.alwaysViewThrough = true,

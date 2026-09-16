@@ -10,4 +10,5 @@
 	.texture_top = "cubyz:birch_log",
 	.texture_bottom = "cubyz:birch_log_top",
 	.decayProhibitor = true,
+	.hasItem = false,
 }

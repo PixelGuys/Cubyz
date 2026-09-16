@@ -1,0 +1,4 @@
+.{
+	.soilCreep = 1.5,
+	.music = "cubyz:mischol/simmer",
+}
