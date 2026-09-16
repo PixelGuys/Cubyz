@@ -23,6 +23,7 @@ size: Vec2f,
 currentState: f32,
 button: *Button,
 mouseAnchor: f32 = undefined,
+hidden: bool = false,
 
 pub fn globalInit() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/scrollbar.png");
@@ -74,6 +75,7 @@ pub fn scroll(self: *ScrollBar, offset: f32) void {
 }
 
 pub fn updateHovered(self: *ScrollBar, mousePosition: Vec2f) main.callbacks.Result {
+	if (self.hidden) return .ignored;
 	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
 		if (self.button.updateHovered(mousePosition - self.pos) == .handled) return .handled;
 	}
@@ -81,6 +83,7 @@ pub fn updateHovered(self: *ScrollBar, mousePosition: Vec2f) main.callbacks.Resu
 }
 
 pub fn mainButtonPressed(self: *ScrollBar, mousePosition: Vec2f) main.callbacks.Result {
+	if (self.hidden) return .ignored;
 	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
 		if (self.button.mainButtonPressed(mousePosition - self.pos) == .handled) {
 			self.mouseAnchor = mousePosition[1] - self.button.pos[1];
@@ -95,6 +98,7 @@ pub fn mainButtonReleased(self: *ScrollBar, mousePosition: Vec2f) void {
 }
 
 pub fn render(self: *ScrollBar, mousePosition: Vec2f) void {
+	if (self.hidden) return;
 	if (main.settings.launchConfig.vulkanTestingMode and texture.vulkanImage != null) {
 		graphics.vulkan.currentFrame.guiCommands.bindPipeline(Button.pipeline, graphics.draw.getScissor());
 		graphics.vulkan.currentFrame.guiCommands.bindDescriptors(Button.pipeline, .graphics, &.{
