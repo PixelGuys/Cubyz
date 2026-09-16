@@ -6,26 +6,27 @@ const ModifierRestriction = main.items.ModifierRestriction;
 const ProceduralItem = main.items.ProceduralItem;
 const ZonElement = main.ZonElement;
 
-const On_orthogonal = struct {
+const OnOrthogonal = struct {
 	tag: main.Tag,
 	amount: usize,
-	range: ?usize,
 };
 
-pub fn satisfied(self: *const On_orthogonal, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
+pub fn satisfied(self: *const OnOrthogonal, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
 	var count: usize = 0;
 	const gridSize: usize = proceduralItem.materialGrid.len - 1;
-	const rangeChecked = @min(self.range orelse gridSize, gridSize);
+	const rangeChecked: i32 = @intCast(gridSize);
 	const lowBound = 0;
 	const highBound = rangeChecked*2 + 1;
 	for (lowBound..highBound) |dx| {
-		const checkedX = x + (@as(i32, @intCast(dx)) - rangeChecked);
-		const checkedY = y + (@as(i32, @intCast(0)) - rangeChecked);
+		const iterator: i32 = @intCast(dx);
+		const checkedX = x + (iterator - rangeChecked);
+		const checkedY = y + (0 - rangeChecked);
 		if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 	}
 	for (lowBound..highBound) |dy| {
-		const checkedX = x + (@as(i32, @intCast(0)) - rangeChecked);
-		const checkedY = y + (@as(i32, @intCast(dy)) - rangeChecked);
+		const iterator: i32 = @intCast(dy);
+		const checkedX = x + (0 - rangeChecked);
+		const checkedY = y + (iterator - rangeChecked);
 		if (dy != 0) { // prevents double counting
 			if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 		}
@@ -33,20 +34,18 @@ pub fn satisfied(self: *const On_orthogonal, proceduralItem: *const ProceduralIt
 	return count >= self.amount;
 }
 
-pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const On_orthogonal {
-	const result = allocator.create(On_orthogonal);
+pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const OnOrthogonal {
+	const result = allocator.create(OnOrthogonal);
 	result.* = .{
-		.tag = main.Tag.find(zon.get([]const u8, "tag", "not specified")),
-		.amount = zon.get(usize, "amount", 8),
-		.range = zon.get(?usize, "range", null),
+		.tag = main.Tag.find(zon.get([]const u8, "tag") orelse blk: {
+			std.log.err("Missing tag field for on diagonal restriction.", .{});
+			break :blk "not specified";
+		}),
+		.amount = zon.get(usize, "amount") orelse 8,
 	};
 	return result;
 }
 
-pub fn printTooltip(self: *const On_orthogonal, outString: *main.List(u8)) void {
-	if (self.range == null) {
-		outString.print("{} .{s} {s}", .{self.amount, self.tag.getName(), "on orthoganal axis"});
-	} else {
-		outString.print("{} .{s} {s} {?}", .{self.amount, self.tag.getName(), "in orthoganal range", self.range});
-	}
+pub fn printTooltip(self: *const OnOrthogonal, outString: *main.ListManaged(u8)) void {
+	outString.print("{} .{s} {s}", .{self.amount, self.tag.getName(), "on orthoganal axis"});
 }
