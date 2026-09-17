@@ -10,8 +10,26 @@
 	.viewThrough = true,
 	.absorbedLight = 0x000000,
 	.collide = false,
-	.model = "cubyz:flower/castelleja",
-	.rotation = "cubyz:planar",
+	.rotation = "cubyz:texture_pile",
+	.model = .{
+		.mode = .modelReposition,
+		.model = "cubyz:flower/castelleja",
+		.offsets = .{
+			.{
+				.{0.0, 0.0, 0.0},
+			},
+			.{
+				.{-0.25, -0.25, 0.0},
+				.{0.25, 0.25, 0.0},
+			},
+			.{
+				.{0.25, 0.25, 0.0},
+				.{-0.25, 0.25, 0.0},
+				.{0.0, -0.25, 0.0},
+			},
+		},
+		.states = 3,
+	},
 	.texture = "cubyz:castilleja",
 	.texture_top = "cubyz:castilleja_top",
 	.texture_bottom = "cubyz:castilleja_top",
