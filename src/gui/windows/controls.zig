@@ -59,6 +59,15 @@ fn updateSensitivity(sensitivity: f32) void {
 	main.settings.save();
 }
 
+fn zoomRelativeSensitivityCallback(newValue: f32) void {
+	main.settings.zoomRelativeSensitivity = newValue;
+	main.settings.save();
+}
+
+fn zoomRelativeSensitivityFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
+	return std.fmt.allocPrint(allocator.allocator, "Zoom relative sensitivity: {d:.0}%", .{value*100}) catch unreachable;
+}
+
 fn invertMouseYCallback(newValue: bool) void {
 	main.settings.invertMouseY = newValue;
 	main.settings.save();
@@ -112,6 +121,7 @@ fn initWindow() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 364, 8);
 	list.add(Button.initText(.{0, 0}, keybindButtonWidth, if (editingKeyboard) "Gamepad" else "Keyboard", .{.onAction = .init(toggleKeyboard)}));
 	list.add(ContinuousSlider.init(.{0, 0}, controlsListWidth, 0, 5, if (editingKeyboard) main.settings.mouseSensitivity else main.settings.controllerSensitivity, &updateSensitivity, &sensitivityFormatter));
+	list.add(ContinuousSlider.init(.{0, 0}, controlsListWidth, 0, 5, main.settings.zoomRelativeSensitivity, &zoomRelativeSensitivityCallback, &zoomRelativeSensitivityFormatter));
 	list.add(CheckBox.init(.{0, 0}, controlsListWidth, "Invert mouse Y", main.settings.invertMouseY, &invertMouseYCallback));
 	list.add(CheckBox.init(.{0, 0}, controlsListWidth, "Toggle sprint", main.KeyBoard.key("sprint").isToggling == .yes, &sprintIsToggleCallback));
 
