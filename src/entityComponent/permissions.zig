@@ -12,15 +12,6 @@ pub const entityComponentVersion = 0;
 
 // ############################# Client only stuff ################################
 pub const client = struct {
-	pub const Component = struct {
-		pub fn save(self: Component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
-			_ = self;
-			_ = writer;
-			_ = audience;
-			// do i want to be saved?
-			return .save;
-		}
-	};
 	pub fn load(entity: Entity, reader: *BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		_ = entity;
 		_ = reader;
@@ -32,24 +23,31 @@ pub const client = struct {
 	pub fn init() void {}
 	pub fn deinit() void {}
 	pub fn clear() void {}
-	pub fn get(entity: Entity) ?*Component {
+
+	pub fn get(entity: Entity) null {
 		_ = entity;
 		return null;
 	}
-
 	pub fn modifyComponent(entity: Entity, reader: *utils.BinaryReader) void {
 		_ = entity;
 		_ = reader;
 	}
 };
 // ############################# Server only stuff ################################
-pub const server = struct { // MARK: server
+pub const server = struct {
 	pub const Component = struct {
 		permissions: main.server.permission.Permissions,
+		permissionGroups: std.AutoHashMapUnmanaged(main.server.permission.Group, void),
 
 		pub fn save(self: Component, writer: *BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			if (audience != .disk) return .discard;
 			self.permissions.toBytes(writer);
+
+			writer.writeVarInt(usize, self.permissionGroups.count());
+			var it = self.permissionGroups.keyIterator();
+			while (it.next()) |group| {
+				group.toBytes(writer);
+			}
 			return .save;
 		}
 	};
@@ -71,11 +69,25 @@ pub const server = struct { // MARK: server
 		return &(components.get(entity) orelse return null).permissions;
 	}
 
+	pub fn getPermissionGroups(entity: Entity) ?*std.AutoHashMapUnmanaged(main.server.permission.Group, void) {
+		return &(components.get(entity) orelse return null).permissionGroups;
+	}
+
 	pub fn hasPermission(entity: Entity, permissionPath: []const u8) bool {
-		return switch ((getPermissions(entity) orelse return false).hasPermission(permissionPath)) {
-			.yes => true,
-			.no, .neutral => false,
-		};
+		switch ((getPermissions(entity) orelse return false).hasPermission(permissionPath)) {
+			.yes => return true,
+			.no => return false,
+			.neutral => {},
+		}
+		var groupIt = (getPermissionGroups(entity).?).keyIterator();
+		while (groupIt.next()) |group| {
+			const result = group.hasPermission(permissionPath) catch blk: {
+				std.debug.assert(removeFromGroup(entity, group.*) == true);
+				break :blk .no;
+			};
+			if (result == .yes) return true;
+		}
+		return false;
 	}
 
 	pub fn addPermission(entity: Entity, listType: main.server.permission.Permissions.ListType, permissionPath: []const u8) void {
@@ -86,21 +98,40 @@ pub const server = struct { // MARK: server
 		return (getPermissions(entity) orelse return false).removePermission(listType, permissionPath);
 	}
 
+	pub fn addToGroup(entity: Entity, group: main.server.permission.Group) void {
+		(getPermissionGroups(entity) orelse return).put(main.globalAllocator.allocator, group, {}) catch unreachable;
+	}
+
+	pub fn removeFromGroup(entity: Entity, group: main.server.permission.Group) bool {
+		return getPermissionGroups(entity).?.remove(group);
+	}
+
 	pub fn loadFromData(entity: Entity, reader: *BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != entityComponentVersion) return error.InvalidComponentVersion;
-		const permissions = &components.add(main.globalAllocator, entity).permissions;
-		permissions.* = .init(main.globalAllocator);
-		permissions.fromBytes(reader) catch return error.UnreadableComponentData;
+		const component = components.add(main.globalAllocator, entity);
+		component.permissions = .init(main.globalAllocator);
+		component.permissions.fromBytes(reader) catch return error.UnreadableComponentData;
+		component.permissionGroups = .empty;
+		const len = reader.readVarInt(usize) catch return;
+		for (0..len) |_| {
+			const group = main.server.permission.Group.fromBytes(reader) catch |err| {
+				if (err == error.GroupNotFound) continue; // if the group is not found we just skip it.
+				return error.UnreadableComponentData;
+			};
+			addToGroup(entity, group);
+		}
 	}
 
 	pub fn loadEmpty(entity: Entity) void {
-		const permissions = &components.add(main.globalAllocator, entity).permissions;
-		permissions.* = .init(main.globalAllocator);
+		const component = components.add(main.globalAllocator, entity);
+		component.permissions = .init(main.globalAllocator);
+		component.permissionGroups = .empty;
 	}
 
 	pub fn unload(entity: Entity) void {
-		const permissions = components.fetchRemove(entity) catch return;
-		permissions.permissions.deinit();
+		var component = components.fetchRemove(entity) catch return;
+		component.permissions.deinit();
+		component.permissionGroups.deinit(main.globalAllocator.allocator);
 	}
 
 	pub fn modifyComponent(entity: Entity, reader: *utils.BinaryReader) void {
