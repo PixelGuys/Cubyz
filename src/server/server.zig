@@ -147,6 +147,7 @@ pub const User = struct { // MARK: User
 	mutex: main.utils.Mutex = .{},
 
 	inventoryCommands: main.List([]const u8) = .empty,
+	chestOpenRequests: main.List([]const u8) = .empty,
 
 	pub const State = enum { awaitingKeyVerification, connectedVerified, awaitingReloadVerified };
 
@@ -229,6 +230,10 @@ pub const User = struct { // MARK: User
 			main.globalAllocator.free(commandData);
 		}
 		self.inventoryCommands.deinit(main.globalAllocator);
+		for (self.chestOpenRequests.items) |requestData| {
+			main.globalAllocator.free(requestData);
+		}
+		self.chestOpenRequests.deinit(main.globalAllocator);
 
 		self.jobQueue.deinit();
 	}
@@ -496,6 +501,9 @@ pub const User = struct { // MARK: User
 		const commands = self.inventoryCommands;
 		defer commands.deinit(main.globalAllocator);
 		self.inventoryCommands = .empty;
+		const chestOpenRequests = self.chestOpenRequests;
+		defer chestOpenRequests.deinit(main.globalAllocator);
+		self.chestOpenRequests = .empty;
 		self.mutex.unlock();
 
 		for (commands.items) |commandData| {
@@ -510,6 +518,12 @@ pub const User = struct { // MARK: User
 					self.conn.disconnect();
 				}
 			};
+		}
+
+		for (chestOpenRequests.items) |requestData| {
+			defer main.globalAllocator.free(requestData);
+			var reader: BinaryReader = .init(requestData);
+			main.network.protocols.chestOpen.process(self, &reader);
 		}
 
 		self.mutex.lock();
@@ -534,6 +548,12 @@ pub const User = struct { // MARK: User
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		self.inventoryCommands.append(main.globalAllocator, main.globalAllocator.dupe(u8, commandData));
+	}
+
+	pub fn receiveChestOpenRequest(self: *User, requestData: []const u8) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		self.chestOpenRequests.append(main.globalAllocator, main.globalAllocator.dupe(u8, requestData));
 	}
 
 	pub fn receiveData(self: *User, reader: *BinaryReader) !void {
