@@ -1,5 +1,5 @@
 .{
-	.properties = .{
+	.climate = .{
 		.cold,
 		.dry,
 	},

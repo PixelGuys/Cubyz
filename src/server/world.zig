@@ -164,9 +164,9 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		}
 		const ch = SimulationChunk.initAndIncreaseRefCount(pos);
 		ch.increaseRefCount();
-		ch.increaseRefCount();
 		simulationChunkHashMap.put(pos, ch) catch unreachable;
 		mutex.unlock();
+		ch.increaseRefCount();
 		ChunkLoadTask.scheduleAndDecreaseRefCount(pos, .{.simulationChunk = ch});
 		return ch;
 	}

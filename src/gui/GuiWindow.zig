@@ -541,7 +541,7 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 	if (self.hasBackground) {
 		if (main.settings.launchConfig.vulkanTestingMode and backgroundTexture.vulkanImage != null) {
 			graphics.vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
-			graphics.vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, 0, &.{
+			graphics.vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
 				.{.image = .{.binding = 0, .image = backgroundTexture.vulkanImage.?}},
 			});
 			draw.customShadedRect(@as(WindowUniforms, undefined), pipeline, .{0, 0}, self.size/@as(Vec2f, @splat(self.scale)));
@@ -558,7 +558,7 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 	if (self.showTitleBar or gui.reorderWindows) {
 		if (main.settings.launchConfig.vulkanTestingMode and titleTexture.vulkanImage != null) {
 			graphics.vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
-			graphics.vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, 0, &.{
+			graphics.vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
 				.{.image = .{.binding = 0, .image = titleTexture.vulkanImage.?}},
 			});
 			draw.customShadedRect(@as(WindowUniforms, undefined), pipeline, .{0, 0}, .{self.size[0]/self.scale, titleBarHeight});

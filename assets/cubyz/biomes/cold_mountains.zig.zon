@@ -1,5 +1,5 @@
 .{
-	.properties = .{.mountain, .cold, .wet},
+	.climate = .{.mountain, .cold, .wet},
 	.tags = .{.pine, .snowy},
 	.minHeight = 80,
 	.maxHeight = 256,

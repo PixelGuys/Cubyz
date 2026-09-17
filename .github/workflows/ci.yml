@@ -9,9 +9,9 @@ on:
     branches: [ "master" ]
 
 jobs:
-  compile:
+  checks:
     runs-on: ubuntu-latest
-    name: Compilation Check
+    name: Format & Shader Checks
     steps:
       - uses: actions/checkout@v3
       - run: echo "VERSION=$(cat .zigversion)" >> $GITHUB_ENV
@@ -34,9 +34,23 @@ jobs:
       - run: wget -O ./Cubyz-linter https://github.com/PixelGuys/Cubyz-linter/releases/download/0.16.0+6/Cubyz-linter-x86_64-linux
       - run: chmod +x ./Cubyz-linter
       - run: ./Cubyz-linter assets/ mods/ src/ *.zon
-      - run: zig build
-      - run: zig build -Dtarget=x86_64-windows-gnu
-      - run: zig build -Dtarget=aarch64-linux-gnu
-      - run: zig build -Dtarget=aarch64-windows-gnu
-      - run: zig build test
       - run: 'find assets/cubyz/shaders -type f ! -name "*.glsl" | xargs -L1 glslangValidator -G100 -P"#extension GL_GOOGLE_include_directive : enable" -Iassets/cubyz/shaders/include -Dgl_VertexIndex=gl_VertexID -DOPEN_GL'
+
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    name: Build & Test (${{ matrix.os }})
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v3
+      - run: echo "VERSION=$(cat .zigversion)" >> $GITHUB_ENV
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.VERSION }}
+      - run: zig build -Dtarget=x86_64-native
+      - run: zig build -Dtarget=aarch64-native-gnu
+      - run: zig build test
