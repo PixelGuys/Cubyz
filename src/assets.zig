@@ -783,7 +783,8 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 			const path = main.stackAllocator.printSentinel("assets/{s}/blocks/textures", .{addon.name}, 0);
 			defer main.stackAllocator.free(path);
 			// Check for access rights
-			if (!main.files.cwd().hasDir(path)) continue;
+			const fileExists: bool = main.files.cwd().hasDir(path) catch false;
+			if (!fileExists) continue;
 			main.utils.file_monitor.listenToPath(path, main.blocks.meshes.reloadTextures, 0);
 		}
 	}
@@ -825,7 +826,8 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 			const path = main.stackAllocator.printSentinel("assets/{s}/blocks/textures", .{addon.name}, 0);
 			defer main.stackAllocator.free(path);
 			// Check for access rights
-			if (!main.files.cwd().hasDir(path)) continue;
+			const fileExists: bool = main.files.cwd().hasDir(path) catch false;
+			if (!fileExists) continue;
 			main.utils.file_monitor.removePath(path);
 		}
 	}
@@ -838,7 +840,8 @@ pub fn readAsset(allocator: NeverFailingAllocator, subPath: []const u8, id: []co
 
 	var path = main.stackAllocator.print("{s}/{s}/{s}/{s}{s}", .{worldAssetFolder, mod, subPath, name, fileEnding});
 	defer main.stackAllocator.free(path);
-	if (!main.files.cwd().hasFile(path)) {
+	const fileExists = main.files.cwd().hasFile(path) catch false;
+	if (!fileExists) {
 		main.stackAllocator.free(path);
 		path = main.stackAllocator.print("assets/{s}/{s}/{s}{s}", .{mod, subPath, name, fileEnding});
 	}
