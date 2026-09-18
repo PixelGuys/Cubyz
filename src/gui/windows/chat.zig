@@ -164,7 +164,7 @@ fn refresh() void {
 		}
 	} else {
 		list.scrollBar.currentState = 1;
-		list.scrollBar.size = .{0, 0};
+		list.scrollBar.hidden = true;
 	}
 }
 
