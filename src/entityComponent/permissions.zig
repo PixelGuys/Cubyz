@@ -23,9 +23,18 @@ pub const client = struct {
 	pub fn init() void {}
 	pub fn deinit() void {}
 	pub fn clear() void {}
+
+	pub fn get(entity: Entity) ?struct {} {
+		_ = entity;
+		return null;
+	}
+	pub fn modifyComponent(entity: Entity, reader: *utils.BinaryReader) void {
+		_ = entity;
+		_ = reader;
+	}
 };
 // ############################# Server only stuff ################################
-pub const server = struct {
+pub const server = struct { // MARK: server
 	pub const Component = struct {
 		permissions: main.server.permission.Permissions,
 		permissionGroups: std.AutoHashMapUnmanaged(main.server.permission.Group, void),
@@ -123,5 +132,10 @@ pub const server = struct {
 		var component = components.fetchRemove(entity) catch return;
 		component.permissions.deinit();
 		component.permissionGroups.deinit(main.globalAllocator.allocator);
+	}
+
+	pub fn modifyComponent(entity: Entity, reader: *utils.BinaryReader) void {
+		_ = entity;
+		_ = reader;
 	}
 };
