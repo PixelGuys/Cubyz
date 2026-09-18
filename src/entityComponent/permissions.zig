@@ -24,7 +24,7 @@ pub const client = struct {
 	pub fn deinit() void {}
 	pub fn clear() void {}
 
-	pub fn get(entity: Entity) null {
+	pub fn get(entity: Entity) ?struct {} {
 		_ = entity;
 		return null;
 	}
