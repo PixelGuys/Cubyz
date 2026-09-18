@@ -1617,6 +1617,7 @@ pub const Connection = struct { // MARK: Connection
 					.connectedVerified, .awaitingReloadVerified => main.game.world.?.shouldReload = true,
 				}
 				main.game.world.?.shouldRestart.store(true, .release);
+				conn.handShakeWaiting.broadcast();
 			}
 		}
 		if (conn.restartChannelCounter[@intFromEnum(channelId)] < restartCounter) {
@@ -1714,6 +1715,10 @@ pub const Connection = struct { // MARK: Connection
 				self.rttEstimate = averageRtt;
 				self.nextPacketTimestamp = timestamp;
 				self.hasRttEstimate = true;
+			}
+			if (self.rttEstimate/averageRtt > 10) { // Quickly recover from spikes in RTT, as e.g. caused by /server restart
+				self.rttEstimate = averageRtt;
+				self.nextPacketTimestamp = timestamp;
 			}
 		}
 	}

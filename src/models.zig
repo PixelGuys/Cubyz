@@ -50,7 +50,7 @@ const ExtraQuadInfo = struct {
 
 const gridSize = 4096;
 const collisionGridSize = 16;
-const CollisionGridInteger = std.meta.Int(.unsigned, collisionGridSize);
+const CollisionGridInteger = @Int(.unsigned, collisionGridSize);
 
 fn snapToGrid(x: anytype) @TypeOf(x) {
 	const T = @TypeOf(x);

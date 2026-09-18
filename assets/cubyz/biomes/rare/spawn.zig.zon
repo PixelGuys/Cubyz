@@ -1,5 +1,5 @@
 .{
-	.properties = .{},
+	.climate = .{},
 	.chance = 0.01,
 	.minHeightLimit = 7,
 	.minHeight = 22,

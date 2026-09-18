@@ -2,7 +2,7 @@
 	.interpolation = .none,
 	.interpolationWeight = 0.7,
 	.keepOriginalTerrain = 0.99,
-	.properties = .{},
+	.climate = .{},
 	.minHeightLimit = 7,
 	.minHeight = 2000,
 	.maxHeight = 2100,
