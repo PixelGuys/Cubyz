@@ -1,5 +1,5 @@
 .{
-	.properties = .{
+	.climate = .{
 		.mountain,
 		.dry,
 		.hot,

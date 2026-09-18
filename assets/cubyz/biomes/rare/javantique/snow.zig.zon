@@ -1,6 +1,6 @@
 .{
 	.validPlayerSpawn = true,
-	.properties = .{
+	.climate = .{
 		.cold,
 		.wet,
 	},

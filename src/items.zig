@@ -816,7 +816,7 @@ const ProceduralItemProperty = enum {
 
 pub const ProceduralItem = struct { // MARK: ProceduralItem
 	const craftingGridSize = 25;
-	const CraftingGridMask = std.meta.Int(.unsigned, craftingGridSize);
+	const CraftingGridMask = @Int(.unsigned, craftingGridSize);
 
 	craftingGrid: [craftingGridSize]?BaseItemIndex,
 	materialGrid: [16][16]?BaseItemIndex,
@@ -1234,8 +1234,7 @@ pub const Item = union(ItemType) { // MARK: Item
 
 	pub fn render(self: Item, pos: Vec2f, slotSize: Vec2f, border: f32) void {
 		const itemTexture = self.getTexture();
-		itemTexture.bindTo(0);
-		graphics.draw.boundImage(pos + @as(Vec2f, @splat(border)), slotSize - @as(Vec2f, @splat(2*border)));
+		graphics.draw.image(itemTexture, pos + @as(Vec2f, @splat(border)), slotSize - @as(Vec2f, @splat(2*border)));
 
 		if (self == .proceduralItem) {
 			const proceduralItem = self.proceduralItem;

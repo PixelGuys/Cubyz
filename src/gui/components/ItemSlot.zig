@@ -132,8 +132,7 @@ pub fn mainButtonReleased(self: *ItemSlot, _: Vec2f) void {
 pub fn render(self: *ItemSlot, _: Vec2f) void {
 	self.refreshText();
 	if (self.renderFrame and self.texture != null) {
-		self.texture.?.bindTo(0);
-		draw.boundImage(self.pos, self.size);
+		draw.image(self.texture.?, self.pos, self.size);
 	}
 	const item = self.inventory.getItem(self.itemSlot);
 	if (item != .null) {

@@ -34,29 +34,26 @@ pub fn isDroppedWhenBrokenWithItem(self: @This(), item: Item) bool {
 	return true;
 }
 
-pub fn drop(self: @This(), pos: Vec3d, dir: Vec3f, velocity: f32) void {
+pub fn drop(self: @This(), loc: Location, pos: Vec3i, spread: Location.Spread) void {
 	switch (self.dropStyle) {
 		.dropAll => if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
 			for (self.itemStacks) |itemStack| {
-				const stack = itemStack orelse continue;
-				if (itemStack != null) main.server.world.?.drop(stack.clone(), pos, dir, velocity);
+				main.server.world.?.drop(itemStack.clone(), spread.dropPos(loc, pos), loc.dropDir(), loc.dropVelocity());
 			}
 		},
 		.PickAmmount => if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
 			var randomRange: main.random.RandomRange(f32) = .init(0, @floatFromInt(self.itemStacks.len));
 			if (self.numberPicked == 1) {
-				const droppedItem = self.itemStacks[@intFromFloat(randomRange.get(&main.seed))] orelse return;
-				main.server.world.?.drop(droppedItem.clone(), pos, dir, velocity);
+				const droppedItem = self.itemStacks[@intFromFloat(randomRange.get(&main.seed))];
+				main.server.world.?.drop(droppedItem.clone(), spread.dropPos(loc, pos), loc.dropDir(), loc.dropVelocity());
 			} else {
 				var pickedItems = main.List(?items.ItemStack).initCapacity(main.stackAllocator, self.numberPicked);
 				defer pickedItems.deinit(main.stackAllocator);
 				pickedItems.appendSlice(main.stackAllocator, self.itemStacks);
 				for (0..self.numberPicked) |_| {
 					const randomNum: usize = @intFromFloat(randomRange.get(&main.seed));
-					blk: {
-						const droppedItem = pickedItems.items[randomNum] orelse break :blk;
-						main.server.world.?.drop(droppedItem.clone(), pos, dir, velocity);
-					}
+					const droppedItem = pickedItems.items[randomNum];
+					main.server.world.?.drop(droppedItem.clone(), spread.dropPos(loc, pos), loc.dropDir(), loc.dropVelocity());
 					_ = pickedItems.swapRemove(randomNum);
 					randomRange.max = @floatFromInt(pickedItems.items.len);
 				}
@@ -73,6 +70,26 @@ pub const Location = struct {
 	const half = @as(Vec3f, @splat(0.5));
 	const itemHitBoxMargin: f32 = @floatCast(main.itemdrop.ItemDropManager.radius);
 	const itemHitBoxMarginVec: Vec3f = @splat(itemHitBoxMargin);
+
+	pub inline fn natural(modelMin: Vec3f, modelMax: Vec3f) Location {
+		return .{
+			.normalDir = .{0, 0, 1},
+			.min = modelMin,
+			.max = modelMax,
+		};
+	}
+
+	pub const Spread = enum {
+		inside,
+		outside,
+
+		pub inline fn dropPos(self: Spread, loc: Location, pos: Vec3i) Vec3d {
+			return switch (self) {
+				.inside => loc.insidePos(pos),
+				.outside => loc.outsidePos(pos),
+			};
+		}
+	};
 
 	fn insidePos(self: Location, _pos: Vec3i) Vec3d {
 		const pos: Vec3d = @floatFromInt(_pos);
@@ -133,14 +150,12 @@ pub const Context = struct {
 		const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
 		if (dropAmount == 0) return;
 
-		const dropPos = if (self.newBlock.collide()) location.outsidePos(pos) else location.insidePos(pos);
-		const dropDir = location.dropDir();
-		const dropVelocity = location.dropVelocity();
+		const spread: Location.Spread = if (self.newBlock.collide()) .outside else .inside;
 
 		for (0..dropAmount) |_| {
 			for (self.oldBlock.blockDrops()) |blockDrop| {
 				if (blockDrop.isDroppedWhenBrokenWithItem(self.item)) {
-					blockDrop.drop(dropPos, dropDir, dropVelocity);
+					blockDrop.drop(location, pos, spread);
 				}
 			}
 		}

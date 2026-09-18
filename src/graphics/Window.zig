@@ -710,7 +710,7 @@ pub fn getClipboardString() []const u8 {
 }
 
 pub fn setClipboardString(string: []const u8) void {
-	const nullTerminatedString = main.stackAllocator.dupeZ(u8, string);
+	const nullTerminatedString = main.stackAllocator.dupeSentinel(u8, string, 0);
 	defer main.stackAllocator.free(nullTerminatedString);
 	c.glfwSetClipboardString(window, nullTerminatedString.ptr);
 }
