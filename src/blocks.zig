@@ -225,10 +225,13 @@ pub fn loadBlockDrop(blockId: []const u8, zon: ZonElement) []const BlockDrop {
 
 	for (drops, 0..) |blockDrop, i| {
 		const itemZons = blockDrop.getChild("items").toSlice();
-		var resultItems = main.List(items.ItemStack).initCapacity(main.worldArena, itemZons.len);
+		var resultItems = main.List(?items.ItemStack).initCapacity(main.worldArena, itemZons.len);
 
 		for (itemZons) |itemZon| {
-			var string = itemZon.as([]const u8) orelse "auto";
+			var string = itemZon.as([]const u8) orelse {
+				resultItems.appendAssumeCapacity(null);
+				continue;
+			};
 			string = std.mem.trim(u8, string, " ");
 			var iterator = std.mem.splitScalar(u8, string, ' ');
 			var name = iterator.first();
@@ -262,6 +265,8 @@ pub fn loadBlockDrop(blockId: []const u8, zon: ZonElement) []const BlockDrop {
 			.chance = blockDrop.get(f32, "chance") orelse 1,
 			.forbiddenToolTags = Tag.loadTagsFromZon(main.worldArena, blockDrop.getChild("forbiddenToolTags")),
 			.allowedToolTags = allowedToolTags,
+			.dropStyle = blockDrop.get(main.blocks.BlockDrop.DropStyle, "dropStyle") orelse .dropAll,
+			.numberPicked = blockDrop.get(u32, "numberPicked") orelse 1,
 		};
 	}
 	return blockDrops;
