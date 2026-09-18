@@ -38,13 +38,14 @@ pub fn drop(self: @This(), loc: Location, pos: Vec3i, spread: Location.Spread) v
 	switch (self.dropStyle) {
 		.dropAll => if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
 			for (self.itemStacks) |itemStack| {
-				main.server.world.?.drop(itemStack.clone(), spread.dropPos(loc, pos), loc.dropDir(), loc.dropVelocity());
+				const stack = itemStack orelse continue;
+				main.server.world.?.drop(stack.clone(), spread.dropPos(loc, pos), loc.dropDir(), loc.dropVelocity());
 			}
 		},
 		.PickAmmount => if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
 			var randomRange: main.random.RandomRange(f32) = .init(0, @floatFromInt(self.itemStacks.len));
 			if (self.numberPicked == 1) {
-				const droppedItem = self.itemStacks[@intFromFloat(randomRange.get(&main.seed))];
+				const droppedItem = self.itemStacks[@intFromFloat(randomRange.get(&main.seed))] orelse return;
 				main.server.world.?.drop(droppedItem.clone(), spread.dropPos(loc, pos), loc.dropDir(), loc.dropVelocity());
 			} else {
 				var pickedItems = main.List(?items.ItemStack).initCapacity(main.stackAllocator, self.numberPicked);
@@ -52,7 +53,7 @@ pub fn drop(self: @This(), loc: Location, pos: Vec3i, spread: Location.Spread) v
 				pickedItems.appendSlice(main.stackAllocator, self.itemStacks);
 				for (0..self.numberPicked) |_| {
 					const randomNum: usize = @intFromFloat(randomRange.get(&main.seed));
-					const droppedItem = pickedItems.items[randomNum];
+					const droppedItem = pickedItems.items[randomNum] orelse continue;
 					main.server.world.?.drop(droppedItem.clone(), spread.dropPos(loc, pos), loc.dropDir(), loc.dropVelocity());
 					_ = pickedItems.swapRemove(randomNum);
 					randomRange.max = @floatFromInt(pickedItems.items.len);
