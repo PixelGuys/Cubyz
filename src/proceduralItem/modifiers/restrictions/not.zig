@@ -23,6 +23,6 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Not
 }
 
 pub fn printTooltip(self: *const Not, outString: *main.ListManaged(u8)) void {
-	outString.appendSlice("not ");
+	outString.appendSlice("#a37676not#808080 ");
 	self.child.printTooltip(outString);
 }

@@ -34,5 +34,5 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Enc
 }
 
 pub fn printTooltip(self: *const Encased, outString: *main.ListManaged(u8)) void {
-	outString.print("encased in {} .{s}", .{self.amount, self.tag.getName()});
+	outString.print("*encased* in {} #7eb1c9*.{s}*", .{self.amount, self.tag.getName()});
 }
