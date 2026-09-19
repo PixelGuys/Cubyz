@@ -13,8 +13,9 @@
 			.textureRoughness = 0.1,
 			.modifiers = .{
 				.{
-					.id = "fragile",
-					.strength = 0.45,
+					.id = "basic_stat",
+					.targetProperty = "maxDurability",
+					.strength = -0.45,
 					.restriction = .{
 						.id = .not,
 						.child = .{

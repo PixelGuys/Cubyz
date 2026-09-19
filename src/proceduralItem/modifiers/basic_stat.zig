@@ -1,0 +1,38 @@
+const std = @import("std");
+
+const main = @import("main");
+const ProceduralItem = main.items.ProceduralItem;
+
+pub const Data = packed struct(u128) { strength: f32, targetProperty: main.items.ProceduralItemProperty, pad: u88 = undefined };
+
+pub const priority = 1;
+
+pub fn loadData(zon: main.ZonElement) Data {
+	return .{
+		.strength = @max(0, zon.get(f32, "strength") orelse 0),
+		.targetProperty = main.items.ProceduralItemProperty.fromString(zon.get([]const u8, "targetProperty") orelse "missing .targetProperty field") orelse blk: {
+			std.log.err("replacing with .damage", .{});
+			break :blk .damage;
+		}
+	};
+}
+
+pub fn combineModifiers(data1: Data, data2: Data) ?Data {
+	if (data1.targetProperty != data2.targetProperty) return null;
+	return .{
+		.strength = std.math.hypot(data1.strength, data2.strength),
+		.targetProperty = data1.targetProperty,
+	};
+}
+
+pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Data) void {
+	proceduralItem.setProperty(data.targetProperty, proceduralItem.getProperty(data.targetProperty)*(1 + data.strength));
+}
+
+pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
+	if (data.strength >= 0) {
+		outString.print("#808080*Increases {} by +**{d:.0}%", .{data.targetProperty, data.strength*100});
+	} else {
+		outString.print("#808080*Decreases {} by -**{d:.0}%", .{data.targetProperty, data.strength*100});
+	}
+}
