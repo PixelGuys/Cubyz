@@ -8,7 +8,8 @@
 			.swingSpeed = 4.2,
 			.modifiers = .{
 				.{
-					.id = "durable",
+					.id = "basic_stat",
+					.targetProperty = "maxDurability",
 					.strength = 0.4,
 				},
 			},

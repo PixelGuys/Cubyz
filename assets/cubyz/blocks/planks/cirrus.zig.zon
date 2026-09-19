@@ -9,7 +9,8 @@
 			.textureRoughness = 0.7,
 			.modifiers = .{
 				.{
-					.id = "light",
+					.id = "basic_stat",
+					.targetProperty = "swingSpeed",
 					.strength = 0.1,
 				},
 			},
