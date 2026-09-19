@@ -686,7 +686,7 @@ pub const Command = struct { // MARK: Command
 		}
 	}
 
-	pub fn finalize(self: Command, allocator: NeverFailingAllocator, side: Side, reader: *BinaryReader) !void {
+	fn finalize(self: Command, allocator: NeverFailingAllocator, side: Side, reader: *BinaryReader) !void {
 		for (self.baseOperations.items) |step| {
 			switch (step) {
 				.move, .swap, .create, .moveToBag, .takeFromBag, .addHealth, .addEnergy => {},
@@ -716,7 +716,7 @@ pub const Command = struct { // MARK: Command
 		}
 	}
 
-	pub fn confirmationData(self: *Command, allocator: NeverFailingAllocator) []const u8 {
+	fn confirmationData(self: *Command, allocator: NeverFailingAllocator) []const u8 {
 		switch (self.payload) {
 			inline else => |payload| {
 				if (@hasDecl(@TypeOf(payload), "confirmationData")) {
