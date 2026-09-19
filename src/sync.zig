@@ -912,7 +912,7 @@ pub const Command = struct { // MARK: Command
 
 		fn run(_: Open, _: Context) error{serverFailure}!void {}
 
-		fn finalize(self: Open, side: Side, reader: *BinaryReader) !void {
+		pub fn finalize(self: Open, side: Side, reader: *BinaryReader) !void {
 			if (side != .client) return;
 			if (reader.remaining.len != 0) {
 				const serverId = try reader.readEnum(InventoryId);
@@ -920,7 +920,7 @@ pub const Command = struct { // MARK: Command
 			}
 		}
 
-		fn confirmationData(self: Open, allocator: NeverFailingAllocator) []const u8 {
+		pub fn confirmationData(self: Open, allocator: NeverFailingAllocator) []const u8 {
 			var writer = BinaryWriter.initCapacity(allocator, 4);
 			writer.writeEnum(InventoryId, self.inv.id);
 			return writer.data.toOwnedSlice();
@@ -973,7 +973,7 @@ pub const Command = struct { // MARK: Command
 
 		fn run(_: Close, _: Context) error{serverFailure}!void {}
 
-		fn finalize(self: Close, side: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: Close, side: Side, _: *BinaryReader) !void {
 			if (side != .client) return;
 			self.inv._deinit(self.allocator, .client);
 			Inventory.client.unmapServerIdByClientId(self.inv.id);
@@ -1248,7 +1248,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 
-		fn finalize(self: FillAnyFromCreative, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: FillAnyFromCreative, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 		}
 
@@ -1309,7 +1309,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 
-		fn finalize(self: DepositOrDrop, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: DepositOrDrop, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 		}
 
@@ -1359,7 +1359,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 
-		fn finalize(self: DepositToAny, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: DepositToAny, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 		}
 
@@ -1425,7 +1425,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 
-		fn finalize(self: TakeFromPlayerBag, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: TakeFromPlayerBag, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 		}
 
@@ -1474,7 +1474,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 
-		fn finalize(self: CraftFrom, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: CraftFrom, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 			self.sources.deinit(main.globalAllocator);
 		}
@@ -1537,7 +1537,7 @@ pub const Command = struct { // MARK: Command
 			return .{.destinations = .initFromClientInventories(main.globalAllocator, destinations), .craftingGrid = craftingGrid};
 		}
 
-		fn finalize(self: CraftProceduralItem, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: CraftProceduralItem, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 		}
 
@@ -1597,13 +1597,13 @@ pub const Command = struct { // MARK: Command
 
 	const UpdateBlock = struct { // MARK: UpdateBlock
 		source: InventoryAndSlot,
-		pos: Vec3i,
 		dropLocation: BlockDrop.Location,
 		oldBlock: Block,
 		newBlock: Block,
 
 		fn run(self: UpdateBlock, ctx: Context) error{serverFailure}!void {
 			const stack = self.source.ref();
+			const pos = self.dropLocation.worldPos;
 
 			var shouldDropSourceBlockOnSuccess: bool = true;
 			const costOfChange = if (ctx.gamemode != .creative) self.oldBlock.canBeChangedInto(self.newBlock, stack.*, &shouldDropSourceBlockOnSuccess) else .yes;
@@ -1620,20 +1620,20 @@ pub const Command = struct { // MARK: Command
 					var writer = BinaryWriter.init(main.stackAllocator);
 					defer writer.deinit();
 
-					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(self.pos[0], self.pos[1], self.pos[2], &writer) orelse return;
-					main.network.protocols.blockUpdate.send(ctx.user.?.conn, &.{.init(self.pos, actualBlock, writer.data.items)});
+					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(pos[0], pos[1], pos[2], &writer) orelse return;
+					main.network.protocols.blockUpdate.send(ctx.user.?.conn, &.{.init(pos, actualBlock, writer.data.items)});
 				}
 				return;
 			}
 
 			if (ctx.side == .server) {
-				if (main.server.world.?.cmpxchgBlock(self.pos[0], self.pos[1], self.pos[2], self.oldBlock, self.newBlock) != null) {
+				if (main.server.world.?.cmpxchgBlock(pos[0], pos[1], pos[2], self.oldBlock, self.newBlock) != null) {
 					// Inform the client of the actual block:
 					var writer = BinaryWriter.init(main.stackAllocator);
 					defer writer.deinit();
 
-					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(self.pos[0], self.pos[1], self.pos[2], &writer) orelse return;
-					main.network.protocols.blockUpdate.send(ctx.user.?.conn, &.{.init(self.pos, actualBlock, writer.data.items)});
+					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(pos[0], pos[1], pos[2], &writer) orelse return;
+					main.network.protocols.blockUpdate.send(ctx.user.?.conn, &.{.init(pos, actualBlock, writer.data.items)});
 					return error.serverFailure;
 				}
 			}
@@ -1662,13 +1662,13 @@ pub const Command = struct { // MARK: Command
 					.newBlock = self.newBlock,
 					.item = handItem,
 				};
-				dropCtx.drop(self.dropLocation, self.pos);
+				dropCtx.drop(self.dropLocation);
 			}
 		}
 
 		fn serialize(self: UpdateBlock, writer: *BinaryWriter) void {
 			self.source.write(writer);
-			writer.writeVec(Vec3i, self.pos);
+			writer.writeVec(Vec3i, self.dropLocation.worldPos);
 			writer.writeVec(Vec3f, self.dropLocation.normalDir);
 			writer.writeVec(Vec3f, self.dropLocation.min);
 			writer.writeVec(Vec3f, self.dropLocation.max);
@@ -1679,8 +1679,8 @@ pub const Command = struct { // MARK: Command
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !UpdateBlock {
 			return .{
 				.source = try InventoryAndSlot.read(reader, side, user),
-				.pos = try reader.readVec(Vec3i),
 				.dropLocation = .{
+					.worldPos = try reader.readVec(Vec3i),
 					.normalDir = try reader.readVec(Vec3f),
 					.min = try reader.readVec(Vec3f),
 					.max = try reader.readVec(Vec3f),
@@ -1744,19 +1744,15 @@ pub const Command = struct { // MARK: Command
 	const ChatCommand = struct { // MARK: ChatCommand
 		message: []const u8,
 
-		fn finalize(self: ChatCommand, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: ChatCommand, _: Side, _: *BinaryReader) !void {
 			main.globalAllocator.free(self.message);
 		}
 
 		pub fn run(self: ChatCommand, ctx: Context) error{serverFailure}!void {
 			if (ctx.side == .server) {
 				const user = ctx.user orelse return;
-				if (main.server.world.?.settings.allowCheats) {
-					main.log.server("User \"{f}§#ffffff\" executed command \"{s}\"", .{user, self.message});
-					main.server.command.execute(self.message, .{.user = user});
-				} else {
-					user.sendRawMessage("Commands are not allowed because cheats are disabled");
-				}
+				main.log.server("User \"{f}§#ffffff\" executed command \"{s}\"", .{user, self.message});
+				main.server.command.execute(self.message, .{.user = user});
 			}
 		}
 

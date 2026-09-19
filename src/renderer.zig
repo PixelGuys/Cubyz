@@ -1153,8 +1153,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		main.sync.client.executeCommand(.{
 			.updateBlock = .{
 				.source = .{.inv = source.super, .slot = slot},
-				.pos = pos,
 				.dropLocation = .{
+					.worldPos = pos,
 					.normalDir = selectionNormal,
 					.min = selectionMin,
 					.max = selectionMax,
