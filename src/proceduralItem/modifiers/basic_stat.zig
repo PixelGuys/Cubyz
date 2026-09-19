@@ -9,11 +9,11 @@ pub const priority = 1;
 
 pub fn loadData(zon: main.ZonElement) Data {
 	return .{
-		.strength = @max(0, zon.get(f32, "strength") orelse 0),
+		.strength = zon.get(f32, "strength") orelse 0,
 		.targetProperty = main.items.ProceduralItemProperty.fromString(zon.get([]const u8, "targetProperty") orelse "missing .targetProperty field") orelse blk: {
 			std.log.err("replacing with .damage", .{});
 			break :blk .damage;
-		}
+		},
 	};
 }
 
@@ -31,8 +31,8 @@ pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Dat
 
 pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
 	if (data.strength >= 0) {
-		outString.print("#808080*Increases {} by +**{d:.0}%", .{data.targetProperty, data.strength*100});
+		outString.print("#30ca64*Increases#808080 {} by #30ca64+**{d:.0}%", .{data.targetProperty, data.strength*100});
 	} else {
-		outString.print("#808080*Decreases {} by -**{d:.0}%", .{data.targetProperty, data.strength*100});
+		outString.print("#fd3535*Decreases#808080 {} by #fd3535**{d:.0}%", .{data.targetProperty, data.strength*100});
 	}
 }
