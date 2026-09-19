@@ -136,7 +136,6 @@ var _density: [maxBlockCount]f32 = undefined;
 var _terminalVelocity: [maxBlockCount]f32 = undefined;
 var _mobility: [maxBlockCount]f32 = undefined;
 
-var _allowOres: [maxBlockCount]bool = undefined;
 var _onTick: [maxBlockCount]ServerBlockCallback = undefined;
 var _onTouch: [maxBlockCount]BlockTouchCallback = undefined;
 var _blockEntity: [maxBlockCount]?*const BlockEntityType = undefined;
@@ -190,7 +189,6 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_density[size] = zon.get(f32, "density") orelse main.physics.airDensity;
 	_terminalVelocity[size] = zon.get(f32, "terminalVelocity") orelse 90;
 	_mobility[size] = zon.get(f32, "mobility") orelse 1.0;
-	_allowOres[size] = zon.get(bool, "allowOres") orelse false;
 
 	_blockEntity[size] = block_entity.getByID(zon.get([]const u8, "blockEntity"));
 
@@ -554,10 +552,6 @@ pub const Block = packed struct(u32) { // MARK: Block
 
 	pub inline fn mobility(self: Block) f32 {
 		return _mobility[self.typ];
-	}
-
-	pub inline fn allowOres(self: Block) bool {
-		return _allowOres[self.typ];
 	}
 
 	pub inline fn onTick(self: Block) ServerBlockCallback {
