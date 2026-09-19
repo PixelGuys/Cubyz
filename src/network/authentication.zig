@@ -466,14 +466,14 @@ test "PasswordEncodedAccountCode roundtrip" {
 	defer accountCode.deinit();
 	const passwordEncodedAccountCode = try PasswordEncodedAccountCode.initFromPassword(main.stackAllocator, accountCode, "supersecurepassword", false);
 	defer passwordEncodedAccountCode.deinit(main.stackAllocator);
-	
+
 	try std.testing.expect(!passwordEncodedAccountCode.protected);
 	try std.testing.expectEqual(passwordEncodedAccountCode.typ, EncodingType.argon2_aes_gcm);
-	
+
 	var failureText: main.ListManaged(u8) = .init(main.stackAllocator);
 	const recoveredAccountCode = try passwordEncodedAccountCode.decryptFromPassword("supersecurepassword", &failureText);
 	defer recoveredAccountCode.deinit();
-	
+
 	try std.testing.expectEqualStrings(accountCode.text, recoveredAccountCode.text);
 }
 
@@ -492,7 +492,7 @@ test "PasswordEncodedAccountCode roundtrip with protection" {
 	var failureText: main.ListManaged(u8) = .init(main.stackAllocator);
 	const recoveredAccountCode = try passwordEncodedAccountCode.decryptFromPassword("supersecurepassword", &failureText);
 	defer recoveredAccountCode.deinit();
-	
+
 	try std.testing.expectEqualStrings(accountCode.text, recoveredAccountCode.text);
 }
 
@@ -506,11 +506,11 @@ test "PasswordEncodedAccountCode unencoded roundtrip" {
 
 	try std.testing.expect(!passwordEncodedAccountCode.protected);
 	try std.testing.expectEqual(passwordEncodedAccountCode.typ, EncodingType.none);
-	
+
 	var failureText: main.ListManaged(u8) = .init(main.stackAllocator);
 	const recoveredAccountCode = try passwordEncodedAccountCode.decryptFromPassword(undefined, &failureText);
 	defer recoveredAccountCode.deinit();
-	
+
 	try std.testing.expectEqualStrings(accountCode.text, recoveredAccountCode.text);
 }
 
@@ -527,10 +527,10 @@ test "PasswordEncodedAccountCode unencoded roundtrip with protection" {
 
 	try std.testing.expectEqual(passwordEncodedAccountCode.protected, main.network.authentication.protection.canProtect);
 	try std.testing.expectEqual(passwordEncodedAccountCode.typ, EncodingType.none);
-	
+
 	var failureText: main.ListManaged(u8) = .init(main.stackAllocator);
 	const recoveredAccountCode = try passwordEncodedAccountCode.decryptFromPassword(undefined, &failureText);
 	defer recoveredAccountCode.deinit();
-	
+
 	try std.testing.expectEqualStrings(accountCode.text, recoveredAccountCode.text);
 }
