@@ -199,15 +199,15 @@ var groupNameToIdMap: std.StringHashMapUnmanaged(Group) = .{};
 var groupsArena: NeverFailingArenaAllocator = undefined;
 var groupsPath: []const u8 = undefined;
 
-pub var defaultGroup: Group = undefined;
-pub var moderatorGroup: Group = undefined;
-
 /// Wrapper for permission groups.
 /// Creation of this via @enumFromInt should only be done if you are sure the group exists. The safer way is to go over one of the these functions:
 /// - fromBytes
 /// - getByName
 pub const Group = enum(u32) { // MARK: Group
 	_,
+
+	pub var default: Group = undefined;
+	pub var moderator: Group = undefined;
 
 	pub fn createGroup(name: []const u8) error{AlreadyExists}!Group {
 		sync.threadContext.assertCorrectContext(.server);
@@ -343,19 +343,19 @@ fn saveMetaData(allocator: NeverFailingAllocator) !void {
 
 fn createDefaultPermissionGroups() void {
 	blk: {
-		defaultGroup = Group.createGroup("default") catch break :blk;
+		Group.default = Group.createGroup("default") catch break :blk;
 
-		defaultGroup.addPermission(.white, "/command/avatar") catch unreachable;
-		defaultGroup.addPermission(.white, "/command/help") catch unreachable;
+		Group.default.addPermission(.white, "/command/avatar") catch unreachable;
+		Group.default.addPermission(.white, "/command/help") catch unreachable;
 	}
 	blk: {
-		moderatorGroup = Group.createGroup("moderator") catch break :blk;
+		Group.moderator = Group.createGroup("moderator") catch break :blk;
 
-		moderatorGroup.addPermission(.white, "/command/perm") catch unreachable;
-		moderatorGroup.addPermission(.white, "/command/whitelist") catch unreachable;
-		moderatorGroup.addPermission(.white, "/command/invite") catch unreachable;
-		moderatorGroup.addPermission(.white, "/command/server") catch unreachable;
-		moderatorGroup.addPermission(.white, "/command/kick") catch unreachable;
+		Group.moderator.addPermission(.white, "/command/invite") catch unreachable;
+		Group.moderator.addPermission(.white, "/command/kick") catch unreachable;
+		Group.moderator.addPermission(.white, "/command/perm") catch unreachable;
+		Group.moderator.addPermission(.white, "/command/server") catch unreachable;
+		Group.moderator.addPermission(.white, "/command/whitelist") catch unreachable;
 	}
 }
 
