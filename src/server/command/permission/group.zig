@@ -26,7 +26,11 @@ pub const Args = union(enum) {
 	@"/group <group> <action> @<playerIndex>": struct {
 		group: GroupArg,
 		action: enum { add, remove },
-		playerIndex: command.PlayerIndex,
+		playerIndex: ?command.PlayerIndex,
+	},
+	@"/group <list> @<playerIndex>": struct {
+		action: enum { list },
+		playerIndex: ?command.PlayerIndex,
 	},
 	@"/group <group> <action> <list> <permissionPath>": struct {
 		group: GroupArg,
@@ -73,22 +77,37 @@ pub fn execute(args: Args, source: Source) void {
 				},
 			}
 		},
+		.@"/group <list> @<playerIndex>" => |params| {
+			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
+			const groups = main.entity.components.@"cubyz:permissions".server.getPermissionGroups(target.user.id).?;
+			source.sendMessage("#00ff00User {f}§#00ff00 is part of these groups:", .{target.user});
+
+			var it = groups.keyIterator();
+			while (it.next()) |group| {
+				source.sendMessage("#00ff00{f}", .{group});
+			}
+		},
 		.@"/group <group> <action> <list> <permissionPath>" => |params| {
 			const listType: permission.Permissions.ListType = switch (params.list) {
 				.whitelist => .white,
 				.blacklist => .black,
 			};
+
+			if (!source.hasPermission(params.permissionPath.path)) {
+				source.sendMessage("#ff0000Without permission to use the permission path {s} yourself, you can't modify the permission to use it for groups", .{params.permissionPath.path});
+			}
+
 			const group = params.group.group;
 			switch (params.action) {
 				.add => {
-					group.addPermission(main.stackAllocator, listType, params.permissionPath.path) catch {
+					group.addPermission(listType, params.permissionPath.path) catch {
 						source.sendMessage("#00ff00Group has been deleted while processing the command.", .{});
 						return;
 					};
 					source.sendMessage("#00ff00Permission path {s} added to group {f}§#00ff00's permission {s}list", .{params.permissionPath.path, group, @tagName(listType)});
 				},
 				.remove => {
-					if (!(group.removePermission(main.stackAllocator, listType, params.permissionPath.path) catch {
+					if (!(group.removePermission(listType, params.permissionPath.path) catch {
 						source.sendMessage("#00ff00Group has been deleted while processing the command.", .{});
 						return;
 					})) {
