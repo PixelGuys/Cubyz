@@ -198,6 +198,8 @@ var groupNameToIdMap: std.StringHashMapUnmanaged(Group) = .{};
 
 var groupsArena: NeverFailingArenaAllocator = undefined;
 var groupsPath: []const u8 = undefined;
+pub const defaultGroupName = "default";
+pub const moderatorGroupName = "moderator";
 
 /// Wrapper for permission groups.
 /// Creation of this via @enumFromInt should only be done if you are sure the group exists. The safer way is to go over one of the these functions:
@@ -325,7 +327,7 @@ pub fn loadGroups(dir: main.files.Dir, worldPath: []const u8) !void {
 		defer main.stackAllocator.free(data);
 		addGroupFromBin(@enumFromInt(id), data);
 	}
-	createDefaultPermissionGroup();
+	createDefaultPermissionGroups();
 }
 
 fn saveMetaData(allocator: NeverFailingAllocator) !void {
@@ -338,11 +340,19 @@ fn saveMetaData(allocator: NeverFailingAllocator) !void {
 	try main.files.cubyzDir().writeZon(metadatPath, metadataZon);
 }
 
-fn createDefaultPermissionGroup() void {
-	const group = Group.createGroup("default") catch return;
+fn createDefaultPermissionGroups() void {
+	blk: {
+		const group = Group.createGroup(defaultGroupName) catch break :blk;
 
-	group.addPermission(.white, "/command/avatar") catch return;
-	group.addPermission(.white, "/command/help") catch return;
+		group.addPermission(.white, "/command/avatar") catch break :blk;
+		group.addPermission(.white, "/command/help") catch break :blk;
+	}
+	blk: {
+		const group = Group.createGroup(moderatorGroupName) catch break :blk;
+
+		group.addPermission(.white, "/command/perm") catch break :blk;
+		group.addPermission(.white, "/command/whitelist") catch break :blk;
+	}
 }
 
 // ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––

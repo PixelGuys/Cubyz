@@ -311,12 +311,17 @@ pub const User = struct { // MARK: User
 		if (main.entity.components.@"cubyz:permissions".server.get(self.id) == null) {
 			main.entity.components.@"cubyz:permissions".server.loadEmpty(self.id);
 		}
-		if (permission.Group.getByName("default")) |group| {
+		if (permission.Group.getByName(permission.defaultGroupName)) |group| {
 			main.entity.components.@"cubyz:permissions".server.addToGroup(self.id, group);
 		} else |_| {}
 
-		if (self.isLocal and world.?.settings.allowCheats) {
-			main.entity.components.@"cubyz:permissions".server.addPermission(self.id, .white, "/");
+		if (self.isLocal) {
+			if (permission.Group.getByName(permission.moderatorGroupName)) |group| {
+				main.entity.components.@"cubyz:permissions".server.addToGroup(self.id, group);
+			} else |_| {}
+			if (world.?.settings.allowCheats) {
+				main.entity.components.@"cubyz:permissions".server.addPermission(self.id, .white, "/");
+			}
 		}
 
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
