@@ -10,8 +10,8 @@ pub const description = "Lets you create and delete groups, add and remove playe
 pub const usage =
 	\\/group <create/delete> <groupName>
 	\\/group <groupName> <add/remove> @<playerIndex>
-	\\/group <groupName> <whitelist/blacklist> <add/remove> <permissionPath>
-	\\/group <groupName> <whitelist/blacklist> <permissionPath>
+	\\/group <groupName> <add/remove> <whitelist/blacklist> <permissionPath>
+	\\/group <groupName> <permissionPath>
 ;
 
 pub const Args = union(enum) {
@@ -23,16 +23,20 @@ pub const Args = union(enum) {
 		action: enum { delete },
 		group: GroupArg,
 	},
-	@"/group <group> <add/remove> @<playerIndex>": struct {
+	@"/group <group> <action> @<playerIndex>": struct {
 		group: GroupArg,
 		action: enum { add, remove },
 		playerIndex: command.PlayerIndex,
 	},
-	@"/group <group> <whitelist/blacklist <add/remove> <permissionPath>": struct {
+	@"/group <group> <action> <list> <permissionPath>": struct {
 		group: GroupArg,
+		action: enum { add, remove },
 		list: enum { whitelist, blacklist },
-		action: ?enum { add, remove },
-		path: command.PermissionPath,
+		permissionPath: command.PermissionPath,
+	},
+	@"/group <group> <permissionPath>": struct {
+		group: GroupArg,
+		permissionPath: command.PermissionPath,
 	},
 };
 
@@ -69,7 +73,7 @@ pub fn execute(args: Args, source: Source) void {
 				},
 			}
 		},
-		.@"/group <group> <whitelist/blacklist <add/remove> <permissionPath>" => |params| {
+		.@"/group <group> <action> <list> <permissionPath>" => |params| {
 			const listType: permission.Permissions.ListType = switch (params.list) {
 				.whitelist => .white,
 				.blacklist => .black,
