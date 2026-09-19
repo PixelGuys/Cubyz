@@ -120,7 +120,7 @@ const GroupInstance = struct { // MARK: GroupInstance
 			.permissions = .init(allocator),
 			.name = name,
 		};
-		self.save(allocator, id);
+		self.save(id);
 		return self;
 	}
 
@@ -153,13 +153,13 @@ const GroupInstance = struct { // MARK: GroupInstance
 		self.permissions.toBytes(writer);
 	}
 
-	fn save(self: *GroupInstance, allocator: NeverFailingAllocator, id: Group) void {
+	fn save(self: *GroupInstance, id: Group) void {
 		if (builtin.is_test) return;
 		sync.threadContext.assertCorrectContext(.server);
-		const path = allocator.print("{s}/{d}.group", .{groupsPath, @intFromEnum(id)});
-		defer allocator.free(path);
+		const path = main.stackAllocator.print("{s}/{d}.group", .{groupsPath, @intFromEnum(id)});
+		defer main.stackAllocator.free(path);
 
-		var writer: main.utils.BinaryWriter = .init(allocator);
+		var writer: main.utils.BinaryWriter = .init(main.stackAllocator);
 		defer writer.deinit();
 
 		self.toBytes(&writer);
@@ -168,16 +168,16 @@ const GroupInstance = struct { // MARK: GroupInstance
 		};
 	}
 
-	pub fn addPermission(self: *GroupInstance, allocator: NeverFailingAllocator, id: Group, listType: Permissions.ListType, permissionPath: []const u8) void {
+	pub fn addPermission(self: *GroupInstance, id: Group, listType: Permissions.ListType, permissionPath: []const u8) void {
 		sync.threadContext.assertCorrectContext(.server);
 		self.permissions.addPermission(listType, permissionPath);
-		self.save(allocator, id);
+		self.save(id);
 	}
 
-	pub fn removePermission(self: *GroupInstance, allocator: NeverFailingAllocator, id: Group, listType: Permissions.ListType, permissionPath: []const u8) bool {
+	pub fn removePermission(self: *GroupInstance, id: Group, listType: Permissions.ListType, permissionPath: []const u8) bool {
 		sync.threadContext.assertCorrectContext(.server);
 		const result = self.permissions.removePermission(listType, permissionPath);
-		if (result) self.save(allocator, id);
+		if (result) self.save(id);
 		return result;
 	}
 
@@ -258,11 +258,11 @@ pub const Group = enum(u32) { // MARK: Group
 	}
 
 	pub fn addPermission(self: Group, listType: Permissions.ListType, permissionPath: []const u8) error{GroupNotFound}!void {
-		(try self.getInstance()).addPermission(groupsArena.allocator(), self, listType, permissionPath);
+		(try self.getInstance()).addPermission(self, listType, permissionPath);
 	}
 
 	pub fn removePermission(self: Group, listType: Permissions.ListType, permissionPath: []const u8) error{GroupNotFound}!bool {
-		return (try self.getInstance()).removePermission(groupsArena.allocator(), self, listType, permissionPath);
+		return (try self.getInstance()).removePermission(self, listType, permissionPath);
 	}
 
 	pub fn hasPermission(self: Group, permissionPath: []const u8) error{GroupNotFound}!Permissions.PermissionResult {
@@ -436,7 +436,7 @@ test "groupPermissions" {
 	defer deinit();
 
 	const group = try Group.createGroup("test");
-	try group.addPermission(main.heap.testingAllocator, .white, "/command/test");
+	try group.addPermission(.white, "/command/test");
 	try std.testing.expectEqual(Permissions.PermissionResult.yes, group.hasPermission("/command/test"));
 }
 
@@ -445,8 +445,8 @@ test "groupRemovePermissions" {
 	defer deinit();
 
 	const group = try Group.createGroup("test");
-	try group.addPermission(main.heap.testingAllocator, .white, "/command/test");
-	try std.testing.expectEqual(true, group.removePermission(main.heap.testingAllocator, .white, "/command/test"));
+	try group.addPermission(.white, "/command/test");
+	try std.testing.expectEqual(true, group.removePermission(.white, "/command/test"));
 }
 
 test "invalidGroup" {
@@ -512,8 +512,8 @@ test "permissionGroupToFromBytes" {
 
 	const group = try Group.createGroup("test");
 
-	try group.addPermission(main.heap.testingAllocator, .white, "/command/test");
-	try group.addPermission(main.heap.testingAllocator, .white, "/command/spawn");
+	try group.addPermission(.white, "/command/test");
+	try group.addPermission(.white, "/command/spawn");
 
 	var writer: main.utils.BinaryWriter = .init(main.heap.testingAllocator);
 	defer writer.deinit();
