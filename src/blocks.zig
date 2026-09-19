@@ -200,8 +200,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			std.log.err("Ore must have rotation mode \"cubyz:ore\"!", .{});
 			break :blk;
 		}
-		const targetBlockTags = Tag.loadTagsFromZon(main.stackAllocator, oreProperties.getChild("targetTags"));
-		defer main.stackAllocator.free(targetBlockTags);
+		const targetBlockTags = Tag.loadTagsFromZon(main.worldArena, oreProperties.getChild("targetTags"));
 		ores.append(main.worldArena, .{
 			.veins = oreProperties.get(f32, "veins") orelse 0,
 			.size = oreProperties.get(f32, "size") orelse 0,
