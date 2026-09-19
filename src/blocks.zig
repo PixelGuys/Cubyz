@@ -207,7 +207,19 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			.minHeight = oreProperties.get(i32, "minHeight") orelse std.math.minInt(i32),
 			.density = oreProperties.get(f32, "density") orelse 0.5,
 			.blockType = @intCast(size),
-			.targetTags = Tag.loadTagsFromZon(main.worldArena, oreProperties.getChild("targetTags")),
+			.targetTags = switch (oreProperties.getChild("targetTags")) {
+				.array => |targetTags| Tag.loadTagsFromZon(
+					main.worldArena,
+					.{.array = targetTags},
+				),
+				else => |tag| {
+					std.log.err(
+						"Ore {s}: ore.targetTags must be an array, got {s}",
+						.{id, @tagName(tag)},
+					);
+					break :blk;
+				},
+			},
 			.seed = std.hash.Wyhash.hash(0, id),
 		});
 	}
