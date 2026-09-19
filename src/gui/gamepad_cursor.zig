@@ -21,7 +21,6 @@ pub fn deinit() void {
 
 pub fn render() void {
 	if (main.Window.lastUsedMouse or main.Window.grabbed) return;
-	texture.bindTo(0);
 	const mousePos = main.Window.getMousePosition();
-	graphics.draw.boundImage(@as(Vec2f, @splat(-size/2.0)) + (mousePos/@as(Vec2f, @splat(gui.scale))), .{size, size});
+	graphics.draw.image(texture, @as(Vec2f, @splat(-size/2.0)) + (mousePos/@as(Vec2f, @splat(gui.scale))), .{size, size});
 }

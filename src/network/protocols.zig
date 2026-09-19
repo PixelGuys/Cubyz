@@ -270,9 +270,10 @@ pub const handShake = struct { // MARK: handShake
 			else => unreachable,
 		}
 
-		{
+		while (true) {
 			conn.mutex.lock();
 			defer conn.mutex.unlock();
+			const expectedRestartCounter = conn.restartCounter;
 			while (true) {
 				try main.io.checkCancel();
 				conn.handShakeWaiting.timedWait(&conn.mutex, .fromMilliseconds(16)) catch {
@@ -281,7 +282,10 @@ pub const handShake = struct { // MARK: handShake
 				};
 				break;
 			}
+			if (conn.restartCounter != expectedRestartCounter) return error.RestartAgain;
 			if (conn.connectionState.load(.monotonic) == .disconnected) return error.DisconnectedByServer;
+			if (conn.connectionState.load(.monotonic) != .connected) continue;
+			break;
 		}
 
 		return handshakeZon;
@@ -955,11 +959,11 @@ pub const inventory = struct { // MARK: inventory
 	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const typ = try reader.readInt(u8);
 		if (typ == 0xff) { // Confirmation
-			try main.sync.client.receiveConfirmation(reader);
+			main.sync.client.receiveSyncOperation(.init(.confirmation, reader.remaining));
 		} else if (typ == 0xfe) { // Failure
-			main.sync.client.receiveFailure();
+			main.sync.client.receiveSyncOperation(.init(.failure, &.{}));
 		} else {
-			try main.sync.client.receiveSyncOperation(reader);
+			main.sync.client.receiveSyncOperation(.init(.sync, reader.remaining));
 		}
 	}
 	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {

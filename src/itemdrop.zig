@@ -76,7 +76,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.* = ItemDropManager{
 			.allocator = allocator,
 			.list = std.MultiArrayList(ItemDrop){},
-			.isEmpty = .initFull(),
+			.isEmpty = .full,
 			.changeQueue = .init(allocator, 16),
 			.world = world,
 		};

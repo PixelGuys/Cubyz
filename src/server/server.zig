@@ -582,7 +582,7 @@ var restart: bool = true;
 
 var lastTime: std.Io.Timestamp = undefined;
 
-pub var thread: ?std.Thread = null;
+var thread: ?std.Thread = null;
 
 fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void { // MARK: init()
 	main.heap.allocators.createWorldArena();
@@ -720,7 +720,17 @@ fn update() void { // MARK: update()
 	}
 }
 
-pub fn startFromNewThread(name: []const u8, port: ?u16, mode: ServerWorld.Mode) void {
+pub fn startAndCreateThread(name: []const u8, port: u16, mode: ServerWorld.Mode) void {
+	thread = std.Thread.spawn(.{}, main.server.startFromNewThread, .{name, port, mode}) catch |err| {
+		std.log.err("Encountered error while starting server thread: {s}", .{@errorName(err)});
+		return;
+	};
+	thread.?.setName(main.io, "Server") catch |err| {
+		std.log.err("Failed to rename Server thread: {s}", .{@errorName(err)});
+	};
+}
+
+fn startFromNewThread(name: []const u8, port: u16, mode: ServerWorld.Mode) void {
 	main.initThreadLocals();
 	defer main.deinitThreadLocals();
 	startFromExistingThread(name, port, mode);
@@ -774,12 +784,15 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16, mode: ServerWorld.M
 	}
 }
 
-pub const StopType = enum { stop, restart };
-pub fn stop(_restart: StopType) void {
-	if (_restart == .restart) {
+pub const StopType = enum { stop, stopAndWait, restart };
+pub fn stop(typ: StopType) void {
+	if (typ == .restart) {
 		restart = true;
 	}
 	running.store(false, .release);
+	if (typ == .stopAndWait) {
+		if (thread) |t| t.join();
+	}
 }
 
 pub fn disconnect(user: *User) void { // MARK: disconnect()

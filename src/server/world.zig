@@ -164,9 +164,9 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		}
 		const ch = SimulationChunk.initAndIncreaseRefCount(pos);
 		ch.increaseRefCount();
-		ch.increaseRefCount();
 		simulationChunkHashMap.put(pos, ch) catch unreachable;
 		mutex.unlock();
+		ch.increaseRefCount();
 		ChunkLoadTask.scheduleAndDecreaseRefCount(pos, .{.simulationChunk = ch});
 		return ch;
 	}
@@ -754,6 +754,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		if (hasSurfaceMaps) {
 			try terrain.SurfaceMap.regenerateLOD(self.path);
 		}
+		std.log.info("Regenerating chunk LODs...", .{});
 		// Delete old LODs:
 		for (1..main.settings.highestSupportedLod + 1) |i| {
 			const lod = @as(u32, 1) << @intCast(i);

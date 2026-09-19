@@ -202,9 +202,21 @@ const BindingInfo = union(enum) {
 		offset: usize = 0,
 		range: usize = c.VK_WHOLE_SIZE,
 	},
+	image: struct {
+		binding: u32,
+		image: vulkan.Image,
+		imageLayout: c.VkImageLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
+	},
+	ubo: struct {
+		binding: u32,
+		dynamic: bool = false,
+		buffer: vulkan.Buffer,
+		offset: usize = 0,
+		range: usize = c.VK_WHOLE_SIZE,
+	},
 };
 
-pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bindPoint: DescriptorBindPoint, set: u32, bindings: []const BindingInfo) void {
+pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bindPoint: DescriptorBindPoint, bindings: []const BindingInfo) void {
 	const arena = main.stackAllocator.createArena();
 	defer main.stackAllocator.destroyArena(arena);
 	const writeInfo = arena.alloc(c.VkWriteDescriptorSet, bindings.len);
@@ -227,12 +239,33 @@ pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bi
 				};
 				writeInfo[i].pBufferInfo = bufferInfo;
 			},
+			.image => |image| {
+				writeInfo[i].descriptorType = c.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				const imageInfo = arena.create(c.VkDescriptorImageInfo);
+				imageInfo.* = .{
+					.sampler = image.image.sampler,
+					.imageView = image.image.view,
+					.imageLayout = image.imageLayout,
+				};
+				writeInfo[i].pImageInfo = imageInfo;
+			},
+			.ubo => |ubo| {
+				writeInfo[i].descriptorType = if (ubo.dynamic) c.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC else c.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				const bufferInfo = arena.create(c.VkDescriptorBufferInfo);
+				bufferInfo.* = .{
+					.buffer = ubo.buffer.handle,
+					.offset = ubo.offset,
+					.range = ubo.range,
+				};
+				writeInfo[i].pBufferInfo = bufferInfo;
+			},
 		}
 	}
-	c.vkCmdPushDescriptorSetKHR(self.handle, @intFromEnum(bindPoint), pipeline.pipelineLayout, set, @intCast(writeInfo.len), writeInfo.ptr);
+	c.vkCmdPushDescriptorSetKHR(self.handle, @intFromEnum(bindPoint), pipeline.pipelineLayout, 0, @intCast(writeInfo.len), writeInfo.ptr);
 }
 
 pub fn pushConstants(self: CommandBuffer, pipeline: main.graphics.Pipeline, constants: anytype) void {
+	comptime std.debug.assert(@typeInfo(@TypeOf(constants.*)).@"struct".layout == .@"extern");
 	c.vkCmdPushConstants(self.handle, pipeline.pipelineLayout, c.VK_SHADER_STAGE_ALL, 0, @sizeOf(@TypeOf(constants.*)), constants);
 }
 
@@ -278,4 +311,17 @@ pub fn copyBufferToImage(self: CommandBuffer, dest: vulkan.Image, destLayout: c.
 		.pRegions = regions.ptr,
 	};
 	c.vkCmdCopyBufferToImage2(self.handle, &info);
+}
+
+pub fn copyImageToImage(self: CommandBuffer, dest: vulkan.Image, destLayout: c.VkImageLayout, source: vulkan.Image, sourceLayout: c.VkImageLayout, regions: []const c.VkImageCopy2) void {
+	const info: c.VkCopyImageInfo2 = .{
+		.sType = c.VK_STRUCTURE_TYPE_COPY_IMAGE_INFO_2,
+		.srcImage = source.handle,
+		.srcImageLayout = sourceLayout,
+		.dstImage = dest.handle,
+		.dstImageLayout = destLayout,
+		.regionCount = @intCast(regions.len),
+		.pRegions = regions.ptr,
+	};
+	c.vkCmdCopyImage2(self.handle, &info);
 }
