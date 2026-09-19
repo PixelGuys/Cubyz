@@ -156,7 +156,7 @@ const GroupInstance = struct { // MARK: GroupInstance
 	fn save(self: *GroupInstance, allocator: NeverFailingAllocator, id: Group) void {
 		if (builtin.is_test) return;
 		sync.threadContext.assertCorrectContext(.server);
-		const path = allocator.print("saves/{s}/permission/{d}.group", .{main.server.world.?.path, @intFromEnum(id)});
+		const path = allocator.print("{s}/{d}.group", .{groupsPath, @intFromEnum(id)});
 		defer allocator.free(path);
 
 		var writer: main.utils.BinaryWriter = .init(allocator);
@@ -197,6 +197,7 @@ var groups: main.ListManaged(?*GroupInstance) = undefined;
 var groupNameToIdMap: std.StringHashMapUnmanaged(Group) = .{};
 
 var groupsArena: NeverFailingArenaAllocator = undefined;
+var groupsPath: []const u8 = undefined;
 
 /// Wrapper for permission groups.
 /// Creation of this via @enumFromInt should only be done if you are sure the group exists. The safer way is to go over one of the these functions:
@@ -248,7 +249,7 @@ pub const Group = enum(u32) { // MARK: Group
 		groups.items[@intFromEnum(self)] = null;
 
 		if (builtin.is_test) return true;
-		const path = main.stackAllocator.print("saves/{s}/permission/{d}.group", .{main.server.world.?.path, @intFromEnum(self)});
+		const path = main.stackAllocator.print("{s}/{d}.group", .{groupsPath, @intFromEnum(self)});
 		defer main.stackAllocator.free(path);
 		main.files.cubyzDir().deleteFile(path) catch |err| {
 			std.log.err("Couldn't delete group file even though it exits: {t}", .{err});
@@ -256,12 +257,12 @@ pub const Group = enum(u32) { // MARK: Group
 		return true;
 	}
 
-	pub fn addPermission(self: Group, allocator: NeverFailingAllocator, listType: Permissions.ListType, permissionPath: []const u8) error{GroupNotFound}!void {
-		(try self.getInstance()).addPermission(allocator, self, listType, permissionPath);
+	pub fn addPermission(self: Group, listType: Permissions.ListType, permissionPath: []const u8) error{GroupNotFound}!void {
+		(try self.getInstance()).addPermission(groupsArena.allocator(), self, listType, permissionPath);
 	}
 
-	pub fn removePermission(self: Group, allocator: NeverFailingAllocator, listType: Permissions.ListType, permissionPath: []const u8) error{GroupNotFound}!bool {
-		return (try self.getInstance()).removePermission(allocator, self, listType, permissionPath);
+	pub fn removePermission(self: Group, listType: Permissions.ListType, permissionPath: []const u8) error{GroupNotFound}!bool {
+		return (try self.getInstance()).removePermission(groupsArena.allocator(), self, listType, permissionPath);
 	}
 
 	pub fn hasPermission(self: Group, permissionPath: []const u8) error{GroupNotFound}!Permissions.PermissionResult {
@@ -300,7 +301,7 @@ fn addGroupFromBin(group: Group, data: []const u8) void {
 	groups.append(groupInstance);
 }
 
-pub fn loadGroups(dir: main.files.Dir) !void {
+pub fn loadGroups(dir: main.files.Dir, worldPath: []const u8) !void {
 	dir.makePath(".") catch |err| {
 		std.log.err("Couldn't create permission directory: {t}", .{err});
 	};
@@ -308,6 +309,7 @@ pub fn loadGroups(dir: main.files.Dir) !void {
 	defer metaDataZon.deinit(main.stackAllocator);
 
 	init(main.globalAllocator);
+	groupsPath = groupsArena.allocator().print("saves/{s}/permission", .{worldPath});
 	const currentId = metaDataZon.get(u32, "currentId") orelse 0;
 	groups.ensureCapacity(currentId);
 
@@ -323,16 +325,24 @@ pub fn loadGroups(dir: main.files.Dir) !void {
 		defer main.stackAllocator.free(data);
 		addGroupFromBin(@enumFromInt(id), data);
 	}
+	createDefaultPermissionGroup();
 }
 
 fn saveMetaData(allocator: NeverFailingAllocator) !void {
 	if (builtin.is_test) return;
-	const metadatPath = allocator.print("saves/{s}/permission/metadata.zon", .{main.server.world.?.path});
+	const metadatPath = allocator.print("{s}/metadata.zon", .{groupsPath});
 	defer allocator.free(metadatPath);
 	var metadataZon: ZonElement = .initObject(main.stackAllocator);
 	defer metadataZon.deinit(main.stackAllocator);
 	metadataZon.put("currentId", @as(u32, @truncate(groups.items.len)));
 	try main.files.cubyzDir().writeZon(metadatPath, metadataZon);
+}
+
+fn createDefaultPermissionGroup() void {
+	const group = Group.createGroup("default") catch return;
+
+	group.addPermission(.white, "/command/avatar") catch return;
+	group.addPermission(.white, "/command/help") catch return;
 }
 
 // ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
