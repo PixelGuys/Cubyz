@@ -342,14 +342,14 @@ fn saveMetaData(allocator: NeverFailingAllocator) !void {
 }
 
 fn createDefaultPermissionGroups() void {
-	blk: {
-		Group.default = Group.createGroup("default") catch break :blk;
+	{
+		Group.default = Group.createGroup("default") catch Group.getByName("default") catch unreachable;
 
 		Group.default.addPermission(.white, "/command/avatar") catch unreachable;
 		Group.default.addPermission(.white, "/command/help") catch unreachable;
 	}
-	blk: {
-		Group.moderator = Group.createGroup("moderator") catch break :blk;
+	{
+		Group.moderator = Group.createGroup("moderator") catch Group.getByName("moderator") catch unreachable;
 
 		Group.moderator.addPermission(.white, "/command/invite") catch unreachable;
 		Group.moderator.addPermission(.white, "/command/kick") catch unreachable;
