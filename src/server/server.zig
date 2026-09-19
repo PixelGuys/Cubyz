@@ -311,14 +311,10 @@ pub const User = struct { // MARK: User
 		if (main.entity.components.@"cubyz:permissions".server.get(self.id) == null) {
 			main.entity.components.@"cubyz:permissions".server.loadEmpty(self.id);
 		}
-		if (permission.Group.getByName(permission.defaultGroupName)) |group| {
-			main.entity.components.@"cubyz:permissions".server.addToGroup(self.id, group);
-		} else |_| {}
+		main.entity.components.@"cubyz:permissions".server.addToGroup(self.id, permission.defaultGroup);
 
 		if (self.isLocal) {
-			if (permission.Group.getByName(permission.moderatorGroupName)) |group| {
-				main.entity.components.@"cubyz:permissions".server.addToGroup(self.id, group);
-			} else |_| {}
+			main.entity.components.@"cubyz:permissions".server.addToGroup(self.id, permission.moderatorGroup);
 			if (world.?.settings.allowCheats) {
 				main.entity.components.@"cubyz:permissions".server.addPermission(self.id, .white, "/");
 			}

@@ -198,8 +198,9 @@ var groupNameToIdMap: std.StringHashMapUnmanaged(Group) = .{};
 
 var groupsArena: NeverFailingArenaAllocator = undefined;
 var groupsPath: []const u8 = undefined;
-pub const defaultGroupName = "default";
-pub const moderatorGroupName = "moderator";
+
+pub var defaultGroup: Group = undefined;
+pub var moderatorGroup: Group = undefined;
 
 /// Wrapper for permission groups.
 /// Creation of this via @enumFromInt should only be done if you are sure the group exists. The safer way is to go over one of the these functions:
@@ -342,16 +343,19 @@ fn saveMetaData(allocator: NeverFailingAllocator) !void {
 
 fn createDefaultPermissionGroups() void {
 	blk: {
-		const group = Group.createGroup(defaultGroupName) catch break :blk;
+		defaultGroup = Group.createGroup("default") catch break :blk;
 
-		group.addPermission(.white, "/command/avatar") catch break :blk;
-		group.addPermission(.white, "/command/help") catch break :blk;
+		defaultGroup.addPermission(.white, "/command/avatar") catch unreachable;
+		defaultGroup.addPermission(.white, "/command/help") catch unreachable;
 	}
 	blk: {
-		const group = Group.createGroup(moderatorGroupName) catch break :blk;
+		moderatorGroup = Group.createGroup("moderator") catch break :blk;
 
-		group.addPermission(.white, "/command/perm") catch break :blk;
-		group.addPermission(.white, "/command/whitelist") catch break :blk;
+		moderatorGroup.addPermission(.white, "/command/perm") catch unreachable;
+		moderatorGroup.addPermission(.white, "/command/whitelist") catch unreachable;
+		moderatorGroup.addPermission(.white, "/command/invite") catch unreachable;
+		moderatorGroup.addPermission(.white, "/command/server") catch unreachable;
+		moderatorGroup.addPermission(.white, "/command/kick") catch unreachable;
 	}
 }
 
