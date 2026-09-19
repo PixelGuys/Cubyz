@@ -56,7 +56,7 @@ pub fn execute(args: Args, source: Source) void {
 			}
 			source.sendMessage("#00ff00Group deleted", .{});
 		},
-		.@"/group <group> <add/remove> @<playerIndex>" => |params| {
+		.@"/group <group> <action> @<playerIndex>" => |params| {
 			const target = command.Target.fromPlayerIndex(params.playerIndex, source) catch return;
 			const group = params.group.group;
 			switch (params.action) {
@@ -79,35 +79,35 @@ pub fn execute(args: Args, source: Source) void {
 				.blacklist => .black,
 			};
 			const group = params.group.group;
-			if (params.action) |action| {
-				switch (action) {
-					.add => {
-						group.addPermission(main.stackAllocator, listType, params.path.path) catch {
-							source.sendMessage("#00ff00Group has been deleted while processing the command.", .{});
-							return;
-						};
-						source.sendMessage("#00ff00Permission path {s} added to group {f}§#00ff00's permission {s}list", .{params.path.path, group, @tagName(listType)});
-					},
-					.remove => {
-						if (!(group.removePermission(main.stackAllocator, listType, params.path.path) catch {
-							source.sendMessage("#00ff00Group has been deleted while processing the command.", .{});
-							return;
-						})) {
-							source.sendMessage("#ff0000Permission path {s} is not present inside group {f}§#ff0000 permission {s}list", .{params.path.path, group, @tagName(listType)});
-							return;
-						}
-						source.sendMessage("#00ff00Permission path {s} removed from group {f}§#00ff00's permission {s}list", .{params.path.path, group, @tagName(listType)});
-					},
-				}
+			switch (params.action) {
+				.add => {
+					group.addPermission(main.stackAllocator, listType, params.permissionPath.path) catch {
+						source.sendMessage("#00ff00Group has been deleted while processing the command.", .{});
+						return;
+					};
+					source.sendMessage("#00ff00Permission path {s} added to group {f}§#00ff00's permission {s}list", .{params.permissionPath.path, group, @tagName(listType)});
+				},
+				.remove => {
+					if (!(group.removePermission(main.stackAllocator, listType, params.permissionPath.path) catch {
+						source.sendMessage("#00ff00Group has been deleted while processing the command.", .{});
+						return;
+					})) {
+						source.sendMessage("#ff0000Permission path {s} is not present inside group {f}§#ff0000 permission {s}list", .{params.permissionPath.path, group, @tagName(listType)});
+						return;
+					}
+					source.sendMessage("#00ff00Permission path {s} removed from group {f}§#00ff00's permission {s}list", .{params.permissionPath.path, group, @tagName(listType)});
+				},
+			}
+		},
+		.@"/group <group> <permissionPath>" => |params| {
+			const group = params.group.group;
+			if ((group.hasPermission(params.permissionPath.path) catch {
+				source.sendMessage("#00ff00Group has been deleted while processing the command.", .{});
+				return;
+			}) == .yes) {
+				source.sendMessage("#00ff00Group {f}§#00ff00 has permission for path: {s}", .{group, params.permissionPath.path});
 			} else {
-				if ((group.hasPermission(params.path.path) catch {
-					source.sendMessage("#00ff00Group has been deleted while processing the command.", .{});
-					return;
-				}) == .yes) {
-					source.sendMessage("#00ff00Group {f}§#00ff00 has permission for path: {s}", .{group, params.path.path});
-				} else {
-					source.sendMessage("#ff0000Group {f}§#ff0000 has no permission for path: {s}", .{group, params.path.path});
-				}
+				source.sendMessage("#ff0000Group {f}§#ff0000 has no permission for path: {s}", .{group, params.permissionPath.path});
 			}
 		},
 	}
@@ -116,45 +116,7 @@ pub fn execute(args: Args, source: Source) void {
 const GroupArg = struct {
 	group: Group,
 
-	const nameArg: []const u8 = "name:";
-	const idArg: []const u8 = "id:";
-
 	pub fn parse(_: main.heap.NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *main.ListManaged(u8)) error{ParseError}!GroupArg {
-		if (std.mem.startsWith(u8, arg, idArg)) {
-			if (arg.len == idArg.len) {
-				errorMessage.print("No id specified after id: for <{s}>", .{name});
-				return error.ParseError;
-			}
-			return parseId(name, arg[idArg.len..], errorMessage);
-		}
-
-		if (std.mem.startsWith(u8, arg, nameArg)) {
-			if (arg.len == nameArg.len) {
-				errorMessage.print("No name specified after name: for <{s}>", .{name});
-				return error.ParseError;
-			}
-			return parseName(name, arg[nameArg.len..], errorMessage);
-		}
-
-		if (parseName(name, arg, errorMessage)) |group| {
-			return group;
-		} else |_| {
-			return parseId(name, arg, errorMessage);
-		}
-	}
-
-	fn parseId(name: []const u8, arg: []const u8, errorMessage: *main.ListManaged(u8)) error{ParseError}!GroupArg {
-		const id = std.fmt.parseInt(u32, arg, 10) catch {
-			errorMessage.print("id: '{s}' for <{s}> not a valid number", .{arg, name});
-			return error.ParseError;
-		};
-		return .{.group = Group.getById(id) catch {
-			errorMessage.print("id: '{s}' for <{s}> is not a valid group", .{arg, name});
-			return error.ParseError;
-		}};
-	}
-
-	fn parseName(name: []const u8, arg: []const u8, errorMessage: *main.ListManaged(u8)) error{ParseError}!GroupArg {
 		return .{.group = Group.getByName(arg) catch {
 			errorMessage.print("name: '{s}' for <{s}> is not a valid group", .{arg, name});
 			return error.ParseError;
