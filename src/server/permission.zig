@@ -351,6 +351,7 @@ fn createDefaultPermissionGroups() void {
 	{
 		Group.moderator = Group.createGroup("moderator") catch Group.getByName("moderator") catch unreachable;
 
+		Group.moderator.addPermission(.white, "/command/group") catch unreachable;
 		Group.moderator.addPermission(.white, "/command/invite") catch unreachable;
 		Group.moderator.addPermission(.white, "/command/kick") catch unreachable;
 		Group.moderator.addPermission(.white, "/command/perm") catch unreachable;

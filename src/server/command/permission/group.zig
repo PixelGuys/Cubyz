@@ -10,6 +10,7 @@ pub const description = "Lets you create and delete groups, add and remove playe
 pub const usage =
 	\\/group <create/delete> <groupName>
 	\\/group <groupName> <add/remove> @<playerIndex>
+	\\/group <list> @<playerIndex>
 	\\/group <groupName> <add/remove> <whitelist/blacklist> <permissionPath>
 	\\/group <groupName> <permissionPath>
 ;
@@ -51,9 +52,13 @@ pub fn execute(args: Args, source: Source) void {
 				source.sendMessage("#ff0000Group {s}§#ff0000 already exists.", .{params.name});
 				return;
 			};
-			source.sendMessage("#00ff00Group {s}§#ff0000 with id {d} created", .{params.name, @intFromEnum(group)});
+			source.sendMessage("#00ff00Group {f}§#00ff00 created", .{group});
 		},
 		.@"/group <delete> <group>" => |params| {
+			if (params.group.group == main.server.permission.Group.default or params.group.group == main.server.permission.Group.moderator) {
+				source.sendMessage("#ff0000The default/moderator group can't be deleted", .{});
+				return;
+			}
 			if (!params.group.group.delete()) {
 				source.sendMessage("#ff0000Could not delete group {f}§#ff0000 as it was already deleted", .{params.group.group});
 				return;
@@ -69,6 +74,10 @@ pub fn execute(args: Args, source: Source) void {
 					source.sendMessage("#00ff00User {f}§#00ff00 added to group {f}", .{target.user, group});
 				},
 				.remove => {
+					if (params.group.group == main.server.permission.Group.default) {
+						source.sendMessage("#ff0000Users can't be removed from the default group", .{});
+						return;
+					}
 					if (!main.entity.components.@"cubyz:permissions".server.removeFromGroup(target.user.id, group)) {
 						source.sendMessage("#ff0000Could not leave group {f}§#ff0000 as {f}§#ff0000 was already not a member", .{group, target.user});
 						return;
