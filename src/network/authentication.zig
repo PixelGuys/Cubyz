@@ -458,3 +458,79 @@ pub const PasswordEncodedAccountCode = struct { // MARK: PasswordEncodedAccountC
 		return zon;
 	}
 };
+
+test "PasswordEncodedAccountCode roundtrip" {
+	if (wordlist == null) init();
+
+	const accountCode = AccountCode.initRandomly();
+	defer accountCode.deinit();
+	const passwordEncodedAccountCode = try PasswordEncodedAccountCode.initFromPassword(main.stackAllocator, accountCode, "supersecurepassword", false);
+	defer passwordEncodedAccountCode.deinit(main.stackAllocator);
+	
+	try std.testing.expect(!passwordEncodedAccountCode.protected);
+	try std.testing.expectEqual(passwordEncodedAccountCode.typ, EncodingType.argon2_aes_gcm);
+	
+	var failureText: main.ListManaged(u8) = .init(main.stackAllocator);
+	const recoveredAccountCode = try passwordEncodedAccountCode.decryptFromPassword("supersecurepassword", &failureText);
+	defer recoveredAccountCode.deinit();
+	
+	try std.testing.expectEqualStrings(accountCode.text, recoveredAccountCode.text);
+}
+
+// This test expects a roundtrip without protection on systems that do not support protection
+test "PasswordEncodedAccountCode roundtrip with protection" {
+	if (wordlist == null) init();
+
+	const accountCode = AccountCode.initRandomly();
+	defer accountCode.deinit();
+	const passwordEncodedAccountCode = try PasswordEncodedAccountCode.initFromPassword(main.stackAllocator, accountCode, "supersecurepassword", true);
+	defer passwordEncodedAccountCode.deinit(main.stackAllocator);
+
+	try std.testing.expectEqual(main.network.authentication.protection.canProtect, passwordEncodedAccountCode.protected);
+	try std.testing.expectEqual(passwordEncodedAccountCode.typ, EncodingType.argon2_aes_gcm);
+
+	var failureText: main.ListManaged(u8) = .init(main.stackAllocator);
+	const recoveredAccountCode = try passwordEncodedAccountCode.decryptFromPassword("supersecurepassword", &failureText);
+	defer recoveredAccountCode.deinit();
+	
+	try std.testing.expectEqualStrings(accountCode.text, recoveredAccountCode.text);
+}
+
+test "PasswordEncodedAccountCode unencoded roundtrip" {
+	if (wordlist == null) init();
+
+	const accountCode = AccountCode.initRandomly();
+	defer accountCode.deinit();
+	const passwordEncodedAccountCode = try PasswordEncodedAccountCode.initUnencoded(main.stackAllocator, accountCode, false);
+	defer passwordEncodedAccountCode.deinit(main.stackAllocator);
+
+	try std.testing.expect(!passwordEncodedAccountCode.protected);
+	try std.testing.expectEqual(passwordEncodedAccountCode.typ, EncodingType.none);
+	
+	var failureText: main.ListManaged(u8) = .init(main.stackAllocator);
+	const recoveredAccountCode = try passwordEncodedAccountCode.decryptFromPassword(undefined, &failureText);
+	defer recoveredAccountCode.deinit();
+	
+	try std.testing.expectEqualStrings(accountCode.text, recoveredAccountCode.text);
+}
+
+// This test expects a roundtrip without protection on systems that do not support protection
+test "PasswordEncodedAccountCode unencoded roundtrip with protection" {
+	if (wordlist == null) init();
+
+	if (!main.network.authentication.protection.canProtect) return error.SkipZigTest;
+
+	const accountCode = AccountCode.initRandomly();
+	defer accountCode.deinit();
+	const passwordEncodedAccountCode = try PasswordEncodedAccountCode.initUnencoded(main.stackAllocator, accountCode, true);
+	defer passwordEncodedAccountCode.deinit(main.stackAllocator);
+
+	try std.testing.expectEqual(passwordEncodedAccountCode.protected, main.network.authentication.protection.canProtect);
+	try std.testing.expectEqual(passwordEncodedAccountCode.typ, EncodingType.none);
+	
+	var failureText: main.ListManaged(u8) = .init(main.stackAllocator);
+	const recoveredAccountCode = try passwordEncodedAccountCode.decryptFromPassword(undefined, &failureText);
+	defer recoveredAccountCode.deinit();
+	
+	try std.testing.expectEqualStrings(accountCode.text, recoveredAccountCode.text);
+}
