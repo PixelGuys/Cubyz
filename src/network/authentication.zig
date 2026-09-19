@@ -533,4 +533,11 @@ test "PasswordEncodedAccountCode unencoded roundtrip with protection" {
 	defer recoveredAccountCode.deinit();
 
 	try std.testing.expectEqualStrings(accountCode.text, recoveredAccountCode.text);
+
+	// Check if passwordEncodedAccountCode.data was actually protect()ed
+	if (main.network.authentication.protection.canProtect) {
+		const unprotected = try main.network.authentication.protection.unprotect(main.stackAllocator, passwordEncodedAccountCode.data);
+		defer main.stackAllocator.free(unprotected);
+		try std.testing.expectEqualStrings(recoveredAccountCode.text, unprotected);
+	}
 }
