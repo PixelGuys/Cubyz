@@ -11,14 +11,14 @@ fn getModifierName(data: Data) []const u8 {
 	if (data.strength >= 0) {
 		switch (data.targetProperty) {
 			.damage => return "#f84a00**Powerful**",
-			.swingSpeed => return "#9fffde**Light**",
 			.maxDurability => return "#500090**Durable**",
+			.swingSpeed => return "#9fffde**Light**",
 		}
 	} else {
 		switch (data.targetProperty) {
 			.damage => return "#fcb5e3**Weak**",
-			.swingSpeed => return "#ccddff**Fragile**",
-			.maxDurability => return "#ffcc30**Heavy**",
+			.maxDurability => return "#ccddff**Fragile**",
+			.swingSpeed => return "#ffcc30**Heavy**",
 		}
 	}
 }
@@ -47,8 +47,8 @@ pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Dat
 
 pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
 	if (data.strength >= 0) {
-		outString.print("{s}  #30ca64*Increases#808080 {} by #30ca64+**{d:.0}%", .{getModifierName(data), data.targetProperty, data.strength*100});
+		outString.print("{s} #30ca64*Increases#808080 {} by #30ca64+**{d:.0}%", .{getModifierName(data), data.targetProperty, data.strength*100});
 	} else {
-		outString.print("{s}  #fd3535*Decreases#808080 {} by #fd3535**{d:.0}%", .{getModifierName(data), data.targetProperty, data.strength*100});
+		outString.print("{s} #fd3535*Decreases#808080 {} by #fd3535**{d:.0}%", .{getModifierName(data), data.targetProperty, data.strength*100});
 	}
 }
