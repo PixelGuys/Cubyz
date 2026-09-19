@@ -1597,13 +1597,13 @@ pub const Command = struct { // MARK: Command
 
 	const UpdateBlock = struct { // MARK: UpdateBlock
 		source: InventoryAndSlot,
-		pos: Vec3i,
 		dropLocation: BlockDrop.Location,
 		oldBlock: Block,
 		newBlock: Block,
 
 		fn run(self: UpdateBlock, ctx: Context) error{serverFailure}!void {
 			const stack = self.source.ref();
+			const pos = self.dropLocation.worldPos;
 
 			var shouldDropSourceBlockOnSuccess: bool = true;
 			const costOfChange = if (ctx.gamemode != .creative) self.oldBlock.canBeChangedInto(self.newBlock, stack.*, &shouldDropSourceBlockOnSuccess) else .yes;
@@ -1620,20 +1620,20 @@ pub const Command = struct { // MARK: Command
 					var writer = BinaryWriter.init(main.stackAllocator);
 					defer writer.deinit();
 
-					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(self.pos[0], self.pos[1], self.pos[2], &writer) orelse return;
-					main.network.protocols.blockUpdate.send(ctx.user.?.conn, &.{.init(self.pos, actualBlock, writer.data.items)});
+					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(pos[0], pos[1], pos[2], &writer) orelse return;
+					main.network.protocols.blockUpdate.send(ctx.user.?.conn, &.{.init(pos, actualBlock, writer.data.items)});
 				}
 				return;
 			}
 
 			if (ctx.side == .server) {
-				if (main.server.world.?.cmpxchgBlock(self.pos[0], self.pos[1], self.pos[2], self.oldBlock, self.newBlock) != null) {
+				if (main.server.world.?.cmpxchgBlock(pos[0], pos[1], pos[2], self.oldBlock, self.newBlock) != null) {
 					// Inform the client of the actual block:
 					var writer = BinaryWriter.init(main.stackAllocator);
 					defer writer.deinit();
 
-					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(self.pos[0], self.pos[1], self.pos[2], &writer) orelse return;
-					main.network.protocols.blockUpdate.send(ctx.user.?.conn, &.{.init(self.pos, actualBlock, writer.data.items)});
+					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(pos[0], pos[1], pos[2], &writer) orelse return;
+					main.network.protocols.blockUpdate.send(ctx.user.?.conn, &.{.init(pos, actualBlock, writer.data.items)});
 					return error.serverFailure;
 				}
 			}
@@ -1662,13 +1662,13 @@ pub const Command = struct { // MARK: Command
 					.newBlock = self.newBlock,
 					.item = handItem,
 				};
-				dropCtx.drop(self.dropLocation, self.pos);
+				dropCtx.drop(self.dropLocation);
 			}
 		}
 
 		fn serialize(self: UpdateBlock, writer: *BinaryWriter) void {
 			self.source.write(writer);
-			writer.writeVec(Vec3i, self.pos);
+			writer.writeVec(Vec3i, self.dropLocation.worldPos);
 			writer.writeVec(Vec3f, self.dropLocation.normalDir);
 			writer.writeVec(Vec3f, self.dropLocation.min);
 			writer.writeVec(Vec3f, self.dropLocation.max);
@@ -1679,8 +1679,8 @@ pub const Command = struct { // MARK: Command
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !UpdateBlock {
 			return .{
 				.source = try InventoryAndSlot.read(reader, side, user),
-				.pos = try reader.readVec(Vec3i),
 				.dropLocation = .{
+					.worldPos = try reader.readVec(Vec3i),
 					.normalDir = try reader.readVec(Vec3f),
 					.min = try reader.readVec(Vec3f),
 					.max = try reader.readVec(Vec3f),

@@ -127,7 +127,7 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 					.newBlock = self.decayReplacement,
 				};
 				const model = params.block.mode().model(params.block).model();
-				dropCtx.drop(.natural(model.min, model.max), .{wx, wy, wz});
+				dropCtx.drop(.natural(.{wx, wy, wz}, model.min, model.max));
 				return .handled;
 			}
 		}
