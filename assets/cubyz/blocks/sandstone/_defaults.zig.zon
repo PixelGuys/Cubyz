@@ -14,7 +14,7 @@
 			.textureRoughness = 0.9,
 			.modifiers = .{
 				.{
-					.id = "basic_stat",
+					.id = "base_stat",
 					.targetProperty = "maxDurability",
 					.strength = -0.20,
 					.restriction = .{
