@@ -686,7 +686,7 @@ pub const Command = struct { // MARK: Command
 		}
 	}
 
-	fn finalize(self: Command, allocator: NeverFailingAllocator, side: Side, reader: *BinaryReader) !void {
+	pub fn finalize(self: Command, allocator: NeverFailingAllocator, side: Side, reader: *BinaryReader) !void {
 		for (self.baseOperations.items) |step| {
 			switch (step) {
 				.move, .swap, .create, .moveToBag, .takeFromBag, .addHealth, .addEnergy => {},
@@ -716,7 +716,7 @@ pub const Command = struct { // MARK: Command
 		}
 	}
 
-	fn confirmationData(self: *Command, allocator: NeverFailingAllocator) []const u8 {
+	pub fn confirmationData(self: *Command, allocator: NeverFailingAllocator) []const u8 {
 		switch (self.payload) {
 			inline else => |payload| {
 				if (@hasDecl(@TypeOf(payload), "confirmationData")) {
@@ -912,7 +912,7 @@ pub const Command = struct { // MARK: Command
 
 		fn run(_: Open, _: Context) error{serverFailure}!void {}
 
-		fn finalize(self: Open, side: Side, reader: *BinaryReader) !void {
+		pub fn finalize(self: Open, side: Side, reader: *BinaryReader) !void {
 			if (side != .client) return;
 			if (reader.remaining.len != 0) {
 				const serverId = try reader.readEnum(InventoryId);
@@ -920,7 +920,7 @@ pub const Command = struct { // MARK: Command
 			}
 		}
 
-		fn confirmationData(self: Open, allocator: NeverFailingAllocator) []const u8 {
+		pub fn confirmationData(self: Open, allocator: NeverFailingAllocator) []const u8 {
 			var writer = BinaryWriter.initCapacity(allocator, 4);
 			writer.writeEnum(InventoryId, self.inv.id);
 			return writer.data.toOwnedSlice();
@@ -973,7 +973,7 @@ pub const Command = struct { // MARK: Command
 
 		fn run(_: Close, _: Context) error{serverFailure}!void {}
 
-		fn finalize(self: Close, side: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: Close, side: Side, _: *BinaryReader) !void {
 			if (side != .client) return;
 			self.inv._deinit(self.allocator, .client);
 			Inventory.client.unmapServerIdByClientId(self.inv.id);
@@ -1248,7 +1248,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 
-		fn finalize(self: FillAnyFromCreative, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: FillAnyFromCreative, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 		}
 
@@ -1309,7 +1309,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 
-		fn finalize(self: DepositOrDrop, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: DepositOrDrop, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 		}
 
@@ -1359,7 +1359,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 
-		fn finalize(self: DepositToAny, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: DepositToAny, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 		}
 
@@ -1425,7 +1425,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 
-		fn finalize(self: TakeFromPlayerBag, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: TakeFromPlayerBag, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 		}
 
@@ -1474,7 +1474,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 
-		fn finalize(self: CraftFrom, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: CraftFrom, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 			self.sources.deinit(main.globalAllocator);
 		}
@@ -1537,7 +1537,7 @@ pub const Command = struct { // MARK: Command
 			return .{.destinations = .initFromClientInventories(main.globalAllocator, destinations), .craftingGrid = craftingGrid};
 		}
 
-		fn finalize(self: CraftProceduralItem, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: CraftProceduralItem, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 		}
 
@@ -1744,7 +1744,7 @@ pub const Command = struct { // MARK: Command
 	const ChatCommand = struct { // MARK: ChatCommand
 		message: []const u8,
 
-		fn finalize(self: ChatCommand, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: ChatCommand, _: Side, _: *BinaryReader) !void {
 			main.globalAllocator.free(self.message);
 		}
 

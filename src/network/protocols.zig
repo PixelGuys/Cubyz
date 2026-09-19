@@ -92,7 +92,7 @@ pub const handShake = struct { // MARK: handShake
 	var hasFinishedLoadingAssets: bool = false;
 	var handshakeZon: ZonElement = undefined;
 
-	fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
+	pub fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const newState = try reader.readEnum(Connection.HandShakeState);
 		if (@intFromEnum(conn.handShakeState.load(.monotonic)) < @intFromEnum(newState)) {
 			conn.handShakeState.store(newState, .monotonic);
@@ -141,7 +141,7 @@ pub const handShake = struct { // MARK: handShake
 		}
 	}
 
-	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
+	pub fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const newState = try reader.readEnum(Connection.HandShakeState);
 		if (@intFromEnum(conn.handShakeState.load(.monotonic)) < @intFromEnum(newState)) {
 			conn.handShakeState.store(newState, .monotonic);
@@ -300,7 +300,7 @@ pub const handShake = struct { // MARK: handShake
 pub const chunkRequest = struct { // MARK: chunkRequest
 	pub const id: u8 = 2;
 
-	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
+	pub fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const basePosition = try reader.readVec(Vec3i);
 		conn.user.?.clientUpdatePos = basePosition;
 		conn.user.?.renderDistance = try reader.readInt(u16);
@@ -380,7 +380,7 @@ pub const chunkTransmission = struct { // MARK: chunkTransmission
 			main.globalAllocator.destroy(self);
 		}
 	};
-	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+	pub fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const task = main.globalAllocator.create(MeshGenerationTask);
 		errdefer main.globalAllocator.destroy(task);
 		task.* = .{
@@ -416,7 +416,7 @@ pub const chunkTransmission = struct { // MARK: chunkTransmission
 pub const playerPosition = struct { // MARK: playerPosition
 	pub const id: u8 = 4;
 
-	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
+	pub fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		try conn.user.?.receiveData(reader);
 	}
 	var lastPositionSent: u16 = 0;
@@ -451,7 +451,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 		f16VelocityItem = 4,
 		f32VelocityItem = 5,
 	};
-	fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
+	pub fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		if (conn.manager.world) |world| {
 			const time = try reader.readInt(i16);
 			const playerPos = try reader.readVec(Vec3d);
@@ -535,7 +535,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 pub const blockUpdate = struct { // MARK: blockUpdate
 	pub const id: u8 = 7;
 
-	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+	pub fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		while (reader.remaining.len != 0) {
 			renderer.mesh_storage.updateBlock(.{
 				.pos = try reader.readVec(Vec3i),
@@ -561,7 +561,7 @@ pub const blockUpdate = struct { // MARK: blockUpdate
 pub const entity = struct { // MARK: entity
 	pub const id: u8 = 8;
 
-	fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
+	pub fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const zonArray = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 		defer zonArray.deinit(main.stackAllocator);
 		var i: u32 = 0;
@@ -622,7 +622,7 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 		chat = 0,
 	};
 
-	fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
+	pub fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		switch (try reader.readEnum(UpdateType)) {
 			.gamemode => {
 				main.sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
@@ -706,7 +706,7 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 		}
 	}
 
-	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
+	pub fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		switch (try reader.readEnum(UpdateType)) {
 			.gamemode, .teleport, .time, .biome, .particles, .clear => return error.InvalidSide,
 			.worldEditPos => {
@@ -799,7 +799,7 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 pub const chat = struct { // MARK: chat
 	pub const id: u8 = 10;
 
-	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+	pub fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const msg = reader.remaining;
 		if (!std.unicode.utf8ValidateSlice(msg)) {
 			std.log.err("Received chat message with invalid UTF-8 characters.", .{});
@@ -807,7 +807,7 @@ pub const chat = struct { // MARK: chat
 		}
 		main.gui.windowlist.chat.addMessage(msg);
 	}
-	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
+	pub fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const msg = reader.remaining;
 		if (!std.unicode.utf8ValidateSlice(msg)) {
 			std.log.err("Received chat message with invalid UTF-8 characters.", .{});
@@ -829,7 +829,7 @@ pub const chat = struct { // MARK: chat
 pub const lightMapRequest = struct { // MARK: lightMapRequest
 	pub const id: u8 = 11;
 
-	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
+	pub fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		while (reader.remaining.len >= 9) {
 			const wx = try reader.readInt(i32);
 			const wy = try reader.readInt(i32);
@@ -924,7 +924,7 @@ pub const lightMapTransmission = struct { // MARK: lightMapTransmission
 		}
 	};
 
-	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+	pub fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const task = main.globalAllocator.create(LightMapTask);
 		errdefer main.globalAllocator.destroy(task);
 		task.* = .{
@@ -956,7 +956,7 @@ pub const lightMapTransmission = struct { // MARK: lightMapTransmission
 pub const inventory = struct { // MARK: inventory
 	pub const id: u8 = 13;
 
-	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+	pub fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const typ = try reader.readInt(u8);
 		if (typ == 0xff) { // Confirmation
 			main.sync.client.receiveSyncOperation(.init(.confirmation, reader.remaining));
@@ -966,7 +966,7 @@ pub const inventory = struct { // MARK: inventory
 			main.sync.client.receiveSyncOperation(.init(.sync, reader.remaining));
 		}
 	}
-	fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
+	pub fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
 		const user = conn.user.?;
 		if (reader.remaining[0] == 0xff) return error.Invalid;
 		main.sync.server.receiveCommand(user, reader);
@@ -1005,7 +1005,7 @@ pub const inventory = struct { // MARK: inventory
 pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 	pub const id: u8 = 14;
 
-	fn serverReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+	pub fn serverReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const pos = try reader.readVec(Vec3i);
 		const blockType = try reader.readInt(u16);
 		const simChunk = main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2]) orelse return;
@@ -1073,7 +1073,7 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 		load = 1,
 	};
 
-	fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
+	pub fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
 		const entityId: main.entity.Entity = @enumFromInt(try reader.readVarInt(u32));
 		const componentId = try reader.readVarInt(u32);
 		const actionType: ActionType = try reader.readEnum(ActionType);
