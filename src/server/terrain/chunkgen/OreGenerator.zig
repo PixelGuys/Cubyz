@@ -103,7 +103,6 @@ fn considerCoordinates(ore: *const main.blocks.Ore, relX: f32, relY: f32, relZ: 
 					// Add some roughness. The ore density gets smaller at the edges:
 					if ((1 - distSqr)*ore.density < random.nextFloat(&veinSeed)) continue;
 					const stoneBlock = chunk.getBlock(curX, curY, curZ);
-					if (!stoneBlock.allowOres()) continue;
 					for (ore.targetTags) |tag| {
 						if (!stoneBlock.hasTag(tag)) {
 							continue :outer;

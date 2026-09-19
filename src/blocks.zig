@@ -136,7 +136,6 @@ var _density: [maxBlockCount]f32 = undefined;
 var _terminalVelocity: [maxBlockCount]f32 = undefined;
 var _mobility: [maxBlockCount]f32 = undefined;
 
-var _allowOres: [maxBlockCount]bool = undefined;
 var _onTick: [maxBlockCount]ServerBlockCallback = undefined;
 var _onTouch: [maxBlockCount]BlockTouchCallback = undefined;
 var _blockEntity: [maxBlockCount]?*const BlockEntityType = undefined;
@@ -190,7 +189,6 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_density[size] = zon.get(f32, "density") orelse main.physics.airDensity;
 	_terminalVelocity[size] = zon.get(f32, "terminalVelocity") orelse 90;
 	_mobility[size] = zon.get(f32, "mobility") orelse 1.0;
-	_allowOres[size] = zon.get(bool, "allowOres") orelse false;
 
 	_blockEntity[size] = block_entity.getByID(zon.get([]const u8, "blockEntity"));
 
@@ -200,8 +198,6 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			std.log.err("Ore must have rotation mode \"cubyz:ore\"!", .{});
 			break :blk;
 		}
-		const targetBlockTags = Tag.loadTagsFromZon(main.stackAllocator, oreProperties.getChild("targetTags"));
-		defer main.stackAllocator.free(targetBlockTags);
 		ores.append(main.worldArena, .{
 			.veins = oreProperties.get(f32, "veins") orelse 0,
 			.size = oreProperties.get(f32, "size") orelse 0,
@@ -209,7 +205,19 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			.minHeight = oreProperties.get(i32, "minHeight") orelse std.math.minInt(i32),
 			.density = oreProperties.get(f32, "density") orelse 0.5,
 			.blockType = @intCast(size),
-			.targetTags = targetBlockTags,
+			.targetTags = switch (oreProperties.getChild("targetTags")) {
+				.array => |targetTags| Tag.loadTagsFromZon(
+					main.worldArena,
+					.{.array = targetTags},
+				),
+				else => |tag| {
+					std.log.err(
+						"Ore {s}: ore.targetTags must be an array, got {s}",
+						.{id, @tagName(tag)},
+					);
+					break :blk;
+				},
+			},
 			.seed = std.hash.Wyhash.hash(0, id),
 		});
 	}
@@ -544,10 +552,6 @@ pub const Block = packed struct(u32) { // MARK: Block
 
 	pub inline fn mobility(self: Block) f32 {
 		return _mobility[self.typ];
-	}
-
-	pub inline fn allowOres(self: Block) bool {
-		return _allowOres[self.typ];
 	}
 
 	pub inline fn onTick(self: Block) ServerBlockCallback {
