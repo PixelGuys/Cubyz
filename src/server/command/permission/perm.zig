@@ -36,6 +36,10 @@ pub fn execute(args: Args, source: Source) void {
 				.blacklist => .black,
 			};
 
+			if (!source.hasPermission(params.permissionPath.path)) {
+				source.sendMessage("#ff0000Without permission to use the permission path {s} yourself, you can't modify the permission to use it for others", .{params.permissionPath.path});
+			}
+
 			switch (params.action) {
 				.add => main.entity.components.@"cubyz:permissions".server.addPermission(target.user.id, listType, params.permissionPath.path),
 				.remove => {
