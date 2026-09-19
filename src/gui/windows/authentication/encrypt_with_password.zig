@@ -90,9 +90,9 @@ pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 320, 8);
 	const width = 480;
 	list.add(Label.init(.{0, 0}, width, "Your Account Code will be stored in your settings to allow you to stay logged in. Please decide how we should store it:", .left));
-	innerList = VerticalList.init(.{0, 0}, 120, 16);
+	innerList = VerticalList.init(.{0, 0}, 150, 16);
 	if (main.network.authentication.protection.canProtect) {
-		protectCheckbox = CheckBox.init(.{0, 0}, width, "Force auto-logout when device changes (recommended)", protectAccountCode, &protectAccountCodeCallback);
+		protectCheckbox = CheckBox.init(.{0, 0}, width, "Force auto-logout when device changes (recommended)\n(Prevents takeover in case of leaked settings file)", protectAccountCode, &protectAccountCodeCallback);
 		innerList.add(protectCheckbox);
 	}
 	encryptWithPasswordCheckbox = CheckBox.init(.{0, 0}, width, "Encrypt it with a password (recommended)\n(The password needs to be entered every time)", encryptAccountCode, &encryptAccountCodeCallback);
