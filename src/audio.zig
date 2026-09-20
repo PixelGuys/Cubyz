@@ -369,7 +369,7 @@ const AddSoundParameters = struct { // MARK: Sounds
 pub fn addSound(id: []const u8, soundParameters: AddSoundParameters) void {
 	mutex.lock();
 	defer mutex.unlock();
-	
+
 	const idx = soundDataIdMap.get(id) orelse return;
 	const soundData = soundDatas.items[idx];
 	activeSounds.append(main.globalAllocator, PlayingSound{
