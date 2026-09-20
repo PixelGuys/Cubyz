@@ -437,8 +437,7 @@ fn mixSound(buffer: []f32) void {
 	const playerRight = vec.normalize(vec.cross(playerForward, Vec3f{0, 0, 1}));
 
 	var i: u32 = 0;
-	var soundCount = activeSounds.items.len;
-	main: while (i < soundCount) {
+	main: while (i < activeSounds.items.len) {
 		var sound = activeSounds.items[i];
 		const audioData = audios.items[sound.audioIndex];
 		const soundBuffer = audioData.data;
@@ -456,8 +455,7 @@ fn mixSound(buffer: []f32) void {
 			if (distance > sound.maxDistance) {
 				sound.bufPos += @intCast(if (audioData.channelType == .mono) @divFloor(buffer.len, 2) else buffer.len);
 				if (sound.bufPos >= soundBuffer.len) {
-					soundCount -= 1;
-					activeSounds.items[i] = activeSounds.items[soundCount];
+					activeSounds.swapRemove(i);
 					continue :main;
 				}
 			}
@@ -484,16 +482,13 @@ fn mixSound(buffer: []f32) void {
 			sound.bufPos += bufferStep;
 
 			if (sound.bufPos >= soundBuffer.len) {
-				soundCount -= 1;
-				activeSounds.items[i] = activeSounds.items[soundCount];
+				activeSounds.swapRemove(i);
 				continue :main;
 			}
 		}
 		activeSounds.items[i] = sound;
 		i += 1;
 	}
-
-	activeSounds.items.len = soundCount;
 }
 
 fn miniaudioCallback(
