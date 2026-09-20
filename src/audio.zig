@@ -168,6 +168,8 @@ fn findSound(musicId: []const u8) ?*AudioData {
 			return musicData;
 		}
 		const data = AudioData.init(musicId, "sounds/audio");
+		// we convert to mono for easier audio processing
+		data.channelType = .mono;
 		const hasOld = audioCache.addToCache(data, data.hashCode());
 		if (hasOld) |old| {
 			old.deinit();
@@ -452,9 +454,6 @@ fn mixSound(buffer: []f32) void {
 		const audioData = findSound(sound.audioName) orelse continue :main;
 		const soundBuffer = audioData.data;
 
-		const notMonoInt: u32 = @intFromBool(audioData.channelType != .mono);
-		const bufferStep: u32 = 1 + notMonoInt;
-
 		var leftVol: f32 = 1;
 		var rightVol: f32 = 1;
 
@@ -488,8 +487,8 @@ fn mixSound(buffer: []f32) void {
 			const amplitude: f32 = main.settings.soundVolume*sound.volume;
 
 			buffer[j] += soundBuffer[sound.bufPos]*amplitude*leftVol;
-			buffer[j + 1] += soundBuffer[sound.bufPos + notMonoInt]*amplitude*rightVol;
-			sound.bufPos += bufferStep;
+			buffer[j + 1] += soundBuffer[sound.bufPos]*amplitude*rightVol;
+			sound.bufPos += 1;
 
 			if (sound.bufPos >= soundBuffer.len) {
 				_ = activeSounds.swapRemove(i);
