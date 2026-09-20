@@ -108,8 +108,8 @@ pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *But
 }
 
 pub fn initIcon(pos: Vec2f, givenIconSize: Vec2f, iconTexture: Texture, options: Options) *Button {
-	const calculatedIconSize: Vec2f = if (options.hideBackground) givenIconSize + @as(Vec2f, @splat(3*border)) else givenIconSize;
-	const icon = Icon.init(undefined, calculatedIconSize, iconTexture);
+	const extraIconSize: Vec2f = if (options.hideBackground) @as(Vec2f, @splat(3*border)) else @as(Vec2f, @splat(0));
+	const icon = Icon.init(undefined, givenIconSize + extraIconSize, iconTexture);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
