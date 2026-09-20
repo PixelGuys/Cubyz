@@ -16,6 +16,9 @@ const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
+const Vec2d = vec.Vec2d;
+const Vec2f = vec.Vec2f;
+const Vec2i = vec.Vec2i;
 
 const c = @import("c");
 
@@ -530,6 +533,242 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 				c.glUniform4ui(uniforms.lightData, light[0], light[1], light[2], light[3]);
 				c.glUniform3i(uniforms.chunkPos, signData.blockPos[0] & ~main.chunk.chunkMask, signData.blockPos[1] & ~main.chunk.chunkMask, signData.blockPos[2] & ~main.chunk.chunkMask);
 				c.glUniform3i(uniforms.blockPos, signData.blockPos[0] & main.chunk.chunkMask, signData.blockPos[1] & main.chunk.chunkMask, signData.blockPos[2] & main.chunk.chunkMask);
+
+				c.glDrawElements(c.GL_TRIANGLES, 6, c.GL_UNSIGNED_INT, null);
+			}
+		}
+	};
+
+	pub const @"cubyz:item_frame" = struct { // MARK: cubyz:item_frame
+		const StorageServer = BlockEntityDataStorage(struct {
+			item: main.items.Item,
+		});
+		pub const StorageClient = BlockEntityDataStorage(struct {
+			item: main.items.Item,
+			renderedTexture: ?main.graphics.Texture = null,
+			blockPos: Vec3i,
+			block: main.blocks.Block,
+
+			fn deinit(self: @This()) void {
+				if (self.renderedTexture) |texture| {
+					textureDeinitLock.lock();
+					defer textureDeinitLock.unlock();
+					textureDeinitList.append(main.globalAllocator, texture);
+				}
+			}
+		});
+		var textureDeinitList: main.List(graphics.Texture) = .empty;
+		var textureDeinitLock: main.utils.Mutex = .{};
+		var pipeline: graphics.Pipeline = undefined;
+		var uniforms: struct {
+			ambientLight: c_int,
+			quadIndex: c_int,
+			lightData: c_int,
+			chunkPos: c_int,
+			blockPos: c_int,
+		} = undefined;
+
+		// TODO: Load these from some per-block settings
+		const textureWidth = 128;
+		const textureHeight = 128;
+		const textureMargin = 4;
+
+		pub fn init() void {
+			StorageServer.init();
+			StorageClient.init();
+			if (!main.settings.launchConfig.headlessServer) {
+				pipeline = graphics.Pipeline.init(
+					"assets/cubyz/shaders/block_entity/sign.vert",
+					"assets/cubyz/shaders/block_entity/sign.frag",
+					"",
+					&uniforms,
+					graphics.VertexArray.EmptyVertex,
+					.{
+						.rasterState = .{},
+						.depthStencilState = .{.depthTest = true, .depthCompare = .equal, .depthWrite = false},
+						.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
+					},
+				);
+			}
+		}
+		pub fn deinit() void {
+			while (textureDeinitList.popOrNull()) |texture| {
+				texture.deinit();
+			}
+			textureDeinitList.deinit(main.globalAllocator);
+			if (!main.settings.launchConfig.headlessServer) {
+				pipeline.deinit();
+			}
+			StorageServer.deinit();
+			StorageClient.deinit();
+		}
+		pub fn reset() void {
+			StorageServer.reset();
+			StorageClient.reset();
+		}
+
+		pub fn onUnloadClient(entity: BlockEntity) void {
+			StorageClient.mutex.lock();
+			defer StorageClient.mutex.unlock();
+			const entry = StorageClient.removeAtIndex(entity).?;
+			entry.deinit();
+		}
+		pub fn onUnloadServer(entity: BlockEntity) void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+			_ = StorageServer.removeAtIndex(entity).?;
+		}
+
+		pub fn onLoadClient(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
+			return updateClientData(pos, chunk, .{.update = reader});
+		}
+		pub fn updateClientData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
+			if (event == .remove or event.update.remaining.len == 0) {
+				const entry = StorageClient.remove(pos, chunk) orelse return;
+				entry.deinit();
+				return;
+			}
+
+			StorageClient.mutex.lock();
+			defer StorageClient.mutex.unlock();
+
+			const data = StorageClient.getOrPut(pos, chunk);
+			if (data.foundExisting) {
+				data.valuePtr.deinit();
+			}
+			data.valuePtr.* = .{
+				.blockPos = pos,
+				.block = chunk.data.getValue(chunk.getLocalBlockPos(pos).toIndex()),
+				.renderedTexture = null,
+				.item = main.items.Item.fromBytes(event.update) catch {
+					const entry = StorageClient.remove(pos, chunk) orelse return;
+					entry.deinit();
+					return;
+				},
+			};
+		}
+
+		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) ErrorSet!void {
+			return updateServerData(pos, chunk, .{.update = reader});
+		}
+		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) ErrorSet!void {
+			if (event == .remove or event.update.remaining.len == 0) {
+				_ = StorageServer.remove(pos, chunk) orelse return;
+				return;
+			}
+
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+
+			const data = StorageServer.getOrPut(pos, chunk);
+			data.valuePtr.item = main.items.Item.fromBytes(event.update) catch .null;
+		}
+
+		pub const onStoreServerToClient = onStoreServerToDisk;
+		pub fn onStoreServerToDisk(entity: BlockEntity, writer: *BinaryWriter) void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+
+			const data = StorageServer.getByIndex(entity) orelse return;
+			main.items.Item.toBytes(data.item, writer);
+		}
+		pub fn getServerToClientData(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+
+			const data = StorageServer.get(pos, chunk) orelse return;
+			main.items.Item.toBytes(data.item, writer);
+		}
+
+		pub fn getClientToServerData(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
+			StorageClient.mutex.lock();
+			defer StorageClient.mutex.unlock();
+
+			const data = StorageClient.get(pos, chunk) orelse return;
+			if (data.item == .null) return;
+			main.items.Item.toBytes(data.item, writer);
+		}
+
+		pub fn updateItemFromClient(pos: Vec3i, newItem: main.items.Item) void {
+			{
+				const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(pos, 1)) orelse return;
+				mesh.mutex.lock();
+				defer mesh.mutex.unlock();
+				const localPos = mesh.chunk.getLocalBlockPos(pos);
+				const block = mesh.chunk.data.getValue(localPos.toIndex());
+				const blockEntity = block.blockEntity() orelse return;
+				if (!std.mem.eql(u8, blockEntity.id, "cubyz:item_frame")) return;
+
+				StorageClient.mutex.lock();
+				defer StorageClient.mutex.unlock();
+
+				const data = StorageClient.getOrPut(pos, mesh.chunk);
+				if (data.foundExisting) {
+					data.valuePtr.deinit();
+				}
+				data.valuePtr.* = .{
+					.blockPos = pos,
+					.block = mesh.chunk.data.getValue(localPos.toIndex()),
+					.renderedTexture = null,
+					.item = newItem,
+				};
+			}
+
+			main.network.protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
+		}
+
+		pub fn renderAll(ambientLight: Vec3f) void {
+			var oldFramebufferBinding: c_int = undefined;
+			c.glGetIntegerv(c.GL_DRAW_FRAMEBUFFER_BINDING, &oldFramebufferBinding);
+
+			StorageClient.mutex.lock();
+			defer StorageClient.mutex.unlock();
+
+			for (StorageClient.storage.dense.items) |*itemFrameData| {
+				if (itemFrameData.renderedTexture != null) continue;
+
+				var oldViewport: [4]c_int = undefined;
+				c.glGetIntegerv(c.GL_VIEWPORT, &oldViewport);
+				c.glViewport(0, 0, textureWidth, textureHeight);
+				defer c.glViewport(oldViewport[0], oldViewport[1], oldViewport[2], oldViewport[3]);
+
+				var finalFrameBuffer: graphics.FrameBuffer = undefined;
+				finalFrameBuffer.init(false, c.GL_NEAREST, c.GL_REPEAT);
+				finalFrameBuffer.updateSize(textureWidth, textureHeight, c.GL_RGBA8);
+				finalFrameBuffer.bind();
+				finalFrameBuffer.clear(.{0, 0, 0, 0});
+				itemFrameData.renderedTexture = .{.textureID = finalFrameBuffer.texture, .vulkanImage = null};
+				defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
+
+				const oldTranslation = graphics.draw.setTranslation(.{textureMargin, textureMargin});
+				defer graphics.draw.restoreTranslation(oldTranslation);
+				const oldClip = graphics.draw.setClip(.{textureWidth - 2*textureMargin, textureHeight - 2*textureMargin});
+				defer graphics.draw.restoreClip(oldClip);
+
+				if (itemFrameData.item == .null) continue;
+				const iconSizeTarget = 96;
+				itemFrameData.item.render(Vec2f{0, 0}, Vec2f{textureWidth - 2*textureMargin, textureHeight - 2*textureMargin}, textureMargin + (@max(textureWidth, textureHeight) - iconSizeTarget)/2);
+			}
+
+			c.glBindFramebuffer(c.GL_FRAMEBUFFER, @bitCast(oldFramebufferBinding));
+
+			pipeline.bind(null);
+			main.renderer.chunk_meshing.vao.bind();
+
+			c.glUniform3f(uniforms.ambientLight, ambientLight[0], ambientLight[1], ambientLight[2]);
+
+			outer: for (StorageClient.storage.dense.items) |itemFrameData| {
+				if (main.blocks.meshes.model(itemFrameData.block).model().internalQuads.len == 0) continue;
+				const quad = main.blocks.meshes.model(itemFrameData.block).model().internalQuads[0];
+
+				itemFrameData.renderedTexture.?.bindTo(0);
+
+				c.glUniform1i(uniforms.quadIndex, @intFromEnum(quad));
+				const mesh = main.renderer.mesh_storage.getMesh(main.chunk.ChunkPosition.initFromWorldPos(itemFrameData.blockPos, 1)) orelse continue :outer;
+				const light: [4]u32 = main.renderer.lighting.getLight(mesh, itemFrameData.blockPos -% Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, 0, quad);
+				c.glUniform4ui(uniforms.lightData, light[0], light[1], light[2], light[3]);
+				c.glUniform3i(uniforms.chunkPos, itemFrameData.blockPos[0] & ~main.chunk.chunkMask, itemFrameData.blockPos[1] & ~main.chunk.chunkMask, itemFrameData.blockPos[2] & ~main.chunk.chunkMask);
+				c.glUniform3i(uniforms.blockPos, itemFrameData.blockPos[0] & main.chunk.chunkMask, itemFrameData.blockPos[1] & main.chunk.chunkMask, itemFrameData.blockPos[2] & main.chunk.chunkMask);
 
 				c.glDrawElements(c.GL_TRIANGLES, 6, c.GL_UNSIGNED_INT, null);
 			}
