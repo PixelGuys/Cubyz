@@ -382,7 +382,7 @@ pub fn addSound(id: []const u8, soundParameters: AddSoundParameters) void {
 }
 
 pub fn playSound(id: []const u8) void {
-	addSound(id, .{.pos = @splat(0), .maxDistance = 0, .isSpatial = false});
+	addSound(id, .{ .pos = @splat(0), .maxDistance = 0, .isSpatial = false});
 }
 
 pub fn playSpatialSound(id: []const u8, pos: Vec3f, maxDistance: f32) void {
