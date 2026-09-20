@@ -9,8 +9,27 @@ const ListManaged = main.ListManaged;
 const User = main.server.User;
 pub const commandList = @import("command/_list.zig");
 
+pub const Source = union(enum) {
+	user: *User,
+	server: void,
+
+	pub fn sendMessage(self: Source, comptime fmt: []const u8, args: anytype) void {
+		switch (self) {
+			.user => |user| user.sendMessage(fmt, args),
+			.server => main.log.server(fmt, args),
+		}
+	}
+
+	pub fn hasPermission(self: Source, permissionPath: []const u8) bool {
+		return switch (self) {
+			.user => |user| main.entity.components.@"cubyz:permissions".server.hasPermission(user.id, permissionPath),
+			.server => true,
+		};
+	}
+};
+
 pub const Command = struct {
-	exec: *const fn (args: []const u8, source: *User) void,
+	exec: *const fn (args: []const u8, source: Source) void,
 	name: []const u8,
 	description: []const u8,
 	usage: []const u8,
@@ -19,10 +38,10 @@ pub const Command = struct {
 
 pub var commands: std.StringHashMap(Command) = undefined;
 
-fn initExecutionFn(comptime name: []const u8) *const fn (args: []const u8, source: *User) void {
+fn initExecutionFn(comptime name: []const u8) *const fn (args: []const u8, source: Source) void {
 	const ArgPaser = main.argparse.Parser(@field(commandList, name).Args, .{.commandName = name});
 	return struct {
-		fn exec(msg: []const u8, source: *User) void {
+		fn exec(msg: []const u8, source: Source) void {
 			const arena: main.heap.NeverFailingAllocator = .createArena(main.stackAllocator);
 			defer main.stackAllocator.destroyArena(arena);
 			var errorMessage: main.ListManaged(u8) = .init(arena);
@@ -53,11 +72,11 @@ pub fn deinit() void {
 	commands.deinit();
 }
 
-pub fn execute(msg: []const u8, source: *User) void {
+pub fn execute(msg: []const u8, source: Source) void {
 	const end = std.mem.indexOfScalar(u8, msg, ' ') orelse msg.len;
 	const command = msg[0..end];
 	if (commands.get(command)) |cmd| {
-		if (!main.entity.components.@"cubyz:permissions".server.hasPermission(source.id, cmd.permissionPath)) {
+		if (!source.hasPermission(cmd.permissionPath)) {
 			source.sendMessage("#ff0000No permission to use Command \"{s}\"", .{command});
 			return;
 		}
@@ -89,35 +108,70 @@ pub const Coordinate = union(enum) {
 	}
 };
 
-pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, player: *User) main.vec.Vec3d {
+pub const Rotation = union(enum) {
+	relative: f32, // Relative rotations are indicated by leading `~`.
+	absolute: f32,
+
+	pub fn parse(_: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!Rotation {
+		const isRelative = arg[0] == '~';
+		const numberSlice = if (isRelative) arg[1..] else arg;
+		if (isRelative and numberSlice.len == 0) return .{.relative = 0};
+		if (isRelative) {
+			return .{.relative = std.math.degreesToRadians(std.fmt.parseFloat(f32, numberSlice) catch {
+				errorMessage.print("Expected number for <{s}>, found \"{s}\"", .{name, numberSlice});
+				return error.ParseError;
+			})};
+		}
+		return .{.absolute = std.math.degreesToRadians(std.fmt.parseFloat(f32, numberSlice) catch {
+			errorMessage.print("Expected number or \"~\" for <{s}>, found \"{s}\"", .{name, arg});
+			return error.ParseError;
+		})};
+	}
+};
+
+pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, source: Source) error{InvalidArg}!main.vec.Vec3d {
+	if (source != .user and (x == .relative or y == .relative or z == .relative)) {
+		source.sendMessage("Command was run without a user; unable to interpret relative coordinates.", .{});
+		return error.InvalidArg;
+	}
 	return .{
 		// TODO: Remove clamp after #310 is implemented
-		std.math.clamp(if (x == .relative) player.player().pos[0] + x.relative else x.absolute, -1e9, 1e9),
-		std.math.clamp(if (y == .relative) player.player().pos[1] + y.relative else y.absolute, -1e9, 1e9),
-		std.math.clamp(if (z == .relative) player.player().pos[2] + z.relative else z.absolute, -1e9, 1e9),
+		std.math.clamp(if (x == .relative) source.user.player().pos[0] + x.relative else x.absolute, -1e9, 1e9),
+		std.math.clamp(if (y == .relative) source.user.player().pos[1] + y.relative else y.absolute, -1e9, 1e9),
+		std.math.clamp(if (z == .relative) source.user.player().pos[2] + z.relative else z.absolute, -1e9, 1e9),
+	};
+}
+
+pub fn resolveRotation(yaw: Rotation, pitch: Rotation, source: Source) error{InvalidArg}!main.vec.Vec3f {
+	if (source != .user and (yaw == .relative or pitch == .relative)) {
+		source.sendMessage("Command was run without a user; unable to interpret relative rotation.", .{});
+		return error.InvalidArg;
+	}
+	const bound = std.math.pi/2.0 - 0.001;
+	return .{
+		std.math.clamp(if (yaw == .relative) source.user.player().rot[0] + yaw.relative else yaw.absolute, -bound, bound),
+		0,
+		if (pitch == .relative) source.user.player().rot[2] + pitch.relative else pitch.absolute,
 	};
 }
 
 pub const Target = struct {
 	user: *User,
-	increasedRefCount: bool,
 
-	pub fn fromPlayerIndex(arg: ?PlayerIndex, source: *User) !Target {
+	pub fn fromPlayerIndex(arg: ?PlayerIndex, source: Source) !Target {
+		if (arg == null and source != .user) {
+			source.sendMessage("#ff0000Command was run without a user; unable to infer the player index", .{});
+			return error.InvalidArg;
+		}
 		const playerIndex = arg orelse return .{
-			.user = source,
-			.increasedRefCount = false,
+			.user = source.user,
 		};
 		return .{
-			.user = main.server.getUserByIndexAndIncreaseRefCount(playerIndex.index) orelse {
+			.user = main.server.getUserByIndex(playerIndex.index) orelse {
 				source.sendMessage("#ff0000Player with index {d} not found or not online", .{playerIndex.index});
 				return error.InvalidArg;
 			},
-			.increasedRefCount = true,
 		};
-	}
-
-	pub fn deinit(self: Target) void {
-		if (self.increasedRefCount) self.user.decreaseRefCount();
 	}
 };
 
@@ -149,6 +203,26 @@ pub const PlayerIndex = struct {
 	}
 };
 
+pub const KeyString = struct {
+	key: []const u8,
+
+	pub fn parse(_: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!KeyString {
+		const colonIndex = std.mem.indexOfScalar(u8, arg, ':') orelse {
+			errorMessage.print("Expected a public key of the form \"<keyType>:<base64>\" for <{s}>, found \"{s}\"", .{name, arg});
+			return error.ParseError;
+		};
+		const keyType = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, arg[0..colonIndex]) orelse {
+			errorMessage.print("Unknown key type \"{s}\" for <{s}>", .{arg[0..colonIndex], name});
+			return error.ParseError;
+		};
+		_ = main.network.authentication.PublicKey.initFromBase64(arg[colonIndex + 1 ..], keyType) catch {
+			errorMessage.print("Invalid public key \"{s}\" for <{s}>", .{arg, name});
+			return error.ParseError;
+		};
+		return .{.key = arg};
+	}
+};
+
 pub const BiomeId = struct {
 	biome: *const main.server.terrain.biomes.Biome,
 
@@ -157,6 +231,18 @@ pub const BiomeId = struct {
 			errorMessage.print("Couldn't find biome for <{s}> with id \"{s}\"", .{name, args});
 			return error.ParseError;
 		}};
+	}
+};
+
+pub const BlockId = struct {
+	block: main.blocks.Block,
+
+	pub fn parse(_: NeverFailingAllocator, name: []const u8, args: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!@This() {
+		const blockTyp = main.blocks.getBlockById(args) catch {
+			errorMessage.print("Couldn't find block for <{s}> with id \"{s}\"", .{name, args});
+			return error.ParseError;
+		};
+		return .{.block = .{.typ = blockTyp, .data = 0}};
 	}
 };
 
@@ -192,5 +278,17 @@ pub const PatternExpression = struct {
 			errorMessage.print("Couldn't parse pattern: {s}", .{@errorName(err)});
 			return error.ParseError;
 		}};
+	}
+};
+
+pub const PermissionPath = struct {
+	path: []const u8,
+
+	pub fn parse(_: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!PermissionPath {
+		if (arg[0] != '/') {
+			errorMessage.print("Permission path for <{s}> doesn't begin with a \"/\", got: {s}", .{name, arg});
+			return error.ParseError;
+		}
+		return .{.path = arg};
 	}
 };

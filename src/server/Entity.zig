@@ -18,9 +18,9 @@ maxEnergy: f32 = 8,
 name: ?[]const u8 = null,
 id: main.entity.Entity = .noValue,
 
-pub fn loadFrom(self: *@This(), id: main.entity.Entity, zon: ZonElement, comptime side: main.sync.Side) !void {
+pub fn loadFrom(self: *@This(), id: main.entity.Entity, zon: ZonElement, comptime side: main.sync.Side, defaultPos: Vec3d) !void {
 	self.id = id;
-	self.pos = zon.get(Vec3d, "position") orelse .{0, 0, 0};
+	self.pos = zon.get(Vec3d, "position") orelse defaultPos;
 	self.vel = zon.get(Vec3d, "velocity") orelse .{0, 0, 0};
 	self.rot = zon.get(Vec3f, "rotation") orelse .{0, 0, 0};
 	self.health = zon.get(f32, "health") orelse self.maxHealth;

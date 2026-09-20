@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
-const User = main.server.User;
 const Degrees = main.rotation.Degrees;
+const Source = main.server.command.Source;
 
 pub const description = "rotate clipboard content around Z axis counterclockwise.";
 pub const usage =
@@ -15,15 +15,20 @@ pub const Args = union(enum) {
 	@"/rotate <rotation>": struct { rotation: Degrees },
 };
 
-pub fn execute(args: Args, source: *User) void {
-	if (source.worldEditData.clipboard == null) {
+pub fn execute(args: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
+		return;
+	}
+	const user = source.user;
+	if (user.worldEditData.clipboard == null) {
 		source.sendMessage("#ff0000Error: No clipboard content to rotate.", .{});
 		return;
 	}
-	const current = source.worldEditData.clipboard.?;
+	const current = user.worldEditData.clipboard.?;
 	defer current.deinit(main.globalAllocator);
 	switch (args) {
-		.@"/rotate" => source.worldEditData.clipboard = current.rotateZ(main.globalAllocator, .@"90"),
-		.@"/rotate <rotation>" => |params| source.worldEditData.clipboard = current.rotateZ(main.globalAllocator, params.rotation),
+		.@"/rotate" => user.worldEditData.clipboard = current.rotateZ(main.globalAllocator, .@"90"),
+		.@"/rotate <rotation>" => |params| user.worldEditData.clipboard = current.rotateZ(main.globalAllocator, params.rotation),
 	}
 }

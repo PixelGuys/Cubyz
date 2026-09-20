@@ -1,11 +1,22 @@
 #version 460
 
+#ifdef OPEN_GL
 // in pixel
 layout(location = 0) uniform vec2 start;
 layout(location = 1) uniform vec2 dimension;
 layout(location = 2) uniform vec2 screen;
 layout(location = 3) uniform int points;
 layout(location = 4) uniform int offset;
+#else
+layout(push_constant, std430) uniform _ {
+	vec2 start;
+	vec2 dimension;
+	vec2 screen;
+	int points;
+	int offset;
+	vec3 lineColor;
+};
+#endif
 
 layout(std430, binding = 5) buffer _data
 {

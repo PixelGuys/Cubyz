@@ -22,7 +22,7 @@ pub var scrollOffset: f32 = 0;
 pub var scrollOffsetInteger: i32 = 0;
 var scrollOffsetFraction: f32 = 0;
 
-pub const Gamepad = struct {
+pub const Gamepad = struct { // MARK: Gamepad
 	pub var gamepadState: std.AutoHashMap(c_int, *c.GLFWgamepadstate) = undefined;
 	pub var controllerMappingsDownloaded: std.atomic.Value(bool) = std.atomic.Value(bool).init(false);
 	var controllerConnectedPreviously: bool = false;
@@ -710,7 +710,7 @@ pub fn getClipboardString() []const u8 {
 }
 
 pub fn setClipboardString(string: []const u8) void {
-	const nullTerminatedString = main.stackAllocator.dupeZ(u8, string);
+	const nullTerminatedString = main.stackAllocator.dupeSentinel(u8, string, 0);
 	defer main.stackAllocator.free(nullTerminatedString);
 	c.glfwSetClipboardString(window, nullTerminatedString.ptr);
 }
