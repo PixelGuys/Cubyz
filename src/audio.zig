@@ -461,7 +461,7 @@ fn mixSound(buffer: []f32) void {
 			if (distance > sound.maxDistance) {
 				sound.bufPos += @intCast(if (audioData.channelType == .mono) @divFloor(buffer.len, 2) else buffer.len);
 				if (sound.bufPos >= soundBuffer.len) {
-					activeSounds.swapRemove(i);
+					_ = activeSounds.swapRemove(i);
 					continue :main;
 				}
 			}
@@ -488,7 +488,7 @@ fn mixSound(buffer: []f32) void {
 			sound.bufPos += bufferStep;
 
 			if (sound.bufPos >= soundBuffer.len) {
-				activeSounds.swapRemove(i);
+				_ = activeSounds.swapRemove(i);
 				continue :main;
 			}
 		}
