@@ -1,13 +1,11 @@
 .{
 	.item = .{
+		.colorTexture = "palm_planks_palette.png",
 		.material = .{
 			.durability = 23,
 			.massDamage = 0.8,
 			.hardnessDamage = 0.8,
 			.swingSpeed = 5.2,
-			.colors = .{
-				0xffa38041, 0xffc78a49, 0xffdcab5a, 0xfff1c061, 0xfffed87c,
-			},
 			.modifiers = .{
 				.{
 					.id = "durable",

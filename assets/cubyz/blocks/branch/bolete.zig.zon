@@ -8,15 +8,13 @@
 	.texture4 = "cubyz:branch/bolete/intersection",
 	.texture5 = "cubyz:branch/bolete/cross",
 	.item = .{
+		.colorTexture = "bolete_branch_palette.png",
 		.material = .{
 			.durability = 200,
 			.massDamage = 1.0,
 			.hardnessDamage = 0.0,
 			.swingSpeed = 4.6,
 			.textureRoughness = 0.5,
-			.colors = .{
-				0xff9f7853, 0xffb38e65, 0xffcba275, 0xffe5b885, 0xffe5b885,
-			},
 			.modifiers = .{
 				.{
 					.id = "durable",

@@ -17,7 +17,7 @@ const files = main.files;
 
 var common: Assets = undefined;
 
-pub const Assets = struct {
+pub const Assets = struct { // MARK: Assets
 	pub const ZonHashMap = std.StringHashMapUnmanaged(ZonElement);
 	pub const BytesHashMap = std.StringHashMapUnmanaged([]const u8);
 	pub const AddonNameToZonMap = std.StringHashMapUnmanaged(ZonElement);
@@ -142,7 +142,7 @@ pub const Assets = struct {
 		);
 	}
 
-	const Addon = struct {
+	const Addon = struct { // MARK: Addon
 		name: []const u8,
 		dir: files.Dir,
 
@@ -685,6 +685,13 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		std.debug.assert(items.hasRegistered(stringId));
 
 		try assignBlockItem(stringId);
+	}
+
+	var itemIndexIterator = items.iterator();
+	while (itemIndexIterator.next()) |index| {
+		if (index.displayBlockData() != null and index.block() == null) {
+			std.log.err("displayBlockData field was set, but there is no block defined for item: '{s}'", .{index.id()});
+		}
 	}
 
 	for (proceduralItemPalette.palette.items) |id| {

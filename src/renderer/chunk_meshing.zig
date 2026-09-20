@@ -70,10 +70,11 @@ pub fn init() void {
 		"",
 		&uniforms,
 		graphics.VertexArray.EmptyVertex,
-		&.{},
-		.{},
-		.{.depthTest = true, .depthWrite = true},
-		.{.attachments = &.{.noBlending}},
+		.{
+			.rasterState = .{},
+			.depthStencilState = .{.depthTest = true, .depthWrite = true},
+			.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.world}},
+		},
 	);
 	transparentPipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/chunks/chunk_vertex.vert",
@@ -81,17 +82,18 @@ pub fn init() void {
 		"#define transparent\n",
 		&transparentUniforms,
 		graphics.VertexArray.EmptyVertex,
-		&.{},
-		.{},
-		.{.depthTest = true, .depthWrite = false, .depthCompare = .lessOrEqual},
-		.{.attachments = &.{.{
-			.srcColorBlendFactor = .one,
-			.dstColorBlendFactor = .src1Color,
-			.colorBlendOp = .add,
-			.srcAlphaBlendFactor = .one,
-			.dstAlphaBlendFactor = .src1Alpha,
-			.alphaBlendOp = .add,
-		}}},
+		.{
+			.rasterState = .{},
+			.depthStencilState = .{.depthTest = true, .depthWrite = false, .depthCompare = .lessOrEqual},
+			.blendState = .{.attachments = &.{.{
+				.srcColorBlendFactor = .one,
+				.dstColorBlendFactor = .src1Color,
+				.colorBlendOp = .add,
+				.srcAlphaBlendFactor = .one,
+				.dstAlphaBlendFactor = .src1Alpha,
+				.alphaBlendOp = .add,
+			}}, .formats = &.{.world}},
+		},
 	);
 	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms);
 	occlusionTestPipeline = graphics.Pipeline.init(
@@ -100,19 +102,21 @@ pub fn init() void {
 		"",
 		null,
 		graphics.VertexArray.EmptyVertex,
-		&.{.ssbo(6, .{.vertex = true, .fragment = true}), .ssbo(9, .{.vertex = true})},
-		.{},
-		.{.depthTest = true, .depthWrite = false},
-		.{.attachments = &.{.{
-			.enabled = false,
-			.srcColorBlendFactor = .zero,
-			.dstColorBlendFactor = .zero,
-			.colorBlendOp = .add,
-			.srcAlphaBlendFactor = .zero,
-			.dstAlphaBlendFactor = .zero,
-			.alphaBlendOp = .add,
-			.colorWriteMask = .none,
-		}}},
+		.{
+			.bindings = &.{.ssbo(6, .{.vertex = true, .fragment = true}), .ssbo(9, .{.vertex = true})},
+			.rasterState = .{},
+			.depthStencilState = .{.depthTest = true, .depthWrite = false},
+			.blendState = .{.attachments = &.{.{
+				.enabled = false,
+				.srcColorBlendFactor = .zero,
+				.dstColorBlendFactor = .zero,
+				.colorBlendOp = .add,
+				.srcAlphaBlendFactor = .zero,
+				.dstAlphaBlendFactor = .zero,
+				.alphaBlendOp = .add,
+				.colorWriteMask = .none,
+			}}, .formats = &.{.world}},
+		},
 	);
 
 	var rawData: [6*maxQuadsInIndexBuffer]u32 = undefined;
@@ -285,10 +289,10 @@ pub const FaceData = extern struct {
 };
 
 pub const ChunkData = extern struct {
-	position: Vec3i align(16),
-	min: Vec3f align(16),
-	max: Vec3f align(16),
-	voxelSize: i32,
+	position: [3]i32 align(16),
+	min: [3]f32 align(16),
+	max: [3]f32 align(16),
+	voxelSize: i32 align(16),
 	lightStart: u32,
 	vertexStartOpaque: u32,
 	faceCountsByNormalOpaque: [14]u32,

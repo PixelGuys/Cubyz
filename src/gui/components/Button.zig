@@ -51,6 +51,13 @@ pub var buttonUniforms: struct {
 	color: c_int,
 	scale: c_int,
 } = undefined;
+pub const ButtonUniforms = extern struct {
+	start: [2]f32 align(8),
+	size: [2]f32 align(8),
+	screen: [2]f32 align(8),
+	color: i32,
+	scale: f32,
+};
 
 pos: Vec2f,
 size: Vec2f,
@@ -68,10 +75,14 @@ pub fn globalInit() void {
 		"",
 		&buttonUniforms,
 		graphics.draw.SimpleVertex2D,
-		&.{},
-		.{.cullMode = .none},
-		.{.depthTest = false, .depthWrite = false},
-		.{.attachments = &.{.alphaBlending}},
+		.{
+			.bindings = &.{.sampler(0, .{.fragment = true})},
+			.rasterState = .{.cullMode = .none},
+			.depthStencilState = .{.depthTest = false, .depthWrite = false},
+			.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			.inputAssemblyState = .{.topology = .triangleStrip},
+			.pushConstantSize = @sizeOf(ButtonUniforms),
+		},
 	);
 	normalTextures = Textures.init("assets/cubyz/ui/button");
 	hoveredTextures = Textures.init("assets/cubyz/ui/button_hovered");
@@ -170,14 +181,27 @@ fn renderBackground(self: *Button, mousePosition: Vec2f) void {
 		break :blk normalTextures;
 	};
 	{
-		textures.texture.bindTo(0);
-		pipeline.bind(draw.getScissor());
+		if (main.settings.launchConfig.vulkanTestingMode and textures.texture.vulkanImage != null) {
+			graphics.vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
+			graphics.vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
+				.{.image = .{.binding = 0, .image = textures.texture.vulkanImage.?}},
+			});
+			draw.customShadedRect(@as(ButtonUniforms, undefined), pipeline, self.pos + Vec2f{2, 2}, self.size - Vec2f{4, 4});
+		} else {
+			textures.texture.bindTo(0);
+			pipeline.bind(draw.getScissor());
+			draw.customShadedRectOpenGl(buttonUniforms, self.pos + Vec2f{2, 2}, self.size - Vec2f{4, 4});
+		}
 		self.hovered = false;
-		draw.customShadedRect(buttonUniforms, self.pos + Vec2f{2, 2}, self.size - Vec2f{4, 4});
 	}
 
 	const cornerSize = (textures.outlineTextureSize - Vec2f{1, 1})/Vec2f{2, 2};
 
-	textures.outlineTexture.bindTo(0);
-	graphics.draw.bound9SliceImage(self.pos, self.size, textures.outlineTextureSize, cornerSize, 2);
+	graphics.draw.nineSliceImage(textures.outlineTexture, self.pos, self.size, textures.outlineTextureSize, cornerSize, 2);
+
+	const oldColor = draw.setColor(if (self.disabled) 0xff808080 else 0xffffffff);
+	defer draw.restoreColor(oldColor);
+	const textPos = self.pos + self.size/@as(Vec2f, @splat(2.0)) - self.child.size()/@as(Vec2f, @splat(2.0));
+	self.child.mutPos().* = textPos;
+	self.child.render(mousePosition - self.pos);
 }

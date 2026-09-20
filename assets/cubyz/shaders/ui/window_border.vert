@@ -6,12 +6,23 @@ layout(location = 0) flat out vec2 startCoord;
 layout(location = 1) flat out vec2 endCoord;
 layout(location = 2) flat out vec4 fColor;
 
+#ifdef OPEN_GL
 // in pixel
 layout(location = 0) uniform vec2 start;
 layout(location = 1) uniform vec2 size;
 layout(location = 2) uniform vec2 screen;
 
 layout(location = 3) uniform int color;
+#else
+layout(push_constant, std430) uniform _ {
+	vec2 start;
+	vec2 size;
+	vec2 screen;
+	int color;
+	float scale;
+	vec2 effectLength;
+};
+#endif
 
 void main() {
 	// Convert to opengl coordinates:
