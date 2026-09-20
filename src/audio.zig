@@ -141,7 +141,7 @@ var activeTasks: main.List([]const u8) = .empty; // MARK: Music
 var taskMutex: main.utils.Mutex = .{};
 
 var musicCache: utils.Cache(AudioData, 4, 4, AudioData.deinit) = .{};
-var soundCache: utils.Cache(AudioData, 4, 4, AudioData.deinit) = .{};
+var audioCache: utils.Cache(AudioData, 4, 4, AudioData.deinit) = .{};
 
 fn findMusic(musicId: []const u8) ?[]f32 {
 	{
@@ -164,11 +164,11 @@ fn findSound(musicId: []const u8) ?*AudioData {
 	{
 		taskMutex.lock();
 		defer taskMutex.unlock();
-		if (soundCache.find(AudioData{.audioId = musicId}, null)) |musicData| {
+		if (audioCache.find(AudioData{.audioId = musicId}, null)) |musicData| {
 			return musicData;
 		}
 		const data = AudioData.init(musicId, "sounds/audio");
-		const hasOld = soundCache.addToCache(data, data.hashCode());
+		const hasOld = audioCache.addToCache(data, data.hashCode());
 		if (hasOld) |old| {
 			old.deinit();
 		}
@@ -257,26 +257,19 @@ pub fn deinit() void {
 	defer mutex.unlock();
 	main.threadPool.closeAllTasksOfType(&MusicLoadTask.vtable);
 	musicCache.clear();
-	soundCache.clear();
+	audioCache.clear();
 	activeTasks.deinit(main.globalAllocator);
 	main.globalAllocator.free(preferredMusic);
 	preferredMusic.len = 0;
 	main.globalAllocator.free(activeMusicId);
 	activeMusicId.len = 0;
 
-	audioIdMap.deinit(main.globalAllocator.allocator);
-	audios.deinit(main.globalAllocator);
 	soundDataIdMap.deinit(main.globalAllocator.allocator);
 	soundDatas.deinit(main.globalAllocator);
 	activeSounds.deinit(main.globalAllocator);
 }
 
 pub fn reset() void {
-	audioIdMap.clearRetainingCapacity();
-	for (audios.items) |s| {
-		s.deinit();
-	}
-	audios.clearRetainingCapacity();
 	activeSounds.clearRetainingCapacity();
 	soundDataIdMap.clearRetainingCapacity();
 	soundDatas.clearRetainingCapacity();
@@ -340,8 +333,6 @@ const PlayingSound = struct {
 	isSpatial: bool = false,
 };
 
-var audioIdMap: std.StringHashMapUnmanaged(u32) = .{};
-var audios: main.List(*AudioData) = .empty;
 var soundDataIdMap: std.StringHashMapUnmanaged(u32) = .{};
 var soundDatas: main.List(SoundData) = .empty;
 var activeSounds: main.List(PlayingSound) = .empty;
