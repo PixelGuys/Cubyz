@@ -43,7 +43,6 @@ pub const Assets = struct { // MARK: Assets
 	worldPresets: ZonHashMap,
 	entityModelDescriptions: ZonHashMap,
 	entityModelMigrations: ZonHashMap,
-	audioDatas: main.List([]const u8),
 	sounds: ZonHashMap,
 
 	fn init() Assets {
@@ -68,7 +67,6 @@ pub const Assets = struct { // MARK: Assets
 			.worldPresets = .{},
 			.entityModelDescriptions = .{},
 			.entityModelMigrations = .{},
-			.audioDatas = .empty,
 			.sounds = .{},
 		};
 	}
@@ -93,7 +91,6 @@ pub const Assets = struct { // MARK: Assets
 		self.worldPresets.deinit(allocator.allocator);
 		self.entityModelDescriptions.deinit(allocator.allocator);
 		self.entityModelMigrations.deinit(allocator.allocator);
-		self.audioDatas.deinit(allocator);
 		self.sounds.deinit(allocator.allocator);
 	}
 	fn clone(self: Assets, allocator: NeverFailingAllocator) Assets {
@@ -118,7 +115,6 @@ pub const Assets = struct { // MARK: Assets
 			.worldPresets = .{}, // Not accessible inside the world
 			.entityModelDescriptions = self.entityModelDescriptions.clone(allocator.allocator) catch unreachable,
 			.entityModelMigrations = self.entityModelMigrations.clone(allocator.allocator) catch unreachable,
-			.audioDatas = self.audioDatas.clone(allocator),
 			.sounds = self.sounds.clone(allocator.allocator) catch unreachable,
 		};
 	}
@@ -142,14 +138,13 @@ pub const Assets = struct { // MARK: Assets
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 			addon.readAllZon(allocator, "world_presets", true, &self.worldPresets, null);
 			addon.readAllZon(allocator, "entity_models", true, &self.entityModelDescriptions, &self.entityModelMigrations);
-			addon.readAllAudio(allocator, "sounds/audio", ".ogg", &self.audioDatas);
 			addon.readAllZon(allocator, "sounds", true, &self.sounds, null);
 		}
 	}
 	fn log(self: *Assets, typ: enum { common, world }) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks, {} items, {} procedural items, {} biomes, {} cave layers, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, {} world presets, block models {}, {} block model ZONs, {} audio datas, and {} sounds",
-			.{@tagName(typ), self.blocks.count(), self.items.count(), self.proceduralItems.count(), self.biomes.count(), self.caveLayers.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count(), self.blockModels.count(), self.blockModelsZon.count(), self.audioDatas.items.len, self.sounds.count()},
+			"Finished {s} assets reading with {} blocks, {} items, {} procedural items, {} biomes, {} cave layers, {} structure tables, {} recipes, {} structure building blocks, {} blueprints, {} particles, {} world presets, block models {}, {} block model ZONs, and {} sounds",
+			.{@tagName(typ), self.blocks.count(), self.items.count(), self.proceduralItems.count(), self.biomes.count(), self.caveLayers.count(), self.structureTables.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count(), self.worldPresets.count(), self.blockModels.count(), self.blockModelsZon.count(), self.sounds.count()},
 		);
 	}
 
@@ -757,10 +752,6 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	iterator = worldAssets.particles.iterator();
 	while (iterator.next()) |entry| {
 		particles.ParticleManager.register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
-	}
-
-	for (worldAssets.audioDatas.items) |entry| {
-		audio.registerAudioData(assetFolder, entry);
 	}
 
 	iterator = worldAssets.sounds.iterator();

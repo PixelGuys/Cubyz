@@ -141,6 +141,7 @@ var activeTasks: main.List([]const u8) = .empty; // MARK: Music
 var taskMutex: main.utils.Mutex = .{};
 
 var musicCache: utils.Cache(AudioData, 4, 4, AudioData.deinit) = .{};
+var soundCache: utils.Cache(AudioData, 4, 4, AudioData.deinit) = .{};
 
 fn findMusic(musicId: []const u8) ?[]f32 {
 	{
@@ -156,6 +157,23 @@ fn findMusic(musicId: []const u8) ?[]f32 {
 		}
 	}
 	MusicLoadTask.schedule(musicId);
+	return null;
+}
+
+fn findSound(musicId: []const u8) ?*AudioData {
+	{
+		taskMutex.lock();
+		defer taskMutex.unlock();
+		if (soundCache.find(AudioData{.audioId = musicId}, null)) |musicData| {
+			return musicData;
+		}
+		const data = AudioData.init(musicId, "sounds/audio");
+		const hasOld = soundCache.addToCache(data, data.hashCode());
+		if (hasOld) |old| {
+			old.deinit();
+		}
+		return data;
+	}
 	return null;
 }
 
@@ -239,6 +257,7 @@ pub fn deinit() void {
 	defer mutex.unlock();
 	main.threadPool.closeAllTasksOfType(&MusicLoadTask.vtable);
 	musicCache.clear();
+	soundCache.clear();
 	activeTasks.deinit(main.globalAllocator);
 	main.globalAllocator.free(preferredMusic);
 	preferredMusic.len = 0;
@@ -307,13 +326,13 @@ pub fn setMusic(music: []const u8) void {
 }
 
 const SoundData = struct { // MARK: Sounds
-	audioIndex: u32,
+	audioName: []const u8,
 	volume: f32 = 1,
 };
 
 const PlayingSound = struct {
 	pos: Vec3f = @splat(0),
-	audioIndex: u32,
+	audioName: []const u8,
 	bufPos: u32 = 0,
 
 	volume: f32 = 1,
@@ -331,25 +350,19 @@ pub fn getActiveSoundCount() u32 {
 	return @intCast(activeSounds.items.len);
 }
 
-pub fn registerAudioData(_: []const u8, id: []const u8) void {
-	const audio = AudioData.init(id, "sounds/audio");
-	audioIdMap.put(main.globalAllocator.allocator, id, @intCast(audios.items.len)) catch unreachable;
-	audios.append(main.globalAllocator, audio);
-	std.log.debug("Registered sound audio: {s}", .{id});
-}
-
 pub fn registerSound(assetsFolder: []const u8, id: []const u8, zon: ZonElement) void {
 	const audioId = zon.get([]const u8, "audio") orelse {
-		std.log.err("Sound Data audio was not specified: {s} ({s})", .{id, assetsFolder});
+		std.log.err("Error: Sound Data audio was not specified: {s} ({s})", .{id, assetsFolder});
 		return;
 	};
+	if (findSound(audioId) == null) {
+		std.log.err("Error: Sound Data audio was not found: {s} ({s})", .{id, assetsFolder});
+		return;
+	}
 
 	soundDataIdMap.put(main.globalAllocator.allocator, id, @intCast(soundDatas.items.len)) catch unreachable;
 	soundDatas.append(main.globalAllocator, SoundData{
-		.audioIndex = audioIdMap.get(audioId) orelse {
-			std.log.err("Sound Data audio could not be found: {s} ({s}) audio ID: {s}", .{id, assetsFolder, audioId});
-			return;
-		},
+		.audioName = audioId,
 		.volume = zon.get(f32, "volume") orelse 1.0,
 	});
 
@@ -369,7 +382,7 @@ pub fn addSound(id: []const u8, soundParameters: AddSoundParameters) void {
 	const idx = soundDataIdMap.get(id) orelse return;
 	const soundData = soundDatas.items[idx];
 	activeSounds.append(main.globalAllocator, PlayingSound{
-		.audioIndex = soundData.audioIndex,
+		.audioName = soundData.audioName,
 		.volume = soundData.volume,
 		.pos = soundParameters.pos,
 		.isSpatial = soundParameters.isSpatial,
@@ -445,7 +458,7 @@ fn mixSound(buffer: []f32) void {
 	var i: u32 = 0;
 	main: while (i < activeSounds.items.len) {
 		var sound = activeSounds.items[i];
-		const audioData = audios.items[sound.audioIndex];
+		const audioData = findSound(sound.audioName) orelse continue :main;
 		const soundBuffer = audioData.data;
 
 		const notMonoInt: u32 = @intFromBool(audioData.channelType != .mono);
