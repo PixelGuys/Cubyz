@@ -1098,7 +1098,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 						if (currentBlockProgress != 0) {
 							if (swung) {
-								main.audio.playSound("cubyz:block_hit");
+								main.audio.addSound("cubyz:block_hit");
 							}
 							mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
 						}

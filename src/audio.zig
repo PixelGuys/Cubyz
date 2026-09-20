@@ -356,7 +356,13 @@ pub fn registerSound(assetsFolder: []const u8, id: []const u8, zon: ZonElement) 
 	std.log.debug("Registered sound data: {s}", .{id});
 }
 
-fn addSound(id: []const u8, pos: Vec3f, maxDistance: f32, isSpatial: bool) void {
+const AddSoundParameters = struct { // MARK: Sounds
+	isSpatial: bool,
+	maxDistance: f32,
+	pos: Vec3f,
+};
+
+pub fn addSound(id: []const u8, soundParameters: AddSoundParameters) void {
 	mutex.lock();
 	defer mutex.unlock();
 	
@@ -365,18 +371,18 @@ fn addSound(id: []const u8, pos: Vec3f, maxDistance: f32, isSpatial: bool) void 
 	activeSounds.append(main.globalAllocator, PlayingSound{
 		.audioIndex = soundData.audioIndex,
 		.volume = soundData.volume,
-		.pos = pos,
-		.isSpatial = isSpatial,
-		.maxDistance = maxDistance,
+		.pos = soundParameters.pos,
+		.isSpatial = soundParameters.isSpatial,
+		.maxDistance = soundParameters.maxDistance,
 	});
 }
 
 pub fn playSound(id: []const u8) void {
-	addSound(id, @splat(0), 0, false);
+	addSound(id, .{.pos = @splat(0), .maxDistance = 0, .isSpatial = false});
 }
 
 pub fn playSpatialSound(id: []const u8, pos: Vec3f, maxDistance: f32) void {
-	addSound(id, pos, maxDistance, true);
+	addSound(id, .{ .pos = pos, .maxDistance = maxDistance, .isSpatial = true });
 }
 
 fn mixMusic(buffer: []f32) void {
