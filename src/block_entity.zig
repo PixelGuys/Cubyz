@@ -535,6 +535,28 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 			}
 		}
 	};
+
+	pub const @"cubyz:respawn_anchor" = struct { // MARK: cubyz:respawn_anchor
+
+		pub fn init() void {}
+		pub fn deinit() void {}
+		pub fn reset() void {}
+
+		pub fn onLoadClient(_: Vec3i, _: *Chunk, _: *BinaryReader) ErrorSet!void {}
+		pub fn onUnloadClient(_: BlockEntity) void {}
+		pub fn onLoadServer(_: Vec3i, _: *Chunk, _: *BinaryReader) ErrorSet!void {}
+
+		pub fn onUnloadServer(_: BlockEntity) void {}
+		pub fn onStoreServerToDisk(_: BlockEntity, _: *BinaryWriter) void {}
+		pub fn onStoreServerToClient(_: BlockEntity, _: *BinaryWriter) void {}
+
+		pub fn updateClientData(_: Vec3i, _: *Chunk, _: UpdateEvent) ErrorSet!void {}
+		pub fn updateServerData(_: Vec3i, _: *Chunk, _: UpdateEvent) ErrorSet!void {}
+		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
+		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
+
+		pub fn renderAll(_: Vec3f) void {}
+	};
 };
 
 var blockyEntityTypes: std.StringHashMapUnmanaged(BlockEntityType) = .{};
