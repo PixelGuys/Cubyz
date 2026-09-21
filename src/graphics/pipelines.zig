@@ -114,7 +114,11 @@ const Shader = struct { // MARK: Shader
 			for (includePaths) |includePath| {
 				const fullPath = main.stackAllocator.print("{s}/{s}", .{includePath orelse continue, includeFilename});
 				defer main.stackAllocator.free(fullPath);
-				if (main.files.cwd().hasFile(fullPath)) {
+				const fileExists = main.files.cwd().hasFile(fullPath) catch |err| blk: {
+					std.log.err("Couldn't read shader file: {s}. Err: {s}", .{filename, @errorName(err)});
+					break :blk false;
+				};
+				if (fileExists) {
 					const code = try loadShaderFile(main.stackAllocator, fullPath, &.{});
 					defer main.stackAllocator.free(code);
 					result.appendSlice(code);

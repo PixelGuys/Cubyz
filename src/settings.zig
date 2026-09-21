@@ -213,6 +213,8 @@ pub const launchConfig = struct {
 	pub var cubyzDir: []const u8 = "";
 	pub var autoEnterWorld: []const u8 = "";
 	pub var headlessServer: bool = false;
+	pub var worldCreationSettings: main.server.world_zig.Settings = undefined;
+	pub var worldCreationPreset: []const u8 = "cubyz:default";
 	pub var preferredAuthenticationAlgorithm: main.network.authentication.KeyTypeEnum = .ed25519;
 
 	pub var vulkanTestingMode: bool = false;
@@ -228,6 +230,8 @@ pub const launchConfig = struct {
 		headlessServer = zon.get(bool, "headlessServer") orelse headlessServer;
 		autoEnterWorld = main.globalArena.dupe(u8, zon.get([]const u8, "autoEnterWorld") orelse autoEnterWorld);
 		preferredAuthenticationAlgorithm = zon.get(main.network.authentication.KeyTypeEnum, "preferredAuthenticationAlgorithm") orelse preferredAuthenticationAlgorithm;
+		worldCreationSettings = main.server.world_zig.Settings.fromZon(zon.getChild("worldCreationSettings"));
+		worldCreationPreset = main.globalArena.dupe(u8, zon.get([]const u8, "worldCreationPreset") orelse worldCreationPreset);
 		vulkanTestingMode = zon.get(bool, "vulkanTestingMode") orelse false;
 	}
 };
