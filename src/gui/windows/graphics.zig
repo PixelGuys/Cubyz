@@ -77,6 +77,33 @@ fn fovFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const 
 	return allocator.print("#ffffffField Of View: {d:.0}°", .{value});
 }
 
+fn zoomSpeedCallback(newValue: f32) void {
+	settings.zoomSpeed = newValue;
+	settings.save();
+}
+
+fn zoomSpeedFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
+	return std.fmt.allocPrint(allocator.allocator, "#ffffffZoom speed: {d:.1}x", .{value}) catch unreachable;
+}
+
+fn zoomInitialCallback(newValue: f32) void {
+	settings.zoomInitial = newValue;
+	settings.save();
+}
+
+fn zoomInitialFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
+	return std.fmt.allocPrint(allocator.allocator, "#ffffffInitial zoom: {d:.1}x", .{value}) catch unreachable;
+}
+
+fn zoomIncreaseCallback(newValue: f32) void {
+	settings.zoomIncrease = newValue;
+	settings.save();
+}
+
+fn zoomIncreaseFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
+	return std.fmt.allocPrint(allocator.allocator, "#ffffffZoom increase: {d:.1}x", .{value}) catch unreachable;
+}
+
 fn lodDistanceFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
 	return allocator.print("#ffffffOpaque leaves distance: {d:.0}", .{@round(value)});
 }
@@ -140,6 +167,9 @@ pub fn onOpen() void {
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 0.0, 0.5, settings.blockContrast, &contrastCallback, &contrastFormatter));
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 0.0, 1.0, settings.nightBrightness, &nightBrightnessCallback, &nightBrightnessFormatter));
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 40.0, 120.0, settings.fov, &fovCallback, &fovFormatter));
+	list.add(ContinuousSlider.init(.{0, 0}, 128, 1.0, 16.0, settings.zoomSpeed, &zoomSpeedCallback, &zoomSpeedFormatter));
+	list.add(ContinuousSlider.init(.{0, 0}, 128, 1.0, 16.0, settings.zoomInitial, &zoomInitialCallback, &zoomInitialFormatter));
+	list.add(ContinuousSlider.init(.{0, 0}, 128, 1.0, 4.0, settings.zoomIncrease, &zoomIncreaseCallback, &zoomIncreaseFormatter));
 	list.add(CheckBox.init(.{0, 0}, 128, "Bloom", settings.bloom, &bloomCallback));
 	list.add(CheckBox.init(.{0, 0}, 128, "Vertical Synchronization", settings.vsync, &vsyncCallback));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffAnisotropic Filtering: ", "{}x", &anisotropy, switch (settings.anisotropicFiltering) {
