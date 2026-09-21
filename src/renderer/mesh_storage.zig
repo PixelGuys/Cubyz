@@ -601,7 +601,6 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 	while (searchList.popFront()) |node| {
 		std.debug.assert(node.finishedMeshing);
 		std.debug.assert(node.active);
-		if (!node.active) continue;
 		node.active = false;
 
 		const pos = node.pos;
@@ -610,6 +609,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 
 		const chunkSizeVector: Vec3i = @splat(chunk.chunkSize*pos.voxelSize);
 
+		// TODO: This seems like a good place for a comment, could someone please add one?
 		if (pos.voxelSize == @as(i32, 1) << settings.highestLod) {
 			for (chunk.Neighbor.iterable) |neighbor| {
 				const component = neighbor.extractDirectionComponent(relPos);
@@ -650,7 +650,9 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 						if (dz == 1) nextPos.wz ^= lowerLodBit;
 						const node2 = getNodePointer(nextPos);
 						const relNextPos: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{nextPos.wx, nextPos.wy, nextPos.wz})) - playerPos;
-						if (!frustum.testAAB(@floatCast(relNextPos), @floatFromInt(chunkSizeVector))) continue;
+						if (frustum.isPerspective and !frustum.testAAB(@floatCast(relNextPos), @splat(@floatFromInt(chunk.chunkSize*nextPos.voxelSize)))) {
+							continue;
+						}
 						std.debug.assert(node2.finishedMeshing);
 						node2.active = true;
 						node2.rendered = true;
