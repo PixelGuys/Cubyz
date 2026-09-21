@@ -22,6 +22,11 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 	pub const height = 64; // Size of u64
 	pub const heightMask = height - 1;
 
+	pub const TerrainModifier = enum {
+		add,
+		remove,
+	};
+
 	data: [width*width]u64 = undefined,
 	pos: ChunkPosition,
 	voxelShift: u5,
@@ -75,6 +80,14 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 		const start = _start >> self.voxelShift;
 		const end = _end >> self.voxelShift;
 		self.data[getIndex(relX, relY)] &= getMask(start, end);
+	}
+
+	pub fn modifyTerrain(self: *CaveMapFragment, comptime modifier: TerrainModifier, _relX: i32, _relY: i32, _start: i32, _end: i32) void {
+		if (modifier == .add) {
+			self.addRange(_relX, _relY, _start, _end);
+		} else {
+			self.removeRange(_relX, _relY, _start, _end);
+		}
 	}
 
 	pub fn getColumnData(self: *CaveMapFragment, _relX: i32, _relY: i32) u64 {
