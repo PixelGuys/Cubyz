@@ -433,6 +433,7 @@ pub fn inputCharacter(self: *TextInput, character: u21) void {
 }
 
 pub fn setString(self: *TextInput, utf8EncodedString: []const u8) void {
+	if (self.options.disabled) return;
 	self.clear();
 	self.currentString.insertSlice(0, utf8EncodedString);
 	self.reloadText();
@@ -574,7 +575,6 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 				self.showCursor = !self.showCursor;
 			}
 		}
-
 		if (self.showCursor and !self.options.disabled) {
 			const oldColor = draw.setColor(0xff000000);
 			defer draw.restoreColor(oldColor);
