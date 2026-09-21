@@ -47,8 +47,8 @@ pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Dat
 
 pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
 	if (data.strength >= 0) {
-		outString.print("{s} #30ca64*Increases#808080 {} by #30ca64+**{d:.0}%", .{getModifierName(data), data.targetProperty, data.strength*100});
+		outString.print("{s} #808080(#30ca64+**{d:.0}% #808080{})", .{getModifierName(data), data.strength*100, data.targetProperty});
 	} else {
-		outString.print("{s} #fd3535*Decreases#808080 {} by #fd3535**{d:.0}%", .{getModifierName(data), data.targetProperty, data.strength*100});
+		outString.print("{s} #808080(#fd3535**{d:.0}% #808080{})", .{getModifierName(data), data.strength*100, data.targetProperty});
 	}
 }
