@@ -1272,15 +1272,13 @@ pub const Connection = struct { // MARK: Connection
 			probeTimeStamp: i64 = undefined,
 			probeCount: u8 = 0,
 		},
-		/// in this state we had a succesfull search and can now use the mtu from the search until we go again in a searching state
+		/// in this state we had a succesfull search and now use until the pmtuRaiseTimer is over the current mtu estimate
 		searchFinished: struct {
 			/// how long we wait after a finished search to search for an higher mtu again. (RFC default: 10 minutes)
 			pmtuRaiseTimer: i64 = 1*6*100*ms,
 			/// the time we entered this state
 			timestamp: i64,
 		},
-		/// this state means we have reached some inconsistancy with the network mtu and just fall back to the base mtu
-		ERROR: void,
 
 		fn nextPacketIsProbe(self: *ProbeStatus, conn: *Connection, time: i64) bool {
 			if (conn.handShakeState.load(.acquire) != .complete) return false;
@@ -1307,7 +1305,6 @@ pub const Connection = struct { // MARK: Connection
 					self.* = .{.searching = .{}};
 					return true;
 				},
-				.ERROR => return false,
 			}
 		}
 
