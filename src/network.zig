@@ -1354,8 +1354,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		pub fn receive(self: *ProbeChannel, conn: *Connection, start: SequenceIndex, data: []const u8) !ReceiveBuffer.ReceiveStatus {
-			std.debug.print("LEN: {d}\n", .{data.len});
-                        return self.super.receive(conn, start, data);
+			return self.super.receive(conn, start, data);
 		}
 
 		pub fn send(self: *ProbeChannel, protocolIndex: u8, data: []const u8, time: i64) !void {
@@ -1897,6 +1896,8 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	fn tryReceive(self: *Connection, data: []const u8) !void {
+		if (data.len > main.settings.mtu*5) return;
+
 		std.debug.assert(self.manager.threadId == std.Thread.getCurrentId());
 		self.lastConnectionTime = networkTimestamp();
 		var reader = utils.BinaryReader.init(data);

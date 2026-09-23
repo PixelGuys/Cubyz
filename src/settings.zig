@@ -73,6 +73,8 @@ pub var controllerAxisDeadzone: f32 = 0.2;
 
 const settingsFile = if (builtin.mode == .Debug) "debug_settings.zig.zon" else "settings.zig.zon";
 
+pub var mtu: u16 = 1200;
+
 pub fn init() void {
 	const zon: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, settingsFile) catch |err| blk: {
 		if (err != error.FileNotFound) {
