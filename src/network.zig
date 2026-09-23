@@ -1281,6 +1281,7 @@ pub const Connection = struct { // MARK: Connection
 		},
 
 		fn nextPacketIsProbe(self: *ProbeStatus, conn: *Connection, time: i64) bool {
+			// while the handshake is not complete, other messages are ignored, so probing would just fail
 			if (conn.handShakeState.load(.acquire) != .complete) return false;
 			switch (self.*) {
 				.searching => |*state| {
