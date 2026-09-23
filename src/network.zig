@@ -1336,12 +1336,10 @@ pub const Connection = struct { // MARK: Connection
 
 	const ProbeChannel = struct { // MARK: ProbeChannel
 		super: Channel,
-		probingState: ProbeStatus,
 
 		pub fn init(sequenceIndex: SequenceIndex, delay: i64, id: ChannelId) ProbeChannel {
 			return .{
 				.super = .init(sequenceIndex, delay, id),
-				.probingState = .{.searching = .{}},
 			};
 		}
 
@@ -1362,7 +1360,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		pub fn receiveConfirmationAndGetTimestamp(self: *ProbeChannel, conn: *Connection, start: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
-			self.probingState.confirmedPacket(conn, start);
+			conn.mtuProbingState.confirmedPacket(conn, start);
 			return self.super.receiveConfirmationAndGetTimestamp(start);
 		}
 
@@ -1371,9 +1369,9 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		pub fn sendNextPacketAndGetSize(self: *ProbeChannel, conn: *Connection, time: i64, considerForCongestionControl: bool) ?usize {
-			if (!self.probingState.nextPacketIsProbe(conn, time)) return self.super.sendNextPacketAndGetSize(conn, time, considerForCongestionControl);
+			if (!conn.mtuProbingState.nextPacketIsProbe(conn, time)) return self.super.sendNextPacketAndGetSize(conn, time, considerForCongestionControl);
 
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, self.probingState.nextProbeSize(conn));
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, conn.mtuProbingState.nextProbeSize(conn));
 			defer writer.deinit();
 
 			writer.writeEnum(ChannelId, self.super.channelId);
@@ -1381,7 +1379,7 @@ pub const Connection = struct { // MARK: Connection
 			var byteIndex: SequenceIndex = undefined;
 			// here we ignore the packetLen as we want to send a probe with a our probing size
 			_ = self.super.sendBuffer.getNextPacketToSend(&byteIndex, writer.data.items.ptr[5..writer.data.capacity], time, considerForCongestionControl, self.super.allowedDelay);
-			self.probingState.sendProbe(byteIndex, time);
+			conn.mtuProbingState.sendProbe(byteIndex, time);
 			writer.writeInt(SequenceIndex, byteIndex);
 			_ = internalHeaderOverhead.fetchAdd(5, .monotonic);
 			_ = externalHeaderOverhead.fetchAdd(headerOverhead, .monotonic);
@@ -1651,6 +1649,7 @@ pub const Connection = struct { // MARK: Connection
 	nextConfirmationTimestamp: i64,
 	queuedConfirmations: main.utils.CircularBufferQueue(ConfirmationData),
 	mtuEstimate: u16 = minMtu,
+	mtuProbingState: ProbeStatus,
 
 	bandwidthEstimateInBytesPerRtt: f32 = minMtu,
 	slowStart: bool = true,
@@ -1686,6 +1685,7 @@ pub const Connection = struct { // MARK: Connection
 			.slowChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 100*ms, .slow),
 			.connectionIdentifier = networkTimestamp(),
 			.remoteConnectionIdentifier = 0,
+			.mtuProbingState = .{.searching = .{}},
 		};
 		errdefer {
 			result.lossyChannel.deinit();
@@ -1805,6 +1805,8 @@ pub const Connection = struct { // MARK: Connection
 			self.rttEstimate *= 1.5;
 			self.bandwidthEstimateInBytesPerRtt /= 2;
 			self.bandwidthEstimateInBytesPerRtt = @max(self.bandwidthEstimateInBytesPerRtt, minMtu);
+			self.mtuEstimate = minMtu;
+			self.mtuProbingState = .{.searching = .{}};
 		}
 	}
 
