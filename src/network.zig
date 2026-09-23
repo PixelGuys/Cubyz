@@ -1259,7 +1259,7 @@ pub const Connection = struct { // MARK: Connection
 	/// Reference: RFC8899
 	/// Declarations can be found in 5.1
 	/// fields in the 5.2 state machine
-	const ProbeStatus = union(enum) {
+	const ProbingState = union(enum) {
 		/// the time to wait until a probe is unconfirmed (RFC recommnds at least 15 seconds)
 		const probeTimer: i64 = 1*100*ms;
 		/// max probes are done until the probing is seen as failed (RFC default: 3)
@@ -1280,7 +1280,7 @@ pub const Connection = struct { // MARK: Connection
 			timestamp: i64,
 		},
 
-		fn nextPacketIsProbe(self: *ProbeStatus, conn: *Connection, time: i64) bool {
+		fn nextPacketIsProbe(self: *ProbingState, conn: *Connection, time: i64) bool {
 			// while the handshake is not complete, other messages are ignored, so probing would just fail
 			if (conn.handShakeState.load(.acquire) != .complete) return false;
 			switch (self.*) {
@@ -1309,13 +1309,13 @@ pub const Connection = struct { // MARK: Connection
 			}
 		}
 
-		fn nextProbeSize(self: *ProbeStatus, conn: *Connection) u16 {
+		fn nextProbeSize(self: *ProbingState, conn: *Connection) u16 {
 			std.debug.assert(self.* == .searching);
 			self.searching.probedSize = @min(conn.mtuEstimate, Connection.maxMtu - 50) + 50;
 			return self.searching.probedSize;
 		}
 
-		fn confirmedPacket(self: *ProbeStatus, conn: *Connection, sequenceIndex: SequenceIndex) void {
+		fn confirmedPacket(self: *ProbingState, conn: *Connection, sequenceIndex: SequenceIndex) void {
 			if (self.* != .searching) return;
 			if (self.searching.probeSequenceIndex == null) return;
 			if (self.searching.probeSequenceIndex.? != sequenceIndex) return;
@@ -1325,7 +1325,7 @@ pub const Connection = struct { // MARK: Connection
 			conn.mtuEstimate = self.searching.probedSize;
 		}
 
-		fn sendProbe(self: *ProbeStatus, sequenceIndex: SequenceIndex, time: i64) void {
+		fn setProbeInfo(self: *ProbingState, sequenceIndex: SequenceIndex, time: i64) void {
 			std.debug.assert(self.* == .searching);
 			self.searching.probeSequenceIndex = sequenceIndex;
 			self.searching.probeTimeStamp = time;
@@ -1377,7 +1377,7 @@ pub const Connection = struct { // MARK: Connection
 			var byteIndex: SequenceIndex = undefined;
 			// here we ignore the packetLen as we want to send a probe with a our probing size
 			_ = self.super.sendBuffer.getNextPacketToSend(&byteIndex, writer.data.items.ptr[5..writer.data.capacity], time, considerForCongestionControl, self.super.allowedDelay);
-			conn.mtuProbingState.sendProbe(byteIndex, time);
+			conn.mtuProbingState.setProbeInfo(byteIndex, time);
 			writer.writeInt(SequenceIndex, byteIndex);
 			_ = internalHeaderOverhead.fetchAdd(5, .monotonic);
 			_ = externalHeaderOverhead.fetchAdd(headerOverhead, .monotonic);
@@ -1647,7 +1647,7 @@ pub const Connection = struct { // MARK: Connection
 	nextConfirmationTimestamp: i64,
 	queuedConfirmations: main.utils.CircularBufferQueue(ConfirmationData),
 	mtuEstimate: u16 = minMtu,
-	mtuProbingState: ProbeStatus,
+	mtuProbingState: ProbingState,
 
 	bandwidthEstimateInBytesPerRtt: f32 = minMtu,
 	slowStart: bool = true,
