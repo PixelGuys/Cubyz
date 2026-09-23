@@ -1260,7 +1260,7 @@ pub const Connection = struct { // MARK: Connection
 	/// Declarations can be found in 5.1
 	/// fields in the 5.2 state machine
 	const ProbeStatus = union(enum) {
-		/// the time to wait until a probe is unconfirmed
+		/// the time to wait until a probe is unconfirmed (RFC recommnds at least 15 seconds)
 		const probeTimer: i64 = 1*100*ms;
 		/// max probes are done until the probing is seen as failed (RFC default: 3)
 		const maxProbes: u8 = 10;
