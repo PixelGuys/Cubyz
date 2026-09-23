@@ -1261,16 +1261,16 @@ pub const Connection = struct { // MARK: Connection
 	/// fields in the 5.2 state machine
 	const ProbeStatus = union(enum) {
 		/// the time to wait until a probe is unconfirmed
-		const probeTimer: i64 = 20*100*ms;
+		const probeTimer: i64 = 1*100*ms;
 		/// max probes are done until the probing is seen as failed (RFC default: 3)
-		const maxProbes: u8 = 3;
+		const maxProbes: u8 = 10;
 
 		/// In this state we are actively searching with probes for a higher mtu
 		searching: struct {
 			probedSize: u16 = undefined,
 			probeSequenceIndex: ?SequenceIndex = null,
 			probeTimeStamp: i64 = undefined,
-			probeCount: u8 = undefined,
+			probeCount: u8 = 0,
 		},
 		/// in this state we had a succesfull search and can now use the mtu from the search until we go again in a searching state
 		searchFinished: struct {
@@ -1319,9 +1319,9 @@ pub const Connection = struct { // MARK: Connection
 
 		fn confirmedPacket(self: *ProbeStatus, conn: *Connection, sequenceIndex: SequenceIndex) void {
 			if (self.* != .searching) return;
-
 			if (self.searching.probeSequenceIndex == null) return;
 			if (self.searching.probeSequenceIndex.? != sequenceIndex) return;
+
 			self.searching.probeCount = 0;
 			self.searching.probeSequenceIndex = null;
 			conn.mtuEstimate = self.searching.probedSize;
