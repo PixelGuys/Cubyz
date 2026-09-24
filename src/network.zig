@@ -1325,8 +1325,7 @@ pub const Connection = struct { // MARK: Connection
 
 		fn receiveConfirmationAndGetTimestamp(self: *ProbingState, conn: *Connection, sequenceIndex: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
 			if (self.* != .searching) return null;
-			if (self.searching.probeSequenceIndex == null) return null;
-			if (self.searching.probeSequenceIndex.? != sequenceIndex) return null;
+			if (self.searching.probeSequenceIndex != sequenceIndex) return null;
 
 			self.searching.probeCount = 0;
 			self.searching.probeSequenceIndex = null;
@@ -1338,11 +1337,12 @@ pub const Connection = struct { // MARK: Connection
 			};
 		}
 
-		fn setProbeInfo(self: *ProbingState, time: i64) void {
+		fn setProbeInfo(self: *ProbingState, time: i64) SequenceIndex {
 			std.debug.assert(self.* == .searching);
 			self.searching.probeSequenceIndex = nextIndex;
 			nextIndex += 1;
 			self.searching.probeTimeStamp = time;
+			return self.searching.probeSequenceIndex.?;
 		}
 	};
 
@@ -1385,13 +1385,13 @@ pub const Connection = struct { // MARK: Connection
 			if (self.super.sendNextPacketAndGetSize(conn, time, considerForCongestionControl)) |result| {
 				return result;
 			}
-			conn.mtuProbingState.setProbeInfo(time);
 
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, conn.mtuProbingState.nextProbeSize(conn));
 			defer writer.deinit();
 
+			const sequenceIndex = conn.mtuProbingState.setProbeInfo(time);
 			writer.writeEnum(ChannelId, ChannelId.probe);
-			writer.writeInt(SequenceIndex, conn.mtuProbingState.searching.probeSequenceIndex.?);
+			writer.writeInt(SequenceIndex, sequenceIndex);
 			writer.data.items.len = writer.data.capacity;
 
 			_ = packetsSent.fetchAdd(1, .monotonic);
