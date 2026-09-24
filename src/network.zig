@@ -1275,7 +1275,7 @@ pub const Connection = struct { // MARK: Connection
 		/// in this state we had a succesfull search and now use until the pmtuRaiseTimer is over the current mtu estimate
 		searchFinished: struct {
 			/// how long we wait after a finished search to search for an higher mtu again. (RFC default: 10 minutes)
-			pmtuRaiseTimer: i64 = 1*6*1000*ms,
+			pmtuRaiseTimer: i64 = 10*60*1000*ms,
 			/// the time we entered this state
 			timestamp: i64,
 		},
@@ -1378,12 +1378,12 @@ pub const Connection = struct { // MARK: Connection
 			while (true) {
 				var range = self.super.sendBuffer.unconfirmedRanges.peek() orelse break;
 
+				if (range.timestamp +% retransmissionTimeout -% time >= 0) break;
 				// we don't try to resend probes, this is handeld by the probing system
 				if (conn.mtuProbingState.searching.probeSequenceIndex == range.start) {
 					_ = self.super.receiveConfirmationAndGetTimestamp(range.start);
 					continue;
 				}
-				if (range.timestamp +% retransmissionTimeout -% time >= 0) break;
 				_ = self.super.sendBuffer.unconfirmedRanges.pop();
 				if (self.super.sendBuffer.fullyConfirmedIndex == range.start) {
 					// In TCP effectively only the second loss of the lowest unconfirmed packet is counted for congestion control
@@ -1852,12 +1852,15 @@ pub const Connection = struct { // MARK: Connection
 			self.rttEstimate *= 1.5;
 			self.bandwidthEstimateInBytesPerRtt /= 2;
 			self.bandwidthEstimateInBytesPerRtt = @max(self.bandwidthEstimateInBytesPerRtt, minMtu);
-			self.mtuEstimate = minMtu;
-			std.debug.print("\tRESET\n", .{});
-			self.mtuProbingState = .{.searchFinished = .{
-				.timestamp = networkTimestamp(),
-				.pmtuRaiseTimer = 5*1000*ms,
-			}};
+
+			// until the handShake is done, we don't probe so it also doesn't need to be reset
+			if (self.handShakeState.load(.acquire) == .complete) {
+				self.mtuEstimate = minMtu;
+				self.mtuProbingState = .{.searchFinished = .{
+					.timestamp = networkTimestamp(),
+					.pmtuRaiseTimer = 5*1000*ms,
+				}};
+			}
 		}
 	}
 
