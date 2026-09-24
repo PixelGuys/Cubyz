@@ -207,7 +207,7 @@ pub fn addRecipe(itemCombo: []const ItemWithAmount, list: *main.ListManaged(Reci
 	list.append(recipe);
 }
 
-var defaultCraftingTags: [1]Tag = .{.handCraftable};
+const defaultCraftingTags: [1]Tag = .{.handCraftable};
 
 pub fn parseRecipe(zon: ZonElement, list: *main.ListManaged(Recipe)) !void {
 	const arena = main.stackAllocator.createArena();
