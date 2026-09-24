@@ -1261,9 +1261,9 @@ pub const Connection = struct { // MARK: Connection
 	/// fields in the 5.2 state machine
 	const ProbingState = union(enum) {
 		/// the time to wait until a probe is unconfirmed (RFC recommnds at least 15 seconds)
-		const probeTimer: i64 = 1*100*ms;
+		const probeTimer: i64 = 15*1000*ms;
 		/// max probes are done until the probing is seen as failed (RFC default: 3)
-		const maxProbes: u8 = 10;
+		const maxProbes: u8 = 3;
 
 		/// In this state we are actively searching with probes for a higher mtu
 		searching: struct {
@@ -1275,7 +1275,7 @@ pub const Connection = struct { // MARK: Connection
 		/// in this state we had a succesfull search and now use until the pmtuRaiseTimer is over the current mtu estimate
 		searchFinished: struct {
 			/// how long we wait after a finished search to search for an higher mtu again. (RFC default: 10 minutes)
-			pmtuRaiseTimer: i64 = 1*6*100*ms,
+			pmtuRaiseTimer: i64 = 1*6*1000*ms,
 			/// the time we entered this state
 			timestamp: i64,
 		},
@@ -1363,25 +1363,68 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		pub fn checkForLosses(self: *ProbeChannel, conn: *Connection, time: i64) LossStatus {
-			return self.super.checkForLosses(conn, time);
+			if (conn.mtuProbingState != .searching) return self.super.checkForLosses(conn, time);
+
+			const retransmissionTimeout: i64 = @trunc(conn.rttEstimate + 3*conn.rttUncertainty + @as(f32, @floatFromInt(self.super.allowedDelay)));
+
+			var hadLoss: bool = false;
+			var hadDoubleLoss: bool = false;
+			while (true) {
+				var range = self.super.sendBuffer.unconfirmedRanges.peek() orelse break;
+
+				// we don't try to resend probes, this is handeld by the probing system
+				if (conn.mtuProbingState.searching.probeSequenceIndex == range.start) {
+					_ = self.super.sendBuffer.unconfirmedRanges.pop();
+					break;
+				}
+				if (range.timestamp +% retransmissionTimeout -% time >= 0) break;
+				_ = self.super.sendBuffer.unconfirmedRanges.pop();
+				if (self.super.sendBuffer.fullyConfirmedIndex == range.start) {
+					// In TCP effectively only the second loss of the lowest unconfirmed packet is counted for congestion control
+					// This decreases the chance of triggering congestion control from random packet loss
+					if (range.wasResentAsFirstPacket) hadDoubleLoss = true;
+					hadLoss = true;
+					range.wasResentAsFirstPacket = true;
+				}
+				range.wasResent = true;
+				self.super.sendBuffer.lostRanges.pushBack(range);
+				_ = packetsResent.fetchAdd(1, .monotonic);
+			}
+			if (hadDoubleLoss) return .doubleLoss;
+			if (hadLoss) return .singleLoss;
+			return .noLoss;
 		}
 
 		pub fn sendNextPacketAndGetSize(self: *ProbeChannel, conn: *Connection, time: i64, considerForCongestionControl: bool) ?usize {
 			if (!conn.mtuProbingState.nextPacketIsProbe(conn, time)) return self.super.sendNextPacketAndGetSize(conn, time, considerForCongestionControl);
+
+			if (self.super.sendNextPacketAndGetSize(conn, time, considerForCongestionControl)) |result| {
+				return result;
+			}
 
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, conn.mtuProbingState.nextProbeSize(conn));
 			defer writer.deinit();
 
 			writer.writeEnum(ChannelId, self.super.channelId);
 
+			//add probe to fill up writer
+			const len = writer.data.capacity - 5;
+			const probeLen: usize = len - @min(@as(usize, @intCast(self.super.sendBuffer.nextIndex -% self.super.sendBuffer.highestSentIndex)), len);
+			const paddingData = main.stackAllocator.alloc(u8, probeLen);
+			defer main.stackAllocator.free(paddingData);
+			if (probeLen > 0) {
+				self.send(protocols.Padding.id, paddingData, time) catch {
+					return self.super.sendNextPacketAndGetSize(conn, time, considerForCongestionControl);
+				};
+			}
+
 			var byteIndex: SequenceIndex = undefined;
-			// here we ignore the packetLen as we want to send a probe with a our probing size
-			_ = self.super.sendBuffer.getNextPacketToSend(&byteIndex, writer.data.items.ptr[5..writer.data.capacity], time, considerForCongestionControl, self.super.allowedDelay);
+			const packetLen = self.super.sendBuffer.getNextPacketToSend(&byteIndex, writer.data.items.ptr[5..writer.data.capacity], time, considerForCongestionControl, self.super.allowedDelay).?;
 			conn.mtuProbingState.setProbeInfo(byteIndex, time);
 			writer.writeInt(SequenceIndex, byteIndex);
 			_ = internalHeaderOverhead.fetchAdd(5, .monotonic);
 			_ = externalHeaderOverhead.fetchAdd(headerOverhead, .monotonic);
-			writer.data.items.len = writer.data.capacity;
+			writer.data.items.len += packetLen;
 
 			_ = packetsSent.fetchAdd(1, .monotonic);
 			conn.manager.send(writer.data.items, conn.remoteAddress, null);

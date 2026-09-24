@@ -1109,3 +1109,12 @@ pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
 		conn.send(.secure, id, writer.data.items);
 	}
 };
+
+/// This contains no data and is just used to pad a probe that is used for MTU path discovery
+pub const Padding = struct { // MARK: Probe
+	pub const id: u8 = 16;
+
+	pub fn clientReceive(_: *Connection, _: *utils.BinaryReader) !void {}
+
+	pub fn serverReceive(_: *Connection, _: *utils.BinaryReader) !void {}
+};
