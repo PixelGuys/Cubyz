@@ -207,6 +207,8 @@ pub fn addRecipe(itemCombo: []const ItemWithAmount, list: *main.ListManaged(Reci
 	list.append(recipe);
 }
 
+var defaultCraftingTags: [1]Tag = .{.handCraftable};
+
 pub fn parseRecipe(zon: ZonElement, list: *main.ListManaged(Recipe)) !void {
 	const arena = main.stackAllocator.createArena();
 	defer main.stackAllocator.destroyArena(arena);
@@ -220,11 +222,7 @@ pub fn parseRecipe(zon: ZonElement, list: *main.ListManaged(Recipe)) !void {
 	}
 
 	const foundCraftingTags = Tag.loadTagsFromZon(arena, zon.getChild("craftingTags"));
-	const craftingTags = if (foundCraftingTags.len != 0) foundCraftingTags else blk: {
-		var defaultCraftingTags = arena.alloc(main.Tag, 1);
-		defaultCraftingTags[0] = main.Tag.handCraftable;
-		break :blk defaultCraftingTags;
-	};
+	const craftingTags = if (foundCraftingTags.len != 0) foundCraftingTags else arena.dupe(Tag, &defaultCraftingTags);
 
 	const itemCombos = try generateItemCombos(arena, recipeItems);
 	for (itemCombos) |itemCombo| {
