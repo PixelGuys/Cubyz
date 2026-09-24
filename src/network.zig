@@ -1413,7 +1413,7 @@ pub const Connection = struct { // MARK: Connection
 
 			writer.writeEnum(ChannelId, self.super.channelId);
 
-			//add probe to fill up writer
+			// add probe to fill up writer
 			const len = writer.data.capacity - 5;
 			const probeLen: usize = len - @min(@as(usize, @intCast(self.super.sendBuffer.nextIndex -% self.super.sendBuffer.highestSentIndex)), len);
 			const paddingData = main.stackAllocator.alloc(u8, probeLen);
