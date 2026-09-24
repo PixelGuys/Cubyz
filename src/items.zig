@@ -1350,7 +1350,7 @@ pub const Recipe = struct { // MARK: Recipe
 		}
 
 		const tagCount = try reader.readVarInt(usize);
-		var craftingTagTypes: main.List(Tag) = .initCapacity(main.stackAllocator, @min(256, std.math.maxInt));
+		var craftingTagTypes: main.List(Tag) = .initCapacity(main.stackAllocator, tagCount);
 		defer craftingTagTypes.deinit(main.stackAllocator);
 
 		while (reader.remaining.len > 0 and craftingTagTypes.items.len < tagCount) {
