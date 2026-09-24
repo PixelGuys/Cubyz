@@ -1265,6 +1265,8 @@ pub const Connection = struct { // MARK: Connection
 		/// max probes are done until the probing is seen as failed (RFC default: 3)
 		const maxProbes: u8 = 3;
 
+		var nextIndex: SequenceIndex = 0;
+
 		/// In this state we are actively searching with probes for a higher mtu
 		searching: struct {
 			probedSize: u16 = undefined,
@@ -1321,19 +1323,25 @@ pub const Connection = struct { // MARK: Connection
 			return self.searching.probedSize;
 		}
 
-		fn confirmedPacket(self: *ProbingState, conn: *Connection, sequenceIndex: SequenceIndex) void {
-			if (self.* != .searching) return;
-			if (self.searching.probeSequenceIndex == null) return;
-			if (self.searching.probeSequenceIndex.? != sequenceIndex) return;
+		fn receiveConfirmationAndGetTimestamp(self: *ProbingState, conn: *Connection, sequenceIndex: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
+			if (self.* != .searching) return null;
+			if (self.searching.probeSequenceIndex == null) return null;
+			if (self.searching.probeSequenceIndex.? != sequenceIndex) return null;
 
 			self.searching.probeCount = 0;
 			self.searching.probeSequenceIndex = null;
 			conn.mtuEstimate = self.searching.probedSize;
+			return .{
+				.timestamp = networkTimestamp(),
+				.packetLen = sequenceIndex,
+				.considerForCongestionControl = false,
+			};
 		}
 
-		fn setProbeInfo(self: *ProbingState, sequenceIndex: SequenceIndex, time: i64) void {
+		fn setProbeInfo(self: *ProbingState, time: i64) void {
 			std.debug.assert(self.* == .searching);
-			self.searching.probeSequenceIndex = sequenceIndex;
+			self.searching.probeSequenceIndex = nextIndex;
+			nextIndex += 1;
 			self.searching.probeTimeStamp = time;
 		}
 	};
@@ -1363,42 +1371,12 @@ pub const Connection = struct { // MARK: Connection
 			return self.super.send(protocolIndex, data, time);
 		}
 
-		pub fn receiveConfirmationAndGetTimestamp(self: *ProbeChannel, conn: *Connection, start: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
-			conn.mtuProbingState.confirmedPacket(conn, start);
+		pub fn receiveConfirmationAndGetTimestamp(self: *ProbeChannel, start: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
 			return self.super.receiveConfirmationAndGetTimestamp(start);
 		}
 
 		pub fn checkForLosses(self: *ProbeChannel, conn: *Connection, time: i64) LossStatus {
-			if (conn.mtuProbingState != .searching) return self.super.checkForLosses(conn, time);
-
-			const retransmissionTimeout: i64 = @trunc(conn.rttEstimate + 3*conn.rttUncertainty + @as(f32, @floatFromInt(self.super.allowedDelay)));
-
-			var hadLoss: bool = false;
-			var hadDoubleLoss: bool = false;
-			while (true) {
-				var range = self.super.sendBuffer.unconfirmedRanges.peek() orelse break;
-
-				if (range.timestamp +% retransmissionTimeout -% time >= 0) break;
-				// we don't try to resend probes, this is handeld by the probing system
-				if (conn.mtuProbingState.searching.probeSequenceIndex == range.start) {
-					_ = self.super.receiveConfirmationAndGetTimestamp(range.start);
-					continue;
-				}
-				_ = self.super.sendBuffer.unconfirmedRanges.pop();
-				if (self.super.sendBuffer.fullyConfirmedIndex == range.start) {
-					// In TCP effectively only the second loss of the lowest unconfirmed packet is counted for congestion control
-					// This decreases the chance of triggering congestion control from random packet loss
-					if (range.wasResentAsFirstPacket) hadDoubleLoss = true;
-					hadLoss = true;
-					range.wasResentAsFirstPacket = true;
-				}
-				range.wasResent = true;
-				self.super.sendBuffer.lostRanges.pushBack(range);
-				_ = packetsResent.fetchAdd(1, .monotonic);
-			}
-			if (hadDoubleLoss) return .doubleLoss;
-			if (hadLoss) return .singleLoss;
-			return .noLoss;
+			return self.super.checkForLosses(conn, time);
 		}
 
 		pub fn sendNextPacketAndGetSize(self: *ProbeChannel, conn: *Connection, time: i64, considerForCongestionControl: bool) ?usize {
@@ -1407,30 +1385,14 @@ pub const Connection = struct { // MARK: Connection
 			if (self.super.sendNextPacketAndGetSize(conn, time, considerForCongestionControl)) |result| {
 				return result;
 			}
+			conn.mtuProbingState.setProbeInfo(time);
 
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, conn.mtuProbingState.nextProbeSize(conn));
 			defer writer.deinit();
 
-			writer.writeEnum(ChannelId, self.super.channelId);
-
-			// add probe to fill up writer
-			const len = writer.data.capacity - 5;
-			const probeLen: usize = len - @min(@as(usize, @intCast(self.super.sendBuffer.nextIndex -% self.super.sendBuffer.highestSentIndex)), len);
-			const paddingData = main.stackAllocator.alloc(u8, probeLen);
-			defer main.stackAllocator.free(paddingData);
-			if (probeLen > 0) {
-				self.send(protocols.Padding.id, paddingData, time) catch {
-					return self.super.sendNextPacketAndGetSize(conn, time, considerForCongestionControl);
-				};
-			}
-
-			var byteIndex: SequenceIndex = undefined;
-			const packetLen = self.super.sendBuffer.getNextPacketToSend(&byteIndex, writer.data.items.ptr[5..writer.data.capacity], time, considerForCongestionControl, self.super.allowedDelay).?;
-			conn.mtuProbingState.setProbeInfo(byteIndex, time);
-			writer.writeInt(SequenceIndex, byteIndex);
-			_ = internalHeaderOverhead.fetchAdd(5, .monotonic);
-			_ = externalHeaderOverhead.fetchAdd(headerOverhead, .monotonic);
-			writer.data.items.len += packetLen;
+			writer.writeEnum(ChannelId, ChannelId.probe);
+			writer.writeInt(SequenceIndex, conn.mtuProbingState.searching.probeSequenceIndex.?);
+			writer.data.items.len = writer.data.capacity;
 
 			_ = packetsSent.fetchAdd(1, .monotonic);
 			conn.manager.send(writer.data.items, conn.remoteAddress, null);
@@ -1644,6 +1606,7 @@ pub const Connection = struct { // MARK: Connection
 		init = 4,
 		keepalive = 5,
 		disconnect = 6,
+		probe = 7,
 	};
 
 	const ConfirmationData = struct {
@@ -1888,7 +1851,8 @@ pub const Connection = struct { // MARK: Connection
 			const confirmationResult = switch (channel) {
 				.lossy => self.lossyChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
 				.secure => self.secureChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
-				.slow => self.slowChannel.receiveConfirmationAndGetTimestamp(self, start) orelse continue,
+				.slow => self.slowChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
+				.probe => self.mtuProbingState.receiveConfirmationAndGetTimestamp(self, start) orelse continue,
 				else => return error.Invalid,
 			};
 			const rtt: f32 = @floatFromInt(@max(1, timestamp -% confirmationResult.timestamp -% timeOffset));
@@ -2048,6 +2012,14 @@ pub const Connection = struct { // MARK: Connection
 						.receiveTimeStamp = networkTimestamp(),
 					});
 				}
+			},
+			.probe => {
+				const start = try reader.readInt(SequenceIndex);
+				self.queuedConfirmations.pushBack(.{
+					.channel = channel,
+					.start = start,
+					.receiveTimeStamp = networkTimestamp(),
+				});
 			},
 			.confirmation => {
 				try self.receiveConfirmationPacket(&reader, networkTimestamp());
