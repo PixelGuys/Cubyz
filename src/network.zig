@@ -1374,7 +1374,7 @@ pub const Connection = struct { // MARK: Connection
 
 				// we don't try to resend probes, this is handeld by the probing system
 				if (conn.mtuProbingState.searching.probeSequenceIndex == range.start) {
-					_ = self.super.sendBuffer.unconfirmedRanges.pop();
+					_ = self.super.receiveConfirmationAndGetTimestamp(range.start);
 					break;
 				}
 				if (range.timestamp +% retransmissionTimeout -% time >= 0) break;
