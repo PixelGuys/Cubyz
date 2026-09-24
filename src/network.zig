@@ -1285,6 +1285,12 @@ pub const Connection = struct { // MARK: Connection
 			if (conn.handShakeState.load(.acquire) != .complete) return false;
 			switch (self.*) {
 				.searching => |*state| {
+					if (conn.mtuEstimate >= Connection.maxMtu - 50) {
+						self.* = .{.searchFinished = .{
+							.timestamp = time,
+						}};
+						return false;
+					}
 					if (state.probeSequenceIndex == null) return true;
 					if (time - state.probeTimeStamp > probeTimer) {
 						state.probeSequenceIndex = null;
@@ -1375,7 +1381,7 @@ pub const Connection = struct { // MARK: Connection
 				// we don't try to resend probes, this is handeld by the probing system
 				if (conn.mtuProbingState.searching.probeSequenceIndex == range.start) {
 					_ = self.super.receiveConfirmationAndGetTimestamp(range.start);
-					break;
+					continue;
 				}
 				if (range.timestamp +% retransmissionTimeout -% time >= 0) break;
 				_ = self.super.sendBuffer.unconfirmedRanges.pop();
@@ -1847,7 +1853,11 @@ pub const Connection = struct { // MARK: Connection
 			self.bandwidthEstimateInBytesPerRtt /= 2;
 			self.bandwidthEstimateInBytesPerRtt = @max(self.bandwidthEstimateInBytesPerRtt, minMtu);
 			self.mtuEstimate = minMtu;
-			self.mtuProbingState = .{.searching = .{}};
+			std.debug.print("\tRESET\n", .{});
+			self.mtuProbingState = .{.searchFinished = .{
+				.timestamp = networkTimestamp(),
+				.pmtuRaiseTimer = 5*1000*ms,
+			}};
 		}
 	}
 
@@ -1939,8 +1949,6 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	fn tryReceive(self: *Connection, data: []const u8) !void {
-		if (data.len > main.settings.mtu*5) return;
-
 		std.debug.assert(self.manager.threadId == std.Thread.getCurrentId());
 		self.lastConnectionTime = networkTimestamp();
 		var reader = utils.BinaryReader.init(data);
