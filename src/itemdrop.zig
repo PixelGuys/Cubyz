@@ -707,6 +707,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
 				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2]));
 				modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
+				modelMatrix = modelMatrix.mul(.rotationX(std.math.pi));
 				modelMatrix = modelMatrix.mul(Mat4f.translation(@splat(-0.5)));
 				drawItem(vertices, modelMatrix);
 			}
@@ -815,6 +816,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.2));
 			}
 			modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
+			modelMatrix = modelMatrix.mul(.rotationX(std.math.pi));
 			modelMatrix = modelMatrix.mul(Mat4f.translation(@splat(-0.5)));
 			drawItem(vertices, modelMatrix);
 		}
