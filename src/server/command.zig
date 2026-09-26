@@ -280,3 +280,15 @@ pub const PatternExpression = struct {
 		}};
 	}
 };
+
+pub const PermissionPath = struct {
+	path: []const u8,
+
+	pub fn parse(_: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!PermissionPath {
+		if (arg[0] != '/') {
+			errorMessage.print("Permission path for <{s}> doesn't begin with a \"/\", got: {s}", .{name, arg});
+			return error.ParseError;
+		}
+		return .{.path = arg};
+	}
+};

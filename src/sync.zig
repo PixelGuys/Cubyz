@@ -27,6 +27,22 @@ pub const Side = enum { client, server };
 pub const client = struct { // MARK: client
 	pub var mutex: main.utils.Mutex = .{};
 	var commands: utils.CircularBufferQueue(Command) = undefined;
+	var syncCommands: main.ListManaged(ClientSyncOperation) = .init(main.globalAllocator);
+	const ClientSyncOperation = struct {
+		const Type = enum { confirmation, failure, sync };
+		typ: Type,
+		data: []const u8,
+
+		pub fn init(typ: Type, data: []const u8) ClientSyncOperation {
+			return .{
+				.typ = typ,
+				.data = main.globalAllocator.dupe(u8, data),
+			};
+		}
+		fn deinit(self: ClientSyncOperation) void {
+			main.globalAllocator.free(self.data);
+		}
+	};
 
 	pub fn init() void {
 		commands = utils.CircularBufferQueue(Command).init(main.globalAllocator, 256);
@@ -35,6 +51,7 @@ pub const client = struct { // MARK: client
 	pub fn deinit() void {
 		reset();
 		commands.deinit();
+		syncCommands.deinit();
 	}
 
 	pub fn reset() void {
@@ -44,6 +61,9 @@ pub const client = struct { // MARK: client
 			cmd.finalize(main.globalAllocator, .client, &reader) catch |err| {
 				std.log.err("Got error while cleaning remaining inventory commands: {s}", .{@errorName(err)});
 			};
+		}
+		while (syncCommands.popOrNull()) |sync| {
+			sync.deinit();
 		}
 		mutex.unlock();
 	}
@@ -62,20 +82,17 @@ pub const client = struct { // MARK: client
 		commands.pushBack(cmd);
 	}
 
-	pub fn receiveConfirmation(reader: *BinaryReader) !void {
+	pub fn receiveSyncOperation(sync: ClientSyncOperation) void {
 		mutex.lock();
 		defer mutex.unlock();
-		if (commands.popFront()) |cmd| {
-			try cmd.finalize(main.globalAllocator, .client, reader);
-		} else {
-			std.log.err("Received unexpected confirmation sync. Disconnecting", .{});
-			return error.Invalid;
-		}
+		syncCommands.append(sync);
 	}
 
-	pub fn receiveFailure() void {
+	pub fn update() !void {
 		mutex.lock();
 		defer mutex.unlock();
+		if (syncCommands.items.len == 0) return;
+
 		var tempData: main.List(Command) = .empty;
 		defer tempData.deinit(main.stackAllocator);
 		while (commands.popBack()) |_cmd| {
@@ -83,31 +100,37 @@ pub const client = struct { // MARK: client
 			cmd.undo();
 			tempData.append(main.stackAllocator, cmd);
 		}
-		if (tempData.popOrNull()) |_cmd| {
-			var cmd = _cmd;
-			var reader = BinaryReader.init(&.{});
-			cmd.finalize(main.globalAllocator, .client, &reader) catch |err| {
-				std.log.err("Got error while cleaning rejected inventory command: {s}", .{@errorName(err)});
-			};
-		}
-		while (tempData.popOrNull()) |_cmd| {
-			var cmd = _cmd;
-			cmd.do(main.globalAllocator, .client, null, main.game.Player.gamemode.raw) catch unreachable;
-			commands.pushBack(cmd);
-		}
-	}
 
-	pub fn receiveSyncOperation(reader: *BinaryReader) !void {
-		mutex.lock();
-		defer mutex.unlock();
-		var tempData: main.List(Command) = .empty;
-		defer tempData.deinit(main.stackAllocator);
-		while (commands.popBack()) |_cmd| {
-			var cmd = _cmd;
-			cmd.undo();
-			tempData.append(main.stackAllocator, cmd);
+		for (syncCommands.items) |sync| {
+			defer sync.deinit();
+			var reader = BinaryReader.init(sync.data);
+
+			switch (sync.typ) {
+				.confirmation => {
+					if (tempData.popOrNull()) |_cmd| {
+						var cmd = _cmd;
+						cmd.do(main.globalAllocator, .client, null, main.game.Player.gamemode.raw) catch unreachable;
+						try cmd.finalize(main.globalAllocator, .client, &reader);
+					} else {
+						std.log.err("Received unexpected confirmation sync. Disconnecting", .{});
+						return error.Invalid;
+					}
+				},
+				.failure => {
+					if (tempData.popOrNull()) |cmd| {
+						try cmd.finalize(main.globalAllocator, .client, &reader);
+					} else {
+						std.log.err("Received unexpected failure sync. Disconnecting", .{});
+						return error.Invalid;
+					}
+				},
+				.sync => {
+					try Command.SyncOperation.executeFromData(&reader);
+				},
+			}
 		}
-		try Command.SyncOperation.executeFromData(reader);
+		syncCommands.clearRetainingCapacity();
+
 		while (tempData.popOrNull()) |_cmd| {
 			var cmd = _cmd;
 			cmd.do(main.globalAllocator, .client, null, main.game.Player.gamemode.raw) catch unreachable;
@@ -621,6 +644,7 @@ pub const Command = struct { // MARK: Command
 					info.dest.inv.update();
 				},
 				.moveToBag => |info| {
+					if (info.amount == 0) continue;
 					const item = info.dest.peek(0).item;
 					std.debug.assert(std.meta.eql(info.source.ref().item, item) or info.source.ref().item == .null);
 
@@ -888,7 +912,7 @@ pub const Command = struct { // MARK: Command
 
 		fn run(_: Open, _: Context) error{serverFailure}!void {}
 
-		fn finalize(self: Open, side: Side, reader: *BinaryReader) !void {
+		pub fn finalize(self: Open, side: Side, reader: *BinaryReader) !void {
 			if (side != .client) return;
 			if (reader.remaining.len != 0) {
 				const serverId = try reader.readEnum(InventoryId);
@@ -896,7 +920,7 @@ pub const Command = struct { // MARK: Command
 			}
 		}
 
-		fn confirmationData(self: Open, allocator: NeverFailingAllocator) []const u8 {
+		pub fn confirmationData(self: Open, allocator: NeverFailingAllocator) []const u8 {
 			var writer = BinaryWriter.initCapacity(allocator, 4);
 			writer.writeEnum(InventoryId, self.inv.id);
 			return writer.data.toOwnedSlice();
@@ -949,7 +973,7 @@ pub const Command = struct { // MARK: Command
 
 		fn run(_: Close, _: Context) error{serverFailure}!void {}
 
-		fn finalize(self: Close, side: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: Close, side: Side, _: *BinaryReader) !void {
 			if (side != .client) return;
 			self.inv._deinit(self.allocator, .client);
 			Inventory.client.unmapServerIdByClientId(self.inv.id);
@@ -1224,7 +1248,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 
-		fn finalize(self: FillAnyFromCreative, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: FillAnyFromCreative, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 		}
 
@@ -1285,7 +1309,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 
-		fn finalize(self: DepositOrDrop, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: DepositOrDrop, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 		}
 
@@ -1335,7 +1359,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 
-		fn finalize(self: DepositToAny, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: DepositToAny, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 		}
 
@@ -1401,7 +1425,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 
-		fn finalize(self: TakeFromPlayerBag, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: TakeFromPlayerBag, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 		}
 
@@ -1450,7 +1474,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 
-		fn finalize(self: CraftFrom, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: CraftFrom, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 			self.sources.deinit(main.globalAllocator);
 		}
@@ -1513,7 +1537,7 @@ pub const Command = struct { // MARK: Command
 			return .{.destinations = .initFromClientInventories(main.globalAllocator, destinations), .craftingGrid = craftingGrid};
 		}
 
-		fn finalize(self: CraftProceduralItem, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: CraftProceduralItem, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 		}
 
@@ -1573,13 +1597,13 @@ pub const Command = struct { // MARK: Command
 
 	const UpdateBlock = struct { // MARK: UpdateBlock
 		source: InventoryAndSlot,
-		pos: Vec3i,
 		dropLocation: BlockDrop.Location,
 		oldBlock: Block,
 		newBlock: Block,
 
 		fn run(self: UpdateBlock, ctx: Context) error{serverFailure}!void {
 			const stack = self.source.ref();
+			const pos = self.dropLocation.worldPos;
 
 			var shouldDropSourceBlockOnSuccess: bool = true;
 			const costOfChange = if (ctx.gamemode != .creative) self.oldBlock.canBeChangedInto(self.newBlock, stack.*, &shouldDropSourceBlockOnSuccess) else .yes;
@@ -1596,20 +1620,20 @@ pub const Command = struct { // MARK: Command
 					var writer = BinaryWriter.init(main.stackAllocator);
 					defer writer.deinit();
 
-					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(self.pos[0], self.pos[1], self.pos[2], &writer) orelse return;
-					main.network.protocols.blockUpdate.send(ctx.user.?.conn, &.{.init(self.pos, actualBlock, writer.data.items)});
+					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(pos[0], pos[1], pos[2], &writer) orelse return;
+					main.network.protocols.blockUpdate.send(ctx.user.?.conn, &.{.init(pos, actualBlock, writer.data.items)});
 				}
 				return;
 			}
 
 			if (ctx.side == .server) {
-				if (main.server.world.?.cmpxchgBlock(self.pos[0], self.pos[1], self.pos[2], self.oldBlock, self.newBlock) != null) {
+				if (main.server.world.?.cmpxchgBlock(pos[0], pos[1], pos[2], self.oldBlock, self.newBlock) != null) {
 					// Inform the client of the actual block:
 					var writer = BinaryWriter.init(main.stackAllocator);
 					defer writer.deinit();
 
-					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(self.pos[0], self.pos[1], self.pos[2], &writer) orelse return;
-					main.network.protocols.blockUpdate.send(ctx.user.?.conn, &.{.init(self.pos, actualBlock, writer.data.items)});
+					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(pos[0], pos[1], pos[2], &writer) orelse return;
+					main.network.protocols.blockUpdate.send(ctx.user.?.conn, &.{.init(pos, actualBlock, writer.data.items)});
 					return error.serverFailure;
 				}
 			}
@@ -1638,13 +1662,13 @@ pub const Command = struct { // MARK: Command
 					.newBlock = self.newBlock,
 					.item = handItem,
 				};
-				dropCtx.drop(self.dropLocation, self.pos);
+				dropCtx.drop(self.dropLocation);
 			}
 		}
 
 		fn serialize(self: UpdateBlock, writer: *BinaryWriter) void {
 			self.source.write(writer);
-			writer.writeVec(Vec3i, self.pos);
+			writer.writeVec(Vec3i, self.dropLocation.worldPos);
 			writer.writeVec(Vec3f, self.dropLocation.normalDir);
 			writer.writeVec(Vec3f, self.dropLocation.min);
 			writer.writeVec(Vec3f, self.dropLocation.max);
@@ -1655,8 +1679,8 @@ pub const Command = struct { // MARK: Command
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !UpdateBlock {
 			return .{
 				.source = try InventoryAndSlot.read(reader, side, user),
-				.pos = try reader.readVec(Vec3i),
 				.dropLocation = .{
+					.worldPos = try reader.readVec(Vec3i),
 					.normalDir = try reader.readVec(Vec3f),
 					.min = try reader.readVec(Vec3f),
 					.max = try reader.readVec(Vec3f),
@@ -1720,19 +1744,15 @@ pub const Command = struct { // MARK: Command
 	const ChatCommand = struct { // MARK: ChatCommand
 		message: []const u8,
 
-		fn finalize(self: ChatCommand, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: ChatCommand, _: Side, _: *BinaryReader) !void {
 			main.globalAllocator.free(self.message);
 		}
 
 		pub fn run(self: ChatCommand, ctx: Context) error{serverFailure}!void {
 			if (ctx.side == .server) {
 				const user = ctx.user orelse return;
-				if (main.server.world.?.settings.allowCheats) {
-					main.log.server("User \"{f}§#ffffff\" executed command \"{s}\"", .{user, self.message});
-					main.server.command.execute(self.message, .{.user = user});
-				} else {
-					user.sendRawMessage("Commands are not allowed because cheats are disabled");
-				}
+				main.log.server("User \"{f}§#ffffff\" executed command \"{s}\"", .{user, self.message});
+				main.server.command.execute(self.message, .{.user = user});
 			}
 		}
 

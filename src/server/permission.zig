@@ -120,7 +120,7 @@ const GroupInstance = struct { // MARK: GroupInstance
 			.permissions = .init(allocator),
 			.name = name,
 		};
-		self.save(allocator, id);
+		self.save(id);
 		return self;
 	}
 
@@ -153,13 +153,13 @@ const GroupInstance = struct { // MARK: GroupInstance
 		self.permissions.toBytes(writer);
 	}
 
-	fn save(self: *GroupInstance, allocator: NeverFailingAllocator, id: Group) void {
+	fn save(self: *GroupInstance, id: Group) void {
 		if (builtin.is_test) return;
 		sync.threadContext.assertCorrectContext(.server);
-		const path = allocator.print("saves/{s}/permission/{d}.group", .{main.server.world.?.path, @intFromEnum(id)});
-		defer allocator.free(path);
+		const path = main.stackAllocator.print("{s}/{d}.group", .{groupsPath, @intFromEnum(id)});
+		defer main.stackAllocator.free(path);
 
-		var writer: main.utils.BinaryWriter = .init(allocator);
+		var writer: main.utils.BinaryWriter = .init(main.stackAllocator);
 		defer writer.deinit();
 
 		self.toBytes(&writer);
@@ -168,16 +168,16 @@ const GroupInstance = struct { // MARK: GroupInstance
 		};
 	}
 
-	pub fn addPermission(self: *GroupInstance, allocator: NeverFailingAllocator, id: Group, listType: Permissions.ListType, permissionPath: []const u8) void {
+	pub fn addPermission(self: *GroupInstance, id: Group, listType: Permissions.ListType, permissionPath: []const u8) void {
 		sync.threadContext.assertCorrectContext(.server);
 		self.permissions.addPermission(listType, permissionPath);
-		self.save(allocator, id);
+		self.save(id);
 	}
 
-	pub fn removePermission(self: *GroupInstance, allocator: NeverFailingAllocator, id: Group, listType: Permissions.ListType, permissionPath: []const u8) bool {
+	pub fn removePermission(self: *GroupInstance, id: Group, listType: Permissions.ListType, permissionPath: []const u8) bool {
 		sync.threadContext.assertCorrectContext(.server);
 		const result = self.permissions.removePermission(listType, permissionPath);
-		if (result) self.save(allocator, id);
+		if (result) self.save(id);
 		return result;
 	}
 
@@ -197,6 +197,7 @@ var groups: main.ListManaged(?*GroupInstance) = undefined;
 var groupNameToIdMap: std.StringHashMapUnmanaged(Group) = .{};
 
 var groupsArena: NeverFailingArenaAllocator = undefined;
+var groupsPath: []const u8 = undefined;
 
 /// Wrapper for permission groups.
 /// Creation of this via @enumFromInt should only be done if you are sure the group exists. The safer way is to go over one of the these functions:
@@ -204,6 +205,9 @@ var groupsArena: NeverFailingArenaAllocator = undefined;
 /// - getByName
 pub const Group = enum(u32) { // MARK: Group
 	_,
+
+	pub var default: Group = undefined;
+	pub var moderator: Group = undefined;
 
 	pub fn createGroup(name: []const u8) error{AlreadyExists}!Group {
 		sync.threadContext.assertCorrectContext(.server);
@@ -248,7 +252,7 @@ pub const Group = enum(u32) { // MARK: Group
 		groups.items[@intFromEnum(self)] = null;
 
 		if (builtin.is_test) return true;
-		const path = main.stackAllocator.print("saves/{s}/permission/{d}.group", .{main.server.world.?.path, @intFromEnum(self)});
+		const path = main.stackAllocator.print("{s}/{d}.group", .{groupsPath, @intFromEnum(self)});
 		defer main.stackAllocator.free(path);
 		main.files.cubyzDir().deleteFile(path) catch |err| {
 			std.log.err("Couldn't delete group file even though it exits: {t}", .{err});
@@ -256,12 +260,12 @@ pub const Group = enum(u32) { // MARK: Group
 		return true;
 	}
 
-	pub fn addPermission(self: Group, allocator: NeverFailingAllocator, listType: Permissions.ListType, permissionPath: []const u8) error{GroupNotFound}!void {
-		(try self.getInstance()).addPermission(allocator, self, listType, permissionPath);
+	pub fn addPermission(self: Group, listType: Permissions.ListType, permissionPath: []const u8) error{GroupNotFound}!void {
+		(try self.getInstance()).addPermission(self, listType, permissionPath);
 	}
 
-	pub fn removePermission(self: Group, allocator: NeverFailingAllocator, listType: Permissions.ListType, permissionPath: []const u8) error{GroupNotFound}!bool {
-		return (try self.getInstance()).removePermission(allocator, self, listType, permissionPath);
+	pub fn removePermission(self: Group, listType: Permissions.ListType, permissionPath: []const u8) error{GroupNotFound}!bool {
+		return (try self.getInstance()).removePermission(self, listType, permissionPath);
 	}
 
 	pub fn hasPermission(self: Group, permissionPath: []const u8) error{GroupNotFound}!Permissions.PermissionResult {
@@ -300,7 +304,7 @@ fn addGroupFromBin(group: Group, data: []const u8) void {
 	groups.append(groupInstance);
 }
 
-pub fn loadGroups(dir: main.files.Dir) !void {
+pub fn loadGroups(dir: main.files.Dir, worldPath: []const u8) !void {
 	dir.makePath(".") catch |err| {
 		std.log.err("Couldn't create permission directory: {t}", .{err});
 	};
@@ -308,6 +312,7 @@ pub fn loadGroups(dir: main.files.Dir) !void {
 	defer metaDataZon.deinit(main.stackAllocator);
 
 	init(main.globalAllocator);
+	groupsPath = groupsArena.allocator().print("saves/{s}/permission", .{worldPath});
 	const currentId = metaDataZon.get(u32, "currentId") orelse 0;
 	groups.ensureCapacity(currentId);
 
@@ -323,16 +328,36 @@ pub fn loadGroups(dir: main.files.Dir) !void {
 		defer main.stackAllocator.free(data);
 		addGroupFromBin(@enumFromInt(id), data);
 	}
+	createDefaultPermissionGroups();
 }
 
 fn saveMetaData(allocator: NeverFailingAllocator) !void {
 	if (builtin.is_test) return;
-	const metadatPath = allocator.print("saves/{s}/permission/metadata.zon", .{main.server.world.?.path});
+	const metadatPath = allocator.print("{s}/metadata.zon", .{groupsPath});
 	defer allocator.free(metadatPath);
 	var metadataZon: ZonElement = .initObject(main.stackAllocator);
 	defer metadataZon.deinit(main.stackAllocator);
 	metadataZon.put("currentId", @as(u32, @truncate(groups.items.len)));
 	try main.files.cubyzDir().writeZon(metadatPath, metadataZon);
+}
+
+fn createDefaultPermissionGroups() void {
+	{
+		Group.default = Group.createGroup("default") catch Group.getByName("default") catch unreachable;
+
+		Group.default.addPermission(.white, "/command/avatar") catch unreachable;
+		Group.default.addPermission(.white, "/command/help") catch unreachable;
+	}
+	{
+		Group.moderator = Group.createGroup("moderator") catch Group.getByName("moderator") catch unreachable;
+
+		Group.moderator.addPermission(.white, "/command/group") catch unreachable;
+		Group.moderator.addPermission(.white, "/command/invite") catch unreachable;
+		Group.moderator.addPermission(.white, "/command/kick") catch unreachable;
+		Group.moderator.addPermission(.white, "/command/perm") catch unreachable;
+		Group.moderator.addPermission(.white, "/command/server") catch unreachable;
+		Group.moderator.addPermission(.white, "/command/whitelist") catch unreachable;
+	}
 }
 
 // ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
@@ -426,7 +451,7 @@ test "groupPermissions" {
 	defer deinit();
 
 	const group = try Group.createGroup("test");
-	try group.addPermission(main.heap.testingAllocator, .white, "/command/test");
+	try group.addPermission(.white, "/command/test");
 	try std.testing.expectEqual(Permissions.PermissionResult.yes, group.hasPermission("/command/test"));
 }
 
@@ -435,8 +460,8 @@ test "groupRemovePermissions" {
 	defer deinit();
 
 	const group = try Group.createGroup("test");
-	try group.addPermission(main.heap.testingAllocator, .white, "/command/test");
-	try std.testing.expectEqual(true, group.removePermission(main.heap.testingAllocator, .white, "/command/test"));
+	try group.addPermission(.white, "/command/test");
+	try std.testing.expectEqual(true, group.removePermission(.white, "/command/test"));
 }
 
 test "invalidGroup" {
@@ -502,8 +527,8 @@ test "permissionGroupToFromBytes" {
 
 	const group = try Group.createGroup("test");
 
-	try group.addPermission(main.heap.testingAllocator, .white, "/command/test");
-	try group.addPermission(main.heap.testingAllocator, .white, "/command/spawn");
+	try group.addPermission(.white, "/command/test");
+	try group.addPermission(.white, "/command/spawn");
 
 	var writer: main.utils.BinaryWriter = .init(main.heap.testingAllocator);
 	defer writer.deinit();
