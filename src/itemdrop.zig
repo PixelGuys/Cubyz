@@ -694,18 +694,21 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
 				var scale: f32 = 0.3;
 				var blockType: u16 = 0;
-				if (item == .baseItem and item.baseItem.block() != null and item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
-					blockType = item.baseItem.block().?;
-					vertices = model.len/2*6;
-				} else {
-					scale = 0.5;
-				}
-				bindModelUniforms(model.index, blockType);
 
 				var modelMatrix = Mat4f.translation(@floatCast(pos));
 				modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
 				modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
 				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2]));
+
+				if (item == .baseItem and item.baseItem.block() != null and item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
+					blockType = item.baseItem.block().?;
+					vertices = model.len/2*6;
+				} else {
+					scale = 0.5;
+					modelMatrix = modelMatrix.mul(.rotationX(std.math.pi));
+				}
+				bindModelUniforms(model.index, blockType);
+
 				modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
 				modelMatrix = modelMatrix.mul(.rotationX(std.math.pi));
 				modelMatrix = modelMatrix.mul(Mat4f.translation(@splat(-0.5)));
@@ -812,11 +815,11 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				} else {
 					modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.45));
 				}
+				modelMatrix = modelMatrix.mul(.rotationX(std.math.pi));
 			} else {
 				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.2));
 			}
 			modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
-			modelMatrix = modelMatrix.mul(.rotationX(std.math.pi));
 			modelMatrix = modelMatrix.mul(Mat4f.translation(@splat(-0.5)));
 			drawItem(vertices, modelMatrix);
 		}
