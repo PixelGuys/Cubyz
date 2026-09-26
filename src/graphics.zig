@@ -483,7 +483,7 @@ pub const draw = struct { // MARK: draw
 				.size = dim,
 				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
 				.color = @bitCast(getColor()),
-				.uvOffset = .{uvOffset[0], 1 - uvOffset[1] - uvDim[1]},
+				.uvOffset = .{uvOffset[0], uvOffset[1]},
 				.uvDim = .{uvDim[0], uvDim[1]},
 			});
 			vulkan.currentFrame.guiCommands.bindVertexArray(rectVao);
@@ -496,7 +496,7 @@ pub const draw = struct { // MARK: draw
 			c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
 			c.glUniform2f(imageUniforms.size, dim[0], dim[1]);
 			c.glUniform1i(imageUniforms.color, @bitCast(getColor()));
-			c.glUniform2f(imageUniforms.uvOffset, uvOffset[0], 1 - uvOffset[1] - uvDim[1]);
+			c.glUniform2f(imageUniforms.uvOffset, uvOffset[0], uvOffset[1]);
 			c.glUniform2f(imageUniforms.uvDim, uvDim[0], uvDim[1]);
 
 			rectVao.bind();

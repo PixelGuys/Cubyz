@@ -26,7 +26,7 @@ layout(push_constant, std430) uniform _ {
 #endif
 
 void main() {
-	vec2 position_percentage = (start + vec2(vertex_pos.x*size.x, size.y - vertex_pos.y*size.y))/screen;
+	vec2 position_percentage = (start + vec2(vertex_pos.x*size.x, vertex_pos.y*size.y))/screen;
 
 	vec2 position = position_percentage*2+vec2(-1, -1);
 
