@@ -44,8 +44,10 @@ fn readFromStdin() usize {
 		return 0;
 	};
 	return result.file_read_streaming catch |err| {
-		std.log.err("Error while reading from stdin: {t}", .{err});
 		running = false;
+		// EndOfStream just means we don't get anything anymore from stdin, here we don't need to print an error
+		if (err == error.EndOfStream) return 0;
+		std.log.err("Error while reading from stdin: {t}", .{err});
 		return 0;
 	};
 }
