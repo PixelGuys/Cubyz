@@ -18,6 +18,7 @@ pub const avatar = @import("entity/avatar.zig");
 pub const group = @import("permission/group.zig");
 pub const perm = @import("permission/perm.zig");
 
+pub const adjust = @import("worldedit/adjust.zig");
 pub const undo = @import("worldedit/undo.zig");
 pub const redo = @import("worldedit/redo.zig");
 pub const pos1 = @import("worldedit/pos1.zig");
