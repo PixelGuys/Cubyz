@@ -8,7 +8,7 @@ void main() {
 #ifdef OPEN_GL
 	texCoords = vec2(inTexCoords.x, 1 - inTexCoords.y);
 #else
-	texCoords = vec2(inTexCoords.x, inTexCoords.y);
+	texCoords = inTexCoords;
 #endif
 	gl_Position = vec4(inTexCoords*2 + vec2(-1, -1), 0, 1);
 }
