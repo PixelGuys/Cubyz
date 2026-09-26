@@ -8,6 +8,7 @@
 		.maxHeight = 20,
 		.minHeight = -400,
 		.density = 0.25,
+		.targetTags = .{.allowOres},
 	},
 	.drops = .{
 		.{.items = .{.auto}},
