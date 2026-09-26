@@ -238,7 +238,7 @@ const RasterizationState = struct { // MARK: RasterizationState
 	rasterizerDiscard: bool = false,
 	polygonMode: PolygonMode = .fill,
 	cullMode: CullModeFlags = .back,
-	frontFace: FrontFace = .counterClockwise,
+	frontFace: FrontFace = .clockwise,
 	depthBias: ?DepthBias = null,
 	lineWidth: f32 = 1,
 
@@ -842,8 +842,8 @@ pub const Pipeline = struct { // MARK: Pipeline
 			c.glDisable(c.GL_CULL_FACE);
 		}
 		c.glFrontFace(switch (self.rasterState.frontFace) {
-			.counterClockwise => c.GL_CW,
-			.clockwise => c.GL_CCW,
+			.counterClockwise => c.GL_CCW,
+			.clockwise => c.GL_CW,
 		});
 		if (self.rasterState.depthBias) |depthBias| {
 			c.glEnable(c.GL_POLYGON_OFFSET_FILL);

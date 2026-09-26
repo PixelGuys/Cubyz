@@ -307,7 +307,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 		if (texturePath.len == 0) {
 			self.image = graphics.Image.defaultImage;
 		} else {
-			self.image = graphics.Image.readFromFile(allocator, texturePath, .{.orientation = .openGl}) catch graphics.Image.readFromFile(allocator, replacementTexturePath, .{.orientation = .openGl}) catch blk: {
+			self.image = graphics.Image.readFromFile(allocator, texturePath, .{.orientation = .asIs}) catch graphics.Image.readFromFile(allocator, replacementTexturePath, .{.orientation = .asIs}) catch blk: {
 				std.log.err("Item texture not found in {s} and {s}.", .{texturePath, replacementTexturePath});
 				break :blk graphics.Image.defaultImage;
 			};
