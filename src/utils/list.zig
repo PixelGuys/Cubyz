@@ -208,6 +208,15 @@ pub fn ListManaged(comptime T: type) type {
 			}
 		}
 
+		pub fn clone(self: @This(), allocator: NeverFailingAllocator) @This() {
+			const newList: @This() = .{
+				.capacity = self.capacity,
+				.items = allocator.dupe(self.items),
+				.allocator = self.allocator,
+			};
+			return newList;
+		}
+
 		pub fn print(self: *@This(), comptime fmt: []const u8, args: anytype) void {
 			var writer = std.Io.Writer.Allocating.init(main.stackAllocator.allocator); // TODO: Is there no easier way to make this without an extra copy?
 			defer writer.deinit();
@@ -409,6 +418,14 @@ pub fn List(comptime T: type) type {
 
 				self.items.len -= len - new_items.len;
 			}
+		}
+
+		pub fn clone(self: @This(), allocator: NeverFailingAllocator) @This() {
+			const newList: @This() = .{
+				.capacity = self.capacity,
+				.items = allocator.dupe([]const u8, self.items),
+			};
+			return newList;
 		}
 
 		pub fn print(self: *@This(), allocator: NeverFailingAllocator, comptime fmt: []const u8, args: anytype) void {

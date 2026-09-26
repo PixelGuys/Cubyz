@@ -1,7 +1,10 @@
 const std = @import("std");
 
 const main = @import("main");
+const vec = main.vec;
+const Vec3f = vec.Vec3f;
 const utils = main.utils;
+const ZonElement = @import("zon.zig").ZonElement;
 
 const c = @import("c");
 
@@ -138,6 +141,7 @@ var activeTasks: main.List([]const u8) = .empty; // MARK: Music
 var taskMutex: main.utils.Mutex = .{};
 
 var musicCache: utils.Cache(AudioData, 4, 4, AudioData.deinit) = .{};
+var audioCache: utils.Cache(AudioData, 4, 4, AudioData.deinit) = .{};
 
 fn findMusic(musicId: []const u8) ?[]f32 {
 	{
@@ -153,6 +157,25 @@ fn findMusic(musicId: []const u8) ?[]f32 {
 		}
 	}
 	MusicLoadTask.schedule(musicId);
+	return null;
+}
+
+fn findSound(musicId: []const u8) ?*AudioData {
+	{
+		taskMutex.lock();
+		defer taskMutex.unlock();
+		if (audioCache.find(AudioData{.audioId = musicId}, null)) |musicData| {
+			return musicData;
+		}
+		const data = AudioData.init(musicId, "sounds/audio");
+		// we convert to mono for easier audio processing
+		data.channelType = .mono;
+		const hasOld = audioCache.addToCache(data, data.hashCode());
+		if (hasOld) |old| {
+			old.deinit();
+		}
+		return data;
+	}
 	return null;
 }
 
@@ -236,11 +259,22 @@ pub fn deinit() void {
 	defer mutex.unlock();
 	main.threadPool.closeAllTasksOfType(&MusicLoadTask.vtable);
 	musicCache.clear();
+	audioCache.clear();
 	activeTasks.deinit(main.globalAllocator);
 	main.globalAllocator.free(preferredMusic);
 	preferredMusic.len = 0;
 	main.globalAllocator.free(activeMusicId);
 	activeMusicId.len = 0;
+
+	soundDataIdMap.deinit(main.globalAllocator.allocator);
+	soundDatas.deinit(main.globalAllocator);
+	activeSounds.deinit(main.globalAllocator);
+}
+
+pub fn reset() void {
+	activeSounds.clearRetainingCapacity();
+	soundDataIdMap.clearRetainingCapacity();
+	soundDatas.clearRetainingCapacity();
 }
 
 const currentMusic = struct {
@@ -284,6 +318,77 @@ pub fn setMusic(music: []const u8) void {
 	if (std.mem.eql(u8, music, preferredMusic)) return;
 	main.globalAllocator.free(preferredMusic);
 	preferredMusic = main.globalAllocator.dupe(u8, music);
+}
+
+const SoundData = struct { // MARK: Sounds
+	audioName: []const u8,
+	volume: f32 = 1,
+};
+
+const PlayingSound = struct {
+	pos: Vec3f = @splat(0),
+	audioName: []const u8,
+	bufPos: u32 = 0,
+
+	volume: f32 = 1,
+	maxDistance: f32 = 10,
+	isSpatial: bool = false,
+};
+
+var soundDataIdMap: std.StringHashMapUnmanaged(u32) = .{};
+var soundDatas: main.List(SoundData) = .empty;
+var activeSounds: main.List(PlayingSound) = .empty;
+
+pub fn getActiveSoundCount() u32 {
+	return @intCast(activeSounds.items.len);
+}
+
+pub fn registerSound(assetsFolder: []const u8, id: []const u8, zon: ZonElement) void {
+	const audioId = zon.get([]const u8, "audio") orelse {
+		std.log.err("Error: Sound Data audio was not specified: {s} ({s})", .{id, assetsFolder});
+		return;
+	};
+	if (findSound(audioId) == null) {
+		std.log.err("Error: Sound Data audio was not found: {s} ({s})", .{id, assetsFolder});
+		return;
+	}
+
+	soundDataIdMap.put(main.globalAllocator.allocator, id, @intCast(soundDatas.items.len)) catch unreachable;
+	soundDatas.append(main.globalAllocator, SoundData{
+		.audioName = audioId,
+		.volume = zon.get(f32, "volume") orelse 1.0,
+	});
+
+	std.log.debug("Registered sound data: {s}", .{id});
+}
+
+const AddSoundParameters = struct { // MARK: Sounds
+	isSpatial: bool,
+	maxDistance: f32,
+	pos: Vec3f,
+};
+
+pub fn addSound(id: []const u8, soundParameters: AddSoundParameters) void {
+	mutex.lock();
+	defer mutex.unlock();
+
+	const idx = soundDataIdMap.get(id) orelse return;
+	const soundData = soundDatas.items[idx];
+	activeSounds.append(main.globalAllocator, PlayingSound{
+		.audioName = soundData.audioName,
+		.volume = soundData.volume,
+		.pos = soundParameters.pos,
+		.isSpatial = soundParameters.isSpatial,
+		.maxDistance = soundParameters.maxDistance,
+	});
+}
+
+pub fn playSound(id: []const u8) void {
+	addSound(id, .{.pos = @splat(0), .maxDistance = 0, .isSpatial = false});
+}
+
+pub fn playSpatialSound(id: []const u8, pos: Vec3f, maxDistance: f32) void {
+	addSound(id, .{.pos = pos, .maxDistance = maxDistance, .isSpatial = true});
 }
 
 fn mixMusic(buffer: []f32) void {
@@ -333,6 +438,68 @@ fn mixMusic(buffer: []f32) void {
 	}
 }
 
+fn mixSound(buffer: []f32) void {
+	mutex.lock();
+	defer mutex.unlock();
+
+	if (activeSounds.items.len == 0) return;
+
+	const playerPos: Vec3f = @floatCast(main.game.Player.getPosBlocking());
+	const playerForward = main.game.camera.direction;
+	const playerRight = vec.normalize(vec.cross(playerForward, Vec3f{0, 0, 1}));
+
+	var i: u32 = 0;
+	main: while (i < activeSounds.items.len) {
+		var sound = activeSounds.items[i];
+		const audioData = findSound(sound.audioName) orelse continue :main;
+		const soundBuffer = audioData.data;
+
+		var leftVol: f32 = 1;
+		var rightVol: f32 = 1;
+
+		if (sound.isSpatial) {
+			const toSound = sound.pos - playerPos;
+			const distance: f32 = vec.length(toSound);
+
+			if (distance > sound.maxDistance) {
+				sound.bufPos += @intCast(if (audioData.channelType == .mono) @divFloor(buffer.len, 2) else buffer.len);
+				if (sound.bufPos >= soundBuffer.len) {
+					_ = activeSounds.swapRemove(i);
+					continue :main;
+				}
+			}
+
+			const pan: f32 = vec.dot(toSound/@as(Vec3f, @splat(distance)), playerRight);
+
+			const angle = (pan + 1)*0.25*std.math.pi;
+			leftVol = @cos(angle);
+			rightVol = @sin(angle);
+
+			var volume: f32 = 1 - distance/sound.maxDistance;
+
+			volume = if (volume < 0) 0 else volume;
+			leftVol *= volume;
+			rightVol *= volume;
+		}
+
+		var j: usize = 0;
+		while (j < buffer.len) : (j += 2) {
+			const amplitude: f32 = main.settings.soundVolume*sound.volume;
+
+			buffer[j] += soundBuffer[sound.bufPos]*amplitude*leftVol;
+			buffer[j + 1] += soundBuffer[sound.bufPos]*amplitude*rightVol;
+			sound.bufPos += 1;
+
+			if (sound.bufPos >= soundBuffer.len) {
+				_ = activeSounds.swapRemove(i);
+				continue :main;
+			}
+		}
+		activeSounds.items[i] = sound;
+		i += 1;
+	}
+}
+
 fn miniaudioCallback(
 	maDevice: ?*anyopaque,
 	output: ?*anyopaque,
@@ -345,4 +512,5 @@ fn miniaudioCallback(
 	const buffer = @as([*]f32, @ptrCast(@alignCast(output)))[0..valuesPerBuffer];
 	@memset(buffer, 0);
 	mixMusic(buffer);
+	mixSound(buffer);
 }
