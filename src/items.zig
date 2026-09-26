@@ -307,7 +307,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 		if (texturePath.len == 0) {
 			self.image = graphics.Image.defaultImage;
 		} else {
-			self.image = graphics.Image.readFromFile(allocator, texturePath, .{.orientation = .openGl}) catch graphics.Image.readFromFile(allocator, replacementTexturePath, .{.orientation = .openGl}) catch blk: {
+			self.image = graphics.Image.readFromFile(allocator, texturePath, .{.orientation = .asIs}) catch graphics.Image.readFromFile(allocator, replacementTexturePath, .{.orientation = .asIs}) catch blk: {
 				std.log.err("Item texture not found in {s} and {s}.", .{texturePath, replacementTexturePath});
 				break :blk graphics.Image.defaultImage;
 			};
@@ -600,15 +600,15 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 						// Calculate the lighting based on the nearest free space:
 						const light = calculateLight(&heightMap, .{x, y});
 						const colorIndex: usize = @round(light*@as(f32, @floatFromInt(material.colorPalette.len - 1)));
-						img.setRGB(x, 15 - y, material.colorPalette[colorIndex]);
+						img.setRGB(x, y, material.colorPalette[colorIndex]);
 					} else {
-						img.setRGB(x, 15 - y, if ((x ^ y) & 1 == 0) Color{.r = 255, .g = 0, .b = 255, .a = 255} else Color{.r = 0, .g = 0, .b = 0, .a = 255});
+						img.setRGB(x, y, if ((x ^ y) & 1 == 0) Color{.r = 255, .g = 0, .b = 255, .a = 255} else Color{.r = 0, .g = 0, .b = 0, .a = 255});
 					}
 				} else if (findNeighborMaterial(&proceduralItem.materialGrid, &heightMap, .{x, y})) |material| {
 					const light = calculateLight(&heightMap, .{x, y});
-					img.setRGB(x, 15 - y, if (light > 0.5) material.outlineColorLight else material.outlineColorShadow);
+					img.setRGB(x, y, if (light > 0.5) material.outlineColorLight else material.outlineColorShadow);
 				} else {
-					img.setRGB(x, 15 - y, Color{.r = 0, .g = 0, .b = 0, .a = 0});
+					img.setRGB(x, y, Color{.r = 0, .g = 0, .b = 0, .a = 0});
 				}
 			}
 		}

@@ -81,7 +81,7 @@ pub const draw = struct { // MARK: draw
 		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 		var newClip = Vec4i{
 			std.math.lossyCast(i32, translation[0]),
-			viewport[3] - std.math.lossyCast(i32, translation[1] + clipRect[1]*scale),
+			std.math.lossyCast(i32, translation[1]),
 			std.math.lossyCast(i32, clipRect[0]*scale),
 			std.math.lossyCast(i32, clipRect[1]*scale),
 		};
@@ -483,7 +483,7 @@ pub const draw = struct { // MARK: draw
 				.size = dim,
 				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
 				.color = @bitCast(getColor()),
-				.uvOffset = .{uvOffset[0], 1 - uvOffset[1] - uvDim[1]},
+				.uvOffset = .{uvOffset[0], uvOffset[1]},
 				.uvDim = .{uvDim[0], uvDim[1]},
 			});
 			vulkan.currentFrame.guiCommands.bindVertexArray(rectVao);
@@ -496,7 +496,7 @@ pub const draw = struct { // MARK: draw
 			c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
 			c.glUniform2f(imageUniforms.size, dim[0], dim[1]);
 			c.glUniform1i(imageUniforms.color, @bitCast(getColor()));
-			c.glUniform2f(imageUniforms.uvOffset, uvOffset[0], 1 - uvOffset[1] - uvDim[1]);
+			c.glUniform2f(imageUniforms.uvOffset, uvOffset[0], uvOffset[1]);
 			c.glUniform2f(imageUniforms.uvDim, uvDim[0], uvDim[1]);
 
 			rectVao.bind();
@@ -2072,7 +2072,7 @@ pub const Texture = struct { // MARK: Texture
 
 	pub fn initFromFile(path: []const u8) Texture {
 		var self = Texture.init();
-		const image = Image.readFromFile(main.stackAllocator, path, .{.orientation = .openGl}) catch |err| blk: {
+		const image = Image.readFromFile(main.stackAllocator, path, .{.orientation = .asIs}) catch |err| blk: {
 			std.log.err("Couldn't read image from {s}: {s}", .{path, @errorName(err)});
 			break :blk Image.defaultImage;
 		};
