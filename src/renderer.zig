@@ -905,6 +905,13 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		lineSize: c_int,
 	} = undefined;
 
+	pub const Uniforms = extern struct {
+		modelPosition: [3]f32,
+		lowerBounds: [3]f32,
+		upperBounds: [3]f32,
+		lineSize: f32,
+	};
+
 	pub fn init() void {
 		pipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/block_selection_vertex.vert",
@@ -916,6 +923,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				.rasterState = .{.cullMode = .none},
 				.depthStencilState = .{.depthTest = true, .depthWrite = true},
 				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
+				.inputAssemblyState = .{.topology = .triangleStrip},
+				.pushConstantSize = @sizeOf(Uniforms),
 			},
 		);
 	}
@@ -1198,20 +1207,37 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	pub fn drawCube(relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
-		pipeline.bind(null);
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			vulkan.currentFrame.guiCommands.bindPipeline(pipeline, null);
+			vulkan.currentFrame.guiCommands.pushConstants(pipeline, &Uniforms{
+				.modelPosition = .{
+					@floatCast(relativePositionToPlayer[0]),
+					@floatCast(relativePositionToPlayer[1]),
+					@floatCast(relativePositionToPlayer[2]),
+				},
+				.lowerBounds = .{min[0], min[1], min[2]},
+				.upperBounds = .{max[0], max[1], max[2]},
+				.lineSize = 1.0/128.0,
+			});
+			graphics.frame_uniforms.bindToPipeline(vulkan.currentFrame.guiCommands, pipeline);
+			vulkan.currentFrame.guiCommands.bindVertexArray(main.renderer.chunk_meshing.vao);
+			vulkan.currentFrame.guiCommands.drawIndexed(12*6*6, 0);
+		} else {
+			pipeline.bind(null);
 
-		c.glUniform3f(
-			uniforms.modelPosition,
-			@floatCast(relativePositionToPlayer[0]),
-			@floatCast(relativePositionToPlayer[1]),
-			@floatCast(relativePositionToPlayer[2]),
-		);
-		c.glUniform3f(uniforms.lowerBounds, min[0], min[1], min[2]);
-		c.glUniform3f(uniforms.upperBounds, max[0], max[1], max[2]);
-		c.glUniform1f(uniforms.lineSize, 1.0/128.0);
+			c.glUniform3f(
+				uniforms.modelPosition,
+				@floatCast(relativePositionToPlayer[0]),
+				@floatCast(relativePositionToPlayer[1]),
+				@floatCast(relativePositionToPlayer[2]),
+			);
+			c.glUniform3f(uniforms.lowerBounds, min[0], min[1], min[2]);
+			c.glUniform3f(uniforms.upperBounds, max[0], max[1], max[2]);
+			c.glUniform1f(uniforms.lineSize, 1.0/128.0);
 
-		main.renderer.chunk_meshing.vao.bind();
-		c.glDrawElements(c.GL_TRIANGLES, 12*6*6, c.GL_UNSIGNED_INT, null);
+			main.renderer.chunk_meshing.vao.bind();
+			c.glDrawElements(c.GL_TRIANGLES, 12*6*6, c.GL_UNSIGNED_INT, null);
+		}
 	}
 
 	pub fn render(playerPos: Vec3d) void {
