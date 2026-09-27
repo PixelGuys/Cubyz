@@ -520,7 +520,7 @@ pub const Fence = struct { // MARK: Fence
 	}
 };
 
-const Frame = struct {
+const Frame = struct { // MARK: Frame
 	fence: Fence,
 	uploadFence: Fence,
 	swapChainImage: c.VkImage,
