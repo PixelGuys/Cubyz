@@ -906,10 +906,10 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	} = undefined;
 
 	pub const Uniforms = extern struct {
-		modelPosition: [3]f32,
-		lowerBounds: [3]f32,
-		upperBounds: [3]f32,
-		lineSize: f32,
+		modelPosition: [3]f32 align(16),
+		lowerBounds: [3]f32 align(16),
+		upperBounds: [3]f32 align(16),
+		lineSize: f32 align(16),
 	};
 
 	pub fn init() void {
@@ -923,7 +923,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				.rasterState = .{.cullMode = .none},
 				.depthStencilState = .{.depthTest = true, .depthWrite = true},
 				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
-				.inputAssemblyState = .{.topology = .triangleStrip},
+				.inputAssemblyState = .{.topology = .lineList},
 				.pushConstantSize = @sizeOf(Uniforms),
 			},
 		);

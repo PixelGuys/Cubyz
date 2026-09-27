@@ -11,9 +11,9 @@ layout(location = 4) uniform vec3 upperBounds;
 layout(location = 5) uniform float lineSize;
 #else
 layout(push_constant, std430) uniform _ {
-	vec3 modelPosition;
-	vec3 lowerBounds;
-	vec3 upperBounds;
+	vec4 modelPosition;
+	vec4 lowerBounds;
+	vec4 upperBounds;
 	float lineSize;
 };
 #endif
@@ -82,13 +82,13 @@ void main() {
 	int lineIndex = gl_VertexIndex/24;
 	vec3 lineStart = lineVertices[lineIndex*2];
 	vec3 lineEnd = lineVertices[lineIndex*2 + 1];
-	vec3 lineCenter = (lineStart + lineEnd)/2*(upperBounds - lowerBounds);
+	vec3 lineCenter = (lineStart + lineEnd)/2*(upperBounds.xyz - lowerBounds.xyz);
 
 	vec3 offsetVector = vec3(lineSize);
-	offsetVector += vec3(notEqual(lineStart, lineEnd))*(upperBounds - lowerBounds)/2;
+	offsetVector += vec3(notEqual(lineStart, lineEnd))*(upperBounds.xyz - lowerBounds.xyz)/2;
 
 	vec3 vertexPos = lineCenter + offsetVertices[vertexIndex]*offsetVector;
-	vec4 mvPos = viewMatrix*vec4(lowerBounds + vertexPos + modelPosition, 1);
+	vec4 mvPos = viewMatrix*vec4(lowerBounds.xyz + vertexPos + modelPosition.xyz, 1);
 	gl_Position = projectionMatrix*mvPos;
 	mvVertexPos = mvPos.xyz;
 }
