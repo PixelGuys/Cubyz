@@ -84,7 +84,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 			}
 			if (minimum != null) {
 				// Invert the normal if the player is behind the face (eg. cross model)
-				if (vec.dot(normal.?, relativePlayerPos) < 0.0) {
+				if (vec.dot(normal.?, playerDir) > 0.0) {
 					normal = -normal.?;
 				}
 				return .{
@@ -144,6 +144,8 @@ pub const RotationMode = struct { // MARK: RotationMode
 
 	/// if the block should be destroyed or changed when a certain neighbor is removed.
 	dependsOnNeighbors: bool = false,
+
+	useAccuratePlacementNormal: bool = true,
 
 	/// The default rotation data intended for generation algorithms
 	naturalStandard: u16 = 0,
