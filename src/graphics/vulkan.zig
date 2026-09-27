@@ -520,10 +520,11 @@ pub const Fence = struct { // MARK: Fence
 	}
 };
 
-const FrameData = struct {
+const Frame = struct {
 	fence: Fence,
 	uploadFence: Fence,
-	swapChainImageIndex: u32,
+	swapChainImage: c.VkImage,
+	swapChainImageView: c.VkImageView,
 
 	imageAvailable: Semaphore,
 	uploadFinished: Semaphore,
@@ -531,21 +532,24 @@ const FrameData = struct {
 
 	uploadCommands: main.graphics.CommandBuffer,
 	guiCommands: main.graphics.CommandBuffer,
+	extent: c.VkExtent2D,
 
-	fn init() FrameData {
+	fn init() Frame {
 		return .{
 			.fence = .init(true),
 			.uploadFence = .init(true),
 			.imageAvailable = .init(),
 			.uploadFinished = .init(),
 			.renderFinished = .init(),
-			.swapChainImageIndex = undefined,
+			.swapChainImage = undefined,
+			.swapChainImageView = undefined,
 			.uploadCommands = .init(),
 			.guiCommands = .init(),
+			.extent = undefined,
 		};
 	}
 
-	fn deinit(self: FrameData) void {
+	fn deinit(self: Frame) void {
 		self.fence.deinit();
 		self.uploadFence.deinit();
 		self.imageAvailable.deinit();
@@ -554,18 +558,81 @@ const FrameData = struct {
 		self.uploadCommands.deinit();
 		self.guiCommands.deinit();
 	}
+
+	fn beginRender(self: Frame) void {
+		self.guiCommands.beginRecording(0);
+		self.guiCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+				.srcAccessMask = 0,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+				.dstAccessMask = c.VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | c.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
+				.newLayout = c.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+				.image = self.swapChainImage,
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
+			},
+		}});
+		self.guiCommands.beginRendering(.{
+			.textures = &.{
+				.{
+					.imageView = self.swapChainImageView,
+					.layout = c.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+					.loadOp = .{.clearColor = .{.float32 = .{0.5, 1, 1, 1.0}}},
+					.storeOp = .store,
+				},
+			},
+			.renderArea = .{.extent = self.extent},
+		});
+	}
+
+	fn endRender(self: Frame) void {
+		self.uploadCommands.endRecording();
+		self.uploadCommands.submit(
+			graphicsQueue,
+			&.{},
+			&.{},
+			&.{self.uploadFinished.handle},
+			self.uploadFence.handle,
+		);
+
+		self.guiCommands.endRendering();
+		self.guiCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+				.srcAccessMask = c.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+				.dstAccessMask = 0,
+				.oldLayout = c.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+				.newLayout = c.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+				.image = self.swapChainImage,
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
+			},
+		}});
+		self.guiCommands.endRecording();
+		self.guiCommands.submit(
+			graphicsQueue,
+			&.{self.imageAvailable.handle, self.uploadFinished.handle},
+			&.{c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, c.VK_PIPELINE_STAGE_TRANSFER_BIT},
+			&.{self.renderFinished.handle},
+			self.fence.handle,
+		);
+	}
 };
 
-var frames: [2]FrameData = undefined;
+var frames: [2]Frame = undefined;
 
-pub var currentFrame: *const FrameData = undefined;
+pub var currentFrame: *const Frame = undefined;
 
 pub const SwapChain = struct { // MARK: SwapChain
 	var swapChain: c.VkSwapchainKHR = null;
 	var images: []c.VkImage = undefined;
 	var imageViews: []c.VkImageView = undefined;
 	pub var imageFormat: c.VkFormat = undefined;
-	pub var extent: c.VkExtent2D = undefined;
+	var extent: c.VkExtent2D = undefined;
+	var currentImageIndex: u32 = undefined;
 
 	const SupportDetails = struct {
 		capabilities: c.VkSurfaceCapabilitiesKHR,
@@ -704,67 +771,16 @@ pub const SwapChain = struct { // MARK: SwapChain
 
 	fn beginRender() void {
 		currentFrame.fence.waitAndReset();
-		checkResult(c.vkAcquireNextImageKHR(device, swapChain, c.UINT64_MAX, currentFrame.imageAvailable.handle, null, &frames[frameIndex].swapChainImageIndex));
+		checkResult(c.vkAcquireNextImageKHR(device, swapChain, c.UINT64_MAX, currentFrame.imageAvailable.handle, null, &currentImageIndex));
 
-		currentFrame.guiCommands.beginRecording(0);
-		currentFrame.guiCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
-			.{
-				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-				.srcStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-				.srcAccessMask = 0,
-				.dstStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-				.dstAccessMask = c.VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | c.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
-				.newLayout = c.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-				.image = images[currentFrame.swapChainImageIndex],
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
-			},
-		}});
-		currentFrame.guiCommands.beginRendering(.{
-			.textures = &.{
-				.{
-					.imageView = imageViews[currentFrame.swapChainImageIndex],
-					.layout = c.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-					.loadOp = .{.clearColor = .{.float32 = .{0.5, 1, 1, 1.0}}},
-					.storeOp = .store,
-				},
-			},
-			.renderArea = .{.extent = extent},
-		});
+		frames[frameIndex].swapChainImage = images[currentImageIndex];
+		frames[frameIndex].swapChainImageView = imageViews[currentImageIndex];
+		frames[frameIndex].extent = extent;
+		currentFrame.beginRender();
 	}
 
 	fn endRender() void {
-		currentFrame.uploadCommands.endRecording();
-		currentFrame.uploadCommands.submit(
-			graphicsQueue,
-			&.{},
-			&.{},
-			&.{currentFrame.uploadFinished.handle},
-			currentFrame.uploadFence.handle,
-		);
-
-		currentFrame.guiCommands.endRendering();
-		currentFrame.guiCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
-			.{
-				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-				.srcStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-				.srcAccessMask = c.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-				.dstStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-				.dstAccessMask = 0,
-				.oldLayout = c.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-				.newLayout = c.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-				.image = images[currentFrame.swapChainImageIndex],
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
-			},
-		}});
-		currentFrame.guiCommands.endRecording();
-		currentFrame.guiCommands.submit(
-			graphicsQueue,
-			&.{currentFrame.imageAvailable.handle, currentFrame.uploadFinished.handle},
-			&.{c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, c.VK_PIPELINE_STAGE_TRANSFER_BIT},
-			&.{currentFrame.renderFinished.handle},
-			currentFrame.fence.handle,
-		);
+		currentFrame.endRender();
 
 		const presentInfo: c.VkPresentInfoKHR = .{
 			.sType = c.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -772,7 +788,7 @@ pub const SwapChain = struct { // MARK: SwapChain
 			.pWaitSemaphores = &currentFrame.renderFinished.handle,
 			.swapchainCount = 1,
 			.pSwapchains = &swapChain,
-			.pImageIndices = &currentFrame.swapChainImageIndex,
+			.pImageIndices = &currentImageIndex,
 		};
 		const result = c.vkQueuePresentKHR(presentQueue, &presentInfo);
 		frameIndex = (frameIndex + 1)%frames.len;

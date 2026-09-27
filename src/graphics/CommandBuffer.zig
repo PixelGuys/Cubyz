@@ -167,8 +167,8 @@ pub fn bindPipeline(self: CommandBuffer, pipeline: main.graphics.Pipeline, sciss
 	self.setViewport(.{
 		.x = 0,
 		.y = 0,
-		.width = @floatFromInt(vulkan.SwapChain.extent.width),
-		.height = @floatFromInt(vulkan.SwapChain.extent.height),
+		.width = @floatFromInt(vulkan.currentFrame.extent.width),
+		.height = @floatFromInt(vulkan.currentFrame.extent.height),
 		.minDepth = 0,
 		.maxDepth = 1,
 	});
@@ -177,7 +177,7 @@ pub fn bindPipeline(self: CommandBuffer, pipeline: main.graphics.Pipeline, sciss
 	} else {
 		self.setScissor(.{
 			.offset = .{.x = 0, .y = 0},
-			.extent = vulkan.SwapChain.extent,
+			.extent = vulkan.currentFrame.extent,
 		});
 	}
 }
