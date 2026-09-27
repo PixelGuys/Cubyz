@@ -1053,7 +1053,7 @@ pub const Image = struct { // MARK: Image
 				.srcAccessMask = c.VK_ACCESS_2_NONE,
 				.dstStageMask = c.VK_PIPELINE_STAGE_2_TRANSFER_BIT,
 				.dstAccessMask = c.VK_ACCESS_2_TRANSFER_READ_BIT,
-				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
+				.oldLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
 				.newLayout = c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 				.image = source.handle,
 				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = source.mipLevels, .layerCount = 1},
