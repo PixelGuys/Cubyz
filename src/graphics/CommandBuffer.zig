@@ -73,7 +73,7 @@ pub fn pipelineBarrier(self: CommandBuffer, options: PipelineBarrierOptions) voi
 	c.vkCmdPipelineBarrier2(self.handle, &dependencyInfo);
 }
 
-const BeginRenderingOptions = struct {
+pub const BeginRenderingOptions = struct {
 	const StoreOp = enum {
 		store,
 		dontCare,
@@ -87,7 +87,7 @@ const BeginRenderingOptions = struct {
 			};
 		}
 	};
-	const LoadOp = union(enum) {
+	pub const LoadOp = union(enum) {
 		load: void,
 		dontCare: void,
 		clearColor: c.VkClearColorValue,
