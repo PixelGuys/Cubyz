@@ -582,9 +582,9 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				while (z < 1) : (z += 1) {
 					var x: u32 = 0;
 					while (x < img.width) : (x += 1) {
-						var y: u32 = 0;
-						while (y < img.height) : (y += 1) {
-							dataSection[i] = img.getRGB(x, y).toArgb();
+						var y: u32 = 1;
+						while (y <= img.height) : (y += 1) {
+							dataSection[i] = img.getRGB(x, img.height - y).toArgb();
 							i += 1;
 						}
 					}
@@ -705,12 +705,10 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 					vertices = model.len/2*6;
 				} else {
 					scale = 0.5;
-					modelMatrix = modelMatrix.mul(.rotationX(std.math.pi));
 				}
 				bindModelUniforms(model.index, blockType);
 
 				modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
-				modelMatrix = modelMatrix.mul(.rotationX(std.math.pi));
 				modelMatrix = modelMatrix.mul(Mat4f.translation(@splat(-0.5)));
 				drawItem(vertices, modelMatrix);
 			}
@@ -815,7 +813,6 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				} else {
 					modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.45));
 				}
-				modelMatrix = modelMatrix.mul(.rotationX(std.math.pi));
 			} else {
 				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.2));
 			}
