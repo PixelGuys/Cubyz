@@ -204,7 +204,6 @@ pub const Player = struct { // MARK: Player
 		Player.super.pos = spawnPos;
 		Player.super.vel = .{0, 0, 0};
 
-		Player.super.health = Player.super.maxHealth;
 		Player.super.energy = Player.super.maxEnergy;
 
 		Player.eye = .{};
