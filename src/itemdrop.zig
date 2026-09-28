@@ -694,7 +694,6 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
 				var scale: f32 = 0.3;
 				var blockType: u16 = 0;
-
 				if (item == .baseItem and item.baseItem.block() != null and item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
 					blockType = item.baseItem.block().?;
 					vertices = model.len/2*6;
