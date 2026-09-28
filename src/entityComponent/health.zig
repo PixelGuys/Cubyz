@@ -31,8 +31,6 @@ const c = @import("c");
 pub var entityComponentID: main.entity.EntityComponentId = undefined;
 pub const entityComponentVersion = 0;
 
-const defaultHealthAmmount = 8;
-
 // ############################# Client only stuff ################################
 pub const client = struct {
 	const Component = struct {
