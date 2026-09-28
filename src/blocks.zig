@@ -198,6 +198,10 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			std.log.err("Ore must have rotation mode \"cubyz:ore\"!", .{});
 			break :blk;
 		}
+		const targetTagsZon = oreProperties.getChildOrNull("targetTags") orelse {
+			std.log.err("Ore {s}: ore.targetTags must exist", .{id});
+			break :blk;
+		};
 		ores.append(main.worldArena, .{
 			.veins = oreProperties.get(f32, "veins") orelse 0,
 			.size = oreProperties.get(f32, "size") orelse 0,
@@ -205,7 +209,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			.minHeight = oreProperties.get(i32, "minHeight") orelse std.math.minInt(i32),
 			.density = oreProperties.get(f32, "density") orelse 0.5,
 			.blockType = @intCast(size),
-			.targetTags = switch (oreProperties.getChild("targetTags")) {
+			.targetTags = switch (targetTagsZon) {
 				.array => |targetTags| Tag.loadTagsFromZon(
 					main.worldArena,
 					.{.array = targetTags},
