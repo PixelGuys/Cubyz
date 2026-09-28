@@ -2070,7 +2070,8 @@ pub const Texture = struct { // MARK: Texture
 		return self;
 	}
 
-	pub fn initFromFile(path: []const u8) Texture {
+	pub fn initFromFile(_: []const u8) Texture {
+		const path = "assets/cubyz/blocks/textures/cheese.png";
 		var self = Texture.init();
 		const image = Image.readFromFile(main.stackAllocator, path, .{.orientation = .openGl}) catch |err| blk: {
 			std.log.err("Couldn't read image from {s}: {s}", .{path, @errorName(err)});

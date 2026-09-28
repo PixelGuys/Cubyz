@@ -302,16 +302,13 @@ pub const BaseItem = struct { // MARK: BaseItem
 	displayBlockData: ?u16,
 	foodValue: f32, // TODO: Effects.
 
-	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
+	fn init(self: *BaseItem, allocator: NeverFailingAllocator, _: []const u8, replacementTexturePath: []const u8, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
 		self.id = allocator.dupe(u8, id);
-		if (texturePath.len == 0) {
-			self.image = graphics.Image.defaultImage;
-		} else {
-			self.image = graphics.Image.readFromFile(allocator, texturePath, .{.orientation = .openGl}) catch graphics.Image.readFromFile(allocator, replacementTexturePath, .{.orientation = .openGl}) catch blk: {
+		const texturePath = "assets/cubyz/blocks/textures/cheese.png";
+		self.image = graphics.Image.readFromFile(allocator, texturePath, .{.orientation = .openGl}) catch graphics.Image.readFromFile(allocator, replacementTexturePath, .{.orientation = .openGl}) catch blk: {
 				std.log.err("Item texture not found in {s} and {s}.", .{texturePath, replacementTexturePath});
 				break :blk graphics.Image.defaultImage;
 			};
-		}
 		self.name = allocator.dupe(u8, zon.get([]const u8, "name") orelse id);
 		self.tags = Tag.loadTagsFromZon(allocator, zon.getChild("tags"));
 		self.stackSize = zon.get(u16, "stackSize") orelse 120;
