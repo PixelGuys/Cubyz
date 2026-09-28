@@ -1824,45 +1824,52 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 	texture: c_uint,
 	hasDepthTexture: bool,
 	depthTexture: c_uint,
+	color: vulkan.Image,
+	depth: vulkan.Image,
+	lastUsedFence: vulkan.Fence,
 
-	pub fn init(self: *FrameBuffer, hasDepthTexture: bool, textureFilter: c_int, textureWrap: c_int) void {
-		self.* = FrameBuffer{
+	pub fn init(_width: u31, _height: u31, internalFormat: c_int, hasDepthTexture: bool, textureFilter: vulkan.Image.ImageOptions.Filter, textureWrap: vulkan.Image.ImageOptions.AddressMode) FrameBuffer {
+		var self: FrameBuffer = .{
 			.frameBuffer = undefined,
 			.texture = undefined,
 			.depthTexture = undefined,
 			.hasDepthTexture = hasDepthTexture,
+			.color = undefined,
+			.depth = undefined,
+			.lastUsedFence = .init(true),
 		};
 		c.glGenFramebuffers(1, &self.frameBuffer);
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
+		const glFilter = switch (textureFilter) {
+			.nearest => c.GL_NEAREST,
+			.linear => c.GL_LINEAR,
+		};
+		const glWrap = switch (textureWrap) {
+			.repeat => c.GL_REPEAT,
+			.mirroredRepeat => c.GL_MIRRORED_REPEAT,
+			.clampToEdge => c.GL_CLAMP_TO_EDGE,
+			.clampToBorder => c.GL_CLAMP_TO_BORDER,
+			.mirrorClampToEdge => c.GL_MIRROR_CLAMP_TO_EDGE,
+		};
 		if (hasDepthTexture) {
 			c.glGenTextures(1, &self.depthTexture);
 			c.glBindTexture(c.GL_TEXTURE_2D, self.depthTexture);
-			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, textureFilter);
-			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, textureFilter);
-			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, textureWrap);
-			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, textureWrap);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, glFilter);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, glFilter);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, glWrap);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, glWrap);
 			c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_DEPTH_ATTACHMENT, c.GL_TEXTURE_2D, self.depthTexture, 0);
 		}
 		c.glGenTextures(1, &self.texture);
 		c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, textureFilter);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, textureFilter);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, textureWrap);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, textureWrap);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, glFilter);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, glFilter);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, glWrap);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, glWrap);
 		c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_COLOR_ATTACHMENT0, c.GL_TEXTURE_2D, self.texture, 0);
 
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
-	}
 
-	pub fn deinit(self: *FrameBuffer) void {
-		c.glDeleteFramebuffers(1, &self.frameBuffer);
-		if (self.hasDepthTexture) {
-			c.glDeleteRenderbuffers(1, &self.depthTexture);
-		}
-		c.glDeleteTextures(1, &self.texture);
-	}
-
-	pub fn updateSize(self: *FrameBuffer, _width: u31, _height: u31, internalFormat: c_int) void {
 		const width = @max(_width, 1);
 		const height = @max(_height, 1);
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
@@ -1873,6 +1880,90 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 
 		c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
 		c.glTexImage2D(c.GL_TEXTURE_2D, 0, internalFormat, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			self.color = .init(.{width, height, 1}, .{
+				.usage = c.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+				.format = switch (internalFormat) {
+					c.GL_RGBA16F => c.VK_FORMAT_R16G16B16A16_SFLOAT,
+					c.GL_RGBA8 => c.VK_FORMAT_R8G8B8A8_UNORM,
+					c.GL_R11F_G11F_B10F => c.VK_FORMAT_B10G11R11_UFLOAT_PACK32,
+					else => @panic("Can we please use vulkan types here???"),
+				},
+				.magFilter = textureFilter,
+				.minFilter = textureFilter,
+				.addressMode = textureWrap,
+			});
+			if (self.hasDepthTexture) {
+				self.depth = .init(.{width, height, 1}, .{
+					.usage = c.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+					.format = c.VK_FORMAT_D32_SFLOAT,
+					.magFilter = textureFilter,
+					.minFilter = textureFilter,
+					.addressMode = textureWrap,
+					.typ = .depth,
+				});
+			}
+		}
+		return self;
+	}
+
+	pub fn deinit(self: *FrameBuffer) void {
+		c.glDeleteFramebuffers(1, &self.frameBuffer);
+		if (self.hasDepthTexture) {
+			c.glDeleteRenderbuffers(1, &self.depthTexture);
+		}
+		c.glDeleteTextures(1, &self.texture);
+		self.lastUsedFence.waitAndReset();
+		self.lastUsedFence.deinit();
+		self.color.deferredDeinit();
+		if (self.hasDepthTexture) {
+			self.depth.deferredDeinit();
+		}
+	}
+
+	pub fn bindAndClear(self: FrameBuffer, commandBuffer: CommandBuffer, clearColor: CommandBuffer.BeginRenderingOptions.LoadOp, clearDepth: CommandBuffer.BeginRenderingOptions.LoadOp) void {
+		commandBuffer.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+				.srcAccessMask = 0,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+				.dstAccessMask = c.VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | c.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
+				.newLayout = c.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+				.image = self.color.handle,
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
+			},
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | c.VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+				.srcAccessMask = 0,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | c.VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+				.dstAccessMask = c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
+				.newLayout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+				.image = self.depth.handle,
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = 1},
+			},
+		}});
+		commandBuffer.beginRendering(.{
+			.textures = &.{
+				.{
+					.imageView = self.color.view,
+					.layout = c.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+					.loadOp = clearColor,
+					.storeOp = .store,
+				},
+			},
+			.depthTexture = .{
+				.imageView = self.depth.view,
+				.layout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+				.loadOp = clearDepth,
+				.storeOp = .store,
+			},
+			.renderArea = .{.extent = .{.width = @intCast(self.color.size[0]), .height = @intCast(self.color.size[1])}},
+		});
 	}
 
 	pub fn clear(_: FrameBuffer, clearColor: Vec4f) void {
@@ -2517,11 +2608,8 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 	const textureSize = block_texture.textureSize;
 	c.glViewport(0, 0, textureSize, textureSize);
 
-	var frameBuffer: FrameBuffer = undefined;
-
-	frameBuffer.init(false, c.GL_NEAREST, c.GL_REPEAT);
+	var frameBuffer: FrameBuffer = .init(textureSize, textureSize, c.GL_RGBA16F, false, .nearest, .repeat);
 	defer frameBuffer.deinit();
-	frameBuffer.updateSize(textureSize, textureSize, c.GL_RGBA16F);
 	frameBuffer.bind();
 	if (block.transparent()) {
 		frameBuffer.clear(.{0.683421, 0.6854237, 0.685426, 1});
@@ -2595,9 +2683,7 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 	}
 
 	c.glDisable(c.GL_CULL_FACE);
-	var finalFrameBuffer: FrameBuffer = undefined;
-	finalFrameBuffer.init(false, c.GL_NEAREST, c.GL_REPEAT);
-	finalFrameBuffer.updateSize(textureSize, textureSize, c.GL_RGBA8);
+	var finalFrameBuffer: FrameBuffer = .init(textureSize, textureSize, c.GL_RGBA8, false, .nearest, .repeat);
 	finalFrameBuffer.bind();
 	const texture = Texture{.textureID = finalFrameBuffer.texture, .vulkanImage = null};
 	defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
