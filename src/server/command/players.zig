@@ -6,11 +6,11 @@ const Source = command.Source;
 
 pub const description = "Lists all connected players.";
 pub const usage =
-	\\/list
+	\\/players
 ;
 
 pub const Args = union(enum) {
-	@"/list": struct {},
+	@"/players": struct {},
 };
 
 pub fn execute(_: Args, source: Source) void {
@@ -21,7 +21,7 @@ pub fn execute(_: Args, source: Source) void {
 	defer msg.deinit();
 	msg.print("#ffff00{} player(s) online:\n", .{userList.len});
 	for (userList) |user| {
-		msg.print("§#ffffff{f}\n", .{user.*});
+		msg.print("§#ffffff{f}\n", .{user});
 	}
 	_ = msg.pop();
 	source.sendMessage("{s}", .{msg.items});
