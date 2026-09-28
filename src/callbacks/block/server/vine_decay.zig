@@ -6,7 +6,7 @@ const blocks = main.blocks;
 const ZonElement = main.ZonElement;
 const server = main.server;
 
-pub fn init(_: ZonElement) ?*@This() {
+pub fn init(_: ZonElement, _: main.callbacks.Creator) ?*@This() {
 	return main.worldArena.create(@This());
 }
 pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.callbacks.Result {

@@ -35,18 +35,21 @@ pub fn loadModel(parameters: ZonElement) ?*FlowerPatch {
 			}
 			const output = main.worldArena.alloc(main.blocks.Block, blockZons.len);
 			for (blockZons, output) |zon, *block| {
-				block.* = main.blocks.parseBlock(zon.as([]const u8, ""));
+				block.* = main.blocks.parseBlock(zon.as([]const u8) orelse {
+					std.log.err("Got unknown entry in flowerpatch block list: found {s}, expected string", .{@tagName(zon)});
+					return null;
+				});
 			}
 			break :blk output;
 		},
-		.width = parameters.get(f32, "width", 5),
-		.variation = parameters.get(f32, "variation", 1),
-		.density = parameters.get(f32, "density", 0.5),
+		.width = parameters.get(f32, "width") orelse 5,
+		.variation = parameters.get(f32, "variation") orelse 1,
+		.density = parameters.get(f32, "density") orelse 0.5,
 	};
 	return self;
 }
 
-pub fn generate(self: *FlowerPatch, mode: GenerationMode, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: CaveMapView, caveBiomeMap: CaveBiomeMapView, seed: *u64, _: bool) void {
+pub fn generate(self: *FlowerPatch, mode: GenerationMode, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: CaveMapView, caveBiomeMap: CaveBiomeMapView, seed: *u64, isCeiling: bool) void {
 	const width = self.width + (random.nextFloat(seed) - 0.5)*self.variation;
 	const orientation = 2*std.math.pi*random.nextFloat(seed);
 	const ellipseParam = 1 + random.nextFloat(seed);
@@ -65,10 +68,18 @@ pub fn generate(self: *FlowerPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 
 	var baseHeight = z;
 	if (mode != .water_surface) {
-		if (caveMap.isSolid(x, y, baseHeight)) {
-			baseHeight = caveMap.findTerrainChangeAbove(x, y, baseHeight) - 1;
+		if (isCeiling) {
+			if (caveMap.isSolid(x, y, baseHeight)) {
+				baseHeight = caveMap.findTerrainChangeBelow(x, y, baseHeight);
+			} else {
+				baseHeight = caveMap.findTerrainChangeAbove(x, y, baseHeight) -% 1;
+			}
 		} else {
-			baseHeight = caveMap.findTerrainChangeBelow(x, y, baseHeight);
+			if (caveMap.isSolid(x, y, baseHeight)) {
+				baseHeight = caveMap.findTerrainChangeAbove(x, y, baseHeight) -% 1;
+			} else {
+				baseHeight = caveMap.findTerrainChangeBelow(x, y, baseHeight);
+			}
 		}
 	}
 
@@ -87,10 +98,18 @@ pub fn generate(self: *FlowerPatch, mode: GenerationMode, x: i32, y: i32, z: i32
 					if (caveBiomeMap.getSurfaceHeight(chunk.super.pos.wx + px, chunk.super.pos.wy + py) >= 0) continue;
 					startHeight = z -% 1;
 				} else {
-					if (caveMap.isSolid(px, py, startHeight)) {
-						startHeight = caveMap.findTerrainChangeAbove(px, py, startHeight) -% 1;
+					if (isCeiling) {
+						if (caveMap.isSolid(px, py, startHeight)) {
+							startHeight = caveMap.findTerrainChangeBelow(px, py, startHeight);
+						} else {
+							startHeight = caveMap.findTerrainChangeAbove(px, py, startHeight) -% 1;
+						}
 					} else {
-						startHeight = caveMap.findTerrainChangeBelow(px, py, startHeight);
+						if (caveMap.isSolid(px, py, startHeight)) {
+							startHeight = caveMap.findTerrainChangeAbove(px, py, startHeight) -% 1;
+						} else {
+							startHeight = caveMap.findTerrainChangeBelow(px, py, startHeight);
+						}
 					}
 				}
 

@@ -6,8 +6,8 @@
 	.chance = 0.01,
 	.maxHeight = -1000,
 	.minHeight = -7500,
-	.music = "cubyz:cubyz",
-	.stoneBlock = "cubyz:slate/base",
+	.music = "cubyz:ikabod/live",
+	.stoneBlock = "cubyz:slate/smooth",
 
 	.ground_structure = .{
 		"2 to 3 cubyz:mud",
@@ -24,13 +24,13 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.016,
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.size = 7,
 			.size_variance = 3,
 		},
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.chance = 0.032,
 			.size = 3,
 			.size_variation = 6,

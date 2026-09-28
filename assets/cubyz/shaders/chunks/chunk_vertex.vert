@@ -1,5 +1,8 @@
 #version 460
 
+#include "chunk_data.glsl"
+#include "frame_uniforms.glsl"
+
 layout(location = 0) out vec3 mvVertexPos;
 layout(location = 1) out vec3 direction;
 layout(location = 2) out vec3 light;
@@ -11,10 +14,6 @@ layout(location = 7) flat out float distanceForLodCheck;
 layout(location = 8) flat out int opaqueInLod;
 
 layout(location = 0) uniform vec3 ambientLight;
-layout(location = 1) uniform mat4 projectionMatrix;
-layout(location = 2) uniform mat4 viewMatrix;
-layout(location = 3) uniform ivec3 playerPositionInteger;
-layout(location = 4) uniform vec3 playerPositionFraction;
 
 #ifdef ENTITY
 layout(location = 14) uniform mat4 modelMatrix;
@@ -47,32 +46,13 @@ layout(std430, binding = 10) buffer _lightData
 	uint lightData[];
 };
 
-struct ChunkData {
-	ivec4 position;
-	vec4 minPos;
-	vec4 maxPos;
-	int voxelSize;
-	uint lightStart;
-	uint vertexStartOpaque;
-	uint faceCountsByNormalOpaque[14];
-	uint vertexStartTransparent;
-	uint vertexCountTransparent;
-	uint visibilityState;
-	uint oldVisibilityState;
-};
-
-layout(std430, binding = 6) buffer _chunks
-{
-	ChunkData chunks[];
-};
-
 vec3 square(vec3 x) {
 	return x*x;
 }
 
 void main() {
-	int faceID = gl_VertexID >> 2;
-	int vertexID = gl_VertexID & 3;
+	int faceID = gl_VertexIndex >> 2;
+	int vertexID = gl_VertexIndex & 3;
 	int chunkID = gl_BaseInstance;
 	int voxelSize = chunks[chunkID].voxelSize;
 	int encodedPositionAndLightIndex = faceData[faceID].encodedPositionAndLightIndex;

@@ -5,11 +5,20 @@ layout(location = 0) in vec2 vertex_pos;
 layout(location = 0) flat out vec4 color;
 
 // in pixel
+#ifdef OPEN_GL
 layout(location = 0) uniform vec2 start;
 layout(location = 1) uniform vec2 size;
 layout(location = 2) uniform vec2 screen;
 
 layout(location = 3) uniform int rectColor;
+#else
+layout(push_constant, std430) uniform _ {
+	vec2 start;
+	vec2 size;
+	vec2 screen;
+	int rectColor;
+};
+#endif
 
 void main() {
 	// Convert to opengl coordinates:

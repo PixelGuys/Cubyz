@@ -10,8 +10,9 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const ZonElement = main.ZonElement;
 const server = main.server;
+const BlockDrop = main.server.BlockDrop;
 
-pub fn init(_: ZonElement) ?*@This() {
+pub fn init(_: ZonElement, _: main.callbacks.Creator) ?*@This() {
 	return @as(*@This(), undefined);
 }
 
@@ -30,10 +31,10 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 
 	var newBlock: Block = params.block;
 
-	inline for (comptime std.meta.declarations(main.rotation.list)) |rotationMode| {
+	inline for (comptime std.meta.declarations(main.rotation.rotations)) |rotationMode| {
 		if (params.block.mode() == main.rotation.getByID(rotationMode.name)) {
-			if (@hasDecl(@field(main.rotation.list, rotationMode.name), "updateBlockFromNeighborConnectivity")) {
-				@field(main.rotation.list, rotationMode.name).updateBlockFromNeighborConnectivity(&newBlock, neighborSupportive);
+			if (@hasDecl(@field(main.rotation.rotations, rotationMode.name), "updateBlockFromNeighborConnectivity")) {
+				@field(main.rotation.rotations, rotationMode.name).updateBlockFromNeighborConnectivity(&newBlock, neighborSupportive);
 			} else {
 				std.log.err("Rotation mode {s} has no updateBlockFromNeighborConnectivity function and cannot be used for {s} callback", .{rotationMode.name, @typeName(@This())});
 			}
@@ -43,26 +44,12 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 	if (newBlock == params.block) return .ignored;
 
 	if (main.server.world.?.cmpxchgBlock(wx, wy, wz, params.block, newBlock) == null) {
-		const dropAmount = params.block.mode().itemDropsOnChange(params.block, newBlock);
-		const drops = params.block.blockDrops();
-		for (0..dropAmount) |_| {
-			for (drops) |drop| {
-				if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-					for (drop.items) |stack| {
-						var dir = main.vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));
-						// Bias upwards
-						dir[2] += main.random.nextFloat(&main.seed)*4.0;
-						const model = params.block.mode().model(params.block).model();
-						const pos = Vec3f{
-							@as(f32, @floatFromInt(wx)) + model.min[0] + main.random.nextFloat(&main.seed)*(model.max[0] - model.min[0]),
-							@as(f32, @floatFromInt(wy)) + model.min[1] + main.random.nextFloat(&main.seed)*(model.max[1] - model.min[1]),
-							@as(f32, @floatFromInt(wz)) + model.min[2] + main.random.nextFloat(&main.seed)*(model.max[2] - model.min[2]),
-						};
-						main.server.world.?.drop(stack.clone(), pos, dir, 1);
-					}
-				}
-			}
-		}
+		const dropCtx = BlockDrop.Context{
+			.oldBlock = params.block,
+			.newBlock = newBlock,
+		};
+		const model = params.block.mode().model(params.block).model();
+		dropCtx.drop(.natural(.{wx, wy, wz}, model.min, model.max));
 		return .handled;
 	}
 	return .ignored;

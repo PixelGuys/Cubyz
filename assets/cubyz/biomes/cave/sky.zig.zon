@@ -2,16 +2,24 @@
 	.isCave = true,
 	.tags = .{.sky_layer},
 	.caveNoiseStrength = 10,
-	.music = "cubyz:GymnopedieNo1",
+	.music = "cubyz:totaldemented/filled_with_love",
 
 	.ground_structure = .{},
 	.caveModels = .{
 		.{
-			.id = "cubyz:partial_sphere",
-			.minAmount = 10,
-			.maxAmount = 16,
-			.minRadius = 6,
-			.maxRadius = 14,
+			.id = "cubyz:cluster",
+			.minAmount = 1,
+			.maxAmount = 1.5,
+			.children = .{
+				.{
+					.id = "cubyz:partial_sphere",
+					.minAmount = 4,
+					.maxAmount = 6,
+					.minRadius = 6,
+					.maxRadius = 14,
+					.randomOffset = .{20, 20, 15},
+				},
+			},
 		},
 	},
 }

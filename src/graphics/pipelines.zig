@@ -2,22 +2,18 @@ const std = @import("std");
 
 const main = @import("main");
 const graphics = main.graphics;
-const c = graphics.c;
 const vulkan = graphics.vulkan;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
-const glslang = @cImport({
-	@cInclude("glslang/Include/glslang_c_interface.h");
-	@cInclude("glslang/Public/resource_limits_c.h");
-});
+const c = @import("c");
 
 const Shader = struct { // MARK: Shader
 	id: c_uint,
 
-	const ShaderStage = enum(glslang.glslang_stage_t) {
-		vert = glslang.GLSLANG_STAGE_VERTEX,
-		frag = glslang.GLSLANG_STAGE_FRAGMENT,
-		comp = glslang.GLSLANG_STAGE_COMPUTE,
+	const ShaderStage = enum(c.glslang_stage_t) {
+		vert = c.GLSLANG_STAGE_VERTEX,
+		frag = c.GLSLANG_STAGE_FRAGMENT,
+		comp = c.GLSLANG_STAGE_COMPUTE,
 	};
 
 	fn compileToSpirV(allocator: NeverFailingAllocator, source: []const u8, filename: []const u8, defines: []const u8, shaderStage: ShaderStage) ![]c_uint {
@@ -25,62 +21,117 @@ const Shader = struct { // MARK: Shader
 		const versionLine = source[0..versionLineEnd];
 		const sourceLines = source[versionLineEnd..];
 
-		var sourceWithDefines = main.List(u8).init(main.stackAllocator);
+		var sourceWithDefines: main.ListManaged(u8) = .init(main.stackAllocator);
 		defer sourceWithDefines.deinit();
 		sourceWithDefines.appendSlice(versionLine);
 		sourceWithDefines.appendSlice(defines);
 		sourceWithDefines.appendSlice(sourceLines);
 		sourceWithDefines.append(0);
 
-		const input = glslang.glslang_input_t{
-			.language = glslang.GLSLANG_SOURCE_GLSL,
+		const input = c.glslang_input_t{
+			.language = c.GLSLANG_SOURCE_GLSL,
 			.stage = @intFromEnum(shaderStage),
-			.client = glslang.GLSLANG_CLIENT_VULKAN,
-			.client_version = glslang.GLSLANG_TARGET_VULKAN_1_0,
-			.target_language = glslang.GLSLANG_TARGET_SPV,
-			.target_language_version = glslang.GLSLANG_TARGET_SPV_1_0,
+			.client = c.GLSLANG_CLIENT_VULKAN,
+			.client_version = c.GLSLANG_TARGET_VULKAN_1_0,
+			.target_language = c.GLSLANG_TARGET_SPV,
+			.target_language_version = c.GLSLANG_TARGET_SPV_1_0,
 			.code = sourceWithDefines.items.ptr,
 			.default_version = 100,
-			.default_profile = glslang.GLSLANG_NO_PROFILE,
-			.force_default_version_and_profile = glslang.false,
-			.forward_compatible = glslang.false,
-			.messages = glslang.GLSLANG_MSG_DEFAULT_BIT,
-			.resource = glslang.glslang_default_resource(),
+			.default_profile = c.GLSLANG_NO_PROFILE,
+			.force_default_version_and_profile = c.false,
+			.forward_compatible = c.false,
+			.messages = c.GLSLANG_MSG_DEFAULT_BIT,
+			.resource = c.glslang_default_resource(),
 			.callbacks = .{}, // TODO: Add support for shader includes
 			.callbacks_ctx = null,
 		};
-		const shader = glslang.glslang_shader_create(&input);
-		defer glslang.glslang_shader_delete(shader);
-		if (glslang.glslang_shader_preprocess(shader, &input) == 0) {
-			std.log.err("Error preprocessing shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
+		const shader = c.glslang_shader_create(&input);
+		defer c.glslang_shader_delete(shader);
+		if (c.glslang_shader_preprocess(shader, &input) == 0) {
+			std.log.err("Error preprocessing shader {s}:\n{s}\n{s}\n", .{filename, c.glslang_shader_get_info_log(shader), c.glslang_shader_get_info_debug_log(shader)});
 			return error.FailedCompiling;
 		}
 
-		if (glslang.glslang_shader_parse(shader, &input) == 0) {
-			std.log.err("Error parsing shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
+		if (c.glslang_shader_parse(shader, &input) == 0) {
+			std.log.err("Error parsing shader {s}:\n{s}\n{s}\n", .{filename, c.glslang_shader_get_info_log(shader), c.glslang_shader_get_info_debug_log(shader)});
 			return error.FailedCompiling;
 		}
 
-		const program = glslang.glslang_program_create();
-		defer glslang.glslang_program_delete(program);
-		glslang.glslang_program_add_shader(program, shader);
+		const program = c.glslang_program_create();
+		defer c.glslang_program_delete(program);
+		c.glslang_program_add_shader(program, shader);
 
-		if (glslang.glslang_program_link(program, glslang.GLSLANG_MSG_SPV_RULES_BIT | glslang.GLSLANG_MSG_VULKAN_RULES_BIT) == 0) {
-			std.log.err("Error linking shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
+		if (c.glslang_program_link(program, c.GLSLANG_MSG_SPV_RULES_BIT | c.GLSLANG_MSG_VULKAN_RULES_BIT) == 0) {
+			std.log.err("Error linking shader {s}:\n{s}\n{s}\n", .{filename, c.glslang_shader_get_info_log(shader), c.glslang_shader_get_info_debug_log(shader)});
 			return error.FailedCompiling;
 		}
 
-		glslang.glslang_program_SPIRV_generate(program, @intFromEnum(shaderStage));
-		const result = allocator.alloc(c_uint, glslang.glslang_program_SPIRV_get_size(program));
-		glslang.glslang_program_SPIRV_get(program, result.ptr);
+		c.glslang_program_SPIRV_generate(program, @intFromEnum(shaderStage));
+		const result = allocator.alloc(c_uint, c.glslang_program_SPIRV_get_size(program));
+		c.glslang_program_SPIRV_get(program, result.ptr);
 		return result;
 	}
 
-	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shaderStage: c_uint) !void {
-		const source = main.files.cwd().read(main.stackAllocator, filename) catch |err| {
+	fn loadShaderFile(allocator: main.heap.NeverFailingAllocator, filename: []const u8, defines: []const u8) ![]const u8 {
+		var result: main.ListManaged(u8) = .init(allocator);
+		errdefer result.deinit();
+
+		const arena = main.stackAllocator.createArena();
+		defer main.stackAllocator.destroyArena(arena);
+
+		const includePaths: [3]?[]const u8 = .{
+			blk: {
+				const end = std.mem.findScalarLast(u8, filename, '/') orelse break :blk null;
+				break :blk filename[0..end];
+			},
+			blk: {
+				const end = std.mem.find(u8, filename, "/shaders/") orelse break :blk null;
+				break :blk arena.print("{s}/shaders/include", .{filename[0..end]});
+			},
+			"assets/cubyz/shaders/include",
+		};
+
+		var source = main.files.cwd().read(arena, filename) catch |err| {
 			std.log.err("Couldn't read shader file: {s}", .{filename});
 			return err;
 		};
+
+		const versionLineEnd = if (std.mem.indexOfScalar(u8, source, '\n')) |len| len + 1 else 0;
+		result.appendSlice(source[0..versionLineEnd]);
+		result.appendSlice(defines);
+
+		var includeIterator = std.mem.splitSequence(u8, source[versionLineEnd..], "#include");
+		result.appendSlice(includeIterator.first());
+		while (includeIterator.next()) |next_| {
+			var next = next_;
+			while (next[0] == ' ') next = next[1..];
+			if (next[0] != '"') return error.MalformedInclude;
+			next = next[1..];
+			const includeEnd = std.mem.findScalar(u8, next, '"') orelse return error.MalformedInclude;
+			const includeFilename = next[0..includeEnd];
+			next = next[includeEnd + 1 ..];
+
+			for (includePaths) |includePath| {
+				const fullPath = main.stackAllocator.print("{s}/{s}", .{includePath orelse continue, includeFilename});
+				defer main.stackAllocator.free(fullPath);
+				if (main.files.cwd().hasFile(fullPath)) {
+					const code = try loadShaderFile(main.stackAllocator, fullPath, &.{});
+					defer main.stackAllocator.free(code);
+					result.appendSlice(code);
+					break;
+				}
+			}
+
+			result.appendSlice(next);
+		}
+
+		return result.toOwnedSlice();
+	}
+
+	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shaderStage: c_uint) !void {
+		const extraDefines = std.mem.concat(main.stackAllocator.allocator, u8, &.{defines, "#define gl_VertexIndex gl_VertexID\n#define OPEN_GL\n"}) catch unreachable;
+		defer main.stackAllocator.free(extraDefines);
+		const source = try loadShaderFile(main.stackAllocator, filename, extraDefines);
 		defer main.stackAllocator.free(source);
 
 		const shader = c.glCreateShader(shaderStage);
@@ -156,10 +207,7 @@ const Shader = struct { // MARK: Shader
 	}
 
 	fn createShaderModule(path: []const u8, defines: []const u8, stage: ShaderStage) !c.VkShaderModule {
-		const source = main.files.cwd().read(main.stackAllocator, path) catch |err| {
-			std.log.err("Couldn't read shader file: {s}", .{path});
-			return err;
-		};
+		const source = try loadShaderFile(main.stackAllocator, path, defines);
 		defer main.stackAllocator.free(source);
 
 		const spirv = try compileToSpirV(main.stackAllocator, source, path, defines, stage);
@@ -238,8 +286,8 @@ const RasterizationState = struct { // MARK: RasterizationState
 const MultisampleState = struct { // MARK: MultisampleState
 	rasterizationSamples: Count = .@"1",
 	sampleShading: bool = false,
-	minSampleShading: f32 = undefined,
-	sampleMask: [*]const c.VkSampleMask = &.{0, 0},
+	minSampleShading: f32 = 0,
+	sampleMask: ?[*]const c.VkSampleMask = null,
 	alphaToCoverage: bool = false,
 	alphaToOne: bool = false,
 
@@ -272,6 +320,8 @@ const DepthStencilState = struct { // MARK: DepthStencilState
 	depthCompare: CompareOp = .less,
 	depthBoundsTest: ?DepthBoundsTest = null,
 	stencilTest: ?StencilTest = null,
+	depthFormat: c.VkFormat = c.VK_FORMAT_D32_SFLOAT,
+	stencilFormat: c.VkFormat = c.VK_FORMAT_UNDEFINED,
 
 	const CompareOp = enum(c.VkCompareOp) {
 		never = c.VK_COMPARE_OP_NEVER,
@@ -335,10 +385,10 @@ const DepthStencilState = struct { // MARK: DepthStencilState
 			.depthCompareOp = @intFromEnum(self.depthCompare),
 			.depthBoundsTestEnable = @intFromBool(self.depthBoundsTest != null),
 			.stencilTestEnable = @intFromBool(self.stencilTest != null),
-			.front = if (self.stencilTest) |s| s.front.toVulkan() else undefined,
-			.back = if (self.stencilTest) |s| s.back.toVulkan() else undefined,
-			.minDepthBounds = if (self.depthBoundsTest) |d| d.min else undefined,
-			.maxDepthBounds = if (self.depthBoundsTest) |d| d.max else undefined,
+			.front = if (self.stencilTest) |s| s.front.toVulkan() else .{},
+			.back = if (self.stencilTest) |s| s.back.toVulkan() else .{},
+			.minDepthBounds = if (self.depthBoundsTest) |d| d.min else 0,
+			.maxDepthBounds = if (self.depthBoundsTest) |d| d.max else 0,
 		};
 	}
 };
@@ -461,7 +511,14 @@ const ColorBlendAttachmentState = struct { // MARK: ColorBlendAttachmentState
 const ColorBlendState = struct { // MARK: ColorBlendState
 	logicOp: ?LogicOp = null,
 	attachments: []const ColorBlendAttachmentState,
+	formats: []const ImageFormatHelper,
 	blendConstants: [4]f32 = .{0, 0, 0, 0},
+
+	const ImageFormatHelper = union(enum) {
+		swapChain: void,
+		world: void,
+		custom: c.VkFormat,
+	};
 
 	const LogicOp = enum(c.VkLogicOp) {
 		clear = c.VK_LOGIC_OP_CLEAR,
@@ -510,16 +567,59 @@ pub const DescriptorSetLayoutBinding = extern struct { // MARK: DescriptorSetLay
 		inputAttachment = c.VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
 	},
 	count: u32,
-	stageFlags: packed struct(c_int) {
+	stageFlags: packed struct(c.VkShaderStageFlags) {
 		vertex: bool = false,
 		tessellationControl: bool = false,
 		tessellationEvaluation: bool = false,
-		geometriy: bool = false,
+		geometry: bool = false,
 		fragment: bool = false,
 		compute: bool = false,
 		_: u26 = 0,
 	},
 	immutableSamplers: ?[*]const c.VkSampler = null,
+
+	pub fn sampler(binding: u32, options: struct { vertex: bool = false, fragment: bool = false, compute: bool = false, count: u32 = 1, typ: enum { combined, separate } = .combined }) DescriptorSetLayoutBinding {
+		return .{
+			.binding = binding,
+			.type = if (options.typ == .combined) .combinedImageSampler else .sampler,
+			.count = options.count,
+			.stageFlags = .{
+				.vertex = options.vertex,
+				.fragment = options.fragment,
+				.compute = options.compute,
+			},
+		};
+	}
+
+	pub fn ssbo(binding: u32, options: struct { vertex: bool = false, fragment: bool = false, compute: bool = false, count: u32 = 1, typ: enum { static, dynamic } = .static }) DescriptorSetLayoutBinding {
+		return .{
+			.binding = binding,
+			.type = if (options.typ == .static) .storageBuffer else .storageBufferDynamic,
+			.count = options.count,
+			.stageFlags = .{
+				.vertex = options.vertex,
+				.fragment = options.fragment,
+				.compute = options.compute,
+			},
+		};
+	}
+};
+
+pub const InputAssemblyState = struct { // MARK: InputAssemblyState
+	topology: enum(c.VkPrimitiveTopology) {
+		pointList = c.VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
+		lineList = c.VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
+		lineStrip = c.VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,
+		triangleList = c.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+		triangleStrip = c.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+		triangleFan = c.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN,
+		lineListWithAdjacency = c.VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY,
+		lineStripWithAdjacency = c.VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY,
+		triangleListWithAdjacency = c.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY,
+		triangleStripWithAdjacency = c.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY,
+		patchList = c.VK_PRIMITIVE_TOPOLOGY_PATCH_LIST,
+	} = .triangleList,
+	primitiveRestartEnable: bool = false,
 };
 
 pub const Pipeline = struct { // MARK: Pipeline
@@ -533,7 +633,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 	descriptorSetLayout: c.VkDescriptorSetLayout = undefined,
 	graphicsPipeline: c.VkPipeline = undefined,
 
-	fn initVulkan(self: *Pipeline, vertexPath: []const u8, fragmentPath: []const u8, defines: []const u8, VertexType: type, bindings: []const DescriptorSetLayoutBinding) !void {
+	fn initVulkan(self: *Pipeline, vertexPath: []const u8, fragmentPath: []const u8, defines: []const u8, VertexType: type, options: Options) !void {
 		const vertModule = try Shader.createShaderModule(vertexPath, defines, .vert);
 		defer c.vkDestroyShaderModule(vulkan.device, vertModule, null);
 		const fragModule = try Shader.createShaderModule(fragmentPath, defines, .frag);
@@ -570,15 +670,15 @@ pub const Pipeline = struct { // MARK: Pipeline
 		};
 		const vertexInputInfo: c.VkPipelineVertexInputStateCreateInfo = .{
 			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-			.vertexBindingDescriptionCount = 1,
-			.pVertexBindingDescriptions = &bindingDescription,
+			.vertexBindingDescriptionCount = if (VertexType == graphics.VertexArray.EmptyVertex) 0 else 1,
+			.pVertexBindingDescriptions = if (VertexType == graphics.VertexArray.EmptyVertex) null else &bindingDescription,
 			.vertexAttributeDescriptionCount = VertexType.attributeDescriptions.len,
 			.pVertexAttributeDescriptions = VertexType.attributeDescriptions.ptr,
 		};
 		const inputAssembly: c.VkPipelineInputAssemblyStateCreateInfo = .{
 			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-			.topology = c.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, // TODO: Make this an input
-			.primitiveRestartEnable = c.VK_FALSE, // TODO: Make this an input
+			.topology = @intFromEnum(options.inputAssemblyState.topology),
+			.primitiveRestartEnable = if (options.inputAssemblyState.primitiveRestartEnable) c.VK_TRUE else c.VK_FALSE,
 		};
 		const viewport: c.VkViewport = .{}; // overwritten dynamically
 		const scissor: c.VkRect2D = .{}; // overwritten dynamically
@@ -599,24 +699,54 @@ pub const Pipeline = struct { // MARK: Pipeline
 		}
 		const blendState = self.blendState.toVulkan(attachments);
 
+		const fullBindings = std.mem.concat(main.stackAllocator.allocator, DescriptorSetLayoutBinding, &.{options.bindings, &.{graphics.frame_uniforms.descriptorSetLayoutBinding}}) catch unreachable;
+		defer main.stackAllocator.free(fullBindings);
+
 		const descriptorSetLayoutInfo = c.VkDescriptorSetLayoutCreateInfo{
 			.sType = c.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-			.bindingCount = @intCast(bindings.len),
-			.pBindings = @ptrCast(bindings.ptr),
+			.flags = c.VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR,
+			.bindingCount = @intCast(fullBindings.len),
+			.pBindings = @ptrCast(fullBindings.ptr),
 		};
 		try vulkan.checkResultErr(c.vkCreateDescriptorSetLayout(vulkan.device, &descriptorSetLayoutInfo, null, &self.descriptorSetLayout));
-		errdefer c.vkDestroyDescriptorSetLayout(vulkan.device, self.descriptorSetLayout, null);
 
+		std.debug.assert(options.pushConstantSize <= 128); // Some devices have a limit of just 128 bytes for push constants
 		const pipelineLayoutInfo = c.VkPipelineLayoutCreateInfo{ // TODO: Configure push constants
 			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 			.setLayoutCount = 1,
 			.pSetLayouts = &self.descriptorSetLayout,
+			.pushConstantRangeCount = if (options.pushConstantSize == 0) 0 else 1,
+			.pPushConstantRanges = &.{
+				.stageFlags = c.VK_SHADER_STAGE_ALL,
+				.offset = 0,
+				.size = @intCast(options.pushConstantSize),
+			},
 		};
 		try vulkan.checkResultErr(c.vkCreatePipelineLayout(vulkan.device, &pipelineLayoutInfo, null, &self.pipelineLayout));
 		errdefer c.vkDestroyPipelineLayout(vulkan.device, self.pipelineLayout, null);
 
+		const formats = main.stackAllocator.alloc(c.VkFormat, self.blendState.formats.len);
+		defer main.stackAllocator.free(formats);
+
+		for (self.blendState.formats, 0..) |format, i| {
+			formats[i] = switch (format) {
+				.swapChain => vulkan.SwapChain.imageFormat,
+				.world => main.renderer.worldFrameBufferFormat,
+				.custom => |custom| custom,
+			};
+		}
+
+		const dynamicRenderingInfo: c.VkPipelineRenderingCreateInfo = .{
+			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+			.colorAttachmentCount = @intCast(formats.len),
+			.pColorAttachmentFormats = formats.ptr,
+			.depthAttachmentFormat = self.depthStencilState.depthFormat,
+			.stencilAttachmentFormat = self.depthStencilState.stencilFormat,
+		};
+
 		const pipelineInfo = c.VkGraphicsPipelineCreateInfo{
 			.sType = c.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+			.pNext = &dynamicRenderingInfo,
 			.stageCount = @intCast(shaderStages.len),
 			.pStages = &shaderStages,
 			.pVertexInputState = &vertexInputInfo,
@@ -628,27 +758,34 @@ pub const Pipeline = struct { // MARK: Pipeline
 			.pColorBlendState = &blendState,
 			.pDynamicState = &dynamicState,
 			.layout = self.pipelineLayout,
-			.renderPass = graphics.RenderPass.renderToWindow.renderPass, // TODO: Allow configuring this
-			.subpass = 0,
 		};
 		try vulkan.checkResultErr(c.vkCreateGraphicsPipelines(vulkan.device, null, 1, &pipelineInfo, null, &self.graphicsPipeline));
 		self.vulkanCreationSuccessful = true;
 	}
 
-	pub fn init(vertexPath: []const u8, fragmentPath: []const u8, defines: []const u8, uniformStruct: anytype, VertexType: type, bindings: []const DescriptorSetLayoutBinding, rasterState: RasterizationState, depthStencilState: DepthStencilState, blendState: ColorBlendState) Pipeline {
-		std.debug.assert(depthStencilState.depthBoundsTest == null); // Only available in Vulkan 1.3
-		std.debug.assert(depthStencilState.stencilTest == null); // TODO: Not yet implemented
-		std.debug.assert(rasterState.lineWidth <= 1); // Larger values are poorly supported among drivers
-		std.debug.assert(blendState.logicOp == null); // TODO: Not yet implemented
+	const Options = struct {
+		rasterState: RasterizationState,
+		depthStencilState: DepthStencilState,
+		blendState: ColorBlendState,
+		inputAssemblyState: InputAssemblyState = .{},
+		bindings: []const DescriptorSetLayoutBinding = &.{},
+		pushConstantSize: usize = 0,
+	};
+
+	pub fn init(vertexPath: []const u8, fragmentPath: []const u8, defines: []const u8, uniformStruct: anytype, VertexType: type, options: Options) Pipeline {
+		std.debug.assert(options.depthStencilState.depthBoundsTest == null); // Only available in Vulkan 1.3
+		std.debug.assert(options.depthStencilState.stencilTest == null); // TODO: Not yet implemented
+		std.debug.assert(options.rasterState.lineWidth <= 1); // Larger values are poorly supported among drivers
+		std.debug.assert(options.blendState.logicOp == null); // TODO: Not yet implemented
 		var self: Pipeline = .{
 			.shader = .init(vertexPath, fragmentPath, defines, uniformStruct),
-			.rasterState = rasterState,
+			.rasterState = options.rasterState,
 			.multisampleState = .{}, // TODO: Not implemented
-			.depthStencilState = depthStencilState,
-			.blendState = blendState,
+			.depthStencilState = options.depthStencilState,
+			.blendState = options.blendState,
 		};
 		if (main.settings.launchConfig.vulkanTestingMode) {
-			self.initVulkan(vertexPath, fragmentPath, defines, VertexType, bindings) catch |err| {
+			self.initVulkan(vertexPath, fragmentPath, defines, VertexType, options) catch |err| {
 				std.log.err("Vulkan pipeline creation for paths {s} {s} failed with error {s}", .{vertexPath, fragmentPath, @errorName(err)});
 			};
 		}
@@ -766,9 +903,9 @@ pub const ComputePipeline = struct { // MARK: ComputePipeline
 };
 
 pub fn init() void { // MARK: init()
-	if (glslang.glslang_initialize_process() == glslang.false) std.log.err("glslang_initialize_process failed", .{});
+	if (c.glslang_initialize_process() == c.false) std.log.err("glslang_initialize_process failed", .{});
 }
 
 pub fn deinit() void { // MARK: deinit()
-	glslang.glslang_finalize_process();
+	c.glslang_finalize_process();
 }

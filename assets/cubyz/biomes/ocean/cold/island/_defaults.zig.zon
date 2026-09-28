@@ -1,8 +1,8 @@
 .{
 	.chance = 0,
-	.properties = .{
+	.climate = .{
 		.ocean,
 		.cold,
 	},
-	.music = "cubyz:Sincerely",
+	.music = "cubyz:totaldemented/tides",
 }

@@ -1,9 +1,12 @@
 .{
-	.properties = .{
+	.climate = .{
 		.cold,
 		.wet,
 		.barren,
 	},
+
+	.music = "cubyz:totaldemented/frigid_feeling",
+
 	.tags = .{.snowy},
 	.roughness = 1,
 	.fogDensity = 1.5,

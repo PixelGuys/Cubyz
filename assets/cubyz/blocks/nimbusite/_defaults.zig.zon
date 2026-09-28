@@ -6,15 +6,13 @@
 		.{.items = .{.auto}},
 	},
 	.item = .{
+		.colorTexture = "nimbusite_palette.png",
 		.material = .{
 			.durability = 80,
 			.massDamage = 1.0,
 			.hardnessDamage = 3.9,
 			.swingSpeed = 4.8,
 			.textureRoughness = 0.5,
-			.colors = .{
-				0xff505e5d, 0xff657771, 0xff758883, 0xff859b95, 0xff92aba5,
-			},
 			.modifiers = .{
 				.{
 					.id = "good_at",

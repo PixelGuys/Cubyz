@@ -27,7 +27,7 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Or 
 	return result;
 }
 
-pub fn printTooltip(self: *const Or, outString: *main.List(u8)) void {
+pub fn printTooltip(self: *const Or, outString: *main.ListManaged(u8)) void {
 	outString.append('(');
 	for (self.children, 0..) |child, i| {
 		if (i != 0) outString.appendSlice(" or ");

@@ -1,12 +1,12 @@
 .{
-	.properties = .{},
+	.climate = .{},
 	.radius = 16,
 	.chance = 0,
 	.minHeight = -2000,
 	.maxHeight = -1000,
 	.keepOriginalTerrain = 0.99,
 	.roughness = 1,
-	.stoneBlock = "cubyz:slate/base",
+	.stoneBlock = "cubyz:slate/smooth",
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:grassland",

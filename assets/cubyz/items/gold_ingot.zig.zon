@@ -1,14 +1,12 @@
 .{
 	.tags = .{.metal, .precious},
 	.texture = "gold_ingot.png",
+	.colorTexture = "gold_ingot_palette.png",
 	.material = .{
 		.durability = 400,
 		.massDamage = 14.0,
 		.hardnessDamage = 1.0,
 		.swingSpeed = 0.25,
 		.textureRoughness = 0.05,
-		.colors = .{
-			0xffbc7132, 0xffda972b, 0xfff2cd53, 0xfff2cd53, 0xfffae39e,
-		},
 	},
 }

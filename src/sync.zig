@@ -18,14 +18,31 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
+const BlockDrop = main.server.BlockDrop;
 
 const @"cubyz:bag" = main.entity.components.@"cubyz:bag";
 
 pub const Side = enum { client, server };
 
-pub const ClientSide = struct {
+pub const client = struct { // MARK: client
 	pub var mutex: main.utils.Mutex = .{};
 	var commands: utils.CircularBufferQueue(Command) = undefined;
+	var syncCommands: main.ListManaged(ClientSyncOperation) = .init(main.globalAllocator);
+	const ClientSyncOperation = struct {
+		const Type = enum { confirmation, failure, sync };
+		typ: Type,
+		data: []const u8,
+
+		pub fn init(typ: Type, data: []const u8) ClientSyncOperation {
+			return .{
+				.typ = typ,
+				.data = main.globalAllocator.dupe(u8, data),
+			};
+		}
+		fn deinit(self: ClientSyncOperation) void {
+			main.globalAllocator.free(self.data);
+		}
+	};
 
 	pub fn init() void {
 		commands = utils.CircularBufferQueue(Command).init(main.globalAllocator, 256);
@@ -34,6 +51,7 @@ pub const ClientSide = struct {
 	pub fn deinit() void {
 		reset();
 		commands.deinit();
+		syncCommands.deinit();
 	}
 
 	pub fn reset() void {
@@ -43,6 +61,9 @@ pub const ClientSide = struct {
 			cmd.finalize(main.globalAllocator, .client, &reader) catch |err| {
 				std.log.err("Got error while cleaning remaining inventory commands: {s}", .{@errorName(err)});
 			};
+		}
+		while (syncCommands.popOrNull()) |sync| {
+			sync.deinit();
 		}
 		mutex.unlock();
 	}
@@ -61,47 +82,55 @@ pub const ClientSide = struct {
 		commands.pushBack(cmd);
 	}
 
-	pub fn receiveConfirmation(reader: *BinaryReader) !void {
+	pub fn receiveSyncOperation(sync: ClientSyncOperation) void {
 		mutex.lock();
 		defer mutex.unlock();
-		try commands.popFront().?.finalize(main.globalAllocator, .client, reader);
+		syncCommands.append(sync);
 	}
 
-	pub fn receiveFailure() void {
+	pub fn update() !void {
 		mutex.lock();
 		defer mutex.unlock();
-		var tempData = main.List(Command).init(main.stackAllocator);
-		defer tempData.deinit();
+		if (syncCommands.items.len == 0) return;
+
+		var tempData: main.List(Command) = .empty;
+		defer tempData.deinit(main.stackAllocator);
 		while (commands.popBack()) |_cmd| {
 			var cmd = _cmd;
 			cmd.undo();
-			tempData.append(cmd);
+			tempData.append(main.stackAllocator, cmd);
 		}
-		if (tempData.popOrNull()) |_cmd| {
-			var cmd = _cmd;
-			var reader = BinaryReader.init(&.{});
-			cmd.finalize(main.globalAllocator, .client, &reader) catch |err| {
-				std.log.err("Got error while cleaning rejected inventory command: {s}", .{@errorName(err)});
-			};
-		}
-		while (tempData.popOrNull()) |_cmd| {
-			var cmd = _cmd;
-			cmd.do(main.globalAllocator, .client, null, main.game.Player.gamemode.raw) catch unreachable;
-			commands.pushBack(cmd);
-		}
-	}
 
-	pub fn receiveSyncOperation(reader: *BinaryReader) !void {
-		mutex.lock();
-		defer mutex.unlock();
-		var tempData = main.List(Command).init(main.stackAllocator);
-		defer tempData.deinit();
-		while (commands.popBack()) |_cmd| {
-			var cmd = _cmd;
-			cmd.undo();
-			tempData.append(cmd);
+		for (syncCommands.items) |sync| {
+			defer sync.deinit();
+			var reader = BinaryReader.init(sync.data);
+
+			switch (sync.typ) {
+				.confirmation => {
+					if (tempData.popOrNull()) |_cmd| {
+						var cmd = _cmd;
+						cmd.do(main.globalAllocator, .client, null, main.game.Player.gamemode.raw) catch unreachable;
+						try cmd.finalize(main.globalAllocator, .client, &reader);
+					} else {
+						std.log.err("Received unexpected confirmation sync. Disconnecting", .{});
+						return error.Invalid;
+					}
+				},
+				.failure => {
+					if (tempData.popOrNull()) |cmd| {
+						try cmd.finalize(main.globalAllocator, .client, &reader);
+					} else {
+						std.log.err("Received unexpected failure sync. Disconnecting", .{});
+						return error.Invalid;
+					}
+				},
+				.sync => {
+					try Command.SyncOperation.executeFromData(&reader);
+				},
+			}
 		}
-		try Command.SyncOperation.executeFromData(reader);
+		syncCommands.clearRetainingCapacity();
+
 		while (tempData.popOrNull()) |_cmd| {
 			var cmd = _cmd;
 			cmd.do(main.globalAllocator, .client, null, main.game.Player.gamemode.raw) catch unreachable;
@@ -113,12 +142,12 @@ pub const ClientSide = struct {
 		mutex.lock();
 		defer mutex.unlock();
 		main.game.Player.setGamemode(gamemode);
-		var tempData = main.List(Command).init(main.stackAllocator);
-		defer tempData.deinit();
+		var tempData: main.List(Command) = .empty;
+		defer tempData.deinit(main.stackAllocator);
 		while (commands.popBack()) |_cmd| {
 			var cmd = _cmd;
 			cmd.undo();
-			tempData.append(cmd);
+			tempData.append(main.stackAllocator, cmd);
 		}
 		while (tempData.popOrNull()) |_cmd| {
 			var cmd = _cmd;
@@ -128,7 +157,7 @@ pub const ClientSide = struct {
 	}
 };
 
-pub const ServerSide = struct { // MARK: ServerSide
+pub const server = struct { // MARK: server
 
 	pub fn init() void {
 		threadContext = .server;
@@ -137,6 +166,13 @@ pub const ServerSide = struct { // MARK: ServerSide
 	pub fn deinit() void {
 		threadContext.assertCorrectContext(.server);
 		threadContext = .other;
+	}
+
+	pub fn sendSyncOperation(op: Command.SyncOperation, target: *main.server.User) void {
+		const syncData = op.serialize(main.stackAllocator);
+		defer main.stackAllocator.free(syncData);
+
+		main.network.protocols.inventory.sendSyncOperation(target.conn, syncData);
 	}
 
 	pub fn executeCommand(payload: Command.Payload, source: ?*main.server.User) void {
@@ -205,20 +241,20 @@ pub const ServerSide = struct { // MARK: ServerSide
 	}
 };
 
-pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, userId: u32) void {
+pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, entity: main.entity.Entity) void {
 	threadContext.assertCorrectContext(side);
 	if (side == .client) {
-		ClientSide.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}});
+		client.executeCommand(.{.addHealth = .{.target = entity, .health = health, .cause = cause}});
 	} else {
-		ServerSide.executeCommand(.{.addHealth = .{.target = userId, .health = health, .cause = cause}}, null);
+		server.executeCommand(.{.addHealth = .{.target = entity, .health = health, .cause = cause}}, null);
 	}
 }
 
 pub fn setGamemode(user: ?*main.server.User, gamemode: Gamemode) void {
 	if (user == null) {
-		ClientSide.setGamemode(gamemode);
+		client.setGamemode(gamemode);
 	} else {
-		ServerSide.setGamemode(user.?, gamemode);
+		server.setGamemode(user.?, gamemode);
 	}
 }
 pub const Command = struct { // MARK: Command
@@ -226,6 +262,7 @@ pub const Command = struct { // MARK: Command
 		open = 0,
 		close = 1,
 		depositOrSwap = 2,
+		swap = 18,
 		deposit = 3,
 		takeHalf = 4,
 		drop = 5,
@@ -246,6 +283,7 @@ pub const Command = struct { // MARK: Command
 		open: Open,
 		close: Close,
 		depositOrSwap: DepositOrSwap,
+		swap: Swap,
 		deposit: Deposit,
 		takeHalf: TakeHalf,
 		drop: Drop,
@@ -275,6 +313,12 @@ pub const Command = struct { // MARK: Command
 		addEnergy = 6,
 	};
 
+	/// The BaseOperation is the primitive operation used by Command. It is responsible for executing the operation as
+	/// well as storing undo information (for client-side prediction) or sync operations (for the server to send to other clients)
+	///
+	/// Implementation-wise the main difference (between BaseOperation and SyncOperation) is that the BaseOperation can assume
+	/// that the server knows all the inventories involved, whereas the SyncOperation cannot assume that the client
+	/// knows the contents of all inventories involved, so e.g. swap base operations are decomposed into create and delete sync operations.
 	pub const BaseOperation = union(BaseOperationType) {
 		move: struct {
 			dest: InventoryAndSlot,
@@ -331,8 +375,11 @@ pub const Command = struct { // MARK: Command
 		health = 3,
 		kill = 4,
 		energy = 5,
+		rotation = 6,
 	};
 
+	/// The SyncOperation is responsible for informing (other) clients of the results of e.g. a base operation, or, more
+	/// generally, other things that are happening on the server.
 	const SyncOperation = union(SyncOperationType) { // MARK: SyncOperation
 		// Since the client doesn't know about all inventories, we can only use create(+amount)/delete(-amount) and use durability operations to apply the server side updates.
 		create: struct {
@@ -359,6 +406,10 @@ pub const Command = struct { // MARK: Command
 		energy: struct {
 			target: ?*main.server.User,
 			energy: f32,
+		},
+		rotation: struct {
+			target: ?*main.server.User,
+			rotation: Vec3f,
 		},
 
 		pub fn executeFromData(reader: *BinaryReader) !void {
@@ -406,20 +457,23 @@ pub const Command = struct { // MARK: Command
 				.energy => |energy| {
 					main.game.Player.super.energy = std.math.clamp(main.game.Player.super.energy + energy.energy, 0, main.game.Player.super.maxEnergy);
 				},
+				.rotation => |rotation| {
+					main.game.camera.rotation = rotation.rotation;
+				},
 			}
 		}
 
 		pub fn getUsers(self: SyncOperation, allocator: NeverFailingAllocator) []*main.server.User {
 			switch (self) {
 				inline .create, .delete, .useDurability => |data| {
-					const users = Inventory.ServerSide.getServerInventory(data.inv.inv.id).users.items;
+					const users = Inventory.server.getServerInventory(data.inv.inv.id).users.items;
 					const result = allocator.alloc(*main.server.User, users.len);
 					for (0..users.len) |i| {
 						result[i] = users[i].user;
 					}
 					return result;
 				},
-				inline .health, .kill, .energy => |data| {
+				inline .health, .kill, .energy, .rotation => |data| {
 					const out = allocator.alloc(*main.server.User, 1);
 					out[0] = data.target.?;
 					return out;
@@ -429,7 +483,7 @@ pub const Command = struct { // MARK: Command
 
 		pub fn ignoreSource(self: SyncOperation) bool {
 			return switch (self) {
-				.create, .delete, .useDurability, .health, .energy => true,
+				.create, .delete, .useDurability, .health, .energy, .rotation => true,
 				.kill => false,
 			};
 		}
@@ -480,6 +534,12 @@ pub const Command = struct { // MARK: Command
 						.energy = try reader.readFloat(f32),
 					}};
 				},
+				.rotation => {
+					return .{.rotation = .{
+						.target = null,
+						.rotation = try reader.readVec(Vec3f),
+					}};
+				},
 			}
 		}
 
@@ -511,14 +571,17 @@ pub const Command = struct { // MARK: Command
 				.energy => |energy| {
 					writer.writeFloat(f32, energy.energy);
 				},
+				.rotation => |rotation| {
+					writer.writeVec(Vec3f, rotation.rotation);
+				},
 			}
 			return writer.data.toOwnedSlice();
 		}
 	};
 
 	payload: Payload,
-	baseOperations: main.ListUnmanaged(BaseOperation) = .{},
-	syncOperations: main.ListUnmanaged(SyncOperation) = .{},
+	baseOperations: main.List(BaseOperation) = .empty,
+	syncOperations: main.List(SyncOperation) = .empty,
 
 	fn serializePayload(self: *Command, allocator: NeverFailingAllocator) []const u8 {
 		var writer = BinaryWriter.init(allocator);
@@ -581,6 +644,7 @@ pub const Command = struct { // MARK: Command
 					info.dest.inv.update();
 				},
 				.moveToBag => |info| {
+					if (info.amount == 0) continue;
 					const item = info.dest.peek(0).item;
 					std.debug.assert(std.meta.eql(info.source.ref().item, item) or info.source.ref().item == .null);
 
@@ -599,7 +663,7 @@ pub const Command = struct { // MARK: Command
 					info.source.ref().* = .{.item = item, .amount = info.amount};
 				},
 				.takeFromBag => |info| {
-					std.debug.assert(info.amount < info.dest.ref().amount);
+					std.debug.assert(info.amount <= info.dest.ref().amount);
 					std.debug.assert(info.source.push(.{.item = info.dest.ref().item, .amount = info.amount}) == 0);
 					info.dest.ref().amount -= info.amount;
 					if (info.dest.ref().amount == 0) {
@@ -740,11 +804,11 @@ pub const Command = struct { // MARK: Command
 			.moveToBag => |*info| {
 				const source = info.source.ref();
 				const amount = @min(source.amount, info.amount);
-				source.amount = info.dest.push(.{.item = source.item, .amount = amount});
+				info.amount = amount - info.dest.push(.{.item = source.item, .amount = amount});
+				source.amount -= info.amount;
 				if (source.amount == 0) {
 					source.item = .null;
 				}
-				info.amount = amount - source.amount;
 			},
 			.takeFromBag => |*info| {
 				const dest = info.dest.ref();
@@ -830,14 +894,6 @@ pub const Command = struct { // MARK: Command
 		}
 	}
 
-	pub fn canPutIntoWorkbench(item: Item) bool {
-		return switch (item) {
-			.null => true,
-			.baseItem => |baseItem| baseItem.material() != null,
-			.proceduralItem => false,
-		};
-	}
-
 	pub const Context = struct {
 		allocator: NeverFailingAllocator,
 		cmd: *Command,
@@ -856,15 +912,15 @@ pub const Command = struct { // MARK: Command
 
 		fn run(_: Open, _: Context) error{serverFailure}!void {}
 
-		fn finalize(self: Open, side: Side, reader: *BinaryReader) !void {
+		pub fn finalize(self: Open, side: Side, reader: *BinaryReader) !void {
 			if (side != .client) return;
 			if (reader.remaining.len != 0) {
 				const serverId = try reader.readEnum(InventoryId);
-				Inventory.ClientSide.mapServerId(serverId, self.inv);
+				Inventory.client.mapServerId(serverId, self.inv);
 			}
 		}
 
-		fn confirmationData(self: Open, allocator: NeverFailingAllocator) []const u8 {
+		pub fn confirmationData(self: Open, allocator: NeverFailingAllocator) []const u8 {
 			var writer = BinaryWriter.initCapacity(allocator, 4);
 			writer.writeEnum(InventoryId, self.inv.id);
 			return writer.data.toOwnedSlice();
@@ -876,14 +932,14 @@ pub const Command = struct { // MARK: Command
 			writer.writeEnum(Inventory.SourceType, self.source);
 			switch (self.source) {
 				.playerInventory, .hand => |val| {
-					writer.writeInt(u32, val);
+					writer.writeEnum(main.entity.Entity, val);
 				},
 				.blockInventory => |val| {
 					writer.writeVec(Vec3i, val);
 				},
 				.workbench => |val| {
-					writer.writeInt(u32, val.playerId);
-					writer.writeEnum(main.items.ProceduralItemTypeIndex, val.proceduralItemIndex);
+					writer.writeEnum(main.entity.Entity, val.playerId);
+					val.proceduralItemIndex.toBytes(writer);
 				},
 				.other => {},
 				.alreadyFreed => unreachable,
@@ -896,16 +952,16 @@ pub const Command = struct { // MARK: Command
 			const len = try reader.readInt(u64);
 			const sourceType = try reader.readEnum(Inventory.SourceType);
 			const source: Inventory.Source = switch (sourceType) {
-				.playerInventory => .{.playerInventory = try reader.readInt(u32)},
-				.hand => .{.hand = try reader.readInt(u32)},
+				.playerInventory => .{.playerInventory = try reader.readEnum(main.entity.Entity)},
+				.hand => .{.hand = try reader.readEnum(main.entity.Entity)},
 				.blockInventory => .{.blockInventory = try reader.readVec(Vec3i)},
-				.workbench => .{.workbench = .{.playerId = try reader.readInt(u32), .proceduralItemIndex = try reader.readEnum(main.items.ProceduralItemTypeIndex)}},
+				.workbench => .{.workbench = .{.playerId = try reader.readEnum(main.entity.Entity), .proceduralItemIndex = try .fromBytes(reader)}},
 				.other => .{.other = {}},
 				.alreadyFreed => return error.Invalid,
 			};
-			try Inventory.ServerSide.createInventory(user.?, id, len, source);
+			try Inventory.server.createInventory(user.?, id, len, source);
 			return .{
-				.inv = Inventory.ServerSide.getInventory(user.?, id) orelse return error.InventoryNotFound,
+				.inv = Inventory.server.getInventory(user.?, id) orelse return error.InventoryNotFound,
 				.source = source,
 			};
 		}
@@ -917,10 +973,10 @@ pub const Command = struct { // MARK: Command
 
 		fn run(_: Close, _: Context) error{serverFailure}!void {}
 
-		fn finalize(self: Close, side: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: Close, side: Side, _: *BinaryReader) !void {
 			if (side != .client) return;
 			self.inv._deinit(self.allocator, .client);
-			Inventory.ClientSide.unmapServerIdByClientId(self.inv.id);
+			Inventory.client.unmapServerIdByClientId(self.inv.id);
 		}
 
 		fn serialize(self: Close, writer: *BinaryWriter) void {
@@ -930,7 +986,7 @@ pub const Command = struct { // MARK: Command
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !Close {
 			if (side != .server or user == null) return error.Invalid;
 			const id = try reader.readEnum(InventoryId);
-			try Inventory.ServerSide.closeInventory(user.?, id);
+			try Inventory.server.closeInventory(user.?, id);
 			return undefined;
 		}
 	};
@@ -940,8 +996,7 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 
 		fn run(self: DepositOrSwap, ctx: Context) error{serverFailure}!void {
-			if (self.dest.inv.source == .workbench and self.dest.inv.source.workbench.proceduralItemIndex.slotInfos()[self.dest.slot].disabled) return;
-			if (self.dest.inv.source == .workbench and !canPutIntoWorkbench(self.source.ref().item)) return;
+			if (self.dest.inv.callbacks.canPutInto) |c| if (!c(self.dest.inv.source, self.source.ref().item, self.dest.slot)) return;
 
 			const itemDest = self.dest.ref().item;
 			const itemSource = self.source.ref().item;
@@ -957,8 +1012,8 @@ pub const Command = struct { // MARK: Command
 					return;
 				}
 			}
-			if (self.source.inv.source == .workbench and self.source.inv.source.workbench.proceduralItemIndex.slotInfos()[self.source.slot].disabled) return;
-			if (self.source.inv.source == .workbench and !canPutIntoWorkbench(self.dest.ref().item)) return;
+
+			if (self.source.inv.callbacks.canPutInto) |c| if (!c(self.source.inv.source, self.dest.ref().item, self.source.slot)) return;
 			ctx.execute(.{.swap = .{
 				.dest = self.dest,
 				.source = self.source,
@@ -978,14 +1033,40 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
+	const Swap = struct { // MARK: Swap
+		dest: InventoryAndSlot,
+		source: InventoryAndSlot,
+
+		fn run(self: Swap, ctx: Context) error{serverFailure}!void {
+			if (self.dest.inv.id == self.source.inv.id and self.dest.slot == self.source.slot) return;
+			if (self.dest.inv.callbacks.canPutInto) |c| if (!c(self.dest.inv.source, self.source.ref().item, self.dest.slot)) return;
+			if (self.source.inv.callbacks.canPutInto) |c| if (!c(self.source.inv.source, self.dest.ref().item, self.source.slot)) return;
+			ctx.execute(.{.swap = .{
+				.dest = self.dest,
+				.source = self.source,
+			}});
+		}
+
+		fn serialize(self: Swap, writer: *BinaryWriter) void {
+			self.dest.write(writer);
+			self.source.write(writer);
+		}
+
+		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !Swap {
+			return .{
+				.dest = try InventoryAndSlot.read(reader, side, user),
+				.source = try InventoryAndSlot.read(reader, side, user),
+			};
+		}
+	};
+
 	const Deposit = struct { // MARK: Deposit
 		dest: InventoryAndSlot,
 		source: InventoryAndSlot,
 		amount: u16,
 
 		fn run(self: Deposit, ctx: Context) error{serverFailure}!void {
-			if (self.dest.inv.source == .workbench and self.dest.inv.source.workbench.proceduralItemIndex.slotInfos()[self.dest.slot].disabled) return;
-			if (self.dest.inv.source == .workbench and !canPutIntoWorkbench(self.source.ref().item)) return;
+			if (self.dest.inv.callbacks.canPutInto) |c| if (!c(self.dest.inv.source, self.source.ref().item, self.dest.slot)) return;
 			const itemSource = self.source.ref().item;
 			if (itemSource == .null) return;
 			const itemDest = self.dest.ref().item;
@@ -1029,7 +1110,7 @@ pub const Command = struct { // MARK: Command
 		source: InventoryAndSlot,
 
 		fn run(self: TakeHalf, ctx: Context) error{serverFailure}!void {
-			if (self.dest.inv.source == .workbench and (self.dest.inv.source.workbench.proceduralItemIndex.slotInfos()[self.dest.slot].disabled or !canPutIntoWorkbench(self.source.ref().item))) return;
+			if (self.dest.inv.callbacks.canPutInto) |c| if (!c(self.dest.inv.source, self.source.ref().item, self.dest.slot)) return;
 
 			const itemSource = self.source.ref().item;
 			if (itemSource == .null) return;
@@ -1106,9 +1187,8 @@ pub const Command = struct { // MARK: Command
 		amount: u16 = 0,
 
 		fn run(self: FillFromCreative, ctx: Context) error{serverFailure}!void {
-			if (self.dest.inv.source == .workbench and (self.dest.inv.source.workbench.proceduralItemIndex.slotInfos()[self.dest.slot].disabled or !canPutIntoWorkbench(self.item))) return;
-			if (ctx.side == .server and ctx.user != null and ctx.gamemode != .creative) return;
-			if (ctx.side == .client and ctx.gamemode != .creative) return;
+			if (self.dest.inv.callbacks.canPutInto) |c| if (!c(self.dest.inv.source, self.item, self.dest.slot)) return;
+			if (ctx.gamemode != .creative) return;
 
 			if (!self.dest.ref().empty()) {
 				ctx.execute(.{.delete = .{
@@ -1168,11 +1248,12 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 
-		fn finalize(self: FillAnyFromCreative, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: FillAnyFromCreative, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 		}
 
 		fn run(self: FillAnyFromCreative, ctx: Context) error{serverFailure}!void {
+			if (ctx.gamemode != .creative) return;
 			_ = self.destinations.putItemsInto(ctx, self.amount, .{.create = self.item});
 		}
 
@@ -1228,7 +1309,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 
-		fn finalize(self: DepositOrDrop, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: DepositOrDrop, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 		}
 
@@ -1278,7 +1359,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 
-		fn finalize(self: DepositToAny, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: DepositToAny, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 		}
 
@@ -1344,7 +1425,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 
-		fn finalize(self: TakeFromPlayerBag, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: TakeFromPlayerBag, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 		}
 
@@ -1393,7 +1474,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 
-		fn finalize(self: CraftFrom, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: CraftFrom, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 			self.sources.deinit(main.globalAllocator);
 		}
@@ -1456,7 +1537,7 @@ pub const Command = struct { // MARK: Command
 			return .{.destinations = .initFromClientInventories(main.globalAllocator, destinations), .craftingGrid = craftingGrid};
 		}
 
-		fn finalize(self: CraftProceduralItem, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: CraftProceduralItem, _: Side, _: *BinaryReader) !void {
 			self.destinations.deinit(main.globalAllocator);
 		}
 
@@ -1516,89 +1597,13 @@ pub const Command = struct { // MARK: Command
 
 	const UpdateBlock = struct { // MARK: UpdateBlock
 		source: InventoryAndSlot,
-		pos: Vec3i,
-		dropLocation: BlockDropLocation,
+		dropLocation: BlockDrop.Location,
 		oldBlock: Block,
 		newBlock: Block,
 
-		const half = @as(Vec3f, @splat(0.5));
-		const itemHitBoxMargin: f32 = @floatCast(main.itemdrop.ItemDropManager.radius);
-		const itemHitBoxMarginVec: Vec3f = @splat(itemHitBoxMargin);
-
-		const BlockDropLocation = struct {
-			normalDir: Vec3f,
-			min: Vec3f,
-			max: Vec3f,
-
-			pub fn drop(self: BlockDropLocation, pos: Vec3i, newBlock: Block, _drop: main.blocks.BlockDrop) void {
-				if (newBlock.collide()) {
-					self.dropOutside(pos, _drop);
-				} else {
-					self.dropInside(pos, _drop);
-				}
-			}
-			fn dropInside(self: BlockDropLocation, pos: Vec3i, _drop: main.blocks.BlockDrop) void {
-				for (_drop.items) |itemStack| {
-					main.server.world.?.drop(itemStack.clone(), self.insidePos(pos), self.dropDir(), self.dropVelocity());
-				}
-			}
-			fn insidePos(self: BlockDropLocation, _pos: Vec3i) Vec3d {
-				const pos: Vec3d = @floatFromInt(_pos);
-				return pos + self.randomOffset();
-			}
-			fn randomOffset(self: BlockDropLocation) Vec3f {
-				const max = @min(@as(Vec3f, @splat(1.0)) - itemHitBoxMarginVec, @max(itemHitBoxMarginVec, self.max - itemHitBoxMarginVec));
-				const min = @min(max, @max(itemHitBoxMarginVec, self.min + itemHitBoxMarginVec));
-				const center = (max + min)*half;
-				const width = (max - min)*half;
-				return center + width*main.random.nextFloatVectorSigned(3, &main.seed)*half;
-			}
-			fn dropOutside(self: BlockDropLocation, pos: Vec3i, _drop: main.blocks.BlockDrop) void {
-				for (_drop.items) |itemStack| {
-					main.server.world.?.drop(itemStack.clone(), self.outsidePos(pos), self.dropDir(), self.dropVelocity());
-				}
-			}
-			fn outsidePos(self: BlockDropLocation, _pos: Vec3i) Vec3d {
-				const pos: Vec3d = @floatFromInt(_pos);
-				const random = self.randomOffset();
-				const minorVectors = minors(self);
-				const minor1Offset = @as(Vec3f, @splat(vec.dot(random, minorVectors[0])))*minorVectors[0];
-				const minor2Offset = @as(Vec3f, @splat(vec.dot(random, minorVectors[1])))*minorVectors[1];
-				return pos + minor1Offset + minor2Offset + self.directionOffset()*self.major() + self.direction()*itemHitBoxMarginVec;
-			}
-			fn directionOffset(self: BlockDropLocation) Vec3d {
-				return half + self.direction()*half;
-			}
-			inline fn direction(self: BlockDropLocation) Vec3f {
-				return self.normalDir;
-			}
-			inline fn major(self: BlockDropLocation) Vec3f {
-				return @abs(self.normalDir);
-			}
-			inline fn minors(self: BlockDropLocation) struct { Vec3f, Vec3f } {
-				const minor1 = vec.normalize(vec.cross(self.normalDir, if (@reduce(.And, @abs(self.normalDir) == Vec3f{1.0, 0.0, 0.0})) Vec3f{0.0, 1.0, 0.0} else Vec3f{1.0, 0.0, 0.0}));
-				const minor2 = vec.normalize(vec.cross(self.normalDir, minor1));
-				return .{minor1, minor2};
-			}
-			fn dropDir(self: BlockDropLocation) Vec3f {
-				const randomnessVec: Vec3f = main.random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(0.25));
-				const directionVec: Vec3f = @as(Vec3f, @floatCast(self.direction())) + randomnessVec;
-				const z: f32 = directionVec[2];
-				return vec.normalize(Vec3f{
-					directionVec[0],
-					directionVec[1],
-					if (z < -0.5) 0 else if (z < 0.0) (z + 0.5)*4.0 else z + 2.0,
-				});
-			}
-			fn dropVelocity(self: BlockDropLocation) f32 {
-				const velocity = 3.5 + main.random.nextFloatSigned(&main.seed)*0.5;
-				if (self.direction()[2] < -0.5) return velocity*0.333;
-				return velocity;
-			}
-		};
-
 		fn run(self: UpdateBlock, ctx: Context) error{serverFailure}!void {
 			const stack = self.source.ref();
+			const pos = self.dropLocation.worldPos;
 
 			var shouldDropSourceBlockOnSuccess: bool = true;
 			const costOfChange = if (ctx.gamemode != .creative) self.oldBlock.canBeChangedInto(self.newBlock, stack.*, &shouldDropSourceBlockOnSuccess) else .yes;
@@ -1615,20 +1620,20 @@ pub const Command = struct { // MARK: Command
 					var writer = BinaryWriter.init(main.stackAllocator);
 					defer writer.deinit();
 
-					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(self.pos[0], self.pos[1], self.pos[2], &writer) orelse return;
-					main.network.protocols.blockUpdate.send(ctx.user.?.conn, &.{.init(self.pos, actualBlock, writer.data.items)});
+					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(pos[0], pos[1], pos[2], &writer) orelse return;
+					main.network.protocols.blockUpdate.send(ctx.user.?.conn, &.{.init(pos, actualBlock, writer.data.items)});
 				}
 				return;
 			}
 
 			if (ctx.side == .server) {
-				if (main.server.world.?.cmpxchgBlock(self.pos[0], self.pos[1], self.pos[2], self.oldBlock, self.newBlock) != null) {
+				if (main.server.world.?.cmpxchgBlock(pos[0], pos[1], pos[2], self.oldBlock, self.newBlock) != null) {
 					// Inform the client of the actual block:
 					var writer = BinaryWriter.init(main.stackAllocator);
 					defer writer.deinit();
 
-					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(self.pos[0], self.pos[1], self.pos[2], &writer) orelse return;
-					main.network.protocols.blockUpdate.send(ctx.user.?.conn, &.{.init(self.pos, actualBlock, writer.data.items)});
+					const actualBlock = main.server.world.?.getBlockAndBlockEntityData(pos[0], pos[1], pos[2], &writer) orelse return;
+					main.network.protocols.blockUpdate.send(ctx.user.?.conn, &.{.init(pos, actualBlock, writer.data.items)});
 					return error.serverFailure;
 				}
 			}
@@ -1652,22 +1657,18 @@ pub const Command = struct { // MARK: Command
 				},
 			}
 			if (ctx.side == .server and ctx.gamemode != .creative and shouldDropSourceBlockOnSuccess) {
-				const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
-				for (0..dropAmount) |_| {
-					for (self.oldBlock.blockDrops()) |drop| {
-						if (!drop.isDroppedWhenBrokenWithItem(handItem)) continue;
-
-						if (drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-							self.dropLocation.drop(self.pos, self.newBlock, drop);
-						}
-					}
-				}
+				const dropCtx = BlockDrop.Context{
+					.oldBlock = self.oldBlock,
+					.newBlock = self.newBlock,
+					.item = handItem,
+				};
+				dropCtx.drop(self.dropLocation);
 			}
 		}
 
 		fn serialize(self: UpdateBlock, writer: *BinaryWriter) void {
 			self.source.write(writer);
-			writer.writeVec(Vec3i, self.pos);
+			writer.writeVec(Vec3i, self.dropLocation.worldPos);
 			writer.writeVec(Vec3f, self.dropLocation.normalDir);
 			writer.writeVec(Vec3f, self.dropLocation.min);
 			writer.writeVec(Vec3f, self.dropLocation.max);
@@ -1678,8 +1679,8 @@ pub const Command = struct { // MARK: Command
 		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !UpdateBlock {
 			return .{
 				.source = try InventoryAndSlot.read(reader, side, user),
-				.pos = try reader.readVec(Vec3i),
 				.dropLocation = .{
+					.worldPos = try reader.readVec(Vec3i),
 					.normalDir = try reader.readVec(Vec3f),
 					.min = try reader.readVec(Vec3f),
 					.max = try reader.readVec(Vec3f),
@@ -1691,7 +1692,7 @@ pub const Command = struct { // MARK: Command
 	};
 
 	const AddHealth = struct { // MARK: AddHealth
-		target: u32,
+		target: main.entity.Entity,
 		health: f32,
 		cause: main.game.DamageType,
 
@@ -1699,8 +1700,8 @@ pub const Command = struct { // MARK: Command
 			var target: ?*main.server.User = null;
 
 			if (ctx.side == .server) {
-				const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-				defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+				const userList = main.server.getUserList(main.stackAllocator);
+				defer main.stackAllocator.free(userList);
 				for (userList) |user| {
 					if (user.id == self.target) {
 						target = user;
@@ -1724,14 +1725,14 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn serialize(self: AddHealth, writer: *BinaryWriter) void {
-			writer.writeInt(u32, self.target);
+			writer.writeEnum(main.entity.Entity, self.target);
 			writer.writeInt(u32, @bitCast(self.health));
 			writer.writeEnum(main.game.DamageType, self.cause);
 		}
 
 		fn deserialize(reader: *BinaryReader, _: Side, user: ?*main.server.User) !AddHealth {
 			const result: AddHealth = .{
-				.target = try reader.readInt(u32),
+				.target = try reader.readEnum(main.entity.Entity),
 				.health = @bitCast(try reader.readInt(u32)),
 				.cause = try reader.readEnum(main.game.DamageType),
 			};
@@ -1743,19 +1744,15 @@ pub const Command = struct { // MARK: Command
 	const ChatCommand = struct { // MARK: ChatCommand
 		message: []const u8,
 
-		fn finalize(self: ChatCommand, _: Side, _: *BinaryReader) !void {
+		pub fn finalize(self: ChatCommand, _: Side, _: *BinaryReader) !void {
 			main.globalAllocator.free(self.message);
 		}
 
 		pub fn run(self: ChatCommand, ctx: Context) error{serverFailure}!void {
 			if (ctx.side == .server) {
 				const user = ctx.user orelse return;
-				if (main.server.world.?.settings.allowCheats) {
-					std.log.info("User \"{f}\" executed command \"{s}\"", .{user, self.message}); // TODO use color \033[0;32m
-					main.server.command.execute(self.message, user);
-				} else {
-					user.sendRawMessage("Commands are not allowed because cheats are disabled");
-				}
+				main.log.server("User \"{f}§#ffffff\" executed command \"{s}\"", .{user, self.message});
+				main.server.command.execute(self.message, .{.user = user});
 			}
 		}
 

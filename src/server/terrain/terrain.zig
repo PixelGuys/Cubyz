@@ -23,9 +23,11 @@ pub const cave_layers = @import("cave_layers.zig");
 
 pub const StructureMap = @import("StructureMap.zig");
 
-pub const structure_building_blocks = @import("structure_building_blocks.zig");
+pub const sbb = @import("sbb.zig");
 
 pub const sdf = @import("sdf.zig");
+
+pub const chunk_generators = @import("chunkgen/_list.zig");
 
 pub const GeneratorState = enum { enabled, disabled };
 
@@ -39,26 +41,27 @@ pub const BlockGenerator = struct {
 	generatorSeed: u64,
 	defaultState: GeneratorState,
 
-	var generatorRegistry: std.StringHashMapUnmanaged(BlockGenerator) = .{};
+	const generatorRegistry: std.StaticStringMap(BlockGenerator) = .initComptime(blk: {
+		const decls = @typeInfo(chunk_generators).@"struct".decls;
+		var generators: [decls.len]struct { []const u8, BlockGenerator } = undefined;
+		for (0..decls.len) |i| {
+			const Generator = @field(chunk_generators, decls[i].name);
+			generators[i] = .{Generator.id, .{
+				.init = &Generator.init,
+				.generate = &Generator.generate,
+				.priority = Generator.priority,
+				.generatorSeed = Generator.generatorSeed,
+				.defaultState = Generator.defaultState,
+			}};
+		}
+		break :blk generators;
+	});
 
-	pub fn registerGenerator(comptime GeneratorType: type) void {
-		const self = BlockGenerator{
-			.init = &GeneratorType.init,
-			.generate = &GeneratorType.generate,
-			.priority = GeneratorType.priority,
-			.generatorSeed = GeneratorType.generatorSeed,
-			.defaultState = GeneratorType.defaultState,
-		};
-		generatorRegistry.put(main.globalAllocator.allocator, GeneratorType.id, self) catch unreachable;
-	}
-
-	fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []BlockGenerator {
-		var list: main.ListUnmanaged(BlockGenerator) = .initCapacity(allocator, generatorRegistry.size);
-		var iterator = generatorRegistry.iterator();
-		while (iterator.next()) |generatorEntry| {
-			const generator = generatorEntry.value_ptr.*;
-			const generatorSettings = settings.getChild(generatorEntry.key_ptr.*);
-			if (generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
+	fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []const BlockGenerator {
+		var list: main.List(BlockGenerator) = .initCapacity(allocator, generatorRegistry.values().len);
+		for (generatorRegistry.keys(), generatorRegistry.values()) |id, generator| {
+			const generatorSettings = settings.getChild(id);
+			if ((generatorSettings.get(GeneratorState, "state") orelse generator.defaultState) == .disabled) continue;
 			generator.init(generatorSettings);
 			list.appendAssumeCapacity(generator);
 		}
@@ -78,10 +81,10 @@ pub const BlockGenerator = struct {
 pub const TerrainGenerationProfile = struct {
 	mapFragmentGenerator: SurfaceMap.MapGenerator = undefined,
 	climateGenerator: ClimateMap.ClimateMapGenerator = undefined,
-	caveBiomeGenerators: []CaveBiomeMap.CaveBiomeGenerator = undefined,
-	caveGenerators: []CaveMap.CaveGenerator = undefined,
-	structureMapGenerators: []StructureMap.StructureMapGenerator = undefined,
-	generators: []BlockGenerator = undefined,
+	caveBiomeGenerators: []const CaveBiomeMap.CaveBiomeGenerator = undefined,
+	caveGenerators: []const CaveMap.CaveGenerator = undefined,
+	structureMapGenerators: []const StructureMap.StructureMapGenerator = undefined,
+	generators: []const BlockGenerator = undefined,
 	climateWavelengths: [5]f32 = undefined,
 	seed: u64,
 
@@ -90,11 +93,11 @@ pub const TerrainGenerationProfile = struct {
 			.seed = seed,
 		};
 		var generator = settings.getChild("mapGenerator");
-		self.mapFragmentGenerator = try SurfaceMap.MapGenerator.getGeneratorById(generator.get([]const u8, "id", "cubyz:mapgen_v1"));
+		self.mapFragmentGenerator = try SurfaceMap.MapGenerator.getGeneratorById(generator.get([]const u8, "id") orelse "cubyz:mapgen_v1");
 		self.mapFragmentGenerator.init(generator);
 
 		generator = settings.getChild("climateGenerator");
-		self.climateGenerator = try ClimateMap.ClimateMapGenerator.getGeneratorById(generator.get([]const u8, "id", "cubyz:polar_circles"));
+		self.climateGenerator = try ClimateMap.ClimateMapGenerator.getGeneratorById(generator.get([]const u8, "id") orelse "cubyz:polar_circles");
 		self.climateGenerator.init(generator);
 
 		generator = settings.getChild("caveBiomeGenerators");
@@ -110,46 +113,20 @@ pub const TerrainGenerationProfile = struct {
 		self.generators = BlockGenerator.getAndInitGenerators(main.worldArena, generator);
 
 		const climateWavelengths = settings.getChild("climateWavelengths");
-		self.climateWavelengths[0] = climateWavelengths.get(f32, "hot_cold", 2400);
-		self.climateWavelengths[1] = climateWavelengths.get(f32, "land_ocean", 3200);
-		self.climateWavelengths[2] = climateWavelengths.get(f32, "wet_dry", 2400);
-		self.climateWavelengths[3] = climateWavelengths.get(f32, "vegetation", 2400);
-		self.climateWavelengths[4] = climateWavelengths.get(f32, "mountain", 500);
+		self.climateWavelengths[0] = climateWavelengths.get(f32, "hot_cold") orelse 2400;
+		self.climateWavelengths[1] = climateWavelengths.get(f32, "land_ocean") orelse 3200;
+		self.climateWavelengths[2] = climateWavelengths.get(f32, "wet_dry") orelse 2400;
+		self.climateWavelengths[3] = climateWavelengths.get(f32, "vegetation") orelse 2400;
+		self.climateWavelengths[4] = climateWavelengths.get(f32, "mountain") orelse 500;
 
 		return self;
 	}
 };
 
 pub fn globalInit() void {
-	SurfaceMap.globalInit();
-	ClimateMap.globalInit();
-	CaveBiomeMap.globalInit();
-	CaveMap.globalInit();
-	StructureMap.globalInit();
-	{
-		const list = @import("chunkgen/_list.zig");
-		inline for (@typeInfo(list).@"struct".decls) |decl| {
-			BlockGenerator.registerGenerator(@field(list, decl.name));
-		}
-	}
-	{
-		const list = @import("sdf_models/_list.zig");
-		inline for (@typeInfo(list).@"struct".decls) |decl| {
-			sdf.SdfModel.registerGenerator(@field(list, decl.name));
-		}
-	}
 	const t1 = main.timestamp();
 	noise.BlueNoise.load();
 	std.log.info("Blue noise took {} ms to load", .{t1.durationTo(main.timestamp()).toMilliseconds()});
-}
-
-pub fn globalDeinit() void {
-	CaveBiomeMap.globalDeinit();
-	CaveMap.globalDeinit();
-	StructureMap.globalDeinit();
-	ClimateMap.globalDeinit();
-	SurfaceMap.globalDeinit();
-	BlockGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 
 pub fn init(profile: TerrainGenerationProfile) void {

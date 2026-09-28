@@ -45,6 +45,22 @@ To have more success it would help to split things up into smaller PRs, maybe st
 
 This saves time on your end spent reworking your large pull request 10 times. And reviewing your large pull request 10 times is also not fun.
 
+# Build on existing systems and collaborate instead of making your own thing
+
+It seems easy to start out by making something that is new and isolated, entirely written by you, but such contributions are the most difficult to review, and the least helpful to the project, as they often require lengthy design discussion and may end up getting abandoned half-way wasting everyone's time and energy.
+
+Cubyz is still early in development and still missing many core systems, so it's even more tempting to make them by yourself, and how hard can it be?
+And it is probably pretty easy to get the basics going, but at the end of the day basic is not good enough for Cubyz. We want to have solid and future-proof systems, not something that we need to painstackingly refactor (including migrations for old worlds) next year.
+
+New systems are of course still required, but they should be approached cautiously. Sometimes a bold leap forward is the right approach, but some discussions ahead of time can prevent a lot of frustration and wasted effort. And even if you are the best programmer in the world, a system that only you understand is just a waste of time in Open Source.
+
+At the same time we already have many half-baked systems and half-finished refactorings, some completely abandoned, that are justing waiting for someone like you to finish them.
+So instead of going out on your own to implement something new that may get stalled for months, maybe take a look around the codebase, the issue tracker, existing PRs, and talk to some fellow contributors on [Discord](https://discord.gg/XtqCRRG) on how you can best collaborate and bring value to the project.
+
+The best and most useful pull requests, are the ones that were made by multiple people.
+
+Stronger Together
+
 # Write correct, readable and maintainable code
 
 ## Explicitly handle all errors
@@ -92,6 +108,25 @@ Often the simplest code is easier to read, easier to maintain and more efficient
 - Use the simplest data structure for the job: e.g. use a slice instead of List if you know the size upfront
 - Don't make things public if they don't need to be
 
+## Beware of multi-threading
+
+Cubyz is a multi-threaded engine. This comes with some pitfalls, but it's not as scary as it may sound. Most of the time you don't even need to worry about it, but when you do we follow some simple patterns to make it easier.
+
+If you are new to concurrency, then I recommend playing [The Deadlock Empire](https://deadlockempire.github.io/), a little browser game that teaches you the right mindset to find concurrency bugs.
+
+- try to keep things local, if your data is only used for the scope of a function, then your life is much easier
+- if it needs to live longer, try to keep it in a single thread (enforced with assertions)
+- never store pointers that you didn't allocate yourself, if you need to store it, store a proxy (→entity id, chunk position, player index, ...) and look it up when you need it
+- most of the time a mutex is the easiest solution to protect your data, but other techniques (atomics) should be considered in performance sensitive areas.
+- avoid recursive mutexes
+  - they encourage lazy designs that end up being harder to predict and understand
+  - instead use mutex.assertLocked when a calling function is already locking the mutex
+- avoid using reference counting when a resource is shared
+  - reference counting is error prone and bloats the code (due to not being automatic), and quite slow too
+  - when you really need reference counting, you can instead use the garbage collection mechanism
+- use the thread sanitizier (`-DsanitizeThread` to enable it, it doesn't work on all machines though) to double check your design when you are not sure
+- lock-free designs are often too complex, but lock-free-readable (only one thread can write, but multiple other threads can read while its writing) designs are much easier to pull off with the garbage collector and an atomic pointer
+
 ## A note on performance optimizations
 
 I like to follow Casey Muratori's optimization philosophy as outlined here: https://www.youtube.com/watch?v=pgoetgxecw8
@@ -132,6 +167,8 @@ There are a few more things not covered by the formatter:
   assignment ops < bool ops < compare ops < bitwise ops < shift ops < add/sub < mul/div < unary ops<br>
   Only add parenthesis if you need them. Precedence on the right side of the spectrum (unary and mul/div/mod) is also shown visually (enforced by the formatter) through spacing: `x = -a + b*c` instead of `x = - a + b * c`
 
+Some of these things may be checked for by the linter. Generally violations of these guidelines that the linter can detect are rare, but in case you do find yourself needing to check your code frequently you can download the precompiled binaries [here](https://github.com/PixelGuys/Cubyz-linter/releases/latest).
+
 # Don't put multiple changes into one pull request
 
 This includes introduction of non-trivial helper functions, refactoring existing code.
@@ -156,3 +193,28 @@ With a more thorough review of your changes you can sometimes catch small mistak
 
 And of course make sure to check the CI results, you should also get an e-mail notification if the CI fails. **I will not review a PR if the CI failed!**
 
+# Participate in the review process
+
+After you are done we will review your submission and suggest changes. Don't feel overwhelmed if you get many change requests.
+It does not mean that you messed up. And it does not mean that we are criticizing you personally.
+It means that we are perfectionists, we have high standards for ourselves, and in extension for other contributors.
+This is one of the things that made Cubyz into the stable and efficient engine that it is today.
+
+So please apply the requested changes and try to learn from them for future PRs.
+
+# Seek help when you get stuck
+
+When you don't know how to fix some issue or how to make a difficult design decision, then it's best if you ask for other people's opinions and ideas.
+Other people can often see the things that you are blind to.
+
+The right place to do this is on our [discord server](https://discord.gg/XtqCRRG) where we coordinate most things.
+
+# Take care of yourself
+
+Cubyz is not your job, and shouldn't feel like one. You can take a break whenever you want, and for however long you want.
+
+If you feel like you are obligated to finish your work (or if you took over more work than you can chew), then reevaluate.
+Who are you doing this for? Does it really need to be done now? Can someone else do this?
+
+Cubyz is a long-term project. Whether your features arrive a few months late makes little difference in the grand scheme of things.
+What's important is that you are enjoying the process, that you are learning things and becoming a better programmer, and that you stay healthy.

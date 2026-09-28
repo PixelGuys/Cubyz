@@ -46,7 +46,12 @@ fn generateSdf(map: *const CaveMapFragment, biomeMap: *const CaveBiomeMapView, a
 	const biomePoints = biomeMap.getCaveBiomesInRange(main.stackAllocator, mapPos -% margin, mapPos +% margin +% Vec3i{CaveMapFragment.width*map.pos.voxelSize, CaveMapFragment.width*map.pos.voxelSize, CaveMapFragment.height*map.pos.voxelSize});
 	defer main.stackAllocator.free(biomePoints);
 
+	const mapSize = Vec3i{CaveMapFragment.width, CaveMapFragment.width, CaveMapFragment.height} << @as(@Vector(3, u5), @splat(voxelSizeShift));
+
 	for (biomePoints) |biomePoint| {
+		const distance = mapPos -% biomePoint.worldPos;
+		if (@reduce(.Or, distance +% mapSize < biomePoint.biome.maxSdfExtend.min -% @as(Vec3i, @splat(perimeter)))) continue;
+		if (@reduce(.Or, distance > biomePoint.biome.maxSdfExtend.max +% @as(Vec3i, @splat(perimeter)))) continue;
 		var seed = main.random.initSeed3D(worldSeed, biomePoint.worldPos);
 		for (biomePoint.biome.caveSdfModels) |sdfModel| {
 			switch (sdfModel.mode) {

@@ -3,4 +3,6 @@
 	.fogColor = 0xe2f2ff,
 	.soilCreep = 1.0,
 	.tags = .{.snowy},
+
+	.music = "cubyz:totaldemented/frigid_feeling",
 }
