@@ -695,11 +695,6 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				var scale: f32 = 0.3;
 				var blockType: u16 = 0;
 
-				var modelMatrix = Mat4f.translation(@floatCast(pos));
-				modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
-				modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
-				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2]));
-
 				if (item == .baseItem and item.baseItem.block() != null and item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
 					blockType = item.baseItem.block().?;
 					vertices = model.len/2*6;
@@ -708,6 +703,10 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				}
 				bindModelUniforms(model.index, blockType);
 
+				var modelMatrix = Mat4f.translation(@floatCast(pos));
+				modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
+				modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
+				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2]));
 				modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
 				modelMatrix = modelMatrix.mul(Mat4f.translation(@splat(-0.5)));
 				drawItem(vertices, modelMatrix);
