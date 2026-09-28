@@ -47,19 +47,23 @@ pub const client = struct {
 	}
 
 	pub fn addPredictedHealth(entity: Entity, change: f32) void {
+		main.sync.threadContext.assertCorrectContext(.client);
 		const healthComponent = main.entity.components.@"cubyz:health".client.components.get(entity) orelse return;
 		healthComponent.health = std.math.clamp(healthComponent.health + change, 0, healthComponent.maxHealth);
 	}
 	pub fn setPredictedHealth(entity: Entity, value: f32) void {
+		main.sync.threadContext.assertCorrectContext(.client);
 		const healthComponent = main.entity.components.@"cubyz:health".client.components.get(entity) orelse return;
 		healthComponent.health = std.math.clamp(value, 0, healthComponent.maxHealth);
 	}
 
 	pub fn getPredictedHealth(entity: Entity) ?f32 {
+		main.sync.threadContext.assertCorrectContext(.client);
 		const healthComponent = main.entity.components.@"cubyz:health".client.components.get(entity) orelse return null;
 		return healthComponent.health;
 	}
 	pub fn getPredictedMaxHealth(entity: Entity) ?f32 {
+		main.sync.threadContext.assertCorrectContext(.client);
 		const healthComponent = main.entity.components.@"cubyz:health".client.components.get(entity) orelse return null;
 		return healthComponent.maxHealth;
 	}
@@ -72,6 +76,7 @@ pub const server = struct {
 	pub fn update() void {}
 
 	pub fn addHealth(entity: Entity, change: f32, cause: main.game.DamageType) bool {
+		main.sync.threadContext.assertCorrectContext(.server);
 		_ = cause;
 		const healthComponent = main.entity.components.@"cubyz:health".server.components.get(entity) orelse return false;
 		healthComponent.health = std.math.clamp(healthComponent.health + change, 0, healthComponent.maxHealth);
@@ -81,8 +86,19 @@ pub const server = struct {
 		return ifKilled;
 	}
 	pub fn setHealth(entity: Entity, value: f32) void {
+		main.sync.threadContext.assertCorrectContext(.server);
 		const healthComponent = main.entity.components.@"cubyz:health".server.components.get(entity) orelse return;
 		healthComponent.health = std.math.clamp(value, 0, healthComponent.maxHealth);
 		main.entity.server.transmitChange(main.entity.components.@"cubyz:health", entity);
+	}
+	pub fn getHealth(entity: Entity) ?f32 {
+		main.sync.threadContext.assertCorrectContext(.server);
+		const healthComponent = main.entity.components.@"cubyz:health".server.components.get(entity) orelse return null;
+		return healthComponent.health;
+	}
+	pub fn getMaxHealth(entity: Entity) ?f32 {
+		main.sync.threadContext.assertCorrectContext(.server);
+		const healthComponent = main.entity.components.@"cubyz:health".server.components.get(entity) orelse return null;
+		return healthComponent.maxHealth;
 	}
 };

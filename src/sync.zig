@@ -843,11 +843,9 @@ pub const Command = struct { // MARK: Command
 				if (side == .server) {
 					const healthComponent = main.entity.components.@"cubyz:health".server.get(info.target.?.id) orelse return;
 					info.previous = healthComponent.health;
-					std.log.debug("health test {}", .{healthComponent.health});
 					const ifKilled = main.systems.systems.health.server.addHealth(info.target.?.id, info.health, info.cause);
 					if (ifKilled) {
 						main.systems.systems.health.server.setHealth(info.target.?.id, healthComponent.maxHealth);
-						std.log.debug("health testing 2 {} {}", .{healthComponent.health, healthComponent.maxHealth});
 						self.syncOperations.append(allocator, .{.kill = .{
 							.target = info.target.?,
 							.spawnPoint = info.target.?.getSpawnPos(),
