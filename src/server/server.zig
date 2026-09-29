@@ -324,6 +324,7 @@ pub const User = struct { // MARK: User
 		self.loadUnloadChunks();
 
 		main.entity.components.@"cubyz:player".server.load(self.id, @truncate(self.playerIndex));
+		main.entity.components.@"cubyz:swing_arm".server.load(self.id);
 	}
 
 	fn simArrIndex(x: i32) usize {

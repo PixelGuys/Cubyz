@@ -924,7 +924,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	pub var selectedBlockPos: ?Vec3i = null;
 	var lastSelectedBlockPos: Vec3i = undefined;
 	var currentBlockProgress: f32 = 0;
-	var currentSwingProgress: f32 = 0;
 	var currentSwingTime: f32 = 0;
 	var selectionMin: Vec3f = undefined;
 	var selectionMax: Vec3f = undefined;
@@ -1067,6 +1066,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	pub fn breakBlock(inventory: main.items.Inventory.ClientInventory, slot: u32, deltaTime: f64) void {
+		const swing_arm = main.entity.components.@"cubyz:swing_arm".client.get(main.game.Player.id) orelse return; // player can't swing...
+
 		if (selectedBlockPos) |selectedPos| {
 			const stack = inventory.getStack(slot);
 			const isSelectionWand = stack.item == .baseItem and std.mem.eql(u8, stack.item.baseItem.id(), "cubyz:selection_wand");
@@ -1078,8 +1079,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 			if (@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
 				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-				currentSwingProgress = 0;
-				currentSwingTime = 0;
+				swing_arm.currentSwingProgress = 0;
 				lastSelectedBlockPos = selectedPos;
 				currentBlockProgress = 0;
 			}
@@ -1100,7 +1100,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				if (damage > 0) {
 					const swingTime = if (isProceduralItem and stack.item.proceduralItem.isEffectiveOn(block)) 1.0/stack.item.proceduralItem.getProperty(.swingSpeed) else 0.5;
 					if (currentSwingTime > swingTime) {
-						currentSwingProgress = 0;
+						swing_arm.currentSwingProgress = 0;
 						currentSwingTime = 0;
 					}
 					if (currentSwingTime == 0) {
@@ -1108,9 +1108,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						const damagePerSwing = block.blockHealth()/swings;
 						currentSwingTime = damagePerSwing/damage*swingTime;
 					}
-					currentSwingProgress += @floatCast(deltaTime);
-					while (currentSwingProgress > currentSwingTime) {
-						currentSwingProgress -= currentSwingTime;
+					swing_arm.currentSwingProgress += @floatCast(deltaTime);
+					while (swing_arm.currentSwingProgress > currentSwingTime) {
+						swing_arm.currentSwingProgress -= currentSwingTime;
 						currentBlockProgress += damage*currentSwingTime/swingTime/block.blockHealth();
 						if (currentBlockProgress > 0.9999) break;
 						const swings = @ceil(block.blockHealth()/damage);
@@ -1126,7 +1126,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 						return;
 					} else {
-						currentSwingProgress = 0;
+						swing_arm.currentSwingProgress = 0;
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 						currentBlockProgress = 0;
 						currentSwingTime = 0;
