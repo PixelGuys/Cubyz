@@ -46,5 +46,5 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const OnD
 }
 
 pub fn printTooltip(self: *const OnDiagonal, outString: *main.ListManaged(u8)) void {
-	outString.print("if there is {} .{s} on diagonal line", .{self.amount, self.tag.getName()});
+	outString.print("if there is {} .{s} on diagonal lines", .{self.amount, self.tag.getName()});
 }
