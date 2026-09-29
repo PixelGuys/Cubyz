@@ -137,7 +137,7 @@ var worldFrameBuffer: graphics.FrameBuffer = undefined;
 
 pub var lastWidth: u31 = 0;
 pub var lastHeight: u31 = 0;
-var lastFov: f32 = 0;
+pub var lastFov: f32 = 0;
 pub fn updateFov(fov: f32) void {
 	if (lastFov != fov) {
 		lastFov = fov;
@@ -232,8 +232,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	const meshes = mesh_storage.updateAndGetRenderChunks(world.conn, &frustum, playerPos, settings.renderDistance);
 
 	gpu_performance_measuring.startQuery(.chunk_rendering_preparation);
-	const direction = crosshairDirection(game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
-	MeshSelection.select(playerPos, direction, game.Player.inventory.getItem(game.Player.selectedSlot));
 
 	chunk_meshing.beginRender();
 
@@ -921,14 +919,18 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 	var posBeforeBlock: Vec3i = undefined;
 	var neighborOfSelection: chunk.Neighbor = undefined;
-	pub var selectedBlockPos: ?Vec3i = null;
 	var lastSelectedBlockPos: Vec3i = undefined;
-	var selectionMin: Vec3f = undefined;
-	var selectionMax: Vec3f = undefined;
-	var selectionNormal: Vec3f = undefined;
 	var lastPos: Vec3d = undefined;
 	var lastDir: Vec3f = undefined;
-	pub fn select(pos: Vec3d, _dir: Vec3f, item: main.items.Item) void {
+
+	pub const Selection = struct {
+		blockPos: Vec3i,
+		min: Vec3f,
+		max: Vec3f,
+		normal: Vec3f,
+	};
+
+	pub fn select(pos: Vec3d, _dir: Vec3f, item: main.items.Item) ?Selection {
 		lastPos = pos;
 		const dir: Vec3d = @floatCast(_dir);
 		lastDir = _dir;
@@ -946,8 +948,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 		var total_tMax: f64 = 0;
 
-		selectedBlockPos = null;
-
 		while (total_tMax < closestDistance) {
 			const block = mesh_storage.getBlockFromRenderThread(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
 			if (block.typ != 0) blk: {
@@ -956,11 +956,12 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
 				if (block.mode().rayIntersection(block, item, relativePlayerPos, _dir)) |intersection| {
 					if (intersection.distance <= closestDistance) {
-						selectedBlockPos = voxelPos;
-						selectionMin = intersection.min;
-						selectionMax = intersection.max;
-						selectionNormal = intersection.normal;
-						break;
+						return .{
+							.blockPos = voxelPos,
+							.min = intersection.min,
+							.max = intersection.max,
+							.normal = intersection.normal,
+						};
 					}
 				}
 			}
@@ -992,6 +993,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			}
 		}
 		// TODO: Test entities
+		return null;
 	}
 
 	fn canPlaceBlock(pos: Vec3i, block: main.blocks.Block) bool {
@@ -1002,8 +1004,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	pub fn placeBlock(inventory: main.items.Inventory.ClientInventory, slot: u32) void {
-		if (selectedBlockPos) |selectedPos| {
-			var oldBlock = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
+		if (main.game.Player.super.getSelected(inventory.getItem(slot), .client)) |selected| {
+			var oldBlock = mesh_storage.getBlockFromRenderThread(selected.blockPos[0], selected.blockPos[1], selected.blockPos[2]) orelse return;
 			var block = oldBlock;
 			switch (inventory.getItem(slot)) {
 				.baseItem => |baseItem| {
@@ -1012,22 +1014,22 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						var neighborDir = Vec3i{0, 0, 0};
 						// Check if stuff can be added to the block itself:
 						if (itemBlock == block.typ) {
-							const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
-							if (rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, null, &block, .{.typ = 0, .data = 0}, false)) {
-								if (!canPlaceBlock(selectedPos, block)) return;
-								updateBlockAndSendUpdate(inventory, slot, selectedPos, oldBlock, block);
+							const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selected.blockPos)));
+							if (rotationMode.generateData(main.game.world.?, selected.blockPos, relPos, lastDir, neighborDir, null, &block, .{.typ = 0, .data = 0}, false)) {
+								if (!canPlaceBlock(selected.blockPos, block)) return;
+								updateBlockAndSendUpdate(inventory, slot, selected, oldBlock, block);
 								return;
 							}
 						} else {
 							if (rotationMode.modifyBlock(&block, itemBlock)) {
-								if (!canPlaceBlock(selectedPos, block)) return;
-								updateBlockAndSendUpdate(inventory, slot, selectedPos, oldBlock, block);
+								if (!canPlaceBlock(selected.blockPos, block)) return;
+								updateBlockAndSendUpdate(inventory, slot, selected, oldBlock, block);
 								return;
 							}
 						}
 						// Check the block in front of it:
 						const neighborPos = posBeforeBlock;
-						neighborDir = selectedPos - posBeforeBlock;
+						neighborDir = selected.blockPos - posBeforeBlock;
 						const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(neighborPos)));
 						const neighborBlock = block;
 						oldBlock = mesh_storage.getBlockFromRenderThread(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
@@ -1035,7 +1037,12 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						if (block.typ == itemBlock) {
 							if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, false)) {
 								if (!canPlaceBlock(neighborPos, block)) return;
-								updateBlockAndSendUpdate(inventory, slot, neighborPos, oldBlock, block);
+								updateBlockAndSendUpdate(inventory, slot, .{
+									.blockPos = neighborPos,
+									.normal = selected.normal,
+									.min = selected.min,
+									.max = selected.max,
+								}, oldBlock, block);
 								return;
 							}
 						} else {
@@ -1044,14 +1051,19 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 							block.data = 0;
 							if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, true)) {
 								if (!canPlaceBlock(neighborPos, block)) return;
-								updateBlockAndSendUpdate(inventory, slot, neighborPos, oldBlock, block);
+								updateBlockAndSendUpdate(inventory, slot, .{
+									.blockPos = neighborPos,
+									.normal = selected.normal,
+									.min = selected.min,
+									.max = selected.max,
+								}, oldBlock, block);
 								return;
 							}
 						}
 					}
 					if (std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) {
-						game.Player.selectionPosition2 = selectedPos;
-						main.network.protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos2, selectedPos);
+						game.Player.selectionPosition2 = selected.blockPos;
+						main.network.protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos2, selected.blockPos);
 						return;
 					}
 				},
@@ -1067,26 +1079,26 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		const swingArm = main.entity.components.@"cubyz:swing_arm".client.get(main.game.Player.id) orelse return; // player can't swing...
 		const brokenBlock = main.entity.components.@"cubyz:broken".client.get(main.game.Player.id) orelse return; // player can't break blocks...
 
-		if (selectedBlockPos) |selectedPos| {
+		if (main.game.Player.super.getSelected(inventory.getItem(slot), .client)) |selected| {
 			const stack = inventory.getStack(slot);
 			const isSelectionWand = stack.item == .baseItem and std.mem.eql(u8, stack.item.baseItem.id(), "cubyz:selection_wand");
 			if (isSelectionWand) {
-				game.Player.selectionPosition1 = selectedPos;
-				main.network.protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selectedPos);
+				game.Player.selectionPosition1 = selected.blockPos;
+				main.network.protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selected.blockPos);
 				return;
 			}
 
-			if (@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
+			if (@reduce(.Or, lastSelectedBlockPos != selected.blockPos)) {
 				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 				swingArm.currentSwingProgress = 0;
-				lastSelectedBlockPos = selectedPos;
+				lastSelectedBlockPos = selected.blockPos;
 				brokenBlock.progress = 0;
 			}
-			const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
+			const block = mesh_storage.getBlockFromRenderThread(selected.blockPos[0], selected.blockPos[1], selected.blockPos[2]) orelse return;
 			const holdingTargetedBlock = stack.item == .baseItem and stack.item.baseItem.block() == block.typ;
 			if ((block.hasTag(.fluid) or block.hasTag(.air)) and !holdingTargetedBlock) return;
 
-			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
+			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selected.blockPos)));
 
 			main.sync.client.mutex.lock();
 			if (!game.Player.isCreative()) {
@@ -1143,26 +1155,26 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			main.sync.client.mutex.unlock();
 
 			if (newBlock != block) {
-				updateBlockAndSendUpdate(inventory, slot, selectedPos, block, newBlock);
+				updateBlockAndSendUpdate(inventory, slot, selected, block, newBlock);
 			}
 		}
 	}
 
-	fn updateBlockAndSendUpdate(source: main.items.Inventory.ClientInventory, slot: u32, pos: Vec3i, oldBlock: blocks.Block, newBlock: blocks.Block) void {
+	fn updateBlockAndSendUpdate(source: main.items.Inventory.ClientInventory, slot: u32, selected: Selection, oldBlock: blocks.Block, newBlock: blocks.Block) void {
 		main.sync.client.executeCommand(.{
 			.updateBlock = .{
 				.source = .{.inv = source.super, .slot = slot},
 				.dropLocation = .{
-					.worldPos = pos,
-					.normalDir = selectionNormal,
-					.min = selectionMin,
-					.max = selectionMax,
+					.worldPos = selected.blockPos,
+					.normalDir = selected.normal,
+					.min = selected.min,
+					.max = selected.max,
 				},
 				.oldBlock = oldBlock,
 				.newBlock = newBlock,
 			},
 		});
-		mesh_storage.updateBlock(.{.pos = pos, .newBlock = newBlock, .blockEntityData = &.{}});
+		mesh_storage.updateBlock(.{.pos = selected.blockPos, .newBlock = newBlock, .blockEntityData = &.{}});
 	}
 
 	pub fn drawCube(relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
@@ -1184,8 +1196,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 	pub fn render(playerPos: Vec3d) void {
 		if (main.gui.hideGui) return;
-		if (selectedBlockPos) |_selectedBlockPos| {
-			drawCube(@as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, selectionMin, selectionMax);
+		if (main.game.Player.super.getSelected(main.game.Player.inventory.getItem(main.game.Player.selectedSlot), .client)) |selected| {
+			drawCube(@as(Vec3d, @floatFromInt(selected.blockPos)) - playerPos, selected.min, selected.max);
 		}
 		if (game.Player.selectionPosition1) |pos1| {
 			if (game.Player.selectionPosition2) |pos2| {
