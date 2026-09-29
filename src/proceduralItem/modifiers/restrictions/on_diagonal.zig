@@ -18,14 +18,13 @@ pub fn satisfied(self: *const OnDiagonal, proceduralItem: *const ProceduralItem,
 	const highBound = gridSize;
 	var i = lowBound;
 	while (i <= highBound) : (i += 1) {
-		const checkedX: i32 = x + (iterator - rangeChecked);
-		const checkedY: i32 = y + (iterator - rangeChecked);
+		const checkedX: i32 = x + (i - gridSize);
+		const checkedY: i32 = y + (i - gridSize);
 		if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 	}
-	for (lowBound..highBound) |i| {
-		const iterator: i32 = @intCast(i);
-		const checkedX: i32 = x + (iterator - rangeChecked);
-		const checkedY: i32 = y + (iterator - rangeChecked);
+	while (i <= highBound) : (i += 1) {
+		const checkedX: i32 = x + (i - gridSize);
+		const checkedY: i32 = y + (i - gridSize);
 		if (i != 0) { // prevents double counting itself
 			if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 		}
@@ -47,5 +46,5 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const OnD
 }
 
 pub fn printTooltip(self: *const OnDiagonal, outString: *main.ListManaged(u8)) void {
-	outString.print("{} .{s} {s}", .{self.amount, self.tag.getName(), "on diagonal axis"});
+	outString.print("{} .{s} {s}", .{self.amount, self.tag.getName(), "on diagonal line"});
 }
