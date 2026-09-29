@@ -13,21 +13,20 @@ const OnOrthogonal = struct {
 
 pub fn satisfied(self: *const OnOrthogonal, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
 	var count: usize = 0;
-	const gridSize: usize = proceduralItem.materialGrid.len - 1;
-	const rangeChecked: i32 = @intCast(gridSize);
-	const lowBound = 0;
-	const highBound = rangeChecked*2 + 1;
-	for (lowBound..highBound) |dx| {
-		const iterator: i32 = @intCast(dx);
-		const checkedX = x + (iterator - rangeChecked);
-		const checkedY = y + (0 - rangeChecked);
+	const gridSize: i32 = proceduralItem.materialGrid.len - 1;
+	const lowBound = -gridSize;
+	const highBound = gridSize;
+	var i = lowBound;
+	while (i <= highBound) : (i += 1) {
+		const checkedX = x + (i - gridSize);
+		const checkedY = y + (0 - gridSize);
 		if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 	}
-	for (lowBound..highBound) |dy| {
-		const iterator: i32 = @intCast(dy);
-		const checkedX = x + (0 - rangeChecked);
-		const checkedY = y + (iterator - rangeChecked);
-		if (dy != 0) { // prevents double counting
+	i = lowBound;
+	while (i <= highBound) : (i += 1) {
+		const checkedX = x + (0 - gridSize);
+		const checkedY = y + (i - gridSize);
+		if (i != 0) { // prevents double counting itself
 			if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 		}
 	}
@@ -47,5 +46,5 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const OnO
 }
 
 pub fn printTooltip(self: *const OnOrthogonal, outString: *main.ListManaged(u8)) void {
-	outString.print("{} .{s} {s}", .{self.amount, self.tag.getName(), "on orthoganal axis"});
+	outString.print("if there is {} .{s} on orthogonal lines", .{self.amount, self.tag.getName()});
 }
