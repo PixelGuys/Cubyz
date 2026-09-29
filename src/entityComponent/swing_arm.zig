@@ -35,6 +35,7 @@ pub const entityComponentVersion = 0;
 pub const client = struct {
 	const Component = struct {
 		currentSwingProgress: f32,
+		currentSwingTime: f32,
 	};
 	pub var components: main.utils.SparseSet(Component, Entity) = .{};
 
@@ -48,9 +49,11 @@ pub const client = struct {
 	pub fn load(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != 0) return error.InvalidComponentVersion;
 		const currentSwingProgress = reader.readFloat(f32) catch return error.UnreadableComponentData;
+		const currentSwingTime = reader.readFloat(f32) catch return error.UnreadableComponentData;
 		const ptr = components.get(entity) orelse components.add(main.globalAllocator, entity);
 		ptr.* = Component{
 			.currentSwingProgress = currentSwingProgress,
+			.currentSwingTime = currentSwingTime,
 		};
 	}
 	pub fn unload(entity: Entity) void {
@@ -64,8 +67,10 @@ pub const client = struct {
 pub const server = struct {
 	pub const Component = struct {
 		currentSwingProgress: f32,
+		currentSwingTime: f32,
 		pub fn save(self: Component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			writer.writeFloat(f32, self.currentSwingProgress);
+			writer.writeFloat(f32, self.currentSwingTime);
 			if (audience == .disk) return .discard;
 			return .save;
 		}
@@ -84,6 +89,7 @@ pub const server = struct {
 	pub fn load(entity: Entity) void {
 		put(entity, Component{
 			.currentSwingProgress = 0,
+			.currentSwingTime = 0,
 		});
 	}
 	pub fn unload(entity: Entity) void {
