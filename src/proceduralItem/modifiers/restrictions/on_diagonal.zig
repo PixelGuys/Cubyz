@@ -13,12 +13,11 @@ const OnDiagonal = struct {
 
 pub fn satisfied(self: *const OnDiagonal, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
 	var count: usize = 0;
-	const gridSize: usize = proceduralItem.materialGrid.len - 1;
-	const rangeChecked: i32 = gridSize;
-	const lowBound = 0;
-	const highBound = rangeChecked*2 + 1;
-	for (lowBound..highBound) |i| {
-		const iterator: i32 = @intCast(i);
+	const gridSize: i32 = proceduralItem.materialGrid.len - 1;
+	const lowBound = -gridSize;
+	const highBound = gridSize;
+	var i = lowBound;
+	while (i <= highBound) : (i += 1) {
 		const checkedX: i32 = x + (iterator - rangeChecked);
 		const checkedY: i32 = y + (iterator - rangeChecked);
 		if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
@@ -27,7 +26,7 @@ pub fn satisfied(self: *const OnDiagonal, proceduralItem: *const ProceduralItem,
 		const iterator: i32 = @intCast(i);
 		const checkedX: i32 = x + (iterator - rangeChecked);
 		const checkedY: i32 = y + (iterator - rangeChecked);
-		if (i != 0) { // prevents double counting
+		if (i != 0) { // prevents double counting itself
 			if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 		}
 	}
