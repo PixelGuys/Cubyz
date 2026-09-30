@@ -37,7 +37,7 @@ pub const client = struct { // MARK: client
 		serverToClientMap.deinit();
 	}
 
-	fn nextId() InventoryId {
+	pub fn nextId() InventoryId {
 		main.sync.client.mutex.lock();
 		defer main.sync.client.mutex.unlock();
 		if (freeIdList.popOrNull()) |id| {
@@ -87,6 +87,42 @@ pub const client = struct { // MARK: client
 			if (inv.id == clientId) return inv.*;
 		}
 		return null;
+	}
+
+	var pendingChestOpen: ?ClientInventory = null;
+
+	fn buildFromResponse(clientId: InventoryId, source: Source, len: usize, reader: *BinaryReader) Inventory {
+		const inv: Inventory = .{
+			._items = main.globalAllocator.alloc(ItemStack, len),
+			.id = clientId,
+			.source = source,
+			.callbacks = .{},
+		};
+		for (inv._items) |*item| item.* = .{};
+		inv.fromBytes(reader);
+		return inv;
+	}
+
+	pub fn receiveChestOpenResponse(clientId: InventoryId, pos: Vec3i, serverId: InventoryId, reader: *BinaryReader) void {
+		main.sync.client.mutex.lock();
+		defer main.sync.client.mutex.unlock();
+		const inv = buildFromResponse(clientId, .{.blockInventory = pos}, main.block_entity.BlockEntityTypes.@"cubyz:chest".inventorySize, reader);
+		mapServerId(serverId, inv);
+		pendingChestOpen = .{.super = inv, .type = .serverShared};
+	}
+
+	pub fn cancelChestOpen(clientId: InventoryId) void {
+		main.sync.client.mutex.lock();
+		defer main.sync.client.mutex.unlock();
+		freeId(clientId);
+		std.log.err("Server rejected request to open chest.", .{});
+	}
+
+	pub fn takePendingChestOpen() ?ClientInventory {
+		main.sync.client.mutex.lock();
+		defer main.sync.client.mutex.unlock();
+		defer pendingChestOpen = null;
+		return pendingChestOpen;
 	}
 };
 
