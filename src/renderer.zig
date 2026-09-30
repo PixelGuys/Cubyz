@@ -197,6 +197,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	if (main.settings.launchConfig.vulkanTestingMode) {
 		worldFrameBuffer.bindAndClear(vulkan.currentFrame.renderCommands, .{.clearColor = .{.float32 = .{skyColor[0], skyColor[1], skyColor[2], 1}}}, .{.clearDepth = .{.depth = 0}});
 	}
+	defer if (main.settings.launchConfig.vulkanTestingMode) {
+		vulkan.currentFrame.renderCommands.endRendering();
+	};
 	game.camera.updateViewMatrix();
 
 	main.graphics.frame_uniforms.uploadNewFrame(.{
