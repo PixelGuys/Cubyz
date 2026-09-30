@@ -485,7 +485,7 @@ fn createLogicalDevice() void {
 pub const Semaphore = struct { // MARK: Semaphore
 	handle: c.VkSemaphore,
 
-	fn init() Semaphore {
+	pub fn init() Semaphore {
 		var result: c.VkSemaphore = undefined;
 		const semaphoreInfo = c.VkSemaphoreCreateInfo{
 			.sType = c.VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -493,8 +493,11 @@ pub const Semaphore = struct { // MARK: Semaphore
 		checkResult(c.vkCreateSemaphore(device, &semaphoreInfo, null, &result));
 		return .{.handle = result};
 	}
-	fn deinit(self: Semaphore) void {
+	fn privateDeinit(self: Semaphore) void {
 		c.vkDestroySemaphore(device, self.handle, null);
+	}
+	pub fn deferredDeinit(self: Semaphore) void {
+		gpu_garbage_collection.deferredFree(.{.semaphore = self});
 	}
 };
 
@@ -510,8 +513,11 @@ pub const Fence = struct { // MARK: Fence
 		checkResult(c.vkCreateFence(device, &fenceInfo, null, &result));
 		return .{.handle = result};
 	}
-	pub fn deinit(self: Fence) void {
+	fn privateDeinit(self: Fence) void {
 		c.vkDestroyFence(device, self.handle, null);
+	}
+	pub fn deferredDeinit(self: Fence) void {
+		gpu_garbage_collection.deferredFree(.{.fence = self});
 	}
 
 	pub fn waitAndReset(self: Fence) void {
@@ -554,12 +560,12 @@ const Frame = struct { // MARK: Frame
 	}
 
 	fn deinit(self: Frame) void {
-		self.fence.deinit();
-		self.uploadFence.deinit();
-		self.imageAvailable.deinit();
-		self.uploadFinished.deinit();
-		self.renderFinished.deinit();
-		self.guiRenderFinished.deinit();
+		self.fence.privateDeinit();
+		self.uploadFence.privateDeinit();
+		self.imageAvailable.privateDeinit();
+		self.uploadFinished.privateDeinit();
+		self.renderFinished.privateDeinit();
+		self.guiRenderFinished.privateDeinit();
 		self.uploadCommands.deinit();
 		self.guiCommands.deinit();
 		self.renderCommands.deinit();
@@ -1126,7 +1132,7 @@ pub const Image = struct { // MARK: Image
 	}
 };
 
-pub const gpu_allocator = struct {
+pub const gpu_allocator = struct { // MARK: gpu_allocator
 	var handle: c.VmaAllocator = undefined;
 
 	fn init() void {
@@ -1150,10 +1156,12 @@ pub const gpu_allocator = struct {
 	}
 };
 
-pub const gpu_garbage_collection = struct {
+pub const gpu_garbage_collection = struct { // MARK: gpu_garbage_collection
 	const Entry = union(enum) {
 		buf: Buffer,
 		image: Image,
+		semaphore: Semaphore,
+		fence: Fence,
 	};
 	var currentList: usize = 0;
 	var lists: [frames.len + 1]main.List(Entry) = @splat(.empty);
