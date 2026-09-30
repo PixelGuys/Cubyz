@@ -6,7 +6,7 @@
 		.cactus,
 		.baobab,
 	},
-	.music = "cubyz:EasternThought",
+	.music = "cubyz:mischol/desert_firefly",
 	.chance = 0,
 	.fogDensity = 1.5,
 	.fogColor = 0xe9f2e2,
