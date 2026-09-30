@@ -3,7 +3,7 @@
 	.tags = .{.cave_layer},
 	.caveNoiseStrength = 10,
 	.maxHeight = -256,
-	.chance = 5,
+	.chance = 0.8,
 
 	.stoneBlock = "cubyz:limestone/smooth",
 	.fogDensity = 10,
