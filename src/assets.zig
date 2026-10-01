@@ -343,30 +343,6 @@ pub const Assets = struct { // MARK: Assets
 				output.put(allocator.allocator, id, string) catch unreachable;
 			}
 		}
-
-		pub fn readAllAudio(addon: Addon, allocator: NeverFailingAllocator, subPath: []const u8, fileEnding: []const u8, output: *main.List([]const u8)) void {
-			var assetsDirectory = addon.dir.openIterableDir(subPath) catch |err| {
-				if (err != error.FileNotFound) {
-					std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
-				}
-				return;
-			};
-			defer assetsDirectory.close();
-			var walker = assetsDirectory.walk(main.stackAllocator);
-			defer walker.deinit();
-
-			while (walker.next(main.io) catch |err| blk: {
-				std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
-				break :blk null;
-			}) |entry| {
-				if (entry.kind != .file) continue;
-				if (!std.ascii.endsWithIgnoreCase(entry.basename, fileEnding)) continue;
-
-				const id = createAssetStringID(allocator, addon.name, "audio", entry.path) catch continue;
-
-				output.append(allocator, id);
-			}
-		}
 	};
 };
 
