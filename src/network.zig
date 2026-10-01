@@ -65,16 +65,27 @@ const Socket = struct { // MARK: Socket
 						try windowsError(c.WSAGetLastError());
 						return error.UNKNOWN;
 					}
+					const setting = c.IP_PMTUDISC_PROBE;
+					if (c.setsockopt(socket, c.IPPROTO_IP, c.IP_MTU_DISCOVER, @ptrCast(&setting), @sizeOf(c_int)) != 0) {
+						try windowsError(c.WSAGetLastError());
+					}
 					break :blk socket;
 				} else {
-					const result = std.c.socket(posix.AF.INET, posix.SOCK.DGRAM, posix.IPPROTO.UDP);
-					switch (std.c.errno(result)) {
-						.SUCCESS => break :blk result,
+					const socket = std.c.socket(posix.AF.INET, posix.SOCK.DGRAM, posix.IPPROTO.UDP);
+					switch (std.c.errno(socket)) {
+						.SUCCESS => {},
 						else => |err| {
 							std.log.warn("Got error while creating socket: {s}", .{@tagName(err)});
 							return error.SocketCreationFailed;
 						},
 					}
+					const probe: c_int = std.c.IP.PMTUDISC_PROBE;
+					const result = std.c.setsockopt(socket, std.c.IPPROTO.IP, std.c.IP.MTU_DISCOVER, &probe, @sizeOf(c_int));
+					switch (std.c.errno(result)) {
+						.SUCCESS => {},
+						else => |err| std.log.warn("Got error while setting socket option: {s}", .{@tagName(err)}),
+					}
+					break :blk socket;
 				}
 			},
 		};
@@ -1395,25 +1406,6 @@ pub const Connection = struct { // MARK: Connection
 			writer.data.items.len = writer.data.capacity;
 
 			_ = packetsSent.fetchAdd(1, .monotonic);
-
-			{
-				const probe: c_int = std.c.IP.PMTUDISC_PROBE;
-				const result = std.c.setsockopt(conn.manager.socket.socketID, std.c.IPPROTO.IP, std.c.IP.MTU_DISCOVER, &probe, @sizeOf(c_int));
-				switch (std.c.errno(result)) {
-					.SUCCESS => {},
-					else => |e| std.debug.print("{t}\n", .{e}),
-				}
-			}
-
-			defer {
-				const dont: c_int = std.c.IP.PMTUDISC_DONT;
-				const result = std.c.setsockopt(conn.manager.socket.socketID, std.c.IPPROTO.IP, std.c.IP.MTU_DISCOVER, &dont, @sizeOf(c_int));
-				switch (std.c.errno(result)) {
-					.SUCCESS => {},
-					else => |e| std.debug.print("{t}\n", .{e}),
-				}
-			}
-
 			conn.manager.send(writer.data.items, conn.remoteAddress, null);
 			return writer.data.items.len;
 		}
