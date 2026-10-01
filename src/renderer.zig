@@ -917,15 +917,24 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		pipeline.deinit();
 	}
 
-	var posBeforeBlock: Vec3i = undefined;
-	var neighborOfSelection: chunk.Neighbor = undefined;
-	var lastSelectedBlockPos: Vec3i = undefined;
-
 	pub const Selection = struct {
 		blockPos: Vec3i,
 		min: Vec3f,
 		max: Vec3f,
 		normal: Vec3f,
+		posBeforeBlock: Vec3i,
+		neighborOfSelection: chunk.Neighbor,
+
+		fn copyWithNewBlockPos(self: Selection, newBlockPos: Vec3i) Selection {
+			return .{
+				.blockPos = newBlockPos,
+				.min = self.min,
+				.max = self.max,
+				.normal = self.normal,
+				.posBeforeBlock = self.posBeforeBlock,
+				.neighborOfSelection = self.neighborOfSelection,
+			};
+		}
 	};
 
 	pub fn select(pos: Vec3d, _dir: Vec3f, item: main.items.Item) ?Selection {
@@ -944,6 +953,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 		var total_tMax: f64 = 0;
 
+		var posBeforeBlock: Vec3i = undefined;
+		var neighborOfSelection: chunk.Neighbor = undefined;
+
 		while (total_tMax < closestDistance) {
 			const block = mesh_storage.getBlockFromRenderThread(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
 			if (block.typ != 0) blk: {
@@ -957,6 +969,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 							.min = intersection.min,
 							.max = intersection.max,
 							.normal = intersection.normal,
+							.posBeforeBlock = posBeforeBlock,
+							.neighborOfSelection = neighborOfSelection,
 						};
 					}
 				}
@@ -1027,35 +1041,25 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						}
 					}
 					// Check the block in front of it:
-					const neighborPos = posBeforeBlock;
-					neighborDir = selected.blockPos - posBeforeBlock;
+					const neighborPos = selected.posBeforeBlock;
+					neighborDir = selected.blockPos - selected.posBeforeBlock;
 					const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(neighborPos)));
 					const neighborBlock = block;
 					oldBlock = mesh_storage.getBlockFromRenderThread(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
 					block = oldBlock;
 					if (block.typ == itemBlock) {
-						if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, false)) {
+						if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, selected.neighborOfSelection, &block, neighborBlock, false)) {
 							if (!canPlaceBlock(neighborPos, block)) return;
-							updateBlockAndSendUpdate(inventory, slot, .{
-								.blockPos = neighborPos,
-								.normal = selected.normal,
-								.min = selected.min,
-								.max = selected.max,
-							}, oldBlock, block);
+							updateBlockAndSendUpdate(inventory, slot, selected.copyWithNewBlockPos(neighborPos), oldBlock, block);
 							return;
 						}
 					} else {
 						if (!block.replaceable()) return;
 						block.typ = itemBlock;
 						block.data = 0;
-						if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, true)) {
+						if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, selected.neighborOfSelection, &block, neighborBlock, true)) {
 							if (!canPlaceBlock(neighborPos, block)) return;
-							updateBlockAndSendUpdate(inventory, slot, .{
-								.blockPos = neighborPos,
-								.normal = selected.normal,
-								.min = selected.min,
-								.max = selected.max,
-							}, oldBlock, block);
+							updateBlockAndSendUpdate(inventory, slot, selected.copyWithNewBlockPos(neighborPos), oldBlock, block);
 							return;
 						}
 					}
@@ -1089,10 +1093,10 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			return;
 		}
 
-		if (@reduce(.Or, lastSelectedBlockPos != selected.blockPos)) {
-			mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+		if (@reduce(.Or, brokenBlock.blockPos != selected.blockPos)) {
+			mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
 			swingArm.currentSwingProgress = 0;
-			lastSelectedBlockPos = selected.blockPos;
+			brokenBlock.blockPos = selected.blockPos;
 			brokenBlock.progress = 0;
 		}
 		const block = mesh_storage.getBlockFromRenderThread(selected.blockPos[0], selected.blockPos[1], selected.blockPos[2]) orelse return;
@@ -1130,16 +1134,16 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 					swingArm.currentSwingTime = damagePerSwing/damage*swingTime;
 				}
 				if (brokenBlock.progress < 0.9999) {
-					mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+					mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
 					if (brokenBlock.progress != 0) {
-						mesh_storage.addBreakingAnimation(lastSelectedBlockPos, brokenBlock.progress);
+						mesh_storage.addBreakingAnimation(brokenBlock.blockPos, brokenBlock.progress);
 					}
 					main.sync.client.mutex.unlock();
 
 					return;
 				} else {
 					swingArm.currentSwingProgress = 0;
-					mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+					mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
 					brokenBlock.progress = 0;
 					swingArm.currentSwingTime = 0;
 				}
@@ -1148,7 +1152,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				return;
 			}
 		} else {
-			mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+			mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
 		}
 
 		var newBlock = block;
