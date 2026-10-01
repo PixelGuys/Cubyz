@@ -47,7 +47,7 @@ fn musicFormatter(allocator: NeverFailingAllocator, value: f32) []const u8 {
 fn soundFormatter(allocator: NeverFailingAllocator, value: f32) []const u8 {
 	const percentage = 100*deziBelToLinear(value);
 	if (percentage == 0) return allocator.dupe(u8, "Sound volume: Off");
-	return std.fmt.allocPrint(allocator.allocator, "Sound volume:", .{}) catch unreachable;
+	return allocator.dupe(u8, "Sound volume:");
 }
 
 const padding: f32 = 8;
