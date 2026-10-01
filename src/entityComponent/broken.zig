@@ -69,9 +69,9 @@ pub const server = struct {
 		progress: f32,
 		blockPos: Vec3i,
 		pub fn save(self: Component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
+			if (audience == .disk) return .discard;
 			writer.writeFloat(f32, self.progress);
 			writer.writeVec(Vec3i, self.blockPos);
-			if (audience == .disk) return .discard;
 			return .save;
 		}
 	};

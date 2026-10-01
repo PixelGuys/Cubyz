@@ -69,9 +69,9 @@ pub const server = struct {
 		currentSwingProgress: f32,
 		currentSwingTime: f32,
 		pub fn save(self: Component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
+			if (audience == .disk) return .discard;
 			writer.writeFloat(f32, self.currentSwingProgress);
 			writer.writeFloat(f32, self.currentSwingTime);
-			if (audience == .disk) return .discard;
 			return .save;
 		}
 	};
