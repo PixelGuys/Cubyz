@@ -35,6 +35,7 @@ pub const entityComponentVersion = 0;
 pub const client = struct {
 	const Component = struct {
 		progress: f32,
+		blockPos: Vec3i,
 	};
 	pub var components: main.utils.SparseSet(Component, Entity) = .{};
 
@@ -48,9 +49,11 @@ pub const client = struct {
 	pub fn load(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != 0) return error.InvalidComponentVersion;
 		const progress = reader.readFloat(f32) catch return error.UnreadableComponentData;
+		const blockPos = reader.readVec(Vec3i) catch return error.UnreadableComponentData;
 		const ptr = components.get(entity) orelse components.add(main.globalAllocator, entity);
 		ptr.* = Component{
 			.progress = progress,
+			.blockPos = blockPos,
 		};
 	}
 	pub fn unload(entity: Entity) void {
@@ -64,8 +67,10 @@ pub const client = struct {
 pub const server = struct {
 	pub const Component = struct {
 		progress: f32,
+		blockPos: Vec3i,
 		pub fn save(self: Component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			writer.writeFloat(f32, self.progress);
+			writer.writeVec(Vec3i, self.blockPos);
 			if (audience == .disk) return .discard;
 			return .save;
 		}
@@ -84,6 +89,7 @@ pub const server = struct {
 	pub fn load(entity: Entity) void {
 		put(entity, Component{
 			.progress = 0,
+			.blockPos = .{0, 0, 0},
 		});
 	}
 	pub fn unload(entity: Entity) void {

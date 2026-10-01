@@ -922,7 +922,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var posBeforeBlock: Vec3i = undefined;
 	var neighborOfSelection: chunk.Neighbor = undefined;
 	pub var selectedBlockPos: ?Vec3i = null;
-	var lastSelectedBlockPos: Vec3i = undefined;
 	var selectionMin: Vec3f = undefined;
 	var selectionMax: Vec3f = undefined;
 	var selectionNormal: Vec3f = undefined;
@@ -1076,10 +1075,10 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				return;
 			}
 
-			if (@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
-				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+			if (@reduce(.Or, brokenBlock.blockPos != selectedPos)) {
+				mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
 				swingArm.currentSwingProgress = 0;
-				lastSelectedBlockPos = selectedPos;
+				brokenBlock.blockPos = selectedPos;
 				brokenBlock.progress = 0;
 			}
 			const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
@@ -1117,16 +1116,16 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						swingArm.currentSwingTime = damagePerSwing/damage*swingTime;
 					}
 					if (brokenBlock.progress < 0.9999) {
-						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+						mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
 						if (brokenBlock.progress != 0) {
-							mesh_storage.addBreakingAnimation(lastSelectedBlockPos, brokenBlock.progress);
+							mesh_storage.addBreakingAnimation(brokenBlock.blockPos, brokenBlock.progress);
 						}
 						main.sync.client.mutex.unlock();
 
 						return;
 					} else {
 						swingArm.currentSwingProgress = 0;
-						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+						mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
 						brokenBlock.progress = 0;
 						swingArm.currentSwingTime = 0;
 					}
@@ -1135,7 +1134,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 					return;
 				}
 			} else {
-				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+				mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
 			}
 
 			var newBlock = block;
