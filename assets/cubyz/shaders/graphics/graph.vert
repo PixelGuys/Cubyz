@@ -1,11 +1,22 @@
 #version 460
 
+#ifdef OPEN_GL
 // in pixel
 layout(location = 0) uniform vec2 start;
 layout(location = 1) uniform vec2 dimension;
 layout(location = 2) uniform vec2 screen;
 layout(location = 3) uniform int points;
 layout(location = 4) uniform int offset;
+#else
+layout(push_constant, std430) uniform _ {
+	vec2 start;
+	vec2 dimension;
+	vec2 screen;
+	int points;
+	int offset;
+	vec3 lineColor;
+};
+#endif
 
 layout(std430, binding = 5) buffer _data
 {
@@ -16,10 +27,9 @@ layout(std430, binding = 5) buffer _data
 void main() {
 	float x = gl_VertexIndex;
 	float y = -data[(gl_VertexIndex + offset)%points];
-	// Convert to opengl coordinates:
 	vec2 position_percentage = (start + dimension*vec2(x/points, y))/screen;
 
-	vec2 position = vec2(position_percentage.x, -position_percentage.y)*2 + vec2(-1, 1);
+	vec2 position = position_percentage*2 + vec2(-1, -1);
 
 	gl_Position = vec4(position, 0, 1);
 }

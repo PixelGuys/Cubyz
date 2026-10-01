@@ -2,6 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
+const Source = command.Source;
 const Vec3i = main.vec.Vec3i;
 const User = main.server.User;
 
@@ -21,62 +22,57 @@ const State = enum {
 	off,
 };
 
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/toggledecay <target> <state>": struct {
 		target: Target,
 		state: State,
 	},
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/toggledecay"});
-
-pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
+pub fn execute(args: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
 		return;
-	};
-
-	var blueprint: Blueprint = switch (result.@"/toggledecay <target> <state>".target) {
+	}
+	const user = source.user;
+	var blueprint: Blueprint = switch (args.@"/toggledecay <target> <state>".target) {
 		.selection => blk: {
-			const selection = command.getCurrentSelection(source) catch return;
+			const selection = command.getCurrentSelection(user) catch return;
 			const blueprint = switch (Blueprint.capture(main.globalAllocator, selection)) {
 				.success => |bp| bp,
 				.failure => |e| {
-					source.sendMessage("#ff0000Error while capturing block {}: {s}. Nothing was modified.", .{e.pos, e.message});
+					user.sendMessage("#ff0000Error while capturing block {}: {s}. Nothing was modified.", .{e.pos, e.message});
 					std.log.warn("Error while capturing block {}: {s}. Nothing was modified.", .{e.pos, e.message});
 					return;
 				},
 			};
 
-			source.worldEditData.undoHistory.push(.init(blueprint, selection.minPos, "toggledecay"));
-			source.worldEditData.redoHistory.clear();
+			user.worldEditData.undoHistory.push(.init(blueprint, selection.minPos, "toggledecay"));
+			user.worldEditData.redoHistory.clear();
 
 			break :blk blueprint.clone(main.stackAllocator);
 		},
-		.clipboard => source.worldEditData.clipboard orelse {
-			return source.sendMessage("#ff0000Clipboard is empty.", .{});
+		.clipboard => user.worldEditData.clipboard orelse {
+			return user.sendMessage("#ff0000Clipboard is empty.", .{});
 		},
 	};
 
-	blueprint.apply(result.@"/toggledecay <target> <state>".state, toggledecay);
+	blueprint.apply(args.@"/toggledecay <target> <state>".state, toggledecay);
 
-	switch (result.@"/toggledecay <target> <state>".target) {
+	switch (args.@"/toggledecay <target> <state>".target) {
 		.selection => {
-			const pos1 = source.worldEditData.selectionPosition1.?;
-			const pos2 = source.worldEditData.selectionPosition2.?;
+			const pos1 = user.worldEditData.selectionPosition1.?;
+			const pos2 = user.worldEditData.selectionPosition2.?;
 
 			const posStart: Vec3i = @min(pos1, pos2);
 
 			blueprint.paste(posStart, .{.preserveVoid = true});
 			blueprint.deinit(main.stackAllocator);
 
-			return source.sendMessage("#00ff00Selection modified. History entry created.", .{});
+			return user.sendMessage("#00ff00Selection modified. History entry created.", .{});
 		},
 		.clipboard => {
-			return source.sendMessage("#00ff00Clipboard modified.", .{});
+			return user.sendMessage("#00ff00Clipboard modified.", .{});
 		},
 	}
 }

@@ -1,0 +1,25 @@
+.{
+	.tags = .{.cuttable, .sliceable, .flower},
+	.blockHealth = 0.2,
+	.drops = .{
+		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
+	},
+	.selectionCapabilities = .{.toolEffective},
+	.replaceable = true,
+	.degradable = true,
+	.viewThrough = true,
+	.absorbedLight = 0x000000,
+	.collide = false,
+	.model = "cubyz:flower/cornflower",
+	.rotation = "cubyz:planar",
+	.texture = "cubyz:cornflower",
+	.texture_top = "cubyz:cornflower_top",
+	.texture_bottom = "cubyz:cornflower_top",
+	.item = .{
+		.texture = "cornflower.png",
+	},
+	.lodReplacement = "cubyz:air",
+	.onUpdate = .{
+		.type = .check_support_blocks,
+	},
+}

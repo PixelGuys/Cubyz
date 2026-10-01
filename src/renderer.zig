@@ -5,6 +5,7 @@ const blocks = @import("blocks.zig");
 const chunk = @import("chunk.zig");
 const entity = @import("entity.zig");
 const graphics = @import("graphics.zig");
+const vulkan = graphics.vulkan;
 const particles = @import("particles.zig");
 const game = @import("game.zig");
 const World = game.World;
@@ -45,8 +46,6 @@ var deferredUniforms: struct {
 	zNear: c_int,
 	zFar: c_int,
 	invViewMatrix: c_int,
-	playerPositionInteger: c_int,
-	playerPositionFraction: c_int,
 } = undefined;
 var fakeReflectionPipeline: graphics.Pipeline = undefined;
 var fakeReflectionUniforms: struct {
@@ -62,6 +61,8 @@ pub var activeFrameBuffer: c_uint = 0;
 pub const reflectionCubeMapSize = 64;
 var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
+pub const worldFrameBufferFormat = c.VK_FORMAT_R16G16B16A16_SFLOAT;
+
 pub fn init() void {
 	deferredRenderPassPipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/deferred_render_pass.vert",
@@ -69,10 +70,11 @@ pub fn init() void {
 		"",
 		&deferredUniforms,
 		graphics.draw.SimpleVertex2D,
-		&.{},
-		.{.cullMode = .none},
-		.{.depthTest = false, .depthWrite = false},
-		.{.attachments = &.{.noBlending}},
+		.{
+			.rasterState = .{.cullMode = .none},
+			.depthStencilState = .{.depthTest = false, .depthWrite = false},
+			.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.world}},
+		},
 	);
 	fakeReflectionPipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/fake_reflection.vert",
@@ -80,10 +82,11 @@ pub fn init() void {
 		"",
 		&fakeReflectionUniforms,
 		graphics.draw.SimpleVertex2D,
-		&.{},
-		.{.cullMode = .none},
-		.{.depthTest = false, .depthWrite = false},
-		.{.attachments = &.{.noBlending}},
+		.{
+			.rasterState = .{.cullMode = .none},
+			.depthStencilState = .{.depthTest = false, .depthWrite = false},
+			.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R8G8B8A8_UNORM}}},
+		},
 	);
 	worldFrameBuffer.init(true, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGB16F);
@@ -255,13 +258,13 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
-	main.entity.client.render(game.projectionMatrix, ambientLight, playerPos, main.lastDeltaTime.load(.monotonic));
+	main.systems.client.render(ambientLight, playerPos, main.lastDeltaTime.load(.monotonic));
 
-	itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos);
+	itemdrop.ItemDropRenderer.renderItemDrops(ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.block_entity_rendering);
-	main.block_entity.renderAll(game.projectionMatrix, ambientLight, playerPos);
+	main.block_entity.renderAll(ambientLight);
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.particle_rendering);
@@ -274,7 +277,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glActiveTexture(c.GL_TEXTURE1);
 	blocks.meshes.emissionTextureArray.bind();
 
-	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
+	MeshSelection.render(playerPos);
 
 	// Render transparent chunk meshes:
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE5);
@@ -307,7 +310,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	const playerBlock = mesh_storage.getBlockFromAnyLodFromRenderThread(@floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 
 	if (settings.bloom) {
-		Bloom.render(lastWidth, lastHeight, playerBlock, playerPos, game.camera.viewMatrix);
+		Bloom.render(lastWidth, lastHeight, playerBlock, game.camera.viewMatrix);
 	} else {
 		Bloom.bindReplacementImage();
 	}
@@ -330,11 +333,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		c.glUniform1f(deferredUniforms.@"fog.fogHigher", 1e10);
 	}
 	c.glUniformMatrix4fv(deferredUniforms.invViewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix.transpose()));
-	c.glUniform3i(deferredUniforms.playerPositionInteger, @floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
-	c.glUniform3f(deferredUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 	c.glUniform1f(deferredUniforms.zNear, zNear);
 	c.glUniform1f(deferredUniforms.zFar, zFar);
-	c.glUniform2f(deferredUniforms.tanXY, 1.0/game.projectionMatrix.rows[0][0], 1.0/game.projectionMatrix.rows[1][2]);
+	c.glUniform2f(deferredUniforms.tanXY, 1.0/game.projectionMatrix.rows[0][0], -1.0/game.projectionMatrix.rows[1][2]);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, activeFrameBuffer);
 
@@ -343,7 +344,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-	if (!main.gui.hideGui) main.entity.client.renderHud(game.projectionMatrix, ambientLight, playerPos);
+	if (!main.gui.hideGui) main.systems.client.renderHud(ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
 }
 
@@ -365,8 +366,6 @@ const Bloom = struct { // MARK: Bloom
 		@"fog.fogLower": c_int,
 		@"fog.fogHigher": c_int,
 		invViewMatrix: c_int,
-		playerPositionInteger: c_int,
-		playerPositionFraction: c_int,
 	} = undefined;
 
 	pub fn init() void {
@@ -380,10 +379,12 @@ const Bloom = struct { // MARK: Bloom
 			"",
 			null,
 			graphics.draw.SimpleVertex2D,
-			&.{.{.binding = 3, .count = 1, .type = .combinedImageSampler, .stageFlags = .{.fragment = true}}},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.noBlending}},
+			.{
+				.bindings = &.{.sampler(3, .{.fragment = true})},
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R16G16B16A16_SFLOAT}}},
+			},
 		);
 		secondPassPipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/bloom/second_pass.vert",
@@ -391,10 +392,12 @@ const Bloom = struct { // MARK: Bloom
 			"",
 			null,
 			graphics.draw.SimpleVertex2D,
-			&.{.{.binding = 3, .count = 1, .type = .combinedImageSampler, .stageFlags = .{.fragment = true}}},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.noBlending}},
+			.{
+				.bindings = &.{.sampler(3, .{.fragment = true})},
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R16G16B16A16_SFLOAT}}},
+			},
 		);
 		colorExtractAndDownsamplePipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/bloom/color_extractor_downsample.vert",
@@ -402,10 +405,11 @@ const Bloom = struct { // MARK: Bloom
 			"",
 			&colorExtractUniforms,
 			graphics.draw.SimpleVertex2D,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.noBlending}},
+			.{
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R16G16B16A16_SFLOAT}}},
+			},
 		);
 	}
 
@@ -417,7 +421,7 @@ const Bloom = struct { // MARK: Bloom
 		colorExtractAndDownsamplePipeline.deinit();
 	}
 
-	fn extractImageDataAndDownsample(playerBlock: blocks.Block, playerPos: Vec3d, viewMatrix: Mat4f) void {
+	fn extractImageDataAndDownsample(playerBlock: blocks.Block, viewMatrix: Mat4f) void {
 		colorExtractAndDownsamplePipeline.bind(null);
 		worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 		worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
@@ -436,8 +440,6 @@ const Bloom = struct { // MARK: Bloom
 		}
 
 		c.glUniformMatrix4fv(colorExtractUniforms.invViewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix.transpose()));
-		c.glUniform3i(colorExtractUniforms.playerPositionInteger, @floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
-		c.glUniform3f(colorExtractUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 		c.glUniform1f(colorExtractUniforms.zNear, zNear);
 		c.glUniform1f(colorExtractUniforms.zFar, zFar);
 		c.glUniform2f(colorExtractUniforms.tanXY, 1.0/game.projectionMatrix.rows[0][0], 1.0/game.projectionMatrix.rows[1][2]);
@@ -461,7 +463,7 @@ const Bloom = struct { // MARK: Bloom
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
-	fn render(currentWidth: u31, currentHeight: u31, playerBlock: blocks.Block, playerPos: Vec3d, viewMatrix: Mat4f) void {
+	fn render(currentWidth: u31, currentHeight: u31, playerBlock: blocks.Block, viewMatrix: Mat4f) void {
 		if (width != currentWidth or height != currentHeight) {
 			width = currentWidth;
 			height = currentHeight;
@@ -473,7 +475,7 @@ const Bloom = struct { // MARK: Bloom
 		gpu_performance_measuring.startQuery(.bloom_extract_downsample);
 
 		c.glViewport(0, 0, width/4, height/4);
-		extractImageDataAndDownsample(playerBlock, playerPos, viewMatrix);
+		extractImageDataAndDownsample(playerBlock, viewMatrix);
 		gpu_performance_measuring.stopQuery();
 		gpu_performance_measuring.startQuery(.bloom_first_pass);
 		firstPass();
@@ -492,12 +494,8 @@ const Bloom = struct { // MARK: Bloom
 	}
 };
 
-pub const MenuBackGround = struct {
+pub const MenuBackGround = struct { // MARK: MenuBackGround
 	var pipeline: graphics.Pipeline = undefined;
-	var uniforms: struct {
-		viewMatrix: c_int,
-		projectionMatrix: c_int,
-	} = undefined;
 
 	var vao: graphics.VertexArray = undefined;
 	var texture: graphics.Texture = undefined;
@@ -505,7 +503,7 @@ pub const MenuBackGround = struct {
 	var angle: f32 = 0;
 
 	fn init() void {
-		const MenuBackgroundVertex = struct {
+		const MenuBackgroundVertex = extern struct {
 			pos: [3]f32,
 			uv: [2]f32,
 
@@ -526,12 +524,14 @@ pub const MenuBackGround = struct {
 			"assets/cubyz/shaders/background/vertex.vert",
 			"assets/cubyz/shaders/background/fragment.frag",
 			"",
-			&uniforms,
+			null,
 			MenuBackgroundVertex,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.noBlending}},
+			.{
+				.bindings = &.{.sampler(0, .{.fragment = true})},
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.swapChain}},
+			},
 		);
 		// 4 sides of a simple cube with some panorama texture on it.
 		const rawData = [_]MenuBackgroundVertex{
@@ -562,7 +562,7 @@ pub const MenuBackGround = struct {
 
 		const backgroundPath = chooseBackgroundImagePath(main.stackAllocator) catch |err| {
 			std.log.err("Couldn't open background path: {s}", .{@errorName(err)});
-			texture = .{.textureID = 0};
+			texture = .{.textureID = 0, .vulkanImage = null};
 			return;
 		};
 		defer main.stackAllocator.free(backgroundPath);
@@ -579,7 +579,7 @@ pub const MenuBackGround = struct {
 			defer main.stackAllocator.free(defaultImageData);
 			try dir.write("default_background.png", defaultImageData);
 
-			return std.fmt.allocPrint(allocator.allocator, "{s}/backgrounds/default_background.png", .{main.files.cubyzDirStr()}) catch unreachable;
+			return allocator.print("{s}/backgrounds/default_background.png", .{main.files.cubyzDirStr()});
 		}
 
 		// Otherwise load a random texture from the backgrounds folder. The player may make their own pictures which can be chosen as well.
@@ -602,7 +602,7 @@ pub const MenuBackGround = struct {
 			return error.NoBackgroundImagesFound;
 		}
 		const theChosenOne = main.random.nextIntBounded(u32, &main.seed, @as(u32, @intCast(fileList.items.len)));
-		return std.fmt.allocPrint(allocator.allocator, "{s}/backgrounds/{s}", .{main.files.cubyzDirStr(), fileList.items[theChosenOne]}) catch unreachable;
+		return allocator.print("{s}/backgrounds/{s}", .{main.files.cubyzDirStr(), fileList.items[theChosenOne]});
 	}
 
 	pub fn deinit() void {
@@ -621,14 +621,28 @@ pub const MenuBackGround = struct {
 		// Use a simple rotation around the z axis, with a steadily increasing angle.
 		angle += @as(f32, @floatCast(deltaTime))/20.0;
 		const viewMatrix = Mat4f.rotationZ(angle);
-		pipeline.bind(null);
-		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
-		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
+		main.graphics.frame_uniforms.uploadNewFrame(.{
+			.playerPositionInteger = @splat(0),
+			.playerPositionFraction = @splat(0),
+			.projectionMatrix = game.projectionMatrix.toGl(),
+			.viewMatrix = viewMatrix.toGl(),
+		});
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
+			vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
+				.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
+			});
+			graphics.frame_uniforms.bindToPipeline(vulkan.currentFrame.guiCommands, pipeline);
+			vulkan.currentFrame.guiCommands.bindVertexArray(vao);
+			vulkan.currentFrame.guiCommands.drawIndexed(24, 0);
+		} else {
+			pipeline.bind(null);
 
-		texture.bindTo(0);
+			texture.bindTo(0);
 
-		vao.bind();
-		c.glDrawElements(c.GL_TRIANGLES, 24, c.GL_UNSIGNED_INT, null);
+			vao.bind();
+			c.glDrawElements(c.GL_TRIANGLES, 24, c.GL_UNSIGNED_INT, null);
+		}
 	}
 
 	pub fn takeBackgroundImage() void {
@@ -689,7 +703,7 @@ pub const MenuBackGround = struct {
 		}
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-		const fileName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/backgrounds/{s}_{}.png", .{main.files.cubyzDirStr(), game.world.?.name, game.world.?.gameTime.load(.monotonic)}) catch unreachable;
+		const fileName = main.stackAllocator.print("{s}/backgrounds/{s}_{}.png", .{main.files.cubyzDirStr(), game.world.?.name, game.world.?.gameTime.load(.monotonic)});
 		defer main.stackAllocator.free(fileName);
 		image.exportToFile(fileName) catch |err| {
 			std.log.err("Cannot write file {s} due to {s}", .{fileName, @errorName(err)});
@@ -698,14 +712,14 @@ pub const MenuBackGround = struct {
 	}
 };
 
-pub const Skybox = struct {
+pub const Skybox = struct { // MARK: Skybox
 	var starPipeline: graphics.Pipeline = undefined;
 	var starUniforms: struct {
 		mvp: c_int,
 		starOpacity: c_int,
 	} = undefined;
 
-	var starVao: graphics.VertexArray = undefined;
+	var starVao: c_uint = undefined;
 
 	var starSsbo: graphics.SSBO = undefined;
 
@@ -749,17 +763,19 @@ pub const Skybox = struct {
 			"",
 			&starUniforms,
 			graphics.VertexArray.EmptyVertex,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = false, .depthWrite = false},
-			.{.attachments = &.{.{
-				.srcColorBlendFactor = .one,
-				.dstColorBlendFactor = .one,
-				.colorBlendOp = .add,
-				.srcAlphaBlendFactor = .one,
-				.dstAlphaBlendFactor = .one,
-				.alphaBlendOp = .add,
-			}}},
+			.{
+				.bindings = &.{},
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = false, .depthWrite = false},
+				.blendState = .{.attachments = &.{.{
+					.srcColorBlendFactor = .one,
+					.dstColorBlendFactor = .one,
+					.colorBlendOp = .add,
+					.srcAlphaBlendFactor = .one,
+					.dstAlphaBlendFactor = .one,
+					.alphaBlendOp = .add,
+				}}, .formats = &.{.world}},
+			},
 		);
 
 		var starData: [numStars*20]f32 = undefined;
@@ -819,13 +835,13 @@ pub const Skybox = struct {
 
 		starSsbo = graphics.SSBO.initStatic(f32, &starData);
 
-		starVao = .init(graphics.VertexArray.EmptyVertex, &.{}, null);
+		c.glGenVertexArrays(1, &starVao);
 	}
 
 	pub fn deinit() void {
 		starPipeline.deinit();
 		starSsbo.deinit();
-		starVao.deinit();
+		c.glDeleteVertexArrays(1, &starVao);
 	}
 
 	pub fn render() void {
@@ -836,14 +852,14 @@ pub const Skybox = struct {
 		if (starOpacity != 0) {
 			starPipeline.bind(null);
 
-			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationX(2*std.math.pi*game.world.?.dayTime.getDayProgress())));
+			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationY(game.World.DayTime.celestialPoleAltitude).mul(Mat4f.rotationX(2*std.math.pi*game.world.?.dayTime.getDayProgress()))));
 
 			starSsbo.bind(12);
 
 			c.glUniform1f(starUniforms.starOpacity, starOpacity);
 			c.glUniformMatrix4fv(starUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&starMatrix));
 
-			starVao.bind();
+			c.glBindVertexArray(starVao);
 			c.glDrawArrays(c.GL_TRIANGLES, 0, numStars*3);
 
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
@@ -904,10 +920,11 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			"",
 			&uniforms,
 			graphics.VertexArray.EmptyVertex,
-			&.{},
-			.{.cullMode = .none},
-			.{.depthTest = true, .depthWrite = true},
-			.{.attachments = &.{.alphaBlending}},
+			.{
+				.rasterState = .{.cullMode = .none},
+				.depthStencilState = .{.depthTest = true, .depthWrite = true},
+				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
+			},
 		);
 	}
 
@@ -1149,8 +1166,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		main.sync.client.executeCommand(.{
 			.updateBlock = .{
 				.source = .{.inv = source.super, .slot = slot},
-				.pos = pos,
 				.dropLocation = .{
+					.worldPos = pos,
 					.normalDir = selectionNormal,
 					.min = selectionMin,
 					.max = selectionMax,
@@ -1162,11 +1179,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		mesh_storage.updateBlock(.{.pos = pos, .newBlock = newBlock, .blockEntityData = &.{}});
 	}
 
-	pub fn drawCube(projectionMatrix: Mat4f, viewMatrix: Mat4f, relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
+	pub fn drawCube(relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
 		pipeline.bind(null);
-
-		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projectionMatrix));
-		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 
 		c.glUniform3f(
 			uniforms.modelPosition,
@@ -1182,16 +1196,16 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		c.glDrawElements(c.GL_TRIANGLES, 12*6*6, c.GL_UNSIGNED_INT, null);
 	}
 
-	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
+	pub fn render(playerPos: Vec3d) void {
 		if (main.gui.hideGui) return;
 		if (selectedBlockPos) |_selectedBlockPos| {
-			drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, selectionMin, selectionMax);
+			drawCube(@as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, selectionMin, selectionMax);
 		}
 		if (game.Player.selectionPosition1) |pos1| {
 			if (game.Player.selectionPosition2) |pos2| {
 				const bottomLeft: Vec3i = @min(pos1, pos2);
 				const topRight: Vec3i = @max(pos1, pos2);
-				drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(bottomLeft)) - playerPos, .{0, 0, 0}, @floatFromInt(topRight - bottomLeft + Vec3i{1, 1, 1}));
+				drawCube(@as(Vec3d, @floatFromInt(bottomLeft)) - playerPos, .{0, 0, 0}, @floatFromInt(topRight - bottomLeft + Vec3i{1, 1, 1}));
 			}
 		}
 	}

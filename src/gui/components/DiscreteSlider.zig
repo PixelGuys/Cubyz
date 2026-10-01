@@ -43,7 +43,7 @@ pub fn init(pos: Vec2f, width: f32, text: []const u8, comptime fmt: []const u8, 
 	const values = main.globalAllocator.alloc([]const u8, valueList.len);
 	var maxLen: usize = 0;
 	for (valueList, 0..) |value, i| {
-		values[i] = std.fmt.allocPrint(main.globalAllocator.allocator, fmt, .{value}) catch unreachable;
+		values[i] = main.globalAllocator.print(fmt, .{value});
 		maxLen = @max(maxLen, values[i].len);
 	}
 
@@ -152,9 +152,17 @@ pub fn mainButtonReleased(self: *DiscreteSlider, _: Vec2f) void {
 }
 
 pub fn render(self: *DiscreteSlider, mousePosition: Vec2f) void {
-	texture.bindTo(0);
-	Button.pipeline.bind(draw.getScissor());
-	draw.customShadedRect(Button.buttonUniforms, self.pos, self.size);
+	if (main.settings.launchConfig.vulkanTestingMode and texture.vulkanImage != null) {
+		graphics.vulkan.currentFrame.guiCommands.bindPipeline(Button.pipeline, graphics.draw.getScissor());
+		graphics.vulkan.currentFrame.guiCommands.bindDescriptors(Button.pipeline, .graphics, &.{
+			.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
+		});
+		draw.customShadedRect(@as(Button.ButtonUniforms, undefined), Button.pipeline, self.pos, self.size);
+	} else {
+		Button.pipeline.bind(draw.getScissor());
+		texture.bindTo(0);
+		draw.customShadedRectOpenGl(Button.buttonUniforms, self.pos, self.size);
+	}
 
 	{
 		const oldColor = draw.setColor(0x80000000);

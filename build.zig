@@ -149,6 +149,16 @@ pub fn makeModFeature(io: std.Io, step: *std.Build.Step, name: []const u8) !void
 		try featureList.append(step.owner.allocator, '\n');
 	}
 
+	const testTextSpaces =
+		\\
+		\\const main = @import("main");
+		\\test "abc" {
+		\\    @setEvalBranchQuota(1000000);
+		\\    main.refAllDeclsRecursiveExceptCImports(@This());
+		\\}
+	;
+	try featureList.appendSlice(step.owner.allocator, try std.mem.replaceOwned(u8, step.owner.allocator, testTextSpaces, "    ", "\t"));
+
 	const file_path = step.owner.fmt("mods/{s}.zig", .{name});
 	try std.Io.Dir.cwd().writeFile(io, .{.data = featureList.items, .sub_path = file_path});
 }
@@ -159,6 +169,15 @@ pub fn addModFeatureModule(b: *std.Build, exe: *std.Build.Step.Compile, name: []
 		.target = exe.root_module.resolved_target,
 		.optimize = exe.root_module.optimize,
 	});
+
+	if (exe.kind == .@"test") {
+		const exe_tests = b.addTest(.{
+			.root_module = module,
+			.test_runner = exe.test_runner,
+		});
+		const run_exe_tests = b.addRunArtifact(exe_tests);
+		exe.step.dependOn(&run_exe_tests.step);
+	}
 	module.addImport("main", exe.root_module);
 	exe.root_module.addImport(name, module);
 }
@@ -217,7 +236,8 @@ pub fn build(b: *std.Build) !void {
 
 	const options = b.addOptions();
 	const isRelease = b.option(bool, "release", "Removes the -dev flag from the version") orelse false;
-	const version = b.fmt("0.4.0{s}", .{if (isRelease) "" else "-dev"});
+	const sanitizeThread = b.option(bool, "sanitizeThread", "enables the builtin thread sanitizer");
+	const version = b.fmt("0.5.0{s}", .{if (isRelease) "" else "-dev"});
 	if (b.option([]const u8, "version", "used by the CI to check if the git tag and game version match")) |tagVersion| {
 		const tagVersionUpperbound: usize = std.mem.indexOfScalar(u8, tagVersion, '-') orelse tagVersion.len;
 		const versionUpperbound: usize = std.mem.indexOfScalar(u8, version, '-') orelse version.len;
@@ -251,12 +271,13 @@ pub fn build(b: *std.Build) !void {
 		.optimize = optimize,
 		.link_libc = true,
 		.link_libcpp = true,
+		.sanitize_thread = sanitizeThread,
 	});
 
 	const exe = b.addExecutable(.{
 		.name = "Cubyz",
 		.root_module = mainModule,
-		//.sanitize_thread = true,
+		.use_llvm = if (sanitizeThread orelse false) true else null,
 	});
 	exe.root_module.addOptions("build_options", options);
 	exe.root_module.addImport("main", mainModule);

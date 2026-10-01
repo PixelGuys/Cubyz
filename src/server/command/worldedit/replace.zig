@@ -2,8 +2,8 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
+const Source = command.Source;
 const Vec3i = main.vec.Vec3i;
-const User = main.server.User;
 
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
@@ -13,46 +13,35 @@ const Mask = main.blueprint.Mask;
 pub const description = "Replace blocks in the world edit selection.";
 pub const usage = "/replace <old mask> <new pattern>";
 
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/replace <old mask> <new pattern>": struct {
 		oldMask: command.MaskExpression,
 		newPattern: command.PatternExpression,
 	},
-
-	fn deinit(self: @This(), allocator: main.heap.NeverFailingAllocator) void {
-		self.@"/replace <old mask> <new pattern>".newPattern.deinit(allocator);
-		self.@"/replace <old mask> <new pattern>".oldMask.deinit(allocator);
-	}
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/replace"});
-
-pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
+pub fn execute(args: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
 		return;
-	};
-	defer result.deinit(main.stackAllocator);
-
-	const selection = command.getCurrentSelection(source) catch return;
+	}
+	const user = source.user;
+	const selection = command.getCurrentSelection(user) catch return;
 	const capture = Blueprint.capture(main.globalAllocator, selection);
 
 	switch (capture) {
 		.success => |blueprint| {
-			source.worldEditData.undoHistory.push(.init(blueprint, selection.minPos, "replace"));
-			source.worldEditData.redoHistory.clear();
+			user.worldEditData.undoHistory.push(.init(blueprint, selection.minPos, "replace"));
+			user.worldEditData.redoHistory.clear();
 
 			var modifiedBlueprint = blueprint.clone(main.stackAllocator);
 			defer modifiedBlueprint.deinit(main.stackAllocator);
 
-			modifiedBlueprint.replace(result.@"/replace <old mask> <new pattern>".oldMask.mask, null, result.@"/replace <old mask> <new pattern>".newPattern.pattern);
+			modifiedBlueprint.replace(args.@"/replace <old mask> <new pattern>".oldMask.mask, null, args.@"/replace <old mask> <new pattern>".newPattern.pattern);
 			modifiedBlueprint.paste(selection.minPos, .{.preserveVoid = true});
 		},
 		.failure => |err| {
-			source.sendMessage("#ff0000Error: Could not capture selection. (at {}, {s})", .{err.pos, err.message});
+			user.sendMessage("#ff0000Error: Could not capture selection. (at {}, {s})", .{err.pos, err.message});
 		},
 	}
 }

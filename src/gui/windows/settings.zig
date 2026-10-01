@@ -19,7 +19,7 @@ const padding: f32 = 8;
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(Button.initText(.{0, 0}, 128, "Graphics", .{.onAction = gui.openWindowCallback("graphics")}));
-	list.add(Button.initText(.{0, 0}, 128, "Sound", .{.onAction = gui.openWindowCallback("sound")}));
+	list.add(Button.initText(.{0, 0}, 128, "Audio", .{.onAction = gui.openWindowCallback("audio")}));
 	list.add(Button.initText(.{0, 0}, 128, "Controls", .{.onAction = gui.openWindowCallback("controls")}));
 	list.add(Button.initText(.{0, 0}, 128, "Advanced Controls", .{.onAction = gui.openWindowCallback("advanced_controls")}));
 	list.add(Button.initText(.{0, 0}, 128, "Social", .{.onAction = gui.openWindowCallback("social")}));
