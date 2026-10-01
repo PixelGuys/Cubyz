@@ -56,6 +56,15 @@ pub const client = struct {
 			.currentSwingTime = currentSwingTime,
 		};
 	}
+
+	pub fn put(entity: Entity) void {
+		const ptr = components.get(entity) orelse components.add(main.globalAllocator, entity);
+		ptr.* = .{
+			.currentSwingProgress = 0,
+			.currentSwingTime = 0,
+		};
+	}
+
 	pub fn unload(entity: Entity) void {
 		components.remove(entity) catch {};
 	}

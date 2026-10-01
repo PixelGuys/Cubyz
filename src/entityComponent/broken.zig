@@ -56,6 +56,15 @@ pub const client = struct {
 			.blockPos = blockPos,
 		};
 	}
+
+	pub fn put(entity: Entity) void {
+		const ptr = components.get(entity) orelse components.add(main.globalAllocator, entity);
+		ptr.* = .{
+			.progress = 0,
+			.blockPos = .{0, 0, 0},
+		};
+	}
+
 	pub fn unload(entity: Entity) void {
 		components.remove(entity) catch {};
 	}

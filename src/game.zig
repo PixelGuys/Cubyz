@@ -117,6 +117,9 @@ pub const Player = struct { // MARK: Player
 
 	fn loadFrom(zon: ZonElement) !void {
 		try super.loadFrom(id, zon, .client, undefined);
+
+		main.entity.components.@"cubyz:swing_arm".client.put(super.id);
+		main.entity.components.@"cubyz:broken".client.put(super.id);
 	}
 
 	pub fn setPosBlocking(newPos: Vec3d) void {

@@ -29,9 +29,6 @@ pub fn loadFrom(self: *@This(), id: main.entity.Entity, zon: ZonElement, comptim
 		try main.entity.loadComponentsFromBase64(components.as([]const u8) orelse "", self.id, side);
 	}
 
-	main.entity.components.@"cubyz:swing_arm".server.load(self.id);
-	main.entity.components.@"cubyz:broken".server.load(self.id);
-
 	if (zon.getChildOrNull("name")) |name| {
 		if (self.name) |oldname| {
 			main.globalAllocator.free(oldname);
