@@ -65,8 +65,8 @@ const Socket = struct { // MARK: Socket
 						try windowsError(c.WSAGetLastError());
 						return error.UNKNOWN;
 					}
-					const setting = c.IP_PMTUDISC_PROBE;
-					if (c.setsockopt(socket, c.IPPROTO_IP, c.IP_MTU_DISCOVER, @ptrCast(&setting), @sizeOf(c_int)) != 0) {
+					const setting: c_int = 1;
+					if (c.setsockopt(socket, c.IPPROTO_IP, c.IP_DONTFRAGMENT, @ptrCast(&setting), @sizeOf(c_int)) != 0) {
 						try windowsError(c.WSAGetLastError());
 					}
 					break :blk socket;
