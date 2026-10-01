@@ -1395,6 +1395,25 @@ pub const Connection = struct { // MARK: Connection
 			writer.data.items.len = writer.data.capacity;
 
 			_ = packetsSent.fetchAdd(1, .monotonic);
+
+			{
+				const probe: c_int = std.c.IP.PMTUDISC_PROBE;
+				const result = std.c.setsockopt(conn.manager.socket.socketID, std.c.IPPROTO.IP, std.c.IP.MTU_DISCOVER, &probe, @sizeOf(c_int));
+				switch (std.c.errno(result)) {
+					.SUCCESS => {},
+					else => |e| std.debug.print("{t}\n", .{e}),
+				}
+			}
+
+			defer {
+				const dont: c_int = std.c.IP.PMTUDISC_DONT;
+				const result = std.c.setsockopt(conn.manager.socket.socketID, std.c.IPPROTO.IP, std.c.IP.MTU_DISCOVER, &dont, @sizeOf(c_int));
+				switch (std.c.errno(result)) {
+					.SUCCESS => {},
+					else => |e| std.debug.print("{t}\n", .{e}),
+				}
+			}
+
 			conn.manager.send(writer.data.items, conn.remoteAddress, null);
 			return writer.data.items.len;
 		}
