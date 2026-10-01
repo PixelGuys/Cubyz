@@ -26,6 +26,15 @@
 			.size = 6,
 			.size_variance = 2,
 		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:frosted_sprouts"},
+			.chance = 0.05,
+			.width = 5,
+			.variation = 8,
+			.density = 0.2,
+			.priority = 0.2,
+		},
 	},
 	.parentBiomes = .{
 		.{
