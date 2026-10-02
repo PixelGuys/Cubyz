@@ -14,6 +14,11 @@ pub fn satisfied(self: *const Not, proceduralItem: *const ProceduralItem, x: i32
 	return !self.child.satisfied(proceduralItem, x, y);
 }
 
+pub fn printCheckedGrid(self: *const Not, givenGrid: [25]?main.items.BaseItemIndex, x: i32, y: i32) [25]main.items.Checked {
+	const childCheckedGrid = self.child.printCheckedGrid(givenGrid, x, y);
+	return childCheckedGrid;
+}
+
 pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Not {
 	const result = allocator.create(Not);
 	result.* = .{

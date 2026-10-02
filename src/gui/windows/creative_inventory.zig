@@ -107,9 +107,9 @@ fn initContent() void {
 			const row = HorizontalList.init();
 			for (0..slotsPerRow) |_| {
 				if (i >= items.items.len) {
-					row.add(ItemSlot.init(.{0, 0}, inventory, i, .immutable, .immutable));
+					row.add(ItemSlot.init(.{0, 0}, inventory, i, .{.texture = .immutable, .mode = .immutable}));
 				} else {
-					row.add(ItemSlot.init(.{0, 0}, inventory, i, .default, .takeOnly));
+					row.add(ItemSlot.init(.{0, 0}, inventory, i, .{.texture = .default, .mode = .takeOnly}));
 				}
 				i += 1;
 			}
