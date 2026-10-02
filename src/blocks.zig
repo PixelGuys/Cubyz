@@ -53,6 +53,11 @@ pub const Ore = struct {
 	seed: u64,
 };
 
+const PlacementMode = enum {
+	faceNormal,
+	gridNeighbor,
+};
+
 const SelectionCapabilities = union(enum) {
 	always: void,
 	custom: packed struct(u1) {
@@ -117,7 +122,7 @@ var _degradable: [maxBlockCount]bool = undefined;
 var _viewThrough: [maxBlockCount]bool = undefined;
 var _alwaysViewThrough: [maxBlockCount]bool = undefined;
 var _hasBackFace: [maxBlockCount]bool = undefined;
-var _useGridFacePlacement: [maxBlockCount]bool = undefined;
+var _placementMode: [maxBlockCount]PlacementMode = undefined;
 var _tags: [maxBlockCount][]Tag = undefined;
 var _light: [maxBlockCount]u32 = undefined;
 /// How much light this block absorbs if it is transparent
@@ -186,7 +191,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough") orelse false;
 	_viewThrough[size] = (zon.get(bool, "viewThrough") orelse false) or _transparent[size] or _alwaysViewThrough[size];
 	_hasBackFace[size] = zon.get(bool, "hasBackFace") orelse false;
-	_useGridFacePlacement[size] = zon.get(bool, "useGridFacePlacement") orelse false;
+	_placementMode[size] = zon.get(PlacementMode, "placementMode") orelse .faceNormal;
 	_friction[size] = zon.get(f32, "friction") orelse 20;
 	_bounciness[size] = zon.get(f32, "bounciness") orelse 0.0;
 	_density[size] = zon.get(f32, "density") orelse main.physics.airDensity;
@@ -480,8 +485,8 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return _hasBackFace[self.typ];
 	}
 
-	pub inline fn useGridFacePlacement(self: Block) bool {
-		return _useGridFacePlacement[self.typ];
+	pub inline fn placementMode(self: Block) PlacementMode {
+		return _placementMode[self.typ];
 	}
 
 	pub inline fn tags(self: Block) []const Tag {
