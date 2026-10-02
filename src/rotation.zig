@@ -145,8 +145,6 @@ pub const RotationMode = struct { // MARK: RotationMode
 	/// if the block should be destroyed or changed when a certain neighbor is removed.
 	dependsOnNeighbors: bool = false,
 
-	useAccuratePlacementNormal: bool = true,
-
 	/// The default rotation data intended for generation algorithms
 	naturalStandard: u16 = 0,
 
