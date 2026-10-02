@@ -8,6 +8,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const list = @import("utils/list.zig");
 pub const file_monitor = @import("utils/file_monitor.zig");
+pub const system_resources = @import("utils/system_resources.zig");
 const virtual_mem = @import("utils/virtual_mem.zig");
 pub const VirtualList = virtual_mem.VirtualList;
 
