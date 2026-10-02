@@ -137,7 +137,7 @@ var worldFrameBuffer: graphics.FrameBuffer = undefined;
 
 pub var lastWidth: u31 = 0;
 pub var lastHeight: u31 = 0;
-var lastFov: f32 = 0;
+pub var lastFov: f32 = 0;
 pub fn updateFov(fov: f32) void {
 	if (lastFov != fov) {
 		lastFov = fov;
@@ -232,8 +232,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	const meshes = mesh_storage.updateAndGetRenderChunks(world.conn, &frustum, playerPos, settings.renderDistance);
 
 	gpu_performance_measuring.startQuery(.chunk_rendering_preparation);
-	const direction = crosshairDirection(game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
-	MeshSelection.select(playerPos, direction, game.Player.inventory.getItem(game.Player.selectedSlot));
 
 	chunk_meshing.beginRender();
 
@@ -919,22 +917,28 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		pipeline.deinit();
 	}
 
-	var posBeforeBlock: Vec3i = undefined;
-	var neighborOfSelection: chunk.Neighbor = undefined;
-	pub var selectedBlockPos: ?Vec3i = null;
-	var lastSelectedBlockPos: Vec3i = undefined;
-	var currentBlockProgress: f32 = 0;
-	var currentSwingProgress: f32 = 0;
-	var currentSwingTime: f32 = 0;
-	var selectionMin: Vec3f = undefined;
-	var selectionMax: Vec3f = undefined;
-	var selectionNormal: Vec3f = undefined;
-	var lastPos: Vec3d = undefined;
-	var lastDir: Vec3f = undefined;
-	pub fn select(pos: Vec3d, _dir: Vec3f, item: main.items.Item) void {
-		lastPos = pos;
+	pub const Selection = struct {
+		blockPos: Vec3i,
+		min: Vec3f,
+		max: Vec3f,
+		normal: Vec3f,
+		posBeforeBlock: Vec3i,
+		neighborOfSelection: chunk.Neighbor,
+
+		fn copyWithNewBlockPos(self: Selection, newBlockPos: Vec3i) Selection {
+			return .{
+				.blockPos = newBlockPos,
+				.min = self.min,
+				.max = self.max,
+				.normal = self.normal,
+				.posBeforeBlock = self.posBeforeBlock,
+				.neighborOfSelection = self.neighborOfSelection,
+			};
+		}
+	};
+
+	pub fn select(pos: Vec3d, _dir: Vec3f, item: main.items.Item) ?Selection {
 		const dir: Vec3d = @floatCast(_dir);
-		lastDir = _dir;
 
 		// Test blocks:
 		const closestDistance: f64 = 6.0; // selection now limited
@@ -949,7 +953,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 		var total_tMax: f64 = 0;
 
-		selectedBlockPos = null;
+		var posBeforeBlock: Vec3i = undefined;
+		var neighborOfSelection: chunk.Neighbor = undefined;
 
 		while (total_tMax < closestDistance) {
 			const block = mesh_storage.getBlockFromRenderThread(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
@@ -959,11 +964,14 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
 				if (block.mode().rayIntersection(block, item, relativePlayerPos, _dir)) |intersection| {
 					if (intersection.distance <= closestDistance) {
-						selectedBlockPos = voxelPos;
-						selectionMin = intersection.min;
-						selectionMax = intersection.max;
-						selectionNormal = intersection.normal;
-						break;
+						return .{
+							.blockPos = voxelPos,
+							.min = intersection.min,
+							.max = intersection.max,
+							.normal = intersection.normal,
+							.posBeforeBlock = posBeforeBlock,
+							.neighborOfSelection = neighborOfSelection,
+						};
 					}
 				}
 			}
@@ -995,6 +1003,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			}
 		}
 		// TODO: Test entities
+		return null;
 	}
 
 	fn canPlaceBlock(pos: Vec3i, block: main.blocks.Block) bool {
@@ -1005,165 +1014,171 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	pub fn placeBlock(inventory: main.items.Inventory.ClientInventory, slot: u32) void {
-		if (selectedBlockPos) |selectedPos| {
-			var oldBlock = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
-			var block = oldBlock;
-			switch (inventory.getItem(slot)) {
-				.baseItem => |baseItem| {
-					if (baseItem.block()) |itemBlock| {
-						const rotationMode = blocks.Block.mode(.{.typ = itemBlock, .data = 0});
-						var neighborDir = Vec3i{0, 0, 0};
-						// Check if stuff can be added to the block itself:
-						if (itemBlock == block.typ) {
-							const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
-							if (rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, null, &block, .{.typ = 0, .data = 0}, false)) {
-								if (!canPlaceBlock(selectedPos, block)) return;
-								updateBlockAndSendUpdate(inventory, slot, selectedPos, oldBlock, block);
-								return;
-							}
-						} else {
-							if (rotationMode.modifyBlock(&block, itemBlock)) {
-								if (!canPlaceBlock(selectedPos, block)) return;
-								updateBlockAndSendUpdate(inventory, slot, selectedPos, oldBlock, block);
-								return;
-							}
+		const selected = main.game.Player.super.getSelected(inventory.getItem(slot), .client) orelse return;
+		const lastPos = main.game.Player.getEyePosBlocking();
+		const lastDir = main.game.Player.super.getDirection(.client);
+
+		var oldBlock = mesh_storage.getBlockFromRenderThread(selected.blockPos[0], selected.blockPos[1], selected.blockPos[2]) orelse return;
+		var block = oldBlock;
+		switch (inventory.getItem(slot)) {
+			.baseItem => |baseItem| {
+				if (baseItem.block()) |itemBlock| {
+					const rotationMode = blocks.Block.mode(.{.typ = itemBlock, .data = 0});
+					var neighborDir = Vec3i{0, 0, 0};
+					// Check if stuff can be added to the block itself:
+					if (itemBlock == block.typ) {
+						const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selected.blockPos)));
+						if (rotationMode.generateData(main.game.world.?, selected.blockPos, relPos, lastDir, neighborDir, null, &block, .{.typ = 0, .data = 0}, false)) {
+							if (!canPlaceBlock(selected.blockPos, block)) return;
+							updateBlockAndSendUpdate(inventory, slot, selected, oldBlock, block);
+							return;
 						}
-						// Check the block in front of it:
-						const neighborPos = posBeforeBlock;
-						neighborDir = selectedPos - posBeforeBlock;
-						const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(neighborPos)));
-						const neighborBlock = block;
-						oldBlock = mesh_storage.getBlockFromRenderThread(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
-						block = oldBlock;
-						if (block.typ == itemBlock) {
-							if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, false)) {
-								if (!canPlaceBlock(neighborPos, block)) return;
-								updateBlockAndSendUpdate(inventory, slot, neighborPos, oldBlock, block);
-								return;
-							}
-						} else {
-							if (!block.replaceable()) return;
-							block.typ = itemBlock;
-							block.data = 0;
-							if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, true)) {
-								if (!canPlaceBlock(neighborPos, block)) return;
-								updateBlockAndSendUpdate(inventory, slot, neighborPos, oldBlock, block);
-								return;
-							}
+					} else {
+						if (rotationMode.modifyBlock(&block, itemBlock)) {
+							if (!canPlaceBlock(selected.blockPos, block)) return;
+							updateBlockAndSendUpdate(inventory, slot, selected, oldBlock, block);
+							return;
 						}
 					}
-					if (std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) {
-						game.Player.selectionPosition2 = selectedPos;
-						main.network.protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos2, selectedPos);
-						return;
+					// Check the block in front of it:
+					const neighborPos = selected.posBeforeBlock;
+					neighborDir = selected.blockPos - selected.posBeforeBlock;
+					const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(neighborPos)));
+					const neighborBlock = block;
+					oldBlock = mesh_storage.getBlockFromRenderThread(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
+					block = oldBlock;
+					if (block.typ == itemBlock) {
+						if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, selected.neighborOfSelection, &block, neighborBlock, false)) {
+							if (!canPlaceBlock(neighborPos, block)) return;
+							updateBlockAndSendUpdate(inventory, slot, selected.copyWithNewBlockPos(neighborPos), oldBlock, block);
+							return;
+						}
+					} else {
+						if (!block.replaceable()) return;
+						block.typ = itemBlock;
+						block.data = 0;
+						if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, selected.neighborOfSelection, &block, neighborBlock, true)) {
+							if (!canPlaceBlock(neighborPos, block)) return;
+							updateBlockAndSendUpdate(inventory, slot, selected.copyWithNewBlockPos(neighborPos), oldBlock, block);
+							return;
+						}
 					}
-				},
-				.proceduralItem => |proceduralItem| {
-					_ = proceduralItem; // TODO: Tools might change existing blocks.
-				},
-				.null => {},
-			}
+				}
+				if (std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) {
+					game.Player.selectionPosition2 = selected.blockPos;
+					main.network.protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos2, selected.blockPos);
+					return;
+				}
+			},
+			.proceduralItem => |proceduralItem| {
+				_ = proceduralItem; // TODO: Tools might change existing blocks.
+			},
+			.null => {},
 		}
 	}
 
 	pub fn breakBlock(inventory: main.items.Inventory.ClientInventory, slot: u32, deltaTime: f64) void {
-		if (selectedBlockPos) |selectedPos| {
-			const stack = inventory.getStack(slot);
-			const isSelectionWand = stack.item == .baseItem and std.mem.eql(u8, stack.item.baseItem.id(), "cubyz:selection_wand");
-			if (isSelectionWand) {
-				game.Player.selectionPosition1 = selectedPos;
-				main.network.protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selectedPos);
-				return;
+		const swingArm = main.entity.components.@"cubyz:swing_arm".client.get(main.game.Player.id) orelse return; // player can't swing...
+		const brokenBlock = main.entity.components.@"cubyz:broken".client.get(main.game.Player.id) orelse return; // player can't break blocks...
+
+		const selected = main.game.Player.super.getSelected(inventory.getItem(slot), .client) orelse return;
+		const lastPos = main.game.Player.getEyePosBlocking();
+		const lastDir = main.game.Player.super.getDirection(.client);
+
+		const stack = inventory.getStack(slot);
+		const isSelectionWand = stack.item == .baseItem and std.mem.eql(u8, stack.item.baseItem.id(), "cubyz:selection_wand");
+		if (isSelectionWand) {
+			game.Player.selectionPosition1 = selected.blockPos;
+			main.network.protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selected.blockPos);
+			return;
+		}
+
+		if (@reduce(.Or, brokenBlock.blockPos != selected.blockPos)) {
+			mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
+			swingArm.currentSwingProgress = 0;
+			brokenBlock.blockPos = selected.blockPos;
+			brokenBlock.progress = 0;
+		}
+		const block = mesh_storage.getBlockFromRenderThread(selected.blockPos[0], selected.blockPos[1], selected.blockPos[2]) orelse return;
+		const holdingTargetedBlock = stack.item == .baseItem and stack.item.baseItem.block() == block.typ;
+		if ((block.hasTag(.fluid) or block.hasTag(.air)) and !holdingTargetedBlock) return;
+
+		const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selected.blockPos)));
+
+		main.sync.client.mutex.lock();
+		if (!game.Player.isCreative()) {
+			var damage: f32 = main.game.Player.defaultBlockDamage;
+			const isProceduralItem = stack.item == .proceduralItem;
+			if (isProceduralItem) {
+				damage = stack.item.proceduralItem.getBlockDamage(block);
 			}
-
-			if (@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
-				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-				currentSwingProgress = 0;
-				currentSwingTime = 0;
-				lastSelectedBlockPos = selectedPos;
-				currentBlockProgress = 0;
-			}
-			const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
-			const holdingTargetedBlock = stack.item == .baseItem and stack.item.baseItem.block() == block.typ;
-			if ((block.hasTag(.fluid) or block.hasTag(.air)) and !holdingTargetedBlock) return;
-
-			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
-
-			main.sync.client.mutex.lock();
-			if (!game.Player.isCreative()) {
-				var damage: f32 = main.game.Player.defaultBlockDamage;
-				const isProceduralItem = stack.item == .proceduralItem;
-				if (isProceduralItem) {
-					damage = stack.item.proceduralItem.getBlockDamage(block);
+			damage -= block.blockResistance();
+			if (damage > 0) {
+				const swingTime = if (isProceduralItem and stack.item.proceduralItem.isEffectiveOn(block)) 1.0/stack.item.proceduralItem.getProperty(.swingSpeed) else 0.5;
+				if (swingArm.currentSwingTime > swingTime) {
+					swingArm.currentSwingProgress = 0;
+					swingArm.currentSwingTime = 0;
 				}
-				damage -= block.blockResistance();
-				if (damage > 0) {
-					const swingTime = if (isProceduralItem and stack.item.proceduralItem.isEffectiveOn(block)) 1.0/stack.item.proceduralItem.getProperty(.swingSpeed) else 0.5;
-					if (currentSwingTime > swingTime) {
-						currentSwingProgress = 0;
-						currentSwingTime = 0;
+				if (swingArm.currentSwingTime == 0) {
+					const swings = @ceil(block.blockHealth()/damage);
+					const damagePerSwing = block.blockHealth()/swings;
+					swingArm.currentSwingTime = damagePerSwing/damage*swingTime;
+				}
+				swingArm.currentSwingProgress += @floatCast(deltaTime);
+				while (swingArm.currentSwingProgress > swingArm.currentSwingTime) {
+					swingArm.currentSwingProgress -= swingArm.currentSwingTime;
+					brokenBlock.progress += damage*swingArm.currentSwingTime/swingTime/block.blockHealth();
+					if (brokenBlock.progress > 0.9999) break;
+					const swings = @ceil(block.blockHealth()/damage);
+					const damagePerSwing = block.blockHealth()/swings;
+					swingArm.currentSwingTime = damagePerSwing/damage*swingTime;
+				}
+				if (brokenBlock.progress < 0.9999) {
+					mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
+					if (brokenBlock.progress != 0) {
+						mesh_storage.addBreakingAnimation(brokenBlock.blockPos, brokenBlock.progress);
 					}
-					if (currentSwingTime == 0) {
-						const swings = @ceil(block.blockHealth()/damage);
-						const damagePerSwing = block.blockHealth()/swings;
-						currentSwingTime = damagePerSwing/damage*swingTime;
-					}
-					currentSwingProgress += @floatCast(deltaTime);
-					while (currentSwingProgress > currentSwingTime) {
-						currentSwingProgress -= currentSwingTime;
-						currentBlockProgress += damage*currentSwingTime/swingTime/block.blockHealth();
-						if (currentBlockProgress > 0.9999) break;
-						const swings = @ceil(block.blockHealth()/damage);
-						const damagePerSwing = block.blockHealth()/swings;
-						currentSwingTime = damagePerSwing/damage*swingTime;
-					}
-					if (currentBlockProgress < 0.9999) {
-						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-						if (currentBlockProgress != 0) {
-							mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
-						}
-						main.sync.client.mutex.unlock();
-
-						return;
-					} else {
-						currentSwingProgress = 0;
-						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-						currentBlockProgress = 0;
-						currentSwingTime = 0;
-					}
-				} else {
 					main.sync.client.mutex.unlock();
+
 					return;
+				} else {
+					swingArm.currentSwingProgress = 0;
+					mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
+					brokenBlock.progress = 0;
+					swingArm.currentSwingTime = 0;
 				}
 			} else {
-				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+				main.sync.client.mutex.unlock();
+				return;
 			}
+		} else {
+			mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
+		}
 
-			var newBlock = block;
-			block.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
-			main.sync.client.mutex.unlock();
+		var newBlock = block;
+		block.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
+		main.sync.client.mutex.unlock();
 
-			if (newBlock != block) {
-				updateBlockAndSendUpdate(inventory, slot, selectedPos, block, newBlock);
-			}
+		if (newBlock != block) {
+			updateBlockAndSendUpdate(inventory, slot, selected, block, newBlock);
 		}
 	}
 
-	fn updateBlockAndSendUpdate(source: main.items.Inventory.ClientInventory, slot: u32, pos: Vec3i, oldBlock: blocks.Block, newBlock: blocks.Block) void {
+	fn updateBlockAndSendUpdate(source: main.items.Inventory.ClientInventory, slot: u32, selected: Selection, oldBlock: blocks.Block, newBlock: blocks.Block) void {
 		main.sync.client.executeCommand(.{
 			.updateBlock = .{
 				.source = .{.inv = source.super, .slot = slot},
 				.dropLocation = .{
-					.worldPos = pos,
-					.normalDir = selectionNormal,
-					.min = selectionMin,
-					.max = selectionMax,
+					.worldPos = selected.blockPos,
+					.normalDir = selected.normal,
+					.min = selected.min,
+					.max = selected.max,
 				},
 				.oldBlock = oldBlock,
 				.newBlock = newBlock,
 			},
 		});
-		mesh_storage.updateBlock(.{.pos = pos, .newBlock = newBlock, .blockEntityData = &.{}});
+		mesh_storage.updateBlock(.{.pos = selected.blockPos, .newBlock = newBlock, .blockEntityData = &.{}});
 	}
 
 	pub fn drawCube(relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
@@ -1185,8 +1200,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 	pub fn render(playerPos: Vec3d) void {
 		if (main.gui.hideGui) return;
-		if (selectedBlockPos) |_selectedBlockPos| {
-			drawCube(@as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, selectionMin, selectionMax);
+		if (main.game.Player.super.getSelected(main.game.Player.inventory.getItem(main.game.Player.selectedSlot), .client)) |selected| {
+			drawCube(@as(Vec3d, @floatFromInt(selected.blockPos)) - playerPos, selected.min, selected.max);
 		}
 		if (game.Player.selectionPosition1) |pos1| {
 			if (game.Player.selectionPosition2) |pos2| {
