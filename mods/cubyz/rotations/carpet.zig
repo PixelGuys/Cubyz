@@ -18,7 +18,6 @@ const ZonElement = main.ZonElement;
 const torch = @import("torch.zig");
 
 pub const naturalStandard: u16 = 0b10000;
-pub const useAccuratePlacementNormal = false;
 var rotatedModels: std.StringHashMap(ModelIndex) = undefined;
 const CarpetData = packed struct(u6) {
 	negX: bool,

@@ -1040,7 +1040,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 							}
 						}
 						// Check the block in front of it:
-						const useAccurateNormal = oldBlock.mode().useAccuratePlacementNormal;
+						const useAccurateNormal = !oldBlock.useGridFacePlacement();
 						const roundedNormal = dominantAxisNeighbor(selectionNormal);
 						const neighborPos = if (useAccurateNormal) selectedPos + roundedNormal else posBeforeBlock;
 						neighborDir = if (useAccurateNormal) -roundedNormal else selectedPos - posBeforeBlock;
