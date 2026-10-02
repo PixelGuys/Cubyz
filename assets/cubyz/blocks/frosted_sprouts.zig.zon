@@ -13,7 +13,7 @@
 	.model = "cubyz:cross",
 	.texture = "cubyz:frosted_sprouts",
 	.item = .{
-		.texture = "cave_sprouts.png",
+		.texture = "frosted_sprouts.png",
 	},
 	.lodReplacement = "cubyz:air",
 	.onUpdate = .{
