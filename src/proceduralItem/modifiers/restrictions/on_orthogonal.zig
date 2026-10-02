@@ -18,14 +18,14 @@ pub fn satisfied(self: *const OnOrthogonal, proceduralItem: *const ProceduralIte
 	const highBound = gridSize;
 	var i = lowBound;
 	while (i <= highBound) : (i += 1) {
-		const checkedX = x + (i - gridSize);
-		const checkedY = y + (0 - gridSize);
+		const checkedX = x + i;
+		const checkedY = y;
 		if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 	}
 	i = lowBound;
 	while (i <= highBound) : (i += 1) {
-		const checkedX = x + (0 - gridSize);
-		const checkedY = y + (i - gridSize);
+		const checkedX = x;
+		const checkedY = y + i;
 		if (i != 0) { // prevents double counting itself
 			if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 		}
@@ -40,11 +40,14 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const OnO
 			std.log.err("Missing tag field for on diagonal restriction.", .{});
 			break :blk "not specified";
 		}),
-		.amount = zon.get(usize, "amount") orelse 8,
+		.amount = zon.get(usize, "amount") orelse blk: {
+			std.log.err("Missing ammount field for on diagonal restriction. Replacing it with 1", .{});
+			break :blk 1;
+		},
 	};
 	return result;
 }
 
 pub fn printTooltip(self: *const OnOrthogonal, outString: *main.ListManaged(u8)) void {
-	outString.print("if there is {} .{s} on orthogonal lines", .{self.amount, self.tag.getName()});
+	outString.print("{} .{s} on orthogonal lines", .{self.amount, self.tag.getName()});
 }
