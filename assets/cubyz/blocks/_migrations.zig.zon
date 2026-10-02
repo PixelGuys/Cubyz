@@ -110,6 +110,6 @@
 	.{.old = "lush_grass", .new = "grass/lush"},
 	.{.old = "grass_vegetation", .new = "grass/vegetation/temperate"},
 	.{.old = "cold_grass_vegetation", .new = "grass/vegetation/cold"},
-	.{.old = "dry_grass_vegetation", .new = "grass/vegetation/dry"},
+	.{.old = "vegetation/dry", .new = "grass/vegetation/dry"},
 	.{.old = "lush_grass_vegetation", .new = "grass/vegetation/lush"},
 }
