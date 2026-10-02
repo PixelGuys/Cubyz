@@ -42,7 +42,7 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const OnD
 			break :blk "not specified";
 		}),
 		.amount = zon.get(usize, "amount") orelse blk: {
-			std.log.err("Missing ammount field for on diagonal restriction.", .{});
+			std.log.err("Missing ammount field for on diagonal restriction. Replacing it with 1", .{});
 			break :blk 1;
 		},
 	};
