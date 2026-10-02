@@ -662,7 +662,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				speedModifier = 128;
 			} else if (Player.isFlying.load(.monotonic)) {
 				speedModifier = 32;
-			} else if (KeyBoard.key("forward").pressed) {
+			} else if (KeyBoard.key("forward").pressed and !KeyBoard.key("backward").pressed) {
 				speedModifier = 8;
 			}
 		}
