@@ -57,12 +57,13 @@ pub const client = struct {
 		};
 	}
 
-	pub fn put(entity: Entity) void {
+	pub fn getAndPut(entity: Entity, blockPos: Vec3i) *Component {
 		const ptr = components.get(entity) orelse components.add(main.globalAllocator, entity);
 		ptr.* = .{
 			.progress = 0,
-			.blockPos = .{0, 0, 0},
+			.blockPos = blockPos,
 		};
+		return ptr;
 	}
 
 	pub fn unload(entity: Entity) void {

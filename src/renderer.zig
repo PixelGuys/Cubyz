@@ -1064,9 +1064,13 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 	pub fn breakBlock(inventory: main.items.Inventory.ClientInventory, slot: u32, deltaTime: f64) void {
 		const swingArm = main.entity.components.@"cubyz:swinging".client.get(main.game.Player.id) orelse return; // player can't swing...
-		const brokenBlock = main.entity.components.@"cubyz:breaking".client.get(main.game.Player.id) orelse return; // player can't break blocks...
 
 		if (selectedBlockPos) |selectedPos| {
+			var brokenBlock = main.entity.components.@"cubyz:breaking".client.get(main.game.Player.id) orelse blk: {
+				swingArm.currentSwingProgress = 0;
+				swingArm.currentSwingTime = 0;
+				break :blk main.entity.components.@"cubyz:breaking".client.getAndPut(main.game.Player.id, selectedPos);
+			};
 			const stack = inventory.getStack(slot);
 			const isSelectionWand = stack.item == .baseItem and std.mem.eql(u8, stack.item.baseItem.id(), "cubyz:selection_wand");
 			if (isSelectionWand) {
@@ -1077,9 +1081,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 			if (@reduce(.Or, brokenBlock.blockPos != selectedPos)) {
 				mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
+				brokenBlock = main.entity.components.@"cubyz:breaking".client.getAndPut(main.game.Player.id, selectedPos);
 				swingArm.currentSwingProgress = 0;
-				brokenBlock.blockPos = selectedPos;
-				brokenBlock.progress = 0;
+				swingArm.currentSwingTime = 0;
 			}
 			const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			const holdingTargetedBlock = stack.item == .baseItem and stack.item.baseItem.block() == block.typ;
