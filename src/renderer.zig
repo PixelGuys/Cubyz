@@ -922,10 +922,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var posBeforeBlock: Vec3i = undefined;
 	var neighborOfSelection: chunk.Neighbor = undefined;
 	pub var selectedBlockPos: ?Vec3i = null;
-	var lastSelectedBlockPos: Vec3i = undefined;
-	var currentBlockProgress: f32 = 0;
-	var currentSwingProgress: f32 = 0;
-	var currentSwingTime: f32 = 0;
 	var selectionMin: Vec3f = undefined;
 	var selectionMax: Vec3f = undefined;
 	var selectionNormal: Vec3f = undefined;
@@ -1067,7 +1063,14 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	pub fn breakBlock(inventory: main.items.Inventory.ClientInventory, slot: u32, deltaTime: f64) void {
+		const swingArm = main.entity.components.@"cubyz:swinging".client.get(main.game.Player.id) orelse return; // player can't swing...
+
 		if (selectedBlockPos) |selectedPos| {
+			var brokenBlock = main.entity.components.@"cubyz:breaking".client.get(main.game.Player.id) orelse blk: {
+				swingArm.currentSwingProgress = 0;
+				swingArm.currentSwingTime = 0;
+				break :blk main.entity.components.@"cubyz:breaking".client.getAndPut(main.game.Player.id, selectedPos);
+			};
 			const stack = inventory.getStack(slot);
 			const isSelectionWand = stack.item == .baseItem and std.mem.eql(u8, stack.item.baseItem.id(), "cubyz:selection_wand");
 			if (isSelectionWand) {
@@ -1076,12 +1079,11 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				return;
 			}
 
-			if (@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
-				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-				currentSwingProgress = 0;
-				currentSwingTime = 0;
-				lastSelectedBlockPos = selectedPos;
-				currentBlockProgress = 0;
+			if (@reduce(.Or, brokenBlock.blockPos != selectedPos)) {
+				mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
+				brokenBlock = main.entity.components.@"cubyz:breaking".client.getAndPut(main.game.Player.id, selectedPos);
+				swingArm.currentSwingProgress = 0;
+				swingArm.currentSwingTime = 0;
 			}
 			const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			const holdingTargetedBlock = stack.item == .baseItem and stack.item.baseItem.block() == block.typ;
@@ -1099,44 +1101,44 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				damage -= block.blockResistance();
 				if (damage > 0) {
 					const swingTime = if (isProceduralItem and stack.item.proceduralItem.isEffectiveOn(block)) 1.0/stack.item.proceduralItem.getProperty(.swingSpeed) else 0.5;
-					if (currentSwingTime > swingTime) {
-						currentSwingProgress = 0;
-						currentSwingTime = 0;
+					if (swingArm.currentSwingTime > swingTime) {
+						swingArm.currentSwingProgress = 0;
+						swingArm.currentSwingTime = 0;
 					}
-					if (currentSwingTime == 0) {
+					if (swingArm.currentSwingTime == 0) {
 						const swings = @ceil(block.blockHealth()/damage);
 						const damagePerSwing = block.blockHealth()/swings;
-						currentSwingTime = damagePerSwing/damage*swingTime;
+						swingArm.currentSwingTime = damagePerSwing/damage*swingTime;
 					}
-					currentSwingProgress += @floatCast(deltaTime);
-					while (currentSwingProgress > currentSwingTime) {
-						currentSwingProgress -= currentSwingTime;
-						currentBlockProgress += damage*currentSwingTime/swingTime/block.blockHealth();
-						if (currentBlockProgress > 0.9999) break;
+					swingArm.currentSwingProgress += @floatCast(deltaTime);
+					while (swingArm.currentSwingProgress > swingArm.currentSwingTime) {
+						swingArm.currentSwingProgress -= swingArm.currentSwingTime;
+						brokenBlock.progress += damage*swingArm.currentSwingTime/swingTime/block.blockHealth();
+						if (brokenBlock.progress > 0.9999) break;
 						const swings = @ceil(block.blockHealth()/damage);
 						const damagePerSwing = block.blockHealth()/swings;
-						currentSwingTime = damagePerSwing/damage*swingTime;
+						swingArm.currentSwingTime = damagePerSwing/damage*swingTime;
 					}
-					if (currentBlockProgress < 0.9999) {
-						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-						if (currentBlockProgress != 0) {
-							mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
+					if (brokenBlock.progress < 0.9999) {
+						mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
+						if (brokenBlock.progress != 0) {
+							mesh_storage.addBreakingAnimation(brokenBlock.blockPos, brokenBlock.progress);
 						}
 						main.sync.client.mutex.unlock();
 
 						return;
 					} else {
-						currentSwingProgress = 0;
-						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-						currentBlockProgress = 0;
-						currentSwingTime = 0;
+						swingArm.currentSwingProgress = 0;
+						mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
+						brokenBlock.progress = 0;
+						swingArm.currentSwingTime = 0;
 					}
 				} else {
 					main.sync.client.mutex.unlock();
 					return;
 				}
 			} else {
-				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+				mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
 			}
 
 			var newBlock = block;
