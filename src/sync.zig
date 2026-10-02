@@ -45,13 +45,16 @@ pub const client = struct { // MARK: client
 	};
 
 	pub fn init() void {
+		threadContext = .client;
 		commands = utils.CircularBufferQueue(Command).init(main.globalAllocator, 256);
 	}
 
 	pub fn deinit() void {
+		threadContext.assertCorrectContext(.client);
 		reset();
 		commands.deinit();
 		syncCommands.deinit();
+		threadContext = .other;
 	}
 
 	pub fn reset() void {
@@ -69,6 +72,7 @@ pub const client = struct { // MARK: client
 	}
 
 	pub fn executeCommand(payload: Command.Payload) void {
+		threadContext.assertCorrectContext(.client);
 		var cmd: Command = .{
 			.payload = payload,
 		};
@@ -89,6 +93,7 @@ pub const client = struct { // MARK: client
 	}
 
 	pub fn update() !void {
+		threadContext.assertCorrectContext(.client);
 		mutex.lock();
 		defer mutex.unlock();
 		if (syncCommands.items.len == 0) return;
@@ -1774,6 +1779,7 @@ pub threadlocal var threadContext: ThreadContext = .other;
 pub const ThreadContext = enum { // MARK: ThreadContext
 	other,
 	server,
+	client,
 	chunkDeiniting,
 
 	pub fn assertCorrectContext(self: ThreadContext, side: Side) void {
@@ -1782,7 +1788,9 @@ pub const ThreadContext = enum { // MARK: ThreadContext
 			.server => {
 				std.debug.assert(self == .server);
 			},
-			.client => {},
+			.client => {
+				std.debug.assert(self == .client);
+			},
 		}
 	}
 };

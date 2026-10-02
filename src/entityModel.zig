@@ -301,7 +301,7 @@ pub const EntityModel = struct { // MARK: EntityModel
 
 						var uv: [2]f32 = undefined;
 						_ = uvAttr.read_float(v, @ptrCast(&uv), 2);
-						vertSlice[v].uv = .{uv[0], 1 - uv[1]};
+						vertSlice[v].uv = .{uv[0], uv[1]};
 
 						vertSlice[v].nodeId = @intCast(parentNodeID);
 					}

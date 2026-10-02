@@ -582,9 +582,9 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				while (z < 1) : (z += 1) {
 					var x: u32 = 0;
 					while (x < img.width) : (x += 1) {
-						var y: u32 = 0;
-						while (y < img.height) : (y += 1) {
-							dataSection[i] = img.getRGB(x, y).toArgb();
+						var y: u32 = 1;
+						while (y <= img.height) : (y += 1) {
+							dataSection[i] = img.getRGB(x, img.height - y).toArgb();
 							i += 1;
 						}
 					}
