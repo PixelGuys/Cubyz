@@ -18,13 +18,14 @@ pub fn satisfied(self: *const OnDiagonal, proceduralItem: *const ProceduralItem,
 	const highBound = gridSize;
 	var i = lowBound;
 	while (i <= highBound) : (i += 1) {
-		const checkedX: i32 = x + (i - gridSize);
-		const checkedY: i32 = y + (i - gridSize);
+		const checkedX: i32 = x + i;
+		const checkedY: i32 = y + i;
 		if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 	}
+	i = lowBound;
 	while (i <= highBound) : (i += 1) {
-		const checkedX: i32 = x + (i - gridSize);
-		const checkedY: i32 = y + (i - gridSize);
+		const checkedX: i32 = x + i;
+		const checkedY: i32 = y - i;
 		if (i != 0) { // prevents double counting itself
 			if ((proceduralItem.getItemAt(checkedX, checkedY) orelse continue).hasTag(self.tag)) count += 1;
 		}
