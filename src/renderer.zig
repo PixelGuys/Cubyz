@@ -997,15 +997,16 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		// TODO: Test entities
 	}
 
-	fn dominantAxisNeighbor(normal: Vec3f) Vec3i {
-		const absNormal = @abs(normal);
-		if (absNormal[0] >= absNormal[1] and absNormal[0] >= absNormal[2]) {
-			return .{if (normal[0] >= 0) 1 else -1, 0, 0};
-		} else if (absNormal[1] >= absNormal[2]) {
-			return .{0, if (normal[1] >= 0) 1 else -1, 0};
-		} else {
-			return .{0, 0, if (normal[2] >= 0) 1 else -1};
+	fn axisAlignedNormal(normal: Vec3f) ?Vec3i {
+		const tolerance = 0.999;
+		inline for (0..3) |axis| {
+			if (@abs(normal[axis]) >= tolerance) {
+				var result: Vec3i = .{0, 0, 0};
+				result[axis] = if (normal[axis] > 0) 1 else -1;
+				return result;
+			}
 		}
+		return null;
 	}
 
 	fn canPlaceBlock(pos: Vec3i, block: main.blocks.Block) bool {
@@ -1040,11 +1041,10 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 							}
 						}
 						// Check the block in front of it:
-						const useAccurateNormal = oldBlock.placementMode() == .faceNormal;
-						const roundedNormal = dominantAxisNeighbor(selectionNormal);
-						const neighborPos = if (useAccurateNormal) selectedPos + roundedNormal else posBeforeBlock;
-						neighborDir = if (useAccurateNormal) -roundedNormal else selectedPos - posBeforeBlock;
-						const neighborOfSelectionValue = if (useAccurateNormal) chunk.Neighbor.fromRelPos(neighborDir).? else neighborOfSelection;
+						const faceNormal: ?Vec3i = if (oldBlock.placementMode() == .faceNormal) axisAlignedNormal(selectionNormal) else null;
+						const neighborPos = if (faceNormal) |normal| selectedPos + normal else posBeforeBlock;
+						neighborDir = if (faceNormal) |normal| -normal else selectedPos - posBeforeBlock;
+						const neighborOfSelectionValue = if (faceNormal != null) chunk.Neighbor.fromRelPos(neighborDir).? else neighborOfSelection;
 						const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(neighborPos)));
 						const neighborBlock = block;
 						oldBlock = mesh_storage.getBlockFromRenderThread(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
