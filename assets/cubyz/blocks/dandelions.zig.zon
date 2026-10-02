@@ -12,7 +12,7 @@
 	.absorbedLight = 0x121012,
 	.model = "cubyz:plane",
 	.rotation = "cubyz:carpet",
-	.useGridFacePlacement = true,
+	.placementMode = .gridNeighbor,
 	.onUpdate = .{
 		.type = .check_support_blocks,
 	},

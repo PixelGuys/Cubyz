@@ -7,6 +7,6 @@
 	.collide = false,
 	.model = "cubyz:carpet",
 	.rotation = "cubyz:carpet",
-	.useGridFacePlacement = true,
+	.placementMode = .gridNeighbor,
 	.degradable = true,
 }
