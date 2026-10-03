@@ -1,5 +1,5 @@
 .{
-	.chance = 0.08,
+	.chance = 0.075,
 	.climate = .{
 		.ocean,
 	},
@@ -11,7 +11,7 @@
 	.stoneBlock = "cubyz:chalk/white",
 
 	.roughness = 15,
-	.hills = 15,
+	.hills = 8,
 
 	.rivers = true,
 
