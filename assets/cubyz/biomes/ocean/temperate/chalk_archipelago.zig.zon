@@ -20,8 +20,6 @@
 	.ground_structure = .{
 		"2 to 3 cubyz:sand",
 	},
-	.structures = .{
-	},
 	.transitionBiomes = .{
 		.{
 			.id = "cubyz:beach/warm/wide",
