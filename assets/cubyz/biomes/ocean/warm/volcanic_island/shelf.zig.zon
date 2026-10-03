@@ -1,0 +1,18 @@
+.{
+	.minHeight = -10,
+	.maxHeight = -1,
+	.radius = 120,
+	.hills = 5,
+	.maxSubBiomeCount = 1,
+	.stoneBlock = "cubyz:basalt/smooth",
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:ocean/warm/base",
+			.chance = 0.7,
+		},
+		.{
+			.id = "cubyz:ocean/warm/volcanic_archipelago",
+			.chance = 15,
+		},
+	},
+}
