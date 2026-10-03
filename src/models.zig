@@ -50,7 +50,7 @@ const ExtraQuadInfo = struct {
 
 const gridSize = 4096;
 const collisionGridSize = 16;
-const CollisionGridInteger = std.meta.Int(.unsigned, collisionGridSize);
+const CollisionGridInteger = @Int(.unsigned, collisionGridSize);
 
 fn snapToGrid(x: anytype) @TypeOf(x) {
 	const T = @TypeOf(x);
@@ -94,7 +94,7 @@ pub const QuadIndex = enum(u16) {
 	}
 };
 
-pub const Model = struct {
+pub const Model = struct { // MARK: Model
 	min: Vec3f,
 	max: Vec3f,
 	internalQuads: []QuadIndex,

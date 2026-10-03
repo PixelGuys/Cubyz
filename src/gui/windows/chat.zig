@@ -8,7 +8,6 @@ const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
 const Button = @import("../components/Button.zig");
 const Label = GuiComponent.Label;
-const MutexComponent = GuiComponent.MutexComponent;
 const TextInput = GuiComponent.TextInput;
 const VerticalList = @import("../components/VerticalList.zig");
 const FixedSizeCircularBuffer = main.utils.FixedSizeCircularBuffer;
@@ -165,7 +164,7 @@ fn refresh() void {
 		}
 	} else {
 		list.scrollBar.currentState = 1;
-		list.scrollBar.size = .{0, 0};
+		list.scrollBar.hidden = true;
 	}
 }
 

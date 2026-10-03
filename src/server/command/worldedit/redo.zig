@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
-const User = main.server.User;
+const Source = main.server.command.Source;
 
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
@@ -11,8 +11,13 @@ pub const usage = "/redo";
 
 pub const Args = struct {};
 
-pub fn execute(_: Args, source: *User) void {
-	if (source.worldEditData.redoHistory.pop()) |action| {
+pub fn execute(_: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
+		return;
+	}
+	const user = source.user;
+	if (user.worldEditData.redoHistory.pop()) |action| {
 		defer action.deinit();
 
 		const undo = Blueprint.capture(main.globalAllocator, action.selection());
@@ -20,14 +25,14 @@ pub fn execute(_: Args, source: *User) void {
 
 		switch (undo) {
 			.success => |blueprint| {
-				source.worldEditData.undoHistory.push(.init(blueprint, action.position, action.message));
+				user.worldEditData.undoHistory.push(.init(blueprint, action.position, action.message));
 			},
 			.failure => {
-				source.sendMessage("#ff0000Error: Could not capture undo history.", .{});
+				user.sendMessage("#ff0000Error: Could not capture undo history.", .{});
 			},
 		}
-		source.sendMessage("#00ff00Re-done last {s}.", .{action.message});
+		user.sendMessage("#00ff00Re-done last {s}.", .{action.message});
 	} else {
-		source.sendMessage("#ccccccNothing to redo.", .{});
+		user.sendMessage("#ccccccNothing to redo.", .{});
 	}
 }

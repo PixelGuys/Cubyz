@@ -11,15 +11,13 @@
 	.texture4 = "cubyz:branch/palm/intersection",
 	.texture5 = "cubyz:branch/palm/cross",
 	.item = .{
+		.colorTexture = "palm_branch_palette.png",
 		.material = .{
 			.durability = 31,
 			.massDamage = 1.15,
 			.hardnessDamage = 0.51,
 			.swingSpeed = 4.7,
 			.textureRoughness = 0.7,
-			.colors = .{
-				0xff6d4f33, 0xff865f3d, 0xff9f6c46, 0xffb47f51, 0xff9f6c46,
-			},
 			.modifiers = .{
 				.{
 					.id = "durable",

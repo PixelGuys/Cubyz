@@ -1,5 +1,7 @@
 #version 460
 
+#include "frame_uniforms.glsl"
+
 layout(location = 0) out vec3 startPosition;
 layout(location = 1) out vec3 direction;
 layout(location = 2) out vec3 cameraSpacePos;
@@ -11,8 +13,6 @@ layout(location = 7) flat out int textureIndex;
 layout(location = 8) flat out uvec3 lower;
 layout(location = 9) flat out uvec3 upper;
 
-layout(location = 0) uniform mat4 projectionMatrix;
-layout(location = 1) uniform mat4 viewMatrix;
 layout(location = 2) uniform mat4 modelMatrix;
 layout(location = 3) uniform int modelIndex;
 layout(location = 4) uniform int block;

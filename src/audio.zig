@@ -58,12 +58,12 @@ const AudioData = struct {
 		};
 		const addon = id[0..colonIndex];
 		const fileName = id[colonIndex + 1 ..];
-		const path1 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/{s}/{s}.ogg", .{addon, subPath, fileName}, 0) catch unreachable;
+		const path1 = main.stackAllocator.printSentinel("assets/{s}/{s}/{s}.ogg", .{addon, subPath, fileName}, 0);
 		defer main.stackAllocator.free(path1);
 		var err1: c_int = 0;
 		if (c.stb_vorbis_open_filename(path1.ptr, &err1, null)) |ogg_stream| return ogg_stream;
 
-		const path2 = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "{s}/serverAssets/{s}/{s}/{s}.ogg", .{main.files.cubyzDirStr(), addon, subPath, fileName}, 0) catch unreachable;
+		const path2 = main.stackAllocator.printSentinel("{s}/serverAssets/{s}/{s}/{s}.ogg", .{main.files.cubyzDirStr(), addon, subPath, fileName}, 0);
 		defer main.stackAllocator.free(path2);
 		var err2: c_int = 0;
 		if (c.stb_vorbis_open_filename(path2.ptr, &err2, null)) |ogg_stream| return ogg_stream;

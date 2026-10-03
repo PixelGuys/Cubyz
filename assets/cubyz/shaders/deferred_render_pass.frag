@@ -1,5 +1,7 @@
 #version 460
 
+#include "frame_uniforms.glsl"
+
 layout(location = 0) out vec4 fragColor;
 
 layout(location = 0) in vec2 texCoords;
@@ -14,9 +16,6 @@ layout(binding = 5) uniform sampler2D bloomColor;
 layout(location = 1) uniform vec2 tanXY;
 layout(location = 2) uniform float zNear;
 layout(location = 3) uniform float zFar;
-
-layout(location = 4) uniform ivec3 playerPositionInteger;
-layout(location = 5) uniform vec3 playerPositionFraction;
 
 struct Fog {
 	vec3 color;

@@ -43,7 +43,7 @@ fn extractColor(in: u32) [3]u8 {
 	};
 }
 
-pub const ChannelChunk = struct {
+pub const ChannelChunk = struct { // MARK: ChannelChunk
 	data: main.utils.PaletteCompressedRegion(LightValue, chunk.chunkVolume),
 	mutex: main.utils.Mutex,
 	ch: *chunk.Chunk,

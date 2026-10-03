@@ -76,11 +76,11 @@ fn fovCallback(newValue: f32) void {
 }
 
 fn fovFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
-	return std.fmt.allocPrint(allocator.allocator, "#ffffffField Of View: {d:.0}°", .{value}) catch unreachable;
+	return allocator.print("#ffffffField Of View: {d:.0}°", .{value});
 }
 
 fn lodDistanceFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
-	return std.fmt.allocPrint(allocator.allocator, "#ffffffOpaque leaves distance: {d:.0}", .{@round(value)}) catch unreachable;
+	return allocator.print("#ffffffOpaque leaves distance: {d:.0}", .{@round(value)});
 }
 
 fn lodDistanceCallback(newValue: f32) void {
@@ -89,7 +89,7 @@ fn lodDistanceCallback(newValue: f32) void {
 }
 
 fn contrastFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
-	return std.fmt.allocPrint(allocator.allocator, "#ffffffBlock Contrast: {d:.0}%", .{@round(value*100)}) catch unreachable;
+	return allocator.print("#ffffffBlock Contrast: {d:.0}%", .{@round(value*100)});
 }
 
 fn contrastCallback(newValue: f32) void {
@@ -102,7 +102,7 @@ fn nightBrightnessCallback(newValue: f32) void {
 	settings.save();
 }
 fn nightBrightnessFormatter(allocator: main.heap.NeverFailingAllocator, _: f32) []const u8 {
-	return std.fmt.allocPrint(allocator.allocator, "Night Brightness", .{}) catch unreachable;
+	return allocator.print("Night Brightness", .{});
 }
 
 fn bloomCallback(newValue: bool) void {

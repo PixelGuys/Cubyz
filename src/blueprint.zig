@@ -31,7 +31,7 @@ pub const BlueprintCompression = enum(u16) {
 	deflate,
 };
 
-pub const Blueprint = struct {
+pub const Blueprint = struct { // MARK: Blueprint
 	blocks: Array3D(Block),
 
 	pub fn init(allocator: NeverFailingAllocator) Blueprint {
@@ -414,7 +414,7 @@ pub const Pattern = struct {
 	}
 };
 
-pub const Mask = struct {
+pub const Mask = struct { // MARK: Mask
 	const AndList = List(Entry);
 	const OrList = List(AndList);
 

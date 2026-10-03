@@ -24,6 +24,10 @@
 		.output = "cubyz:grass/dew",
 	},
 	.{
+		.inputs = .{"cubyz:sand", "cubyz:grass_seeds"},
+		.output = "cubyz:grass/arid",
+	},
+	.{
 		.inputs = .{"cubyz:aerosoil", "cubyz:grass_seeds"},
 		.output = "cubyz:grass/sky",
 	},
