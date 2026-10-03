@@ -47,7 +47,7 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:rare/lawn/red_house/base",
 			.placeMode = .all,
-			.chance = 0.0003,
+			.chance = 0.00023,
 		},
 	},
 }
