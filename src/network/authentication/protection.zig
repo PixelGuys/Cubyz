@@ -66,13 +66,11 @@ const windows_impl = struct {
 				},
 			}
 		}
+		defer if (c.LocalFree(plainblob.pbData) != null) std.log.err("LocalFree syscall failed to free previously allocated memory. Errorcode: {}", .{std.os.windows.GetLastError()});
 		var pbDataSlice: []u8 = undefined;
 		pbDataSlice.len = plainblob.cbData;
 		pbDataSlice.ptr = plainblob.pbData;
-		defer {
-			std.crypto.secureZero(u8, pbDataSlice);
-			if (c.LocalFree(plainblob.pbData) != null) std.log.err("LocalFree syscall failed to free previously allocated memory. Errorcode: {}", .{std.os.windows.GetLastError()});
-		}
+		defer std.crypto.secureZero(u8, pbDataSlice);
 		return allocator.dupe(u8, plainblob.pbData[0..plainblob.cbData]);
 	}
 };
