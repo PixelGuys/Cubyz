@@ -57,9 +57,9 @@ const windows_impl = struct {
 			.pbData = @constCast(data.ptr),
 		};
 		if (c.CryptUnprotectData(&cipherblob, null, null, null, null, 0, &plainblob) == 0) {
-			const err = c.GetLastError();
+			const err = std.os.windows.GetLastError();
 			switch (err) {
-				c.ERROR_INVALID_DATA, c.ERROR_INVALID_PARAMETER => return error.Invalid,
+				.INVALID_DATA, .INVALID_PARAMETER => return error.Invalid,
 				else => {
 					std.log.err("CryptUnprotectData syscall failed. Errorcode: {}", .{err});
 					return error.SystemError;
