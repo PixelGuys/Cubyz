@@ -77,7 +77,7 @@ const windows_impl = struct {
 
 test "slice==unprotect(protect(slice))" {
 	if (canProtect) {
-		const slices: [5][]const u8 = .{"TestdwadadÖOUWHdöouHIOSUdhöoUHNWLJDKNOÖPAHUIwdoöJKNSdlkjöwuHOÖIhso8zpo9IKj", "Test", "Testd", "", "WIJDp8iU)(du098UÜ=JHd0ü8hz=Ü(HJ0isidjowi8h=(Z\"ß08IJUISdhd0w98hdoi8uoIWUJDoikjsoIKHJOwiuhdOISHNdo9i8H(UIHNASUJhdnbiuJBWGiudjhbIAKUJHnbsiudjkhiWUAHNIUDshjliuAHELIUHFILUHNIUJBDIUHwiuHushoujhdiiuwhIUHsouhdUHwiuhdUAHLsuidhlHU)"};
+		const slices: [5][]const u8 = .{"TestdwadadÖOUWHdöouHIOSUdhöoUHNWLJDKNOÖPAHUIwdoöJKNSdlkjöwuHOÖIhso8zpo9IKj", "Test", "Testd\r", "", "WIJDp8iU)\x30du098UÜ=JHd0ü8h\x00z=Ü(HJ0isidüowi8h=(Z\"ß08IJUISdhd0w\x338hdoi8uoIWUJDoik\r\n\n\rjsoIKHJOwiuhdOISHNdo9i8H(\x10SUJhdnbiuJBWGiudjhbIAKUJHnbsiudjkhiWUAHNIUDshjl\x03\x04iuAHELIUHFILUHJBDIUHwiuHushoujhdiouhdUHwiuhdUAHLsuidhlHU)\n"};
 		for (slices) |slice| {
 			const protected = try protect(main.stackAllocator, slice);
 			defer main.stackAllocator.free(protected);
@@ -101,7 +101,7 @@ test "Unprotect fails on unsupported platforms" {
 
 test "Unprotect fails when supplied with garbage" {
 	if (canProtect) {
-		const slices: [5][]const u8 = .{"TestdwadadÖOUWHdöouHIOSUdhöoUHNWLJDKNOÖPAHUIwdoöJKNSdlkjöwuHOÖIhso8zpo9IKj", "Test", "Testd", "", "WIJDp8iU)(du098UÜ=JHd0ü8hz=Ü(HJ0isidjowi8h=(Z\"ß08IJUISdhd0w98hdoi8uoIWUJDoikjsoIKHJOwiuhdOISHNdo9i8H(UIHNASUJhdnbiuJBWGiudjhbIAKUJHnbsiudjkhiWUAHNIUDshjliuAHELIUHFILUHNIUJBDIUHwiuHushoujhdiiuwhIUHsouhdUHwiuhdUAHLsuidhlHU)"};
+		const slices: [5][]const u8 = .{"TestdwadadÖOUWHdöouHIOSUdhöoUHNWLJDKNOÖPAHUIwdoöJKNSdlkjöwuHOÖIhso8zpo9IKj", "Test", "Testd\r", "", "WIJDp8iU)\x30du098UÜ=JHd0ü8h\x00z=Ü(HJ0isidüowi8h=(Z\"ß08IJUISdhd0w\x338hdoi8uoIWUJDoik\r\n\n\rjsoIKHJOwiuhdOISHNdo9i8H(\x10SUJhdnbiuJBWGiudjhbIAKUJHnbsiudjkhiWUAHNIUDshjl\x03\x04iuAHELIUHFILUHJBDIUHwiuHushoujhdiouhdUHwiuhdUAHLsuidhlHU)\n"};
 		for (slices) |slice| {
 			try std.testing.expectError(error.Invalid, unprotect(main.stackAllocator, slice));
 		}
