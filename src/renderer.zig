@@ -993,16 +993,23 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		// TODO: Test entities
 	}
 
-	fn axisAlignedNormal(normal: Vec3f) ?Vec3i {
-		const tolerance = 0.999;
+	fn boundingBoxFaceNormal(relativePos: Vec3f, dir: Vec3f, min: Vec3f, max: Vec3f) ?Vec3i {
+		var tEnter: f32 = -std.math.inf(f32);
+		var result: ?Vec3i = null;
 		inline for (0..3) |axis| {
-			if (@abs(normal[axis]) >= tolerance) {
-				var result: Vec3i = .{0, 0, 0};
-				result[axis] = if (normal[axis] > 0) 1 else -1;
-				return result;
+			if (dir[axis] != 0) {
+				const t1 = (min[axis] - relativePos[axis])/dir[axis];
+				const t2 = (max[axis] - relativePos[axis])/dir[axis];
+				const t = @min(t1, t2);
+				if (t > tEnter) {
+					tEnter = t;
+					var normal: Vec3i = .{0, 0, 0};
+					normal[axis] = if (dir[axis] > 0) -1 else 1;
+					result = normal;
+				}
 			}
 		}
-		return null;
+		return if (tEnter >= 0) result else null;
 	}
 
 	fn canPlaceBlock(pos: Vec3i, block: main.blocks.Block) bool {
@@ -1037,10 +1044,11 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 							}
 						}
 						// Check the block in front of it:
-						const faceNormal: ?Vec3i = if (oldBlock.placementMode() == .faceNormal) axisAlignedNormal(selectionNormal) else null;
-						const neighborPos = if (faceNormal) |normal| selectedPos + normal else posBeforeBlock;
-						neighborDir = if (faceNormal) |normal| -normal else selectedPos - posBeforeBlock;
-						const neighborOfSelectionValue = if (faceNormal != null) chunk.Neighbor.fromRelPos(neighborDir).? else neighborOfSelection;
+						const selectedRelPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
+						const boxFaceNormal: ?Vec3i = if (oldBlock.placementMode() == .boundingBox) boundingBoxFaceNormal(selectedRelPos, lastDir, selectionMin, selectionMax) else null;
+						const neighborPos = if (boxFaceNormal) |normal| selectedPos + normal else posBeforeBlock;
+						neighborDir = if (boxFaceNormal) |normal| -normal else selectedPos - posBeforeBlock;
+						const neighborOfSelectionValue = if (boxFaceNormal != null) chunk.Neighbor.fromRelPos(neighborDir).? else neighborOfSelection;
 						const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(neighborPos)));
 						const neighborBlock = block;
 						oldBlock = mesh_storage.getBlockFromRenderThread(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
