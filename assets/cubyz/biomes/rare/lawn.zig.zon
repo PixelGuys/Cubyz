@@ -6,13 +6,13 @@
 	.maxHeight = 36,
 	.maxHeightLimit = 37,
 	.smoothBeaches = true,
-	.minRadius = 310,
-	.maxRadius = 330,
+	.minRadius = 380,
+	.maxRadius = 420,
 	.hills = 1,
 	.chance = 0.01,
 	.music = "cubyz:ikabod/behind",
 	.stoneBlock = "cubyz:grass/dew",
-	.fogDensity = 35,
+	.fogDensity = 45,
 	.fogColor = 0x9ed3f7,
 	.stripes = .{
 		.{
