@@ -1,0 +1,70 @@
+.{
+	.interpolation = .none,
+	.interpolationWeight = 0.8,
+	.minHeight = 50,
+	.maxHeight = 56,
+	.radius = 80,
+	.soilCreep = 4,
+	.hills = 6,
+	.stoneBlock = "cubyz:chalk/white",
+	.tags = .{
+		.pine,
+	},
+	.ground_structure = .{
+		"cubyz:grass/cold",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/bush",
+			.placeMode = .degradable,
+			.chance = 0.01,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/loblolly",
+			.placeMode = .degradable,
+			.chance = 0.001,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/eastern_white",
+			.placeMode = .degradable,
+			.chance = 0.001,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:grass/vegetation/cold"},
+			.chance = 0.15,
+			.width = 5,
+			.variation = 3,
+			.density = 0.5,
+			.priority = 0.2,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:daisies"},
+			.chance = 0.003,
+			.width = 10,
+			.variation = 6,
+			.density = 0.3,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:osier"},
+			.chance = 0.002,
+			.width = 9,
+			.variation = 5,
+			.density = 0.8,
+			.priority = 0.1,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:ocean/cold/chalk_island/shelf",
+			.chance = 1,
+			.parentEdgeDistance = 45,
+		},
+	},
+}
