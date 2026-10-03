@@ -656,18 +656,24 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			@max(KeyBoard.key("forward").value, KeyBoard.key("backward").value),
 			@max(KeyBoard.key("left").value, KeyBoard.key("right").value),
 		}));
+
+		var isSprintingOnGround = false;
 		var speedModifier = walkingSpeed;
 		if (KeyBoard.key("sprint").pressed and !Player.crouching) {
 			if (Player.isGhost.load(.monotonic)) {
 				speedModifier = 128;
 			} else if (Player.isFlying.load(.monotonic)) {
 				speedModifier = 32;
-			} else if (KeyBoard.key("forward").pressed and !KeyBoard.key("backward").pressed) {
-				speedModifier = 8;
+			} else {
+				isSprintingOnGround = true;
 			}
 		}
+
 		if (KeyBoard.key("forward").value > 0.0) {
-			const totalSpeed = speedModifier*KeyBoard.key("forward").value;
+			var forwardSpeedModifier = speedModifier;
+			if (isSprintingOnGround) forwardSpeedModifier = 8;
+
+			const totalSpeed = forwardSpeedModifier*KeyBoard.key("forward").value;
 			movementSpeed = @max(movementSpeed, totalSpeed);
 			movementDir += forward*@as(Vec3d, @splat(totalSpeed));
 		}
