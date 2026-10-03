@@ -22,7 +22,7 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:ocean/temperate/base",
-			.chance = 1,
+			.chance = 0.6,
 		},
 		.{
 			.id = "cubyz:ocean/temperate/chalk_archipelago",
