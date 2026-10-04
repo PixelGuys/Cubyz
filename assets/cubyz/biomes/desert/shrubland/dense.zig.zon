@@ -1,8 +1,5 @@
 .{
-	.minHeightLimit = 7,
-	.minHeight = 22,
-	.maxHeight = 40,
-	.maxHeightLimit = 50,
+	.keepOriginalTerrain = 1,
 	.minRadius = 30,
 	.maxRadius = 50,
 	.hills = 20,
