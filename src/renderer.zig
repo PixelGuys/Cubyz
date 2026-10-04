@@ -1066,7 +1066,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		const swinging = main.entity.components.@"cubyz:swinging".client.get(main.game.Player.id) orelse return; // player can't swing...
 
 		if (selectedBlockPos) |selectedPos| {
-			var brokenBlock = main.entity.components.@"cubyz:breaking".client.get(main.game.Player.id) orelse blk: {
+			var breaking = main.entity.components.@"cubyz:breaking".client.get(main.game.Player.id) orelse blk: {
 				break :blk main.entity.components.@"cubyz:breaking".client.getOrPut(main.game.Player.id, selectedPos);
 			};
 			const stack = inventory.getStack(slot);
