@@ -9,6 +9,7 @@ const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
 const Button = @import("../components/Button.zig");
+const HorizontalList = @import("../components/HorizontalList.zig");
 const Label = @import("../components/Label.zig");
 const TextInput = @import("../components/TextInput.zig");
 const VerticalList = @import("../components/VerticalList.zig");
@@ -17,6 +18,7 @@ pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
 };
 
+var nameEntry: *TextInput = undefined;
 var ipAddressLabel: *Label = undefined;
 var ipAddressEntry: *TextInput = undefined;
 
@@ -46,7 +48,19 @@ fn discoverIpAddressFromNewThread() void {
 	discoverIpAddress();
 }
 
+fn applyName() void {
+	if (nameEntry.currentString.items.len > 500 or main.graphics.TextBuffer.Parser.countVisibleCharacters(nameEntry.currentString.items) > 50) {
+		std.log.err("Name is too long with {}/{} characters. Limits are 50/500", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(nameEntry.currentString.items), nameEntry.currentString.items.len});
+		return;
+	}
+	if (std.mem.eql(u8, nameEntry.currentString.items, settings.playerName)) return;
+	main.globalAllocator.free(settings.playerName);
+	settings.playerName = main.globalAllocator.dupe(u8, nameEntry.currentString.items);
+	settings.save();
+}
+
 fn join() void {
+	applyName();
 	if (thread) |_thread| {
 		_thread.join();
 		thread = null;
@@ -83,6 +97,13 @@ pub fn onOpen() void {
 	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.onNewline = .init(join)});
 	ipAddressEntry.obfuscated = main.settings.streamerMode;
 	list.add(ipAddressEntry);
+	const nameLabel = Label.init(.{0, 0}, 48, "Name:", .left);
+	nameEntry = TextInput.init(.{0, 0}, width - 48, 32, settings.playerName, .{.onNewline = .init(applyName)});
+	const nameRow = HorizontalList.init();
+	nameRow.add(nameLabel);
+	nameRow.add(nameEntry);
+	nameRow.finish(.{0, 0}, .center);
+	list.add(nameRow);
 	list.add(Button.initText(.{0, 0}, 100, "Join", .{.onAction = .init(join)}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
