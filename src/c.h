@@ -55,6 +55,12 @@
 #include <errno.h>
 #endif
 
+// Used for platform-speciffic keystorage
+#ifdef _WIN32
+#include <wincrypt.h>
+#include <errhandlingapi.h>
+#endif
+
 // used for audio
 #include <miniaudio.h>
 #define STB_VORBIS_HEADER_ONLY
