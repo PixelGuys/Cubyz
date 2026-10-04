@@ -45,11 +45,11 @@ pub fn deinit() void {
 pub fn render() void {
 	if (main.game.Player.isCreative()) return;
 
-	const displayHealth = @max(0, main.game.Player.super.health);
+	const displayHealth = @max(0, main.systems.systems.health.client.getPredictedHealth(main.game.Player.id) orelse 0.0);
 	const halfHeartUnits: usize = @ceil(displayHealth*2);
 	const wholeHearts = halfHeartUnits/2;
 	const halfHeart = halfHeartUnits%2;
-	const totalHearts: usize = @ceil(main.game.Player.super.maxHealth);
+	const totalHearts: usize = @ceil(@as(f32, main.systems.systems.health.client.getPredictedMaxHealth(main.game.Player.id) orelse 0.0));
 
 	var x: f32 = 0;
 	var y: f32 = 0;

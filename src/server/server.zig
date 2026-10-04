@@ -305,6 +305,10 @@ pub const User = struct { // MARK: User
 				main.entity.components.@"cubyz:model".server.put(self.id, .{.entityModel = defaultModel});
 			}
 		}
+		const defaultPlayerHealth = 8;
+		if (main.entity.components.@"cubyz:health".server.get(self.id) == null) {
+			main.entity.components.@"cubyz:health".server.loadFromNumber(self.id, defaultPlayerHealth);
+		}
 		if (main.entity.components.@"cubyz:bag".server.get(self.id) == null) {
 			main.entity.components.@"cubyz:bag".server.loadEmpty(self.id);
 		}
