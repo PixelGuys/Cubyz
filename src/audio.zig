@@ -170,7 +170,7 @@ fn findSound(musicId: []const u8) ?*AudioData {
 		const data = AudioData.init(musicId, "sounds/audio");
 		// we convert to mono for easier audio processing
 		if (data.channelType == .stereo) {
-			std.log.err("Sound effects must be mono", musicId);
+			std.log.err("Sound effects must be mono", .{musicId});
 			return null;
 		}
 		const hasOld = audioCache.addToCache(data, data.hashCode());
