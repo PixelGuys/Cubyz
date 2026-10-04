@@ -261,6 +261,8 @@ pub const Biome = struct { // MARK: Biome
 	isValidPlayerSpawn: bool,
 	chance: f32,
 	tags: []const Tag,
+	reservedBufferAbove: i32,
+	reservedBufferBelow: i32,
 
 	pub fn init(self: *Biome, id: []const u8, paletteId: u32, zon: ZonElement) void {
 		const minRadius = zon.get(f32, "radius") orelse zon.get(f32, "minRadius") orelse 256;
@@ -302,6 +304,8 @@ pub const Biome = struct { // MARK: Biome
 			.chance = zon.get(f32, "chance") orelse if (zon == .null) 0 else 1,
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount") orelse std.math.floatMax(f32),
 			.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
+			.reservedBufferAbove = zon.get(i32, "reservedBufferAbove") orelse 128,
+			.reservedBufferBelow = zon.get(i32, "reservedBufferBelow") orelse 32,
 		};
 		if (self.isCave) {
 			for (self.tags) |tag| {
@@ -393,6 +397,14 @@ pub const Biome = struct { // MARK: Biome
 		self.stripes = main.worldArena.alloc(Stripe, stripes.toSlice().len);
 		for (stripes.toSlice(), 0..) |elem, i| {
 			self.stripes[i] = Stripe.init(elem);
+		}
+
+		if (self.reservedBufferAbove != 128 and self.isCave) {
+			std.log.err("Cave biome {s} has reservedBufferAbove changed from the default value. reservedBufferAbove has no affect on cave biomes.\n", .{self.id});
+		}
+
+		if (self.reservedBufferBelow != 32 and self.isCave) {
+			std.log.err("Cave biome {s} has reservedBufferBelow changed from the default value. reservedBufferBelow has no affect on cave biomes.\n", .{self.id});
 		}
 	}
 
