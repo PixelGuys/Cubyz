@@ -157,17 +157,19 @@ pub fn build(b: *std.Build) !void {
 	const options = b.addOptions();
 	const isRelease = b.option(bool, "release", "Removes the -dev flag from the version") orelse false;
 	const sanitizeThread = b.option(bool, "sanitizeThread", "enables the builtin thread sanitizer");
-	const version = b.fmt("0.5.0{s}", .{if (isRelease) "" else "-dev"});
-	if (b.option([]const u8, "version", "used by the CI to check if the git tag and game version match")) |tagVersion| {
+	const baseMajor = 0;
+	const baseMinor = 5;
+	var patch: usize = 0;
+	if (b.option([]const u8, "version", "used by the CI to set the patch version, major and minor must match the ones in build.zig")) |tagVersion| {
 		const tagVersionUpperbound: usize = std.mem.indexOfScalar(u8, tagVersion, '-') orelse tagVersion.len;
-		const versionUpperbound: usize = std.mem.indexOfScalar(u8, version, '-') orelse version.len;
 		const tagParsed = try std.SemanticVersion.parse(tagVersion[0..tagVersionUpperbound]);
-		const versionParsed = try std.SemanticVersion.parse(version[0..versionUpperbound]);
-		if (std.SemanticVersion.order(tagParsed, versionParsed) != .eq) {
-			std.log.err("Provided version {s} does not match version in build.zig: {s}", .{tagVersion, version});
+		if (tagParsed.major != baseMajor or tagParsed.minor != baseMinor) {
+			std.log.err("Provided version {s} does not match version in build.zig: {}.{}.x", .{tagVersion, baseMajor, baseMinor});
 			return error.VersionMismatch;
 		}
+		patch = tagParsed.patch;
 	}
+	const version = b.fmt("{}.{}.{}{s}", .{baseMajor, baseMinor, patch, if (isRelease) "" else "-dev"});
 	options.addOption([]const u8, "version", version);
 	options.addOption(bool, "isTaggedRelease", isRelease);
 
