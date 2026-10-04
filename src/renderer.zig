@@ -1063,7 +1063,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	pub fn breakBlock(inventory: main.items.Inventory.ClientInventory, slot: u32, deltaTime: f64) void {
-		const swingArm = main.entity.components.@"cubyz:swinging".client.get(main.game.Player.id) orelse return; // player can't swing...
+		const swinging = main.entity.components.@"cubyz:swinging".client.get(main.game.Player.id) orelse return; // player can't swing...
 
 		if (selectedBlockPos) |selectedPos| {
 			var brokenBlock = main.entity.components.@"cubyz:breaking".client.get(main.game.Player.id) orelse blk: {
