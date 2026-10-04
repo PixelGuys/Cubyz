@@ -18,8 +18,6 @@ pub var lastVersionString: []const u8 = "";
 
 pub var simulationDistance: u16 = 4;
 
-pub var cpuThreads: ?u64 = null;
-
 pub var anisotropicFiltering: u8 = 4.0;
 
 pub var fpsCap: ?u32 = null;
@@ -214,6 +212,7 @@ pub const launchConfig = struct {
 	pub var autoEnterWorld: []const u8 = "";
 	pub var headlessServer: bool = false;
 	pub var preferredAuthenticationAlgorithm: main.network.authentication.KeyTypeEnum = .ed25519;
+	pub var threadPoolThreads: ?u64 = null;
 
 	pub var vulkanTestingMode: bool = false;
 
@@ -228,6 +227,7 @@ pub const launchConfig = struct {
 		headlessServer = zon.get(bool, "headlessServer") orelse headlessServer;
 		autoEnterWorld = main.globalArena.dupe(u8, zon.get([]const u8, "autoEnterWorld") orelse autoEnterWorld);
 		preferredAuthenticationAlgorithm = zon.get(main.network.authentication.KeyTypeEnum, "preferredAuthenticationAlgorithm") orelse preferredAuthenticationAlgorithm;
+		threadPoolThreads = zon.get(u64, "threadPoolThreads");
 		vulkanTestingMode = zon.get(bool, "vulkanTestingMode") orelse false;
 	}
 };
