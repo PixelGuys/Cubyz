@@ -1067,8 +1067,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 		if (selectedBlockPos) |selectedPos| {
 			var brokenBlock = main.entity.components.@"cubyz:breaking".client.get(main.game.Player.id) orelse blk: {
-				swingArm.currentSwingProgress = 0;
-				swingArm.currentSwingTime = 0;
 				break :blk main.entity.components.@"cubyz:breaking".client.getOrPut(main.game.Player.id, selectedPos);
 			};
 			const stack = inventory.getStack(slot);
