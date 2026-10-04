@@ -73,3 +73,21 @@ pub fn deinit(self: *@This(), comptime side: main.sync.Side) void {
 		main.entity.client.removeAllComponents(self.id);
 	}
 }
+
+pub fn getDirection(_: *const @This(), comptime side: main.sync.Side) Vec3f {
+	return switch (side) {
+		.client => main.renderer.crosshairDirection(main.game.camera.viewMatrix, main.renderer.lastFov, main.renderer.lastWidth, main.renderer.lastHeight),
+		.server => unreachable,
+	};
+}
+
+pub fn getSelected(self: *const @This(), item: main.items.Item, comptime side: main.sync.Side) ?main.renderer.MeshSelection.Selection {
+	return main.renderer.MeshSelection.select(
+		switch (side) {
+			.client => main.game.Player.getEyePosBlocking(),
+			.server => unreachable,
+		},
+		self.getDirection(side),
+		item,
+	);
+}
