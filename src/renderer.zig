@@ -1069,7 +1069,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			var brokenBlock = main.entity.components.@"cubyz:breaking".client.get(main.game.Player.id) orelse blk: {
 				swingArm.currentSwingProgress = 0;
 				swingArm.currentSwingTime = 0;
-				break :blk main.entity.components.@"cubyz:breaking".client.getAndPut(main.game.Player.id, selectedPos);
+				break :blk main.entity.components.@"cubyz:breaking".client.getOrPut(main.game.Player.id, selectedPos);
 			};
 			const stack = inventory.getStack(slot);
 			const isSelectionWand = stack.item == .baseItem and std.mem.eql(u8, stack.item.baseItem.id(), "cubyz:selection_wand");
@@ -1081,7 +1081,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 			if (@reduce(.Or, brokenBlock.blockPos != selectedPos)) {
 				mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
-				brokenBlock = main.entity.components.@"cubyz:breaking".client.getAndPut(main.game.Player.id, selectedPos);
+				brokenBlock = main.entity.components.@"cubyz:breaking".client.getOrPut(main.game.Player.id, selectedPos);
 				swingArm.currentSwingProgress = 0;
 				swingArm.currentSwingTime = 0;
 			}

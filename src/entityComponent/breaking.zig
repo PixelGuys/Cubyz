@@ -57,7 +57,7 @@ pub const client = struct {
 		};
 	}
 
-	pub fn getAndPut(entity: Entity, blockPos: Vec3i) *Component {
+	pub fn getOrPut(entity: Entity, blockPos: Vec3i) *Component {
 		const ptr = components.get(entity) orelse components.add(main.globalAllocator, entity);
 		ptr.* = .{
 			.progress = 0,
