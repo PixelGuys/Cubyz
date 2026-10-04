@@ -27,6 +27,30 @@ pub var window = GuiWindow{
 	.hideIfMouseIsGrabbed = false,
 };
 
+fn moodBar(currentFrame: *graphics.vulkan.Frame, label: []const u8, value: f32, baseValue: f32, fillColor: u32, y: *f32) void {
+	draw.print(currentFrame, "{s}: {d:.2}", .{label, value}, 0, y.*, 8);
+	y.* += 8;
+
+	const barWidth: f32 = 100;
+	const barHeight: f32 = 6;
+	{
+		const oldColor = draw.setColor(0x80000000);
+		defer draw.restoreColor(oldColor);
+		draw.rect(currentFrame, .{0, y.*}, .{barWidth, barHeight});
+	}
+	{
+		const oldColor = draw.setColor(fillColor);
+		defer draw.restoreColor(oldColor);
+		draw.rect(currentFrame, .{0, y.*}, .{barWidth*std.math.clamp(value, 0, 1), barHeight});
+	}
+	{
+		const oldColor = draw.setColor(0xff000000);
+		defer draw.restoreColor(oldColor);
+		draw.rect(currentFrame, .{barWidth*std.math.clamp(baseValue, 0, 1) - 1, y.* - 1}, .{2, barHeight + 2});
+	}
+	y.* += barHeight + 2;
+}
+
 pub fn render(currentFrame: *graphics.vulkan.Frame) void {
 	var y: f32 = 0;
 	const fpsCapText = if (main.settings.fpsCap) |fpsCap| main.stackAllocator.print(" (limit: {d:.0} Hz)", .{fpsCap}) else "";
@@ -112,6 +136,9 @@ pub fn render(currentFrame: *graphics.vulkan.Frame) void {
 			draw.print(currentFrame, "Biome Climate: {s}", .{tags.items}, 0, y, 8);
 			y += 8;
 		}
+		moodBar(currentFrame, "Anxiety", main.audio.mood.current.anxiety, main.audio.mood.target.anxiety, 0xffaa4444, &y);
+		moodBar(currentFrame, "Energy", main.audio.mood.current.energy, main.audio.mood.target.energy, 0xffaaaa33, &y);
+		moodBar(currentFrame, "Sanity", main.audio.mood.current.sanity, main.audio.mood.target.sanity, 0xff44aa66, &y);
 		draw.print(currentFrame, "Opaque faces: {}, Transparent faces: {}", .{main.renderer.chunk_meshing.quadsDrawn, main.renderer.chunk_meshing.transparentQuadsDrawn}, 0, y, 8);
 		y += 8;
 		draw.print(currentFrame, "Particle count: {}/{}", .{main.particles.particle_system.getParticleCount(), main.particles.particle_system.maxCapacity}, 0, y, 8);

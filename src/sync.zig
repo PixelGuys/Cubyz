@@ -455,6 +455,7 @@ pub const Command = struct { // MARK: Command
 				},
 				.health => |health| {
 					main.game.player.super.health = std.math.clamp(main.game.player.super.health + health.health, 0, main.game.player.super.maxHealth);
+					main.audio.mood.onHealthChanged(health.health);
 				},
 				.kill => |kill| {
 					main.game.player.kill(kill.spawnPoint);
@@ -867,6 +868,7 @@ pub const Command = struct { // MARK: Command
 				} else {
 					info.previous = main.game.player.super.health;
 					main.game.player.super.health = std.math.clamp(main.game.player.super.health + info.health, 0, main.game.player.super.maxHealth);
+					main.audio.mood.onHealthChanged(info.health);
 				}
 			},
 			.addEnergy => |*info| {
