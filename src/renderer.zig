@@ -1063,7 +1063,10 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	pub fn breakBlock(inventory: main.items.Inventory.ClientInventory, slot: u32, deltaTime: f64) void {
-		const swinging = main.entity.components.@"cubyz:swinging".client.get(main.game.Player.id) orelse return; // player can't swing...
+		const swinging = main.entity.components.@"cubyz:swinging".client.get(main.game.Player.id) orelse blk: {
+			main.entity.components.@"cubyz:swinging".client.put(main.game.Player.id);
+			break :blk main.entity.components.@"cubyz:swinging".client.get(main.game.Player.id).?;
+		};
 
 		if (selectedBlockPos) |selectedPos| {
 			var breaking = main.entity.components.@"cubyz:breaking".client.get(main.game.Player.id) orelse blk: {
@@ -1077,11 +1080,11 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				return;
 			}
 
-			if (@reduce(.Or, brokenBlock.blockPos != selectedPos)) {
-				mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
-				brokenBlock = main.entity.components.@"cubyz:breaking".client.getOrPut(main.game.Player.id, selectedPos);
-				swingArm.currentSwingProgress = 0;
-				swingArm.currentSwingTime = 0;
+			if (@reduce(.Or, breaking.blockPos != selectedPos)) {
+				mesh_storage.removeBreakingAnimation(breaking.blockPos);
+				breaking = main.entity.components.@"cubyz:breaking".client.getOrPut(main.game.Player.id, selectedPos);
+				swinging.currentSwingProgress = 0;
+				swinging.currentSwingTime = 0;
 			}
 			const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			const holdingTargetedBlock = stack.item == .baseItem and stack.item.baseItem.block() == block.typ;
@@ -1099,44 +1102,44 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				damage -= block.blockResistance();
 				if (damage > 0) {
 					const swingTime = if (isProceduralItem and stack.item.proceduralItem.isEffectiveOn(block)) 1.0/stack.item.proceduralItem.getProperty(.swingSpeed) else 0.5;
-					if (swingArm.currentSwingTime > swingTime) {
-						swingArm.currentSwingProgress = 0;
-						swingArm.currentSwingTime = 0;
+					if (swinging.currentSwingTime > swingTime) {
+						swinging.currentSwingProgress = 0;
+						swinging.currentSwingTime = 0;
 					}
-					if (swingArm.currentSwingTime == 0) {
+					if (swinging.currentSwingTime == 0) {
 						const swings = @ceil(block.blockHealth()/damage);
 						const damagePerSwing = block.blockHealth()/swings;
-						swingArm.currentSwingTime = damagePerSwing/damage*swingTime;
+						swinging.currentSwingTime = damagePerSwing/damage*swingTime;
 					}
-					swingArm.currentSwingProgress += @floatCast(deltaTime);
-					while (swingArm.currentSwingProgress > swingArm.currentSwingTime) {
-						swingArm.currentSwingProgress -= swingArm.currentSwingTime;
-						brokenBlock.progress += damage*swingArm.currentSwingTime/swingTime/block.blockHealth();
-						if (brokenBlock.progress > 0.9999) break;
+					swinging.currentSwingProgress += @floatCast(deltaTime);
+					while (swinging.currentSwingProgress > swinging.currentSwingTime) {
+						swinging.currentSwingProgress -= swinging.currentSwingTime;
+						breaking.progress += damage*swinging.currentSwingTime/swingTime/block.blockHealth();
+						if (breaking.progress > 0.9999) break;
 						const swings = @ceil(block.blockHealth()/damage);
 						const damagePerSwing = block.blockHealth()/swings;
-						swingArm.currentSwingTime = damagePerSwing/damage*swingTime;
+						swinging.currentSwingTime = damagePerSwing/damage*swingTime;
 					}
-					if (brokenBlock.progress < 0.9999) {
-						mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
-						if (brokenBlock.progress != 0) {
-							mesh_storage.addBreakingAnimation(brokenBlock.blockPos, brokenBlock.progress);
+					if (breaking.progress < 0.9999) {
+						mesh_storage.removeBreakingAnimation(breaking.blockPos);
+						if (breaking.progress != 0) {
+							mesh_storage.addBreakingAnimation(breaking.blockPos, breaking.progress);
 						}
 						main.sync.client.mutex.unlock();
 
 						return;
 					} else {
-						swingArm.currentSwingProgress = 0;
-						mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
-						brokenBlock.progress = 0;
-						swingArm.currentSwingTime = 0;
+						swinging.currentSwingProgress = 0;
+						mesh_storage.removeBreakingAnimation(breaking.blockPos);
+						breaking.progress = 0;
+						swinging.currentSwingTime = 0;
 					}
 				} else {
 					main.sync.client.mutex.unlock();
 					return;
 				}
 			} else {
-				mesh_storage.removeBreakingAnimation(brokenBlock.blockPos);
+				mesh_storage.removeBreakingAnimation(breaking.blockPos);
 			}
 
 			var newBlock = block;
