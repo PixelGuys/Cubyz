@@ -95,10 +95,10 @@ pub const CaveGenerator = struct { // MARK: CaveGenerator
 	defaultState: GeneratorState,
 
 	const generatorRegistry: std.StaticStringMap(CaveGenerator) = .initComptime(blk: {
-		const decls = @typeInfo(cave_generators).@"struct".decls;
+		const decls = @typeInfo(cave_generators).@"struct".decl_names;
 		var generators: [decls.len]struct { []const u8, CaveGenerator } = undefined;
 		for (0..decls.len) |i| {
-			const Generator = @field(cave_generators, decls[i].name);
+			const Generator = @field(cave_generators, decls[i]);
 			generators[i] = .{Generator.id, .{
 				.init = &Generator.init,
 				.generate = &Generator.generate,

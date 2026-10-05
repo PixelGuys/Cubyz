@@ -88,8 +88,8 @@ fn checkResultIfAvailable(result: anytype) void {
 	}
 }
 
-fn allocEnumerationGeneric(function: anytype, allocator: NeverFailingAllocator, args: anytype) []@typeInfo(@typeInfo(@TypeOf(function)).@"fn".params[@typeInfo(@TypeOf(function)).@"fn".params.len - 1].type.?).pointer.child {
-	const T = @typeInfo(@typeInfo(@TypeOf(function)).@"fn".params[@typeInfo(@TypeOf(function)).@"fn".params.len - 1].type.?).pointer.child;
+fn allocEnumerationGeneric(function: anytype, allocator: NeverFailingAllocator, args: anytype) []@typeInfo(@typeInfo(@TypeOf(function)).@"fn".param_types[@typeInfo(@TypeOf(function)).@"fn".param_types.len - 1].?).pointer.child {
+	const T = @typeInfo(@typeInfo(@TypeOf(function)).@"fn".param_types[@typeInfo(@TypeOf(function)).@"fn".param_types.len - 1].?).pointer.child;
 	var count: u32 = 0;
 	while (true) {
 		checkResultIfAvailable(@call(.auto, function, args ++ .{&count, null}));

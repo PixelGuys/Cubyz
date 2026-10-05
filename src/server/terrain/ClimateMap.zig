@@ -75,10 +75,10 @@ pub const ClimateMapGenerator = struct {
 	generateMapFragment: *const fn (fragment: *ClimateMapFragment, seed: u64) void,
 
 	const generatorRegistry: std.StaticStringMap(ClimateMapGenerator) = .initComptime(blk: {
-		const decls = @typeInfo(climate_generators).@"struct".decls;
+		const decls = @typeInfo(climate_generators).@"struct".decl_names;
 		var generators: [decls.len]struct { []const u8, ClimateMapGenerator } = undefined;
 		for (0..decls.len) |i| {
-			const Generator = @field(climate_generators, decls[i].name);
+			const Generator = @field(climate_generators, decls[i]);
 			generators[i] = .{Generator.id, .{
 				.init = &Generator.init,
 				.generateMapFragment = &Generator.generateMapFragment,

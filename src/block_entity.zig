@@ -49,11 +49,11 @@ pub const BlockEntityType = struct { // MARK: BlockEntityType
 			.vtable = undefined,
 		};
 
-		inline for (@typeInfo(BlockEntityType.VTable).@"struct".fields) |field| {
-			if (!@hasDecl(BlockEntityTypeT, field.name)) {
-				@compileError("BlockEntityType missing field '" ++ field.name ++ "'");
+		inline for (@typeInfo(BlockEntityType.VTable).@"struct".field_names) |field| {
+			if (!@hasDecl(BlockEntityTypeT, field)) {
+				@compileError("BlockEntityType missing field '" ++ field ++ "'");
 			}
-			@field(class.vtable, field.name) = &@field(BlockEntityTypeT, field.name);
+			@field(class.vtable, field) = &@field(BlockEntityTypeT, field);
 		}
 		return class;
 	}
@@ -540,23 +540,23 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 var blockyEntityTypes: std.StringHashMapUnmanaged(BlockEntityType) = .{};
 
 pub fn init() void {
-	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		const class = BlockEntityType.init(@field(BlockEntityTypes, declaration.name), declaration.name);
+	inline for (@typeInfo(BlockEntityTypes).@"struct".decl_names) |declaration| {
+		const class = BlockEntityType.init(@field(BlockEntityTypes, declaration), declaration);
 		blockyEntityTypes.putNoClobber(main.globalAllocator.allocator, class.id, class) catch unreachable;
 		std.log.debug("Registered BlockEntityType '{s}'", .{class.id});
 	}
 }
 
 pub fn reset() void {
-	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		@field(BlockEntityTypes, declaration.name).reset();
+	inline for (@typeInfo(BlockEntityTypes).@"struct".decl_names) |declaration| {
+		@field(BlockEntityTypes, declaration).reset();
 	}
 	BlockEntity.reset();
 }
 
 pub fn deinit() void {
-	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		@field(BlockEntityTypes, declaration.name).deinit();
+	inline for (@typeInfo(BlockEntityTypes).@"struct".decl_names) |declaration| {
+		@field(BlockEntityTypes, declaration).deinit();
 	}
 	BlockEntity.globalDeinit();
 	blockyEntityTypes.deinit(main.globalAllocator.allocator);
@@ -570,7 +570,7 @@ pub fn getByID(_id: ?[]const u8) ?*const BlockEntityType {
 }
 
 pub fn renderAll(ambientLight: Vec3f) void {
-	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		@field(BlockEntityTypes, declaration.name).renderAll(ambientLight);
+	inline for (@typeInfo(BlockEntityTypes).@"struct".decl_names) |declaration| {
+		@field(BlockEntityTypes, declaration).renderAll(ambientLight);
 	}
 }
