@@ -71,7 +71,7 @@ pub var updateRepeatDelay: std.Io.Duration = .fromMilliseconds(500);
 
 pub var controllerAxisDeadzone: f32 = 0.2;
 
-const settingsFile = if (builtin.mode == .Debug) "debug_settings.zig.zon" else "settings.zig.zon";
+const settingsFile = if (builtin.mode == .debug) "debug_settings.zig.zon" else "settings.zig.zon";
 
 pub fn init() void {
 	const zon: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, settingsFile) catch |err| blk: {

@@ -401,7 +401,7 @@ pub const Biome = struct { // MARK: Biome
 	}
 
 	pub fn hasTag(self: Biome, tag: Tag) bool {
-		return std.mem.containsAtLeastScalar(Tag, self.tags, 1, tag);
+		return std.mem.containsAtLeastScalar(Tag, self.tags, tag, 1);
 	}
 };
 

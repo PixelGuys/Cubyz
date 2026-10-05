@@ -1665,7 +1665,7 @@ pub const Mutex = struct { // MARK: Mutex
 	}
 
 	pub fn assertLocked(self: *const main.utils.Mutex) void {
-		if (builtin.mode == .Debug) {
+		if (builtin.mode == .debug) {
 			std.debug.assert(!@constCast(self).tryLock());
 		}
 	}

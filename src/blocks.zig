@@ -351,7 +351,7 @@ const ParseBlockConfig = struct {
 };
 
 fn parseBlockData(fullBlockId: []const u8, data: []const u8, comptime config: ParseBlockConfig) ?u16 {
-	if (std.mem.containsAtLeastScalar(u8, data, 1, ':')) {
+	if (std.mem.containsAtLeastScalar(u8, data, ':', 1)) {
 		const oreChild = parseBlockWithOptions(data, config);
 		if (oreChild.data != 0) {
 			std.log.warn("Error while parsing ore block data of '{s}': Parent block data must be 0.", .{fullBlockId});
@@ -483,7 +483,7 @@ pub const Block = packed struct(u32) { // MARK: Block
 	}
 
 	pub inline fn hasTag(self: Block, tag: Tag) bool {
-		return std.mem.containsAtLeastScalar(Tag, self.tags(), 1, tag);
+		return std.mem.containsAtLeastScalar(Tag, self.tags(), tag, 1);
 	}
 
 	pub inline fn light(self: Block) u32 {

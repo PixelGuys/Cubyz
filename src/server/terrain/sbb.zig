@@ -316,7 +316,7 @@ pub const StructureBuildingBlock = struct { // MARK: StructureBuildingBlock
 			if (blueprints.items == null) continue;
 
 			for (blueprints.items.?[0].childBlocks) |child| {
-				if (std.mem.containsAtLeastScalar(LocalBlockIndex, childBlocksInBlueprints.items, 1, child.index)) continue;
+				if (std.mem.containsAtLeastScalar(LocalBlockIndex, childBlocksInBlueprints.items, child.index, 1)) continue;
 				childBlocksInBlueprints.append(main.stackAllocator, child.index);
 				// Check that all child blocks present in any of the blueprints have corresponding configurations.
 				if (self.children[@intFromEnum(child.index)] != null) continue;
@@ -326,7 +326,7 @@ pub const StructureBuildingBlock = struct { // MARK: StructureBuildingBlock
 		// Check that all configured child blocks are used somewhere in one of the blueprints.
 		for (self.children, 0..) |child, childBlockIndex| {
 			if (child == null) continue;
-			if (std.mem.containsAtLeastScalar(LocalBlockIndex, childBlocksInBlueprints.items, 1, @enumFromInt(childBlockIndex))) continue;
+			if (std.mem.containsAtLeastScalar(LocalBlockIndex, childBlocksInBlueprints.items, @enumFromInt(childBlockIndex), 1)) continue;
 			std.log.err("['{s}'] None of the blueprints contains a child '{s}' but configuration for it was specified.", .{self.id, @as(LocalBlockIndex, @enumFromInt(childBlockIndex)).name()});
 		}
 	}
