@@ -384,7 +384,7 @@ pub const Pattern = struct {
 			var blockId = specifier;
 			var weight: f32 = 1.0;
 
-			if (std.mem.containsAtLeastScalar(u8, specifier, 1, weightSeparator)) {
+			if (std.mem.containsAtLeastScalar(u8, specifier, weightSeparator, 1)) {
 				var iterator = std.mem.splitScalar(u8, specifier, weightSeparator);
 				const weightString = iterator.first();
 				blockId = iterator.rest();

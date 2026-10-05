@@ -412,7 +412,7 @@ pub fn List(comptime T: type) type {
 		}
 
 		pub fn print(self: *@This(), allocator: NeverFailingAllocator, comptime fmt: []const u8, args: anytype) void {
-			var buffer: std.ArrayList(u8) = .{.items = self.items, .capacity = self.capacity};
+			var buffer: std.ArrayList(u8) = .{.items = self.items, .capacity = self.capacity, .pointer_stability = .{}};
 			var writer = std.Io.Writer.Allocating.fromArrayList(allocator.allocator, &buffer);
 			// We don't deinit, we will keep the ownership of the array later on!
 

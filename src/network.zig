@@ -189,7 +189,7 @@ const Socket = struct { // MARK: Socket
 	}
 
 	fn resolveIP(name: []const u8, port: u16) !IpAddress {
-		var nameBuf: [255]u8 = undefined;
+		var nameBuf: [254]u8 = undefined;
 		var buf: [16]std.Io.net.HostName.LookupResult = undefined;
 		var resultQueue = std.Io.Queue(std.Io.net.HostName.LookupResult).init(&buf);
 		try std.Io.net.HostName.lookup(try .init(name), main.io, &resultQueue, .{.canonical_name_buffer = &nameBuf, .port = port});

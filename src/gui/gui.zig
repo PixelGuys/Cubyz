@@ -98,7 +98,7 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	}
 
 	fn executeOpenModalWindowCommand(window: *GuiWindow) void {
-		const alreadyOpen = std.mem.containsAtLeastScalar(*GuiWindow, openWindows.items, 1, window);
+		const alreadyOpen = std.mem.containsAtLeastScalar(*GuiWindow, openWindows.items, window, 1);
 		if (!alreadyOpen) setSelectedTextInput(null);
 		modalWindow = window;
 		executeOpenWindowCommand(window);

@@ -450,10 +450,7 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 	///   do the realloc more efficiently than the caller
 	/// * `resize` which returns `false` when the `Allocator` implementation cannot
 	///   change the size without relocating the allocation.
-	pub fn realloc(self: NeverFailingAllocator, old_mem: anytype, new_n: usize) t: {
-		const Slice = @typeInfo(@TypeOf(old_mem)).pointer;
-		break :t []align(Slice.alignment orelse @alignOf(Slice.child)) Slice.child;
-	} {
+	pub fn realloc(self: NeverFailingAllocator, old_mem: anytype, new_n: usize) std.meta.Slice(std.meta.AbsorbSentinel(@TypeOf(old_mem))) {
 		return self.allocator.realloc(old_mem, new_n) catch unreachable;
 	}
 
@@ -462,10 +459,7 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 		old_mem: anytype,
 		new_n: usize,
 		return_address: usize,
-	) t: {
-		const Slice = @typeInfo(@TypeOf(old_mem)).pointer;
-		break :t []align(Slice.alignment) Slice.child;
-	} {
+	) std.meta.Slice(std.meta.AbsorbSentinel(@TypeOf(old_mem))) {
 		return self.allocator.reallocAdvanced(old_mem, new_n, return_address) catch unreachable;
 	}
 
