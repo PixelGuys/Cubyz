@@ -127,9 +127,9 @@ pub fn initWindowList() void {
 	windowList = .init(main.globalAllocator);
 	hudWindows = .init(main.globalAllocator);
 	openWindows = .init(main.globalAllocator);
-	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
-		const windowStruct = @field(windowlist, decl.name);
-		windowStruct.window.id = decl.name;
+	inline for (@typeInfo(windowlist).@"struct".decl_names) |decl| {
+		const windowStruct = @field(windowlist, decl);
+		windowStruct.window.id = decl;
 		addWindow(&windowStruct.window);
 		const functionNames = [_][]const u8{"render", "update", "updateSelected", "updateHovered", "onOpen", "onClose"};
 		inline for (functionNames) |function| {
@@ -148,8 +148,8 @@ pub fn deinitWindowList() void {
 }
 
 pub fn init() void { // MARK: init()
-	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
-		const windowStruct = @field(windowlist, decl.name);
+	inline for (@typeInfo(windowlist).@"struct".decl_names) |decl| {
+		const windowStruct = @field(windowlist, decl);
 		if (@hasDecl(windowStruct, "init")) {
 			windowStruct.init();
 		}
@@ -185,8 +185,8 @@ pub fn deinit() void {
 	DiscreteSlider.globalDeinit();
 	TextInput.globalDeinit();
 	tooltip.globalDeinit();
-	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
-		const WindowStruct = @field(windowlist, decl.name);
+	inline for (@typeInfo(windowlist).@"struct".decl_names) |decl| {
+		const WindowStruct = @field(windowlist, decl);
 		if (@hasDecl(WindowStruct, "deinit")) {
 			WindowStruct.deinit();
 		}

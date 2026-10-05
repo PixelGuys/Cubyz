@@ -52,7 +52,7 @@ const names = [_][]const u8{
 
 const buffers = 4;
 var curBuffer: u2 = 0;
-var queryObjects: [buffers][@typeInfo(Samples).@"enum".fields.len]c_uint = undefined;
+var queryObjects: [buffers][@typeInfo(Samples).@"enum".field_names.len]c_uint = undefined;
 
 var activeSample: ?Samples = null;
 

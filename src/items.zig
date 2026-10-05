@@ -828,7 +828,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	type: ProceduralItemTypeIndex,
 	finishedPropertyEvaluation: bool = false,
 
-	properties: [@typeInfo(ProceduralItemProperty).@"enum".fields.len]f32 = @splat(0),
+	properties: [@typeInfo(ProceduralItemProperty).@"enum".field_names.len]f32 = @splat(0),
 
 	durability: u32,
 
@@ -1399,13 +1399,13 @@ pub fn globalInit() void {
 	proceduralItemTypeIdToIndex = .{};
 
 	itemListSize = 0;
-	inline for (@typeInfo(modifierList).@"struct".decls) |decl| {
-		const ModifierStruct: type = @field(modifierList, decl.name);
-		modifiers.put(main.globalArena.allocator, decl.name, &Modifier.VTable.initFromModifierStruct(ModifierStruct)) catch unreachable;
+	inline for (@typeInfo(modifierList).@"struct".decl_names) |decl| {
+		const ModifierStruct: type = @field(modifierList, decl);
+		modifiers.put(main.globalArena.allocator, decl, &Modifier.VTable.initFromModifierStruct(ModifierStruct)) catch unreachable;
 	}
-	inline for (@typeInfo(modifierRestrictionList).@"struct".decls) |decl| {
-		const ModifierRestrictionStruct = @field(modifierRestrictionList, decl.name);
-		modifierRestrictions.put(main.globalArena.allocator, decl.name, &.{
+	inline for (@typeInfo(modifierRestrictionList).@"struct".decl_names) |decl| {
+		const ModifierRestrictionStruct = @field(modifierRestrictionList, decl);
+		modifierRestrictions.put(main.globalArena.allocator, decl, &.{
 			.satisfied = comptime main.meta.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.satisfied),
 			.loadFromZon = comptime main.meta.castFunctionReturnToAnyopaque(ModifierRestrictionStruct.loadFromZon),
 			.printTooltip = comptime main.meta.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.printTooltip),

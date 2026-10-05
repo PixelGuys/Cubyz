@@ -27,8 +27,8 @@ pub var bytesReceived: [256]Atomic(usize) = @splat(.init(0));
 pub var bytesSent: [256]Atomic(usize) = @splat(.init(0));
 
 pub fn init() void { // MARK: init()
-	inline for (@typeInfo(@This()).@"struct".decls) |decl| {
-		const Protocol = @field(@This(), decl.name);
+	inline for (@typeInfo(@This()).@"struct".decl_names) |decl| {
+		const Protocol = @field(@This(), decl);
 		if (@TypeOf(Protocol) == type and @hasDecl(Protocol, "id")) {
 			const id = Protocol.id;
 			if (clientReceiveList[id] == null and serverReceiveList[id] == null) {
