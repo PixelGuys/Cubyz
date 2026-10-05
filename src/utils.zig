@@ -11,10 +11,6 @@ pub const file_monitor = @import("utils/file_monitor.zig");
 const virtual_mem = @import("utils/virtual_mem.zig");
 pub const VirtualList = virtual_mem.VirtualList;
 
-pub const Condition = @import("utils/Condition.zig");
-pub const Futex = @import("utils/Futex.zig");
-pub const Semaphore = @import("utils/Semaphore.zig");
-
 pub const Compression = struct { // MARK: Compression
 	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8, level: std.compress.flate.Compress.Options) []u8 {
 		var result = std.Io.Writer.Allocating.initCapacity(allocator.allocator, 16) catch unreachable;
@@ -815,9 +811,9 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	currentTasks: []Atomic(?*const VTable),
 	loadList: ConcurrentMaxHeap(Task),
 	playerJobQueue: ConcurrentQueue(main.server.PlayerIndex),
-	taskCountSemaphore: main.utils.Semaphore = .{},
-	stopSemaphore: main.utils.Semaphore = .{},
-	startSemaphore: main.utils.Semaphore = .{},
+	taskCountSemaphore: std.Io.Semaphore = .{},
+	stopSemaphore: std.Io.Semaphore = .{},
+	startSemaphore: std.Io.Semaphore = .{},
 	allocator: NeverFailingAllocator,
 	running: Atomic(bool) = .init(true),
 	paused: Atomic(bool) = .init(false),
@@ -871,14 +867,14 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	pub fn @"continue"(self: *ThreadPool) void {
 		std.debug.assert(self.paused.swap(false, .monotonic));
 		for (0..self.threads.len) |_| {
-			self.startSemaphore.post();
+			self.startSemaphore.post(main.io);
 		}
 	}
 
 	pub fn pause(self: *ThreadPool) void {
 		std.debug.assert(!self.paused.swap(true, .monotonic));
 		for (0..self.threads.len) |_| {
-			self.stopSemaphore.wait();
+			self.stopSemaphore.waitUncancelable(main.io);
 		}
 	}
 
@@ -892,7 +888,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			if (task.vtable == vtable) {
 				task.vtable.clean(task.self);
 				self.loadList.removeIndex(i);
-				self.taskCountSemaphore.timedWait(.zero) catch {};
+				self.taskCountSemaphore.waitTimeout(main.io, .none) catch {};
 			} else {
 				i += 1;
 			}
@@ -907,7 +903,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 
 	pub fn unschedulePlayers(self: *ThreadPool) void {
 		while (self.playerJobQueue.popFront()) |_| {
-			self.taskCountSemaphore.timedWait(.zero) catch {};
+			self.taskCountSemaphore.waitTimeout(main.io, .none) catch {};
 			_ = self.trueQueueSize.fetchSub(1, .monotonic);
 		}
 	}
@@ -927,7 +923,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 				.empty => {},
 				.hasMoreTasks => {
 					self.playerJobQueue.pushBack(player);
-					self.taskCountSemaphore.post();
+					self.taskCountSemaphore.post(main.io);
 					_ = self.trueQueueSize.fetchAdd(1, .monotonic);
 				},
 			}
@@ -945,15 +941,15 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			main.heap.GarbageCollection.syncPoint();
 
 			if (self.paused.load(.monotonic)) {
-				self.stopSemaphore.post();
+				self.stopSemaphore.post(main.io);
 				while (true) {
 					main.heap.GarbageCollection.syncPoint();
-					self.startSemaphore.timedWait(.fromMilliseconds(10)) catch continue;
+					self.startSemaphore.waitTimeout(main.io, .{.duration = .{.raw = .fromMilliseconds(10), .clock = .awake}}) catch continue;
 					break;
 				}
 			}
 
-			self.taskCountSemaphore.timedWait(.fromMilliseconds(10)) catch continue :outer;
+			self.taskCountSemaphore.waitTimeout(main.io, .{.duration = .{.raw = .fromMilliseconds(10), .clock = .awake}}) catch continue :outer;
 
 			{
 				const task = self.getNextTask() orelse continue :outer;
@@ -978,7 +974,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		var temporaryTaskList: main.List(Task) = .empty;
 		defer temporaryTaskList.deinit(main.stackAllocator);
 		while (self.loadList.extractAny()) |task| {
-			self.taskCountSemaphore.timedWait(.zero) catch {};
+			self.taskCountSemaphore.waitTimeout(main.io, .none) catch {};
 			if (!task.vtable.isStillNeeded(task.self)) {
 				task.vtable.clean(task.self);
 				_ = self.trueQueueSize.fetchSub(1, .monotonic);
@@ -990,7 +986,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		}
 		self.loadList.addMany(temporaryTaskList.items);
 		for (0..temporaryTaskList.items.len) |_| {
-			self.taskCountSemaphore.post();
+			self.taskCountSemaphore.post(main.io);
 		}
 		const endTime = main.timestamp();
 		self.performance.add(.taskPriorityUpdate, @intCast(@divTrunc(startTime.durationTo(endTime).toNanoseconds(), 1000)));
@@ -1002,13 +998,13 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			.vtable = vtable,
 			.self = task,
 		});
-		self.taskCountSemaphore.post();
+		self.taskCountSemaphore.post(main.io);
 		_ = self.trueQueueSize.fetchAdd(1, .monotonic);
 	}
 
 	pub fn addPlayer(self: *ThreadPool, player: *main.server.User) void {
 		self.playerJobQueue.pushBack(player.playerIndex);
-		self.taskCountSemaphore.post();
+		self.taskCountSemaphore.post(main.io);
 		_ = self.trueQueueSize.fetchAdd(1, .monotonic);
 	}
 
@@ -1646,7 +1642,7 @@ pub const TimeDifference = struct { // MARK: TimeDifference
 
 /// A wrapper over Zig's mutex to avoid having to pass the io everywhere
 pub const Mutex = struct { // MARK: Mutex
-	super: if (builtin.os.tag == .windows) @import("utils/Mutex.zig") else std.Io.Mutex = .init,
+	super: std.Io.Mutex = .init,
 
 	pub fn tryLock(self: *Mutex) bool {
 		return self.super.tryLock();
