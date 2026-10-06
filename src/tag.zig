@@ -52,23 +52,4 @@ pub const Tag = enum(u32) {
 	pub fn getName(tag: Tag) []const u8 {
 		return tagList.items[@intFromEnum(tag)];
 	}
-
-	pub const WeightedTag = struct {
-		tag: Tag,
-		weight: f32,
-	};
-
-	pub fn loadWeightedTagsFromZon(_allocator: main.heap.NeverFailingAllocator, zon: main.ZonElement) []WeightedTag {
-		if (zon != .object) return &.{};
-		const result = _allocator.alloc(WeightedTag, zon.object.count());
-		var iterator = zon.object.iterator();
-		var i: usize = 0;
-		while (iterator.next()) |entry| : (i += 1) {
-			result[i] = .{
-				.tag = Tag.find(entry.key_ptr.*),
-				.weight = entry.value_ptr.as(f32) orelse 1.0,
-			};
-		}
-		return result;
-	}
 };

@@ -11,6 +11,7 @@ const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
 
 const Tag = main.Tag;
+const Mood = main.audio.music_tracks.MusicTrack.Mood;
 const StructureTable = terrain.structures.StructureTable;
 pub const SimpleStructureModel = terrain.structures.SimpleStructureModel;
 
@@ -258,8 +259,7 @@ pub const Biome = struct { // MARK: Biome
 	maxSubBiomeCount: f32,
 	subBiomeTotalChance: f32 = 0,
 	preferredMusic: []const u8, // TODO: Support multiple possibilities that are chosen based on time and danger.
-	baseMood: main.mood.Mood,
-	musicTags: []const Tag.WeightedTag,
+	baseMood: Mood,
 	isValidPlayerSpawn: bool,
 	chance: f32,
 	tags: []const Tag,
@@ -306,7 +306,6 @@ pub const Biome = struct { // MARK: Biome
 				.energy = zon.getChild("baseMood").get(f32, "energy") orelse 0.3,
 				.sanity = zon.getChild("baseMood").get(f32, "sanity") orelse 0.7,
 			},
-			.musicTags = Tag.loadWeightedTagsFromZon(main.worldArena, zon.getChild("musicTags")),
 			.isValidPlayerSpawn = zon.get(bool, "validPlayerSpawn") orelse false,
 			.chance = zon.get(f32, "chance") orelse if (zon == .null) 0 else 1,
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount") orelse std.math.floatMax(f32),
