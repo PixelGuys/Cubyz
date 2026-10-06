@@ -16,13 +16,13 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	return .{.strength = std.math.hypot(data1.strength, data2.strength), .tag = data1.tag};
 }
 
-pub fn changeBlockDamage(damage: f32, block: main.blocks.Block, data: Data) f32 {
+pub fn changeBlockDamage(damage: f32, block: main.blocks.Block, data: Data, restrictionPower: f32) f32 {
 	for (block.tags()) |tag| {
-		if (tag == data.tag) return damage*(1 + data.strength);
+		if (tag == data.tag) return damage*(1 + data.strength*restrictionPower);
 	}
 	return damage;
 }
 
-pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
-	outString.print("#80ff40**Good at**#808080 *Increases damage by **{d:.0}%** on \n***#80ff40{s}#808080*** blocks", .{data.strength*100, data.tag.getName()});
+pub fn printTooltip(outString: *main.ListManaged(u8), data: Data, restrictionPower: f32) void {
+	outString.print("#80ff40**Good at**#808080 *Increases damage by **{d:.0}%** on \n***#80ff40{s}#808080*** blocks", .{data.strength*100*restrictionPower, data.tag.getName()});
 }
