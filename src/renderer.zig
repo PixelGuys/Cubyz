@@ -1208,8 +1208,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 	pub fn drawCube(relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
 		if (main.settings.launchConfig.vulkanTestingMode) {
-			vulkan.currentFrame.guiCommands.bindPipeline(pipeline, null);
-			vulkan.currentFrame.guiCommands.pushConstants(pipeline, &Uniforms{
+			vulkan.currentFrame.renderCommands.bindPipeline(pipeline, null);
+			vulkan.currentFrame.renderCommands.pushConstants(pipeline, &Uniforms{
 				.modelPosition = .{
 					@floatCast(relativePositionToPlayer[0]),
 					@floatCast(relativePositionToPlayer[1]),
@@ -1219,9 +1219,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				.upperBounds = .{max[0], max[1], max[2]},
 				.lineSize = 1.0/128.0,
 			});
-			graphics.frame_uniforms.bindToPipeline(vulkan.currentFrame.guiCommands, pipeline);
-			vulkan.currentFrame.guiCommands.bindVertexArray(main.renderer.chunk_meshing.vao);
-			vulkan.currentFrame.guiCommands.drawIndexed(12*6*6, 0);
+			graphics.frame_uniforms.bindToPipeline(vulkan.currentFrame.renderCommands, pipeline);
+			vulkan.currentFrame.renderCommands.bindVertexArray(main.renderer.chunk_meshing.vao);
+			vulkan.currentFrame.renderCommands.drawIndexed(12*6*6, 0);
 		} else {
 			pipeline.bind(null);
 
