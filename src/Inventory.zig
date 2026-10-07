@@ -38,6 +38,7 @@ pub const client = struct { // MARK: client
 	}
 
 	fn nextId() InventoryId {
+		sync.threadContext.assertCorrectContext(.client);
 		main.sync.client.mutex.lock();
 		defer main.sync.client.mutex.unlock();
 		if (freeIdList.popOrNull()) |id| {
@@ -54,16 +55,19 @@ pub const client = struct { // MARK: client
 	}
 
 	pub fn mapServerId(serverId: InventoryId, inventory: Inventory) void {
+		sync.threadContext.assertCorrectContext(.client);
 		main.sync.client.mutex.assertLocked();
 		serverToClientMap.put(serverId, inventory) catch unreachable;
 	}
 
 	pub fn unmapServerId(serverId: InventoryId, clientId: InventoryId) void {
+		sync.threadContext.assertCorrectContext(.client);
 		main.sync.client.mutex.assertLocked();
 		std.debug.assert(serverToClientMap.fetchRemove(serverId).?.value.id == clientId);
 	}
 
 	pub fn unmapServerIdByClientId(clientId: InventoryId) void {
+		sync.threadContext.assertCorrectContext(.client);
 		main.sync.client.mutex.assertLocked();
 		const serverId = blk: {
 			var it = serverToClientMap.iterator();
@@ -76,11 +80,13 @@ pub const client = struct { // MARK: client
 	}
 
 	fn getInventory(serverId: InventoryId) ?Inventory {
+		sync.threadContext.assertCorrectContext(.client);
 		main.sync.client.mutex.assertLocked();
 		return serverToClientMap.get(serverId);
 	}
 
 	fn getInventoryByClientId(clientId: InventoryId) ?Inventory {
+		sync.threadContext.assertCorrectContext(.client);
 		main.sync.client.mutex.assertLocked();
 		var it = serverToClientMap.valueIterator();
 		while (it.next()) |inv| {

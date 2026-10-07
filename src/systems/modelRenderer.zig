@@ -94,7 +94,7 @@ pub const client = struct { // MARK: client
 			const projectedPos = Mat4f.fromGl(main.graphics.frame_uniforms.frameData().projectionMatrix).mulVec(rotatedPos);
 			if (projectedPos[2] < 0) continue;
 			const xCenter = (1 + projectedPos[0]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.width/2));
-			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.height/2));
+			const yCenter = (1 + projectedPos[1]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.height/2));
 
 			const transparency = 38.0*std.math.log10(vec.lengthSquare(pos3d) + 1) - 80.0;
 			const alpha: u32 = @trunc(std.math.clamp(0xff - transparency, 0, 0xff));

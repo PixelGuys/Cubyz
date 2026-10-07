@@ -325,7 +325,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glUniformMatrix4fv(deferredUniforms.invViewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix.transpose()));
 	c.glUniform1f(deferredUniforms.zNear, zNear);
 	c.glUniform1f(deferredUniforms.zFar, zFar);
-	c.glUniform2f(deferredUniforms.tanXY, 1.0/game.projectionMatrix.rows[0][0], 1.0/game.projectionMatrix.rows[1][2]);
+	c.glUniform2f(deferredUniforms.tanXY, 1.0/game.projectionMatrix.rows[0][0], -1.0/game.projectionMatrix.rows[1][2]);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, activeFrameBuffer);
 
@@ -922,10 +922,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var posBeforeBlock: Vec3i = undefined;
 	var neighborOfSelection: chunk.Neighbor = undefined;
 	pub var selectedBlockPos: ?Vec3i = null;
-	var lastSelectedBlockPos: Vec3i = undefined;
-	var currentBlockProgress: f32 = 0;
-	var currentSwingProgress: f32 = 0;
-	var currentSwingTime: f32 = 0;
 	var selectionMin: Vec3f = undefined;
 	var selectionMax: Vec3f = undefined;
 	var selectionNormal: Vec3f = undefined;
@@ -997,6 +993,25 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		// TODO: Test entities
 	}
 
+	fn boundingBoxFaceNormal(relativePos: Vec3f, dir: Vec3f, min: Vec3f, max: Vec3f) ?Vec3i {
+		var tEnter: f32 = -std.math.inf(f32);
+		var result: ?Vec3i = null;
+		inline for (0..3) |axis| {
+			if (dir[axis] != 0) {
+				const t1 = (min[axis] - relativePos[axis])/dir[axis];
+				const t2 = (max[axis] - relativePos[axis])/dir[axis];
+				const t = @min(t1, t2);
+				if (t > tEnter) {
+					tEnter = t;
+					var normal: Vec3i = .{0, 0, 0};
+					normal[axis] = if (dir[axis] > 0) -1 else 1;
+					result = normal;
+				}
+			}
+		}
+		return if (tEnter >= 0) result else null;
+	}
+
 	fn canPlaceBlock(pos: Vec3i, block: main.blocks.Block) bool {
 		if (main.physics.collision.collideWithBlock(block, pos[0], pos[1], pos[2], main.game.Player.getPosBlocking() + main.game.Player.outerBoundingBox.center(), main.game.Player.outerBoundingBox.extent(), .{0, 0, 0}) != null) {
 			return false;
@@ -1029,14 +1044,17 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 							}
 						}
 						// Check the block in front of it:
-						const neighborPos = posBeforeBlock;
-						neighborDir = selectedPos - posBeforeBlock;
+						const selectedRelPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
+						const boxFaceNormal: ?Vec3i = if (oldBlock.placementMode() == .boundingBox) boundingBoxFaceNormal(selectedRelPos, lastDir, selectionMin, selectionMax) else null;
+						const neighborPos = if (boxFaceNormal) |normal| selectedPos + normal else posBeforeBlock;
+						neighborDir = if (boxFaceNormal) |normal| -normal else selectedPos - posBeforeBlock;
+						const neighborOfSelectionValue = if (boxFaceNormal != null) chunk.Neighbor.fromRelPos(neighborDir).? else neighborOfSelection;
 						const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(neighborPos)));
 						const neighborBlock = block;
 						oldBlock = mesh_storage.getBlockFromRenderThread(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
 						block = oldBlock;
 						if (block.typ == itemBlock) {
-							if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, false)) {
+							if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelectionValue, &block, neighborBlock, false)) {
 								if (!canPlaceBlock(neighborPos, block)) return;
 								updateBlockAndSendUpdate(inventory, slot, neighborPos, oldBlock, block);
 								return;
@@ -1045,7 +1063,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 							if (!block.replaceable()) return;
 							block.typ = itemBlock;
 							block.data = 0;
-							if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, true)) {
+							if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelectionValue, &block, neighborBlock, true)) {
 								if (!canPlaceBlock(neighborPos, block)) return;
 								updateBlockAndSendUpdate(inventory, slot, neighborPos, oldBlock, block);
 								return;
@@ -1067,7 +1085,16 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	pub fn breakBlock(inventory: main.items.Inventory.ClientInventory, slot: u32, deltaTime: f64) void {
+		const swinging = main.entity.components.@"cubyz:swinging".client.get(main.game.Player.id) orelse blk: {
+			main.entity.components.@"cubyz:swinging".client.put(main.game.Player.id);
+			break :blk main.entity.components.@"cubyz:swinging".client.get(main.game.Player.id).?;
+		};
+
 		if (selectedBlockPos) |selectedPos| {
+			const breaking = main.entity.components.@"cubyz:breaking".client.get(main.game.Player.id) orelse blk: {
+				main.entity.components.@"cubyz:breaking".client.put(main.game.Player.id, selectedPos);
+				break :blk main.entity.components.@"cubyz:breaking".client.get(main.game.Player.id).?;
+			};
 			const stack = inventory.getStack(slot);
 			const isSelectionWand = stack.item == .baseItem and std.mem.eql(u8, stack.item.baseItem.id(), "cubyz:selection_wand");
 			if (isSelectionWand) {
@@ -1076,12 +1103,11 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				return;
 			}
 
-			if (@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
-				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-				currentSwingProgress = 0;
-				currentSwingTime = 0;
-				lastSelectedBlockPos = selectedPos;
-				currentBlockProgress = 0;
+			if (@reduce(.Or, breaking.blockPos != selectedPos)) {
+				mesh_storage.removeBreakingAnimation(breaking.blockPos);
+				main.entity.components.@"cubyz:breaking".client.put(main.game.Player.id, selectedPos);
+				swinging.currentSwingProgress = 0;
+				swinging.currentSwingTime = 0;
 			}
 			const block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			const holdingTargetedBlock = stack.item == .baseItem and stack.item.baseItem.block() == block.typ;
@@ -1099,44 +1125,44 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				damage -= block.blockResistance();
 				if (damage > 0) {
 					const swingTime = if (isProceduralItem and stack.item.proceduralItem.isEffectiveOn(block)) 1.0/stack.item.proceduralItem.getProperty(.swingSpeed) else 0.5;
-					if (currentSwingTime > swingTime) {
-						currentSwingProgress = 0;
-						currentSwingTime = 0;
+					if (swinging.currentSwingTime > swingTime) {
+						swinging.currentSwingProgress = 0;
+						swinging.currentSwingTime = 0;
 					}
-					if (currentSwingTime == 0) {
+					if (swinging.currentSwingTime == 0) {
 						const swings = @ceil(block.blockHealth()/damage);
 						const damagePerSwing = block.blockHealth()/swings;
-						currentSwingTime = damagePerSwing/damage*swingTime;
+						swinging.currentSwingTime = damagePerSwing/damage*swingTime;
 					}
-					currentSwingProgress += @floatCast(deltaTime);
-					while (currentSwingProgress > currentSwingTime) {
-						currentSwingProgress -= currentSwingTime;
-						currentBlockProgress += damage*currentSwingTime/swingTime/block.blockHealth();
-						if (currentBlockProgress > 0.9999) break;
+					swinging.currentSwingProgress += @floatCast(deltaTime);
+					while (swinging.currentSwingProgress > swinging.currentSwingTime) {
+						swinging.currentSwingProgress -= swinging.currentSwingTime;
+						breaking.progress += damage*swinging.currentSwingTime/swingTime/block.blockHealth();
+						if (breaking.progress > 0.9999) break;
 						const swings = @ceil(block.blockHealth()/damage);
 						const damagePerSwing = block.blockHealth()/swings;
-						currentSwingTime = damagePerSwing/damage*swingTime;
+						swinging.currentSwingTime = damagePerSwing/damage*swingTime;
 					}
-					if (currentBlockProgress < 0.9999) {
-						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-						if (currentBlockProgress != 0) {
-							mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
+					if (breaking.progress < 0.9999) {
+						mesh_storage.removeBreakingAnimation(breaking.blockPos);
+						if (breaking.progress != 0) {
+							mesh_storage.addBreakingAnimation(breaking.blockPos, breaking.progress);
 						}
 						main.sync.client.mutex.unlock();
 
 						return;
 					} else {
-						currentSwingProgress = 0;
-						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-						currentBlockProgress = 0;
-						currentSwingTime = 0;
+						swinging.currentSwingProgress = 0;
+						mesh_storage.removeBreakingAnimation(breaking.blockPos);
+						breaking.progress = 0;
+						swinging.currentSwingTime = 0;
 					}
 				} else {
 					main.sync.client.mutex.unlock();
 					return;
 				}
 			} else {
-				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+				mesh_storage.removeBreakingAnimation(breaking.blockPos);
 			}
 
 			var newBlock = block;
