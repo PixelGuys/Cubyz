@@ -31,10 +31,11 @@ layout(location = 1) uniform uint commandIndexStart;
 layout(location = 2) uniform uint size;
 layout(location = 3) uniform bool isTransparent;
 layout(location = 4) uniform bool onlyDrawPreviouslyInvisible;
+layout(location = 5) uniform bool disableDirectionalFaceCulling;
 
 layout(location = 6) uniform float lodDistance;
 
-bool isVisible(int dir, ivec3 playerDist) {
+bool isVisible(int dir, vec3 playerDist) {
 	switch(dir) {
 	case 0: // dirUp
 		return playerDist.z >= 0;
@@ -83,7 +84,7 @@ void main() {
 			for(int i = 0; i < 14; i++) {
 				if(playerDistSquare >= lodDistance*lodDistance && i == 7) break;
 				uint faceCount = chunks[chunkID].faceCountsByNormalOpaque[i];
-				if(isVisible(i%7, playerDist) || faceCount == 0) {
+				if(disableDirectionalFaceCulling || isVisible(i%7, playerDist) || faceCount == 0) {
 					groupFaceCount += faceCount;
 				} else {
 					if(groupFaceCount != 0) {

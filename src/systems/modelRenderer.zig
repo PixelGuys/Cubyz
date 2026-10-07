@@ -118,17 +118,19 @@ pub const client = struct { // MARK: client
 
 		// TODO: #3342
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |*component, id| {
-			if (id == game.Player.id) continue; // don't process local player
+			if (id == game.Player.id and game.camera.perspective == .firstPerson) continue;
 
 			const entModel = component.entityModel.get();
-			const ent = main.client.entity_manager.getEntity(id) orelse continue;
+			const ent = if (id == game.Player.id) null else main.client.entity_manager.getEntity(id);
+			if (id != game.Player.id and ent == null) continue;
 
 			const head = entModel.nodeIndexMap.get("Head");
 			if (head) |headId| {
-				var headRot: f32 = ent.rot[0];
+				const pitch: f32 = if (ent) |player| player.rot[0] else game.camera.rotation[0];
+				var headRot = pitch;
 				if (entModel.nodeIndexMap.get("Eyestalks")) |eyestalksId| {
-					const stalkRot = ent.rot[0]*0.25;
-					headRot = ent.rot[0]*0.75;
+					const stalkRot = pitch*0.25;
+					headRot = pitch*0.75;
 					component.nodes[eyestalksId].rot = vec.Quat.quatFromAxisAngle(Vec3f{1, 0, 0}, stalkRot);
 				}
 				component.nodes[headId].rot = vec.Quat.quatFromAxisAngle(Vec3f{1, 0, 0}, headRot);
@@ -150,16 +152,18 @@ pub const client = struct { // MARK: client
 		main.systems.systems.modelRenderer.client.nodeBuffer.beginRender();
 
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |component, id| {
-			if (id == game.Player.id) continue; // don't render local player
+			if (id == game.Player.id and game.camera.perspective == .firstPerson) continue;
 
 			const entModel = component.entityModel.get();
-			const ent = main.client.entity_manager.getEntity(id) orelse continue;
+			const ent = if (id == game.Player.id) null else main.client.entity_manager.getEntity(id);
+			if (id != game.Player.id and ent == null) continue;
 
 			entModel.bind();
 			const entTexture = entModel.defaultTexture;
 
 			entTexture.?.bindTo(0);
-			const blockPos: vec.Vec3i = @floor(ent.pos);
+			const entityPos: Vec3d = if (ent) |player| player.getRenderPosition() else game.Player.getPosBlocking();
+			const blockPos: vec.Vec3i = @floor(entityPos);
 			const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
 			const light = (@as(u32, lightVals[0] >> 3) << 25 |
 				@as(u32, lightVals[1] >> 3) << 20 |
@@ -171,14 +175,15 @@ pub const client = struct { // MARK: client
 			c.glUniform1ui(uniforms.light, @bitCast(@as(u32, light)));
 			c.glUniform1ui(uniforms.nodeBufferOffset, @bitCast(@as(u32, component.bufferAllocation.start)));
 
-			const pos: Vec3d = ent.getRenderPosition() - playerPos;
+			const pos = entityPos - playerPos;
+			const rotation: f32 = if (ent) |player| player.rot[2] else game.camera.rotation[2];
 			const modelMatrix = (Mat4f.identity()
 				.mul(Mat4f.translation(Vec3f{
 					@floatCast(pos[0]),
 					@floatCast(pos[1]),
 					@floatCast(pos[2] - entModel.height/2),
 				}))
-				.mul(Mat4f.rotationZ(-ent.rot[2])));
+				.mul(Mat4f.rotationZ(-rotation)));
 			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 			c.glUniformMatrix4fv(uniforms.modelViewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
 			c.glDrawElements(c.GL_TRIANGLES, entModel.indexCount, c.GL_UNSIGNED_INT, null);

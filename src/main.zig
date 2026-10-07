@@ -191,6 +191,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "fly", .key = c.GLFW_KEY_F, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_DOWN, .pressAction = &game.flyToggle},
 		.{.name = "ghost", .key = c.GLFW_KEY_G, .pressAction = &game.ghostToggle},
 		.{.name = "hyperSpeed", .key = c.GLFW_KEY_H, .pressAction = &game.hyperSpeedToggle},
+		.{.name = "perspective", .key = c.GLFW_KEY_R, .pressAction = &game.cyclePerspective, .notifyRequirement = .inGame},
 		.{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
 		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_TRIGGER}, .pressAction = &game.pressPlace, .releaseAction = &game.releasePlace, .notifyRequirement = .inGame},
 		.{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER}, .pressAction = &game.pressBreak, .releaseAction = &game.releaseBreak, .notifyRequirement = .inGame},

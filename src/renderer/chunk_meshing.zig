@@ -50,6 +50,7 @@ pub var commandUniforms: struct {
 	size: c_int,
 	isTransparent: c_int,
 	onlyDrawPreviouslyInvisible: c_int,
+	disableDirectionalFaceCulling: c_int,
 	lodDistance: c_int,
 } = undefined;
 pub var occlusionTestPipeline: graphics.Pipeline = undefined;
@@ -228,6 +229,7 @@ fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, transparent: bool) voi
 	defer commandBuffer.free(allocation);
 	commandPipeline.bind();
 	c.glUniform1f(commandUniforms.lodDistance, main.settings.@"lod0.5Distance");
+	c.glUniform1i(commandUniforms.disableDirectionalFaceCulling, @intFromBool(main.game.camera.perspective != .firstPerson));
 	c.glUniform1ui(commandUniforms.chunkIDIndex, chunkIDAllocation.start);
 	c.glUniform1ui(commandUniforms.commandIndexStart, allocation.start);
 	c.glUniform1ui(commandUniforms.size, @intCast(chunkIDs.len));

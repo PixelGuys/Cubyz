@@ -200,7 +200,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	defer if (main.settings.launchConfig.vulkanTestingMode) {
 		vulkan.currentFrame.renderCommands.endRendering();
 	};
-	game.camera.updateViewMatrix();
+	game.camera.updateViewMatrix(playerPos);
 
 	main.graphics.frame_uniforms.uploadNewFrame(.{
 		.playerPositionInteger = @as(Vec3i, @floor(playerPos)),
@@ -210,7 +210,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	});
 
 	// Uses FrustumCulling on the chunks.
-	const frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
+	const frustum = Frustum.init(game.camera.getOffset(), game.camera.getViewRotationMatrix(), lastFov, lastWidth, lastHeight);
 
 	const time: u32 = @intCast(main.timestamp().toMilliseconds() & std.math.maxInt(u32));
 

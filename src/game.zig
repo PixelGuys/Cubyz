@@ -28,9 +28,18 @@ const physics = main.physics;
 const KeyBoard = main.KeyBoard;
 
 pub const camera = struct { // MARK: camera
+	pub const Perspective = enum {
+		firstPerson,
+		thirdPersonBack,
+		thirdPersonFront,
+	};
+
 	pub var rotation: Vec3f = Vec3f{0, 0, 0};
 	pub var direction: Vec3f = Vec3f{0, 0, 0};
 	pub var viewMatrix: Mat4f = Mat4f.identity();
+	pub var perspective: Perspective = .firstPerson;
+	var offset: Vec3f = .{0, 0, 0};
+
 	pub fn moveRotation(mouseX: f32, mouseY: f32) void {
 		// Mouse movement along the y-axis rotates the image along the x-axis.
 		rotation[0] += mouseY;
@@ -40,11 +49,51 @@ pub const camera = struct { // MARK: camera
 		rotation[2] += mouseX;
 	}
 
-	pub fn updateViewMatrix() void {
+	pub fn updateViewMatrix(cameraPosition: Vec3d) void {
 		direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -rotation[0]), -rotation[2]);
-		viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(rotation[0])).mul(Mat4f.rotationZ(rotation[2]));
+		const rotationMatrix = getViewRotationMatrix();
+
+		offset = .{0, 0, 0};
+		if (perspective != .firstPerson) {
+			const side: f32 = if (perspective == .thirdPersonBack) -1 else 1;
+			const offsetDirection: Vec3d = @floatCast(direction*@as(Vec3f, @splat(side)));
+			const cameraHitBox: physics.collision.Box = .{
+				.min = @splat(-0.1),
+				.max = @splat(0.1),
+			};
+			const cameraDistance: f64 = 4;
+			const collisionCheckStep: f64 = 0.05;
+			var distance: f64 = collisionCheckStep;
+			while (distance <= cameraDistance) : (distance += collisionCheckStep) {
+				const testPosition = cameraPosition + offsetDirection*@as(Vec3d, @splat(distance));
+				if (physics.collision.collides(.client, .x, 0, testPosition, cameraHitBox) != null) break;
+			}
+			const safeDistance = @max(0, @min(cameraDistance, distance - collisionCheckStep));
+			offset = @floatCast(offsetDirection*@as(Vec3d, @splat(safeDistance)));
+		}
+
+		viewMatrix = rotationMatrix.mul(Mat4f.translation(-offset));
+	}
+
+	pub fn getViewRotationMatrix() Mat4f {
+		return switch (perspective) {
+			.firstPerson, .thirdPersonBack => Mat4f.identity().mul(Mat4f.rotationX(rotation[0])).mul(Mat4f.rotationZ(rotation[2])),
+			.thirdPersonFront => Mat4f.identity().mul(Mat4f.rotationX(-rotation[0])).mul(Mat4f.rotationZ(rotation[2] + std.math.pi)),
+		};
+	}
+
+	pub fn getOffset() Vec3f {
+		return offset;
 	}
 };
+
+pub fn cyclePerspective(_: main.Window.Key.Modifiers) void {
+	camera.perspective = switch (camera.perspective) {
+		.firstPerson => .thirdPersonBack,
+		.thirdPersonBack => .thirdPersonFront,
+		.thirdPersonFront => .firstPerson,
+	};
+}
 
 pub const Gamemode = enum(u8) { survival = 0, creative = 1 };
 
