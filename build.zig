@@ -131,6 +131,7 @@ fn createLaunchConfig(b: *std.Build) !void {
 			\\    .cubyzDir = "",
 			\\    .autoEnterWorld = "",
 			\\    .headlessServer = false,
+			\\    .threadPoolThreads = null, // Number of threads used by the threadPool, default is number of CPU cores - 1 (to leave room for rendering, audio, networking, server ticks, OS)
 			\\    // .preferredAuthenticationAlgorithm = .ed25519, // Uncomment and change this if you own a server in an outdated game version where the default algorithm got compromised.
 			\\}
 		;
