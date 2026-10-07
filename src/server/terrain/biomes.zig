@@ -11,6 +11,7 @@ const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
 
 const Tag = main.Tag;
+const Mood = main.audio.music_tracks.MusicTrack.Mood;
 const StructureTable = terrain.structures.StructureTable;
 pub const SimpleStructureModel = terrain.structures.SimpleStructureModel;
 
@@ -258,6 +259,7 @@ pub const Biome = struct { // MARK: Biome
 	maxSubBiomeCount: f32,
 	subBiomeTotalChance: f32 = 0,
 	preferredMusic: []const u8, // TODO: Support multiple possibilities that are chosen based on time and danger.
+	baseMood: Mood,
 	isValidPlayerSpawn: bool,
 	chance: f32,
 	tags: []const Tag,
@@ -265,11 +267,12 @@ pub const Biome = struct { // MARK: Biome
 	pub fn init(self: *Biome, id: []const u8, paletteId: u32, zon: ZonElement) void {
 		const minRadius = zon.get(f32, "radius") orelse zon.get(f32, "minRadius") orelse 256;
 		const maxRadius = zon.get(f32, "maxRadius") orelse minRadius;
+		const isCave = zon.get(bool, "isCave") orelse false;
 		self.* = Biome{
 			.id = main.worldArena.dupe(u8, id),
 			.paletteId = paletteId,
 			.climate = ClimateProperties.fromZon(zon.getChild("climate"), true),
-			.isCave = zon.get(bool, "isCave") orelse false,
+			.isCave = isCave,
 			.radius = (maxRadius + minRadius)/2,
 			.radiusVariation = (maxRadius - minRadius)/2,
 			.stoneBlock = blocks.parseBlock(zon.get([]const u8, "stoneBlock") orelse "cubyz:slate/smooth"),
@@ -298,6 +301,7 @@ pub const Biome = struct { // MARK: Biome
 			.smoothBeaches = zon.get(bool, "smoothBeaches") orelse false,
 			.supportsRivers = zon.get(bool, "rivers") orelse false,
 			.preferredMusic = main.worldArena.dupe(u8, zon.get([]const u8, "music") orelse "cubyz:totaldemented/cubyz"),
+			.baseMood = Mood.loadFromZon(zon.getChild("baseMood"), .{.isCave = isCave}),
 			.isValidPlayerSpawn = zon.get(bool, "validPlayerSpawn") orelse false,
 			.chance = zon.get(f32, "chance") orelse if (zon == .null) 0 else 1,
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount") orelse std.math.floatMax(f32),
