@@ -11,9 +11,9 @@ pub const MusicTrack = struct {
 		energy: f32,
 		sanity: f32,
 
-		pub fn loadFromZon(zon: ZonElement, isCave: ?bool) Mood {
+		pub fn loadFromZon(zon: ZonElement, options: struct { isCave: bool = false }) Mood {
 			return .{
-				.anxiety = zon.get(f32, "anxiety") orelse if (isCave orelse false) 0.7 else 0.3,
+				.anxiety = zon.get(f32, "anxiety") orelse if (options.isCave) 0.7 else 0.3,
 				.energy = zon.get(f32, "energy") orelse 0.3,
 				.sanity = zon.get(f32, "sanity") orelse 0.7,
 			};
@@ -37,7 +37,7 @@ pub const MusicTrack = struct {
 		return MusicTrack{
 			.id = main.worldArena.dupe(u8, id),
 			.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
-			.moodTarget = .loadFromZon(zon.getChild("moodTarget"), null),
+			.moodTarget = .loadFromZon(zon.getChild("moodTarget"), .{}),
 			.moodTolerance = zon.get(f32, "moodTolerance") orelse 0.5,
 			.chance = zon.get(f32, "chance") orelse 1.0,
 		};

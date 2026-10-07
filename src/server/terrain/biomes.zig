@@ -301,7 +301,7 @@ pub const Biome = struct { // MARK: Biome
 			.smoothBeaches = zon.get(bool, "smoothBeaches") orelse false,
 			.supportsRivers = zon.get(bool, "rivers") orelse false,
 			.preferredMusic = main.worldArena.dupe(u8, zon.get([]const u8, "music") orelse "cubyz:totaldemented/cubyz"),
-			.baseMood = Mood.loadFromZon(zon.getChild("baseMood"), isCave),
+			.baseMood = Mood.loadFromZon(zon.getChild("baseMood"), .{.isCave = isCave}),
 			.isValidPlayerSpawn = zon.get(bool, "validPlayerSpawn") orelse false,
 			.chance = zon.get(f32, "chance") orelse if (zon == .null) 0 else 1,
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount") orelse std.math.floatMax(f32),
