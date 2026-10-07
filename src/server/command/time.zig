@@ -3,11 +3,11 @@ const std = @import("std");
 const main = @import("main");
 const Source = main.server.command.Source;
 
-pub const description = "Get or set the server time.";
+pub const description = "Get, set, start or stop the server time.";
 pub const usage =
 	\\/time
 	\\/time <time>
-	\\/time <day/night>
+	\\/time <day/dusk/night/dawn>
 	\\/time <start/stop>"
 ;
 

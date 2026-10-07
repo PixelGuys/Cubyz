@@ -167,8 +167,8 @@ pub fn bindPipeline(self: CommandBuffer, pipeline: main.graphics.Pipeline, sciss
 	self.setViewport(.{
 		.x = 0,
 		.y = 0,
-		.width = @floatFromInt(vulkan.SwapChain.extent.width),
-		.height = @floatFromInt(vulkan.SwapChain.extent.height),
+		.width = @floatFromInt(vulkan.currentFrame.extent.width),
+		.height = @floatFromInt(vulkan.currentFrame.extent.height),
 		.minDepth = 0,
 		.maxDepth = 1,
 	});
@@ -177,7 +177,7 @@ pub fn bindPipeline(self: CommandBuffer, pipeline: main.graphics.Pipeline, sciss
 	} else {
 		self.setScissor(.{
 			.offset = .{.x = 0, .y = 0},
-			.extent = vulkan.SwapChain.extent,
+			.extent = vulkan.currentFrame.extent,
 		});
 	}
 }
@@ -207,9 +207,16 @@ const BindingInfo = union(enum) {
 		image: vulkan.Image,
 		imageLayout: c.VkImageLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
 	},
+	ubo: struct {
+		binding: u32,
+		dynamic: bool = false,
+		buffer: vulkan.Buffer,
+		offset: usize = 0,
+		range: usize = c.VK_WHOLE_SIZE,
+	},
 };
 
-pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bindPoint: DescriptorBindPoint, set: u32, bindings: []const BindingInfo) void {
+pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bindPoint: DescriptorBindPoint, bindings: []const BindingInfo) void {
 	const arena = main.stackAllocator.createArena();
 	defer main.stackAllocator.destroyArena(arena);
 	const writeInfo = arena.alloc(c.VkWriteDescriptorSet, bindings.len);
@@ -242,9 +249,19 @@ pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bi
 				};
 				writeInfo[i].pImageInfo = imageInfo;
 			},
+			.ubo => |ubo| {
+				writeInfo[i].descriptorType = if (ubo.dynamic) c.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC else c.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				const bufferInfo = arena.create(c.VkDescriptorBufferInfo);
+				bufferInfo.* = .{
+					.buffer = ubo.buffer.handle,
+					.offset = ubo.offset,
+					.range = ubo.range,
+				};
+				writeInfo[i].pBufferInfo = bufferInfo;
+			},
 		}
 	}
-	c.vkCmdPushDescriptorSetKHR(self.handle, @intFromEnum(bindPoint), pipeline.pipelineLayout, set, @intCast(writeInfo.len), writeInfo.ptr);
+	c.vkCmdPushDescriptorSetKHR(self.handle, @intFromEnum(bindPoint), pipeline.pipelineLayout, 0, @intCast(writeInfo.len), writeInfo.ptr);
 }
 
 pub fn pushConstants(self: CommandBuffer, pipeline: main.graphics.Pipeline, constants: anytype) void {
@@ -294,4 +311,17 @@ pub fn copyBufferToImage(self: CommandBuffer, dest: vulkan.Image, destLayout: c.
 		.pRegions = regions.ptr,
 	};
 	c.vkCmdCopyBufferToImage2(self.handle, &info);
+}
+
+pub fn copyImageToImage(self: CommandBuffer, dest: vulkan.Image, destLayout: c.VkImageLayout, source: vulkan.Image, sourceLayout: c.VkImageLayout, regions: []const c.VkImageCopy2) void {
+	const info: c.VkCopyImageInfo2 = .{
+		.sType = c.VK_STRUCTURE_TYPE_COPY_IMAGE_INFO_2,
+		.srcImage = source.handle,
+		.srcImageLayout = sourceLayout,
+		.dstImage = dest.handle,
+		.dstImageLayout = destLayout,
+		.regionCount = @intCast(regions.len),
+		.pRegions = regions.ptr,
+	};
+	c.vkCmdCopyImage2(self.handle, &info);
 }

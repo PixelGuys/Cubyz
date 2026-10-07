@@ -1706,7 +1706,7 @@ pub const BinaryReader = struct { // MARK: BinaryReader
 	pub fn readInt(self: *BinaryReader, T: type) error{ OutOfBounds, IntOutOfBounds }!T {
 		if (@mod(@typeInfo(T).int.bits, 8) != 0) {
 			const fullBits = comptime std.mem.alignForward(u16, @typeInfo(T).int.bits, 8);
-			const FullType = std.meta.Int(@typeInfo(T).int.signedness, fullBits);
+			const FullType = @Int(@typeInfo(T).int.signedness, fullBits);
 			const val = try self.readInt(FullType);
 			return std.math.cast(T, val) orelse return error.IntOutOfBounds;
 		}
@@ -1720,7 +1720,7 @@ pub const BinaryReader = struct { // MARK: BinaryReader
 		comptime std.debug.assert(@typeInfo(T).int.signedness == .unsigned);
 		comptime std.debug.assert(@bitSizeOf(T) > 8); // Why would you use a VarInt for this?
 		var result: T = 0;
-		var shift: std.meta.Int(.unsigned, std.math.log2_int_ceil(usize, @bitSizeOf(T))) = 0;
+		var shift: @Int(.unsigned, std.math.log2_int_ceil(usize, @bitSizeOf(T))) = 0;
 		while (true) {
 			const nextByte = try self.readInt(u8);
 			const value: T = nextByte & 0x7f;
@@ -1732,7 +1732,7 @@ pub const BinaryReader = struct { // MARK: BinaryReader
 	}
 
 	pub fn readFloat(self: *BinaryReader, T: type) error{ OutOfBounds, IntOutOfBounds, InvalidFloat }!T {
-		const IntT = std.meta.Int(.unsigned, @typeInfo(T).float.bits);
+		const IntT = @Int(.unsigned, @typeInfo(T).float.bits);
 		const result: T = @bitCast(try self.readInt(IntT));
 		if (!std.math.isFinite(result)) return error.InvalidFloat;
 		return result;
@@ -1797,7 +1797,7 @@ pub const BinaryWriter = struct { // MARK: BinaryWriter
 	pub fn writeInt(self: *BinaryWriter, T: type, value: T) void {
 		if (@mod(@typeInfo(T).int.bits, 8) != 0) {
 			const fullBits = comptime std.mem.alignForward(u16, @typeInfo(T).int.bits, 8);
-			const FullType = std.meta.Int(@typeInfo(T).int.signedness, fullBits);
+			const FullType = @Int(@typeInfo(T).int.signedness, fullBits);
 			return self.writeInt(FullType, value);
 		}
 		const bufSize = @divExact(@typeInfo(T).int.bits, 8);
@@ -1818,7 +1818,7 @@ pub const BinaryWriter = struct { // MARK: BinaryWriter
 	}
 
 	pub fn writeFloat(self: *BinaryWriter, T: type, value: T) void {
-		const IntT = std.meta.Int(.unsigned, @typeInfo(T).float.bits);
+		const IntT = @Int(.unsigned, @typeInfo(T).float.bits);
 		self.writeInt(IntT, @bitCast(value));
 	}
 

@@ -164,9 +164,9 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		}
 		const ch = SimulationChunk.initAndIncreaseRefCount(pos);
 		ch.increaseRefCount();
-		ch.increaseRefCount();
 		simulationChunkHashMap.put(pos, ch) catch unreachable;
 		mutex.unlock();
+		ch.increaseRefCount();
 		ChunkLoadTask.scheduleAndDecreaseRefCount(pos, .{.simulationChunk = ch});
 		return ch;
 	}
@@ -533,7 +533,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.chunkManager = try ChunkManager.init(self, worldData.getChild("generatorSettings"));
 		errdefer self.chunkManager.deinit();
 
-		try permission.loadGroups(try dir.openIterableDir("permission"));
+		try permission.loadGroups(try dir.openIterableDir("permission"), self.path);
 		std.debug.assert(main.entityModel.getById("cubyz:missing") != null);
 
 		return self;

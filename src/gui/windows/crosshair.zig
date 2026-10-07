@@ -74,7 +74,7 @@ pub fn deinit() void {
 pub fn render() void {
 	if (main.settings.launchConfig.vulkanTestingMode and texture.vulkanImage != null) {
 		graphics.vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
-		graphics.vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, 0, &.{
+		graphics.vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
 			.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
 		});
 		graphics.draw.customShadedImage(@as(Uniforms, undefined), pipeline, .{0, 0}, .{size, size});

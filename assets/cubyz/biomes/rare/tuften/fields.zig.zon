@@ -1,5 +1,5 @@
 .{
-	.properties = .{},
+	.climate = .{},
 	.minHeightLimit = 7,
 	.minHeight = 40,
 	.maxHeight = 60,
