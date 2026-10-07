@@ -535,7 +535,6 @@ const Frame = struct { // MARK: Frame
 	imageAvailable: Semaphore,
 	uploadFinished: Semaphore,
 	renderFinished: Semaphore,
-	guiRenderFinished: Semaphore,
 
 	uploadCommands: main.graphics.CommandBuffer,
 	guiCommands: main.graphics.CommandBuffer,
@@ -549,7 +548,6 @@ const Frame = struct { // MARK: Frame
 			.imageAvailable = .init(),
 			.uploadFinished = .init(),
 			.renderFinished = .init(),
-			.guiRenderFinished = .init(),
 			.swapChainImage = undefined,
 			.swapChainImageView = undefined,
 			.uploadCommands = .init(),
@@ -565,7 +563,6 @@ const Frame = struct { // MARK: Frame
 		self.imageAvailable.privateDeinit();
 		self.uploadFinished.privateDeinit();
 		self.renderFinished.privateDeinit();
-		self.guiRenderFinished.privateDeinit();
 		self.uploadCommands.deinit();
 		self.guiCommands.deinit();
 		self.renderCommands.deinit();
@@ -615,7 +612,7 @@ const Frame = struct { // MARK: Frame
 			graphicsQueue,
 			&.{self.uploadFinished.handle},
 			&.{c.VK_PIPELINE_STAGE_TRANSFER_BIT},
-			&.{self.renderFinished.handle},
+			&.{},
 			null,
 		);
 
@@ -636,9 +633,9 @@ const Frame = struct { // MARK: Frame
 		self.guiCommands.endRecording();
 		self.guiCommands.submit(
 			graphicsQueue,
-			&.{self.imageAvailable.handle, self.renderFinished.handle},
-			&.{c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT},
-			&.{self.guiRenderFinished.handle},
+			&.{self.imageAvailable.handle},
+			&.{c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT},
+			&.{self.renderFinished.handle},
 			self.fence.handle,
 		);
 	}
@@ -807,7 +804,7 @@ pub const SwapChain = struct { // MARK: SwapChain
 		const presentInfo: c.VkPresentInfoKHR = .{
 			.sType = c.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
 			.waitSemaphoreCount = 1,
-			.pWaitSemaphores = &currentFrame.guiRenderFinished.handle,
+			.pWaitSemaphores = &currentFrame.renderFinished.handle,
 			.swapchainCount = 1,
 			.pSwapchains = &swapChain,
 			.pImageIndices = &currentImageIndex,

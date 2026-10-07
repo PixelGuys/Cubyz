@@ -1826,7 +1826,6 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 	depthTexture: c_uint,
 	color: vulkan.Image,
 	depth: vulkan.Image,
-	lastUsedSemaphore: vulkan.Semaphore,
 
 	pub fn init(_width: u31, _height: u31, internalFormat: c_int, hasDepthTexture: bool, textureFilter: vulkan.Image.ImageOptions.Filter, textureWrap: vulkan.Image.ImageOptions.AddressMode) FrameBuffer {
 		var self: FrameBuffer = .{
@@ -1836,7 +1835,6 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 			.hasDepthTexture = hasDepthTexture,
 			.color = undefined,
 			.depth = undefined,
-			.lastUsedSemaphore = undefined,
 		};
 		c.glGenFramebuffers(1, &self.frameBuffer);
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
@@ -1882,7 +1880,6 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 		c.glTexImage2D(c.GL_TEXTURE_2D, 0, internalFormat, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
 
 		if (main.settings.launchConfig.vulkanTestingMode) {
-			self.lastUsedSemaphore = .init();
 			self.color = .init(.{width, height, 1}, .{
 				.usage = c.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 				.format = switch (internalFormat) {
@@ -1916,7 +1913,6 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 		}
 		c.glDeleteTextures(1, &self.texture);
 		if (main.settings.launchConfig.vulkanTestingMode) {
-			self.lastUsedSemaphore.deferredDeinit();
 			self.color.deferredDeinit();
 			if (self.hasDepthTexture) {
 				self.depth.deferredDeinit();
