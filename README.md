@@ -1,5 +1,3 @@
-# Hey
-This is were i commit to the official repo, so this is vanilla. 
 # Cubyz
 Cubyz is a 3D voxel sandbox game (inspired by Minecraft).
 
