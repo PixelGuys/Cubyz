@@ -13,6 +13,12 @@
 	.onUpdate = .{
 		.type = .check_support_blocks,
 	},
+	.onInteract = .{
+		.type = .torch_update_particles,
+	},
+	.onClientUpdate = .{
+		.type = .torch_update_particles,
+	},
 	.model = .{
 		.base = "cubyz:torch",
 		.side = "cubyz:torch_side",
