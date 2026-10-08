@@ -178,7 +178,7 @@ void mainItemDrop() {
 	vec3 modifiedCameraSpacePos = cameraSpacePos*(1 + total_tMax*sizeScale*length(direction)/length(cameraSpacePos));
 	vec4 projection = projectionMatrix*vec4(modifiedCameraSpacePos, 1);
 	float depth = projection.z/projection.w;
-	gl_FragDepth = glDepthRange*depth + gl_FragDepth.x;
+	gl_FragDepth = (glDepthRange.y - gl_FragDepth.x)*depth + gl_FragDepth.x;
 
 	fragColor = decodeColor(block);
 	fragColor.a = 1; // No transparency supported!
