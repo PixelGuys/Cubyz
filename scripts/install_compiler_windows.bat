@@ -2,7 +2,8 @@
 
 echo Detecting Zig compiler...
 
-set /p baseVersion=<".zigversion"
+for /f "tokens=2 delims== " %%A in ('findstr "minimum_zig_version" build.zig.zon') do set "baseVersion=%%A"
+set "baseVersion=%baseVersion:~1,-2%"
 
 IF "%PROCESSOR_ARCHITECTURE%"=="AMD64"	(set arch=x86_64)
 IF "%PROCESSOR_ARCHITECTURE%"=="IA64"	(set arch=x86_64)
