@@ -35,15 +35,32 @@ const padding: f32 = 8;
 var availableItems: main.ListManaged(BaseItemIndex) = undefined;
 var itemAmount: main.ListManaged(u32) = undefined;
 var inventories: main.ListManaged(ClientInventory) = undefined;
+var craftableFromTags: main.ListManaged(main.Tag) = undefined;
+var foundNewTags: bool = false;
+var defaultCraftingTags: []main.Tag = undefined;
 
 pub var arrowTexture: Texture = undefined;
 
 pub fn init() void {
 	arrowTexture = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_arrow.png");
+	defaultCraftingTags = main.globalAllocator.alloc(main.Tag, 1);
+	defaultCraftingTags[0] = main.Tag.handCraftable;
+	craftableFromTags = .init(main.globalAllocator);
+	changeCraftingTags(defaultCraftingTags);
 }
 
 pub fn deinit() void {
 	arrowTexture.deinit();
+	craftableFromTags.clearAndFree();
+	craftableFromTags.deinit();
+	main.globalAllocator.free(defaultCraftingTags);
+}
+
+pub fn openFromCallback(craftingTags: []main.Tag) void {
+	changeCraftingTags(craftingTags);
+	gui.closeWindowFromRef(&window);
+	gui.openWindowFromRef(&window);
+	main.Window.setMouseGrabbed(false);
 }
 
 fn addItemStackToAvailable(itemStack: ItemStack) void {
@@ -70,7 +87,8 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 	for (0..main.game.Player.inventory.size()) |i| {
 		addItemStackToAvailable(main.game.Player.inventory.getStack(i));
 	}
-	if (std.mem.eql(u32, oldAmounts, itemAmount.items)) return false;
+	if (std.mem.eql(u32, oldAmounts, itemAmount.items) and (!foundNewTags)) return false;
+	foundNewTags = false;
 	// Remove no longer present items:
 	var i: u32 = 0;
 	while (i < availableItems.items.len) : (i += 1) {
@@ -92,6 +110,14 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 				}
 			}
 			continue :outer; // Ingredient not found.
+		}
+		middle: for (recipe.craftingTags) |tag| {
+			for (craftableFromTags.items) |craftingStationTag| {
+				if (tag == craftingStationTag) {
+					continue :middle;
+				}
+			}
+			continue :outer; // Recipe not craftable by this.
 		}
 		// All ingredients found: Add it to the list.
 		const inv = ClientInventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .{.crafting = recipe}, .other, .{});
@@ -171,6 +197,19 @@ pub fn onClose() void {
 	inventories.deinit();
 }
 
+pub fn onToggleWindow() void {
+	changeCraftingTags(defaultCraftingTags);
+	refresh();
+}
+
 pub fn update() void {
 	refresh();
+}
+
+fn changeCraftingTags(newCraftingTags: []main.Tag) void {
+	foundNewTags = true;
+	if (std.mem.eql(main.Tag, craftableFromTags.items, newCraftingTags)) return;
+	craftableFromTags.deinit();
+	craftableFromTags = .initCapacity(main.globalAllocator, newCraftingTags.len);
+	craftableFromTags.appendSlice(newCraftingTags);
 }

@@ -190,7 +190,7 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []const ZonEleme
 	return newInputCombos;
 }
 
-pub fn addRecipe(itemCombo: []const ItemWithAmount, list: *main.ListManaged(Recipe)) void {
+pub fn addRecipe(itemCombo: []const ItemWithAmount, list: *main.ListManaged(Recipe), craftingTags: []Tag) void {
 	const inputs = itemCombo[0 .. itemCombo.len - 1];
 	const output = itemCombo[itemCombo.len - 1];
 	const recipe = Recipe{
@@ -198,6 +198,7 @@ pub fn addRecipe(itemCombo: []const ItemWithAmount, list: *main.ListManaged(Reci
 		.sourceAmounts = main.worldArena.alloc(u16, inputs.len),
 		.resultItem = output.item,
 		.resultAmount = output.amount,
+		.craftingTags = main.worldArena.dupe(Tag, craftingTags),
 	};
 	for (inputs, 0..) |input, i| {
 		recipe.sourceItems[i] = input.item;
@@ -205,6 +206,8 @@ pub fn addRecipe(itemCombo: []const ItemWithAmount, list: *main.ListManaged(Reci
 	}
 	list.append(recipe);
 }
+
+const defaultCraftingTags: [1]Tag = .{.handCraftable};
 
 pub fn parseRecipe(zon: ZonElement, list: *main.ListManaged(Recipe)) !void {
 	const arena = main.stackAllocator.createArena();
@@ -218,11 +221,14 @@ pub fn parseRecipe(zon: ZonElement, list: *main.ListManaged(Recipe)) !void {
 		return error.InvalidReversibleRecipe;
 	}
 
+	const foundCraftingTags = Tag.loadTagsFromZon(arena, zon.getChild("craftingTags"));
+	const craftingTags = if (foundCraftingTags.len != 0) foundCraftingTags else arena.dupe(Tag, &defaultCraftingTags);
+
 	const itemCombos = try generateItemCombos(arena, recipeItems);
 	for (itemCombos) |itemCombo| {
-		addRecipe(itemCombo, list);
+		addRecipe(itemCombo, list, craftingTags);
 		if (reversible) {
-			addRecipe(&.{itemCombo[1], itemCombo[0]}, list);
+			addRecipe(&.{itemCombo[1], itemCombo[0]}, list, craftingTags);
 		}
 	}
 }
