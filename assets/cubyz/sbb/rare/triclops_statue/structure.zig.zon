@@ -8,6 +8,6 @@
 	},
 	.children = .{
 		.red = "cubyz:rare/triclops_statue/root/base",
-		.white = "cubyz:rare/triclops_statue/head",
+		.white = "cubyz:rare/triclops_statue/head_slot",
 	},
 }
