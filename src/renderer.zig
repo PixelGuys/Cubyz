@@ -923,7 +923,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				.rasterState = .{.cullMode = .none},
 				.depthStencilState = .{.depthTest = true, .depthWrite = true},
 				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
-				.inputAssemblyState = .{.topology = .lineList},
+				.inputAssemblyState = .{.topology = .triangleList},
 				.pushConstantSize = @sizeOf(Uniforms),
 			},
 		);

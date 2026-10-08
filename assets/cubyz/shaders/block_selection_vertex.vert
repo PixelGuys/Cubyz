@@ -11,9 +11,9 @@ layout(location = 4) uniform vec3 upperBounds;
 layout(location = 5) uniform float lineSize;
 #else
 layout(push_constant, std430) uniform _ {
-	vec4 modelPosition;
-	vec4 lowerBounds;
-	vec4 upperBounds;
+	vec3 modelPosition;
+	vec3 lowerBounds;
+	vec3 upperBounds;
 	float lineSize;
 };
 #endif
