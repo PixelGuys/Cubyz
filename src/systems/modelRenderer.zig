@@ -126,11 +126,10 @@ pub const client = struct { // MARK: client
 
 			const head = entModel.nodeIndexMap.get("Head");
 			if (head) |headId| {
-				const pitch: f32 = if (ent) |player| player.rot[0] else game.camera.rotation[0];
-				var headRot = pitch;
+				var headRot: f32 = if (ent) |player| player.rot[0] else game.camera.rotation[0];
 				if (entModel.nodeIndexMap.get("Eyestalks")) |eyestalksId| {
-					const stalkRot = pitch*0.25;
-					headRot = pitch*0.75;
+					const stalkRot = headRot*0.25;
+					headRot *= 0.75;
 					component.nodes[eyestalksId].rot = vec.Quat.quatFromAxisAngle(Vec3f{1, 0, 0}, stalkRot);
 				}
 				component.nodes[headId].rot = vec.Quat.quatFromAxisAngle(Vec3f{1, 0, 0}, headRot);
