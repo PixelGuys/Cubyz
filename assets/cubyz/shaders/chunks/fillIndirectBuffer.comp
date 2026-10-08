@@ -35,7 +35,7 @@ layout(location = 5) uniform bool disableDirectionalFaceCulling;
 
 layout(location = 6) uniform float lodDistance;
 
-bool isVisible(int dir, vec3 playerDist) {
+bool isVisible(int dir, ivec3 playerDist) {
 	switch(dir) {
 	case 0: // dirUp
 		return playerDist.z >= 0;
