@@ -27,14 +27,14 @@ pub const ZonElement = union(enum) { // MARK: ZonElement
 		return .{.array = list};
 	}
 
-	pub fn getAtIndex(self: *const ZonElement, comptime T: type, index: usize, replacement: T) T {
+	pub fn getAtIndex(self: *const ZonElement, comptime T: type, index: usize) ?T {
 		if (self.* != .array) {
-			return replacement;
+			return null;
 		} else {
 			if (index < self.array.items.len) {
-				return self.array.items[index].as(T) orelse replacement;
+				return self.array.items[index].as(T);
 			} else {
-				return replacement;
+				return null;
 			}
 		}
 	}
@@ -192,6 +192,7 @@ pub const ZonElement = union(enum) { // MARK: ZonElement
 							else => return null,
 						}
 					},
+					ZonElement => return self.*,
 					else => {
 						@compileError("Unsupported type '" ++ @typeName(T) ++ "'.");
 					},
