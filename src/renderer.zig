@@ -909,7 +909,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		modelPosition: [3]f32 align(16),
 		lowerBounds: [3]f32 align(16),
 		upperBounds: [3]f32 align(16),
-		lineSize: f32 align(16),
+		lineSize: f32,
 	};
 
 	pub fn init() void {
