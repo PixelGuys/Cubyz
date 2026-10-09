@@ -14,7 +14,7 @@ pub const usage =
 	\\/spawn @<playerIndex> <reset>
 	\\/spawn world
 	\\/spawn world <x> <y> <z>
-	\\\\/spawn resetSelf
+	\\\\/spawn resetAll
 ;
 
 pub const Args = union(enum) {
