@@ -5,7 +5,7 @@ const command = main.server.command;
 const Source = command.Source;
 const User = main.server.User;
 
-pub const description = "Get or set a player's / the world spawn point";
+pub const description = "Get, set, or reset a player's / the world spawn point";
 pub const usage =
 	\\/spawn
 	\\/spawn reset
