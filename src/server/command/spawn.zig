@@ -8,13 +8,14 @@ const User = main.server.User;
 pub const description = "Get or set a player's / the world spawn point";
 pub const usage =
 	\\/spawn
+	\\/spawn reset
 	\\/spawn <x> <y> <z>
 	\\/spawn @<playerIndex>
 	\\/spawn @<playerIndex> <x> <y> <z>
 	\\/spawn @<playerIndex> <reset>
 	\\/spawn world
 	\\/spawn world <x> <y> <z>
-	\\/spawn resetAll
+	\\/spawn all reset
 ;
 
 pub const Args = union(enum) {
@@ -23,7 +24,7 @@ pub const Args = union(enum) {
 	@"/spawn <world> <x> <y> <z>": struct { world: enum { world }, x: command.Coordinate, y: command.Coordinate, z: command.Coordinate },
 	@"/spawn <world>": struct { world: enum { world } },
 	@"/spawn <playerIndex>": struct { playerIndex: ?command.PlayerIndex },
-	@"/spawn <reset>": struct { reset: enum { resetAll } },
+	@"/spawn <all> <reset>": struct { all: enum { all }, reset: enum { reset } },
 };
 
 pub fn execute(args: Args, source: Source) void {
@@ -49,7 +50,7 @@ pub fn execute(args: Args, source: Source) void {
 			const world = main.server.world.?;
 			source.sendMessage("#ffff00World spawn: {}", .{world.spawn});
 		},
-		.@"/spawn <resetAll>" => {
+		.@"/spawn <all> <reset>" => {
 			const world = main.server.world.?;
 			const players = main.server.getUserList(main.stackAllocator);
 			for (players) |player| {
