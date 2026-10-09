@@ -3,7 +3,7 @@
 	.keepOriginalTerrain = 1,
 	.minHeight = 22,
 	.maxHeight = 45,
-	.properties = .{},
+	.climate = .{},
 	.tags = .{
 		.oak,
 		.pine,

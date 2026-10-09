@@ -99,7 +99,7 @@ pub fn render() void {
 
 	if (main.settings.launchConfig.vulkanTestingMode) {
 		vulkan.currentFrame.guiCommands.bindPipeline(pipeline, null);
-		vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, 0, &.{
+		vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
 			.{.ssbo = .{.binding = 5, .ssbo = ssbo}},
 		});
 		vulkan.currentFrame.guiCommands.pushConstants(pipeline, &Uniforms{

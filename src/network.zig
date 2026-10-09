@@ -1363,6 +1363,7 @@ pub const Connection = struct { // MARK: Connection
 
 		fn mbedTlsSend(self_: ?*anyopaque, data: [*c]const u8, len: usize) callconv(.c) c_int {
 			const self: *SecureChannel = @ptrCast(@alignCast(self_.?));
+			self.mutex.assertLocked();
 			self.super.sendBuffer.buffer.pushBackSlice(data[0..len]);
 			self.super.sendBuffer.nextIndex +%= @intCast(len);
 			if (!self.finishedCollectingClientVerificationData) {
@@ -1376,6 +1377,7 @@ pub const Connection = struct { // MARK: Connection
 
 		fn mbedTlsReceive(self_: ?*anyopaque, data: [*c]u8, len: usize, timeout: u32) callconv(.c) c_int {
 			const self: *SecureChannel = @ptrCast(@alignCast(self_.?));
+			self.mutex.assertLocked();
 			std.debug.assert(timeout == 0);
 			const copyLen = @min(len, self.dataToReceive.len);
 			if (copyLen == 0) return c.MBEDTLS_ERR_SSL_WANT_READ;
@@ -1391,13 +1393,13 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		fn receiveThroughTls(self: *SecureChannel, data: []const u8) !void {
+			self.mutex.lock();
+			defer self.mutex.unlock();
 			std.debug.assert(self.dataToReceive.len == 0);
 			self.dataToReceive = data;
 			var outBuffer: [4096]u8 = undefined;
 			while (true) {
-				self.mutex.lock();
 				const len = c.mbedtls_ssl_read(&self.sslContext, &outBuffer, outBuffer.len);
-				self.mutex.unlock();
 				if (len == c.MBEDTLS_ERR_SSL_WANT_READ) break;
 				if (len == 0) return error.Closed;
 				if (len < 0) {
@@ -1617,6 +1619,7 @@ pub const Connection = struct { // MARK: Connection
 					.connectedVerified, .awaitingReloadVerified => main.game.world.?.shouldReload = true,
 				}
 				main.game.world.?.shouldRestart.store(true, .release);
+				conn.handShakeWaiting.broadcast();
 			}
 		}
 		if (conn.restartChannelCounter[@intFromEnum(channelId)] < restartCounter) {
@@ -1714,6 +1717,10 @@ pub const Connection = struct { // MARK: Connection
 				self.rttEstimate = averageRtt;
 				self.nextPacketTimestamp = timestamp;
 				self.hasRttEstimate = true;
+			}
+			if (self.rttEstimate/averageRtt > 10) { // Quickly recover from spikes in RTT, as e.g. caused by /server restart
+				self.rttEstimate = averageRtt;
+				self.nextPacketTimestamp = timestamp;
 			}
 		}
 	}
