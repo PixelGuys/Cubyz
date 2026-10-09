@@ -15,7 +15,7 @@ pub const usage =
 	\\/spawn @<playerIndex> <reset>
 	\\/spawn world
 	\\/spawn world <x> <y> <z>
-	\\/spawn all reset
+	\\/spawn reset all
 ;
 
 pub const Args = union(enum) {
@@ -24,7 +24,7 @@ pub const Args = union(enum) {
 	@"/spawn <world> <x> <y> <z>": struct { world: enum { world }, x: command.Coordinate, y: command.Coordinate, z: command.Coordinate },
 	@"/spawn <world>": struct { world: enum { world } },
 	@"/spawn <playerIndex>": struct { playerIndex: ?command.PlayerIndex },
-	@"/spawn <all> <reset>": struct { all: enum { all }, reset: enum { reset } },
+	@"/spawn <reset> <all>": struct { reset: enum { reset }, all: enum { all } },
 };
 
 pub fn execute(args: Args, source: Source) void {
@@ -50,7 +50,7 @@ pub fn execute(args: Args, source: Source) void {
 			const world = main.server.world.?;
 			source.sendMessage("#ffff00World spawn: {}", .{world.spawn});
 		},
-		.@"/spawn <all> <reset>" => {
+		.@"/spawn <reset> <all>" => {
 			const world = main.server.world.?;
 			const players = main.server.getUserList(main.stackAllocator);
 			for (players) |player| {
