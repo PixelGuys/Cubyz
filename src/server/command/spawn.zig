@@ -14,7 +14,7 @@ pub const usage =
 	\\/spawn @<playerIndex> <reset>
 	\\/spawn world
 	\\/spawn world <x> <y> <z>
-	\\\\/spawn resetAll
+	\\\\/spawn reset
 ;
 
 pub const Args = union(enum) {
@@ -23,7 +23,7 @@ pub const Args = union(enum) {
 	@"/spawn <world> <x> <y> <z>": struct { world: enum { world }, x: command.Coordinate, y: command.Coordinate, z: command.Coordinate },
 	@"/spawn <world>": struct { world: enum { world } },
 	@"/spawn <playerIndex>": struct { playerIndex: ?command.PlayerIndex },
-	@"/spawn <resetAll>": struct { resetAll: enum { resetAll } },
+	@"/spawn <reset>": struct { reset: enum { reset } },
 };
 
 pub fn execute(args: Args, source: Source) void {
