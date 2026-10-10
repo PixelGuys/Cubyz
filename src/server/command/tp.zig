@@ -4,6 +4,8 @@ const main = @import("main");
 const command = main.server.command;
 const Source = command.Source;
 
+const @"cubyz:position" = main.entity.components.@"cubyz:position";
+
 pub const description = "Teleport to location.";
 pub const usage =
 	\\/tp <biome>
@@ -116,7 +118,7 @@ pub fn execute(args: Args, source: Source) void {
 		},
 		inline .@"/tp <destinationPlayerIndex>", .@"/tp <sourcePlayerIndex> <destinationPlayerIndex>" => |index| {
 			const dest = command.Target.fromPlayerIndex(index.destinationPlayerIndex, source) catch return;
-			break :blk dest.user.player().pos.*;
+			break :blk @"cubyz:position".getPosition(dest.user.player().id);
 		},
 	};
 

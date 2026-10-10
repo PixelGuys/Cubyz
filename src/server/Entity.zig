@@ -9,7 +9,6 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const @"cubyz:position" = main.entity.components.@"cubyz:position";
 
-pos: *Vec3d = undefined,
 vel: Vec3d = .{0, 0, 0},
 rot: Vec3f = .{0, 0, 0},
 
@@ -20,15 +19,11 @@ maxEnergy: f32 = 8,
 name: ?[]const u8 = null,
 id: main.entity.Entity = .noValue,
 
-pub fn loadFrom(self: *@This(), id: main.entity.Entity, zon: ZonElement, comptime side: main.sync.Side, defaultPos: Vec3d) !void {
+pub fn loadFrom(self: *@This(), id: main.entity.Entity, zon: ZonElement, comptime side: main.sync.Side) !void {
 	self.id = id;
 	if (zon.getChildOrNull("components")) |components| {
 		try main.entity.loadComponentsFromBase64(components.as([]const u8) orelse "", self.id, side);
 	}
-	self.pos = switch (side) {
-		.client => &@"cubyz:position".client.find(id, defaultPos).position,
-		.server => &@"cubyz:position".server.find(id, defaultPos).position,
-	};
 	self.vel = zon.get(Vec3d, "velocity") orelse .{0, 0, 0};
 	self.rot = zon.get(Vec3f, "rotation") orelse .{0, 0, 0};
 	self.health = zon.get(f32, "health") orelse self.maxHealth;

@@ -34,6 +34,8 @@ pub const BlockDrop = @import("BlockDrop.zig");
 
 pub const command = @import("command.zig");
 
+const @"cubyz:position" = main.entity.components.@"cubyz:position";
+
 pub const WorldEditData = struct {
 	const maxWorldEditHistoryCapacity: u32 = 1024;
 
@@ -320,7 +322,7 @@ pub const User = struct { // MARK: User
 			}
 		}
 
-		self.interpolation.init(@ptrCast(&self.player().pos.*), @ptrCast(&self.player().vel));
+		self.interpolation.init(@ptrCast(&(@"cubyz:position".server.get(self.player().id) orelse unreachable).position), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();
 
 		main.entity.components.@"cubyz:player".server.load(self.id, @truncate(self.playerIndex));
@@ -700,7 +702,7 @@ fn update() void { // MARK: update()
 		const id = user.id; // TODO
 		entityData.append(.{
 			.id = id,
-			.pos = user.player().pos.*,
+			.pos = @"cubyz:position".getPosition(user.player().id),
 			.vel = user.player().vel,
 			.rot = user.player().rot,
 		});

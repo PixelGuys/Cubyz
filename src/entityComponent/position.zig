@@ -31,6 +31,19 @@ const c = @import("c");
 pub var entityComponentID: main.entity.EntityComponentId = undefined;
 pub const entityComponentVersion = 0;
 
+pub fn getPosition(entity: Entity, side: main.sync.Side) ?Vec3d {
+	return switch (side) {
+		.client => client.getPosition(entity),
+		.server => server.getPosition(entity),
+	};
+}
+pub fn setPosition(entity: Entity, givenPosition: Vec3d, side: main.sync.Side) void {
+	return switch (side) {
+		.client => client.setPosition(entity, givenPosition),
+		.server => server.setPosition(entity, givenPosition),
+	};
+}
+
 // ############################# Client only stuff ################################
 pub const client = struct {
 	const Component = struct {
@@ -74,11 +87,11 @@ pub const client = struct {
 		components.remove(entity) catch {};
 	}
 
-	pub fn getPosition(entity: Entity) ?Vec3d {
+	fn getPosition(entity: Entity) ?Vec3d {
 		const positionComponent = components.get(entity) orelse return null;
 		return positionComponent.position;
 	}
-	pub fn setPosition(entity: Entity, givenPosition: Vec3d) void {
+	fn setPosition(entity: Entity, givenPosition: Vec3d) void {
 		const positionComponent = components.get(entity) orelse return;
 		positionComponent.position = givenPosition;
 	}
@@ -113,14 +126,7 @@ pub const server = struct {
 			return position;
 		});
 	}
-	pub fn getPosition(entity: Entity) ?Vec3d {
-		const positionComponent = components.get(entity) orelse return null;
-		return positionComponent.position;
-	}
-	pub fn setPosition(entity: Entity, givenPosition: Vec3d) void {
-		const positionComponent = components.get(entity) orelse return;
-		positionComponent.position = givenPosition;
-	}
+
 	pub fn loadFromData(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != entityComponentVersion) return error.InvalidComponentVersion;
 		const ptr: *Component = components.add(main.globalAllocator, entity);
@@ -136,5 +142,14 @@ pub const server = struct {
 	}
 	pub fn unload(entity: Entity) void {
 		components.remove(entity) catch {};
+	}
+
+	fn getPosition(entity: Entity) ?Vec3d {
+		const positionComponent = components.get(entity) orelse return null;
+		return positionComponent.position;
+	}
+	fn setPosition(entity: Entity, givenPosition: Vec3d) void {
+		const positionComponent = components.get(entity) orelse return;
+		positionComponent.position = givenPosition;
 	}
 };

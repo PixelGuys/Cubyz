@@ -27,6 +27,8 @@ const Block = main.blocks.Block;
 const physics = main.physics;
 const KeyBoard = main.KeyBoard;
 
+const @"cubyz:position" = main.entity.components.@"cubyz:position";
+
 pub const camera = struct { // MARK: camera
 	pub var rotation: Vec3f = Vec3f{0, 0, 0};
 	pub var direction: Vec3f = Vec3f{0, 0, 0};
@@ -116,19 +118,19 @@ pub const Player = struct { // MARK: Player
 	pub const jumpHeight = 1.25;
 
 	fn loadFrom(zon: ZonElement) !void {
-		try super.loadFrom(id, zon, .client, undefined);
+		try super.loadFrom(id, zon, .client);
 	}
 
 	pub fn setPosBlocking(newPos: Vec3d) void {
 		mutex.lock();
 		defer mutex.unlock();
-		super.pos.* = newPos;
+		@"cubyz:position".setPosition(super.id, newPos, .client);
 	}
 
 	pub fn getPosBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		return super.pos.*;
+		return @"cubyz:position".getPosition(super.id, .client) orelse unreachable;
 	}
 
 	pub fn getVelBlocking() Vec3d {
@@ -140,7 +142,7 @@ pub const Player = struct { // MARK: Player
 	pub fn getEyePosBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		return eye.pos + super.pos.* + eye.desiredPos;
+		return eye.pos + (@"cubyz:position".getPosition(super.id, .client) orelse unreachable) + eye.desiredPos;
 	}
 
 	pub fn getEyeVelBlocking() Vec3d {
@@ -201,7 +203,7 @@ pub const Player = struct { // MARK: Player
 	}
 
 	pub fn kill(spawnPos: Vec3d) void {
-		Player.super.pos.* = spawnPos;
+		@"cubyz:position".setPosition(Player.id, spawnPos);
 		Player.super.vel = .{0, 0, 0};
 
 		Player.super.health = Player.super.maxHealth;
@@ -628,11 +630,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		return;
 	};
 
-	physics.calculateVolumeProperties(.client, &Player.volumeProperties, Player.super.pos.*, Player.outerBoundingBox, physics.playerAirTerminalVelocity);
+	const playerPos = @"cubyz:position".getPosition(Player.id, .client);
+	physics.calculateVolumeProperties(.client, &Player.volumeProperties, playerPos, Player.outerBoundingBox, physics.playerAirTerminalVelocity);
 	if (Player.isFlying.load(.monotonic)) {
 		Player.friction = .{.current = 20, .mobile = 20};
 	} else {
-		physics.calculateFriction(.client, &Player.volumeProperties, &Player.friction, Player.super.pos.*, Player.outerBoundingBox, Player.onGround);
+		physics.calculateFriction(.client, &Player.volumeProperties, &Player.friction, playerPos, Player.outerBoundingBox, Player.onGround);
 	}
 	var acc = Vec3d{0, 0, 0};
 	const speedMultiplier: f32 = if (Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;

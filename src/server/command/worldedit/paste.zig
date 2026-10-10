@@ -24,7 +24,7 @@ pub fn execute(args: Args, source: Source) void {
 	}
 	const user = source.user;
 	if (user.worldEditData.clipboard) |clipboard| {
-		const pos: Vec3i = @floor(user.player().pos.*);
+		const pos: Vec3i = @floor(@"cubyz:position".getPosition(user.player().id));
 		user.sendMessage("Pasting: {}", .{pos});
 
 		const selection: Blueprint.Selection = .initFromExtent(pos, clipboard.extent());
