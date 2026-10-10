@@ -180,6 +180,11 @@ pub fn build(b: *std.Build) !void {
 		.install_dir = .{.custom = ".."},
 	});
 	b.installDirectory(.{
+		.source_dir = largeAssets.path("sounds"),
+		.install_subdir = "assets/cubyz/sounds/audio/",
+		.install_dir = .{.custom = ".."},
+	});
+	b.installDirectory(.{
 		.source_dir = largeAssets.path("fonts"),
 		.install_subdir = "assets/cubyz/fonts/",
 		.install_dir = .{.custom = ".."},
