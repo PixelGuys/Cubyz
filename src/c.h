@@ -43,6 +43,7 @@
 // used to handle sockets in Windows
 #ifdef _WIN32
 #include <winsock2.h>
+#include <ws2tcpip.h>
 #endif
 
 // used in file monitoring
