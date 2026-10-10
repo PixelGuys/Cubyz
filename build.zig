@@ -87,85 +87,9 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	}
 }
 
-pub fn makeModFeature(io: std.Io, step: *std.Build.Step, name: []const u8) !void {
-	var featureList: std.ArrayListUnmanaged(u8) = .empty;
-	defer featureList.deinit(step.owner.allocator);
-
-	var modDir = try std.Io.Dir.cwd().openDir(io, "mods", .{.iterate = true});
-	defer modDir.close(io);
-
-	var iterator = modDir.iterate();
-	while (try iterator.next(io)) |modEntry| {
-		if (modEntry.kind != .directory) continue;
-
-		var mod = try modDir.openDir(io, modEntry.name, .{});
-		defer mod.close(io);
-
-		var featureDir = mod.openDir(io, name, .{.iterate = true}) catch continue;
-		defer featureDir.close(io);
-
-		var featureWalker = try std.Io.Dir.walk(featureDir, step.owner.allocator);
-		defer featureWalker.deinit();
-
-		var modFeatureList: std.ArrayListUnmanaged([]const u8) = .empty;
-		defer modFeatureList.deinit(step.owner.allocator);
-
-		while (try featureWalker.next(io)) |featureEntry| {
-			if (featureEntry.kind != .file) continue;
-			if (!std.mem.endsWith(u8, featureEntry.basename, ".zig")) continue;
-
-			const normalizedPath = step.owner.dupe(featureEntry.path);
-			defer step.owner.allocator.free(normalizedPath);
-			if (std.Io.Dir.path.sep != '/') std.mem.replaceScalar(u8, normalizedPath, std.Io.Dir.path.sep, '/');
-
-			try modFeatureList.append(step.owner.allocator, step.owner.fmt(
-				\\pub const @"{s}:{s}" = @import("{s}/{s}/{s}");
-			,
-				.{
-					modEntry.name,
-					normalizedPath[0 .. normalizedPath.len - 4],
-					modEntry.name,
-					name,
-					normalizedPath,
-				},
-			));
-		}
-		std.mem.sort([]const u8, modFeatureList.items, {}, struct {
-			fn lessThanFn(_: void, lhs: []const u8, rhs: []const u8) bool {
-				return std.mem.lessThan(u8, lhs, rhs);
-			}
-		}.lessThanFn);
-
-		if (featureList.items.len != 0) try featureList.append(step.owner.allocator, '\n');
-		try featureList.appendSlice(step.owner.allocator, step.owner.fmt(
-			\\// MARK: {s}
-			\\
-		, .{modEntry.name}));
-
-		for (modFeatureList.items, 0..) |item, i| {
-			if (i != 0) try featureList.append(step.owner.allocator, '\n');
-			try featureList.appendSlice(step.owner.allocator, item);
-		}
-		try featureList.append(step.owner.allocator, '\n');
-	}
-
-	const testTextSpaces =
-		\\
-		\\const main = @import("main");
-		\\test "abc" {
-		\\    @setEvalBranchQuota(1000000);
-		\\    main.refAllDeclsRecursiveExceptCImports(@This());
-		\\}
-	;
-	try featureList.appendSlice(step.owner.allocator, try std.mem.replaceOwned(u8, step.owner.allocator, testTextSpaces, "    ", "\t"));
-
-	const file_path = step.owner.fmt("mods/{s}.zig", .{name});
-	try std.Io.Dir.cwd().writeFile(io, .{.data = featureList.items, .sub_path = file_path});
-}
-
-pub fn addModFeatureModule(b: *std.Build, exe: *std.Build.Step.Compile, name: []const u8) !void {
+pub fn addModFeatureModule(b: *std.Build, modFinderStep: *std.Build.Step.Run, exe: *std.Build.Step.Compile, modsFolder: std.Build.LazyPath, name: []const u8) !void {
 	const module = b.createModule(.{
-		.root_source_file = b.path(b.fmt("mods/{s}.zig", .{name})),
+		.root_source_file = try modsFolder.join(b.allocator, b.fmt("{s}.zig", .{name})),
 		.target = exe.root_module.resolved_target,
 		.optimize = exe.root_module.optimize,
 	});
@@ -179,27 +103,23 @@ pub fn addModFeatureModule(b: *std.Build, exe: *std.Build.Step.Compile, name: []
 		exe.step.dependOn(&run_exe_tests.step);
 	}
 	module.addImport("main", exe.root_module);
+	exe.step.dependOn(&modFinderStep.step);
 	exe.root_module.addImport(name, module);
 }
 
 fn addModFeatures(b: *std.Build, exe: *std.Build.Step.Compile) !void {
-	const step = try b.allocator.create(std.Build.Step);
-	step.* = std.Build.Step.init(.{
-		.id = .custom,
-		.name = "Create Mods",
-		.owner = b,
-		.makeFn = makeModFeaturesStep,
+	const modFinder = b.addExecutable(.{
+		.name = "mod_finder",
+		.root_module = b.createModule(.{
+			.root_source_file = b.path("scripts/mod_finder.zig"),
+			.target = b.graph.host,
+		}),
 	});
-	exe.step.dependOn(step);
+	const modFinderStep = b.addRunArtifact(modFinder);
+	modFinderStep.addDirectoryArg(b.path("mods"));
+	modFinderStep.addDirectoryArg(b.path("mods"));
 
-	try addModFeatureModule(b, exe, "rotations");
-}
-
-pub fn makeModFeaturesStep(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
-	var io = std.Io.Threaded.init(options.gpa, .{});
-	defer io.deinit();
-
-	try makeModFeature(io.io(), step, "rotations");
+	try addModFeatureModule(b, modFinderStep, exe, b.path("mods"), "rotations");
 }
 
 fn createLaunchConfig(b: *std.Build) !void {
@@ -211,6 +131,7 @@ fn createLaunchConfig(b: *std.Build) !void {
 			\\    .cubyzDir = "",
 			\\    .autoEnterWorld = "",
 			\\    .headlessServer = false,
+			\\    .threadPoolThreads = null, // Number of threads used by the threadPool, default is number of CPU cores - 1 (to leave room for rendering, audio, networking, server ticks, OS)
 			\\    // .preferredAuthenticationAlgorithm = .ed25519, // Uncomment and change this if you own a server in an outdated game version where the default algorithm got compromised.
 			\\}
 		;
@@ -237,18 +158,17 @@ pub fn build(b: *std.Build) !void {
 	const options = b.addOptions();
 	const isRelease = b.option(bool, "release", "Removes the -dev flag from the version") orelse false;
 	const sanitizeThread = b.option(bool, "sanitizeThread", "enables the builtin thread sanitizer");
-	const version = b.fmt("0.5.0{s}", .{if (isRelease) "" else "-dev"});
-	if (b.option([]const u8, "version", "used by the CI to check if the git tag and game version match")) |tagVersion| {
-		const tagVersionUpperbound: usize = std.mem.indexOfScalar(u8, tagVersion, '-') orelse tagVersion.len;
-		const versionUpperbound: usize = std.mem.indexOfScalar(u8, version, '-') orelse version.len;
-		const tagParsed = try std.SemanticVersion.parse(tagVersion[0..tagVersionUpperbound]);
-		const versionParsed = try std.SemanticVersion.parse(version[0..versionUpperbound]);
-		if (std.SemanticVersion.order(tagParsed, versionParsed) != .eq) {
-			std.log.err("Provided version {s} does not match version in build.zig: {s}", .{tagVersion, version});
+	var version = try std.SemanticVersion.parse("0.5.0");
+	if (b.option([]const u8, "version", "used by the CI to set the patch version, major and minor must match the ones in build.zig")) |tagVersion| {
+		const tagParsed = try std.SemanticVersion.parse(tagVersion);
+		if (tagParsed.major != version.major or tagParsed.minor != version.minor) {
+			std.log.err("Provided version {s} does not match version in build.zig: {f}", .{tagVersion, version});
 			return error.VersionMismatch;
 		}
+		version.patch = tagParsed.patch;
 	}
-	options.addOption([]const u8, "version", version);
+	if (!isRelease) version.pre = "dev";
+	options.addOption([]const u8, "version", b.fmt("{f}", .{version}));
 	options.addOption(bool, "isTaggedRelease", isRelease);
 
 	const useLocalDeps = b.option(bool, "local", "Use local cubyz_deps") orelse false;
