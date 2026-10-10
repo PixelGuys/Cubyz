@@ -4,7 +4,7 @@ const main = @import("main");
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 
-pub const GuiComponent = union(enum) {
+pub const GuiComponent = union(enum) { // MARK: GuiComponent
 	pub const BagSlot = @import("components/BagSlot.zig");
 	pub const Button = @import("components/Button.zig");
 	pub const CheckBox = @import("components/CheckBox.zig");

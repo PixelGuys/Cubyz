@@ -1,5 +1,5 @@
 .{
-	.properties = .{
+	.climate = .{
 		.wet,
 	},
 	.minHeightLimit = 7,

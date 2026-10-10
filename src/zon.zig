@@ -5,7 +5,7 @@ const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ListManaged = main.ListManaged;
 
-pub const ZonElement = union(enum) { // MARK: Zon
+pub const ZonElement = union(enum) { // MARK: ZonElement
 	int: i128,
 	float: f64,
 	string: []const u8,

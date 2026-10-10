@@ -30,6 +30,7 @@ pub const stdin_handler = @import("stdin_handler.zig");
 pub const storage = @import("storage.zig");
 pub const permission = @import("permission.zig");
 pub const players = @import("players.zig");
+pub const BlockDrop = @import("BlockDrop.zig");
 
 pub const command = @import("command.zig");
 
@@ -232,9 +233,10 @@ pub const User = struct { // MARK: User
 		self.jobQueue.deinit();
 	}
 
-	pub fn identifyFromKeysAndName(self: *User, name: []const u8, keys: main.ZonElement) !void {
+	pub fn identifyFromKeysAndName(self: *User, name: []const u8, keys: main.ZonElement, whitelistEnabled: bool) !void {
 		std.debug.assert(self.name.len == 0);
 		self.name = main.globalAllocator.dupe(u8, name);
+		var allowedToJoin = !whitelistEnabled;
 		{
 			const keyBase64 = keys.get([]const u8, @tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm)) orelse return error.PublicKeyNotPresent;
 			self.key = try .initFromBase64(keyBase64, main.settings.launchConfig.preferredAuthenticationAlgorithm);
@@ -245,7 +247,9 @@ pub const User = struct { // MARK: User
 			const keyBase64 = keys.get([]const u8, keyTypeName) orelse continue;
 			const keyWithType = main.stackAllocator.print("{s}:{s}", .{keyTypeName, keyBase64});
 			defer main.stackAllocator.free(keyWithType);
-			self.playerIndex = main.server.players.lookupIndex(keyWithType) orelse continue;
+			const lookup = main.server.players.lookupIndex(keyWithType) orelse continue;
+			self.playerIndex = lookup.playerIndex;
+			allowedToJoin = !lookup.blocked;
 			foundKey = true;
 			const keyType = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, keyTypeName).?;
 			if (keyType == self.key) break;
@@ -256,11 +260,21 @@ pub const User = struct { // MARK: User
 			if (main.server.players.isEmpty()) { // Claim the local player
 				std.log.info("Here", .{});
 				self.playerIndex = main.server.players.getLocalPlayerIndex();
+				allowedToJoin = true;
 			} else {
 				const nameEntry = main.stackAllocator.print("name:{s}", .{name});
 				defer main.stackAllocator.free(nameEntry);
-				self.playerIndex = main.server.players.lookupIndex(nameEntry) orelse main.server.players.allocateNewIndex();
+				if (main.server.players.lookupIndex(nameEntry)) |lookup| {
+					self.playerIndex = lookup.playerIndex;
+					allowedToJoin = !lookup.blocked;
+				} else {
+					self.playerIndex = main.server.players.allocateNewIndex();
+				}
 			}
+		}
+		if (!allowedToJoin) {
+			std.log.info("Rejected connection from '{s}' ({s})", .{name, self.newKeyString.?});
+			return error.NotWhitelisted;
 		}
 	}
 
@@ -296,11 +310,14 @@ pub const User = struct { // MARK: User
 		}
 		if (main.entity.components.@"cubyz:permissions".server.get(self.id) == null) {
 			main.entity.components.@"cubyz:permissions".server.loadEmpty(self.id);
-			main.entity.components.@"cubyz:permissions".server.addPermission(self.id, .white, "/command/avatar");
-			main.entity.components.@"cubyz:permissions".server.addPermission(self.id, .white, "/command/help");
 		}
+		main.entity.components.@"cubyz:permissions".server.addToGroup(self.id, permission.Group.default);
+
 		if (self.isLocal) {
-			main.entity.components.@"cubyz:permissions".server.addPermission(self.id, .white, "/");
+			main.entity.components.@"cubyz:permissions".server.addToGroup(self.id, permission.Group.moderator);
+			if (world.?.settings.allowCheats) {
+				main.entity.components.@"cubyz:permissions".server.addPermission(self.id, .white, "/");
+			}
 		}
 
 		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
@@ -568,7 +585,7 @@ var restart: bool = true;
 
 var lastTime: std.Io.Timestamp = undefined;
 
-pub var thread: ?std.Thread = null;
+var thread: ?std.Thread = null;
 
 fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void { // MARK: init()
 	main.heap.allocators.createWorldArena();
@@ -608,9 +625,10 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 }
 
 fn deinit() void {
-	connectionManager.pause();
 	main.threadPool.pause();
 	defer main.threadPool.@"continue"();
+
+	connectionManager.pause();
 
 	main.threadPool.unschedulePlayers();
 
@@ -705,7 +723,17 @@ fn update() void { // MARK: update()
 	}
 }
 
-pub fn startFromNewThread(name: []const u8, port: ?u16, mode: ServerWorld.Mode) void {
+pub fn startAndCreateThread(name: []const u8, port: u16, mode: ServerWorld.Mode) void {
+	thread = std.Thread.spawn(.{}, main.server.startFromNewThread, .{name, port, mode}) catch |err| {
+		std.log.err("Encountered error while starting server thread: {s}", .{@errorName(err)});
+		return;
+	};
+	thread.?.setName(main.io, "Server") catch |err| {
+		std.log.err("Failed to rename Server thread: {s}", .{@errorName(err)});
+	};
+}
+
+fn startFromNewThread(name: []const u8, port: u16, mode: ServerWorld.Mode) void {
 	main.initThreadLocals();
 	defer main.deinitThreadLocals();
 	startFromExistingThread(name, port, mode);
@@ -759,12 +787,15 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16, mode: ServerWorld.M
 	}
 }
 
-pub const StopType = enum { stop, restart };
-pub fn stop(_restart: StopType) void {
-	if (_restart == .restart) {
+pub const StopType = enum { stop, stopAndWait, restart };
+pub fn stop(typ: StopType) void {
+	if (typ == .restart) {
 		restart = true;
 	}
 	running.store(false, .release);
+	if (typ == .stopAndWait) {
+		if (thread) |t| t.join();
+	}
 }
 
 pub fn disconnect(user: *User) void { // MARK: disconnect()

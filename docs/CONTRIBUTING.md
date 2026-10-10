@@ -45,6 +45,22 @@ To have more success it would help to split things up into smaller PRs, maybe st
 
 This saves time on your end spent reworking your large pull request 10 times. And reviewing your large pull request 10 times is also not fun.
 
+# Build on existing systems and collaborate instead of making your own thing
+
+It seems easy to start out by making something that is new and isolated, entirely written by you, but such contributions are the most difficult to review, and the least helpful to the project, as they often require lengthy design discussion and may end up getting abandoned half-way wasting everyone's time and energy.
+
+Cubyz is still early in development and still missing many core systems, so it's even more tempting to make them by yourself, and how hard can it be?
+And it is probably pretty easy to get the basics going, but at the end of the day basic is not good enough for Cubyz. We want to have solid and future-proof systems, not something that we need to painstackingly refactor (including migrations for old worlds) next year.
+
+New systems are of course still required, but they should be approached cautiously. Sometimes a bold leap forward is the right approach, but some discussions ahead of time can prevent a lot of frustration and wasted effort. And even if you are the best programmer in the world, a system that only you understand is just a waste of time in Open Source.
+
+At the same time we already have many half-baked systems and half-finished refactorings, some completely abandoned, that are justing waiting for someone like you to finish them.
+So instead of going out on your own to implement something new that may get stalled for months, maybe take a look around the codebase, the issue tracker, existing PRs, and talk to some fellow contributors on [Discord](https://discord.gg/XtqCRRG) on how you can best collaborate and bring value to the project.
+
+The best and most useful pull requests, are the ones that were made by multiple people.
+
+Stronger Together
+
 # Write correct, readable and maintainable code
 
 ## Explicitly handle all errors
@@ -150,6 +166,8 @@ There are a few more things not covered by the formatter:
 - **Parenthesis and operator precedence:** You should know the basics of operator precedence:<br>
   assignment ops < bool ops < compare ops < bitwise ops < shift ops < add/sub < mul/div < unary ops<br>
   Only add parenthesis if you need them. Precedence on the right side of the spectrum (unary and mul/div/mod) is also shown visually (enforced by the formatter) through spacing: `x = -a + b*c` instead of `x = - a + b * c`
+
+Some of these things may be checked for by the linter. Generally violations of these guidelines that the linter can detect are rare, but in case you do find yourself needing to check your code frequently you can download the precompiled binaries [here](https://github.com/PixelGuys/Cubyz-linter/releases/latest).
 
 # Don't put multiple changes into one pull request
 

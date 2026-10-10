@@ -76,7 +76,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.* = ItemDropManager{
 			.allocator = allocator,
 			.list = std.MultiArrayList(ItemDrop){},
-			.isEmpty = .initFull(),
+			.isEmpty = .full,
 			.changeQueue = .init(allocator, 16),
 			.world = world,
 		};
@@ -582,9 +582,9 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				while (z < 1) : (z += 1) {
 					var x: u32 = 0;
 					while (x < img.width) : (x += 1) {
-						var y: u32 = 0;
-						while (y < img.height) : (y += 1) {
-							dataSection[i] = img.getRGB(x, y).toArgb();
+						var y: u32 = 1;
+						while (y <= img.height) : (y += 1) {
+							dataSection[i] = img.getRGB(x, img.height - y).toArgb();
 							i += 1;
 						}
 					}
@@ -615,10 +615,11 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			"",
 			&itemUniforms,
 			graphics.VertexArray.EmptyVertex,
-			&.{},
-			.{},
-			.{.depthTest = true},
-			.{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
+			.{
+				.rasterState = .{},
+				.depthStencilState = .{.depthTest = true},
+				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
+			},
 		);
 		itemModelSSBO = .init();
 		itemModelSSBO.bufferData(i32, &[3]i32{1, 1, 1});

@@ -69,11 +69,10 @@ pub fn getLocalPlayerIndex() usize {
 	return localPlayerIndex;
 }
 
-pub fn lookupIndex(key: []const u8) ?usize {
+pub fn lookupIndex(key: []const u8) ?PlayerRecord {
 	mutex.lock();
 	defer mutex.unlock();
-	const entry = playerDatabase.get(key) orelse return null;
-	return entry.playerIndex;
+	return playerDatabase.get(key);
 }
 
 pub fn isEmpty() bool {
@@ -164,6 +163,7 @@ fn saveBlocked(index: usize, value: bool) void {
 const AddResult = enum { added, alreadyAllowed };
 
 pub fn add(key: []const u8) AddResult {
+	sync.threadContext.assertCorrectContext(.server);
 	mutex.lock();
 	defer mutex.unlock();
 	const result = ensurePlayerRecord(key);
@@ -176,6 +176,7 @@ pub fn add(key: []const u8) AddResult {
 const BlockResult = enum { blocked, alreadyBlocked };
 
 pub fn block(key: []const u8) BlockResult {
+	sync.threadContext.assertCorrectContext(.server);
 	mutex.lock();
 	defer mutex.unlock();
 	const result = ensurePlayerRecord(key);
@@ -185,27 +186,19 @@ pub fn block(key: []const u8) BlockResult {
 	return if (result.wasNew or !wasBlocked) .blocked else .alreadyBlocked;
 }
 
-pub fn isAllowedToJoin(key: []const u8) bool {
-	sync.threadContext.assertCorrectContext(.server);
-	mutex.lock();
-	defer mutex.unlock();
-	const entry = playerDatabase.get(key) orelse return false;
-	return !entry.blocked;
-}
-
 test "addContainsRemove" {
 	main.heap.allocators.createWorldArena();
 	defer main.heap.allocators.destroyWorldArena();
 
 	init("test", 0);
 
-	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:abc"));
+	try std.testing.expectEqual(null, lookupIndex("ed25519:abc"));
 	try std.testing.expectEqual(.added, add("ed25519:abc"));
 	try std.testing.expectEqual(.alreadyAllowed, add("ed25519:abc"));
-	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:abc"));
+	try std.testing.expectEqual(false, lookupIndex("ed25519:abc").?.blocked);
 	try std.testing.expectEqual(.blocked, block("ed25519:abc"));
 	try std.testing.expectEqual(.alreadyBlocked, block("ed25519:abc"));
-	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:abc"));
+	try std.testing.expectEqual(true, lookupIndex("ed25519:abc").?.blocked);
 }
 
 test "addUnblocks" {
@@ -215,12 +208,12 @@ test "addUnblocks" {
 	init("test", 0);
 
 	try std.testing.expectEqual(.blocked, block("ed25519:xyz"));
-	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:xyz"));
+	try std.testing.expectEqual(true, lookupIndex("ed25519:xyz").?.blocked);
 	try std.testing.expectEqual(.added, add("ed25519:xyz"));
-	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:xyz"));
+	try std.testing.expectEqual(false, lookupIndex("ed25519:xyz").?.blocked);
 }
 
-test "knownPlayerAllowedByDefaultButBlockable" {
+test "lookupIndexDistinguishesKnownAndUnknownKeys" {
 	main.heap.allocators.createWorldArena();
 	defer main.heap.allocators.destroyWorldArena();
 
@@ -228,12 +221,12 @@ test "knownPlayerAllowedByDefaultButBlockable" {
 
 	playerDatabase.put(main.worldArena.allocator, main.worldArena.dupe(u8, "ed25519:known"), .{.playerIndex = 0, .blocked = false}) catch unreachable;
 
-	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:known"));
-	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:unknown"));
+	try std.testing.expectEqual(false, lookupIndex("ed25519:known").?.blocked);
+	try std.testing.expectEqual(null, lookupIndex("ed25519:unknown"));
 
 	try std.testing.expectEqual(.blocked, block("ed25519:known"));
-	try std.testing.expectEqual(false, isAllowedToJoin("ed25519:known"));
+	try std.testing.expectEqual(true, lookupIndex("ed25519:known").?.blocked);
 
 	try std.testing.expectEqual(.added, add("ed25519:known"));
-	try std.testing.expectEqual(true, isAllowedToJoin("ed25519:known"));
+	try std.testing.expectEqual(false, lookupIndex("ed25519:known").?.blocked);
 }

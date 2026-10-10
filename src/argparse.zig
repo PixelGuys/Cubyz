@@ -132,7 +132,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 					};
 				},
 				inline .int => |intInfo| {
-					return std.fmt.parseInt(std.meta.Int(intInfo.signedness, intInfo.bits), arg, 0) catch {
+					return std.fmt.parseInt(@Int(intInfo.signedness, intInfo.bits), arg, 0) catch {
 						errorMessage.print("Expected an integer for <{s}>, found \"{s}\"", .{name, arg});
 						return error.ParseError;
 					};

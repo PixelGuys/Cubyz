@@ -108,6 +108,27 @@ pub const Coordinate = union(enum) {
 	}
 };
 
+pub const Rotation = union(enum) {
+	relative: f32, // Relative rotations are indicated by leading `~`.
+	absolute: f32,
+
+	pub fn parse(_: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!Rotation {
+		const isRelative = arg[0] == '~';
+		const numberSlice = if (isRelative) arg[1..] else arg;
+		if (isRelative and numberSlice.len == 0) return .{.relative = 0};
+		if (isRelative) {
+			return .{.relative = std.math.degreesToRadians(std.fmt.parseFloat(f32, numberSlice) catch {
+				errorMessage.print("Expected number for <{s}>, found \"{s}\"", .{name, numberSlice});
+				return error.ParseError;
+			})};
+		}
+		return .{.absolute = std.math.degreesToRadians(std.fmt.parseFloat(f32, numberSlice) catch {
+			errorMessage.print("Expected number or \"~\" for <{s}>, found \"{s}\"", .{name, arg});
+			return error.ParseError;
+		})};
+	}
+};
+
 pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, source: Source) error{InvalidArg}!main.vec.Vec3d {
 	if (source != .user and (x == .relative or y == .relative or z == .relative)) {
 		source.sendMessage("Command was run without a user; unable to interpret relative coordinates.", .{});
@@ -118,6 +139,19 @@ pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, source: S
 		std.math.clamp(if (x == .relative) source.user.player().pos[0] + x.relative else x.absolute, -1e9, 1e9),
 		std.math.clamp(if (y == .relative) source.user.player().pos[1] + y.relative else y.absolute, -1e9, 1e9),
 		std.math.clamp(if (z == .relative) source.user.player().pos[2] + z.relative else z.absolute, -1e9, 1e9),
+	};
+}
+
+pub fn resolveRotation(yaw: Rotation, pitch: Rotation, source: Source) error{InvalidArg}!main.vec.Vec3f {
+	if (source != .user and (yaw == .relative or pitch == .relative)) {
+		source.sendMessage("Command was run without a user; unable to interpret relative rotation.", .{});
+		return error.InvalidArg;
+	}
+	const bound = std.math.pi/2.0 - 0.001;
+	return .{
+		std.math.clamp(if (yaw == .relative) source.user.player().rot[0] + yaw.relative else yaw.absolute, -bound, bound),
+		0,
+		if (pitch == .relative) source.user.player().rot[2] + pitch.relative else pitch.absolute,
 	};
 }
 
@@ -166,6 +200,26 @@ pub const PlayerIndex = struct {
 			errorMessage.print("Expected and integer after @ for <{s}>, found \"{s}\"", .{name, arg[1..]});
 			return error.ParseError;
 		}};
+	}
+};
+
+pub const KeyString = struct {
+	key: []const u8,
+
+	pub fn parse(_: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!KeyString {
+		const colonIndex = std.mem.indexOfScalar(u8, arg, ':') orelse {
+			errorMessage.print("Expected a public key of the form \"<keyType>:<base64>\" for <{s}>, found \"{s}\"", .{name, arg});
+			return error.ParseError;
+		};
+		const keyType = std.meta.stringToEnum(main.network.authentication.KeyTypeEnum, arg[0..colonIndex]) orelse {
+			errorMessage.print("Unknown key type \"{s}\" for <{s}>", .{arg[0..colonIndex], name});
+			return error.ParseError;
+		};
+		_ = main.network.authentication.PublicKey.initFromBase64(arg[colonIndex + 1 ..], keyType) catch {
+			errorMessage.print("Invalid public key \"{s}\" for <{s}>", .{arg, name});
+			return error.ParseError;
+		};
+		return .{.key = arg};
 	}
 };
 
@@ -224,5 +278,17 @@ pub const PatternExpression = struct {
 			errorMessage.print("Couldn't parse pattern: {s}", .{@errorName(err)});
 			return error.ParseError;
 		}};
+	}
+};
+
+pub const PermissionPath = struct {
+	path: []const u8,
+
+	pub fn parse(_: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!PermissionPath {
+		if (arg[0] != '/') {
+			errorMessage.print("Permission path for <{s}> doesn't begin with a \"/\", got: {s}", .{name, arg});
+			return error.ParseError;
+		}
+		return .{.path = arg};
 	}
 };

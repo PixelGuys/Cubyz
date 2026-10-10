@@ -22,7 +22,7 @@ const Vec2f = vec.Vec2f;
 
 const c = @import("c");
 
-pub const ParticleManager = struct {
+pub const ParticleManager = struct { // MARK: ParticleManager
 	var particleTypesSSBO: SSBO = undefined;
 	var types: main.List(ParticleType) = .empty;
 	var typesLocal: main.List(ParticleTypeLocal) = .empty;
@@ -160,7 +160,7 @@ pub const ParticleManager = struct {
 	}
 };
 
-pub const ParticleSystem = struct {
+pub const ParticleSystem = struct { // MARK: ParticleSystem
 	pub const maxCapacity: u32 = 524288;
 	var particleCount: u32 = 0;
 	var particles: [maxCapacity]Particle = undefined;
@@ -187,14 +187,14 @@ pub const ParticleSystem = struct {
 			"",
 			&uniforms,
 			graphics.VertexArray.EmptyVertex,
-			&.{},
-			.{},
-			.{.depthTest = true, .depthWrite = true},
-			.{.attachments = &.{.noBlending}, .formats = &.{.world}},
+			.{
+				.rasterState = .{},
+				.depthStencilState = .{.depthTest = true, .depthWrite = true},
+				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.world}},
+			},
 		);
 
-		particlesSSBO = SSBO.init();
-		particlesSSBO.createDynamicBuffer(Particle, maxCapacity);
+		particlesSSBO = SSBO.initDynamicSize(Particle, maxCapacity);
 		particlesSSBO.bind(13);
 	}
 
@@ -402,7 +402,7 @@ pub const DirectionMode = union(enum) {
 	}
 };
 
-pub const Emitter = struct {
+pub const Emitter = struct { // MARK: Emitter
 	typ: u16 = 0,
 	collides: bool,
 	spawnShape: SpawnShape,

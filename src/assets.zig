@@ -17,7 +17,7 @@ const files = main.files;
 
 var common: Assets = undefined;
 
-pub const Assets = struct {
+pub const Assets = struct { // MARK: Assets
 	pub const ZonHashMap = std.StringHashMapUnmanaged(ZonElement);
 	pub const BytesHashMap = std.StringHashMapUnmanaged([]const u8);
 	pub const AddonNameToZonMap = std.StringHashMapUnmanaged(ZonElement);
@@ -33,6 +33,7 @@ pub const Assets = struct {
 	entityComponents: ZonHashMap,
 	entityComponentMigrations: AddonNameToZonMap,
 	structureTables: ZonHashMap,
+	musicTracks: ZonHashMap,
 	recipes: ZonHashMap,
 	blockModels: BytesHashMap,
 	blockModelsZon: ZonHashMap,
@@ -56,6 +57,7 @@ pub const Assets = struct {
 			.entityComponents = .{},
 			.entityComponentMigrations = .{},
 			.structureTables = .{},
+			.musicTracks = .{},
 			.recipes = .{},
 			.blockModels = .{},
 			.blockModelsZon = .{},
@@ -79,6 +81,7 @@ pub const Assets = struct {
 		self.entityComponents.deinit(allocator.allocator);
 		self.entityComponentMigrations.deinit(allocator.allocator);
 		self.structureTables.deinit(allocator.allocator);
+		self.musicTracks.deinit(allocator.allocator);
 		self.recipes.deinit(allocator.allocator);
 		self.blockModels.deinit(allocator.allocator);
 		self.blockModelsZon.deinit(allocator.allocator);
@@ -102,6 +105,7 @@ pub const Assets = struct {
 			.entityComponents = self.entityComponents.clone(allocator.allocator) catch unreachable,
 			.entityComponentMigrations = self.entityComponentMigrations.clone(allocator.allocator) catch unreachable,
 			.structureTables = self.structureTables.clone(allocator.allocator) catch unreachable,
+			.musicTracks = self.musicTracks.clone(allocator.allocator) catch unreachable,
 			.recipes = self.recipes.clone(allocator.allocator) catch unreachable,
 			.blockModels = self.blockModels.clone(allocator.allocator) catch unreachable,
 			.blockModelsZon = self.blockModelsZon.clone(allocator.allocator) catch unreachable,
@@ -123,6 +127,7 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "items", true, &self.items, &self.itemMigrations);
 			addon.readAllZon(allocator, "tools", true, &self.proceduralItems, null);
 			addon.readAllZon(allocator, "structure_tables", false, &self.structureTables, null);
+			addon.readAllZon(allocator, "music", true, &self.musicTracks, null);
 			addon.readAllZon(allocator, "biomes", true, &self.biomes, &self.biomeMigrations);
 			addon.readAllZon(allocator, "cave_layers", true, &self.caveLayers, null);
 			addon.readAllZon(allocator, "recipes", false, &self.recipes, null);
@@ -142,7 +147,7 @@ pub const Assets = struct {
 		);
 	}
 
-	const Addon = struct {
+	const Addon = struct { // MARK: Addon
 		name: []const u8,
 		dir: files.Dir,
 
@@ -687,9 +692,10 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		try assignBlockItem(stringId);
 	}
 
-	for (items.itemList) |item| {
-		if (item.displayBlockData != null and item.block == null) {
-			std.log.err("displayBlockData field was set, but there is no block defined for item: '{s}'", .{item.id});
+	var itemIndexIterator = items.iterator();
+	while (itemIndexIterator.next()) |index| {
+		if (index.displayBlockData() != null and index.block() == null) {
+			std.log.err("displayBlockData field was set, but there is no block defined for item: '{s}'", .{index.id()});
 		}
 	}
 
@@ -717,6 +723,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	try sbb.registerBlueprints(&worldAssets.blueprints);
 	try sbb.registerSBB(&worldAssets.structureBuildingBlocks);
 	try main.server.terrain.structures.registerStructureTables(&worldAssets.structureTables);
+	main.audio.music_tracks.registerTracks(&worldAssets.musicTracks);
 
 	iterator = worldAssets.particles.iterator();
 	while (iterator.next()) |entry| {
@@ -803,6 +810,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	biomes.reset();
 	main.server.terrain.cave_layers.reset();
 	main.server.terrain.structures.reset();
+	main.audio.music_tracks.reset();
 	main.models.reset();
 	main.particles.ParticleManager.reset();
 	main.rotation.reset();

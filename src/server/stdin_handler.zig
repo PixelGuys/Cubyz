@@ -15,13 +15,17 @@ pub fn update() void {
 		return;
 	}
 	const result = readFromStdin();
-	if (result == 0) return;
 	if (result == readBuffer.len) {
 		std.log.warn("Input exceeded {} character limit", .{readBuffer.len});
 		while (readFromStdin() != 0) {}
 		return;
 	}
 	const msg = std.mem.trim(u8, readBuffer[0..result], "\n");
+	if (msg.len == 0) return;
+	if (!std.unicode.utf8ValidateSlice(msg)) {
+		std.log.err("Server message contains invalid UTF-8 characters.", .{});
+		return;
+	}
 	if (msg[0] == '/') {
 		main.server.command.execute(msg[1..], .server);
 	} else {
@@ -40,8 +44,10 @@ fn readFromStdin() usize {
 		return 0;
 	};
 	return result.file_read_streaming catch |err| {
-		std.log.err("Error while reading from stdin: {t}", .{err});
 		running = false;
+		// EndOfStream just means we don't get anything anymore from stdin, here we don't need to print an error
+		if (err == error.EndOfStream) return 0;
+		std.log.err("Error while reading from stdin: {t}", .{err});
 		return 0;
 	};
 }
