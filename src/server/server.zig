@@ -320,7 +320,7 @@ pub const User = struct { // MARK: User
 			}
 		}
 
-		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
+		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel.*));
 		self.loadUnloadChunks();
 
 		main.entity.components.@"cubyz:player".server.load(self.id, @truncate(self.playerIndex));
@@ -701,7 +701,7 @@ fn update() void { // MARK: update()
 		entityData.append(.{
 			.id = id,
 			.pos = user.player().pos,
-			.vel = user.player().vel,
+			.vel = user.player().vel.*,
 			.rot = user.player().rot,
 		});
 	}
