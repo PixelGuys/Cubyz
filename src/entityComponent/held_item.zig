@@ -55,7 +55,6 @@ pub const client = struct {
 		var ptr: *Component = undefined;
 		if (components.get(entity)) |p| {
 			ptr = p;
-			ptr.deinit();
 		} else {
 			ptr = components.add(main.globalAllocator, entity);
 		}
@@ -74,8 +73,8 @@ pub const server = struct {
 	pub const Component = struct {
 		heldItem: ?items.Item,
 		pub fn save(self: Component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
-			if (audience != .disk and audience != .playerHimself) return .discard;
-			if (self.heldItem != null) items.Item.toBytes(self.heldItem, writer);
+			_ = audience;
+			if (self.heldItem != null) items.Item.toBytes(self.heldItem orelse return .discard, writer);
 			return .save;
 		}
 	};
@@ -96,20 +95,20 @@ pub const server = struct {
 	}
 	pub fn setHeldItem(entity: Entity, newItem: items.Item) void {
 		const helditem = &(components.get(entity) orelse return).heldItem;
-		helditem = newItem;
+		helditem.* = newItem;
 	}
 	pub fn loadFromData(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != entityComponentVersion) return error.InvalidComponentVersion;
 		const heldItem = &components.add(main.globalAllocator, entity).heldItem;
 		if (reader.remaining.len == 0) {
-			heldItem = null;
+			heldItem.* = null;
 			return;
 		}
-		heldItem = items.Item.fromBytes(reader) catch return error.UnreadableComponentData;
+		heldItem.* = items.Item.fromBytes(reader) catch return error.UnreadableComponentData;
 	}
 	pub fn loadEmpty(entity: Entity) void {
 		const heldItem = &components.add(main.globalAllocator, entity).heldItem;
-		heldItem = null;
+		heldItem.* = null;
 	}
 	pub fn unload(entity: Entity) void {
 		components.remove(entity) catch return;

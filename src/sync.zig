@@ -283,6 +283,7 @@ pub const Command = struct { // MARK: Command
 		updateBlock = 9,
 		addHealth = 10,
 		chatCommand = 12,
+		updateHeldItem = 19,
 	};
 	pub const Payload = union(PayloadType) {
 		open: Open,
