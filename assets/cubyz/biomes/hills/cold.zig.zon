@@ -7,7 +7,7 @@
 	},
 	.ground_structure = .{
 		"cubyz:grass/cold",
-		"2 to 3 cubyz:soil",
+		"2 to 3 cubyz:silt",
 	},
 	.music = "cubyz:totaldemented/hypoxia",
 	.structures = .{
