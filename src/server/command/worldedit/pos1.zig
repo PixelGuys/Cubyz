@@ -17,7 +17,7 @@ pub fn execute(_: Args, source: Source) void {
 		return;
 	}
 	const user = source.user;
-	const pos: Vec3i = @floor(user.player().pos);
+	const pos: Vec3i = @floor(user.player().pos.*);
 
 	user.worldEditData.selectionPosition1 = pos;
 	main.network.protocols.genericUpdate.sendWorldEditPos(user.conn, .selectedPos1, pos);

@@ -284,7 +284,7 @@ pub const server = struct { // MARK: server
 						defer main.stackAllocator.free(userList);
 						for (userList) |callbackUser| {
 							if (callbackUser.id == callbackSource.workbench.playerId) {
-								sync.server.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, callbackUser.player().pos)}, null);
+								sync.server.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, callbackUser.player().pos.*)}, null);
 								break;
 							}
 						}

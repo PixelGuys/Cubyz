@@ -116,9 +116,9 @@ pub fn execute(args: Args, source: Source) void {
 		},
 		inline .@"/tp <destinationPlayerIndex>", .@"/tp <sourcePlayerIndex> <destinationPlayerIndex>" => |index| {
 			const dest = command.Target.fromPlayerIndex(index.destinationPlayerIndex, source) catch return;
-			break :blk dest.user.player().pos;
+			break :blk dest.user.player().pos.*;
 		},
 	};
 
-	if (!std.meta.eql(target.user.player().pos, pos)) main.network.protocols.genericUpdate.sendTPCoordinates(target.user.conn, pos);
+	if (!std.meta.eql(target.user.player().pos.*, pos)) main.network.protocols.genericUpdate.sendTPCoordinates(target.user.conn, pos);
 }

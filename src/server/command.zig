@@ -136,9 +136,9 @@ pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, source: S
 	}
 	return .{
 		// TODO: Remove clamp after #310 is implemented
-		std.math.clamp(if (x == .relative) source.user.player().pos[0] + x.relative else x.absolute, -1e9, 1e9),
-		std.math.clamp(if (y == .relative) source.user.player().pos[1] + y.relative else y.absolute, -1e9, 1e9),
-		std.math.clamp(if (z == .relative) source.user.player().pos[2] + z.relative else z.absolute, -1e9, 1e9),
+		std.math.clamp(if (x == .relative) source.user.player().pos.*[0] + x.relative else x.absolute, -1e9, 1e9),
+		std.math.clamp(if (y == .relative) source.user.player().pos.*[1] + y.relative else y.absolute, -1e9, 1e9),
+		std.math.clamp(if (z == .relative) source.user.player().pos.*[2] + z.relative else z.absolute, -1e9, 1e9),
 	};
 }
 
