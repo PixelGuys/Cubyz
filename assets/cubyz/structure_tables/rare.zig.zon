@@ -1,7 +1,7 @@
 .{
 	.id = "cubyz:rare",
 	.tags = .{},
-	.chance = 0.000005,
+	.chance = 0.00005,
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
@@ -12,6 +12,11 @@
 			.id = "cubyz:sbb",
 			.placeMode = .degradable,
 			.structure = "cubyz:rare/mushroom_pole/base",
+		},
+		.{
+			.id = "cubyz:sbb",
+			.placeMode = .degradable,
+			.structure = "cubyz:rare/fingerpost/base",
 		},
 	},
 }
