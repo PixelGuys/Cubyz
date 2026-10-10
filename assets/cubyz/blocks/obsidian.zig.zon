@@ -1,5 +1,5 @@
 .{
-	.tags = .{.mineable},
+	.tags = .{.mineable, .allowOres},
 	.blockHealth = 16,
 	.blockResistance = 2,
 	.drops = .{
@@ -21,7 +21,6 @@
 			},
 		},
 	},
-	.allowOres = true,
 	.rotation = "cubyz:stairs",
 	.model = "cubyz:cube",
 	.texture = "cubyz:obsidian",
