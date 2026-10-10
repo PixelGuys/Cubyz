@@ -134,7 +134,7 @@ pub const Player = struct { // MARK: Player
 	pub fn getVelBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		return super.vel;
+		return super.vel.*;
 	}
 
 	pub fn getEyePosBlocking() Vec3d {
@@ -202,7 +202,7 @@ pub const Player = struct { // MARK: Player
 
 	pub fn kill(spawnPos: Vec3d) void {
 		Player.super.pos = spawnPos;
-		Player.super.vel = .{0, 0, 0};
+		Player.super.vel.* = .{0, 0, 0};
 
 		Player.super.health = Player.super.maxHealth;
 		Player.super.energy = Player.super.maxEnergy;
@@ -795,7 +795,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	const gravity: f64 = if (Player.isFlying.load(.monotonic)) 0.0 else physics.baseGravity;
 	const jumpHeight: f64 = if (jumping) Player.jumpHeight else 0.0;
-	var motion = physics.calculateMotion(.client, deltaTime, Player.friction, Player.volumeProperties, physics.playerDensity, Player.super.pos, &Player.super.vel, acc, gravity, jumpHeight);
+	var motion = physics.calculateMotion(.client, deltaTime, Player.friction, Player.volumeProperties, physics.playerDensity, Player.super.pos, Player.super.vel, acc, gravity, jumpHeight);
 
 	{
 		Player.mutex.lock();
@@ -804,16 +804,16 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		var stepAmount: f64 = 0.0;
 		if (!Player.isGhost.load(.monotonic)) {
 			const steppingHeightLimit = Player.eye.pos[2] - Player.eye.box.min[2];
-			stepAmount = physics.calculateWallCollision(.client, &motion, &Player.super.pos, &Player.super.vel, &Player.onGround, Player.friction, Player.outerBoundingBox, Player.steppingHeight()[2], steppingHeightLimit, Player.crouching);
+			stepAmount = physics.calculateWallCollision(.client, &motion, &Player.super.pos, Player.super.vel, &Player.onGround, Player.friction, Player.outerBoundingBox, Player.steppingHeight()[2], steppingHeightLimit, Player.crouching);
 		}
-		physics.calculateEyeMovement(.client, deltaTime, Player.super.pos, Player.super.vel, &Player.eye, stepAmount);
+		physics.calculateEyeMovement(.client, deltaTime, Player.super.pos, Player.super.vel.*, &Player.eye, stepAmount);
 		var didCollide: bool = false;
 		const wasOnGround = Player.onGround;
 		const prevPos = Player.super.pos;
-		const prevVel = Player.super.vel;
+		const prevVel = Player.super.vel.*;
 		if (!Player.isGhost.load(.monotonic)) {
 			const bouncinessMultiplier: f64 = if (Player.isFlying.load(.monotonic)) 0.0 else if (Player.crouching) 0.5 else 1.0;
-			didCollide = physics.calculateVerticalCollision(.client, deltaTime, &Player.super.pos, &Player.super.vel, &Player.jumpCoyote, &Player.onGround, Player.outerBoundingBox, motion, bouncinessMultiplier);
+			didCollide = physics.calculateVerticalCollision(.client, deltaTime, &Player.super.pos, Player.super.vel, &Player.jumpCoyote, &Player.onGround, Player.outerBoundingBox, motion, bouncinessMultiplier);
 			if (didCollide) {
 				const velocityChange = @abs(@abs(prevVel[2]) - @abs(Player.super.vel[2]));
 				const damage: f32 = @floatCast(@round(@max((velocityChange*velocityChange)/(2*physics.baseGravity) - 7, 0))/2);
@@ -821,7 +821,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 					main.sync.addHealth(-damage, .fall, .client, Player.id);
 				}
 			}
-			physics.calculateVerticalCollisionEyeMovement(deltaTime, &Player.eye, didCollide, Player.onGround, wasOnGround, prevPos, Player.super.pos, prevVel, Player.super.vel, motion, Player.steppingHeight()[2]);
+			physics.calculateVerticalCollisionEyeMovement(deltaTime, &Player.eye, didCollide, Player.onGround, wasOnGround, prevPos, Player.super.pos, prevVel, Player.super.vel.*, motion, Player.steppingHeight()[2]);
 			physics.collision.touchBlocks(.client, &Player.super, Player.outerBoundingBox, deltaTime);
 		} else {
 			Player.super.pos += motion;
