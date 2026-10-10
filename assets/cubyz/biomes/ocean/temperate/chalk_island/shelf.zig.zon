@@ -19,14 +19,4 @@
 			.smoothness = 0.1,
 		},
 	},
-	.parentBiomes = .{
-		.{
-			.id = "cubyz:ocean/temperate/base",
-			.chance = 0.6,
-		},
-		.{
-			.id = "cubyz:ocean/temperate/chalk_archipelago",
-			.chance = 15,
-		},
-	},
 }

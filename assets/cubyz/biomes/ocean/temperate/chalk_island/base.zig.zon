@@ -1,7 +1,7 @@
 .{
 	.interpolation = .none,
 	.interpolationWeight = 0.8,
-	.minHeight = 50,
+	.minHeight = -100,
 	.maxHeight = 56,
 	.radius = 80,
 	.soilCreep = 4,
@@ -56,9 +56,12 @@
 	},
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:ocean/temperate/chalk_island/shelf",
-			.chance = 1,
-			.parentEdgeDistance = 45,
+			.id = "cubyz:ocean/temperate/base",
+			.chance = 0.6,
+		},
+		.{
+			.id = "cubyz:ocean/temperate/chalk_archipelago",
+			.chance = 15,
 		},
 	},
 }
