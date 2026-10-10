@@ -13,5 +13,10 @@
 			.placeMode = .degradable,
 			.structure = "cubyz:rare/mushroom_pole/base",
 		},
+		.{
+			.id = "cubyz:sbb",
+			.placeMode = .degradable,
+			.structure = "cubyz:rare/fingerpost/base",
+		},
 	},
 }
