@@ -4,6 +4,8 @@ const main = @import("main");
 const Source = main.server.command.Source;
 const Vec3i = main.vec.Vec3i;
 
+const @"cubyz:position" = main.entity.components.@"cubyz:position";
+
 pub const description = "Select the player position as position 1.";
 pub const usage = "/pos1";
 
@@ -17,7 +19,7 @@ pub fn execute(_: Args, source: Source) void {
 		return;
 	}
 	const user = source.user;
-	const pos: Vec3i = @floor(user.player().pos);
+	const pos: Vec3i = @floor(@"cubyz:position".getPosition(user.player().id));
 
 	user.worldEditData.selectionPosition1 = pos;
 	main.network.protocols.genericUpdate.sendWorldEditPos(user.conn, .selectedPos1, pos);

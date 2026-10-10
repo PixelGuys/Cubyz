@@ -21,6 +21,7 @@ const ZonElement = main.ZonElement;
 const BlockDrop = main.server.BlockDrop;
 
 const @"cubyz:bag" = main.entity.components.@"cubyz:bag";
+const @"cubyz:position" = main.entity.components.@"cubyz:position";
 
 pub const Side = enum { client, server };
 
@@ -1163,7 +1164,7 @@ pub const Command = struct { // MARK: Command
 			const amount = @min(self.source.ref().amount, self.desiredAmount);
 			if (ctx.side == .server) {
 				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -ctx.user.?.player().rot[0]), -ctx.user.?.player().rot[2]);
-				main.server.world.?.dropWithCooldown(.{.item = self.source.ref().item.clone(), .amount = amount}, ctx.user.?.player().pos, direction, 20, main.server.updatesPerSec*2);
+				main.server.world.?.dropWithCooldown(.{.item = self.source.ref().item.clone(), .amount = amount}, @"cubyz:position".getPosition(ctx.user.?.player().id, .server) orelse return, direction, 20, main.server.updatesPerSec*2);
 			}
 			ctx.execute(.{.delete = .{
 				.source = self.source,
@@ -1346,7 +1347,7 @@ pub const Command = struct { // MARK: Command
 			return .{
 				.destinations = destinations,
 				.source = Inventory.getInventory(sourceId, side, user) orelse return error.InventoryNotFound,
-				.dropLocation = (user orelse return error.Invalid).player().pos,
+				.dropLocation = @"cubyz:position".getPosition((user orelse return error.Invalid).player().id, side) orelse return error.MissingPositionComponent,
 			};
 		}
 	};
