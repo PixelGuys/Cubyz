@@ -182,9 +182,9 @@ const Shader = struct { // MARK: Shader
 		shader.link(fragment) catch return shader;
 
 		if (@TypeOf(uniformStruct) != @TypeOf(null)) {
-			inline for (@typeInfo(@TypeOf(uniformStruct.*)).@"struct".fields) |field| {
-				if (field.type == c_int) {
-					@field(uniformStruct, field.name) = c.glGetUniformLocation(shader.id, field.name[0..]);
+			inline for (@typeInfo(@TypeOf(uniformStruct.*)).@"struct".field_names, @typeInfo(@TypeOf(uniformStruct.*)).@"struct".field_types) |field, fieldType| {
+				if (fieldType == c_int) {
+					@field(uniformStruct, field) = c.glGetUniformLocation(shader.id, field[0..]);
 				}
 			}
 		}
@@ -197,9 +197,9 @@ const Shader = struct { // MARK: Shader
 		shader.link(compute) catch return shader;
 
 		if (@TypeOf(uniformStruct) != @TypeOf(null)) {
-			inline for (@typeInfo(@TypeOf(uniformStruct.*)).@"struct".fields) |field| {
-				if (field.type == c_int) {
-					@field(uniformStruct, field.name) = c.glGetUniformLocation(shader.id, field.name[0..]);
+			inline for (@typeInfo(@TypeOf(uniformStruct.*)).@"struct".field_names, @typeInfo(@TypeOf(uniformStruct.*)).@"struct".field_types) |field, fieldType| {
+				if (fieldType == c_int) {
+					@field(uniformStruct, field) = c.glGetUniformLocation(shader.id, field[0..]);
 				}
 			}
 		}

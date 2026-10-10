@@ -27,8 +27,8 @@ pub var bytesReceived: [256]Atomic(usize) = @splat(.init(0));
 pub var bytesSent: [256]Atomic(usize) = @splat(.init(0));
 
 pub fn init() void { // MARK: init()
-	inline for (@typeInfo(@This()).@"struct".decls) |decl| {
-		const Protocol = @field(@This(), decl.name);
+	inline for (@typeInfo(@This()).@"struct".decl_names) |decl| {
+		const Protocol = @field(@This(), decl);
 		if (@TypeOf(Protocol) == type and @hasDecl(Protocol, "id")) {
 			const id = Protocol.id;
 			if (clientReceiveList[id] == null and serverReceiveList[id] == null) {
@@ -88,7 +88,7 @@ pub const reload = struct { // MARK: reload
 
 pub const handShake = struct { // MARK: handShake
 	pub const id: u8 = 1;
-	var assetsLoadedCondition: main.utils.Condition = .{};
+	var assetsLoadedCondition: std.Io.Condition = .init;
 	var hasFinishedLoadingAssets: bool = false;
 	var handshakeZon: ZonElement = undefined;
 
@@ -126,10 +126,10 @@ pub const handShake = struct { // MARK: handShake
 					handshakeZon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
 					defer handshakeZon.deinit(main.stackAllocator);
 					conn.handShakeState.store(.complete, .monotonic);
-					conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
+					conn.handShakeWaiting.broadcast(main.io); // Notify the waiting client thread.
 					conn.mutex.lock();
 					while (!hasFinishedLoadingAssets) {
-						assetsLoadedCondition.wait(&conn.mutex);
+						assetsLoadedCondition.waitUncancelable(main.io, &conn.mutex.super);
 					}
 					conn.mutex.unlock();
 					hasFinishedLoadingAssets = false;
@@ -276,7 +276,7 @@ pub const handShake = struct { // MARK: handShake
 			const expectedRestartCounter = conn.restartCounter;
 			while (true) {
 				try main.io.checkCancel();
-				conn.handShakeWaiting.timedWait(&conn.mutex, .fromMilliseconds(16)) catch {
+				conn.handShakeWaiting.waitTimeout(main.io, &conn.mutex.super, .{.duration = .{.raw = .fromMilliseconds(16), .clock = .awake}}) catch {
 					main.heap.GarbageCollection.syncPoint();
 					continue;
 				};
@@ -293,7 +293,7 @@ pub const handShake = struct { // MARK: handShake
 
 	pub fn signalLoadedAssets() void {
 		main.network.protocols.handShake.hasFinishedLoadingAssets = true;
-		main.network.protocols.handShake.assetsLoadedCondition.signal();
+		main.network.protocols.handShake.assetsLoadedCondition.signal(main.io);
 	}
 };
 

@@ -224,21 +224,21 @@ fn rayTriangleIntersection(origin: Vec3f, direction: Vec3f, triangle: [3]Vec3f) 
 
 pub fn init() void {
 	rotationModes = .init(main.globalAllocator.allocator);
-	inline for (@typeInfo(rotations).@"struct".decls) |declaration| {
-		register(declaration.name, @field(rotations, declaration.name));
+	inline for (@typeInfo(rotations).@"struct".decl_names) |declaration| {
+		register(declaration, @field(rotations, declaration));
 	}
 }
 
 pub fn reset() void {
-	inline for (@typeInfo(rotations).@"struct".decls) |declaration| {
-		@field(rotations, declaration.name).reset();
+	inline for (@typeInfo(rotations).@"struct".decl_names) |declaration| {
+		@field(rotations, declaration).reset();
 	}
 }
 
 pub fn deinit() void {
 	rotationModes.deinit();
-	inline for (@typeInfo(rotations).@"struct".decls) |declaration| {
-		@field(rotations, declaration.name).deinit();
+	inline for (@typeInfo(rotations).@"struct".decl_names) |declaration| {
+		@field(rotations, declaration).deinit();
 	}
 }
 
@@ -251,12 +251,12 @@ pub fn getByID(id: []const u8) *const RotationMode {
 pub fn register(comptime id: []const u8, comptime Mode: type) void {
 	Mode.init();
 	var result: RotationMode = RotationMode{};
-	inline for (@typeInfo(RotationMode).@"struct".fields) |field| {
-		if (@hasDecl(Mode, field.name)) {
-			if (field.type == @TypeOf(@field(Mode, field.name))) {
-				@field(result, field.name) = @field(Mode, field.name);
+	inline for (@typeInfo(RotationMode).@"struct".field_names, @typeInfo(RotationMode).@"struct".field_types) |field, FieldType| {
+		if (@hasDecl(Mode, field)) {
+			if (FieldType == @TypeOf(@field(Mode, field))) {
+				@field(result, field) = @field(Mode, field);
 			} else {
-				@field(result, field.name) = &@field(Mode, field.name);
+				@field(result, field) = &@field(Mode, field);
 			}
 		}
 	}

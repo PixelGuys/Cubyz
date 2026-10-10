@@ -93,9 +93,9 @@ pub fn hashGeneric(input: anytype) u64 {
 				break :blk input.getHash();
 			}
 			var result: u64 = hashGeneric(@typeName(T));
-			inline for (@typeInfo(T).@"struct".fields) |field| {
-				const keyHash = hashGeneric(@as([]const u8, field.name));
-				const valueHash = hashGeneric(@field(input, field.name));
+			inline for (@typeInfo(T).@"struct".field_names) |field| {
+				const keyHash = hashGeneric(@as([]const u8, field));
+				const valueHash = hashGeneric(@field(input, field));
 				const keyValueHash = hashCombine(keyHash, valueHash);
 				result = hashCombine(result, keyValueHash);
 			}
@@ -197,9 +197,9 @@ pub const Biome = struct { // MARK: Biome
 			var result: ClimateProperties = .{};
 			outer: for (zon.toSlice()) |child| {
 				const climate = child.as([]const u8) orelse "";
-				inline for (@typeInfo(ClimateProperties).@"struct".fields) |field| {
-					if (std.mem.eql(u8, field.name, climate)) {
-						@field(result, field.name) = true;
+				inline for (@typeInfo(ClimateProperties).@"struct".field_names) |field| {
+					if (std.mem.eql(u8, field, climate)) {
+						@field(result, field) = true;
 						continue :outer;
 					}
 				}
@@ -405,7 +405,7 @@ pub const Biome = struct { // MARK: Biome
 	}
 
 	pub fn hasTag(self: Biome, tag: Tag) bool {
-		return std.mem.containsAtLeastScalar(Tag, self.tags, 1, tag);
+		return std.mem.containsAtLeastScalar(Tag, self.tags, tag, 1);
 	}
 };
 

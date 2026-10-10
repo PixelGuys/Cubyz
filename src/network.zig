@@ -189,7 +189,7 @@ const Socket = struct { // MARK: Socket
 	}
 
 	fn resolveIP(name: []const u8, port: u16) !IpAddress {
-		var nameBuf: [255]u8 = undefined;
+		var nameBuf: [254]u8 = undefined;
 		var buf: [16]std.Io.net.HostName.LookupResult = undefined;
 		var resultQueue = std.Io.Queue(std.Io.net.HostName.LookupResult).init(&buf);
 		try std.Io.net.HostName.lookup(try .init(name), main.io, &resultQueue, .{.canonical_name_buffer = &nameBuf, .port = port});
@@ -298,7 +298,7 @@ pub const SocketAddress = struct {
 const Request = struct {
 	address: SocketAddress,
 	data: []const u8,
-	requestNotifier: main.utils.Condition = .{},
+	requestNotifier: std.Io.Condition = .init,
 };
 
 /// Implements parts of the STUN(Session Traversal Utilities for NAT) protocol to discover public IP+Port
@@ -521,7 +521,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	requests: main.List(*Request) = .empty,
 
 	mutex: main.utils.Mutex = .{},
-	waitingToFinishReceive: main.utils.Condition = .{},
+	waitingToFinishReceive: std.Io.Condition = .init,
 	allowNewConnections: bool,
 
 	receiveBuffer: [Connection.maxMtu]u8 = undefined,
@@ -601,7 +601,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		defer self.mutex.unlock();
 
 		for (self.requests.items) |request| {
-			request.requestNotifier.signal();
+			request.requestNotifier.signal(main.io);
 		}
 		self.requests.deinit(main.globalAllocator);
 
@@ -644,7 +644,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			defer self.mutex.unlock();
 			self.requests.append(main.globalAllocator, &request);
 
-			request.requestNotifier.timedWait(&self.mutex, timeout) catch {};
+			request.requestNotifier.waitTimeout(main.io, &self.mutex.super, .{.duration = .{.raw = timeout, .clock = .awake}}) catch {};
 
 			for (self.requests.items, 0..) |req, i| {
 				if (req == &request) {
@@ -681,7 +681,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		std.debug.assert(self.threadId != std.Thread.getCurrentId()); // WOuld cause deadlock, since we are in a receive.
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		self.waitingToFinishReceive.wait(&self.mutex);
+		self.waitingToFinishReceive.waitUncancelable(main.io, &self.mutex.super);
 	}
 
 	pub fn removeConnection(self: *ConnectionManager, conn: *Connection) void {
@@ -719,7 +719,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			for (self.requests.items) |request| {
 				if (request.address.address.eql(&source.address)) {
 					request.data = main.globalAllocator.dupe(u8, data);
-					request.requestNotifier.signal();
+					request.requestNotifier.signal(main.io);
 					return;
 				}
 			}
@@ -751,7 +751,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		var lastExternalPacketTime = lastTime;
 		while (self.running.load(.monotonic)) {
 			main.heap.GarbageCollection.syncPoint();
-			self.waitingToFinishReceive.broadcast();
+			self.waitingToFinishReceive.broadcast(main.io);
 			var source: SocketAddress = undefined;
 			if (self.socket.receive(&self.receiveBuffer, 1, &source)) |data| {
 				self.onReceive(data, source);
@@ -1518,7 +1518,7 @@ pub const Connection = struct { // MARK: Connection
 
 	connectionState: Atomic(ConnectionState),
 	handShakeState: Atomic(HandShakeState) = .init(.start),
-	handShakeWaiting: main.utils.Condition = .{},
+	handShakeWaiting: std.Io.Condition = .init,
 	lastConnectionTime: ?i64,
 
 	// To distinguish different connections from the same computer to avoid multiple reconnects
@@ -1619,7 +1619,7 @@ pub const Connection = struct { // MARK: Connection
 					.connectedVerified, .awaitingReloadVerified => main.game.world.?.shouldReload = true,
 				}
 				main.game.world.?.shouldRestart.store(true, .release);
-				conn.handShakeWaiting.broadcast();
+				conn.handShakeWaiting.broadcast(main.io);
 			}
 		}
 		if (conn.restartChannelCounter[@intFromEnum(channelId)] < restartCounter) {
@@ -1953,7 +1953,7 @@ pub const Connection = struct { // MARK: Connection
 		if (self.user) |user| {
 			main.server.disconnect(user);
 		} else {
-			self.handShakeWaiting.broadcast();
+			self.handShakeWaiting.broadcast(main.io);
 			if (self.handShakeState.load(.monotonic) == .complete) {
 				main.exitToMenu();
 			}
