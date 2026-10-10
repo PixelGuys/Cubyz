@@ -1,0 +1,67 @@
+.{
+	.interpolation = .none,
+	.interpolationWeight = 0.8,
+	.minHeight = -100,
+	.maxHeight = 56,
+	.radius = 80,
+	.soilCreep = 4,
+	.hills = 6,
+	.stoneBlock = "cubyz:chalk/white",
+	.tags = .{
+		.oak,
+	},
+	.ground_structure = .{
+		"cubyz:grass/temperate",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/bush",
+			.placeMode = .degradable,
+			.chance = 0.01,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/white",
+			.placeMode = .degradable,
+			.chance = 0.001,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:grass/vegetation/temperate"},
+			.chance = 0.15,
+			.width = 5,
+			.variation = 3,
+			.density = 0.5,
+			.priority = 0.2,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:daisies"},
+			.chance = 0.003,
+			.width = 10,
+			.variation = 6,
+			.density = 0.4,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:daisies"},
+			.chance = 0.002,
+			.width = 9,
+			.variation = 5,
+			.density = 0.4,
+			.priority = 0.1,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:ocean/temperate/base",
+			.chance = 0.6,
+		},
+		.{
+			.id = "cubyz:ocean/temperate/chalk_archipelago",
+			.chance = 15,
+		},
+	},
+}
