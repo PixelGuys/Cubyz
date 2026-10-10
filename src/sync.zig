@@ -1782,6 +1782,7 @@ pub const Command = struct { // MARK: Command
 			if (ctx.side == .server) {
 				const user = ctx.user orelse return;
 				main.entity.components.@"cubyz:held_item".server.setHeldItem(user.id, self.new.inv.getItem(self.new.slot));
+				main.entity.server.transmitChange(main.entity.components.@"cubyz:held_item", user.id);
 			}
 		}
 
