@@ -24,7 +24,10 @@ pub fn loadFrom(self: *@This(), id: main.entity.Entity, zon: ZonElement, comptim
 		try main.entity.loadComponentsFromBase64(components.as([]const u8) orelse "", self.id, side);
 	}
 	self.pos = zon.get(Vec3d, "position") orelse defaultPos;
-	self.vel = zon.get(Vec3d, "velocity") orelse .{0, 0, 0};
+	self.vel = switch (side) {
+		.client => &@"cubyz:velocity".client.find(id, defaultPos).velocity,
+		.server => &@"cubyz:velocity".server.find(id, defaultPos).velocity,
+	};
 	self.rot = zon.get(Vec3f, "rotation") orelse .{0, 0, 0};
 	self.health = zon.get(f32, "health") orelse self.maxHealth;
 	self.energy = zon.get(f32, "energy") orelse self.maxEnergy;
@@ -47,7 +50,6 @@ pub fn clone(self: *@This(), copy: *@This()) void {
 pub fn save(self: *const @This(), allocator: NeverFailingAllocator, audience: main.entity.AudienceInfo) ZonElement {
 	const zon = ZonElement.initObject(allocator);
 	zon.put("position", self.pos);
-	zon.put("velocity", self.vel);
 	zon.put("rotation", self.rot);
 	zon.put("health", self.health);
 	zon.put("energy", self.energy);
