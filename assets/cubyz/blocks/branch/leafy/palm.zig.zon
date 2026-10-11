@@ -4,9 +4,7 @@
 		.shellModel = "cubyz:cube_hanging_planes",
 		.textureSlotOffset = 6,
 	},
-	.onUpdate = .{
-		.type = .decay,
-	},
+
 	.drops = .{
 		.{.items = .{"cubyz:branch/palm"}},
 		.{.items = .{"cubyz:leaves/palm"}, .allowedToolTags = .{.cuttable}},
