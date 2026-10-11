@@ -1,8 +1,8 @@
 .{
 	.interpolation = .none,
 	.interpolationWeight = 0.8,
-	.minHeight = 50,
-	.maxHeight = 56,
+	.minHeight = 10,
+	.maxHeight = 45,
 	.radius = 80,
 	.soilCreep = 4,
 	.hills = 6,
@@ -14,6 +14,12 @@
 		"cubyz:grass/cold",
 	},
 	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:rock/chalk_amber_deposit/base",
+			.placeMode = .all,
+			.chance = 0.001,
+		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/oak/bush",
@@ -64,7 +70,7 @@
 		.{
 			.id = "cubyz:ocean/cold/chalk_island/shelf",
 			.chance = 1,
-			.parentEdgeDistance = 45,
+			.parentEdgeDistance = 15,
 		},
 	},
 }

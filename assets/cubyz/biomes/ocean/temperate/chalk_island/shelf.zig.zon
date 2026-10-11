@@ -1,10 +1,11 @@
 .{
-	.minHeight = -10,
-	.maxHeight = -3,
+	.minHeight = -18,
+	.maxHeight = -8,
 	.radius = 128,
 	.hills = 4,
 	.maxSubBiomeCount = 1,
 	.stoneBlock = "cubyz:chalk/white",
+	.soilCreep = 2,
 	.ground_structure = .{
 		"2 to 3 cubyz:sand",
 	},
@@ -17,6 +18,16 @@
 			.variation = 2,
 			.depth = 1,
 			.smoothness = 0.1,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:ocean/temperate/base",
+			.chance = 0.1,
+		},
+		.{
+			.id = "cubyz:ocean/temperate/chalk_archipelago",
+			.chance = 15,
 		},
 	},
 }
