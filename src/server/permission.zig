@@ -347,6 +347,7 @@ fn createDefaultPermissionGroups() void {
 
 		Group.default.addPermission(.white, "/command/avatar") catch unreachable;
 		Group.default.addPermission(.white, "/command/help") catch unreachable;
+		Group.default.addPermission(.white, "/command/players") catch unreachable;
 	}
 	{
 		Group.moderator = Group.createGroup("moderator") catch Group.getByName("moderator") catch unreachable;

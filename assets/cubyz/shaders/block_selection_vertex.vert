@@ -4,10 +4,20 @@
 
 layout(location = 0) out vec3 mvVertexPos;
 
+#ifdef OPEN_GL
 layout(location = 2) uniform vec3 modelPosition;
 layout(location = 3) uniform vec3 lowerBounds;
 layout(location = 4) uniform vec3 upperBounds;
 layout(location = 5) uniform float lineSize;
+#else
+layout(push_constant, std430) uniform _ {
+	vec3 modelPosition;
+	vec3 lowerBounds;
+	vec3 upperBounds;
+	float lineSize;
+};
+#endif
+
 
 vec3 offsetVertices[] = vec3[] (
 	vec3(-1, -1, -1),
