@@ -1,5 +1,7 @@
 .{
-
+	.onUpdate = .{
+		.type = .decay,
+	},
 	.drops = .{
 		.{.items = .{"cubyz:branch/willow"}},
 		.{.items = .{"cubyz:leaves/willow"}, .allowedToolTags = .{.cuttable}},

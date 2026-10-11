@@ -1,6 +1,8 @@
 .{
 	.tags = .{.choppable, .cuttable, .sliceable, .leaf, .branch},
-
+	.onUpdate = .{
+		.type = .decay,
+	},
 	.blockHealth = 0.5,
 	.absorbedLight = 0x202830,
 	.alwaysViewThrough = true,
@@ -10,5 +12,5 @@
 		.shellModel = "cubyz:cube",
 		.textureSlotOffset = 6,
 	},
-
+	.decayProhibitor = true,
 }
