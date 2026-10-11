@@ -574,10 +574,10 @@ pub fn updateWindowPositions() void {
 	}
 }
 
-pub fn updateAndRenderGui() void {
+pub fn updateAndRenderGui(deltaTime: f64) void {
 	const mousePos = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 	hoveredAWindow = false;
-	main.utils.system_resources.detectLowRam();
+	main.utils.system_resources.detectLowRam(deltaTime);
 	GuiCommandQueue.executeCommands();
 	if (!main.Window.grabbed) {
 		if (selectedWindow) |selected| {

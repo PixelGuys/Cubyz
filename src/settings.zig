@@ -14,7 +14,7 @@ pub const entityLookback: i16 = 100;
 
 pub const highestSupportedLod: u3 = 5;
 
-pub const alertLowRamKiB: u64 = 1024*1024; // 1GiB
+pub const alertLowRamBytes: u64 = 1024*1024*1024; // 1GiB
 
 pub var lastVersionString: []const u8 = "";
 
