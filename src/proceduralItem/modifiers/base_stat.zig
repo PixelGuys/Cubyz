@@ -26,8 +26,8 @@ fn getModifierName(data: Data) []const u8 {
 pub fn loadData(zon: main.ZonElement) Data {
 	return .{
 		.strength = zon.get(f32, "strength") orelse 0,
-		.targetProperty = main.items.ProceduralItemProperty.fromString(zon.get([]const u8, "targetProperty") orelse "missing targetProperty field") orelse blk: {
-			std.log.err("replacing with .damage", .{});
+		.targetProperty = main.items.ProceduralItemProperty.fromString(zon.get([]const u8, "targetProperty") orelse "|missing targetProperty field|") orelse blk: {
+			std.log.err("Could not find tagProperty {s}. replacing with .damage", .{zon.get([]const u8, "targetProperty") orelse "|missing targetProperty field|"});
 			break :blk .damage;
 		},
 	};
@@ -47,8 +47,8 @@ pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Dat
 
 pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
 	if (data.strength >= 0) {
-		outString.print("{s} #808080(#30ca64+**{d:.0}% #808080{})", .{getModifierName(data), data.strength*100, @tagName(data.targetProperty)});
+		outString.print("{s} #808080(#30ca64+**{d:.0}% #808080{s})", .{getModifierName(data), data.strength*100, @tagName(data.targetProperty)});
 	} else {
-		outString.print("{s} #808080(#fd3535**{d:.0}% #808080{})", .{getModifierName(data), data.strength*100, @tagName(data.targetProperty)});
+		outString.print("{s} #808080(#fd3535**{d:.0}% #808080{s})", .{getModifierName(data), data.strength*100, @tagName(data.targetProperty)});
 	}
 }
