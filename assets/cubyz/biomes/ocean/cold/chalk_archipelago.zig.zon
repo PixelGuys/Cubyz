@@ -15,10 +15,6 @@
 	.hills = 8,
 
 	.music = "cubyz:totaldemented/tides",
-
-	.ground_structure = .{
-		"1 to 2 cubyz:slate/rough",
-	},
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",

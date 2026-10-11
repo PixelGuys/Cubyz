@@ -9,21 +9,10 @@
 	.ground_structure = .{
 		"2 to 3 cubyz:gravel",
 	},
-	.structures = .{
-		.{
-			.id = "cubyz:ground_patch",
-			.block = "cubyz:amber_ore:cubyz:gravel",
-			.chance = 0.012,
-			.width = 1,
-			.variation = 2,
-			.depth = 1,
-			.smoothness = 0.1,
-		},
-	},
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:ocean/cold/base",
-			.chance = 0.1,
+			.chance = 0.2,
 		},
 		.{
 			.id = "cubyz:ocean/cold/chalk_archipelago",

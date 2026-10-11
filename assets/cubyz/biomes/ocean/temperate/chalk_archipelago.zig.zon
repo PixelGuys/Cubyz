@@ -4,8 +4,8 @@
 		.ocean,
 	},
 	.radius = 500,
-	.minHeight = -30,
-	.maxHeight = -12,
+	.minHeight = -40,
+	.maxHeight = -22,
 	.maxHeightLimit = 7,
 	.smoothBeaches = true,
 	.stoneBlock = "cubyz:chalk/white",
@@ -19,6 +19,18 @@
 
 	.ground_structure = .{
 		"2 to 3 cubyz:sand",
+	},
+
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:chalk/white",
+			.chance = 0.05,
+			.width = 10,
+			.variation = 5,
+			.depth = 2,
+			.smoothness = 0.4,
+		},
 	},
 	.transitionBiomes = .{
 		.{

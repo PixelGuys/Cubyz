@@ -1,8 +1,8 @@
 .{
 	.interpolation = .none,
 	.interpolationWeight = 0.8,
-	.minHeight = 10,
-	.maxHeight = 45,
+	.minHeight = 15,
+	.maxHeight = 50,
 	.radius = 80,
 	.soilCreep = 4,
 	.hills = 6,
@@ -18,7 +18,7 @@
 			.id = "cubyz:sbb",
 			.structure = "cubyz:rock/chalk_amber_deposit/base",
 			.placeMode = .all,
-			.chance = 0.001,
+			.chance = 0.003,
 		},
 		.{
 			.id = "cubyz:sbb",
