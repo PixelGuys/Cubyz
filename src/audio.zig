@@ -5,6 +5,8 @@ const utils = main.utils;
 
 const c = @import("c");
 
+pub const music_tracks = @import("audio/music_tracks.zig");
+
 const StbVorbisErrorEnum = enum(c_int) {
 	unknown_error = -1,
 	no_error = 0,

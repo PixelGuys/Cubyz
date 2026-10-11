@@ -779,6 +779,7 @@ pub fn init() void { // MARK: init()
 	if (c.gladLoadGL(c.glfwGetProcAddress) == 0) {
 		@panic("Failed to load OpenGL functions from GLAD");
 	}
+	c.glClipControl(c.GL_UPPER_LEFT, c.GL_ZERO_TO_ONE);
 	reloadSettings();
 
 	c.glEnable(c.GL_DEBUG_OUTPUT);
