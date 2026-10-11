@@ -34,7 +34,7 @@ pub const entityComponentVersion = 0;
 // ############################# Client only stuff ################################
 pub const client = struct {
 	const Component = struct {
-		heldItem: ?items.Item,
+		heldItem: items.Item,
 	};
 	pub var components: main.utils.SparseSet(Component, Entity) = .{};
 
@@ -58,7 +58,7 @@ pub const client = struct {
 		} else {
 			ptr = components.add(main.globalAllocator, entity);
 		}
-		const newHeldItem = if (reader.remaining.len == 0) null else items.Item.fromBytes(reader) catch return error.UnreadableComponentData;
+		const newHeldItem = items.Item.fromBytes(reader) catch return error.UnreadableComponentData;
 		ptr.* = Component{
 			.heldItem = newHeldItem,
 		};
@@ -71,10 +71,10 @@ pub const client = struct {
 // ############################# Server only stuff ################################
 pub const server = struct {
 	pub const Component = struct {
-		heldItem: ?items.Item,
+		heldItem: items.Item,
 		pub fn save(self: Component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			_ = audience;
-			if (self.heldItem != null) items.Item.toBytes(self.heldItem orelse return .discard, writer);
+			if (self.heldItem != .null) items.Item.toBytes(self.heldItem, writer);
 			return .save;
 		}
 	};
@@ -101,14 +101,14 @@ pub const server = struct {
 		if (version != entityComponentVersion) return error.InvalidComponentVersion;
 		const heldItem = &components.add(main.globalAllocator, entity).heldItem;
 		if (reader.remaining.len == 0) {
-			heldItem.* = null;
+			heldItem.* = .null;
 			return;
 		}
 		heldItem.* = items.Item.fromBytes(reader) catch return error.UnreadableComponentData;
 	}
 	pub fn loadEmpty(entity: Entity) void {
 		const heldItem = &components.add(main.globalAllocator, entity).heldItem;
-		heldItem.* = null;
+		heldItem.* = .null;
 	}
 	pub fn unload(entity: Entity) void {
 		components.remove(entity) catch return;
