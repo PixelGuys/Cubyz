@@ -19,7 +19,7 @@ const StbVorbisErrorEnum = enum(c_int) {
 	seek_without_length = 7,
 	unexpected_eof = 10,
 	seek_invalid = 11,
-	invalid_setup = 20,
+	inval
 	invalid_stream = 21,
 	missing_capture_pattern = 30,
 	invalid_stream_structure_version = 31,
