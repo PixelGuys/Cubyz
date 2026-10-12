@@ -1,0 +1,11 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:rare/container/loot/coal"},
+		.{.id = "cubyz:rare/container/loot/glimmer"},
+		.{.id = "cubyz:rare/container/loot/home"},
+		.{.id = "cubyz:rare/container/loot/lab"},
+		.{.id = "cubyz:rare/container/loot/lava"},
+		.{.id = "cubyz:rare/container/loot/sulfur"},
+		.{.id = "cubyz:rare/container/loot/uranium"},
+	},
+}
