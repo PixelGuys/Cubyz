@@ -114,7 +114,7 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 	pub inline fn isPositive(self: Neighbor) bool {
 		return @intFromEnum(self) & 1 == 0;
 	}
-	const VectorComponentEnum = enum(u2) { x = 0, y = 1, z = 2 };
+	pub const VectorComponentEnum = enum(u2) { x = 0, y = 1, z = 2 };
 	pub fn vectorComponent(self: Neighbor) VectorComponentEnum {
 		const arr = [_]VectorComponentEnum{.z, .z, .x, .x, .y, .y};
 		return arr[@intFromEnum(self)];
