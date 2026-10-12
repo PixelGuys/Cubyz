@@ -803,6 +803,7 @@ pub const Connection = struct { // MARK: Connection
 	const maxMtu: u32 = 65507; // max udp packet size
 	const minMtu: u32 = 576 - 20 - 8; // IPv4 MTU minus IP header minus udp header
 	const headerOverhead = 20 + 8 + 42; // IP Header + UDP Header + Ethernet header/footer
+	const congestionBandwidthIncrement = 100_000.0/(1000.0*ms); // bytes/s²
 
 	const receiveBufferSize = 8 << 20;
 
@@ -1672,7 +1673,7 @@ pub const Connection = struct { // MARK: Connection
 		if (self.slowStart) {
 			self.bandwidthEstimateInBytesPerRtt += fullPacketLen;
 		} else {
-			self.bandwidthEstimateInBytesPerRtt += fullPacketLen/self.bandwidthEstimateInBytesPerRtt*@as(f32, @floatFromInt(self.mtuEstimate)) + fullPacketLen/100.0;
+			self.bandwidthEstimateInBytesPerRtt += fullPacketLen/self.bandwidthEstimateInBytesPerRtt*self.rttEstimate*congestionBandwidthIncrement;
 		}
 	}
 
