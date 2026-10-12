@@ -7,6 +7,8 @@ const Vec3i = vec.Vec3i;
 
 const Blueprint = main.blueprint.Blueprint;
 
+const @"cubyz:position" = main.entity.components.@"cubyz:position";
+
 pub const description =
 	\\Paste clipboard content to current player position.
 	\\-v|--keep-void - Preserve void blocks. By default, void blocks are not preserved.
@@ -24,7 +26,8 @@ pub fn execute(args: Args, source: Source) void {
 	}
 	const user = source.user;
 	if (user.worldEditData.clipboard) |clipboard| {
-		const pos: Vec3i = @floor(@"cubyz:position".getPosition(user.player().id));
+		const playerPos = @"cubyz:position".getPosition(user.player().id, .server) orelse unreachable;
+		const pos: Vec3i = @floor(playerPos);
 		user.sendMessage("Pasting: {}", .{pos});
 
 		const selection: Blueprint.Selection = .initFromExtent(pos, clipboard.extent());

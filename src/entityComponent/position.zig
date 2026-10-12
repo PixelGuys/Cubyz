@@ -37,6 +37,12 @@ pub fn getPosition(entity: Entity, side: main.sync.Side) ?Vec3d {
 		.server => server.getPosition(entity),
 	};
 }
+pub fn getPositionPointer(entity: Entity, side: main.sync.Side) ?*Vec3d {
+	return switch (side) {
+		.client => &(client.get(entity) orelse return null).position,
+		.server => &(server.get(entity) orelse return null).position,
+	};
+}
 pub fn setPosition(entity: Entity, givenPosition: Vec3d, side: main.sync.Side) void {
 	return switch (side) {
 		.client => client.setPosition(entity, givenPosition),

@@ -19,7 +19,8 @@ pub fn execute(_: Args, source: Source) void {
 		return;
 	}
 	const user = source.user;
-	const pos: Vec3i = @floor(@"cubyz:position".getPosition(user.player().id));
+	const playerPos = @"cubyz:position".getPosition(user.player().id, .server) orelse unreachable;
+	const pos: Vec3i = @floor(playerPos);
 
 	user.worldEditData.selectionPosition2 = pos;
 	main.network.protocols.genericUpdate.sendWorldEditPos(user.conn, .selectedPos2, pos);

@@ -313,6 +313,9 @@ pub const User = struct { // MARK: User
 		if (main.entity.components.@"cubyz:permissions".server.get(self.id) == null) {
 			main.entity.components.@"cubyz:permissions".server.loadEmpty(self.id);
 		}
+		if (main.entity.components.@"cubyz:position".server.get(self.id) == null) {
+			@"cubyz:position".server.loadFromValues(self.id, getSpawnPos(self));
+		}
 		main.entity.components.@"cubyz:permissions".server.addToGroup(self.id, permission.Group.default);
 
 		if (self.isLocal) {
@@ -322,7 +325,7 @@ pub const User = struct { // MARK: User
 			}
 		}
 
-		self.interpolation.init(@ptrCast(&(@"cubyz:position".server.get(self.player().id) orelse unreachable).position), @ptrCast(&self.player().vel));
+		self.interpolation.init(@ptrCast(@"cubyz:position".getPositionPointer(self.id, .server)), @ptrCast(&self.player().vel));
 		self.loadUnloadChunks();
 
 		main.entity.components.@"cubyz:player".server.load(self.id, @truncate(self.playerIndex));
@@ -380,7 +383,8 @@ pub const User = struct { // MARK: User
 	}
 
 	fn loadUnloadChunks(self: *User) void {
-		const newPos: Vec3i = @as(Vec3i, @trunc(self.player().pos.*)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
+		const playerPos = @"cubyz:position".getPosition(self.player().id, .server) orelse unreachable;
+		const newPos: Vec3i = @as(Vec3i, @trunc(playerPos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
 		const newRenderDistance = main.settings.simulationDistance;
 		if (@reduce(.Or, newPos != self.lastPos) or newRenderDistance != self.lastRenderDistance) {
 			self.unloadOldChunk(newPos, newRenderDistance);
@@ -702,17 +706,18 @@ fn update() void { // MARK: update()
 		const id = user.id; // TODO
 		entityData.append(.{
 			.id = id,
-			.pos = @"cubyz:position".getPosition(user.player().id),
+			.pos = @"cubyz:position".getPosition(user.player().id, .server) orelse unreachable,
 			.vel = user.player().vel,
 			.rot = user.player().rot,
 		});
 	}
 	for (userList) |user| {
-		main.network.protocols.entityPosition.send(user.conn, user.player().pos.*, entityData.items, itemData);
+		main.network.protocols.entityPosition.send(user.conn, @"cubyz:position".getPosition(user.player().id, .server) orelse unreachable, entityData.items, itemData);
 	}
 
 	for (userList) |user| {
-		const pos = @as(Vec3i, @trunc(user.player().pos.*));
+		const playerPos = @"cubyz:position".getPosition(user.player().id, .server) orelse unreachable;
+		const pos = @as(Vec3i, @trunc(playerPos));
 		const biomeId = world.?.getBiome(pos[0], pos[1], pos[2]).paletteId;
 		if (biomeId != user.lastSentBiomeId) {
 			user.lastSentBiomeId = biomeId;
