@@ -1264,6 +1264,14 @@ pub const Connection = struct { // MARK: Connection
 		serverKey: c.mbedtls_pk_context = .{},
 		dataToReceive: []const u8 = &.{},
 		mutex: main.utils.Mutex = .{},
+		pendingPlaintextBuffer: [c.MBEDTLS_SSL_OUT_CONTENT_LEN]u8 = undefined,
+		pendingPlaintextLength: usize = 0,
+		/// nuance: the actual max plaintext length can differ from c.MBEDTLS_SSL_OUT_CONTENT_LEN between TLS versions
+		/// TLS 1.3 can choose to put the content-type byte inside the encrypted content, making it one smaller than c.MBEDTLS_SSL_OUT_CONTENT_LEN
+		/// while TLS 1.2 always puts the content-type byte in the header, outside of the encrypted content
+		/// maybe a future TLS version will choose to reserve even more data in the payload
+		/// so to be future proof, we need to query the negotiated plaintext length
+		maybeNegotiatedPlaintextLength: ?usize = null,
 
 		side: main.sync.Side,
 		finishedCollectingClientVerificationData: bool = false,
@@ -1409,7 +1417,67 @@ pub const Connection = struct { // MARK: Connection
 			}
 		}
 
+		fn getNegotiatedPlaintextLength(self: *SecureChannel) !usize {
+			if (self.maybeNegotiatedPlaintextLength) |len| return len;
+
+			self.mutex.lock();
+			defer self.mutex.unlock();
+
+			std.debug.assert(c.mbedtls_ssl_is_handshake_over(&self.sslContext) != 0);
+
+			const result = c.mbedtls_ssl_get_max_out_record_payload(&self.sslContext);
+			if (result < 0) {
+				try checkResult(result, "mbedtls_ssl_get_max_out_record_payload");
+			}
+
+			const len: usize = @intCast(result);
+			if (len == 0 or len > self.pendingPlaintextBuffer.len) {
+				return error.InvalidTlsPayloadLength;
+			}
+
+			self.maybeNegotiatedPlaintextLength = len;
+			return len;
+		}
+
 		fn sendThroughTls(self: *SecureChannel, data: []const u8) !void {
+			const negotiatedPlaintextLength = try self.getNegotiatedPlaintextLength();
+
+			const newLength = self.pendingPlaintextLength + data.len;
+			if (newLength < negotiatedPlaintextLength) {
+				@memcpy(self.pendingPlaintextBuffer[self.pendingPlaintextLength..newLength], data);
+				self.pendingPlaintextLength = newLength;
+
+				return;
+			}
+
+			var remaining = data;
+			if (self.pendingPlaintextLength < negotiatedPlaintextLength) {
+				const offset = negotiatedPlaintextLength - self.pendingPlaintextLength;
+				@memcpy(self.pendingPlaintextBuffer[self.pendingPlaintextLength..negotiatedPlaintextLength], remaining[0..offset]);
+				self.pendingPlaintextLength = negotiatedPlaintextLength;
+				remaining = remaining[offset..];
+			}
+
+			try self.encryptPendingPlaintextIntoSendBuffer();
+
+			if (remaining.len >= negotiatedPlaintextLength) {
+				const encryptableCount = remaining.len - (remaining.len%negotiatedPlaintextLength);
+				try self.encryptIntoSendBuffer(remaining[0..encryptableCount]);
+				remaining = remaining[encryptableCount..];
+			}
+
+			if (remaining.len > 0) {
+				@memcpy(self.pendingPlaintextBuffer[0..remaining.len], remaining);
+				self.pendingPlaintextLength += remaining.len;
+			}
+		}
+
+		pub fn encryptPendingPlaintextIntoSendBuffer(self: *SecureChannel) !void {
+			try self.encryptIntoSendBuffer(self.pendingPlaintextBuffer[0..self.pendingPlaintextLength]);
+			self.pendingPlaintextLength = 0;
+		}
+
+		fn encryptIntoSendBuffer(self: *SecureChannel, data: []const u8) !void {
 			var remaining = data;
 			while (remaining.len != 0) {
 				self.mutex.lock();
@@ -1442,11 +1510,13 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		pub fn sendNextPacketAndGetSize(self: *SecureChannel, conn: *Connection, time: i64, considerForCongestionControl: bool) ?usize {
+			std.debug.assert(self.pendingPlaintextLength == 0);
 			return self.super.sendNextPacketAndGetSize(conn, time, considerForCongestionControl);
 		}
 
 		pub fn getStatistics(self: *SecureChannel, unconfirmed: *usize, queued: *usize) void {
 			self.super.getStatistics(unconfirmed, queued);
+			queued.* += self.pendingPlaintextLength;
 		}
 	};
 
@@ -1925,16 +1995,34 @@ pub const Connection = struct { // MARK: Connection
 			const dataLen = blk: {
 				self.mutex.lock();
 				defer self.mutex.unlock();
+
 				for (0..2) |_| {
 					permutation +%= 1;
-					break :blk switch (permutation%2) {
-						0 => self.lossyChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl),
-						1 => self.secureChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl),
+					switch (permutation%2) {
+						0 => {
+							const maybeLen = self.lossyChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl);
+
+							if (maybeLen) |len| break :blk len;
+						},
+						1 => {
+							self.secureChannel.encryptPendingPlaintextIntoSendBuffer() catch |err| {
+								std.log.err("Failed to encrypt TLS data: {s}", .{@errorName(err)});
+								break :blk err;
+							};
+
+							const maybeLen = self.secureChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl);
+
+							if (maybeLen) |len| break :blk len;
+						},
 						else => unreachable,
-					} orelse continue;
+					}
 				}
 				if (self.slowChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
 				break;
+			} catch |err| {
+				std.log.err("Error while sending next packet: {s}. Disconnecting", .{@errorName(err)});
+				self.disconnect();
+				return;
 			};
 			const networkLen: f32 = @floatFromInt(dataLen + headerOverhead);
 			const packetTime: i64 = @trunc(@max(1, networkLen/self.bandwidthEstimateInBytesPerRtt*self.rttEstimate));
