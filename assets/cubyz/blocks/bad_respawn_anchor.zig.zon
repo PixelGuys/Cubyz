@@ -1,0 +1,15 @@
+.{
+	.tags = .{.mineable},
+	.blockHealth = 10,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.model = "cubyz:cube",
+	.rotation = "cubyz:stairs",
+	.texture = "cubyz:bad_respawn_anchor",
+	.blockEntity = "cubyz:respawn_anchor",
+	.onInteract = .{
+		.type = .set_spawn,
+		.respawnEffeciency = 0.1,
+	},
+}
