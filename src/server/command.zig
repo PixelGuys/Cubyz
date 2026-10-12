@@ -136,7 +136,7 @@ pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, source: S
 		source.sendMessage("Command was run without a user; unable to interpret relative coordinates.", .{});
 		return error.InvalidArg;
 	}
-	const pos = @"cubyz:position".getPosition(source.user.player().id, .server) orelse unreachable;
+	const pos = @"cubyz:position".getPosition(source.user.player().id, .server).?;
 	return .{
 		// TODO: Remove clamp after #310 is implemented
 		std.math.clamp(if (x == .relative) pos[0] + x.relative else x.absolute, -1e9, 1e9),

@@ -130,7 +130,7 @@ pub const Player = struct { // MARK: Player
 	pub fn getPosBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		return @"cubyz:position".getPosition(super.id, .client) orelse unreachable;
+		return @"cubyz:position".getPosition(super.id, .client).?;
 	}
 
 	pub fn getVelBlocking() Vec3d {
@@ -142,7 +142,7 @@ pub const Player = struct { // MARK: Player
 	pub fn getEyePosBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		return eye.pos + (@"cubyz:position".getPosition(super.id, .client) orelse unreachable) + eye.desiredPos;
+		return eye.pos + @"cubyz:position".getPosition(super.id, .client).? + eye.desiredPos;
 	}
 
 	pub fn getEyeVelBlocking() Vec3d {
@@ -630,7 +630,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		return;
 	};
 
-	const playerPos = @"cubyz:position".getPositionPointer(Player.id, .client) orelse unreachable;
+	const playerPos = @"cubyz:position".getPositionPointer(Player.id, .client).?;
 	physics.calculateVolumeProperties(.client, &Player.volumeProperties, playerPos.*, Player.outerBoundingBox, physics.playerAirTerminalVelocity);
 	if (Player.isFlying.load(.monotonic)) {
 		Player.friction = .{.current = 20, .mobile = 20};

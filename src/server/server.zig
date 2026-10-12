@@ -383,7 +383,7 @@ pub const User = struct { // MARK: User
 	}
 
 	fn loadUnloadChunks(self: *User) void {
-		const playerPos = @"cubyz:position".getPosition(self.player().id, .server) orelse unreachable;
+		const playerPos = @"cubyz:position".getPosition(self.player().id, .server).?;
 		const newPos: Vec3i = @as(Vec3i, @trunc(playerPos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
 		const newRenderDistance = main.settings.simulationDistance;
 		if (@reduce(.Or, newPos != self.lastPos) or newRenderDistance != self.lastRenderDistance) {
@@ -706,17 +706,17 @@ fn update() void { // MARK: update()
 		const id = user.id; // TODO
 		entityData.append(.{
 			.id = id,
-			.pos = @"cubyz:position".getPosition(user.player().id, .server) orelse unreachable,
+			.pos = @"cubyz:position".getPosition(user.player().id, .server).?,
 			.vel = user.player().vel,
 			.rot = user.player().rot,
 		});
 	}
 	for (userList) |user| {
-		main.network.protocols.entityPosition.send(user.conn, @"cubyz:position".getPosition(user.player().id, .server) orelse unreachable, entityData.items, itemData);
+		main.network.protocols.entityPosition.send(user.conn, @"cubyz:position".getPosition(user.player().id, .server).?, entityData.items, itemData);
 	}
 
 	for (userList) |user| {
-		const playerPos = @"cubyz:position".getPosition(user.player().id, .server) orelse unreachable;
+		const playerPos = @"cubyz:position".getPosition(user.player().id, .server).?;
 		const pos = @as(Vec3i, @trunc(playerPos));
 		const biomeId = world.?.getBiome(pos[0], pos[1], pos[2]).paletteId;
 		if (biomeId != user.lastSentBiomeId) {

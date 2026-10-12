@@ -379,7 +379,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 				ii += 1;
 				continue;
 			}
-			const playerPos = @"cubyz:position".getPosition(user.player().id, .server) orelse unreachable;
+			const playerPos = @"cubyz:position".getPosition(user.player().id, .server).?;
 			const hitbox = main.game.Player.outerBoundingBox;
 			const min = playerPos + hitbox.min;
 			const max = playerPos + hitbox.max;

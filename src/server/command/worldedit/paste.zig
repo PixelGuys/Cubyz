@@ -26,7 +26,7 @@ pub fn execute(args: Args, source: Source) void {
 	}
 	const user = source.user;
 	if (user.worldEditData.clipboard) |clipboard| {
-		const playerPos = @"cubyz:position".getPosition(user.player().id, .server) orelse unreachable;
+		const playerPos = @"cubyz:position".getPosition(user.player().id, .server).?;
 		const pos: Vec3i = @floor(playerPos);
 		user.sendMessage("Pasting: {}", .{pos});
 

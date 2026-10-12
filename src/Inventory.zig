@@ -286,7 +286,7 @@ pub const server = struct { // MARK: server
 						defer main.stackAllocator.free(userList);
 						for (userList) |callbackUser| {
 							if (callbackUser.id == callbackSource.workbench.playerId) {
-								sync.server.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, @"cubyz:position".getPosition(callbackUser.player().id, .client) orelse unreachable)}, null);
+								sync.server.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, @"cubyz:position".getPosition(callbackUser.player().id, .client).?)}, null);
 								break;
 							}
 						}

@@ -316,7 +316,7 @@ pub const collision = struct { // MARK: collision
 	}
 
 	pub fn touchBlocks(comptime side: main.sync.Side, entity: *main.server.Entity, hitBox: Box, deltaTime: f64) void {
-		const entityPos = @"cubyz:position".getPosition(entity.id, side) orelse unreachable;
+		const entityPos = @"cubyz:position".getPosition(entity.id, side).?;
 		const boundingBox: Box = .{.min = entityPos + hitBox.min, .max = entityPos + hitBox.max};
 
 		const minX: i32 = @floor(boundingBox.min[0] - 0.01);
