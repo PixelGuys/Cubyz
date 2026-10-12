@@ -1,6 +1,7 @@
 .{
 	.name = .Cubyzig,
 	.fingerprint = 0x782a2e402c0ee887,
+	.minimum_zig_version = "0.16.0",
 	.version = "0.0.0",
 	.paths = .{""},
 	.dependencies = .{
