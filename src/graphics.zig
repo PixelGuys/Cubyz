@@ -1279,9 +1279,9 @@ const TextRendering = struct { // MARK: TextRendering
 	var glyphMapping: main.ListManaged(u31) = undefined;
 	var glyphData: main.ListManaged(Glyph) = undefined;
 	var glyphTexture: [2]Texture = undefined;
-	var textureWidth: i32 = 1024;
-	const textureHeight: i32 = 16;
-	var textureOffset: i32 = 0;
+	var textureWidth: u31 = 1024;
+	const textureHeight: u31 = 16;
+	var textureOffset: u31 = 0;
 	var fontUnitsPerPixel: f32 = undefined;
 
 	fn ftError(errorCode: c.FT_Error) !void {
@@ -1360,7 +1360,7 @@ const TextRendering = struct { // MARK: TextRendering
 		c.hb_font_destroy(harfbuzzFont);
 	}
 
-	fn resizeTexture(newWidth: i32) void {
+	fn resizeTexture(newWidth: u31) void {
 		textureWidth = newWidth;
 		if (main.settings.launchConfig.vulkanTestingMode) {
 			const old = glyphTexture[0];
@@ -1387,7 +1387,7 @@ const TextRendering = struct { // MARK: TextRendering
 	fn uploadData(bitmap: c.FT_Bitmap) void {
 		const buffer = bitmap.buffer orelse return;
 		const pitch: u32 = @intCast(bitmap.pitch);
-		if (textureOffset + @as(i32, @intCast(bitmap.width)) > textureWidth) {
+		if (textureOffset + bitmap.width > textureWidth) {
 			resizeTexture(textureWidth*2);
 		}
 		if (main.settings.launchConfig.vulkanTestingMode) {
