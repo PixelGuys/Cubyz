@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const ProceduralItem = main.items.ProceduralItem;
 
-pub const Data = packed struct(u128) { strength: f32, targetProperty: main.items.ProceduralItemProperty, pad: u88 = undefined };
+pub const Data = packed struct(u128) { strength: f32, targetProperty: main.items.ProceduralItemProperty, pad: u64 = undefined };
 
 pub const priority = 1;
 
