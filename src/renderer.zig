@@ -341,7 +341,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		uniforms.invViewMatrix = game.camera.viewMatrix.transpose().toGl();
 		uniforms.tanXY = .{1.0/game.projectionMatrix.rows[0][0], -1.0/game.projectionMatrix.rows[1][2]};
 		uniforms.zNear = zNear;
-			uniforms.zFar = zFar;
+		uniforms.zFar = zFar;
 		if (!blocks.meshes.hasFog(playerBlock)) {
 			uniforms.@"fog.color" = game.world.?.dayTime.fog.fogColor;
 			uniforms.@"fog.density" = game.world.?.dayTime.fog.density;
