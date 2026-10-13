@@ -27,7 +27,7 @@ pub fn loadData(zon: main.ZonElement) Data {
 	return .{
 		.strength = zon.get(f32, "strength") orelse 0,
 		.targetProperty = main.items.ProceduralItemProperty.fromString(zon.get([]const u8, "targetProperty") orelse "|missing targetProperty field|") orelse blk: {
-			std.log.err("Could not find tagProperty {s}. replacing with .damage", .{zon.get([]const u8, "targetProperty") orelse "|missing targetProperty field|"});
+			std.log.err("Could not find tagProperty {s}. Replacing it with .damage", .{zon.get([]const u8, "targetProperty") orelse "|missing targetProperty field|"});
 			break :blk .damage;
 		},
 	};
