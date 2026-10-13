@@ -18,7 +18,7 @@ pub const playerDensity = 1.2;
 
 pub const epsilon: f64 = 1.0/@as(comptime_float, 1 << (std.math.floatMantissaBits(f64) - 31)); // Should be the last bit when at the integer limit
 
-pub const collision = struct {
+pub const collision = struct { // MARK: collision
 	pub const Box = struct {
 		min: Vec3d,
 		max: Vec3d,

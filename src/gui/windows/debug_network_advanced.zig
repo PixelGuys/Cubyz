@@ -46,8 +46,8 @@ pub fn render() void {
 	}
 	y += 8;
 	if (main.server.world != null) {
-		const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+		const userList = main.server.getUserList(main.stackAllocator);
+		defer main.stackAllocator.free(userList);
 		for (userList) |user| {
 			renderConnectionData(user.conn, user.name, &y);
 		}

@@ -27,7 +27,6 @@ pub fn globalDeinit() void {
 
 pub fn render(guiComponent: *GuiComponent, pos: Vec2f) void {
 	const size = guiComponent.size() + Vec2f{cornerSize[0]*2, cornerSize[1]*2};
-	tooltipTexture.bindTo(0);
 
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
 	var renderPos = pos + Vec2f{offsetFromMouse, 0};
@@ -39,7 +38,7 @@ pub fn render(guiComponent: *GuiComponent, pos: Vec2f) void {
 		renderPos[1] += windowSize[1] - (renderPos[1] + size[1]);
 	}
 
-	draw.bound9SliceImage(renderPos, size, @floatFromInt(tooltipTexture.size()), cornerSize, 1);
+	draw.nineSliceImage(tooltipTexture, renderPos, size, @floatFromInt(tooltipTexture.size()), cornerSize, 1);
 
 	const adjustment = renderPos - guiComponent.pos() + Vec2f{cornerSize[0], cornerSize[1]};
 	const oldTranslation = draw.setTranslation(adjustment);

@@ -11,15 +11,13 @@
 	.texture4 = "cubyz:branch/cirrus/intersection",
 	.texture5 = "cubyz:branch/cirrus/cross",
 	.item = .{
+		.colorTexture = "cirrus_branch_palette.png",
 		.material = .{
 			.durability = 50,
 			.massDamage = 2.3,
 			.hardnessDamage = 2,
 			.swingSpeed = 4.3,
 			.textureRoughness = 0.7,
-			.colors = .{
-				0xff7a8e95, 0xff9aadb3, 0xffb4cecf, 0xffdbeaec, 0xffb4cecf,
-			},
 			.modifiers = .{
 				.{
 					.id = "light",

@@ -118,7 +118,6 @@ pub const MapFragment = struct { // MARK: MapFragment
 	}
 
 	const StorageHeader = struct {
-		const minSupportedVersion: u8 = 0;
 		const activeVersion: u8 = 1;
 		version: u8 = activeVersion,
 		neighborInfo: NeighborInfo,
@@ -135,10 +134,10 @@ pub const MapFragment = struct { // MARK: MapFragment
 	};
 
 	pub fn load(self: *MapFragment, biomePalette: *main.assets.Palette, originalHeightMap: ?*[mapSize][mapSize]i32) !NeighborInfo {
-		const saveFolder: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{main.server.world.?.path}) catch unreachable;
+		const saveFolder: []const u8 = main.stackAllocator.print("saves/{s}/maps", .{main.server.world.?.path});
 		defer main.stackAllocator.free(saveFolder);
 
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}.surface", .{saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy}) catch unreachable;
+		const path = main.stackAllocator.print("{s}/{}/{}/{}.surface", .{saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy});
 		defer main.stackAllocator.free(path);
 
 		const fullData = try main.files.cubyzDir().read(main.stackAllocator, path);
@@ -226,12 +225,12 @@ pub const MapFragment = struct { // MARK: MapFragment
 		outputWriter.writeInt(u8, @bitCast(header.neighborInfo));
 		outputWriter.writeSlice(compressedData);
 
-		const saveFolder: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{main.server.world.?.path}) catch unreachable;
+		const saveFolder: []const u8 = main.stackAllocator.print("saves/{s}/maps", .{main.server.world.?.path});
 		defer main.stackAllocator.free(saveFolder);
 
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}.surface", .{saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy}) catch unreachable;
+		const path = main.stackAllocator.print("{s}/{}/{}/{}.surface", .{saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy});
 		defer main.stackAllocator.free(path);
-		const folder = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}", .{saveFolder, self.pos.voxelSize, self.pos.wx}) catch unreachable;
+		const folder = main.stackAllocator.print("{s}/{}/{}", .{saveFolder, self.pos.voxelSize, self.pos.wx});
 		defer main.stackAllocator.free(folder);
 
 		main.files.cubyzDir().makePath(folder) catch |err| {
@@ -271,7 +270,6 @@ pub const MapGenerator = struct {
 };
 
 const cacheSize = 1 << 6; // Must be a power of 2!
-const cacheMask = cacheSize - 1;
 const associativity = 8; // ~400MiB MiB Cache size
 var cache: Cache(MapFragment, cacheSize, associativity, MapFragment.deferredDeinit) = .{};
 var profile: TerrainGenerationProfile = undefined;
@@ -357,7 +355,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 	// Delete old LODs:
 	for (1..main.settings.highestSupportedLod + 1) |i| {
 		const lod = @as(u32, 1) << @intCast(i);
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps/{}", .{worldName, lod}) catch unreachable;
+		const path = main.stackAllocator.print("saves/{s}/maps/{}", .{worldName, lod});
 		defer main.stackAllocator.free(path);
 		main.files.cubyzDir().deleteTree(path) catch |err| {
 			if (err != error.FileNotFound) {
@@ -368,7 +366,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 	// Find all the stored maps:
 	var mapPositions: main.List(MapFragmentPosition) = .empty;
 	defer mapPositions.deinit(main.stackAllocator);
-	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps/1", .{worldName}) catch unreachable;
+	const path = main.stackAllocator.print("saves/{s}/maps/1", .{worldName});
 	defer main.stackAllocator.free(path);
 	{
 		var dirX = try main.files.cubyzDir().openIterableDir(path);

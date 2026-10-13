@@ -30,7 +30,7 @@ const width: f32 = 420;
 
 fn discoverIpAddress() void {
 	main.server.connectionManager.makeOnline();
-	ipAddress = std.fmt.allocPrint(main.globalAllocator.allocator, "{f}", .{main.server.connectionManager.externalAddress}) catch unreachable;
+	ipAddress = main.globalAllocator.print("{f}", .{main.server.connectionManager.externalAddress});
 	gotIpAddress.store(true, .release);
 }
 
@@ -46,13 +46,12 @@ fn invite() void {
 		_thread.join();
 		thread = null;
 	}
-	const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ipAddressEntry.currentString.items) catch |err| {
+	_ = main.server.User.init(main.server.connectionManager, ipAddressEntry.currentString.items) catch |err| {
 		if (err != error.AlreadyConnected) {
 			std.log.err("Cannot connect user: {s}", .{@errorName(err)});
 		}
 		return;
 	};
-	user.decreaseRefCount();
 }
 
 fn copyIp() void {

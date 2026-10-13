@@ -234,10 +234,5 @@ pub fn VirtualList(T: type, maxSize: u32) type {
 				self.len -= len - new_items.len;
 			}
 		}
-
-		fn appendWrite(self: *@This(), m: []const u8) !usize {
-			self.appendSlice(m);
-			return m.len;
-		}
 	};
 }

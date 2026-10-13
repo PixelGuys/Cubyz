@@ -607,9 +607,16 @@ pub fn updateAndRenderGui() void {
 		if (!main.Window.grabbed) {
 			const oldColor = draw.setColor(0x80000000);
 			defer draw.restoreColor(oldColor);
-			GuiWindow.borderPipeline.bind(draw.getScissor());
-			c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
-			draw.customShadedRect(GuiWindow.borderUniforms, .{0, 0}, main.Window.getWindowSize());
+			if (main.settings.launchConfig.vulkanTestingMode) {
+				graphics.vulkan.currentFrame.guiCommands.bindPipeline(GuiWindow.borderPipeline, graphics.draw.getScissor());
+				var uniforms: GuiWindow.BorderUniforms = undefined;
+				uniforms.effectLength = .{main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6};
+				draw.customShadedRect(uniforms, GuiWindow.borderPipeline, .{0, 0}, main.Window.getWindowSize());
+			} else {
+				GuiWindow.borderPipeline.bind(draw.getScissor());
+				c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
+				draw.customShadedRectOpenGl(GuiWindow.borderUniforms, .{0, 0}, main.Window.getWindowSize());
+			}
 		}
 		const oldScale = draw.setScale(scale);
 		defer draw.restoreScale(oldScale);

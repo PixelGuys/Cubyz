@@ -94,7 +94,7 @@
 			.id = "cubyz:jungle/sparse",
 			.chance = 1,
 			.width = 3,
-			.properties = .{.barren, .balanced},
+			.climate = .{.barren, .balanced},
 		},
 	},
 }

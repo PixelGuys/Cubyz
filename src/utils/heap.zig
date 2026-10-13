@@ -482,8 +482,34 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 	}
 
 	/// Copies `m` to newly allocated memory, with a null-terminated element. Caller owns the memory.
-	pub fn dupeZ(self: NeverFailingAllocator, comptime T: type, m: []const T) [:0]T {
-		return self.allocator.dupeZ(T, m) catch unreachable;
+	pub fn dupeSentinel(self: NeverFailingAllocator, comptime T: type, m: []const T, comptime sentinel: T) [:sentinel]T {
+		return self.allocator.dupeSentinel(T, m, sentinel) catch unreachable;
+	}
+
+	/// Allocates a formatted string which is returned on success.
+	///
+	/// Returned slice can be deallocated with `free`. If an arena-style allocator
+	/// is used instead, such as `std.heap.ArenaAllocator`, then no call to `free`
+	/// is necessary.
+	///
+	/// See `std.Io.Writer.print`.
+	pub fn print(a: NeverFailingAllocator, comptime format: []const u8, args: anytype) []u8 {
+		return std.fmt.allocPrint(a.allocator, format, args) catch unreachable;
+	}
+
+	/// Like `print` but returned slice has the provided sentinel.
+	///
+	/// Returned slice can be deallocated with `free`. If an arena-style allocator
+	/// is used instead, such as `std.heap.ArenaAllocator`, then no call to `free`
+	/// is necessary. Illegal behavior occurs if the returned slice is type-coerced
+	/// to a slice without the sentinel and then passed to `free`.
+	pub fn printSentinel(
+		a: NeverFailingAllocator,
+		comptime format: []const u8,
+		args: anytype,
+		comptime sentinel: u8,
+	) [:sentinel]u8 {
+		return std.fmt.allocPrintSentinel(a.allocator, format, args, sentinel) catch unreachable;
 	}
 
 	pub fn createArena(self: NeverFailingAllocator) NeverFailingAllocator {

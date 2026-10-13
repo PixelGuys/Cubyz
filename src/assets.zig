@@ -17,7 +17,7 @@ const files = main.files;
 
 var common: Assets = undefined;
 
-pub const Assets = struct {
+pub const Assets = struct { // MARK: Assets
 	pub const ZonHashMap = std.StringHashMapUnmanaged(ZonElement);
 	pub const BytesHashMap = std.StringHashMapUnmanaged([]const u8);
 	pub const AddonNameToZonMap = std.StringHashMapUnmanaged(ZonElement);
@@ -33,6 +33,7 @@ pub const Assets = struct {
 	entityComponents: ZonHashMap,
 	entityComponentMigrations: AddonNameToZonMap,
 	structureTables: ZonHashMap,
+	musicTracks: ZonHashMap,
 	recipes: ZonHashMap,
 	blockModels: BytesHashMap,
 	blockModelsZon: ZonHashMap,
@@ -56,6 +57,7 @@ pub const Assets = struct {
 			.entityComponents = .{},
 			.entityComponentMigrations = .{},
 			.structureTables = .{},
+			.musicTracks = .{},
 			.recipes = .{},
 			.blockModels = .{},
 			.blockModelsZon = .{},
@@ -79,6 +81,7 @@ pub const Assets = struct {
 		self.entityComponents.deinit(allocator.allocator);
 		self.entityComponentMigrations.deinit(allocator.allocator);
 		self.structureTables.deinit(allocator.allocator);
+		self.musicTracks.deinit(allocator.allocator);
 		self.recipes.deinit(allocator.allocator);
 		self.blockModels.deinit(allocator.allocator);
 		self.blockModelsZon.deinit(allocator.allocator);
@@ -102,6 +105,7 @@ pub const Assets = struct {
 			.entityComponents = self.entityComponents.clone(allocator.allocator) catch unreachable,
 			.entityComponentMigrations = self.entityComponentMigrations.clone(allocator.allocator) catch unreachable,
 			.structureTables = self.structureTables.clone(allocator.allocator) catch unreachable,
+			.musicTracks = self.musicTracks.clone(allocator.allocator) catch unreachable,
 			.recipes = self.recipes.clone(allocator.allocator) catch unreachable,
 			.blockModels = self.blockModels.clone(allocator.allocator) catch unreachable,
 			.blockModelsZon = self.blockModelsZon.clone(allocator.allocator) catch unreachable,
@@ -123,6 +127,7 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "items", true, &self.items, &self.itemMigrations);
 			addon.readAllZon(allocator, "tools", true, &self.proceduralItems, null);
 			addon.readAllZon(allocator, "structure_tables", false, &self.structureTables, null);
+			addon.readAllZon(allocator, "music", true, &self.musicTracks, null);
 			addon.readAllZon(allocator, "biomes", true, &self.biomes, &self.biomeMigrations);
 			addon.readAllZon(allocator, "cave_layers", true, &self.caveLayers, null);
 			addon.readAllZon(allocator, "recipes", false, &self.recipes, null);
@@ -142,7 +147,7 @@ pub const Assets = struct {
 		);
 	}
 
-	const Addon = struct {
+	const Addon = struct { // MARK: Addon
 		name: []const u8,
 		dir: files.Dir,
 
@@ -402,10 +407,18 @@ fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void 
 	var replacementTexturePath: []const u8 = &.{};
 	defer main.stackAllocator.free(replacementTexturePath);
 	if (zon.get([]const u8, "texture")) |texture| {
-		texturePath = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/items/textures/{s}", .{assetFolder, mod, texture});
-		replacementTexturePath = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/items/textures/{s}", .{mod, texture});
+		texturePath = main.stackAllocator.print("{s}/{s}/items/textures/{s}", .{assetFolder, mod, texture});
+		replacementTexturePath = main.stackAllocator.print("assets/{s}/items/textures/{s}", .{mod, texture});
 	}
-	_ = items.register(assetFolder, texturePath, replacementTexturePath, id, zon);
+	var colorTexturePath: []const u8 = &.{};
+	defer main.stackAllocator.free(colorTexturePath);
+	var colorReplacementTexturePath: []const u8 = &.{};
+	defer main.stackAllocator.free(colorReplacementTexturePath);
+	if (zon.get([]const u8, "colorTexture")) |colorTexture| {
+		colorTexturePath = main.stackAllocator.print("{s}/{s}/materials/{s}", .{assetFolder, mod, colorTexture});
+		colorReplacementTexturePath = main.stackAllocator.print("assets/{s}/materials/{s}", .{mod, colorTexture});
+	}
+	_ = items.register(assetFolder, texturePath, replacementTexturePath, colorTexturePath, colorReplacementTexturePath, id, zon);
 }
 
 fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
@@ -679,6 +692,13 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		try assignBlockItem(stringId);
 	}
 
+	var itemIndexIterator = items.iterator();
+	while (itemIndexIterator.next()) |index| {
+		if (index.displayBlockData() != null and index.block() == null) {
+			std.log.err("displayBlockData field was set, but there is no block defined for item: '{s}'", .{index.id()});
+		}
+	}
+
 	for (proceduralItemPalette.palette.items) |id| {
 		registerProceduralItem(assetFolder, id, worldAssets.proceduralItems.get(id) orelse .null);
 	}
@@ -703,6 +723,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	try sbb.registerBlueprints(&worldAssets.blueprints);
 	try sbb.registerSBB(&worldAssets.structureBuildingBlocks);
 	try main.server.terrain.structures.registerStructureTables(&worldAssets.structureTables);
+	main.audio.music_tracks.registerTracks(&worldAssets.musicTracks);
 
 	iterator = worldAssets.particles.iterator();
 	while (iterator.next()) |entry| {
@@ -765,7 +786,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		break :blk null;
 	}) |addon| {
 		if (addon.kind == .directory) {
-			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
+			const path = main.stackAllocator.printSentinel("assets/{s}/blocks/textures", .{addon.name}, 0);
 			defer main.stackAllocator.free(path);
 			// Check for access rights
 			if (!main.files.cwd().hasDir(path)) continue;
@@ -789,6 +810,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	biomes.reset();
 	main.server.terrain.cave_layers.reset();
 	main.server.terrain.structures.reset();
+	main.audio.music_tracks.reset();
 	main.models.reset();
 	main.particles.ParticleManager.reset();
 	main.rotation.reset();
@@ -807,7 +829,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 		break :blk null;
 	}) |addon| {
 		if (addon.kind == .directory) {
-			const path = std.fmt.allocPrintSentinel(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}, 0) catch unreachable;
+			const path = main.stackAllocator.printSentinel("assets/{s}/blocks/textures", .{addon.name}, 0);
 			defer main.stackAllocator.free(path);
 			// Check for access rights
 			if (!main.files.cwd().hasDir(path)) continue;
@@ -821,11 +843,11 @@ pub fn readAsset(allocator: NeverFailingAllocator, subPath: []const u8, id: []co
 	const mod = split.first();
 	const name = split.next().?;
 
-	var path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/{s}/{s}{s}", .{worldAssetFolder, mod, subPath, name, fileEnding}) catch unreachable;
+	var path = main.stackAllocator.print("{s}/{s}/{s}/{s}{s}", .{worldAssetFolder, mod, subPath, name, fileEnding});
 	defer main.stackAllocator.free(path);
 	if (!main.files.cwd().hasFile(path)) {
 		main.stackAllocator.free(path);
-		path = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/{s}/{s}{s}", .{mod, subPath, name, fileEnding}) catch unreachable;
+		path = main.stackAllocator.print("assets/{s}/{s}/{s}{s}", .{mod, subPath, name, fileEnding});
 	}
 
 	const data = main.files.cwd().read(allocator, path) catch |err| {

@@ -38,6 +38,7 @@ pub const client = struct { // MARK: client
 	}
 
 	fn nextId() InventoryId {
+		sync.threadContext.assertCorrectContext(.client);
 		main.sync.client.mutex.lock();
 		defer main.sync.client.mutex.unlock();
 		if (freeIdList.popOrNull()) |id| {
@@ -54,16 +55,19 @@ pub const client = struct { // MARK: client
 	}
 
 	pub fn mapServerId(serverId: InventoryId, inventory: Inventory) void {
+		sync.threadContext.assertCorrectContext(.client);
 		main.sync.client.mutex.assertLocked();
 		serverToClientMap.put(serverId, inventory) catch unreachable;
 	}
 
 	pub fn unmapServerId(serverId: InventoryId, clientId: InventoryId) void {
+		sync.threadContext.assertCorrectContext(.client);
 		main.sync.client.mutex.assertLocked();
 		std.debug.assert(serverToClientMap.fetchRemove(serverId).?.value.id == clientId);
 	}
 
 	pub fn unmapServerIdByClientId(clientId: InventoryId) void {
+		sync.threadContext.assertCorrectContext(.client);
 		main.sync.client.mutex.assertLocked();
 		const serverId = blk: {
 			var it = serverToClientMap.iterator();
@@ -76,11 +80,13 @@ pub const client = struct { // MARK: client
 	}
 
 	fn getInventory(serverId: InventoryId) ?Inventory {
+		sync.threadContext.assertCorrectContext(.client);
 		main.sync.client.mutex.assertLocked();
 		return serverToClientMap.get(serverId);
 	}
 
 	fn getInventoryByClientId(clientId: InventoryId) ?Inventory {
+		sync.threadContext.assertCorrectContext(.client);
 		main.sync.client.mutex.assertLocked();
 		var it = serverToClientMap.valueIterator();
 		while (it.next()) |inv| {
@@ -274,8 +280,8 @@ pub const server = struct { // MARK: server
 						const workbenchInventory = getInventoryFromSource(callbackSource) orelse @panic("Could not find workbench Inventory");
 						const playerInventory = server.getInventoryFromSource(.{.playerInventory = callbackSource.workbench.playerId}) orelse @panic("Could not find player Inventory");
 
-						const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-						defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+						const userList = main.server.getUserList(main.stackAllocator);
+						defer main.stackAllocator.free(userList);
 						for (userList) |callbackUser| {
 							if (callbackUser.id == callbackSource.workbench.playerId) {
 								sync.server.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, callbackUser.player().pos)}, null);
@@ -451,6 +457,16 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		}
 		std.debug.assert(dest.type == .serverShared);
 		main.sync.client.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = dest.super, .slot = destSlot}, .source = .{.inv = carried.super, .slot = 0}}});
+	}
+
+	pub fn swap(source: ClientInventory, sourceSlot: u32, dest: ClientInventory, destSlot: u32) void {
+		if (source.type == .creative) {
+			dest.fillFromCreative(destSlot, source.getItem(sourceSlot));
+			return;
+		}
+		std.debug.assert(source.type == .serverShared);
+		std.debug.assert(dest.type == .serverShared);
+		main.sync.client.executeCommand(.{.swap = .{.dest = .{.inv = dest.super, .slot = destSlot}, .source = .{.inv = source.super, .slot = sourceSlot}}});
 	}
 
 	pub fn deposit(dest: ClientInventory, destSlot: u32, source: ClientInventory, sourceSlot: u32, amount: u16) void {

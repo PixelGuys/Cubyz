@@ -1,35 +1,25 @@
 const std = @import("std");
 
 const main = @import("main");
-const User = main.server.User;
+const Source = main.server.command.Source;
 
-pub const description = "Get or set the server time.";
+pub const description = "Get, set, start or stop the server time.";
 pub const usage =
 	\\/time
 	\\/time <time>
-	\\/time <day/night>
+	\\/time <day/dusk/night/dawn>
 	\\/time <start/stop>"
 ;
 
-const Args = union(enum) {
-	@"/time <phase>": struct { phase: enum { day, night } },
+pub const Args = union(enum) {
+	@"/time <phase>": struct { phase: enum { day, dusk, night, dawn } },
 	@"/time <subcommand>": struct { subcommand: enum { start, stop } },
 	@"/time <number>": struct { number: i64 },
 	@"/time": struct {},
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/time"});
-
-pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
-		return;
-	};
-
-	const gameTime: i64 = switch (result) {
+pub fn execute(args: Args, source: Source) void {
+	const gameTime: i64 = switch (args) {
 		.@"/time" => time: {
 			source.sendMessage("#ffff00{}", .{main.server.world.?.gameTime});
 			break :time main.server.world.?.gameTime;
@@ -37,7 +27,9 @@ pub fn execute(args: []const u8, source: *User) void {
 		.@"/time <number>" => |params| params.number,
 		.@"/time <phase>" => |params| switch (params.phase) {
 			.day => main.game.World.DayTime.dayStart,
+			.dusk => main.game.World.DayTime.duskStart,
 			.night => main.game.World.DayTime.nightStart,
+			.dawn => main.game.World.DayTime.dawnStart,
 		},
 		.@"/time <subcommand>" => |params| {
 			switch (params.subcommand) {

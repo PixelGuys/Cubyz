@@ -1,6 +1,6 @@
 .{
 	.chance = 0.1,
-	.properties = .{
+	.climate = .{
 		.hot,
 		.ocean,
 	},
@@ -36,19 +36,19 @@
 			.id = "cubyz:beach/warm/wide",
 			.chance = 0.2,
 			.width = 2,
-			.properties = .{.land, .inland},
+			.climate = .{.land, .inland},
 		},
 		.{
 			.id = "cubyz:beach/warm/base",
 			.chance = 1,
 			.width = 1,
-			.properties = .{.land, .inland},
+			.climate = .{.land, .inland},
 		},
 		.{
 			.id = "cubyz:ocean/temperate/shelf",
 			.chance = 1,
 			.width = 3,
-			.properties = .{.land, .inland},
+			.climate = .{.land, .inland},
 		},
 	},
 }

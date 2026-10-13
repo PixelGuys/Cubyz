@@ -4,7 +4,7 @@ const main = @import("main");
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 
-pub const GuiComponent = union(enum) {
+pub const GuiComponent = union(enum) { // MARK: GuiComponent
 	pub const BagSlot = @import("components/BagSlot.zig");
 	pub const Button = @import("components/Button.zig");
 	pub const CheckBox = @import("components/CheckBox.zig");
@@ -12,7 +12,6 @@ pub const GuiComponent = union(enum) {
 	pub const Icon = @import("components/Icon.zig");
 	pub const ItemSlot = @import("components/ItemSlot.zig");
 	pub const Label = @import("components/Label.zig");
-	pub const MutexComponent = @import("components/MutexComponent.zig");
 	pub const ScrollBar = @import("components/ScrollBar.zig");
 	pub const ContinuousSlider = @import("components/ContinuousSlider.zig");
 	pub const DiscreteSlider = @import("components/DiscreteSlider.zig");
@@ -26,7 +25,6 @@ pub const GuiComponent = union(enum) {
 	icon: *Icon,
 	itemSlot: *ItemSlot,
 	label: *Label,
-	mutexComponent: *MutexComponent,
 	scrollBar: *ScrollBar,
 	continuousSlider: *ContinuousSlider,
 	discreteSlider: *DiscreteSlider,

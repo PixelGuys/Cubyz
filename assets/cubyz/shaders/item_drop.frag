@@ -1,5 +1,7 @@
 #version 460
 
+#include "frame_uniforms.glsl"
+
 layout(location = 0) in vec3 startPosition;
 layout(location = 1) in vec3 direction;
 layout(location = 2) in vec3 cameraSpacePos;
@@ -17,8 +19,6 @@ layout(binding = 0) uniform sampler2DArray textureSampler;
 layout(binding = 1) uniform sampler2DArray emissionSampler;
 layout(binding = 2) uniform sampler2DArray reflectivityAndAbsorptionSampler;
 layout(binding = 4) uniform samplerCube reflectionMap;
-
-layout(location = 0) uniform mat4 projectionMatrix;
 
 layout(location = 5) uniform vec3 ambientLight;
 layout(location = 7) uniform float sizeScale;
@@ -178,7 +178,7 @@ void mainItemDrop() {
 	vec3 modifiedCameraSpacePos = cameraSpacePos*(1 + total_tMax*sizeScale*length(direction)/length(cameraSpacePos));
 	vec4 projection = projectionMatrix*vec4(modifiedCameraSpacePos, 1);
 	float depth = projection.z/projection.w;
-	gl_FragDepth = (((glDepthRange.y - glDepthRange.x) * depth) + glDepthRange.x + glDepthRange.y)/2.0;
+	gl_FragDepth = (glDepthRange.y - glDepthRange.x)*depth + glDepthRange.x;
 
 	fragColor = decodeColor(block);
 	fragColor.a = 1; // No transparency supported!

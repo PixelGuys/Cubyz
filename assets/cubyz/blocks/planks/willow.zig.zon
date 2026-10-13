@@ -1,14 +1,12 @@
 .{
 	.item = .{
+		.colorTexture = "willow_planks_palette.png",
 		.material = .{
 			.durability = 20,
 			.massDamage = 1.0,
 			.hardnessDamage = 0.95,
 			.swingSpeed = 4.8,
 			.textureRoughness = 0.7,
-			.colors = .{
-				0xff35281b, 0xff493523, 0xff60462e, 0xff6f5133, 0xff815d39,
-			},
 			.modifiers = .{
 				.{
 					.id = "durable",

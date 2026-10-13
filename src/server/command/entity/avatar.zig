@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
-const User = main.server.User;
+const Source = command.Source;
 const model = main.entity.components.@"cubyz:model";
 
 pub const description = "Lookup or change your avatar";
@@ -10,32 +10,28 @@ pub const usage =
 	\\/avatar
 	\\/avatar <entityModel>
 ;
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/avatar": struct {},
 	@"/avatar <entityModel>": struct { entityModel: command.EntityModel },
 };
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/avatar"});
 
-pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: main.List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
+pub fn execute(args: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
 		return;
-	};
-
-	switch (result) {
+	}
+	const user = source.user;
+	switch (args) {
 		.@"/avatar <entityModel>" => |params| {
-			model.server.put(source.id, .{
+			model.server.put(user.id, .{
 				.entityModel = params.entityModel.index,
 			});
-			source.sendMessage("#00ff00Your entity model was changed to {s}.", .{params.entityModel.index.get().entityModelId});
+			user.sendMessage("#00ff00Your entity model was changed to {s}.", .{params.entityModel.index.get().entityModelId});
 		},
 		.@"/avatar" => {
-			if (model.server.get(source.id)) |rc| {
-				source.sendMessage("#00ff00You are a {s}", .{rc.entityModel.get().entityModelId});
-			} else source.sendMessage("#ff00ffYou are invisible.", .{});
+			if (model.server.get(user.id)) |rc| {
+				user.sendMessage("#00ff00You are a {s}", .{rc.entityModel.get().entityModelId});
+			} else user.sendMessage("#ff00ffYou are invisible.", .{});
 		},
 	}
 }

@@ -53,14 +53,16 @@ pub fn render() void {
 			x = 0;
 			y += 20;
 		}
-		if (energy + 1 <= main.game.Player.super.energy) {
-			energyTexture.bindTo(0);
-		} else if (energy + 0.5 <= main.game.Player.super.energy) {
-			halfEnergyTexture.bindTo(0);
-		} else {
-			noEnergyTexture.bindTo(0);
-		}
-		draw.boundImage(Vec2f{x, window.contentSize[1] - y - 20}, .{20, 20});
+		const texture = blk: {
+			if (energy + 1 <= main.game.Player.super.energy) {
+				break :blk energyTexture;
+			} else if (energy + 0.5 <= main.game.Player.super.energy) {
+				break :blk halfEnergyTexture;
+			} else {
+				break :blk noEnergyTexture;
+			}
+		};
+		draw.image(texture, Vec2f{x, window.contentSize[1] - y - 20}, .{20, 20});
 		x += 20;
 	}
 	y += 20;

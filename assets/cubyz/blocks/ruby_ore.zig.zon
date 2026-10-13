@@ -4,15 +4,13 @@
 	.blockResistance = 9,
 	.item = .{
 		.texture = "ruby.png",
+		.colorTexture = "ruby_ore_palette.png",
 		.material = .{
 			.durability = 300,
 			.massDamage = 0.9,
 			.hardnessDamage = 8.5,
 			.swingSpeed = 4.5,
 			.textureRoughness = 0.1,
-			.colors = .{
-				0xff9b2129, 0xffbd2936, 0xffda2f2f, 0xfffb4845, 0xffff7261,
-			},
 			.modifiers = .{
 				.{
 					.id = "fragile",
