@@ -37,7 +37,7 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	if (data1.targetProperty != data2.targetProperty) return null;
 	return .{
 		.strength = std.math.sign(data1.strength + data2.strength)*@sqrt(@abs(data1.strength*@abs(data1.strength) + data2.strength*@abs(data2.strength))),
-		.targetProperty = data1.targetProperty
+		.targetProperty = data1.targetProperty,
 	};
 }
 
