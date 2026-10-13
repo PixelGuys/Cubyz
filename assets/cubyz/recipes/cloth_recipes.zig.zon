@@ -4,10 +4,4 @@
 		.output = "cubyz:cloth/block/{color}",
 		.reversible = true,
 	},
-	.{
-		.inputs = .{"4 cubyz:copper_ingot"},
-		.output = "cubyz:silver_ingot",
-		.reversible = true,
-		.craftingTags = .{.alchemy},
-	},
 }
