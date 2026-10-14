@@ -146,10 +146,10 @@ pub const Lod = enum(u5) {
 	@"16" = 4,
 	@"32" = 5,
 
-	const min: Lod = @fromBackingInt(@typeInfo(Lod).@"enum".fields[0].value);
+	const min: Lod = @fromBackingInt(@typeInfo(Lod).@"enum".field_values[0]);
 	const max: Lod = blk: {
-		const fields = @typeInfo(Lod).@"enum".fields;
-		const maxValue = fields[fields.len - 1].value;
+		const fields = @typeInfo(Lod).@"enum".field_values;
+		const maxValue = fields[fields.len - 1];
 		break :blk @fromBackingInt(maxValue);
 	};
 

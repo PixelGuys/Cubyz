@@ -530,18 +530,18 @@ pub fn clientMain() void { // MARK: clientMain()
 pub fn refAllDeclsRecursiveExceptCImports(comptime T: type) void {
 	if (!@import("builtin").is_test) return;
 	inline for (comptime std.meta.declarations(T)) |decl| blk: {
-		if (comptime std.mem.eql(u8, decl.name, "c")) continue;
-		if (comptime std.mem.eql(u8, decl.name, "hbft")) break :blk;
-		if (comptime std.mem.eql(u8, decl.name, "stb_image")) break :blk;
+		if (comptime std.mem.eql(u8, decl, "c")) continue;
+		if (comptime std.mem.eql(u8, decl, "hbft")) break :blk;
+		if (comptime std.mem.eql(u8, decl, "stb_image")) break :blk;
 		// TODO: Remove this after Zig removes Managed hashmap PixelGuys/Cubyz#308
-		if (comptime std.mem.eql(u8, decl.name, "Managed")) continue;
-		if (@TypeOf(@field(T, decl.name)) == type) {
-			switch (@typeInfo(@field(T, decl.name))) {
-				.@"struct", .@"enum", .@"union", .@"opaque" => refAllDeclsRecursiveExceptCImports(@field(T, decl.name)),
+		if (comptime std.mem.eql(u8, decl, "Managed")) continue;
+		if (@TypeOf(@field(T, decl)) == type) {
+			switch (@typeInfo(@field(T, decl))) {
+				.@"struct", .@"enum", .@"union", .@"opaque" => refAllDeclsRecursiveExceptCImports(@field(T, decl)),
 				else => {},
 			}
 		}
-		_ = &@field(T, decl.name);
+		_ = &@field(T, decl);
 	}
 }
 
