@@ -1,6 +1,6 @@
 .{
 	.blueprints = .{
-		.{.id = null},	
+		.{.id = null},
 		.{.id = "cubyz:tree/mahogany/vine/0"},
 		.{.id = "cubyz:tree/mahogany/vine/1", .chance = 0.8},
 		.{.id = "cubyz:tree/mahogany/vine/2", .chance = 0.6},
