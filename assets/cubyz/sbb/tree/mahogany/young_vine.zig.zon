@@ -1,0 +1,15 @@
+.{
+	.blueprints = .{
+		.{.id = null},	
+		.{.id = "cubyz:tree/mahogany/vine/0"},
+		.{.id = "cubyz:tree/mahogany/vine/1", .chance = 0.8},
+		.{.id = "cubyz:tree/mahogany/vine/2", .chance = 0.6},
+		.{.id = "cubyz:tree/mahogany/vine/3", .chance = 0.3},
+		.{.id = "cubyz:tree/mahogany/vine/4", .chance = 0.1},
+		.{.id = "cubyz:tree/mahogany/vine/odous/0", .chance = 0.01},
+		.{.id = "cubyz:tree/mahogany/vine/odous/1", .chance = 0.07},
+		.{.id = "cubyz:tree/mahogany/vine/odous/2", .chance = 0.05},
+		.{.id = "cubyz:tree/mahogany/vine/odous/3", .chance = 0.03},
+		.{.id = "cubyz:tree/mahogany/vine/odous/4", .chance = 0.01},
+	},
+}
