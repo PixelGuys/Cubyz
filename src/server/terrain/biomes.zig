@@ -203,7 +203,7 @@ pub const Biome = struct { // MARK: Biome
 						continue :outer;
 					}
 				}
-				const allowedValues = std.mem.join(main.stackAllocator.allocator, ", ", std.meta.fieldNames(ClimateProperties)) catch unreachable;
+				const allowedValues = std.mem.join(main.stackAllocator.allocator, ", ", @typeInfo(ClimateProperties).@"struct".field_names) catch unreachable;
 				defer main.stackAllocator.free(allowedValues);
 				std.log.err("Climate value \"{s}\" not allowed. Allowed values are: {s}", .{climate, allowedValues});
 			}

@@ -391,7 +391,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 	for (mapPositions.items) |pos| {
 		main.heap.GarbageCollection.syncPoint();
 		var neighborInfo: MapFragment.NeighborInfo = undefined;
-		inline for (comptime std.meta.fieldNames(MapFragment.NeighborInfo)) |name| {
+		inline for (@typeInfo(MapFragment.NeighborInfo).@"struct".field_names) |name| {
 			var neighborPos = pos;
 			if (name[0] == '+') neighborPos.wx +%= MapFragment.mapSize;
 			if (name[0] == '-') neighborPos.wx -%= MapFragment.mapSize;

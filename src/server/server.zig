@@ -243,7 +243,7 @@ pub const User = struct { // MARK: User
 			self.newKeyString = main.globalAllocator.print("{s}:{s}", .{@tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm), keyBase64});
 		}
 		var foundKey: bool = false;
-		for (std.meta.fieldNames(main.network.authentication.KeyTypeEnum)) |keyTypeName| {
+		for (@typeInfo(main.network.authentication.KeyTypeEnum).@"enum".field_names) |keyTypeName| {
 			const keyBase64 = keys.get([]const u8, keyTypeName) orelse continue;
 			const keyWithType = main.stackAllocator.print("{s}:{s}", .{keyTypeName, keyBase64});
 			defer main.stackAllocator.free(keyWithType);

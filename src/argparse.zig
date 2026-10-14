@@ -53,7 +53,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 
 		fn resolveStruct(
 			comptime mode: ResolveMode,
-			comptime s: std.builtin.Type.Struct,
+			comptime s: std.lang.Type.Struct,
 			arena: NeverFailingAllocator,
 			args: []const u8,
 			errorMessage: *ListManaged(u8),
@@ -120,7 +120,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				},
 				inline .@"enum" => {
 					return std.meta.stringToEnum(Field, arg) orelse {
-						const str = main.meta.concatComptime("/", std.meta.fieldNames(Field));
+						const str = main.meta.concatComptime("/", @typeInfo(Field).@"enum".field_names);
 						errorMessage.print("Expected one of {s} for <{s}>, found \"{s}\"", .{str, name, arg});
 						return error.ParseError;
 					};
@@ -147,7 +147,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			}
 		}
 
-		fn parseUnion(comptime u: std.builtin.Type.Union, arena: NeverFailingAllocator, args: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!T {
+		fn parseUnion(comptime u: std.lang.Type.Union, arena: NeverFailingAllocator, args: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!T {
 			var tempErrorMessage: ListManaged(u8) = .init(main.stackAllocator);
 			defer tempErrorMessage.deinit();
 
@@ -169,7 +169,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			return error.ParseError;
 		}
 
-		fn autocompleteUnion(comptime u: std.builtin.Type.Union, arena: NeverFailingAllocator, args: []const u8) AutocompleteResult {
+		fn autocompleteUnion(comptime u: std.lang.Type.Union, arena: NeverFailingAllocator, args: []const u8) AutocompleteResult {
 			_ = u;
 			_ = arena;
 			_ = args;

@@ -1,7 +1,6 @@
 /// A collection of things that should make dealing with opengl easier.
 /// Also contains some basic 2d drawing stuff.
 const std = @import("std");
-const builtin = @import("builtin");
 
 const vec = @import("vec.zig");
 const Mat4f = vec.Mat4f;
