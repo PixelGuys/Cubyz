@@ -1649,19 +1649,11 @@ pub const Mutex = struct { // MARK: Mutex
 	}
 
 	pub fn lock(self: *Mutex) void {
-		if (builtin.os.tag == .windows) {
-			self.super.lock();
-		} else {
-			self.super.lockUncancelable(main.io);
-		}
+		self.super.lockUncancelable(main.io);
 	}
 
 	pub fn unlock(self: *Mutex) void {
-		if (builtin.os.tag == .windows) {
-			self.super.unlock();
-		} else {
-			self.super.unlock(main.io);
-		}
+		self.super.unlock(main.io);
 	}
 
 	pub fn assertLocked(self: *const main.utils.Mutex) void {
