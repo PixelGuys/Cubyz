@@ -47,6 +47,16 @@ var deferredUniforms: struct {
 	zFar: c_int,
 	invViewMatrix: c_int,
 } = undefined;
+const DeferredUniforms = extern struct {
+	invViewMatrix: [4][4]f32 align(16),
+	tanXY: [2]f32 align(8),
+	zNear: f32,
+	zFar: f32,
+	@"fog.color": [3]f32 align(16),
+	@"fog.density": f32,
+	@"fog.fogLower": f32,
+	@"fog.fogHigher": f32,
+};
 var fakeReflectionPipeline: graphics.Pipeline = undefined;
 var fakeReflectionUniforms: struct {
 	normalVector: c_int,
@@ -71,9 +81,16 @@ pub fn init() void {
 		&deferredUniforms,
 		graphics.draw.SimpleVertex2D,
 		.{
+			.bindings = &.{
+				.sampler(3, .{.fragment = true}),
+				.sampler(4, .{.fragment = true}),
+				.sampler(5, .{.fragment = true}),
+			},
 			.rasterState = .{.cullMode = .none},
 			.depthStencilState = .{.depthTest = false, .depthWrite = false},
-			.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.world}},
+			.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.swapChain}},
+			.inputAssemblyState = .{.topology = .triangleStrip},
+			.pushConstantSize = @sizeOf(DeferredUniforms),
 		},
 	);
 	fakeReflectionPipeline = graphics.Pipeline.init(
@@ -88,8 +105,7 @@ pub fn init() void {
 			.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R8G8B8A8_UNORM}}},
 		},
 	);
-	worldFrameBuffer.init(true, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
-	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGB16F);
+	worldFrameBuffer = .init(Window.width, Window.height, c.GL_RGBA16F, true, .nearest, .clampToEdge);
 	Bloom.init();
 	MeshSelection.init();
 	MenuBackGround.init();
@@ -116,8 +132,7 @@ pub fn deinit() void {
 
 fn initReflectionCubeMap() void {
 	c.glViewport(0, 0, reflectionCubeMapSize, reflectionCubeMapSize);
-	var framebuffer: graphics.FrameBuffer = undefined;
-	framebuffer.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
+	var framebuffer: graphics.FrameBuffer = .init(0, 0, c.GL_RGBA8, false, .linear, .clampToEdge);
 	defer framebuffer.deinit();
 	framebuffer.bind();
 	fakeReflectionPipeline.bind(null);
@@ -148,7 +163,8 @@ pub fn updateViewport(width: u31, height: u31) void {
 	lastWidth = @trunc(@as(f32, @floatFromInt(width))*main.settings.resolutionScale);
 	lastHeight = @trunc(@as(f32, @floatFromInt(height))*main.settings.resolutionScale);
 	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(lastFov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
-	worldFrameBuffer.updateSize(lastWidth, lastHeight, c.GL_RGB16F);
+	worldFrameBuffer.deinit();
+	worldFrameBuffer = .init(lastWidth, lastHeight, c.GL_RGBA16F, true, .nearest, .clampToEdge);
 	worldFrameBuffer.unbind();
 }
 
@@ -195,6 +211,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.clear);
 	worldFrameBuffer.clear(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
 	gpu_performance_measuring.stopQuery();
+	if (main.settings.launchConfig.vulkanTestingMode) {
+		worldFrameBuffer.bindAndClear(vulkan.currentFrame.renderCommands, .{.clearColor = .{.float32 = .{skyColor[0], skyColor[1], skyColor[2], 1}}}, .{.clearDepth = .{.depth = 1}});
+	}
 	game.camera.updateViewMatrix();
 
 	main.graphics.frame_uniforms.uploadNewFrame(.{
@@ -295,16 +314,50 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	chunk_meshing.endRender();
 
+	if (main.settings.launchConfig.vulkanTestingMode) {
+		vulkan.currentFrame.renderCommands.endRendering();
+		worldFrameBuffer.prepareTexturesForBinding(vulkan.currentFrame.renderCommands);
+	}
+
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 
 	const playerBlock = mesh_storage.getBlockFromAnyLodFromRenderThread(@floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 
-	if (settings.bloom) {
+	if (settings.bloom and !settings.launchConfig.vulkanTestingMode) { // TODO: Enable bloom in Vulkan
 		Bloom.render(lastWidth, lastHeight, playerBlock, game.camera.viewMatrix);
 	} else {
 		Bloom.bindReplacementImage();
 	}
 	gpu_performance_measuring.startQuery(.final_copy);
+	if (settings.launchConfig.vulkanTestingMode) {
+		vulkan.currentFrame.guiCommands.bindPipeline(deferredRenderPassPipeline, null);
+		vulkan.currentFrame.guiCommands.bindDescriptors(deferredRenderPassPipeline, .graphics, &.{
+			.{.image = .{.binding = 3, .image = worldFrameBuffer.color}},
+			.{.image = .{.binding = 4, .image = worldFrameBuffer.depth}},
+			.{.image = .{.binding = 5, .image = Bloom.emptyBuffer.vulkanImage.?}},
+		});
+		graphics.frame_uniforms.bindToPipeline(vulkan.currentFrame.guiCommands, deferredRenderPassPipeline);
+		var uniforms: DeferredUniforms = undefined;
+		uniforms.invViewMatrix = game.camera.viewMatrix.transpose().toGl();
+		uniforms.tanXY = .{1.0/game.projectionMatrix.rows[0][0], -1.0/game.projectionMatrix.rows[1][2]};
+		uniforms.zNear = zNear;
+		uniforms.zFar = zFar;
+		if (!blocks.meshes.hasFog(playerBlock)) {
+			uniforms.@"fog.color" = game.world.?.dayTime.fog.fogColor;
+			uniforms.@"fog.density" = game.world.?.dayTime.fog.density;
+			uniforms.@"fog.fogLower" = game.world.?.dayTime.fog.fogLower;
+			uniforms.@"fog.fogHigher" = game.world.?.dayTime.fog.fogHigher;
+		} else {
+			const fogColor = blocks.meshes.fogColor(playerBlock);
+			uniforms.@"fog.color" = .{@as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0};
+			uniforms.@"fog.density" = blocks.meshes.fogDensity(playerBlock);
+			uniforms.@"fog.fogLower" = 1e10;
+			uniforms.@"fog.fogHigher" = 1e10;
+		}
+		vulkan.currentFrame.guiCommands.pushConstants(deferredRenderPassPipeline, &uniforms);
+		vulkan.currentFrame.guiCommands.bindVertexArray(graphics.draw.rectVao);
+		vulkan.currentFrame.guiCommands.draw(4, 0);
+	}
 	if (activeFrameBuffer == 0) c.glViewport(0, 0, main.Window.width, main.Window.height);
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
@@ -359,8 +412,8 @@ const Bloom = struct { // MARK: Bloom
 	} = undefined;
 
 	pub fn init() void {
-		buffer1.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
-		buffer2.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
+		buffer1 = .init(0, 0, c.GL_R11F_G11F_B10F, false, .linear, .clampToEdge);
+		buffer2 = .init(0, 0, c.GL_R11F_G11F_B10F, false, .linear, .clampToEdge);
 		emptyBuffer = .init();
 		emptyBuffer.generate(graphics.Image.emptyImage);
 		firstPassPipeline = graphics.Pipeline.init(
@@ -457,9 +510,11 @@ const Bloom = struct { // MARK: Bloom
 		if (width != currentWidth or height != currentHeight) {
 			width = currentWidth;
 			height = currentHeight;
-			buffer1.updateSize(width/4, height/4, c.GL_R11F_G11F_B10F);
+			buffer1.deinit();
+			buffer1 = .init(width/4, height/4, c.GL_R11F_G11F_B10F, false, .linear, .clampToEdge);
 			std.debug.assert(buffer1.validate());
-			buffer2.updateSize(width/4, height/4, c.GL_R11F_G11F_B10F);
+			buffer2.deinit();
+			buffer2 = .init(width/4, height/4, c.GL_R11F_G11F_B10F, false, .linear, .clampToEdge);
 			std.debug.assert(buffer2.validate());
 		}
 		gpu_performance_measuring.startQuery(.bloom_extract_downsample);
@@ -650,10 +705,8 @@ pub const MenuBackGround = struct { // MARK: MenuBackGround
 		main.settings.resolutionScale = oldResolutionScale;
 		defer updateViewport(Window.width, Window.height);
 
-		var buffer: graphics.FrameBuffer = undefined;
-		buffer.init(true, c.GL_NEAREST, c.GL_REPEAT);
+		var buffer: graphics.FrameBuffer = .init(size, size, c.GL_RGBA8, false, .nearest, .repeat);
 		defer buffer.deinit();
-		buffer.updateSize(size, size, c.GL_RGBA8);
 
 		activeFrameBuffer = buffer.frameBuffer;
 		defer activeFrameBuffer = 0;
@@ -900,6 +953,13 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		lineSize: c_int,
 	} = undefined;
 
+	pub const Uniforms = extern struct {
+		modelPosition: [3]f32 align(16),
+		lowerBounds: [3]f32 align(16),
+		upperBounds: [3]f32 align(16),
+		lineSize: f32,
+	};
+
 	pub fn init() void {
 		pipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/block_selection_vertex.vert",
@@ -911,6 +971,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				.rasterState = .{.cullMode = .none},
 				.depthStencilState = .{.depthTest = true, .depthWrite = true},
 				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
+				.inputAssemblyState = .{.topology = .triangleList},
+				.pushConstantSize = @sizeOf(Uniforms),
 			},
 		);
 	}
@@ -1193,20 +1255,37 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	pub fn drawCube(relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
-		pipeline.bind(null);
+		if (main.settings.launchConfig.vulkanTestingMode) {
+			vulkan.currentFrame.renderCommands.bindPipeline(pipeline, null);
+			vulkan.currentFrame.renderCommands.pushConstants(pipeline, &Uniforms{
+				.modelPosition = .{
+					@floatCast(relativePositionToPlayer[0]),
+					@floatCast(relativePositionToPlayer[1]),
+					@floatCast(relativePositionToPlayer[2]),
+				},
+				.lowerBounds = .{min[0], min[1], min[2]},
+				.upperBounds = .{max[0], max[1], max[2]},
+				.lineSize = 1.0/128.0,
+			});
+			graphics.frame_uniforms.bindToPipeline(vulkan.currentFrame.renderCommands, pipeline);
+			vulkan.currentFrame.renderCommands.bindVertexArray(main.renderer.chunk_meshing.vao);
+			vulkan.currentFrame.renderCommands.drawIndexed(12*6*6, 0);
+		} else {
+			pipeline.bind(null);
 
-		c.glUniform3f(
-			uniforms.modelPosition,
-			@floatCast(relativePositionToPlayer[0]),
-			@floatCast(relativePositionToPlayer[1]),
-			@floatCast(relativePositionToPlayer[2]),
-		);
-		c.glUniform3f(uniforms.lowerBounds, min[0], min[1], min[2]);
-		c.glUniform3f(uniforms.upperBounds, max[0], max[1], max[2]);
-		c.glUniform1f(uniforms.lineSize, 1.0/128.0);
+			c.glUniform3f(
+				uniforms.modelPosition,
+				@floatCast(relativePositionToPlayer[0]),
+				@floatCast(relativePositionToPlayer[1]),
+				@floatCast(relativePositionToPlayer[2]),
+			);
+			c.glUniform3f(uniforms.lowerBounds, min[0], min[1], min[2]);
+			c.glUniform3f(uniforms.upperBounds, max[0], max[1], max[2]);
+			c.glUniform1f(uniforms.lineSize, 1.0/128.0);
 
-		main.renderer.chunk_meshing.vao.bind();
-		c.glDrawElements(c.GL_TRIANGLES, 12*6*6, c.GL_UNSIGNED_INT, null);
+			main.renderer.chunk_meshing.vao.bind();
+			c.glDrawElements(c.GL_TRIANGLES, 12*6*6, c.GL_UNSIGNED_INT, null);
+		}
 	}
 
 	pub fn render(playerPos: Vec3d) void {

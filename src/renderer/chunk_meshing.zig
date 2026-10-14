@@ -327,11 +327,11 @@ const FaceGroups = enum(u32) {
 	optional,
 
 	pub fn neighbor(n: main.chunk.Neighbor) FaceGroups {
-		return @enumFromInt(@intFromEnum(FaceGroups.neighbor0) + @intFromEnum(n));
+		return @fromBackingInt(@backingInt(FaceGroups.neighbor0) + @backingInt(n));
 	}
 
 	pub fn neighborLod(n: main.chunk.Neighbor) FaceGroups {
-		return @enumFromInt(@intFromEnum(FaceGroups.neighborLod0) + @intFromEnum(n));
+		return @fromBackingInt(@backingInt(FaceGroups.neighborLod0) + @backingInt(n));
 	}
 };
 
@@ -387,9 +387,9 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		var list: [6][]FaceData = undefined;
 		for (0..6) |i| {
 			if (!isNeighborLod[i]) {
-				list[i] = self.completeList.getRange(.neighbor(@enumFromInt(i)));
+				list[i] = self.completeList.getRange(.neighbor(@fromBackingInt(@intCast(i))));
 			} else {
-				list[i] = self.completeList.getRange(.neighborLod(@enumFromInt(i)));
+				list[i] = self.completeList.getRange(.neighborLod(@fromBackingInt(@intCast(i))));
 			}
 			len += list[i].len;
 		}
@@ -412,7 +412,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				}
 			}
 			if (normal < 6) {
-				const normalDir: chunk.Neighbor = @enumFromInt(normal);
+				const normalDir: chunk.Neighbor = @fromBackingInt(@intCast(normal));
 				@memcpy(fullBuffer[i..][0..list[normalDir.reverse().toInt()].len], list[normalDir.reverse().toInt()]);
 				i += @intCast(list[normalDir.reverse().toInt()].len);
 			}
@@ -1458,9 +1458,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		var list: [6][]FaceData = undefined;
 		for (0..6) |i| {
 			if (!self.isNeighborLod[i]) {
-				list[i] = self.transparentMesh.completeList.getRange(.neighbor(@enumFromInt(i)));
+				list[i] = self.transparentMesh.completeList.getRange(.neighbor(@fromBackingInt(@intCast(i))));
 			} else {
-				list[i] = self.transparentMesh.completeList.getRange(.neighborLod(@enumFromInt(i)));
+				list[i] = self.transparentMesh.completeList.getRange(.neighborLod(@fromBackingInt(@intCast(i))));
 			}
 			len += list[i].len;
 		}

@@ -1,8 +1,5 @@
 .{
 	.tags = .{.choppable, .wood, .branch},
-	.onUpdate = .{
-		.type = .decay,
-	},
 	.blockHealth = 4,
 	.texture0 = "cubyz:branch/birch/dot",
 	.texture1 = "cubyz:branch/birch/half_line",
@@ -30,5 +27,4 @@
 		},
 		.texture = "branch/birch.png",
 	},
-	.decayProhibitor = true,
 }
