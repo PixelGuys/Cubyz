@@ -261,7 +261,7 @@ pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bi
 			},
 		}
 	}
-	c.vkCmdPushDescriptorSetKHR(self.handle, @intFromEnum(bindPoint), pipeline.pipelineLayout, 0, @intCast(writeInfo.len), writeInfo.ptr);
+	c.vkCmdPushDescriptorSetKHR(self.handle, @backingInt(bindPoint), pipeline.pipelineLayout, 0, @intCast(writeInfo.len), writeInfo.ptr);
 }
 
 pub fn pushConstants(self: CommandBuffer, pipeline: main.graphics.Pipeline, constants: anytype) void {

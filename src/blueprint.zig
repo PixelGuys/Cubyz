@@ -384,7 +384,7 @@ pub const Pattern = struct {
 			var blockId = specifier;
 			var weight: f32 = 1.0;
 
-			if (std.mem.containsAtLeastScalar(u8, specifier, 1, weightSeparator)) {
+			if (std.mem.containsAtLeastScalar(u8, specifier, weightSeparator, 1)) {
 				var iterator = std.mem.splitScalar(u8, specifier, weightSeparator);
 				const weightString = iterator.first();
 				blockId = iterator.rest();
@@ -436,17 +436,17 @@ pub const Mask = struct { // MARK: Mask
 			blockProperty: Property,
 
 			const Property = blk: {
-				var fieldNames: [@typeInfo(Block).@"struct".decls.len][]const u8 = undefined;
-				var fieldValues: [@typeInfo(Block).@"struct".decls.len]u8 = undefined;
+				var fieldNames: [@typeInfo(Block).@"struct".decl_names.len][]const u8 = undefined;
+				var fieldValues: [@typeInfo(Block).@"struct".decl_names.len]u8 = undefined;
 				var count = 0;
 
 				for (std.meta.declarations(Block)) |decl| {
-					const declInfo = @typeInfo(@TypeOf(@field(Block, decl.name)));
+					const declInfo = @typeInfo(@TypeOf(@field(Block, decl)));
 					if (declInfo != .@"fn") continue;
 					if (declInfo.@"fn".return_type != bool) continue;
-					if (declInfo.@"fn".params.len != 1) continue;
+					if (declInfo.@"fn".param_types.len != 1) continue;
 
-					fieldNames[count] = decl.name;
+					fieldNames[count] = decl;
 					fieldValues[count] = count;
 					count += 1;
 				}

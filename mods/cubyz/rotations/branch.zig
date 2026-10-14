@@ -88,7 +88,7 @@ fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, min: f32, max: f32, s
 	switch (pattern) {
 		.dot, .cross => {},
 		inline else => |typ| {
-			const angle: f32 = @as(f32, @floatFromInt(@intFromEnum(typ)))*std.math.pi/2.0;
+			const angle: f32 = @as(f32, @floatFromInt(@backingInt(typ)))*std.math.pi/2.0;
 			corners = .{
 				vec.rotate2d(originalCorners[0], angle, @splat(0.5)),
 				vec.rotate2d(originalCorners[1], angle, @splat(0.5)),
@@ -119,7 +119,7 @@ fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, min: f32, max: f32, s
 		},
 		.cornerUV = .{originalCorners[0], originalCorners[1], originalCorners[2], originalCorners[3]},
 		.normal = @as(Vec3f, @floatFromInt(side.relPos())),
-		.textureSlot = textureSlotOffset + @intFromEnum(pattern),
+		.textureSlot = textureSlotOffset + @backingInt(pattern),
 	};
 
 	return res;
@@ -360,7 +360,7 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	const rotationIndex = (data & 0b111100) >> 2;
 	const upDownFlags = data & 0b000011;
 	const runtimeTable = rotationTable;
-	return runtimeTable[@intFromEnum(angle)][rotationIndex] | upDownFlags;
+	return runtimeTable[@backingInt(angle)][rotationIndex] | upDownFlags;
 }
 
 pub fn generateData(

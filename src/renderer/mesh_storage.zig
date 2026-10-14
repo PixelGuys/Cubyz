@@ -829,7 +829,7 @@ pub fn addBreakingAnimation(pos: Vec3i, breakingProgress: f32) void {
 	}
 	for (&model.neighborFacingQuads, 0..) |quads, n| {
 		for (quads) |quadIndex| {
-			addBreakingAnimationFace(pos, quadIndex, texture, @enumFromInt(n), block.transparent());
+			addBreakingAnimationFace(pos, quadIndex, texture, @fromBackingInt(@intCast(n)), block.transparent());
 		}
 	}
 }
@@ -890,7 +890,7 @@ pub fn removeBreakingAnimation(pos: Vec3i) void {
 	}
 	for (&model.neighborFacingQuads, 0..) |quads, n| {
 		for (quads) |quadIndex| {
-			removeBreakingAnimationFace(pos, quadIndex, @enumFromInt(n));
+			removeBreakingAnimationFace(pos, quadIndex, @fromBackingInt(@intCast(n)));
 		}
 	}
 }

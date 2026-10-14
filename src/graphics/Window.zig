@@ -198,7 +198,7 @@ pub const Gamepad = struct { // MARK: Gamepad
 				return;
 			};
 			if (fetchResult.status != .ok) {
-				std.log.err("Failed to download controller mappings: HTTP error {d}", .{@intFromEnum(fetchResult.status)});
+				std.log.err("Failed to download controller mappings: HTTP error {d}", .{@backingInt(fetchResult.status)});
 				return;
 			}
 			files.cwd().write("./gamecontrollerdb.txt", writer.written()) catch |err| {
@@ -221,7 +221,7 @@ pub const Gamepad = struct { // MARK: Gamepad
 		}
 	};
 	pub fn downloadControllerMappings() void {
-		if (builtin.mode == .Debug) return; // TODO: The http fetch adds ~5 seconds to the compile time, so it's disabled in debug mode, see #24435
+		if (builtin.mode == .debug) return; // TODO: The http fetch adds ~5 seconds to the compile time, so it's disabled in debug mode, see #24435
 		var needsDownload: bool = false;
 		const curTimestamp: i96 = std.Io.Clock.Timestamp.now(main.io, .real).raw.nanoseconds;
 		const timestamp: i96 = blk: {
