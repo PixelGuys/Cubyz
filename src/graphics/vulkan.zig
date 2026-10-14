@@ -393,8 +393,8 @@ fn getDeviceScore(dev: c.VkPhysicalDevice) f32 {
 	}
 	if (!findQueueFamilies(dev).isComplete() or !checkDeviceExtensionSupport(dev)) return 0;
 
-	inline for (comptime std.meta.fieldNames(@TypeOf(deviceFeatures))) |ver| {
-		inline for (comptime std.meta.fieldNames(@TypeOf(@field(deviceFeatures, ver)))) |name| {
+	inline for (@typeInfo(@TypeOf(deviceFeatures)).@"struct".field_names) |ver| {
+		inline for (@typeInfo(@TypeOf(@field(deviceFeatures, ver))).@"struct".field_names) |name| {
 			if (comptime std.mem.eql(u8, name, "sType")) continue;
 			if (comptime std.mem.eql(u8, name, "pNext")) continue;
 			if (@field(@field(deviceFeatures, ver), name) == c.VK_TRUE and @field(@field(features, ver), name) == c.VK_FALSE) {
@@ -433,7 +433,7 @@ fn pickPhysicalDevice() !void {
 	const availableExtension = enumerateDeviceExtensionProperties(main.stackAllocator, physicalDevice, null);
 	defer main.stackAllocator.free(availableExtension);
 	for (availableExtension) |ext| {
-		inline for (comptime std.meta.fieldNames(@TypeOf(interestingExtensions))) |extensionName| {
+		inline for (@typeInfo(@TypeOf(interestingExtensions)).@"struct".field_names) |extensionName| {
 			if (std.mem.eql(u8, ext.extensionName[0..extensionName.len], extensionName)) {
 				@field(interestingExtensions, extensionName) = true;
 			}

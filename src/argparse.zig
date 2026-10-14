@@ -120,7 +120,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				},
 				inline .@"enum" => {
 					return std.meta.stringToEnum(Field, arg) orelse {
-						const str = main.meta.concatComptime("/", std.meta.fieldNames(Field));
+						const str = main.meta.concatComptime("/", @typeInfo(Field).@"enum".field_names);
 						errorMessage.print("Expected one of {s} for <{s}>, found \"{s}\"", .{str, name, arg});
 						return error.ParseError;
 					};
