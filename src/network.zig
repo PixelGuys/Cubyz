@@ -726,7 +726,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			if (self.online.load(.acquire) and source.address.eql(&self.externalAddress.address)) return;
 		}
 		if (self.allowNewConnections or source.address.eql(&IpAddress{.ip4 = .loopback(source.address.getPort())})) {
-			if (data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
+			if (data.len != 0 and data[0] == @backingInt(Connection.ChannelId.init)) {
 				const ip = main.stackAllocator.print("{f}", .{source});
 				defer main.stackAllocator.free(ip);
 				const user = main.server.User.init(main.server.connectionManager, ip) catch |err| {
@@ -1601,7 +1601,7 @@ pub const Connection = struct { // MARK: Connection
 
 		if (protocolIndex != protocols.reload.id) {
 			// Throw away everything from before the restart
-			if (conn.restartChannelCounter[@intFromEnum(channelId)] != conn.restartCounter) return .discard;
+			if (conn.restartChannelCounter[@backingInt(channelId)] != conn.restartCounter) return .discard;
 			return .evaluate;
 		}
 
@@ -1622,8 +1622,8 @@ pub const Connection = struct { // MARK: Connection
 				conn.handShakeWaiting.broadcast(main.io);
 			}
 		}
-		if (conn.restartChannelCounter[@intFromEnum(channelId)] < restartCounter) {
-			conn.restartChannelCounter[@intFromEnum(channelId)] = restartCounter;
+		if (conn.restartChannelCounter[@backingInt(channelId)] < restartCounter) {
+			conn.restartChannelCounter[@backingInt(channelId)] = restartCounter;
 		}
 		return .discard;
 	}
@@ -1877,7 +1877,7 @@ pub const Connection = struct { // MARK: Connection
 			.awaitingClientConnection => {
 				if (timestamp -% self.nextPacketTimestamp < 0) return;
 				self.nextPacketTimestamp = timestamp +% 100*ms;
-				self.manager.send(&.{@intFromEnum(ChannelId.keepalive)}, self.remoteAddress, null);
+				self.manager.send(&.{@backingInt(ChannelId.keepalive)}, self.remoteAddress, null);
 			},
 			.awaitingServerResponse, .awaitingClientAcknowledgement => {
 				// Send the initial packet once every 100 ms.
@@ -1944,7 +1944,7 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn disconnect(self: *Connection) void {
-		self.manager.send(&.{@intFromEnum(ChannelId.disconnect)}, self.remoteAddress, null);
+		self.manager.send(&.{@backingInt(ChannelId.disconnect)}, self.remoteAddress, null);
 		self.connectionState.store(.disconnected, .monotonic);
 		if (builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
 			main.io.sleep(.fromMilliseconds(10), .awake) catch {}; // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.

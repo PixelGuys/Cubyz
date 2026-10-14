@@ -207,8 +207,8 @@ pub fn save() void { // MARK: save()
 				},
 				.attachedToFrame => |attachedToFrame| {
 					relPosZon.put("type", "attachedToFrame");
-					relPosZon.put("selfAttachmentPoint", @intFromEnum(attachedToFrame.selfAttachmentPoint));
-					relPosZon.put("otherAttachmentPoint", @intFromEnum(attachedToFrame.otherAttachmentPoint));
+					relPosZon.put("selfAttachmentPoint", @backingInt(attachedToFrame.selfAttachmentPoint));
+					relPosZon.put("otherAttachmentPoint", @backingInt(attachedToFrame.otherAttachmentPoint));
 				},
 				.relativeToWindow => |relativeToWindow| {
 					relPosZon.put("type", "relativeToWindow");
@@ -218,8 +218,8 @@ pub fn save() void { // MARK: save()
 				.attachedToWindow => |attachedToWindow| {
 					relPosZon.put("type", "attachedToWindow");
 					relPosZon.put("reference", attachedToWindow.reference.id);
-					relPosZon.put("selfAttachmentPoint", @intFromEnum(attachedToWindow.selfAttachmentPoint));
-					relPosZon.put("otherAttachmentPoint", @intFromEnum(attachedToWindow.otherAttachmentPoint));
+					relPosZon.put("selfAttachmentPoint", @backingInt(attachedToWindow.selfAttachmentPoint));
+					relPosZon.put("otherAttachmentPoint", @backingInt(attachedToWindow.otherAttachmentPoint));
 				},
 			}
 			windowZon.put(([_][]const u8{"relPos0", "relPos1"})[i], relPosZon);
@@ -265,8 +265,8 @@ fn load() void {
 				relPos.* = .{.ratio = relPosZon.get(f32, "ratio") orelse 0.5};
 			} else if (std.mem.eql(u8, typ, "attachedToFrame")) {
 				relPos.* = .{.attachedToFrame = .{
-					.selfAttachmentPoint = @enumFromInt(relPosZon.get(u8, "selfAttachmentPoint") orelse 0),
-					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint") orelse 0),
+					.selfAttachmentPoint = @fromBackingInt(relPosZon.get(u8, "selfAttachmentPoint") orelse 0),
+					.otherAttachmentPoint = @fromBackingInt(relPosZon.get(u8, "otherAttachmentPoint") orelse 0),
 				}};
 			} else if (std.mem.eql(u8, typ, "relativeToWindow")) {
 				const reference = getWindowById(relPosZon.get([]const u8, "reference") orelse "") orelse continue;
@@ -278,8 +278,8 @@ fn load() void {
 				const reference = getWindowById(relPosZon.get([]const u8, "reference") orelse "") orelse continue;
 				relPos.* = .{.attachedToWindow = .{
 					.reference = reference,
-					.selfAttachmentPoint = @enumFromInt(relPosZon.get(u8, "selfAttachmentPoint") orelse 0),
-					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint") orelse 0),
+					.selfAttachmentPoint = @fromBackingInt(relPosZon.get(u8, "selfAttachmentPoint") orelse 0),
+					.otherAttachmentPoint = @fromBackingInt(relPosZon.get(u8, "otherAttachmentPoint") orelse 0),
 				}};
 			} else {
 				std.log.err("Unknown window attachment type: {s}", .{typ});

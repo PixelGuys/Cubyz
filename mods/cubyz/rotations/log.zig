@@ -69,7 +69,7 @@ fn rotateQuad(pattern: Pattern, side: Neighbor) main.models.QuadInfo {
 	switch (pattern) {
 		.dot, .cross, .cut => {},
 		.line => |dir| {
-			var angle: f32 = @as(f32, @floatFromInt(@intFromEnum(dir)))*std.math.pi/2.0;
+			var angle: f32 = @as(f32, @floatFromInt(@backingInt(dir)))*std.math.pi/2.0;
 			if (side.relZ() != 0) {
 				angle *= -1;
 			}
@@ -89,7 +89,7 @@ fn rotateQuad(pattern: Pattern, side: Neighbor) main.models.QuadInfo {
 		.bend, .intersection => |dir| {
 			corners = originalCorners;
 
-			const angle: f32 = -@as(f32, @floatFromInt(@intFromEnum(dir)))*std.math.pi/2.0;
+			const angle: f32 = -@as(f32, @floatFromInt(@backingInt(dir)))*std.math.pi/2.0;
 			corners = .{
 				vec.rotate2d(originalCorners[0], angle, @splat(0.5)),
 				vec.rotate2d(originalCorners[1], angle, @splat(0.5)),
@@ -120,7 +120,7 @@ fn rotateQuad(pattern: Pattern, side: Neighbor) main.models.QuadInfo {
 		},
 		.cornerUV = .{corners[0], corners[1], corners[2], corners[3]},
 		.normal = @as(Vec3f, @floatFromInt(side.relPos())),
-		.textureSlot = @intFromEnum(pattern),
+		.textureSlot = @backingInt(pattern),
 	};
 
 	return res;

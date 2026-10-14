@@ -73,7 +73,7 @@ pub fn deinit() void {
 pub fn startQuery(sample: Samples) void {
 	std.debug.assert(activeSample == null); // There can be at most one active measurement at a time.
 	activeSample = sample;
-	c.glBeginQuery(c.GL_TIME_ELAPSED, queryObjects[curBuffer][@intFromEnum(sample)]);
+	c.glBeginQuery(c.GL_TIME_ELAPSED, queryObjects[curBuffer][@backingInt(sample)]);
 }
 
 pub fn stopQuery() void {

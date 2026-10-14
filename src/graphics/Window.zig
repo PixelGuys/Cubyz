@@ -198,7 +198,7 @@ pub const Gamepad = struct { // MARK: Gamepad
 				return;
 			};
 			if (fetchResult.status != .ok) {
-				std.log.err("Failed to download controller mappings: HTTP error {d}", .{@intFromEnum(fetchResult.status)});
+				std.log.err("Failed to download controller mappings: HTTP error {d}", .{@backingInt(fetchResult.status)});
 				return;
 			}
 			files.cwd().write("./gamecontrollerdb.txt", writer.written()) catch |err| {

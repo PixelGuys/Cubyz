@@ -785,7 +785,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		pub fn add(self: *Performance, task: TaskType, time: i64) void {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			const i = @intFromEnum(task);
+			const i = @backingInt(task);
 			self.tasks[i] += 1;
 			self.utime[i] += time;
 		}
@@ -1811,7 +1811,7 @@ pub const BinaryWriter = struct { // MARK: BinaryWriter
 	}
 
 	pub fn writeEnum(self: *BinaryWriter, T: type, value: T) void {
-		self.writeInt(@typeInfo(T).@"enum".tag_type, @intFromEnum(value));
+		self.writeInt(@typeInfo(T).@"enum".tag_type, @backingInt(value));
 	}
 
 	pub fn writeBool(self: *BinaryWriter, value: bool) void {
@@ -2065,7 +2065,7 @@ pub fn DenseId(comptime IdType: type) type {
 }
 
 pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: SparseSet
-	std.debug.assert(@intFromEnum(IdType.noValue) == std.math.maxInt(@typeInfo(IdType).@"enum".tag_type));
+	std.debug.assert(@backingInt(IdType.noValue) == std.math.maxInt(@typeInfo(IdType).@"enum".tag_type));
 
 	return struct {
 		const Self = @This();
@@ -2088,21 +2088,21 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 
 		pub fn contains(self: *Self, id: IdType) bool {
 			std.debug.assert(id != .noValue);
-			return @intFromEnum(id) < self.sparseToDenseIndex.items.len and self.sparseToDenseIndex.items[@intFromEnum(id)] != .noValue;
+			return @backingInt(id) < self.sparseToDenseIndex.items.len and self.sparseToDenseIndex.items[@backingInt(id)] != .noValue;
 		}
 
 		pub fn add(self: *Self, allocator: NeverFailingAllocator, id: IdType) *T {
 			std.debug.assert(id != .noValue);
 
-			const denseId: IdType = @enumFromInt(self.dense.items.len);
+			const denseId: IdType = @fromBackingInt(@intCast(self.dense.items.len));
 
-			if (@intFromEnum(id) >= self.sparseToDenseIndex.items.len) {
-				self.sparseToDenseIndex.appendNTimes(allocator, .noValue, @intFromEnum(id) - self.sparseToDenseIndex.items.len + 1);
+			if (@backingInt(id) >= self.sparseToDenseIndex.items.len) {
+				self.sparseToDenseIndex.appendNTimes(allocator, .noValue, @backingInt(id) - self.sparseToDenseIndex.items.len + 1);
 			}
 
-			std.debug.assert(self.sparseToDenseIndex.items[@intFromEnum(id)] == .noValue);
+			std.debug.assert(self.sparseToDenseIndex.items[@backingInt(id)] == .noValue);
 
-			self.sparseToDenseIndex.items[@intFromEnum(id)] = denseId;
+			self.sparseToDenseIndex.items[@backingInt(id)] = denseId;
 			self.denseToSparseIndex.append(allocator, id);
 			return self.dense.addOne(allocator);
 		}
@@ -2115,14 +2115,14 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 		pub fn fetchRemove(self: *Self, id: IdType) !T {
 			if (!self.contains(id)) return error.ElementNotFound;
 
-			const denseId = @intFromEnum(self.sparseToDenseIndex.items[@intFromEnum(id)]);
-			self.sparseToDenseIndex.items[@intFromEnum(id)] = .noValue;
+			const denseId = @backingInt(self.sparseToDenseIndex.items[@backingInt(id)]);
+			self.sparseToDenseIndex.items[@backingInt(id)] = .noValue;
 
 			const result = self.dense.swapRemove(denseId);
 			_ = self.denseToSparseIndex.swapRemove(denseId);
 
 			if (denseId != self.dense.items.len) {
-				self.sparseToDenseIndex.items[@intFromEnum(self.denseToSparseIndex.items[denseId])] = @enumFromInt(denseId);
+				self.sparseToDenseIndex.items[@backingInt(self.denseToSparseIndex.items[denseId])] = @fromBackingInt(@intCast(denseId));
 			}
 			return result;
 		}
@@ -2133,10 +2133,10 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 
 		pub fn get(self: *Self, id: IdType) ?*T {
 			std.debug.assert(id != .noValue);
-			if (@intFromEnum(id) >= self.sparseToDenseIndex.items.len) return null;
-			const index = self.sparseToDenseIndex.items[@intFromEnum(id)];
+			if (@backingInt(id) >= self.sparseToDenseIndex.items.len) return null;
+			const index = self.sparseToDenseIndex.items[@backingInt(id)];
 			if (index == .noValue) return null;
-			return &self.dense.items[@intFromEnum(index)];
+			return &self.dense.items[@backingInt(index)];
 		}
 	};
 }
@@ -2146,7 +2146,7 @@ test "SparseSet/set at zero" {
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
-	const index: IdType = @enumFromInt(0);
+	const index: IdType = @fromBackingInt(0);
 
 	set.set(main.heap.testingAllocator, index, 5);
 	try std.testing.expectEqual(set.get(index).?.*, 5);
@@ -2157,7 +2157,7 @@ test "SparseSet/set at 100" {
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
-	const index: IdType = @enumFromInt(100);
+	const index: IdType = @fromBackingInt(100);
 
 	set.set(main.heap.testingAllocator, index, 5);
 	try std.testing.expectEqual(set.get(index).?.*, 5);
@@ -2170,8 +2170,8 @@ test "SparseSet/remove first" {
 
 	const expectSecond: u32 = 100;
 
-	const firstId: IdType = @enumFromInt(0);
-	const secondId: IdType = @enumFromInt(1);
+	const firstId: IdType = @fromBackingInt(0);
+	const secondId: IdType = @fromBackingInt(1);
 
 	set.set(main.heap.testingAllocator, firstId, 5);
 	set.set(main.heap.testingAllocator, secondId, expectSecond);
@@ -2186,9 +2186,9 @@ test "SparseSet/remove last" {
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
-	set.set(main.heap.testingAllocator, @enumFromInt(0), 5);
+	set.set(main.heap.testingAllocator, @fromBackingInt(0), 5);
 
-	try set.remove(@enumFromInt(0));
+	try set.remove(@fromBackingInt(0));
 }
 
 test "SparseSet/remove entry that doesn't exist" {
@@ -2196,7 +2196,7 @@ test "SparseSet/remove entry that doesn't exist" {
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
-	try std.testing.expectError(error.ElementNotFound, set.remove(@enumFromInt(0)));
+	try std.testing.expectError(error.ElementNotFound, set.remove(@fromBackingInt(0)));
 }
 
 test "SparseSet/remove entry twice" {
@@ -2204,10 +2204,10 @@ test "SparseSet/remove entry twice" {
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
-	set.set(main.heap.testingAllocator, @enumFromInt(0), 5);
+	set.set(main.heap.testingAllocator, @fromBackingInt(0), 5);
 
-	try set.remove(@enumFromInt(0));
-	try std.testing.expectError(error.ElementNotFound, set.remove(@enumFromInt(0)));
+	try set.remove(@fromBackingInt(0));
+	try std.testing.expectError(error.ElementNotFound, set.remove(@fromBackingInt(0)));
 }
 
 test "SparseSet/reusing" {
@@ -2218,8 +2218,8 @@ test "SparseSet/reusing" {
 	const expectSecond = 100;
 	const expectNew = 10;
 
-	const firstId: IdType = @enumFromInt(0);
-	const secondId: IdType = @enumFromInt(1);
+	const firstId: IdType = @fromBackingInt(0);
+	const secondId: IdType = @fromBackingInt(1);
 
 	set.set(main.heap.testingAllocator, firstId, 5);
 	set.set(main.heap.testingAllocator, secondId, expectSecond);

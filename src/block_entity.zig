@@ -94,7 +94,7 @@ pub const BlockEntity = enum(u32) { // MARK: BlockEntity
 	_,
 
 	var freeIndexList: main.List(BlockEntity) = .empty;
-	var nextIndex: BlockEntity = @enumFromInt(0);
+	var nextIndex: BlockEntity = @fromBackingInt(0);
 	var mutex: main.utils.Mutex = .{};
 
 	fn globalDeinit() void {
@@ -105,14 +105,14 @@ pub const BlockEntity = enum(u32) { // MARK: BlockEntity
 
 	fn reset() void {
 		freeIndexList.clearRetainingCapacity();
-		nextIndex = @enumFromInt(0);
+		nextIndex = @fromBackingInt(0);
 	}
 
 	fn create() BlockEntity {
 		mutex.lock();
 		defer mutex.unlock();
 		return freeIndexList.popOrNull() orelse {
-			defer nextIndex = @enumFromInt(@intFromEnum(nextIndex) + 1);
+			defer nextIndex = @fromBackingInt(@backingInt(nextIndex) + 1);
 			return nextIndex;
 		};
 	}
@@ -522,7 +522,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 
 				signData.renderedTexture.?.bindTo(0);
 
-				c.glUniform1i(uniforms.quadIndex, @intFromEnum(quad));
+				c.glUniform1i(uniforms.quadIndex, @backingInt(quad));
 				const mesh = main.renderer.mesh_storage.getMesh(main.chunk.ChunkPosition.initFromWorldPos(signData.blockPos, 1)) orelse continue :outer;
 				const light: [4]u32 = main.renderer.lighting.getLight(mesh, signData.blockPos -% Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, 0, quad);
 				c.glUniform4ui(uniforms.lightData, light[0], light[1], light[2], light[3]);

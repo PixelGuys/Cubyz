@@ -83,7 +83,7 @@ pub fn hashGeneric(input: anytype) u64 {
 	const T = @TypeOf(input);
 	return switch (@typeInfo(T)) {
 		.bool => hashCombine(hashInt(@intFromBool(input)), 0xbf58476d1ce4e5b9),
-		.@"enum" => hashCombine(hashInt(@as(u64, @intFromEnum(input))), 0x94d049bb133111eb),
+		.@"enum" => hashCombine(hashInt(@as(u64, @backingInt(input))), 0x94d049bb133111eb),
 		.int, .float => blk: {
 			const value = @as(@Int(.unsigned, @bitSizeOf(T)), @bitCast(input));
 			break :blk hashInt(@as(u64, value));

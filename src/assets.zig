@@ -436,7 +436,7 @@ fn assignBlockItem(stringId: []const u8) !void {
 	const block = blocks.getTypeById(stringId);
 	// TODO: This must be gone in PixelGuys/Cubyz#1205
 	const index = items.BaseItemIndex.fromId(stringId).?;
-	const item = &items.itemList[@intFromEnum(index)];
+	const item = &items.itemList[@backingInt(index)];
 	item.block = block;
 }
 

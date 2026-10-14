@@ -969,15 +969,15 @@ pub const Image = struct { // MARK: Image
 
 		const samplerInfo: c.VkSamplerCreateInfo = .{
 			.sType = c.VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-			.magFilter = @intFromEnum(options.magFilter),
-			.minFilter = @intFromEnum(options.minFilter),
+			.magFilter = @backingInt(options.magFilter),
+			.minFilter = @backingInt(options.minFilter),
 			.mipmapMode = switch (options.mipmapFilter) {
 				.nearest => c.VK_SAMPLER_MIPMAP_MODE_NEAREST,
 				.linear => c.VK_SAMPLER_MIPMAP_MODE_LINEAR,
 			},
-			.addressModeU = @intFromEnum(options.addressMode),
-			.addressModeV = @intFromEnum(options.addressMode),
-			.addressModeW = @intFromEnum(options.addressMode),
+			.addressModeU = @backingInt(options.addressMode),
+			.addressModeV = @backingInt(options.addressMode),
+			.addressModeW = @backingInt(options.addressMode),
 			.mipLodBias = options.mipLodBias,
 			.anisotropyEnable = if (options.maxAnisotropy != null) c.VK_TRUE else c.VK_FALSE,
 			.maxAnisotropy = options.maxAnisotropy orelse 0,
