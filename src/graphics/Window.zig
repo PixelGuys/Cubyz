@@ -146,7 +146,7 @@ pub const Gamepad = struct { // MARK: Gamepad
 		return gamepadState.count() > 0;
 	}
 	pub fn wereControllerMappingsDownloaded() bool {
-		return controllerMappingsDownloaded.load(std.builtin.AtomicOrder.acquire);
+		return controllerMappingsDownloaded.load(.acquire);
 	}
 	const ControllerMappingDownloadTask = struct { // MARK: ControllerMappingDownloadTask
 		curTimestamp: i128,
@@ -188,7 +188,7 @@ pub const Gamepad = struct { // MARK: Gamepad
 			defer client.deinit();
 			var writer = std.Io.Writer.Allocating.init(main.stackAllocator.allocator);
 			defer writer.deinit();
-			defer controllerMappingsDownloaded.store(true, std.builtin.AtomicOrder.release);
+			defer controllerMappingsDownloaded.store(true, .release);
 			const fetchResult = client.fetch(.{
 				.method = .GET,
 				.location = .{.url = "https://raw.githubusercontent.com/mdqinc/SDL_GameControllerDB/master/gamecontrollerdb.txt"},

@@ -1663,7 +1663,7 @@ pub const Mutex = struct { // MARK: Mutex
 	}
 };
 
-const endian: std.builtin.Endian = .big;
+const endian: std.lang.Endian = .big;
 
 pub const BinaryReader = struct { // MARK: BinaryReader
 	remaining: []const u8,
