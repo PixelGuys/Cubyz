@@ -355,7 +355,7 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	settings.init();
 	defer settings.deinit();
 
-	threadPool = utils.ThreadPool.init(globalAllocator, settings.cpuThreads orelse @max(1, (std.Thread.getCpuCount() catch 4) -| 1));
+	threadPool = utils.ThreadPool.init(globalAllocator, @max(1, settings.launchConfig.threadPoolThreads orelse (std.Thread.getCpuCount() catch 4) -| 1));
 	defer threadPool.deinit();
 
 	file_monitor.init();
