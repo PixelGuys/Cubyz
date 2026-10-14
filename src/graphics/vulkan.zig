@@ -88,8 +88,8 @@ fn checkResultIfAvailable(result: anytype) void {
 	}
 }
 
-fn allocEnumerationGeneric(function: anytype, allocator: NeverFailingAllocator, args: anytype) []@typeInfo(@typeInfo(@TypeOf(function)).@"fn".params[@typeInfo(@TypeOf(function)).@"fn".params.len - 1].type.?).pointer.child {
-	const T = @typeInfo(@typeInfo(@TypeOf(function)).@"fn".params[@typeInfo(@TypeOf(function)).@"fn".params.len - 1].type.?).pointer.child;
+fn allocEnumerationGeneric(function: anytype, allocator: NeverFailingAllocator, args: anytype) []@typeInfo(@typeInfo(@TypeOf(function)).@"fn".param_types[@typeInfo(@TypeOf(function)).@"fn".param_types.len - 1].?).pointer.child {
+	const T = @typeInfo(@typeInfo(@TypeOf(function)).@"fn".param_types[@typeInfo(@TypeOf(function)).@"fn".param_types.len - 1].?).pointer.child;
 	var count: u32 = 0;
 	while (true) {
 		checkResultIfAvailable(@call(.auto, function, args ++ .{&count, null}));
@@ -969,15 +969,15 @@ pub const Image = struct { // MARK: Image
 
 		const samplerInfo: c.VkSamplerCreateInfo = .{
 			.sType = c.VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-			.magFilter = @intFromEnum(options.magFilter),
-			.minFilter = @intFromEnum(options.minFilter),
+			.magFilter = @backingInt(options.magFilter),
+			.minFilter = @backingInt(options.minFilter),
 			.mipmapMode = switch (options.mipmapFilter) {
 				.nearest => c.VK_SAMPLER_MIPMAP_MODE_NEAREST,
 				.linear => c.VK_SAMPLER_MIPMAP_MODE_LINEAR,
 			},
-			.addressModeU = @intFromEnum(options.addressMode),
-			.addressModeV = @intFromEnum(options.addressMode),
-			.addressModeW = @intFromEnum(options.addressMode),
+			.addressModeU = @backingInt(options.addressMode),
+			.addressModeV = @backingInt(options.addressMode),
+			.addressModeW = @backingInt(options.addressMode),
 			.mipLodBias = options.mipLodBias,
 			.anisotropyEnable = if (options.maxAnisotropy != null) c.VK_TRUE else c.VK_FALSE,
 			.maxAnisotropy = options.maxAnisotropy orelse 0,

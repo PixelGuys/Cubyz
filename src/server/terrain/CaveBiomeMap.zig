@@ -105,10 +105,10 @@ pub const CaveBiomeGenerator = struct { // MARK: CaveBiomeGenerator
 	defaultState: GeneratorState,
 
 	const generatorRegistry: std.StaticStringMap(CaveBiomeGenerator) = .initComptime(blk: {
-		const decls = @typeInfo(cave_biome_generators).@"struct".decls;
+		const decls = @typeInfo(cave_biome_generators).@"struct".decl_names;
 		var generators: [decls.len]struct { []const u8, CaveBiomeGenerator } = undefined;
 		for (0..decls.len) |i| {
-			const Generator = @field(cave_biome_generators, decls[i].name);
+			const Generator = @field(cave_biome_generators, decls[i]);
 			generators[i] = .{Generator.id, .{
 				.init = &Generator.init,
 				.generate = &Generator.generate,

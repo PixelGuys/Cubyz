@@ -88,7 +88,7 @@ pub fn initalOrientation(block: main.blocks.Block, orientation: Neighbor, mode: 
 			return .{.typ = block.typ, .data = orientation.reverse().bitMask()};
 		},
 		.direction => {
-			return .{.typ = block.typ, .data = @intFromEnum(orientation)};
+			return .{.typ = block.typ, .data = @backingInt(orientation)};
 		},
 		.unknown => return block,
 	}
@@ -115,7 +115,7 @@ pub fn generateStem(self: *SimpleTreeModel, x: i32, y: i32, z: i32, height: i32,
 			if (self.branched) {
 				const chance = @sqrt(@as(f32, @floatFromInt(pz - z))/@as(f32, @floatFromInt(height*2)));
 				if (main.random.nextFloat(seed) < chance) {
-					const dir: Neighbor = @enumFromInt(main.random.nextIntBounded(u32, seed, 4) + 2);
+					const dir: Neighbor = @fromBackingInt(@intCast(main.random.nextIntBounded(u32, seed, 4) + 2));
 					generateBranch(self, x, y, pz, dir, chunk);
 					block = addNeighbor(block, dir, rotationModeType);
 				}
