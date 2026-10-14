@@ -1845,7 +1845,7 @@ const ReadWriteTest = struct {
 		defer writer.deinit();
 		writer.writeInt(IntT, expected);
 
-		const expectedWidth = std.math.divCeil(comptime_int, @bitSizeOf(IntT), 8) catch unreachable;
+		const expectedWidth = @divCeil(@bitSizeOf(IntT), 8);
 		try std.testing.expectEqual(expectedWidth, writer.data.items.len);
 
 		var reader = getReader(writer.data.items);

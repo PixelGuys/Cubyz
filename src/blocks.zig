@@ -838,7 +838,7 @@ pub const meshes = struct { // MARK: meshes
 		animationComputePipeline.bind();
 		c.glUniform1ui(animationUniforms.time, time);
 		c.glUniform1ui(animationUniforms.size, @intCast(animationData.len));
-		c.glDispatchCompute(@intCast(@divFloor(animationData.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
+		c.glDispatchCompute(@intCast(@divCeil(animationData.len, 64)), 1, 1);
 		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
 	}
 

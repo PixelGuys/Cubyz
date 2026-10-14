@@ -1071,7 +1071,7 @@ pub const Connection = struct { // MARK: Connection
 			fullData.append(protocolIndex);
 			_ = internalHeaderOverhead.fetchAdd(1, .monotonic);
 			const bits = 1 + if (data.len == 0) 0 else std.math.log2_int(usize, data.len);
-			const bytes = std.math.divCeil(usize, bits, 7) catch unreachable;
+			const bytes = @divCeil(bits, 7);
 			for (0..bytes) |i| {
 				const shift = 7*(bytes - i - 1);
 				const byte = (data.len >> @intCast(shift) & 0x7f) | if (i == bytes - 1) @as(u8, 0) else 0x80;
