@@ -72,7 +72,7 @@ fn selectFile() void {
 	button.disabled = false;
 	const displayName = main.stackAllocator.dupe(u8, fileName);
 	defer main.stackAllocator.free(displayName);
-	if (builtin.os.tag == .windows) {
+	if (builtin.target.os.tag == .windows) {
 		std.mem.replaceScalar(u8, displayName, '\\', '/');
 	}
 	const labelText = main.stackAllocator.print("Saved to: {s}", .{displayName});

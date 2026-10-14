@@ -410,7 +410,7 @@ const LightVector = @Vector(8, u16);
 fn getValues(mesh: *ChunkMesh, pos: chunk.BlockPos) LightVector {
 	const blockLight = mesh.lightingData[0].getValue(pos);
 	const sunLight = mesh.lightingData[1].getValue(pos);
-	std.debug.assert(builtin.cpu.arch.endian() == .little);
+	std.debug.assert(builtin.target.cpu.arch.endian() == .little);
 	const totalLight = @as(u64, sunLight.raw()) | (@as(u64, blockLight.raw()) << 32);
 	return @as(@Vector(8, u8), @bitCast(totalLight));
 }

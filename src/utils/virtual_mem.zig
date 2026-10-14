@@ -8,7 +8,7 @@ const pageSize = std.heap.pageSize;
 const c = @import("c");
 
 fn reserveMemory(len: usize) [*]align(page_size_min) u8 {
-	if (builtin.os.tag == .windows) {
+	if (builtin.target.os.tag == .windows) {
 		return @ptrCast(@alignCast(c.VirtualAlloc(null, len, c.MEM_RESERVE, c.PAGE_READWRITE) orelse {
 			const err = std.os.windows.GetLastError();
 			std.log.err("Got error while reserving virtual memory of size {}: {s}", .{len, @tagName(err)});
@@ -23,7 +23,7 @@ fn reserveMemory(len: usize) [*]align(page_size_min) u8 {
 }
 
 fn commitMemory(start: [*]align(page_size_min) u8, len: usize) void {
-	if (builtin.os.tag == .windows) {
+	if (builtin.target.os.tag == .windows) {
 		_ = c.VirtualAlloc(start, len, c.MEM_COMMIT, c.PAGE_READWRITE) orelse {
 			const err = std.os.windows.GetLastError();
 			std.log.err("Got error while committing virtual memory of size {}: {s}.", .{len, @tagName(err)});
@@ -39,7 +39,7 @@ fn commitMemory(start: [*]align(page_size_min) u8, len: usize) void {
 }
 
 fn releaseMemory(start: [*]align(page_size_min) u8, len: usize) void {
-	if (builtin.os.tag == .windows) {
+	if (builtin.target.os.tag == .windows) {
 		const result = c.VirtualFree(start, 0, c.MEM_RELEASE);
 		if (result == 0) {
 			const err = std.os.windows.GetLastError();

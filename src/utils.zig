@@ -39,12 +39,12 @@ pub const Compression = struct { // MARK: Compression
 		while (try walker.next(main.io)) |entry| {
 			if (entry.kind == .file) {
 				var relPath: []const u8 = entry.path;
-				if (builtin.os.tag == .windows) { // I hate you
+				if (builtin.target.os.tag == .windows) { // I hate you
 					const copy = main.stackAllocator.dupe(u8, relPath);
 					std.mem.replaceScalar(u8, copy, '\\', '/');
 					relPath = copy;
 				}
-				defer if (builtin.os.tag == .windows) {
+				defer if (builtin.target.os.tag == .windows) {
 					main.stackAllocator.free(relPath);
 				};
 				var len: [4]u8 = undefined;

@@ -659,7 +659,7 @@ fn updateCursor() void {
 		c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_DISABLED);
 		// Behavior seems much more intended without this line on MacOS.
 		// Perhaps this is an inconsistency in GLFW due to its fresh XQuartz support?
-		if (@import("builtin").target.os.tag != .macos) {
+		if (builtin.target.os.tag != .macos) {
 			if (c.glfwRawMouseMotionSupported() != 0) {
 				c.glfwSetInputMode(window, c.GLFW_RAW_MOUSE_MOTION, c.GLFW_TRUE);
 			}

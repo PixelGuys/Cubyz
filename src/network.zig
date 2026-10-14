@@ -23,7 +23,7 @@ inline fn networkTimestamp() i64 {
 
 const Socket = struct { // MARK: Socket
 	const posix = std.posix;
-	socketID: if (builtin.os.tag == .windows) c.SOCKET else posix.socket_t,
+	socketID: if (builtin.target.os.tag == .windows) c.SOCKET else posix.socket_t,
 
 	fn windowsError(err: c_int) !void {
 		if (err == 0) return;
@@ -47,7 +47,7 @@ const Socket = struct { // MARK: Socket
 	}
 
 	fn startup() void {
-		if (builtin.os.tag == .windows) {
+		if (builtin.target.os.tag == .windows) {
 			var data: c.WSADATA = undefined;
 			windowsError(c.WSAStartup(0x0202, &data)) catch |err| {
 				std.log.err("Could not initialize the Windows Socket API: {s}", .{@errorName(err)});
@@ -59,7 +59,7 @@ const Socket = struct { // MARK: Socket
 	fn init(localPort: u16) !Socket {
 		const self = Socket{
 			.socketID = blk: {
-				if (builtin.os.tag == .windows) {
+				if (builtin.target.os.tag == .windows) {
 					const socket = c.socket(c.AF_INET, c.SOCK_DGRAM, c.IPPROTO_UDP);
 					if (socket == c.INVALID_SOCKET) {
 						try windowsError(c.WSAGetLastError());
@@ -83,7 +83,7 @@ const Socket = struct { // MARK: Socket
 			.port = @byteSwap(localPort),
 			.addr = 0,
 		};
-		if (builtin.os.tag == .windows) {
+		if (builtin.target.os.tag == .windows) {
 			if (c.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in)) == c.SOCKET_ERROR) {
 				try windowsError(c.WSAGetLastError());
 			}
@@ -104,7 +104,7 @@ const Socket = struct { // MARK: Socket
 	}
 
 	fn deinit(self: Socket) void {
-		if (builtin.os.tag == .windows) {
+		if (builtin.target.os.tag == .windows) {
 			_ = c.closesocket(self.socketID);
 		} else {
 			const err = std.c.errno(std.c.close(self.socketID));
@@ -123,7 +123,7 @@ const Socket = struct { // MARK: Socket
 			const addrLen = std.Io.Threaded.addressToPosix(&destination.address, &posixAddr);
 			break :blk .{posixAddr.in, addrLen};
 		};
-		if (builtin.os.tag == .windows) {
+		if (builtin.target.os.tag == .windows) {
 			const result = c.sendto(self.socketID, data.ptr, @intCast(data.len), 0, @ptrCast(&addr), @intCast(addrLen));
 			if (result == c.SOCKET_ERROR) {
 				const err = if (windowsError(c.WSAGetLastError())) error.Unknown else |err| err;
@@ -145,7 +145,7 @@ const Socket = struct { // MARK: Socket
 	}
 
 	fn receive(self: Socket, buffer: []u8, timeout: i32, resultAddress: *SocketAddress) ![]u8 {
-		if (builtin.os.tag == .windows) { // Of course Windows always has it's own special thing.
+		if (builtin.target.os.tag == .windows) { // Of course Windows always has it's own special thing.
 			var pfd = [1]c.pollfd{
 				.{.fd = self.socketID, .events = c.POLLRDNORM | c.POLLRDBAND, .revents = undefined},
 			};
@@ -165,7 +165,7 @@ const Socket = struct { // MARK: Socket
 		}
 		var addr: posix.sockaddr.in = undefined;
 		const length: usize = blk: {
-			if (builtin.os.tag == .windows) {
+			if (builtin.target.os.tag == .windows) {
 				var addrLen: c_int = @sizeOf(posix.sockaddr.in);
 				const result = c.recvfrom(self.socketID, buffer.ptr, @intCast(buffer.len), 0, @ptrCast(&addr), &addrLen);
 				if (result == c.SOCKET_ERROR) {
@@ -208,7 +208,7 @@ const Socket = struct { // MARK: Socket
 
 	fn getPort(self: Socket) !u16 {
 		var addr: posix.sockaddr.in = undefined;
-		if (builtin.os.tag == .windows) {
+		if (builtin.target.os.tag == .windows) {
 			var addrLen: c_int = @sizeOf(posix.sockaddr.in);
 			if (c.getsockname(self.socketID, @ptrCast(&addr), &addrLen) == c.SOCKET_ERROR) {
 				try windowsError(c.WSAGetLastError());
@@ -409,7 +409,7 @@ const stun = struct { // MARK: stun
 	fn requestAddress(connection: *ConnectionManager) SocketAddress {
 		var oldAddress: ?SocketAddress = null;
 		var seed: [std.Random.DefaultCsprng.secret_seed_length]u8 = @splat(0);
-		std.mem.writeInt(i128, seed[0..16], main.timestamp().toMilliseconds(), builtin.cpu.arch.endian()); // Not the best seed, but it's not that important.
+		std.mem.writeInt(i128, seed[0..16], main.timestamp().toMilliseconds(), builtin.target.cpu.arch.endian()); // Not the best seed, but it's not that important.
 		var random = std.Random.DefaultCsprng.init(seed);
 		for (0..16) |_| {
 			// Choose a somewhat random server, so we faster notice if any one of them stopped working.
@@ -478,7 +478,7 @@ const stun = struct { // MARK: stun
 							.address = .{
 								.ip4 = .{
 									.port = std.mem.readInt(u16, addressData[0..2], .big),
-									.bytes = std.mem.toBytes(std.mem.readInt(u32, addressData[2..6], builtin.cpu.arch.endian())), // Needs to stay in big endian → native.
+									.bytes = std.mem.toBytes(std.mem.readInt(u32, addressData[2..6], builtin.target.cpu.arch.endian())), // Needs to stay in big endian → native.
 								},
 							},
 						};
@@ -1946,7 +1946,7 @@ pub const Connection = struct { // MARK: Connection
 	pub fn disconnect(self: *Connection) void {
 		self.manager.send(&.{@backingInt(ChannelId.disconnect)}, self.remoteAddress, null);
 		self.connectionState.store(.disconnected, .monotonic);
-		if (builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
+		if (builtin.target.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
 			main.io.sleep(.fromMilliseconds(10), .awake) catch {}; // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
 		}
 		self.manager.removeConnection(self);
