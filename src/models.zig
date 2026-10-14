@@ -163,17 +163,6 @@ pub const Model = struct { // MARK: Model
 		self.isNeighborOccluded = @splat(false);
 		for (adjustedQuads) |_quad| {
 			var quad = _quad;
-			quad.corners = undefined;
-			const ptr = @as([*]f32, @ptrCast(&quad.cornerUV[0][0]));
-			(ptr - 1)[0] = undefined;
-			const ptr2 = @as([*]u32, @ptrCast(&quad.opaqueInLod));
-			ptr2[1] = undefined;
-			ptr2[2] = undefined;
-			for (0..4) |i| {
-				quad.corners[i][0] = _quad.corners[i][0];
-				quad.corners[i][1] = _quad.corners[i][1];
-				quad.corners[i][2] = _quad.corners[i][2];
-			}
 			for (quad.corners) |corner| {
 				self.min = @min(self.min, @as(Vec3f, corner));
 				self.max = @max(self.max, @as(Vec3f, corner));
