@@ -64,7 +64,6 @@ pressed: bool = false,
 hovered: bool = false,
 onAction: main.callbacks.SimpleCallback,
 child: GuiComponent,
-border: f32,
 
 pub fn globalInit() void {
 	pipeline = graphics.Pipeline.init(
@@ -98,35 +97,31 @@ pub fn globalDeinit() void {
 const Options = struct {
 	onAction: main.callbacks.SimpleCallback = .{},
 	disabled: bool = false,
-	border: f32 = 3,
+	border: f32 = 2,
 };
 
 pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *Button {
-	const borderSize = options.border;
-	const label = Label.init(undefined, width - 3*borderSize, text, .center);
+	const label = Label.init(undefined, width - 2*options.border, text, .center);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
-		.size = Vec2f{width, label.size[1] + 3*borderSize},
+		.size = Vec2f{width, label.size[1] + 4*options.border},
 		.onAction = options.onAction,
 		.child = label.toComponent(),
 		.disabled = options.disabled,
-		.border = options.border,
 	};
 	return self;
 }
 
 pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, options: Options) *Button {
-	const borderSize = options.border;
 	const icon = Icon.init(undefined, iconSize, iconTexture);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
-		.size = icon.size + @as(Vec2f, @splat(3*borderSize)),
+		.size = icon.size + @as(Vec2f, @splat(4*options.border)),
 		.onAction = options.onAction,
 		.child = icon.toComponent(),
 		.disabled = options.disabled,
-		.border = options.border,
 	};
 	return self;
 }
