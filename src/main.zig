@@ -63,7 +63,7 @@ pub const globalArena = heap.allocators.globalArenaAllocator.allocator();
 pub const worldArena = heap.allocators.worldArenaAllocator.allocator();
 pub var threadPool: *utils.ThreadPool = undefined;
 var threadedIo: std.Io.Threaded = undefined;
-pub var io: std.Io = threadedIo.io();
+pub var io: std.Io = if (builtin.is_test) std.testing.io else threadedIo.io();
 
 pub fn initThreadLocals() void {
 	seed = @bitCast(@as(i64, @truncate(timestamp().nanoseconds)));
