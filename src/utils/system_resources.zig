@@ -8,7 +8,47 @@ var detectLowRamLastCheck: f64 = 0;
 
 var detectLowRamDisabled: bool = false;
 
-var lastAvailableRam: ?usize = null;
+pub var lastAvailableRam: ?usize = null;
+
+var wasLowRam: bool = false;
+
+pub fn detectLowRam(deltaTime: f64) void {
+	if (detectLowRamDisabled) return;
+
+	detectLowRamLastCheck += deltaTime;
+
+	// Make 1 second pause between each update
+	if (detectLowRamLastCheck > 1.0) {
+		detectLowRamLastCheck = 0.0;
+
+		const availableRam = switch (builtin.os.tag) {
+			.linux => getAvailableRamLinux(),
+			else => |os| {
+				detectLowRamDisabled = true;
+				std.log.warn("Low RAM detector has not been implemented for your platform: {s}", .{@tagName(os)});
+				return;
+			},
+		} catch |err| {
+			detectLowRamDisabled = true;
+			std.log.err("Failed to detect available RAM amount: {s}", .{@errorName(err)});
+			return;
+		};
+
+		lastAvailableRam = availableRam;
+	}
+
+	if (lastAvailableRam) |ram| {
+		if (ram < main.settings.alertLowRamBytes) {
+			if (!wasLowRam) {
+				wasLowRam = true;
+				main.gui.openWindow("low_ram_warning");
+			}
+		} else if (wasLowRam) {
+			wasLowRam = false;
+			main.gui.closeWindow("low_ram_warning");
+		}
+	}
+}
 
 fn getAvailableRamLinux() error{GettingAvailableRamFailed}!usize {
 	const meminfoFile = main.files.cwd().openFile("/proc/meminfo") catch |err| {
@@ -51,40 +91,4 @@ fn getAvailableRamLinux() error{GettingAvailableRamFailed}!usize {
 	}
 
 	return error.GettingAvailableRamFailed;
-}
-
-pub fn detectLowRam(deltaTime: f64) void {
-	if (detectLowRamDisabled) return;
-
-	detectLowRamLastCheck += deltaTime;
-
-	// Make 1 second pause between each update
-	if (detectLowRamLastCheck > 1.0) {
-		detectLowRamLastCheck = 0.0;
-
-		const availableRam = switch (builtin.os.tag) {
-			.linux => getAvailableRamLinux(),
-			else => |os| {
-				detectLowRamDisabled = true;
-				std.log.warn("Low RAM detector has not been implemented for your platform: {s}", .{@tagName(os)});
-				return;
-			},
-		} catch |err| {
-			detectLowRamDisabled = true;
-			std.log.err("Failed to detect available RAM amount: {s}", .{@errorName(err)});
-			return;
-		};
-
-		lastAvailableRam = availableRam;
-	}
-
-	if (lastAvailableRam) |ram| {
-		if (ram < main.settings.alertLowRamBytes) {
-			const oldScale = main.graphics.draw.setScale(main.gui.scale);
-			defer main.graphics.draw.restoreScale(oldScale);
-			const oldColor = main.graphics.draw.setColor(0xffff0000);
-			defer main.graphics.draw.restoreColor(oldColor);
-			main.graphics.draw.print("Warning: Only {d} MiB of RAM available!", .{ram/(1024*1024)}, 4, 4, 16);
-		}
-	}
 }
