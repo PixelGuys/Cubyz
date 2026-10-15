@@ -156,7 +156,7 @@ const GroupInstance = struct { // MARK: GroupInstance
 	fn save(self: *GroupInstance, id: Group) void {
 		if (builtin.is_test) return;
 		sync.threadContext.assertCorrectContext(.server);
-		const path = main.stackAllocator.print("{s}/{d}.group", .{groupsPath, @intFromEnum(id)});
+		const path = main.stackAllocator.print("{s}/{d}.group", .{groupsPath, @backingInt(id)});
 		defer main.stackAllocator.free(path);
 
 		var writer: main.utils.BinaryWriter = .init(main.stackAllocator);
@@ -216,7 +216,7 @@ pub const Group = enum(u32) { // MARK: Group
 		if (result.found_existing) return error.AlreadyExists;
 
 		result.key_ptr.* = groupsArena.allocator().dupe(u8, name);
-		result.value_ptr.* = @enumFromInt(groups.items.len);
+		result.value_ptr.* = @fromBackingInt(@intCast(groups.items.len));
 		groups.append(GroupInstance.init(groupsArena.allocator(), result.value_ptr.*, result.key_ptr.*));
 		saveMetaData(groupsArena.allocator()) catch |err| {
 			std.log.err("Couldn't save permission groups metadata: {t}", .{err});
@@ -226,7 +226,7 @@ pub const Group = enum(u32) { // MARK: Group
 
 	pub fn fromBytes(reader: *main.utils.BinaryReader) !Group {
 		const group = try reader.readEnum(Group);
-		if (groups.items[@intFromEnum(group)] == null) return error.GroupNotFound;
+		if (groups.items[@backingInt(group)] == null) return error.GroupNotFound;
 		return group;
 	}
 
@@ -240,7 +240,7 @@ pub const Group = enum(u32) { // MARK: Group
 	}
 
 	fn getInstance(self: Group) error{GroupNotFound}!*GroupInstance {
-		return groups.items[@intFromEnum(self)] orelse return error.GroupNotFound;
+		return groups.items[@backingInt(self)] orelse return error.GroupNotFound;
 	}
 
 	/// If the group still exists, this deletes the group and returns true. Otherwise returns false
@@ -249,10 +249,10 @@ pub const Group = enum(u32) { // MARK: Group
 		// if the group already doens't exist anymore we can skip.
 		// but if the group still exists and is not deleted from the groupNameToIdMap then something is wrong, which is why we assert it here
 		std.debug.assert(groupNameToIdMap.remove((self.getInstance() catch return false).name));
-		groups.items[@intFromEnum(self)] = null;
+		groups.items[@backingInt(self)] = null;
 
 		if (builtin.is_test) return true;
-		const path = main.stackAllocator.print("{s}/{d}.group", .{groupsPath, @intFromEnum(self)});
+		const path = main.stackAllocator.print("{s}/{d}.group", .{groupsPath, @backingInt(self)});
 		defer main.stackAllocator.free(path);
 		main.files.cubyzDir().deleteFile(path) catch |err| {
 			std.log.err("Couldn't delete group file even though it exits: {t}", .{err});
@@ -296,7 +296,7 @@ pub fn deinit() void {
 fn addGroupFromBin(group: Group, data: []const u8) void {
 	var reader: main.utils.BinaryReader = .init(data);
 	const groupInstance = GroupInstance.fromBytes(groupsArena.allocator(), &reader) catch |err| {
-		std.log.err("Group with id {d} has invalid content skipping: {t}", .{@intFromEnum(group), err});
+		std.log.err("Group with id {d} has invalid content skipping: {t}", .{@backingInt(group), err});
 		groups.append(null);
 		return;
 	};
@@ -326,7 +326,7 @@ pub fn loadGroups(dir: main.files.Dir, worldPath: []const u8) !void {
 		}
 		const data = try dir.read(main.stackAllocator, path);
 		defer main.stackAllocator.free(data);
-		addGroupFromBin(@enumFromInt(id), data);
+		addGroupFromBin(@fromBackingInt(@intCast(id)), data);
 	}
 	createDefaultPermissionGroups();
 }

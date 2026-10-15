@@ -12,10 +12,6 @@ pub const system_resources = @import("utils/system_resources.zig");
 const virtual_mem = @import("utils/virtual_mem.zig");
 pub const VirtualList = virtual_mem.VirtualList;
 
-pub const Condition = @import("utils/Condition.zig");
-pub const Futex = @import("utils/Futex.zig");
-pub const Semaphore = @import("utils/Semaphore.zig");
-
 pub const Compression = struct { // MARK: Compression
 	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8, level: std.compress.flate.Compress.Options) []u8 {
 		var result = std.Io.Writer.Allocating.initCapacity(allocator.allocator, 16) catch unreachable;
@@ -44,12 +40,12 @@ pub const Compression = struct { // MARK: Compression
 		while (try walker.next(main.io)) |entry| {
 			if (entry.kind == .file) {
 				var relPath: []const u8 = entry.path;
-				if (builtin.os.tag == .windows) { // I hate you
+				if (builtin.target.os.tag == .windows) { // I hate you
 					const copy = main.stackAllocator.dupe(u8, relPath);
 					std.mem.replaceScalar(u8, copy, '\\', '/');
 					relPath = copy;
 				}
-				defer if (builtin.os.tag == .windows) {
+				defer if (builtin.target.os.tag == .windows) {
 					main.stackAllocator.free(relPath);
 				};
 				var len: [4]u8 = undefined;
@@ -790,7 +786,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		pub fn add(self: *Performance, task: TaskType, time: i64) void {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			const i = @intFromEnum(task);
+			const i = @backingInt(task);
 			self.tasks[i] += 1;
 			self.utime[i] += time;
 		}
@@ -816,9 +812,9 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	currentTasks: []Atomic(?*const VTable),
 	loadList: ConcurrentMaxHeap(Task),
 	playerJobQueue: ConcurrentQueue(main.server.PlayerIndex),
-	taskCountSemaphore: main.utils.Semaphore = .{},
-	stopSemaphore: main.utils.Semaphore = .{},
-	startSemaphore: main.utils.Semaphore = .{},
+	taskCountSemaphore: std.Io.Semaphore = .{},
+	stopSemaphore: std.Io.Semaphore = .{},
+	startSemaphore: std.Io.Semaphore = .{},
 	allocator: NeverFailingAllocator,
 	running: Atomic(bool) = .init(true),
 	paused: Atomic(bool) = .init(false),
@@ -872,14 +868,14 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	pub fn @"continue"(self: *ThreadPool) void {
 		std.debug.assert(self.paused.swap(false, .monotonic));
 		for (0..self.threads.len) |_| {
-			self.startSemaphore.post();
+			self.startSemaphore.post(main.io);
 		}
 	}
 
 	pub fn pause(self: *ThreadPool) void {
 		std.debug.assert(!self.paused.swap(true, .monotonic));
 		for (0..self.threads.len) |_| {
-			self.stopSemaphore.wait();
+			self.stopSemaphore.waitUncancelable(main.io);
 		}
 	}
 
@@ -893,7 +889,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			if (task.vtable == vtable) {
 				task.vtable.clean(task.self);
 				self.loadList.removeIndex(i);
-				self.taskCountSemaphore.timedWait(.zero) catch {};
+				self.taskCountSemaphore.waitTimeout(main.io, .none) catch {};
 			} else {
 				i += 1;
 			}
@@ -908,7 +904,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 
 	pub fn unschedulePlayers(self: *ThreadPool) void {
 		while (self.playerJobQueue.popFront()) |_| {
-			self.taskCountSemaphore.timedWait(.zero) catch {};
+			self.taskCountSemaphore.waitTimeout(main.io, .none) catch {};
 			_ = self.trueQueueSize.fetchSub(1, .monotonic);
 		}
 	}
@@ -928,7 +924,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 				.empty => {},
 				.hasMoreTasks => {
 					self.playerJobQueue.pushBack(player);
-					self.taskCountSemaphore.post();
+					self.taskCountSemaphore.post(main.io);
 					_ = self.trueQueueSize.fetchAdd(1, .monotonic);
 				},
 			}
@@ -946,15 +942,15 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			main.heap.GarbageCollection.syncPoint();
 
 			if (self.paused.load(.monotonic)) {
-				self.stopSemaphore.post();
+				self.stopSemaphore.post(main.io);
 				while (true) {
 					main.heap.GarbageCollection.syncPoint();
-					self.startSemaphore.timedWait(.fromMilliseconds(10)) catch continue;
+					self.startSemaphore.waitTimeout(main.io, .{.duration = .{.raw = .fromMilliseconds(10), .clock = .awake}}) catch continue;
 					break;
 				}
 			}
 
-			self.taskCountSemaphore.timedWait(.fromMilliseconds(10)) catch continue :outer;
+			self.taskCountSemaphore.waitTimeout(main.io, .{.duration = .{.raw = .fromMilliseconds(10), .clock = .awake}}) catch continue :outer;
 
 			{
 				const task = self.getNextTask() orelse continue :outer;
@@ -979,7 +975,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		var temporaryTaskList: main.List(Task) = .empty;
 		defer temporaryTaskList.deinit(main.stackAllocator);
 		while (self.loadList.extractAny()) |task| {
-			self.taskCountSemaphore.timedWait(.zero) catch {};
+			self.taskCountSemaphore.waitTimeout(main.io, .none) catch {};
 			if (!task.vtable.isStillNeeded(task.self)) {
 				task.vtable.clean(task.self);
 				_ = self.trueQueueSize.fetchSub(1, .monotonic);
@@ -991,7 +987,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		}
 		self.loadList.addMany(temporaryTaskList.items);
 		for (0..temporaryTaskList.items.len) |_| {
-			self.taskCountSemaphore.post();
+			self.taskCountSemaphore.post(main.io);
 		}
 		const endTime = main.timestamp();
 		self.performance.add(.taskPriorityUpdate, @intCast(@divTrunc(startTime.durationTo(endTime).toNanoseconds(), 1000)));
@@ -1003,13 +999,13 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			.vtable = vtable,
 			.self = task,
 		});
-		self.taskCountSemaphore.post();
+		self.taskCountSemaphore.post(main.io);
 		_ = self.trueQueueSize.fetchAdd(1, .monotonic);
 	}
 
 	pub fn addPlayer(self: *ThreadPool, player: *main.server.User) void {
 		self.playerJobQueue.pushBack(player.playerIndex);
-		self.taskCountSemaphore.post();
+		self.taskCountSemaphore.post(main.io);
 		_ = self.trueQueueSize.fetchAdd(1, .monotonic);
 	}
 
@@ -1647,36 +1643,28 @@ pub const TimeDifference = struct { // MARK: TimeDifference
 
 /// A wrapper over Zig's mutex to avoid having to pass the io everywhere
 pub const Mutex = struct { // MARK: Mutex
-	super: if (builtin.os.tag == .windows) @import("utils/Mutex.zig") else std.Io.Mutex = .init,
+	super: std.Io.Mutex = .init,
 
 	pub fn tryLock(self: *Mutex) bool {
 		return self.super.tryLock();
 	}
 
 	pub fn lock(self: *Mutex) void {
-		if (builtin.os.tag == .windows) {
-			self.super.lock();
-		} else {
-			self.super.lockUncancelable(main.io);
-		}
+		self.super.lockUncancelable(main.io);
 	}
 
 	pub fn unlock(self: *Mutex) void {
-		if (builtin.os.tag == .windows) {
-			self.super.unlock();
-		} else {
-			self.super.unlock(main.io);
-		}
+		self.super.unlock(main.io);
 	}
 
 	pub fn assertLocked(self: *const main.utils.Mutex) void {
-		if (builtin.mode == .Debug) {
+		if (builtin.mode == .debug) {
 			std.debug.assert(!@constCast(self).tryLock());
 		}
 	}
 };
 
-const endian: std.builtin.Endian = .big;
+const endian: std.lang.Endian = .big;
 
 pub const BinaryReader = struct { // MARK: BinaryReader
 	remaining: []const u8,
@@ -1824,7 +1812,7 @@ pub const BinaryWriter = struct { // MARK: BinaryWriter
 	}
 
 	pub fn writeEnum(self: *BinaryWriter, T: type, value: T) void {
-		self.writeInt(@typeInfo(T).@"enum".tag_type, @intFromEnum(value));
+		self.writeInt(@typeInfo(T).@"enum".tag_type, @backingInt(value));
 	}
 
 	pub fn writeBool(self: *BinaryWriter, value: bool) void {
@@ -1858,7 +1846,7 @@ const ReadWriteTest = struct {
 		defer writer.deinit();
 		writer.writeInt(IntT, expected);
 
-		const expectedWidth = std.math.divCeil(comptime_int, @bitSizeOf(IntT), 8) catch unreachable;
+		const expectedWidth = @divCeil(@bitSizeOf(IntT), 8);
 		try std.testing.expectEqual(expectedWidth, writer.data.items.len);
 
 		var reader = getReader(writer.data.items);
@@ -2078,7 +2066,7 @@ pub fn DenseId(comptime IdType: type) type {
 }
 
 pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: SparseSet
-	std.debug.assert(@intFromEnum(IdType.noValue) == std.math.maxInt(@typeInfo(IdType).@"enum".tag_type));
+	std.debug.assert(@backingInt(IdType.noValue) == std.math.maxInt(@typeInfo(IdType).@"enum".tag_type));
 
 	return struct {
 		const Self = @This();
@@ -2101,21 +2089,21 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 
 		pub fn contains(self: *Self, id: IdType) bool {
 			std.debug.assert(id != .noValue);
-			return @intFromEnum(id) < self.sparseToDenseIndex.items.len and self.sparseToDenseIndex.items[@intFromEnum(id)] != .noValue;
+			return @backingInt(id) < self.sparseToDenseIndex.items.len and self.sparseToDenseIndex.items[@backingInt(id)] != .noValue;
 		}
 
 		pub fn add(self: *Self, allocator: NeverFailingAllocator, id: IdType) *T {
 			std.debug.assert(id != .noValue);
 
-			const denseId: IdType = @enumFromInt(self.dense.items.len);
+			const denseId: IdType = @fromBackingInt(@intCast(self.dense.items.len));
 
-			if (@intFromEnum(id) >= self.sparseToDenseIndex.items.len) {
-				self.sparseToDenseIndex.appendNTimes(allocator, .noValue, @intFromEnum(id) - self.sparseToDenseIndex.items.len + 1);
+			if (@backingInt(id) >= self.sparseToDenseIndex.items.len) {
+				self.sparseToDenseIndex.appendNTimes(allocator, .noValue, @backingInt(id) - self.sparseToDenseIndex.items.len + 1);
 			}
 
-			std.debug.assert(self.sparseToDenseIndex.items[@intFromEnum(id)] == .noValue);
+			std.debug.assert(self.sparseToDenseIndex.items[@backingInt(id)] == .noValue);
 
-			self.sparseToDenseIndex.items[@intFromEnum(id)] = denseId;
+			self.sparseToDenseIndex.items[@backingInt(id)] = denseId;
 			self.denseToSparseIndex.append(allocator, id);
 			return self.dense.addOne(allocator);
 		}
@@ -2128,14 +2116,14 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 		pub fn fetchRemove(self: *Self, id: IdType) !T {
 			if (!self.contains(id)) return error.ElementNotFound;
 
-			const denseId = @intFromEnum(self.sparseToDenseIndex.items[@intFromEnum(id)]);
-			self.sparseToDenseIndex.items[@intFromEnum(id)] = .noValue;
+			const denseId = @backingInt(self.sparseToDenseIndex.items[@backingInt(id)]);
+			self.sparseToDenseIndex.items[@backingInt(id)] = .noValue;
 
 			const result = self.dense.swapRemove(denseId);
 			_ = self.denseToSparseIndex.swapRemove(denseId);
 
 			if (denseId != self.dense.items.len) {
-				self.sparseToDenseIndex.items[@intFromEnum(self.denseToSparseIndex.items[denseId])] = @enumFromInt(denseId);
+				self.sparseToDenseIndex.items[@backingInt(self.denseToSparseIndex.items[denseId])] = @fromBackingInt(@intCast(denseId));
 			}
 			return result;
 		}
@@ -2146,10 +2134,10 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 
 		pub fn get(self: *Self, id: IdType) ?*T {
 			std.debug.assert(id != .noValue);
-			if (@intFromEnum(id) >= self.sparseToDenseIndex.items.len) return null;
-			const index = self.sparseToDenseIndex.items[@intFromEnum(id)];
+			if (@backingInt(id) >= self.sparseToDenseIndex.items.len) return null;
+			const index = self.sparseToDenseIndex.items[@backingInt(id)];
 			if (index == .noValue) return null;
-			return &self.dense.items[@intFromEnum(index)];
+			return &self.dense.items[@backingInt(index)];
 		}
 	};
 }
@@ -2159,7 +2147,7 @@ test "SparseSet/set at zero" {
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
-	const index: IdType = @enumFromInt(0);
+	const index: IdType = @fromBackingInt(0);
 
 	set.set(main.heap.testingAllocator, index, 5);
 	try std.testing.expectEqual(set.get(index).?.*, 5);
@@ -2170,7 +2158,7 @@ test "SparseSet/set at 100" {
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
-	const index: IdType = @enumFromInt(100);
+	const index: IdType = @fromBackingInt(100);
 
 	set.set(main.heap.testingAllocator, index, 5);
 	try std.testing.expectEqual(set.get(index).?.*, 5);
@@ -2183,8 +2171,8 @@ test "SparseSet/remove first" {
 
 	const expectSecond: u32 = 100;
 
-	const firstId: IdType = @enumFromInt(0);
-	const secondId: IdType = @enumFromInt(1);
+	const firstId: IdType = @fromBackingInt(0);
+	const secondId: IdType = @fromBackingInt(1);
 
 	set.set(main.heap.testingAllocator, firstId, 5);
 	set.set(main.heap.testingAllocator, secondId, expectSecond);
@@ -2199,9 +2187,9 @@ test "SparseSet/remove last" {
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
-	set.set(main.heap.testingAllocator, @enumFromInt(0), 5);
+	set.set(main.heap.testingAllocator, @fromBackingInt(0), 5);
 
-	try set.remove(@enumFromInt(0));
+	try set.remove(@fromBackingInt(0));
 }
 
 test "SparseSet/remove entry that doesn't exist" {
@@ -2209,7 +2197,7 @@ test "SparseSet/remove entry that doesn't exist" {
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
-	try std.testing.expectError(error.ElementNotFound, set.remove(@enumFromInt(0)));
+	try std.testing.expectError(error.ElementNotFound, set.remove(@fromBackingInt(0)));
 }
 
 test "SparseSet/remove entry twice" {
@@ -2217,10 +2205,10 @@ test "SparseSet/remove entry twice" {
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
-	set.set(main.heap.testingAllocator, @enumFromInt(0), 5);
+	set.set(main.heap.testingAllocator, @fromBackingInt(0), 5);
 
-	try set.remove(@enumFromInt(0));
-	try std.testing.expectError(error.ElementNotFound, set.remove(@enumFromInt(0)));
+	try set.remove(@fromBackingInt(0));
+	try std.testing.expectError(error.ElementNotFound, set.remove(@fromBackingInt(0)));
 }
 
 test "SparseSet/reusing" {
@@ -2231,8 +2219,8 @@ test "SparseSet/reusing" {
 	const expectSecond = 100;
 	const expectNew = 10;
 
-	const firstId: IdType = @enumFromInt(0);
-	const secondId: IdType = @enumFromInt(1);
+	const firstId: IdType = @fromBackingInt(0);
+	const secondId: IdType = @fromBackingInt(1);
 
 	set.set(main.heap.testingAllocator, firstId, 5);
 	set.set(main.heap.testingAllocator, secondId, expectSecond);

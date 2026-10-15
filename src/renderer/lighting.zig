@@ -249,7 +249,7 @@ pub const ChannelChunk = struct { // MARK: ChannelChunk
 		std.debug.assert(lightQueue.isEmpty());
 		for (lights) |entry| {
 			var result = entry;
-			calculateIncomingOcclusion(&result.value, self.ch.data.getValue(entry.pos.toIndex()), self.ch.pos.voxelSize, @enumFromInt(entry.sourceDir));
+			calculateIncomingOcclusion(&result.value, self.ch.data.getValue(entry.pos.toIndex()), self.ch.pos.voxelSize, @fromBackingInt(entry.sourceDir));
 			if (result.value[0] != 0 or result.value[1] != 0 or result.value[2] != 0) lightQueue.pushBack(result);
 		}
 		self.propagateDirect(lightQueue, lightRefreshList);
@@ -259,7 +259,7 @@ pub const ChannelChunk = struct { // MARK: ChannelChunk
 		std.debug.assert(lightQueue.isEmpty());
 		for (lights) |entry| {
 			var result = entry;
-			calculateIncomingOcclusion(&result.value, self.ch.data.getValue(entry.pos.toIndex()), self.ch.pos.voxelSize, @enumFromInt(entry.sourceDir));
+			calculateIncomingOcclusion(&result.value, self.ch.data.getValue(entry.pos.toIndex()), self.ch.pos.voxelSize, @fromBackingInt(entry.sourceDir));
 			lightQueue.pushBack(result);
 		}
 		return self.propagateDestructive(lightQueue, constructiveEntries, false, lightRefreshList);
@@ -410,7 +410,7 @@ const LightVector = @Vector(8, u16);
 fn getValues(mesh: *ChunkMesh, pos: chunk.BlockPos) LightVector {
 	const blockLight = mesh.lightingData[0].getValue(pos);
 	const sunLight = mesh.lightingData[1].getValue(pos);
-	std.debug.assert(builtin.cpu.arch.endian() == .little);
+	std.debug.assert(builtin.target.cpu.arch.endian() == .little);
 	const totalLight = @as(u64, sunLight.raw()) | (@as(u64, blockLight.raw()) << 32);
 	return @as(@Vector(8, u8), @bitCast(totalLight));
 }

@@ -15,7 +15,7 @@ pub const Tag = enum(u32) {
 	_,
 
 	pub fn initTags() void {
-		inline for (comptime std.meta.fieldNames(Tag)) |tag| {
+		inline for (@typeInfo(Tag).@"enum".field_names) |tag| {
 			std.debug.assert(Tag.find(tag) == @field(Tag, tag));
 		}
 	}
@@ -31,7 +31,7 @@ pub const Tag = enum(u32) {
 
 	pub fn find(tag: []const u8) Tag {
 		if (tagIds.get(tag)) |res| return res;
-		const result: Tag = @enumFromInt(tagList.items.len);
+		const result: Tag = @fromBackingInt(@intCast(tagList.items.len));
 		const dupedTag = main.worldArena.dupe(u8, tag);
 		tagList.append(main.worldArena, dupedTag);
 		tagIds.put(main.worldArena.allocator, dupedTag, result) catch unreachable;
@@ -50,6 +50,6 @@ pub const Tag = enum(u32) {
 	}
 
 	pub fn getName(tag: Tag) []const u8 {
-		return tagList.items[@intFromEnum(tag)];
+		return tagList.items[@backingInt(tag)];
 	}
 };

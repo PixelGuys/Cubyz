@@ -267,7 +267,7 @@ pub const collision = struct { // MARK: collision
 	}
 
 	pub fn collideOrStep(comptime side: main.sync.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Box, steppingHeight: f64) Vec3d {
-		const index = @intFromEnum(dir);
+		const index = @backingInt(dir);
 
 		// First argument is amount we end up moving in dir, second argument is how far up we step
 		var resultingMovement: Vec3d = .{0, 0, 0};
