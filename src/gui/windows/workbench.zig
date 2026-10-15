@@ -60,6 +60,48 @@ fn updateResult(_: main.items.Inventory.Source) void {
 	craftingResultInv.super._items[0] = .{.item = Item{.proceduralItem = main.items.ProceduralItem.initFromInventory(craftingGridInv.super) orelse return}, .amount = 1};
 }
 
+fn updateModifierRestrictionVisuals(hoveredSlotNumber: usize) void {
+	var slotItems: [25]?main.items.BaseItemIndex = @splat(null);
+	for (itemSlots, 0..) |slot, i| {
+		slot.itemColor = 0xffffffff;
+		slotItems[i] = if (slot.inventory.getItem(i) == .baseItem) slot.inventory.getItem(i).baseItem else null;
+	}
+
+	const hoveredSlot = itemSlots[hoveredSlotNumber];
+	const material = hoveredSlot.inventory.getItem(hoveredSlotNumber).baseItem.material() orelse return;
+	if (material.modifiers.len == 0) return;
+	const x: i32 = if (hoveredSlotNumber != 0) @intCast(@mod(hoveredSlotNumber, 5)) else 0;
+	const y: i32 = @intCast(@divFloor(hoveredSlotNumber, 5));
+	for (0..25) |i| {
+		if (i == hoveredSlotNumber) continue;
+		var newTag: main.items.Checked = .always;
+		for (material.modifiers) |modifier| {
+			const searchedCheckedGrid = modifier.restriction.printCheckedGrid(slotItems, x, y)[i];
+			switch (searchedCheckedGrid) {
+				.validTag => {
+					newTag = .validTag;
+					break;
+				},
+				.invalidTag => if (newTag != .validTag) {
+					newTag = .invalidTag;
+				},
+				.notChecked => if ((newTag != .validTag) and (newTag != .invalidTag)) {
+					newTag = .invalidTag;
+				},
+				.always => if (newTag == .always) {
+					newTag = .always;
+				},
+			}
+		}
+		switch (newTag) {
+			.validTag => itemSlots[i].itemColor = 0xcfddffdd,
+			.invalidTag => itemSlots[i].itemColor = 0xefeebbbb,
+			.notChecked => itemSlots[i].itemColor = 0x33eeeeff,
+			.always => continue,
+		}
+	}
+}
+
 fn openInventory() void {
 	craftingGridInv = ClientInventory.init(main.globalAllocator, 25, .serverShared, .{.workbench = .{.playerId = main.game.Player.id, .proceduralItemIndex = proceduralItemTypes.items[currentProceduralItemType]}}, .{.onUpdateCallback = &updateResult, .canPutInto = items.ProceduralItem.canPutIntoWorkbenchCallback});
 	craftingResultInv = ClientInventory.init(main.globalAllocator, 1, .{.workbenchResult = craftingGridInv.super.id}, .other, .{});
@@ -72,7 +114,11 @@ fn openInventory() void {
 			for (0..5) |x| {
 				const index = x + y*5;
 				const slotInfo = proceduralItemTypes.items[currentProceduralItemType].slotInfos()[index];
-				const slot = ItemSlot.init(.{0, 0}, craftingGridInv, @intCast(index), if (slotInfo.disabled) .invisible else if (slotInfo.optional) .immutable else .default, if (slotInfo.disabled) .immutable else .normal);
+				const slot = ItemSlot.init(.{0, 0}, craftingGridInv, @intCast(index), .{
+					.texture = if (slotInfo.disabled) .invisible else if (slotInfo.optional) .immutable else .default,
+					.mode = if (slotInfo.disabled) .immutable else .normal,
+					.onHover = .initWithInt(updateModifierRestrictionVisuals, @intCast(index)),
+				});
 				itemSlots[index] = slot;
 				row.add(slot);
 			}
@@ -87,7 +133,7 @@ fn openInventory() void {
 	const buttonHeight = verticalThing.size[1];
 	const craftingResultList = HorizontalList.init();
 	craftingResultList.add(Icon.init(.{0, 0}, .{32, 32}, inventory_crafting.arrowTexture));
-	craftingResultList.add(ItemSlot.init(.{8, 0}, craftingResultInv, 0, .craftingResult, .takeOnly));
+	craftingResultList.add(ItemSlot.init(.{8, 0}, craftingResultInv, 0, .{.texture = .craftingResult, .mode = .takeOnly}));
 	craftingResultList.finish(.{padding, padding}, .center);
 	verticalThing.add(craftingResultList);
 	verticalThing.size[1] += buttonHeight + 2*padding; // Centering the thing

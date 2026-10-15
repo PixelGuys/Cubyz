@@ -15,10 +15,20 @@ pub fn satisfied(self: *const Encased, proceduralItem: *const ProceduralItem, x:
 	var count: usize = 0;
 	for ([_]i32{-1, 0, 1}) |dx| {
 		for ([_]i32{-1, 0, 1}) |dy| {
-			if ((proceduralItem.getItemAt(x + dx, y + dy) orelse continue).hasTag(self.tag)) count += 1;
+			if ((ProceduralItem.getItemAt(x + dx, y + dy, proceduralItem.craftingGrid) orelse continue).hasTag(self.tag)) count += 1;
 		}
 	}
 	return count >= self.amount;
+}
+
+pub fn printCheckedGrid(self: *const Encased, givenGrid: [25]?main.items.BaseItemIndex, x: i32, y: i32) [25]main.items.Checked {
+	var checkedGrid: [25]main.items.Checked = @splat(.notChecked);
+	for ([_]i32{-1, 0, 1}) |dx| {
+		for ([_]i32{-1, 0, 1}) |dy| {
+			ProceduralItem.getCheckedAt(x + dx, y + dy, givenGrid, self.tag, &checkedGrid);
+		}
+	}
+	return checkedGrid;
 }
 
 pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Encased {
