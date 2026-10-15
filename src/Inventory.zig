@@ -20,6 +20,8 @@ const Neighbor = main.chunk.Neighbor;
 const BaseItemIndex = main.items.BaseItemIndex;
 const ProceduralItemTypeIndex = main.items.ProceduralItemTypeIndex;
 
+const @"cubyz:position" = main.entity.components.@"cubyz:position";
+
 pub const InventoryId = enum(u32) { _ };
 
 pub const client = struct { // MARK: client
@@ -284,7 +286,7 @@ pub const server = struct { // MARK: server
 						defer main.stackAllocator.free(userList);
 						for (userList) |callbackUser| {
 							if (callbackUser.id == callbackSource.workbench.playerId) {
-								sync.server.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, callbackUser.player().pos)}, null);
+								sync.server.executeCommand(.{.depositOrDrop = .initWithInventories(&.{playerInventory}, workbenchInventory, @"cubyz:position".getPosition(callbackUser.player().id, .client).?)}, null);
 								break;
 							}
 						}
