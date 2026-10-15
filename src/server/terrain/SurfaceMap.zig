@@ -249,10 +249,10 @@ pub const MapGenerator = struct {
 	generateMapFragment: *const fn (fragment: *MapFragment, seed: u64) void,
 
 	const generatorRegistry: std.StaticStringMap(MapGenerator) = .initComptime(blk: {
-		const decls = @typeInfo(map_generators).@"struct".decls;
+		const decls = @typeInfo(map_generators).@"struct".decl_names;
 		var generators: [decls.len]struct { []const u8, MapGenerator } = undefined;
 		for (0..decls.len) |i| {
-			const Generator = @field(map_generators, decls[i].name);
+			const Generator = @field(map_generators, decls[i]);
 			generators[i] = .{Generator.id, .{
 				.init = &Generator.init,
 				.generateMapFragment = &Generator.generateMapFragment,
@@ -391,7 +391,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 	for (mapPositions.items) |pos| {
 		main.heap.GarbageCollection.syncPoint();
 		var neighborInfo: MapFragment.NeighborInfo = undefined;
-		inline for (comptime std.meta.fieldNames(MapFragment.NeighborInfo)) |name| {
+		inline for (@typeInfo(MapFragment.NeighborInfo).@"struct".field_names) |name| {
 			var neighborPos = pos;
 			if (name[0] == '+') neighborPos.wx +%= MapFragment.mapSize;
 			if (name[0] == '-') neighborPos.wx -%= MapFragment.mapSize;

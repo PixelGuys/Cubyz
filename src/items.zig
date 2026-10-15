@@ -245,46 +245,46 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 		return reverseIndices.get(_id);
 	}
 	pub fn image(self: BaseItemIndex) graphics.Image {
-		return itemList[@intFromEnum(self)].image;
+		return itemList[@backingInt(self)].image;
 	}
 	pub fn texture(self: BaseItemIndex) ?graphics.Texture {
-		return itemList[@intFromEnum(self)].texture;
+		return itemList[@backingInt(self)].texture;
 	}
 	pub fn id(self: BaseItemIndex) []const u8 {
-		return itemList[@intFromEnum(self)].id;
+		return itemList[@backingInt(self)].id;
 	}
 	pub fn name(self: BaseItemIndex) []const u8 {
-		return itemList[@intFromEnum(self)].name;
+		return itemList[@backingInt(self)].name;
 	}
 	pub fn tags(self: BaseItemIndex) []const Tag {
-		return itemList[@intFromEnum(self)].tags;
+		return itemList[@backingInt(self)].tags;
 	}
 	pub fn stackSize(self: BaseItemIndex) u16 {
-		return itemList[@intFromEnum(self)].stackSize;
+		return itemList[@backingInt(self)].stackSize;
 	}
 	pub fn material(self: BaseItemIndex) ?Material {
-		return itemList[@intFromEnum(self)].material;
+		return itemList[@backingInt(self)].material;
 	}
 	pub fn block(self: BaseItemIndex) ?u16 {
-		return itemList[@intFromEnum(self)].block;
+		return itemList[@backingInt(self)].block;
 	}
 	pub fn displayBlockData(self: BaseItemIndex) ?u16 {
-		return itemList[@intFromEnum(self)].displayBlockData;
+		return itemList[@backingInt(self)].displayBlockData;
 	}
 	pub fn hasTag(self: BaseItemIndex, tag: Tag) bool {
-		return itemList[@intFromEnum(self)].hasTag(tag);
+		return itemList[@backingInt(self)].hasTag(tag);
 	}
 	pub fn hashCode(self: BaseItemIndex) u32 {
-		return itemList[@intFromEnum(self)].hashCode();
+		return itemList[@backingInt(self)].hashCode();
 	}
 	pub fn getTexture(self: BaseItemIndex) graphics.Texture {
-		return itemList[@intFromEnum(self)].getTexture();
+		return itemList[@backingInt(self)].getTexture();
 	}
 	pub fn getTooltip(self: BaseItemIndex) []const u8 {
-		return itemList[@intFromEnum(self)].getTooltip();
+		return itemList[@backingInt(self)].getTooltip();
 	}
 	pub fn getDisplayBlock(self: BaseItemIndex) ?Block {
-		return itemList[@intFromEnum(self)].getDisplayBlock();
+		return itemList[@backingInt(self)].getDisplayBlock();
 	}
 };
 
@@ -559,7 +559,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 		for (tallies.items) |tally| {
 			const better = best == null or tally.score > best.?.score or
 				(tally.score == best.?.score and tally.lightWeight > best.?.lightWeight) or
-				(tally.score == best.?.score and tally.lightWeight == best.?.lightWeight and @intFromEnum(tally.item) < @intFromEnum(best.?.item));
+				(tally.score == best.?.score and tally.lightWeight == best.?.lightWeight and @backingInt(tally.item) < @backingInt(best.?.item));
 			if (better) best = tally;
 		}
 		return if (best) |b| b.item.material() else null;
@@ -763,7 +763,7 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 		pub fn next(self: *ProceduralItemTypeIterator) ?ProceduralItemTypeIndex {
 			if (self.i >= proceduralItemTypeList.items.len) return null;
 			defer self.i += 1;
-			return @enumFromInt(self.i);
+			return @fromBackingInt(self.i);
 		}
 	};
 
@@ -773,7 +773,7 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 
 	pub fn fromBytes(reader: *BinaryReader) !ProceduralItemTypeIndex {
 		const result = try reader.readEnum(ProceduralItemTypeIndex);
-		if (@intFromEnum(result) >= proceduralItemTypeList.items.len) return error.InvalidEnumTag;
+		if (@backingInt(result) >= proceduralItemTypeList.items.len) return error.InvalidEnumTag;
 		return result;
 	}
 
@@ -784,22 +784,22 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 		return proceduralItemTypeIdToIndex.get(_id);
 	}
 	pub fn id(self: ProceduralItemTypeIndex) []const u8 {
-		return proceduralItemTypeList.items[@intFromEnum(self)].id;
+		return proceduralItemTypeList.items[@backingInt(self)].id;
 	}
 	pub fn tags(self: ProceduralItemTypeIndex) []const Tag {
-		return proceduralItemTypeList.items[@intFromEnum(self)].tags;
+		return proceduralItemTypeList.items[@backingInt(self)].tags;
 	}
 	pub fn properties(self: ProceduralItemTypeIndex) []const PropertyMatrix {
-		return proceduralItemTypeList.items[@intFromEnum(self)].properties;
+		return proceduralItemTypeList.items[@backingInt(self)].properties;
 	}
 	pub fn slotTags(self: ProceduralItemTypeIndex) SlotTagContainer {
-		return proceduralItemTypeList.items[@intFromEnum(self)].slotTags;
+		return proceduralItemTypeList.items[@backingInt(self)].slotTags;
 	}
 	pub fn pixelSources(self: ProceduralItemTypeIndex) *const [16][16]u8 {
-		return &proceduralItemTypeList.items[@intFromEnum(self)].pixelSources;
+		return &proceduralItemTypeList.items[@backingInt(self)].pixelSources;
 	}
 	pub fn pixelSourcesOverlay(self: ProceduralItemTypeIndex) *const [16][16]u8 {
-		return &proceduralItemTypeList.items[@intFromEnum(self)].pixelSourcesOverlay;
+		return &proceduralItemTypeList.items[@backingInt(self)].pixelSourcesOverlay;
 	}
 };
 
@@ -840,7 +840,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	type: ProceduralItemTypeIndex,
 	finishedPropertyEvaluation: bool = false,
 
-	properties: [@typeInfo(ProceduralItemProperty).@"enum".fields.len]f32 = @splat(0),
+	properties: [@typeInfo(ProceduralItemProperty).@"enum".field_names.len]f32 = @splat(0),
 
 	durability: u32,
 
@@ -1036,12 +1036,12 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	}
 
 	pub fn getProperty(self: *ProceduralItem, prop: ProceduralItemProperty) f32 {
-		return self.properties[@intFromEnum(prop)];
+		return self.properties[@backingInt(prop)];
 	}
 
 	pub fn setProperty(self: *ProceduralItem, prop: ProceduralItemProperty, value: f32) void {
 		std.debug.assert(!self.finishedPropertyEvaluation);
-		self.properties[@intFromEnum(prop)] = value;
+		self.properties[@backingInt(prop)] = value;
 	}
 
 	fn getTexture(self: *ProceduralItem) graphics.Texture {
@@ -1187,7 +1187,7 @@ pub const Item = union(ItemType) { // MARK: Item
 		switch (typ) {
 			.baseItem => {
 				const index = try reader.readEnum(BaseItemIndex);
-				return .{.baseItem = itemDeduplicationMap[@intFromEnum(index)]};
+				return .{.baseItem = itemDeduplicationMap[@backingInt(index)]};
 			},
 			.proceduralItem => {
 				return .{.proceduralItem = try ProceduralItem.fromBytes(reader)};
@@ -1423,13 +1423,13 @@ pub fn globalInit() void {
 	proceduralItemTypeIdToIndex = .{};
 
 	itemListSize = 0;
-	inline for (@typeInfo(modifierList).@"struct".decls) |decl| {
-		const ModifierStruct: type = @field(modifierList, decl.name);
-		modifiers.put(main.globalArena.allocator, decl.name, &Modifier.VTable.initFromModifierStruct(ModifierStruct)) catch unreachable;
+	inline for (@typeInfo(modifierList).@"struct".decl_names) |decl| {
+		const ModifierStruct: type = @field(modifierList, decl);
+		modifiers.put(main.globalArena.allocator, decl, &Modifier.VTable.initFromModifierStruct(ModifierStruct)) catch unreachable;
 	}
-	inline for (@typeInfo(modifierRestrictionList).@"struct".decls) |decl| {
-		const ModifierRestrictionStruct = @field(modifierRestrictionList, decl.name);
-		modifierRestrictions.put(main.globalArena.allocator, decl.name, &.{
+	inline for (@typeInfo(modifierRestrictionList).@"struct".decl_names) |decl| {
+		const ModifierRestrictionStruct = @field(modifierRestrictionList, decl);
+		modifierRestrictions.put(main.globalArena.allocator, decl, &.{
 			.satisfied = comptime main.meta.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.satisfied),
 			.loadFromZon = comptime main.meta.castFunctionReturnToAnyopaque(ModifierRestrictionStruct.loadFromZon),
 			.printTooltip = comptime main.meta.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.printTooltip),
@@ -1457,7 +1457,7 @@ pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: 
 	newItem.init(main.worldArena, texturePath, replacementTexturePath, colorTexturePath, colorReplacementTexturePath, id, zon);
 	const result = reverseIndices.getOrPut(main.worldArena.allocator, newItem.id) catch unreachable;
 	if (!result.found_existing) {
-		result.value_ptr.* = @enumFromInt(itemListSize);
+		result.value_ptr.* = @fromBackingInt(itemListSize);
 	}
 	itemDeduplicationMap[itemListSize] = result.value_ptr.*;
 
@@ -1513,7 +1513,10 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 				slotTagVal.hasTagMatrix[i] = (matrixZon.as(usize) != 0);
 			}
 			slotTagVal.tagType = main.Tag.find(entry.key_ptr.*);
+			std.log.debug("testing this {s}", slotTagVal.tagType.getName());
 			if (!std.mem.endsWith(u8, slotTagVal.tagType.getName(), "_slot")) break;
+			if (!(slotTagVal.tagType == .disabled)) break;
+			if (!(slotTagVal.tagType == .optional)) break;
 			std.log.err("Tool slot tag {s} must end with '_slot'.", .{id});
 		}
 	}
@@ -1553,7 +1556,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
 	});
-	proceduralItemTypeIdToIndex.put(main.worldArena.allocator, idDupe, @enumFromInt(proceduralItemTypeList.items.len - 1)) catch unreachable;
+	proceduralItemTypeIdToIndex.put(main.worldArena.allocator, idDupe, @fromBackingInt(@intCast(proceduralItemTypeList.items.len - 1))) catch unreachable;
 
 	std.log.debug("Registered procedural item: '{s}'", .{id});
 }

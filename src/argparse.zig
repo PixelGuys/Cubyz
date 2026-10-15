@@ -53,7 +53,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 
 		fn resolveStruct(
 			comptime mode: ResolveMode,
-			comptime s: std.builtin.Type.Struct,
+			comptime s: std.lang.Type.Struct,
 			arena: NeverFailingAllocator,
 			args: []const u8,
 			errorMessage: *ListManaged(u8),
@@ -69,26 +69,26 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 
 			var nextArgument: ?[]const u8 = tokens.next();
 
-			inline for (s.fields) |field| {
-				const value = resolveArgument(field.type, arena, field.name[0..], nextArgument, &tempErrorMessage);
+			inline for (s.field_names, s.field_types) |field, FieldType| {
+				const value = resolveArgument(FieldType, arena, field[0..], nextArgument, &tempErrorMessage);
 
 				if (value == error.ParseError) {
-					if (@typeInfo(field.type) == .optional) {
-						@field(result, field.name) = null;
+					if (@typeInfo(FieldType) == .optional) {
+						@field(result, field) = null;
 						tempErrorMessage.clearRetainingCapacity();
 					} else {
 						errorMessage.appendSlice(tempErrorMessage.items);
 						return error.ParseError;
 					}
 				} else {
-					@field(result, field.name) = value catch unreachable;
+					@field(result, field) = value catch unreachable;
 					tempErrorMessage.clearRetainingCapacity();
 					nextArgument = tokens.next();
 				}
 			}
 
 			if (nextArgument != null) {
-				errorMessage.print("Too many arguments for command, expected {}", .{s.fields.len});
+				errorMessage.print("Too many arguments for command, expected {}", .{s.field_names.len});
 				return error.ParseError;
 			}
 
@@ -120,7 +120,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				},
 				inline .@"enum" => {
 					return std.meta.stringToEnum(Field, arg) orelse {
-						const str = main.meta.concatComptime("/", std.meta.fieldNames(Field));
+						const str = main.meta.concatComptime("/", @typeInfo(Field).@"enum".field_names);
 						errorMessage.print("Expected one of {s} for <{s}>, found \"{s}\"", .{str, name, arg});
 						return error.ParseError;
 					};
@@ -147,20 +147,20 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			}
 		}
 
-		fn parseUnion(comptime u: std.builtin.Type.Union, arena: NeverFailingAllocator, args: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!T {
+		fn parseUnion(comptime u: std.lang.Type.Union, arena: NeverFailingAllocator, args: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!T {
 			var tempErrorMessage: ListManaged(u8) = .init(main.stackAllocator);
 			defer tempErrorMessage.deinit();
 
 			tempErrorMessage.appendSlice("---");
 
-			inline for (u.fields) |field| {
+			inline for (u.field_names, u.field_types) |field, FieldType| {
 				tempErrorMessage.append('\n');
-				tempErrorMessage.appendSlice(field.name);
+				tempErrorMessage.appendSlice(field);
 				tempErrorMessage.append('\n');
 
-				const result = Parser(field.type, options).resolve(.parse, arena, args, &tempErrorMessage);
+				const result = Parser(FieldType, options).resolve(.parse, arena, args, &tempErrorMessage);
 				if (result != error.ParseError) {
-					return @unionInit(T, field.name, result catch unreachable);
+					return @unionInit(T, field, result catch unreachable);
 				}
 				tempErrorMessage.appendSlice("\n---");
 			}
@@ -169,7 +169,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			return error.ParseError;
 		}
 
-		fn autocompleteUnion(comptime u: std.builtin.Type.Union, arena: NeverFailingAllocator, args: []const u8) AutocompleteResult {
+		fn autocompleteUnion(comptime u: std.lang.Type.Union, arena: NeverFailingAllocator, args: []const u8) AutocompleteResult {
 			_ = u;
 			_ = arena;
 			_ = args;

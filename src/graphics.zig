@@ -1,7 +1,6 @@
 /// A collection of things that should make dealing with opengl easier.
 /// Also contains some basic 2d drawing stuff.
 const std = @import("std");
-const builtin = @import("builtin");
 
 const vec = @import("vec.zig");
 const Mat4f = vec.Mat4f;
@@ -1881,7 +1880,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 
 		if (main.settings.launchConfig.vulkanTestingMode) {
 			self.color = .init(.{width, height, 1}, .{
-				.usage = c.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+				.usage = c.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
 				.format = switch (internalFormat) {
 					c.GL_RGBA16F => c.VK_FORMAT_R16G16B16A16_SFLOAT,
 					c.GL_RGBA8 => c.VK_FORMAT_R8G8B8A8_UNORM,
@@ -1894,7 +1893,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 			});
 			if (self.hasDepthTexture) {
 				self.depth = .init(.{width, height, 1}, .{
-					.usage = c.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+					.usage = c.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
 					.format = c.VK_FORMAT_D32_SFLOAT,
 					.magFilter = textureFilter,
 					.minFilter = textureFilter,
@@ -1980,6 +1979,33 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 			return false;
 		}
 		return true;
+	}
+
+	pub fn prepareTexturesForBinding(self: *FrameBuffer, commandBuffer: CommandBuffer) void {
+		commandBuffer.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+				.srcAccessMask = c.VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | c.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+				.dstAccessMask = c.VK_ACCESS_2_SHADER_READ_BIT,
+				.oldLayout = c.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+				.newLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
+				.image = self.color.handle,
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
+			},
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | c.VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+				.srcAccessMask = c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+				.dstAccessMask = c.VK_ACCESS_2_SHADER_READ_BIT,
+				.oldLayout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+				.newLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
+				.image = self.depth.handle,
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = 1},
+			},
+		}});
 	}
 
 	pub fn bindTexture(self: *const FrameBuffer, target: c_uint) void {

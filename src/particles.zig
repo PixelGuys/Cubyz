@@ -351,7 +351,7 @@ pub const ParticleSystem = struct { // MARK: ParticleSystem
 		chunk_meshing.vao.bind();
 
 		const maxQuads = chunk_meshing.maxQuadsInIndexBuffer;
-		const count = std.math.divCeil(u32, particleCount, maxQuads) catch unreachable;
+		const count = @divCeil(particleCount, maxQuads);
 		for (0..count) |i| {
 			const particleOffset = (maxQuads*4)*i;
 			const particleCurrentCount: u32 = @min(maxQuads, particleCount - maxQuads*i);

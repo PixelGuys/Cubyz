@@ -32,5 +32,4 @@
 		},
 		.texture = "branch/glimmergill.png",
 	},
-	.decayProhibitor = true,
 }

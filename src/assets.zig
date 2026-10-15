@@ -436,7 +436,7 @@ fn assignBlockItem(stringId: []const u8) !void {
 	const block = blocks.getTypeById(stringId);
 	// TODO: This must be gone in PixelGuys/Cubyz#1205
 	const index = items.BaseItemIndex.fromId(stringId).?;
-	const item = &items.itemList[@intFromEnum(index)];
+	const item = &items.itemList[@backingInt(index)];
 	item.block = block;
 }
 
@@ -761,13 +761,12 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		}
 
 		// now give each component it's id:
-		inline for (@typeInfo(main.entity.components).@"struct".decls) |decl| {
-			const name = decl.name;
-			if (map.get(name)) |id| {
-				@field(main.entity.components, decl.name).entityComponentID = id;
+		inline for (@typeInfo(main.entity.components).@"struct".decl_names) |decl| {
+			if (map.get(decl)) |id| {
+				@field(main.entity.components, decl).entityComponentID = id;
 			} else {
-				entityComponentPalette.add(name);
-				@field(main.entity.components, decl.name).entityComponentID = index;
+				entityComponentPalette.add(decl);
+				@field(main.entity.components, decl).entityComponentID = index;
 				index += 1;
 			}
 		}

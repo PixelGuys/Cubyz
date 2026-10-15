@@ -553,13 +553,13 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				defer data.deinit();
 				for (model.internalQuads) |quad| {
 					const textureIndex = blocks.meshes.textureIndex(block, quad.quadInfo().textureSlot);
-					data.append(@as(u32, @intFromEnum(quad)) << 16 | textureIndex); // modelAndTexture
+					data.append(@as(u32, @backingInt(quad)) << 16 | textureIndex); // modelAndTexture
 					data.append(0); // offsetByNormal
 				}
 				for (model.neighborFacingQuads) |list| {
 					for (list) |quad| {
 						const textureIndex = blocks.meshes.textureIndex(block, quad.quadInfo().textureSlot);
-						data.append(@as(u32, @intFromEnum(quad)) << 16 | textureIndex); // modelAndTexture
+						data.append(@as(u32, @backingInt(quad)) << 16 | textureIndex); // modelAndTexture
 						data.append(1); // offsetByNormal
 					}
 				}

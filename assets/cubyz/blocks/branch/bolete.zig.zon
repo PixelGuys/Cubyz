@@ -32,5 +32,4 @@
 		},
 		.texture = "branch/bolete.png",
 	},
-	.decayProhibitor = true,
 }
