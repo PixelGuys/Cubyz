@@ -71,8 +71,8 @@ fn openInventory() void {
 			const row = HorizontalList.init();
 			for (0..5) |x| {
 				const index = x + y*5;
-				const slotInfo = proceduralItemTypes.items[currentProceduralItemType].slotInfos()[index];
-				const slot = ItemSlot.init(.{0, 0}, craftingGridInv, @intCast(index), if (slotInfo.disabled) .invisible else if (slotInfo.optional) .immutable else .default, if (slotInfo.disabled) .immutable else .normal);
+				const slotTags = proceduralItemTypes.items[currentProceduralItemType].slotTags();
+				const slot = ItemSlot.init(.{0, 0}, craftingGridInv, @intCast(index), if (slotTags.isTagAtSlot(index, .disabled)) .invisible else if (slotTags.isTagAtSlot(index, .optional)) .immutable else .default, if (slotTags.isTagAtSlot(index, .disabled)) .immutable else .normal);
 				itemSlots[index] = slot;
 				row.add(slot);
 			}

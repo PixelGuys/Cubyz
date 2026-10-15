@@ -717,14 +717,21 @@ const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
 	}
 };
 
-const SlotInfo = packed struct { // MARK: SlotInfo
-	disabled: bool = false,
-	optional: bool = false,
-};
-
 const SlotTag = struct { // MARK: SlotTag
 	hasTagMatrix: [25]bool,
 	tagType: main.Tag,
+};
+
+const SlotTagContainer = struct { // MARK: SlotTag
+	slotTags: []SlotTag,
+
+	pub fn isTagAtSlot(self: SlotTagContainer, index: usize, tag: main.Tag) bool {
+		for (self.slotTags) |slotTag| {
+			if (!(slotTag.tagType == tag)) continue;
+			return slotTag.hasTagMatrix[index];
+		}
+		return false;
+	}
 };
 
 const PropertyMatrix = struct { // MARK: PropertyMatrix
@@ -785,11 +792,8 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 	pub fn properties(self: ProceduralItemTypeIndex) []const PropertyMatrix {
 		return proceduralItemTypeList.items[@intFromEnum(self)].properties;
 	}
-	pub fn slotTags(self: ProceduralItemTypeIndex) []const SlotTag {
+	pub fn slotTags(self: ProceduralItemTypeIndex) SlotTagContainer {
 		return proceduralItemTypeList.items[@intFromEnum(self)].slotTags;
-	}
-	pub fn slotInfos(self: ProceduralItemTypeIndex) *const [25]SlotInfo {
-		return &proceduralItemTypeList.items[@intFromEnum(self)].slotInfos;
 	}
 	pub fn pixelSources(self: ProceduralItemTypeIndex) *const [16][16]u8 {
 		return &proceduralItemTypeList.items[@intFromEnum(self)].pixelSources;
@@ -803,8 +807,7 @@ pub const ProceduralItemType = struct { // MARK: ProceduralItemType
 	id: []const u8,
 	tags: []main.Tag,
 	properties: []PropertyMatrix,
-	slotInfos: [25]SlotInfo,
-	slotTags: []SlotTag,
+	slotTags: SlotTagContainer,
 	pixelSources: [16][16]u8,
 	pixelSourcesOverlay: [16][16]u8,
 };
@@ -906,14 +909,14 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 
 	pub fn initFromInventory(inventory: Inventory) ?*ProceduralItem {
 		std.debug.assert(inventory.source == .workbench);
-		const slotInfos = inventory.source.workbench.proceduralItemIndex.slotInfos();
+		const slotTags = inventory.source.workbench.proceduralItemIndex.slotTags();
 		var availableItems: [25]?main.items.BaseItemIndex = undefined;
 
 		for (0..25) |i| {
 			if (inventory._items[i].item == .baseItem) {
 				availableItems[i] = inventory._items[i].item.baseItem;
 			} else {
-				if (!slotInfos[i].optional and !slotInfos[i].disabled) {
+				if (!slotTags.isTagAtSlot(i, .optional) and !slotTags.isTagAtSlot(i, .disabled)) {
 					return null;
 				}
 				availableItems[i] = null;
@@ -1024,7 +1027,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		if (x < 0 or x >= 5) return false;
 		if (y < 0 or y >= 5) return false;
 
-		for (self.type.slotTags()) |specificSlotTag| {
+		for (self.type.slotTags().slotTags) |specificSlotTag| {
 			if (specificSlotTag.tagType != checkedTag) continue;
 			if (specificSlotTag.hasTagMatrix[@intCast(x + y*5)]) return true;
 		}
@@ -1105,7 +1108,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	}
 
 	pub fn canPutIntoWorkbenchCallback(source: Inventory.Source, item: Item, slot: usize) bool {
-		if (source.workbench.proceduralItemIndex.slotInfos()[slot].disabled) return false;
+		if (source.workbench.proceduralItemIndex.slotTags().isTagAtSlot(slot, .disabled)) return false;
 		return switch (item) {
 			.null => true,
 			.baseItem => |baseItem| baseItem.material() != null,
@@ -1499,20 +1502,9 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 }
 
 pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
-	var slotInfos: [25]SlotInfo = @splat(.{});
-	{
-		var it = zon.object.iterator();
-		while (it.next()) |entry| {
-			if (!std.mem.eql(u8, entry.key_ptr.*, "optional")) continue;
-			if (!std.mem.eql(u8, entry.key_ptr.*, "disabled")) continue;
-			for (0..25) |i| {
-				slotInfos[i].optional = (entry.value_ptr.*.as(usize) orelse 0) != 0;
-			}
-		}
-	}
 	var slotTags: main.List(SlotTag) = .empty;
+	defer slotTags.deinit(main.stackAllocator);
 	{
-		defer slotTags.deinit(main.stackAllocator);
 		var it = zon.object.iterator();
 		while (it.next()) |entry| {
 			const slotTagVal = slotTags.addOne(main.stackAllocator);
@@ -1556,8 +1548,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 	proceduralItemTypeList.append(main.worldArena, .{
 		.id = idDupe,
 		.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
-		.slotInfos = slotInfos,
-		.slotTags = main.worldArena.dupe(SlotTag, slotTags.items),
+		.slotTags = .{.slotTags = main.worldArena.dupe(SlotTag, slotTags.items)},
 		.properties = main.worldArena.dupe(PropertyMatrix, parameterMatrices.items),
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
