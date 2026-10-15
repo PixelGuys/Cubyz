@@ -1513,7 +1513,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 				slotTagVal.hasTagMatrix[i] = (matrixZon.as(usize) != 0);
 			}
 			slotTagVal.tagType = main.Tag.find(entry.key_ptr.*);
-			std.log.debug("testing this {s}", slotTagVal.tagType.getName());
+			std.log.debug("testing this {s}", .{entry.key_ptr});
 			if (!std.mem.endsWith(u8, slotTagVal.tagType.getName(), "_slot")) break;
 			if (!(slotTagVal.tagType == .disabled)) break;
 			if (!(slotTagVal.tagType == .optional)) break;
