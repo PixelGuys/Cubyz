@@ -70,7 +70,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 	pub const mapMask = mapSize - 1;
 
 	heightMap: [mapSize][mapSize]i32 = undefined,
-	biomeMap: [mapSize][mapSize] BiomeSample = undefined,
+	biomeMap: [mapSize][mapSize]BiomeSample = undefined,
 	caveBiomeOffsetMap: [mapSize][mapSize]i16 = undefined,
 	minHeight: i32 = std.math.maxInt(i32),
 	maxHeight: i32 = 0,
@@ -140,7 +140,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 		@"++": bool = false,
 	};
 
-	const BiomeSamplePaletteData  = struct {
+	const BiomeSamplePaletteData = struct {
 		palette: [mapSize*mapSize]BiomeSample = undefined,
 		convertedArray: [mapSize][mapSize]u32 = undefined,
 		filledTo: u32 = 0,
@@ -150,7 +150,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 		var newTestPalette: BiomeSamplePaletteData = .{};
 		var nextIndex: u32 = 0;
 		for (0..mapSize) |x| {
-			populationLoop: for (0..mapSize) |y|{
+			populationLoop: for (0..mapSize) |y| {
 				for (0..mapSize*mapSize) |index| {
 					if (std.meta.eql(self.biomeMap[x][y], newTestPalette.palette[index])) continue :populationLoop;
 					if (index >= nextIndex) break;
@@ -243,7 +243,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 			},
 			2 => {
 				const biomeSampleDataLength = @sizeOf(u32);
-				const biomeSampleSize = mapSize*mapSize*(@sizeOf(u32)+@sizeOf(f32)+@sizeOf(f32)+@sizeOf(f32)+@sizeOf(f32)+@sizeOf(u64));
+				const biomeSampleSize = mapSize*mapSize*(@sizeOf(u32) + @sizeOf(f32) + @sizeOf(f32) + @sizeOf(f32) + @sizeOf(f32) + @sizeOf(u64));
 				const palletizedArraySize = mapSize*mapSize*@sizeOf(u32);
 				const heightDataSize = mapSize*mapSize*@sizeOf(i32);
 				const originalHeightDataSize = mapSize*mapSize*@sizeOf(i32);
@@ -257,7 +257,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 				var loadedPalette: BiomeSamplePaletteData = .{};
 
 				const biomeLength = try reader.readInt(u32);
-				for (0..biomeLength+1) |index|{
+				for (0..biomeLength + 1) |index| {
 					loadedPalette.palette[index].biome = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)]);
 					loadedPalette.palette[index].height = try reader.readFloat(f32);
 					loadedPalette.palette[index].hills = try reader.readFloat(f32);
@@ -292,7 +292,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 
 	pub fn save(self: *MapFragment, originalData: ?*[mapSize][mapSize]i32, neighborInfo: NeighborInfo) void {
 		const biomeSampleDataLength = @sizeOf(u32);
-		const biomeSampleSize = mapSize*mapSize*(@sizeOf(u32)+@sizeOf(f32)+@sizeOf(f32)+@sizeOf(f32)+@sizeOf(f32)+@sizeOf(u64));
+		const biomeSampleSize = mapSize*mapSize*(@sizeOf(u32) + @sizeOf(f32) + @sizeOf(f32) + @sizeOf(f32) + @sizeOf(f32) + @sizeOf(u64));
 		const palletizedArraySize = mapSize*mapSize*@sizeOf(u32);
 		const heightDataSize = mapSize*mapSize*@sizeOf(i32);
 		const originalHeightDataSize = mapSize*mapSize*@sizeOf(i32);
@@ -303,7 +303,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 		for (0..mapSize) |x| for (0..mapSize) |y| writer.writeInt(u32, self.biomeMap[x][y].biome.paletteId);
 		const uniqueBiomePalette = self.getUniqueBiomePalette();
 		writer.writeInt(u32, uniqueBiomePalette.filledTo);
-		for (0..uniqueBiomePalette.filledTo+1) |index| {
+		for (0..uniqueBiomePalette.filledTo + 1) |index| {
 			writer.writeInt(u32, uniqueBiomePalette.palette[index].biome.paletteId);
 			writer.writeFloat(f32, uniqueBiomePalette.palette[index].height);
 			writer.writeFloat(f32, uniqueBiomePalette.palette[index].hills);
