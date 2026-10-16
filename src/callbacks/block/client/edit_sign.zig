@@ -12,7 +12,7 @@ pub fn init(_: ZonElement, _: main.callbacks.Creator) ?*anyopaque {
 
 pub fn run(_: *anyopaque, params: main.callbacks.ClientBlockCallback.Params) main.callbacks.Result {
 	if (params.block.blockEntity() == null or !std.mem.eql(u8, params.block.blockEntity().?.id, "cubyz:sign")) {
-		std.log.err("Can only edit sign if block entity of the block is a sign.", .{});
+		std.log.err("Error: Can only edit sign if block entity of the block is a sign.", .{});
 		return .ignored;
 	}
 	main.block_entity.BlockEntityTypes.@"cubyz:sign".StorageClient.mutex.lock();
