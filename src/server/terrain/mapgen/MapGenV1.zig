@@ -192,7 +192,7 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 				}
 			}
 			const biomePoint = biomePositions.get(@intCast(closestPoint[0] + offset), @intCast(closestPoint[1] + offset));
-			map.biomeMap[x][y] = biomePoint.biome;
+			map.biomeMap[x][y] = biomePoint;
 		}
 	}
 }
