@@ -15,7 +15,7 @@
 	.texture_top = "cubyz:bromeliad_bottom",
 	.texture_bottom = "cubyz:bromeliad_bottom",
 	.item = .{
-		.texture = "bluebells.png",
+		.texture = "bromeliad.png",
 	},
 	.lodReplacement = "cubyz:air",
 	.onUpdate = .{

@@ -80,7 +80,7 @@
 		.{
 			.id = "cubyz:flower_patch",
 			.blocks = .{"cubyz:hibiscus", "cubyz:bromeliad"},
-			.chance = 0.15,
+			.chance = 0.13,
 			.width = 6,
 			.variation = 3,
 			.density = 0.1,
