@@ -500,7 +500,7 @@ pub fn clientMain() void { // MARK: clientMain()
 			}
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
-			gui.updateAndRenderGui();
+			gui.updateAndRenderGui(deltaTime);
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 
 			if (settings.launchConfig.vulkanTestingMode) {
