@@ -71,11 +71,11 @@ pub fn render() void {
 		const values = comptime std.enums.values(TaskType);
 		var totalUtime: i64 = 0;
 		for (values) |task| {
-			totalUtime += perf.utime[@intFromEnum(task)];
+			totalUtime += perf.utime[@backingInt(task)];
 		}
 		for (values) |t| {
 			const name = @tagName(t);
-			const i = @intFromEnum(t);
+			const i = @backingInt(t);
 			const taskTime = @divFloor(perf.utime[i], @max(1, perf.tasks[i]));
 			const relativeTime = 100.0*@as(f32, @floatFromInt(perf.utime[i]))/@as(f32, @floatFromInt(totalUtime));
 			draw.print("    {s}: {} µs/task ({d:.1}%)", .{name, taskTime, relativeTime}, 0, y, 8);
@@ -101,7 +101,7 @@ pub fn render() void {
 			const biome = main.game.world.?.playerBiome.load(.monotonic);
 			var tags = main.ListManaged(u8).init(main.stackAllocator);
 			defer tags.deinit();
-			inline for (comptime std.meta.fieldNames(main.server.terrain.biomes.Biome.ClimateProperties)) |name| {
+			inline for (@typeInfo(main.server.terrain.biomes.Biome.ClimateProperties).@"struct".field_names) |name| {
 				if (@field(biome.climate, name)) {
 					if (tags.items.len != 0) tags.appendSlice(", ");
 					tags.appendSlice(name);

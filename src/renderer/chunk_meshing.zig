@@ -1,6 +1,5 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
-const builtin = @import("builtin");
 
 const main = @import("main");
 const blocks = main.blocks;
@@ -234,7 +233,7 @@ fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, transparent: bool) voi
 	c.glUniform1i(commandUniforms.isTransparent, @intFromBool(transparent));
 	if (!transparent) {
 		c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 0);
-		c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
+		c.glDispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
 		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
 		if (transparent) {
@@ -255,7 +254,7 @@ fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, transparent: bool) voi
 	// Draw again:
 	commandPipeline.bind();
 	c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 1);
-	c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
+	c.glDispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
 	if (transparent) {
@@ -327,11 +326,11 @@ const FaceGroups = enum(u32) {
 	optional,
 
 	pub fn neighbor(n: main.chunk.Neighbor) FaceGroups {
-		return @enumFromInt(@intFromEnum(FaceGroups.neighbor0) + @intFromEnum(n));
+		return @fromBackingInt(@backingInt(FaceGroups.neighbor0) + @backingInt(n));
 	}
 
 	pub fn neighborLod(n: main.chunk.Neighbor) FaceGroups {
-		return @enumFromInt(@intFromEnum(FaceGroups.neighborLod0) + @intFromEnum(n));
+		return @fromBackingInt(@backingInt(FaceGroups.neighborLod0) + @backingInt(n));
 	}
 };
 
@@ -387,9 +386,9 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		var list: [6][]FaceData = undefined;
 		for (0..6) |i| {
 			if (!isNeighborLod[i]) {
-				list[i] = self.completeList.getRange(.neighbor(@enumFromInt(i)));
+				list[i] = self.completeList.getRange(.neighbor(@fromBackingInt(@intCast(i))));
 			} else {
-				list[i] = self.completeList.getRange(.neighborLod(@enumFromInt(i)));
+				list[i] = self.completeList.getRange(.neighborLod(@fromBackingInt(@intCast(i))));
 			}
 			len += list[i].len;
 		}
@@ -412,7 +411,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				}
 			}
 			if (normal < 6) {
-				const normalDir: chunk.Neighbor = @enumFromInt(normal);
+				const normalDir: chunk.Neighbor = @fromBackingInt(@intCast(normal));
 				@memcpy(fullBuffer[i..][0..list[normalDir.reverse().toInt()].len], list[normalDir.reverse().toInt()]);
 				i += @intCast(list[normalDir.reverse().toInt()].len);
 			}
@@ -1458,9 +1457,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		var list: [6][]FaceData = undefined;
 		for (0..6) |i| {
 			if (!self.isNeighborLod[i]) {
-				list[i] = self.transparentMesh.completeList.getRange(.neighbor(@enumFromInt(i)));
+				list[i] = self.transparentMesh.completeList.getRange(.neighbor(@fromBackingInt(@intCast(i))));
 			} else {
-				list[i] = self.transparentMesh.completeList.getRange(.neighborLod(@enumFromInt(i)));
+				list[i] = self.transparentMesh.completeList.getRange(.neighborLod(@fromBackingInt(@intCast(i))));
 			}
 			len += list[i].len;
 		}

@@ -47,6 +47,16 @@ var deferredUniforms: struct {
 	zFar: c_int,
 	invViewMatrix: c_int,
 } = undefined;
+const DeferredUniforms = extern struct {
+	invViewMatrix: [4][4]f32 align(16),
+	tanXY: [2]f32 align(8),
+	zNear: f32,
+	zFar: f32,
+	@"fog.color": [3]f32 align(16),
+	@"fog.density": f32,
+	@"fog.fogLower": f32,
+	@"fog.fogHigher": f32,
+};
 var fakeReflectionPipeline: graphics.Pipeline = undefined;
 var fakeReflectionUniforms: struct {
 	normalVector: c_int,
@@ -71,9 +81,16 @@ pub fn init() void {
 		&deferredUniforms,
 		graphics.draw.SimpleVertex2D,
 		.{
+			.bindings = &.{
+				.sampler(3, .{.fragment = true}),
+				.sampler(4, .{.fragment = true}),
+				.sampler(5, .{.fragment = true}),
+			},
 			.rasterState = .{.cullMode = .none},
 			.depthStencilState = .{.depthTest = false, .depthWrite = false},
-			.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.world}},
+			.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.swapChain}},
+			.inputAssemblyState = .{.topology = .triangleStrip},
+			.pushConstantSize = @sizeOf(DeferredUniforms),
 		},
 	);
 	fakeReflectionPipeline = graphics.Pipeline.init(
@@ -195,11 +212,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	worldFrameBuffer.clear(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
 	gpu_performance_measuring.stopQuery();
 	if (main.settings.launchConfig.vulkanTestingMode) {
-		worldFrameBuffer.bindAndClear(vulkan.currentFrame.renderCommands, .{.clearColor = .{.float32 = .{skyColor[0], skyColor[1], skyColor[2], 1}}}, .{.clearDepth = .{.depth = 0}});
+		worldFrameBuffer.bindAndClear(vulkan.currentFrame.renderCommands, .{.clearColor = .{.float32 = .{skyColor[0], skyColor[1], skyColor[2], 1}}}, .{.clearDepth = .{.depth = 1}});
 	}
-	defer if (main.settings.launchConfig.vulkanTestingMode) {
-		vulkan.currentFrame.renderCommands.endRendering();
-	};
 	game.camera.updateViewMatrix();
 
 	main.graphics.frame_uniforms.uploadNewFrame(.{
@@ -300,16 +314,50 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	chunk_meshing.endRender();
 
+	if (main.settings.launchConfig.vulkanTestingMode) {
+		vulkan.currentFrame.renderCommands.endRendering();
+		worldFrameBuffer.prepareTexturesForBinding(vulkan.currentFrame.renderCommands);
+	}
+
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 
 	const playerBlock = mesh_storage.getBlockFromAnyLodFromRenderThread(@floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 
-	if (settings.bloom) {
+	if (settings.bloom and !settings.launchConfig.vulkanTestingMode) { // TODO: Enable bloom in Vulkan
 		Bloom.render(lastWidth, lastHeight, playerBlock, game.camera.viewMatrix);
 	} else {
 		Bloom.bindReplacementImage();
 	}
 	gpu_performance_measuring.startQuery(.final_copy);
+	if (settings.launchConfig.vulkanTestingMode) {
+		vulkan.currentFrame.guiCommands.bindPipeline(deferredRenderPassPipeline, null);
+		vulkan.currentFrame.guiCommands.bindDescriptors(deferredRenderPassPipeline, .graphics, &.{
+			.{.image = .{.binding = 3, .image = worldFrameBuffer.color}},
+			.{.image = .{.binding = 4, .image = worldFrameBuffer.depth}},
+			.{.image = .{.binding = 5, .image = Bloom.emptyBuffer.vulkanImage.?}},
+		});
+		graphics.frame_uniforms.bindToPipeline(vulkan.currentFrame.guiCommands, deferredRenderPassPipeline);
+		var uniforms: DeferredUniforms = undefined;
+		uniforms.invViewMatrix = game.camera.viewMatrix.transpose().toGl();
+		uniforms.tanXY = .{1.0/game.projectionMatrix.rows[0][0], -1.0/game.projectionMatrix.rows[1][2]};
+		uniforms.zNear = zNear;
+		uniforms.zFar = zFar;
+		if (!blocks.meshes.hasFog(playerBlock)) {
+			uniforms.@"fog.color" = game.world.?.dayTime.fog.fogColor;
+			uniforms.@"fog.density" = game.world.?.dayTime.fog.density;
+			uniforms.@"fog.fogLower" = game.world.?.dayTime.fog.fogLower;
+			uniforms.@"fog.fogHigher" = game.world.?.dayTime.fog.fogHigher;
+		} else {
+			const fogColor = blocks.meshes.fogColor(playerBlock);
+			uniforms.@"fog.color" = .{@as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0};
+			uniforms.@"fog.density" = blocks.meshes.fogDensity(playerBlock);
+			uniforms.@"fog.fogLower" = 1e10;
+			uniforms.@"fog.fogHigher" = 1e10;
+		}
+		vulkan.currentFrame.guiCommands.pushConstants(deferredRenderPassPipeline, &uniforms);
+		vulkan.currentFrame.guiCommands.bindVertexArray(graphics.draw.rectVao);
+		vulkan.currentFrame.guiCommands.draw(4, 0);
+	}
 	if (activeFrameBuffer == 0) c.glViewport(0, 0, main.Window.width, main.Window.height);
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);

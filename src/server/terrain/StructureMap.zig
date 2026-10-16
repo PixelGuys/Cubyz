@@ -134,10 +134,10 @@ pub const StructureMapGenerator = struct {
 	defaultState: GeneratorState,
 
 	const generatorRegistry: std.StaticStringMap(StructureMapGenerator) = .initComptime(blk: {
-		const decls = @typeInfo(structure_map_generators).@"struct".decls;
+		const decls = @typeInfo(structure_map_generators).@"struct".decl_names;
 		var generators: [decls.len]struct { []const u8, StructureMapGenerator } = undefined;
 		for (0..decls.len) |i| {
-			const Generator = @field(structure_map_generators, decls[i].name);
+			const Generator = @field(structure_map_generators, decls[i]);
 			generators[i] = .{Generator.id, .{
 				.init = &Generator.init,
 				.generate = &Generator.generate,

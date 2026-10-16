@@ -330,7 +330,7 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 
 	std.log.info("Starting game with version {s}", .{settings.version.version});
 
-	if (builtin.os.tag == .windows) {
+	if (builtin.target.os.tag == .windows) {
 		std.log.warn("Cubyz detected it's running on Windows. For optimal performance and reduced power usage please install Linux.", .{});
 	}
 
@@ -343,7 +343,7 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	defer if (!headless) gui.deinitWindowList();
 
 	{
-		const homePath = args.environ.getAlloc(stackAllocator.allocator, if (builtin.os.tag == .windows) "USERPROFILE" else "HOME") catch |err| {
+		const homePath = args.environ.getAlloc(stackAllocator.allocator, if (builtin.target.os.tag == .windows) "USERPROFILE" else "HOME") catch |err| {
 			std.log.err("Failed to get environment variable for home path: {s}", .{@errorName(err)});
 			@panic("Failed to get environment variable for home path");
 		};
@@ -470,7 +470,7 @@ pub fn clientMain() void { // MARK: clientMain()
 		if (settings.fpsCap) |fpsCap| {
 			const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
 			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering.nanoseconds -% lastBeginRendering.nanoseconds)));
-			if (builtin.os.tag == .windows and minFrameTime < 20_000_000) { // Windows can oversleep a lot, so we waste power instead
+			if (builtin.target.os.tag == .windows and minFrameTime < 20_000_000) { // Windows can oversleep a lot, so we waste power instead
 				const targetTime = timestamp().addDuration(.fromNanoseconds(sleep));
 				while (timestamp().durationTo(targetTime).nanoseconds > 0) {}
 			} else {
@@ -528,20 +528,20 @@ pub fn clientMain() void { // MARK: clientMain()
 
 /// std.testing.refAllDeclsRecursive, but ignores C imports (by name)
 pub fn refAllDeclsRecursiveExceptCImports(comptime T: type) void {
-	if (!@import("builtin").is_test) return;
+	if (!builtin.is_test) return;
 	inline for (comptime std.meta.declarations(T)) |decl| blk: {
-		if (comptime std.mem.eql(u8, decl.name, "c")) continue;
-		if (comptime std.mem.eql(u8, decl.name, "hbft")) break :blk;
-		if (comptime std.mem.eql(u8, decl.name, "stb_image")) break :blk;
+		if (comptime std.mem.eql(u8, decl, "c")) continue;
+		if (comptime std.mem.eql(u8, decl, "hbft")) break :blk;
+		if (comptime std.mem.eql(u8, decl, "stb_image")) break :blk;
 		// TODO: Remove this after Zig removes Managed hashmap PixelGuys/Cubyz#308
-		if (comptime std.mem.eql(u8, decl.name, "Managed")) continue;
-		if (@TypeOf(@field(T, decl.name)) == type) {
-			switch (@typeInfo(@field(T, decl.name))) {
-				.@"struct", .@"enum", .@"union", .@"opaque" => refAllDeclsRecursiveExceptCImports(@field(T, decl.name)),
+		if (comptime std.mem.eql(u8, decl, "Managed")) continue;
+		if (@TypeOf(@field(T, decl)) == type) {
+			switch (@typeInfo(@field(T, decl))) {
+				.@"struct", .@"enum", .@"union", .@"opaque" => refAllDeclsRecursiveExceptCImports(@field(T, decl)),
 				else => {},
 			}
 		}
-		_ = &@field(T, decl.name);
+		_ = &@field(T, decl);
 	}
 }
 

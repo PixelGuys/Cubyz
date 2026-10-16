@@ -49,7 +49,7 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	};
 	if (data >= 64) return 0;
 	const runtimeTable = rotationTable;
-	return runtimeTable[@intFromEnum(angle)][data];
+	return runtimeTable[@backingInt(angle)][data];
 }
 
 pub fn init() void {

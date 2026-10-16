@@ -146,7 +146,7 @@ pub const Gamepad = struct { // MARK: Gamepad
 		return gamepadState.count() > 0;
 	}
 	pub fn wereControllerMappingsDownloaded() bool {
-		return controllerMappingsDownloaded.load(std.builtin.AtomicOrder.acquire);
+		return controllerMappingsDownloaded.load(.acquire);
 	}
 	const ControllerMappingDownloadTask = struct { // MARK: ControllerMappingDownloadTask
 		curTimestamp: i128,
@@ -188,7 +188,7 @@ pub const Gamepad = struct { // MARK: Gamepad
 			defer client.deinit();
 			var writer = std.Io.Writer.Allocating.init(main.stackAllocator.allocator);
 			defer writer.deinit();
-			defer controllerMappingsDownloaded.store(true, std.builtin.AtomicOrder.release);
+			defer controllerMappingsDownloaded.store(true, .release);
 			const fetchResult = client.fetch(.{
 				.method = .GET,
 				.location = .{.url = "https://raw.githubusercontent.com/mdqinc/SDL_GameControllerDB/master/gamecontrollerdb.txt"},
@@ -198,7 +198,7 @@ pub const Gamepad = struct { // MARK: Gamepad
 				return;
 			};
 			if (fetchResult.status != .ok) {
-				std.log.err("Failed to download controller mappings: HTTP error {d}", .{@intFromEnum(fetchResult.status)});
+				std.log.err("Failed to download controller mappings: HTTP error {d}", .{@backingInt(fetchResult.status)});
 				return;
 			}
 			files.cwd().write("./gamecontrollerdb.txt", writer.written()) catch |err| {
@@ -221,7 +221,7 @@ pub const Gamepad = struct { // MARK: Gamepad
 		}
 	};
 	pub fn downloadControllerMappings() void {
-		if (builtin.mode == .Debug) return; // TODO: The http fetch adds ~5 seconds to the compile time, so it's disabled in debug mode, see #24435
+		if (builtin.mode == .debug) return; // TODO: The http fetch adds ~5 seconds to the compile time, so it's disabled in debug mode, see #24435
 		var needsDownload: bool = false;
 		const curTimestamp: i96 = std.Io.Clock.Timestamp.now(main.io, .real).raw.nanoseconds;
 		const timestamp: i96 = blk: {
@@ -659,7 +659,7 @@ fn updateCursor() void {
 		c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_DISABLED);
 		// Behavior seems much more intended without this line on MacOS.
 		// Perhaps this is an inconsistency in GLFW due to its fresh XQuartz support?
-		if (@import("builtin").target.os.tag != .macos) {
+		if (builtin.target.os.tag != .macos) {
 			if (c.glfwRawMouseMotionSupported() != 0) {
 				c.glfwSetInputMode(window, c.GLFW_RAW_MOUSE_MOTION, c.GLFW_TRUE);
 			}
