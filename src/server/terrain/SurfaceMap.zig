@@ -146,7 +146,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 		filledTo: u32 = 0,
 	};
 
-	pub fn getUniqueBiomePalette(self: *MapFragment) BiomeSamplePaletteData {
+	fn getUniqueBiomePalette(self: *MapFragment) BiomeSamplePaletteData {
 		var newTestPalette: BiomeSamplePaletteData = .{};
 		var nextIndex: u32 = 0;
 		for (0..mapSize) |x| {
