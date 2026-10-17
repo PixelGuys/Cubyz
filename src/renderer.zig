@@ -1200,6 +1200,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 					while (swinging.currentSwingProgress > swinging.currentSwingTime) {
 						swinging.currentSwingProgress -= swinging.currentSwingTime;
 						breaking.progress += damage*swinging.currentSwingTime/swingTime/block.blockHealth();
+						main.audio.playSound("cubyz:block_hit");
 						if (breaking.progress > 0.9999) break;
 						const swings = @ceil(block.blockHealth()/damage);
 						const damagePerSwing = block.blockHealth()/swings;
@@ -1232,6 +1233,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			main.sync.client.mutex.unlock();
 
 			if (newBlock != block) {
+				main.audio.playSpatialSound("cubyz:block_break", @floatFromInt(selectedPos), 13);
 				updateBlockAndSendUpdate(inventory, slot, selectedPos, block, newBlock);
 			}
 		}
