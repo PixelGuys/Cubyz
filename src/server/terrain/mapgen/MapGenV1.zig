@@ -109,8 +109,7 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 		count += 1;
 		sum += main.timestamp().nanoseconds - t1.nanoseconds;
 
-		if (count%10 == 0)
-			std.log.debug("avg generateMapFragment time: {}", .{@as(f64, @floatFromInt(sum))/@as(f64, @floatFromInt(count))});
+		if (count%10 == 0) std.log.debug("avg generateMapFragment time: {}", .{@as(f64, @floatFromInt(sum))/@as(f64, @floatFromInt(count))});
 	}
 	const scaledSize = MapFragment.mapSize;
 	const mapSize = scaledSize*map.pos.voxelSize;
