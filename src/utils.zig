@@ -888,7 +888,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			if (task.vtable == vtable) {
 				task.vtable.clean(task.self);
 				self.loadList.removeIndex(i);
-				self.taskCountSemaphore.waitTimeout(main.io, .none) catch {};
+				self.taskCountSemaphore.waitTimeout(main.io, .{.duration = .{.raw = .zero, .clock = .awake}}) catch {};
 			} else {
 				i += 1;
 			}
@@ -903,7 +903,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 
 	pub fn unschedulePlayers(self: *ThreadPool) void {
 		while (self.playerJobQueue.popFront()) |_| {
-			self.taskCountSemaphore.waitTimeout(main.io, .none) catch {};
+			self.taskCountSemaphore.waitTimeout(main.io, .{.duration = .{.raw = .zero, .clock = .awake}}) catch {};
 			_ = self.trueQueueSize.fetchSub(1, .monotonic);
 		}
 	}
@@ -974,7 +974,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		var temporaryTaskList: main.List(Task) = .empty;
 		defer temporaryTaskList.deinit(main.stackAllocator);
 		while (self.loadList.extractAny()) |task| {
-			self.taskCountSemaphore.waitTimeout(main.io, .none) catch {};
+			self.taskCountSemaphore.waitTimeout(main.io, .{.duration = .{.raw = .zero, .clock = .awake}}) catch {};
 			if (!task.vtable.isStillNeeded(task.self)) {
 				task.vtable.clean(task.self);
 				_ = self.trueQueueSize.fetchSub(1, .monotonic);
