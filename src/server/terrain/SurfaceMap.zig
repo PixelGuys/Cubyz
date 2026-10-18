@@ -71,6 +71,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 
 	heightMap: [mapSize][mapSize]i32 = undefined,
 	uniqueBiomeSamplesNextIndex: u32 = 0,
+	seedKeyBiomeSampleArrays: std.AutoHashMapUnmanaged(u64, main.List(u32)) = .empty,
 	uniqueBiomeSamples: [mapSize*mapSize]?BiomeSample = @splat(null),
 	biomeMap: [mapSize][mapSize]u32 = undefined,
 	caveBiomeOffsetMap: [mapSize][mapSize]i16 = undefined,
@@ -129,25 +130,24 @@ pub const MapFragment = struct { // MARK: MapFragment
 	pub fn setBiomeSample(self: *MapFragment, wx: i32, wy: i32, newBiomeSample: BiomeSample) void {
 		const xIndex = wx >> self.pos.voxelSizeShift & mapMask;
 		const yIndex = wy >> self.pos.voxelSizeShift & mapMask;
+		if (self.seedKeyBiomeSampleArrays.get(newBiomeSample.seed) == null) {
+			self.seedKeyBiomeSampleArrays.put(main.worldArena.allocator, newBiomeSample.seed, .empty) catch unreachable;
+		}
 		self.setBiomeSampleLocalCoords(xIndex, yIndex, newBiomeSample);
 	}
 
 	fn setBiomeSampleLocalCoords(self: *MapFragment, x: i32, y: i32, newBiomeSample: BiomeSample) void {
-		var paletteId: u32 = 0;
-		for (0..self.uniqueBiomeSamples.len) |index| {
-			if (self.uniqueBiomeSamples[index] == null) {
-				paletteId = @intCast(index);
-				break;
-			} else {
-				if (self.uniqueBiomeSamples[index].?.biome == newBiomeSample.biome and self.uniqueBiomeSamples[index].?.height == newBiomeSample.height and self.uniqueBiomeSamples[index].?.hills == newBiomeSample.hills and self.uniqueBiomeSamples[index].?.mountains == newBiomeSample.mountains and self.uniqueBiomeSamples[index].?.roughness == newBiomeSample.roughness and self.uniqueBiomeSamples[index].?.seed == newBiomeSample.seed) {
-					self.biomeMap[@intCast(x)][@intCast(y)] = @intCast(index);
-					return;
-				}
+		var uniqueSeedList = self.seedKeyBiomeSampleArrays.get(newBiomeSample.seed).?;
+		for (uniqueSeedList.items) |item| {
+			if (self.uniqueBiomeSamples[item].?.biome == newBiomeSample.biome and self.uniqueBiomeSamples[item].?.height == newBiomeSample.height and self.uniqueBiomeSamples[item].?.hills == newBiomeSample.hills and self.uniqueBiomeSamples[item].?.mountains == newBiomeSample.mountains and self.uniqueBiomeSamples[item].?.roughness == newBiomeSample.roughness and self.uniqueBiomeSamples[item].?.seed == newBiomeSample.seed) {
+				self.biomeMap[@intCast(x)][@intCast(y)] = @intCast(item);
+				return;
 			}
 		}
-		self.uniqueBiomeSamples[paletteId] = newBiomeSample;
-		self.biomeMap[@intCast(x)][@intCast(y)] = paletteId;
-		self.uniqueBiomeSamplesNextIndex = paletteId + 1;
+		uniqueSeedList.append(main.worldArena, self.uniqueBiomeSamplesNextIndex);
+		self.uniqueBiomeSamples[self.uniqueBiomeSamplesNextIndex] = newBiomeSample;
+		self.biomeMap[@intCast(x)][@intCast(y)] = self.uniqueBiomeSamplesNextIndex;
+		self.uniqueBiomeSamplesNextIndex += 1;
 	}
 
 	const StorageHeader = struct {
