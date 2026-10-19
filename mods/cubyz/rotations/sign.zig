@@ -89,7 +89,7 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 		},
 	};
 	if (data >= 2*centerRotations + sideRotations) return 0;
-	return rotationTable[@intFromEnum(angle)][data];
+	return rotationTable[@backingInt(angle)][data];
 }
 
 fn getRotationFromDir(dir: Vec3f) u16 {

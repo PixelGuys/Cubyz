@@ -243,7 +243,7 @@ pub const User = struct { // MARK: User
 			self.newKeyString = main.globalAllocator.print("{s}:{s}", .{@tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm), keyBase64});
 		}
 		var foundKey: bool = false;
-		for (std.meta.fieldNames(main.network.authentication.KeyTypeEnum)) |keyTypeName| {
+		for (@typeInfo(main.network.authentication.KeyTypeEnum).@"enum".field_names) |keyTypeName| {
 			const keyBase64 = keys.get([]const u8, keyTypeName) orelse continue;
 			const keyWithType = main.stackAllocator.print("{s}:{s}", .{keyTypeName, keyBase64});
 			defer main.stackAllocator.free(keyWithType);
@@ -293,7 +293,7 @@ pub const User = struct { // MARK: User
 
 	var freeId: u32 = 0; // TODO: Use id provided by the ECS.
 	pub fn initPlayer(self: *User) void {
-		self.id = @enumFromInt(freeId);
+		self.id = @fromBackingInt(freeId);
 		freeId += 1;
 
 		world.?.loadPlayer(self) catch {
@@ -825,7 +825,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	// Let the other clients know about that this new one left.
 	const zonArray = main.ZonElement.initArray(main.stackAllocator);
 	defer zonArray.deinit(main.stackAllocator);
-	zonArray.array.append(.{.int = @intFromEnum(user.id)});
+	zonArray.array.append(.{.int = @backingInt(user.id)});
 	const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 	defer main.stackAllocator.free(data);
 	const userList = getUserList(main.stackAllocator);

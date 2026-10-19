@@ -9,11 +9,11 @@ pub fn openDirInWindow(path: []const u8) void {
 	const newPath = main.stackAllocator.dupe(u8, path);
 	defer main.stackAllocator.free(newPath);
 
-	if (builtin.os.tag == .windows) {
+	if (builtin.target.os.tag == .windows) {
 		std.mem.replaceScalar(u8, newPath, '/', '\\');
 	}
 
-	const command = switch (builtin.os.tag) {
+	const command = switch (builtin.target.os.tag) {
 		.windows => .{"explorer", newPath},
 		.macos => .{"open", newPath},
 		else => .{"xdg-open", newPath},
@@ -62,7 +62,7 @@ fn flawedInit(homePath: []const u8) !void {
 	}
 	var homeDir = try std.Io.Dir.openDirAbsolute(main.io, homePath, .{});
 	defer homeDir.close(main.io);
-	if (builtin.os.tag == .windows) {
+	if (builtin.target.os.tag == .windows) {
 		cubyzDir_ = try homeDir.createDirPathOpen(main.io, "Saved Games/Cubyz", .{});
 		cubyzDirStr_ = std.mem.concat(main.globalAllocator.allocator, u8, &.{homePath, "/Saved Games/Cubyz"}) catch unreachable;
 	} else {

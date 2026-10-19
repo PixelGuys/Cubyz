@@ -228,7 +228,7 @@ pub const Player = struct { // MARK: Player
 			const block = main.renderer.mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 
 			const item: items.Item = for (0..items.itemListSize) |idx| {
-				const baseItem: main.items.BaseItemIndex = @enumFromInt(idx);
+				const baseItem: main.items.BaseItemIndex = @fromBackingInt(@intCast(idx));
 				if (baseItem.block() == block.typ) {
 					break .{.baseItem = baseItem};
 				}
@@ -384,7 +384,7 @@ pub const World = struct { // MARK: World
 		const path = main.stackAllocator.print("{s}/serverAssets", .{main.files.cubyzDirStr()});
 		defer main.stackAllocator.free(path);
 		try assets.loadWorldAssets(path, self.blockPalette, self.itemPalette, self.proceduralItemPalette, self.biomePalette, self.entityModelPalette, self.entityComponentPalette);
-		Player.id = @enumFromInt(zon.get(u32, "player_id") orelse @intFromEnum(main.entity.Entity.noValue));
+		Player.id = @fromBackingInt(zon.get(u32, "player_id") orelse @backingInt(main.entity.Entity.noValue));
 		Player.inventory = ClientInventory.init(main.globalAllocator, Player.inventorySize, .serverShared, .{.playerInventory = Player.id}, .{});
 		Player.setGamemode(std.enums.fromInt(Gamemode, zon.get(u8, "gamemode") orelse return error.Invalid) orelse return error.Invalid);
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
