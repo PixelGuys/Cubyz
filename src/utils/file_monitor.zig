@@ -7,7 +7,7 @@ const c = @import("c");
 
 const CallbackFunction = *const fn (usize) void;
 
-const Impl = switch (builtin.os.tag) {
+const Impl = switch (builtin.target.os.tag) {
 	.windows => WindowsImpl,
 	.linux => LinuxImpl,
 	else => NoImpl,

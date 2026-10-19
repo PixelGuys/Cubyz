@@ -148,7 +148,7 @@ pub const ZonElement = union(enum) { // MARK: ZonElement
 	}
 
 	pub fn as(self: *const ZonElement, comptime T: type) ?T {
-		const typeInfo: std.builtin.Type = @typeInfo(T);
+		const typeInfo: std.lang.Type = @typeInfo(T);
 		switch (typeInfo) {
 			.int => {
 				switch (self.*) {

@@ -38,19 +38,19 @@ var componentList: []?EntityComponentVTable = undefined;
 
 pub fn initComponents() void {
 	var tmpComponentList: main.List(?EntityComponentVTable) = .empty;
-	inline for (@typeInfo(components).@"struct".decls) |decl| {
-		@field(components, decl.name).client.init();
-		const componentId = @field(components, decl.name).entityComponentID;
+	inline for (@typeInfo(components).@"struct".decl_names) |decl| {
+		@field(components, decl).client.init();
+		const componentId = @field(components, decl).entityComponentID;
 
 		if (tmpComponentList.items.len <= componentId) {
 			tmpComponentList.appendNTimes(main.worldArena, null, componentId + 1 - tmpComponentList.items.len);
 		}
 		if (tmpComponentList.items[componentId] == null) {
 			tmpComponentList.items[componentId] = .{
-				.serverLoad = @field(components, decl.name).server.loadFromData,
-				.clientLoad = @field(components, decl.name).client.load,
-				.serverUnload = @field(components, decl.name).server.unload,
-				.clientUnload = @field(components, decl.name).client.unload,
+				.serverLoad = @field(components, decl).server.loadFromData,
+				.clientLoad = @field(components, decl).client.load,
+				.serverUnload = @field(components, decl).server.unload,
+				.clientUnload = @field(components, decl).client.unload,
 			};
 		} else {
 			std.log.err("entity components: Duplicate list id {}.", .{componentId});
@@ -99,53 +99,53 @@ pub fn unloadComponent(comptime side: main.sync.Side, componentId: EntityCompone
 
 pub const client = struct {
 	pub fn init() void {
-		inline for (@typeInfo(components).@"struct".decls) |decl| {
-			@field(components, decl.name).client.init();
+		inline for (@typeInfo(components).@"struct".decl_names) |decl| {
+			@field(components, decl).client.init();
 		}
 		main.client.entity_manager.init();
 	}
 	pub fn deinit() void {
 		main.client.entity_manager.deinit();
-		inline for (@typeInfo(components).@"struct".decls) |decl| {
-			@field(components, decl.name).client.deinit();
+		inline for (@typeInfo(components).@"struct".decl_names) |decl| {
+			@field(components, decl).client.deinit();
 		}
 	}
 	pub fn clear() void {
 		main.client.entity_manager.clear();
-		inline for (@typeInfo(components).@"struct".decls) |decl| {
-			@field(components, decl.name).client.clear();
+		inline for (@typeInfo(components).@"struct".decl_names) |decl| {
+			@field(components, decl).client.clear();
 		}
 	}
 	pub fn removeAllComponents(entity: Entity) void {
 		const list = main.entity.components;
-		inline for (@typeInfo(list).@"struct".decls) |decl| {
-			@field(list, decl.name).client.unload(entity);
+		inline for (@typeInfo(list).@"struct".decl_names) |decl| {
+			@field(list, decl).client.unload(entity);
 		}
 	}
 };
 pub const server = struct {
 	pub fn init() void {
-		inline for (@typeInfo(components).@"struct".decls) |decl| {
-			@field(components, decl.name).server.init();
+		inline for (@typeInfo(components).@"struct".decl_names) |decl| {
+			@field(components, decl).server.init();
 		}
 	}
 	pub fn deinit() void {
-		inline for (@typeInfo(components).@"struct".decls) |decl| {
-			@field(components, decl.name).server.deinit();
+		inline for (@typeInfo(components).@"struct".decl_names) |decl| {
+			@field(components, decl).server.deinit();
 		}
 	}
 	pub fn componentsToBase64(allocator: main.heap.NeverFailingAllocator, entity: Entity, audience: main.entity.AudienceInfo) main.utils.Base64 {
 		var writer = main.utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
-		inline for (@typeInfo(main.entity.components).@"struct".decls) |decl| {
-			if (@field(main.entity.components, decl.name).server.get(entity)) |component| {
+		inline for (@typeInfo(main.entity.components).@"struct".decl_names) |decl| {
+			if (@field(main.entity.components, decl).server.get(entity)) |component| {
 				var writerComponent = main.utils.BinaryWriter.init(main.stackAllocator);
 				defer writerComponent.deinit();
 
 				if (component.save(&writerComponent, audience) == .save) {
-					writer.writeVarInt(u32, @field(main.entity.components, decl.name).entityComponentID);
-					writer.writeVarInt(u32, @field(main.entity.components, decl.name).entityComponentVersion);
+					writer.writeVarInt(u32, @field(main.entity.components, decl).entityComponentID);
+					writer.writeVarInt(u32, @field(main.entity.components, decl).entityComponentVersion);
 					writer.writeSliceWithSize(writerComponent.data.items);
 				}
 			}
@@ -155,8 +155,8 @@ pub const server = struct {
 
 	pub fn removeAllComponents(entity: Entity) void {
 		const list = main.entity.components;
-		inline for (@typeInfo(list).@"struct".decls) |decl| {
-			@field(list, decl.name).server.unload(entity);
+		inline for (@typeInfo(list).@"struct".decl_names) |decl| {
+			@field(list, decl).server.unload(entity);
 		}
 	}
 
