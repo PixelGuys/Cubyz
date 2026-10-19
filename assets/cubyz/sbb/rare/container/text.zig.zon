@@ -1,9 +1,0 @@
-.{
-	.blueprints = .{
-		.{.id = "cubyz:rare/container/text/1"},
-		.{.id = "cubyz:rare/container/text/2"},
-		.{.id = "cubyz:rare/container/text/3"},
-		.{.id = "cubyz:rare/container/text/4"},
-		.{.id = "cubyz:rare/container/text/5"},
-	},
-}
