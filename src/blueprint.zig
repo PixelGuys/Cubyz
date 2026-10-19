@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
-const Compression = main.utils.Compression;
+const utils = main.utils;
 const ZonElement = main.ZonElement;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
@@ -328,7 +328,7 @@ pub const Blueprint = struct { // MARK: Blueprint
 
 		switch (compression) {
 			.deflate => {
-				const sizeAfterDecompression = try Compression.inflateTo(decompressedData, data);
+				const sizeAfterDecompression = try utils.compression.inflateTo(decompressedData, data);
 				std.debug.assert(sizeAfterDecompression == decompressedDataSizeBytes);
 			},
 		}
@@ -338,7 +338,7 @@ pub const Blueprint = struct { // MARK: Blueprint
 		const compressionMode: BlueprintCompression = .deflate;
 		switch (compressionMode) {
 			.deflate => {
-				return .{.mode = .deflate, .data = Compression.deflate(allocator, decompressedData, .default)};
+				return .{.mode = .deflate, .data = utils.compression.deflate(allocator, decompressedData, .default)};
 			},
 		}
 	}
@@ -553,14 +553,14 @@ pub const Mask = struct { // MARK: Mask
 };
 
 fn parseBlockLike(block: []const u8) error{ DataParsingFailed, IdParsingFailed }!Mask.Entry.Inner {
-	if (@import("builtin").is_test) return try Test.parseBlockLikeTest(block);
+	if (@import("builtin").is_test) return try @"test".parseBlockLikeTest(block);
 	const typ = main.blocks.getBlockById(block) catch return error.IdParsingFailed;
 	const dataNullable = main.blocks.getBlockData(block) catch return error.DataParsingFailed;
 	if (dataNullable) |data| return .{.block = .{.typ = typ, .data = data}};
 	return .{.blockType = typ};
 }
 
-const Test = struct {
+const @"test" = struct {
 	var parseBlockLikeTest: *const @TypeOf(parseBlockLike) = &defaultParseBlockLike;
 
 	fn defaultParseBlockLike(_: []const u8) !Mask.Entry.Inner {
@@ -586,8 +586,8 @@ const Test = struct {
 };
 
 test "Mask match block type with any data" {
-	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
-	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+	@"test".parseBlockLikeTest = &@"test".@"parseBlockLike 1 null";
+	defer @"test".parseBlockLikeTest = &@"test".defaultParseBlockLike;
 
 	const mask = try Mask.initFromString(main.heap.testingAllocator, "addon:dummy");
 	defer mask.deinit(main.heap.testingAllocator);
@@ -598,43 +598,43 @@ test "Mask match block type with any data" {
 }
 
 test "Mask empty negative case" {
-	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
-	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+	@"test".parseBlockLikeTest = &@"test".@"parseBlockLike 1 null";
+	defer @"test".parseBlockLikeTest = &@"test".defaultParseBlockLike;
 
 	try std.testing.expectError(error.MissingExpression, Mask.initFromString(main.heap.testingAllocator, ""));
 }
 
 test "Mask half-or negative case" {
-	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
-	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+	@"test".parseBlockLikeTest = &@"test".@"parseBlockLike 1 null";
+	defer @"test".parseBlockLikeTest = &@"test".defaultParseBlockLike;
 
 	try std.testing.expectError(error.MissingExpression, Mask.initFromString(main.heap.testingAllocator, "addon:dummy|"));
 }
 
 test "Mask half-or negative case 2" {
-	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
-	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+	@"test".parseBlockLikeTest = &@"test".@"parseBlockLike 1 null";
+	defer @"test".parseBlockLikeTest = &@"test".defaultParseBlockLike;
 
 	try std.testing.expectError(error.MissingExpression, Mask.initFromString(main.heap.testingAllocator, "|addon:dummy"));
 }
 
 test "Mask half-and negative case" {
-	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
-	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+	@"test".parseBlockLikeTest = &@"test".@"parseBlockLike 1 null";
+	defer @"test".parseBlockLikeTest = &@"test".defaultParseBlockLike;
 
 	try std.testing.expectError(error.MissingExpression, Mask.initFromString(main.heap.testingAllocator, "addon:dummy&"));
 }
 
 test "Mask half-and negative case 2" {
-	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
-	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+	@"test".parseBlockLikeTest = &@"test".@"parseBlockLike 1 null";
+	defer @"test".parseBlockLikeTest = &@"test".defaultParseBlockLike;
 
 	try std.testing.expectError(error.MissingExpression, Mask.initFromString(main.heap.testingAllocator, "&addon:dummy"));
 }
 
 test "Mask inverse match block type with any data" {
-	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
-	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+	@"test".parseBlockLikeTest = &@"test".@"parseBlockLike 1 null";
+	defer @"test".parseBlockLikeTest = &@"test".defaultParseBlockLike;
 
 	const mask = try Mask.initFromString(main.heap.testingAllocator, "!addon:dummy");
 	defer mask.deinit(main.heap.testingAllocator);
@@ -645,8 +645,8 @@ test "Mask inverse match block type with any data" {
 }
 
 test "Mask match block type with exact data" {
-	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 1";
-	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+	@"test".parseBlockLikeTest = &@"test".@"parseBlockLike 1 1";
+	defer @"test".parseBlockLikeTest = &@"test".defaultParseBlockLike;
 
 	const mask = try Mask.initFromString(main.heap.testingAllocator, "addon:dummy");
 	defer mask.deinit(main.heap.testingAllocator);
@@ -657,8 +657,8 @@ test "Mask match block type with exact data" {
 }
 
 test "Mask match type 0 or type 1 with exact data" {
-	Test.parseBlockLikeTest = &Test.@"parseBlockLike foo or bar";
-	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+	@"test".parseBlockLikeTest = &@"test".@"parseBlockLike foo or bar";
+	defer @"test".parseBlockLikeTest = &@"test".defaultParseBlockLike;
 
 	const mask = try Mask.initFromString(main.heap.testingAllocator, "addon:foo|addon:bar");
 	defer mask.deinit(main.heap.testingAllocator);

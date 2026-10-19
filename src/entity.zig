@@ -170,12 +170,12 @@ pub const server = struct {
 		if (EntityComponent.server.get(entity)) |ptr| {
 			if (ptr.save(&binaryWriter, .playerNearby) == .save) {
 				for (users) |user| {
-					main.network.protocols.EntityComponentUpdate.load(user.conn, entity, EntityComponent.entityComponentID, EntityComponent.entityComponentVersion, binaryWriter.data.items);
+					main.network.protocols.entity_component_update.load(user.conn, entity, EntityComponent.entityComponentID, EntityComponent.entityComponentVersion, binaryWriter.data.items);
 				}
 			}
 		} else {
 			for (users) |user| {
-				main.network.protocols.EntityComponentUpdate.unload(user.conn, entity, EntityComponent.entityComponentID);
+				main.network.protocols.entity_component_update.unload(user.conn, entity, EntityComponent.entityComponentID);
 			}
 		}
 	}

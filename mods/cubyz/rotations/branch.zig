@@ -421,7 +421,7 @@ fn closestRay(block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) ?u16 {
 	var resultBitMask: ?u16 = null;
 	{
 		const modelIndex = blocks.meshes.modelIndexStart(block);
-		if (RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
+		if (RotationMode.default_functions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 			closestIntersectionDistance = intersection.distance;
 			resultBitMask = 0;
 		}
@@ -431,7 +431,7 @@ fn closestRay(block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) ?u16 {
 
 		if ((block.data & directionBitMask) != 0) {
 			const modelIndex: ModelIndex = blocks.meshes.modelIndexStart(block).add(directionBitMask);
-			if (RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
+			if (RotationMode.default_functions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 				if (@abs(closestIntersectionDistance) > @abs(intersection.distance)) {
 					closestIntersectionDistance = intersection.distance;
 					resultBitMask = direction.bitMask();

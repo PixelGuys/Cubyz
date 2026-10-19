@@ -114,7 +114,7 @@ pub fn init() void {
 
 	// keyboard settings:
 	const keyboard = zon.getChild("keyboard");
-	for (&main.KeyBoard.keys) |*key| {
+	for (&main.key_board.keys) |*key| {
 		const keyZon = keyboard.getChild(key.name);
 		key.key = keyZon.get(c_int, "key") orelse key.key;
 		key.mouseButton = keyZon.get(c_int, "mouseButton") orelse key.mouseButton;
@@ -177,7 +177,7 @@ pub fn save() void {
 
 	// keyboard settings:
 	const keyboard = ZonElement.initObject(main.stackAllocator);
-	for (&main.KeyBoard.keys) |key| {
+	for (&main.key_board.keys) |key| {
 		const keyZon = ZonElement.initObject(main.stackAllocator);
 		keyZon.put("key", key.key);
 		keyZon.put("mouseButton", key.mouseButton);
@@ -207,7 +207,7 @@ pub fn save() void {
 	};
 }
 
-pub const launchConfig = struct {
+pub const launch_config = struct {
 	pub var cubyzDir: []const u8 = "";
 	pub var autoEnterWorld: []const u8 = "";
 	pub var headlessServer: bool = false;

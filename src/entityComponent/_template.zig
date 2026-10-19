@@ -48,6 +48,7 @@ pub const client = struct {
 // ############################# Server only stuff ################################
 pub const server = struct {
 	pub const ExampleComponent = struct {
+		_: void,
 		pub fn save(self: ExampleComponent, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			_ = self;
 			_ = writer;
