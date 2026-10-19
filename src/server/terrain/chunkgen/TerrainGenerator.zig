@@ -233,7 +233,11 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 										if (zStart <= z) chunk.updateBlockColumnInGeneration(x, y, zStart, z, biome.stoneBlock);
 										z = z -% chunk.super.pos.voxelSize;
 									} else {
-										chunk.updateBlockColumnInGeneration(x, y, zStart, z, biome.liquidBlock);
+										if (z < surface) {
+											chunk.updateBlockColumnInGeneration(x, y, zStart, z, .{.typ = 0, .data = 0});
+										} else {
+											chunk.updateBlockColumnInGeneration(x, y, zStart, z, biome.liquidBlock);
+										}
 									}
 								}
 							}
