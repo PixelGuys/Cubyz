@@ -9,7 +9,7 @@ const Blueprint = main.blueprint.Blueprint;
 pub const description = "Redo last change done to world with world editing commands.";
 pub const usage = "/redo";
 
-pub const Args = struct { _: void };
+pub const Args = struct {};
 
 pub fn execute(_: Args, source: Source) void {
 	if (source != .user) {
