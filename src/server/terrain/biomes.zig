@@ -220,6 +220,7 @@ pub const Biome = struct { // MARK: Biome
 	pub const OceanProperties = struct {
 		height: i32,
 		liquidBlock: main.blocks.Block,
+		wallThickness: u32,
 		isRelative: bool,
 		relativeGap: u32,
 		relativeOffset: i32,
@@ -283,6 +284,7 @@ pub const Biome = struct { // MARK: Biome
 			.oceanProperties = .{
 				.height = zon.getChild("oceanProperties").get(i32, "height") orelse 0,
 				.liquidBlock = blocks.parseBlock(zon.getChild("oceanProperties").get([]const u8, "liquidBlock") orelse "cubyz:water"),
+				.wallThickness = zon.getChild("oceanProperties").get(u32, "wallThickness") orelse 1,
 				.isRelative = zon.getChild("oceanProperties").get(bool, "isRelative") orelse false,
 				.relativeGap = zon.getChild("oceanProperties").get(u32, "relativeGap") orelse 8,
 				.relativeOffset = zon.getChild("oceanProperties").get(i32, "relativeOffset") orelse 0,
