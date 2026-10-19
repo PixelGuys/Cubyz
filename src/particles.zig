@@ -410,7 +410,7 @@ pub const Emitter = struct { // MARK: Emitter
 	mode: DirectionMode,
 
 	pub const SpawnShape = union(enum) {
-		point: spawn_point,
+		point: SpawnPoint,
 		sphere: SpawnSphere,
 		cube: SpawnCube,
 
@@ -429,8 +429,8 @@ pub const Emitter = struct { // MARK: Emitter
 		}
 	};
 
-	pub const spawn_point = struct {
-		pub fn spawn(_: spawn_point, pos: Vec3d, properties: EmitterProperties, mode: DirectionMode) struct { Vec3d, Vec3f } {
+	pub const SpawnPoint = struct {
+		pub fn spawn(_: SpawnPoint, pos: Vec3d, properties: EmitterProperties, mode: DirectionMode) struct { Vec3d, Vec3f } {
 			const particlePos = pos;
 			const speed: Vec3f = @splat(properties.speed.get(&main.seed));
 			const dir: Vec3f = switch (mode) {
@@ -442,8 +442,8 @@ pub const Emitter = struct { // MARK: Emitter
 			return .{particlePos, particleVel};
 		}
 
-		pub fn parse(_: ZonElement) !spawn_point {
-			return spawn_point{};
+		pub fn parse(_: ZonElement) !SpawnPoint {
+			return SpawnPoint{};
 		}
 	};
 

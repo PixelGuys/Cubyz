@@ -132,15 +132,15 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 	// There will be at most 1 GiB of chunks in here. TODO: Allow configuring this in the server settings.
 	const reducedChunkCacheMask = 2047;
 	var chunkCache: Cache(ServerChunk, reducedChunkCacheMask + 1, 4, chunkDeinitFunctionForCache) = .{};
-	const hashcontext = struct {
-		pub fn hash(_: hashcontext, a: chunk.ChunkPosition) u64 {
+	const HashContext = struct {
+		pub fn hash(_: HashContext, a: chunk.ChunkPosition) u64 {
 			return a.hashCode();
 		}
-		pub fn eql(_: hashcontext, a: chunk.ChunkPosition, b: chunk.ChunkPosition) bool {
+		pub fn eql(_: HashContext, a: chunk.ChunkPosition, b: chunk.ChunkPosition) bool {
 			return std.meta.eql(a, b);
 		}
 	};
-	var simulationChunkHashMap: std.HashMap(chunk.ChunkPosition, *SimulationChunk, hashcontext, 50) = undefined;
+	var simulationChunkHashMap: std.HashMap(chunk.ChunkPosition, *SimulationChunk, HashContext, 50) = undefined;
 	var mutex: main.utils.Mutex = .{};
 
 	fn getSimulationChunkAndIncreaseRefCount(pos: chunk.ChunkPosition) ?*SimulationChunk {
