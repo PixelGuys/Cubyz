@@ -21,16 +21,16 @@ pub fn detectLowRam(deltaTime: f64) void {
 	if (detectLowRamLastCheck > 1.0) {
 		detectLowRamLastCheck = 0.0;
 
-		const availableRam = switch (builtin.os.tag) {
-			.linux => getAvailableRamLinux(),
-			else => |os| {
-				detectLowRamDisabled = true;
-				std.log.warn("Low RAM detector has not been implemented for your platform: {s}", .{@tagName(os)});
-				return;
-			},
-		} catch |err| {
+		const availableRam = getAvailableRam() catch |err| {
 			detectLowRamDisabled = true;
-			std.log.err("Failed to detect available RAM amount: {s}", .{@errorName(err)});
+			switch (err) {
+				error.Unimplemented => {
+					std.log.warn("Low RAM detector has not been implemented for your platform: {s}", .{@tagName(builtin.os.tag)});
+				},
+				error.Failed => {
+					std.log.err("Failed to detect available RAM amount: {s}", .{@errorName(err)});
+				},
+			}
 			return;
 		};
 
@@ -50,6 +50,13 @@ pub fn detectLowRam(deltaTime: f64) void {
 			main.gui.closeWindow("low_ram_warning");
 		}
 	}
+}
+
+fn getAvailableRam() error{ Unimplemented, Failed }!usize {
+	return try switch (builtin.os.tag) {
+		.linux => getAvailableRamLinux(),
+		else => return error.Unimplemented,
+	};
 }
 
 fn getAvailableRamLinux() error{Failed}!usize {
@@ -93,4 +100,11 @@ fn getAvailableRamLinux() error{Failed}!usize {
 	}
 
 	return error.Failed;
+}
+
+test "get available ram" {
+	_ = getAvailableRam() catch |err| {
+		if (err == error.Unimplemented) return error.SkipZigTest;
+		return err;
+	};
 }
