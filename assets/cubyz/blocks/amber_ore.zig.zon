@@ -30,6 +30,7 @@
 		.maxHeight = -1250,
 		.minHeight = -8000,
 		.density = 0.15,
+		.targetTags = .{.allowOres},
 	},
 	.drops = .{
 		.{.items = .{.auto}},
