@@ -750,7 +750,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		var lastTime: i64 = networkTimestamp();
 		var lastExternalPacketTime = lastTime;
 		while (self.running.load(.monotonic)) {
-			main.heap.GarbageCollection.syncPoint();
+			main.heap.garbage_collection.syncPoint();
 			self.waitingToFinishReceive.broadcast(main.io);
 			var source: SocketAddress = undefined;
 			if (self.socket.receive(&self.receiveBuffer, 1, &source)) |data| {
@@ -1352,7 +1352,7 @@ pub const Connection = struct { // MARK: Connection
 				const result = c.mbedtls_ssl_handshake(&self.sslContext);
 				self.mutex.unlock();
 				if (result == c.MBEDTLS_ERR_SSL_WANT_READ) {
-					main.heap.GarbageCollection.syncPoint();
+					main.heap.garbage_collection.syncPoint();
 					try main.io.sleep(.fromMilliseconds(10), .awake);
 					continue;
 				}
@@ -1629,8 +1629,8 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn send(self: *Connection, comptime channel: ChannelId, protocolIndex: u8, data: []const u8) void {
-		std.debug.assert(self.handShakeState.raw == .complete or protocolIndex == protocols.handShake.id or protocolIndex == protocols.reload.id);
-		std.debug.assert(self.handShakeState.raw != .complete or protocolIndex != protocols.handShake.id);
+		std.debug.assert(self.handShakeState.raw == .complete or protocolIndex == protocols.handshake.id or protocolIndex == protocols.reload.id);
+		std.debug.assert(self.handShakeState.raw != .complete or protocolIndex != protocols.handshake.id);
 		_ = protocols.bytesSent[protocolIndex].fetchAdd(data.len, .monotonic);
 		self.mutex.lock();
 		defer self.mutex.unlock();

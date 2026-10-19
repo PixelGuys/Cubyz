@@ -12,7 +12,7 @@ pub const system_resources = @import("utils/system_resources.zig");
 const virtual_mem = @import("utils/virtual_mem.zig");
 pub const VirtualList = virtual_mem.VirtualList;
 
-pub const Compression = struct { // MARK: Compression
+pub const compression = struct { // MARK: compression
 	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8, level: std.compress.flate.Compress.Options) []u8 {
 		var result = std.Io.Writer.Allocating.initCapacity(allocator.allocator, 16) catch unreachable;
 		var buffer: [65536]u8 = undefined;
@@ -889,7 +889,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			if (task.vtable == vtable) {
 				task.vtable.clean(task.self);
 				self.loadList.removeIndex(i);
-				self.taskCountSemaphore.waitTimeout(main.io, .none) catch {};
+				self.taskCountSemaphore.waitTimeout(main.io, .{.duration = .{.raw = .zero, .clock = .awake}}) catch {};
 			} else {
 				i += 1;
 			}
@@ -904,7 +904,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 
 	pub fn unschedulePlayers(self: *ThreadPool) void {
 		while (self.playerJobQueue.popFront()) |_| {
-			self.taskCountSemaphore.waitTimeout(main.io, .none) catch {};
+			self.taskCountSemaphore.waitTimeout(main.io, .{.duration = .{.raw = .zero, .clock = .awake}}) catch {};
 			_ = self.trueQueueSize.fetchSub(1, .monotonic);
 		}
 	}
@@ -939,12 +939,12 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 
 		var lastUpdate = main.timestamp();
 		outer: while (self.running.load(.monotonic)) {
-			main.heap.GarbageCollection.syncPoint();
+			main.heap.garbage_collection.syncPoint();
 
 			if (self.paused.load(.monotonic)) {
 				self.stopSemaphore.post(main.io);
 				while (true) {
-					main.heap.GarbageCollection.syncPoint();
+					main.heap.garbage_collection.syncPoint();
 					self.startSemaphore.waitTimeout(main.io, .{.duration = .{.raw = .fromMilliseconds(10), .clock = .awake}}) catch continue;
 					break;
 				}
@@ -975,7 +975,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		var temporaryTaskList: main.List(Task) = .empty;
 		defer temporaryTaskList.deinit(main.stackAllocator);
 		while (self.loadList.extractAny()) |task| {
-			self.taskCountSemaphore.waitTimeout(main.io, .none) catch {};
+			self.taskCountSemaphore.waitTimeout(main.io, .{.duration = .{.raw = .zero, .clock = .awake}}) catch {};
 			if (!task.vtable.isStillNeeded(task.self)) {
 				task.vtable.clean(task.self);
 				_ = self.trueQueueSize.fetchSub(1, .monotonic);
@@ -1187,7 +1187,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 		}
 
 		pub fn deferredDeinit(self: *Self) void {
-			main.heap.GarbageCollection.deferredFree(.{.ptr = self.impl.raw, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
+			main.heap.garbage_collection.deferredFree(.{.ptr = self.impl.raw, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 		}
 
 		fn getTargetBitSize(paletteLength: u32) u5 {
@@ -1834,7 +1834,7 @@ pub const BinaryWriter = struct { // MARK: BinaryWriter
 	}
 };
 
-const ReadWriteTest = struct {
+const read_write_test = struct {
 	fn getWriter() BinaryWriter {
 		return .init(main.heap.testingAllocator);
 	}
@@ -1922,9 +1922,9 @@ test "read/write unsigned int" {
 		const max = std.math.maxInt(intT);
 		const mid = (max + min)/2;
 
-		try ReadWriteTest.testInt(intT, min);
-		try ReadWriteTest.testInt(intT, mid);
-		try ReadWriteTest.testInt(intT, max);
+		try read_write_test.testInt(intT, min);
+		try read_write_test.testInt(intT, mid);
+		try read_write_test.testInt(intT, max);
 	}
 }
 
@@ -1935,67 +1935,67 @@ test "read/write signed int" {
 		const upperMid = std.math.maxInt(intT)/2;
 		const max = std.math.maxInt(intT);
 
-		try ReadWriteTest.testInt(intT, min);
-		try ReadWriteTest.testInt(intT, lowerMid);
-		try ReadWriteTest.testInt(intT, 0);
-		try ReadWriteTest.testInt(intT, upperMid);
-		try ReadWriteTest.testInt(intT, max);
+		try read_write_test.testInt(intT, min);
+		try read_write_test.testInt(intT, lowerMid);
+		try read_write_test.testInt(intT, 0);
+		try read_write_test.testInt(intT, upperMid);
+		try read_write_test.testInt(intT, max);
 	}
 }
 
 test "read/write unsigned varint" {
 	inline for ([_]type{u9, u16, u31, u32, u64, u128}) |IntT| {
 		for (0..@bitSizeOf(IntT)) |i| {
-			try ReadWriteTest.testVarInt(IntT, @as(IntT, 1) << @intCast(i));
-			try ReadWriteTest.testVarInt(IntT, (@as(IntT, 1) << @intCast(i)) - 1);
+			try read_write_test.testVarInt(IntT, @as(IntT, 1) << @intCast(i));
+			try read_write_test.testVarInt(IntT, (@as(IntT, 1) << @intCast(i)) - 1);
 		}
 		const max = std.math.maxInt(IntT);
-		try ReadWriteTest.testVarInt(IntT, max);
+		try read_write_test.testVarInt(IntT, max);
 	}
 }
 
 test "read/write float" {
 	inline for ([_]type{f16, f32, f64, f80, f128}) |floatT| {
-		try ReadWriteTest.testFloat(floatT, std.math.floatMax(floatT));
-		try ReadWriteTest.testFloat(floatT, 0.0012443);
-		try ReadWriteTest.testFloat(floatT, 0.0);
-		try ReadWriteTest.testFloat(floatT, 6457.0);
-		try ReadWriteTest.testInvalidFloat(floatT, std.math.inf(floatT));
-		try ReadWriteTest.testInvalidFloat(floatT, -std.math.inf(floatT));
-		try ReadWriteTest.testInvalidFloat(floatT, std.math.nan(floatT));
-		try ReadWriteTest.testFloat(floatT, std.math.floatMin(floatT));
+		try read_write_test.testFloat(floatT, std.math.floatMax(floatT));
+		try read_write_test.testFloat(floatT, 0.0012443);
+		try read_write_test.testFloat(floatT, 0.0);
+		try read_write_test.testFloat(floatT, 6457.0);
+		try read_write_test.testInvalidFloat(floatT, std.math.inf(floatT));
+		try read_write_test.testInvalidFloat(floatT, -std.math.inf(floatT));
+		try read_write_test.testInvalidFloat(floatT, std.math.nan(floatT));
+		try read_write_test.testFloat(floatT, std.math.floatMin(floatT));
 	}
 }
 
 test "read/write enum" {
 	inline for ([_]type{
-		ReadWriteTest.TestEnum(u2),
-		ReadWriteTest.TestEnum(u4),
-		ReadWriteTest.TestEnum(u5),
-		ReadWriteTest.TestEnum(u8),
-		ReadWriteTest.TestEnum(u16),
-		ReadWriteTest.TestEnum(u32),
-		ReadWriteTest.TestEnum(i2),
-		ReadWriteTest.TestEnum(i4),
-		ReadWriteTest.TestEnum(i5),
-		ReadWriteTest.TestEnum(i8),
-		ReadWriteTest.TestEnum(i16),
-		ReadWriteTest.TestEnum(i32),
+		read_write_test.TestEnum(u2),
+		read_write_test.TestEnum(u4),
+		read_write_test.TestEnum(u5),
+		read_write_test.TestEnum(u8),
+		read_write_test.TestEnum(u16),
+		read_write_test.TestEnum(u32),
+		read_write_test.TestEnum(i2),
+		read_write_test.TestEnum(i4),
+		read_write_test.TestEnum(i5),
+		read_write_test.TestEnum(i8),
+		read_write_test.TestEnum(i16),
+		read_write_test.TestEnum(i32),
 	}) |enumT| {
-		try ReadWriteTest.testEnum(enumT, .first);
-		try ReadWriteTest.testEnum(enumT, .center);
-		try ReadWriteTest.testEnum(enumT, .last);
+		try read_write_test.testEnum(enumT, .first);
+		try read_write_test.testEnum(enumT, .center);
+		try read_write_test.testEnum(enumT, .last);
 	}
 }
 
 test "read/write Vec3i" {
-	try ReadWriteTest.testVec(main.vec.Vec3i, .{0, 0, 0});
-	try ReadWriteTest.testVec(main.vec.Vec3i, .{
+	try read_write_test.testVec(main.vec.Vec3i, .{0, 0, 0});
+	try read_write_test.testVec(main.vec.Vec3i, .{
 		std.math.maxInt(@typeInfo(main.vec.Vec3i).vector.child),
 		std.math.minInt(@typeInfo(main.vec.Vec3i).vector.child),
 		std.math.minInt(@typeInfo(main.vec.Vec3i).vector.child),
 	});
-	try ReadWriteTest.testVec(main.vec.Vec3i, .{
+	try read_write_test.testVec(main.vec.Vec3i, .{
 		std.math.minInt(@typeInfo(main.vec.Vec3i).vector.child),
 		std.math.maxInt(@typeInfo(main.vec.Vec3i).vector.child),
 		std.math.maxInt(@typeInfo(main.vec.Vec3i).vector.child),
@@ -2004,15 +2004,15 @@ test "read/write Vec3i" {
 
 test "read/write Vec3f/Vec3d" {
 	inline for ([_]type{main.vec.Vec3f, main.vec.Vec3d}) |vecT| {
-		try ReadWriteTest.testVec(vecT, .{0, 0, 0});
-		try ReadWriteTest.testVec(vecT, .{0.0043, 0.01123, 0.05043});
-		try ReadWriteTest.testVec(vecT, .{5345.0, 42.0, 7854.0});
-		try ReadWriteTest.testVec(vecT, .{
+		try read_write_test.testVec(vecT, .{0, 0, 0});
+		try read_write_test.testVec(vecT, .{0.0043, 0.01123, 0.05043});
+		try read_write_test.testVec(vecT, .{5345.0, 42.0, 7854.0});
+		try read_write_test.testVec(vecT, .{
 			std.math.floatMax(@typeInfo(vecT).vector.child),
 			std.math.floatMin(@typeInfo(vecT).vector.child),
 			std.math.floatMin(@typeInfo(vecT).vector.child),
 		});
-		try ReadWriteTest.testVec(vecT, .{
+		try read_write_test.testVec(vecT, .{
 			std.math.floatMin(@typeInfo(vecT).vector.child),
 			std.math.floatMax(@typeInfo(vecT).vector.child),
 			std.math.floatMax(@typeInfo(vecT).vector.child),
@@ -2021,35 +2021,35 @@ test "read/write Vec3f/Vec3d" {
 }
 
 test "read/write mixed" {
-	const type0 = u4;
+	const Type0 = u4;
 	const expected0 = 5;
 
-	const type1 = main.vec.Vec3i;
-	const expected1 = type1{3, -10, 44};
+	const Type1 = main.vec.Vec3i;
+	const expected1 = Type1{3, -10, 44};
 
-	const type2 = enum(u3) { first, second, third };
+	const Type2 = enum(u3) { first, second, third };
 	const expected2 = .second;
 
-	const type3 = f32;
+	const Type3 = f32;
 	const expected3 = 0.1234;
 
 	const expected4 = "Hello World!";
 
-	var writer = ReadWriteTest.getWriter();
+	var writer = read_write_test.getWriter();
 	defer writer.deinit();
 
-	writer.writeInt(type0, expected0);
-	writer.writeVec(type1, expected1);
-	writer.writeEnum(type2, expected2);
-	writer.writeFloat(type3, expected3);
+	writer.writeInt(Type0, expected0);
+	writer.writeVec(Type1, expected1);
+	writer.writeEnum(Type2, expected2);
+	writer.writeFloat(Type3, expected3);
 	writer.writeSlice(expected4);
 
-	var reader = ReadWriteTest.getReader(writer.data.items);
+	var reader = read_write_test.getReader(writer.data.items);
 
-	try std.testing.expectEqual(expected0, try reader.readInt(type0));
-	try std.testing.expectEqual(expected1, try reader.readVec(type1));
-	try std.testing.expectEqual(expected2, try reader.readEnum(type2));
-	try std.testing.expectEqual(expected3, try reader.readFloat(type3));
+	try std.testing.expectEqual(expected0, try reader.readInt(Type0));
+	try std.testing.expectEqual(expected1, try reader.readVec(Type1));
+	try std.testing.expectEqual(expected2, try reader.readEnum(Type2));
+	try std.testing.expectEqual(expected3, try reader.readFloat(Type3));
 	try std.testing.expectEqualStrings(expected4, try reader.readSlice(expected4.len));
 
 	try std.testing.expect(reader.remaining.len == 0);

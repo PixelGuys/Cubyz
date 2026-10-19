@@ -165,7 +165,7 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 		break :blk normalTextures;
 	};
 	{
-		if (main.settings.launchConfig.vulkanTestingMode and textures.texture.vulkanImage != null) {
+		if (main.settings.launch_config.vulkanTestingMode and textures.texture.vulkanImage != null) {
 			graphics.vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
 			graphics.vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
 				.{.image = .{.binding = 0, .image = textures.texture.vulkanImage.?}},

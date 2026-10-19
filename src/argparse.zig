@@ -180,7 +180,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 
 pub const AutocompleteResult = struct {};
 // MARK: tests
-const Test = struct {
+const @"test" = struct {
 	const OnlyX = Parser(struct { x: f64 }, .{.commandName = ""});
 
 	const @"Union X or XY" = Parser(union(enum) {
@@ -219,7 +219,7 @@ test "float" {
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit();
 
-	const result = try Test.OnlyX.parse(main.stackAllocator, "33.0", &errors);
+	const result = try @"test".OnlyX.parse(main.stackAllocator, "33.0", &errors);
 
 	try std.testing.expectEqualStrings("", errors.items);
 	try std.testing.expectEqual(result.x, 33.0);
@@ -229,7 +229,7 @@ test "float negative" {
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit();
 
-	const resultOrError = Test.OnlyX.parse(main.stackAllocator, "foo", &errors);
+	const resultOrError = @"test".OnlyX.parse(main.stackAllocator, "foo", &errors);
 
 	try std.testing.expectEqualStrings("Expected a number for <x>, found \"foo\"", errors.items);
 	try std.testing.expectError(error.ParseError, resultOrError);
@@ -343,7 +343,7 @@ test "x or xy case x" {
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit();
 
-	const result = try Test.@"Union X or XY".parse(main.stackAllocator, "0.9", &errors);
+	const result = try @"test".@"Union X or XY".parse(main.stackAllocator, "0.9", &errors);
 
 	try std.testing.expectEqualStrings("", errors.items);
 	try std.testing.expectEqual(result.x.x, 0.9);
@@ -353,7 +353,7 @@ test "x or xy case xy" {
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit();
 
-	const result = try Test.@"Union X or XY".parse(main.stackAllocator, "0.9 1.0", &errors);
+	const result = try @"test".@"Union X or XY".parse(main.stackAllocator, "0.9 1.0", &errors);
 
 	try std.testing.expectEqualStrings("", errors.items);
 	try std.testing.expectEqual(result.xy.x, 0.9);
@@ -364,7 +364,7 @@ test "x or xy negative empty" {
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit();
 
-	const resultOrError = Test.@"Union X or XY".parse(main.stackAllocator, "", &errors);
+	const resultOrError = @"test".@"Union X or XY".parse(main.stackAllocator, "", &errors);
 
 	try std.testing.expectEqualStrings(
 		\\---
@@ -382,7 +382,7 @@ test "x or xy negative too many args" {
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit();
 
-	const resultOrError = Test.@"Union X or XY".parse(main.stackAllocator, "1.0 3.0 5.0", &errors);
+	const resultOrError = @"test".@"Union X or XY".parse(main.stackAllocator, "1.0 3.0 5.0", &errors);
 
 	try std.testing.expectEqualStrings(
 		\\---
@@ -400,7 +400,7 @@ test "subCommands foo" {
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit();
 
-	const result = try Test.@"subCommands foo or bar".parse(main.stackAllocator, "foo 1.0", &errors);
+	const result = try @"test".@"subCommands foo or bar".parse(main.stackAllocator, "foo 1.0", &errors);
 
 	try std.testing.expectEqualStrings("", errors.items);
 	try std.testing.expectEqual(result.foo.cmd, .foo);
@@ -411,7 +411,7 @@ test "subCommands bar" {
 	var errors: ListManaged(u8) = .init(main.stackAllocator);
 	defer errors.deinit();
 
-	const result = try Test.@"subCommands foo or bar".parse(main.stackAllocator, "bar 2.0 3.0", &errors);
+	const result = try @"test".@"subCommands foo or bar".parse(main.stackAllocator, "bar 2.0 3.0", &errors);
 
 	try std.testing.expectEqualStrings("", errors.items);
 	try std.testing.expectEqual(result.bar.cmd, .bar);

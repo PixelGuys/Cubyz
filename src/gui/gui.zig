@@ -41,7 +41,7 @@ pub var scale: f32 = undefined;
 
 pub var hoveredItemSlot: ?*ItemSlot = null;
 
-const GuiCommandQueue = struct { // MARK: GuiCommandQueue
+const gui_command_queue = struct { // MARK: gui_command_queue
 	const Action = enum {
 		open,
 		openModal,
@@ -123,7 +123,7 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 };
 
 pub fn initWindowList() void {
-	GuiCommandQueue.init();
+	gui_command_queue.init();
 	windowList = .init(main.globalAllocator);
 	hudWindows = .init(main.globalAllocator);
 	openWindows = .init(main.globalAllocator);
@@ -144,7 +144,7 @@ pub fn deinitWindowList() void {
 	windowList.clearAndFree();
 	hudWindows.deinit();
 	openWindows.deinit();
-	GuiCommandQueue.deinit();
+	gui_command_queue.deinit();
 }
 
 pub fn init() void { // MARK: init()
@@ -339,7 +339,7 @@ pub fn openWindow(id: []const u8) void {
 }
 
 pub fn openWindowFromRef(window: *GuiWindow) void {
-	GuiCommandQueue.scheduleCommand(.{.action = .open, .window = window});
+	gui_command_queue.scheduleCommand(.{.action = .open, .window = window});
 }
 
 pub fn openModalWindow(id: []const u8) void {
@@ -353,7 +353,7 @@ pub fn openModalWindow(id: []const u8) void {
 }
 
 pub fn openModalWindowFromRef(window: *GuiWindow) void {
-	GuiCommandQueue.scheduleCommand(.{.action = .openModal, .window = window});
+	gui_command_queue.scheduleCommand(.{.action = .openModal, .window = window});
 }
 
 pub fn toggleWindow(id: []const u8) void {
@@ -392,7 +392,7 @@ pub fn openWindowCallback(comptime id: []const u8) main.callbacks.SimpleCallback
 }
 
 pub fn closeWindowFromRef(window: *GuiWindow) void {
-	GuiCommandQueue.scheduleCommand(.{.action = .close, .window = window});
+	gui_command_queue.scheduleCommand(.{.action = .close, .window = window});
 }
 
 pub fn closeWindow(id: []const u8) void {
@@ -421,7 +421,7 @@ pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {
 	selectedTextInput = newSelectedTextInput;
 }
 
-pub const textCallbacks = struct {
+pub const text_callbacks = struct {
 	pub fn char(codepoint: u21) void {
 		if (selectedTextInput) |current| {
 			current.inputCharacter(codepoint);
@@ -577,8 +577,7 @@ pub fn updateWindowPositions() void {
 pub fn updateAndRenderGui(deltaTime: f64) void {
 	const mousePos = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 	hoveredAWindow = false;
-	main.utils.system_resources.detectLowRam(deltaTime);
-	GuiCommandQueue.executeCommands();
+	gui_command_queue.executeCommands();
 	if (!main.Window.grabbed) {
 		if (selectedWindow) |selected| {
 			selected.updateSelected(mousePos);
@@ -608,7 +607,7 @@ pub fn updateAndRenderGui(deltaTime: f64) void {
 		if (!main.Window.grabbed) {
 			const oldColor = draw.setColor(0x80000000);
 			defer draw.restoreColor(oldColor);
-			if (main.settings.launchConfig.vulkanTestingMode) {
+			if (main.settings.launch_config.vulkanTestingMode) {
 				graphics.vulkan.currentFrame.guiCommands.bindPipeline(GuiWindow.borderPipeline, graphics.draw.getScissor());
 				var uniforms: GuiWindow.BorderUniforms = undefined;
 				uniforms.effectLength = .{main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6};
@@ -641,7 +640,7 @@ pub fn toggleGameMenu() void {
 	if (!main.Window.grabbed) {
 		hideGui = false;
 	} else { // Take of the currently held item stack and close some windows
-		inventory.carried.depositOrDrop(&.{main.game.Player.inventory});
+		inventory.carried.depositOrDrop(&.{main.game.player.inventory});
 		hoveredItemSlot = null;
 		var i: usize = 0;
 		while (i < openWindows.items.len) {
@@ -674,7 +673,7 @@ pub const inventory = struct { // MARK: inventory
 	var isCrafting: bool = false;
 
 	pub fn init() void {
-		carried = ClientInventory.init(main.globalAllocator, 1, .serverShared, .{.hand = main.game.Player.id}, .{});
+		carried = ClientInventory.init(main.globalAllocator, 1, .serverShared, .{.hand = main.game.player.id}, .{});
 		carriedItemSlot = ItemSlot.init(.{0, 0}, carried, 0, .default, .normal);
 		carriedItemSlot.renderFrame = false;
 		initialized = true;
@@ -718,8 +717,8 @@ pub const inventory = struct { // MARK: inventory
 			return;
 		};
 		if (itemSlot.mode == .immutable) return;
-		const mainGuiButton = main.KeyBoard.key("mainGuiButton");
-		const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
+		const mainGuiButton = main.keyboard.key("mainGuiButton");
+		const secondaryGuiButton = main.keyboard.key("secondaryGuiButton");
 		if ((itemSlot.inventory.type == .crafting or itemSlot.inventory.type == .workbenchResult) and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
 			const time = main.timestamp();
 			if (!isCrafting) {
@@ -736,13 +735,13 @@ pub const inventory = struct { // MARK: inventory
 					if (recipeItem == .null and item != .null) recipeItem = item.clone();
 					if (!std.meta.eql(item, recipeItem)) return;
 					if (mainGuiButton.modsOnPress.shift) {
-						main.game.Player.inventory.craftFrom(&.{main.game.Player.inventory}, itemSlot.inventory);
+						main.game.player.inventory.craftFrom(&.{main.game.player.inventory}, itemSlot.inventory);
 					} else {
-						main.game.Player.inventory.craftFrom(&.{carried}, itemSlot.inventory);
+						main.game.player.inventory.craftFrom(&.{carried}, itemSlot.inventory);
 					}
 				} else if (itemSlot.inventory.type == .workbenchResult) {
 					if (mainGuiButton.modsOnPress.shift) {
-						itemSlot.inventory.craftProceduralItem(&.{main.game.Player.inventory});
+						itemSlot.inventory.craftProceduralItem(&.{main.game.player.inventory});
 					} else {
 						itemSlot.inventory.craftProceduralItem(&.{carried});
 					}
@@ -757,7 +756,7 @@ pub const inventory = struct { // MARK: inventory
 		if (itemSlot.mode != .normal) return;
 
 		if (mainGuiButton.pressed and mainGuiButton.modsOnPress.shift) {
-			if (itemSlot.inventory.super.id == main.game.Player.inventory.super.id) blk: {
+			if (itemSlot.inventory.super.id == main.game.player.inventory.super.id) blk: {
 				var iterator = std.mem.reverseIterator(openWindows.items);
 				while (iterator.next()) |window| {
 					if (window.shiftClickableInventory) |inv| {
@@ -767,7 +766,7 @@ pub const inventory = struct { // MARK: inventory
 				}
 				itemSlot.inventory.depositToBag(itemSlot.itemSlot, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 			} else {
-				itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{main.game.Player.inventory}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+				itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{main.game.player.inventory}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 			}
 			return;
 		}
@@ -810,10 +809,10 @@ pub const inventory = struct { // MARK: inventory
 				leftClickSlots.clearRetainingCapacity();
 			} else if (hoveredItemSlot) |hovered| {
 				if (hovered.inventory.type == .crafting or hovered.inventory.type == .workbenchResult) return;
-				if (main.KeyBoard.key("mainGuiButton").modsOnPress.shift) {
+				if (main.keyboard.key("mainGuiButton").modsOnPress.shift) {
 					if (hovered.inventory.type == .creative) {
 						const item = hovered.inventory.getItem(hovered.itemSlot);
-						ClientInventory.fillAnyFromCreative(&.{main.game.Player.inventory}, item, item.stackSize());
+						ClientInventory.fillAnyFromCreative(&.{main.game.player.inventory}, item, item.stackSize());
 					}
 					return;
 				}

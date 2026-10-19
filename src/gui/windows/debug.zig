@@ -43,7 +43,7 @@ pub fn render() void {
 	draw.print("window size: {}×{}", .{main.Window.width, main.Window.height}, 0, y, 8);
 	y += 8;
 	if (main.game.world != null) {
-		const player = main.game.Player;
+		const player = main.game.player;
 		draw.print("Pos: {d:.1}", .{player.getPosBlocking()}, 0, y, 8);
 		y += 8;
 		draw.print("Gamemode: {} IsFlying: {} IsGhost: {} HyperSpeed: {}", .{
@@ -114,7 +114,7 @@ pub fn render() void {
 		}
 		draw.print("Opaque faces: {}, Transparent faces: {}", .{main.renderer.chunk_meshing.quadsDrawn, main.renderer.chunk_meshing.transparentQuadsDrawn}, 0, y, 8);
 		y += 8;
-		draw.print("Particle count: {}/{}", .{main.particles.ParticleSystem.getParticleCount(), main.particles.ParticleSystem.maxCapacity}, 0, y, 8);
+		draw.print("Particle count: {}/{}", .{main.particles.particle_system.getParticleCount(), main.particles.particle_system.maxCapacity}, 0, y, 8);
 		y += 8;
 		draw.print("items: {} entities: {}", .{main.game.world.?.itemDrops.super.size, main.client.entity_manager.entities.len}, 0, y, 8);
 		y += 8;
