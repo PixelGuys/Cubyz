@@ -283,6 +283,7 @@ pub const Command = struct { // MARK: Command
 		updateBlock = 9,
 		addHealth = 10,
 		chatCommand = 12,
+		updateHeldItem = 19,
 	};
 	pub const Payload = union(PayloadType) {
 		open: Open,
@@ -304,6 +305,7 @@ pub const Command = struct { // MARK: Command
 		updateBlock: UpdateBlock,
 		addHealth: AddHealth,
 		chatCommand: ChatCommand,
+		updateHeldItem: UpdateHeldItem,
 	};
 
 	const BaseOperationType = enum(u8) {
@@ -1770,6 +1772,28 @@ pub const Command = struct { // MARK: Command
 			const len = try reader.readVarInt(usize);
 			return .{
 				.message = main.globalAllocator.dupe(u8, try reader.readSlice(len)),
+			};
+		}
+	};
+
+	const UpdateHeldItem = struct { // MARK: UpdateHeldItem
+		new: InventoryAndSlot,
+
+		fn run(self: UpdateHeldItem, ctx: Context) error{serverFailure}!void {
+			if (ctx.side == .server) {
+				const user = ctx.user orelse return;
+				main.entity.components.@"cubyz:held_item".server.setHeldItem(user.id, self.new.inv.getItem(self.new.slot));
+				main.entity.server.transmitChange(main.entity.components.@"cubyz:held_item", user.id);
+			}
+		}
+
+		fn serialize(self: UpdateHeldItem, writer: *BinaryWriter) void {
+			self.new.write(writer);
+		}
+
+		fn deserialize(reader: *BinaryReader, side: Side, user: ?*main.server.User) !UpdateHeldItem {
+			return .{
+				.new = try InventoryAndSlot.read(reader, side, user),
 			};
 		}
 	};
