@@ -574,7 +574,7 @@ pub fn updateWindowPositions() void {
 	}
 }
 
-pub fn updateAndRenderGui(deltaTime: f64) void {
+pub fn updateAndRenderGui() void {
 	const mousePos = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 	hoveredAWindow = false;
 	gui_command_queue.executeCommands();
