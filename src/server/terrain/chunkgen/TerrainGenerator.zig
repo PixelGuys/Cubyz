@@ -32,25 +32,25 @@ pub fn init(parameters: ZonElement) void {
 }
 
 fn getOceanHeight(biome: *const Biome, chunk: *main.chunk.ServerChunk, airBlockBelow: i32) i32 {
-	if (!biome.isOceanRelative) {
-		return biome.oceanHeight -% chunk.super.pos.wz;
+	if (!biome.oceanProperties.isRelative) {
+		return biome.oceanProperties.height -% chunk.super.pos.wz;
 	}
-	const snapped: i32 = @divFloor(airBlockBelow +% chunk.super.pos.wz, @as(i32, @intCast(biome.relativeOceanGap)))*@as(i32, @intCast(biome.relativeOceanGap)) -% chunk.super.pos.wz;
-	if (snapped + biome.relativeOceanOffset > airBlockBelow) {
-		return snapped -% @as(i32, @intCast(biome.relativeOceanGap)) +% @as(i32, @intCast(biome.relativeOceanOffset)) +% biome.oceanHeight;
+	const snapped: i32 = @divFloor(airBlockBelow +% chunk.super.pos.wz, @as(i32, @intCast(biome.oceanProperties.relativeGap)))*@as(i32, @intCast(biome.oceanProperties.relativeGap)) -% chunk.super.pos.wz;
+	if (snapped + biome.oceanProperties.relativeOffset > airBlockBelow) {
+		return snapped -% @as(i32, @intCast(biome.oceanProperties.relativeGap)) +% @as(i32, @intCast(biome.oceanProperties.relativeOffset)) +% biome.oceanProperties.height;
 	}
-	return snapped + biome.relativeOceanOffset +% biome.oceanHeight;
+	return snapped + biome.oceanProperties.relativeOffset +% biome.oceanProperties.height;
 }
 
 fn isOceansCompatible(chunk: *main.chunk.ServerChunk, relPos: Vec3i, biome: *const Biome, biomeOceanHeight: i32, biomeMap: CaveBiomeMap.CaveBiomeMapView, caveMap: CaveMap.CaveMapView, startAirSearchFrom: i32, checkDepth: bool) bool {
-	if (biome.isOceanRelative and (startAirSearchFrom < -32 or relPos[2] < -32 or relPos[2] > biomeMap.width + 32)) return false;
+	if (biome.oceanProperties.isRelative and (startAirSearchFrom < -32 or relPos[2] < -32 or relPos[2] > biomeMap.width + 32)) return false;
 	const neighborBiome = biomeMap.getBiome(relPos[0], relPos[1], relPos[2]);
-	if (biome.liquidBlock != neighborBiome.liquidBlock) return false;
+	if (biome.oceanProperties.liquidBlock != neighborBiome.oceanProperties.liquidBlock) return false;
 	const neighborAirBlockBelow = if (caveMap.isSolid(relPos[0], relPos[1], startAirSearchFrom)) startAirSearchFrom else @max(caveMap.findTerrainChangeBelow(relPos[0], relPos[1], startAirSearchFrom) +% chunk.super.pos.voxelSize, -32);
 	const neighborOceanHeight = getOceanHeight(neighborBiome, chunk, neighborAirBlockBelow);
 	if (checkDepth and neighborOceanHeight != biomeOceanHeight) return false;
-	const neighborValidDepth = neighborOceanHeight -% neighborAirBlockBelow <= neighborBiome.oceanHeight;
-	if (biome.isOceanRelative and (neighborBiome.isOceanRelative and (checkDepth and !neighborValidDepth) or checkDepth and (neighborAirBlockBelow -% chunk.super.pos.voxelSize < -32 or !caveMap.isSolid(relPos[0], relPos[1], neighborAirBlockBelow -% chunk.super.pos.voxelSize)))) {
+	const neighborValidDepth = neighborOceanHeight -% neighborAirBlockBelow <= neighborBiome.oceanProperties.height;
+	if (biome.oceanProperties.isRelative and (neighborBiome.oceanProperties.isRelative and (checkDepth and !neighborValidDepth) or checkDepth and (neighborAirBlockBelow -% chunk.super.pos.voxelSize < -32 or !caveMap.isSolid(relPos[0], relPos[1], neighborAirBlockBelow -% chunk.super.pos.voxelSize)))) {
 		return false;
 	}
 	return true;
@@ -168,10 +168,10 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 						const surface = biomeMap.getSurfaceHeight(x + chunk.super.pos.wx, y + chunk.super.pos.wy) - (chunk.super.pos.voxelSize - 1) -% chunk.super.pos.wz;
 						const airVolumeStart = caveMap.findTerrainChangeBelow(x, y, z) + chunk.super.pos.voxelSize;
 						const zStart = @max(airVolumeStart, zBiome);
-						const airBlockBelow = if (biome.isOceanRelative) airVolumeStart else surface;
+						const airBlockBelow = if (biome.oceanProperties.isRelative) airVolumeStart else surface;
 						const oceanHeight = getOceanHeight(biome, chunk, airBlockBelow);
 						const oceanSurfaceDifference = oceanHeight -% airBlockBelow;
-						if (z < airBlockBelow or zStart >= oceanHeight or biome.isOceanRelative and (oceanSurfaceDifference > biome.oceanHeight or !isOceansCompatible(chunk, Vec3i{x, y, airVolumeStart}, biome, oceanHeight, biomeMap, caveMap, zStart, true))) {
+						if (z < airBlockBelow or zStart >= oceanHeight or biome.oceanProperties.isRelative and (oceanSurfaceDifference > biome.oceanProperties.height or !isOceansCompatible(chunk, Vec3i{x, y, airVolumeStart}, biome, oceanHeight, biomeMap, caveMap, zStart, true))) {
 							chunk.updateBlockColumnInGeneration(x, y, zStart, z, .{.typ = 0, .data = 0});
 						} else {
 							if (z >= oceanHeight) {
@@ -183,19 +183,18 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 							var topBlockDepth: i32 = 0;
 							var i: usize = 0;
 							blockEdges: while (true) : (i += 1) {
-								// if (i >= 4) break;
 								for (cardinalDirections) |cardinalDirection| {
 									const neighborCoordsTop = Vec3i{x, y, z -% topBlockDepth} + cardinalDirection;
 									const neighborCoordsTopFar = neighborCoordsTop + cardinalDirection;
 									const neighborAirBlockBelow = caveMap.findTerrainChangeBelow(neighborCoordsTop[0], neighborCoordsTop[1], neighborCoordsTop[2]) +% chunk.super.pos.voxelSize;
 									const neighborCoordsBottom = Vec3i{neighborCoordsTop[0], neighborCoordsTop[1], neighborAirBlockBelow};
-									const isCompatibleBottom = !biome.isOceanRelative and isOceansCompatible(chunk, neighborCoordsTop, biome, oceanHeight, biomeMap, caveMap, neighborCoordsTop[2], true) or biome.isOceanRelative and isOceansCompatible(chunk, neighborCoordsBottom, biome, oceanHeight, biomeMap, caveMap, neighborCoordsTop[2], true);
-									if (!isCompatibleBottom or biome.isOceanRelative and (!isOceansCompatible(chunk, Vec3i{neighborCoordsTop[0], neighborCoordsTop[1], @max(-32, neighborCoordsBottom[2] -% chunk.super.pos.voxelSize)}, biome, oceanHeight, biomeMap, caveMap, neighborCoordsBottom[2], true) or !isOceansCompatible(chunk, Vec3i{neighborCoordsTop[0], neighborCoordsTop[1], @max(-32, zStart -% chunk.super.pos.voxelSize -% chunk.super.pos.voxelSize)}, biome, oceanHeight, biomeMap, caveMap, zStart, true))) {
+									const isCompatibleBottom = !biome.oceanProperties.isRelative and isOceansCompatible(chunk, neighborCoordsTop, biome, oceanHeight, biomeMap, caveMap, neighborCoordsTop[2], true) or biome.oceanProperties.isRelative and isOceansCompatible(chunk, neighborCoordsBottom, biome, oceanHeight, biomeMap, caveMap, neighborCoordsTop[2], true);
+									if (!isCompatibleBottom or biome.oceanProperties.isRelative and (!isOceansCompatible(chunk, Vec3i{neighborCoordsTop[0], neighborCoordsTop[1], @max(-32, neighborCoordsBottom[2] -% chunk.super.pos.voxelSize)}, biome, oceanHeight, biomeMap, caveMap, neighborCoordsBottom[2], true) or !isOceansCompatible(chunk, Vec3i{neighborCoordsTop[0], neighborCoordsTop[1], @max(-32, zStart -% chunk.super.pos.voxelSize -% chunk.super.pos.voxelSize)}, biome, oceanHeight, biomeMap, caveMap, zStart, true))) {
 										isPlacingWall = true;
 										break :blockEdges;
 									}
-									if (!biome.isOceanRelative) continue;
-									const isCompatibleBottomFar = !biome.isOceanRelative or biome.isOceanRelative and isOceansCompatible(chunk, neighborCoordsTop, biome, getOceanHeight(biomeMap.getBiome(neighborCoordsTopFar[0], neighborCoordsTopFar[1], neighborCoordsTopFar[2]), chunk, neighborAirBlockBelow), biomeMap, caveMap, neighborCoordsTopFar[2] +% chunk.super.pos.voxelSize, true);
+									if (!biome.oceanProperties.isRelative) continue;
+									const isCompatibleBottomFar = !biome.oceanProperties.isRelative or biome.oceanProperties.isRelative and isOceansCompatible(chunk, neighborCoordsTop, biome, getOceanHeight(biomeMap.getBiome(neighborCoordsTopFar[0], neighborCoordsTopFar[1], neighborCoordsTopFar[2]), chunk, neighborAirBlockBelow), biomeMap, caveMap, neighborCoordsTopFar[2] +% chunk.super.pos.voxelSize, true);
 									const isNeighborSolid = caveMap.isSolid(neighborCoordsTop[0], neighborCoordsTop[1], neighborCoordsTop[2]);
 									const isNeighborCompatible = isOceansCompatible(chunk, neighborCoordsTop, biome, oceanHeight, biomeMap, caveMap, neighborCoordsTop[2], true);
 									const notCompatibleTop = !isNeighborSolid and !isNeighborCompatible or !isCompatibleBottomFar;
@@ -236,7 +235,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 										if (z < surface) {
 											chunk.updateBlockColumnInGeneration(x, y, zStart, z, .{.typ = 0, .data = 0});
 										} else {
-											chunk.updateBlockColumnInGeneration(x, y, zStart, z, biome.liquidBlock);
+											chunk.updateBlockColumnInGeneration(x, y, zStart, z, biome.oceanProperties.liquidBlock);
 										}
 									}
 								}
