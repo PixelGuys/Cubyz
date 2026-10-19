@@ -53,7 +53,7 @@ jobs:
           version: ${{ env.VERSION }}
       - run: zig build -Dtarget=x86_64-native
       - if: matrix.os == 'macos-latest'
-        run: zig build -Dtarget=aarch64-native-none
+        run: zig build
       - if: matrix.os != 'macos-latest'
         run: zig build -Dtarget=aarch64-native-gnu
       - run: zig build test
