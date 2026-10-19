@@ -143,7 +143,6 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 						return error.ParseError;
 					}) == .true;
 				},
-				inline .void => return {},
 				inline else => |other| @compileError("Unsupported type " ++ @tagName(other)),
 			}
 		}
@@ -179,7 +178,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 	};
 }
 
-pub const AutocompleteResult = struct { _: void };
+pub const AutocompleteResult = struct {};
 // MARK: tests
 const @"test" = struct {
 	const OnlyX = Parser(struct { x: f64 }, .{.commandName = ""});
