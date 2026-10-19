@@ -184,14 +184,13 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 							var i: usize = 0;
 							if (biome.oceanProperties.wallThickness > 0) {
 								blockEdges: while (true) : (i += 1) {
-									const startingCheckWidth = 1 + biome.oceanProperties.wallThickness*2;
-									var wallCheckMissingTilesIndex: i32 = @as(i32, -2)*@as(i32, @intCast(biome.oceanProperties.wallThickness));
-									var wallCheckIndex: usize = 0;
-									var wallCheckArrayNextIndex: usize = 0;
-									while (wallCheckIndex < startingCheckWidth) {
-										const startingOffset: i32 = @as(i32, @intCast(biome.oceanProperties.wallThickness)) - @divExact(@as(i32, @intCast(startingCheckWidth)) - @as(i32, @intCast(@abs(wallCheckMissingTilesIndex))) - 1, 2);
-										for (0..startingCheckWidth - @abs(wallCheckMissingTilesIndex)) |offsetFromStartPoint| {
-											const relativeCheckLocation = Vec3i{@as(i32, @intCast(startingOffset)) + @as(i32, @intCast(offsetFromStartPoint)) - @as(i32, @intCast(biome.oceanProperties.wallThickness)), @as(i32, @intCast(wallCheckIndex)) - @as(i32, @intCast(biome.oceanProperties.wallThickness)), 0};
+									for (0..biome.oceanProperties.wallThickness*2 + 1) |wallThicknessRelativeTestX| {
+										for (0..biome.oceanProperties.wallThickness*2 + 1) |wallThicknessRelativeTestY| {
+											const relativeCheckLocation = Vec3i{@as(i32, @intCast(@as(i32, @intCast(wallThicknessRelativeTestX)) - @as(i32, @intCast(biome.oceanProperties.wallThickness)))), @as(i32, @intCast(@as(i32, @intCast(wallThicknessRelativeTestY)) - @as(i32, @intCast(biome.oceanProperties.wallThickness)))), 0};
+											const distanceToBlock = @sqrt(std.math.pow(f32, @as(f32, @floatFromInt(relativeCheckLocation[0])), 2) + std.math.pow(f32, @as(f32, @floatFromInt(relativeCheckLocation[1])), 2));
+											if (distanceToBlock > @as(f32, @floatFromInt(biome.oceanProperties.wallThickness))) {
+												continue;
+											}
 											const neighborCoordsTop = Vec3i{x, y, z -% topBlockDepth} + relativeCheckLocation;
 											const neighborCoordsTopFar = neighborCoordsTop + relativeCheckLocation;
 											const neighborAirBlockBelow = caveMap.findTerrainChangeBelow(neighborCoordsTop[0], neighborCoordsTop[1], neighborCoordsTop[2]) +% chunk.super.pos.voxelSize;
@@ -215,10 +214,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 													continue :blockEdges;
 												}
 											}
-											wallCheckArrayNextIndex += 1;
 										}
-										wallCheckIndex += 1;
-										wallCheckMissingTilesIndex += 2;
 									}
 									break :blockEdges;
 								}
