@@ -109,7 +109,7 @@ pub fn init() void {
 	bloom.init();
 	mesh_selection.init();
 	menu_background.init();
-	sky_box.init();
+	skybox.init();
 	chunk_meshing.init();
 	mesh_storage.init();
 	reflectionCubeMap = .init();
@@ -124,7 +124,7 @@ pub fn deinit() void {
 	bloom.deinit();
 	mesh_selection.deinit();
 	menu_background.deinit();
-	sky_box.deinit();
+	skybox.deinit();
 	mesh_storage.deinit();
 	chunk_meshing.deinit();
 	reflectionCubeMap.deinit();
@@ -229,7 +229,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	const time: u32 = @intCast(main.timestamp().toMilliseconds() & std.math.maxInt(u32));
 
 	gpu_performance_measuring.startQuery(.skybox);
-	sky_box.render();
+	skybox.render();
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.animation);
@@ -752,7 +752,7 @@ pub const menu_background = struct { // MARK: menu_background
 	}
 };
 
-pub const sky_box = struct { // MARK: sky_box
+pub const skybox = struct { // MARK: skybox
 	var starPipeline: graphics.Pipeline = undefined;
 	var starUniforms: struct {
 		mvp: c_int,

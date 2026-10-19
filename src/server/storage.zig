@@ -184,15 +184,15 @@ pub const RegionFile = struct { // MARK: RegionFile
 const cacheSize = 1 << 8; // Must be a power of 2!
 const associativity = 8;
 var cache: main.utils.Cache(RegionFile, cacheSize, associativity, cacheDeinit) = .{};
-const hash_context = struct {
-	pub fn hash(_: hash_context, a: chunk.ChunkPosition) u64 {
+const hashcontext = struct {
+	pub fn hash(_: hashcontext, a: chunk.ChunkPosition) u64 {
 		return a.hashCode();
 	}
-	pub fn eql(_: hash_context, a: chunk.ChunkPosition, b: chunk.ChunkPosition) bool {
+	pub fn eql(_: hashcontext, a: chunk.ChunkPosition, b: chunk.ChunkPosition) bool {
 		return std.meta.eql(a, b);
 	}
 };
-var stillUsedHashMap: std.HashMap(chunk.ChunkPosition, *RegionFile, hash_context, 50) = undefined;
+var stillUsedHashMap: std.HashMap(chunk.ChunkPosition, *RegionFile, hashcontext, 50) = undefined;
 var hashMapMutex: main.utils.Mutex = .{};
 
 fn cacheDeinit(region: *RegionFile) void {

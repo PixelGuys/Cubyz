@@ -160,7 +160,7 @@ pub const User = struct { // MARK: User
 		self.* = .{};
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.@"continue"();
-		network.protocols.hand_shake.serverSide(self.conn);
+		network.protocols.handshake.serverSide(self.conn);
 		return self;
 	}
 	pub fn @"continue"(self: *User) void {
@@ -841,7 +841,7 @@ pub fn connect(user: *User) void {
 
 pub fn connectInternal(user: *User) void {
 	user.initPlayer();
-	main.network.protocols.hand_shake.sendServerPlayerData(user.conn);
+	main.network.protocols.handshake.sendServerPlayerData(user.conn);
 	user.conn.handShakeState.store(.complete, .monotonic);
 
 	// TODO: addEntity(player);

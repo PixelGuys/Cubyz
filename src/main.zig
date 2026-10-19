@@ -178,7 +178,7 @@ fn setHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
 	}.set;
 }
 
-pub const key_board = struct { // MARK: key_board
+pub const keyboard = struct { // MARK: keyboard
 	pub var keys = [_]Window.Key{
 		// Gameplay:
 		.{.name = "forward", .key = c.GLFW_KEY_W, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}},
@@ -322,7 +322,7 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 		if (argIterator.next() != null) {
 			std.log.info(
 				\\Cubyz does not accept any command line arguments.
-				\\All launch-time configuration is done through the "launch_config.zon" file in the game's working directory. See that file for the available options.
+				\\All launch-time configuration is done through the "launchConfig.zon" file in the game's working directory. See that file for the available options.
 			, .{});
 			std.process.exit(0);
 		}

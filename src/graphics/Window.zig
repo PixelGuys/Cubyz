@@ -96,7 +96,7 @@ pub const gamepad = struct { // MARK: gamepad
 				}
 			}
 			const isGrabbed = grabbed;
-			for (&main.key_board.keys) |*key| {
+			for (&main.keyboard.keys) |*key| {
 				if (key.gamepadAxis == null) {
 					if (key.gamepadButton >= 0) {
 						const oldPressed = oldState.buttons[@intCast(key.gamepadButton)] != 0;
@@ -128,8 +128,8 @@ pub const gamepad = struct { // MARK: gamepad
 			}
 		}
 		if (!grabbed) {
-			const x = main.key_board.key("uiRight").value - main.key_board.key("uiLeft").value;
-			const y = main.key_board.key("uiDown").value - main.key_board.key("uiUp").value;
+			const x = main.keyboard.key("uiRight").value - main.keyboard.key("uiLeft").value;
+			const y = main.keyboard.key("uiDown").value - main.keyboard.key("uiUp").value;
 			if (x != 0 or y != 0) {
 				lastUsedMouse = false;
 				glfw_callbacks.currentPos[0] += @floatCast(x*delta*256);
@@ -138,7 +138,7 @@ pub const gamepad = struct { // MARK: gamepad
 				glfw_callbacks.currentPos[0] = std.math.clamp(glfw_callbacks.currentPos[0], 0, winSize[0]);
 				glfw_callbacks.currentPos[1] = std.math.clamp(glfw_callbacks.currentPos[1], 0, winSize[1]);
 			}
-			glfw_callbacks.scroll(undefined, 0, @floatCast((main.key_board.key("scrollUp").value - main.key_board.key("scrollDown").value)*delta*4));
+			glfw_callbacks.scroll(undefined, 0, @floatCast((main.keyboard.key("scrollUp").value - main.keyboard.key("scrollDown").value)*delta*4));
 		}
 		setCursorVisible(!grabbed and lastUsedMouse);
 	}
@@ -517,7 +517,7 @@ pub const glfw_callbacks = struct { // MARK: glfw_callbacks
 					return;
 				}
 			}
-			for (&main.key_board.keys) |*key| {
+			for (&main.keyboard.keys) |*key| {
 				if (glfw_key == key.key) {
 					if (glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
 						key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, textKeyPressedInTextField);
@@ -525,7 +525,7 @@ pub const glfw_callbacks = struct { // MARK: glfw_callbacks
 				}
 			}
 		} else if (action == c.GLFW_REPEAT) {
-			for (&main.key_board.keys) |*key| {
+			for (&main.keyboard.keys) |*key| {
 				if (glfw_key == key.key) {
 					if (glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
 						key.action(.repeat, isGrabbed, mods, textKeyPressedInTextField);
@@ -591,7 +591,7 @@ pub const glfw_callbacks = struct { // MARK: glfw_callbacks
 					return;
 				}
 			}
-			for (&main.key_board.keys) |*key| {
+			for (&main.keyboard.keys) |*key| {
 				if (button == key.mouseButton) {
 					key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, false);
 				}
@@ -676,7 +676,7 @@ fn updateCursor() void {
 
 fn releaseButtonsOnGrabChange(grab: bool) void {
 	const state: Key.Requirement = if (grab) .inMenu else .inGame;
-	for (&main.key_board.keys) |*key| {
+	for (&main.keyboard.keys) |*key| {
 		if (key.notifyRequirement == state and key.pressed) {
 			key.pressed = false;
 			if (key.releaseAction) |rel| rel(key.modsOnPress);

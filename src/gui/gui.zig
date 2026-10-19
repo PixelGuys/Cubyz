@@ -717,8 +717,8 @@ pub const inventory = struct { // MARK: inventory
 			return;
 		};
 		if (itemSlot.mode == .immutable) return;
-		const mainGuiButton = main.key_board.key("mainGuiButton");
-		const secondaryGuiButton = main.key_board.key("secondaryGuiButton");
+		const mainGuiButton = main.keyboard.key("mainGuiButton");
+		const secondaryGuiButton = main.keyboard.key("secondaryGuiButton");
 		if ((itemSlot.inventory.type == .crafting or itemSlot.inventory.type == .workbenchResult) and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
 			const time = main.timestamp();
 			if (!isCrafting) {
@@ -809,7 +809,7 @@ pub const inventory = struct { // MARK: inventory
 				leftClickSlots.clearRetainingCapacity();
 			} else if (hoveredItemSlot) |hovered| {
 				if (hovered.inventory.type == .crafting or hovered.inventory.type == .workbenchResult) return;
-				if (main.key_board.key("mainGuiButton").modsOnPress.shift) {
+				if (main.keyboard.key("mainGuiButton").modsOnPress.shift) {
 					if (hovered.inventory.type == .creative) {
 						const item = hovered.inventory.getItem(hovered.itemSlot);
 						ClientInventory.fillAnyFromCreative(&.{main.game.player.inventory}, item, item.stackSize());

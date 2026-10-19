@@ -25,7 +25,7 @@ const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
 const Block = main.blocks.Block;
 const physics = main.physics;
-const key_board = main.key_board;
+const keyboard = main.keyboard;
 
 pub const camera = struct { // MARK: camera
 	pub var rotation: Vec3f = Vec3f{0, 0, 0};
@@ -298,7 +298,7 @@ pub const World = struct { // MARK: World
 			.milliTime = main.timestamp().toMilliseconds(),
 		};
 
-		return try network.protocols.hand_shake.clientSide(self.conn, settings.playerName);
+		return try network.protocols.handshake.clientSide(self.conn, settings.playerName);
 	}
 
 	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !ZonElement {
@@ -397,7 +397,7 @@ pub const World = struct { // MARK: World
 		main.entityModel.loadModelsAndTexture();
 
 		try player.loadFrom(zon.getChild("player"));
-		main.network.protocols.hand_shake.signalLoadedAssets();
+		main.network.protocols.handshake.signalLoadedAssets();
 
 		self.paused = false;
 	}
@@ -653,13 +653,13 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	if (main.Window.grabbed) {
 		const walkingSpeed: f64 = if (player.crouching) 2.5 else 4.5;
 		var movementSpeed: f64 = walkingSpeed*@min(1, vec.length(Vec2f{
-			@max(key_board.key("forward").value, key_board.key("backward").value),
-			@max(key_board.key("left").value, key_board.key("right").value),
+			@max(keyboard.key("forward").value, keyboard.key("backward").value),
+			@max(keyboard.key("left").value, keyboard.key("right").value),
 		}));
 
 		var isSprintingOnGround = false;
 		var speedModifier = walkingSpeed;
-		if (key_board.key("sprint").pressed and !player.crouching) {
+		if (keyboard.key("sprint").pressed and !player.crouching) {
 			if (player.isGhost.load(.monotonic)) {
 				speedModifier = 128;
 			} else if (player.isFlying.load(.monotonic)) {
@@ -669,32 +669,32 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			}
 		}
 
-		if (key_board.key("forward").value > 0.0) {
+		if (keyboard.key("forward").value > 0.0) {
 			var forwardSpeedModifier = speedModifier;
 			if (isSprintingOnGround) forwardSpeedModifier = 8;
 
-			const totalSpeed = forwardSpeedModifier*key_board.key("forward").value;
+			const totalSpeed = forwardSpeedModifier*keyboard.key("forward").value;
 			movementSpeed = @max(movementSpeed, totalSpeed);
 			movementDir += forward*@as(Vec3d, @splat(totalSpeed));
 		}
-		if (key_board.key("backward").value > 0.0) {
-			const totalSpeed = speedModifier*key_board.key("backward").value;
+		if (keyboard.key("backward").value > 0.0) {
+			const totalSpeed = speedModifier*keyboard.key("backward").value;
 			movementSpeed = @max(movementSpeed, totalSpeed);
 			movementDir += forward*@as(Vec3d, @splat(-totalSpeed));
 		}
-		if (key_board.key("left").value > 0.0) {
-			const totalSpeed = speedModifier*key_board.key("left").value;
+		if (keyboard.key("left").value > 0.0) {
+			const totalSpeed = speedModifier*keyboard.key("left").value;
 			movementSpeed = @max(movementSpeed, totalSpeed);
 			movementDir += right*@as(Vec3d, @splat(totalSpeed));
 		}
-		if (key_board.key("right").value > 0.0) {
-			const totalSpeed = speedModifier*key_board.key("right").value;
+		if (keyboard.key("right").value > 0.0) {
+			const totalSpeed = speedModifier*keyboard.key("right").value;
 			movementSpeed = @max(movementSpeed, totalSpeed);
 			movementDir += right*@as(Vec3d, @splat(-totalSpeed));
 		}
-		if (key_board.key("jump").pressed) {
+		if (keyboard.key("jump").pressed) {
 			if (player.isFlying.load(.monotonic)) {
-				if (key_board.key("sprint").pressed) {
+				if (keyboard.key("sprint").pressed) {
 					if (player.isGhost.load(.monotonic)) {
 						movementSpeed = @max(movementSpeed, 60);
 						movementDir[2] += 60;
@@ -713,16 +713,16 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 					player.eye.coyote = 0;
 				}
 				player.jumpCoyote = 0;
-			} else if (!key_board.key("fall").pressed) {
+			} else if (!keyboard.key("fall").pressed) {
 				movementSpeed = @max(movementSpeed, walkingSpeed);
 				movementDir[2] += walkingSpeed;
 			}
 		} else {
 			player.jumpCooldown = 0;
 		}
-		if (key_board.key("fall").pressed) {
+		if (keyboard.key("fall").pressed) {
 			if (player.isFlying.load(.monotonic)) {
-				if (key_board.key("sprint").pressed) {
+				if (keyboard.key("sprint").pressed) {
 					if (player.isGhost.load(.monotonic)) {
 						movementSpeed = @max(movementSpeed, 60);
 						movementDir[2] -= 60;
@@ -734,7 +734,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 					movementSpeed = @max(movementSpeed, 5.5);
 					movementDir[2] -= 5.5;
 				}
-			} else if (!key_board.key("jump").pressed) {
+			} else if (!keyboard.key("jump").pressed) {
 				movementSpeed = @max(movementSpeed, walkingSpeed);
 				movementDir[2] -= walkingSpeed;
 			}
@@ -753,13 +753,13 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		player.selectedSlot = @intCast(@mod(newSlot, 12));
 
 		const newPos = Vec2f{
-			@floatCast(main.key_board.key("cameraRight").value - main.key_board.key("cameraLeft").value),
-			@floatCast(main.key_board.key("cameraDown").value - main.key_board.key("cameraUp").value),
+			@floatCast(main.keyboard.key("cameraRight").value - main.keyboard.key("cameraLeft").value),
+			@floatCast(main.keyboard.key("cameraDown").value - main.keyboard.key("cameraUp").value),
 		}*@as(Vec2f, @splat(std.math.pi*settings.controllerSensitivity));
 		main.game.camera.moveRotation(newPos[0]/64.0, newPos[1]/64.0);
 	}
 
-	player.crouching = main.Window.grabbed and key_board.key("crouch").pressed and !player.isFlying.load(.monotonic);
+	player.crouching = main.Window.grabbed and keyboard.key("crouch").pressed and !player.isFlying.load(.monotonic);
 
 	if (physics.collision.collides(.client, .x, 0, player.super.pos + player.standingBoundingBoxExtent - player.crouchingBoundingBoxExtent, .{
 		.min = -player.standingBoundingBoxExtent,
@@ -836,7 +836,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	if (nextBlockPlaceTime) |*placeTime| {
 		if (placeTime.durationTo(time).nanoseconds >= 0) {
 			placeTime.* = placeTime.addDuration(main.settings.updateRepeatSpeed);
-			player.placeBlock(main.key_board.key("placeBlock").modsOnPress);
+			player.placeBlock(main.keyboard.key("placeBlock").modsOnPress);
 		}
 	}
 	if (nextBlockBreakTime) |*breakTime| {

@@ -67,7 +67,7 @@ pub fn mainButtonReleased(self: *BagSlot, mousePosition: Vec2f) void {
 		self.pressed = false;
 		if (GuiComponent.contains(self.pos, self.size, mousePosition)) {
 			const carried = gui.inventory.carried;
-			if (main.key_board.key("mainGuiButton").modsOnPress.shift) {
+			if (main.keyboard.key("mainGuiButton").modsOnPress.shift) {
 				main.sync.client.executeCommand(.{.takeFromPlayerBag = .init(&.{main.game.player.inventory}, std.math.maxInt(u16))});
 				return;
 			}

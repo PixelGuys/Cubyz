@@ -7,30 +7,30 @@ const c = @import("c");
 
 const CallbackFunction = *const fn (usize) void;
 
-const Impl = switch (builtin.target.os.tag) {
+const impl = switch (builtin.target.os.tag) {
 	.windows => windows_impl,
 	.linux => linux_impl,
 	else => no_impl,
 };
 
 pub fn init() void {
-	Impl.init();
+	impl.init();
 }
 
 pub fn deinit() void {
-	Impl.deinit();
+	impl.deinit();
 }
 
 pub fn handleEvents() void {
-	Impl.handleEvents();
+	impl.handleEvents();
 }
 
 pub fn listenToPath(path: [:0]const u8, callback: CallbackFunction, userData: usize) void {
-	Impl.listenToPath(path, callback, userData);
+	impl.listenToPath(path, callback, userData);
 }
 
 pub fn removePath(path: [:0]const u8) void {
-	Impl.removePath(path);
+	impl.removePath(path);
 }
 
 const no_impl = struct {

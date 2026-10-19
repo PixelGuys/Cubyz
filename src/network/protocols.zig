@@ -46,7 +46,7 @@ pub fn init() void { // MARK: init()
 }
 
 pub fn onReceive(conn: *Connection, protocolIndex: u8, data: []const u8) !void { // MARK: onReceive()
-	if (conn.handShakeState.raw != .complete and protocolIndex != hand_shake.id) return error.HandshakeIncomplete;
+	if (conn.handShakeState.raw != .complete and protocolIndex != handshake.id) return error.HandshakeIncomplete;
 	const protocolReceive = blk: {
 		if (conn.isServerSide()) break :blk serverReceiveList[protocolIndex] orelse return error.Invalid;
 		break :blk clientReceiveList[protocolIndex] orelse return error.Invalid;
@@ -86,7 +86,7 @@ pub const reload = struct { // MARK: reload
 	}
 };
 
-pub const hand_shake = struct { // MARK: hand_shake
+pub const handshake = struct { // MARK: handshake
 	pub const id: u8 = 1;
 	var assetsLoadedCondition: std.Io.Condition = .init;
 	var hasFinishedLoadingAssets: bool = false;
@@ -292,8 +292,8 @@ pub const hand_shake = struct { // MARK: hand_shake
 	}
 
 	pub fn signalLoadedAssets() void {
-		main.network.protocols.hand_shake.hasFinishedLoadingAssets = true;
-		main.network.protocols.hand_shake.assetsLoadedCondition.signal(main.io);
+		main.network.protocols.handshake.hasFinishedLoadingAssets = true;
+		main.network.protocols.handshake.assetsLoadedCondition.signal(main.io);
 	}
 };
 
