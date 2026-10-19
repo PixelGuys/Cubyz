@@ -227,7 +227,7 @@ pub fn createInstance() void {
 		.applicationVersion = c.VK_MAKE_VERSION(0, 0, 0),
 		.pEngineName = "Cubyz",
 		.engineVersion = c.VK_MAKE_VERSION(0, 0, 0),
-		.apiVersion = c.VK_API_VERSION_1_3,
+		.apiVersion = if (builtin.target.os.tag == .macos) c.VK_API_VERSION_1_4 else c.VK_API_VERSION_1_3,
 	};
 	var glfwExtensionCount: u32 = 0;
 	const glfwExtensions: [*c][*c]const u8 = c.glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
@@ -1133,11 +1133,20 @@ pub const gpu_allocator = struct { // MARK: gpu_allocator
 	var handle: c.VmaAllocator = undefined;
 
 	fn init() void {
-		const vkFunctions: c.VmaVulkanFunctions = .{
-			.glad_vkGetInstanceProcAddr = c.glad_vkGetInstanceProcAddr,
-			.glad_vkGetDeviceProcAddr = c.glad_vkGetDeviceProcAddr,
-			.glad_vkCreateImage = c.glad_vkCreateImage,
-		};
+		var vkFunctions: c.VmaVulkanFunctions = undefined;
+		if (builtin.os.tag == .macos) {
+			vkFunctions = .{
+				.vkGetInstanceProcAddr = c.vkGetInstanceProcAddr,
+				.vkGetDeviceProcAddr = c.vkGetDeviceProcAddr,
+				.vkCreateImage = c.vkCreateImage,
+			};
+		} else {
+			vkFunctions = .{
+				.glad_vkGetInstanceProcAddr = c.glad_vkGetInstanceProcAddr,
+				.glad_vkGetDeviceProcAddr = c.glad_vkGetDeviceProcAddr,
+				.glad_vkCreateImage = c.glad_vkCreateImage,
+			};
+		}
 		const allocatorCreateInfo: c.VmaAllocatorCreateInfo = .{
 			.flags = 0,
 			.physicalDevice = physicalDevice,
