@@ -97,7 +97,7 @@ pub fn render() void {
 
 	ssbo.bufferData(f32, &lastFrameTime);
 
-	if (main.settings.launchConfig.vulkanTestingMode) {
+	if (main.settings.launch_config.vulkanTestingMode) {
 		vulkan.currentFrame.guiCommands.bindPipeline(pipeline, null);
 		vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
 			.{.ssbo = .{.binding = 5, .ssbo = ssbo}},

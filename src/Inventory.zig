@@ -556,12 +556,12 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {
 		std.debug.assert(self.type == .serverShared);
-		main.renderer.MeshSelection.placeBlock(self, slot);
+		main.renderer.mesh_selection.placeBlock(self, slot);
 	}
 
 	pub fn breakBlock(self: ClientInventory, slot: u32, deltaTime: f64) void {
 		std.debug.assert(self.type == .serverShared);
-		main.renderer.MeshSelection.breakBlock(self, slot, deltaTime);
+		main.renderer.mesh_selection.breakBlock(self, slot, deltaTime);
 	}
 
 	pub fn size(self: ClientInventory) usize {

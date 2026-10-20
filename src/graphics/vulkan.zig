@@ -185,14 +185,14 @@ pub fn init(window: ?*c.GLFWwindow) !void {
 		}
 	}
 	command_pool.init();
-	SwapChain.init();
+	swap_chain.init();
 	gpu_allocator.init();
 }
 
 pub fn deinit() void {
 	gpu_garbage_collection.deinit();
 	gpu_allocator.deinit();
-	SwapChain.deinit();
+	swap_chain.deinit();
 	command_pool.deinit();
 	c.vkDestroyDevice(device, null);
 	c.vkDestroySurfaceKHR(instance, surface, null);
@@ -227,7 +227,7 @@ pub fn createInstance() void {
 		.applicationVersion = c.VK_MAKE_VERSION(0, 0, 0),
 		.pEngineName = "Cubyz",
 		.engineVersion = c.VK_MAKE_VERSION(0, 0, 0),
-		.apiVersion = c.VK_API_VERSION_1_3,
+		.apiVersion = if (builtin.target.os.tag == .macos) c.VK_API_VERSION_1_4 else c.VK_API_VERSION_1_3,
 	};
 	var glfwExtensionCount: u32 = 0;
 	const glfwExtensions: [*c][*c]const u8 = c.glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
@@ -645,7 +645,7 @@ var frames: [2]Frame = undefined;
 
 pub var currentFrame: *const Frame = undefined;
 
-pub const SwapChain = struct { // MARK: SwapChain
+pub const swap_chain = struct { // MARK: swap_chain
 	var swapChain: c.VkSwapchainKHR = null;
 	var images: []c.VkImage = undefined;
 	var imageViews: []c.VkImageView = undefined;
@@ -1133,11 +1133,20 @@ pub const gpu_allocator = struct { // MARK: gpu_allocator
 	var handle: c.VmaAllocator = undefined;
 
 	fn init() void {
-		const vkFunctions: c.VmaVulkanFunctions = .{
-			.glad_vkGetInstanceProcAddr = c.glad_vkGetInstanceProcAddr,
-			.glad_vkGetDeviceProcAddr = c.glad_vkGetDeviceProcAddr,
-			.glad_vkCreateImage = c.glad_vkCreateImage,
-		};
+		var vkFunctions: c.VmaVulkanFunctions = undefined;
+		if (builtin.os.tag == .macos) {
+			vkFunctions = .{
+				.vkGetInstanceProcAddr = c.vkGetInstanceProcAddr,
+				.vkGetDeviceProcAddr = c.vkGetDeviceProcAddr,
+				.vkCreateImage = c.vkCreateImage,
+			};
+		} else {
+			vkFunctions = .{
+				.glad_vkGetInstanceProcAddr = c.glad_vkGetInstanceProcAddr,
+				.glad_vkGetDeviceProcAddr = c.glad_vkGetDeviceProcAddr,
+				.glad_vkCreateImage = c.glad_vkCreateImage,
+			};
+		}
 		const allocatorCreateInfo: c.VmaAllocatorCreateInfo = .{
 			.flags = 0,
 			.physicalDevice = physicalDevice,
@@ -1193,10 +1202,10 @@ pub const gpu_garbage_collection = struct { // MARK: gpu_garbage_collection
 var frameIndex: usize = 0;
 
 pub fn beginRender() void {
-	SwapChain.beginRender();
+	swap_chain.beginRender();
 }
 
 pub fn endRender() void {
-	SwapChain.endRender();
+	swap_chain.endRender();
 	gpu_garbage_collection.cleanupFrame();
 }

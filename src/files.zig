@@ -55,9 +55,9 @@ pub fn cubyzDirStr() []const u8 {
 }
 
 fn flawedInit(homePath: []const u8) !void {
-	if (main.settings.launchConfig.cubyzDir.len != 0) {
-		cubyzDir_ = try std.Io.Dir.cwd().createDirPathOpen(main.io, main.settings.launchConfig.cubyzDir, .{});
-		cubyzDirStr_ = main.globalAllocator.dupe(u8, main.settings.launchConfig.cubyzDir);
+	if (main.settings.launch_config.cubyzDir.len != 0) {
+		cubyzDir_ = try std.Io.Dir.cwd().createDirPathOpen(main.io, main.settings.launch_config.cubyzDir, .{});
+		cubyzDirStr_ = main.globalAllocator.dupe(u8, main.settings.launch_config.cubyzDir);
 		return;
 	}
 	var homeDir = try std.Io.Dir.openDirAbsolute(main.io, homePath, .{});

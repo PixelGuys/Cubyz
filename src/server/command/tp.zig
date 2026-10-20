@@ -79,7 +79,7 @@ pub fn execute(args: Args, source: Source) void {
 					if (sample.biome == biome) {
 						const z = sample.height + sample.hills + sample.mountains + sample.roughness;
 						const biomeSize = main.server.terrain.SurfaceMap.MapFragment.biomeSize;
-						main.network.protocols.genericUpdate.sendTPCoordinates(user.conn, .{@floatFromInt(wx + x*biomeSize + biomeSize/2), @floatFromInt(wy + y*biomeSize + biomeSize/2), @floatCast(z + biomeSize/2)});
+						main.network.protocols.generic_update.sendTPCoordinates(user.conn, .{@floatFromInt(wx + x*biomeSize + biomeSize/2), @floatFromInt(wy + y*biomeSize + biomeSize/2), @floatCast(z + biomeSize/2)});
 						return;
 					}
 				}
@@ -120,5 +120,5 @@ pub fn execute(args: Args, source: Source) void {
 		},
 	};
 
-	if (!std.meta.eql(target.user.player().pos, pos)) main.network.protocols.genericUpdate.sendTPCoordinates(target.user.conn, pos);
+	if (!std.meta.eql(target.user.player().pos, pos)) main.network.protocols.generic_update.sendTPCoordinates(target.user.conn, pos);
 }
