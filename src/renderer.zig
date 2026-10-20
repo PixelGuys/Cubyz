@@ -758,6 +758,10 @@ pub const skybox = struct { // MARK: skybox
 		mvp: c_int,
 		starOpacity: c_int,
 	} = undefined;
+	const StarUniforms = extern struct {
+		mvp: [4][4]f32 align(16),
+		starOpacity: f32,
+	};
 
 	var starVao: c_uint = undefined;
 
@@ -804,7 +808,9 @@ pub const skybox = struct { // MARK: skybox
 			&starUniforms,
 			graphics.VertexArray.EmptyVertex,
 			.{
-				.bindings = &.{},
+				.bindings = &.{
+					.ssbo(12, .{.vertex = true}),
+				},
 				.rasterState = .{.cullMode = .none},
 				.depthStencilState = .{.depthTest = false, .depthWrite = false},
 				.blendState = .{.attachments = &.{.{
@@ -815,6 +821,8 @@ pub const skybox = struct { // MARK: skybox
 					.dstAlphaBlendFactor = .one,
 					.alphaBlendOp = .add,
 				}}, .formats = &.{.world}},
+				.inputAssemblyState = .{.topology = .triangleList},
+				.pushConstantSize = @sizeOf(StarUniforms),
 			},
 		);
 
@@ -890,19 +898,32 @@ pub const skybox = struct { // MARK: skybox
 		const starOpacity: f32 = game.world.?.dayTime.getStarOpacity();
 
 		if (starOpacity != 0) {
-			starPipeline.bind(null);
-
 			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationY(game.World.DayTime.celestialPoleAltitude).mul(Mat4f.rotationX(2*std.math.pi*game.world.?.dayTime.getDayProgress()))));
 
-			starSsbo.bind(12);
+			if (main.settings.launch_config.vulkanTestingMode) {
+				vulkan.currentFrame.renderCommands.bindPipeline(starPipeline, null);
+				vulkan.currentFrame.renderCommands.bindDescriptors(starPipeline, .graphics, &.{
+					.{.ssbo = .{.binding = 12, .ssbo = starSsbo}},
+				});
+				vulkan.currentFrame.renderCommands.pushConstants(starPipeline, &StarUniforms{
+					.mvp = starMatrix.toGl(),
+					.starOpacity = starOpacity,
+				});
+				graphics.frame_uniforms.bindToPipeline(vulkan.currentFrame.renderCommands, starPipeline);
+				vulkan.currentFrame.renderCommands.draw(numStars*3, 0);
+			} else {
+				starPipeline.bind(null);
 
-			c.glUniform1f(starUniforms.starOpacity, starOpacity);
-			c.glUniformMatrix4fv(starUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&starMatrix));
+				starSsbo.bind(12);
 
-			c.glBindVertexArray(starVao);
-			c.glDrawArrays(c.GL_TRIANGLES, 0, numStars*3);
+				c.glUniform1f(starUniforms.starOpacity, starOpacity);
+				c.glUniformMatrix4fv(starUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&starMatrix));
 
-			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
+				c.glBindVertexArray(starVao);
+				c.glDrawArrays(c.GL_TRIANGLES, 0, numStars*3);
+
+				c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
+			}
 		}
 	}
 };
