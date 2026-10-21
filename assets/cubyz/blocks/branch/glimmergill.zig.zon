@@ -20,6 +20,14 @@
 					.id = "durable",
 					.strength = 0.50,
 				},
+				.{
+					.id = "durable",
+					.strength = 0.2,
+					.restriction = .{
+						.id = .on_top_of,
+						.tag = .handle_slot,
+					},
+				},
 			},
 		},
 		.texture = "branch/glimmergill.png",
