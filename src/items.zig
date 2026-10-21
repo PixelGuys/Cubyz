@@ -1349,9 +1349,8 @@ pub const Recipe = struct { // MARK: Recipe
 			writer.writeEnum(BaseItemIndex, item);
 			writer.writeVarInt(u16, amount);
 		}
-		writer.writeVarInt(usize, self.craftingTags.len);
 		for (self.craftingTags) |tag| {
-			writer.writeEnum(Tag, tag);
+			writer.writeSliceWithSize(tag.getName());
 		}
 	}
 
@@ -1375,7 +1374,7 @@ pub const Recipe = struct { // MARK: Recipe
 		defer craftingTagTypes.deinit(main.stackAllocator);
 
 		while (craftingTagTypes.items.len < tagCount) {
-			craftingTagTypes.append(main.stackAllocator, try reader.readEnum(Tag));
+			craftingTagTypes.append(main.stackAllocator, Tag.get(try reader.readSliceWithSize()));
 		}
 
 		return getValidRecipe(.{.sourceItems = sourceItems.items, .sourceAmounts = sourceAmounts.items, .resultItem = resultItem, .resultAmount = resultAmount, .craftingTags = craftingTagTypes.items});
