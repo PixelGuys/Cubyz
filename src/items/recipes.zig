@@ -222,8 +222,7 @@ pub fn parseRecipe(zon: ZonElement, list: *main.ListManaged(Recipe)) !void {
 		return error.InvalidReversibleRecipe;
 	}
 
-	var defaultCraftingTags = arena.alloc(main.Tag, 1);
-	defaultCraftingTags[0] = main.Tag.handCraftable;
+	const defaultCraftingTags: []const Tag = &.{.handCraftable};
 	const foundCraftingTags = Tag.loadTagsFromZon(arena, zon.getChild("craftingTags"));
 	const craftingTags = if (foundCraftingTags.len != 0) foundCraftingTags else defaultCraftingTags;
 
