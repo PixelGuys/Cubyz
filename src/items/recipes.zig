@@ -198,7 +198,7 @@ pub fn addRecipe(itemCombo: []const ItemWithAmount, list: *main.ListManaged(Reci
 		.sourceAmounts = main.worldArena.alloc(u16, inputs.len),
 		.resultItem = output.item,
 		.resultAmount = output.amount,
-		.craftingTags = main.worldArena.alloc(Tag, craftingTags.len),
+		.craftingTags = main.worldArena.dupe(Tag, craftingTags.len),
 	};
 	for (inputs, 0..) |input, i| {
 		recipe.sourceItems[i] = input.item;
