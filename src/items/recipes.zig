@@ -204,9 +204,6 @@ pub fn addRecipe(itemCombo: []const ItemWithAmount, list: *main.ListManaged(Reci
 		recipe.sourceItems[i] = input.item;
 		recipe.sourceAmounts[i] = input.amount;
 	}
-	for (craftingTags, 0..) |tag, i| {
-		recipe.craftingTags[i] = tag;
-	}
 	list.append(recipe);
 }
 
