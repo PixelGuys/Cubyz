@@ -1321,7 +1321,7 @@ pub const Recipe = struct { // MARK: Recipe
 	sourceAmounts: []u16,
 	resultItem: BaseItemIndex,
 	resultAmount: u16,
-	craftingTags: []Tag,
+	craftingTags: []const Tag,
 
 	fn getValidRecipe(self: Recipe) error{Invalid}!*Recipe {
 		outer: for (main.items.getRecipes()) |*recipe| {
