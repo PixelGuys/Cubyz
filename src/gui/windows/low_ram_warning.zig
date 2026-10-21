@@ -24,5 +24,5 @@ pub fn render() void {
 	const ram = main.utils.system_resources.lastAvailableRam orelse return;
 	const oldColor = draw.setColor(0xffff0000);
 	defer draw.restoreColor(oldColor);
-	draw.print("Warning: Only {d} MiB of RAM remaining!", .{ram/(1024*1024)}, 0, 0, 16);
+	draw.print("#ffff00Warning: Only {d} MiB of RAM remaining!", .{ram/(1024*1024)}, 0, 0, 16);
 }

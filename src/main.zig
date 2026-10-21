@@ -503,11 +503,11 @@ pub fn clientMain() void { // MARK: clientMain()
 			gui.updateAndRenderGui();
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 
-			utils.system_resources.detectLowRam(deltaTime);
-
 			if (settings.launch_config.vulkanTestingMode) {
 				graphics.vulkan.endRender();
 			}
+
+			utils.system_resources.detectLowRam(deltaTime);
 		}
 
 		if (shouldExitToMenu.load(.monotonic)) {

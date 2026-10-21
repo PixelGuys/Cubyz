@@ -42,7 +42,6 @@ pub fn detectLowRam(deltaTime: f64) void {
 			if (!wasLowRam) {
 				wasLowRam = true;
 				main.gui.openWindow("low_ram_warning");
-
 				std.log.warn("Warning: Only {d} MiB of RAM remaining!", .{ram/(1024*1024)});
 			}
 		} else if (wasLowRam) {
@@ -103,8 +102,9 @@ fn getAvailableRamLinux() error{Failed}!usize {
 }
 
 test "get available ram" {
-	_ = getAvailableRam() catch |err| {
+	const mem = getAvailableRam() catch |err| {
 		if (err == error.Unimplemented) return error.SkipZigTest;
 		return err;
 	};
+	try std.testing.expect(mem > 0);
 }
