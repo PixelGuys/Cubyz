@@ -5,7 +5,7 @@ echo Detecting Zig compiler...
 for /f "tokens=2 delims== " %%A in ('findstr "minimum_zig_version" build.zig.zon') do set "baseVersion=%%A"
 if not defined baseVersion (
 	echo minimum_zig_version field in build.zig.zon doesn't exist.
-	echo Requiered zig version couldn't be resolved
+	echo Required zig version couldn't be resolved
 	exit /b 1
 )
 
