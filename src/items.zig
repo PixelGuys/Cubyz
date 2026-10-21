@@ -1374,7 +1374,7 @@ pub const Recipe = struct { // MARK: Recipe
 		defer craftingTagTypes.deinit(main.stackAllocator);
 
 		while (craftingTagTypes.items.len < tagCount) {
-			craftingTagTypes.append(main.stackAllocator, try Tag.get(try reader.readSliceWithSize()));
+			craftingTagTypes.append(main.stackAllocator, Tag.get(try reader.readSliceWithSize()) orelse return error.invalidTag);
 		}
 
 		return getValidRecipe(.{.sourceItems = sourceItems.items, .sourceAmounts = sourceAmounts.items, .resultItem = resultItem, .resultAmount = resultAmount, .craftingTags = craftingTagTypes.items});
