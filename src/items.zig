@@ -1374,7 +1374,7 @@ pub const Recipe = struct { // MARK: Recipe
 		var craftingTagTypes: main.List(Tag) = .initCapacity(main.stackAllocator, @min(256, tagCount));
 		defer craftingTagTypes.deinit(main.stackAllocator);
 
-		while (reader.remaining.len > 0 and craftingTagTypes.items.len < tagCount) {
+		while (craftingTagTypes.items.len < tagCount) {
 			craftingTagTypes.append(main.stackAllocator, try reader.readEnum(Tag));
 		}
 
