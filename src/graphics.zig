@@ -2035,15 +2035,20 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 
 pub const TextureArray = struct { // MARK: TextureArray
 	textureID: c_uint,
+	vulkanImage: ?vulkan.Image,
 
 	pub fn init() TextureArray {
 		var self: TextureArray = undefined;
 		c.glGenTextures(1, &self.textureID);
+		self.vulkanImage = null;
 		return self;
 	}
 
 	pub fn deinit(self: TextureArray) void {
 		c.glDeleteTextures(1, &self.textureID);
+		if (self.vulkanImage) |image| {
+			image.deferredDeinit();
+		}
 	}
 
 	pub fn bind(self: TextureArray) void {
@@ -2086,7 +2091,7 @@ pub const TextureArray = struct { // MARK: TextureArray
 	}
 
 	/// (Re-)Generates the GPU buffer.
-	pub fn generate(self: TextureArray, images: []Image, mipmapping: bool, alphaCorrectMipmapping: bool) void {
+	pub fn generate(self: *TextureArray, images: []Image, mipmapping: bool, alphaCorrectMipmapping: bool) void {
 		var maxWidth: u31 = 1;
 		var maxHeight: u31 = 1;
 		for (images) |image| {
@@ -2109,6 +2114,20 @@ pub const TextureArray = struct { // MARK: TextureArray
 		for (0..maxLOD) |i| {
 			c.glTexImage3D(c.GL_TEXTURE_2D_ARRAY, @intCast(i), c.GL_RGBA8, @max(1, maxWidth >> @intCast(i)), @max(1, maxHeight >> @intCast(i)), @intCast(images.len), 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
 		}
+
+		if (main.settings.launch_config.vulkanTestingMode) {
+			if (self.vulkanImage) |image| {
+				image.deferredDeinit();
+			}
+			self.vulkanImage = vulkan.Image.init(.{maxWidth, maxHeight, 1}, .{
+				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
+				.imageViewType = c.VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+				.mipLevels = maxLOD,
+				.arrayLayers = @intCast(images.len),
+				.mipmapFilter = .linear,
+			});
+		}
+
 		const arena = main.stackAllocator.createArena();
 		defer main.stackAllocator.destroyArena(arena);
 		const lodBuffer: [][]Color = arena.alloc([]Color, maxLOD);
@@ -2169,6 +2188,13 @@ pub const TextureArray = struct { // MARK: TextureArray
 				const curWidth = @max(1, maxWidth >> lod);
 				const curHeight = @max(1, maxHeight >> lod);
 				c.glTexSubImage3D(c.GL_TEXTURE_2D_ARRAY, lod, 0, 0, @intCast(i), curWidth, curHeight, 1, c.GL_RGBA, c.GL_UNSIGNED_BYTE, lodBuffer[lod].ptr);
+				if (main.settings.launch_config.vulkanTestingMode) {
+					self.vulkanImage.?.uploadData(std.mem.sliceAsBytes(lodBuffer[lod]), .{
+						.imageExtent = .{.width = curWidth, .height = curHeight, .depth = 1},
+						.arrayLayer = @intCast(i),
+						.mipLevel = lod,
+					});
+				}
 			}
 		}
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_LOD, maxLOD);

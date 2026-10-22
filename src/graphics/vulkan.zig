@@ -892,7 +892,7 @@ pub const Image = struct { // MARK: Image
 		usage: c.VkImageUsageFlags,
 		hostAccessible: bool = false,
 		flags: c.VkImageCreateFlags = 0,
-		imageType: c.VkImageType = c.VK_IMAGE_TYPE_2D,
+		imageViewType: c.VkImageViewType = c.VK_IMAGE_VIEW_TYPE_2D,
 		format: c.VkFormat = c.VK_FORMAT_R8G8B8A8_UNORM,
 		mipLevels: u32 = 1,
 		arrayLayers: u32 = 1,
@@ -927,7 +927,16 @@ pub const Image = struct { // MARK: Image
 		const imageInfo: c.VkImageCreateInfo = .{
 			.sType = c.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
 			.flags = options.flags,
-			.imageType = options.imageType,
+			.imageType = switch (options.imageViewType) {
+				c.VK_IMAGE_VIEW_TYPE_1D => c.VK_IMAGE_TYPE_1D,
+				c.VK_IMAGE_VIEW_TYPE_2D => c.VK_IMAGE_TYPE_2D,
+				c.VK_IMAGE_VIEW_TYPE_3D => c.VK_IMAGE_TYPE_3D,
+				c.VK_IMAGE_VIEW_TYPE_CUBE => c.VK_IMAGE_TYPE_2D,
+				c.VK_IMAGE_VIEW_TYPE_1D_ARRAY => c.VK_IMAGE_TYPE_1D,
+				c.VK_IMAGE_VIEW_TYPE_2D_ARRAY => c.VK_IMAGE_TYPE_2D,
+				c.VK_IMAGE_VIEW_TYPE_CUBE_ARRAY => c.VK_IMAGE_TYPE_2D,
+				else => unreachable,
+			},
 			.format = options.format,
 			.extent = .{.width = @intCast(size[0]), .height = @intCast(size[1]), .depth = @intCast(size[2])},
 			.mipLevels = options.mipLevels,
@@ -958,12 +967,7 @@ pub const Image = struct { // MARK: Image
 				.baseArrayLayer = 0,
 				.layerCount = options.arrayLayers,
 			},
-			.viewType = switch (options.imageType) {
-				c.VK_IMAGE_TYPE_1D => c.VK_IMAGE_VIEW_TYPE_1D,
-				c.VK_IMAGE_TYPE_2D => c.VK_IMAGE_VIEW_TYPE_2D,
-				c.VK_IMAGE_TYPE_3D => c.VK_IMAGE_VIEW_TYPE_3D,
-				else => unreachable,
-			},
+			.viewType = options.imageViewType,
 		};
 		checkResult(c.vkCreateImageView(device, &imageViewInfo, null, &self.view));
 
@@ -1004,7 +1008,9 @@ pub const Image = struct { // MARK: Image
 
 	const UploadDataConfig = struct {
 		imageOffset: c.struct_VkOffset3D = .{},
-		imageExtent: c.struct_VkExtent3D = .{},
+		imageExtent: c.struct_VkExtent3D,
+		arrayLayer: u32 = 0,
+		mipLevel: u32 = 0,
 	};
 
 	pub fn uploadData(self: Image, data: []const u8, config: UploadDataConfig) void {
@@ -1025,7 +1031,7 @@ pub const Image = struct { // MARK: Image
 				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
 				.newLayout = c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				.image = self.handle,
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = self.mipLevels, .layerCount = 1},
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = config.mipLevel, .levelCount = 1, .baseArrayLayer = config.arrayLayer, .layerCount = 1},
 			},
 		}});
 		currentFrame.uploadCommands.copyBufferToImage(self, c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, stagingBuffer, &.{
@@ -1034,8 +1040,8 @@ pub const Image = struct { // MARK: Image
 				.bufferOffset = 0,
 				.imageSubresource = .{
 					.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
-					.mipLevel = 0,
-					.baseArrayLayer = 0,
+					.mipLevel = config.mipLevel,
+					.baseArrayLayer = config.arrayLayer,
 					.layerCount = 1,
 				},
 				.imageOffset = config.imageOffset,
@@ -1052,7 +1058,7 @@ pub const Image = struct { // MARK: Image
 				.oldLayout = c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				.newLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
 				.image = self.handle,
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = self.mipLevels, .layerCount = 1},
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = config.mipLevel, .levelCount = 1, .baseArrayLayer = config.arrayLayer, .layerCount = 1},
 			},
 		}});
 	}
