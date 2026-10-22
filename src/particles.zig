@@ -22,7 +22,7 @@ const Vec2f = vec.Vec2f;
 
 const c = @import("c");
 
-pub const ParticleManager = struct { // MARK: ParticleManager
+pub const particle_manager = struct { // MARK: particle_manager
 	var particleTypesSSBO: SSBO = undefined;
 	var types: main.List(ParticleType) = .empty;
 	var typesLocal: main.List(ParticleTypeLocal) = .empty;
@@ -39,13 +39,13 @@ pub const ParticleManager = struct { // MARK: ParticleManager
 		textureArray = .init();
 		emissionTextureArray = .init();
 		particleTypesSSBO = SSBO.init();
-		ParticleSystem.init();
+		particle_system.init();
 	}
 
 	pub fn deinit() void {
 		textureArray.deinit();
 		emissionTextureArray.deinit();
-		ParticleSystem.deinit();
+		particle_system.deinit();
 		particleTypesSSBO.deinit();
 	}
 
@@ -55,7 +55,7 @@ pub const ParticleManager = struct { // MARK: ParticleManager
 		textures = .empty;
 		emissionTextures = .empty;
 		particleTypeHashmap = .{};
-		ParticleSystem.reset();
+		particle_system.reset();
 	}
 
 	pub fn register(assetsFolder: []const u8, id: []const u8, zon: ZonElement) void {
@@ -155,12 +155,12 @@ pub const ParticleManager = struct { // MARK: ParticleManager
 		textureArray.generate(textures.items, true, true);
 		emissionTextureArray.generate(emissionTextures.items, true, false);
 
-		particleTypesSSBO.bufferData(ParticleType, ParticleManager.types.items);
+		particleTypesSSBO.bufferData(ParticleType, particle_manager.types.items);
 		particleTypesSSBO.bind(14);
 	}
 };
 
-pub const ParticleSystem = struct { // MARK: ParticleSystem
+pub const particle_system = struct { // MARK: particle_system
 	pub const maxCapacity: u32 = 524288;
 	var particleCount: u32 = 0;
 	var particles: [maxCapacity]Particle = undefined;
@@ -218,7 +218,7 @@ pub const ParticleSystem = struct { // MARK: ParticleSystem
 		mutex.unlock();
 
 		const vecDeltaTime: Vec4f = @as(Vec4f, @splat(deltaTime));
-		const playerPosInt: Vec3i = @intFromFloat(game.Player.getEyePosBlocking());
+		const playerPosInt: Vec3i = @intFromFloat(game.player.getEyePosBlocking());
 		const playerPos: Vec3d = @floatFromInt(playerPosInt);
 		const prevPlayerPosDifference: Vec3f = @floatFromInt(previousPlayerPos -% playerPosInt);
 
@@ -248,7 +248,7 @@ pub const ParticleSystem = struct { // MARK: ParticleSystem
 
 			if (particleLocal.collides) {
 				var v3Pos = playerPos + (pos + prevPlayerPosDifference);
-				const size = ParticleManager.types.items[particle.typ].size;
+				const size = particle_manager.types.items[particle.typ].size;
 				const hitBox: physics.collision.Box = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
 
 				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
@@ -335,7 +335,7 @@ pub const ParticleSystem = struct { // MARK: ParticleSystem
 
 		pipeline.bind(null);
 
-		const projectionAndViewMatrix = Mat4f.mul(projectionMatrix, viewMatrix.mul(.translation(@floatCast(-game.Player.getEyePosBlocking() + @as(Vec3d, @floatFromInt(previousPlayerPos))))));
+		const projectionAndViewMatrix = Mat4f.mul(projectionMatrix, viewMatrix.mul(.translation(@floatCast(-game.player.getEyePosBlocking() + @as(Vec3d, @floatFromInt(previousPlayerPos))))));
 		c.glUniformMatrix4fv(uniforms.projectionAndViewMatrix, 1, c.GL_TRUE, @ptrCast(&projectionAndViewMatrix));
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 
@@ -344,14 +344,14 @@ pub const ParticleSystem = struct { // MARK: ParticleSystem
 		c.glUniformMatrix4fv(uniforms.billboardMatrix, 1, c.GL_TRUE, @ptrCast(&billboardMatrix));
 
 		c.glActiveTexture(c.GL_TEXTURE0);
-		ParticleManager.textureArray.bind();
+		particle_manager.textureArray.bind();
 		c.glActiveTexture(c.GL_TEXTURE1);
-		ParticleManager.emissionTextureArray.bind();
+		particle_manager.emissionTextureArray.bind();
 
 		chunk_meshing.vao.bind();
 
 		const maxQuads = chunk_meshing.maxQuadsInIndexBuffer;
-		const count = std.math.divCeil(u32, particleCount, maxQuads) catch unreachable;
+		const count = @divCeil(particleCount, maxQuads);
 		for (0..count) |i| {
 			const particleOffset = (maxQuads*4)*i;
 			const particleCurrentCount: u32 = @min(maxQuads, particleCount - maxQuads*i);
@@ -502,7 +502,7 @@ pub const Emitter = struct { // MARK: Emitter
 	};
 
 	pub fn init(id: []const u8, collides: bool, spawnShape: SpawnShape, properties: EmitterProperties, mode: DirectionMode) Emitter {
-		const typ = ParticleManager.particleTypeHashmap.get(id) orelse 0;
+		const typ = particle_manager.particleTypeHashmap.get(id) orelse 0;
 
 		return Emitter{
 			.typ = typ,
@@ -514,7 +514,7 @@ pub const Emitter = struct { // MARK: Emitter
 	}
 
 	pub fn initFromZon(id: []const u8, collides: bool, zon: ZonElement) Emitter {
-		const typ = ParticleManager.particleTypeHashmap.get(id) orelse 0;
+		const typ = particle_manager.particleTypeHashmap.get(id) orelse 0;
 		const mode = DirectionMode.parse(zon) catch |err| blk: {
 			std.log.err("Error while parsing direction mode: \"{s}\"", .{@errorName(err)});
 			break :blk .spread;
@@ -534,13 +534,13 @@ pub const Emitter = struct { // MARK: Emitter
 	}
 
 	pub fn spawnParticles(self: Emitter, pos: Vec3d, spawnCount: u32) void {
-		const count = @min(spawnCount, ParticleSystem.maxCapacity - ParticleSystem.particleCount);
+		const count = @min(spawnCount, particle_system.maxCapacity - particle_system.particleCount);
 		for (0..count) |_| {
 			const particlePos, const particleVel = self.spawnShape.spawn(pos, self.properties, self.mode);
 
-			const particleTypeLocal = ParticleManager.typesLocal.items[self.typ];
-			const particleType = ParticleManager.types.items[self.typ];
-			ParticleSystem.addParticle(self.typ, particleTypeLocal, particleType, particlePos, particleVel, self.collides, self.properties);
+			const particleTypeLocal = particle_manager.typesLocal.items[self.typ];
+			const particleType = particle_manager.types.items[self.typ];
+			particle_system.addParticle(self.typ, particleTypeLocal, particleType, particlePos, particleVel, self.collides, self.properties);
 		}
 	}
 };

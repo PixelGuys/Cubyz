@@ -649,7 +649,7 @@ pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 	};
 }
 
-pub const GarbageCollection = struct { // MARK: GarbageCollection
+pub const garbage_collection = struct { // MARK: garbage_collection
 	var sharedState: std.atomic.Value(u32) = .init(0);
 	threadlocal var threadCycle: u2 = undefined;
 	threadlocal var lastSyncPointTime: std.Io.Timestamp = undefined;

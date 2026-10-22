@@ -16,7 +16,7 @@ pub const Tag = enum(u32) {
 	_,
 
 	pub fn initTags() void {
-		inline for (comptime std.meta.fieldNames(Tag)) |tag| {
+		inline for (@typeInfo(Tag).@"enum".field_names) |tag| {
 			std.debug.assert(Tag.find(tag) == @field(Tag, tag));
 		}
 	}

@@ -183,7 +183,7 @@ const Modifier = struct {
 		loadData: *const fn (zon: ZonElement) Data,
 		priority: f32,
 
-		const Defaults = struct {
+		const defaults = struct {
 			pub fn changeProceduralItemParameters(_: *ProceduralItem, _: Data) void {}
 			pub fn changeBlockDamage(damage: f32, _: Block, _: Data) f32 {
 				return damage;
@@ -192,8 +192,8 @@ const Modifier = struct {
 
 		inline fn initFromModifierStruct(comptime ModifierStruct: type) VTable {
 			return comptime .{
-				.changeProceduralItemParameters = @ptrCast(if (@hasDecl(ModifierStruct, "changeProceduralItemParameters")) &ModifierStruct.changeProceduralItemParameters else &VTable.Defaults.changeProceduralItemParameters),
-				.changeBlockDamage = @ptrCast(if (@hasDecl(ModifierStruct, "changeBlockDamage")) &ModifierStruct.changeBlockDamage else &VTable.Defaults.changeBlockDamage),
+				.changeProceduralItemParameters = @ptrCast(if (@hasDecl(ModifierStruct, "changeProceduralItemParameters")) &ModifierStruct.changeProceduralItemParameters else &VTable.defaults.changeProceduralItemParameters),
+				.changeBlockDamage = @ptrCast(if (@hasDecl(ModifierStruct, "changeBlockDamage")) &ModifierStruct.changeBlockDamage else &VTable.defaults.changeBlockDamage),
 				.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
 				.printTooltip = @ptrCast(&ModifierStruct.printTooltip),
 				.loadData = @ptrCast(&ModifierStruct.loadData),
@@ -400,7 +400,7 @@ const orthogonalOffsets = [_][2]i8{.{0, -1}, .{-1, 0}, .{1, 0}, .{0, 1}};
 const diagonalOffsets = [_][2]i8{.{-1, -1}, .{1, -1}, .{-1, 1}, .{1, 1}};
 
 /// Generates the texture of a ProceduralItem using the material information.
-const TextureGenerator = struct { // MARK: TextureGenerator
+const texture_generator = struct { // MARK: texture_generator
 	fn generateHeightMap(itemGrid: *[16][16]?BaseItemIndex, seed: *u64) [17][17]f32 {
 		var heightMap: [17][17]f32 = undefined;
 		var x: u8 = 0;
@@ -616,7 +616,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 };
 
 /// Determines the physical properties of a proceduralItem to calculate in-game parameters such as durability and speed.
-const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
+const procedural_item_physics = struct { // MARK: procedural_item_physics
 	/// Determines all the basic properties of the proceduralItem.
 	pub fn evaluateProceduralItem(proceduralItem: *ProceduralItem) void {
 		proceduralItem.properties = @splat(0);
@@ -890,8 +890,8 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		self.type = typ;
 		// Produce the procedural Item and its textures:
 		// The material grid, which comes from texture generation, is needed on both server and client, to generate the procedural item properties.
-		TextureGenerator.generate(self);
-		ProceduralItemPhysics.evaluateProceduralItem(self);
+		texture_generator.generate(self);
+		procedural_item_physics.evaluateProceduralItem(self);
 		return self;
 	}
 
@@ -1075,7 +1075,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		if (self.isEffectiveOn(block)) {
 			return damage;
 		}
-		return main.game.Player.defaultBlockDamage;
+		return main.game.player.defaultBlockDamage;
 	}
 
 	pub fn onUseReturnBroken(self: *ProceduralItem) bool {

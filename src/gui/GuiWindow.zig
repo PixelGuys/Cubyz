@@ -539,7 +539,7 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 	const oldTranslation = draw.setTranslation(self.pos);
 	const oldScale = draw.setScale(self.scale);
 	if (self.hasBackground) {
-		if (main.settings.launchConfig.vulkanTestingMode and backgroundTexture.vulkanImage != null) {
+		if (main.settings.launch_config.vulkanTestingMode and backgroundTexture.vulkanImage != null) {
 			graphics.vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
 			graphics.vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
 				.{.image = .{.binding = 0, .image = backgroundTexture.vulkanImage.?}},
@@ -556,7 +556,7 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 		component.render((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
 	}
 	if (self.showTitleBar or gui.reorderWindows) {
-		if (main.settings.launchConfig.vulkanTestingMode and titleTexture.vulkanImage != null) {
+		if (main.settings.launch_config.vulkanTestingMode and titleTexture.vulkanImage != null) {
 			graphics.vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
 			graphics.vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
 				.{.image = .{.binding = 0, .image = titleTexture.vulkanImage.?}},
