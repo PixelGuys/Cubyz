@@ -3,9 +3,17 @@
 layout(location = 0) out vec3 textureCoords;
 layout(location = 1) flat out vec3 light;
 
+#ifdef OPEN_GL
 layout(location = 0) uniform vec3 ambientLight;
 layout(location = 1) uniform mat4 projectionAndViewMatrix;
 layout(location = 2) uniform mat4 billboardMatrix;
+#else
+layout(push_constant, std430) uniform _ {
+	mat4 projectionAndViewMatrix;
+	mat4 billboardMatrix;
+	vec3 ambientLight;
+};
+#endif
 
 struct ParticleData {
 	vec3 pos;

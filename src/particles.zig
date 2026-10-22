@@ -155,7 +155,8 @@ pub const particle_manager = struct { // MARK: particle_manager
 		textureArray.generate(textures.items, true, true);
 		emissionTextureArray.generate(emissionTextures.items, true, false);
 
-		particleTypesSSBO.bufferData(ParticleType, particle_manager.types.items);
+		particleTypesSSBO.deinit();
+		particleTypesSSBO = .initStatic(ParticleType, particle_manager.types.items);
 		particleTypesSSBO.bind(14);
 	}
 };
@@ -179,6 +180,11 @@ pub const particle_system = struct { // MARK: particle_system
 		ambientLight: c_int,
 	};
 	var uniforms: UniformStruct = undefined;
+	const Uniforms = extern struct {
+		projectionAndViewMatrix: [4][4]f32 align(16),
+		billboardMatrix: [4][4]f32 align(16),
+		ambientLight: [3]f32 align(16),
+	};
 
 	fn init() void {
 		pipeline = graphics.Pipeline.init(
@@ -188,9 +194,17 @@ pub const particle_system = struct { // MARK: particle_system
 			&uniforms,
 			graphics.VertexArray.EmptyVertex,
 			.{
+				.bindings = &.{
+					.sampler(0, .{.fragment = true}),
+					.sampler(1, .{.fragment = true}),
+					.ssbo(13, .{.vertex = true}),
+					.ssbo(14, .{.vertex = true}),
+				},
 				.rasterState = .{},
 				.depthStencilState = .{.depthTest = true, .depthWrite = true},
 				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.world}},
+				.inputAssemblyState = .{.topology = .triangleList},
+				.pushConstantSize = @sizeOf(Uniforms),
 			},
 		);
 
@@ -331,31 +345,61 @@ pub const particle_system = struct { // MARK: particle_system
 	}
 
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, ambientLight: Vec3f) void {
-		particlesSSBO.bufferSubData(Particle, &particles, particleCount);
-
-		pipeline.bind(null);
-
 		const projectionAndViewMatrix = Mat4f.mul(projectionMatrix, viewMatrix.mul(.translation(@floatCast(-game.player.getEyePosBlocking() + @as(Vec3d, @floatFromInt(previousPlayerPos))))));
-		c.glUniformMatrix4fv(uniforms.projectionAndViewMatrix, 1, c.GL_TRUE, @ptrCast(&projectionAndViewMatrix));
-		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 
-		const billboardMatrix = Mat4f.rotationZ(-game.camera.rotation[2] + std.math.pi*0.5)
-			.mul(Mat4f.rotationY(game.camera.rotation[0] - std.math.pi*0.5));
-		c.glUniformMatrix4fv(uniforms.billboardMatrix, 1, c.GL_TRUE, @ptrCast(&billboardMatrix));
+		const billboardMatrix = Mat4f.rotationZ(-game.camera.rotation[2] + std.math.pi*0.5).mul(Mat4f.rotationY(game.camera.rotation[0] - std.math.pi*0.5));
 
-		c.glActiveTexture(c.GL_TEXTURE0);
-		particle_manager.textureArray.bind();
-		c.glActiveTexture(c.GL_TEXTURE1);
-		particle_manager.emissionTextureArray.bind();
+		if (main.settings.launch_config.vulkanTestingMode) {
+			particlesSSBO.bufferSubData(Particle, &particles, particleCount);
+			graphics.vulkan.currentFrame.renderCommands.bindPipeline(pipeline, null);
 
-		chunk_meshing.vao.bind();
 
-		const maxQuads = chunk_meshing.maxQuadsInIndexBuffer;
-		const count = @divCeil(particleCount, maxQuads);
-		for (0..count) |i| {
-			const particleOffset = (maxQuads*4)*i;
-			const particleCurrentCount: u32 = @min(maxQuads, particleCount - maxQuads*i);
-			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(particleCurrentCount*6), c.GL_UNSIGNED_INT, null, @intCast(particleOffset));
+			graphics.vulkan.currentFrame.renderCommands.bindDescriptors(pipeline, .graphics, &.{
+				.{.image = .{.binding = 0, .image = particle_manager.textureArray.vulkanImage.?}},
+				.{.image = .{.binding = 1, .image = particle_manager.emissionTextureArray.vulkanImage.?}},
+				.{.ssbo = .{.binding = 13, .ssbo = particlesSSBO}},
+				.{.ssbo = .{.binding = 14, .ssbo = particle_manager.particleTypesSSBO}},
+			});
+			graphics.vulkan.currentFrame.renderCommands.pushConstants(pipeline, &Uniforms{
+				.projectionAndViewMatrix = projectionAndViewMatrix.toGl(),
+				.billboardMatrix = billboardMatrix.toGl(),
+				.ambientLight = ambientLight,
+			});
+			graphics.frame_uniforms.bindToPipeline(graphics.vulkan.currentFrame.renderCommands, pipeline);
+
+			graphics.vulkan.currentFrame.renderCommands.bindVertexArray(chunk_meshing.vao);
+
+			const maxQuads = chunk_meshing.maxQuadsInIndexBuffer;
+			const count = @divCeil(particleCount, maxQuads);
+			for (0..count) |i| {
+				const particleOffset = (maxQuads*4)*i;
+				const particleCurrentCount: u32 = @min(maxQuads, particleCount - maxQuads*i);
+				graphics.vulkan.currentFrame.renderCommands.drawIndexed(particleCurrentCount*6, @intCast(particleOffset));
+			}
+		} else {
+			particlesSSBO.bufferSubData(Particle, &particles, particleCount);
+
+			pipeline.bind(null);
+
+			c.glUniformMatrix4fv(uniforms.projectionAndViewMatrix, 1, c.GL_TRUE, @ptrCast(&projectionAndViewMatrix));
+			c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
+
+			c.glUniformMatrix4fv(uniforms.billboardMatrix, 1, c.GL_TRUE, @ptrCast(&billboardMatrix));
+
+			c.glActiveTexture(c.GL_TEXTURE0);
+			particle_manager.textureArray.bind();
+			c.glActiveTexture(c.GL_TEXTURE1);
+			particle_manager.emissionTextureArray.bind();
+
+			chunk_meshing.vao.bind();
+
+			const maxQuads = chunk_meshing.maxQuadsInIndexBuffer;
+			const count = @divCeil(particleCount, maxQuads);
+			for (0..count) |i| {
+				const particleOffset = (maxQuads*4)*i;
+				const particleCurrentCount: u32 = @min(maxQuads, particleCount - maxQuads*i);
+				c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(particleCurrentCount*6), c.GL_UNSIGNED_INT, null, @intCast(particleOffset));
+			}
 		}
 	}
 
