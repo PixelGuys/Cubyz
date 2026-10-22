@@ -1,0 +1,24 @@
+.{
+	.tags = .{.cuttable, .sliceable, .flower},
+	.blockHealth = 0.2,
+	.drops = .{
+		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
+	},
+	.selectionCapabilities = .{.toolEffective},
+	.replaceable = true,
+	.degradable = true,
+	.viewThrough = true,
+	.absorbedLight = 0x121012,
+	.collide = false,
+	.model = "cubyz:flower/bromeliad",
+	.texture = "cubyz:bromeliad",
+	.texture_top = "cubyz:bromeliad_bottom",
+	.texture_bottom = "cubyz:bromeliad_bottom",
+	.item = .{
+		.texture = "bromeliad.png",
+	},
+	.lodReplacement = "cubyz:air",
+	.onUpdate = .{
+		.type = .check_support_blocks,
+	},
+}
