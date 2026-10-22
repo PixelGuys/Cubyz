@@ -353,7 +353,6 @@ pub const particle_system = struct { // MARK: particle_system
 			particlesSSBO.bufferSubData(Particle, &particles, particleCount);
 			graphics.vulkan.currentFrame.renderCommands.bindPipeline(pipeline, null);
 
-
 			graphics.vulkan.currentFrame.renderCommands.bindDescriptors(pipeline, .graphics, &.{
 				.{.image = .{.binding = 0, .image = particle_manager.textureArray.vulkanImage.?}},
 				.{.image = .{.binding = 1, .image = particle_manager.emissionTextureArray.vulkanImage.?}},
