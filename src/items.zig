@@ -1375,7 +1375,6 @@ pub const Recipe = struct { // MARK: Recipe
 		defer craftingTagTypes.deinit(main.stackAllocator);
 
 		while (craftingTagTypes.items.len < tagCount) {
-			std.log.debug("running {}", .{tagCount});
 			craftingTagTypes.append(main.stackAllocator, Tag.get(try reader.readSliceWithSize()) orelse return error.invalidTag);
 		}
 
