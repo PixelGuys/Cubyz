@@ -73,6 +73,12 @@ pub const particle_manager = struct { // MARK: particle_manager
 			.rotVel = rotVel,
 			.dragCoefficient = RandomRange(f32).fromZon(zon.getChild("dragCoefficient")) orelse .init(0.5, 0.6),
 			.loopTime = RandomRange(f32).fromZon(zon.getChild("loopTime")),
+			.onTouch = blk: {
+				break :blk main.callbacks.ParticleCollideCallback.init(zon.getChildOrNull("onTouch") orelse break :blk .noop, .{.particle = .{.typ = @intCast(types.items.len), .pos = .{0, 0, 0}}}) orelse {
+					std.log.err("Failed to load onTouch event for particle {s}", .{id});
+					break :blk .noop;
+				};
+			},
 		};
 
 		particleTypeHashmap.put(main.worldArena.allocator, id, @intCast(types.items.len)) catch unreachable;
@@ -253,8 +259,10 @@ pub const particle_system = struct { // MARK: particle_system
 
 				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
+				var hasColided = false;
 				v3Pos[0] += posDelta[0];
 				if (physics.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
+					hasColided = true;
 					if (posDelta[0] < 0) {
 						v3Pos[0] = box.max[0] - hitBox.min[0] + physics.epsilon;
 					} else {
@@ -263,6 +271,7 @@ pub const particle_system = struct { // MARK: particle_system
 				}
 				v3Pos[1] += posDelta[1];
 				if (physics.collision.collides(.client, .y, -posDelta[1], v3Pos, hitBox)) |box| {
+					hasColided = true;
 					if (posDelta[1] < 0) {
 						v3Pos[1] = box.max[1] - hitBox.min[1] + physics.epsilon;
 					} else {
@@ -271,6 +280,7 @@ pub const particle_system = struct { // MARK: particle_system
 				}
 				v3Pos[2] += posDelta[2];
 				if (physics.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
+					hasColided = true;
 					if (posDelta[2] < 0) {
 						v3Pos[2] = box.max[2] - hitBox.min[2] + physics.epsilon;
 					} else {
@@ -278,6 +288,7 @@ pub const particle_system = struct { // MARK: particle_system
 					}
 				}
 				pos = @as(Vec3f, @floatCast(v3Pos - playerPos));
+				_ = if (hasColided) particle_manager.typesLocal.items[particle.typ].onTouch.run(.{.source = particle, .pos = pos});
 			} else {
 				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
@@ -556,6 +567,7 @@ pub const ParticleTypeLocal = struct {
 	rotVel: RandomRange(f32),
 	dragCoefficient: RandomRange(f32),
 	loopTime: ?RandomRange(f32),
+	onTouch: main.callbacks.ParticleCollideCallback,
 };
 
 pub const Particle = extern struct {
