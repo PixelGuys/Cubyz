@@ -14,6 +14,9 @@ const vec = main.vec;
 const Vec2f = vec.Vec2f;
 const Vec2i = vec.Vec2i;
 
+var sum: i96 = 0;
+var count: usize = 0;
+
 pub const id = "cubyz:mapgen_v1";
 
 pub fn init(parameters: ZonElement) void {
@@ -100,6 +103,14 @@ fn computeBarycentricCoordinates(in: [3]Vec2i, pos: Vec2f) [3]f32 {
 }
 
 pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
+	const t1 = main.timestamp();
+
+	defer {
+		count += 1;
+		sum += main.timestamp().nanoseconds - t1.nanoseconds;
+
+		if (count%10 == 0) std.log.debug("avg generateMapFragment time: {}", .{@as(f64, @floatFromInt(sum))/@as(f64, @floatFromInt(count))});
+	}
 	const scaledSize = MapFragment.mapSize;
 	const mapSize = scaledSize*map.pos.voxelSize;
 	const biomeSize = MapFragment.biomeSize;
@@ -192,7 +203,7 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 				}
 			}
 			const biomePoint = biomePositions.get(@intCast(closestPoint[0] + offset), @intCast(closestPoint[1] + offset));
-			map.biomeMap[x][y] = biomePoint.biome;
+			map.setBiomeSample(@trunc(wx), @trunc(wy), biomePoint);
 		}
 	}
 }
