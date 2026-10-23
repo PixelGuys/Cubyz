@@ -449,7 +449,7 @@ fn mixSound(buffer: []f32) void {
 
 	if (activeSounds.items.len == 0) return;
 
-	const playerPos: Vec3f = @floatCast(main.game.Player.getPosBlocking());
+	const playerPos: Vec3f = @floatCast(main.game.player.getPosBlocking());
 	const playerForward = main.game.camera.direction;
 	const playerRight = vec.normalize(vec.cross(playerForward, Vec3f{0, 0, 1}));
 
