@@ -82,7 +82,7 @@ fn isItemBlock(block: Block, item: main.items.ItemStack) bool {
 }
 
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
-	switch (RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
+	switch (RotationMode.default_functions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
 		.no, .yes_costsDurability => return .no,
 		.yes_costsItems => |r| return .{.yes_costsItems = r},
 		.yes => {

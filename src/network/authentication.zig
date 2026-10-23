@@ -46,8 +46,8 @@ pub const KeyTypeEnum = enum(u8) {
 	}
 };
 
-pub const KeyCollection = struct { // Provides multiple methods to allow server hosts to react when one of the methods is compromised
-	const Storage = struct {
+pub const key_collection = struct { // Provides multiple methods to allow server hosts to react when one of the methods is compromised
+	const storage = struct {
 		pub var ed25519: std.crypto.sign.Ed25519.KeyPair = undefined;
 		pub var ecdsaP256Sha256: std.crypto.sign.ecdsa.EcdsaP256Sha256.KeyPair = undefined;
 		pub var mldsa44: std.crypto.sign.mldsa.MLDSA44.KeyPair = undefined;
@@ -63,7 +63,7 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 			"4t7z3592a09p85z4piotfh7z",
 			"u89564epogz1qi9up5zc94309",
 		};
-		inline for (comptime std.meta.declarations(Storage), 0..) |decl, i| {
+		inline for (comptime std.meta.declarations(storage), 0..) |decl, i| {
 			const hashableString = std.mem.concat(main.stackAllocator.allocator, u8, &.{accountCode.text, keySalts[i]}) catch unreachable;
 			defer main.stackAllocator.free(hashableString);
 			defer @memset(hashableString, 0);
@@ -77,10 +77,10 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 				hashedResult = out;
 			}
 
-			const functionType = @TypeOf(@TypeOf(@field(Storage, decl.name)).generateDeterministic);
-			const seed = hashedResult[0..@sizeOf(@typeInfo(functionType).@"fn".params[0].type.?)].*;
+			const functionType = @TypeOf(@TypeOf(@field(storage, decl)).generateDeterministic);
+			const seed = hashedResult[0..@sizeOf(@typeInfo(functionType).@"fn".param_types[0].?)].*;
 
-			@field(Storage, decl.name) = @TypeOf(@field(Storage, decl.name)).generateDeterministic(seed) catch @panic("Failed to generate key pair for " ++ decl.name);
+			@field(storage, decl) = @TypeOf(@field(storage, decl)).generateDeterministic(seed) catch @panic("Failed to generate key pair for " ++ decl);
 		}
 		initialized = true;
 	}
@@ -88,16 +88,16 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 	pub fn getPublicKeys(allocator: NeverFailingAllocator) ZonElement {
 		std.debug.assert(initialized);
 		const result = ZonElement.initObject(allocator);
-		inline for (comptime std.meta.declarations(Storage)) |decl| {
+		inline for (comptime std.meta.declarations(storage)) |decl| {
 			const bytes = blk: {
-				if (@hasDecl(@TypeOf(@field(Storage, decl.name).public_key), "toBytes")) {
-					break :blk @field(Storage, decl.name).public_key.toBytes();
+				if (@hasDecl(@TypeOf(@field(storage, decl).public_key), "toBytes")) {
+					break :blk @field(storage, decl).public_key.toBytes();
 				} else {
-					break :blk @field(Storage, decl.name).public_key.toUncompressedSec1();
+					break :blk @field(storage, decl).public_key.toUncompressedSec1();
 				}
 			};
 			var base64: [std.base64.standard.Encoder.calcSize(bytes.len)]u8 = undefined;
-			result.putOwnedString(decl.name, std.base64.standard.Encoder.encode(&base64, &bytes));
+			result.putOwnedString(decl, std.base64.standard.Encoder.encode(&base64, &bytes));
 		}
 		return result;
 	}
@@ -107,10 +107,10 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 		switch (keyType) {
 			inline else => |_typ| {
 				const bytes = blk: {
-					if (@hasDecl(@TypeOf(@field(Storage, @tagName(_typ)).public_key), "toBytes")) {
-						break :blk @field(Storage, @tagName(_typ)).public_key.toBytes();
+					if (@hasDecl(@TypeOf(@field(storage, @tagName(_typ)).public_key), "toBytes")) {
+						break :blk @field(storage, @tagName(_typ)).public_key.toBytes();
 					} else {
-						break :blk @field(Storage, @tagName(_typ)).public_key.toUncompressedSec1();
+						break :blk @field(storage, @tagName(_typ)).public_key.toUncompressedSec1();
 					}
 				};
 				var base64: [std.base64.standard.Encoder.calcSize(bytes.len)]u8 = undefined;
@@ -127,7 +127,7 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 				const AlgorithmType = _typ.getAlgorithmType();
 				var randomBytes: [AlgorithmType.noise_length]u8 = undefined;
 				main.io.random(&randomBytes);
-				const signature = @field(Storage, @tagName(_typ)).sign(message, randomBytes) catch |err| {
+				const signature = @field(storage, @tagName(_typ)).sign(message, randomBytes) catch |err| {
 					std.debug.panic("Failed to sign message with error {s}. Maybe try reconnecting, if the error persists, I'd suggest creating a new account", .{@errorName(err)});
 				};
 				writer.writeSlice(&signature.toBytes());
@@ -144,7 +144,7 @@ pub const PublicKey = union(KeyTypeEnum) {
 	pub fn initFromBase64(base64: []const u8, typ: KeyTypeEnum) !PublicKey {
 		switch (typ) {
 			inline else => |_typ| {
-				const KeyType = @TypeOf(@field(KeyCollection.Storage, @tagName(_typ)).public_key);
+				const KeyType = @TypeOf(@field(key_collection.storage, @tagName(_typ)).public_key);
 				const length = if (@hasDecl(KeyType, "fromBytes")) KeyType.encoded_length else KeyType.uncompressed_sec1_encoded_length;
 				var bytes: [length]u8 = undefined;
 				try std.base64.standard.Decoder.decode(&bytes, base64);

@@ -88,8 +88,8 @@ fn checkResultIfAvailable(result: anytype) void {
 	}
 }
 
-fn allocEnumerationGeneric(function: anytype, allocator: NeverFailingAllocator, args: anytype) []@typeInfo(@typeInfo(@TypeOf(function)).@"fn".params[@typeInfo(@TypeOf(function)).@"fn".params.len - 1].type.?).pointer.child {
-	const T = @typeInfo(@typeInfo(@TypeOf(function)).@"fn".params[@typeInfo(@TypeOf(function)).@"fn".params.len - 1].type.?).pointer.child;
+fn allocEnumerationGeneric(function: anytype, allocator: NeverFailingAllocator, args: anytype) []@typeInfo(@typeInfo(@TypeOf(function)).@"fn".param_types[@typeInfo(@TypeOf(function)).@"fn".param_types.len - 1].?).pointer.child {
+	const T = @typeInfo(@typeInfo(@TypeOf(function)).@"fn".param_types[@typeInfo(@TypeOf(function)).@"fn".param_types.len - 1].?).pointer.child;
 	var count: u32 = 0;
 	while (true) {
 		checkResultIfAvailable(@call(.auto, function, args ++ .{&count, null}));
@@ -185,14 +185,14 @@ pub fn init(window: ?*c.GLFWwindow) !void {
 		}
 	}
 	command_pool.init();
-	SwapChain.init();
+	swap_chain.init();
 	gpu_allocator.init();
 }
 
 pub fn deinit() void {
 	gpu_garbage_collection.deinit();
 	gpu_allocator.deinit();
-	SwapChain.deinit();
+	swap_chain.deinit();
 	command_pool.deinit();
 	c.vkDestroyDevice(device, null);
 	c.vkDestroySurfaceKHR(instance, surface, null);
@@ -227,7 +227,7 @@ pub fn createInstance() void {
 		.applicationVersion = c.VK_MAKE_VERSION(0, 0, 0),
 		.pEngineName = "Cubyz",
 		.engineVersion = c.VK_MAKE_VERSION(0, 0, 0),
-		.apiVersion = c.VK_API_VERSION_1_3,
+		.apiVersion = if (builtin.target.os.tag == .macos) c.VK_API_VERSION_1_4 else c.VK_API_VERSION_1_3,
 	};
 	var glfwExtensionCount: u32 = 0;
 	const glfwExtensions: [*c][*c]const u8 = c.glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
@@ -393,8 +393,8 @@ fn getDeviceScore(dev: c.VkPhysicalDevice) f32 {
 	}
 	if (!findQueueFamilies(dev).isComplete() or !checkDeviceExtensionSupport(dev)) return 0;
 
-	inline for (comptime std.meta.fieldNames(@TypeOf(deviceFeatures))) |ver| {
-		inline for (comptime std.meta.fieldNames(@TypeOf(@field(deviceFeatures, ver)))) |name| {
+	inline for (@typeInfo(@TypeOf(deviceFeatures)).@"struct".field_names) |ver| {
+		inline for (@typeInfo(@TypeOf(@field(deviceFeatures, ver))).@"struct".field_names) |name| {
 			if (comptime std.mem.eql(u8, name, "sType")) continue;
 			if (comptime std.mem.eql(u8, name, "pNext")) continue;
 			if (@field(@field(deviceFeatures, ver), name) == c.VK_TRUE and @field(@field(features, ver), name) == c.VK_FALSE) {
@@ -433,7 +433,7 @@ fn pickPhysicalDevice() !void {
 	const availableExtension = enumerateDeviceExtensionProperties(main.stackAllocator, physicalDevice, null);
 	defer main.stackAllocator.free(availableExtension);
 	for (availableExtension) |ext| {
-		inline for (comptime std.meta.fieldNames(@TypeOf(interestingExtensions))) |extensionName| {
+		inline for (@typeInfo(@TypeOf(interestingExtensions)).@"struct".field_names) |extensionName| {
 			if (std.mem.eql(u8, ext.extensionName[0..extensionName.len], extensionName)) {
 				@field(interestingExtensions, extensionName) = true;
 			}
@@ -485,7 +485,7 @@ fn createLogicalDevice() void {
 pub const Semaphore = struct { // MARK: Semaphore
 	handle: c.VkSemaphore,
 
-	fn init() Semaphore {
+	pub fn init() Semaphore {
 		var result: c.VkSemaphore = undefined;
 		const semaphoreInfo = c.VkSemaphoreCreateInfo{
 			.sType = c.VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -493,15 +493,18 @@ pub const Semaphore = struct { // MARK: Semaphore
 		checkResult(c.vkCreateSemaphore(device, &semaphoreInfo, null, &result));
 		return .{.handle = result};
 	}
-	fn deinit(self: Semaphore) void {
+	fn privateDeinit(self: Semaphore) void {
 		c.vkDestroySemaphore(device, self.handle, null);
+	}
+	pub fn deferredDeinit(self: Semaphore) void {
+		gpu_garbage_collection.deferredFree(.{.semaphore = self});
 	}
 };
 
 pub const Fence = struct { // MARK: Fence
 	handle: c.VkFence,
 
-	fn init(createSignaled: bool) Fence {
+	pub fn init(createSignaled: bool) Fence {
 		var result: c.VkFence = undefined;
 		const fenceInfo = c.VkFenceCreateInfo{
 			.sType = c.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -510,11 +513,14 @@ pub const Fence = struct { // MARK: Fence
 		checkResult(c.vkCreateFence(device, &fenceInfo, null, &result));
 		return .{.handle = result};
 	}
-	fn deinit(self: Fence) void {
+	fn privateDeinit(self: Fence) void {
 		c.vkDestroyFence(device, self.handle, null);
 	}
+	pub fn deferredDeinit(self: Fence) void {
+		gpu_garbage_collection.deferredFree(.{.fence = self});
+	}
 
-	fn waitAndReset(self: Fence) void {
+	pub fn waitAndReset(self: Fence) void {
 		checkResult(c.vkWaitForFences(device, 1, &self.handle, c.VK_TRUE, c.UINT64_MAX));
 		checkResult(c.vkResetFences(device, 1, &self.handle));
 	}
@@ -532,6 +538,7 @@ const Frame = struct { // MARK: Frame
 
 	uploadCommands: main.graphics.CommandBuffer,
 	guiCommands: main.graphics.CommandBuffer,
+	renderCommands: main.graphics.CommandBuffer,
 	extent: c.VkExtent2D,
 
 	fn init() Frame {
@@ -545,18 +552,20 @@ const Frame = struct { // MARK: Frame
 			.swapChainImageView = undefined,
 			.uploadCommands = .init(),
 			.guiCommands = .init(),
+			.renderCommands = .init(),
 			.extent = undefined,
 		};
 	}
 
 	fn deinit(self: Frame) void {
-		self.fence.deinit();
-		self.uploadFence.deinit();
-		self.imageAvailable.deinit();
-		self.uploadFinished.deinit();
-		self.renderFinished.deinit();
+		self.fence.privateDeinit();
+		self.uploadFence.privateDeinit();
+		self.imageAvailable.privateDeinit();
+		self.uploadFinished.privateDeinit();
+		self.renderFinished.privateDeinit();
 		self.uploadCommands.deinit();
 		self.guiCommands.deinit();
+		self.renderCommands.deinit();
 	}
 
 	fn beginRender(self: Frame) void {
@@ -585,6 +594,7 @@ const Frame = struct { // MARK: Frame
 			},
 			.renderArea = .{.extent = self.extent},
 		});
+		self.renderCommands.beginRecording(0);
 	}
 
 	fn endRender(self: Frame) void {
@@ -595,6 +605,15 @@ const Frame = struct { // MARK: Frame
 			&.{},
 			&.{self.uploadFinished.handle},
 			self.uploadFence.handle,
+		);
+
+		self.renderCommands.endRecording();
+		self.renderCommands.submit(
+			graphicsQueue,
+			&.{self.uploadFinished.handle},
+			&.{c.VK_PIPELINE_STAGE_TRANSFER_BIT},
+			&.{},
+			null,
 		);
 
 		self.guiCommands.endRendering();
@@ -614,8 +633,8 @@ const Frame = struct { // MARK: Frame
 		self.guiCommands.endRecording();
 		self.guiCommands.submit(
 			graphicsQueue,
-			&.{self.imageAvailable.handle, self.uploadFinished.handle},
-			&.{c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, c.VK_PIPELINE_STAGE_TRANSFER_BIT},
+			&.{self.imageAvailable.handle},
+			&.{c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT},
 			&.{self.renderFinished.handle},
 			self.fence.handle,
 		);
@@ -626,7 +645,7 @@ var frames: [2]Frame = undefined;
 
 pub var currentFrame: *const Frame = undefined;
 
-pub const SwapChain = struct { // MARK: SwapChain
+pub const swap_chain = struct { // MARK: swap_chain
 	var swapChain: c.VkSwapchainKHR = null;
 	var images: []c.VkImage = undefined;
 	var imageViews: []c.VkImageView = undefined;
@@ -869,7 +888,7 @@ pub const Image = struct { // MARK: Image
 	view: c.VkImageView = undefined,
 	sampler: c.VkSampler = undefined,
 
-	const ImageOptions = struct {
+	pub const ImageOptions = struct {
 		usage: c.VkImageUsageFlags,
 		hostAccessible: bool = false,
 		flags: c.VkImageCreateFlags = 0,
@@ -885,13 +904,14 @@ pub const Image = struct { // MARK: Image
 		addressMode: AddressMode = .repeat,
 		mipLodBias: f32 = 0,
 		maxAnisotropy: ?f32 = null,
+		typ: enum { color, depth } = .color,
 
-		const Filter = enum(c.VkFilter) {
+		pub const Filter = enum(c.VkFilter) {
 			nearest = c.VK_FILTER_NEAREST,
 			linear = c.VK_FILTER_LINEAR,
 		};
 
-		const AddressMode = enum(c.VkSamplerAddressMode) {
+		pub const AddressMode = enum(c.VkSamplerAddressMode) {
 			repeat = c.VK_SAMPLER_ADDRESS_MODE_REPEAT,
 			mirroredRepeat = c.VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
 			clampToEdge = c.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
@@ -929,7 +949,10 @@ pub const Image = struct { // MARK: Image
 			.image = self.handle,
 			.format = options.format,
 			.subresourceRange = .{
-				.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
+				.aspectMask = switch (options.typ) {
+					.color => c.VK_IMAGE_ASPECT_COLOR_BIT,
+					.depth => c.VK_IMAGE_ASPECT_DEPTH_BIT,
+				},
 				.baseMipLevel = 0,
 				.levelCount = options.mipLevels,
 				.baseArrayLayer = 0,
@@ -946,15 +969,15 @@ pub const Image = struct { // MARK: Image
 
 		const samplerInfo: c.VkSamplerCreateInfo = .{
 			.sType = c.VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-			.magFilter = @intFromEnum(options.magFilter),
-			.minFilter = @intFromEnum(options.minFilter),
+			.magFilter = @backingInt(options.magFilter),
+			.minFilter = @backingInt(options.minFilter),
 			.mipmapMode = switch (options.mipmapFilter) {
 				.nearest => c.VK_SAMPLER_MIPMAP_MODE_NEAREST,
 				.linear => c.VK_SAMPLER_MIPMAP_MODE_LINEAR,
 			},
-			.addressModeU = @intFromEnum(options.addressMode),
-			.addressModeV = @intFromEnum(options.addressMode),
-			.addressModeW = @intFromEnum(options.addressMode),
+			.addressModeU = @backingInt(options.addressMode),
+			.addressModeV = @backingInt(options.addressMode),
+			.addressModeW = @backingInt(options.addressMode),
 			.mipLodBias = options.mipLodBias,
 			.anisotropyEnable = if (options.maxAnisotropy != null) c.VK_TRUE else c.VK_FALSE,
 			.maxAnisotropy = options.maxAnisotropy orelse 0,
@@ -1106,15 +1129,24 @@ pub const Image = struct { // MARK: Image
 	}
 };
 
-pub const gpu_allocator = struct {
+pub const gpu_allocator = struct { // MARK: gpu_allocator
 	var handle: c.VmaAllocator = undefined;
 
 	fn init() void {
-		const vkFunctions: c.VmaVulkanFunctions = .{
-			.glad_vkGetInstanceProcAddr = c.glad_vkGetInstanceProcAddr,
-			.glad_vkGetDeviceProcAddr = c.glad_vkGetDeviceProcAddr,
-			.glad_vkCreateImage = c.glad_vkCreateImage,
-		};
+		var vkFunctions: c.VmaVulkanFunctions = undefined;
+		if (builtin.os.tag == .macos) {
+			vkFunctions = .{
+				.vkGetInstanceProcAddr = c.vkGetInstanceProcAddr,
+				.vkGetDeviceProcAddr = c.vkGetDeviceProcAddr,
+				.vkCreateImage = c.vkCreateImage,
+			};
+		} else {
+			vkFunctions = .{
+				.glad_vkGetInstanceProcAddr = c.glad_vkGetInstanceProcAddr,
+				.glad_vkGetDeviceProcAddr = c.glad_vkGetDeviceProcAddr,
+				.glad_vkCreateImage = c.glad_vkCreateImage,
+			};
+		}
 		const allocatorCreateInfo: c.VmaAllocatorCreateInfo = .{
 			.flags = 0,
 			.physicalDevice = physicalDevice,
@@ -1130,10 +1162,12 @@ pub const gpu_allocator = struct {
 	}
 };
 
-pub const gpu_garbage_collection = struct {
+pub const gpu_garbage_collection = struct { // MARK: gpu_garbage_collection
 	const Entry = union(enum) {
 		buf: Buffer,
 		image: Image,
+		semaphore: Semaphore,
+		fence: Fence,
 	};
 	var currentList: usize = 0;
 	var lists: [frames.len + 1]main.List(Entry) = @splat(.empty);
@@ -1168,10 +1202,10 @@ pub const gpu_garbage_collection = struct {
 var frameIndex: usize = 0;
 
 pub fn beginRender() void {
-	SwapChain.beginRender();
+	swap_chain.beginRender();
 }
 
 pub fn endRender() void {
-	SwapChain.endRender();
+	swap_chain.endRender();
 	gpu_garbage_collection.cleanupFrame();
 }

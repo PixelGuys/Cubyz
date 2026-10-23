@@ -43,7 +43,7 @@ pub fn render() void {
 	draw.print("window size: {}×{}", .{main.Window.width, main.Window.height}, 0, y, 8);
 	y += 8;
 	if (main.game.world != null) {
-		const player = main.game.Player;
+		const player = main.game.player;
 		draw.print("Pos: {d:.1}", .{player.getPosBlocking()}, 0, y, 8);
 		y += 8;
 		draw.print("Gamemode: {} IsFlying: {} IsGhost: {} HyperSpeed: {}", .{
@@ -71,11 +71,11 @@ pub fn render() void {
 		const values = comptime std.enums.values(TaskType);
 		var totalUtime: i64 = 0;
 		for (values) |task| {
-			totalUtime += perf.utime[@intFromEnum(task)];
+			totalUtime += perf.utime[@backingInt(task)];
 		}
 		for (values) |t| {
 			const name = @tagName(t);
-			const i = @intFromEnum(t);
+			const i = @backingInt(t);
 			const taskTime = @divFloor(perf.utime[i], @max(1, perf.tasks[i]));
 			const relativeTime = 100.0*@as(f32, @floatFromInt(perf.utime[i]))/@as(f32, @floatFromInt(totalUtime));
 			draw.print("    {s}: {} µs/task ({d:.1}%)", .{name, taskTime, relativeTime}, 0, y, 8);
@@ -101,7 +101,7 @@ pub fn render() void {
 			const biome = main.game.world.?.playerBiome.load(.monotonic);
 			var tags = main.ListManaged(u8).init(main.stackAllocator);
 			defer tags.deinit();
-			inline for (comptime std.meta.fieldNames(main.server.terrain.biomes.Biome.ClimateProperties)) |name| {
+			inline for (@typeInfo(main.server.terrain.biomes.Biome.ClimateProperties).@"struct".field_names) |name| {
 				if (@field(biome.climate, name)) {
 					if (tags.items.len != 0) tags.appendSlice(", ");
 					tags.appendSlice(name);
@@ -114,7 +114,7 @@ pub fn render() void {
 		}
 		draw.print("Opaque faces: {}, Transparent faces: {}", .{main.renderer.chunk_meshing.quadsDrawn, main.renderer.chunk_meshing.transparentQuadsDrawn}, 0, y, 8);
 		y += 8;
-		draw.print("Particle count: {}/{}", .{main.particles.ParticleSystem.getParticleCount(), main.particles.ParticleSystem.maxCapacity}, 0, y, 8);
+		draw.print("Particle count: {}/{}", .{main.particles.particle_system.getParticleCount(), main.particles.particle_system.maxCapacity}, 0, y, 8);
 		y += 8;
 		draw.print("items: {} entities: {}", .{main.game.world.?.itemDrops.super.size, main.client.entity_manager.entities.len}, 0, y, 8);
 		y += 8;

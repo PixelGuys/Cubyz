@@ -49,11 +49,11 @@ pub const BlockEntityType = struct { // MARK: BlockEntityType
 			.vtable = undefined,
 		};
 
-		inline for (@typeInfo(BlockEntityType.VTable).@"struct".fields) |field| {
-			if (!@hasDecl(BlockEntityTypeT, field.name)) {
-				@compileError("BlockEntityType missing field '" ++ field.name ++ "'");
+		inline for (@typeInfo(BlockEntityType.VTable).@"struct".field_names) |field| {
+			if (!@hasDecl(BlockEntityTypeT, field)) {
+				@compileError("BlockEntityType missing field '" ++ field ++ "'");
 			}
-			@field(class.vtable, field.name) = &@field(BlockEntityTypeT, field.name);
+			@field(class.vtable, field) = &@field(BlockEntityTypeT, field);
 		}
 		return class;
 	}
@@ -94,7 +94,7 @@ pub const BlockEntity = enum(u32) { // MARK: BlockEntity
 	_,
 
 	var freeIndexList: main.List(BlockEntity) = .empty;
-	var nextIndex: BlockEntity = @enumFromInt(0);
+	var nextIndex: BlockEntity = @fromBackingInt(0);
 	var mutex: main.utils.Mutex = .{};
 
 	fn globalDeinit() void {
@@ -105,14 +105,14 @@ pub const BlockEntity = enum(u32) { // MARK: BlockEntity
 
 	fn reset() void {
 		freeIndexList.clearRetainingCapacity();
-		nextIndex = @enumFromInt(0);
+		nextIndex = @fromBackingInt(0);
 	}
 
 	fn create() BlockEntity {
 		mutex.lock();
 		defer mutex.unlock();
 		return freeIndexList.popOrNull() orelse {
-			defer nextIndex = @enumFromInt(@intFromEnum(nextIndex) + 1);
+			defer nextIndex = @fromBackingInt(@backingInt(nextIndex) + 1);
 			return nextIndex;
 		};
 	}
@@ -207,7 +207,7 @@ fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 	};
 }
 
-pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
+pub const block_entity_types = struct { // MARK: block_entity_types
 	pub const @"cubyz:chest" = struct { // MARK: cubyz:chest
 		pub const inventorySize = 20;
 		const StorageServer = BlockEntityDataStorage(struct {
@@ -331,7 +331,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 		pub fn init() void {
 			StorageServer.init();
 			StorageClient.init();
-			if (!main.settings.launchConfig.headlessServer) {
+			if (!main.settings.launch_config.headlessServer) {
 				pipeline = graphics.Pipeline.init(
 					"assets/cubyz/shaders/block_entity/sign.vert",
 					"assets/cubyz/shaders/block_entity/sign.frag",
@@ -351,7 +351,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 				texture.deinit();
 			}
 			textureDeinitList.deinit(main.globalAllocator);
-			if (!main.settings.launchConfig.headlessServer) {
+			if (!main.settings.launch_config.headlessServer) {
 				pipeline.deinit();
 			}
 			StorageServer.deinit();
@@ -474,7 +474,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 				};
 			}
 
-			main.network.protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
+			main.network.protocols.block_entity_update.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
 		}
 
 		pub fn renderAll(ambientLight: Vec3f) void {
@@ -492,9 +492,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 				c.glViewport(0, 0, textureWidth, textureHeight);
 				defer c.glViewport(oldViewport[0], oldViewport[1], oldViewport[2], oldViewport[3]);
 
-				var finalFrameBuffer: graphics.FrameBuffer = undefined;
-				finalFrameBuffer.init(false, c.GL_NEAREST, c.GL_REPEAT);
-				finalFrameBuffer.updateSize(textureWidth, textureHeight, c.GL_RGBA8);
+				var finalFrameBuffer: graphics.FrameBuffer = .init(textureWidth, textureHeight, c.GL_RGBA8, false, .nearest, .repeat);
 				finalFrameBuffer.bind();
 				finalFrameBuffer.clear(.{0, 0, 0, 0});
 				signData.renderedTexture = .{.textureID = finalFrameBuffer.texture, .vulkanImage = null};
@@ -524,7 +522,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 
 				signData.renderedTexture.?.bindTo(0);
 
-				c.glUniform1i(uniforms.quadIndex, @intFromEnum(quad));
+				c.glUniform1i(uniforms.quadIndex, @backingInt(quad));
 				const mesh = main.renderer.mesh_storage.getMesh(main.chunk.ChunkPosition.initFromWorldPos(signData.blockPos, 1)) orelse continue :outer;
 				const light: [4]u32 = main.renderer.lighting.getLight(mesh, signData.blockPos -% Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, 0, quad);
 				c.glUniform4ui(uniforms.lightData, light[0], light[1], light[2], light[3]);
@@ -540,23 +538,23 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 var blockyEntityTypes: std.StringHashMapUnmanaged(BlockEntityType) = .{};
 
 pub fn init() void {
-	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		const class = BlockEntityType.init(@field(BlockEntityTypes, declaration.name), declaration.name);
+	inline for (@typeInfo(block_entity_types).@"struct".decl_names) |declaration| {
+		const class = BlockEntityType.init(@field(block_entity_types, declaration), declaration);
 		blockyEntityTypes.putNoClobber(main.globalAllocator.allocator, class.id, class) catch unreachable;
 		std.log.debug("Registered BlockEntityType '{s}'", .{class.id});
 	}
 }
 
 pub fn reset() void {
-	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		@field(BlockEntityTypes, declaration.name).reset();
+	inline for (@typeInfo(block_entity_types).@"struct".decl_names) |declaration| {
+		@field(block_entity_types, declaration).reset();
 	}
 	BlockEntity.reset();
 }
 
 pub fn deinit() void {
-	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		@field(BlockEntityTypes, declaration.name).deinit();
+	inline for (@typeInfo(block_entity_types).@"struct".decl_names) |declaration| {
+		@field(block_entity_types, declaration).deinit();
 	}
 	BlockEntity.globalDeinit();
 	blockyEntityTypes.deinit(main.globalAllocator.allocator);
@@ -570,7 +568,7 @@ pub fn getByID(_id: ?[]const u8) ?*const BlockEntityType {
 }
 
 pub fn renderAll(ambientLight: Vec3f) void {
-	inline for (@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
-		@field(BlockEntityTypes, declaration.name).renderAll(ambientLight);
+	inline for (@typeInfo(block_entity_types).@"struct".decl_names) |declaration| {
+		@field(block_entity_types, declaration).renderAll(ambientLight);
 	}
 }

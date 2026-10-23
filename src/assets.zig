@@ -34,6 +34,7 @@ pub const Assets = struct { // MARK: Assets
 	entityComponents: ZonHashMap,
 	entityComponentMigrations: AddonNameToZonMap,
 	structureTables: ZonHashMap,
+	musicTracks: ZonHashMap,
 	recipes: ZonHashMap,
 	blockModels: BytesHashMap,
 	blockModelsZon: ZonHashMap,
@@ -58,6 +59,7 @@ pub const Assets = struct { // MARK: Assets
 			.entityComponents = .{},
 			.entityComponentMigrations = .{},
 			.structureTables = .{},
+			.musicTracks = .{},
 			.recipes = .{},
 			.blockModels = .{},
 			.blockModelsZon = .{},
@@ -82,6 +84,7 @@ pub const Assets = struct { // MARK: Assets
 		self.entityComponents.deinit(allocator.allocator);
 		self.entityComponentMigrations.deinit(allocator.allocator);
 		self.structureTables.deinit(allocator.allocator);
+		self.musicTracks.deinit(allocator.allocator);
 		self.recipes.deinit(allocator.allocator);
 		self.blockModels.deinit(allocator.allocator);
 		self.blockModelsZon.deinit(allocator.allocator);
@@ -106,6 +109,7 @@ pub const Assets = struct { // MARK: Assets
 			.entityComponents = self.entityComponents.clone(allocator.allocator) catch unreachable,
 			.entityComponentMigrations = self.entityComponentMigrations.clone(allocator.allocator) catch unreachable,
 			.structureTables = self.structureTables.clone(allocator.allocator) catch unreachable,
+			.musicTracks = self.musicTracks.clone(allocator.allocator) catch unreachable,
 			.recipes = self.recipes.clone(allocator.allocator) catch unreachable,
 			.blockModels = self.blockModels.clone(allocator.allocator) catch unreachable,
 			.blockModelsZon = self.blockModelsZon.clone(allocator.allocator) catch unreachable,
@@ -128,6 +132,7 @@ pub const Assets = struct { // MARK: Assets
 			addon.readAllZon(allocator, "items", true, &self.items, &self.itemMigrations);
 			addon.readAllZon(allocator, "tools", true, &self.proceduralItems, null);
 			addon.readAllZon(allocator, "structure_tables", false, &self.structureTables, null);
+			addon.readAllZon(allocator, "music", true, &self.musicTracks, null);
 			addon.readAllZon(allocator, "biomes", true, &self.biomes, &self.biomeMigrations);
 			addon.readAllZon(allocator, "cave_layers", true, &self.caveLayers, null);
 			addon.readAllZon(allocator, "recipes", false, &self.recipes, null);
@@ -437,7 +442,7 @@ fn assignBlockItem(stringId: []const u8) !void {
 	const block = blocks.getTypeById(stringId);
 	// TODO: This must be gone in PixelGuys/Cubyz#1205
 	const index = items.BaseItemIndex.fromId(stringId).?;
-	const item = &items.itemList[@intFromEnum(index)];
+	const item = &items.itemList[@backingInt(index)];
 	item.block = block;
 }
 
@@ -618,7 +623,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		}
 	}
 
-	if (!main.settings.launchConfig.headlessServer) blocks.meshes.registerBlockBreakingAnimation(assetFolder);
+	if (!main.settings.launch_config.headlessServer) blocks.meshes.registerBlockBreakingAnimation(assetFolder);
 
 	// Blocks:
 	// First blocks from the palette to enforce ID values.
@@ -724,10 +729,11 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	try sbb.registerBlueprints(&worldAssets.blueprints);
 	try sbb.registerSBB(&worldAssets.structureBuildingBlocks);
 	try main.server.terrain.structures.registerStructureTables(&worldAssets.structureTables);
+	main.audio.music_tracks.registerTracks(&worldAssets.musicTracks);
 
 	iterator = worldAssets.particles.iterator();
 	while (iterator.next()) |entry| {
-		particles.ParticleManager.register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+		particles.particle_manager.register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 	}
 
 	iterator = worldAssets.sounds.iterator();
@@ -766,13 +772,12 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		}
 
 		// now give each component it's id:
-		inline for (@typeInfo(main.entity.components).@"struct".decls) |decl| {
-			const name = decl.name;
-			if (map.get(name)) |id| {
-				@field(main.entity.components, decl.name).entityComponentID = id;
+		inline for (@typeInfo(main.entity.components).@"struct".decl_names) |decl| {
+			if (map.get(decl)) |id| {
+				@field(main.entity.components, decl).entityComponentID = id;
 			} else {
-				entityComponentPalette.add(name);
-				@field(main.entity.components, decl.name).entityComponentID = index;
+				entityComponentPalette.add(decl);
+				@field(main.entity.components, decl).entityComponentID = index;
 				index += 1;
 			}
 		}
@@ -815,9 +820,10 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	biomes.reset();
 	main.server.terrain.cave_layers.reset();
 	main.server.terrain.structures.reset();
+	main.audio.music_tracks.reset();
 	main.models.reset();
-	main.particles.ParticleManager.reset();
 	main.audio.reset();
+	main.particles.particle_manager.reset();
 	main.rotation.reset();
 	main.Tag.resetTags();
 	main.entityModel.reset();

@@ -23,7 +23,7 @@ inline fn networkTimestamp() i64 {
 
 const Socket = struct { // MARK: Socket
 	const posix = std.posix;
-	socketID: if (builtin.os.tag == .windows) c.SOCKET else posix.socket_t,
+	socketID: if (builtin.target.os.tag == .windows) c.SOCKET else posix.socket_t,
 
 	fn windowsError(err: c_int) !void {
 		if (err == 0) return;
@@ -47,7 +47,7 @@ const Socket = struct { // MARK: Socket
 	}
 
 	fn startup() void {
-		if (builtin.os.tag == .windows) {
+		if (builtin.target.os.tag == .windows) {
 			var data: c.WSADATA = undefined;
 			windowsError(c.WSAStartup(0x0202, &data)) catch |err| {
 				std.log.err("Could not initialize the Windows Socket API: {s}", .{@errorName(err)});
@@ -59,7 +59,7 @@ const Socket = struct { // MARK: Socket
 	fn init(localPort: u16) !Socket {
 		const self = Socket{
 			.socketID = blk: {
-				if (builtin.os.tag == .windows) {
+				if (builtin.target.os.tag == .windows) {
 					const socket = c.socket(c.AF_INET, c.SOCK_DGRAM, c.IPPROTO_UDP);
 					if (socket == c.INVALID_SOCKET) {
 						try windowsError(c.WSAGetLastError());
@@ -83,7 +83,7 @@ const Socket = struct { // MARK: Socket
 			.port = @byteSwap(localPort),
 			.addr = 0,
 		};
-		if (builtin.os.tag == .windows) {
+		if (builtin.target.os.tag == .windows) {
 			if (c.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in)) == c.SOCKET_ERROR) {
 				try windowsError(c.WSAGetLastError());
 			}
@@ -104,7 +104,7 @@ const Socket = struct { // MARK: Socket
 	}
 
 	fn deinit(self: Socket) void {
-		if (builtin.os.tag == .windows) {
+		if (builtin.target.os.tag == .windows) {
 			_ = c.closesocket(self.socketID);
 		} else {
 			const err = std.c.errno(std.c.close(self.socketID));
@@ -123,7 +123,7 @@ const Socket = struct { // MARK: Socket
 			const addrLen = std.Io.Threaded.addressToPosix(&destination.address, &posixAddr);
 			break :blk .{posixAddr.in, addrLen};
 		};
-		if (builtin.os.tag == .windows) {
+		if (builtin.target.os.tag == .windows) {
 			const result = c.sendto(self.socketID, data.ptr, @intCast(data.len), 0, @ptrCast(&addr), @intCast(addrLen));
 			if (result == c.SOCKET_ERROR) {
 				const err = if (windowsError(c.WSAGetLastError())) error.Unknown else |err| err;
@@ -145,7 +145,7 @@ const Socket = struct { // MARK: Socket
 	}
 
 	fn receive(self: Socket, buffer: []u8, timeout: i32, resultAddress: *SocketAddress) ![]u8 {
-		if (builtin.os.tag == .windows) { // Of course Windows always has it's own special thing.
+		if (builtin.target.os.tag == .windows) { // Of course Windows always has it's own special thing.
 			var pfd = [1]c.pollfd{
 				.{.fd = self.socketID, .events = c.POLLRDNORM | c.POLLRDBAND, .revents = undefined},
 			};
@@ -165,7 +165,7 @@ const Socket = struct { // MARK: Socket
 		}
 		var addr: posix.sockaddr.in = undefined;
 		const length: usize = blk: {
-			if (builtin.os.tag == .windows) {
+			if (builtin.target.os.tag == .windows) {
 				var addrLen: c_int = @sizeOf(posix.sockaddr.in);
 				const result = c.recvfrom(self.socketID, buffer.ptr, @intCast(buffer.len), 0, @ptrCast(&addr), &addrLen);
 				if (result == c.SOCKET_ERROR) {
@@ -189,7 +189,7 @@ const Socket = struct { // MARK: Socket
 	}
 
 	fn resolveIP(name: []const u8, port: u16) !IpAddress {
-		var nameBuf: [255]u8 = undefined;
+		var nameBuf: [254]u8 = undefined;
 		var buf: [16]std.Io.net.HostName.LookupResult = undefined;
 		var resultQueue = std.Io.Queue(std.Io.net.HostName.LookupResult).init(&buf);
 		try std.Io.net.HostName.lookup(try .init(name), main.io, &resultQueue, .{.canonical_name_buffer = &nameBuf, .port = port});
@@ -208,7 +208,7 @@ const Socket = struct { // MARK: Socket
 
 	fn getPort(self: Socket) !u16 {
 		var addr: posix.sockaddr.in = undefined;
-		if (builtin.os.tag == .windows) {
+		if (builtin.target.os.tag == .windows) {
 			var addrLen: c_int = @sizeOf(posix.sockaddr.in);
 			if (c.getsockname(self.socketID, @ptrCast(&addr), &addrLen) == c.SOCKET_ERROR) {
 				try windowsError(c.WSAGetLastError());
@@ -298,7 +298,7 @@ pub const SocketAddress = struct {
 const Request = struct {
 	address: SocketAddress,
 	data: []const u8,
-	requestNotifier: main.utils.Condition = .{},
+	requestNotifier: std.Io.Condition = .init,
 };
 
 /// Implements parts of the STUN(Session Traversal Utilities for NAT) protocol to discover public IP+Port
@@ -409,7 +409,7 @@ const stun = struct { // MARK: stun
 	fn requestAddress(connection: *ConnectionManager) SocketAddress {
 		var oldAddress: ?SocketAddress = null;
 		var seed: [std.Random.DefaultCsprng.secret_seed_length]u8 = @splat(0);
-		std.mem.writeInt(i128, seed[0..16], main.timestamp().toMilliseconds(), builtin.cpu.arch.endian()); // Not the best seed, but it's not that important.
+		std.mem.writeInt(i128, seed[0..16], main.timestamp().toMilliseconds(), builtin.target.cpu.arch.endian()); // Not the best seed, but it's not that important.
 		var random = std.Random.DefaultCsprng.init(seed);
 		for (0..16) |_| {
 			// Choose a somewhat random server, so we faster notice if any one of them stopped working.
@@ -478,7 +478,7 @@ const stun = struct { // MARK: stun
 							.address = .{
 								.ip4 = .{
 									.port = std.mem.readInt(u16, addressData[0..2], .big),
-									.bytes = std.mem.toBytes(std.mem.readInt(u32, addressData[2..6], builtin.cpu.arch.endian())), // Needs to stay in big endian → native.
+									.bytes = std.mem.toBytes(std.mem.readInt(u32, addressData[2..6], builtin.target.cpu.arch.endian())), // Needs to stay in big endian → native.
 								},
 							},
 						};
@@ -521,7 +521,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	requests: main.List(*Request) = .empty,
 
 	mutex: main.utils.Mutex = .{},
-	waitingToFinishReceive: main.utils.Condition = .{},
+	waitingToFinishReceive: std.Io.Condition = .init,
 	allowNewConnections: bool,
 
 	receiveBuffer: [Connection.maxMtu]u8 = undefined,
@@ -601,7 +601,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		defer self.mutex.unlock();
 
 		for (self.requests.items) |request| {
-			request.requestNotifier.signal();
+			request.requestNotifier.signal(main.io);
 		}
 		self.requests.deinit(main.globalAllocator);
 
@@ -644,7 +644,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			defer self.mutex.unlock();
 			self.requests.append(main.globalAllocator, &request);
 
-			request.requestNotifier.timedWait(&self.mutex, timeout) catch {};
+			request.requestNotifier.waitTimeout(main.io, &self.mutex.super, .{.duration = .{.raw = timeout, .clock = .awake}}) catch {};
 
 			for (self.requests.items, 0..) |req, i| {
 				if (req == &request) {
@@ -681,7 +681,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		std.debug.assert(self.threadId != std.Thread.getCurrentId()); // WOuld cause deadlock, since we are in a receive.
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		self.waitingToFinishReceive.wait(&self.mutex);
+		self.waitingToFinishReceive.waitUncancelable(main.io, &self.mutex.super);
 	}
 
 	pub fn removeConnection(self: *ConnectionManager, conn: *Connection) void {
@@ -719,14 +719,14 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			for (self.requests.items) |request| {
 				if (request.address.address.eql(&source.address)) {
 					request.data = main.globalAllocator.dupe(u8, data);
-					request.requestNotifier.signal();
+					request.requestNotifier.signal(main.io);
 					return;
 				}
 			}
 			if (self.online.load(.acquire) and source.address.eql(&self.externalAddress.address)) return;
 		}
 		if (self.allowNewConnections or source.address.eql(&IpAddress{.ip4 = .loopback(source.address.getPort())})) {
-			if (data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
+			if (data.len != 0 and data[0] == @backingInt(Connection.ChannelId.init)) {
 				const ip = main.stackAllocator.print("{f}", .{source});
 				defer main.stackAllocator.free(ip);
 				const user = main.server.User.init(main.server.connectionManager, ip) catch |err| {
@@ -750,8 +750,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		var lastTime: i64 = networkTimestamp();
 		var lastExternalPacketTime = lastTime;
 		while (self.running.load(.monotonic)) {
-			main.heap.GarbageCollection.syncPoint();
-			self.waitingToFinishReceive.broadcast();
+			main.heap.garbage_collection.syncPoint();
+			self.waitingToFinishReceive.broadcast(main.io);
 			var source: SocketAddress = undefined;
 			if (self.socket.receive(&self.receiveBuffer, 1, &source)) |data| {
 				self.onReceive(data, source);
@@ -1071,7 +1071,7 @@ pub const Connection = struct { // MARK: Connection
 			fullData.append(protocolIndex);
 			_ = internalHeaderOverhead.fetchAdd(1, .monotonic);
 			const bits = 1 + if (data.len == 0) 0 else std.math.log2_int(usize, data.len);
-			const bytes = std.math.divCeil(usize, bits, 7) catch unreachable;
+			const bytes = @divCeil(bits, 7);
 			for (0..bytes) |i| {
 				const shift = 7*(bytes - i - 1);
 				const byte = (data.len >> @intCast(shift) & 0x7f) | if (i == bytes - 1) @as(u8, 0) else 0x80;
@@ -1352,7 +1352,7 @@ pub const Connection = struct { // MARK: Connection
 				const result = c.mbedtls_ssl_handshake(&self.sslContext);
 				self.mutex.unlock();
 				if (result == c.MBEDTLS_ERR_SSL_WANT_READ) {
-					main.heap.GarbageCollection.syncPoint();
+					main.heap.garbage_collection.syncPoint();
 					try main.io.sleep(.fromMilliseconds(10), .awake);
 					continue;
 				}
@@ -1518,7 +1518,7 @@ pub const Connection = struct { // MARK: Connection
 
 	connectionState: Atomic(ConnectionState),
 	handShakeState: Atomic(HandShakeState) = .init(.start),
-	handShakeWaiting: main.utils.Condition = .{},
+	handShakeWaiting: std.Io.Condition = .init,
 	lastConnectionTime: ?i64,
 
 	// To distinguish different connections from the same computer to avoid multiple reconnects
@@ -1601,7 +1601,7 @@ pub const Connection = struct { // MARK: Connection
 
 		if (protocolIndex != protocols.reload.id) {
 			// Throw away everything from before the restart
-			if (conn.restartChannelCounter[@intFromEnum(channelId)] != conn.restartCounter) return .discard;
+			if (conn.restartChannelCounter[@backingInt(channelId)] != conn.restartCounter) return .discard;
 			return .evaluate;
 		}
 
@@ -1619,18 +1619,18 @@ pub const Connection = struct { // MARK: Connection
 					.connectedVerified, .awaitingReloadVerified => main.game.world.?.shouldReload = true,
 				}
 				main.game.world.?.shouldRestart.store(true, .release);
-				conn.handShakeWaiting.broadcast();
+				conn.handShakeWaiting.broadcast(main.io);
 			}
 		}
-		if (conn.restartChannelCounter[@intFromEnum(channelId)] < restartCounter) {
-			conn.restartChannelCounter[@intFromEnum(channelId)] = restartCounter;
+		if (conn.restartChannelCounter[@backingInt(channelId)] < restartCounter) {
+			conn.restartChannelCounter[@backingInt(channelId)] = restartCounter;
 		}
 		return .discard;
 	}
 
 	pub fn send(self: *Connection, comptime channel: ChannelId, protocolIndex: u8, data: []const u8) void {
-		std.debug.assert(self.handShakeState.raw == .complete or protocolIndex == protocols.handShake.id or protocolIndex == protocols.reload.id);
-		std.debug.assert(self.handShakeState.raw != .complete or protocolIndex != protocols.handShake.id);
+		std.debug.assert(self.handShakeState.raw == .complete or protocolIndex == protocols.handshake.id or protocolIndex == protocols.reload.id);
+		std.debug.assert(self.handShakeState.raw != .complete or protocolIndex != protocols.handshake.id);
 		_ = protocols.bytesSent[protocolIndex].fetchAdd(data.len, .monotonic);
 		self.mutex.lock();
 		defer self.mutex.unlock();
@@ -1877,7 +1877,7 @@ pub const Connection = struct { // MARK: Connection
 			.awaitingClientConnection => {
 				if (timestamp -% self.nextPacketTimestamp < 0) return;
 				self.nextPacketTimestamp = timestamp +% 100*ms;
-				self.manager.send(&.{@intFromEnum(ChannelId.keepalive)}, self.remoteAddress, null);
+				self.manager.send(&.{@backingInt(ChannelId.keepalive)}, self.remoteAddress, null);
 			},
 			.awaitingServerResponse, .awaitingClientAcknowledgement => {
 				// Send the initial packet once every 100 ms.
@@ -1944,16 +1944,16 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn disconnect(self: *Connection) void {
-		self.manager.send(&.{@intFromEnum(ChannelId.disconnect)}, self.remoteAddress, null);
+		self.manager.send(&.{@backingInt(ChannelId.disconnect)}, self.remoteAddress, null);
 		self.connectionState.store(.disconnected, .monotonic);
-		if (builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
+		if (builtin.target.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
 			main.io.sleep(.fromMilliseconds(10), .awake) catch {}; // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
 		}
 		self.manager.removeConnection(self);
 		if (self.user) |user| {
 			main.server.disconnect(user);
 		} else {
-			self.handShakeWaiting.broadcast();
+			self.handShakeWaiting.broadcast(main.io);
 			if (self.handShakeState.load(.monotonic) == .complete) {
 				main.exitToMenu();
 			}

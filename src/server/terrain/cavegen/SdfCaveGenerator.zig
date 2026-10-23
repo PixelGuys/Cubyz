@@ -108,7 +108,7 @@ fn generateMap(map: *CaveMapFragment, output: Array3D(f32), biomeNoiseStrength: 
 	const outerSizeShift = std.math.log2_int(u31, outerSize);
 	const outerSizeFloat: f32 = @floatFromInt(outerSize);
 
-	const noise = FractalNoise3D.generateAligned(main.stackAllocator, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.height*map.pos.voxelSize/outerSize + 1, worldSeed ^ 4329561871 ^ 112*@intFromEnum(mode), noiseScale);
+	const noise = FractalNoise3D.generateAligned(main.stackAllocator, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.height*map.pos.voxelSize/outerSize + 1, worldSeed ^ 4329561871 ^ 112*@backingInt(mode), noiseScale);
 	defer noise.deinit(main.stackAllocator);
 
 	for (noise.mem, output.mem, biomeNoiseStrength.mem) |*val, sdfVal, noiseStrength| {

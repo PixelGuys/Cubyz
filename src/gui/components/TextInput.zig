@@ -517,7 +517,7 @@ fn getRenderCursorPos(self: *const TextInput, pos: u32) u32 {
 }
 
 pub fn render(self: *TextInput, mousePosition: Vec2f) void {
-	if (main.settings.launchConfig.vulkanTestingMode and texture.vulkanImage != null) {
+	if (main.settings.launch_config.vulkanTestingMode and texture.vulkanImage != null) {
 		graphics.vulkan.currentFrame.guiCommands.bindPipeline(Button.pipeline, graphics.draw.getScissor());
 		graphics.vulkan.currentFrame.guiCommands.bindDescriptors(Button.pipeline, .graphics, &.{
 			.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
