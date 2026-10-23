@@ -175,14 +175,14 @@ pub const particle_system = struct { // MARK: particle_system
 
 	var pipeline: graphics.Pipeline = undefined;
 	const UniformStruct = struct {
-		projectionAndViewMatrix: c_int,
 		billboardMatrix: c_int,
+		positionOffset: c_int,
 		ambientLight: c_int,
 	};
 	var uniforms: UniformStruct = undefined;
 	const Uniforms = extern struct {
-		projectionAndViewMatrix: [4][4]f32 align(16),
 		billboardMatrix: [4][4]f32 align(16),
+		positionOffset: [3]f32 align(16),
 		ambientLight: [3]f32 align(16),
 	};
 
@@ -344,9 +344,8 @@ pub const particle_system = struct { // MARK: particle_system
 		particleCount += 1;
 	}
 
-	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, ambientLight: Vec3f) void {
-		const projectionAndViewMatrix = Mat4f.mul(projectionMatrix, viewMatrix.mul(.translation(@floatCast(-game.player.getEyePosBlocking() + @as(Vec3d, @floatFromInt(previousPlayerPos))))));
-
+	pub fn render(ambientLight: Vec3f) void {
+		const positionOffset: Vec3f = @floatCast(game.player.getEyePosBlocking() - @as(Vec3d, @floatFromInt(previousPlayerPos)));
 		const billboardMatrix = Mat4f.rotationZ(-game.camera.rotation[2] + std.math.pi*0.5).mul(Mat4f.rotationY(game.camera.rotation[0] - std.math.pi*0.5));
 
 		if (main.settings.launch_config.vulkanTestingMode) {
@@ -360,8 +359,8 @@ pub const particle_system = struct { // MARK: particle_system
 				.{.ssbo = .{.binding = 14, .ssbo = particle_manager.particleTypesSSBO}},
 			});
 			graphics.vulkan.currentFrame.renderCommands.pushConstants(pipeline, &Uniforms{
-				.projectionAndViewMatrix = projectionAndViewMatrix.toGl(),
 				.billboardMatrix = billboardMatrix.toGl(),
+				.positionOffset = positionOffset,
 				.ambientLight = ambientLight,
 			});
 			graphics.frame_uniforms.bindToPipeline(graphics.vulkan.currentFrame.renderCommands, pipeline);
@@ -380,8 +379,8 @@ pub const particle_system = struct { // MARK: particle_system
 
 			pipeline.bind(null);
 
-			c.glUniformMatrix4fv(uniforms.projectionAndViewMatrix, 1, c.GL_TRUE, @ptrCast(&projectionAndViewMatrix));
 			c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
+			c.glUniform3fv(uniforms.positionOffset, 1, @ptrCast(&positionOffset));
 
 			c.glUniformMatrix4fv(uniforms.billboardMatrix, 1, c.GL_TRUE, @ptrCast(&billboardMatrix));
 

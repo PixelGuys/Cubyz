@@ -2489,6 +2489,7 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 	const Data = extern struct {
 		projectionMatrix: [4][4]f32,
 		viewMatrix: [4][4]f32,
+		projectionAndViewMatrix: [4][4]f32 = undefined, // Will be computed for you
 		playerPositionInteger: [3]i32 align(16),
 		playerPositionFraction: [3]f32 align(16),
 	};
@@ -2536,16 +2537,17 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 
 	pub fn uploadNewFrame(data: Data) void {
 		currentData = data;
+		currentData.projectionAndViewMatrix = Mat4f.fromGl(currentData.projectionMatrix).mul(.fromGl(currentData.viewMatrix)).toGl();
 		c.glDeleteSync(fences[currentFrame]);
 		fences[currentFrame] = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 		currentFrame = (currentFrame + 1)%buffers.len;
 		_ = c.glClientWaitSync(fences[currentFrame], 0, c.GL_TIMEOUT_IGNORED); // Make sure the render calls that accessed these parts of the buffer have finished.
 		c.glBindBuffer(c.GL_UNIFORM_BUFFER, buffers[currentFrame]);
-		c.glBufferSubData(c.GL_UNIFORM_BUFFER, 0, @sizeOf(Data), &data);
+		c.glBufferSubData(c.GL_UNIFORM_BUFFER, 0, @sizeOf(Data), &currentData);
 		c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
 		c.glBindBufferBase(c.GL_UNIFORM_BUFFER, 0, buffers[currentFrame]);
 		if (main.settings.launch_config.vulkanTestingMode) {
-			vulkanBuffers[currentFrame].uploadData(0, std.mem.asBytes(&data));
+			vulkanBuffers[currentFrame].uploadData(0, std.mem.asBytes(&currentData));
 		}
 	}
 

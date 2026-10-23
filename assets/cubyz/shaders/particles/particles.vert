@@ -1,16 +1,18 @@
 #version 460
 
+#include "frame_uniforms.glsl"
+
 layout(location = 0) out vec3 textureCoords;
 layout(location = 1) flat out vec3 light;
 
 #ifdef OPEN_GL
 layout(location = 0) uniform vec3 ambientLight;
-layout(location = 1) uniform mat4 projectionAndViewMatrix;
+layout(location = 1) uniform vec3 positionOffset;
 layout(location = 2) uniform mat4 billboardMatrix;
 #else
 layout(push_constant, std430) uniform _ {
-	mat4 projectionAndViewMatrix;
 	mat4 billboardMatrix;
+	vec3 positionOffset;
 	vec3 ambientLight;
 };
 #endif
@@ -86,7 +88,7 @@ void main() {
 		0
 	);
 
-	const vec3 vertexPos = (billboardMatrix*vec4(particleType.size*vertexRotationPos, 1)).xyz + particle.pos;
+	const vec3 vertexPos = (billboardMatrix*vec4(particleType.size*vertexRotationPos, 1)).xyz + particle.pos - positionOffset;
 	gl_Position = projectionAndViewMatrix*vec4(vertexPos, 1);
 
 	float textureIndex = floor(mod(particle.currentFrame, particleType.frameCount) + particleType.startFrame);
