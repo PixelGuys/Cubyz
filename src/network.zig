@@ -79,15 +79,15 @@ const Socket = struct { // MARK: Socket
 							return error.SocketCreationFailed;
 						},
 					}
-                                        const result = option: {
-                                            if (builtin.target.os.tag == .macos) {
-                                                const probe: c_int = std.c.IP.IP_DONTFRAGMENT;
-                                                break :option std.c.setsockopt(socket, std.c.IPPROTO.IP, std.c.IP.IPPROTO_IP, &probe, @sizeOf(c_int));
-                                            } else {
-                                                const probe: c_int = std.c.IP.PMTUDISC_PROBE;
-                                                break :option std.c.setsockopt(socket, std.c.IPPROTO.IP, std.c.IP.MTU_DISCOVER, &probe, @sizeOf(c_int));
-                                            }
-                                        };
+					const result = option: {
+						if (builtin.target.os.tag == .macos) {
+							const probe: c_int = std.c.IP.IP_DONTFRAGMENT;
+							break :option std.c.setsockopt(socket, std.c.IPPROTO.IP, std.c.IP.IPPROTO_IP, &probe, @sizeOf(c_int));
+						} else {
+							const probe: c_int = std.c.IP.PMTUDISC_PROBE;
+							break :option std.c.setsockopt(socket, std.c.IPPROTO.IP, std.c.IP.MTU_DISCOVER, &probe, @sizeOf(c_int));
+						}
+					};
 					switch (std.c.errno(result)) {
 						.SUCCESS => {},
 						else => |err| std.log.warn("Got error while setting socket option: {s}", .{@tagName(err)}),
@@ -1141,7 +1141,7 @@ pub const Connection = struct { // MARK: Connection
 			return result;
 		}
 
-		pub fn checkForLosses(self: *SendBuffer, time: i64, retransmissionTimeout: i64) LossStatus {
+		pub fn checkForLosses(self: *SendBuffer, conn: *Connection, time: i64, retransmissionTimeout: i64) LossStatus {
 			var hadLoss: bool = false;
 			var hadDoubleLoss: bool = false;
 			while (true) {
@@ -1154,6 +1154,9 @@ pub const Connection = struct { // MARK: Connection
 					if (range.wasResentAsFirstPacket) hadDoubleLoss = true;
 					hadLoss = true;
 					range.wasResentAsFirstPacket = true;
+				}
+				if (range.len > Connection.minMtu) {
+					conn.mtuProbingState.increaseLossCounter(conn);
 				}
 				range.wasResent = true;
 				self.lostRanges.pushBack(range);
@@ -1245,7 +1248,7 @@ pub const Connection = struct { // MARK: Connection
 
 		pub fn checkForLosses(self: *Channel, conn: *Connection, time: i64) LossStatus {
 			const retransmissionTimeout: i64 = @trunc(conn.rttEstimate + 3*conn.rttUncertainty + @as(f32, @floatFromInt(self.allowedDelay)));
-			return self.sendBuffer.checkForLosses(time, retransmissionTimeout);
+			return self.sendBuffer.checkForLosses(conn, time, retransmissionTimeout);
 		}
 
 		pub fn sendNextPacketAndGetSize(self: *Channel, conn: *Connection, time: i64, considerForCongestionControl: bool) ?usize {
@@ -1285,6 +1288,7 @@ pub const Connection = struct { // MARK: Connection
 
 		var nextIndex: SequenceIndex = 0;
 
+		const lossCounterLimit = 3;
 		/// In this state we are actively searching with probes for a higher mtu
 		searching: struct {
 			probedSize: u16 = undefined,
@@ -1298,11 +1302,24 @@ pub const Connection = struct { // MARK: Connection
 			pmtuRaiseTimer: i64 = 10*60*1000*ms,
 			/// the time we entered this state
 			timestamp: i64,
+			lossCounter: usize = 0,
 		},
 
+		pub fn increaseLossCounter(self: *ProbingState, conn: *Connection) void {
+			if (self.* != .searchFinished) return;
+			self.searchFinished.lossCounter += 1;
+			std.debug.print("increaseLossCounter\n", .{});
+			if (self.searchFinished.lossCounter > lossCounterLimit) {
+				conn.mtuEstimate = minMtu;
+				self.* = .{.searchFinished = .{
+					.lossCounter = 0,
+					.timestamp = networkTimestamp(),
+					.pmtuRaiseTimer = 5*1000*ms,
+				}};
+			}
+		}
+
 		fn nextPacketIsProbe(self: *ProbingState, conn: *Connection, time: i64) bool {
-			// while the handshake is not complete, other messages are ignored, so probing would just fail
-			if (conn.handShakeState.load(.acquire) != .complete) return false;
 			switch (self.*) {
 				.searching => |*state| {
 					if (conn.mtuEstimate >= Connection.maxMtu - 50) {
@@ -1835,13 +1852,7 @@ pub const Connection = struct { // MARK: Connection
 			self.bandwidthEstimateInBytesPerRtt = @max(self.bandwidthEstimateInBytesPerRtt, minMtu);
 
 			// until the handShake is done, we don't probe so it also doesn't need to be reset
-			if (self.handShakeState.load(.acquire) == .complete) {
-				self.mtuEstimate = minMtu;
-				self.mtuProbingState = .{.searchFinished = .{
-					.timestamp = networkTimestamp(),
-					.pmtuRaiseTimer = 5*1000*ms,
-				}};
-			}
+			if (self.handShakeState.load(.acquire) == .complete) {}
 		}
 	}
 
@@ -1998,6 +2009,15 @@ pub const Connection = struct { // MARK: Connection
 			}
 			return;
 		}
+		if (channel == .probe) {
+			const start = try reader.readInt(SequenceIndex);
+			self.queuedConfirmations.pushBack(.{
+				.channel = channel,
+				.start = start,
+				.receiveTimeStamp = networkTimestamp(),
+			});
+			return;
+		}
 		if (self.connectionState.load(.monotonic) != .connected) return; // Reject all non-handshake packets until the handshake is done.
 		if (self.handShakeState.load(.monotonic) != .complete and (channel == .lossy or channel == .slow)) return; // Reject all non-handshake packets from other channels.
 		switch (channel) {
@@ -2031,14 +2051,7 @@ pub const Connection = struct { // MARK: Connection
 					});
 				}
 			},
-			.probe => {
-				const start = try reader.readInt(SequenceIndex);
-				self.queuedConfirmations.pushBack(.{
-					.channel = channel,
-					.start = start,
-					.receiveTimeStamp = networkTimestamp(),
-				});
-			},
+			.probe => unreachable,
 			.confirmation => {
 				try self.receiveConfirmationPacket(&reader, networkTimestamp());
 			},
