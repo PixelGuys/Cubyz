@@ -79,8 +79,15 @@ const Socket = struct { // MARK: Socket
 							return error.SocketCreationFailed;
 						},
 					}
-					const probe: c_int = std.c.IP.PMTUDISC_PROBE;
-					const result = std.c.setsockopt(socket, std.c.IPPROTO.IP, std.c.IP.MTU_DISCOVER, &probe, @sizeOf(c_int));
+                                        const result = option: {
+                                            if (builtin.target.os.tag == .macos) {
+                                                const probe: c_int = std.c.IP.IP_DONTFRAGMENT;
+                                                break :option std.c.setsockopt(socket, std.c.IPPROTO.IP, std.c.IP.IPPROTO_IP, &probe, @sizeOf(c_int));
+                                            } else {
+                                                const probe: c_int = std.c.IP.PMTUDISC_PROBE;
+                                                break :option std.c.setsockopt(socket, std.c.IPPROTO.IP, std.c.IP.MTU_DISCOVER, &probe, @sizeOf(c_int));
+                                            }
+                                        };
 					switch (std.c.errno(result)) {
 						.SUCCESS => {},
 						else => |err| std.log.warn("Got error while setting socket option: {s}", .{@tagName(err)}),
