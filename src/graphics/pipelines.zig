@@ -30,7 +30,7 @@ const Shader = struct { // MARK: Shader
 
 		const input = c.glslang_input_t{
 			.language = c.GLSLANG_SOURCE_GLSL,
-			.stage = @intFromEnum(shaderStage),
+			.stage = @backingInt(shaderStage),
 			.client = c.GLSLANG_CLIENT_VULKAN,
 			.client_version = c.GLSLANG_TARGET_VULKAN_1_0,
 			.target_language = c.GLSLANG_TARGET_SPV,
@@ -66,7 +66,7 @@ const Shader = struct { // MARK: Shader
 			return error.FailedCompiling;
 		}
 
-		c.glslang_program_SPIRV_generate(program, @intFromEnum(shaderStage));
+		c.glslang_program_SPIRV_generate(program, @backingInt(shaderStage));
 		const result = allocator.alloc(c_uint, c.glslang_program_SPIRV_get_size(program));
 		c.glslang_program_SPIRV_get(program, result.ptr);
 		return result;
@@ -182,9 +182,9 @@ const Shader = struct { // MARK: Shader
 		shader.link(fragment) catch return shader;
 
 		if (@TypeOf(uniformStruct) != @TypeOf(null)) {
-			inline for (@typeInfo(@TypeOf(uniformStruct.*)).@"struct".fields) |field| {
-				if (field.type == c_int) {
-					@field(uniformStruct, field.name) = c.glGetUniformLocation(shader.id, field.name[0..]);
+			inline for (@typeInfo(@TypeOf(uniformStruct.*)).@"struct".field_names, @typeInfo(@TypeOf(uniformStruct.*)).@"struct".field_types) |field, fieldType| {
+				if (fieldType == c_int) {
+					@field(uniformStruct, field) = c.glGetUniformLocation(shader.id, field[0..]);
 				}
 			}
 		}
@@ -197,9 +197,9 @@ const Shader = struct { // MARK: Shader
 		shader.link(compute) catch return shader;
 
 		if (@TypeOf(uniformStruct) != @TypeOf(null)) {
-			inline for (@typeInfo(@TypeOf(uniformStruct.*)).@"struct".fields) |field| {
-				if (field.type == c_int) {
-					@field(uniformStruct, field.name) = c.glGetUniformLocation(shader.id, field.name[0..]);
+			inline for (@typeInfo(@TypeOf(uniformStruct.*)).@"struct".field_names, @typeInfo(@TypeOf(uniformStruct.*)).@"struct".field_types) |field, fieldType| {
+				if (fieldType == c_int) {
+					@field(uniformStruct, field) = c.glGetUniformLocation(shader.id, field[0..]);
 				}
 			}
 		}
@@ -271,10 +271,10 @@ const RasterizationState = struct { // MARK: RasterizationState
 			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
 			.depthClampEnable = @intFromBool(self.depthClamp),
 			.rasterizerDiscardEnable = @intFromBool(self.rasterizerDiscard),
-			.polygonMode = @intFromEnum(self.polygonMode),
+			.polygonMode = @backingInt(self.polygonMode),
 			.lineWidth = self.lineWidth,
-			.cullMode = @intFromEnum(self.cullMode),
-			.frontFace = @intFromEnum(self.frontFace),
+			.cullMode = @backingInt(self.cullMode),
+			.frontFace = @backingInt(self.frontFace),
 			.depthBiasEnable = @intFromBool(self.depthBias != null),
 			.depthBiasConstantFactor = if (self.depthBias) |d| d.constantFactor else 0,
 			.depthBiasClamp = if (self.depthBias) |d| d.clamp else 0,
@@ -304,7 +304,7 @@ const MultisampleState = struct { // MARK: MultisampleState
 	pub fn toVulkan(self: MultisampleState) c.VkPipelineMultisampleStateCreateInfo {
 		return .{
 			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-			.rasterizationSamples = @intFromEnum(self.rasterizationSamples),
+			.rasterizationSamples = @backingInt(self.rasterizationSamples),
 			.sampleShadingEnable = @intFromBool(self.sampleShading),
 			.minSampleShading = self.minSampleShading,
 			.pSampleMask = self.sampleMask,
@@ -360,10 +360,10 @@ const DepthStencilState = struct { // MARK: DepthStencilState
 
 			fn toVulkan(self: StencilOpState) c.VkStencilOpState {
 				return .{
-					.failOp = @intFromEnum(self.failOp),
-					.passOp = @intFromEnum(self.passOp),
-					.depthFailOp = @intFromEnum(self.depthFailOp),
-					.compareOp = @intFromEnum(self.compareOp),
+					.failOp = @backingInt(self.failOp),
+					.passOp = @backingInt(self.passOp),
+					.depthFailOp = @backingInt(self.depthFailOp),
+					.compareOp = @backingInt(self.compareOp),
 					.compareMask = self.compareMask,
 					.writeMask = self.writeMask,
 					.reference = self.reference,
@@ -382,7 +382,7 @@ const DepthStencilState = struct { // MARK: DepthStencilState
 			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
 			.depthTestEnable = @intFromBool(self.depthTest),
 			.depthWriteEnable = @intFromBool(self.depthWrite),
-			.depthCompareOp = @intFromEnum(self.depthCompare),
+			.depthCompareOp = @backingInt(self.depthCompare),
 			.depthBoundsTestEnable = @intFromBool(self.depthBoundsTest != null),
 			.stencilTestEnable = @intFromBool(self.stencilTest != null),
 			.front = if (self.stencilTest) |s| s.front.toVulkan() else .{},
@@ -497,12 +497,12 @@ const ColorBlendAttachmentState = struct { // MARK: ColorBlendAttachmentState
 	pub fn toVulkan(self: ColorBlendAttachmentState) c.VkPipelineColorBlendAttachmentState {
 		return .{
 			.blendEnable = @intFromBool(self.enabled),
-			.srcColorBlendFactor = @intFromEnum(self.srcColorBlendFactor),
-			.dstColorBlendFactor = @intFromEnum(self.dstColorBlendFactor),
-			.colorBlendOp = @intFromEnum(self.colorBlendOp),
-			.srcAlphaBlendFactor = @intFromEnum(self.srcAlphaBlendFactor),
-			.dstAlphaBlendFactor = @intFromEnum(self.dstAlphaBlendFactor),
-			.alphaBlendOp = @intFromEnum(self.alphaBlendOp),
+			.srcColorBlendFactor = @backingInt(self.srcColorBlendFactor),
+			.dstColorBlendFactor = @backingInt(self.dstColorBlendFactor),
+			.colorBlendOp = @backingInt(self.colorBlendOp),
+			.srcAlphaBlendFactor = @backingInt(self.srcAlphaBlendFactor),
+			.dstAlphaBlendFactor = @backingInt(self.dstAlphaBlendFactor),
+			.alphaBlendOp = @backingInt(self.alphaBlendOp),
 			.colorWriteMask = @as(u4, @bitCast(self.colorWriteMask)),
 		};
 	}
@@ -543,7 +543,7 @@ const ColorBlendState = struct { // MARK: ColorBlendState
 		return .{
 			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
 			.logicOpEnable = @intFromBool(self.logicOp != null),
-			.logicOp = if (self.logicOp) |l| @intFromEnum(l) else undefined,
+			.logicOp = if (self.logicOp) |l| @backingInt(l) else undefined,
 			.attachmentCount = @intCast(attachments.len),
 			.pAttachments = attachments.ptr,
 			.blendConstants = self.blendConstants,
@@ -677,7 +677,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 		};
 		const inputAssembly: c.VkPipelineInputAssemblyStateCreateInfo = .{
 			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-			.topology = @intFromEnum(options.inputAssemblyState.topology),
+			.topology = @backingInt(options.inputAssemblyState.topology),
 			.primitiveRestartEnable = if (options.inputAssemblyState.primitiveRestartEnable) c.VK_TRUE else c.VK_FALSE,
 		};
 		const viewport: c.VkViewport = .{}; // overwritten dynamically
@@ -730,7 +730,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 
 		for (self.blendState.formats, 0..) |format, i| {
 			formats[i] = switch (format) {
-				.swapChain => vulkan.SwapChain.imageFormat,
+				.swapChain => vulkan.swap_chain.imageFormat,
 				.world => main.renderer.worldFrameBufferFormat,
 				.custom => |custom| custom,
 			};
@@ -784,7 +784,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 			.depthStencilState = options.depthStencilState,
 			.blendState = options.blendState,
 		};
-		if (main.settings.launchConfig.vulkanTestingMode) {
+		if (main.settings.launch_config.vulkanTestingMode) {
 			self.initVulkan(vertexPath, fragmentPath, defines, VertexType, options) catch |err| {
 				std.log.err("Vulkan pipeline creation for paths {s} {s} failed with error {s}", .{vertexPath, fragmentPath, @errorName(err)});
 			};

@@ -69,12 +69,12 @@ pub fn initThreadLocals() void {
 	seed = @bitCast(@as(i64, @truncate(timestamp().nanoseconds)));
 	stackAllocatorBase = heap.StackAllocator.init(globalAllocator, 1 << 23);
 	stackAllocator = stackAllocatorBase.allocator();
-	heap.GarbageCollection.addThread();
+	heap.garbage_collection.addThread();
 }
 
 pub fn deinitThreadLocals() void {
 	stackAllocatorBase.deinit();
-	heap.GarbageCollection.removeThread();
+	heap.garbage_collection.removeThread();
 }
 
 pub fn timestamp() std.Io.Timestamp {
@@ -105,7 +105,7 @@ fn ungrabMouse(_: Window.Key.Modifiers) void {
 }
 fn openCreativeInventory(mods: Window.Key.Modifiers) void {
 	if (game.world == null) return;
-	if (!game.Player.isCreative()) return;
+	if (!game.player.isCreative()) return;
 	ungrabMouse(mods);
 	gui.openWindow("creative_inventory");
 }
@@ -126,19 +126,19 @@ fn takeBackgroundImageFn(_: Window.Key.Modifiers) void {
 
 	const oldHideGui = gui.hideGui;
 	gui.hideGui = true;
-	const oldShowItem = itemdrop.ItemDisplayManager.showItem;
-	itemdrop.ItemDisplayManager.showItem = false;
+	const oldShowItem = itemdrop.item_display_manager.showItem;
+	itemdrop.item_display_manager.showItem = false;
 
-	renderer.MenuBackGround.takeBackgroundImage();
+	renderer.menu_background.takeBackgroundImage();
 
 	gui.hideGui = oldHideGui;
-	itemdrop.ItemDisplayManager.showItem = oldShowItem;
+	itemdrop.item_display_manager.showItem = oldShowItem;
 }
 fn toggleHideGui(_: Window.Key.Modifiers) void {
 	gui.hideGui = !gui.hideGui;
 }
 fn toggleHideDisplayItem(_: Window.Key.Modifiers) void {
-	itemdrop.ItemDisplayManager.showItem = !itemdrop.ItemDisplayManager.showItem;
+	itemdrop.item_display_manager.showItem = !itemdrop.item_display_manager.showItem;
 }
 fn toggleDebugOverlay(_: Window.Key.Modifiers) void {
 	gui.toggleWindow("debug");
@@ -161,7 +161,7 @@ fn toggleVulkanDebugOverlay(_: Window.Key.Modifiers) void {
 fn cycleHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
 	return &struct {
 		fn set(_: Window.Key.Modifiers) void {
-			game.Player.selectedSlot = @intCast(@mod(@as(i33, game.Player.selectedSlot) + i, 12));
+			game.player.selectedSlot = @intCast(@mod(@as(i33, game.player.selectedSlot) + i, 12));
 		}
 	}.set;
 }
@@ -170,15 +170,15 @@ fn setHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
 		fn set(_: Window.Key.Modifiers) void {
 			if (gui.hoveredItemSlot) |hovered| {
 				if (hovered.inventory.type == .crafting or hovered.inventory.type == .workbenchResult) return;
-				hovered.inventory.swap(hovered.itemSlot, game.Player.inventory, i - 1);
+				hovered.inventory.swap(hovered.itemSlot, game.player.inventory, i - 1);
 				return;
 			}
-			game.Player.selectedSlot = i - 1;
+			game.player.selectedSlot = i - 1;
 		}
 	}.set;
 }
 
-pub const KeyBoard = struct { // MARK: KeyBoard
+pub const keyboard = struct { // MARK: keyboard
 	pub var keys = [_]Window.Key{
 		// Gameplay:
 		.{.name = "forward", .key = c.GLFW_KEY_W, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}},
@@ -195,7 +195,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_TRIGGER}, .pressAction = &game.pressPlace, .releaseAction = &game.releasePlace, .notifyRequirement = .inGame},
 		.{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER}, .pressAction = &game.pressBreak, .releaseAction = &game.releaseBreak, .notifyRequirement = .inGame},
 		.{.name = "acquireSelectedBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_MIDDLE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_LEFT, .pressAction = &game.pressAcquireSelectedBlock, .notifyRequirement = .inGame},
-		.{.name = "drop", .key = c.GLFW_KEY_Q, .repeatAction = &game.Player.dropFromHand, .notifyRequirement = .inGame},
+		.{.name = "drop", .key = c.GLFW_KEY_Q, .repeatAction = &game.player.dropFromHand, .notifyRequirement = .inGame},
 
 		.{.name = "takeBackgroundImage", .key = c.GLFW_KEY_PRINT_SCREEN, .pressAction = &takeBackgroundImageFn},
 		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .pressAction = &Window.toggleFullscreen},
@@ -216,19 +216,19 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "uiDown", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = true}},
 		.{.name = "uiRight", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = true}},
 		// text:
-		.{.name = "textCursorLeft", .key = c.GLFW_KEY_LEFT, .repeatAction = &gui.textCallbacks.left},
-		.{.name = "textCursorRight", .key = c.GLFW_KEY_RIGHT, .repeatAction = &gui.textCallbacks.right},
-		.{.name = "textCursorDown", .key = c.GLFW_KEY_DOWN, .repeatAction = &gui.textCallbacks.down},
-		.{.name = "textCursorUp", .key = c.GLFW_KEY_UP, .repeatAction = &gui.textCallbacks.up},
-		.{.name = "textGotoStart", .key = c.GLFW_KEY_HOME, .repeatAction = &gui.textCallbacks.gotoStart},
-		.{.name = "textGotoEnd", .key = c.GLFW_KEY_END, .repeatAction = &gui.textCallbacks.gotoEnd},
-		.{.name = "textDeleteLeft", .key = c.GLFW_KEY_BACKSPACE, .repeatAction = &gui.textCallbacks.deleteLeft},
-		.{.name = "textDeleteRight", .key = c.GLFW_KEY_DELETE, .repeatAction = &gui.textCallbacks.deleteRight},
-		.{.name = "textSelectAll", .key = c.GLFW_KEY_A, .repeatAction = &gui.textCallbacks.selectAll, .requiredModifiers = .{.control = true}},
-		.{.name = "textCopy", .key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy, .requiredModifiers = .{.control = true}},
-		.{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste, .requiredModifiers = .{.control = true}},
-		.{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut, .requiredModifiers = .{.control = true}},
-		.{.name = "textNewline", .key = c.GLFW_KEY_ENTER, .repeatAction = &gui.textCallbacks.newline},
+		.{.name = "textCursorLeft", .key = c.GLFW_KEY_LEFT, .repeatAction = &gui.text_callbacks.left},
+		.{.name = "textCursorRight", .key = c.GLFW_KEY_RIGHT, .repeatAction = &gui.text_callbacks.right},
+		.{.name = "textCursorDown", .key = c.GLFW_KEY_DOWN, .repeatAction = &gui.text_callbacks.down},
+		.{.name = "textCursorUp", .key = c.GLFW_KEY_UP, .repeatAction = &gui.text_callbacks.up},
+		.{.name = "textGotoStart", .key = c.GLFW_KEY_HOME, .repeatAction = &gui.text_callbacks.gotoStart},
+		.{.name = "textGotoEnd", .key = c.GLFW_KEY_END, .repeatAction = &gui.text_callbacks.gotoEnd},
+		.{.name = "textDeleteLeft", .key = c.GLFW_KEY_BACKSPACE, .repeatAction = &gui.text_callbacks.deleteLeft},
+		.{.name = "textDeleteRight", .key = c.GLFW_KEY_DELETE, .repeatAction = &gui.text_callbacks.deleteRight},
+		.{.name = "textSelectAll", .key = c.GLFW_KEY_A, .repeatAction = &gui.text_callbacks.selectAll, .requiredModifiers = .{.control = true}},
+		.{.name = "textCopy", .key = c.GLFW_KEY_C, .repeatAction = &gui.text_callbacks.copy, .requiredModifiers = .{.control = true}},
+		.{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.text_callbacks.paste, .requiredModifiers = .{.control = true}},
+		.{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.text_callbacks.cut, .requiredModifiers = .{.control = true}},
+		.{.name = "textNewline", .key = c.GLFW_KEY_ENTER, .repeatAction = &gui.text_callbacks.newline},
 
 		// Hotbar shortcuts:
 		.{.name = "Hotbar 1", .key = c.GLFW_KEY_1, .pressAction = setHotbarSlot(1)},
@@ -303,7 +303,7 @@ pub fn exitToMenu() void {
 
 pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	defer heap.allocators.deinit();
-	defer heap.GarbageCollection.assertAllThreadsStopped();
+	defer heap.garbage_collection.assertAllThreadsStopped();
 	initThreadLocals();
 	defer deinitThreadLocals();
 	threadedIo = .init(globalAllocator.allocator, .{});
@@ -330,20 +330,20 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 
 	std.log.info("Starting game with version {s}", .{settings.version.version});
 
-	if (builtin.os.tag == .windows) {
+	if (builtin.target.os.tag == .windows) {
 		std.log.warn("Cubyz detected it's running on Windows. For optimal performance and reduced power usage please install Linux.", .{});
 	}
 
 	settings.environment.init(args.environ);
-	settings.launchConfig.init();
+	settings.launch_config.init();
 
-	const headless = settings.launchConfig.headlessServer;
+	const headless = settings.launch_config.headlessServer;
 
 	if (!headless) gui.initWindowList();
 	defer if (!headless) gui.deinitWindowList();
 
 	{
-		const homePath = args.environ.getAlloc(stackAllocator.allocator, if (builtin.os.tag == .windows) "USERPROFILE" else "HOME") catch |err| {
+		const homePath = args.environ.getAlloc(stackAllocator.allocator, if (builtin.target.os.tag == .windows) "USERPROFILE" else "HOME") catch |err| {
 			std.log.err("Failed to get environment variable for home path: {s}", .{@errorName(err)});
 			@panic("Failed to get environment variable for home path");
 		};
@@ -355,7 +355,7 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	settings.init();
 	defer settings.deinit();
 
-	threadPool = utils.ThreadPool.init(globalAllocator, settings.cpuThreads orelse @max(1, (std.Thread.getCpuCount() catch 4) -| 1));
+	threadPool = utils.ThreadPool.init(globalAllocator, @max(1, settings.launch_config.threadPoolThreads orelse (std.Thread.getCpuCount() catch 4) -| 1));
 	defer threadPool.deinit();
 
 	file_monitor.init();
@@ -390,8 +390,8 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	if (!headless) sync.client.init();
 	defer if (!headless) sync.client.deinit();
 
-	if (!headless) itemdrop.ItemDropRenderer.init();
-	defer if (!headless) itemdrop.ItemDropRenderer.deinit();
+	if (!headless) itemdrop.item_drop_renderer.init();
+	defer if (!headless) itemdrop.item_drop_renderer.deinit();
 
 	assets.init();
 
@@ -413,14 +413,14 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 	if (!headless) gui.init();
 	defer if (!headless) gui.deinit();
 
-	if (!headless) particles.ParticleManager.init();
-	defer if (!headless) particles.ParticleManager.deinit();
+	if (!headless) particles.particle_manager.init();
+	defer if (!headless) particles.particle_manager.deinit();
 
 	server.terrain.globalInit();
 
 	if (headless) {
-		server.startFromExistingThread(settings.launchConfig.autoEnterWorld, null, .multiplayer);
-		heap.GarbageCollection.waitForFreeCompletion();
+		server.startFromExistingThread(settings.launch_config.autoEnterWorld, null, .multiplayer);
+		heap.garbage_collection.waitForFreeCompletion();
 	} else {
 		clientMain();
 	}
@@ -429,21 +429,21 @@ pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
 pub fn clientMain() void { // MARK: clientMain()
 	if (settings.playerName.len == 0) {
 		gui.openWindow("change_name");
-	} else if (settings.launchConfig.autoEnterWorld.len == 0) {
+	} else if (settings.launch_config.autoEnterWorld.len == 0) {
 		gui.openWindow("main");
 	} else {
 		// Speed up the dev process by entering the world directly.
 		gui.windowlist.save_selection.mode = .singleplayer;
-		gui.windowlist.save_selection.openWorld(settings.launchConfig.autoEnterWorld);
+		gui.windowlist.save_selection.openWorld(settings.launch_config.autoEnterWorld);
 	}
 
-	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
+	Window.glfw_callbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastBeginRendering = timestamp();
 
 	audio.setMusic("cubyz:totaldemented/cubyz_remastered");
 
 	while (c.glfwWindowShouldClose(Window.window) == 0) {
-		heap.GarbageCollection.syncPoint();
+		heap.garbage_collection.syncPoint();
 		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
 		if (!isHidden) {
 			c.glfwSwapBuffers(Window.window);
@@ -456,7 +456,7 @@ pub fn clientMain() void { // MARK: clientMain()
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 
-			if (settings.launchConfig.vulkanTestingMode) {
+			if (settings.launch_config.vulkanTestingMode) {
 				graphics.vulkan.beginRender();
 			}
 		} else {
@@ -470,7 +470,7 @@ pub fn clientMain() void { // MARK: clientMain()
 		if (settings.fpsCap) |fpsCap| {
 			const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
 			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering.nanoseconds -% lastBeginRendering.nanoseconds)));
-			if (builtin.os.tag == .windows and minFrameTime < 20_000_000) { // Windows can oversleep a lot, so we waste power instead
+			if (builtin.target.os.tag == .windows and minFrameTime < 20_000_000) { // Windows can oversleep a lot, so we waste power instead
 				const targetTime = timestamp().addDuration(.fromNanoseconds(sleep));
 				while (timestamp().durationTo(targetTime).nanoseconds > 0) {}
 			} else {
@@ -493,17 +493,17 @@ pub fn clientMain() void { // MARK: clientMain()
 		if (!isHidden) {
 			if (game.world != null) {
 				renderer.updateFov(settings.fov);
-				renderer.render(game.Player.getEyePosBlocking(), deltaTime);
+				renderer.render(game.player.getEyePosBlocking(), deltaTime);
 			} else {
 				renderer.updateFov(70.0);
-				renderer.MenuBackGround.render(deltaTime);
+				renderer.menu_background.render(deltaTime);
 			}
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			gui.updateAndRenderGui();
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 
-			if (settings.launchConfig.vulkanTestingMode) {
+			if (settings.launch_config.vulkanTestingMode) {
 				graphics.vulkan.endRender();
 			}
 		}
@@ -528,20 +528,20 @@ pub fn clientMain() void { // MARK: clientMain()
 
 /// std.testing.refAllDeclsRecursive, but ignores C imports (by name)
 pub fn refAllDeclsRecursiveExceptCImports(comptime T: type) void {
-	if (!@import("builtin").is_test) return;
+	if (!builtin.is_test) return;
 	inline for (comptime std.meta.declarations(T)) |decl| blk: {
-		if (comptime std.mem.eql(u8, decl.name, "c")) continue;
-		if (comptime std.mem.eql(u8, decl.name, "hbft")) break :blk;
-		if (comptime std.mem.eql(u8, decl.name, "stb_image")) break :blk;
+		if (comptime std.mem.eql(u8, decl, "c")) continue;
+		if (comptime std.mem.eql(u8, decl, "hbft")) break :blk;
+		if (comptime std.mem.eql(u8, decl, "stb_image")) break :blk;
 		// TODO: Remove this after Zig removes Managed hashmap PixelGuys/Cubyz#308
-		if (comptime std.mem.eql(u8, decl.name, "Managed")) continue;
-		if (@TypeOf(@field(T, decl.name)) == type) {
-			switch (@typeInfo(@field(T, decl.name))) {
-				.@"struct", .@"enum", .@"union", .@"opaque" => refAllDeclsRecursiveExceptCImports(@field(T, decl.name)),
+		if (comptime std.mem.eql(u8, decl, "Managed")) continue;
+		if (@TypeOf(@field(T, decl)) == type) {
+			switch (@typeInfo(@field(T, decl))) {
+				.@"struct", .@"enum", .@"union", .@"opaque" => refAllDeclsRecursiveExceptCImports(@field(T, decl)),
 				else => {},
 			}
 		}
-		_ = &@field(T, decl.name);
+		_ = &@field(T, decl);
 	}
 }
 

@@ -22,7 +22,7 @@ pub var scrollOffset: f32 = 0;
 pub var scrollOffsetInteger: i32 = 0;
 var scrollOffsetFraction: f32 = 0;
 
-pub const Gamepad = struct { // MARK: Gamepad
+pub const gamepad = struct { // MARK: gamepad
 	pub var gamepadState: std.AutoHashMap(c_int, *c.GLFWgamepadstate) = undefined;
 	pub var controllerMappingsDownloaded: std.atomic.Value(bool) = std.atomic.Value(bool).init(false);
 	var controllerConnectedPreviously: bool = false;
@@ -96,7 +96,7 @@ pub const Gamepad = struct { // MARK: Gamepad
 				}
 			}
 			const isGrabbed = grabbed;
-			for (&main.KeyBoard.keys) |*key| {
+			for (&main.keyboard.keys) |*key| {
 				if (key.gamepadAxis == null) {
 					if (key.gamepadButton >= 0) {
 						const oldPressed = oldState.buttons[@intCast(key.gamepadButton)] != 0;
@@ -128,17 +128,17 @@ pub const Gamepad = struct { // MARK: Gamepad
 			}
 		}
 		if (!grabbed) {
-			const x = main.KeyBoard.key("uiRight").value - main.KeyBoard.key("uiLeft").value;
-			const y = main.KeyBoard.key("uiDown").value - main.KeyBoard.key("uiUp").value;
+			const x = main.keyboard.key("uiRight").value - main.keyboard.key("uiLeft").value;
+			const y = main.keyboard.key("uiDown").value - main.keyboard.key("uiUp").value;
 			if (x != 0 or y != 0) {
 				lastUsedMouse = false;
-				GLFWCallbacks.currentPos[0] += @floatCast(x*delta*256);
-				GLFWCallbacks.currentPos[1] += @floatCast(y*delta*256);
+				glfw_callbacks.currentPos[0] += @floatCast(x*delta*256);
+				glfw_callbacks.currentPos[1] += @floatCast(y*delta*256);
 				const winSize = getWindowSize();
-				GLFWCallbacks.currentPos[0] = std.math.clamp(GLFWCallbacks.currentPos[0], 0, winSize[0]);
-				GLFWCallbacks.currentPos[1] = std.math.clamp(GLFWCallbacks.currentPos[1], 0, winSize[1]);
+				glfw_callbacks.currentPos[0] = std.math.clamp(glfw_callbacks.currentPos[0], 0, winSize[0]);
+				glfw_callbacks.currentPos[1] = std.math.clamp(glfw_callbacks.currentPos[1], 0, winSize[1]);
 			}
-			GLFWCallbacks.scroll(undefined, 0, @floatCast((main.KeyBoard.key("scrollUp").value - main.KeyBoard.key("scrollDown").value)*delta*4));
+			glfw_callbacks.scroll(undefined, 0, @floatCast((main.keyboard.key("scrollUp").value - main.keyboard.key("scrollDown").value)*delta*4));
 		}
 		setCursorVisible(!grabbed and lastUsedMouse);
 	}
@@ -146,7 +146,7 @@ pub const Gamepad = struct { // MARK: Gamepad
 		return gamepadState.count() > 0;
 	}
 	pub fn wereControllerMappingsDownloaded() bool {
-		return controllerMappingsDownloaded.load(std.builtin.AtomicOrder.acquire);
+		return controllerMappingsDownloaded.load(.acquire);
 	}
 	const ControllerMappingDownloadTask = struct { // MARK: ControllerMappingDownloadTask
 		curTimestamp: i128,
@@ -188,7 +188,7 @@ pub const Gamepad = struct { // MARK: Gamepad
 			defer client.deinit();
 			var writer = std.Io.Writer.Allocating.init(main.stackAllocator.allocator);
 			defer writer.deinit();
-			defer controllerMappingsDownloaded.store(true, std.builtin.AtomicOrder.release);
+			defer controllerMappingsDownloaded.store(true, .release);
 			const fetchResult = client.fetch(.{
 				.method = .GET,
 				.location = .{.url = "https://raw.githubusercontent.com/mdqinc/SDL_GameControllerDB/master/gamecontrollerdb.txt"},
@@ -198,7 +198,7 @@ pub const Gamepad = struct { // MARK: Gamepad
 				return;
 			};
 			if (fetchResult.status != .ok) {
-				std.log.err("Failed to download controller mappings: HTTP error {d}", .{@intFromEnum(fetchResult.status)});
+				std.log.err("Failed to download controller mappings: HTTP error {d}", .{@backingInt(fetchResult.status)});
 				return;
 			}
 			files.cwd().write("./gamecontrollerdb.txt", writer.written()) catch |err| {
@@ -221,7 +221,7 @@ pub const Gamepad = struct { // MARK: Gamepad
 		}
 	};
 	pub fn downloadControllerMappings() void {
-		if (builtin.mode == .Debug) return; // TODO: The http fetch adds ~5 seconds to the compile time, so it's disabled in debug mode, see #24435
+		if (builtin.mode == .debug) return; // TODO: The http fetch adds ~5 seconds to the compile time, so it's disabled in debug mode, see #24435
 		var needsDownload: bool = false;
 		const curTimestamp: i96 = std.Io.Clock.Timestamp.now(main.io, .real).raw.nanoseconds;
 		const timestamp: i96 = blk: {
@@ -501,7 +501,7 @@ pub const Key = struct { // MARK: Key
 	}
 };
 
-pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
+pub const glfw_callbacks = struct { // MARK: glfw_callbacks
 	fn errorCallback(errorCode: c_int, description: [*c]const u8) callconv(.c) void {
 		std.log.err("GLFW Error({}): {s}", .{errorCode, description});
 	}
@@ -517,7 +517,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 					return;
 				}
 			}
-			for (&main.KeyBoard.keys) |*key| {
+			for (&main.keyboard.keys) |*key| {
 				if (glfw_key == key.key) {
 					if (glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
 						key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, textKeyPressedInTextField);
@@ -525,7 +525,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 				}
 			}
 		} else if (action == c.GLFW_REPEAT) {
-			for (&main.KeyBoard.keys) |*key| {
+			for (&main.keyboard.keys) |*key| {
 				if (glfw_key == key.key) {
 					if (glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
 						key.action(.repeat, isGrabbed, mods, textKeyPressedInTextField);
@@ -536,7 +536,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 	}
 	fn charCallback(_: ?*c.GLFWwindow, codepoint: c_uint) callconv(.c) void {
 		if (!grabbed) {
-			main.gui.textCallbacks.char(@intCast(codepoint));
+			main.gui.text_callbacks.char(@intCast(codepoint));
 		}
 	}
 
@@ -591,7 +591,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 					return;
 				}
 			}
-			for (&main.KeyBoard.keys) |*key| {
+			for (&main.keyboard.keys) |*key| {
 				if (button == key.mouseButton) {
 					key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods, false);
 				}
@@ -659,12 +659,12 @@ fn updateCursor() void {
 		c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_DISABLED);
 		// Behavior seems much more intended without this line on MacOS.
 		// Perhaps this is an inconsistency in GLFW due to its fresh XQuartz support?
-		if (@import("builtin").target.os.tag != .macos) {
+		if (builtin.target.os.tag != .macos) {
 			if (c.glfwRawMouseMotionSupported() != 0) {
 				c.glfwSetInputMode(window, c.GLFW_RAW_MOUSE_MOTION, c.GLFW_TRUE);
 			}
 		}
-		GLFWCallbacks.ignoreDataAfterRecentGrab = true;
+		glfw_callbacks.ignoreDataAfterRecentGrab = true;
 	} else {
 		if (cursorVisible) {
 			c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_NORMAL);
@@ -676,7 +676,7 @@ fn updateCursor() void {
 
 fn releaseButtonsOnGrabChange(grab: bool) void {
 	const state: Key.Requirement = if (grab) .inMenu else .inGame;
-	for (&main.KeyBoard.keys) |*key| {
+	for (&main.keyboard.keys) |*key| {
 		if (key.notifyRequirement == state and key.pressed) {
 			key.pressed = false;
 			if (key.releaseAction) |rel| rel(key.modsOnPress);
@@ -694,7 +694,7 @@ pub fn setMouseGrabbed(grab: bool) void {
 }
 
 pub fn getMousePosition() Vec2f {
-	return GLFWCallbacks.currentPos;
+	return glfw_callbacks.currentPos;
 }
 
 pub fn getWindowSize() Vec2f {
@@ -716,7 +716,7 @@ pub fn setClipboardString(string: []const u8) void {
 }
 
 pub fn init() void { // MARK: init()
-	_ = c.glfwSetErrorCallback(GLFWCallbacks.errorCallback);
+	_ = c.glfwSetErrorCallback(glfw_callbacks.errorCallback);
 	const windowTitle = "Cubyz " ++ main.settings.version.version;
 
 	if (builtin.target.os.tag == .macos) {
@@ -735,12 +735,12 @@ pub fn init() void { // MARK: init()
 		std.log.err("Vulkan is not supported. Please update your drivers if you want to keep playing Cubyz in the future.", .{});
 	} else {
 		c.glfwWindowHint(c.GLFW_CLIENT_API, c.GLFW_NO_API);
-		c.glfwWindowHint(c.GLFW_VISIBLE, @intFromBool(main.settings.launchConfig.vulkanTestingMode));
+		c.glfwWindowHint(c.GLFW_VISIBLE, @intFromBool(main.settings.launch_config.vulkanTestingMode));
 		vulkanWindow = c.glfwCreateWindow(width, height, windowTitle, null, null) orelse @panic("Failed to create GLFW window");
 		vulkan.init(vulkanWindow) catch |err| {
 			std.log.err("Error while initializing Vulkan: {s}", .{@errorName(err)});
 		};
-		if (!settings.launchConfig.vulkanTestingMode) {
+		if (!settings.launch_config.vulkanTestingMode) {
 			c.glfwDestroyWindow(vulkanWindow);
 			vulkan.deinit();
 		}
@@ -767,32 +767,32 @@ pub fn init() void { // MARK: init()
 		c.glfwSetWindowIcon(window, 1, &glfwImage);
 	}
 
-	_ = c.glfwSetKeyCallback(window, GLFWCallbacks.keyCallback);
-	_ = c.glfwSetCharCallback(window, GLFWCallbacks.charCallback);
-	_ = c.glfwSetFramebufferSizeCallback(window, GLFWCallbacks.framebufferSize);
-	_ = c.glfwSetCursorPosCallback(window, GLFWCallbacks.cursorPosition);
-	_ = c.glfwSetMouseButtonCallback(window, GLFWCallbacks.mouseButton);
-	_ = c.glfwSetScrollCallback(window, GLFWCallbacks.scroll);
+	_ = c.glfwSetKeyCallback(window, glfw_callbacks.keyCallback);
+	_ = c.glfwSetCharCallback(window, glfw_callbacks.charCallback);
+	_ = c.glfwSetFramebufferSizeCallback(window, glfw_callbacks.framebufferSize);
+	_ = c.glfwSetCursorPosCallback(window, glfw_callbacks.cursorPosition);
+	_ = c.glfwSetMouseButtonCallback(window, glfw_callbacks.mouseButton);
+	_ = c.glfwSetScrollCallback(window, glfw_callbacks.scroll);
 
 	c.glfwMakeContextCurrent(window);
 
 	if (c.gladLoadGL(c.glfwGetProcAddress) == 0) {
 		@panic("Failed to load OpenGL functions from GLAD");
 	}
-	c.glClipControl(c.GL_UPPER_LEFT, c.GL_NEGATIVE_ONE_TO_ONE);
+	c.glClipControl(c.GL_UPPER_LEFT, c.GL_ZERO_TO_ONE);
 	reloadSettings();
 
 	c.glEnable(c.GL_DEBUG_OUTPUT);
 	c.glEnable(c.GL_DEBUG_OUTPUT_SYNCHRONOUS);
-	c.glDebugMessageCallback(GLFWCallbacks.glDebugOutput, null);
+	c.glDebugMessageCallback(glfw_callbacks.glDebugOutput, null);
 	c.glDebugMessageControl(c.GL_DONT_CARE, c.GL_DONT_CARE, c.GL_DONT_CARE, 0, null, c.GL_TRUE);
-	Gamepad.init();
+	gamepad.init();
 }
 
 pub fn deinit() void {
-	Gamepad.deinit();
+	gamepad.deinit();
 	c.glfwDestroyWindow(window);
-	if (settings.launchConfig.vulkanTestingMode) {
+	if (settings.launch_config.vulkanTestingMode) {
 		c.glfwDestroyWindow(vulkanWindow);
 		vulkan.deinit();
 	}
@@ -810,8 +810,8 @@ pub fn handleEvents(deltaTime: f64) void {
 	scrollOffset = 0;
 	scrollOffsetInteger = 0;
 	c.glfwPollEvents();
-	Gamepad.update(deltaTime);
-	GLFWCallbacks.applyCursorPositionChanges();
+	gamepad.update(deltaTime);
+	glfw_callbacks.applyCursorPositionChanges();
 }
 
 var oldX: c_int = 0;
