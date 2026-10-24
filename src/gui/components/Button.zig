@@ -97,7 +97,7 @@ pub fn globalDeinit() void {
 const Options = struct {
 	onAction: main.callbacks.SimpleCallback = .{},
 	disabled: bool = false,
-	border: f32 = 2,
+	border: f32 = 4,
 };
 
 pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *Button {
@@ -105,7 +105,7 @@ pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *But
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
-		.size = Vec2f{width, label.size[1] + 4*options.border},
+		.size = Vec2f{width, label.size[1] + 2*options.border},
 		.onAction = options.onAction,
 		.child = label.toComponent(),
 		.disabled = options.disabled,
@@ -118,7 +118,7 @@ pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, options: Opti
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
-		.size = icon.size + @as(Vec2f, @splat(4*options.border)),
+		.size = icon.size + @as(Vec2f, @splat(2*options.border)),
 		.onAction = options.onAction,
 		.child = icon.toComponent(),
 		.disabled = options.disabled,
