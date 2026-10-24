@@ -1,0 +1,11 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:rare/blocky_geode/loot/coal"},
+		.{.id = "cubyz:rare/blocky_geode/loot/glimmer"},
+		.{.id = "cubyz:rare/blocky_geode/loot/home"},
+		.{.id = "cubyz:rare/blocky_geode/loot/lab"},
+		.{.id = "cubyz:rare/blocky_geode/loot/lava"},
+		.{.id = "cubyz:rare/blocky_geode/loot/sulfur"},
+		.{.id = "cubyz:rare/blocky_geode/loot/uranium"},
+	},
+}
