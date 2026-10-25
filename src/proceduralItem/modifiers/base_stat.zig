@@ -24,9 +24,8 @@ fn getModifierName(data: Data) []const u8 {
 }
 
 pub fn loadData(zon: main.ZonElement) Data {
-	const strength = @max(zon.get(f32, "strength") orelse 0, -1);
 	return .{
-		.strength = if (strength != -1) 1/(1/@min(strength, 0) + 1) + @max(strength, 0) else -1,
+		.strength = getInverseAdjustedStrength(@max(zon.get(f32, "strength") orelse 0, -1)),
 		.targetProperty = main.items.ProceduralItemProperty.fromString(zon.get([]const u8, "targetProperty") orelse "|missing targetProperty field|") orelse blk: {
 			std.log.err("Could not find tagProperty {s}. Replacing it with .damage", .{zon.get([]const u8, "targetProperty") orelse "|missing targetProperty field|"});
 			break :blk .damage;
@@ -36,6 +35,7 @@ pub fn loadData(zon: main.ZonElement) Data {
 
 pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	if (data1.targetProperty != data2.targetProperty) return null;
+	if (std.math.sign(data1.strength) != std.math.sign(data2.strength)) return null;
 	return .{
 		.strength = std.math.sign(data1.strength + data2.strength)*@sqrt(@abs(data1.strength*@abs(data1.strength) + data2.strength*@abs(data2.strength))),
 		.targetProperty = data1.targetProperty,
@@ -57,4 +57,9 @@ pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
 fn getAdjustedStrength(strength: f32) f32 {
 	// used to make sure negative numbers cannot go below -100%
 	return (@max(strength, 0) + 1)/(@max(-strength, 0) + 1) - 1;
+}
+
+fn getInverseAdjustedStrength(strength: f32) f32 {
+	// used to make sure negative numbers cannot go below -100%
+	return 1/(1/@min(strength, 0) + 1) + @max(strength, 0);
 }
