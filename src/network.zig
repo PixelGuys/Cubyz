@@ -1262,6 +1262,10 @@ pub const Connection = struct { // MARK: Connection
 
 			var byteIndex: SequenceIndex = undefined;
 			const packetLen = self.sendBuffer.getNextPacketToSend(&byteIndex, writer.data.items.ptr[5..writer.data.capacity], time, considerForCongestionControl, self.allowedDelay) orelse return null;
+			if (!conn.lockDebug) {
+				conn.packets += 1;
+				conn.mtuSum += conn.mtuEstimate;
+			}
 			writer.writeInt(SequenceIndex, byteIndex);
 			_ = internalHeaderOverhead.fetchAdd(5, .monotonic);
 			_ = externalHeaderOverhead.fetchAdd(headerOverhead, .monotonic);
@@ -1688,6 +1692,7 @@ pub const Connection = struct { // MARK: Connection
 	// MARK: fields
 	packets: usize = 0,
 	mtuSum: usize = 0,
+	lockDebug: bool = false,
 
 	manager: *ConnectionManager,
 	user: ?*main.server.User,
@@ -1953,8 +1958,6 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn receive(self: *Connection, data: []const u8) void {
-		self.packets += 1;
-		self.mtuSum += data.len;
 		self.tryReceive(data) catch |err| {
 			std.log.warn("Got error while processing received network data: {s}", .{@errorName(err)});
 			if (@errorReturnTrace()) |trace| {
