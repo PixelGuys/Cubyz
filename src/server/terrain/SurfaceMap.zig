@@ -63,7 +63,7 @@ pub const MapFragmentPosition = struct {
 pub const MapFragmentBiomeSampleMapInitializer = struct {
 	pub const mapShift = 8;
 	pub const mapSize = 1 << mapShift;
-	
+
 	uniqueBiomeSamples: main.List(BiomeSample) = .empty,
 	seedKeyBiomeSampleArrays: std.StringHashMapUnmanaged(u32) = .empty,
 	biomeSampleMap: [mapSize][mapSize]u32 = undefined,
@@ -286,7 +286,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 
 				var reader = BinaryReader.init(rawData);
 				const uniqueBiomeSamplesLength = try reader.readInt(u32);
-				
+
 				var mapInitializer: MapFragmentBiomeSampleMapInitializer = .{};
 				defer mapInitializer.finalizePopulation(self);
 
