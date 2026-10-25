@@ -61,5 +61,5 @@ fn getAdjustedStrength(strength: f32) f32 {
 
 fn getInverseAdjustedStrength(strength: f32) f32 {
 	// used to make sure negative numbers cannot go below -100%
-	return 1/(1/@min(strength, 0) + 1) + @max(strength, 0);
+	return if (strength != -1) 1/(1/@min(strength, 0) + 1) + @max(strength, 0) else -1;
 }
