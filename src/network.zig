@@ -818,7 +818,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 };
 
 pub const Connection = struct { // MARK: Connection
-	const maxMtu: u32 = 65507; // max udp packet size
+	const maxMtu: u32 = ethernetMtu; // max udp packet size
 	const minMtu: u32 = 576 - 20 - 8; // IPv4 MTU minus IP header minus udp header
 	const headerOverhead = 20 + 8 + 42; // IP Header + UDP Header + Ethernet header/footer
 	const ethernetMtu = 1500 - 20 - 8; // Ethernet data MTU minus IP header minus udp header
@@ -1686,6 +1686,8 @@ pub const Connection = struct { // MARK: Connection
 	};
 
 	// MARK: fields
+	packets: usize = 0,
+	mtuSum: usize = 0,
 
 	manager: *ConnectionManager,
 	user: ?*main.server.User,
@@ -1951,6 +1953,8 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn receive(self: *Connection, data: []const u8) void {
+		self.packets += 1;
+		self.mtuSum += data.len;
 		self.tryReceive(data) catch |err| {
 			std.log.warn("Got error while processing received network data: {s}", .{@errorName(err)});
 			if (@errorReturnTrace()) |trace| {

@@ -116,7 +116,7 @@ pub const handshake = struct { // MARK: handshake
 					conn.send(.secure, id, writer.data.items);
 				},
 				.assets => {
-					std.log.info("Received assets.", .{});
+					std.log.info("{d} | {d} | {d} | Received assets.", .{conn.packets, conn.mtuSum, conn.mtuSum/conn.packets});
 					main.files.cubyzDir().deleteTree("serverAssets") catch {}; // Delete old assets.
 					var dir = try main.files.cubyzDir().openDir("serverAssets");
 					defer dir.close();
