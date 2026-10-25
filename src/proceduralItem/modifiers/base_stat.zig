@@ -24,9 +24,8 @@ fn getModifierName(data: Data) []const u8 {
 }
 
 pub fn loadData(zon: main.ZonElement) Data {
-	const strength = @max(zon.get(f32, "strength") orelse 0, -1);
 	return .{
-		.strength = if (strength != -1) 1/(1/@min(strength, 0) + 1) + @max(strength, 0) else -1,
+		.strength = zon.get(f32, "strength") orelse 0,
 		.targetProperty = main.items.ProceduralItemProperty.fromString(zon.get([]const u8, "targetProperty") orelse "|missing targetProperty field|") orelse blk: {
 			std.log.err("Could not find tagProperty {s}. Replacing it with .damage", .{zon.get([]const u8, "targetProperty") orelse "|missing targetProperty field|"});
 			break :blk .damage;
@@ -43,18 +42,13 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 }
 
 pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Data) void {
-	proceduralItem.setProperty(data.targetProperty, proceduralItem.getProperty(data.targetProperty)*(1 + getAdjustedStrength(data.strength)));
+	proceduralItem.setProperty(data.targetProperty, proceduralItem.getProperty(data.targetProperty)*(1 + @max(data.strength, -1)));
 }
 
 pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
 	if (data.strength >= 0) {
-		outString.print("{s} #808080(#30ca64+**{d:.0}% #808080{s})", .{getModifierName(data), getAdjustedStrength(data.strength)*100, @tagName(data.targetProperty)});
+		outString.print("{s} #808080(#30ca64+**{d:.0}% #808080{s})", .{getModifierName(data), data.strength*100, @tagName(data.targetProperty)});
 	} else {
-		outString.print("{s} #808080(#fd3535**{d:.0}% #808080{s})", .{getModifierName(data), getAdjustedStrength(data.strength)*100, @tagName(data.targetProperty)});
+		outString.print("{s} #808080(#fd3535**{d:.0}% #808080{s})", .{getModifierName(data), @max(data.strength, -1)*100, @tagName(data.targetProperty)});
 	}
-}
-
-fn getAdjustedStrength(strength: f32) f32 {
-	// used to make sure negative numbers cannot go below -100%
-	return (@max(strength, 0) + 1)/(@max(-strength, 0) + 1) - 1;
 }
