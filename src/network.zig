@@ -1661,7 +1661,7 @@ pub const Connection = struct { // MARK: Connection
 		if (loss == .noLoss) return;
 		self.slowStart = false;
 		if (loss == .doubleLoss) {
-			self.rttEstimate *= 1.5;
+			self.rttUncertainty += 0.05*self.rttEstimate;
 			self.bandwidthEstimateInBytesPerRtt /= 2;
 			self.bandwidthEstimateInBytesPerRtt = @max(self.bandwidthEstimateInBytesPerRtt, minMtu);
 		}
