@@ -20,6 +20,26 @@ pub const BiomeSample = struct {
 	hills: f32,
 	mountains: f32,
 	seed: u64,
+
+	pub const HashContext = struct {
+		pub fn hash(_: HashContext, biomeSample: BiomeSample) u64 {
+			var hasher = std.hash.Wyhash.init(0);
+			hasher.update(biomeSample.biome.id);
+			std.hash.autoHash(&hasher, @as(u32, @bitCast(biomeSample.height)));
+			std.hash.autoHash(&hasher, @as(u32, @bitCast(biomeSample.height)));
+			std.hash.autoHash(&hasher, @as(u32, @bitCast(biomeSample.hills)));
+			std.hash.autoHash(&hasher, @as(u32, @bitCast(biomeSample.mountains)));
+			std.hash.autoHash(&hasher, @as(u32, @bitCast(biomeSample.roughness)));
+			std.hash.autoHash(&hasher, @as(u64, @bitCast(biomeSample.seed)));
+			return hasher.final();
+		}
+
+		pub fn eql(_: HashContext, a: BiomeSample, b: BiomeSample) bool {
+			// if (a.biome == b.biome and a.height == b.height and a.hills == b.hills and a.mountains == b.mountains and a.roughness == b.roughness and a.seed == b.seed) return true;
+			// return false;
+			return std.meta.eql(a, b);
+		}
+	};
 };
 
 const ClimateMapFragmentPosition = struct {

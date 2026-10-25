@@ -61,30 +61,11 @@ pub const MapFragmentPosition = struct {
 };
 
 pub const MapFragmentBiomeSampleMapInitializer = struct {
-	const BiomeSampleHashKey = struct {
-		biome: *const Biome,
-		height: u32,
-		roughness: u32,
-		hills: u32,
-		mountains: u32,
-		seed: u64,
-
-		pub fn fromBiomeSample(biomeSample: BiomeSample) BiomeSampleHashKey {
-			return .{
-				.biome = biomeSample.biome,
-				.height = @bitCast(biomeSample.height),
-				.roughness = @bitCast(biomeSample.roughness),
-				.hills = @bitCast(biomeSample.hills),
-				.mountains = @bitCast(biomeSample.mountains),
-				.seed = @bitCast(biomeSample.seed),
-			};
-		}
-	};
 	pub const mapShift = 8;
 	pub const mapSize = 1 << mapShift;
 
 	uniqueBiomeSamples: main.List(BiomeSample) = .empty,
-	biomeSampleIndexes: std.AutoHashMapUnmanaged(BiomeSampleHashKey, u32) = .empty,
+	biomeSampleIndexes: std.HashMapUnmanaged(BiomeSample, u32, BiomeSample.HashContext, 80) = .empty,
 	biomeSampleMap: [mapSize][mapSize]u32 = undefined,
 
 	pub fn deinit(self: *MapFragmentBiomeSampleMapInitializer) void {
@@ -99,13 +80,12 @@ pub const MapFragmentBiomeSampleMapInitializer = struct {
 	}
 
 	pub fn setBiomeSample(self: *MapFragmentBiomeSampleMapInitializer, x: i32, y: i32, newBiomeSample: BiomeSample) void {
-		const hashKey: BiomeSampleHashKey = BiomeSampleHashKey.fromBiomeSample(newBiomeSample);
-		const fetched = self.biomeSampleIndexes.get(hashKey);
+		const fetched = self.biomeSampleIndexes.get(newBiomeSample);
 		if (fetched != null) {
 			self.biomeSampleMap[@intCast(x)][@intCast(y)] = @intCast(fetched.?);
 			return;
 		}
-		self.biomeSampleIndexes.put(main.stackAllocator.allocator, hashKey, @intCast(self.uniqueBiomeSamples.items.len)) catch unreachable;
+		self.biomeSampleIndexes.put(main.stackAllocator.allocator, newBiomeSample, @intCast(self.uniqueBiomeSamples.items.len)) catch unreachable;
 		self.biomeSampleMap[@intCast(x)][@intCast(y)] = @intCast(self.uniqueBiomeSamples.items.len);
 		self.uniqueBiomeSamples.append(main.globalAllocator, newBiomeSample);
 	}
