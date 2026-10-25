@@ -650,6 +650,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				.time = time,
 			}) catch unreachable;
 		} else {
+			if (!main.server.world.?.doGameTimeCycle and data.len > 1000) return;
+
 			self.socket.send(data, target);
 		}
 	}
