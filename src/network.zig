@@ -1165,14 +1165,6 @@ pub const Connection = struct { // MARK: Connection
 				}
 				if (range.len > Connection.minMtu and hadDoubleLoss) {
 					conn.mtuProbingState.increaseLossCounter(conn, range.len);
-					// split the packet, so it has a smaller size. This is to reduce it's impact on the lossCounter for the mtuEstimate
-					self.lostRanges.pushFront(.{
-						.start = range.start +% @as(SequenceIndex, @divFloor(range.len, 2)),
-						.len = range.len - @as(SequenceIndex, @divFloor(range.len, 2)),
-						.timestamp = range.timestamp,
-						.considerForCongestionControl = range.considerForCongestionControl,
-					});
-					range.len = @divFloor(range.len, 2);
 				}
 				range.wasResent = true;
 				self.lostRanges.pushBack(range);
