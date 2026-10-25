@@ -1137,7 +1137,7 @@ pub const Connection = struct { // MARK: Connection
 					// This decreases the chance of triggering congestion control from random packet loss
 					if (range.wasResentAsFirstPacket) hadDoubleLoss = true;
 					hadLoss = true;
-					range.wasResentAsFirstPacket = true;
+					range.wasResentAsFirstPacket = !hadDoubleLoss;
 				}
 				range.wasResent = true;
 				self.lostRanges.pushBack(range);
