@@ -33,7 +33,7 @@ fn toggleNamesWithIndex(value: bool) void {
 }
 
 fn logout() void {
-	main.network.authentication.KeyCollection.initialized = false;
+	main.network.authentication.key_collection.initialized = false;
 	main.settings.storedAccount.deinit(main.globalAllocator);
 	main.settings.storedAccount = .empty;
 	main.settings.save();
@@ -49,7 +49,7 @@ fn logout() void {
 }
 
 fn copy() void {
-	const key = main.network.authentication.KeyCollection.getPublicKey(main.stackAllocator, settings.launchConfig.preferredAuthenticationAlgorithm);
+	const key = main.network.authentication.key_collection.getPublicKey(main.stackAllocator, settings.launch_config.preferredAuthenticationAlgorithm);
 	defer main.stackAllocator.free(key);
 	main.Window.setClipboardString(key);
 }
@@ -58,10 +58,10 @@ pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 400, 16);
 	list.add(CheckBox.init(.{0, 0}, 316, "Streamer Mode (hides sensitive data)", main.settings.streamerMode, &toggleStreamerMode));
 	list.add(CheckBox.init(.{0, 0}, 316, "Display players index after their name", main.settings.showPlayerIndexWithName, &toggleNamesWithIndex));
-	list.add(Button.initText(.{0, 0}, 150, "Copy public key", .{.onAction = .init(copy), .disabled = !main.network.authentication.KeyCollection.initialized}));
+	list.add(Button.initText(.{0, 0}, 150, "Copy public key", .{.onAction = .init(copy), .disabled = !main.network.authentication.key_collection.initialized}));
 	inGameDisabled = main.game.world != null;
 	list.add(Button.initText(.{0, 0}, 150, "Change Name", .{.onAction = gui.openWindowCallback("change_name"), .disabled = inGameDisabled}));
-	logoutButton = Button.initText(.{0, 0}, 150, "Logout", .{.onAction = .init(logout), .disabled = inGameDisabled or !main.network.authentication.KeyCollection.initialized});
+	logoutButton = Button.initText(.{0, 0}, 150, "Logout", .{.onAction = .init(logout), .disabled = inGameDisabled or !main.network.authentication.key_collection.initialized});
 	list.add(logoutButton);
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
@@ -76,5 +76,5 @@ pub fn onClose() void {
 }
 
 pub fn update() void {
-	logoutButton.disabled = inGameDisabled or !main.network.authentication.KeyCollection.initialized;
+	logoutButton.disabled = inGameDisabled or !main.network.authentication.key_collection.initialized;
 }

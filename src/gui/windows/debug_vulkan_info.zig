@@ -21,7 +21,7 @@ pub var window = GuiWindow{
 		.{.attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper}},
 		.{.attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper}},
 	},
-	.contentSize = Vec2f{160, 8 + 8*std.meta.fieldNames(@TypeOf(vulkan.interestingExtensions)).len},
+	.contentSize = Vec2f{160, 8 + 8*@typeInfo(@TypeOf(vulkan.interestingExtensions)).@"struct".field_names.len},
 	.isHud = false,
 	.showTitleBar = false,
 	.hasBackground = false,
@@ -32,7 +32,7 @@ pub fn render() void {
 	var y: f32 = 0;
 	draw.print("Vulkan Version: {d}.{d}", .{vulkan.version.major, vulkan.version.minor}, 0, y, 8);
 	y += 8;
-	inline for (comptime std.meta.fieldNames(@TypeOf(vulkan.interestingExtensions))) |extensionName| {
+	inline for (@typeInfo(@TypeOf(vulkan.interestingExtensions)).@"struct".field_names) |extensionName| {
 		if (@field(vulkan.interestingExtensions, extensionName)) {
 			draw.print("{s} present", .{extensionName}, 0, y, 8);
 			y += 8;

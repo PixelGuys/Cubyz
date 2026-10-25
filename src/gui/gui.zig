@@ -41,7 +41,7 @@ pub var scale: f32 = undefined;
 
 pub var hoveredItemSlot: ?*ItemSlot = null;
 
-const GuiCommandQueue = struct { // MARK: GuiCommandQueue
+const gui_command_queue = struct { // MARK: gui_command_queue
 	const Action = enum {
 		open,
 		openModal,
@@ -98,7 +98,7 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	}
 
 	fn executeOpenModalWindowCommand(window: *GuiWindow) void {
-		const alreadyOpen = std.mem.containsAtLeastScalar(*GuiWindow, openWindows.items, 1, window);
+		const alreadyOpen = std.mem.containsAtLeastScalar(*GuiWindow, openWindows.items, window, 1);
 		if (!alreadyOpen) setSelectedTextInput(null);
 		modalWindow = window;
 		executeOpenWindowCommand(window);
@@ -123,13 +123,13 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 };
 
 pub fn initWindowList() void {
-	GuiCommandQueue.init();
+	gui_command_queue.init();
 	windowList = .init(main.globalAllocator);
 	hudWindows = .init(main.globalAllocator);
 	openWindows = .init(main.globalAllocator);
-	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
-		const windowStruct = @field(windowlist, decl.name);
-		windowStruct.window.id = decl.name;
+	inline for (@typeInfo(windowlist).@"struct".decl_names) |decl| {
+		const windowStruct = @field(windowlist, decl);
+		windowStruct.window.id = decl;
 		addWindow(&windowStruct.window);
 		const functionNames = [_][]const u8{"render", "update", "updateSelected", "updateHovered", "onOpen", "onClose"};
 		inline for (functionNames) |function| {
@@ -144,12 +144,12 @@ pub fn deinitWindowList() void {
 	windowList.clearAndFree();
 	hudWindows.deinit();
 	openWindows.deinit();
-	GuiCommandQueue.deinit();
+	gui_command_queue.deinit();
 }
 
 pub fn init() void { // MARK: init()
-	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
-		const windowStruct = @field(windowlist, decl.name);
+	inline for (@typeInfo(windowlist).@"struct".decl_names) |decl| {
+		const windowStruct = @field(windowlist, decl);
 		if (@hasDecl(windowStruct, "init")) {
 			windowStruct.init();
 		}
@@ -185,8 +185,8 @@ pub fn deinit() void {
 	DiscreteSlider.globalDeinit();
 	TextInput.globalDeinit();
 	tooltip.globalDeinit();
-	inline for (@typeInfo(windowlist).@"struct".decls) |decl| {
-		const WindowStruct = @field(windowlist, decl.name);
+	inline for (@typeInfo(windowlist).@"struct".decl_names) |decl| {
+		const WindowStruct = @field(windowlist, decl);
 		if (@hasDecl(WindowStruct, "deinit")) {
 			WindowStruct.deinit();
 		}
@@ -207,8 +207,8 @@ pub fn save() void { // MARK: save()
 				},
 				.attachedToFrame => |attachedToFrame| {
 					relPosZon.put("type", "attachedToFrame");
-					relPosZon.put("selfAttachmentPoint", @intFromEnum(attachedToFrame.selfAttachmentPoint));
-					relPosZon.put("otherAttachmentPoint", @intFromEnum(attachedToFrame.otherAttachmentPoint));
+					relPosZon.put("selfAttachmentPoint", @backingInt(attachedToFrame.selfAttachmentPoint));
+					relPosZon.put("otherAttachmentPoint", @backingInt(attachedToFrame.otherAttachmentPoint));
 				},
 				.relativeToWindow => |relativeToWindow| {
 					relPosZon.put("type", "relativeToWindow");
@@ -218,8 +218,8 @@ pub fn save() void { // MARK: save()
 				.attachedToWindow => |attachedToWindow| {
 					relPosZon.put("type", "attachedToWindow");
 					relPosZon.put("reference", attachedToWindow.reference.id);
-					relPosZon.put("selfAttachmentPoint", @intFromEnum(attachedToWindow.selfAttachmentPoint));
-					relPosZon.put("otherAttachmentPoint", @intFromEnum(attachedToWindow.otherAttachmentPoint));
+					relPosZon.put("selfAttachmentPoint", @backingInt(attachedToWindow.selfAttachmentPoint));
+					relPosZon.put("otherAttachmentPoint", @backingInt(attachedToWindow.otherAttachmentPoint));
 				},
 			}
 			windowZon.put(([_][]const u8{"relPos0", "relPos1"})[i], relPosZon);
@@ -265,8 +265,8 @@ fn load() void {
 				relPos.* = .{.ratio = relPosZon.get(f32, "ratio") orelse 0.5};
 			} else if (std.mem.eql(u8, typ, "attachedToFrame")) {
 				relPos.* = .{.attachedToFrame = .{
-					.selfAttachmentPoint = @enumFromInt(relPosZon.get(u8, "selfAttachmentPoint") orelse 0),
-					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint") orelse 0),
+					.selfAttachmentPoint = @fromBackingInt(relPosZon.get(u8, "selfAttachmentPoint") orelse 0),
+					.otherAttachmentPoint = @fromBackingInt(relPosZon.get(u8, "otherAttachmentPoint") orelse 0),
 				}};
 			} else if (std.mem.eql(u8, typ, "relativeToWindow")) {
 				const reference = getWindowById(relPosZon.get([]const u8, "reference") orelse "") orelse continue;
@@ -278,8 +278,8 @@ fn load() void {
 				const reference = getWindowById(relPosZon.get([]const u8, "reference") orelse "") orelse continue;
 				relPos.* = .{.attachedToWindow = .{
 					.reference = reference,
-					.selfAttachmentPoint = @enumFromInt(relPosZon.get(u8, "selfAttachmentPoint") orelse 0),
-					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint") orelse 0),
+					.selfAttachmentPoint = @fromBackingInt(relPosZon.get(u8, "selfAttachmentPoint") orelse 0),
+					.otherAttachmentPoint = @fromBackingInt(relPosZon.get(u8, "otherAttachmentPoint") orelse 0),
 				}};
 			} else {
 				std.log.err("Unknown window attachment type: {s}", .{typ});
@@ -339,7 +339,7 @@ pub fn openWindow(id: []const u8) void {
 }
 
 pub fn openWindowFromRef(window: *GuiWindow) void {
-	GuiCommandQueue.scheduleCommand(.{.action = .open, .window = window});
+	gui_command_queue.scheduleCommand(.{.action = .open, .window = window});
 }
 
 pub fn openModalWindow(id: []const u8) void {
@@ -353,7 +353,7 @@ pub fn openModalWindow(id: []const u8) void {
 }
 
 pub fn openModalWindowFromRef(window: *GuiWindow) void {
-	GuiCommandQueue.scheduleCommand(.{.action = .openModal, .window = window});
+	gui_command_queue.scheduleCommand(.{.action = .openModal, .window = window});
 }
 
 pub fn toggleWindow(id: []const u8) void {
@@ -392,7 +392,7 @@ pub fn openWindowCallback(comptime id: []const u8) main.callbacks.SimpleCallback
 }
 
 pub fn closeWindowFromRef(window: *GuiWindow) void {
-	GuiCommandQueue.scheduleCommand(.{.action = .close, .window = window});
+	gui_command_queue.scheduleCommand(.{.action = .close, .window = window});
 }
 
 pub fn closeWindow(id: []const u8) void {
@@ -421,7 +421,7 @@ pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {
 	selectedTextInput = newSelectedTextInput;
 }
 
-pub const textCallbacks = struct {
+pub const text_callbacks = struct {
 	pub fn char(codepoint: u21) void {
 		if (selectedTextInput) |current| {
 			current.inputCharacter(codepoint);
@@ -577,7 +577,7 @@ pub fn updateWindowPositions() void {
 pub fn updateAndRenderGui() void {
 	const mousePos = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 	hoveredAWindow = false;
-	GuiCommandQueue.executeCommands();
+	gui_command_queue.executeCommands();
 	if (!main.Window.grabbed) {
 		if (selectedWindow) |selected| {
 			selected.updateSelected(mousePos);
@@ -607,7 +607,7 @@ pub fn updateAndRenderGui() void {
 		if (!main.Window.grabbed) {
 			const oldColor = draw.setColor(0x80000000);
 			defer draw.restoreColor(oldColor);
-			if (main.settings.launchConfig.vulkanTestingMode) {
+			if (main.settings.launch_config.vulkanTestingMode) {
 				graphics.vulkan.currentFrame.guiCommands.bindPipeline(GuiWindow.borderPipeline, graphics.draw.getScissor());
 				var uniforms: GuiWindow.BorderUniforms = undefined;
 				uniforms.effectLength = .{main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6};
@@ -640,7 +640,7 @@ pub fn toggleGameMenu() void {
 	if (!main.Window.grabbed) {
 		hideGui = false;
 	} else { // Take of the currently held item stack and close some windows
-		inventory.carried.depositOrDrop(&.{main.game.Player.inventory});
+		inventory.carried.depositOrDrop(&.{main.game.player.inventory});
 		hoveredItemSlot = null;
 		var i: usize = 0;
 		while (i < openWindows.items.len) {
@@ -673,7 +673,7 @@ pub const inventory = struct { // MARK: inventory
 	var isCrafting: bool = false;
 
 	pub fn init() void {
-		carried = ClientInventory.init(main.globalAllocator, 1, .serverShared, .{.hand = main.game.Player.id}, .{});
+		carried = ClientInventory.init(main.globalAllocator, 1, .serverShared, .{.hand = main.game.player.id}, .{});
 		carriedItemSlot = ItemSlot.init(.{0, 0}, carried, 0, .default, .normal);
 		carriedItemSlot.renderFrame = false;
 		initialized = true;
@@ -717,8 +717,8 @@ pub const inventory = struct { // MARK: inventory
 			return;
 		};
 		if (itemSlot.mode == .immutable) return;
-		const mainGuiButton = main.KeyBoard.key("mainGuiButton");
-		const secondaryGuiButton = main.KeyBoard.key("secondaryGuiButton");
+		const mainGuiButton = main.keyboard.key("mainGuiButton");
+		const secondaryGuiButton = main.keyboard.key("secondaryGuiButton");
 		if ((itemSlot.inventory.type == .crafting or itemSlot.inventory.type == .workbenchResult) and itemSlot.mode == .takeOnly and mainGuiButton.pressed and (recipeItem != .null or itemSlot.pressed)) {
 			const time = main.timestamp();
 			if (!isCrafting) {
@@ -735,13 +735,13 @@ pub const inventory = struct { // MARK: inventory
 					if (recipeItem == .null and item != .null) recipeItem = item.clone();
 					if (!std.meta.eql(item, recipeItem)) return;
 					if (mainGuiButton.modsOnPress.shift) {
-						main.game.Player.inventory.craftFrom(&.{main.game.Player.inventory}, itemSlot.inventory);
+						main.game.player.inventory.craftFrom(&.{main.game.player.inventory}, itemSlot.inventory);
 					} else {
-						main.game.Player.inventory.craftFrom(&.{carried}, itemSlot.inventory);
+						main.game.player.inventory.craftFrom(&.{carried}, itemSlot.inventory);
 					}
 				} else if (itemSlot.inventory.type == .workbenchResult) {
 					if (mainGuiButton.modsOnPress.shift) {
-						itemSlot.inventory.craftProceduralItem(&.{main.game.Player.inventory});
+						itemSlot.inventory.craftProceduralItem(&.{main.game.player.inventory});
 					} else {
 						itemSlot.inventory.craftProceduralItem(&.{carried});
 					}
@@ -756,7 +756,7 @@ pub const inventory = struct { // MARK: inventory
 		if (itemSlot.mode != .normal) return;
 
 		if (mainGuiButton.pressed and mainGuiButton.modsOnPress.shift) {
-			if (itemSlot.inventory.super.id == main.game.Player.inventory.super.id) blk: {
+			if (itemSlot.inventory.super.id == main.game.player.inventory.super.id) blk: {
 				var iterator = std.mem.reverseIterator(openWindows.items);
 				while (iterator.next()) |window| {
 					if (window.shiftClickableInventory) |inv| {
@@ -766,7 +766,7 @@ pub const inventory = struct { // MARK: inventory
 				}
 				itemSlot.inventory.depositToBag(itemSlot.itemSlot, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 			} else {
-				itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{main.game.Player.inventory}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
+				itemSlot.inventory.depositToAny(itemSlot.itemSlot, &.{main.game.player.inventory}, itemSlot.inventory.getAmount(itemSlot.itemSlot));
 			}
 			return;
 		}
@@ -809,10 +809,10 @@ pub const inventory = struct { // MARK: inventory
 				leftClickSlots.clearRetainingCapacity();
 			} else if (hoveredItemSlot) |hovered| {
 				if (hovered.inventory.type == .crafting or hovered.inventory.type == .workbenchResult) return;
-				if (main.KeyBoard.key("mainGuiButton").modsOnPress.shift) {
+				if (main.keyboard.key("mainGuiButton").modsOnPress.shift) {
 					if (hovered.inventory.type == .creative) {
 						const item = hovered.inventory.getItem(hovered.itemSlot);
-						ClientInventory.fillAnyFromCreative(&.{main.game.Player.inventory}, item, item.stackSize());
+						ClientInventory.fillAnyFromCreative(&.{main.game.player.inventory}, item, item.stackSize());
 					}
 					return;
 				}

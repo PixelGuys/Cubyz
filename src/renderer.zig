@@ -47,6 +47,16 @@ var deferredUniforms: struct {
 	zFar: c_int,
 	invViewMatrix: c_int,
 } = undefined;
+const DeferredUniforms = extern struct {
+	invViewMatrix: [4][4]f32 align(16),
+	tanXY: [2]f32 align(8),
+	zNear: f32,
+	zFar: f32,
+	@"fog.color": [3]f32 align(16),
+	@"fog.density": f32,
+	@"fog.fogLower": f32,
+	@"fog.fogHigher": f32,
+};
 var fakeReflectionPipeline: graphics.Pipeline = undefined;
 var fakeReflectionUniforms: struct {
 	normalVector: c_int,
@@ -71,9 +81,16 @@ pub fn init() void {
 		&deferredUniforms,
 		graphics.draw.SimpleVertex2D,
 		.{
+			.bindings = &.{
+				.sampler(3, .{.fragment = true}),
+				.sampler(4, .{.fragment = true}),
+				.sampler(5, .{.fragment = true}),
+			},
 			.rasterState = .{.cullMode = .none},
 			.depthStencilState = .{.depthTest = false, .depthWrite = false},
-			.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.world}},
+			.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.swapChain}},
+			.inputAssemblyState = .{.topology = .triangleStrip},
+			.pushConstantSize = @sizeOf(DeferredUniforms),
 		},
 	);
 	fakeReflectionPipeline = graphics.Pipeline.init(
@@ -89,10 +106,10 @@ pub fn init() void {
 		},
 	);
 	worldFrameBuffer = .init(Window.width, Window.height, c.GL_RGBA16F, true, .nearest, .clampToEdge);
-	Bloom.init();
-	MeshSelection.init();
-	MenuBackGround.init();
-	Skybox.init();
+	bloom.init();
+	mesh_selection.init();
+	menu_background.init();
+	skybox.init();
 	chunk_meshing.init();
 	mesh_storage.init();
 	reflectionCubeMap = .init();
@@ -104,10 +121,10 @@ pub fn deinit() void {
 	deferredRenderPassPipeline.deinit();
 	fakeReflectionPipeline.deinit();
 	worldFrameBuffer.deinit();
-	Bloom.deinit();
-	MeshSelection.deinit();
-	MenuBackGround.deinit();
-	Skybox.deinit();
+	bloom.deinit();
+	mesh_selection.deinit();
+	menu_background.deinit();
+	skybox.deinit();
 	mesh_storage.deinit();
 	chunk_meshing.deinit();
 	reflectionCubeMap.deinit();
@@ -159,7 +176,7 @@ pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 	const nightColor: Vec3f = .{0.3, 0.4, 0.5};
 	const ambient = @max(nightColor*@as(Vec3f, @splat(settings.nightBrightness)), @as(Vec3f, @splat(game.world.?.dayTime.ambientLight)));
 
-	itemdrop.ItemDisplayManager.update(deltaTime);
+	itemdrop.item_display_manager.update(deltaTime);
 	renderWorld(game.world.?, ambient, game.world.?.dayTime.fog.skyColor, playerPosition);
 	const startTime = main.timestamp();
 	mesh_storage.updateMeshes(startTime.addDuration(maximumMeshTime));
@@ -194,12 +211,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.clear);
 	worldFrameBuffer.clear(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
 	gpu_performance_measuring.stopQuery();
-	if (main.settings.launchConfig.vulkanTestingMode) {
-		worldFrameBuffer.bindAndClear(vulkan.currentFrame.renderCommands, .{.clearColor = .{.float32 = .{skyColor[0], skyColor[1], skyColor[2], 1}}}, .{.clearDepth = .{.depth = 0}});
+	if (main.settings.launch_config.vulkanTestingMode) {
+		worldFrameBuffer.bindAndClear(vulkan.currentFrame.renderCommands, .{.clearColor = .{.float32 = .{skyColor[0], skyColor[1], skyColor[2], 1}}}, .{.clearDepth = .{.depth = 1}});
 	}
-	defer if (main.settings.launchConfig.vulkanTestingMode) {
-		vulkan.currentFrame.renderCommands.endRendering();
-	};
 	game.camera.updateViewMatrix();
 
 	main.graphics.frame_uniforms.uploadNewFrame(.{
@@ -215,7 +229,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	const time: u32 = @intCast(main.timestamp().toMilliseconds() & std.math.maxInt(u32));
 
 	gpu_performance_measuring.startQuery(.skybox);
-	Skybox.render();
+	skybox.render();
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.animation);
@@ -238,7 +252,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	gpu_performance_measuring.startQuery(.chunk_rendering_preparation);
 	const direction = crosshairDirection(game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
-	MeshSelection.select(playerPos, direction, game.Player.inventory.getItem(game.Player.selectedSlot));
+	mesh_selection.select(playerPos, direction, game.player.inventory.getItem(game.player.selectedSlot));
 
 	chunk_meshing.beginRender();
 
@@ -255,7 +269,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.entity_rendering);
 	main.systems.client.render(ambientLight, playerPos, main.lastDeltaTime.load(.monotonic));
 
-	itemdrop.ItemDropRenderer.renderItemDrops(ambientLight, playerPos);
+	itemdrop.item_drop_renderer.renderItemDrops(ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.block_entity_rendering);
@@ -263,7 +277,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.particle_rendering);
-	particles.ParticleSystem.render(game.projectionMatrix, game.camera.viewMatrix, ambientLight);
+	particles.particle_system.render(ambientLight);
 	gpu_performance_measuring.stopQuery();
 
 	// Rebind block textures back to their original slots
@@ -272,7 +286,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glActiveTexture(c.GL_TEXTURE1);
 	blocks.meshes.emissionTextureArray.bind();
 
-	MeshSelection.render(playerPos);
+	mesh_selection.render(playerPos);
 
 	// Render transparent chunk meshes:
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE5);
@@ -295,21 +309,55 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	}
 
 	c.glDepthRange(0, 0.001);
-	itemdrop.ItemDropRenderer.renderDisplayItems(ambientLight, playerPos);
+	itemdrop.item_drop_renderer.renderDisplayItems(ambientLight, playerPos);
 	c.glDepthRange(0.001, 1);
 
 	chunk_meshing.endRender();
+
+	if (main.settings.launch_config.vulkanTestingMode) {
+		vulkan.currentFrame.renderCommands.endRendering();
+		worldFrameBuffer.prepareTexturesForBinding(vulkan.currentFrame.renderCommands);
+	}
 
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 
 	const playerBlock = mesh_storage.getBlockFromAnyLodFromRenderThread(@floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 
-	if (settings.bloom) {
-		Bloom.render(lastWidth, lastHeight, playerBlock, game.camera.viewMatrix);
+	if (settings.bloom and !settings.launch_config.vulkanTestingMode) { // TODO: Enable bloom in Vulkan
+		bloom.render(lastWidth, lastHeight, playerBlock, game.camera.viewMatrix);
 	} else {
-		Bloom.bindReplacementImage();
+		bloom.bindReplacementImage();
 	}
 	gpu_performance_measuring.startQuery(.final_copy);
+	if (settings.launch_config.vulkanTestingMode) {
+		vulkan.currentFrame.guiCommands.bindPipeline(deferredRenderPassPipeline, null);
+		vulkan.currentFrame.guiCommands.bindDescriptors(deferredRenderPassPipeline, .graphics, &.{
+			.{.image = .{.binding = 3, .image = worldFrameBuffer.color}},
+			.{.image = .{.binding = 4, .image = worldFrameBuffer.depth}},
+			.{.image = .{.binding = 5, .image = bloom.emptyBuffer.vulkanImage.?}},
+		});
+		graphics.frame_uniforms.bindToPipeline(vulkan.currentFrame.guiCommands, deferredRenderPassPipeline);
+		var uniforms: DeferredUniforms = undefined;
+		uniforms.invViewMatrix = game.camera.viewMatrix.transpose().toGl();
+		uniforms.tanXY = .{1.0/game.projectionMatrix.rows[0][0], -1.0/game.projectionMatrix.rows[1][2]};
+		uniforms.zNear = zNear;
+		uniforms.zFar = zFar;
+		if (!blocks.meshes.hasFog(playerBlock)) {
+			uniforms.@"fog.color" = game.world.?.dayTime.fog.fogColor;
+			uniforms.@"fog.density" = game.world.?.dayTime.fog.density;
+			uniforms.@"fog.fogLower" = game.world.?.dayTime.fog.fogLower;
+			uniforms.@"fog.fogHigher" = game.world.?.dayTime.fog.fogHigher;
+		} else {
+			const fogColor = blocks.meshes.fogColor(playerBlock);
+			uniforms.@"fog.color" = .{@as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0};
+			uniforms.@"fog.density" = blocks.meshes.fogDensity(playerBlock);
+			uniforms.@"fog.fogLower" = 1e10;
+			uniforms.@"fog.fogHigher" = 1e10;
+		}
+		vulkan.currentFrame.guiCommands.pushConstants(deferredRenderPassPipeline, &uniforms);
+		vulkan.currentFrame.guiCommands.bindVertexArray(graphics.draw.rectVao);
+		vulkan.currentFrame.guiCommands.draw(4, 0);
+	}
 	if (activeFrameBuffer == 0) c.glViewport(0, 0, main.Window.width, main.Window.height);
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
@@ -343,7 +391,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 }
 
-const Bloom = struct { // MARK: Bloom
+const bloom = struct { // MARK: bloom
 	var buffer1: graphics.FrameBuffer = undefined;
 	var buffer2: graphics.FrameBuffer = undefined;
 	var emptyBuffer: graphics.Texture = undefined;
@@ -491,7 +539,7 @@ const Bloom = struct { // MARK: Bloom
 	}
 };
 
-pub const MenuBackGround = struct { // MARK: MenuBackGround
+pub const menu_background = struct { // MARK: menu_background
 	var pipeline: graphics.Pipeline = undefined;
 
 	var vao: graphics.VertexArray = undefined;
@@ -624,7 +672,7 @@ pub const MenuBackGround = struct { // MARK: MenuBackGround
 			.projectionMatrix = game.projectionMatrix.toGl(),
 			.viewMatrix = viewMatrix.toGl(),
 		});
-		if (main.settings.launchConfig.vulkanTestingMode) {
+		if (main.settings.launch_config.vulkanTestingMode) {
 			vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
 			vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
 				.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
@@ -680,7 +728,7 @@ pub const MenuBackGround = struct { // MARK: MenuBackGround
 			// Draw to frame buffer.
 			buffer.bind();
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-			main.renderer.render(game.Player.getEyePosBlocking(), 0);
+			main.renderer.render(game.player.getEyePosBlocking(), 0);
 			// Copy the pixels directly from OpenGL
 			buffer.bind();
 			c.glReadPixels(0, 0, size, size, c.GL_RGBA, c.GL_UNSIGNED_BYTE, pixels.ptr);
@@ -704,12 +752,16 @@ pub const MenuBackGround = struct { // MARK: MenuBackGround
 	}
 };
 
-pub const Skybox = struct { // MARK: Skybox
+pub const skybox = struct { // MARK: skybox
 	var starPipeline: graphics.Pipeline = undefined;
 	var starUniforms: struct {
 		mvp: c_int,
 		starOpacity: c_int,
 	} = undefined;
+	const StarUniforms = extern struct {
+		mvp: [4][4]f32 align(16),
+		starOpacity: f32,
+	};
 
 	var starVao: c_uint = undefined;
 
@@ -756,7 +808,9 @@ pub const Skybox = struct { // MARK: Skybox
 			&starUniforms,
 			graphics.VertexArray.EmptyVertex,
 			.{
-				.bindings = &.{},
+				.bindings = &.{
+					.ssbo(12, .{.vertex = true}),
+				},
 				.rasterState = .{.cullMode = .none},
 				.depthStencilState = .{.depthTest = false, .depthWrite = false},
 				.blendState = .{.attachments = &.{.{
@@ -767,6 +821,8 @@ pub const Skybox = struct { // MARK: Skybox
 					.dstAlphaBlendFactor = .one,
 					.alphaBlendOp = .add,
 				}}, .formats = &.{.world}},
+				.inputAssemblyState = .{.topology = .triangleList},
+				.pushConstantSize = @sizeOf(StarUniforms),
 			},
 		);
 
@@ -842,19 +898,32 @@ pub const Skybox = struct { // MARK: Skybox
 		const starOpacity: f32 = game.world.?.dayTime.getStarOpacity();
 
 		if (starOpacity != 0) {
-			starPipeline.bind(null);
-
 			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationY(game.World.DayTime.celestialPoleAltitude).mul(Mat4f.rotationX(2*std.math.pi*game.world.?.dayTime.getDayProgress()))));
 
-			starSsbo.bind(12);
+			if (main.settings.launch_config.vulkanTestingMode) {
+				vulkan.currentFrame.renderCommands.bindPipeline(starPipeline, null);
+				vulkan.currentFrame.renderCommands.bindDescriptors(starPipeline, .graphics, &.{
+					.{.ssbo = .{.binding = 12, .ssbo = starSsbo}},
+				});
+				vulkan.currentFrame.renderCommands.pushConstants(starPipeline, &StarUniforms{
+					.mvp = starMatrix.toGl(),
+					.starOpacity = starOpacity,
+				});
+				graphics.frame_uniforms.bindToPipeline(vulkan.currentFrame.renderCommands, starPipeline);
+				vulkan.currentFrame.renderCommands.draw(numStars*3, 0);
+			} else {
+				starPipeline.bind(null);
 
-			c.glUniform1f(starUniforms.starOpacity, starOpacity);
-			c.glUniformMatrix4fv(starUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&starMatrix));
+				starSsbo.bind(12);
 
-			c.glBindVertexArray(starVao);
-			c.glDrawArrays(c.GL_TRIANGLES, 0, numStars*3);
+				c.glUniform1f(starUniforms.starOpacity, starOpacity);
+				c.glUniformMatrix4fv(starUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&starMatrix));
 
-			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
+				c.glBindVertexArray(starVao);
+				c.glDrawArrays(c.GL_TRIANGLES, 0, numStars*3);
+
+				c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
+			}
 		}
 	}
 };
@@ -894,7 +963,7 @@ pub const Frustum = struct { // MARK: Frustum
 	}
 };
 
-pub const MeshSelection = struct { // MARK: MeshSelection
+pub const mesh_selection = struct { // MARK: mesh_selection
 	var pipeline: graphics.Pipeline = undefined;
 	var uniforms: struct {
 		projectionMatrix: c_int,
@@ -1027,7 +1096,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	fn canPlaceBlock(pos: Vec3i, block: main.blocks.Block) bool {
-		if (main.physics.collision.collideWithBlock(block, pos[0], pos[1], pos[2], main.game.Player.getPosBlocking() + main.game.Player.outerBoundingBox.center(), main.game.Player.outerBoundingBox.extent(), .{0, 0, 0}) != null) {
+		if (main.physics.collision.collideWithBlock(block, pos[0], pos[1], pos[2], main.game.player.getPosBlocking() + main.game.player.outerBoundingBox.center(), main.game.player.outerBoundingBox.extent(), .{0, 0, 0}) != null) {
 			return false;
 		}
 		return true; // TODO: Check other entities
@@ -1085,8 +1154,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						}
 					}
 					if (std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) {
-						game.Player.selectionPosition2 = selectedPos;
-						main.network.protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos2, selectedPos);
+						game.player.selectionPosition2 = selectedPos;
+						main.network.protocols.generic_update.sendWorldEditPos(main.game.world.?.conn, .selectedPos2, selectedPos);
 						return;
 					}
 				},
@@ -1099,27 +1168,27 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	pub fn breakBlock(inventory: main.items.Inventory.ClientInventory, slot: u32, deltaTime: f64) void {
-		const swinging = main.entity.components.@"cubyz:swinging".client.get(main.game.Player.id) orelse blk: {
-			main.entity.components.@"cubyz:swinging".client.put(main.game.Player.id);
-			break :blk main.entity.components.@"cubyz:swinging".client.get(main.game.Player.id).?;
+		const swinging = main.entity.components.@"cubyz:swinging".client.get(main.game.player.id) orelse blk: {
+			main.entity.components.@"cubyz:swinging".client.put(main.game.player.id);
+			break :blk main.entity.components.@"cubyz:swinging".client.get(main.game.player.id).?;
 		};
 
 		if (selectedBlockPos) |selectedPos| {
-			const breaking = main.entity.components.@"cubyz:breaking".client.get(main.game.Player.id) orelse blk: {
-				main.entity.components.@"cubyz:breaking".client.put(main.game.Player.id, selectedPos);
-				break :blk main.entity.components.@"cubyz:breaking".client.get(main.game.Player.id).?;
+			const breaking = main.entity.components.@"cubyz:breaking".client.get(main.game.player.id) orelse blk: {
+				main.entity.components.@"cubyz:breaking".client.put(main.game.player.id, selectedPos);
+				break :blk main.entity.components.@"cubyz:breaking".client.get(main.game.player.id).?;
 			};
 			const stack = inventory.getStack(slot);
 			const isSelectionWand = stack.item == .baseItem and std.mem.eql(u8, stack.item.baseItem.id(), "cubyz:selection_wand");
 			if (isSelectionWand) {
-				game.Player.selectionPosition1 = selectedPos;
-				main.network.protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selectedPos);
+				game.player.selectionPosition1 = selectedPos;
+				main.network.protocols.generic_update.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selectedPos);
 				return;
 			}
 
 			if (@reduce(.Or, breaking.blockPos != selectedPos)) {
 				mesh_storage.removeBreakingAnimation(breaking.blockPos);
-				main.entity.components.@"cubyz:breaking".client.put(main.game.Player.id, selectedPos);
+				main.entity.components.@"cubyz:breaking".client.put(main.game.player.id, selectedPos);
 				swinging.currentSwingProgress = 0;
 				swinging.currentSwingTime = 0;
 			}
@@ -1130,8 +1199,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
 
 			main.sync.client.mutex.lock();
-			if (!game.Player.isCreative()) {
-				var damage: f32 = main.game.Player.defaultBlockDamage;
+			if (!game.player.isCreative()) {
+				var damage: f32 = main.game.player.defaultBlockDamage;
 				const isProceduralItem = stack.item == .proceduralItem;
 				if (isProceduralItem) {
 					damage = stack.item.proceduralItem.getBlockDamage(block);
@@ -1207,7 +1276,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	pub fn drawCube(relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
-		if (main.settings.launchConfig.vulkanTestingMode) {
+		if (main.settings.launch_config.vulkanTestingMode) {
 			vulkan.currentFrame.renderCommands.bindPipeline(pipeline, null);
 			vulkan.currentFrame.renderCommands.pushConstants(pipeline, &Uniforms{
 				.modelPosition = .{
@@ -1245,8 +1314,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		if (selectedBlockPos) |_selectedBlockPos| {
 			drawCube(@as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, selectionMin, selectionMax);
 		}
-		if (game.Player.selectionPosition1) |pos1| {
-			if (game.Player.selectionPosition2) |pos2| {
+		if (game.player.selectionPosition1) |pos1| {
+			if (game.player.selectionPosition2) |pos2| {
 				const bottomLeft: Vec3i = @min(pos1, pos2);
 				const topRight: Vec3i = @max(pos1, pos2);
 				drawCube(@as(Vec3d, @floatFromInt(bottomLeft)) - playerPos, .{0, 0, 0}, @floatFromInt(topRight - bottomLeft + Vec3i{1, 1, 1}));

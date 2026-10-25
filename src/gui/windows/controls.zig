@@ -64,7 +64,7 @@ fn invertMouseYCallback(newValue: bool) void {
 	main.settings.save();
 }
 fn sprintIsToggleCallback(newValue: bool) void {
-	main.KeyBoard.setIsToggling("sprint", newValue);
+	main.keyboard.setIsToggling("sprint", newValue);
 	main.settings.save();
 }
 
@@ -113,12 +113,12 @@ fn initWindow() void {
 	list.add(Button.initText(.{0, 0}, keybindButtonWidth, if (editingKeyboard) "Gamepad" else "Keyboard", .{.onAction = .init(toggleKeyboard)}));
 	list.add(ContinuousSlider.init(.{0, 0}, controlsListWidth, 0, 5, if (editingKeyboard) main.settings.mouseSensitivity else main.settings.controllerSensitivity, &updateSensitivity, &sensitivityFormatter));
 	list.add(CheckBox.init(.{0, 0}, controlsListWidth, "Invert mouse Y", main.settings.invertMouseY, &invertMouseYCallback));
-	list.add(CheckBox.init(.{0, 0}, controlsListWidth, "Toggle sprint", main.KeyBoard.key("sprint").isToggling == .yes, &sprintIsToggleCallback));
+	list.add(CheckBox.init(.{0, 0}, controlsListWidth, "Toggle sprint", main.keyboard.key("sprint").isToggling == .yes, &sprintIsToggleCallback));
 
 	if (!editingKeyboard) {
 		list.add(ContinuousSlider.init(.{0, 0}, controlsListWidth, 0, 1, main.settings.controllerAxisDeadzone, &updateDeadzone, &deadzoneFormatter));
 	}
-	for (&main.KeyBoard.keys) |*key| {
+	for (&main.keyboard.keys) |*key| {
 		const label = Label.init(.{0, 0}, keybindButtonWidth, key.name, .left);
 		const button = blk: {
 			if (key == selectedKey) {

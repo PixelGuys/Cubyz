@@ -52,7 +52,7 @@ const names = [_][]const u8{
 
 const buffers = 4;
 var curBuffer: u2 = 0;
-var queryObjects: [buffers][@typeInfo(Samples).@"enum".fields.len]c_uint = undefined;
+var queryObjects: [buffers][@typeInfo(Samples).@"enum".field_names.len]c_uint = undefined;
 
 var activeSample: ?Samples = null;
 
@@ -73,7 +73,7 @@ pub fn deinit() void {
 pub fn startQuery(sample: Samples) void {
 	std.debug.assert(activeSample == null); // There can be at most one active measurement at a time.
 	activeSample = sample;
-	c.glBeginQuery(c.GL_TIME_ELAPSED, queryObjects[curBuffer][@intFromEnum(sample)]);
+	c.glBeginQuery(c.GL_TIME_ELAPSED, queryObjects[curBuffer][@backingInt(sample)]);
 }
 
 pub fn stopQuery() void {

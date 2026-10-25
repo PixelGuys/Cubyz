@@ -73,7 +73,7 @@ pub const client = struct { // MARK: client
 		const fontScreenSize = fontBaseSize*screenUnits;
 
 		for (main.client.entity_manager.entities.items()) |ent| {
-			if (ent.id == game.Player.id) continue; // don't render local player
+			if (ent.id == game.player.id) continue; // don't render local player
 			if (ent.name.len == 0 and !settings.showPlayerIndexWithName) continue;
 
 			var offsetText: f32 = 0;
@@ -118,7 +118,7 @@ pub const client = struct { // MARK: client
 
 		// TODO: #3342
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |*component, id| {
-			if (id == game.Player.id) continue; // don't process local player
+			if (id == game.player.id) continue; // don't process local player
 
 			const entModel = component.entityModel.get();
 			const ent = main.client.entity_manager.getEntity(id) orelse continue;
@@ -150,7 +150,7 @@ pub const client = struct { // MARK: client
 		main.systems.systems.modelRenderer.client.nodeBuffer.beginRender();
 
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |component, id| {
-			if (id == game.Player.id) continue; // don't render local player
+			if (id == game.player.id) continue; // don't render local player
 
 			const entModel = component.entityModel.get();
 			const ent = main.client.entity_manager.getEntity(id) orelse continue;
