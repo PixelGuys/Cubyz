@@ -55,5 +55,5 @@ pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
 
 fn getAdjustedStrength(strength: f32) f32 {
 	// used to make sure negative numbers cannot go below -100%
-	return (@max(strength, 0) + 1)/(@min(strength, 0) + 1) - 1;
+	return (@max(strength, 0) + 1)/(@min(-strength, 0) + 1) - 1;
 }
