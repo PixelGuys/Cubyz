@@ -65,7 +65,7 @@ pub const MapFragmentBiomeSampleMapInitializer = struct {
 	pub const mapSize = 1 << mapShift;
 
 	uniqueBiomeSamples: main.List(BiomeSample) = .empty,
-	seedKeyBiomeSampleArrays: std.StringHashMapUnmanaged(u32) = .empty,
+	biomeSampleIndexes: std.StringHashMapUnmanaged(u32) = .empty,
 	biomeSampleMap: [mapSize][mapSize]u32 = undefined,
 
 	fn biomeSampleToStringKey(biomeSample: BiomeSample) []u8 {
@@ -75,11 +75,11 @@ pub const MapFragmentBiomeSampleMapInitializer = struct {
 
 	pub fn deinit(self: *MapFragmentBiomeSampleMapInitializer) void {
 		self.uniqueBiomeSamples.deinit(main.globalAllocator);
-		var iterator = self.seedKeyBiomeSampleArrays.iterator();
+		var iterator = self.biomeSampleIndexes.iterator();
 		while (iterator.next()) |entry| {
 			main.stackAllocator.free(entry.key_ptr.*);
 		}
-		self.seedKeyBiomeSampleArrays.deinit(main.stackAllocator.allocator);
+		self.biomeSampleIndexes.deinit(main.stackAllocator.allocator);
 	}
 
 	pub fn finalizePopulation(self: *MapFragmentBiomeSampleMapInitializer, map: *MapFragment) void {
@@ -90,13 +90,13 @@ pub const MapFragmentBiomeSampleMapInitializer = struct {
 
 	pub fn setBiomeSample(self: *MapFragmentBiomeSampleMapInitializer, x: i32, y: i32, newBiomeSample: BiomeSample) void {
 		const stringKey = biomeSampleToStringKey(newBiomeSample);
-		const fetched = self.seedKeyBiomeSampleArrays.get(stringKey);
+		const fetched = self.biomeSampleIndexes.get(stringKey);
 		if (fetched != null) {
 			main.stackAllocator.allocator.free(stringKey);
 			self.biomeSampleMap[@intCast(x)][@intCast(y)] = @intCast(fetched.?);
 			return;
 		}
-		self.seedKeyBiomeSampleArrays.put(main.stackAllocator.allocator, stringKey, @intCast(self.uniqueBiomeSamples.items.len)) catch unreachable;
+		self.biomeSampleIndexes.put(main.stackAllocator.allocator, stringKey, @intCast(self.uniqueBiomeSamples.items.len)) catch unreachable;
 		self.biomeSampleMap[@intCast(x)][@intCast(y)] = @intCast(self.uniqueBiomeSamples.items.len);
 		self.uniqueBiomeSamples.append(main.globalAllocator, newBiomeSample);
 	}
