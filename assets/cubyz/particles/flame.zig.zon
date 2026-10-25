@@ -5,5 +5,5 @@
 	.dragCoefficient = .{0.2, 0.3},
 	.onTouch = .{
 		.type = .destroy,
-	}
+	},
 }
