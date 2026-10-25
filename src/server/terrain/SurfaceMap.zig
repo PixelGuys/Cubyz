@@ -243,7 +243,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 				if (try main.utils.compression.inflateTo(rawData, fullReader.remaining) != rawData.len) return error.CorruptedFile;
 
 				var reader = BinaryReader.init(rawData);
-				
+
 				var mapInitializer: MapFragmentBiomeSampleMapInitializer = .{};
 				defer mapInitializer.finalizePopulation(self);
 
@@ -282,7 +282,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 
 				const rawData: []u8 = main.stackAllocator.alloc(u8, biomeSampleDataLength + biomeSampleSize + palletizedArraySize + heightDataSize + originalHeightDataSize);
 				defer main.stackAllocator.free(rawData);
-				if (try main.utils.Compression.inflateTo(rawData, fullReader.remaining) != rawData.len) return error.CorruptedFile;
+				if (try main.utils.compression.inflateTo(rawData, fullReader.remaining) != rawData.len) return error.CorruptedFile;
 
 				var reader = BinaryReader.init(rawData);
 				const uniqueBiomeSamplesLength = try reader.readInt(u32);
