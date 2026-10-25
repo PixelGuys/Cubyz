@@ -61,24 +61,34 @@ pub const MapFragmentPosition = struct {
 };
 
 pub const MapFragmentBiomeSampleMapInitializer = struct {
+	const BiomeSampleHashKey = struct {
+		biome: *const Biome,
+		height: u32,
+		roughness: u32,
+		hills: u32,
+		mountains: u32,
+		seed: u64,
+
+		pub fn fromBiomeSample(biomeSample: BiomeSample) BiomeSampleHashKey {
+			return .{
+				.biome = biomeSample.biome,
+				.height = @bitCast(biomeSample.height),
+				.roughness = @bitCast(biomeSample.roughness),
+				.hills = @bitCast(biomeSample.hills),
+				.mountains = @bitCast(biomeSample.mountains),
+				.seed = @bitCast(biomeSample.seed),
+			};
+		}
+	};
 	pub const mapShift = 8;
 	pub const mapSize = 1 << mapShift;
 
 	uniqueBiomeSamples: main.List(BiomeSample) = .empty,
-	biomeSampleIndexes: std.StringHashMapUnmanaged(u32) = .empty,
+	biomeSampleIndexes: std.AutoHashMapUnmanaged(BiomeSampleHashKey, u32) = .empty,
 	biomeSampleMap: [mapSize][mapSize]u32 = undefined,
-
-	fn biomeSampleToStringKey(biomeSample: BiomeSample) []u8 {
-		const keyString = main.stackAllocator.allocator.print("{}{}{}{}{}{}", .{biomeSample.biome.paletteId, biomeSample.height, biomeSample.hills, biomeSample.mountains, biomeSample.roughness, biomeSample.seed}) catch unreachable;
-		return keyString;
-	}
 
 	pub fn deinit(self: *MapFragmentBiomeSampleMapInitializer) void {
 		self.uniqueBiomeSamples.deinit(main.globalAllocator);
-		var iterator = self.biomeSampleIndexes.iterator();
-		while (iterator.next()) |entry| {
-			main.stackAllocator.free(entry.key_ptr.*);
-		}
 		self.biomeSampleIndexes.deinit(main.stackAllocator.allocator);
 	}
 
@@ -89,14 +99,13 @@ pub const MapFragmentBiomeSampleMapInitializer = struct {
 	}
 
 	pub fn setBiomeSample(self: *MapFragmentBiomeSampleMapInitializer, x: i32, y: i32, newBiomeSample: BiomeSample) void {
-		const stringKey = biomeSampleToStringKey(newBiomeSample);
-		const fetched = self.biomeSampleIndexes.get(stringKey);
+		const hashKey: BiomeSampleHashKey = BiomeSampleHashKey.fromBiomeSample(newBiomeSample);
+		const fetched = self.biomeSampleIndexes.get(hashKey);
 		if (fetched != null) {
-			main.stackAllocator.allocator.free(stringKey);
 			self.biomeSampleMap[@intCast(x)][@intCast(y)] = @intCast(fetched.?);
 			return;
 		}
-		self.biomeSampleIndexes.put(main.stackAllocator.allocator, stringKey, @intCast(self.uniqueBiomeSamples.items.len)) catch unreachable;
+		self.biomeSampleIndexes.put(main.stackAllocator.allocator, hashKey, @intCast(self.uniqueBiomeSamples.items.len)) catch unreachable;
 		self.biomeSampleMap[@intCast(x)][@intCast(y)] = @intCast(self.uniqueBiomeSamples.items.len);
 		self.uniqueBiomeSamples.append(main.globalAllocator, newBiomeSample);
 	}
