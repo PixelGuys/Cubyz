@@ -715,6 +715,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	}
 
 	fn onReceive(self: *ConnectionManager, data: []const u8, source: SocketAddress) void {
+		if (!main.server.world.?.doGameTimeCycle and data.len > 1000) return;
+
 		std.debug.assert(self.threadId == std.Thread.getCurrentId());
 		self.mutex.lock();
 
