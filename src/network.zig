@@ -1327,6 +1327,12 @@ pub const Connection = struct { // MARK: Connection
 			}
 		}
 
+		pub fn confirmationPacket(self: *ProbingState, packetLen: i32) void {
+			if (self.* != .searchFinished) return;
+			if (self.searchFinished.maxLossSize > packetLen) return;
+			self.searchFinished.lossCounter = 0;
+		}
+
 		fn nextPacketIsProbe(self: *ProbingState, conn: *Connection, time: i64) bool {
 			switch (self.*) {
 				.searching => |*state| {
@@ -1896,6 +1902,7 @@ pub const Connection = struct { // MARK: Connection
 				.probe => self.mtuProbingState.receiveConfirmationAndGetTimestamp(self, start) orelse continue,
 				else => return error.Invalid,
 			};
+			self.mtuProbingState.confirmationPacket(confirmationResult.packetLen);
 			if (confirmationResult.considerForRtt) {
 				const rtt: f32 = @floatFromInt(@max(1, timestamp -% confirmationResult.timestamp -% timeOffset));
 				numRtt += 1;
