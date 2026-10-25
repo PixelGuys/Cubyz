@@ -1277,7 +1277,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 	};
 
-	pub const MtuHandler = struct { // MARK: MtuHandler
+	const MtuHandler = struct { // MARK: MtuHandler
 		const maxMtu: u32 = 65507; // max udp packet size
 		const minMtu: u32 = 576 - 20 - 8; // IPv4 MTU minus IP header minus udp header
 		const ethernetMtu = 1500 - 20 - 8 - 14; // Ethernet data MTU minus IP header minus udp header
