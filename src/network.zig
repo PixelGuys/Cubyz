@@ -1865,9 +1865,6 @@ pub const Connection = struct { // MARK: Connection
 			self.rttUncertainty += 0.05*self.rttEstimate;
 			self.bandwidthEstimateInBytesPerRtt /= 2;
 			self.bandwidthEstimateInBytesPerRtt = @max(self.bandwidthEstimateInBytesPerRtt, minMtu);
-
-			// until the handShake is done, we don't probe so it also doesn't need to be reset
-			if (self.handShakeState.load(.acquire) == .complete) {}
 		}
 	}
 
