@@ -42,13 +42,18 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 }
 
 pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Data) void {
-	proceduralItem.setProperty(data.targetProperty, proceduralItem.getProperty(data.targetProperty)*(1 + data.strength));
+	proceduralItem.setProperty(data.targetProperty, proceduralItem.getProperty(data.targetProperty)*(1 + getAdjustedStrength(data.strength)));
 }
 
 pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
 	if (data.strength >= 0) {
-		outString.print("{s} #808080(#30ca64+**{d:.0}% #808080{s})", .{getModifierName(data), data.strength*100, @tagName(data.targetProperty)});
+		outString.print("{s} #808080(#30ca64+**{d:.0}% #808080{s})", .{getModifierName(data), getAdjustedStrength(data.strength)*100, @tagName(data.targetProperty)});
 	} else {
-		outString.print("{s} #808080(#fd3535**{d:.0}% #808080{s})", .{getModifierName(data), data.strength*100, @tagName(data.targetProperty)});
+		outString.print("{s} #808080(#fd3535-**{d:.0}% #808080{s})", .{getModifierName(data), (1/(data.strength + 1))*100, @tagName(data.targetProperty)});
 	}
+}
+
+fn getAdjustedStrength(strength: f32) f32 {
+	// used to make sure negative numbers cannot go below -100%
+	return (@max(strength, 0) + 1)/(@min(strength, 0) + 1) - 1;
 }
