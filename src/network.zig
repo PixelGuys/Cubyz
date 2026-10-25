@@ -792,6 +792,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				defer self.mutex.unlock();
 				while (self.packetSendRequests.peek() != null and self.packetSendRequests.peek().?.time -% curTime <= 0) {
 					const packet = self.packetSendRequests.pop().?;
+					if (!main.server.world.?.doGameTimeCycle and packet.data.len > 1000) return;
 					self.socket.send(packet.data, packet.target);
 					main.globalAllocator.free(packet.data);
 				}
