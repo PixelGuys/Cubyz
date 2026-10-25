@@ -821,7 +821,7 @@ pub const Connection = struct { // MARK: Connection
 	const maxMtu: u32 = 65507; // max udp packet size
 	const minMtu: u32 = 576 - 20 - 8; // IPv4 MTU minus IP header minus udp header
 	const headerOverhead = 20 + 8 + 42; // IP Header + UDP Header + Ethernet header/footer
-	const ethernetMtu = 1500 - 20 - 8; // Ethernet data MTU minus IP header minus udp header
+	const ethernetMtu = 1500 - 20 - 8 - 14; // Ethernet data MTU minus IP header minus udp header
 
 	const receiveBufferSize = 8 << 20;
 
