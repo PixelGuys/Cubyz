@@ -1292,7 +1292,7 @@ pub const Connection = struct { // MARK: Connection
 	/// Declarations can be found in 5.1
 	/// fields in the 5.2 state machine
 	/// how to handle reseting of the mtu is not clearly defined in the RFC, so anything related to that is custom code created by us.
-	const ProbingState = union(enum) {
+	const ProbingState = union(enum) { // MARK: ProbingState
 		/// the time to wait until a probe is unconfirmed (RFC recommnds at least 15 seconds)
 		const probeTimer: i64 = 15*1000*ms;
 		/// max probes are done until the probing is seen as failed (RFC default: 3)
