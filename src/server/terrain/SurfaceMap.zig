@@ -60,6 +60,48 @@ pub const MapFragmentPosition = struct {
 	}
 };
 
+pub const MapFragmentBiomeSampleMapInitializer = struct {
+	pub const mapShift = 8;
+	pub const mapSize = 1 << mapShift;
+	
+	uniqueBiomeSamples: main.List(BiomeSample) = .empty,
+	seedKeyBiomeSampleArrays: std.StringHashMapUnmanaged(u32) = .empty,
+	biomeSampleMap: [mapSize][mapSize]u32 = undefined,
+
+	fn biomeSampleToStringKey(biomeSample: BiomeSample) []u8 {
+		const keyString = main.stackAllocator.allocator.print("{}{}{}{}{}{}", .{biomeSample.biome.paletteId, biomeSample.height, biomeSample.hills, biomeSample.mountains, biomeSample.roughness, biomeSample.seed}) catch unreachable;
+		return keyString;
+	}
+
+	pub fn deinit(self: *MapFragmentBiomeSampleMapInitializer) void {
+		self.uniqueBiomeSamples.deinit(main.globalAllocator);
+		var iterator = self.seedKeyBiomeSampleArrays.iterator();
+		while (iterator.next()) |entry| {
+			main.stackAllocator.free(entry.key_ptr.*);
+		}
+		self.seedKeyBiomeSampleArrays.deinit(main.stackAllocator.allocator);
+	}
+
+	pub fn finalizePopulation(self: *MapFragmentBiomeSampleMapInitializer, map: *MapFragment) void {
+		map.uniqueBiomeSamples = self.uniqueBiomeSamples.toOwnedSlice(main.globalAllocator);
+		map.biomeMap = self.biomeSampleMap;
+		self.deinit();
+	}
+
+	pub fn setBiomeSample(self: *MapFragmentBiomeSampleMapInitializer, x: i32, y: i32, newBiomeSample: BiomeSample) void {
+		const stringKey = biomeSampleToStringKey(newBiomeSample);
+		const fetched = self.seedKeyBiomeSampleArrays.get(stringKey);
+		if (fetched != null) {
+			main.stackAllocator.allocator.free(stringKey);
+			self.biomeSampleMap[@intCast(x)][@intCast(y)] = @intCast(fetched.?);
+			return;
+		}
+		self.seedKeyBiomeSampleArrays.put(main.stackAllocator.allocator, stringKey, @intCast(self.uniqueBiomeSamples.items.len)) catch unreachable;
+		self.biomeSampleMap[@intCast(x)][@intCast(y)] = @intCast(self.uniqueBiomeSamples.items.len);
+		self.uniqueBiomeSamples.append(main.globalAllocator, newBiomeSample);
+	}
+};
+
 /// Generates and stores the height and Biome maps of the planet.
 pub const MapFragment = struct { // MARK: MapFragment
 	pub const biomeShift = 5;
@@ -70,9 +112,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 	pub const mapMask = mapSize - 1;
 
 	heightMap: [mapSize][mapSize]i32 = undefined,
-	uniqueBiomeSamplesNextIndex: u32 = 0,
-	seedKeyBiomeSampleArrays: std.AutoHashMapUnmanaged(u64, main.List(u32)) = .empty,
-	uniqueBiomeSamples: [mapSize*mapSize]?BiomeSample = @splat(null),
+	uniqueBiomeSamples: []const BiomeSample = undefined,
 	biomeMap: [mapSize][mapSize]u32 = undefined,
 	caveBiomeOffsetMap: [mapSize][mapSize]i16 = undefined,
 	minHeight: i32 = std.math.maxInt(i32),
@@ -96,6 +136,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 	}
 
 	fn privateDeinit(self: *MapFragment) void {
+		main.globalAllocator.free(self.uniqueBiomeSamples);
 		memoryPool.destroy(self);
 	}
 
@@ -106,7 +147,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 	pub fn getBiome(self: *MapFragment, wx: i32, wy: i32) *const Biome {
 		const xIndex = wx >> self.pos.voxelSizeShift & mapMask;
 		const yIndex = wy >> self.pos.voxelSizeShift & mapMask;
-		return self.getBiomeSample(@intCast(xIndex), @intCast(yIndex)).biome;
+		return self.getLocalBiomeSample(@intCast(xIndex), @intCast(yIndex)).biome;
 	}
 
 	pub fn getHeight(self: *MapFragment, wx: i32, wy: i32) i32 {
@@ -121,33 +162,15 @@ pub const MapFragment = struct { // MARK: MapFragment
 		return self.caveBiomeOffsetMap[@intCast(xIndex)][@intCast(yIndex)];
 	}
 
-	pub fn getBiomeSample(self: *MapFragment, wx: i32, wy: i32) *BiomeSample {
+	pub fn getBiomeSample(self: *MapFragment, wx: i32, wy: i32) *const BiomeSample {
 		const xIndex = wx >> self.pos.voxelSizeShift & mapMask;
 		const yIndex = wy >> self.pos.voxelSizeShift & mapMask;
-		return &self.uniqueBiomeSamples[self.biomeMap[@intCast(xIndex)][@intCast(yIndex)]].?;
+		return &self.uniqueBiomeSamples[self.biomeMap[@intCast(xIndex)][@intCast(yIndex)]];
 	}
 
-	pub fn setBiomeSample(self: *MapFragment, wx: i32, wy: i32, newBiomeSample: BiomeSample) void {
-		const xIndex = wx >> self.pos.voxelSizeShift & mapMask;
-		const yIndex = wy >> self.pos.voxelSizeShift & mapMask;
-		if (self.seedKeyBiomeSampleArrays.get(newBiomeSample.seed) == null) {
-			self.seedKeyBiomeSampleArrays.put(main.worldArena.allocator, newBiomeSample.seed, .empty) catch unreachable;
-		}
-		self.setBiomeSampleLocalCoords(xIndex, yIndex, newBiomeSample);
-	}
-
-	fn setBiomeSampleLocalCoords(self: *MapFragment, x: i32, y: i32, newBiomeSample: BiomeSample) void {
-		var uniqueSeedList = self.seedKeyBiomeSampleArrays.get(newBiomeSample.seed).?;
-		for (uniqueSeedList.items) |item| {
-			if (self.uniqueBiomeSamples[item].?.biome == newBiomeSample.biome and self.uniqueBiomeSamples[item].?.height == newBiomeSample.height and self.uniqueBiomeSamples[item].?.hills == newBiomeSample.hills and self.uniqueBiomeSamples[item].?.mountains == newBiomeSample.mountains and self.uniqueBiomeSamples[item].?.roughness == newBiomeSample.roughness and self.uniqueBiomeSamples[item].?.seed == newBiomeSample.seed) {
-				self.biomeMap[@intCast(x)][@intCast(y)] = @intCast(item);
-				return;
-			}
-		}
-		uniqueSeedList.append(main.worldArena, self.uniqueBiomeSamplesNextIndex);
-		self.uniqueBiomeSamples[self.uniqueBiomeSamplesNextIndex] = newBiomeSample;
-		self.biomeMap[@intCast(x)][@intCast(y)] = self.uniqueBiomeSamplesNextIndex;
-		self.uniqueBiomeSamplesNextIndex += 1;
+	fn getLocalBiomeSample(self: *MapFragment, x: i32, y: i32) *const BiomeSample {
+		const fetchedId = self.biomeMap[@intCast(x)][@intCast(y)];
+		return &self.uniqueBiomeSamples[fetchedId];
 	}
 
 	const StorageHeader = struct {
@@ -190,6 +213,10 @@ pub const MapFragment = struct { // MARK: MapFragment
 				const biomeData = rawData[0 .. mapSize*mapSize*@sizeOf(u32)];
 				const heightData = rawData[mapSize*mapSize*@sizeOf(u32) ..][0 .. mapSize*mapSize*@sizeOf(f32)];
 				const originalHeightData = rawData[mapSize*mapSize*(@sizeOf(u32) + @sizeOf(f32)) ..][0 .. mapSize*mapSize*@sizeOf(f32)];
+
+				var mapInitializer: MapFragmentBiomeSampleMapInitializer = .{};
+				defer mapInitializer.finalizePopulation(self);
+
 				for (0..mapSize) |x| {
 					for (0..mapSize) |y| {
 						const newBiomeSample: BiomeSample = .{
@@ -200,7 +227,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 							.roughness = 0.0,
 							.seed = 0.0,
 						};
-						self.setBiomeSampleLocalCoords(@intCast(x), @intCast(y), newBiomeSample);
+						mapInitializer.setBiomeSample(@intCast(x), @intCast(y), newBiomeSample);
 						self.heightMap[x][y] = @trunc(@as(f32, @bitCast(std.mem.readInt(u32, heightData[4*(x*mapSize + y) ..][0..4], .big))));
 						if (originalHeightMap) |map| map[x][y] = @trunc(@as(f32, @bitCast(std.mem.readInt(u32, originalHeightData[4*(x*mapSize + y) ..][0..4], .big))));
 					}
@@ -216,6 +243,9 @@ pub const MapFragment = struct { // MARK: MapFragment
 				if (try main.utils.Compression.inflateTo(rawData, fullReader.remaining) != rawData.len) return error.CorruptedFile;
 
 				var reader = BinaryReader.init(rawData);
+				
+				var mapInitializer: MapFragmentBiomeSampleMapInitializer = .{};
+				defer mapInitializer.finalizePopulation(self);
 
 				for (0..mapSize) |x| {
 					for (0..mapSize) |y| {
@@ -227,7 +257,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 							.roughness = 0.0,
 							.seed = 0.0,
 						};
-						self.setBiomeSampleLocalCoords(@intCast(x), @intCast(y), newBiomeSample);
+						mapInitializer.setBiomeSample(@intCast(x), @intCast(y), newBiomeSample);
 					}
 				}
 				for (0..mapSize) |x| {
@@ -255,21 +285,28 @@ pub const MapFragment = struct { // MARK: MapFragment
 				if (try main.utils.Compression.inflateTo(rawData, fullReader.remaining) != rawData.len) return error.CorruptedFile;
 
 				var reader = BinaryReader.init(rawData);
-				self.uniqueBiomeSamplesNextIndex = try reader.readInt(u32);
-				for (0..self.uniqueBiomeSamplesNextIndex) |index| {
-					self.uniqueBiomeSamples[index] = .{
-						.biome = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)]),
-						.height = try reader.readFloat(f32),
-						.hills = try reader.readFloat(f32),
-						.mountains = try reader.readFloat(f32),
-						.roughness = try reader.readFloat(f32),
-						.seed = try reader.readInt(u64),
-					};
+				const uniqueBiomeSamplesLength = try reader.readInt(u32);
+				
+				var mapInitializer: MapFragmentBiomeSampleMapInitializer = .{};
+				defer mapInitializer.finalizePopulation(self);
+
+				for (0..uniqueBiomeSamplesLength) |_| {
+					mapInitializer.uniqueBiomeSamples.append(
+						main.globalAllocator,
+						.{
+							.biome = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)]),
+							.height = try reader.readFloat(f32),
+							.hills = try reader.readFloat(f32),
+							.mountains = try reader.readFloat(f32),
+							.roughness = try reader.readFloat(f32),
+							.seed = try reader.readInt(u64),
+						},
+					);
 				}
 
 				for (0..mapSize) |x| {
 					for (0..mapSize) |y| {
-						self.biomeMap[x][y] = try reader.readInt(u32);
+						mapInitializer.biomeSampleMap[x][y] = try reader.readInt(u32);
 					}
 				}
 				for (0..mapSize) |x| {
@@ -301,9 +338,8 @@ pub const MapFragment = struct { // MARK: MapFragment
 		var writer = BinaryWriter.initCapacity(main.stackAllocator, biomeSampleDataLength + biomeSampleSize + palletizedArraySize + heightDataSize + originalHeightDataSize);
 		defer writer.deinit();
 
-		writer.writeInt(u32, self.uniqueBiomeSamplesNextIndex);
-		for (0..self.uniqueBiomeSamplesNextIndex) |index| {
-			const biomeSample = self.uniqueBiomeSamples[index].?;
+		writer.writeInt(u32, @intCast(self.uniqueBiomeSamples.len));
+		for (self.uniqueBiomeSamples) |biomeSample| {
 			writer.writeInt(u32, biomeSample.biome.paletteId);
 			writer.writeFloat(f32, biomeSample.height);
 			writer.writeFloat(f32, biomeSample.hills);
@@ -735,7 +771,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 			const offSetY: usize = @intCast((cur.pos.wy -% nextPos.wy) >> nextPos.voxelSizeShift);
 			for (0..MapFragment.mapSize/2) |x| {
 				for (0..MapFragment.mapSize/2) |y| {
-					var biomes: [4]?*const Biome = @splat(null);
+					var biomeSamples: [4]?*const BiomeSample = @splat(null);
 					var biomeCounts: [4]u8 = @splat(0);
 					var height: i32 = 0;
 					for (0..2) |dx| {
@@ -743,31 +779,33 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 							const curX = x*2 + dx;
 							const curY = y*2 + dy;
 							height += cur.heightMap[curX][curY];
-							const biome = cur.uniqueBiomeSamples[cur.biomeMap[curX][curY]].?.biome;
+							const biomeSample: ?*const BiomeSample = cur.getLocalBiomeSample(@intCast(curX), @intCast(curY));
 							for (0..4) |i| {
-								if (biomes[i] == biome) {
+								if (biomeSamples[i] == biomeSample) {
 									biomeCounts[i] += 1;
 									break;
-								} else if (biomes[i] == null) {
-									biomes[i] = biome;
+								} else if (biomeSamples[i] == null) {
+									biomeSamples[i] = biomeSample;
 									biomeCounts[i] += 1;
 									break;
 								}
 							}
 						}
 					}
-					var bestBiome: *const Biome = biomes[0].?;
+					var bestBiome: *const BiomeSample = biomeSamples[0].?;
 					var bestBiomeCount: u8 = biomeCounts[0];
 					for (1..4) |i| {
 						if (biomeCounts[i] > bestBiomeCount) {
 							bestBiomeCount = biomeCounts[i];
-							bestBiome = biomes[i].?;
+							bestBiome = biomeSamples[i].?;
 						}
 					}
-					const nextX = offSetX + x;
-					const nextY = offSetY + y;
-					next.heightMap[nextX][nextY] = @divFloor(height, 4);
-					next.getBiomeSample(@intCast(nextX), @intCast(nextY)).*.biome = bestBiome;
+					const nextLocalX = offSetX + x;
+					const nextLocalY = offSetY + y;
+					next.heightMap[nextLocalX][nextLocalY] = @divFloor(height, 4);
+					var initializer: MapFragmentBiomeSampleMapInitializer = .{};
+					defer initializer.finalizePopulation(next);
+					initializer.setBiomeSample(@intCast(nextLocalX), @intCast(nextLocalY), bestBiome.*);
 				}
 			}
 			next.save(null, .{});
