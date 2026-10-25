@@ -821,6 +821,7 @@ pub const Connection = struct { // MARK: Connection
 	const maxMtu: u32 = 65507; // max udp packet size
 	const minMtu: u32 = 576 - 20 - 8; // IPv4 MTU minus IP header minus udp header
 	const headerOverhead = 20 + 8 + 42; // IP Header + UDP Header + Ethernet header/footer
+	const ethernetMtu = 1500 - 20 - 8; // Ethernet data MTU minus IP header minus udp header
 
 	const receiveBufferSize = 8 << 20;
 
@@ -1280,6 +1281,7 @@ pub const Connection = struct { // MARK: Connection
 	/// Reference: RFC8899
 	/// Declarations can be found in 5.1
 	/// fields in the 5.2 state machine
+	/// how to handle reseting of the mtu is not clearly defined in the RFC, so anything related to that is custom code created by us.
 	const ProbingState = union(enum) {
 		/// the time to wait until a probe is unconfirmed (RFC recommnds at least 15 seconds)
 		const probeTimer: i64 = 15*1000*ms;
@@ -1291,6 +1293,7 @@ pub const Connection = struct { // MARK: Connection
 		const lossCounterLimit = 3;
 		/// In this state we are actively searching with probes for a higher mtu
 		searching: struct {
+			firstProbe: bool = true,
 			probedSize: u16 = undefined,
 			probeSequenceIndex: ?SequenceIndex = null,
 			probeTimeStamp: i64 = undefined,
@@ -1302,13 +1305,16 @@ pub const Connection = struct { // MARK: Connection
 			pmtuRaiseTimer: i64 = 10*60*1000*ms,
 			/// the time we entered this state
 			timestamp: i64,
+			/// counter of lost packets which are bigger than the minMtu, this is needed to know when we need to reset the mtu again
 			lossCounter: usize = 0,
+			/// the maximum Size a packet that was counted into our lossCounter had. Packets that are confirmed and bigger than this reduce the lossCounter to 0 again.
+			maxLossSize: u16 = 0,
 		},
 
-		pub fn increaseLossCounter(self: *ProbingState, conn: *Connection) void {
+		pub fn increaseLossCounter(self: *ProbingState, conn: *Connection, packetLen: u16) void {
 			if (self.* != .searchFinished) return;
 			self.searchFinished.lossCounter += 1;
-			std.debug.print("increaseLossCounter\n", .{});
+			self.searchFinished.maxLossSize = @max(self.searchFinished.maxLossSize, packetLen);
 			if (self.searchFinished.lossCounter > lossCounterLimit) {
 				conn.mtuEstimate = minMtu;
 				self.* = .{.searchFinished = .{
@@ -1337,7 +1343,7 @@ pub const Connection = struct { // MARK: Connection
 							self.* = .{.searchFinished = .{
 								.timestamp = time,
 							}};
-						}
+						} else return true;
 					}
 					return false;
 				},
@@ -1354,7 +1360,13 @@ pub const Connection = struct { // MARK: Connection
 
 		fn nextProbeSize(self: *ProbingState, conn: *Connection) u16 {
 			std.debug.assert(self.* == .searching);
-			self.searching.probedSize = @min(conn.mtuEstimate, Connection.maxMtu - 50) + 50;
+			// we first test if the expected ethernetMtu is possible
+			if (self.searching.firstProbe) {
+				self.searching.probedSize = Connection.ethernetMtu;
+				self.searching.firstProbe = false;
+			} else {
+				self.searching.probedSize = @min(conn.mtuEstimate, Connection.maxMtu - 50) + 50;
+			}
 			return self.searching.probedSize;
 		}
 
