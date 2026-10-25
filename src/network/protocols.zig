@@ -623,6 +623,9 @@ pub const generic_update = struct { // MARK: generic_update
 	};
 
 	pub fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
+		const oldContext = main.sync.threadContext;
+		defer main.sync.threadContext = oldContext;
+		main.sync.threadContext = .client;
 		switch (try reader.readEnum(UpdateType)) {
 			.gamemode => {
 				main.sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
