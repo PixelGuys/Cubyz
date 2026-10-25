@@ -1873,7 +1873,7 @@ pub const Connection = struct { // MARK: Connection
 		if (loss == .doubleLoss) {
 			self.rttUncertainty += 0.05*self.rttEstimate;
 			self.bandwidthEstimateInBytesPerRtt /= 2;
-			self.bandwidthEstimateInBytesPerRtt = @max(self.bandwidthEstimateInBytesPerRtt, MtuHandler.minMtu);
+			self.bandwidthEstimateInBytesPerRtt = @max(self.bandwidthEstimateInBytesPerRtt, self.mtuHandler.mtuEstimate);
 		}
 	}
 
