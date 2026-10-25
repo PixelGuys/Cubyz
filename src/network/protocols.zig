@@ -46,7 +46,7 @@ pub fn init() void { // MARK: init()
 }
 
 pub fn onReceive(conn: *Connection, protocolIndex: u8, data: []const u8) !void { // MARK: onReceive()
-	if (conn.handShakeState.raw != .complete and protocolIndex != handShake.id) return error.HandshakeIncomplete;
+	if (conn.handShakeState.raw != .complete and protocolIndex != handshake.id) return error.HandshakeIncomplete;
 	const protocolReceive = blk: {
 		if (conn.isServerSide()) break :blk serverReceiveList[protocolIndex] orelse return error.Invalid;
 		break :blk clientReceiveList[protocolIndex] orelse return error.Invalid;
@@ -86,7 +86,7 @@ pub const reload = struct { // MARK: reload
 	}
 };
 
-pub const handShake = struct { // MARK: handShake
+pub const handshake = struct { // MARK: handshake
 	pub const id: u8 = 1;
 	var assetsLoadedCondition: std.Io.Condition = .init;
 	var hasFinishedLoadingAssets: bool = false;
@@ -109,9 +109,9 @@ pub const handShake = struct { // MARK: handShake
 					writer.writeEnum(Connection.HandShakeState, .signatureResponse);
 					conn.handShakeState.store(.signatureResponse, .monotonic);
 
-					network.authentication.KeyCollection.sign(&writer, std.meta.stringToEnum(network.authentication.KeyTypeEnum, signature1) orelse return error.Invalid, conn.secureChannel.verificationDataForClientSignature.items);
+					network.authentication.key_collection.sign(&writer, std.meta.stringToEnum(network.authentication.KeyTypeEnum, signature1) orelse return error.Invalid, conn.secureChannel.verificationDataForClientSignature.items);
 					if (signature2.len != 0) {
-						network.authentication.KeyCollection.sign(&writer, std.meta.stringToEnum(network.authentication.KeyTypeEnum, signature2) orelse return error.Invalid, conn.secureChannel.verificationDataForClientSignature.items);
+						network.authentication.key_collection.sign(&writer, std.meta.stringToEnum(network.authentication.KeyTypeEnum, signature2) orelse return error.Invalid, conn.secureChannel.verificationDataForClientSignature.items);
 					}
 					conn.send(.secure, id, writer.data.items);
 				},
@@ -120,7 +120,7 @@ pub const handShake = struct { // MARK: handShake
 					main.files.cubyzDir().deleteTree("serverAssets") catch {}; // Delete old assets.
 					var dir = try main.files.cubyzDir().openDir("serverAssets");
 					defer dir.close();
-					try utils.Compression.unpack(dir, reader.remaining);
+					try utils.compression.unpack(dir, reader.remaining);
 				},
 				.serverData => {
 					handshakeZon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
@@ -207,7 +207,7 @@ pub const handShake = struct { // MARK: handShake
 						var writer = try std.Io.Writer.Allocating.initCapacity(main.stackAllocator.allocator, 16);
 						defer writer.deinit();
 						try writer.writer.writeByte(@backingInt(Connection.HandShakeState.assets));
-						try utils.Compression.pack(dir, &writer.writer);
+						try utils.compression.pack(dir, &writer.writer);
 						conn.send(.secure, id, writer.written());
 					}
 					conn.handShakeState.store(.assets, .monotonic);
@@ -252,8 +252,8 @@ pub const handShake = struct { // MARK: handShake
 
 				zonObject.putOwnedString("version", settings.version.version);
 				zonObject.putOwnedString("name", name);
-				if (main.network.authentication.KeyCollection.initialized) {
-					zonObject.put("keys", main.network.authentication.KeyCollection.getPublicKeys(main.stackAllocator));
+				if (main.network.authentication.key_collection.initialized) {
+					zonObject.put("keys", main.network.authentication.key_collection.getPublicKeys(main.stackAllocator));
 				}
 				try conn.secureChannel.startTlsHandshake();
 				conn.secureChannel.finishedCollectingClientVerificationData = true;
@@ -277,7 +277,7 @@ pub const handShake = struct { // MARK: handShake
 			while (true) {
 				try main.io.checkCancel();
 				conn.handShakeWaiting.waitTimeout(main.io, &conn.mutex.super, .{.duration = .{.raw = .fromMilliseconds(16), .clock = .awake}}) catch {
-					main.heap.GarbageCollection.syncPoint();
+					main.heap.garbage_collection.syncPoint();
 					continue;
 				};
 				break;
@@ -292,12 +292,12 @@ pub const handShake = struct { // MARK: handShake
 	}
 
 	pub fn signalLoadedAssets() void {
-		main.network.protocols.handShake.hasFinishedLoadingAssets = true;
-		main.network.protocols.handShake.assetsLoadedCondition.signal(main.io);
+		main.network.protocols.handshake.hasFinishedLoadingAssets = true;
+		main.network.protocols.handshake.assetsLoadedCondition.signal(main.io);
 	}
 };
 
-pub const chunkRequest = struct { // MARK: chunkRequest
+pub const chunk_request = struct { // MARK: chunk_request
 	pub const id: u8 = 2;
 
 	pub fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
@@ -337,7 +337,7 @@ pub const chunkRequest = struct { // MARK: chunkRequest
 	}
 };
 
-pub const chunkTransmission = struct { // MARK: chunkTransmission
+pub const chunk_transmisison = struct { // MARK: chunk_transmisison
 	pub const id: u8 = 3;
 
 	pub const MeshGenerationTask = struct {
@@ -353,12 +353,12 @@ pub const chunkTransmission = struct { // MARK: chunkTransmission
 		};
 
 		pub fn getPriority(self: *MeshGenerationTask) f32 {
-			return self.pos.getPriority(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
+			return self.pos.getPriority(game.player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 		}
 
 		pub fn isStillNeeded(self: *MeshGenerationTask) bool {
 			if (main.game.world == null or main.game.world.?.paused) return false;
-			const distanceSqr = self.pos.getMinDistanceSquared(@trunc(game.Player.getPosBlocking())); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
+			const distanceSqr = self.pos.getMinDistanceSquared(@trunc(game.player.getPosBlocking())); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 			var maxRenderDistance = settings.renderDistance*chunk.chunkSize*self.pos.voxelSize;
 			maxRenderDistance += 2*self.pos.voxelSize*chunk.chunkSize;
 			return distanceSqr < maxRenderDistance*maxRenderDistance;
@@ -396,7 +396,7 @@ pub const chunkTransmission = struct { // MARK: chunkTransmission
 	}
 	fn sendChunkOverTheNetwork(conn: *Connection, ch: *chunk.ServerChunk) void {
 		ch.mutex.lock();
-		const chunkData = main.server.storage.ChunkCompression.storeChunk(main.stackAllocator, &ch.super, .toClient, ch.super.pos.voxelSize != 1);
+		const chunkData = main.server.storage.chunk_compression.storeChunk(main.stackAllocator, &ch.super, .toClient, ch.super.pos.voxelSize != 1);
 		ch.mutex.unlock();
 		defer main.stackAllocator.free(chunkData);
 		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, chunkData.len + 16);
@@ -413,7 +413,7 @@ pub const chunkTransmission = struct { // MARK: chunkTransmission
 	}
 };
 
-pub const playerPosition = struct { // MARK: playerPosition
+pub const player_position = struct { // MARK: player_position
 	pub const id: u8 = 4;
 
 	pub fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
@@ -441,7 +441,7 @@ pub const playerPosition = struct { // MARK: playerPosition
 	}
 };
 
-pub const entityPosition = struct { // MARK: entityPosition
+pub const entity_position = struct { // MARK: entity_position
 	pub const id: u8 = 6;
 	const Type = enum(u8) {
 		noVelocityEntity = 0,
@@ -532,7 +532,7 @@ pub const entityPosition = struct { // MARK: entityPosition
 	}
 };
 
-pub const blockUpdate = struct { // MARK: blockUpdate
+pub const block_update = struct { // MARK: block_update
 	pub const id: u8 = 7;
 
 	pub fn clientReceive(_: *Connection, reader: *utils.BinaryReader) !void {
@@ -599,7 +599,7 @@ pub const entity = struct { // MARK: entity
 	}
 };
 
-pub const genericUpdate = struct { // MARK: genericUpdate
+pub const generic_update = struct { // MARK: generic_update
 	pub const id: u8 = 9;
 
 	const UpdateType = enum(u8) {
@@ -628,7 +628,7 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 				main.sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
 			},
 			.teleport => {
-				game.Player.setPosBlocking(try reader.readVec(Vec3d));
+				game.player.setPosBlocking(try reader.readVec(Vec3d));
 			},
 			.worldEditPos => {
 				const typ = try reader.readEnum(WorldEditPosition);
@@ -637,11 +637,11 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 					.clear => null,
 				};
 				switch (typ) {
-					.selectedPos1 => game.Player.selectionPosition1 = pos,
-					.selectedPos2 => game.Player.selectionPosition2 = pos,
+					.selectedPos1 => game.player.selectionPosition1 = pos,
+					.selectedPos2 => game.player.selectionPosition2 = pos,
 					.clear => {
-						game.Player.selectionPosition1 = null;
-						game.Player.selectionPosition2 = null;
+						game.player.selectionPosition1 = null;
+						game.player.selectionPosition2 = null;
 					},
 				}
 			},
@@ -695,7 +695,7 @@ pub const genericUpdate = struct { // MARK: genericUpdate
 					emitter = .init(particleId, collides, .{.point = .{}}, emitterProperties, .spread);
 				}
 
-				particles.ParticleSystem.addParticlesFromNetwork(emitter, pos, count);
+				particles.particle_system.addParticlesFromNetwork(emitter, pos, count);
 			},
 			.clear => {
 				const typ = try reader.readEnum(ClearType);
@@ -826,7 +826,7 @@ pub const chat = struct { // MARK: chat
 	}
 };
 
-pub const lightMapRequest = struct { // MARK: lightMapRequest
+pub const light_map_request = struct { // MARK: light_map_request
 	pub const id: u8 = 11;
 
 	pub fn serverReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
@@ -858,7 +858,7 @@ pub const lightMapRequest = struct { // MARK: lightMapRequest
 	}
 };
 
-pub const lightMapTransmission = struct { // MARK: lightMapTransmission
+pub const light_map_transmission = struct { // MARK: light_map_transmission
 	pub const id: u8 = 12;
 
 	const LightMapTask = struct {
@@ -895,7 +895,7 @@ pub const lightMapTransmission = struct { // MARK: lightMapTransmission
 			};
 			const _inflatedData = main.stackAllocator.alloc(u8, main.server.terrain.LightMap.LightMapFragment.mapSize*main.server.terrain.LightMap.LightMapFragment.mapSize*2);
 			defer main.stackAllocator.free(_inflatedData);
-			const _inflatedLen = utils.Compression.inflateTo(_inflatedData, self.data) catch |err| {
+			const _inflatedLen = utils.compression.inflateTo(_inflatedData, self.data) catch |err| {
 				std.log.err("Got error {s} while decompressing lightmap data at position {} with data {any}", .{@errorName(err), pos, self.data});
 				main.game.world.?.conn.disconnect();
 				return;
@@ -941,7 +941,7 @@ pub const lightMapTransmission = struct { // MARK: lightMapTransmission
 		for (&map.startHeight) |val| {
 			ligthMapWriter.writeInt(i16, val);
 		}
-		const compressedData = utils.Compression.deflate(main.stackAllocator, ligthMapWriter.data.items, .default);
+		const compressedData = utils.compression.deflate(main.stackAllocator, ligthMapWriter.data.items, .default);
 		defer main.stackAllocator.free(compressedData);
 		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 9 + compressedData.len);
 		defer writer.deinit();
@@ -1002,7 +1002,7 @@ pub const inventory = struct { // MARK: inventory
 	}
 };
 
-pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
+pub const block_entity_update = struct { // MARK: block_entity_update
 	pub const id: u8 = 14;
 
 	pub fn serverReceive(_: *Connection, reader: *utils.BinaryReader) !void {
@@ -1048,7 +1048,7 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 		defer main.stackAllocator.free(users);
 
 		for (users) |user| {
-			blockUpdate.send(user.conn, &.{.{.pos = pos, .newBlock = block, .blockEntityData = writer.data.items}});
+			block_update.send(user.conn, &.{.{.pos = pos, .newBlock = block, .blockEntityData = writer.data.items}});
 		}
 	}
 
@@ -1065,7 +1065,7 @@ pub const blockEntityUpdate = struct { // MARK: blockEntityUpdate
 	}
 };
 
-pub const EntityComponentUpdate = struct { // MARK: EntityComponentUpdate
+pub const entity_component_update = struct { // MARK: entity_component_update
 	pub const id: u8 = 15;
 
 	const ActionType = enum(u8) {

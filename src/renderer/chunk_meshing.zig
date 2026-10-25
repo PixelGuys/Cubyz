@@ -507,7 +507,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		errdefer mesh_storage.meshMemoryPool.destroy(self);
 		self.chunk = .init(pos);
 		errdefer self.chunk.deinit();
-		try main.server.storage.ChunkCompression.loadChunk(self.chunk, .client, chunkData);
+		try main.server.storage.chunk_compression.loadChunk(self.chunk, .client, chunkData);
 		self.* = ChunkMesh{
 			.pos = pos,
 			.size = chunk.chunkSize*pos.voxelSize,
@@ -548,7 +548,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	pub fn deferredDeinit(self: *ChunkMesh) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
+		main.heap.garbage_collection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	pub fn isEmpty(self: *const ChunkMesh) bool {
@@ -1279,7 +1279,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 
 		pub fn getPriority(self: *BlockUpdateTask) f32 {
-			return 1000000 + self.pos.getPriority(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
+			return 1000000 + self.pos.getPriority(game.player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 		}
 
 		pub fn isStillNeeded(_: *BlockUpdateTask) bool {

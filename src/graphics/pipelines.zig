@@ -238,7 +238,7 @@ const RasterizationState = struct { // MARK: RasterizationState
 	rasterizerDiscard: bool = false,
 	polygonMode: PolygonMode = .fill,
 	cullMode: CullModeFlags = .back,
-	frontFace: FrontFace = .clockwise,
+	frontFace: FrontFace = .counterClockwise,
 	depthBias: ?DepthBias = null,
 	lineWidth: f32 = 1,
 
@@ -730,7 +730,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 
 		for (self.blendState.formats, 0..) |format, i| {
 			formats[i] = switch (format) {
-				.swapChain => vulkan.SwapChain.imageFormat,
+				.swapChain => vulkan.swap_chain.imageFormat,
 				.world => main.renderer.worldFrameBufferFormat,
 				.custom => |custom| custom,
 			};
@@ -784,7 +784,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 			.depthStencilState = options.depthStencilState,
 			.blendState = options.blendState,
 		};
-		if (main.settings.launchConfig.vulkanTestingMode) {
+		if (main.settings.launch_config.vulkanTestingMode) {
 			self.initVulkan(vertexPath, fragmentPath, defines, VertexType, options) catch |err| {
 				std.log.err("Vulkan pipeline creation for paths {s} {s} failed with error {s}", .{vertexPath, fragmentPath, @errorName(err)});
 			};
@@ -842,8 +842,8 @@ pub const Pipeline = struct { // MARK: Pipeline
 			c.glDisable(c.GL_CULL_FACE);
 		}
 		c.glFrontFace(switch (self.rasterState.frontFace) {
-			.counterClockwise => c.GL_CCW,
-			.clockwise => c.GL_CW,
+			.counterClockwise => c.GL_CW, // OpenGL needs the opposite winding order of Vulkan, since it stores inverted framebuffer coordinates
+			.clockwise => c.GL_CCW,
 		});
 		if (self.rasterState.depthBias) |depthBias| {
 			c.glEnable(c.GL_POLYGON_OFFSET_FILL);

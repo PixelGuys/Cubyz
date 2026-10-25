@@ -185,14 +185,14 @@ pub fn init(window: ?*c.GLFWwindow) !void {
 		}
 	}
 	command_pool.init();
-	SwapChain.init();
+	swap_chain.init();
 	gpu_allocator.init();
 }
 
 pub fn deinit() void {
 	gpu_garbage_collection.deinit();
 	gpu_allocator.deinit();
-	SwapChain.deinit();
+	swap_chain.deinit();
 	command_pool.deinit();
 	c.vkDestroyDevice(device, null);
 	c.vkDestroySurfaceKHR(instance, surface, null);
@@ -227,7 +227,7 @@ pub fn createInstance() void {
 		.applicationVersion = c.VK_MAKE_VERSION(0, 0, 0),
 		.pEngineName = "Cubyz",
 		.engineVersion = c.VK_MAKE_VERSION(0, 0, 0),
-		.apiVersion = c.VK_API_VERSION_1_3,
+		.apiVersion = if (builtin.target.os.tag == .macos) c.VK_API_VERSION_1_4 else c.VK_API_VERSION_1_3,
 	};
 	var glfwExtensionCount: u32 = 0;
 	const glfwExtensions: [*c][*c]const u8 = c.glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
@@ -645,7 +645,7 @@ var frames: [2]Frame = undefined;
 
 pub var currentFrame: *const Frame = undefined;
 
-pub const SwapChain = struct { // MARK: SwapChain
+pub const swap_chain = struct { // MARK: swap_chain
 	var swapChain: c.VkSwapchainKHR = null;
 	var images: []c.VkImage = undefined;
 	var imageViews: []c.VkImageView = undefined;
@@ -892,7 +892,7 @@ pub const Image = struct { // MARK: Image
 		usage: c.VkImageUsageFlags,
 		hostAccessible: bool = false,
 		flags: c.VkImageCreateFlags = 0,
-		imageType: c.VkImageType = c.VK_IMAGE_TYPE_2D,
+		imageViewType: c.VkImageViewType = c.VK_IMAGE_VIEW_TYPE_2D,
 		format: c.VkFormat = c.VK_FORMAT_R8G8B8A8_UNORM,
 		mipLevels: u32 = 1,
 		arrayLayers: u32 = 1,
@@ -927,7 +927,16 @@ pub const Image = struct { // MARK: Image
 		const imageInfo: c.VkImageCreateInfo = .{
 			.sType = c.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
 			.flags = options.flags,
-			.imageType = options.imageType,
+			.imageType = switch (options.imageViewType) {
+				c.VK_IMAGE_VIEW_TYPE_1D => c.VK_IMAGE_TYPE_1D,
+				c.VK_IMAGE_VIEW_TYPE_2D => c.VK_IMAGE_TYPE_2D,
+				c.VK_IMAGE_VIEW_TYPE_3D => c.VK_IMAGE_TYPE_3D,
+				c.VK_IMAGE_VIEW_TYPE_CUBE => c.VK_IMAGE_TYPE_2D,
+				c.VK_IMAGE_VIEW_TYPE_1D_ARRAY => c.VK_IMAGE_TYPE_1D,
+				c.VK_IMAGE_VIEW_TYPE_2D_ARRAY => c.VK_IMAGE_TYPE_2D,
+				c.VK_IMAGE_VIEW_TYPE_CUBE_ARRAY => c.VK_IMAGE_TYPE_2D,
+				else => unreachable,
+			},
 			.format = options.format,
 			.extent = .{.width = @intCast(size[0]), .height = @intCast(size[1]), .depth = @intCast(size[2])},
 			.mipLevels = options.mipLevels,
@@ -958,12 +967,7 @@ pub const Image = struct { // MARK: Image
 				.baseArrayLayer = 0,
 				.layerCount = options.arrayLayers,
 			},
-			.viewType = switch (options.imageType) {
-				c.VK_IMAGE_TYPE_1D => c.VK_IMAGE_VIEW_TYPE_1D,
-				c.VK_IMAGE_TYPE_2D => c.VK_IMAGE_VIEW_TYPE_2D,
-				c.VK_IMAGE_TYPE_3D => c.VK_IMAGE_VIEW_TYPE_3D,
-				else => unreachable,
-			},
+			.viewType = options.imageViewType,
 		};
 		checkResult(c.vkCreateImageView(device, &imageViewInfo, null, &self.view));
 
@@ -1004,7 +1008,9 @@ pub const Image = struct { // MARK: Image
 
 	const UploadDataConfig = struct {
 		imageOffset: c.struct_VkOffset3D = .{},
-		imageExtent: c.struct_VkExtent3D = .{},
+		imageExtent: c.struct_VkExtent3D,
+		arrayLayer: u32 = 0,
+		mipLevel: u32 = 0,
 	};
 
 	pub fn uploadData(self: Image, data: []const u8, config: UploadDataConfig) void {
@@ -1025,7 +1031,7 @@ pub const Image = struct { // MARK: Image
 				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
 				.newLayout = c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				.image = self.handle,
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = self.mipLevels, .layerCount = 1},
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = config.mipLevel, .levelCount = 1, .baseArrayLayer = config.arrayLayer, .layerCount = 1},
 			},
 		}});
 		currentFrame.uploadCommands.copyBufferToImage(self, c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, stagingBuffer, &.{
@@ -1034,8 +1040,8 @@ pub const Image = struct { // MARK: Image
 				.bufferOffset = 0,
 				.imageSubresource = .{
 					.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
-					.mipLevel = 0,
-					.baseArrayLayer = 0,
+					.mipLevel = config.mipLevel,
+					.baseArrayLayer = config.arrayLayer,
 					.layerCount = 1,
 				},
 				.imageOffset = config.imageOffset,
@@ -1052,7 +1058,7 @@ pub const Image = struct { // MARK: Image
 				.oldLayout = c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				.newLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
 				.image = self.handle,
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = self.mipLevels, .layerCount = 1},
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = config.mipLevel, .levelCount = 1, .baseArrayLayer = config.arrayLayer, .layerCount = 1},
 			},
 		}});
 	}
@@ -1133,11 +1139,20 @@ pub const gpu_allocator = struct { // MARK: gpu_allocator
 	var handle: c.VmaAllocator = undefined;
 
 	fn init() void {
-		const vkFunctions: c.VmaVulkanFunctions = .{
-			.glad_vkGetInstanceProcAddr = c.glad_vkGetInstanceProcAddr,
-			.glad_vkGetDeviceProcAddr = c.glad_vkGetDeviceProcAddr,
-			.glad_vkCreateImage = c.glad_vkCreateImage,
-		};
+		var vkFunctions: c.VmaVulkanFunctions = undefined;
+		if (builtin.os.tag == .macos) {
+			vkFunctions = .{
+				.vkGetInstanceProcAddr = c.vkGetInstanceProcAddr,
+				.vkGetDeviceProcAddr = c.vkGetDeviceProcAddr,
+				.vkCreateImage = c.vkCreateImage,
+			};
+		} else {
+			vkFunctions = .{
+				.glad_vkGetInstanceProcAddr = c.glad_vkGetInstanceProcAddr,
+				.glad_vkGetDeviceProcAddr = c.glad_vkGetDeviceProcAddr,
+				.glad_vkCreateImage = c.glad_vkCreateImage,
+			};
+		}
 		const allocatorCreateInfo: c.VmaAllocatorCreateInfo = .{
 			.flags = 0,
 			.physicalDevice = physicalDevice,
@@ -1193,10 +1208,10 @@ pub const gpu_garbage_collection = struct { // MARK: gpu_garbage_collection
 var frameIndex: usize = 0;
 
 pub fn beginRender() void {
-	SwapChain.beginRender();
+	swap_chain.beginRender();
 }
 
 pub fn endRender() void {
-	SwapChain.endRender();
+	swap_chain.endRender();
 	gpu_garbage_collection.cleanupFrame();
 }

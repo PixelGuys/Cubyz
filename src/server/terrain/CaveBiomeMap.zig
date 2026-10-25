@@ -47,7 +47,7 @@ pub const CaveBiomeMapFragment = struct { // MARK: caveBiomeMapFragment
 	}
 
 	pub fn deferredDeinit(self: *CaveBiomeMapFragment) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
+		main.heap.garbage_collection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	const rotationMatrixShift = 30;
