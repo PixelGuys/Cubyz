@@ -49,7 +49,7 @@ pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
 	if (data.strength >= 0) {
 		outString.print("{s} #808080(#30ca64+**{d:.0}% #808080{s})", .{getModifierName(data), getAdjustedStrength(data.strength)*100, @tagName(data.targetProperty)});
 	} else {
-		outString.print("{s} #808080(#fd3535-**{d:.0}% #808080{s})", .{getModifierName(data), (1/(data.strength + 1))*100, @tagName(data.targetProperty)});
+		outString.print("{s} #808080(#fd3535-**{d:.0}% #808080{s})", .{getModifierName(data), getAdjustedStrength(data.strength)*100, @tagName(data.targetProperty)});
 	}
 }
 
