@@ -379,7 +379,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		return self.surfaceFragments[index].getHeight(wx, wy);
 	}
 
-	pub fn getBiomeSample(self: CaveBiomeMapView, wx: i32, wy: i32) *terrain.ClimateMap.BiomeSample {
+	pub fn getBiomeSample(self: CaveBiomeMapView, wx: i32, wy: i32) *const terrain.ClimateMap.BiomeSample {
 		var index: u8 = 0;
 		if (wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 2;
