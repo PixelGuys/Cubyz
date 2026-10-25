@@ -1159,7 +1159,7 @@ pub const Connection = struct { // MARK: Connection
 					range.wasResentAsFirstPacket = !hadDoubleLoss;
 				}
 				if (range.len > Connection.minMtu) {
-					conn.mtuProbingState.increaseLossCounter(conn);
+					conn.mtuProbingState.increaseLossCounter(conn, range.len);
 				}
 				range.wasResent = true;
 				self.lostRanges.pushBack(range);
@@ -1310,10 +1310,10 @@ pub const Connection = struct { // MARK: Connection
 			/// counter of lost packets which are bigger than the minMtu, this is needed to know when we need to reset the mtu again
 			lossCounter: usize = 0,
 			/// the maximum Size a packet that was counted into our lossCounter had. Packets that are confirmed and bigger than this reduce the lossCounter to 0 again.
-			maxLossSize: u16 = 0,
+			maxLossSize: i32 = 0,
 		},
 
-		pub fn increaseLossCounter(self: *ProbingState, conn: *Connection, packetLen: u16) void {
+		pub fn increaseLossCounter(self: *ProbingState, conn: *Connection, packetLen: i32) void {
 			if (self.* != .searchFinished) return;
 			self.searchFinished.lossCounter += 1;
 			self.searchFinished.maxLossSize = @max(self.searchFinished.maxLossSize, packetLen);
@@ -1383,6 +1383,7 @@ pub const Connection = struct { // MARK: Connection
 				.timestamp = networkTimestamp(),
 				.packetLen = sequenceIndex,
 				.considerForCongestionControl = false,
+				.considerForRtt = false,
 			};
 		}
 
