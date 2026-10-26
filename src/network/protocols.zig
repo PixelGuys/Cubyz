@@ -50,8 +50,8 @@ pub fn onReceive(conn: *Connection, protocolIndex: u8, data: []const u8) !void {
 	const oldContext = main.sync.threadContext;
 	defer main.sync.threadContext = oldContext;
 	main.sync.threadContext = switch (conn.isServerSide()) {
-		.server => .server,
-		.client => .client,
+		true => .server,
+		false => .client,
 	};
 	const protocolReceive = blk: {
 		if (conn.isServerSide()) break :blk serverReceiveList[protocolIndex] orelse return error.Invalid;
