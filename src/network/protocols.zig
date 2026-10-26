@@ -47,6 +47,12 @@ pub fn init() void { // MARK: init()
 
 pub fn onReceive(conn: *Connection, protocolIndex: u8, data: []const u8) !void { // MARK: onReceive()
 	if (conn.handShakeState.raw != .complete and protocolIndex != handshake.id) return error.HandshakeIncomplete;
+	const oldContext = main.sync.threadContext;
+	defer main.sync.threadContext = oldContext;
+	main.sync.threadContext = switch (conn.isServerSide()) {
+		.server => .server,
+		.client => .client,
+	};
 	const protocolReceive = blk: {
 		if (conn.isServerSide()) break :blk serverReceiveList[protocolIndex] orelse return error.Invalid;
 		break :blk clientReceiveList[protocolIndex] orelse return error.Invalid;
@@ -623,9 +629,6 @@ pub const generic_update = struct { // MARK: generic_update
 	};
 
 	pub fn clientReceive(conn: *Connection, reader: *utils.BinaryReader) !void {
-		const oldContext = main.sync.threadContext;
-		defer main.sync.threadContext = oldContext;
-		main.sync.threadContext = .client;
 		switch (try reader.readEnum(UpdateType)) {
 			.gamemode => {
 				main.sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
