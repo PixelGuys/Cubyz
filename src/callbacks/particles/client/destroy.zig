@@ -10,7 +10,7 @@ pub fn init(_: ZonElement, _: main.callbacks.Creator) ?*@This() {
 	return @as(*anyopaque, undefined);
 }
 
-pub fn run(_: *anyopaque, params: main.callbacks.ParticleCollideCallback.Params) main.callbacks.Result {
+pub fn run(_: *@This(), params: main.callbacks.ParticleCollideCallback.Params) main.callbacks.Result {
 	params.source.currentFrame = 0;
 	return .handled;
 }
