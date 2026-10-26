@@ -81,7 +81,7 @@ const Socket = struct { // MARK: Socket
 					}
 					const result = option: {
 						if (builtin.target.os.tag == .macos) {
-							const probe: c_int = 1;
+							const probe: c_int = c.true;
 							break :option std.c.setsockopt(socket, std.c.IPPROTO.IP, std.c.IP.DONTFRAG, &probe, @sizeOf(c_int));
 						} else {
 							const probe: c_int = std.c.IP.PMTUDISC_PROBE;
@@ -1280,7 +1280,7 @@ pub const Connection = struct { // MARK: Connection
 	const MtuHandler = struct { // MARK: MtuHandler
 		const maxMtu: u32 = 65507; // max udp packet size
 		const minMtu: u32 = 576 - 20 - 8; // IPv4 MTU minus IP header minus udp header
-		const ethernetMtu = 1500 - 20 - 8 - 14; // Ethernet data MTU minus IP header minus udp header
+		const ethernetMtu = 1500 - 14 - 20 - 8; // Ethernet MTU minus Ethernet header minus IP header minus udp header
 
 		const lossCounterLimit = 3;
 
