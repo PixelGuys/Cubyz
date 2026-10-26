@@ -74,10 +74,19 @@ pub const particle_manager = struct { // MARK: particle_manager
 			.dragCoefficient = RandomRange(f32).fromZon(zon.getChild("dragCoefficient")) orelse .init(0.5, 0.6),
 			.loopTime = RandomRange(f32).fromZon(zon.getChild("loopTime")),
 			.onTouch = blk: {
-				break :blk main.callbacks.ParticleCollideCallback.init(zon.getChildOrNull("onTouch") orelse break :blk .noop, .{.particle = .{.typ = @intCast(types.items.len), .pos = .{0, 0, 0}}}) orelse {
+				break :blk main.callbacks.ParticleCollideCallback.init(
+					zon.getChildOrNull("onTouch") orelse break :blk .noop,
+					.{
+						.particle = .{
+							.typ = @intCast(types.items.len),
+							.pos = .{0, 0, 0},
+						},
+					},
+				) orelse {
 					std.log.err("Failed to load onTouch event for particle {s}", .{id});
 					break :blk .noop;
 				};
+
 			},
 		};
 
