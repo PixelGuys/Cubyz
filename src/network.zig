@@ -1305,6 +1305,10 @@ pub const Connection = struct { // MARK: Connection
 			const probeTimer: i64 = 15*1000*ms;
 			/// max probes are done until the probing is seen as failed (RFC default: 3)
 			const maxProbes: u8 = 3;
+			/// how long we wait after a finished search to search for an higher mtu again. (RFC default: 10 minutes)
+			const pmtuRaiseTimer = 10*60*1000*ms;
+			/// how long we wait after a mtu reset to enter the a new searching phase.
+			const resetTimer = 5*1000*ms;
 
 			var nextIndex: SequenceIndex = 0;
 
@@ -1313,41 +1317,39 @@ pub const Connection = struct { // MARK: Connection
 				firstProbe: bool = true,
 				probedSize: u16 = undefined,
 				probeSequenceIndex: ?SequenceIndex = null,
-				probeTimeStamp: i64 = undefined,
+				nextProbeTime: i64 = undefined,
 				probeCount: u8 = 0,
 			},
 			/// in this state we had a succesfull search and now use until the pmtuRaiseTimer is over the current mtu estimate
 			searchFinished: struct {
-				/// how long we wait after a finished search to search for an higher mtu again. (RFC default: 10 minutes)
-				pmtuRaiseTimer: i64 = 10*60*1000*ms,
-				/// the time we entered this state
-				timestamp: i64,
+				/// when we will enter the next searching phase
+				nextSearchingTime: i64,
 			},
 
 			fn nextPacketIsProbe(self: *ProbingState, conn: *Connection, time: i64) bool {
 				switch (self.*) {
 					.searching => |*state| {
-						if (conn.mtuHandler.mtuEstimate >= MtuHandler.maxMtu - 50) {
+						if (conn.mtuHandler.mtuEstimate >= MtuHandler.maxMtu) {
 							self.* = .{.searchFinished = .{
-								.timestamp = time,
+								.nextSearchingTime = time + pmtuRaiseTimer,
 							}};
 							return false;
 						}
 						if (state.probeSequenceIndex == null) return true;
-						if (time - state.probeTimeStamp > probeTimer) {
+						if (time > state.nextProbeTime) {
 							state.probeSequenceIndex = null;
 							state.probeCount += 1;
 
 							if (state.probeCount >= maxProbes) {
 								self.* = .{.searchFinished = .{
-									.timestamp = time,
+									.nextSearchingTime = time + pmtuRaiseTimer,
 								}};
 							} else return true;
 						}
 						return false;
 					},
 					.searchFinished => |state| {
-						if (time - state.timestamp <= state.pmtuRaiseTimer) {
+						if (time > state.nextSearchingTime) {
 							return false;
 						}
 						if (conn.mtuHandler.mtuEstimate >= MtuHandler.maxMtu - 50) return false;
@@ -1364,7 +1366,7 @@ pub const Connection = struct { // MARK: Connection
 					self.searching.probedSize = MtuHandler.ethernetMtu;
 					self.searching.firstProbe = false;
 				} else {
-					self.searching.probedSize = @min(conn.mtuHandler.mtuEstimate, MtuHandler.maxMtu - 50) + 50;
+					self.searching.probedSize = @min(conn.mtuHandler.mtuEstimate +| 50, MtuHandler.maxMtu);
 				}
 				return self.searching.probedSize;
 			}
@@ -1388,7 +1390,7 @@ pub const Connection = struct { // MARK: Connection
 				std.debug.assert(self.* == .searching);
 				self.searching.probeSequenceIndex = nextIndex;
 				nextIndex += 1;
-				self.searching.probeTimeStamp = time;
+				self.searching.nextProbeTime = time + probeTimer;
 				return self.searching.probeSequenceIndex.?;
 			}
 		};
@@ -1420,8 +1422,7 @@ pub const Connection = struct { // MARK: Connection
 			if (self.lossCounter > lossCounterLimit) {
 				self.mtuEstimate = minMtu;
 				self.probingState = .{.searchFinished = .{
-					.timestamp = networkTimestamp(),
-					.pmtuRaiseTimer = 5*1000*ms,
+					.nextSearchingTime = networkTimestamp() + ProbingState.resetTimer,
 				}};
 			}
 		}
@@ -1430,6 +1431,7 @@ pub const Connection = struct { // MARK: Connection
 			// confirmation of a big packet can tell us that the mtu estimate is still valid
 			if (self.maxLossSize > packetLen) return;
 			self.lossCounter = 0;
+			self.maxLossSize = 0;
 		}
 	};
 
