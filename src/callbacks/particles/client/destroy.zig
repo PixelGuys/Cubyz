@@ -6,7 +6,7 @@ const vec = main.vec;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 
-pub fn init(_: ZonElement, _: main.callbacks.Creator) ?*anyopaque {
+pub fn init(_: ZonElement, _: main.callbacks.Creator) ?*@This() {
 	return @as(*anyopaque, undefined);
 }
 
