@@ -832,10 +832,13 @@ pub const Connection = struct { // MARK: Connection
 
 	const SequenceIndex = i32;
 
-	const LossStatus = enum {
-		noLoss,
-		singleLoss,
-		doubleLoss,
+	const LossStatus = struct {
+		state: enum {
+			noLoss,
+			singleLoss,
+			doubleLoss,
+		},
+		packetLen: i32,
 	};
 
 	const RangeBuffer = struct { // MARK: RangeBuffer
@@ -1142,9 +1145,11 @@ pub const Connection = struct { // MARK: Connection
 			return result;
 		}
 
-		pub fn checkForLosses(self: *SendBuffer, conn: *Connection, time: i64, retransmissionTimeout: i64) LossStatus {
-			var hadLoss: bool = false;
-			var hadDoubleLoss: bool = false;
+		pub fn checkForLosses(self: *SendBuffer, time: i64, retransmissionTimeout: i64) LossStatus {
+			var loss: LossStatus = .{
+				.state = .noLoss,
+				.packetLen = 0,
+			};
 			while (true) {
 				var range = self.unconfirmedRanges.peek() orelse break;
 				if (range.timestamp +% retransmissionTimeout -% time >= 0) break;
@@ -1152,20 +1157,19 @@ pub const Connection = struct { // MARK: Connection
 				if (self.fullyConfirmedIndex == range.start) {
 					// In TCP effectively only the second loss of the lowest unconfirmed packet is counted for congestion control
 					// This decreases the chance of triggering congestion control from random packet loss
-					if (range.wasResentAsFirstPacket) hadDoubleLoss = true;
-					hadLoss = true;
-					range.wasResentAsFirstPacket = !hadDoubleLoss;
+					if (range.wasResentAsFirstPacket) {
+						loss.state = .doubleLoss;
+					} else {
+						loss.state = .singleLoss;
+					}
+					range.wasResentAsFirstPacket = loss.state != .doubleLoss;
 				}
-				if (hadDoubleLoss) {
-					conn.mtuHandler.increaseLossCounter(range.len);
-				}
+				loss.packetLen = range.len;
 				range.wasResent = true;
 				self.lostRanges.pushBack(range);
 				_ = packetsResent.fetchAdd(1, .monotonic);
 			}
-			if (hadDoubleLoss) return .doubleLoss;
-			if (hadLoss) return .singleLoss;
-			return .noLoss;
+			return loss;
 		}
 
 		pub fn getNextPacketToSend(self: *SendBuffer, byteIndex: *SequenceIndex, buf: []u8, time: i64, considerForCongestionControl: bool, allowedDelay: i64) ?usize {
@@ -1249,7 +1253,7 @@ pub const Connection = struct { // MARK: Connection
 
 		pub fn checkForLosses(self: *Channel, conn: *Connection, time: i64) LossStatus {
 			const retransmissionTimeout: i64 = @trunc(conn.rttEstimate + 3*conn.rttUncertainty + @as(f32, @floatFromInt(self.allowedDelay)));
-			return self.sendBuffer.checkForLosses(conn, time, retransmissionTimeout);
+			return self.sendBuffer.checkForLosses(time, retransmissionTimeout);
 		}
 
 		pub fn sendNextPacketAndGetSize(self: *Channel, conn: *Connection, time: i64, considerForCongestionControl: bool) ?usize {
@@ -1281,10 +1285,8 @@ pub const Connection = struct { // MARK: Connection
 	const MtuHandler = struct { // MARK: MtuHandler
 		/// max udp packet size
 		const maxMtu: u32 = 65507;
-		/// IPv4 MTU minus IP header minus udp header
-		const minMtu: u32 = 576 - 20 - 8;
-		/// Ethernet MTU minus Ethernet header minus IP header minus udp header
-		const ethernetMtu = 1500 - 14 - 20 - 8;
+		const minMtu: u32 = 576 - 20 - 8; // IPv4 MTU minus IP header minus udp header
+		const ethernetMtu = 1500 - 14 - 20 - 8; // Ethernet MTU minus Ethernet header minus IP header minus udp header
 		const lossCounterLimit = 3;
 
 		mtuEstimate: u16 = minMtu,
@@ -1411,7 +1413,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		/// handles packet loss that could be because of the mtu changing.
-		fn increaseLossCounter(self: *MtuHandler, packetLen: i32) void {
+		fn handeLoss(self: *MtuHandler, packetLen: i32) void {
 			if (packetLen <= minMtu) return; // normal packet loss, shouldn't be counted into the mtu handler
 			self.lossCounter += 1;
 			self.maxLossSize = @max(self.maxLossSize, packetLen);
@@ -1424,7 +1426,7 @@ pub const Connection = struct { // MARK: Connection
 			}
 		}
 
-		fn confirmationPacket(self: *MtuHandler, packetLen: i32) void {
+		fn handleConfirmation(self: *MtuHandler, packetLen: i32) void {
 			// confirmation of a big packet can tell us that the mtu estimate is still valid
 			if (self.maxLossSize > packetLen) return;
 			self.lossCounter = 0;
@@ -1835,12 +1837,13 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	fn handlePacketLoss(self: *Connection, loss: LossStatus) void {
-		if (loss == .noLoss) return;
+		if (loss.state == .noLoss) return;
 		self.slowStart = false;
-		if (loss == .doubleLoss) {
+		if (loss.state == .doubleLoss) {
 			self.rttUncertainty += 0.05*self.rttEstimate;
 			self.bandwidthEstimateInBytesPerRtt /= 2;
 			self.bandwidthEstimateInBytesPerRtt = @max(self.bandwidthEstimateInBytesPerRtt, self.mtuHandler.mtuEstimate);
+			self.mtuHandler.handeLoss(loss.packetLen);
 		}
 	}
 
@@ -1872,7 +1875,7 @@ pub const Connection = struct { // MARK: Connection
 				.probe => self.mtuHandler.receiveConfirmationAndGetTimestamp(self, start) orelse continue,
 				else => return error.Invalid,
 			};
-			self.mtuHandler.confirmationPacket(confirmationResult.packetLen);
+			self.mtuHandler.handleConfirmation(confirmationResult.packetLen);
 			if (confirmationResult.considerForRtt) {
 				const rtt: f32 = @floatFromInt(@max(1, timestamp -% confirmationResult.timestamp -% timeOffset));
 				numRtt += 1;
