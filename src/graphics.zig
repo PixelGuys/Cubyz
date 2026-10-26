@@ -1323,16 +1323,12 @@ const text_rendering = struct { // MARK: text_rendering
 		};
 
 		if (main.settings.launch_config.vulkanTestingMode) {
-			//vulkan.currentFrame.guiCommands.bindPipeline(text_rendering.pipeline, null);
-			//errdefer pipeline.deinit();
-
 			glyphTexture[0].vulkanImage = vulkan.Image.init(.{textureWidth, textureHeight, 1}, .{
 				.format = c.VK_FORMAT_R8_UNORM,
 				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT | c.VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
 			});
 		} else {
 			pipeline.bind(null);
-			//errdefer pipeline.deinit();
 			c.glUniform2f(uniforms.fontSize, @floatFromInt(textureWidth), @floatFromInt(textureHeight));
 			glyphTexture[0].bind();
 
