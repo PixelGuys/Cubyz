@@ -42,6 +42,7 @@ const Socket = struct { // MARK: Socket
 			c.WSAENOBUFS => return error.SystemResources,
 			c.WSAENOTSOCK => return error.FileDescriptorNotASocket,
 			c.WSAECONNRESET => return error.ConnectionResetByPeer,
+			c.WSAEMSGSIZE => return error.MessageTooLong,
 			else => return error.UNKNOWN,
 		}
 	}
@@ -1155,7 +1156,7 @@ pub const Connection = struct { // MARK: Connection
 					hadLoss = true;
 					range.wasResentAsFirstPacket = !hadDoubleLoss;
 				}
-				if (range.len > MtuHandler.minMtu and hadDoubleLoss) {
+				if (hadDoubleLoss) {
 					conn.mtuHandler.increaseLossCounter(range.len);
 				}
 				range.wasResent = true;
@@ -1278,10 +1279,12 @@ pub const Connection = struct { // MARK: Connection
 	};
 
 	const MtuHandler = struct { // MARK: MtuHandler
-		const maxMtu: u32 = 65507; // max udp packet size
-		const minMtu: u32 = 576 - 20 - 8; // IPv4 MTU minus IP header minus udp header
-		const ethernetMtu = 1500 - 14 - 20 - 8; // Ethernet MTU minus Ethernet header minus IP header minus udp header
-
+		/// max udp packet size
+		const maxMtu: u32 = 65507;
+		/// IPv4 MTU minus IP header minus udp header
+		const minMtu: u32 = 576 - 20 - 8;
+		/// Ethernet MTU minus Ethernet header minus IP header minus udp header
+		const ethernetMtu = 1500 - 14 - 20 - 8;
 		const lossCounterLimit = 3;
 
 		mtuEstimate: u16 = minMtu,
@@ -1388,7 +1391,28 @@ pub const Connection = struct { // MARK: Connection
 			}
 		};
 
-		pub fn increaseLossCounter(self: *MtuHandler, packetLen: i32) void {
+		fn sendNextPacketAndGetSize(self: *MtuHandler, conn: *Connection, time: i64) ?usize {
+			if (!self.probingState.nextPacketIsProbe(conn, time)) return null;
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, self.probingState.nextProbeSize(conn));
+			defer writer.deinit();
+
+			const sequenceIndex = self.probingState.setProbeInfo(time);
+			writer.writeEnum(ChannelId, ChannelId.probe);
+			writer.writeInt(SequenceIndex, sequenceIndex);
+			writer.data.items.len = writer.data.capacity;
+
+			_ = packetsSent.fetchAdd(1, .monotonic);
+			conn.manager.send(writer.data.items, conn.remoteAddress, null);
+			return writer.data.items.len;
+		}
+
+		fn receiveConfirmationAndGetTimestamp(self: *MtuHandler, conn: *Connection, sequenceIndex: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
+			return self.probingState.receiveConfirmationAndGetTimestamp(conn, sequenceIndex);
+		}
+
+		/// handles packet loss that could be because of the mtu changing.
+		fn increaseLossCounter(self: *MtuHandler, packetLen: i32) void {
+			if (packetLen <= minMtu) return; // normal packet loss, shouldn't be counted into the mtu handler
 			self.lossCounter += 1;
 			self.maxLossSize = @max(self.maxLossSize, packetLen);
 			if (self.lossCounter > lossCounterLimit) {
@@ -1400,67 +1424,10 @@ pub const Connection = struct { // MARK: Connection
 			}
 		}
 
-		pub fn confirmationPacket(self: *MtuHandler, packetLen: i32) void {
+		fn confirmationPacket(self: *MtuHandler, packetLen: i32) void {
+			// confirmation of a big packet can tell us that the mtu estimate is still valid
 			if (self.maxLossSize > packetLen) return;
 			self.lossCounter = 0;
-		}
-	};
-
-	const ProbeChannel = struct { // MARK: ProbeChannel
-		super: Channel,
-
-		pub fn init(sequenceIndex: SequenceIndex, delay: i64, id: ChannelId) ProbeChannel {
-			return .{
-				.super = .init(sequenceIndex, delay, id),
-			};
-		}
-
-		pub fn deinit(self: *ProbeChannel) void {
-			self.super.deinit();
-		}
-
-		pub fn connect(self: *ProbeChannel, remoteStart: SequenceIndex) void {
-			self.super.connect(remoteStart);
-		}
-
-		pub fn receive(self: *ProbeChannel, conn: *Connection, start: SequenceIndex, data: []const u8) !ReceiveBuffer.ReceiveStatus {
-			return self.super.receive(conn, start, data);
-		}
-
-		pub fn send(self: *ProbeChannel, protocolIndex: u8, data: []const u8, time: i64) !void {
-			return self.super.send(protocolIndex, data, time);
-		}
-
-		pub fn receiveConfirmationAndGetTimestamp(self: *ProbeChannel, start: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
-			return self.super.receiveConfirmationAndGetTimestamp(start);
-		}
-
-		pub fn checkForLosses(self: *ProbeChannel, conn: *Connection, time: i64) LossStatus {
-			return self.super.checkForLosses(conn, time);
-		}
-
-		pub fn sendNextPacketAndGetSize(self: *ProbeChannel, conn: *Connection, time: i64, considerForCongestionControl: bool) ?usize {
-			if (!conn.mtuHandler.probingState.nextPacketIsProbe(conn, time)) return self.super.sendNextPacketAndGetSize(conn, time, considerForCongestionControl);
-
-			if (self.super.sendNextPacketAndGetSize(conn, time, considerForCongestionControl)) |result| {
-				return result;
-			}
-
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, conn.mtuHandler.probingState.nextProbeSize(conn));
-			defer writer.deinit();
-
-			const sequenceIndex = conn.mtuHandler.probingState.setProbeInfo(time);
-			writer.writeEnum(ChannelId, ChannelId.probe);
-			writer.writeInt(SequenceIndex, sequenceIndex);
-			writer.data.items.len = writer.data.capacity;
-
-			_ = packetsSent.fetchAdd(1, .monotonic);
-			conn.manager.send(writer.data.items, conn.remoteAddress, null);
-			return writer.data.items.len;
-		}
-
-		pub fn getStatistics(self: *ProbeChannel, unconfirmed: *usize, queued: *usize) void {
-			return self.super.getStatistics(unconfirmed, queued);
 		}
 	};
 
@@ -1706,7 +1673,7 @@ pub const Connection = struct { // MARK: Connection
 
 	lossyChannel: Channel, // TODO: Actually allow it to be lossy
 	secureChannel: SecureChannel,
-	slowChannel: ProbeChannel,
+	slowChannel: Channel,
 
 	restartChannelCounter: [3]u32 = .{0, 0, 0},
 	restartCounter: u32 = 0,
@@ -1902,7 +1869,7 @@ pub const Connection = struct { // MARK: Connection
 				.lossy => self.lossyChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
 				.secure => self.secureChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
 				.slow => self.slowChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
-				.probe => self.mtuHandler.probingState.receiveConfirmationAndGetTimestamp(self, start) orelse continue,
+				.probe => self.mtuHandler.receiveConfirmationAndGetTimestamp(self, start) orelse continue,
 				else => return error.Invalid,
 			};
 			self.mtuHandler.confirmationPacket(confirmationResult.packetLen);
@@ -2114,7 +2081,7 @@ pub const Connection = struct { // MARK: Connection
 				writer.writeInt(i64, self.connectionIdentifier);
 				writer.writeInt(SequenceIndex, self.lossyChannel.sendBuffer.fullyConfirmedIndex);
 				writer.writeInt(SequenceIndex, self.secureChannel.super.sendBuffer.fullyConfirmedIndex);
-				writer.writeInt(SequenceIndex, self.slowChannel.super.sendBuffer.fullyConfirmedIndex);
+				writer.writeInt(SequenceIndex, self.slowChannel.sendBuffer.fullyConfirmedIndex);
 				_ = internalMessageOverhead.fetchAdd(writer.data.items.len + headerOverhead, .monotonic);
 				self.manager.send(writer.data.items, self.remoteAddress, null);
 				return;
@@ -2157,6 +2124,7 @@ pub const Connection = struct { // MARK: Connection
 						else => unreachable,
 					} orelse continue;
 				}
+				if (self.mtuHandler.sendNextPacketAndGetSize(self, timestamp)) |dataLen| break :blk dataLen;
 				if (self.slowChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
 				break;
 			};
