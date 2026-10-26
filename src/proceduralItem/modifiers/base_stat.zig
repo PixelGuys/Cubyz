@@ -25,7 +25,7 @@ fn getModifierName(data: Data) []const u8 {
 
 pub fn loadData(zon: main.ZonElement) Data {
 	return .{
-		.strength = getInverseAdjustedStrength(@max(zon.get(f32, "strength") orelse 0, -1)),
+		.strength = @max(zon.get(f32, "strength") orelse 0, -1),
 		.targetProperty = main.items.ProceduralItemProperty.fromString(zon.get([]const u8, "targetProperty") orelse "|missing targetProperty field|") orelse blk: {
 			std.log.err("Could not find tagProperty {s}. Replacing it with .damage", .{zon.get([]const u8, "targetProperty") orelse "|missing targetProperty field|"});
 			break :blk .damage;
@@ -36,6 +36,11 @@ pub fn loadData(zon: main.ZonElement) Data {
 pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	if (data1.targetProperty != data2.targetProperty) return null;
 	if (std.math.sign(data1.strength) != std.math.sign(data2.strength)) return null;
+	switch (std.math.sign(data1.strength)) {
+		1 => return .{.strength = std.math.hypot(data1.strength, data2.strength), .tag = data1.tag},
+		-1 => return .{.strength = 1.0 - 1.0/(1.0 + std.math.hypot(1.0/(1.0 - data1.strength) - 1.0, 1.0/(1.0 - data2.strength) - 1.0)), .tag = data1.tag},
+		0 => return null,
+	}
 	return .{
 		.strength = std.math.sign(data1.strength + data2.strength)*@sqrt(@abs(data1.strength*@abs(data1.strength) + data2.strength*@abs(data2.strength))),
 		.targetProperty = data1.targetProperty,
