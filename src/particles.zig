@@ -344,35 +344,35 @@ pub const particle_system = struct { // MARK: particle_system
 		particleCount += 1;
 	}
 
-	pub fn render(ambientLight: Vec3f) void {
+	pub fn render(currentFrame: *graphics.vulkan.Frame, ambientLight: Vec3f) void {
 		const positionOffset: Vec3f = @floatCast(game.player.getEyePosBlocking() - @as(Vec3d, @floatFromInt(previousPlayerPos)));
 		const billboardMatrix = Mat4f.rotationZ(-game.camera.rotation[2] + std.math.pi*0.5).mul(Mat4f.rotationY(game.camera.rotation[0] - std.math.pi*0.5));
 
 		if (main.settings.launch_config.vulkanTestingMode) {
 			particlesSSBO.bufferSubData(Particle, &particles, particleCount);
-			graphics.vulkan.currentFrame.renderCommands.bindPipeline(pipeline, null);
+			currentFrame.renderCommands.bindPipeline(currentFrame, pipeline, null);
 
-			graphics.vulkan.currentFrame.renderCommands.bindDescriptors(pipeline, .graphics, &.{
+			currentFrame.renderCommands.bindDescriptors(pipeline, .graphics, &.{
 				.{.image = .{.binding = 0, .image = particle_manager.textureArray.vulkanImage.?}},
 				.{.image = .{.binding = 1, .image = particle_manager.emissionTextureArray.vulkanImage.?}},
 				.{.ssbo = .{.binding = 13, .ssbo = particlesSSBO}},
 				.{.ssbo = .{.binding = 14, .ssbo = particle_manager.particleTypesSSBO}},
 			});
-			graphics.vulkan.currentFrame.renderCommands.pushConstants(pipeline, &Uniforms{
+			currentFrame.renderCommands.pushConstants(pipeline, &Uniforms{
 				.billboardMatrix = billboardMatrix.toGl(),
 				.positionOffset = positionOffset,
 				.ambientLight = ambientLight,
 			});
-			graphics.frame_uniforms.bindToPipeline(graphics.vulkan.currentFrame.renderCommands, pipeline);
+			graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, pipeline);
 
-			graphics.vulkan.currentFrame.renderCommands.bindVertexArray(chunk_meshing.vao);
+			currentFrame.renderCommands.bindVertexArray(chunk_meshing.vao);
 
 			const maxQuads = chunk_meshing.maxQuadsInIndexBuffer;
 			const count = @divCeil(particleCount, maxQuads);
 			for (0..count) |i| {
 				const particleOffset = (maxQuads*4)*i;
 				const particleCurrentCount: u32 = @min(maxQuads, particleCount - maxQuads*i);
-				graphics.vulkan.currentFrame.renderCommands.drawIndexed(particleCurrentCount*6, @intCast(particleOffset));
+				currentFrame.renderCommands.drawIndexed(particleCurrentCount*6, @intCast(particleOffset));
 			}
 		} else {
 			particlesSSBO.bufferSubData(Particle, &particles, particleCount);

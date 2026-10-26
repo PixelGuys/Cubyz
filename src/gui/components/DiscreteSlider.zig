@@ -151,13 +151,13 @@ pub fn mainButtonReleased(self: *DiscreteSlider, _: Vec2f) void {
 	self.button.mainButtonReleased(undefined);
 }
 
-pub fn render(self: *DiscreteSlider, mousePosition: Vec2f) void {
+pub fn render(self: *DiscreteSlider, currentFrame: *graphics.vulkan.Frame, mousePosition: Vec2f) void {
 	if (main.settings.launch_config.vulkanTestingMode and texture.vulkanImage != null) {
-		graphics.vulkan.currentFrame.guiCommands.bindPipeline(Button.pipeline, graphics.draw.getScissor());
-		graphics.vulkan.currentFrame.guiCommands.bindDescriptors(Button.pipeline, .graphics, &.{
+		currentFrame.guiCommands.bindPipeline(currentFrame, Button.pipeline, graphics.draw.getScissor());
+		currentFrame.guiCommands.bindDescriptors(Button.pipeline, .graphics, &.{
 			.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
 		});
-		draw.customShadedRect(@as(Button.ButtonUniforms, undefined), Button.pipeline, self.pos, self.size);
+		draw.customShadedRect(currentFrame, @as(Button.ButtonUniforms, undefined), Button.pipeline, self.pos, self.size);
 	} else {
 		Button.pipeline.bind(draw.getScissor());
 		texture.bindTo(0);
@@ -167,11 +167,11 @@ pub fn render(self: *DiscreteSlider, mousePosition: Vec2f) void {
 	{
 		const oldColor = draw.setColor(0x80000000);
 		defer draw.restoreColor(oldColor);
-		draw.rect(self.pos + self.getBarPos(), self.getBarSize());
+		draw.rect(currentFrame, self.pos + self.getBarPos(), self.getBarSize());
 	}
 
 	self.label.pos = self.pos + @as(Vec2f, @splat(1.5*border));
-	self.label.render(mousePosition);
+	self.label.render(currentFrame, mousePosition);
 
 	if (self.button.pressed) {
 		self.button.pos[0] = mousePosition[0] - self.mouseAnchor;
@@ -180,5 +180,5 @@ pub fn render(self: *DiscreteSlider, mousePosition: Vec2f) void {
 	}
 	const oldTranslation = draw.setTranslation(self.pos);
 	defer draw.restoreTranslation(oldTranslation);
-	self.button.render(mousePosition - self.pos);
+	self.button.render(currentFrame, mousePosition - self.pos);
 }

@@ -42,7 +42,7 @@ pub fn deinit() void {
 	deadHeartTexture.deinit();
 }
 
-pub fn render() void {
+pub fn render(currentFrame: *graphics.vulkan.Frame) void {
 	if (main.game.player.isCreative()) return;
 
 	const displayHealth = @max(0, main.game.player.super.health);
@@ -69,7 +69,7 @@ pub fn render() void {
 			}
 		};
 
-		draw.image(texture, Vec2f{x, window.contentSize[1] - y - 20}, .{20, 20});
+		draw.image(currentFrame, texture, Vec2f{x, window.contentSize[1] - y - 20}, .{20, 20});
 		x += 20;
 	}
 
