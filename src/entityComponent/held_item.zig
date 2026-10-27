@@ -35,6 +35,7 @@ pub const entityComponentVersion = 0;
 pub const client = struct {
 	const Component = struct {
 		heldItem: items.Item,
+		source: ?items.Inventory.InventoryAndSlot,
 	};
 	pub var components: main.utils.SparseSet(Component, Entity) = .{};
 
@@ -47,7 +48,10 @@ pub const client = struct {
 	}
 
 	pub fn getHeldItem(entity: Entity) ?*items.Item {
-		return &(components.get(entity) orelse return null).heldItem;
+		return &((components.get(entity) orelse return null).source orelse return null).ref().item;
+	}
+	pub fn changeInventoryAndSlot(entity: Entity, newInventoryAndSlot: items.Inventory.InventoryAndSlot) void {
+		(components.get(entity) orelse return).source = newInventoryAndSlot;
 	}
 
 	pub fn load(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
@@ -61,6 +65,7 @@ pub const client = struct {
 		const newHeldItem = items.Item.fromBytes(reader) catch return error.UnreadableComponentData;
 		ptr.* = Component{
 			.heldItem = newHeldItem,
+			.source = if (entity == main.game.player.id) items.Inventory.InventoryAndSlot{.inv = main.game.player.inventory.super, .slot = main.game.player.selectedSlot} else null,
 		};
 	}
 	pub fn unload(entity: Entity) void {
