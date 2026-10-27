@@ -856,12 +856,5 @@ pub const inventory = struct { // MARK: inventory
 		if (!initialized) return;
 		carriedItemSlot.pos = mousePos - Vec2f{12, 12};
 		carriedItemSlot.render(currentFrame, .{0, 0});
-		// Draw tooltip:
-		const hovered = hoveredItemSlot orelse return;
-		if (carried.getAmount(0) == 0) {
-			if (hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltipContent| {
-				tooltip.renderFromText(currentFrame, tooltipContent, mousePos);
-			}
-		}
 	}
 };
