@@ -1294,7 +1294,7 @@ pub const Connection = struct { // MARK: Connection
 		/// counter of lost packets which are bigger than the minMtu, this is needed to know when we need to reset the mtu again
 		lossCounter: usize = 0,
 		/// the maximum Size a packet that was counted into our lossCounter had. Packets that are confirmed and bigger than this reduce the lossCounter to 0 again.
-		maxLossSize: i32 = 0,
+		maxLossSize: SequenceIndex = 0,
 
 		/// Reference: RFC8899
 		/// Declarations can be found in 5.1
@@ -1315,9 +1315,7 @@ pub const Connection = struct { // MARK: Connection
 			/// In this state we are actively searching with probes for a higher mtu
 			searching: struct {
 				firstProbe: bool = true,
-				probedSize: u16 = undefined,
-				probeSequenceIndex: ?SequenceIndex = null,
-				nextProbeTime: i64 = undefined,
+				nextProbeTime: i64 = 0,
 				probeCount: u8 = 0,
 			},
 			/// in this state we had a succesfull search and now use until the pmtuRaiseTimer is over the current mtu estimate
@@ -1335,12 +1333,10 @@ pub const Connection = struct { // MARK: Connection
 							}};
 							return false;
 						}
-						if (state.probeSequenceIndex == null) return true;
 						if (time > state.nextProbeTime) {
-							state.probeSequenceIndex = null;
 							state.probeCount += 1;
 
-							if (state.probeCount >= maxProbes) {
+							if (state.probeCount > maxProbes) {
 								self.* = .{.searchFinished = .{
 									.nextSearchingTime = time + pmtuRaiseTimer,
 								}};
@@ -1363,35 +1359,30 @@ pub const Connection = struct { // MARK: Connection
 				std.debug.assert(self.* == .searching);
 				// we first test if the expected ethernetMtu is possible
 				if (self.searching.firstProbe) {
-					self.searching.probedSize = MtuHandler.ethernetMtu;
 					self.searching.firstProbe = false;
+					return MtuHandler.ethernetMtu;
 				} else {
-					self.searching.probedSize = @min(conn.mtuHandler.mtuEstimate +| 50, MtuHandler.maxMtu);
+					return @min(conn.mtuHandler.mtuEstimate +| 50, MtuHandler.maxMtu);
 				}
-				return self.searching.probedSize;
 			}
 
-			fn receiveConfirmationAndGetTimestamp(self: *ProbingState, conn: *Connection, sequenceIndex: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
+			fn receiveConfirmationAndGetTimestamp(self: *ProbingState, conn: *Connection, probeLen: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
 				if (self.* != .searching) return null;
-				if (self.searching.probeSequenceIndex != sequenceIndex) return null;
 
 				self.searching.probeCount = 0;
-				self.searching.probeSequenceIndex = null;
-				conn.mtuHandler.mtuEstimate = self.searching.probedSize;
+				self.searching.nextProbeTime = 0; // next probe can be send
+				conn.mtuHandler.mtuEstimate = @intCast(probeLen);
 				return .{
 					.timestamp = networkTimestamp(),
-					.packetLen = sequenceIndex,
+					.packetLen = probeLen,
 					.considerForCongestionControl = false,
 					.considerForRtt = false,
 				};
 			}
 
-			fn setProbeInfo(self: *ProbingState, time: i64) SequenceIndex {
+			fn setProbeInfo(self: *ProbingState, time: i64) void {
 				std.debug.assert(self.* == .searching);
-				self.searching.probeSequenceIndex = nextIndex;
-				nextIndex += 1;
 				self.searching.nextProbeTime = time + probeTimer;
-				return self.searching.probeSequenceIndex.?;
 			}
 		};
 
@@ -1400,9 +1391,9 @@ pub const Connection = struct { // MARK: Connection
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, self.probingState.nextProbeSize(conn));
 			defer writer.deinit();
 
-			const sequenceIndex = self.probingState.setProbeInfo(time);
+			self.probingState.setProbeInfo(time);
 			writer.writeEnum(ChannelId, ChannelId.probe);
-			writer.writeInt(SequenceIndex, sequenceIndex);
+			writer.writeInt(SequenceIndex, @intCast(writer.data.capacity));
 			writer.data.items.len = writer.data.capacity;
 
 			_ = packetsSent.fetchAdd(1, .monotonic);
@@ -1415,7 +1406,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		/// handles packet loss that could be because of the mtu changing.
-		fn handeLoss(self: *MtuHandler, packetLen: i32) void {
+		fn handeLoss(self: *MtuHandler, packetLen: SequenceIndex) void {
 			if (packetLen <= minMtu) return; // normal packet loss, shouldn't be counted into the mtu handler
 			self.lossCounter += 1;
 			self.maxLossSize = @max(self.maxLossSize, packetLen);
@@ -1427,7 +1418,7 @@ pub const Connection = struct { // MARK: Connection
 			}
 		}
 
-		fn handleConfirmation(self: *MtuHandler, packetLen: i32) void {
+		fn handleConfirmation(self: *MtuHandler, packetLen: SequenceIndex) void {
 			// confirmation of a big packet can tell us that the mtu estimate is still valid
 			if (self.maxLossSize > packetLen) return;
 			self.lossCounter = 0;
@@ -1877,7 +1868,7 @@ pub const Connection = struct { // MARK: Connection
 				.probe => self.mtuHandler.receiveConfirmationAndGetTimestamp(self, start) orelse continue,
 				else => return error.Invalid,
 			};
-			self.mtuHandler.handleConfirmation(confirmationResult.packetLen);
+			self.mtuHandler.handleConfirmation(start);
 			if (confirmationResult.considerForRtt) {
 				const rtt: f32 = @floatFromInt(@max(1, timestamp -% confirmationResult.timestamp -% timeOffset));
 				numRtt += 1;
