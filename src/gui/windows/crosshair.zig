@@ -71,13 +71,13 @@ pub fn deinit() void {
 	texture.deinit();
 }
 
-pub fn render() void {
+pub fn render(currentFrame: *graphics.vulkan.Frame) void {
 	if (main.settings.launch_config.vulkanTestingMode and texture.vulkanImage != null) {
-		graphics.vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
-		graphics.vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
+		currentFrame.guiCommands.bindPipeline(currentFrame, pipeline, graphics.draw.getScissor());
+		currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
 			.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
 		});
-		graphics.draw.customShadedImage(@as(Uniforms, undefined), pipeline, .{0, 0}, .{size, size});
+		graphics.draw.customShadedImage(currentFrame, @as(Uniforms, undefined), pipeline, .{0, 0}, .{size, size});
 	} else {
 		texture.bindTo(0);
 		pipeline.bind(graphics.draw.getScissor());

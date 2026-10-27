@@ -163,13 +163,13 @@ pub fn endRendering(self: CommandBuffer) void {
 	c.vkCmdEndRendering(self.handle);
 }
 
-pub fn bindPipeline(self: CommandBuffer, pipeline: main.graphics.Pipeline, scissor: ?c.VkRect2D) void {
+pub fn bindPipeline(self: CommandBuffer, currentFrame: *vulkan.Frame, pipeline: main.graphics.Pipeline, scissor: ?c.VkRect2D) void {
 	c.vkCmdBindPipeline(self.handle, c.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.graphicsPipeline);
 	self.setViewport(.{
 		.x = 0,
 		.y = 0,
-		.width = @floatFromInt(vulkan.currentFrame.extent.width),
-		.height = @floatFromInt(vulkan.currentFrame.extent.height),
+		.width = @floatFromInt(currentFrame.extent.width),
+		.height = @floatFromInt(currentFrame.extent.height),
 		.minDepth = 0,
 		.maxDepth = 1,
 	});
@@ -178,7 +178,7 @@ pub fn bindPipeline(self: CommandBuffer, pipeline: main.graphics.Pipeline, sciss
 	} else {
 		self.setScissor(.{
 			.offset = .{.x = 0, .y = 0},
-			.extent = vulkan.currentFrame.extent,
+			.extent = currentFrame.extent,
 		});
 	}
 }
