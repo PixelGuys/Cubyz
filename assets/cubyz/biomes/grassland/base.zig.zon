@@ -1,0 +1,34 @@
+.{
+	.minHeight = 22,
+	.maxHeight = 40,
+	.roughness = 1,
+	.hills = 5,
+	.chance = 2,
+	.music = "cubyz:sinanimea/sunrise",
+	.validPlayerSpawn = true,
+	.ground_structure = .{
+		"cubyz:grass/temperate",
+		"2 to 3 cubyz:soil",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.0002,
+			.block = "cubyz:slate/smooth",
+			.size = 5,
+			.size_variance = 1,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/white",
+			.placeMode = .degradable,
+			.chance = 0.015,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/young",
+			.placeMode = .degradable,
+			.chance = 0.015,
+		},
+	},
+}

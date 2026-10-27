@@ -1,18 +1,8 @@
 .{
-	.climate = .{},
-	.tags = .{
-		.oak,
-	},
 	.chance = 0.25,
-	.minHeightLimit = 7,
 	.minHeight = 20,
 	.maxHeight = 40,
-	.maxHeightLimit = 50,
-	.smoothBeaches = true,
-	.minRadius = 256,
-	.maxRadius = 320,
 	.mountains = 30,
-
 	.music = "cubyz:sinanimea/sunrise",
 
 	.ground_structure = .{
@@ -21,19 +11,16 @@
 	},
 	.structures = .{
 		.{
-			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:leaves/oak",
-			.log = "cubyz:log/oak",
-			.chance = 0.014,
-			.type = .round,
-			.height = 6,
-			.height_variation = 3,
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/oak/white",
+			.placeMode = .degradable,
+			.chance = 0.010,
 		},
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/oak/young",
 			.placeMode = .degradable,
-			.chance = 0.002,
+			.chance = 0.004,
 		},
 		.{
 			.id = "cubyz:boulder",
