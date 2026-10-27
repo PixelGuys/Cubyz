@@ -58,7 +58,6 @@
 // Used for platform-speciffic keystorage
 #ifdef _WIN32
 #include <wincrypt.h>
-#include <errhandlingapi.h>
 #endif
 
 // used for audio
