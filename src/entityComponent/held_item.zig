@@ -47,8 +47,10 @@ pub const client = struct {
 		components.clear();
 	}
 
-	pub fn getHeldItem(entity: Entity) ?*items.Item {
-		return &((components.get(entity) orelse return null).source orelse return null).ref().item;
+	pub fn getHeldItem(entity: Entity) ?items.Item {
+		const inventoryAndSlot = (components.get(entity) orelse return null).source;
+		if (inventoryAndSlot == null) return null;
+		return inventoryAndSlot.?.ref().item;
 	}
 	pub fn changeInventoryAndSlot(entity: Entity, newInventoryAndSlot: items.Inventory.InventoryAndSlot) void {
 		(components.get(entity) orelse return).source = newInventoryAndSlot;
@@ -62,10 +64,9 @@ pub const client = struct {
 		} else {
 			ptr = components.add(main.globalAllocator, entity);
 		}
-		const newHeldItem = items.Item.fromBytes(reader) catch return error.UnreadableComponentData;
 		ptr.* = Component{
-			.heldItem = newHeldItem,
-			.source = if (entity == main.game.player.id) items.Inventory.InventoryAndSlot{.inv = main.game.player.inventory.super, .slot = main.game.player.selectedSlot} else null,
+			.heldItem = items.Item.fromBytes(reader) catch return error.UnreadableComponentData,
+			.source = null,
 		};
 	}
 	pub fn unload(entity: Entity) void {
