@@ -635,7 +635,9 @@ pub fn updateAndRenderGui(currentFrame: *graphics.vulkan.Frame) void {
 			i -= 1;
 			const window: *GuiWindow = openWindows.items[i];
 			if (GuiComponent.contains(window.pos, window.size, mousePos)) {
-				if (window.renderToolTip(mousePos) == .handled) break;
+				// Try to render a tooltip. If there is none, then we don't care.
+				_ = window.renderToolTip(mousePos);
+				break;
 			}
 		}
 
