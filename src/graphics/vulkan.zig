@@ -184,7 +184,6 @@ pub fn init(window: ?*c.GLFWwindow) !void {
 			@panic("GLAD failed to load Vulkan functions");
 		}
 	}
-	command_pool.init();
 	swap_chain.init();
 	gpu_allocator.init();
 }
@@ -193,7 +192,6 @@ pub fn deinit() void {
 	gpu_garbage_collection.deinit();
 	gpu_allocator.deinit();
 	swap_chain.deinit();
-	command_pool.deinit();
 	c.vkDestroyDevice(device, null);
 	c.vkDestroySurfaceKHR(instance, surface, null);
 	c.vkDestroyInstance(instance, null);
@@ -536,6 +534,7 @@ pub const Frame = struct { // MARK: Frame
 	uploadFinished: Semaphore,
 	renderFinished: Semaphore,
 
+	commandPool: CommandPool,
 	uploadCommands: main.graphics.CommandBuffer,
 	guiCommands: main.graphics.CommandBuffer,
 	renderCommands: main.graphics.CommandBuffer,
@@ -550,9 +549,10 @@ pub const Frame = struct { // MARK: Frame
 			.renderFinished = .init(),
 			.swapChainImage = undefined,
 			.swapChainImageView = undefined,
-			.uploadCommands = .init(),
-			.guiCommands = .init(),
-			.renderCommands = .init(),
+			.commandPool = .init(),
+			.uploadCommands = undefined,
+			.guiCommands = undefined,
+			.renderCommands = undefined,
 			.extent = undefined,
 		};
 	}
@@ -563,12 +563,14 @@ pub const Frame = struct { // MARK: Frame
 		self.imageAvailable.privateDeinit();
 		self.uploadFinished.privateDeinit();
 		self.renderFinished.privateDeinit();
-		self.uploadCommands.deinit();
-		self.guiCommands.deinit();
-		self.renderCommands.deinit();
+		self.commandPool.deinit();
 	}
 
-	fn beginRender(self: Frame) void {
+	fn beginRender(self: *Frame) void {
+		self.commandPool.reset();
+		self.guiCommands = .init(self.commandPool);
+		self.renderCommands = .init(self.commandPool);
+
 		self.guiCommands.beginRecording(0);
 		self.guiCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
 			.{
@@ -818,21 +820,27 @@ pub const swap_chain = struct { // MARK: swap_chain
 	}
 };
 
-pub const command_pool = struct { // MARK: command_pool
-	pub var handle: c.VkCommandPool = undefined;
+pub const CommandPool = struct { // MARK: CommandPool
+	handle: c.VkCommandPool,
 
-	fn init() void {
+	fn init() CommandPool {
 		const queueFamilies = findQueueFamilies(physicalDevice);
 		const poolInfo = c.VkCommandPoolCreateInfo{
 			.sType = c.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-			.flags = c.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+			.flags = 0,
 			.queueFamilyIndex = queueFamilies.graphicsFamily.?,
 		};
-		checkResult(c.vkCreateCommandPool(device, &poolInfo, null, &handle));
+		var result: CommandPool = undefined;
+		checkResult(c.vkCreateCommandPool(device, &poolInfo, null, &result.handle));
+		return result;
 	}
 
-	fn deinit() void {
-		c.vkDestroyCommandPool(device, handle, null);
+	fn deinit(self: CommandPool) void {
+		c.vkDestroyCommandPool(device, self.handle, null);
+	}
+
+	fn reset(self: CommandPool) void {
+		checkResult(c.vkResetCommandPool(device, self.handle, 0));
 	}
 };
 
