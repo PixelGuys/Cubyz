@@ -29,15 +29,6 @@
 			.priority = 0.1,
 		},
 		.{
-			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:grass/vegetation/temperate"},
-			.chance = 0.1,
-			.width = 5,
-			.variation = 8,
-			.density = 0.5,
-			.priority = 0.2,
-		},
-		.{
 			.id = "cubyz:simple_vegetation",
 			.block = "cubyz:grass/vegetation/temperate",
 			.chance = 0.4,
