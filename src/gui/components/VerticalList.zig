@@ -120,7 +120,7 @@ pub fn updateHovered(self: *VerticalList, mousePosition: Vec2f) main.callbacks.R
 	return .ignored;
 }
 
-pub fn render(self: *VerticalList, mousePosition: Vec2f) void {
+pub fn render(self: *VerticalList, currentFrame: *graphics.vulkan.Frame, mousePosition: Vec2f) void {
 	const oldTranslation = draw.setTranslation(self.pos);
 	defer draw.restoreTranslation(oldTranslation);
 	const oldClip = draw.setClip(self.size);
@@ -129,7 +129,7 @@ pub fn render(self: *VerticalList, mousePosition: Vec2f) void {
 	if (self.scrollBarEnabled) {
 		const diff = self.childrenHeight - self.maxHeight;
 		shiftedPos[1] -= diff*self.scrollBar.currentState;
-		self.scrollBar.render(mousePosition - self.pos);
+		self.scrollBar.render(currentFrame, mousePosition - self.pos);
 	}
 	_ = draw.setTranslation(shiftedPos - self.pos);
 
@@ -140,7 +140,7 @@ pub fn render(self: *VerticalList, mousePosition: Vec2f) void {
 		if (adjustedYPos + 2*child.size()[1] < 0 or adjustedYPos - child.size()[1] > self.maxHeight) {
 			continue;
 		}
-		child.render(mousePosition - shiftedPos);
+		child.render(currentFrame, mousePosition - shiftedPos);
 	}
 }
 

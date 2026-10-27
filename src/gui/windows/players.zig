@@ -58,7 +58,7 @@ pub fn onOpen() void {
 		lastLen = main.server.connectionManager.connections.items.len;
 		for (main.server.connectionManager.connections.items) |connection| {
 			const user = connection.user.?;
-			if (user.id == main.game.Player.id and connection.isConnected()) continue;
+			if (user.id == main.game.player.id and connection.isConnected()) continue;
 			const row = HorizontalList.init();
 			if (connection.handShakeState.load(.monotonic) == .complete) {
 				const string = main.stackAllocator.print("{f}", .{connection.user.?});

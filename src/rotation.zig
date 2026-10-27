@@ -34,7 +34,7 @@ pub const Degrees = enum(u2) {
 /// These 16 bits are accessed and interpreted by the `RotationMode`.
 /// With the `RotationMode` interface there is almost no limit to what can be done with those 16 bit.
 pub const RotationMode = struct { // MARK: RotationMode
-	pub const DefaultFunctions = struct {
+	pub const default_functions = struct {
 		pub fn model(block: Block) ModelIndex {
 			return blocks.meshes.modelIndexStart(block);
 		}
@@ -103,7 +103,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 			shouldDropSourceBlockOnSuccess.* = true;
 			if (oldBlock == newBlock) return .no;
 			if (oldBlock.typ == newBlock.typ) return .yes;
-			var damage: f32 = main.game.Player.defaultBlockDamage;
+			var damage: f32 = main.game.player.defaultBlockDamage;
 			const isProceduralItem = item.item == .proceduralItem;
 			if (isProceduralItem) {
 				damage = item.item.proceduralItem.getBlockDamage(oldBlock);
@@ -148,33 +148,33 @@ pub const RotationMode = struct { // MARK: RotationMode
 	/// The default rotation data intended for generation algorithms
 	naturalStandard: u16 = 0,
 
-	model: *const fn (block: Block) ModelIndex = &DefaultFunctions.model,
+	model: *const fn (block: Block) ModelIndex = &default_functions.model,
 
 	// Rotates block data counterclockwise around the Z axis.
-	rotateZ: *const fn (data: u16, angle: Degrees) u16 = DefaultFunctions.rotateZ,
+	rotateZ: *const fn (data: u16, angle: Degrees) u16 = default_functions.rotateZ,
 
-	createBlockModel: *const fn (block: Block, modeData: *u16, zon: ZonElement) ModelIndex = &DefaultFunctions.createBlockModel,
+	createBlockModel: *const fn (block: Block, modeData: *u16, zon: ZonElement) ModelIndex = &default_functions.createBlockModel,
 
 	/// Updates the block data of a block in the world or places a block in the world.
 	/// return true if the placing was successful, false otherwise.
-	generateData: *const fn (world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, blockPlacing: bool) bool = DefaultFunctions.generateData,
+	generateData: *const fn (world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, blockPlacing: bool) bool = default_functions.generateData,
 
 	/// Updates data of a placed block if the RotationMode dependsOnNeighbors.
-	updateData: *const fn (block: *Block, neighbor: Neighbor, neighborBlock: Block) bool = &DefaultFunctions.updateData,
+	updateData: *const fn (block: *Block, neighbor: Neighbor, neighborBlock: Block) bool = &default_functions.updateData,
 
-	modifyBlock: *const fn (block: *Block, newType: u16) bool = DefaultFunctions.modifyBlock,
+	modifyBlock: *const fn (block: *Block, newType: u16) bool = default_functions.modifyBlock,
 
-	rayIntersection: *const fn (block: Block, item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
+	rayIntersection: *const fn (block: Block, item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &default_functions.rayIntersection,
 
-	onBlockBreaking: *const fn (item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void = &DefaultFunctions.onBlockBreaking,
+	onBlockBreaking: *const fn (item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void = &default_functions.onBlockBreaking,
 
-	canBeChangedInto: *const fn (oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) CanBeChangedInto = DefaultFunctions.canBeChangedInto,
+	canBeChangedInto: *const fn (oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) CanBeChangedInto = default_functions.canBeChangedInto,
 
-	itemDropsOnChange: *const fn (oldBlock: Block, newBlock: Block) u16 = DefaultFunctions.itemDropsOnChange,
+	itemDropsOnChange: *const fn (oldBlock: Block, newBlock: Block) u16 = default_functions.itemDropsOnChange,
 
-	getBlockTags: *const fn () []const Tag = DefaultFunctions.getBlockTags,
+	getBlockTags: *const fn () []const Tag = default_functions.getBlockTags,
 
-	formatBlockData: *const fn (block: Block, _list: *main.ListManaged(u8)) void = DefaultFunctions.formatBlockData,
+	formatBlockData: *const fn (block: Block, _list: *main.ListManaged(u8)) void = default_functions.formatBlockData,
 };
 
 var rotationModes: std.StringHashMap(RotationMode) = undefined;
@@ -224,21 +224,21 @@ fn rayTriangleIntersection(origin: Vec3f, direction: Vec3f, triangle: [3]Vec3f) 
 
 pub fn init() void {
 	rotationModes = .init(main.globalAllocator.allocator);
-	inline for (@typeInfo(rotations).@"struct".decls) |declaration| {
-		register(declaration.name, @field(rotations, declaration.name));
+	inline for (@typeInfo(rotations).@"struct".decl_names) |declaration| {
+		register(declaration, @field(rotations, declaration));
 	}
 }
 
 pub fn reset() void {
-	inline for (@typeInfo(rotations).@"struct".decls) |declaration| {
-		@field(rotations, declaration.name).reset();
+	inline for (@typeInfo(rotations).@"struct".decl_names) |declaration| {
+		@field(rotations, declaration).reset();
 	}
 }
 
 pub fn deinit() void {
 	rotationModes.deinit();
-	inline for (@typeInfo(rotations).@"struct".decls) |declaration| {
-		@field(rotations, declaration.name).deinit();
+	inline for (@typeInfo(rotations).@"struct".decl_names) |declaration| {
+		@field(rotations, declaration).deinit();
 	}
 }
 
@@ -251,12 +251,12 @@ pub fn getByID(id: []const u8) *const RotationMode {
 pub fn register(comptime id: []const u8, comptime Mode: type) void {
 	Mode.init();
 	var result: RotationMode = RotationMode{};
-	inline for (@typeInfo(RotationMode).@"struct".fields) |field| {
-		if (@hasDecl(Mode, field.name)) {
-			if (field.type == @TypeOf(@field(Mode, field.name))) {
-				@field(result, field.name) = @field(Mode, field.name);
+	inline for (@typeInfo(RotationMode).@"struct".field_names, @typeInfo(RotationMode).@"struct".field_types) |field, FieldType| {
+		if (@hasDecl(Mode, field)) {
+			if (FieldType == @TypeOf(@field(Mode, field))) {
+				@field(result, field) = @field(Mode, field);
 			} else {
-				@field(result, field.name) = &@field(Mode, field.name);
+				@field(result, field) = &@field(Mode, field);
 			}
 		}
 	}
