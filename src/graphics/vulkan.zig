@@ -679,8 +679,6 @@ pub const Frame = struct { // MARK: Frame
 
 var frames: [2]Frame = undefined;
 
-var currentFrame: *Frame = undefined;
-
 pub const swap_chain = struct { // MARK: swap_chain
 	var swapChain: c.VkSwapchainKHR = null;
 	var images: []c.VkImage = undefined;
@@ -809,7 +807,6 @@ pub const swap_chain = struct { // MARK: swap_chain
 		for (&frames) |*frame| {
 			frame.* = .init();
 		}
-		currentFrame = &frames[frameIndex];
 	}
 
 	fn deinit() void {
@@ -822,30 +819,30 @@ pub const swap_chain = struct { // MARK: swap_chain
 		c.vkDestroySwapchainKHR(device, swapChain, null);
 	}
 
-	fn beginRender() void {
-		currentFrame.fence.waitAndReset();
-		checkResult(c.vkAcquireNextImageKHR(device, swapChain, c.UINT64_MAX, currentFrame.imageAvailable.handle, null, &currentImageIndex));
+	fn beginRender() *Frame {
+		frames[frameIndex].fence.waitAndReset();
+		checkResult(c.vkAcquireNextImageKHR(device, swapChain, c.UINT64_MAX, frames[frameIndex].imageAvailable.handle, null, &currentImageIndex));
 
 		frames[frameIndex].swapChainImage = images[currentImageIndex];
 		frames[frameIndex].swapChainImageView = imageViews[currentImageIndex];
 		frames[frameIndex].extent = extent;
-		currentFrame.beginRender();
+		frames[frameIndex].beginRender();
+		return &frames[frameIndex];
 	}
 
 	fn endRender() void {
-		currentFrame.endRender();
+		frames[frameIndex].endRender();
 
 		const presentInfo: c.VkPresentInfoKHR = .{
 			.sType = c.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
 			.waitSemaphoreCount = 1,
-			.pWaitSemaphores = &currentFrame.renderFinished.handle,
+			.pWaitSemaphores = &frames[frameIndex].renderFinished.handle,
 			.swapchainCount = 1,
 			.pSwapchains = &swapChain,
 			.pImageIndices = &currentImageIndex,
 		};
 		const result = c.vkQueuePresentKHR(presentQueue, &presentInfo);
 		frameIndex = (frameIndex + 1)%frames.len;
-		currentFrame = &frames[frameIndex];
 		upload.changeFrame();
 		checkResult(result); // TODO: swapchain recreation
 	}
@@ -1247,8 +1244,7 @@ pub const gpu_garbage_collection = struct { // MARK: gpu_garbage_collection
 var frameIndex: usize = 0;
 
 pub fn beginRender() *Frame {
-	swap_chain.beginRender();
-	return currentFrame;
+	return swap_chain.beginRender();
 }
 
 pub fn endRender() void {
