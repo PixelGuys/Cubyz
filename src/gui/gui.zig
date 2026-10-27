@@ -635,8 +635,8 @@ pub fn updateAndRenderGui(currentFrame: *graphics.vulkan.Frame) void {
 			i -= 1;
 			const window: *GuiWindow = openWindows.items[i];
 			if (GuiComponent.contains(window.pos, window.size, mousePos)) {
-				const rootComponent = window.rootComponent orelse continue;
-				const tooltip_text = rootComponent.getTooltip((mousePos - window.pos)/@as(Vec2f, @splat(window.scale))) orelse continue;
+				const rootComponent = window.rootComponent orelse break;
+				const tooltip_text = rootComponent.getTooltip((mousePos - window.pos)/@as(Vec2f, @splat(window.scale))) orelse break;
 
 				tooltip.renderFromText(tooltip_text, mousePos);
 				break;
