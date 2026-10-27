@@ -61,7 +61,7 @@ pub fn onOpen() void {
 	list.add(Button.initText(.{0, 0}, 150, "Copy public key", .{.onAction = .init(copy), .disabled = !main.network.authentication.key_collection.initialized, .disabledReason = "Open the multiplayer menu to log in"}));
 	inGameDisabled = main.game.world != null;
 	list.add(Button.initText(.{0, 0}, 150, "Change Name", .{.onAction = gui.openWindowCallback("change_name"), .disabled = inGameDisabled, .disabledReason = "First leave the world to change your name"}));
-	logoutButton = Button.initText(.{0, 0}, 150, "Logout", .{.onAction = .init(logout), .disabled = inGameDisabled or !main.network.authentication.key_collection.initialized, .disabledReason = "First leave the world to logout"});
+	logoutButton = Button.initText(.{0, 0}, 150, "Logout", .{.onAction = .init(logout), .disabled = inGameDisabled or !main.network.authentication.key_collection.initialized, .disabledReason = if (inGameDisabled) "First leave the world to logout" else "Open the multiplayer menu to log in"});
 	list.add(logoutButton);
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
