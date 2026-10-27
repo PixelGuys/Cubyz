@@ -21,6 +21,7 @@ const CircularBufferQueue = main.utils.CircularBufferQueue;
 const sync = main.sync;
 
 pub const BlockUpdateSystem = @import("BlockUpdateSystem.zig");
+pub const ChunkManager = @import("ChunkManager.zig");
 pub const world_zig = @import("world.zig");
 pub const ServerWorld = world_zig.ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
