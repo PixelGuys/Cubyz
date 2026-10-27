@@ -155,7 +155,7 @@ pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn render(self: *Button, mousePosition: Vec2f) void {
+pub fn render(self: *Button, currentFrame: *graphics.vulkan.Frame, mousePosition: Vec2f) void {
 	const textures = blk: {
 		if (self.disabled) break :blk disabledTextures;
 		if (self.pressed) break :blk pressedTextures;
@@ -166,11 +166,11 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 	};
 	{
 		if (main.settings.launch_config.vulkanTestingMode and textures.texture.vulkanImage != null) {
-			graphics.vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
-			graphics.vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
+			currentFrame.guiCommands.bindPipeline(currentFrame, pipeline, graphics.draw.getScissor());
+			currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
 				.{.image = .{.binding = 0, .image = textures.texture.vulkanImage.?}},
 			});
-			draw.customShadedRect(@as(ButtonUniforms, undefined), pipeline, self.pos + Vec2f{2, 2}, self.size - Vec2f{4, 4});
+			draw.customShadedRect(currentFrame, @as(ButtonUniforms, undefined), pipeline, self.pos + Vec2f{2, 2}, self.size - Vec2f{4, 4});
 		} else {
 			textures.texture.bindTo(0);
 			pipeline.bind(draw.getScissor());
@@ -181,11 +181,11 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 
 	const cornerSize = (textures.outlineTextureSize - Vec2f{1, 1})/Vec2f{2, 2};
 
-	graphics.draw.nineSliceImage(textures.outlineTexture, self.pos, self.size, textures.outlineTextureSize, cornerSize, 2);
+	graphics.draw.nineSliceImage(currentFrame, textures.outlineTexture, self.pos, self.size, textures.outlineTextureSize, cornerSize, 2);
 
 	const oldColor = draw.setColor(if (self.disabled) 0xff808080 else 0xffffffff);
 	defer draw.restoreColor(oldColor);
 	const textPos = self.pos + self.size/@as(Vec2f, @splat(2.0)) - self.child.size()/@as(Vec2f, @splat(2.0));
 	self.child.mutPos().* = textPos;
-	self.child.render(mousePosition - self.pos);
+	self.child.render(currentFrame, mousePosition - self.pos);
 }

@@ -526,7 +526,7 @@ pub const Fence = struct { // MARK: Fence
 	}
 };
 
-const Frame = struct { // MARK: Frame
+pub const Frame = struct { // MARK: Frame
 	fence: Fence,
 	uploadFence: Fence,
 	swapChainImage: c.VkImage,
@@ -643,7 +643,7 @@ const Frame = struct { // MARK: Frame
 
 var frames: [2]Frame = undefined;
 
-pub var currentFrame: *const Frame = undefined;
+var currentFrame: *Frame = undefined;
 
 pub const swap_chain = struct { // MARK: swap_chain
 	var swapChain: c.VkSwapchainKHR = null;
@@ -1207,8 +1207,9 @@ pub const gpu_garbage_collection = struct { // MARK: gpu_garbage_collection
 
 var frameIndex: usize = 0;
 
-pub fn beginRender() void {
+pub fn beginRender() *Frame {
 	swap_chain.beginRender();
+	return currentFrame;
 }
 
 pub fn endRender() void {

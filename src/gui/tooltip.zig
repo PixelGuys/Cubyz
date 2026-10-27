@@ -25,7 +25,7 @@ pub fn globalDeinit() void {
 	tooltipTexture.deinit();
 }
 
-pub fn render(guiComponent: *GuiComponent, pos: Vec2f) void {
+pub fn render(guiComponent: *GuiComponent, currentFrame: *graphics.vulkan.Frame, pos: Vec2f) void {
 	const size = guiComponent.size() + Vec2f{cornerSize[0]*2, cornerSize[1]*2};
 
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
@@ -38,17 +38,17 @@ pub fn render(guiComponent: *GuiComponent, pos: Vec2f) void {
 		renderPos[1] += windowSize[1] - (renderPos[1] + size[1]);
 	}
 
-	draw.nineSliceImage(tooltipTexture, renderPos, size, @floatFromInt(tooltipTexture.size()), cornerSize, 1);
+	draw.nineSliceImage(currentFrame, tooltipTexture, renderPos, size, @floatFromInt(tooltipTexture.size()), cornerSize, 1);
 
 	const adjustment = renderPos - guiComponent.pos() + Vec2f{cornerSize[0], cornerSize[1]};
 	const oldTranslation = draw.setTranslation(adjustment);
 	defer draw.restoreTranslation(oldTranslation);
 	const oldClip = draw.setClip(guiComponent.size());
 	defer draw.restoreClip(oldClip);
-	guiComponent.render(guiComponent.pos());
+	guiComponent.render(currentFrame, guiComponent.pos());
 }
 
-pub fn renderFromText(text: []const u8, pos: Vec2f) void {
+pub fn renderFromText(currentFrame: *graphics.vulkan.Frame, text: []const u8, pos: Vec2f) void {
 	var label = GuiComponent.Label.init(Vec2f{0, 0}, 300, text, .left);
 	defer label.deinit();
 	var size = label.text.calculateLineBreaks(fontSize, 300);
@@ -59,5 +59,5 @@ pub fn renderFromText(text: []const u8, pos: Vec2f) void {
 	label.size = size;
 
 	var component = label.toComponent();
-	render(&component, pos);
+	render(&component, currentFrame, pos);
 }

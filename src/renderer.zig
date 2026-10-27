@@ -168,7 +168,7 @@ pub fn updateViewport(width: u31, height: u31) void {
 	worldFrameBuffer.unbind();
 }
 
-pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
+pub fn render(currentFrame: *vulkan.Frame, playerPosition: Vec3d, deltaTime: f64) void {
 	// TODO: player bobbing
 	// TODO: Handle colors and sun position in the world.
 	std.debug.assert(game.world != null);
@@ -177,7 +177,7 @@ pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 	const ambient = @max(nightColor*@as(Vec3f, @splat(settings.nightBrightness)), @as(Vec3f, @splat(game.world.?.dayTime.ambientLight)));
 
 	itemdrop.item_display_manager.update(deltaTime);
-	renderWorld(game.world.?, ambient, game.world.?.dayTime.fog.skyColor, playerPosition);
+	renderWorld(currentFrame, game.world.?, ambient, game.world.?.dayTime.fog.skyColor, playerPosition);
 	const startTime = main.timestamp();
 	mesh_storage.updateMeshes(startTime.addDuration(maximumMeshTime));
 }
@@ -205,14 +205,14 @@ pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: 
 	return adjusted;
 }
 
-pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) void { // MARK: renderWorld()
+pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) void { // MARK: renderWorld()
 	worldFrameBuffer.bind();
 	c.glViewport(0, 0, lastWidth, lastHeight);
 	gpu_performance_measuring.startQuery(.clear);
 	worldFrameBuffer.clear(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
 	gpu_performance_measuring.stopQuery();
 	if (main.settings.launch_config.vulkanTestingMode) {
-		worldFrameBuffer.bindAndClear(vulkan.currentFrame.renderCommands, .{.clearColor = .{.float32 = .{skyColor[0], skyColor[1], skyColor[2], 1}}}, .{.clearDepth = .{.depth = 1}});
+		worldFrameBuffer.bindAndClear(currentFrame.renderCommands, .{.clearColor = .{.float32 = .{skyColor[0], skyColor[1], skyColor[2], 1}}}, .{.clearDepth = .{.depth = 1}});
 	}
 	game.camera.updateViewMatrix();
 
@@ -229,7 +229,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	const time: u32 = @intCast(main.timestamp().toMilliseconds() & std.math.maxInt(u32));
 
 	gpu_performance_measuring.startQuery(.skybox);
-	skybox.render();
+	skybox.render(currentFrame);
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.animation);
@@ -267,17 +267,17 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
-	main.systems.client.render(ambientLight, playerPos, main.lastDeltaTime.load(.monotonic));
+	main.systems.client.render(currentFrame, ambientLight, playerPos, main.lastDeltaTime.load(.monotonic));
 
 	itemdrop.item_drop_renderer.renderItemDrops(ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.block_entity_rendering);
-	main.block_entity.renderAll(ambientLight);
+	main.block_entity.renderAll(currentFrame, ambientLight);
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.particle_rendering);
-	particles.particle_system.render(ambientLight);
+	particles.particle_system.render(currentFrame, ambientLight);
 	gpu_performance_measuring.stopQuery();
 
 	// Rebind block textures back to their original slots
@@ -286,7 +286,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glActiveTexture(c.GL_TEXTURE1);
 	blocks.meshes.emissionTextureArray.bind();
 
-	mesh_selection.render(playerPos);
+	mesh_selection.render(currentFrame, playerPos);
 
 	// Render transparent chunk meshes:
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE5);
@@ -315,8 +315,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	chunk_meshing.endRender();
 
 	if (main.settings.launch_config.vulkanTestingMode) {
-		vulkan.currentFrame.renderCommands.endRendering();
-		worldFrameBuffer.prepareTexturesForBinding(vulkan.currentFrame.renderCommands);
+		currentFrame.renderCommands.endRendering();
+		worldFrameBuffer.prepareTexturesForBinding(currentFrame.renderCommands);
 	}
 
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
@@ -330,13 +330,13 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	}
 	gpu_performance_measuring.startQuery(.final_copy);
 	if (settings.launch_config.vulkanTestingMode) {
-		vulkan.currentFrame.guiCommands.bindPipeline(deferredRenderPassPipeline, null);
-		vulkan.currentFrame.guiCommands.bindDescriptors(deferredRenderPassPipeline, .graphics, &.{
+		currentFrame.guiCommands.bindPipeline(currentFrame, deferredRenderPassPipeline, null);
+		currentFrame.guiCommands.bindDescriptors(deferredRenderPassPipeline, .graphics, &.{
 			.{.image = .{.binding = 3, .image = worldFrameBuffer.color}},
 			.{.image = .{.binding = 4, .image = worldFrameBuffer.depth}},
 			.{.image = .{.binding = 5, .image = bloom.emptyBuffer.vulkanImage.?}},
 		});
-		graphics.frame_uniforms.bindToPipeline(vulkan.currentFrame.guiCommands, deferredRenderPassPipeline);
+		graphics.frame_uniforms.bindToPipeline(currentFrame.guiCommands, deferredRenderPassPipeline);
 		var uniforms: DeferredUniforms = undefined;
 		uniforms.invViewMatrix = game.camera.viewMatrix.transpose().toGl();
 		uniforms.tanXY = .{1.0/game.projectionMatrix.rows[0][0], -1.0/game.projectionMatrix.rows[1][2]};
@@ -354,9 +354,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 			uniforms.@"fog.fogLower" = 1e10;
 			uniforms.@"fog.fogHigher" = 1e10;
 		}
-		vulkan.currentFrame.guiCommands.pushConstants(deferredRenderPassPipeline, &uniforms);
-		vulkan.currentFrame.guiCommands.bindVertexArray(graphics.draw.rectVao);
-		vulkan.currentFrame.guiCommands.draw(4, 0);
+		currentFrame.guiCommands.pushConstants(deferredRenderPassPipeline, &uniforms);
+		currentFrame.guiCommands.bindVertexArray(graphics.draw.rectVao);
+		currentFrame.guiCommands.draw(4, 0);
 	}
 	if (activeFrameBuffer == 0) c.glViewport(0, 0, main.Window.width, main.Window.height);
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
@@ -387,7 +387,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-	if (!main.gui.hideGui) main.systems.client.renderHud(ambientLight, playerPos);
+	if (!main.gui.hideGui) main.systems.client.renderHud(currentFrame, ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
 }
 
@@ -659,7 +659,7 @@ pub const menu_background = struct { // MARK: menu_background
 		return texture.textureID != 0;
 	}
 
-	pub fn render(deltaTime: f64) void {
+	pub fn render(currentFrame: *vulkan.Frame, deltaTime: f64) void {
 		c.glViewport(0, 0, main.Window.width, main.Window.height);
 		if (texture.textureID == 0) return;
 
@@ -673,13 +673,13 @@ pub const menu_background = struct { // MARK: menu_background
 			.viewMatrix = viewMatrix.toGl(),
 		});
 		if (main.settings.launch_config.vulkanTestingMode) {
-			vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
-			vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
+			currentFrame.guiCommands.bindPipeline(currentFrame, pipeline, graphics.draw.getScissor());
+			currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
 				.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
 			});
-			graphics.frame_uniforms.bindToPipeline(vulkan.currentFrame.guiCommands, pipeline);
-			vulkan.currentFrame.guiCommands.bindVertexArray(vao);
-			vulkan.currentFrame.guiCommands.drawIndexed(24, 0);
+			graphics.frame_uniforms.bindToPipeline(currentFrame.guiCommands, pipeline);
+			currentFrame.guiCommands.bindVertexArray(vao);
+			currentFrame.guiCommands.drawIndexed(24, 0);
 		} else {
 			pipeline.bind(null);
 
@@ -728,7 +728,7 @@ pub const menu_background = struct { // MARK: menu_background
 			// Draw to frame buffer.
 			buffer.bind();
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-			main.renderer.render(game.player.getEyePosBlocking(), 0);
+			main.renderer.render(undefined, game.player.getEyePosBlocking(), 0); // TODO: Pass vulkan.Frame here
 			// Copy the pixels directly from OpenGL
 			buffer.bind();
 			c.glReadPixels(0, 0, size, size, c.GL_RGBA, c.GL_UNSIGNED_BYTE, pixels.ptr);
@@ -892,7 +892,7 @@ pub const skybox = struct { // MARK: skybox
 		c.glDeleteVertexArrays(1, &starVao);
 	}
 
-	pub fn render() void {
+	pub fn render(currentFrame: *vulkan.Frame) void {
 		const viewMatrix = game.camera.viewMatrix;
 
 		const starOpacity: f32 = game.world.?.dayTime.getStarOpacity();
@@ -901,16 +901,16 @@ pub const skybox = struct { // MARK: skybox
 			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationY(game.World.DayTime.celestialPoleAltitude).mul(Mat4f.rotationX(2*std.math.pi*game.world.?.dayTime.getDayProgress()))));
 
 			if (main.settings.launch_config.vulkanTestingMode) {
-				vulkan.currentFrame.renderCommands.bindPipeline(starPipeline, null);
-				vulkan.currentFrame.renderCommands.bindDescriptors(starPipeline, .graphics, &.{
+				currentFrame.renderCommands.bindPipeline(currentFrame, starPipeline, null);
+				currentFrame.renderCommands.bindDescriptors(starPipeline, .graphics, &.{
 					.{.ssbo = .{.binding = 12, .ssbo = starSsbo}},
 				});
-				vulkan.currentFrame.renderCommands.pushConstants(starPipeline, &StarUniforms{
+				currentFrame.renderCommands.pushConstants(starPipeline, &StarUniforms{
 					.mvp = starMatrix.toGl(),
 					.starOpacity = starOpacity,
 				});
-				graphics.frame_uniforms.bindToPipeline(vulkan.currentFrame.renderCommands, starPipeline);
-				vulkan.currentFrame.renderCommands.draw(numStars*3, 0);
+				graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, starPipeline);
+				currentFrame.renderCommands.draw(numStars*3, 0);
 			} else {
 				starPipeline.bind(null);
 
@@ -1275,10 +1275,10 @@ pub const mesh_selection = struct { // MARK: mesh_selection
 		mesh_storage.updateBlock(.{.pos = pos, .newBlock = newBlock, .blockEntityData = &.{}});
 	}
 
-	pub fn drawCube(relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
+	pub fn drawCube(currentFrame: *vulkan.Frame, relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
 		if (main.settings.launch_config.vulkanTestingMode) {
-			vulkan.currentFrame.renderCommands.bindPipeline(pipeline, null);
-			vulkan.currentFrame.renderCommands.pushConstants(pipeline, &Uniforms{
+			currentFrame.renderCommands.bindPipeline(currentFrame, pipeline, null);
+			currentFrame.renderCommands.pushConstants(pipeline, &Uniforms{
 				.modelPosition = .{
 					@floatCast(relativePositionToPlayer[0]),
 					@floatCast(relativePositionToPlayer[1]),
@@ -1288,9 +1288,9 @@ pub const mesh_selection = struct { // MARK: mesh_selection
 				.upperBounds = .{max[0], max[1], max[2]},
 				.lineSize = 1.0/128.0,
 			});
-			graphics.frame_uniforms.bindToPipeline(vulkan.currentFrame.renderCommands, pipeline);
-			vulkan.currentFrame.renderCommands.bindVertexArray(main.renderer.chunk_meshing.vao);
-			vulkan.currentFrame.renderCommands.drawIndexed(12*6*6, 0);
+			graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, pipeline);
+			currentFrame.renderCommands.bindVertexArray(main.renderer.chunk_meshing.vao);
+			currentFrame.renderCommands.drawIndexed(12*6*6, 0);
 		} else {
 			pipeline.bind(null);
 
@@ -1309,16 +1309,16 @@ pub const mesh_selection = struct { // MARK: mesh_selection
 		}
 	}
 
-	pub fn render(playerPos: Vec3d) void {
+	pub fn render(currentFrame: *vulkan.Frame, playerPos: Vec3d) void {
 		if (main.gui.hideGui) return;
 		if (selectedBlockPos) |_selectedBlockPos| {
-			drawCube(@as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, selectionMin, selectionMax);
+			drawCube(currentFrame, @as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, selectionMin, selectionMax);
 		}
 		if (game.player.selectionPosition1) |pos1| {
 			if (game.player.selectionPosition2) |pos2| {
 				const bottomLeft: Vec3i = @min(pos1, pos2);
 				const topRight: Vec3i = @max(pos1, pos2);
-				drawCube(@as(Vec3d, @floatFromInt(bottomLeft)) - playerPos, .{0, 0, 0}, @floatFromInt(topRight - bottomLeft + Vec3i{1, 1, 1}));
+				drawCube(currentFrame, @as(Vec3d, @floatFromInt(bottomLeft)) - playerPos, .{0, 0, 0}, @floatFromInt(topRight - bottomLeft + Vec3i{1, 1, 1}));
 			}
 		}
 	}
