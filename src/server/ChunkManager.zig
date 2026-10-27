@@ -14,7 +14,7 @@ const User = server.User;
 const Entity = server.Entity;
 const permission = server.permission;
 const players = server.players;
-const World = server.ServerWorld;
+const World = server.World;
 const storage = server.storage;
 
 const SimulationChunk = main.server.SimulationChunk;

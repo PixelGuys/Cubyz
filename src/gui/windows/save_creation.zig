@@ -30,7 +30,7 @@ var seedInput: *TextInput = undefined;
 
 var gamemodeInput: *Button = undefined;
 
-var worldSettings = main.server.world_zig.Settings.defaults;
+var worldSettings = main.server.World.Settings.defaults;
 
 const ZonMapEntry = std.StringHashMapUnmanaged(ZonElement).Entry;
 var worldPresets: []ZonMapEntry = &.{};
@@ -71,7 +71,7 @@ fn createWorld() void {
 	const worldName = nameInput.currentString.items;
 	worldSettings.seed = chooseSeed(seedInput.currentString.items);
 
-	main.server.world_zig.tryCreateWorld(worldName, worldSettings, worldPresets[selectedPreset].value_ptr.*) catch |err| {
+	main.server.World.tryCreateWorld(worldName, worldSettings, worldPresets[selectedPreset].value_ptr.*) catch |err| {
 		std.log.err("Error while creating new world: {s}", .{@errorName(err)});
 	};
 	gui.closeWindowFromRef(&window);

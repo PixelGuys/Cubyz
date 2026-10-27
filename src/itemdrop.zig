@@ -6,7 +6,7 @@ const chunk = @import("chunk.zig");
 const ServerChunk = chunk.ServerChunk;
 const game = @import("game.zig");
 const World = game.World;
-const ServerWorld = main.server.ServerWorld;
+const server = main.server;
 const graphics = @import("graphics.zig");
 const items = @import("items.zig");
 const ItemStack = items.ItemStack;
@@ -68,11 +68,11 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 	changeQueue: main.utils.ConcurrentQueue(union(enum) { add: struct { u16, ItemDrop }, remove: u16 }),
 
-	world: ?*ServerWorld,
+	world: ?*server.World,
 
 	size: u32 = 0,
 
-	pub fn init(self: *ItemDropManager, allocator: NeverFailingAllocator, world: ?*ServerWorld) void {
+	pub fn init(self: *ItemDropManager, allocator: NeverFailingAllocator, world: ?*server.World) void {
 		self.* = ItemDropManager{
 			.allocator = allocator,
 			.list = std.MultiArrayList(ItemDrop){},

@@ -22,8 +22,7 @@ const sync = main.sync;
 
 pub const BlockUpdateSystem = @import("BlockUpdateSystem.zig");
 pub const ChunkManager = @import("ChunkManager.zig");
-pub const world_zig = @import("world.zig");
-pub const ServerWorld = world_zig.ServerWorld;
+pub const World = @import("World.zig");
 pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
@@ -573,7 +572,7 @@ pub const User = struct { // MARK: User
 pub const updatesPerSec: u32 = 20;
 const updateTime: std.Io.Duration = .fromNanoseconds(1000000000/20);
 
-pub var world: ?*ServerWorld = null;
+pub var world: ?*World = null;
 var userMutex: main.utils.Mutex = .{};
 var users: main.ListManaged(*User) = undefined;
 var userDeinitList: main.utils.ConcurrentQueue(*User) = undefined;
@@ -588,7 +587,7 @@ var lastTime: std.Io.Timestamp = undefined;
 
 var thread: ?std.Thread = null;
 
-fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void { // MARK: init()
+fn init(name: []const u8, singlePlayerPort: ?u16, mode: World.Mode) void { // MARK: init()
 	main.heap.allocators.createWorldArena();
 	std.debug.assert(world == null); // There can only be one world.
 	command.init();
@@ -600,7 +599,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 	main.items.Inventory.server.init();
 	main.sync.server.init();
 
-	world = ServerWorld.init(name, mode) catch |err| {
+	world = World.init(name, mode) catch |err| {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
 		@panic("Can't create world.");
 	};
@@ -724,7 +723,7 @@ fn update() void { // MARK: update()
 	}
 }
 
-pub fn startAndCreateThread(name: []const u8, port: u16, mode: ServerWorld.Mode) void {
+pub fn startAndCreateThread(name: []const u8, port: u16, mode: World.Mode) void {
 	thread = std.Thread.spawn(.{}, main.server.startFromNewThread, .{name, port, mode}) catch |err| {
 		std.log.err("Encountered error while starting server thread: {s}", .{@errorName(err)});
 		return;
@@ -734,13 +733,13 @@ pub fn startAndCreateThread(name: []const u8, port: u16, mode: ServerWorld.Mode)
 	};
 }
 
-fn startFromNewThread(name: []const u8, port: u16, mode: ServerWorld.Mode) void {
+fn startFromNewThread(name: []const u8, port: u16, mode: World.Mode) void {
 	main.initThreadLocals();
 	defer main.deinitThreadLocals();
 	startFromExistingThread(name, port, mode);
 }
 
-pub fn startFromExistingThread(name: []const u8, port: ?u16, mode: ServerWorld.Mode) void {
+pub fn startFromExistingThread(name: []const u8, port: ?u16, mode: World.Mode) void {
 	std.debug.assert(!running.load(.monotonic)); // There can only be one server.
 
 	const worldName: []const u8 = main.globalAllocator.dupe(u8, name);
