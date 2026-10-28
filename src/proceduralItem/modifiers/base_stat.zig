@@ -39,7 +39,7 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	if (data1.strength >= 0) {
 		return .{.strength = std.math.hypot(data1.strength, data2.strength), .targetProperty = data1.targetProperty};
 	} else {
-		return .{.strength = 1.0 - 1.0/(1.0 + std.math.hypot(1.0/(1.0 - data1.strength) - 1.0, 1.0/(1.0 - data2.strength) - 1.0)), .targetProperty = data1.targetProperty};
+		return .{.strength = -(1.0 - 1.0/(1.0 + std.math.hypot(1.0/(1.0 + data1.strength) - 1.0, 1.0/(1.0 + data2.strength) - 1.0))), .targetProperty = data1.targetProperty};
 	}
 }
 
