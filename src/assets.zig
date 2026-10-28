@@ -617,7 +617,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		}
 	}
 
-	if (!main.settings.launchConfig.headlessServer) blocks.meshes.registerBlockBreakingAnimation(assetFolder);
+	if (!main.settings.launch_config.headlessServer) blocks.meshes.registerBlockBreakingAnimation(assetFolder);
 
 	// Blocks:
 	// First blocks from the palette to enforce ID values.
@@ -727,7 +727,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	iterator = worldAssets.particles.iterator();
 	while (iterator.next()) |entry| {
-		particles.ParticleManager.register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+		particles.particle_manager.register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 	}
 
 	// Biomes:
@@ -811,7 +811,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	main.server.terrain.structures.reset();
 	main.audio.music_tracks.reset();
 	main.models.reset();
-	main.particles.ParticleManager.reset();
+	main.particles.particle_manager.reset();
 	main.rotation.reset();
 	main.Tag.resetTags();
 	main.entityModel.reset();

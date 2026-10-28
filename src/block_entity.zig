@@ -207,7 +207,7 @@ fn BlockEntityDataStorage(T: type) type { // MARK: BlockEntityDataStorage
 	};
 }
 
-pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
+pub const block_entity_types = struct { // MARK: block_entity_types
 	pub const @"cubyz:chest" = struct { // MARK: cubyz:chest
 		pub const inventorySize = 20;
 		const StorageServer = BlockEntityDataStorage(struct {
@@ -290,7 +290,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 
-		pub fn renderAll(_: Vec3f) void {}
+		pub fn renderAll(_: *graphics.vulkan.Frame, _: Vec3f) void {}
 	};
 
 	pub const @"cubyz:sign" = struct { // MARK: cubyz:sign
@@ -331,7 +331,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 		pub fn init() void {
 			StorageServer.init();
 			StorageClient.init();
-			if (!main.settings.launchConfig.headlessServer) {
+			if (!main.settings.launch_config.headlessServer) {
 				pipeline = graphics.Pipeline.init(
 					"assets/cubyz/shaders/block_entity/sign.vert",
 					"assets/cubyz/shaders/block_entity/sign.frag",
@@ -351,7 +351,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 				texture.deinit();
 			}
 			textureDeinitList.deinit(main.globalAllocator);
-			if (!main.settings.launchConfig.headlessServer) {
+			if (!main.settings.launch_config.headlessServer) {
 				pipeline.deinit();
 			}
 			StorageServer.deinit();
@@ -474,10 +474,10 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 				};
 			}
 
-			main.network.protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
+			main.network.protocols.block_entity_update.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
 		}
 
-		pub fn renderAll(ambientLight: Vec3f) void {
+		pub fn renderAll(currentFrame: *graphics.vulkan.Frame, ambientLight: Vec3f) void {
 			var oldFramebufferBinding: c_int = undefined;
 			c.glGetIntegerv(c.GL_DRAW_FRAMEBUFFER_BINDING, &oldFramebufferBinding);
 
@@ -506,7 +506,7 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, signData.text, .{.color = 0x000000}, false, .center); // TODO: Make the color configurable in the zon
 				defer textBuffer.deinit();
 				_ = textBuffer.calculateLineBreaks(16, textureWidth - 2*textureMargin);
-				textBuffer.renderTextWithoutShadow(0, 0, 16);
+				textBuffer.renderTextWithoutShadow(currentFrame, 0, 0, 16);
 			}
 
 			c.glBindFramebuffer(c.GL_FRAMEBUFFER, @bitCast(oldFramebufferBinding));
@@ -538,23 +538,23 @@ pub const BlockEntityTypes = struct { // MARK: BlockEntityTypes
 var blockyEntityTypes: std.StringHashMapUnmanaged(BlockEntityType) = .{};
 
 pub fn init() void {
-	inline for (@typeInfo(BlockEntityTypes).@"struct".decl_names) |declaration| {
-		const class = BlockEntityType.init(@field(BlockEntityTypes, declaration), declaration);
+	inline for (@typeInfo(block_entity_types).@"struct".decl_names) |declaration| {
+		const class = BlockEntityType.init(@field(block_entity_types, declaration), declaration);
 		blockyEntityTypes.putNoClobber(main.globalAllocator.allocator, class.id, class) catch unreachable;
 		std.log.debug("Registered BlockEntityType '{s}'", .{class.id});
 	}
 }
 
 pub fn reset() void {
-	inline for (@typeInfo(BlockEntityTypes).@"struct".decl_names) |declaration| {
-		@field(BlockEntityTypes, declaration).reset();
+	inline for (@typeInfo(block_entity_types).@"struct".decl_names) |declaration| {
+		@field(block_entity_types, declaration).reset();
 	}
 	BlockEntity.reset();
 }
 
 pub fn deinit() void {
-	inline for (@typeInfo(BlockEntityTypes).@"struct".decl_names) |declaration| {
-		@field(BlockEntityTypes, declaration).deinit();
+	inline for (@typeInfo(block_entity_types).@"struct".decl_names) |declaration| {
+		@field(block_entity_types, declaration).deinit();
 	}
 	BlockEntity.globalDeinit();
 	blockyEntityTypes.deinit(main.globalAllocator.allocator);
@@ -567,8 +567,8 @@ pub fn getByID(_id: ?[]const u8) ?*const BlockEntityType {
 	return null;
 }
 
-pub fn renderAll(ambientLight: Vec3f) void {
-	inline for (@typeInfo(BlockEntityTypes).@"struct".decl_names) |declaration| {
-		@field(BlockEntityTypes, declaration).renderAll(ambientLight);
+pub fn renderAll(currentFrame: *graphics.vulkan.Frame, ambientLight: Vec3f) void {
+	inline for (@typeInfo(block_entity_types).@"struct".decl_names) |declaration| {
+		@field(block_entity_types, declaration).renderAll(currentFrame, ambientLight);
 	}
 }

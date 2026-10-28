@@ -24,8 +24,8 @@ pub fn init(zon: main.ZonElement, _: main.callbacks.Creator) ?*@This() {
 }
 
 pub fn run(self: *@This(), params: main.callbacks.BlockTouchCallback.Params) main.callbacks.Result {
-	std.debug.assert(params.entity == &main.game.Player.super); // TODO: Implement on the server side
+	std.debug.assert(params.entity == &main.game.player.super); // TODO: Implement on the server side
 	const damage = self.dps*@as(f32, @floatCast(params.deltaTime));
-	main.sync.addHealth(-damage, self.damageType, .client, main.game.Player.id);
+	main.sync.addHealth(-damage, self.damageType, .client, main.game.player.id);
 	return .handled;
 }
