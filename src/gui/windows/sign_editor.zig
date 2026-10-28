@@ -44,7 +44,7 @@ fn apply() void {
 		return;
 	}
 
-	main.block_entity.BlockEntityTypes.@"cubyz:sign".updateTextFromClient(pos, textComponent.currentString.items);
+	main.block_entity.block_entity_types.@"cubyz:sign".updateTextFromClient(pos, textComponent.currentString.items);
 
 	gui.toggleGameMenu();
 }

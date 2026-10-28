@@ -56,15 +56,15 @@ fn initExecutionFn(comptime name: []const u8) *const fn (args: []const u8, sourc
 
 pub fn init() void {
 	commands = .init(main.globalAllocator.allocator);
-	inline for (@typeInfo(commandList).@"struct".decls) |decl| {
-		commands.put(decl.name, .{
-			.name = decl.name,
-			.description = @field(commandList, decl.name).description,
-			.usage = @field(commandList, decl.name).usage,
-			.exec = initExecutionFn(decl.name),
-			.permissionPath = "/command/" ++ decl.name,
+	inline for (@typeInfo(commandList).@"struct".decl_names) |decl| {
+		commands.put(decl, .{
+			.name = decl,
+			.description = @field(commandList, decl).description,
+			.usage = @field(commandList, decl).usage,
+			.exec = initExecutionFn(decl),
+			.permissionPath = "/command/" ++ decl,
 		}) catch unreachable;
-		std.log.debug("Registered command: '/{s}'", .{decl.name});
+		std.log.debug("Registered command: '/{s}'", .{decl});
 	}
 }
 
@@ -278,5 +278,17 @@ pub const PatternExpression = struct {
 			errorMessage.print("Couldn't parse pattern: {s}", .{@errorName(err)});
 			return error.ParseError;
 		}};
+	}
+};
+
+pub const PermissionPath = struct {
+	path: []const u8,
+
+	pub fn parse(_: NeverFailingAllocator, name: []const u8, arg: []const u8, errorMessage: *ListManaged(u8)) error{ParseError}!PermissionPath {
+		if (arg[0] != '/') {
+			errorMessage.print("Permission path for <{s}> doesn't begin with a \"/\", got: {s}", .{name, arg});
+			return error.ParseError;
+		}
+		return .{.path = arg};
 	}
 };

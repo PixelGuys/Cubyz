@@ -5,6 +5,7 @@ pub const invite = @import("invite.zig");
 pub const kick = @import("kick.zig");
 pub const kill = @import("kill.zig");
 pub const particles = @import("particles.zig");
+pub const players = @import("players.zig");
 pub const seed = @import("seed.zig");
 pub const server = @import("server.zig");
 pub const spawn = @import("spawn.zig");
@@ -15,6 +16,7 @@ pub const whitelist = @import("whitelist.zig");
 
 pub const avatar = @import("entity/avatar.zig");
 
+pub const group = @import("permission/group.zig");
 pub const perm = @import("permission/perm.zig");
 
 pub const undo = @import("worldedit/undo.zig");

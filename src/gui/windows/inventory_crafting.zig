@@ -67,8 +67,8 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 		amount.* = 0;
 	}
 	// Figure out what items are available in the inventory:
-	for (0..main.game.Player.inventory.size()) |i| {
-		addItemStackToAvailable(main.game.Player.inventory.getStack(i));
+	for (0..main.game.player.inventory.size()) |i| {
+		addItemStackToAvailable(main.game.player.inventory.getStack(i));
 	}
 	if (std.mem.eql(u32, oldAmounts, itemAmount.items)) return false;
 	// Remove no longer present items:
@@ -138,7 +138,7 @@ fn refresh() void {
 		return;
 	}
 	if (window.rootComponent) |*comp| {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = comp.verticalList, .freeFunction = main.meta.castFunctionSelfToAnyopaque(VerticalList.deinit)});
+		main.heap.garbage_collection.deferredFree(.{.ptr = comp.verticalList, .freeFunction = main.meta.castFunctionSelfToAnyopaque(VerticalList.deinit)});
 	}
 	if (list.children.items.len == 0) {
 		list.add(Label.init(.{0, 0}, 120, "No craftable\nrecipes found", .center));

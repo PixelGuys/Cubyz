@@ -33,7 +33,7 @@ name: []const u8,
 
 pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) !void {
 	self.* = @This(){
-		.id = @enumFromInt(zon.get(u32, "id") orelse std.math.maxInt(u32)),
+		.id = @fromBackingInt(zon.get(u32, "id") orelse std.math.maxInt(u32)),
 		.width = zon.get(f64, "width") orelse 1,
 		.height = zon.get(f64, "height") orelse 1,
 		.name = allocator.dupe(u8, zon.get([]const u8, "name") orelse ""),

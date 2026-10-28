@@ -12,6 +12,7 @@
 	.absorbedLight = 0x121012,
 	.model = "cubyz:plane",
 	.rotation = "cubyz:carpet",
+	.placementMode = .gridNeighbor,
 	.texture = "cubyz:ivy",
 	.item = .{
 		.texture = "ivy.png",

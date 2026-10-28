@@ -63,7 +63,7 @@ pub const client = struct { // MARK: client
 	}
 	pub fn clear() void {}
 
-	pub fn renderHud(_: Vec3f, playerPos: Vec3d) void {
+	pub fn renderHud(currentFrame: *graphics.vulkan.Frame, _: Vec3f, playerPos: Vec3d) void {
 		main.client.entity_manager.mutex.lock();
 		defer main.client.entity_manager.mutex.unlock();
 
@@ -73,7 +73,7 @@ pub const client = struct { // MARK: client
 		const fontScreenSize = fontBaseSize*screenUnits;
 
 		for (main.client.entity_manager.entities.items()) |ent| {
-			if (ent.id == game.Player.id) continue; // don't render local player
+			if (ent.id == game.player.id) continue; // don't render local player
 			if (ent.name.len == 0 and !settings.showPlayerIndexWithName) continue;
 
 			var offsetText: f32 = 0;
@@ -94,7 +94,7 @@ pub const client = struct { // MARK: client
 			const projectedPos = Mat4f.fromGl(main.graphics.frame_uniforms.frameData().projectionMatrix).mulVec(rotatedPos);
 			if (projectedPos[2] < 0) continue;
 			const xCenter = (1 + projectedPos[0]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.width/2));
-			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.height/2));
+			const yCenter = (1 + projectedPos[1]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.height/2));
 
 			const transparency = 38.0*std.math.log10(vec.lengthSquare(pos3d) + 1) - 80.0;
 			const alpha: u32 = @trunc(std.math.clamp(0xff - transparency, 0, 0xff));
@@ -108,17 +108,18 @@ pub const client = struct { // MARK: client
 			defer buf.deinit();
 			const fontSize = std.mem.max(f32, &.{fontMinScreenSize, fontScreenSize/projectedPos[3]});
 			const size = buf.calculateLineBreaks(fontSize, @floatFromInt(main.Window.width*8));
-			buf.render(xCenter - size[0]/2, yCenter - size[1], fontSize);
+			buf.render(currentFrame, xCenter - size[0]/2, yCenter - size[1], fontSize);
 		}
 	}
-	pub fn render(ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
+	pub fn render(currentFrame: *graphics.vulkan.Frame, ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
+		_ = currentFrame;
 		_ = deltaTime;
 		main.client.entity_manager.mutex.lock();
 		defer main.client.entity_manager.mutex.unlock();
 
 		// TODO: #3342
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |*component, id| {
-			if (id == game.Player.id) continue; // don't process local player
+			if (id == game.player.id) continue; // don't process local player
 
 			const entModel = component.entityModel.get();
 			const ent = main.client.entity_manager.getEntity(id) orelse continue;
@@ -150,7 +151,7 @@ pub const client = struct { // MARK: client
 		main.systems.systems.modelRenderer.client.nodeBuffer.beginRender();
 
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |component, id| {
-			if (id == game.Player.id) continue; // don't render local player
+			if (id == game.player.id) continue; // don't render local player
 
 			const entModel = component.entityModel.get();
 			const ent = main.client.entity_manager.getEntity(id) orelse continue;

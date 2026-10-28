@@ -51,7 +51,7 @@ pub fn save(self: *const @This(), allocator: NeverFailingAllocator, audience: ma
 	zon.put("rotation", self.rot);
 	zon.put("health", self.health);
 	zon.put("energy", self.energy);
-	zon.put("id", @intFromEnum(self.id));
+	zon.put("id", @backingInt(self.id));
 
 	var base64 = main.entity.server.componentsToBase64(allocator, self.id, audience);
 	defer base64.deinit(allocator);
