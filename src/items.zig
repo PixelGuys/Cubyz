@@ -1517,6 +1517,8 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
 	var slotTags: main.List(SlotTag) = .empty;
 	defer slotTags.deinit(main.stackAllocator);
+	for (zon.getChild("tagFields").toSlice()) |tagFieldZon| {
+	}
 	{
 		var it = zon.object.iterator();
 		while (it.next()) |entry| {
