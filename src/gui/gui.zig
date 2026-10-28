@@ -628,6 +628,21 @@ pub fn updateAndRenderGui(currentFrame: *graphics.vulkan.Frame) void {
 			}
 			window.render(currentFrame, mousePos);
 		}
+		// Draw tooltip
+		// reverse order of rendering, the last-rendered element is the first one that we should try to interact with
+		var i: usize = openWindows.items.len;
+		while (i != 0) {
+			i -= 1;
+			const window: *GuiWindow = openWindows.items[i];
+			if (GuiComponent.contains(window.pos, window.size, mousePos)) {
+				const rootComponent = window.rootComponent orelse break;
+				const tooltip_text = rootComponent.getTooltip((mousePos - window.pos)/@as(Vec2f, @splat(window.scale))) orelse break;
+
+				tooltip.renderFromText(currentFrame, tooltip_text, mousePos);
+				break;
+			}
+		}
+
 		inventory.render(currentFrame, mousePos);
 	}
 	const oldScale = draw.setScale(scale);
@@ -841,12 +856,5 @@ pub const inventory = struct { // MARK: inventory
 		if (!initialized) return;
 		carriedItemSlot.pos = mousePos - Vec2f{12, 12};
 		carriedItemSlot.render(currentFrame, .{0, 0});
-		// Draw tooltip:
-		const hovered = hoveredItemSlot orelse return;
-		if (carried.getAmount(0) == 0) {
-			if (hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltipContent| {
-				tooltip.renderFromText(currentFrame, tooltipContent, mousePos);
-			}
-		}
 	}
 };

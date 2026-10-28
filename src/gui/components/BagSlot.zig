@@ -125,3 +125,8 @@ pub fn render(self: *BagSlot, currentFrame: *graphics.vulkan.Frame, _: Vec2f) vo
 		draw.rect(currentFrame, self.pos, @splat(sizeWithBorder));
 	}
 }
+
+pub fn getTooltip(self: *BagSlot, _: main.vec.Vec2f) ?[]const u8 {
+	if (main.Window.grabbed) return null;
+	return self.inventory.peek(0).item.getTooltip();
+}
