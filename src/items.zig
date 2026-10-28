@@ -722,18 +722,6 @@ const SlotTag = struct { // MARK: SlotTag
 	tagType: main.Tag,
 };
 
-const SlotTagContainer = struct { // MARK: SlotTag
-	slotTags: []SlotTag,
-
-	pub fn isTagAtSlot(self: SlotTagContainer, index: usize, tag: main.Tag) bool {
-		for (self.slotTags) |slotTag| {
-			if (!(slotTag.tagType == tag)) continue;
-			return slotTag.hasTagMatrix[index];
-		}
-		return false;
-	}
-};
-
 const PropertyMatrix = struct { // MARK: PropertyMatrix
 	source: ?MaterialProperty,
 	destination: ?ProceduralItemProperty,
@@ -777,6 +765,14 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 		return result;
 	}
 
+	pub fn isTagAtSlot(self: ProceduralItemTypeIndex, index: usize, tag: main.Tag) bool {
+		for (proceduralItemTypeList.items[@backingInt(self)].slotTags) |slotTag| {
+			if (!(slotTag.tagType == tag)) continue;
+			return slotTag.hasTagMatrix[index];
+		}
+		return false;
+	}
+
 	pub fn iterator() ProceduralItemTypeIterator {
 		return .{};
 	}
@@ -792,14 +788,14 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 	pub fn properties(self: ProceduralItemTypeIndex) []const PropertyMatrix {
 		return proceduralItemTypeList.items[@backingInt(self)].properties;
 	}
-	pub fn slotTags(self: ProceduralItemTypeIndex) SlotTagContainer {
-		return proceduralItemTypeList.items[@backingInt(self)].slotTags;
-	}
 	pub fn pixelSources(self: ProceduralItemTypeIndex) *const [16][16]u8 {
 		return &proceduralItemTypeList.items[@backingInt(self)].pixelSources;
 	}
 	pub fn pixelSourcesOverlay(self: ProceduralItemTypeIndex) *const [16][16]u8 {
 		return &proceduralItemTypeList.items[@backingInt(self)].pixelSourcesOverlay;
+	}
+	pub fn slotTags(self: ProceduralItemTypeIndex) *const []SlotTag {
+		return &proceduralItemTypeList.items[@backingInt(self)].slotTags;
 	}
 };
 
@@ -807,7 +803,7 @@ pub const ProceduralItemType = struct { // MARK: ProceduralItemType
 	id: []const u8,
 	tags: []main.Tag,
 	properties: []PropertyMatrix,
-	slotTags: SlotTagContainer,
+	slotTags: []SlotTag,
 	pixelSources: [16][16]u8,
 	pixelSourcesOverlay: [16][16]u8,
 };
@@ -909,14 +905,14 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 
 	pub fn initFromInventory(inventory: Inventory) ?*ProceduralItem {
 		std.debug.assert(inventory.source == .workbench);
-		const slotTags = inventory.source.workbench.proceduralItemIndex.slotTags();
+		const proceduralItemType = inventory.source.workbench.proceduralItemIndex;
 		var availableItems: [25]?main.items.BaseItemIndex = undefined;
 
 		for (0..25) |i| {
 			if (inventory._items[i].item == .baseItem) {
 				availableItems[i] = inventory._items[i].item.baseItem;
 			} else {
-				if (!slotTags.isTagAtSlot(i, .optional) and !slotTags.isTagAtSlot(i, .disabled)) {
+				if (!proceduralItemType.isTagAtSlot(i, .optional) and !proceduralItemType.isTagAtSlot(i, .disabled)) {
 					return null;
 				}
 				availableItems[i] = null;
@@ -1027,7 +1023,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		if (x < 0 or x >= 5) return false;
 		if (y < 0 or y >= 5) return false;
 
-		for (self.type.slotTags().slotTags) |specificSlotTag| {
+		for (self.type.slotTags().*) |specificSlotTag| {
 			if (specificSlotTag.tagType != checkedTag) continue;
 			if (specificSlotTag.hasTagMatrix[@intCast(x + y*5)]) return true;
 		}
@@ -1108,7 +1104,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	}
 
 	pub fn canPutIntoWorkbenchCallback(source: Inventory.Source, item: Item, slot: usize) bool {
-		if (source.workbench.proceduralItemIndex.slotTags().isTagAtSlot(slot, .disabled)) return false;
+		if (source.workbench.proceduralItemIndex.isTagAtSlot(slot, .disabled)) return false;
 		return switch (item) {
 			.null => true,
 			.baseItem => |baseItem| baseItem.material() != null,
@@ -1551,7 +1547,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 	proceduralItemTypeList.append(main.worldArena, .{
 		.id = idDupe,
 		.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
-		.slotTags = .{.slotTags = main.worldArena.dupe(SlotTag, slotTags.items)},
+		.slotTags = main.worldArena.dupe(SlotTag, slotTags.items),
 		.properties = main.worldArena.dupe(PropertyMatrix, parameterMatrices.items),
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
