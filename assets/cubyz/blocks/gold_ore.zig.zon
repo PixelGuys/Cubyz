@@ -7,6 +7,7 @@
 		.size = 12,
 		.maxHeight = -2000,
 		.density = 0.25,
+		.targetTags = .{.allowOres},
 	},
 	.drops = .{
 		.{.items = .{.auto}},
