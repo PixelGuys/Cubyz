@@ -1400,10 +1400,12 @@ pub const Connection = struct { // MARK: Connection
 			return writer.data.items.len;
 		}
 
-		fn receiveConfirmationAndGetTimestamp(self: *MtuHandler, sequenceIndex: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
-			self.lossCounter = 0;
-			self.maxLossSize = 0;
-			return self.probingState.receiveConfirmationAndGetTimestamp(self, sequenceIndex);
+		fn receiveConfirmationAndGetTimestamp(self: *MtuHandler, probeLen: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
+			if (self.maxLossSize <= probeLen) {
+				self.lossCounter = 0;
+				self.maxLossSize = 0;
+			}
+			return self.probingState.receiveConfirmationAndGetTimestamp(self, probeLen);
 		}
 
 		/// handles packet loss that could be because of the mtu changing.
