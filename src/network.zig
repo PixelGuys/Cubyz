@@ -1415,6 +1415,8 @@ pub const Connection = struct { // MARK: Connection
 			self.maxLossSize = @max(self.maxLossSize, packetLen);
 			if (self.lossCounter > lossCounterLimit) {
 				self.mtuEstimate = minMtu;
+				self.lossCounter = 0;
+				self.maxLossSize = 0;
 				self.probingState = .{.searchFinished = .{
 					.nextSearchingTime = networkTimestamp() + ProbingState.resetTimer,
 				}};
