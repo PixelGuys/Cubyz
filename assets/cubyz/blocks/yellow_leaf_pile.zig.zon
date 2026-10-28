@@ -11,7 +11,13 @@
 	.alwaysViewThrough = true,
 	.absorbedLight = 0x000000,
 	.model = .{
-		.model = "cubyz:plane",
+		.mode = .textureAndModel,
+		.models = .{
+			"cubyz:plane",
+			"cubyz:layer/1",
+			"cubyz:layer/2",
+			"cubyz:layer/3",
+		},
 		.states = 4,
 	},
 	.rotation = "cubyz:texture_pile",
