@@ -1366,12 +1366,12 @@ pub const Connection = struct { // MARK: Connection
 				}
 			}
 
-			fn receiveConfirmationAndGetTimestamp(self: *ProbingState, conn: *Connection, probeLen: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
+			fn receiveConfirmationAndGetTimestamp(self: *ProbingState, mtuHandler: *MtuHandler, probeLen: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
 				if (self.* != .searching) return null;
 
 				self.searching.probeCount = 0;
 				self.searching.nextProbeTime = 0; // next probe can be send
-				conn.mtuHandler.mtuEstimate = @intCast(probeLen);
+				mtuHandler.mtuEstimate = @max(mtuHandler.mtuEstimate, @as(u16, @intCast(probeLen)));
 				return .{
 					.timestamp = networkTimestamp(),
 					.packetLen = probeLen,
@@ -1396,13 +1396,14 @@ pub const Connection = struct { // MARK: Connection
 			writer.writeInt(SequenceIndex, @intCast(writer.data.capacity));
 			writer.data.items.len = writer.data.capacity;
 
-			_ = packetsSent.fetchAdd(1, .monotonic);
 			conn.manager.send(writer.data.items, conn.remoteAddress, null);
 			return writer.data.items.len;
 		}
 
-		fn receiveConfirmationAndGetTimestamp(self: *MtuHandler, conn: *Connection, sequenceIndex: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
-			return self.probingState.receiveConfirmationAndGetTimestamp(conn, sequenceIndex);
+		fn receiveConfirmationAndGetTimestamp(self: *MtuHandler, sequenceIndex: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
+			self.lossCounter = 0;
+			self.maxLossSize = 0;
+			return self.probingState.receiveConfirmationAndGetTimestamp(self, sequenceIndex);
 		}
 
 		/// handles packet loss that could be because of the mtu changing.
@@ -1865,10 +1866,10 @@ pub const Connection = struct { // MARK: Connection
 				.lossy => self.lossyChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
 				.secure => self.secureChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
 				.slow => self.slowChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
-				.probe => self.mtuHandler.receiveConfirmationAndGetTimestamp(self, start) orelse continue,
+				.probe => self.mtuHandler.receiveConfirmationAndGetTimestamp(start) orelse continue,
 				else => return error.Invalid,
 			};
-			self.mtuHandler.handleConfirmation(start);
+			self.mtuHandler.handleConfirmation(confirmationResult.packetLen);
 			if (confirmationResult.considerForRtt) {
 				const rtt: f32 = @floatFromInt(@max(1, timestamp -% confirmationResult.timestamp -% timeOffset));
 				numRtt += 1;
