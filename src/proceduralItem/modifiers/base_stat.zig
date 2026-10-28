@@ -36,15 +36,11 @@ pub fn loadData(zon: main.ZonElement) Data {
 pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	if (data1.targetProperty != data2.targetProperty) return null;
 	if (std.math.sign(data1.strength) != std.math.sign(data2.strength)) return null;
-	switch (std.math.sign(data1.strength)) {
-		1 => return .{.strength = std.math.hypot(data1.strength, data2.strength), .targetProperty = data1.targetProperty},
-		-1 => return .{.strength = 1.0 - 1.0/(1.0 + std.math.hypot(1.0/(1.0 - data1.strength) - 1.0, 1.0/(1.0 - data2.strength) - 1.0)), .targetProperty = data1.targetProperty},
-		else => return null,
+	if (data1.strength >= 0) {
+		return .{.strength = std.math.hypot(data1.strength, data2.strength), .targetProperty = data1.targetProperty};
+	} else {
+		return .{.strength = 1.0 - 1.0/(1.0 + std.math.hypot(1.0/(1.0 - data1.strength) - 1.0, 1.0/(1.0 - data2.strength) - 1.0)), .targetProperty = data1.targetProperty};
 	}
-	return .{
-		.strength = std.math.sign(data1.strength + data2.strength)*@sqrt(@abs(data1.strength*@abs(data1.strength) + data2.strength*@abs(data2.strength))),
-		.targetProperty = data1.targetProperty,
-	};
 }
 
 pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Data) void {
