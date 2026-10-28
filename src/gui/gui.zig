@@ -638,7 +638,7 @@ pub fn updateAndRenderGui(currentFrame: *graphics.vulkan.Frame) void {
 				const rootComponent = window.rootComponent orelse break;
 				const tooltip_text = rootComponent.getTooltip((mousePos - window.pos)/@as(Vec2f, @splat(window.scale))) orelse break;
 
-				tooltip.renderFromText(tooltip_text, mousePos);
+				tooltip.renderFromText(currentFrame, tooltip_text, mousePos);
 				break;
 			}
 		}
