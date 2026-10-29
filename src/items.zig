@@ -1518,11 +1518,11 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 	var slotTags: main.List(SlotTag) = .empty;
 	defer slotTags.deinit(main.stackAllocator);
 	blk: {
-		if (zon.getChild("tagFields").isNull()) {
-			std.log.err("procedural tool types require tagFields {s}", .{id});
+		if (zon.getChild("slotTags").isNull()) {
+			std.log.err("procedural tool types require slotTags {s}", .{id});
 			break :blk;
 		}
-		var it = zon.getChild("tagFields").object.iterator();
+		var it = zon.getChild("slotTags").object.iterator();
 		while (it.next()) |entry| {
 			const slotTagVal = slotTags.addOne(main.stackAllocator);
 			const matrixZon = entry.value_ptr;
