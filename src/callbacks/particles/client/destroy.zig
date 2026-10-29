@@ -7,7 +7,7 @@ const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 
 pub fn init(_: ZonElement, _: main.callbacks.Creator) ?*@This() {
-	return @as(*anyopaque, undefined);
+	return @as(*@This(), undefined);
 }
 
 pub fn run(_: *@This(), params: main.callbacks.ParticleCollideCallback.Params) main.callbacks.Result {
