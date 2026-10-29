@@ -1517,21 +1517,24 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
 	var slotTags: main.List(SlotTag) = .empty;
 	defer slotTags.deinit(main.stackAllocator);
-	for (zon.getChild("tagFields").toSlice()) |tagFieldZon| {
-	}
-	{
-		var it = zon.object.iterator();
+	blk: {
+		if (zon.getChild("tagFields").isNull()) {
+			std.log.err("procedural tool types require tagFields {s}", .{id});
+			break :blk;
+		}
+		var it = zon.getChild("tagFields").object.iterator();
 		while (it.next()) |entry| {
 			const slotTagVal = slotTags.addOne(main.stackAllocator);
 			const matrixZon = entry.value_ptr;
 			for (0..25) |i| {
+				std.log.err("looking for stuff {}, {}, {}", .{i, matrixZon.as(usize), main.Tag.find(entry.key_ptr.*)});
 				slotTagVal.hasTagMatrix[i] = (matrixZon.as(usize) != 0);
 			}
 			slotTagVal.tagType = main.Tag.find(entry.key_ptr.*);
 			std.log.debug("testing this {s}", .{entry.key_ptr});
-			if (!std.mem.endsWith(u8, slotTagVal.tagType.getName(), "_slot")) break;
-			if (!(slotTagVal.tagType == .disabled)) break;
-			if (!(slotTagVal.tagType == .optional)) break;
+			if (!std.mem.endsWith(u8, slotTagVal.tagType.getName(), "_slot")) continue;
+			if (!(slotTagVal.tagType == .disabled)) continue;
+			if (!(slotTagVal.tagType == .optional)) continue;
 			std.log.err("Tool slot tag {s} must end with '_slot'.", .{id});
 		}
 	}
