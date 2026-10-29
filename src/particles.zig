@@ -86,7 +86,6 @@ pub const particle_manager = struct { // MARK: particle_manager
 					std.log.err("Failed to load onTouch event for particle {s}", .{id});
 					break :blk .noop;
 				};
-
 			},
 		};
 
