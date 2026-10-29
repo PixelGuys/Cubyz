@@ -12,7 +12,7 @@
 		.output = "cubyz:grass/dry",
 	},
 	.{
-		.inputs = .{"cubyz:permafrost", "cubyz:grass_seeds"},
+		.inputs = .{"cubyz:silt", "cubyz:grass_seeds"},
 		.output = "cubyz:grass/cold",
 	},
 	.{
@@ -22,6 +22,14 @@
 	.{
 		.inputs = .{"cubyz:clay", "cubyz:grass_seeds"},
 		.output = "cubyz:grass/dew",
+	},
+	.{
+		.inputs = .{"cubyz:sand", "cubyz:grass_seeds"},
+		.output = "cubyz:grass/arid",
+	},
+	.{
+		.inputs = .{"cubyz:permafrost", "cubyz:grass_seeds"},
+		.output = "cubyz:grass/frosted",
 	},
 	.{
 		.inputs = .{"cubyz:aerosoil", "cubyz:grass_seeds"},

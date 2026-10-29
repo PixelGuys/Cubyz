@@ -1,5 +1,5 @@
 .{
-	.properties = .{},
+	.climate = .{},
 	.keepOriginalTerrain = 0.99,
 	.minHeightLimit = 60,
 	.minHeight = 1800,

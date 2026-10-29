@@ -10,5 +10,5 @@ layout(location = 0) out vec2 outTexCoords;
 void main() {
 	gl_Position = projectionMatrix*viewMatrix*vec4(vertexPos, 1);
 
-	outTexCoords = texCoords*vec2(1, -1);
+	outTexCoords = texCoords;
 }

@@ -190,7 +190,7 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []const ZonEleme
 	return newInputCombos;
 }
 
-pub fn addRecipe(itemCombo: []const ItemWithAmount, list: *main.ListManaged(Recipe), craftingTags: []Tag) void {
+pub fn addRecipe(itemCombo: []const ItemWithAmount, list: *main.ListManaged(Recipe), craftingTags: []const Tag) void {
 	const inputs = itemCombo[0 .. itemCombo.len - 1];
 	const output = itemCombo[itemCombo.len - 1];
 	const recipe = Recipe{
@@ -219,8 +219,9 @@ pub fn parseRecipe(zon: ZonElement, list: *main.ListManaged(Recipe)) !void {
 		return error.InvalidReversibleRecipe;
 	}
 
+	const defaultCraftingTags: []const Tag = &.{.handCraftable};
 	const foundCraftingTags = Tag.loadTagsFromZon(arena, zon.getChild("craftingTags"));
-	const craftingTags = if (foundCraftingTags.len != 0) foundCraftingTags else .{.handCraftable};
+	const craftingTags = if (foundCraftingTags.len != 0) foundCraftingTags else defaultCraftingTags;
 
 	const itemCombos = try generateItemCombos(arena, recipeItems);
 	for (itemCombos) |itemCombo| {

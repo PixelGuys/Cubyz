@@ -94,28 +94,39 @@ pub fn mainButtonReleased(self: *CheckBox, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn render(self: *CheckBox, mousePosition: Vec2f) void {
-	if (self.state) {
-		if (self.pressed) {
-			textureCheckedPressed.bindTo(0);
-		} else if (GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered) {
-			textureCheckedHovered.bindTo(0);
+pub fn render(self: *CheckBox, currentFrame: *graphics.vulkan.Frame, mousePosition: Vec2f) void {
+	const texture = blk: {
+		if (self.state) {
+			if (self.pressed) {
+				break :blk textureCheckedPressed;
+			} else if (GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered) {
+				break :blk textureCheckedHovered;
+			} else {
+				break :blk textureCheckedNormal;
+			}
 		} else {
-			textureCheckedNormal.bindTo(0);
+			if (self.pressed) {
+				break :blk textureEmptyPressed;
+			} else if (GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered) {
+				break :blk textureEmptyHovered;
+			} else {
+				break :blk textureEmptyNormal;
+			}
 		}
+	};
+	if (main.settings.launch_config.vulkanTestingMode and texture.vulkanImage != null) {
+		currentFrame.guiCommands.bindPipeline(currentFrame, Button.pipeline, graphics.draw.getScissor());
+		currentFrame.guiCommands.bindDescriptors(Button.pipeline, .graphics, &.{
+			.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
+		});
+		draw.customShadedRect(currentFrame, @as(Button.ButtonUniforms, undefined), Button.pipeline, self.pos + Vec2f{0, self.size[1]/2 - boxSize/2}, @as(Vec2f, @splat(boxSize)));
 	} else {
-		if (self.pressed) {
-			textureEmptyPressed.bindTo(0);
-		} else if (GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered) {
-			textureEmptyHovered.bindTo(0);
-		} else {
-			textureEmptyNormal.bindTo(0);
-		}
+		Button.pipeline.bind(draw.getScissor());
+		texture.bindTo(0);
+		draw.customShadedRectOpenGl(Button.buttonUniforms, self.pos + Vec2f{0, self.size[1]/2 - boxSize/2}, @as(Vec2f, @splat(boxSize)));
 	}
-	Button.pipeline.bind(draw.getScissor());
 	self.hovered = false;
-	draw.customShadedRect(Button.buttonUniforms, self.pos + Vec2f{0, self.size[1]/2 - boxSize/2}, @as(Vec2f, @splat(boxSize)));
 	const textPos = self.pos + Vec2f{boxSize/2, 0} + self.size/@as(Vec2f, @splat(2.0)) - self.label.size/@as(Vec2f, @splat(2.0));
 	self.label.pos = textPos;
-	self.label.render(mousePosition - textPos);
+	self.label.render(currentFrame, mousePosition - textPos);
 }

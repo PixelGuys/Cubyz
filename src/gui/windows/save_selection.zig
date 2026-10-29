@@ -55,17 +55,11 @@ pub fn openWorld(name: []const u8) void {
 	};
 
 	std.log.info("Opening world {s}", .{name});
-	main.server.thread = std.Thread.spawn(.{}, main.server.startFromNewThread, .{name, clientConnection.localPort, mode}) catch |err| {
-		std.log.err("Encountered error while starting server thread: {s}", .{@errorName(err)});
-		return;
-	};
-	main.server.thread.?.setName(main.io, "Server") catch |err| {
-		std.log.err("Failed to rename Server thread: {s}", .{@errorName(err)});
-	};
+	main.server.startAndCreateThread(name, clientConnection.localPort, mode);
 
 	while (!main.server.running.load(.acquire)) {
 		main.io.sleep(.fromMilliseconds(1), .awake) catch {};
-		main.heap.GarbageCollection.syncPoint();
+		main.heap.garbage_collection.syncPoint();
 	}
 	const ipPort = main.stackAllocator.print("127.0.0.1:{}", .{main.server.connectionManager.localPort});
 	defer main.stackAllocator.free(ipPort);

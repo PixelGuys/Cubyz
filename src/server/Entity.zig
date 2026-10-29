@@ -18,9 +18,9 @@ maxEnergy: f32 = 8,
 name: ?[]const u8 = null,
 id: main.entity.Entity = .noValue,
 
-pub fn loadFrom(self: *@This(), id: main.entity.Entity, zon: ZonElement, comptime side: main.sync.Side) !void {
+pub fn loadFrom(self: *@This(), id: main.entity.Entity, zon: ZonElement, comptime side: main.sync.Side, defaultPos: Vec3d) !void {
 	self.id = id;
-	self.pos = zon.get(Vec3d, "position") orelse .{0, 0, 0};
+	self.pos = zon.get(Vec3d, "position") orelse defaultPos;
 	self.vel = zon.get(Vec3d, "velocity") orelse .{0, 0, 0};
 	self.rot = zon.get(Vec3f, "rotation") orelse .{0, 0, 0};
 	self.health = zon.get(f32, "health") orelse self.maxHealth;
@@ -51,7 +51,7 @@ pub fn save(self: *const @This(), allocator: NeverFailingAllocator, audience: ma
 	zon.put("rotation", self.rot);
 	zon.put("health", self.health);
 	zon.put("energy", self.energy);
-	zon.put("id", @intFromEnum(self.id));
+	zon.put("id", @backingInt(self.id));
 
 	var base64 = main.entity.server.componentsToBase64(allocator, self.id, audience);
 	defer base64.deinit(allocator);

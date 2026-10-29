@@ -39,16 +39,26 @@ const Material = struct { // MARK: Material
 	outlineColorShadow: Color = undefined,
 	modifiers: []Modifier = undefined,
 
-	fn darken(color: Color, factor: f32) Color {
-		return Color{
-			.r = @intFromFloat(@as(f32, @floatFromInt(color.r))*factor),
-			.g = @intFromFloat(@as(f32, @floatFromInt(color.g))*factor),
-			.b = @intFromFloat(@as(f32, @floatFromInt(color.b))*factor),
-			.a = color.a,
-		};
+	fn loadColorsFromTexture(self: *Material, allocator: NeverFailingAllocator, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8) !void {
+		if (colorTexturePath.len == 0) return error.@"Missing attribute 'colorTexture'";
+		const image = graphics.Image.readFromFile(main.stackAllocator, colorTexturePath, .{.orientation = .asIs}) catch try graphics.Image.readFromFile(main.stackAllocator, colorReplacementTexturePath, .{.orientation = .asIs});
+		defer image.deinit(main.stackAllocator);
+
+		if (image.width < 2 or image.height < 2) return error.@"Color texture must be at least 2x2 pixels";
+
+		self.colorPalette = allocator.alloc(Color, image.width);
+		for (0..image.width) |x| {
+			self.colorPalette[x] = image.getRGB(x, 0);
+		}
+		const shadow = image.getRGB(0, 1);
+		if (shadow.a != 255) return error.@"outlineColorShadow pixel (0,1) must be fully opaque";
+		self.outlineColorShadow = shadow;
+		const light = image.getRGB(1, 1);
+		if (light.a != 255) return error.@"outlineColorLight pixel (1,1) must be fully opaque";
+		self.outlineColorLight = light;
 	}
 
-	pub fn init(self: *Material, allocator: NeverFailingAllocator, zon: ZonElement) void {
+	pub fn init(self: *Material, allocator: NeverFailingAllocator, zon: ZonElement, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8) void {
 		self.massDamage = zon.get(f32, "massDamage") orelse blk: {
 			std.log.err("Couldn't find material attribute 'massDamage'", .{});
 			break :blk 0;
@@ -66,21 +76,16 @@ const Material = struct { // MARK: Material
 			break :blk 0;
 		};
 		self.textureRoughness = @max(0, zon.get(f32, "textureRoughness") orelse 1.0);
-		const colors = zon.getChild("colors");
-		self.colorPalette = allocator.alloc(Color, colors.toSlice().len);
-		for (colors.toSlice(), self.colorPalette) |item, *color| {
-			color.* = Color.fromArgb(item.as(u32) orelse 0xff000000);
-		}
-		if (zon.get(u32, "outlineColorLight")) |colorInt| {
-			self.outlineColorLight = Color.fromArgb(colorInt);
-		} else {
-			self.outlineColorLight = darken(self.colorPalette[self.colorPalette.len - 1], 0.7);
-		}
-		if (zon.get(u32, "outlineColorShadow")) |colorInt| {
-			self.outlineColorShadow = Color.fromArgb(colorInt);
-		} else {
-			self.outlineColorShadow = darken(self.colorPalette[0], 0.5);
-		}
+		self.loadColorsFromTexture(allocator, colorTexturePath, colorReplacementTexturePath) catch |err| {
+			std.log.err("Could not load material colors. Tried '{s}' and '{s}': {s}", .{colorTexturePath, colorReplacementTexturePath, @errorName(err)});
+			const defaultImage = graphics.Image.defaultImage;
+			self.colorPalette = allocator.alloc(Color, defaultImage.width);
+			for (0..defaultImage.width) |x| {
+				self.colorPalette[x] = defaultImage.getRGB(x, 0);
+			}
+			self.outlineColorShadow = defaultImage.getRGB(0, 1);
+			self.outlineColorLight = defaultImage.getRGB(1, 1);
+		};
 		const modifiersZon = zon.getChild("modifiers");
 		self.modifiers = allocator.alloc(Modifier, modifiersZon.toSlice().len);
 		for (modifiersZon.toSlice(), self.modifiers) |item, *modifier| {
@@ -178,7 +183,7 @@ const Modifier = struct {
 		loadData: *const fn (zon: ZonElement) Data,
 		priority: f32,
 
-		const Defaults = struct {
+		const defaults = struct {
 			pub fn changeProceduralItemParameters(_: *ProceduralItem, _: Data) void {}
 			pub fn changeBlockDamage(damage: f32, _: Block, _: Data) f32 {
 				return damage;
@@ -187,8 +192,8 @@ const Modifier = struct {
 
 		inline fn initFromModifierStruct(comptime ModifierStruct: type) VTable {
 			return comptime .{
-				.changeProceduralItemParameters = @ptrCast(if (@hasDecl(ModifierStruct, "changeProceduralItemParameters")) &ModifierStruct.changeProceduralItemParameters else &VTable.Defaults.changeProceduralItemParameters),
-				.changeBlockDamage = @ptrCast(if (@hasDecl(ModifierStruct, "changeBlockDamage")) &ModifierStruct.changeBlockDamage else &VTable.Defaults.changeBlockDamage),
+				.changeProceduralItemParameters = @ptrCast(if (@hasDecl(ModifierStruct, "changeProceduralItemParameters")) &ModifierStruct.changeProceduralItemParameters else &VTable.defaults.changeProceduralItemParameters),
+				.changeBlockDamage = @ptrCast(if (@hasDecl(ModifierStruct, "changeBlockDamage")) &ModifierStruct.changeBlockDamage else &VTable.defaults.changeBlockDamage),
 				.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
 				.printTooltip = @ptrCast(&ModifierStruct.printTooltip),
 				.loadData = @ptrCast(&ModifierStruct.loadData),
@@ -240,40 +245,46 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 		return reverseIndices.get(_id);
 	}
 	pub fn image(self: BaseItemIndex) graphics.Image {
-		return itemList[@intFromEnum(self)].image;
+		return itemList[@backingInt(self)].image;
 	}
 	pub fn texture(self: BaseItemIndex) ?graphics.Texture {
-		return itemList[@intFromEnum(self)].texture;
+		return itemList[@backingInt(self)].texture;
 	}
 	pub fn id(self: BaseItemIndex) []const u8 {
-		return itemList[@intFromEnum(self)].id;
+		return itemList[@backingInt(self)].id;
 	}
 	pub fn name(self: BaseItemIndex) []const u8 {
-		return itemList[@intFromEnum(self)].name;
+		return itemList[@backingInt(self)].name;
 	}
 	pub fn tags(self: BaseItemIndex) []const Tag {
-		return itemList[@intFromEnum(self)].tags;
+		return itemList[@backingInt(self)].tags;
 	}
 	pub fn stackSize(self: BaseItemIndex) u16 {
-		return itemList[@intFromEnum(self)].stackSize;
+		return itemList[@backingInt(self)].stackSize;
 	}
 	pub fn material(self: BaseItemIndex) ?Material {
-		return itemList[@intFromEnum(self)].material;
+		return itemList[@backingInt(self)].material;
 	}
 	pub fn block(self: BaseItemIndex) ?u16 {
-		return itemList[@intFromEnum(self)].block;
+		return itemList[@backingInt(self)].block;
+	}
+	pub fn displayBlockData(self: BaseItemIndex) ?u16 {
+		return itemList[@backingInt(self)].displayBlockData;
 	}
 	pub fn hasTag(self: BaseItemIndex, tag: Tag) bool {
-		return itemList[@intFromEnum(self)].hasTag(tag);
+		return itemList[@backingInt(self)].hasTag(tag);
 	}
 	pub fn hashCode(self: BaseItemIndex) u32 {
-		return itemList[@intFromEnum(self)].hashCode();
+		return itemList[@backingInt(self)].hashCode();
 	}
 	pub fn getTexture(self: BaseItemIndex) graphics.Texture {
-		return itemList[@intFromEnum(self)].getTexture();
+		return itemList[@backingInt(self)].getTexture();
 	}
 	pub fn getTooltip(self: BaseItemIndex) []const u8 {
-		return itemList[@intFromEnum(self)].getTooltip();
+		return itemList[@backingInt(self)].getTooltip();
+	}
+	pub fn getDisplayBlock(self: BaseItemIndex) ?Block {
+		return itemList[@backingInt(self)].getDisplayBlock();
 	}
 };
 
@@ -288,14 +299,15 @@ pub const BaseItem = struct { // MARK: BaseItem
 	stackSize: u16,
 	material: ?Material,
 	block: ?u16,
+	displayBlockData: ?u16,
 	foodValue: f32, // TODO: Effects.
 
-	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
+	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
 		self.id = allocator.dupe(u8, id);
 		if (texturePath.len == 0) {
 			self.image = graphics.Image.defaultImage;
 		} else {
-			self.image = graphics.Image.readFromFile(allocator, texturePath, .{.orientation = .openGl}) catch graphics.Image.readFromFile(allocator, replacementTexturePath, .{.orientation = .openGl}) catch blk: {
+			self.image = graphics.Image.readFromFile(allocator, texturePath, .{.orientation = .asIs}) catch graphics.Image.readFromFile(allocator, replacementTexturePath, .{.orientation = .asIs}) catch blk: {
 				std.log.err("Item texture not found in {s} and {s}.", .{texturePath, replacementTexturePath});
 				break :blk graphics.Image.defaultImage;
 			};
@@ -306,13 +318,15 @@ pub const BaseItem = struct { // MARK: BaseItem
 		const material = zon.getChild("material");
 		if (material == .object) {
 			self.material = Material{};
-			self.material.?.init(allocator, material);
+			self.material.?.init(allocator, material, colorTexturePath, colorReplacementTexturePath);
 		} else {
 			self.material = null;
 		}
 		self.block = blk: {
 			break :blk blocks.getTypeById(zon.get([]const u8, "block") orelse break :blk null);
 		};
+		self.displayBlockData = zon.get(u16, "displayBlockData");
+
 		self.texture = null;
 		self.foodValue = zon.get(f32, "food") orelse 0;
 
@@ -347,8 +361,8 @@ pub const BaseItem = struct { // MARK: BaseItem
 	pub fn getTexture(self: *BaseItem) graphics.Texture {
 		if (self.texture == null) {
 			if (self.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
-				if (self.block) |blockType| {
-					self.texture = graphics.generateBlockTexture(blockType);
+				if (self.getDisplayBlock()) |block| {
+					self.texture = graphics.generateBlockTexture(block);
 				} else {
 					self.texture = graphics.Texture.init();
 					self.texture.?.generate(self.image);
@@ -371,6 +385,14 @@ pub const BaseItem = struct { // MARK: BaseItem
 		}
 		return false;
 	}
+
+	pub fn getDisplayBlock(self: *const BaseItem) ?Block {
+		if (self.block) |blockType| {
+			const data = if (self.displayBlockData) |d| d else (Block{.typ = blockType, .data = 0}).mode().naturalStandard;
+			return .{.typ = blockType, .data = data};
+		}
+		return null;
+	}
 };
 
 const allNeighborOffsets = [_][2]i8{.{-1, -1}, .{0, -1}, .{1, -1}, .{-1, 0}, .{1, 0}, .{-1, 1}, .{0, 1}, .{1, 1}};
@@ -378,7 +400,7 @@ const orthogonalOffsets = [_][2]i8{.{0, -1}, .{-1, 0}, .{1, 0}, .{0, 1}};
 const diagonalOffsets = [_][2]i8{.{-1, -1}, .{1, -1}, .{-1, 1}, .{1, 1}};
 
 /// Generates the texture of a ProceduralItem using the material information.
-const TextureGenerator = struct { // MARK: TextureGenerator
+const texture_generator = struct { // MARK: texture_generator
 	fn generateHeightMap(itemGrid: *[16][16]?BaseItemIndex, seed: *u64) [17][17]f32 {
 		var heightMap: [17][17]f32 = undefined;
 		var x: u8 = 0;
@@ -537,7 +559,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 		for (tallies.items) |tally| {
 			const better = best == null or tally.score > best.?.score or
 				(tally.score == best.?.score and tally.lightWeight > best.?.lightWeight) or
-				(tally.score == best.?.score and tally.lightWeight == best.?.lightWeight and @intFromEnum(tally.item) < @intFromEnum(best.?.item));
+				(tally.score == best.?.score and tally.lightWeight == best.?.lightWeight and @backingInt(tally.item) < @backingInt(best.?.item));
 			if (better) best = tally;
 		}
 		return if (best) |b| b.item.material() else null;
@@ -578,15 +600,15 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 						// Calculate the lighting based on the nearest free space:
 						const light = calculateLight(&heightMap, .{x, y});
 						const colorIndex: usize = @round(light*@as(f32, @floatFromInt(material.colorPalette.len - 1)));
-						img.setRGB(x, 15 - y, material.colorPalette[colorIndex]);
+						img.setRGB(x, y, material.colorPalette[colorIndex]);
 					} else {
-						img.setRGB(x, 15 - y, if ((x ^ y) & 1 == 0) Color{.r = 255, .g = 0, .b = 255, .a = 255} else Color{.r = 0, .g = 0, .b = 0, .a = 255});
+						img.setRGB(x, y, if ((x ^ y) & 1 == 0) Color{.r = 255, .g = 0, .b = 255, .a = 255} else Color{.r = 0, .g = 0, .b = 0, .a = 255});
 					}
 				} else if (findNeighborMaterial(&proceduralItem.materialGrid, &heightMap, .{x, y})) |material| {
 					const light = calculateLight(&heightMap, .{x, y});
-					img.setRGB(x, 15 - y, if (light > 0.5) material.outlineColorLight else material.outlineColorShadow);
+					img.setRGB(x, y, if (light > 0.5) material.outlineColorLight else material.outlineColorShadow);
 				} else {
-					img.setRGB(x, 15 - y, Color{.r = 0, .g = 0, .b = 0, .a = 0});
+					img.setRGB(x, y, Color{.r = 0, .g = 0, .b = 0, .a = 0});
 				}
 			}
 		}
@@ -594,7 +616,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 };
 
 /// Determines the physical properties of a proceduralItem to calculate in-game parameters such as durability and speed.
-const ProceduralItemPhysics = struct { // MARK: ProceduralItemPhysics
+const procedural_item_physics = struct { // MARK: procedural_item_physics
 	/// Determines all the basic properties of the proceduralItem.
 	pub fn evaluateProceduralItem(proceduralItem: *ProceduralItem) void {
 		proceduralItem.properties = @splat(0);
@@ -729,7 +751,7 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 		pub fn next(self: *ProceduralItemTypeIterator) ?ProceduralItemTypeIndex {
 			if (self.i >= proceduralItemTypeList.items.len) return null;
 			defer self.i += 1;
-			return @enumFromInt(self.i);
+			return @fromBackingInt(self.i);
 		}
 	};
 
@@ -739,7 +761,7 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 
 	pub fn fromBytes(reader: *BinaryReader) !ProceduralItemTypeIndex {
 		const result = try reader.readEnum(ProceduralItemTypeIndex);
-		if (@intFromEnum(result) >= proceduralItemTypeList.items.len) return error.InvalidEnumTag;
+		if (@backingInt(result) >= proceduralItemTypeList.items.len) return error.InvalidEnumTag;
 		return result;
 	}
 
@@ -750,22 +772,22 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 		return proceduralItemTypeIdToIndex.get(_id);
 	}
 	pub fn id(self: ProceduralItemTypeIndex) []const u8 {
-		return proceduralItemTypeList.items[@intFromEnum(self)].id;
+		return proceduralItemTypeList.items[@backingInt(self)].id;
 	}
 	pub fn tags(self: ProceduralItemTypeIndex) []const Tag {
-		return proceduralItemTypeList.items[@intFromEnum(self)].tags;
+		return proceduralItemTypeList.items[@backingInt(self)].tags;
 	}
 	pub fn properties(self: ProceduralItemTypeIndex) []const PropertyMatrix {
-		return proceduralItemTypeList.items[@intFromEnum(self)].properties;
+		return proceduralItemTypeList.items[@backingInt(self)].properties;
 	}
 	pub fn slotInfos(self: ProceduralItemTypeIndex) *const [25]SlotInfo {
-		return &proceduralItemTypeList.items[@intFromEnum(self)].slotInfos;
+		return &proceduralItemTypeList.items[@backingInt(self)].slotInfos;
 	}
 	pub fn pixelSources(self: ProceduralItemTypeIndex) *const [16][16]u8 {
-		return &proceduralItemTypeList.items[@intFromEnum(self)].pixelSources;
+		return &proceduralItemTypeList.items[@backingInt(self)].pixelSources;
 	}
 	pub fn pixelSourcesOverlay(self: ProceduralItemTypeIndex) *const [16][16]u8 {
-		return &proceduralItemTypeList.items[@intFromEnum(self)].pixelSourcesOverlay;
+		return &proceduralItemTypeList.items[@backingInt(self)].pixelSourcesOverlay;
 	}
 };
 
@@ -794,7 +816,7 @@ const ProceduralItemProperty = enum {
 
 pub const ProceduralItem = struct { // MARK: ProceduralItem
 	const craftingGridSize = 25;
-	const CraftingGridMask = std.meta.Int(.unsigned, craftingGridSize);
+	const CraftingGridMask = @Int(.unsigned, craftingGridSize);
 
 	craftingGrid: [craftingGridSize]?BaseItemIndex,
 	materialGrid: [16][16]?BaseItemIndex,
@@ -806,7 +828,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	type: ProceduralItemTypeIndex,
 	finishedPropertyEvaluation: bool = false,
 
-	properties: [@typeInfo(ProceduralItemProperty).@"enum".fields.len]f32 = @splat(0),
+	properties: [@typeInfo(ProceduralItemProperty).@"enum".field_names.len]f32 = @splat(0),
 
 	durability: u32,
 
@@ -868,8 +890,8 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		self.type = typ;
 		// Produce the procedural Item and its textures:
 		// The material grid, which comes from texture generation, is needed on both server and client, to generate the procedural item properties.
-		TextureGenerator.generate(self);
-		ProceduralItemPhysics.evaluateProceduralItem(self);
+		texture_generator.generate(self);
+		procedural_item_physics.evaluateProceduralItem(self);
 		return self;
 	}
 
@@ -990,12 +1012,12 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	}
 
 	pub fn getProperty(self: *ProceduralItem, prop: ProceduralItemProperty) f32 {
-		return self.properties[@intFromEnum(prop)];
+		return self.properties[@backingInt(prop)];
 	}
 
 	pub fn setProperty(self: *ProceduralItem, prop: ProceduralItemProperty, value: f32) void {
 		std.debug.assert(!self.finishedPropertyEvaluation);
-		self.properties[@intFromEnum(prop)] = value;
+		self.properties[@backingInt(prop)] = value;
 	}
 
 	fn getTexture(self: *ProceduralItem) graphics.Texture {
@@ -1053,7 +1075,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		if (self.isEffectiveOn(block)) {
 			return damage;
 		}
-		return main.game.Player.defaultBlockDamage;
+		return main.game.player.defaultBlockDamage;
 	}
 
 	pub fn onUseReturnBroken(self: *ProceduralItem) bool {
@@ -1141,7 +1163,7 @@ pub const Item = union(ItemType) { // MARK: Item
 		switch (typ) {
 			.baseItem => {
 				const index = try reader.readEnum(BaseItemIndex);
-				return .{.baseItem = itemDeduplicationMap[@intFromEnum(index)]};
+				return .{.baseItem = itemDeduplicationMap[@backingInt(index)]};
 			},
 			.proceduralItem => {
 				return .{.proceduralItem = try ProceduralItem.fromBytes(reader)};
@@ -1210,10 +1232,9 @@ pub const Item = union(ItemType) { // MARK: Item
 		};
 	}
 
-	pub fn render(self: Item, pos: Vec2f, slotSize: Vec2f, border: f32) void {
+	pub fn render(self: Item, currentFrame: *graphics.vulkan.Frame, pos: Vec2f, slotSize: Vec2f, border: f32) void {
 		const itemTexture = self.getTexture();
-		itemTexture.bindTo(0);
-		graphics.draw.boundImage(pos + @as(Vec2f, @splat(border)), slotSize - @as(Vec2f, @splat(2*border)));
+		graphics.draw.image(currentFrame, itemTexture, pos + @as(Vec2f, @splat(border)), slotSize - @as(Vec2f, @splat(2*border)));
 
 		if (self == .proceduralItem) {
 			const proceduralItem = self.proceduralItem;
@@ -1224,7 +1245,7 @@ pub const Item = union(ItemType) { // MARK: Item
 				{
 					const oldColor = graphics.draw.setColor(0xff000000);
 					defer graphics.draw.restoreColor(oldColor);
-					graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{slotSize[0] - 2*border, (slotSize[1] - 2*border)/16.0});
+					graphics.draw.rect(currentFrame, pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{slotSize[0] - 2*border, (slotSize[1] - 2*border)/16.0});
 				}
 
 				const red = std.math.lossyCast(u8, (2 - durabilityPercentage*2)*255);
@@ -1233,7 +1254,7 @@ pub const Item = union(ItemType) { // MARK: Item
 				{
 					const oldColor = graphics.draw.setColor(0xff000000 | (@as(u32, red) << 16) | (@as(u32, green) << 8));
 					defer graphics.draw.restoreColor(oldColor);
-					graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{width, (slotSize[1] - 2*border)/16.0});
+					graphics.draw.rect(currentFrame, pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{width, (slotSize[1] - 2*border)/16.0});
 				}
 			}
 		}
@@ -1300,7 +1321,7 @@ pub const Recipe = struct { // MARK: Recipe
 	sourceAmounts: []u16,
 	resultItem: BaseItemIndex,
 	resultAmount: u16,
-	craftingTags: []Tag,
+	craftingTags: []const Tag,
 
 	fn getValidRecipe(self: Recipe) error{Invalid}!*Recipe {
 		outer: for (main.items.getRecipes()) |*recipe| {
@@ -1330,7 +1351,7 @@ pub const Recipe = struct { // MARK: Recipe
 		}
 		writer.writeVarInt(usize, self.craftingTags.len);
 		for (self.craftingTags) |tag| {
-			writer.writeEnum(Tag, tag);
+			writer.writeSliceWithSize(tag.getName());
 		}
 	}
 
@@ -1350,11 +1371,11 @@ pub const Recipe = struct { // MARK: Recipe
 		}
 
 		const tagCount = try reader.readVarInt(usize);
-		var craftingTagTypes: main.List(Tag) = .initCapacity(main.stackAllocator, tagCount);
+		var craftingTagTypes: main.List(Tag) = .initCapacity(main.stackAllocator, @min(256, tagCount));
 		defer craftingTagTypes.deinit(main.stackAllocator);
 
-		while (reader.remaining.len > 0 and craftingTagTypes.items.len < tagCount) {
-			craftingTagTypes.append(main.stackAllocator, try reader.readEnum(Tag));
+		while (craftingTagTypes.items.len < tagCount) {
+			craftingTagTypes.append(main.stackAllocator, Tag.get(try reader.readSliceWithSize()) orelse return error.invalidTag);
 		}
 
 		return getValidRecipe(.{.sourceItems = sourceItems.items, .sourceAmounts = sourceAmounts.items, .resultItem = resultItem, .resultAmount = resultAmount, .craftingTags = craftingTagTypes.items});
@@ -1367,8 +1388,8 @@ var proceduralItemTypeIdToIndex: std.StringHashMapUnmanaged(ProceduralItemTypeIn
 var reverseIndices: std.StringHashMapUnmanaged(BaseItemIndex) = .{};
 var modifiers: std.StringHashMapUnmanaged(*const Modifier.VTable) = .{};
 var modifierRestrictions: std.StringHashMapUnmanaged(*const ModifierRestriction.VTable) = .{};
-pub var itemList: [65536]BaseItem = undefined;
 pub var itemListSize: u16 = 0;
+pub var itemList: [65536]BaseItem = undefined;
 
 // Due to migrations multiple indices can map to the same item. This must be resolved during inventory loading using this map.
 var itemDeduplicationMap: [65536]BaseItemIndex = undefined;
@@ -1395,13 +1416,13 @@ pub fn globalInit() void {
 	proceduralItemTypeIdToIndex = .{};
 
 	itemListSize = 0;
-	inline for (@typeInfo(modifierList).@"struct".decls) |decl| {
-		const ModifierStruct: type = @field(modifierList, decl.name);
-		modifiers.put(main.globalArena.allocator, decl.name, &Modifier.VTable.initFromModifierStruct(ModifierStruct)) catch unreachable;
+	inline for (@typeInfo(modifierList).@"struct".decl_names) |decl| {
+		const ModifierStruct: type = @field(modifierList, decl);
+		modifiers.put(main.globalArena.allocator, decl, &Modifier.VTable.initFromModifierStruct(ModifierStruct)) catch unreachable;
 	}
-	inline for (@typeInfo(modifierRestrictionList).@"struct".decls) |decl| {
-		const ModifierRestrictionStruct = @field(modifierRestrictionList, decl.name);
-		modifierRestrictions.put(main.globalArena.allocator, decl.name, &.{
+	inline for (@typeInfo(modifierRestrictionList).@"struct".decl_names) |decl| {
+		const ModifierRestrictionStruct = @field(modifierRestrictionList, decl);
+		modifierRestrictions.put(main.globalArena.allocator, decl, &.{
 			.satisfied = comptime main.meta.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.satisfied),
 			.loadFromZon = comptime main.meta.castFunctionReturnToAnyopaque(ModifierRestrictionStruct.loadFromZon),
 			.printTooltip = comptime main.meta.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.printTooltip),
@@ -1422,14 +1443,14 @@ pub fn reset() void {
 	itemListSize = 0;
 }
 
-pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) *BaseItem {
+pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8, id: []const u8, zon: ZonElement) *BaseItem {
 	const newItem = &itemList[itemListSize];
 	defer itemListSize += 1;
 
-	newItem.init(main.worldArena, texturePath, replacementTexturePath, id, zon);
+	newItem.init(main.worldArena, texturePath, replacementTexturePath, colorTexturePath, colorReplacementTexturePath, id, zon);
 	const result = reverseIndices.getOrPut(main.worldArena.allocator, newItem.id) catch unreachable;
 	if (!result.found_existing) {
-		result.value_ptr.* = @enumFromInt(itemListSize);
+		result.value_ptr.* = @fromBackingInt(itemListSize);
 	}
 	itemDeduplicationMap[itemListSize] = result.value_ptr.*;
 
@@ -1525,7 +1546,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
 	});
-	proceduralItemTypeIdToIndex.put(main.worldArena.allocator, idDupe, @enumFromInt(proceduralItemTypeList.items.len - 1)) catch unreachable;
+	proceduralItemTypeIdToIndex.put(main.worldArena.allocator, idDupe, @fromBackingInt(@intCast(proceduralItemTypeList.items.len - 1))) catch unreachable;
 
 	std.log.debug("Registered procedural item: '{s}'", .{id});
 }
