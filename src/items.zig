@@ -1527,11 +1527,9 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 			const slotTagVal = slotTags.addOne(main.stackAllocator);
 			const matrixZon = entry.value_ptr;
 			for (0..25) |i| {
-				std.log.err("looking for stuff {}, {}, {}", .{i, matrixZon.as(usize), main.Tag.find(entry.key_ptr.*)});
-				slotTagVal.hasTagMatrix[i] = (matrixZon.as(usize) != 0);
+				slotTagVal.hasTagMatrix[i] = (matrixZon.getAtIndex(usize, i, 0) != 0);
 			}
 			slotTagVal.tagType = main.Tag.find(entry.key_ptr.*);
-			std.log.debug("testing this {s}", .{entry.key_ptr});
 			if (!std.mem.endsWith(u8, slotTagVal.tagType.getName(), "_slot")) continue;
 			if (!(slotTagVal.tagType == .disabled)) continue;
 			if (!(slotTagVal.tagType == .optional)) continue;
