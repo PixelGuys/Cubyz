@@ -63,7 +63,7 @@ pub const client = struct { // MARK: client
 	}
 	pub fn clear() void {}
 
-	pub fn renderHud(_: Vec3f, playerPos: Vec3d) void {
+	pub fn renderHud(currentFrame: *graphics.vulkan.Frame, _: Vec3f, playerPos: Vec3d) void {
 		main.client.entity_manager.mutex.lock();
 		defer main.client.entity_manager.mutex.unlock();
 
@@ -108,10 +108,11 @@ pub const client = struct { // MARK: client
 			defer buf.deinit();
 			const fontSize = std.mem.max(f32, &.{fontMinScreenSize, fontScreenSize/projectedPos[3]});
 			const size = buf.calculateLineBreaks(fontSize, @floatFromInt(main.Window.width*8));
-			buf.render(xCenter - size[0]/2, yCenter - size[1], fontSize);
+			buf.render(currentFrame, xCenter - size[0]/2, yCenter - size[1], fontSize);
 		}
 	}
-	pub fn render(ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
+	pub fn render(currentFrame: *graphics.vulkan.Frame, ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
+		_ = currentFrame;
 		_ = deltaTime;
 		main.client.entity_manager.mutex.lock();
 		defer main.client.entity_manager.mutex.unlock();

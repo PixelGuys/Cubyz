@@ -1232,9 +1232,9 @@ pub const Item = union(ItemType) { // MARK: Item
 		};
 	}
 
-	pub fn render(self: Item, pos: Vec2f, slotSize: Vec2f, border: f32) void {
+	pub fn render(self: Item, currentFrame: *graphics.vulkan.Frame, pos: Vec2f, slotSize: Vec2f, border: f32) void {
 		const itemTexture = self.getTexture();
-		graphics.draw.image(itemTexture, pos + @as(Vec2f, @splat(border)), slotSize - @as(Vec2f, @splat(2*border)));
+		graphics.draw.image(currentFrame, itemTexture, pos + @as(Vec2f, @splat(border)), slotSize - @as(Vec2f, @splat(2*border)));
 
 		if (self == .proceduralItem) {
 			const proceduralItem = self.proceduralItem;
@@ -1245,7 +1245,7 @@ pub const Item = union(ItemType) { // MARK: Item
 				{
 					const oldColor = graphics.draw.setColor(0xff000000);
 					defer graphics.draw.restoreColor(oldColor);
-					graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{slotSize[0] - 2*border, (slotSize[1] - 2*border)/16.0});
+					graphics.draw.rect(currentFrame, pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{slotSize[0] - 2*border, (slotSize[1] - 2*border)/16.0});
 				}
 
 				const red = std.math.lossyCast(u8, (2 - durabilityPercentage*2)*255);
@@ -1254,7 +1254,7 @@ pub const Item = union(ItemType) { // MARK: Item
 				{
 					const oldColor = graphics.draw.setColor(0xff000000 | (@as(u32, red) << 16) | (@as(u32, green) << 8));
 					defer graphics.draw.restoreColor(oldColor);
-					graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{width, (slotSize[1] - 2*border)/16.0});
+					graphics.draw.rect(currentFrame, pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{width, (slotSize[1] - 2*border)/16.0});
 				}
 			}
 		}
@@ -1321,15 +1321,20 @@ pub const Recipe = struct { // MARK: Recipe
 	sourceAmounts: []u16,
 	resultItem: BaseItemIndex,
 	resultAmount: u16,
+	craftingTags: []const Tag,
 
 	fn getValidRecipe(self: Recipe) error{Invalid}!*Recipe {
 		outer: for (main.items.getRecipes()) |*recipe| {
 			if (recipe.resultItem != self.resultItem) continue;
 			if (recipe.resultAmount != self.resultAmount) continue;
 			if (recipe.sourceItems.len != self.sourceItems.len) continue;
+			if (recipe.craftingTags.len != self.craftingTags.len) continue;
 			for (recipe.sourceItems, recipe.sourceAmounts, self.sourceItems, self.sourceAmounts) |recipeItem, recipeAmount, selfItem, selfAmount| {
 				if (recipeItem != selfItem) continue :outer;
 				if (recipeAmount != selfAmount) continue :outer;
+			}
+			for (recipe.craftingTags, self.craftingTags) |recipeCraftingTag, selfCraftingTag| {
+				if (recipeCraftingTag != selfCraftingTag) continue :outer;
 			}
 			return recipe;
 		}
@@ -1343,6 +1348,10 @@ pub const Recipe = struct { // MARK: Recipe
 		for (self.sourceItems, self.sourceAmounts) |item, amount| {
 			writer.writeEnum(BaseItemIndex, item);
 			writer.writeVarInt(u16, amount);
+		}
+		writer.writeVarInt(usize, self.craftingTags.len);
+		for (self.craftingTags) |tag| {
+			writer.writeSliceWithSize(tag.getName());
 		}
 	}
 
@@ -1361,7 +1370,15 @@ pub const Recipe = struct { // MARK: Recipe
 			sourceAmounts.append(main.stackAllocator, try reader.readVarInt(u16));
 		}
 
-		return getValidRecipe(.{.sourceItems = sourceItems.items, .sourceAmounts = sourceAmounts.items, .resultItem = resultItem, .resultAmount = resultAmount});
+		const tagCount = try reader.readVarInt(usize);
+		var craftingTagTypes: main.List(Tag) = .initCapacity(main.stackAllocator, @min(256, tagCount));
+		defer craftingTagTypes.deinit(main.stackAllocator);
+
+		while (craftingTagTypes.items.len < tagCount) {
+			craftingTagTypes.append(main.stackAllocator, Tag.get(try reader.readSliceWithSize()) orelse return error.invalidTag);
+		}
+
+		return getValidRecipe(.{.sourceItems = sourceItems.items, .sourceAmounts = sourceAmounts.items, .resultItem = resultItem, .resultAmount = resultAmount, .craftingTags = craftingTagTypes.items});
 	}
 };
 

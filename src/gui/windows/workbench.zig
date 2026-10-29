@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
+const graphics = main.graphics;
 const items = main.items;
 const BaseItem = items.BaseItem;
 const ClientInventory = items.Inventory.ClientInventory;
@@ -116,7 +117,7 @@ pub fn update() void {
 	}
 }
 
-pub fn render() void {
+pub fn render(currentFrame: *graphics.vulkan.Frame) void {
 	const currentResult = craftingResultInv.getItem(0);
 	if (currentResult == .null) return;
 
@@ -124,9 +125,9 @@ pub fn render() void {
 	const offsetY = 4*ItemSlot.sizeWithBorder;
 	const fontSize = 16;
 
-	main.graphics.draw.print("{s}{} durability", .{if (currentResult.proceduralItem.getProperty(.maxDurability) != 0) "#ffffff" else "#ff0000", @as(usize, @trunc(currentResult.proceduralItem.getProperty(.maxDurability)))}, offsetX, offsetY, fontSize);
-	main.graphics.draw.print("#ffffff{d:.1} swings/s", .{currentResult.proceduralItem.getProperty(.swingSpeed)}, offsetX, offsetY + fontSize, fontSize);
-	main.graphics.draw.print("#ffffff{d:.1} damage", .{currentResult.proceduralItem.getProperty(.damage)}, offsetX, offsetY + 2*fontSize, fontSize);
+	main.graphics.draw.print(currentFrame, "{s}{} durability", .{if (currentResult.proceduralItem.getProperty(.maxDurability) != 0) "#ffffff" else "#ff0000", @as(usize, @trunc(currentResult.proceduralItem.getProperty(.maxDurability)))}, offsetX, offsetY, fontSize);
+	main.graphics.draw.print(currentFrame, "#ffffff{d:.1} swings/s", .{currentResult.proceduralItem.getProperty(.swingSpeed)}, offsetX, offsetY + fontSize, fontSize);
+	main.graphics.draw.print(currentFrame, "#ffffff{d:.1} damage", .{currentResult.proceduralItem.getProperty(.damage)}, offsetX, offsetY + 2*fontSize, fontSize);
 }
 
 pub fn onOpen() void {

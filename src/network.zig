@@ -1091,6 +1091,7 @@ pub const Connection = struct { // MARK: Connection
 			timestamp: i64,
 			packetLen: SequenceIndex,
 			considerForCongestionControl: bool,
+			considerForRtt: bool,
 		};
 
 		pub fn receiveConfirmationAndGetTimestamp(self: *SendBuffer, start: SequenceIndex) ?ReceiveConfirmationResult {
@@ -1100,6 +1101,7 @@ pub const Connection = struct { // MARK: Connection
 					result = .{
 						.timestamp = range.timestamp,
 						.considerForCongestionControl = range.considerForCongestionControl,
+						.considerForRtt = !range.wasResent,
 						.packetLen = range.len,
 					};
 					_ = self.unconfirmedRanges.popIndex(i);
@@ -1135,7 +1137,7 @@ pub const Connection = struct { // MARK: Connection
 					// This decreases the chance of triggering congestion control from random packet loss
 					if (range.wasResentAsFirstPacket) hadDoubleLoss = true;
 					hadLoss = true;
-					range.wasResentAsFirstPacket = true;
+					range.wasResentAsFirstPacket = !hadDoubleLoss;
 				}
 				range.wasResent = true;
 				self.lostRanges.pushBack(range);
@@ -1661,7 +1663,7 @@ pub const Connection = struct { // MARK: Connection
 		if (loss == .noLoss) return;
 		self.slowStart = false;
 		if (loss == .doubleLoss) {
-			self.rttEstimate *= 1.5;
+			self.rttUncertainty += 0.05*self.rttEstimate;
 			self.bandwidthEstimateInBytesPerRtt /= 2;
 			self.bandwidthEstimateInBytesPerRtt = @max(self.bandwidthEstimateInBytesPerRtt, minMtu);
 		}
@@ -1694,11 +1696,13 @@ pub const Connection = struct { // MARK: Connection
 				.slow => self.slowChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
 				else => return error.Invalid,
 			};
-			const rtt: f32 = @floatFromInt(@max(1, timestamp -% confirmationResult.timestamp -% timeOffset));
-			numRtt += 1;
-			sumRtt += rtt;
-			minRtt = @min(minRtt, rtt);
-			maxRtt = @max(maxRtt, rtt);
+			if (confirmationResult.considerForRtt) {
+				const rtt: f32 = @floatFromInt(@max(1, timestamp -% confirmationResult.timestamp -% timeOffset));
+				numRtt += 1;
+				sumRtt += rtt;
+				minRtt = @min(minRtt, rtt);
+				maxRtt = @max(maxRtt, rtt);
+			}
 			if (confirmationResult.considerForCongestionControl) {
 				self.increaseCongestionBandwidth(confirmationResult.packetLen);
 			}

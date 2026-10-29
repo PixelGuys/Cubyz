@@ -160,7 +160,7 @@ pub fn onClose() void {
 	deinitWindow();
 }
 
-pub fn render() void {
+pub fn render(_: *main.graphics.vulkan.Frame) void {
 	if (needsUpdate) {
 		needsUpdate = false;
 		const oldScroll = window.rootComponent.?.verticalList.scrollBar.currentState;

@@ -574,7 +574,7 @@ pub fn updateWindowPositions() void {
 	}
 }
 
-pub fn updateAndRenderGui() void {
+pub fn updateAndRenderGui(currentFrame: *graphics.vulkan.Frame) void {
 	const mousePos = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 	hoveredAWindow = false;
 	gui_command_queue.executeCommands();
@@ -608,10 +608,10 @@ pub fn updateAndRenderGui() void {
 			const oldColor = draw.setColor(0x80000000);
 			defer draw.restoreColor(oldColor);
 			if (main.settings.launch_config.vulkanTestingMode) {
-				graphics.vulkan.currentFrame.guiCommands.bindPipeline(GuiWindow.borderPipeline, graphics.draw.getScissor());
+				currentFrame.guiCommands.bindPipeline(currentFrame, GuiWindow.borderPipeline, graphics.draw.getScissor());
 				var uniforms: GuiWindow.BorderUniforms = undefined;
 				uniforms.effectLength = .{main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6};
-				draw.customShadedRect(uniforms, GuiWindow.borderPipeline, .{0, 0}, main.Window.getWindowSize());
+				draw.customShadedRect(currentFrame, uniforms, GuiWindow.borderPipeline, .{0, 0}, main.Window.getWindowSize());
 			} else {
 				GuiWindow.borderPipeline.bind(draw.getScissor());
 				c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
@@ -624,15 +624,15 @@ pub fn updateAndRenderGui() void {
 			if (modalWindow == window) {
 				const modalOldColor = draw.setColor(0x80000000);
 				defer draw.restoreColor(modalOldColor);
-				draw.rect(.{0, 0}, main.Window.getWindowSize());
+				draw.rect(currentFrame, .{0, 0}, main.Window.getWindowSize());
 			}
-			window.render(mousePos);
+			window.render(currentFrame, mousePos);
 		}
-		inventory.render(mousePos);
+		inventory.render(currentFrame, mousePos);
 	}
 	const oldScale = draw.setScale(scale);
 	defer draw.restoreScale(oldScale);
-	gamepad_cursor.render();
+	gamepad_cursor.render(currentFrame);
 }
 
 pub fn toggleGameMenu() void {
@@ -837,15 +837,15 @@ pub const inventory = struct { // MARK: inventory
 		}
 	}
 
-	fn render(mousePos: Vec2f) void {
+	fn render(currentFrame: *graphics.vulkan.Frame, mousePos: Vec2f) void {
 		if (!initialized) return;
 		carriedItemSlot.pos = mousePos - Vec2f{12, 12};
-		carriedItemSlot.render(.{0, 0});
+		carriedItemSlot.render(currentFrame, .{0, 0});
 		// Draw tooltip:
 		const hovered = hoveredItemSlot orelse return;
 		if (carried.getAmount(0) == 0) {
 			if (hovered.inventory.getItem(hovered.itemSlot).getTooltip()) |tooltipContent| {
-				tooltip.renderFromText(tooltipContent, mousePos);
+				tooltip.renderFromText(currentFrame, tooltipContent, mousePos);
 			}
 		}
 	}

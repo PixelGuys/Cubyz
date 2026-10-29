@@ -290,7 +290,7 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 
-		pub fn renderAll(_: Vec3f) void {}
+		pub fn renderAll(_: *graphics.vulkan.Frame, _: Vec3f) void {}
 	};
 
 	pub const @"cubyz:sign" = struct { // MARK: cubyz:sign
@@ -477,7 +477,7 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 			main.network.protocols.block_entity_update.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
 		}
 
-		pub fn renderAll(ambientLight: Vec3f) void {
+		pub fn renderAll(currentFrame: *graphics.vulkan.Frame, ambientLight: Vec3f) void {
 			var oldFramebufferBinding: c_int = undefined;
 			c.glGetIntegerv(c.GL_DRAW_FRAMEBUFFER_BINDING, &oldFramebufferBinding);
 
@@ -506,7 +506,7 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, signData.text, .{.color = 0x000000}, false, .center); // TODO: Make the color configurable in the zon
 				defer textBuffer.deinit();
 				_ = textBuffer.calculateLineBreaks(16, textureWidth - 2*textureMargin);
-				textBuffer.renderTextWithoutShadow(0, 0, 16);
+				textBuffer.renderTextWithoutShadow(currentFrame, 0, 0, 16);
 			}
 
 			c.glBindFramebuffer(c.GL_FRAMEBUFFER, @bitCast(oldFramebufferBinding));
@@ -567,8 +567,8 @@ pub fn getByID(_id: ?[]const u8) ?*const BlockEntityType {
 	return null;
 }
 
-pub fn renderAll(ambientLight: Vec3f) void {
+pub fn renderAll(currentFrame: *graphics.vulkan.Frame, ambientLight: Vec3f) void {
 	inline for (@typeInfo(block_entity_types).@"struct".decl_names) |declaration| {
-		@field(block_entity_types, declaration).renderAll(ambientLight);
+		@field(block_entity_types, declaration).renderAll(currentFrame, ambientLight);
 	}
 }
