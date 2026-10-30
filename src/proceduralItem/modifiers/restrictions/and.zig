@@ -27,11 +27,11 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const And
 	return result;
 }
 
-pub fn printTooltip(self: *const And, outString: *main.ListManaged(u8)) void {
+pub fn printTooltip(self: *const And, outString: *main.ListManaged(u8), options: main.items.ModifierRestriction.PrintOptions) void {
 	outString.append('(');
 	for (self.children, 0..) |child, i| {
 		if (i != 0) outString.appendSlice(" and ");
-		child.printTooltip(outString);
+		child.printTooltip(outString, options);
 	}
 	outString.append(')');
 }
