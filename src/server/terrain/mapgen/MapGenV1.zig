@@ -144,8 +144,8 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 	defer roughMap.deinit(main.stackAllocator);
 	FractalNoise.generateSparseFractalTerrain(map.pos.wx, map.pos.wy, 64, worldSeed ^ 954936678493, roughMap, map.pos.voxelSize);
 
-	var mapInitializer: terrain.SurfaceMap.MapFragmentMapInitializer = .{};
-	defer mapInitializer.finalizePopulation(map);
+	var mapInitializer: terrain.SurfaceMap.MapFragmentMapInitializer(u32, u32) = .empty;
+	defer mapInitializer.finalizePopulation(&map.uniqueBiomes, &map.biomeMap);
 
 	var x: u31 = 0;
 	while (x < map.heightMap.len) : (x += 1) {
@@ -206,7 +206,8 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 				}
 			}
 			const biomePoint = biomePositions.get(@intCast(closestPoint[0] + offset), @intCast(closestPoint[1] + offset));
-			mapInitializer.setBiome(main.server.world.?.biomePalette, @intCast(x), @intCast(y), biomePoint.biome.paletteId);
+			const newBiome = main.server.terrain.biomes.getById(main.server.world.?.biomePalette.palette.items[biomePoint.biome.paletteId]);
+			mapInitializer.addItem(@intCast(x), @intCast(y), newBiome.paletteId, newBiome.paletteId);
 		}
 	}
 }
