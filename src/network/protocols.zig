@@ -781,7 +781,7 @@ pub const generic_update = struct { // MARK: generic_update
 		conn.send(.secure, id, writer.data.items);
 	}
 
-	pub fn sendTime(conn: *Connection, world: *const main.server.ServerWorld) void {
+	pub fn sendTime(conn: *Connection, world: *const main.server.World) void {
 		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 13);
 		defer writer.deinit();
 
