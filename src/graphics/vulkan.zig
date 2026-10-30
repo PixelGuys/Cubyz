@@ -184,16 +184,16 @@ pub fn init(window: ?*c.GLFWwindow) !void {
 			@panic("GLAD failed to load Vulkan functions");
 		}
 	}
-	command_pool.init();
 	swap_chain.init();
+	upload.init();
 	gpu_allocator.init();
 }
 
 pub fn deinit() void {
 	gpu_garbage_collection.deinit();
 	gpu_allocator.deinit();
+	upload.deinit();
 	swap_chain.deinit();
-	command_pool.deinit();
 	c.vkDestroyDevice(device, null);
 	c.vkDestroySurfaceKHR(instance, surface, null);
 	c.vkDestroyInstance(instance, null);
@@ -526,6 +526,50 @@ pub const Fence = struct { // MARK: Fence
 	}
 };
 
+pub const upload = struct { // MARK: upload
+	var commands: main.graphics.CommandBuffer = undefined;
+	const frameCount = 3;
+	var pools: [frameCount]CommandPool = undefined;
+	var fences: [frameCount]Fence = undefined;
+	var activePool: usize = 0;
+
+	fn init() void {
+		for (0..frameCount) |i| {
+			pools[i] = .init();
+			fences[i] = .init(true);
+		}
+		fences[activePool].waitAndReset();
+		commands = .init(pools[activePool]);
+		commands.beginRecording(0);
+	}
+
+	fn deinit() void {
+		for (0..frameCount) |i| {
+			pools[i].deinit();
+			fences[i].privateDeinit();
+		}
+	}
+
+	pub fn submitCommands() void {
+		commands.endRecording();
+		commands.submit(graphicsQueue, &.{}, &.{}, &.{}, null);
+
+		commands = .init(pools[activePool]);
+		commands.beginRecording(0);
+	}
+
+	fn changeFrame() void {
+		commands.endRecording();
+		commands.submit(graphicsQueue, &.{}, &.{}, &.{}, fences[activePool].handle);
+
+		activePool = (activePool + 1)%frameCount;
+		fences[activePool].waitAndReset();
+
+		commands = .init(pools[activePool]);
+		commands.beginRecording(0);
+	}
+};
+
 pub const Frame = struct { // MARK: Frame
 	fence: Fence,
 	uploadFence: Fence,
@@ -533,10 +577,9 @@ pub const Frame = struct { // MARK: Frame
 	swapChainImageView: c.VkImageView,
 
 	imageAvailable: Semaphore,
-	uploadFinished: Semaphore,
 	renderFinished: Semaphore,
 
-	uploadCommands: main.graphics.CommandBuffer,
+	commandPool: CommandPool,
 	guiCommands: main.graphics.CommandBuffer,
 	renderCommands: main.graphics.CommandBuffer,
 	extent: c.VkExtent2D,
@@ -546,13 +589,12 @@ pub const Frame = struct { // MARK: Frame
 			.fence = .init(true),
 			.uploadFence = .init(true),
 			.imageAvailable = .init(),
-			.uploadFinished = .init(),
 			.renderFinished = .init(),
 			.swapChainImage = undefined,
 			.swapChainImageView = undefined,
-			.uploadCommands = .init(),
-			.guiCommands = .init(),
-			.renderCommands = .init(),
+			.commandPool = .init(),
+			.guiCommands = undefined,
+			.renderCommands = undefined,
 			.extent = undefined,
 		};
 	}
@@ -561,14 +603,15 @@ pub const Frame = struct { // MARK: Frame
 		self.fence.privateDeinit();
 		self.uploadFence.privateDeinit();
 		self.imageAvailable.privateDeinit();
-		self.uploadFinished.privateDeinit();
 		self.renderFinished.privateDeinit();
-		self.uploadCommands.deinit();
-		self.guiCommands.deinit();
-		self.renderCommands.deinit();
+		self.commandPool.deinit();
 	}
 
-	fn beginRender(self: Frame) void {
+	fn beginRender(self: *Frame) void {
+		self.commandPool.reset();
+		self.guiCommands = .init(self.commandPool);
+		self.renderCommands = .init(self.commandPool);
+
 		self.guiCommands.beginRecording(0);
 		self.guiCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
 			.{
@@ -598,20 +641,13 @@ pub const Frame = struct { // MARK: Frame
 	}
 
 	fn endRender(self: Frame) void {
-		self.uploadCommands.endRecording();
-		self.uploadCommands.submit(
-			graphicsQueue,
-			&.{},
-			&.{},
-			&.{self.uploadFinished.handle},
-			self.uploadFence.handle,
-		);
+		upload.submitCommands();
 
 		self.renderCommands.endRecording();
 		self.renderCommands.submit(
 			graphicsQueue,
-			&.{self.uploadFinished.handle},
-			&.{c.VK_PIPELINE_STAGE_TRANSFER_BIT},
+			&.{},
+			&.{},
 			&.{},
 			null,
 		);
@@ -642,8 +678,6 @@ pub const Frame = struct { // MARK: Frame
 };
 
 var frames: [2]Frame = undefined;
-
-var currentFrame: *Frame = undefined;
 
 pub const swap_chain = struct { // MARK: swap_chain
 	var swapChain: c.VkSwapchainKHR = null;
@@ -773,9 +807,6 @@ pub const swap_chain = struct { // MARK: swap_chain
 		for (&frames) |*frame| {
 			frame.* = .init();
 		}
-		currentFrame = &frames[frameIndex];
-		currentFrame.uploadFence.waitAndReset();
-		currentFrame.uploadCommands.beginRecording(0);
 	}
 
 	fn deinit() void {
@@ -788,51 +819,56 @@ pub const swap_chain = struct { // MARK: swap_chain
 		c.vkDestroySwapchainKHR(device, swapChain, null);
 	}
 
-	fn beginRender() void {
-		currentFrame.fence.waitAndReset();
-		checkResult(c.vkAcquireNextImageKHR(device, swapChain, c.UINT64_MAX, currentFrame.imageAvailable.handle, null, &currentImageIndex));
+	fn beginRender() *Frame {
+		frames[frameIndex].fence.waitAndReset();
+		checkResult(c.vkAcquireNextImageKHR(device, swapChain, c.UINT64_MAX, frames[frameIndex].imageAvailable.handle, null, &currentImageIndex));
 
 		frames[frameIndex].swapChainImage = images[currentImageIndex];
 		frames[frameIndex].swapChainImageView = imageViews[currentImageIndex];
 		frames[frameIndex].extent = extent;
-		currentFrame.beginRender();
+		frames[frameIndex].beginRender();
+		return &frames[frameIndex];
 	}
 
 	fn endRender() void {
-		currentFrame.endRender();
+		frames[frameIndex].endRender();
 
 		const presentInfo: c.VkPresentInfoKHR = .{
 			.sType = c.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
 			.waitSemaphoreCount = 1,
-			.pWaitSemaphores = &currentFrame.renderFinished.handle,
+			.pWaitSemaphores = &frames[frameIndex].renderFinished.handle,
 			.swapchainCount = 1,
 			.pSwapchains = &swapChain,
 			.pImageIndices = &currentImageIndex,
 		};
 		const result = c.vkQueuePresentKHR(presentQueue, &presentInfo);
 		frameIndex = (frameIndex + 1)%frames.len;
-		currentFrame = &frames[frameIndex];
-		currentFrame.uploadFence.waitAndReset();
-		currentFrame.uploadCommands.beginRecording(0);
+		upload.changeFrame();
 		checkResult(result); // TODO: swapchain recreation
 	}
 };
 
-pub const command_pool = struct { // MARK: command_pool
-	pub var handle: c.VkCommandPool = undefined;
+pub const CommandPool = struct { // MARK: CommandPool
+	handle: c.VkCommandPool,
 
-	fn init() void {
+	fn init() CommandPool {
 		const queueFamilies = findQueueFamilies(physicalDevice);
 		const poolInfo = c.VkCommandPoolCreateInfo{
 			.sType = c.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-			.flags = c.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+			.flags = 0,
 			.queueFamilyIndex = queueFamilies.graphicsFamily.?,
 		};
-		checkResult(c.vkCreateCommandPool(device, &poolInfo, null, &handle));
+		var result: CommandPool = undefined;
+		checkResult(c.vkCreateCommandPool(device, &poolInfo, null, &result.handle));
+		return result;
 	}
 
-	fn deinit() void {
-		c.vkDestroyCommandPool(device, handle, null);
+	fn deinit(self: CommandPool) void {
+		c.vkDestroyCommandPool(device, self.handle, null);
+	}
+
+	fn reset(self: CommandPool) void {
+		checkResult(c.vkResetCommandPool(device, self.handle, 0));
 	}
 };
 
@@ -876,7 +912,7 @@ pub const Buffer = struct { // MARK: Buffer
 		checkResult(c.vmaMapMemory(gpu_allocator.handle, stagingBuffer.allocation, &gpuMemory));
 		@memcpy(@as([*]u8, @ptrCast(gpuMemory.?)), data);
 		c.vmaUnmapMemory(gpu_allocator.handle, stagingBuffer.allocation);
-		currentFrame.uploadCommands.copyBuffer(self, offset, stagingBuffer, 0, data.len);
+		upload.commands.copyBuffer(self, offset, stagingBuffer, 0, data.len);
 	}
 };
 
@@ -1021,7 +1057,7 @@ pub const Image = struct { // MARK: Image
 		checkResult(c.vmaMapMemory(gpu_allocator.handle, stagingBuffer.allocation, &gpuMemory));
 		@memcpy(@as([*]u8, @ptrCast(gpuMemory.?)), data);
 		c.vmaUnmapMemory(gpu_allocator.handle, stagingBuffer.allocation);
-		currentFrame.uploadCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+		upload.commands.pipelineBarrier(.{.imageMemoryBarriers = &.{
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
 				.srcStageMask = c.VK_PIPELINE_STAGE_2_NONE,
@@ -1034,7 +1070,7 @@ pub const Image = struct { // MARK: Image
 				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = config.mipLevel, .levelCount = 1, .baseArrayLayer = config.arrayLayer, .layerCount = 1},
 			},
 		}});
-		currentFrame.uploadCommands.copyBufferToImage(self, c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, stagingBuffer, &.{
+		upload.commands.copyBufferToImage(self, c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, stagingBuffer, &.{
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2,
 				.bufferOffset = 0,
@@ -1048,7 +1084,7 @@ pub const Image = struct { // MARK: Image
 				.imageExtent = config.imageExtent,
 			},
 		});
-		currentFrame.uploadCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+		upload.commands.pipelineBarrier(.{.imageMemoryBarriers = &.{
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
 				.srcStageMask = c.VK_PIPELINE_STAGE_2_TRANSFER_BIT,
@@ -1064,7 +1100,7 @@ pub const Image = struct { // MARK: Image
 	}
 
 	pub fn uploadImage(dest: Image, source: Image) void {
-		currentFrame.uploadCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+		upload.commands.pipelineBarrier(.{.imageMemoryBarriers = &.{
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
 				.srcStageMask = c.VK_PIPELINE_STAGE_2_NONE,
@@ -1088,7 +1124,7 @@ pub const Image = struct { // MARK: Image
 				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = source.mipLevels, .layerCount = 1},
 			},
 		}});
-		currentFrame.uploadCommands.copyImageToImage(dest, c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, source, c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, &.{
+		upload.commands.copyImageToImage(dest, c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, source, c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, &.{
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_IMAGE_COPY_2,
 				.srcSubresource = .{
@@ -1108,7 +1144,7 @@ pub const Image = struct { // MARK: Image
 				.extent = .{.width = @intCast(source.size[0]), .height = @intCast(source.size[1]), .depth = @intCast(source.size[2])},
 			},
 		});
-		currentFrame.uploadCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+		upload.commands.pipelineBarrier(.{.imageMemoryBarriers = &.{
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
 				.srcStageMask = c.VK_PIPELINE_STAGE_2_TRANSFER_BIT,
@@ -1208,8 +1244,7 @@ pub const gpu_garbage_collection = struct { // MARK: gpu_garbage_collection
 var frameIndex: usize = 0;
 
 pub fn beginRender() *Frame {
-	swap_chain.beginRender();
-	return currentFrame;
+	return swap_chain.beginRender();
 }
 
 pub fn endRender() void {

@@ -10,20 +10,16 @@ handle: c.VkCommandBuffer,
 
 const CommandBuffer = @This();
 
-pub fn init() CommandBuffer {
+pub fn init(pool: vulkan.CommandPool) CommandBuffer {
 	var self: CommandBuffer = undefined;
 	const allocInfo = c.VkCommandBufferAllocateInfo{
 		.sType = c.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-		.commandPool = vulkan.command_pool.handle,
+		.commandPool = pool.handle,
 		.level = c.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 		.commandBufferCount = 1,
 	};
 	vulkan.checkResult(c.vkAllocateCommandBuffers(vulkan.device, &allocInfo, &self.handle));
 	return self;
-}
-
-pub fn deinit(self: CommandBuffer) void {
-	c.vkFreeCommandBuffers(vulkan.device, vulkan.command_pool.handle, 1, &self.handle);
 }
 
 pub fn beginRecording(self: CommandBuffer, flags: c.VkCommandBufferUsageFlags) void {
