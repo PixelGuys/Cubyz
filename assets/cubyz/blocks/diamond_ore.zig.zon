@@ -25,8 +25,9 @@
 			.textureRoughness = 0.1,
 			.modifiers = .{
 				.{
-					.id = "fragile",
-					.strength = 0.5,
+					.id = "base_stat",
+					.targetProperty = "maxDurability",
+					.strength = -0.5,
 					.restriction = .{
 						.id = .not,
 						.child = .{
@@ -37,7 +38,8 @@
 					},
 				},
 				.{
-					.id = "powerful",
+					.id = "base_stat",
+					.targetProperty = "damage",
 					.strength = 0.5,
 					.restriction = .{
 						.id = .encased,

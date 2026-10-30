@@ -800,13 +800,13 @@ pub const ProceduralItemType = struct { // MARK: ProceduralItemType
 	pixelSourcesOverlay: [16][16]u8,
 };
 
-const ProceduralItemProperty = enum {
+pub const ProceduralItemProperty = enum(u32) {
 	damage,
 	maxDurability,
 	/// how long it takes before the next swing happens
 	swingSpeed,
 
-	fn fromString(string: []const u8) ?ProceduralItemProperty {
+	pub fn fromString(string: []const u8) ?ProceduralItemProperty {
 		return std.meta.stringToEnum(ProceduralItemProperty, string) orelse {
 			std.log.err("Couldn't find procedural Item property {s}.", .{string});
 			return null;
