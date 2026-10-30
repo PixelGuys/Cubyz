@@ -22,7 +22,8 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Not
 	return result;
 }
 
-pub fn printTooltip(self: *const Not, outString: *main.ListManaged(u8)) void {
-	outString.appendSlice("not ");
-	self.child.printTooltip(outString);
+pub fn printTooltip(self: *const Not, outString: *main.ListManaged(u8), options: main.items.ModifierRestriction.PrintOptions) void {
+	var newOptions = options;
+	newOptions.negated = !options.negated;
+	self.child.printTooltip(outString, newOptions);
 }
