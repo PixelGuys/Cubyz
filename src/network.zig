@@ -66,7 +66,7 @@ const Socket = struct { // MARK: Socket
 						try windowsError(c.WSAGetLastError());
 						return error.UNKNOWN;
 					}
-					const setting: c_int = 1;
+					const setting: c_int = c.true;
 					if (c.setsockopt(socket, c.IPPROTO_IP, c.IP_DONTFRAGMENT, @ptrCast(&setting), @sizeOf(c_int)) != 0) {
 						try windowsError(c.WSAGetLastError());
 					}
