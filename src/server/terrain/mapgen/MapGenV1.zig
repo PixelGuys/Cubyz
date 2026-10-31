@@ -207,7 +207,7 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 			}
 			const biomePoint = biomePositions.get(@intCast(closestPoint[0] + offset), @intCast(closestPoint[1] + offset));
 			const newBiomeAndSeed: terrain.SurfaceMap.BiomeAndSeed = .{
-				.biomeId = biomePoint.biome.paletteId,
+				.biome = biomePoint.biome,
 				.seed = biomePoint.seed,
 			};
 			mapInitializer.addItem(@intCast(x), @intCast(y), newBiomeAndSeed.hash(), newBiomeAndSeed);

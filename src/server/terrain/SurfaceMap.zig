@@ -98,11 +98,11 @@ pub fn MapFragmentMapInitializer(comptime keyType: type, comptime storedType: ty
 }
 
 pub const BiomeAndSeed = struct {
-	biomeId: u32,
+	biome: *const Biome,
 	seed: u64,
 	pub fn hash(self: BiomeAndSeed) u64 {
 		var hasher = std.hash.Wyhash.init(0);
-		std.hash.autoHash(&hasher, self.biomeId);
+		std.hash.autoHash(&hasher, self.biome.paletteId);
 		std.hash.autoHash(&hasher, @as(u64, @bitCast(self.seed)));
 		return hasher.final();
 	}
@@ -180,7 +180,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 	}
 
 	fn getLocalBiome(self: *MapFragment, x: i32, y: i32) *const Biome {
-		return main.server.terrain.biomes.getByIndex(self.getLocalBiomeAndSeed(x, y).biomeId).?;
+		return self.getLocalBiomeAndSeed(x, y).biome;
 	}
 
 	const StorageHeader = struct {
@@ -230,7 +230,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 				for (0..mapSize) |x| {
 					for (0..mapSize) |y| {
 						const newBiomeAndSeed: BiomeAndSeed = .{
-							.biomeId = main.server.terrain.biomes.getById(biomePalette.palette.items[std.mem.readInt(u32, biomeData[4*(x*mapSize + y) ..][0..4], .big)]).paletteId,
+							.biome = main.server.terrain.biomes.getById(biomePalette.palette.items[std.mem.readInt(u32, biomeData[4*(x*mapSize + y) ..][0..4], .big)]),
 							.seed = 0,
 						};
 						mapInitializer.addItem(@intCast(x), @intCast(y), newBiomeAndSeed.hash(), newBiomeAndSeed);
@@ -256,7 +256,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 				for (0..mapSize) |x| {
 					for (0..mapSize) |y| {
 						const newBiomeAndSeed: BiomeAndSeed = .{
-							.biomeId = try reader.readInt(u32),
+							.biome = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)]),
 							.seed = 0,
 						};
 						mapInitializer.addItem(@intCast(x), @intCast(y), newBiomeAndSeed.hash(), newBiomeAndSeed);
@@ -294,7 +294,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 
 				for (0..uniqueBiomeAndSeedsLength) |_| {
 					const newBiomeAndSeed: BiomeAndSeed = .{
-						.biomeId = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)]).paletteId,
+						.biome = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)]),
 						.seed = try reader.readInt(u64),
 					};
 					mapInitializer.uniqueItems.append(main.globalAllocator, newBiomeAndSeed);
@@ -335,7 +335,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 
 		writer.writeInt(u16, @intCast(self.uniqueBiomeAndSeeds.len));
 		for (self.uniqueBiomeAndSeeds) |biomeAndSeed| {
-			writer.writeInt(u32, biomeAndSeed.biomeId);
+			writer.writeInt(u32, biomeAndSeed.biome.paletteId);
 			writer.writeInt(u64, biomeAndSeed.seed);
 		}
 		for (0..mapSize) |x| {

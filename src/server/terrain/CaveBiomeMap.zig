@@ -356,7 +356,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 			seed.* = fetchedBiomeAndSeed.seed;
 		}
 		returnHeight.* = height + 128 + self.pos.voxelSize - wz;
-		return main.server.terrain.biomes.getByIndex(fetchedBiomeAndSeed.biomeId);
+		return fetchedBiomeAndSeed.biome;
 	}
 
 	fn checkSurfaceBiome(self: CaveBiomeMapView, wx: i32, wy: i32, wz: i32, comptime getSeed: bool, seed: *u64) ?*const Biome {
@@ -373,7 +373,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		if (getSeed) {
 			seed.* = fetchedBiomeAndSeed.seed;
 		}
-		return main.server.terrain.biomes.getByIndex(fetchedBiomeAndSeed.biomeId);
+		return fetchedBiomeAndSeed.biome;
 	}
 
 	pub fn getSurfaceHeight(self: CaveBiomeMapView, wx: i32, wy: i32) i32 {
