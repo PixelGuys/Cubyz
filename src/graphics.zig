@@ -1968,12 +1968,15 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 					.storeOp = .store,
 				},
 			},
-			.depthTexture = if (self.hasDepthTexture) .{
-				.imageView = self.depth.view,
-				.layout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-				.loadOp = clearDepth,
-				.storeOp = .store,
-			} else null,
+			.depthTexture = blk: {
+				if (!self.hasDepthTexture) break :blk null;
+				break :blk .{
+					.imageView = self.depth.view,
+					.layout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+					.loadOp = clearDepth,
+					.storeOp = .store,
+				};
+			},
 			.renderArea = .{.extent = .{.width = @intCast(self.color.size[0]), .height = @intCast(self.color.size[1])}},
 		});
 	}
