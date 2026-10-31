@@ -2695,9 +2695,6 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 	const textureSize = block_texture.textureSize;
 	c.glViewport(0, 0, textureSize, textureSize);
 
-	const uniforms = if (block.transparent()) &main.renderer.chunk_meshing.transparentUniforms else &main.renderer.chunk_meshing.uniforms;
-	var vulkanUniforms: main.renderer.chunk_meshing.Uniforms = undefined;
-
 	var faceData: main.ListManaged(main.renderer.chunk_meshing.FaceData) = .init(main.stackAllocator);
 	defer faceData.deinit();
 	const model = main.blocks.meshes.model(block).model();
@@ -2749,19 +2746,17 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 	}
 
 	{
+		var fakeFrame: vulkan.Frame = undefined;
+		fakeFrame.extent = .{.width = textureSize, .height = textureSize};
 		if (block.transparent()) {
-			c.glBlendEquation(c.GL_FUNC_ADD);
-			c.glBlendFunc(c.GL_ONE, c.GL_SRC1_COLOR);
-			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(&vulkanUniforms, .{1, 1, 1});
+			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, frameBuffer.depth, .{1, 1, 1}, 0.25, 0);
 		} else {
-			main.renderer.chunk_meshing.bindShaderAndUniforms(&vulkanUniforms, .{1, 1, 1});
+			main.renderer.chunk_meshing.bindShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, .{1, 1, 1}, 0.25, 0);
 		}
 
 		block_texture.ubo.bind();
 		defer block_texture.ubo.unbind();
 
-		c.glUniform1f(uniforms.contrast, 0.25);
-		vulkanUniforms.contrast = 0.25;
 		c.glActiveTexture(c.GL_TEXTURE0);
 		main.blocks.meshes.blockTextureArray.bind();
 		c.glActiveTexture(c.GL_TEXTURE1);
