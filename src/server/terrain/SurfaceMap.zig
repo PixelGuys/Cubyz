@@ -156,6 +156,12 @@ pub const MapFragment = struct { // MARK: MapFragment
 		return self.getLocalBiome(@intCast(xIndex), @intCast(yIndex));
 	}
 
+	pub fn getBiomeAndSeed(self: *MapFragment, wx: i32, wy: i32) *const BiomeAndSeed {
+		const xIndex = wx >> self.pos.voxelSizeShift & mapMask;
+		const yIndex = wy >> self.pos.voxelSizeShift & mapMask;
+		return self.getLocalBiomeAndSeed(@intCast(xIndex), @intCast(yIndex));
+	}
+
 	pub fn getHeight(self: *MapFragment, wx: i32, wy: i32) i32 {
 		const xIndex = wx >> self.pos.voxelSizeShift & mapMask;
 		const yIndex = wy >> self.pos.voxelSizeShift & mapMask;

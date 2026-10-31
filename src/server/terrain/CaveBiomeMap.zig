@@ -337,7 +337,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 	}
 
 	/// On failure returnHeight contains the lower border of the terrain height.
-	fn checkSurfaceBiomeWithHeight(self: CaveBiomeMapView, wx: i32, wy: i32, wz: i32, returnHeight: *i32) ?*const Biome {
+	fn checkSurfaceBiomeWithHeight(self: CaveBiomeMapView, wx: i32, wy: i32, wz: i32, comptime getSeed: bool, seed: *u64, returnHeight: *i32) ?*const Biome {
 		var index: u8 = 0;
 		if (wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 2;
@@ -351,11 +351,15 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 			if (len > 0) returnHeight.* = @min(returnHeight.*, len);
 			return null;
 		}
+		const fetchedBiomeAndSeed = self.surfaceFragments[index].getBiomeAndSeed(wx, wy);
+		if (getSeed) {
+			seed.* = fetchedBiomeAndSeed.seed;
+		}
 		returnHeight.* = height + 128 + self.pos.voxelSize - wz;
-		return self.surfaceFragments[index].getBiome(wx, wy);
+		return main.server.terrain.biomes.getByIndex(fetchedBiomeAndSeed.biomeId);
 	}
 
-	fn checkSurfaceBiome(self: CaveBiomeMapView, wx: i32, wy: i32, wz: i32) ?*const Biome {
+	fn checkSurfaceBiome(self: CaveBiomeMapView, wx: i32, wy: i32, wz: i32, comptime getSeed: bool, seed: *u64) ?*const Biome {
 		var index: u8 = 0;
 		if (wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 2;
@@ -365,7 +369,11 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		}
 		const height: i32 = self.surfaceFragments[index].getHeight(wx, wy);
 		if (wz < height - 32*self.pos.voxelSize or wz > height + 128 + self.pos.voxelSize) return null;
-		return self.surfaceFragments[index].getBiome(wx, wy);
+		const fetchedBiomeAndSeed = self.surfaceFragments[index].getBiomeAndSeed(wx, wy);
+		if (getSeed) {
+			seed.* = fetchedBiomeAndSeed.seed;
+		}
+		return main.server.terrain.biomes.getByIndex(fetchedBiomeAndSeed.biomeId);
 	}
 
 	pub fn getSurfaceHeight(self: CaveBiomeMapView, wx: i32, wy: i32) i32 {
@@ -377,17 +385,6 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 			index += 1;
 		}
 		return self.surfaceFragments[index].getHeight(wx, wy);
-	}
-
-	pub fn getBiomeSample(self: CaveBiomeMapView, wx: i32, wy: i32) *const terrain.ClimateMap.BiomeSample {
-		var index: u8 = 0;
-		if (wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
-			index += 2;
-		}
-		if (wy -% self.surfaceFragments[0].pos.wy >= MapFragment.mapSize*self.pos.voxelSize) {
-			index += 1;
-		}
-		return self.surfaceFragments[index].getBiomeSample(wx, wy);
 	}
 
 	pub fn getCaveBiomeOffset(self: CaveBiomeMapView, wx: i32, wy: i32) i16 {
@@ -512,7 +509,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		const wx = relX +% self.pos.wx;
 		const wy = relY +% self.pos.wy;
 		var wz = relZ +% self.pos.wz;
-		if (self.checkSurfaceBiome(wx, wy, wz)) |surfaceBiome| {
+		if (self.checkSurfaceBiome(wx, wy, wz, getSeed, seed)) |surfaceBiome| {
 			return surfaceBiome;
 		}
 		wz +%= self.getCaveBiomeOffset(wx, wy);
@@ -529,7 +526,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		const wx = relX +% self.pos.wx;
 		const wy = relY +% self.pos.wy;
 		var wz = relZ +% self.pos.wz;
-		if (self.checkSurfaceBiomeWithHeight(wx, wy, wz, returnHeight)) |surfaceBiome| {
+		if (self.checkSurfaceBiomeWithHeight(wx, wy, wz, getSeed, seed, returnHeight)) |surfaceBiome| {
 			return surfaceBiome;
 		}
 		wz +%= self.getCaveBiomeOffset(wx, wy);
