@@ -150,11 +150,6 @@ pub const MapFragment = struct { // MARK: MapFragment
 		main.heap.garbage_collection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
-	pub fn getLocalBiomeAndSeed(self: *MapFragment, x: i32, y: i32) *const BiomeAndSeed {
-		const fetchedIndex = self.biomeAndSeedMap[@intCast(x)][@intCast(y)];
-		return &self.uniqueBiomeAndSeeds[fetchedIndex];
-	}
-
 	pub fn getBiome(self: *MapFragment, wx: i32, wy: i32) *const Biome {
 		const xIndex = wx >> self.pos.voxelSizeShift & mapMask;
 		const yIndex = wy >> self.pos.voxelSizeShift & mapMask;
@@ -173,9 +168,13 @@ pub const MapFragment = struct { // MARK: MapFragment
 		return self.caveBiomeOffsetMap[@intCast(xIndex)][@intCast(yIndex)];
 	}
 
-	fn getLocalBiome(self: *MapFragment, x: i32, y: i32) *const Biome {
+	fn getLocalBiomeAndSeed(self: *MapFragment, x: i32, y: i32) *const BiomeAndSeed {
 		const fetchedIndex = self.biomeAndSeedMap[@intCast(x)][@intCast(y)];
-		return main.server.terrain.biomes.getByIndex(self.uniqueBiomeAndSeeds[fetchedIndex].biomeId).?;
+		return &self.uniqueBiomeAndSeeds[fetchedIndex];
+	}
+
+	fn getLocalBiome(self: *MapFragment, x: i32, y: i32) *const Biome {
+		return main.server.terrain.biomes.getByIndex(self.getLocalBiomeAndSeed(x, y).biomeId).?;
 	}
 
 	const StorageHeader = struct {
@@ -294,7 +293,6 @@ pub const MapFragment = struct { // MARK: MapFragment
 					};
 					mapInitializer.uniqueItems.append(main.globalAllocator, newBiomeAndSeed);
 				}
-
 				for (0..mapSize) |x| {
 					for (0..mapSize) |y| {
 						mapInitializer.itemMap[x][y] = try reader.readInt(u16);
