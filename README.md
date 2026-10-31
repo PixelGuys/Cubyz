@@ -1,7 +1,7 @@
 # Cubyz
 Cubyz is a 3D voxel sandbox game (inspired by Minecraft).
 
-<img width="3840" height="2035" alt="image" src="https://github.com/user-attachments/assets/795421c1-0f2a-4273-b3d6-89c9621a3c31" />
+<img width="1393" height="784" alt="image" src="https://pixelguys.github.io/Cubyz-Wiki/images/releases/0.4.0.png" />
 
 Cubyz has a bunch of interesting/unique features such as:
 - Level of Detail (→ This enables far view distances.)
