@@ -10,7 +10,6 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const @"cubyz:velocity" = main.entity.components.@"cubyz:velocity";
 
 pos: Vec3d = .{0, 0, 0},
-vel: *Vec3d = undefined,
 rot: Vec3f = .{0, 0, 0},
 
 health: f32 = 8,
@@ -22,9 +21,6 @@ id: main.entity.Entity = .noValue,
 
 pub fn loadFrom(self: *@This(), id: main.entity.Entity, zon: ZonElement, comptime side: main.sync.Side, defaultPos: Vec3d) !void {
 	self.id = id;
-	if (zon.getChildOrNull("components")) |components| {
-		try main.entity.loadComponentsFromBase64(components.as([]const u8) orelse "", self.id, side);
-	}
 	if (zon.getChildOrNull("components")) |components| {
 		try main.entity.loadComponentsFromBase64(components.as([]const u8) orelse "", self.id, side);
 	}

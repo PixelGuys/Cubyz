@@ -704,7 +704,7 @@ fn update() void { // MARK: update()
 		entityData.append(.{
 			.id = id,
 			.pos = user.player().pos,
-			.vel = user.player().vel.*,
+			.vel = @"cubyz:velocity".getVelocity(user.player().id, .server).?,
 			.rot = user.player().rot,
 		});
 	}
