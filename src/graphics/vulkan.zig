@@ -558,6 +558,10 @@ pub const upload = struct { // MARK: upload
 		commands.beginRecording(0);
 	}
 
+	pub fn commandBuffer() main.graphics.CommandBuffer {
+		return commands;
+	}
+
 	fn changeFrame() void {
 		commands.endRecording();
 		commands.submit(graphicsQueue, &.{}, &.{}, &.{}, fences[activePool].handle);

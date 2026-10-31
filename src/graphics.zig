@@ -1922,7 +1922,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 	}
 
 	pub fn bindAndClear(self: FrameBuffer, commandBuffer: CommandBuffer, clearColor: CommandBuffer.BeginRenderingOptions.LoadOp, clearDepth: CommandBuffer.BeginRenderingOptions.LoadOp) void {
-		commandBuffer.pipelineBarrier(.{.imageMemoryBarriers = &.{
+		commandBuffer.pipelineBarrier(.{.imageMemoryBarriers = @as([]const c.VkImageMemoryBarrier2, &.{
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
 				.srcStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -1945,7 +1945,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 				.image = self.depth.handle,
 				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = 1},
 			},
-		}});
+		})[0..if(self.hasDepthTexture) 2 else 1]});
 		commandBuffer.beginRendering(.{
 			.textures = &.{
 				.{
@@ -1955,12 +1955,12 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 					.storeOp = .store,
 				},
 			},
-			.depthTexture = .{
+			.depthTexture = if (self.hasDepthTexture) .{
 				.imageView = self.depth.view,
 				.layout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
 				.loadOp = clearDepth,
 				.storeOp = .store,
-			},
+			} else null,
 			.renderArea = .{.extent = .{.width = @intCast(self.color.size[0]), .height = @intCast(self.color.size[1])}},
 		});
 	}
@@ -1984,7 +1984,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 	}
 
 	pub fn prepareTexturesForBinding(self: *FrameBuffer, commandBuffer: CommandBuffer) void {
-		commandBuffer.pipelineBarrier(.{.imageMemoryBarriers = &.{
+		commandBuffer.pipelineBarrier(.{.imageMemoryBarriers = @as([]const c.VkImageMemoryBarrier2, &.{
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
 				.srcStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -2007,7 +2007,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 				.image = self.depth.handle,
 				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = 1},
 			},
-		}});
+		})[0..if(self.hasDepthTexture) 2 else 1]});
 	}
 
 	pub fn bindTexture(self: *const FrameBuffer, target: c_uint) void {
@@ -2685,10 +2685,10 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 	var frameBuffer: FrameBuffer = .init(textureSize, textureSize, c.GL_RGBA16F, false, .nearest, .repeat);
 	defer frameBuffer.deinit();
 	frameBuffer.bind();
-	if (block.transparent()) {
-		frameBuffer.clear(.{0.683421, 0.6854237, 0.685426, 1});
-	} else {
-		frameBuffer.clear(.{0, 0, 0, 0});
+	const clearColor: [4]f32 = if (block.transparent()) .{0.683421, 0.6854237, 0.685426, 1} else @splat(0);
+	frameBuffer.clear(clearColor);
+	if (main.settings.launch_config.vulkanTestingMode) {
+		frameBuffer.bindAndClear(vulkan.upload.commandBuffer(), .{.clearColor = .{.float32 = clearColor}}, .dontCare);
 	}
 
 	const uniforms = if (block.transparent()) &main.renderer.chunk_meshing.transparentUniforms else &main.renderer.chunk_meshing.uniforms;
@@ -2759,6 +2759,11 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 	c.glDisable(c.GL_CULL_FACE);
 	var finalFrameBuffer: FrameBuffer = .init(textureSize, textureSize, c.GL_RGBA8, false, .nearest, .repeat);
 	finalFrameBuffer.bind();
+	if (main.settings.launch_config.vulkanTestingMode) {
+		vulkan.upload.commandBuffer().endRendering();
+		finalFrameBuffer.bindAndClear(vulkan.upload.commandBuffer(), .dontCare, .dontCare);
+	}
+	defer if (main.settings.launch_config.vulkanTestingMode) vulkan.upload.commandBuffer().endRendering();
 	const texture = Texture{.textureID = finalFrameBuffer.texture, .vulkanImage = null};
 	defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
 	block_texture.pipeline.bind(null);
