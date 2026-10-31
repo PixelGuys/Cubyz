@@ -34,6 +34,8 @@ pub const BlockDrop = @import("BlockDrop.zig");
 
 pub const command = @import("command.zig");
 
+const @"cubyz:velocity" = main.entity.components.@"cubyz:velocity";
+
 pub const WorldEditData = struct {
 	const maxWorldEditHistoryCapacity: u32 = 1024;
 
@@ -323,7 +325,7 @@ pub const User = struct { // MARK: User
 			}
 		}
 
-		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel.*));
+		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(@"cubyz:velocity".getVelocityPointer(self.id, .server)));
 		self.loadUnloadChunks();
 
 		main.entity.components.@"cubyz:player".server.load(self.id, @truncate(self.playerIndex));

@@ -31,6 +31,25 @@ const c = @import("c");
 pub var entityComponentID: main.entity.EntityComponentId = undefined;
 pub const entityComponentVersion = 0;
 
+pub fn getVelocity(entity: Entity, side: main.sync.Side) ?Vec3d {
+	return switch (side) {
+		.client => client.getVelocity(entity),
+		.server => server.getVelocity(entity),
+	};
+}
+pub fn getVelocityPointer(entity: Entity, side: main.sync.Side) ?*Vec3d {
+	return switch (side) {
+		.client => &(client.get(entity) orelse return null).velocity,
+		.server => &(server.get(entity) orelse return null).velocity,
+	};
+}
+pub fn setVelocity(entity: Entity, givenVelocity: Vec3d, side: main.sync.Side) void {
+	return switch (side) {
+		.client => client.setVelocity(entity, givenVelocity),
+		.server => server.setVelocity(entity, givenVelocity),
+	};
+}
+
 // ############################# Client only stuff ################################
 pub const client = struct {
 	const Component = struct {

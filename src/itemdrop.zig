@@ -24,6 +24,8 @@ const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
+const @"cubyz:velocity" = main.entity.components.@"cubyz:velocity";
+
 const c = @import("c");
 
 const ItemDrop = struct { // MARK: ItemDrop
@@ -493,11 +495,12 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		if (deltaTime == 0) return;
 		const dt: f32 = @floatCast(deltaTime);
 
-		var playerVel: Vec3f = .{@floatCast((game.Player.super.vel[2]*0.009 + game.Player.eye.vel[2]*0.0075)), 0, 0};
-		playerVel = vec.clampMag(playerVel, 0.32);
+		const playerVel = @"cubyz:velocity".getVelocity(main.game.Player.id, .client) orelse return;
+		var vel: Vec3f = .{@floatCast((game.Player.super.vel[2]*0.009 + game.Player.eye.vel[2]*0.0075)), 0, 0};
+		vel = vec.clampMag(vel, 0.32);
 
 		// TODO: add *smooth* item sway
-		const n1: Vec3f = cameraFollowVel - (cameraFollow - playerVel)*damping*damping*@as(Vec3f, @splat(dt));
+		const n1: Vec3f = cameraFollowVel - (cameraFollow - vel)*damping*damping*@as(Vec3f, @splat(dt));
 		const n2: Vec3f = @as(Vec3f, @splat(1)) + damping*@as(Vec3f, @splat(dt));
 		cameraFollowVel = n1/(n2*n2);
 
