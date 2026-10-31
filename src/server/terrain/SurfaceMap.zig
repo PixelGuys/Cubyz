@@ -60,7 +60,7 @@ pub const MapFragmentPosition = struct {
 };
 
 pub fn MapFragmentMapInitializer(comptime keyType: type, comptime storedType: type) type {
-	return struct{
+	return struct {
 		pub const mapShift = 8;
 		pub const mapSize = 1 << mapShift;
 
@@ -219,7 +219,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 				const originalHeightData = rawData[mapSize*mapSize*(@sizeOf(u32) + @sizeOf(f32)) ..][0 .. mapSize*mapSize*@sizeOf(f32)];
 
 				var mapInitializer: MapFragmentMapInitializer(u64, BiomeAndSeed) = .empty;
-				defer mapInitializer.finalizePopulation(&self.uniqueBiomeAndSeeds,& self.biomeAndSeedMap);
+				defer mapInitializer.finalizePopulation(&self.uniqueBiomeAndSeeds, &self.biomeAndSeedMap);
 
 				for (0..mapSize) |x| {
 					for (0..mapSize) |y| {
@@ -271,7 +271,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 			},
 			2 => {
 				const uniqueBiomeAndSeedDataLength = @sizeOf(u16);
-				const uniqueBiomeAndSeedSize = mapSize*mapSize*(@sizeOf(u32)+@sizeOf(u64));
+				const uniqueBiomeAndSeedSize = mapSize*mapSize*(@sizeOf(u32) + @sizeOf(u64));
 				const palletizedAndSeedArraysSize = mapSize*mapSize*@sizeOf(u16);
 				const heightDataSize = mapSize*mapSize*@sizeOf(i32);
 				const originalHeightDataSize = mapSize*mapSize*@sizeOf(i32);
@@ -319,7 +319,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 
 	pub fn save(self: *MapFragment, originalData: ?*[mapSize][mapSize]i32, neighborInfo: NeighborInfo) void {
 		const uniqueBiomeAndSeedDataLength = @sizeOf(u16);
-		const uniqueBiomeAndSeedSize = mapSize*mapSize*(@sizeOf(u32)+@sizeOf(u64));
+		const uniqueBiomeAndSeedSize = mapSize*mapSize*(@sizeOf(u32) + @sizeOf(u64));
 		const palletizedArraySize = mapSize*mapSize*@sizeOf(u16);
 		const heightDataSize = mapSize*mapSize*@sizeOf(i32);
 		const originalHeightDataSize = mapSize*mapSize*@sizeOf(i32);
