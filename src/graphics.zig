@@ -2749,7 +2749,7 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 		var fakeFrame: vulkan.Frame = undefined;
 		fakeFrame.extent = .{.width = textureSize, .height = textureSize};
 		if (block.transparent()) {
-			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, block_texture.depthTexture.vulkanImage.?, .{1, 1, 1}, 0.25, 0);
+			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, block_texture.depthTexture.vulkanImage orelse undefined, .{1, 1, 1}, 0.25, 0);
 		} else {
 			main.renderer.chunk_meshing.bindShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, .{1, 1, 1}, 0.25, 0);
 		}

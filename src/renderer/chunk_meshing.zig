@@ -313,9 +313,9 @@ fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, depthTexture: graphics.
 		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
 		if (transparent) {
-			bindTransparentShaderAndUniforms(currentFrame.renderCommands, currentFrame, depthTexture, ambient, main.settings.blockContrast, lod);
+			bindTransparentShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, depthTexture, ambient, main.settings.blockContrast, lod);
 		} else {
-			bindShaderAndUniforms(currentFrame.renderCommands, currentFrame, ambient, main.settings.blockContrast, lod);
+			bindShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, ambient, main.settings.blockContrast, lod);
 		}
 		c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 		c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
@@ -334,9 +334,9 @@ fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, depthTexture: graphics.
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
 	if (transparent) {
-		bindTransparentShaderAndUniforms(currentFrame.renderCommands, currentFrame, depthTexture, ambient, main.settings.blockContrast, lod);
+		bindTransparentShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, depthTexture, ambient, main.settings.blockContrast, lod);
 	} else {
-		bindShaderAndUniforms(currentFrame.renderCommands, currentFrame, ambient, main.settings.blockContrast, lod);
+		bindShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, ambient, main.settings.blockContrast, lod);
 	}
 	c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 	c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
