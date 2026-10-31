@@ -308,6 +308,9 @@ pub const User = struct { // MARK: User
 		if (main.entity.components.@"cubyz:bag".server.get(self.id) == null) {
 			main.entity.components.@"cubyz:bag".server.loadEmpty(self.id);
 		}
+		if (main.entity.components.@"cubyz:velocity".server.get(self.id) == null) {
+			main.entity.components.@"cubyz:velocity".server.loadFromValues(self.id, .{0, 0, 0});
+		}
 		if (main.entity.components.@"cubyz:permissions".server.get(self.id) == null) {
 			main.entity.components.@"cubyz:permissions".server.loadEmpty(self.id);
 		}
