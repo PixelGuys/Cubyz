@@ -1900,7 +1900,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 					.magFilter = textureFilter,
 					.minFilter = textureFilter,
 					.addressMode = textureWrap,
-					.typ = .depth,
+					.aspect = .{.depth = true},
 				});
 			}
 		}
@@ -2565,6 +2565,7 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 
 	pub const StaticUbo = struct {
 		id: c_uint,
+		vulkanBuffer: vulkan.Buffer,
 
 		pub fn init(data: Data) StaticUbo {
 			var self: StaticUbo = undefined;
@@ -2572,11 +2573,20 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 			c.glBindBuffer(c.GL_UNIFORM_BUFFER, self.id);
 			c.glBufferData(c.GL_UNIFORM_BUFFER, @sizeOf(Data), &data, c.GL_STATIC_DRAW);
 			c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
+			if (main.settings.launch_config.vulkanTestingMode) {
+				self.vulkanBuffer = .init(@sizeOf(Data), .{
+					.usage = c.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | c.VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+				});
+				self.vulkanBuffer.uploadData(0, std.mem.asBytes(&data));
+			}
 			return self;
 		}
 
 		pub fn deinit(self: StaticUbo) void {
 			c.glDeleteBuffers(1, &self.id);
+			if (main.settings.launch_config.vulkanTestingMode) {
+				self.vulkanBuffer.deferredDeinit();
+			}
 		}
 
 		pub fn bind(self: StaticUbo) void {
@@ -2634,6 +2644,16 @@ const block_texture = struct { // MARK: block_texture
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
+
+		if (main.settings.launch_config.vulkanTestingMode) {
+			std.debug.assert(depthTexture.vulkanImage == null);
+			depthTexture.vulkanImage = vulkan.Image.init(.{textureSize, textureSize, 1}, .{
+				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+				.format = c.VK_FORMAT_D32_SFLOAT,
+				.aspect = .{.depth = true},
+			});
+			depthTexture.vulkanImage.?.uploadData(std.mem.sliceAsBytes(&data), .{.imageExtent = .{.width = textureSize, .height = textureSize, .depth = 1}, .aspect = .{.depth = true}});
+		}
 
 		ubo = .init(.{
 			.projectionMatrix = Mat4f.perspective(0.013, 1, 64, 256).toGl(),

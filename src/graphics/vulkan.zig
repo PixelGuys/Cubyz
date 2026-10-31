@@ -940,7 +940,18 @@ pub const Image = struct { // MARK: Image
 		addressMode: AddressMode = .repeat,
 		mipLodBias: f32 = 0,
 		maxAnisotropy: ?f32 = null,
-		typ: enum { color, depth } = .color,
+		aspect: Aspect = .{.color = true},
+
+		pub const Aspect = packed struct(u32) {
+			color: bool = false,
+			depth: bool = false,
+			stencil: bool = false,
+			metadata: bool = false,
+			plane0: bool = false,
+			plane1: bool = false,
+			plane2: bool = false,
+			_: u25 = 0,
+		};
 
 		pub const Filter = enum(c.VkFilter) {
 			nearest = c.VK_FILTER_NEAREST,
@@ -994,10 +1005,7 @@ pub const Image = struct { // MARK: Image
 			.image = self.handle,
 			.format = options.format,
 			.subresourceRange = .{
-				.aspectMask = switch (options.typ) {
-					.color => c.VK_IMAGE_ASPECT_COLOR_BIT,
-					.depth => c.VK_IMAGE_ASPECT_DEPTH_BIT,
-				},
+				.aspectMask = @backingInt(options.aspect),
 				.baseMipLevel = 0,
 				.levelCount = options.mipLevels,
 				.baseArrayLayer = 0,
@@ -1047,6 +1055,7 @@ pub const Image = struct { // MARK: Image
 		imageExtent: c.struct_VkExtent3D,
 		arrayLayer: u32 = 0,
 		mipLevel: u32 = 0,
+		aspect: ImageOptions.Aspect = .{.color = true},
 	};
 
 	pub fn uploadData(self: Image, data: []const u8, config: UploadDataConfig) void {
@@ -1067,7 +1076,7 @@ pub const Image = struct { // MARK: Image
 				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
 				.newLayout = c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				.image = self.handle,
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = config.mipLevel, .levelCount = 1, .baseArrayLayer = config.arrayLayer, .layerCount = 1},
+				.subresourceRange = .{.aspectMask = @backingInt(config.aspect), .baseMipLevel = config.mipLevel, .levelCount = 1, .baseArrayLayer = config.arrayLayer, .layerCount = 1},
 			},
 		}});
 		upload.commands.copyBufferToImage(self, c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, stagingBuffer, &.{
@@ -1075,7 +1084,7 @@ pub const Image = struct { // MARK: Image
 				.sType = c.VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2,
 				.bufferOffset = 0,
 				.imageSubresource = .{
-					.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
+					.aspectMask = @backingInt(config.aspect),
 					.mipLevel = config.mipLevel,
 					.baseArrayLayer = config.arrayLayer,
 					.layerCount = 1,
@@ -1094,7 +1103,7 @@ pub const Image = struct { // MARK: Image
 				.oldLayout = c.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				.newLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
 				.image = self.handle,
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = config.mipLevel, .levelCount = 1, .baseArrayLayer = config.arrayLayer, .layerCount = 1},
+				.subresourceRange = .{.aspectMask = @backingInt(config.aspect), .baseMipLevel = config.mipLevel, .levelCount = 1, .baseArrayLayer = config.arrayLayer, .layerCount = 1},
 			},
 		}});
 	}
