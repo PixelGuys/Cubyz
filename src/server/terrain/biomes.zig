@@ -217,7 +217,17 @@ pub const Biome = struct { // MARK: Biome
 		}
 	};
 
+	pub const OceanProperties = struct {
+		height: i32,
+		liquidBlock: main.blocks.Block,
+		wallThickness: u32,
+		isRelative: bool,
+		relativeGap: u32,
+		relativeOffset: i32,
+	};
+
 	climate: ClimateProperties,
+	oceanProperties: OceanProperties,
 	isCave: bool,
 	radius: f32,
 	radiusVariation: f32,
@@ -263,7 +273,6 @@ pub const Biome = struct { // MARK: Biome
 	isValidPlayerSpawn: bool,
 	chance: f32,
 	tags: []const Tag,
-
 	pub fn init(self: *Biome, id: []const u8, paletteId: u32, zon: ZonElement) void {
 		const minRadius = zon.get(f32, "radius") orelse zon.get(f32, "minRadius") orelse 256;
 		const maxRadius = zon.get(f32, "maxRadius") orelse minRadius;
@@ -272,6 +281,14 @@ pub const Biome = struct { // MARK: Biome
 			.id = main.worldArena.dupe(u8, id),
 			.paletteId = paletteId,
 			.climate = ClimateProperties.fromZon(zon.getChild("climate"), true),
+			.oceanProperties = .{
+				.height = zon.getChild("oceanProperties").get(i32, "height") orelse 0,
+				.liquidBlock = blocks.parseBlock(zon.getChild("oceanProperties").get([]const u8, "liquidBlock") orelse "cubyz:water"),
+				.wallThickness = zon.getChild("oceanProperties").get(u32, "wallThickness") orelse 1,
+				.isRelative = zon.getChild("oceanProperties").get(bool, "isRelative") orelse false,
+				.relativeGap = zon.getChild("oceanProperties").get(u32, "relativeGap") orelse 8,
+				.relativeOffset = zon.getChild("oceanProperties").get(i32, "relativeOffset") orelse 0,
+			},
 			.isCave = isCave,
 			.radius = (maxRadius + minRadius)/2,
 			.radiusVariation = (maxRadius - minRadius)/2,
@@ -398,6 +415,19 @@ pub const Biome = struct { // MARK: Biome
 		for (stripes.toSlice(), 0..) |elem, i| {
 			self.stripes[i] = Stripe.init(elem);
 		}
+		if (self.oceanProperties.isRelative) {
+			if (self.oceanProperties.height <= 0) {
+				std.log.err("Biome {s} has a relative ocean and an ocean height of {d}. Ocean height should be greater than 0.", .{self.id, self.oceanProperties.height});
+			} else if (self.oceanProperties.height > 32) {
+				std.log.err("Biome {s} has a relative ocean and an ocean height of {d}. Ocean height cannot be greater than 32. Setting to 32 instead.", .{self.id, self.oceanProperties.height});
+				self.oceanProperties.height = 32;
+			}
+		}
+		if (self.oceanProperties.relativeGap == 0) {
+			std.log.err("Biome {s} cannot have relative ocean gap of 0. Setting to 1 instead.", .{self.id});
+			self.oceanProperties.relativeGap = 1;
+		}
+		self.oceanProperties.relativeOffset = @mod(self.oceanProperties.relativeOffset, @as(i32, @intCast(self.oceanProperties.relativeGap)));
 	}
 
 	fn getCheckSum(self: *Biome) u64 {
