@@ -651,7 +651,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const right = Vec3d{-horizontalForward[1], horizontalForward[0], 0};
 	var movementDir: Vec3d = .{0, 0, 0};
 
-	Player.inputSpeed = 0;
+	player.inputSpeed = 0;
 
 	if (main.Window.grabbed) {
 		const walkingSpeed: f64 = if (player.crouching) 2.5 else 4.5;
@@ -761,7 +761,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}*@as(Vec2f, @splat(std.math.pi*settings.controllerSensitivity));
 		main.game.camera.moveRotation(newPos[0]/64.0, newPos[1]/64.0);
 
-		Player.inputSpeed = movementSpeed*speedMultiplier;
+		player.inputSpeed = movementSpeed*speedMultiplier;
 	}
 
 	player.crouching = main.Window.grabbed and keyboard.key("crouch").pressed and !player.isFlying.load(.monotonic);

@@ -520,18 +520,18 @@ const bob_manager = struct {
 
 	fn update(dt: f32) void {
 		defer {
-			const targetOffset = if (game.Player.crouching) amplitude*crouchOffsetAmount else 0;
+			const targetOffset = if (game.player.crouching) amplitude*crouchOffsetAmount else 0;
 			crouchOffset = transition(crouchOffset, targetOffset, crouchHalfLife, dt);
 		}
 
-		if (game.Player.isFlying.load(.monotonic) or game.Player.isGhost.load(.monotonic)) {
+		if (game.player.isFlying.load(.monotonic) or game.player.isGhost.load(.monotonic)) {
 			amplitude = transition(amplitude, 0, amplitudeHalfLifeFlying, dt);
 			const targetPhase = std.math.round(phase/std.math.pi)*std.math.pi;
 			phase = transition(phase, targetPhase, phaseResetHalfLifeFlying, dt);
 			return;
 		}
 
-		if (!game.Player.onGround) {
+		if (!game.player.onGround) {
 			const prev = std.math.floor(phase/std.math.pi)*std.math.pi;
 			const next = prev + std.math.pi;
 			const targetPhase = if (prev <= phase - phaseResetThresholdAirborne*std.math.pi) next else prev;
@@ -539,11 +539,11 @@ const bob_manager = struct {
 			return;
 		}
 
-		const inputSpeed: f32 = @floatCast(game.Player.inputSpeed);
+		const inputSpeed: f32 = @floatCast(game.player.inputSpeed);
 
 		const horizontalVel: Vec3f = .{
-			@floatCast(game.Player.super.vel[0]),
-			@floatCast(game.Player.super.vel[1]),
+			@floatCast(game.player.super.vel[0]),
+			@floatCast(game.player.super.vel[1]),
 			0,
 		};
 
@@ -604,7 +604,7 @@ pub const item_display_manager = struct { // MARK: item_display_manager
 	}
 
 	fn getAscentDescentOffset() Vec3f {
-		const playerVel: Vec3f = .{@floatCast((game.Player.super.vel[2]*0.009 + game.Player.eye.vel[2]*0.0075)), 0, 0};
+		const playerVel: Vec3f = .{@floatCast((game.player.super.vel[2]*0.009 + game.player.eye.vel[2]*0.0075)), 0, 0};
 		return vec.clampMag(playerVel, 0.32);
 	}
 };
