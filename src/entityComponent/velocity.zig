@@ -97,6 +97,10 @@ pub const client = struct {
 		const velocityComponent = components.get(entity) orelse return null;
 		return velocityComponent.velocity;
 	}
+	pub fn getVelocityPointer(entity: Entity) ?*Vec3d {
+		const velocityComponent = components.get(entity) orelse return null;
+		return &velocityComponent.velocity;
+	}
 	pub fn setVelocity(entity: Entity, givenVelocity: Vec3d) void {
 		const velocityComponent = components.get(entity) orelse return;
 		velocityComponent.velocity = givenVelocity;
@@ -135,6 +139,10 @@ pub const server = struct {
 	pub fn getVelocity(entity: Entity) ?Vec3d {
 		const velocityComponent = components.get(entity) orelse return null;
 		return velocityComponent.velocity;
+	}
+	pub fn getVelocityPointer(entity: Entity) ?*Vec3d {
+		const velocityComponent = components.get(entity) orelse return null;
+		return &velocityComponent.velocity;
 	}
 	pub fn setVelocity(entity: Entity, givenVelocity: Vec3d) void {
 		const velocityComponent = components.get(entity) orelse return;
