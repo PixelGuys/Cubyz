@@ -27,6 +27,8 @@ const Block = main.blocks.Block;
 const physics = main.physics;
 const keyboard = main.keyboard;
 
+const @"cubyz:velocity" = main.entity.components.@"cubyz:velocity";
+
 pub const camera = struct { // MARK: camera
 	pub var rotation: Vec3f = Vec3f{0, 0, 0};
 	pub var direction: Vec3f = Vec3f{0, 0, 0};
@@ -135,7 +137,7 @@ pub const player = struct { // MARK: player
 	pub fn getVelBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		return super.vel.*;
+		return @"cubyz:velocity".getVelocity(super.id, .client).?;
 	}
 
 	pub fn getEyePosBlocking() Vec3d {
@@ -203,7 +205,7 @@ pub const player = struct { // MARK: player
 
 	pub fn kill(spawnPos: Vec3d) void {
 		player.super.pos = spawnPos;
-		player.super.vel = .{0, 0, 0};
+		@"cubyz:velocity".setVelocity(main.game.Player.id, .client) orelse .{};
 
 		player.super.health = player.super.maxHealth;
 		player.super.energy = player.super.maxEnergy;
