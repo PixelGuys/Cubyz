@@ -76,7 +76,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.* = ItemDropManager{
 			.allocator = allocator,
 			.list = std.MultiArrayList(ItemDrop){},
-			.isEmpty = .initFull(),
+			.isEmpty = .full,
 			.changeQueue = .init(allocator, 16),
 			.world = world,
 		};
@@ -141,6 +141,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		const properties = .{
 			zon.get(Vec3d, "pos") orelse .{0, 0, 0},
 			zon.get(Vec3d, "vel") orelse .{0, 0, 0},
+
 			random.nextFloatVector(3, &main.seed)*@as(Vec3f, @splat(2*std.math.pi)),
 			items.ItemStack{.item = item, .amount = zon.get(u16, "amount") orelse 1},
 			zon.get(i32, "despawnTime") orelse 60,
@@ -255,8 +256,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			const updateData = list.toStringEfficient(main.stackAllocator, &.{});
 			defer main.stackAllocator.free(updateData);
 
-			const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+			const userList = main.server.getUserList(main.stackAllocator);
+			defer main.stackAllocator.free(userList);
 			for (userList) |user| {
 				main.network.protocols.entity.send(user.conn, updateData);
 			}
@@ -287,8 +288,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			const updateData = list.toStringEfficient(main.stackAllocator, &.{});
 			defer main.stackAllocator.free(updateData);
 
-			const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+			const userList = main.server.getUserList(main.stackAllocator);
+			defer main.stackAllocator.free(userList);
 			for (userList) |user| {
 				main.network.protocols.entity.send(user.conn, updateData);
 			}
@@ -343,8 +344,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		const updateData = list.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(updateData);
 
-		const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+		const userList = main.server.getUserList(main.stackAllocator);
+		defer main.stackAllocator.free(userList);
 		for (userList) |user| {
 			main.network.protocols.entity.send(user.conn, updateData);
 		}
@@ -376,7 +377,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 				ii += 1;
 				continue;
 			}
-			const hitbox = main.game.Player.outerBoundingBox;
+			const hitbox = main.game.player.outerBoundingBox;
 			const min = user.player().pos + hitbox.min;
 			const max = user.player().pos + hitbox.max;
 			const itemPos = self.list.items(.pos)[i];
@@ -482,7 +483,7 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 };
 
 // Going to handle item animations and other things like - bobbing, interpolation, movement reactions
-pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
+pub const item_display_manager = struct { // MARK: item_display_manager
 	pub var showItem: bool = true;
 	var cameraFollow: Vec3f = @splat(0);
 	var cameraFollowVel: Vec3f = @splat(0);
@@ -492,7 +493,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		if (deltaTime == 0) return;
 		const dt: f32 = @floatCast(deltaTime);
 
-		var playerVel: Vec3f = .{@floatCast((game.Player.super.vel[2]*0.009 + game.Player.eye.vel[2]*0.0075)), 0, 0};
+		var playerVel: Vec3f = .{@floatCast((game.player.super.vel[2]*0.009 + game.player.eye.vel[2]*0.0075)), 0, 0};
 		playerVel = vec.clampMag(playerVel, 0.32);
 
 		// TODO: add *smooth* item sway
@@ -504,7 +505,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	}
 };
 
-pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
+pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 	var itemPipeline: graphics.Pipeline = undefined;
 	var itemUniforms: struct {
 		modelMatrix: c_int,
@@ -546,20 +547,19 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			};
 			if (self.item == .baseItem and self.item.baseItem.block() != null and self.item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
 				// Find sizes and free index:
-				var block = blocks.Block{.typ = self.item.baseItem.block().?, .data = 0};
-				block.data = block.mode().naturalStandard;
+				const block = self.item.baseItem.getDisplayBlock().?;
 				const model = blocks.meshes.model(block).model();
 				var data: main.ListManaged(u32) = .init(main.stackAllocator);
 				defer data.deinit();
 				for (model.internalQuads) |quad| {
 					const textureIndex = blocks.meshes.textureIndex(block, quad.quadInfo().textureSlot);
-					data.append(@as(u32, @intFromEnum(quad)) << 16 | textureIndex); // modelAndTexture
+					data.append(@as(u32, @backingInt(quad)) << 16 | textureIndex); // modelAndTexture
 					data.append(0); // offsetByNormal
 				}
 				for (model.neighborFacingQuads) |list| {
 					for (list) |quad| {
 						const textureIndex = blocks.meshes.textureIndex(block, quad.quadInfo().textureSlot);
-						data.append(@as(u32, @intFromEnum(quad)) << 16 | textureIndex); // modelAndTexture
+						data.append(@as(u32, @backingInt(quad)) << 16 | textureIndex); // modelAndTexture
 						data.append(1); // offsetByNormal
 					}
 				}
@@ -582,9 +582,9 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				while (z < 1) : (z += 1) {
 					var x: u32 = 0;
 					while (x < img.width) : (x += 1) {
-						var y: u32 = 0;
-						while (y < img.height) : (y += 1) {
-							dataSection[i] = img.getRGB(x, y).toArgb();
+						var y: u32 = 1;
+						while (y <= img.height) : (y += 1) {
+							dataSection[i] = img.getRGB(x, img.height - y).toArgb();
 							i += 1;
 						}
 					}
@@ -615,10 +615,11 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			"",
 			&itemUniforms,
 			graphics.VertexArray.EmptyVertex,
-			&.{},
-			.{},
-			.{.depthTest = true},
-			.{.attachments = &.{.alphaBlending}},
+			.{
+				.rasterState = .{},
+				.depthStencilState = .{.depthTest = true},
+				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
+			},
 		);
 		itemModelSSBO = .init();
 		itemModelSSBO.bufferData(i32, &[3]i32{1, 1, 1});
@@ -725,7 +726,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	}
 
 	pub fn renderDisplayItems(ambientLight: Vec3f, playerPos: Vec3d) void {
-		if (!ItemDisplayManager.showItem) return;
+		if (!item_display_manager.showItem) return;
 
 		const displayItemUbo = graphics.frame_uniforms.StaticUbo.init(.{
 			.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(main.renderer.lastWidth))/@as(f32, @floatFromInt(main.renderer.lastHeight)), 0.01, 3).toGl(),
@@ -738,10 +739,10 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		defer displayItemUbo.unbind();
 		bindCommonUniforms(ambientLight);
 
-		const item = game.Player.inventory.getItem(game.Player.selectedSlot);
+		const item = game.player.inventory.getItem(game.player.selectedSlot);
 		if (item != .null) {
 			var pos: Vec3d = Vec3d{0, 0, 0};
-			const rot: Vec3f = ItemDisplayManager.cameraFollow;
+			const rot: Vec3f = item_display_manager.cameraFollow;
 
 			const lightPos = @as(Vec3d, @floatCast(playerPos)) - @as(Vec3f, @splat(0.5));
 			const blockPos: Vec3i = @floor(lightPos);

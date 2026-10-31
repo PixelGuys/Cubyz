@@ -12,7 +12,11 @@ layout(location = 0) uniform mat4 invViewMatrix;
 layout(location = 1) uniform vec2 tanXY;
 
 void main() {
+#ifdef OPEN_GL
+	vec2 position = vec2(inTexCoords.x, 1 - inTexCoords.y)*2 - vec2(1, 1);
+#else
 	vec2 position = inTexCoords*2 - vec2(1, 1);
+#endif
 	direction = (invViewMatrix * vec4(position.x*tanXY.x, 1, position.y*tanXY.y, 0)).xyz;
 	normalizedTexCoords = inTexCoords;
 	texCoords = inTexCoords*textureSize(color, 0) - 0.25;

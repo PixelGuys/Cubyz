@@ -7,33 +7,33 @@ const c = @import("c");
 
 const CallbackFunction = *const fn (usize) void;
 
-const Impl = switch (builtin.os.tag) {
-	.windows => WindowsImpl,
-	.linux => LinuxImpl,
-	else => NoImpl,
+const impl = switch (builtin.target.os.tag) {
+	.windows => windows_impl,
+	.linux => linux_impl,
+	else => no_impl,
 };
 
 pub fn init() void {
-	Impl.init();
+	impl.init();
 }
 
 pub fn deinit() void {
-	Impl.deinit();
+	impl.deinit();
 }
 
 pub fn handleEvents() void {
-	Impl.handleEvents();
+	impl.handleEvents();
 }
 
 pub fn listenToPath(path: [:0]const u8, callback: CallbackFunction, userData: usize) void {
-	Impl.listenToPath(path, callback, userData);
+	impl.listenToPath(path, callback, userData);
 }
 
 pub fn removePath(path: [:0]const u8) void {
-	Impl.removePath(path);
+	impl.removePath(path);
 }
 
-const NoImpl = struct {
+const no_impl = struct {
 	fn init() void {}
 	fn deinit() void {}
 	fn handleEvents() void {}
@@ -41,7 +41,7 @@ const NoImpl = struct {
 	fn removePath(_: [:0]const u8) void {}
 };
 
-const LinuxImpl = struct { // MARK: LinuxImpl
+const linux_impl = struct { // MARK: linux_impl
 	const DirectoryInfo = struct {
 		callback: CallbackFunction,
 		userData: usize,
@@ -204,7 +204,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 	}
 };
 
-const WindowsImpl = struct { // MARK: WindowsImpl
+const windows_impl = struct { // MARK: windows_impl
 	const HANDLE = std.os.windows.HANDLE;
 	var notificationHandlers: std.StringHashMap(*DirectoryInfo) = undefined;
 	var callbacks: main.ListManaged(*DirectoryInfo) = undefined;

@@ -16,7 +16,6 @@ pub const Args = union(enum) {
 
 pub fn execute(args: Args, source: Source) void {
 	const target = command.Target.fromPlayerIndex(args.@"/kill <playerIndex>".playerIndex, source) catch return;
-	defer target.deinit();
 
 	main.sync.addHealth(-std.math.floatMax(f32), .kill, .server, target.user.id);
 }

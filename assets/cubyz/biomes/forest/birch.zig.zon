@@ -1,5 +1,5 @@
 .{
-	.properties = .{},
+	.climate = .{},
 	.tags = .{
 		.birch,
 	},
@@ -13,6 +13,7 @@
 	.roughness = 10,
 	.hills = 12,
 	.chance = 0.66,
+	.baseMood = .{.anxiety = 0.2, .energy = 0.3, .sanity = 0.8},
 	.music = "cubyz:totaldemented/leaves",
 	.validPlayerSpawn = true,
 	.ground_structure = .{

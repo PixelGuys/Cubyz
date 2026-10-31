@@ -6,6 +6,8 @@ const BinaryReader = main.utils.BinaryReader;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ZonElement = main.ZonElement;
 
+pub const protection = @import("authentication/protection.zig");
+
 var wordlist: ?[2048][]const u8 = null;
 
 fn wordToIndex(word: []const u8) ?u11 {
@@ -46,8 +48,8 @@ pub const KeyTypeEnum = enum(u8) {
 	}
 };
 
-pub const KeyCollection = struct { // Provides multiple methods to allow server hosts to react when one of the methods is compromised
-	const Storage = struct {
+pub const key_collection = struct { // Provides multiple methods to allow server hosts to react when one of the methods is compromised
+	const storage = struct {
 		pub var ed25519: std.crypto.sign.Ed25519.KeyPair = undefined;
 		pub var ecdsaP256Sha256: std.crypto.sign.ecdsa.EcdsaP256Sha256.KeyPair = undefined;
 		pub var mldsa44: std.crypto.sign.mldsa.MLDSA44.KeyPair = undefined;
@@ -63,7 +65,7 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 			"4t7z3592a09p85z4piotfh7z",
 			"u89564epogz1qi9up5zc94309",
 		};
-		inline for (comptime std.meta.declarations(Storage), 0..) |decl, i| {
+		inline for (comptime std.meta.declarations(storage), 0..) |decl, i| {
 			const hashableString = std.mem.concat(main.stackAllocator.allocator, u8, &.{accountCode.text, keySalts[i]}) catch unreachable;
 			defer main.stackAllocator.free(hashableString);
 			defer @memset(hashableString, 0);
@@ -77,10 +79,10 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 				hashedResult = out;
 			}
 
-			const functionType = @TypeOf(@TypeOf(@field(Storage, decl.name)).generateDeterministic);
-			const seed = hashedResult[0..@sizeOf(@typeInfo(functionType).@"fn".params[0].type.?)].*;
+			const functionType = @TypeOf(@TypeOf(@field(storage, decl)).generateDeterministic);
+			const seed = hashedResult[0..@sizeOf(@typeInfo(functionType).@"fn".param_types[0].?)].*;
 
-			@field(Storage, decl.name) = @TypeOf(@field(Storage, decl.name)).generateDeterministic(seed) catch @panic("Failed to generate key pair for " ++ decl.name);
+			@field(storage, decl) = @TypeOf(@field(storage, decl)).generateDeterministic(seed) catch @panic("Failed to generate key pair for " ++ decl);
 		}
 		initialized = true;
 	}
@@ -88,16 +90,16 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 	pub fn getPublicKeys(allocator: NeverFailingAllocator) ZonElement {
 		std.debug.assert(initialized);
 		const result = ZonElement.initObject(allocator);
-		inline for (comptime std.meta.declarations(Storage)) |decl| {
+		inline for (comptime std.meta.declarations(storage)) |decl| {
 			const bytes = blk: {
-				if (@hasDecl(@TypeOf(@field(Storage, decl.name).public_key), "toBytes")) {
-					break :blk @field(Storage, decl.name).public_key.toBytes();
+				if (@hasDecl(@TypeOf(@field(storage, decl).public_key), "toBytes")) {
+					break :blk @field(storage, decl).public_key.toBytes();
 				} else {
-					break :blk @field(Storage, decl.name).public_key.toUncompressedSec1();
+					break :blk @field(storage, decl).public_key.toUncompressedSec1();
 				}
 			};
 			var base64: [std.base64.standard.Encoder.calcSize(bytes.len)]u8 = undefined;
-			result.putOwnedString(decl.name, std.base64.standard.Encoder.encode(&base64, &bytes));
+			result.putOwnedString(decl, std.base64.standard.Encoder.encode(&base64, &bytes));
 		}
 		return result;
 	}
@@ -107,10 +109,10 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 		switch (keyType) {
 			inline else => |_typ| {
 				const bytes = blk: {
-					if (@hasDecl(@TypeOf(@field(Storage, @tagName(_typ)).public_key), "toBytes")) {
-						break :blk @field(Storage, @tagName(_typ)).public_key.toBytes();
+					if (@hasDecl(@TypeOf(@field(storage, @tagName(_typ)).public_key), "toBytes")) {
+						break :blk @field(storage, @tagName(_typ)).public_key.toBytes();
 					} else {
-						break :blk @field(Storage, @tagName(_typ)).public_key.toUncompressedSec1();
+						break :blk @field(storage, @tagName(_typ)).public_key.toUncompressedSec1();
 					}
 				};
 				var base64: [std.base64.standard.Encoder.calcSize(bytes.len)]u8 = undefined;
@@ -127,7 +129,7 @@ pub const KeyCollection = struct { // Provides multiple methods to allow server 
 				const AlgorithmType = _typ.getAlgorithmType();
 				var randomBytes: [AlgorithmType.noise_length]u8 = undefined;
 				main.io.random(&randomBytes);
-				const signature = @field(Storage, @tagName(_typ)).sign(message, randomBytes) catch |err| {
+				const signature = @field(storage, @tagName(_typ)).sign(message, randomBytes) catch |err| {
 					std.debug.panic("Failed to sign message with error {s}. Maybe try reconnecting, if the error persists, I'd suggest creating a new account", .{@errorName(err)});
 				};
 				writer.writeSlice(&signature.toBytes());
@@ -144,7 +146,7 @@ pub const PublicKey = union(KeyTypeEnum) {
 	pub fn initFromBase64(base64: []const u8, typ: KeyTypeEnum) !PublicKey {
 		switch (typ) {
 			inline else => |_typ| {
-				const KeyType = @TypeOf(@field(KeyCollection.Storage, @tagName(_typ)).public_key);
+				const KeyType = @TypeOf(@field(key_collection.storage, @tagName(_typ)).public_key);
 				const length = if (@hasDecl(KeyType, "fromBytes")) KeyType.encoded_length else KeyType.uncompressed_sec1_encoded_length;
 				var bytes: [length]u8 = undefined;
 				try std.base64.standard.Decoder.decode(&bytes, base64);
@@ -169,7 +171,7 @@ pub const PublicKey = union(KeyTypeEnum) {
 };
 
 /// Also known as a seed phrase, implementation is based on BIP39 with some minor changes and limited to one word list
-pub const AccountCode = struct {
+pub const AccountCode = struct { // MARK: AccountCode
 	text: []u8,
 
 	fn printInvalidCharError(failureText: *main.ListManaged(u8), codepoint: u21) void {
@@ -286,16 +288,17 @@ pub const AccountCode = struct {
 
 const EncodingType = enum { none, argon2_aes_gcm };
 
-pub const PasswordEncodedAccountCode = struct {
+pub const PasswordEncodedAccountCode = struct { // MARK: PasswordEncodedAccountCode
 	typ: EncodingType,
+	protected: bool,
 	salt: []u8,
 	nonce: []u8,
 	data: []u8,
 	authenticationTag: []u8,
 
-	pub const empty: PasswordEncodedAccountCode = .{.typ = .none, .salt = &.{}, .nonce = &.{}, .data = &.{}, .authenticationTag = &.{}};
+	pub const empty: PasswordEncodedAccountCode = .{.typ = .none, .protected = false, .salt = &.{}, .nonce = &.{}, .data = &.{}, .authenticationTag = &.{}};
 
-	pub fn initFromPassword(allocator: NeverFailingAllocator, accountCode: AccountCode, password: []const u8) PasswordEncodedAccountCode {
+	pub fn initFromPassword(allocator: NeverFailingAllocator, accountCode: AccountCode, password: []const u8, shouldProtect: bool) error{SystemError}!PasswordEncodedAccountCode {
 		var salt: [32]u8 = undefined;
 		main.io.random(&salt);
 		const saltBase64 = allocator.alloc(u8, std.base64.standard.Encoder.calcSize(salt.len));
@@ -305,27 +308,44 @@ pub const PasswordEncodedAccountCode = struct {
 		defer std.crypto.secureZero(u8, &key);
 		keyFromPassword(.argon2_aes_gcm, saltBase64, password, &key);
 
-		const encryptedBuffer = allocator.alloc(u8, accountCode.text.len);
+		const encryptedBuffer = main.stackAllocator.alloc(u8, accountCode.text.len);
+		defer main.stackAllocator.free(encryptedBuffer);
 		var authenticationTag: [std.crypto.aead.aes_gcm.Aes256Gcm.tag_length]u8 = undefined;
 		var nonce: [std.crypto.aead.aes_gcm.Aes256Gcm.nonce_length]u8 = undefined;
 		main.io.random(&nonce);
 		std.crypto.aead.aes_gcm.Aes256Gcm.encrypt(encryptedBuffer, &authenticationTag, accountCode.text, &.{}, nonce, key);
 
+		const protected = shouldProtect and protection.canProtect;
+		var data: []u8 = undefined;
+		if (protected) {
+			data = try protection.protect(allocator, encryptedBuffer);
+		} else {
+			data = allocator.dupe(u8, encryptedBuffer);
+		}
 		return .{
 			.typ = .argon2_aes_gcm,
+			.protected = protected,
 			.salt = saltBase64,
-			.data = encryptedBuffer,
+			.data = data,
 			.nonce = allocator.dupe(u8, &nonce),
 			.authenticationTag = allocator.dupe(u8, &authenticationTag),
 		};
 	}
 
-	pub fn initUnencoded(allocator: NeverFailingAllocator, accountCode: AccountCode) PasswordEncodedAccountCode {
+	pub fn initUnencoded(allocator: NeverFailingAllocator, accountCode: AccountCode, shouldProtect: bool) error{SystemError}!PasswordEncodedAccountCode {
+		const protected = shouldProtect and protection.canProtect;
+		var data: []u8 = undefined;
+		if (protected) {
+			data = try protection.protect(allocator, accountCode.text);
+		} else {
+			data = allocator.dupe(u8, accountCode.text);
+		}
 		return .{
 			.typ = .none,
+			.protected = protected,
 			.salt = &.{},
 			.nonce = &.{},
-			.data = allocator.dupe(u8, accountCode.text),
+			.data = data,
 			.authenticationTag = &.{},
 		};
 	}
@@ -338,6 +358,18 @@ pub const PasswordEncodedAccountCode = struct {
 	}
 
 	pub fn decryptFromPassword(self: PasswordEncodedAccountCode, password: []const u8, failureText: *main.ListManaged(u8)) !AccountCode {
+		if (self.protected) {
+			if (!protection.canProtect) return error.Invalid;
+
+			var copy: PasswordEncodedAccountCode = self;
+			copy.protected = false;
+			copy.data = try protection.unprotect(main.stackAllocator, self.data);
+			defer {
+				std.crypto.secureZero(u8, copy.data);
+				main.stackAllocator.free(copy.data);
+			}
+			return decryptFromPassword(copy, password, failureText);
+		}
 		if (self.typ == .none) {
 			return AccountCode.initFromUserInput(self.data, failureText);
 		}
@@ -379,6 +411,7 @@ pub const PasswordEncodedAccountCode = struct {
 		var self: PasswordEncodedAccountCode = undefined;
 
 		self.typ = std.meta.stringToEnum(EncodingType, zon.get([]const u8, "type") orelse return error.Invalid) orelse return error.Invalid;
+		self.protected = zon.get(bool, "protected") orelse false;
 		self.salt = allocator.dupe(u8, zon.get([]const u8, "salt") orelse "");
 		errdefer allocator.free(self.salt);
 		if (self.salt.len < 32 and self.typ != .none) return error.Invalid;
@@ -407,6 +440,7 @@ pub const PasswordEncodedAccountCode = struct {
 	pub fn toZon(self: PasswordEncodedAccountCode, allocator: NeverFailingAllocator) ZonElement {
 		const zon = ZonElement.initObject(allocator);
 		zon.put("type", @tagName(self.typ));
+		zon.put("protected", self.protected);
 		zon.putOwnedString("salt", self.salt);
 
 		const base64EncodedData = main.stackAllocator.alloc(u8, std.base64.standard.Encoder.calcSize(self.data.len));
@@ -424,3 +458,86 @@ pub const PasswordEncodedAccountCode = struct {
 		return zon;
 	}
 };
+
+test "PasswordEncodedAccountCode roundtrip" {
+	if (wordlist == null) init();
+
+	const accountCode = AccountCode.initRandomly();
+	defer accountCode.deinit();
+	const passwordEncodedAccountCode = try PasswordEncodedAccountCode.initFromPassword(main.stackAllocator, accountCode, "supersecurepassword", false);
+	defer passwordEncodedAccountCode.deinit(main.stackAllocator);
+
+	try std.testing.expect(!passwordEncodedAccountCode.protected);
+	try std.testing.expectEqual(passwordEncodedAccountCode.typ, EncodingType.argon2_aes_gcm);
+
+	var failureText: main.ListManaged(u8) = .init(main.stackAllocator);
+	const recoveredAccountCode = try passwordEncodedAccountCode.decryptFromPassword("supersecurepassword", &failureText);
+	defer recoveredAccountCode.deinit();
+
+	try std.testing.expectEqualStrings(accountCode.text, recoveredAccountCode.text);
+}
+
+// This test expects a roundtrip without protection on systems that do not support protection
+test "PasswordEncodedAccountCode roundtrip with protection" {
+	if (wordlist == null) init();
+
+	const accountCode = AccountCode.initRandomly();
+	defer accountCode.deinit();
+	const passwordEncodedAccountCode = try PasswordEncodedAccountCode.initFromPassword(main.stackAllocator, accountCode, "supersecurepassword", true);
+	defer passwordEncodedAccountCode.deinit(main.stackAllocator);
+
+	try std.testing.expectEqual(main.network.authentication.protection.canProtect, passwordEncodedAccountCode.protected);
+	try std.testing.expectEqual(passwordEncodedAccountCode.typ, EncodingType.argon2_aes_gcm);
+
+	var failureText: main.ListManaged(u8) = .init(main.stackAllocator);
+	const recoveredAccountCode = try passwordEncodedAccountCode.decryptFromPassword("supersecurepassword", &failureText);
+	defer recoveredAccountCode.deinit();
+
+	try std.testing.expectEqualStrings(accountCode.text, recoveredAccountCode.text);
+}
+
+test "PasswordEncodedAccountCode unencoded roundtrip" {
+	if (wordlist == null) init();
+
+	const accountCode = AccountCode.initRandomly();
+	defer accountCode.deinit();
+	const passwordEncodedAccountCode = try PasswordEncodedAccountCode.initUnencoded(main.stackAllocator, accountCode, false);
+	defer passwordEncodedAccountCode.deinit(main.stackAllocator);
+
+	try std.testing.expect(!passwordEncodedAccountCode.protected);
+	try std.testing.expectEqual(passwordEncodedAccountCode.typ, EncodingType.none);
+
+	var failureText: main.ListManaged(u8) = .init(main.stackAllocator);
+	const recoveredAccountCode = try passwordEncodedAccountCode.decryptFromPassword(undefined, &failureText);
+	defer recoveredAccountCode.deinit();
+
+	try std.testing.expectEqualStrings(accountCode.text, recoveredAccountCode.text);
+}
+
+// This test expects a roundtrip without protection on systems that do not support protection
+test "PasswordEncodedAccountCode unencoded roundtrip with protection" {
+	if (wordlist == null) init();
+
+	if (!main.network.authentication.protection.canProtect) return error.SkipZigTest;
+
+	const accountCode = AccountCode.initRandomly();
+	defer accountCode.deinit();
+	const passwordEncodedAccountCode = try PasswordEncodedAccountCode.initUnencoded(main.stackAllocator, accountCode, true);
+	defer passwordEncodedAccountCode.deinit(main.stackAllocator);
+
+	try std.testing.expectEqual(passwordEncodedAccountCode.protected, main.network.authentication.protection.canProtect);
+	try std.testing.expectEqual(passwordEncodedAccountCode.typ, EncodingType.none);
+
+	var failureText: main.ListManaged(u8) = .init(main.stackAllocator);
+	const recoveredAccountCode = try passwordEncodedAccountCode.decryptFromPassword(undefined, &failureText);
+	defer recoveredAccountCode.deinit();
+
+	try std.testing.expectEqualStrings(accountCode.text, recoveredAccountCode.text);
+
+	// Check if passwordEncodedAccountCode.data was actually protect()ed
+	if (main.network.authentication.protection.canProtect) {
+		const unprotected = try main.network.authentication.protection.unprotect(main.stackAllocator, passwordEncodedAccountCode.data);
+		defer main.stackAllocator.free(unprotected);
+		try std.testing.expectEqualStrings(recoveredAccountCode.text, unprotected);
+	}
+}

@@ -4,15 +4,13 @@
 	.blockResistance = 3,
 	.item = .{
 		.texture = "amber.png",
+		.colorTexture = "amber_ore_palette.png",
 		.material = .{
 			.durability = 140,
 			.massDamage = 0.1,
 			.hardnessDamage = 2.3,
 			.swingSpeed = 8.5,
 			.textureRoughness = 0.1,
-			.colors = .{
-				0xff9b3481b, 0xffd35a1c, 0xffee7023, 0xffff9134, 0xffffc14a,
-			},
 			.modifiers = .{
 				.{
 					.id = "light",

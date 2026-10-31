@@ -1,5 +1,5 @@
 .{
-	.properties = .{},
+	.climate = .{},
 	.minRadius = 16,
 	.maxRadius = 32,
 	.minHeightLimit = 1,

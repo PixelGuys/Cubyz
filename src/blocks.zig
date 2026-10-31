@@ -28,30 +28,11 @@ const BlockTouchCallback = main.callbacks.BlockTouchCallback;
 const sbb = main.server.terrain.sbb;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
+const BlockDrop = main.server.BlockDrop;
 
 const c = @import("c");
 
 pub const maxBlockCount: usize = 65536; // 16 bit limit
-
-pub const BlockDrop = struct {
-	items: []const items.ItemStack,
-	chance: f32,
-	forbiddenToolTags: []Tag,
-	allowedToolTags: ?[]Tag = null,
-
-	pub fn isDroppedWhenBrokenWithItem(self: BlockDrop, item: Item) bool {
-		if (item != .proceduralItem) return self.allowedToolTags == null;
-
-		const proceduralItem = item.proceduralItem;
-		for (self.forbiddenToolTags) |tag| if (proceduralItem.hasTag(tag)) return false;
-		if (self.allowedToolTags) |tags| {
-			for (tags) |tag| if (proceduralItem.hasTag(tag)) return true;
-			return false;
-		}
-
-		return true;
-	}
-};
 
 /// Ores can be found underground in veins.
 /// TODO: Add support for non-stone ores.
@@ -66,8 +47,15 @@ pub const Ore = struct {
 	maxHeight: i32,
 	minHeight: i32,
 
+	targetTags: []const Tag,
+
 	blockType: u16,
 	seed: u64,
+};
+
+const PlacementMode = enum {
+	boundingBox,
+	gridNeighbor,
 };
 
 const SelectionCapabilities = union(enum) {
@@ -76,20 +64,21 @@ const SelectionCapabilities = union(enum) {
 		toolEffective: bool = false,
 
 		pub fn allowsSelectionByItem(self: @This(), block: Block, item: Item) bool {
-			if (self == @This(){}) return false;
-
-			if (self.toolEffective) {
-				if (item == .proceduralItem and item.proceduralItem.isEffectiveOn(block)) {
-					return true;
-				}
-			}
-
+			// Hardcoded cases should come first
 			if (item == .baseItem) {
 				const baseItem = item.baseItem;
 				if (std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) return true;
 				if (block.hasTag(.fluid) and baseItem.hasTag(.fluidPlaceable)) return true;
 				if (baseItem.block()) |blockType| {
 					if (blockType == block.typ) return true;
+				}
+			}
+
+			if (self == @This(){}) return false;
+
+			if (self.toolEffective) {
+				if (item == .proceduralItem and item.proceduralItem.isEffectiveOn(block)) {
+					return true;
 				}
 			}
 
@@ -133,6 +122,7 @@ var _degradable: [maxBlockCount]bool = undefined;
 var _viewThrough: [maxBlockCount]bool = undefined;
 var _alwaysViewThrough: [maxBlockCount]bool = undefined;
 var _hasBackFace: [maxBlockCount]bool = undefined;
+var _placementMode: [maxBlockCount]PlacementMode = undefined;
 var _tags: [maxBlockCount][]Tag = undefined;
 var _light: [maxBlockCount]u32 = undefined;
 /// How much light this block absorbs if it is transparent
@@ -167,10 +157,12 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_id[size] = main.worldArena.dupe(u8, id);
 	reverseIndices.put(main.worldArena.allocator, _id[size], @intCast(size)) catch unreachable;
 
-	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation") orelse "cubyz:no_rotation");
+	const rotationMode = rotation.getByID(zon.get([]const u8, "rotation") orelse "cubyz:no_rotation");
+
+	_mode[size] = rotationMode;
 	_blockHealth[size] = zon.get(f32, "blockHealth") orelse 1;
 	_blockResistance[size] = zon.get(f32, "blockResistance") orelse 0;
-	const rotation_tags = _mode[size].getBlockTags();
+	const rotation_tags = rotationMode.getBlockTags();
 	const block_tags = Tag.loadTagsFromZon(main.stackAllocator, zon.getChild("tags"));
 	defer main.stackAllocator.free(block_tags);
 	_tags[size] = std.mem.concat(main.worldArena.allocator, Tag, &.{rotation_tags, block_tags}) catch unreachable;
@@ -199,6 +191,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough") orelse false;
 	_viewThrough[size] = (zon.get(bool, "viewThrough") orelse false) or _transparent[size] or _alwaysViewThrough[size];
 	_hasBackFace[size] = zon.get(bool, "hasBackFace") orelse false;
+	_placementMode[size] = zon.get(PlacementMode, "placementMode") orelse .boundingBox;
 	_friction[size] = zon.get(f32, "friction") orelse 20;
 	_bounciness[size] = zon.get(f32, "bounciness") orelse 0.0;
 	_density[size] = zon.get(f32, "density") orelse main.physics.airDensity;
@@ -221,6 +214,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			.minHeight = oreProperties.get(i32, "minHeight") orelse std.math.minInt(i32),
 			.density = oreProperties.get(f32, "density") orelse 0.5,
 			.blockType = @intCast(size),
+			.targetTags = Tag.loadTagsFromZon(main.worldArena, oreProperties.getChild("targetTags")),
 			.seed = std.hash.Wyhash.hash(0, id),
 		});
 	}
@@ -269,7 +263,7 @@ pub fn loadBlockDrop(blockId: []const u8, zon: ZonElement) []const BlockDrop {
 		}
 
 		blockDrops[i] = .{
-			.items = resultItems.items,
+			.itemStacks = resultItems.items,
 			.chance = blockDrop.get(f32, "chance") orelse 1,
 			.forbiddenToolTags = Tag.loadTagsFromZon(main.worldArena, blockDrop.getChild("forbiddenToolTags")),
 			.allowedToolTags = allowedToolTags,
@@ -364,7 +358,7 @@ const ParseBlockConfig = struct {
 };
 
 fn parseBlockData(fullBlockId: []const u8, data: []const u8, comptime config: ParseBlockConfig) ?u16 {
-	if (std.mem.containsAtLeastScalar(u8, data, 1, ':')) {
+	if (std.mem.containsAtLeastScalar(u8, data, ':', 1)) {
 		const oreChild = parseBlockWithOptions(data, config);
 		if (oreChild.data != 0) {
 			std.log.warn("Error while parsing ore block data of '{s}': Parent block data must be 0.", .{fullBlockId});
@@ -491,12 +485,16 @@ pub const Block = packed struct(u32) { // MARK: Block
 		return _hasBackFace[self.typ];
 	}
 
+	pub inline fn placementMode(self: Block) PlacementMode {
+		return _placementMode[self.typ];
+	}
+
 	pub inline fn tags(self: Block) []const Tag {
 		return _tags[self.typ];
 	}
 
 	pub inline fn hasTag(self: Block, tag: Tag) bool {
-		return std.mem.containsAtLeastScalar(Tag, self.tags(), 1, tag);
+		return std.mem.containsAtLeastScalar(Tag, self.tags(), tag, 1);
 	}
 
 	pub inline fn light(self: Block) u32 {
@@ -840,7 +838,7 @@ pub const meshes = struct { // MARK: meshes
 		animationComputePipeline.bind();
 		c.glUniform1ui(animationUniforms.time, time);
 		c.glUniform1ui(animationUniforms.size, @intCast(animationData.len));
-		c.glDispatchCompute(@intCast(@divFloor(animationData.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
+		c.glDispatchCompute(@intCast(@divCeil(animationData.len, 64)), 1, 1);
 		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
 	}
 
