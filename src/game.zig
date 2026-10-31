@@ -204,8 +204,8 @@ pub const player = struct { // MARK: player
 	}
 
 	pub fn kill(spawnPos: Vec3d) void {
-		@"cubyz:position".setPosition(Player.id, spawnPos, .client);
-		Player.super.vel = .{0, 0, 0};
+		@"cubyz:position".setPosition(player.id, spawnPos, .client);
+		player.super.vel = .{0, 0, 0};
 
 		player.super.health = player.super.maxHealth;
 		player.super.energy = player.super.maxEnergy;
@@ -631,12 +631,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		return;
 	};
 
-	const playerPos = @"cubyz:position".getPositionPointer(Player.id, .client).?;
-	physics.calculateVolumeProperties(.client, &Player.volumeProperties, playerPos.*, Player.outerBoundingBox, physics.playerAirTerminalVelocity);
-	if (Player.isFlying.load(.monotonic)) {
-		Player.friction = .{.current = 20, .mobile = 20};
+	const playerPos = @"cubyz:position".getPositionPointer(player.id, .client).?;
+	physics.calculateVolumeProperties(.client, &player.volumeProperties, playerPos.*, player.outerBoundingBox, physics.playerAirTerminalVelocity);
+	if (player.isFlying.load(.monotonic)) {
+		player.friction = .{.current = 20, .mobile = 20};
 	} else {
-		physics.calculateFriction(.client, &Player.volumeProperties, &Player.friction, playerPos.*, Player.outerBoundingBox, Player.onGround);
+		physics.calculateFriction(.client, &player.volumeProperties, &player.friction, playerPos.*, player.outerBoundingBox, player.onGround);
 	}
 	var acc = Vec3d{0, 0, 0};
 	const speedMultiplier: f32 = if (player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
@@ -769,7 +769,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	player.crouching = main.Window.grabbed and keyboard.key("crouch").pressed and !player.isFlying.load(.monotonic);
 
-	if (physics.collision.collides(.client, .x, 0, playerPos + player.standingBoundingBoxExtent - player.crouchingBoundingBoxExtent, .{
+	if (physics.collision.collides(.client, .x, 0, playerPos.* + player.standingBoundingBoxExtent - player.crouchingBoundingBoxExtent, .{
 		.min = -player.standingBoundingBoxExtent,
 		.max = player.standingBoundingBoxExtent,
 	}) == null) {
@@ -786,7 +786,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 		const newOuterBox = (player.crouchingBoundingBoxExtent - player.standingBoundingBoxExtent)*@as(Vec3d, @splat(smoothPerc)) + player.standingBoundingBoxExtent;
 
-		@"cubyz:position".setPosition(Player.super.id, playerPos.* + newOuterBox - Player.outerBoundingBoxExtent + Vec3d{0.0, 0.0, 0.0001*@abs(newOuterBox[2] - Player.outerBoundingBoxExtent[2])}, .client);
+		@"cubyz:position".setPosition(player.super.id, playerPos.* + newOuterBox - player.outerBoundingBoxExtent + Vec3d{0.0, 0.0, 0.0001*@abs(newOuterBox[2] - player.outerBoundingBoxExtent[2])}, .client);
 
 		player.outerBoundingBoxExtent = newOuterBox;
 
@@ -803,7 +803,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	const gravity: f64 = if (player.isFlying.load(.monotonic)) 0.0 else physics.baseGravity;
 	const jumpHeight: f64 = if (jumping) player.jumpHeight else 0.0;
-	var motion = physics.calculateMotion(.client, deltaTime, player.friction, player.volumeProperties, physics.playerDensity, playerPos, &player.super.vel, acc, gravity, jumpHeight);
+	var motion = physics.calculateMotion(.client, deltaTime, player.friction, player.volumeProperties, physics.playerDensity, playerPos.*, &player.super.vel, acc, gravity, jumpHeight);
 
 	{
 		player.mutex.lock();
@@ -812,16 +812,16 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		var stepAmount: f64 = 0.0;
 		if (!player.isGhost.load(.monotonic)) {
 			const steppingHeightLimit = player.eye.pos[2] - player.eye.box.min[2];
-			stepAmount = physics.calculateWallCollision(.client, &motion, &player.super.pos, &player.super.vel, &player.onGround, player.friction, player.outerBoundingBox, player.steppingHeight()[2], steppingHeightLimit, player.crouching);
+			stepAmount = physics.calculateWallCollision(.client, &motion, playerPos, &player.super.vel, &player.onGround, player.friction, player.outerBoundingBox, player.steppingHeight()[2], steppingHeightLimit, player.crouching);
 		}
-		physics.calculateEyeMovement(.client, deltaTime, player.super.pos, player.super.vel, &player.eye, stepAmount);
+		physics.calculateEyeMovement(.client, deltaTime, playerPos.*, player.super.vel, &player.eye, stepAmount);
 		var didCollide: bool = false;
 		const wasOnGround = player.onGround;
-		const prevPos = player.super.pos;
+		const prevPos = playerPos.*;
 		const prevVel = player.super.vel;
 		if (!player.isGhost.load(.monotonic)) {
 			const bouncinessMultiplier: f64 = if (player.isFlying.load(.monotonic)) 0.0 else if (player.crouching) 0.5 else 1.0;
-			didCollide = physics.calculateVerticalCollision(.client, deltaTime, &player.super.pos, &player.super.vel, &player.jumpCoyote, &player.onGround, player.outerBoundingBox, motion, bouncinessMultiplier);
+			didCollide = physics.calculateVerticalCollision(.client, deltaTime, playerPos, &player.super.vel, &player.jumpCoyote, &player.onGround, player.outerBoundingBox, motion, bouncinessMultiplier);
 			if (didCollide) {
 				const velocityChange = @abs(@abs(prevVel[2]) - @abs(player.super.vel[2]));
 				const damage: f32 = @floatCast(@round(@max((velocityChange*velocityChange)/(2*physics.baseGravity) - 7, 0))/2);
@@ -829,8 +829,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 					main.sync.addHealth(-damage, .fall, .client, player.id);
 				}
 			}
-			physics.calculateVerticalCollisionEyeMovement(deltaTime, &Player.eye, didCollide, Player.onGround, wasOnGround, prevPos, playerPos.*, prevVel, Player.super.vel, motion, Player.steppingHeight()[2]);
-			physics.collision.touchBlocks(.client, &Player.super, Player.outerBoundingBox, deltaTime);
+			physics.calculateVerticalCollisionEyeMovement(deltaTime, &player.eye, didCollide, player.onGround, wasOnGround, prevPos, playerPos.*, prevVel, player.super.vel, motion, player.steppingHeight()[2]);
+			physics.collision.touchBlocks(.client, &player.super, player.outerBoundingBox, deltaTime);
 		} else {
 			playerPos.* += motion;
 		}
