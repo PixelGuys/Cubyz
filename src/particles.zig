@@ -240,13 +240,6 @@ pub const particle_system = struct { // MARK: particle_system
 		while (i < particleCount) {
 			const particle = &particles[i];
 			const particleLocal = &particlesLocal[i];
-			particle.currentFrame -= particleLocal.frameRate*deltaTime;
-			if (particle.currentFrame < 0) {
-				particleCount -= 1;
-				particles[i] = particles[particleCount];
-				particlesLocal[i] = particlesLocal[particleCount];
-				continue;
-			}
 
 			var pos: Vec3f = particle.pos;
 			var rot = particle.rot;
@@ -306,6 +299,14 @@ pub const particle_system = struct { // MARK: particle_system
 			particle.pos = pos;
 			particle.rot = rot;
 			particleLocal.velAndRotationVel[3] = rotVel;
+
+			particle.currentFrame -= particleLocal.frameRate*deltaTime;
+			if (particle.currentFrame < 0) {
+				particleCount -= 1;
+				particles[i] = particles[particleCount];
+				particlesLocal[i] = particlesLocal[particleCount];
+				continue;
+			}
 
 			const positionf64 = @as(Vec3d, @floatCast(pos)) + playerPos;
 			const intPos: vec.Vec3i = @floor(positionf64);
