@@ -4,14 +4,14 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.replacable = true,
+	.replaceable = true,
 	.emittedLight = 0xc0616a,
 	.viewThrough = true,
 	.absorbedLight = 0x010101,
 	.collide = false,
 	.rotation = "cubyz:torch",
 	.onUpdate = .{
-		.type = .checkSupportBlocks,
+		.type = .check_support_blocks,
 	},
 	.model = .{
 		.base = "cubyz:torch",

@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const main = @import("main");
-const Compression = main.utils.Compression;
-const ZonElement = @import("zon.zig").ZonElement;
+const utils = main.utils;
+const ZonElement = main.ZonElement;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
@@ -14,15 +14,15 @@ const ServerChunk = main.chunk.ServerChunk;
 const Degrees = main.rotation.Degrees;
 const Tag = main.Tag;
 
-const GameIdToBlueprintIdMapType = std.AutoHashMap(Block, BlockStorageType);
-const BlockIdSizeType = u32;
-const BlockStorageType = u32;
-
 const BinaryWriter = main.utils.BinaryWriter;
 const BinaryReader = main.utils.BinaryReader;
 
 const AliasTable = main.utils.AliasTable;
-const ListUnmanaged = main.ListUnmanaged;
+const List = main.List;
+
+const GameIdToBlueprintIdMapType = std.AutoHashMap(Block, BlockStorageType);
+const BlockIdSizeType = u32;
+const BlockStorageType = u32;
 
 pub const blueprintVersion = 1;
 var voidType: ?u16 = null;
@@ -31,7 +31,7 @@ pub const BlueprintCompression = enum(u16) {
 	deflate,
 };
 
-pub const Blueprint = struct {
+pub const Blueprint = struct { // MARK: Blueprint
 	blocks: Array3D(Block),
 
 	pub fn init(allocator: NeverFailingAllocator) Blueprint {
@@ -39,6 +39,11 @@ pub const Blueprint = struct {
 	}
 	pub fn deinit(self: Blueprint, allocator: NeverFailingAllocator) void {
 		self.blocks.deinit(allocator);
+	}
+	pub fn extent(self: Blueprint) Vec3i {
+		return .{
+			@intCast(self.blocks.width), @intCast(self.blocks.depth), @intCast(self.blocks.height),
+		};
 	}
 	pub fn clone(self: Blueprint, allocator: NeverFailingAllocator) Blueprint {
 		return .{.blocks = self.blocks.clone(allocator)};
@@ -74,18 +79,32 @@ pub const Blueprint = struct {
 		failure: struct { pos: Vec3i, message: []const u8 },
 	};
 
-	pub fn capture(allocator: NeverFailingAllocator, pos1: Vec3i, pos2: Vec3i) CaptureResult {
-		const startX = @min(pos1[0], pos2[0]);
-		const startY = @min(pos1[1], pos2[1]);
-		const startZ = @min(pos1[2], pos2[2]);
+	pub const Selection = struct {
+		/// Minimal position of a block, inclusive.
+		minPos: Vec3i,
+		/// Maximal position of a block, exclusive.
+		maxPos: Vec3i,
 
-		const endX = @max(pos1[0], pos2[0]);
-		const endY = @max(pos1[1], pos2[1]);
-		const endZ = @max(pos1[2], pos2[2]);
+		pub fn initFromInclusive(pos1Inclusive: Vec3i, pos2Inclusive: Vec3i) Selection {
+			return .{.minPos = @min(pos1Inclusive, pos2Inclusive), .maxPos = @max(pos1Inclusive, pos2Inclusive) +% @as(Vec3i, @splat(1))};
+		}
 
-		const sizeX: u32 = @intCast(endX - startX + 1);
-		const sizeY: u32 = @intCast(endY - startY + 1);
-		const sizeZ: u32 = @intCast(endZ - startZ + 1);
+		pub fn initFromExtent(pos1Inclusive: Vec3i, selectionExtent: Vec3i) Selection {
+			return .{.minPos = pos1Inclusive, .maxPos = pos1Inclusive + selectionExtent};
+		}
+
+		pub fn size(self: Selection) @Vector(3, u32) {
+			return @intCast(self.maxPos -% self.minPos);
+		}
+
+		pub fn format(self: Selection, writer: *std.Io.Writer) std.Io.Writer.Error!void {
+			try writer.print("{} {}", .{self.minPos, self.maxPos});
+		}
+	};
+
+	pub fn capture(allocator: NeverFailingAllocator, selection: Selection) CaptureResult {
+		const startX, const startY, const startZ = selection.minPos;
+		const sizeX, const sizeY, const sizeZ = selection.size();
 
 		const self = Blueprint{.blocks = .init(allocator, sizeX, sizeY, sizeZ)};
 
@@ -164,8 +183,9 @@ pub const Blueprint = struct {
 					const worldZ = startZ +% @as(i32, @intCast(z));
 
 					const block = self.blocks.get(x, y, z);
-					if (block.typ != voidType or flags.preserveVoid)
+					if (block.typ != voidType or flags.preserveVoid) {
 						_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block);
+					}
 				}
 			}
 		}
@@ -285,7 +305,7 @@ pub const Blueprint = struct {
 
 		std.log.info("Blueprint block palette:", .{});
 
-		var idAndDataList: main.List(u8) = .init(main.stackAllocator);
+		var idAndDataList: main.ListManaged(u8) = .init(main.stackAllocator);
 		defer idAndDataList.deinit();
 
 		for (0..blockPalette.len) |index| {
@@ -308,7 +328,7 @@ pub const Blueprint = struct {
 
 		switch (compression) {
 			.deflate => {
-				const sizeAfterDecompression = try Compression.inflateTo(decompressedData, data);
+				const sizeAfterDecompression = try utils.compression.inflateTo(decompressedData, data);
 				std.debug.assert(sizeAfterDecompression == decompressedDataSizeBytes);
 			},
 		}
@@ -318,7 +338,7 @@ pub const Blueprint = struct {
 		const compressionMode: BlueprintCompression = .deflate;
 		switch (compressionMode) {
 			.deflate => {
-				return .{.mode = .deflate, .data = Compression.deflate(allocator, decompressedData, .default)};
+				return .{.mode = .deflate, .data = utils.compression.deflate(allocator, decompressedData, .default)};
 			},
 		}
 	}
@@ -357,14 +377,14 @@ pub const Pattern = struct {
 		var specifiers = std.mem.splitScalar(u8, source, expressionSeparator);
 		var totalWeight: f32 = 0;
 
-		var weightedEntries: ListUnmanaged(struct { block: Block, weight: f32 }) = .{};
+		var weightedEntries: List(struct { block: Block, weight: f32 }) = .empty;
 		defer weightedEntries.deinit(main.stackAllocator);
 
 		while (specifiers.next()) |specifier| {
 			var blockId = specifier;
 			var weight: f32 = 1.0;
 
-			if (std.mem.containsAtLeastScalar(u8, specifier, 1, weightSeparator)) {
+			if (std.mem.containsAtLeastScalar(u8, specifier, weightSeparator, 1)) {
 				var iterator = std.mem.splitScalar(u8, specifier, weightSeparator);
 				const weightString = iterator.first();
 				blockId = iterator.rest();
@@ -394,15 +414,14 @@ pub const Pattern = struct {
 	}
 };
 
-pub const Mask = struct {
-	const AndList = ListUnmanaged(Entry);
-	const OrList = ListUnmanaged(AndList);
+pub const Mask = struct { // MARK: Mask
+	const AndList = List(Entry);
+	const OrList = List(AndList);
 
 	entries: OrList,
 
 	const or_ = '|';
 	const and_ = '&';
-	const inverse = '!';
 	const tag = '$';
 	const property = '@';
 
@@ -417,27 +436,22 @@ pub const Mask = struct {
 			blockProperty: Property,
 
 			const Property = blk: {
-				var tempFields: [@typeInfo(Block).@"struct".decls.len]std.builtin.Type.EnumField = undefined;
+				var fieldNames: [@typeInfo(Block).@"struct".decl_names.len][]const u8 = undefined;
+				var fieldValues: [@typeInfo(Block).@"struct".decl_names.len]u8 = undefined;
 				var count = 0;
 
 				for (std.meta.declarations(Block)) |decl| {
-					const declInfo = @typeInfo(@TypeOf(@field(Block, decl.name)));
+					const declInfo = @typeInfo(@TypeOf(@field(Block, decl)));
 					if (declInfo != .@"fn") continue;
 					if (declInfo.@"fn".return_type != bool) continue;
-					if (declInfo.@"fn".params.len != 1) continue;
+					if (declInfo.@"fn".param_types.len != 1) continue;
 
-					tempFields[count] = .{.name = decl.name, .value = count};
+					fieldNames[count] = decl;
+					fieldValues[count] = count;
 					count += 1;
 				}
 
-				const outFields: [count]std.builtin.Type.EnumField = tempFields[0..count].*;
-
-				break :blk @Type(.{.@"enum" = .{
-					.tag_type = u8,
-					.fields = &outFields,
-					.decls = &.{},
-					.is_exhaustive = true,
-				}});
+				break :blk @Enum(u8, .exhaustive, fieldNames[0..count], fieldValues[0..count]);
 			};
 
 			fn initFromString(specifier: []const u8) !Inner {
@@ -476,14 +490,14 @@ pub const Mask = struct {
 	};
 
 	pub fn initFromString(allocator: NeverFailingAllocator, source: []const u8) !@This() {
-		var result: @This() = .{.entries = .{}};
+		var result: @This() = .{.entries = .empty};
 		errdefer result.deinit(allocator);
 
 		var oredExpressions = std.mem.splitScalar(u8, source, or_);
 		while (oredExpressions.next()) |subExpression| {
 			if (subExpression.len == 0) return error.MissingExpression;
 
-			var andStorage: AndList = .{};
+			var andStorage: AndList = .empty;
 			errdefer andStorage.deinit(allocator);
 
 			var andedExpressions = std.mem.splitScalar(u8, subExpression, and_);
@@ -509,6 +523,20 @@ pub const Mask = struct {
 		self.entries.deinit(allocator);
 	}
 
+	pub fn clone(self: Mask, allocator: NeverFailingAllocator) Mask {
+		var orListCopy: OrList = .initCapacity(allocator, self.entries.items.len);
+
+		for (self.entries.items) |andList| {
+			var andListCopy: AndList = .initCapacity(allocator, andList.items.len);
+			defer orListCopy.appendAssumeCapacity(andListCopy);
+
+			for (andList.items) |entry| {
+				andListCopy.appendAssumeCapacity(entry);
+			}
+		}
+		return .{.entries = orListCopy};
+	}
+
 	pub fn match(self: @This(), block: Block) bool {
 		for (self.entries.items) |andedExpressions| {
 			const status = blk: {
@@ -525,14 +553,14 @@ pub const Mask = struct {
 };
 
 fn parseBlockLike(block: []const u8) error{ DataParsingFailed, IdParsingFailed }!Mask.Entry.Inner {
-	if (@import("builtin").is_test) return try Test.parseBlockLikeTest(block);
+	if (@import("builtin").is_test) return try @"test".parseBlockLikeTest(block);
 	const typ = main.blocks.getBlockById(block) catch return error.IdParsingFailed;
 	const dataNullable = main.blocks.getBlockData(block) catch return error.DataParsingFailed;
 	if (dataNullable) |data| return .{.block = .{.typ = typ, .data = data}};
 	return .{.blockType = typ};
 }
 
-const Test = struct {
+const @"test" = struct {
 	var parseBlockLikeTest: *const @TypeOf(parseBlockLike) = &defaultParseBlockLike;
 
 	fn defaultParseBlockLike(_: []const u8) !Mask.Entry.Inner {
@@ -558,8 +586,8 @@ const Test = struct {
 };
 
 test "Mask match block type with any data" {
-	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
-	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+	@"test".parseBlockLikeTest = &@"test".@"parseBlockLike 1 null";
+	defer @"test".parseBlockLikeTest = &@"test".defaultParseBlockLike;
 
 	const mask = try Mask.initFromString(main.heap.testingAllocator, "addon:dummy");
 	defer mask.deinit(main.heap.testingAllocator);
@@ -570,43 +598,43 @@ test "Mask match block type with any data" {
 }
 
 test "Mask empty negative case" {
-	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
-	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+	@"test".parseBlockLikeTest = &@"test".@"parseBlockLike 1 null";
+	defer @"test".parseBlockLikeTest = &@"test".defaultParseBlockLike;
 
 	try std.testing.expectError(error.MissingExpression, Mask.initFromString(main.heap.testingAllocator, ""));
 }
 
 test "Mask half-or negative case" {
-	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
-	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+	@"test".parseBlockLikeTest = &@"test".@"parseBlockLike 1 null";
+	defer @"test".parseBlockLikeTest = &@"test".defaultParseBlockLike;
 
 	try std.testing.expectError(error.MissingExpression, Mask.initFromString(main.heap.testingAllocator, "addon:dummy|"));
 }
 
 test "Mask half-or negative case 2" {
-	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
-	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+	@"test".parseBlockLikeTest = &@"test".@"parseBlockLike 1 null";
+	defer @"test".parseBlockLikeTest = &@"test".defaultParseBlockLike;
 
 	try std.testing.expectError(error.MissingExpression, Mask.initFromString(main.heap.testingAllocator, "|addon:dummy"));
 }
 
 test "Mask half-and negative case" {
-	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
-	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+	@"test".parseBlockLikeTest = &@"test".@"parseBlockLike 1 null";
+	defer @"test".parseBlockLikeTest = &@"test".defaultParseBlockLike;
 
 	try std.testing.expectError(error.MissingExpression, Mask.initFromString(main.heap.testingAllocator, "addon:dummy&"));
 }
 
 test "Mask half-and negative case 2" {
-	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
-	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+	@"test".parseBlockLikeTest = &@"test".@"parseBlockLike 1 null";
+	defer @"test".parseBlockLikeTest = &@"test".defaultParseBlockLike;
 
 	try std.testing.expectError(error.MissingExpression, Mask.initFromString(main.heap.testingAllocator, "&addon:dummy"));
 }
 
 test "Mask inverse match block type with any data" {
-	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
-	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+	@"test".parseBlockLikeTest = &@"test".@"parseBlockLike 1 null";
+	defer @"test".parseBlockLikeTest = &@"test".defaultParseBlockLike;
 
 	const mask = try Mask.initFromString(main.heap.testingAllocator, "!addon:dummy");
 	defer mask.deinit(main.heap.testingAllocator);
@@ -617,8 +645,8 @@ test "Mask inverse match block type with any data" {
 }
 
 test "Mask match block type with exact data" {
-	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 1";
-	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+	@"test".parseBlockLikeTest = &@"test".@"parseBlockLike 1 1";
+	defer @"test".parseBlockLikeTest = &@"test".defaultParseBlockLike;
 
 	const mask = try Mask.initFromString(main.heap.testingAllocator, "addon:dummy");
 	defer mask.deinit(main.heap.testingAllocator);
@@ -629,8 +657,8 @@ test "Mask match block type with exact data" {
 }
 
 test "Mask match type 0 or type 1 with exact data" {
-	Test.parseBlockLikeTest = &Test.@"parseBlockLike foo or bar";
-	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+	@"test".parseBlockLikeTest = &@"test".@"parseBlockLike foo or bar";
+	defer @"test".parseBlockLikeTest = &@"test".defaultParseBlockLike;
 
 	const mask = try Mask.initFromString(main.heap.testingAllocator, "addon:foo|addon:bar");
 	defer mask.deinit(main.heap.testingAllocator);

@@ -18,6 +18,10 @@ pub fn init() void {
 	BlockTouchCallback.globalInit();
 }
 
+pub const Creator = union(enum) {
+	block: main.blocks.Block,
+};
+
 fn Callback(_Params: type, list: type) type {
 	return struct {
 		data: *anyopaque,
@@ -26,24 +30,24 @@ fn Callback(_Params: type, list: type) type {
 		pub const Params = _Params;
 
 		const VTable = struct {
-			init: *const fn (zon: main.ZonElement) ?*anyopaque,
+			init: *const fn (zon: main.ZonElement, creator: Creator) ?*anyopaque,
 			run: *const fn (self: *anyopaque, params: Params) Result,
 		};
 
 		var eventCreationMap: std.StringHashMapUnmanaged(VTable) = .{};
 
 		fn globalInit() void {
-			inline for (@typeInfo(list).@"struct".decls) |decl| {
-				const CallbackStruct = @field(list, decl.name);
-				eventCreationMap.put(main.globalArena.allocator, decl.name, .{
+			inline for (@typeInfo(list).@"struct".decl_names) |decl| {
+				const CallbackStruct = @field(list, decl);
+				eventCreationMap.put(main.globalArena.allocator, decl, .{
 					.init = main.meta.castFunctionReturnToOptionalAnyopaque(CallbackStruct.init),
 					.run = main.meta.castFunctionSelfToAnyopaque(CallbackStruct.run),
 				}) catch unreachable;
 			}
 		}
 
-		pub fn init(zon: main.ZonElement) ?@This() {
-			const typ = zon.get(?[]const u8, "type", null) orelse {
+		pub fn init(zon: main.ZonElement, creator: Creator) ?@This() {
+			const typ = zon.get([]const u8, "type") orelse {
 				std.log.err("Missing field \"type\"", .{});
 				return null;
 			};
@@ -52,7 +56,7 @@ fn Callback(_Params: type, list: type) type {
 				return null;
 			};
 			return .{
-				.data = vtable.init(zon) orelse return null,
+				.data = vtable.init(zon, creator) orelse return null,
 				.inner = vtable.run,
 			};
 		}

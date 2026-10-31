@@ -19,10 +19,8 @@ pub fn deinit() void {
 	texture.deinit();
 }
 
-pub fn render() void {
+pub fn render(currentFrame: *graphics.vulkan.Frame) void {
 	if (main.Window.lastUsedMouse or main.Window.grabbed) return;
-	texture.bindTo(0);
-	graphics.draw.setColor(0xffffffff);
 	const mousePos = main.Window.getMousePosition();
-	graphics.draw.boundImage(@as(Vec2f, @splat(-size/2.0)) + (mousePos/@as(Vec2f, @splat(gui.scale))), .{size, size});
+	graphics.draw.image(currentFrame, texture, @as(Vec2f, @splat(-size/2.0)) + (mousePos/@as(Vec2f, @splat(gui.scale))), .{size, size});
 }

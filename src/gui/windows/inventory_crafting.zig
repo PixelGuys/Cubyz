@@ -32,9 +32,9 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 
-var availableItems: main.List(BaseItemIndex) = undefined;
-var itemAmount: main.List(u32) = undefined;
-var inventories: main.List(ClientInventory) = undefined;
+var availableItems: main.ListManaged(BaseItemIndex) = undefined;
+var itemAmount: main.ListManaged(u32) = undefined;
+var inventories: main.ListManaged(ClientInventory) = undefined;
 
 pub var arrowTexture: Texture = undefined;
 
@@ -67,8 +67,8 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 		amount.* = 0;
 	}
 	// Figure out what items are available in the inventory:
-	for (0..main.game.Player.inventory.size()) |i| {
-		addItemStackToAvailable(main.game.Player.inventory.getStack(i));
+	for (0..main.game.player.inventory.size()) |i| {
+		addItemStackToAvailable(main.game.player.inventory.getStack(i));
 	}
 	if (std.mem.eql(u32, oldAmounts, itemAmount.items)) return false;
 	// Remove no longer present items:
@@ -84,7 +84,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 	}
 	inventories.clearRetainingCapacity();
 	// Find all recipes the player can make:
-	outer: for (items.recipes()) |*recipe| {
+	outer: for (items.getRecipes()) |*recipe| {
 		middle: for (recipe.sourceItems, recipe.sourceAmounts) |sourceItem, sourceAmount| {
 			for (availableItems.items, itemAmount.items) |availableItem, availableAmount| {
 				if (availableItem == sourceItem and availableAmount >= sourceAmount) {
@@ -120,7 +120,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 			columnList.finish(.center);
 			rowList.add(columnList);
 		}
-		rowList.add(Icon.init(.{8, 0}, .{32, 32}, arrowTexture, false));
+		rowList.add(Icon.init(.{8, 0}, .{32, 32}, arrowTexture));
 		const itemSlot = ItemSlot.init(.{8, 0}, inv, @intCast(recipe.sourceItems.len), .craftingResult, .takeOnly);
 		rowList.add(itemSlot);
 		rowList.finish(.{0, 0}, .center);
@@ -138,7 +138,7 @@ fn refresh() void {
 		return;
 	}
 	if (window.rootComponent) |*comp| {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = comp.verticalList, .freeFunction = main.meta.castFunctionSelfToAnyopaque(VerticalList.deinit)});
+		main.heap.garbage_collection.deferredFree(.{.ptr = comp.verticalList, .freeFunction = main.meta.castFunctionSelfToAnyopaque(VerticalList.deinit)});
 	}
 	if (list.children.items.len == 0) {
 		list.add(Label.init(.{0, 0}, 120, "No craftable\nrecipes found", .center));

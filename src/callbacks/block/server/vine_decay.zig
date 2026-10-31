@@ -6,7 +6,7 @@ const blocks = main.blocks;
 const ZonElement = main.ZonElement;
 const server = main.server;
 
-pub fn init(_: ZonElement) ?*@This() {
+pub fn init(_: ZonElement, _: main.callbacks.Creator) ?*@This() {
 	return main.worldArena.create(@This());
 }
 pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.callbacks.Result {
@@ -28,7 +28,7 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 	const blockAboveModel = blocks.meshes.model(blockAbove).model();
 
 	if (blockAbove.typ == params.block.typ) return .ignored;
-	if (blockAbove.replacable()) return decay(wx, wy, wz, thisBlock);
+	if (blockAbove.replaceable()) return decay(wx, wy, wz, thisBlock);
 	if (blockAboveModel.neighborFacingQuads[main.chunk.Neighbor.dirDown.toInt()].len == 0) return decay(wx, wy, wz, thisBlock);
 
 	return .ignored;

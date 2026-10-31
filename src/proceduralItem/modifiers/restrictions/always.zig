@@ -13,6 +13,6 @@ pub fn loadFromZon(_: NeverFailingAllocator, _: ZonElement) *const anyopaque {
 	return undefined;
 }
 
-pub fn printTooltip(_: *const anyopaque, outString: *main.List(u8)) void {
+pub fn printTooltip(_: *const anyopaque, outString: *main.ListManaged(u8)) void {
 	outString.appendSlice("always");
 }

@@ -3,16 +3,16 @@ const builtin = @import("builtin");
 
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const List = main.List;
+const ListManaged = main.ListManaged;
 
-pub const ZonElement = union(enum) { // MARK: Zon
+pub const ZonElement = union(enum) { // MARK: ZonElement
 	int: i128,
 	float: f64,
 	string: []const u8,
 	stringOwned: []const u8,
 	bool: bool,
 	null: void,
-	array: *List(ZonElement),
+	array: *ListManaged(ZonElement),
 	object: *std.StringHashMap(ZonElement),
 
 	pub fn initObject(allocator: NeverFailingAllocator) ZonElement {
@@ -22,17 +22,17 @@ pub const ZonElement = union(enum) { // MARK: Zon
 	}
 
 	pub fn initArray(allocator: NeverFailingAllocator) ZonElement {
-		const list = allocator.create(List(ZonElement));
+		const list = allocator.create(ListManaged(ZonElement));
 		list.* = .init(allocator);
 		return .{.array = list};
 	}
 
-	pub fn getAtIndex(self: *const ZonElement, comptime _type: type, index: usize, replacement: _type) _type {
+	pub fn getAtIndex(self: *const ZonElement, comptime T: type, index: usize, replacement: T) T {
 		if (self.* != .array) {
 			return replacement;
 		} else {
 			if (index < self.array.items.len) {
-				return self.array.items[index].as(_type, replacement);
+				return self.array.items[index].as(T) orelse replacement;
 			} else {
 				return replacement;
 			}
@@ -51,15 +51,12 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		}
 	}
 
-	pub fn get(self: *const ZonElement, comptime _type: type, key: []const u8, replacement: _type) _type {
-		if (self.* != .object) {
-			return replacement;
+	pub fn get(self: *const ZonElement, comptime T: type, key: []const u8) ?T {
+		if (self.* != .object) return null;
+		if (self.object.get(key)) |elem| {
+			return elem.as(T);
 		} else {
-			if (self.object.get(key)) |elem| {
-				return elem.as(_type, replacement);
-			} else {
-				return replacement;
-			}
+			return null;
 		}
 	}
 
@@ -150,59 +147,49 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		}
 	}
 
-	pub fn as(self: *const ZonElement, comptime T: type, replacement: T) T {
-		comptime var typeInfo: std.builtin.Type = @typeInfo(T);
-		comptime var innerType = T;
-		inline while (typeInfo == .optional) {
-			innerType = typeInfo.optional.child;
-			typeInfo = @typeInfo(innerType);
-		}
+	pub fn as(self: *const ZonElement, comptime T: type) ?T {
+		const typeInfo: std.lang.Type = @typeInfo(T);
 		switch (typeInfo) {
 			.int => {
 				switch (self.*) {
-					.int => return std.math.cast(innerType, self.int) orelse replacement,
-					.float => return std.math.lossyCast(innerType, std.math.round(self.float)),
-					else => return replacement,
+					.int => return std.math.cast(T, self.int),
+					.float => return std.math.lossyCast(T, std.math.round(self.float)),
+					else => return null,
 				}
 			},
 			.float => {
 				switch (self.*) {
 					.int => return @floatFromInt(self.int),
 					.float => return @floatCast(self.float),
-					else => return replacement,
+					else => return null,
 				}
 			},
 			.vector => {
 				const len = typeInfo.vector.len;
 				const elems = self.toSlice();
-				if (elems.len != len) return replacement;
-				var result: innerType = undefined;
-				if (innerType == T) result = replacement;
+				if (elems.len != len) return null;
+				var result: T = undefined;
 				inline for (0..len) |i| {
-					if (innerType == T) {
-						result[i] = elems[i].as(typeInfo.vector.child, result[i]);
-					} else {
-						result[i] = elems[i].as(?typeInfo.vector.child, null) orelse return replacement;
-					}
+					result[i] = elems[i].as(typeInfo.vector.child) orelse return null;
 				}
 				return result;
 			},
 			.@"enum" => {
-				return std.meta.stringToEnum(T, self.as(?[]const u8, null) orelse return replacement) orelse return replacement;
+				return std.meta.stringToEnum(T, self.as([]const u8) orelse return null);
 			},
 			else => {
-				switch (innerType) {
+				switch (T) {
 					[]const u8 => {
 						switch (self.*) {
 							.string => return self.string,
 							.stringOwned => return self.stringOwned,
-							else => return replacement,
+							else => return null,
 						}
 					},
 					bool => {
 						switch (self.*) {
 							.bool => return self.bool,
-							else => return replacement,
+							else => return null,
 						}
 					},
 					else => {
@@ -337,7 +324,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		return self.* == .null;
 	}
 
-	fn escape(list: *List(u8), string: []const u8) void {
+	fn escape(list: *ListManaged(u8), string: []const u8) void {
 		for (string) |char| {
 			switch (char) {
 				'\\' => list.appendSlice("\\\\"),
@@ -348,7 +335,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 			}
 		}
 	}
-	fn writeTabs(list: *List(u8), tabs: u32) void {
+	fn writeTabs(list: *ListManaged(u8), tabs: u32) void {
 		for (0..tabs) |_| {
 			list.append('\t');
 		}
@@ -361,7 +348,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		}
 		return true;
 	}
-	fn recurseToString(zon: ZonElement, list: *List(u8), tabs: u32, comptime visualCharacters: bool) void {
+	fn recurseToString(zon: ZonElement, list: *ListManaged(u8), tabs: u32, comptime visualCharacters: bool) void {
 		switch (zon) {
 			.int => |value| {
 				list.print("{d}", .{value});
@@ -442,14 +429,14 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		}
 	}
 	pub fn toString(zon: ZonElement, allocator: NeverFailingAllocator) []const u8 {
-		var string = List(u8).init(allocator);
+		var string: ListManaged(u8) = .init(allocator);
 		recurseToString(zon, &string, 0, true);
 		return string.toOwnedSlice();
 	}
 
 	/// Ignores all the visual characters(spaces, tabs and newlines) and allows adding a custom prefix(which is for example required by networking).
 	pub fn toStringEfficient(zon: ZonElement, allocator: NeverFailingAllocator, prefix: []const u8) []const u8 {
-		var string = List(u8).init(allocator);
+		var string: ListManaged(u8) = .init(allocator);
 		string.appendSlice(prefix);
 		recurseToString(zon, &string, 0, false);
 		return string.toOwnedSlice();
@@ -457,12 +444,12 @@ pub const ZonElement = union(enum) { // MARK: Zon
 
 	pub fn parseFromString(allocator: NeverFailingAllocator, filePath: ?[]const u8, string: []const u8) ZonElement {
 		var index: u32 = 0;
-		Parser.skipWhitespaceAndComments(string, &index);
-		return Parser.parseElement(allocator, filePath, string, &index);
+		parser.skipWhitespaceAndComments(string, &index);
+		return parser.parseElement(allocator, filePath, string, &index);
 	}
 };
 
-const Parser = struct { // MARK: Parser
+const parser = struct { // MARK: parser
 	/// All whitespaces from unicode 14.
 	const whitespaces = [_][]const u8{"\u{0009}", "\u{000A}", "\u{000B}", "\u{000C}", "\u{000D}", "\u{0020}", "\u{0085}", "\u{00A0}", "\u{1680}", "\u{2000}", "\u{2001}", "\u{2002}", "\u{2003}", "\u{2004}", "\u{2005}", "\u{2006}", "\u{2007}", "\u{2008}", "\u{2009}", "\u{200A}", "\u{2028}", "\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}"};
 
@@ -512,6 +499,21 @@ const Parser = struct { // MARK: Parser
 					},
 					'A', 'B', 'C', 'D', 'E', 'F' => {
 						intPart = (chars[index.*] - 'A' + 10) +% intPart*%16;
+					},
+					else => {
+						break;
+					},
+				}
+			}
+			return .{.int = sign*intPart};
+		}
+		if (index.* + 1 < chars.len and chars[index.*] == '0' and chars[index.* + 1] == 'b') {
+			// Parse binary int
+			index.* += 2;
+			while (index.* < chars.len) : (index.* += 1) {
+				switch (chars[index.*]) {
+					'0', '1' => {
+						intPart = (chars[index.*] - '0') +% intPart*%2;
 					},
 					else => {
 						break;
@@ -576,15 +578,14 @@ const Parser = struct { // MARK: Parser
 	}
 
 	fn parseString(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) []const u8 {
-		var builder = List(u8).init(allocator);
+		var builder: ListManaged(u8) = .init(allocator);
 		while (index.* < chars.len) : (index.* += 1) {
 			if (chars[index.*] == '\"') {
 				index.* += 1;
 				break;
 			} else if (chars[index.*] == '\\') {
 				index.* += 1;
-				if (index.* >= chars.len)
-					break;
+				if (index.* >= chars.len) break;
 				switch (chars[index.*]) {
 					't' => {
 						builder.append('\t');
@@ -607,7 +608,7 @@ const Parser = struct { // MARK: Parser
 	}
 
 	fn parseIdentifierOrStringOrEnumLiteral(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) []const u8 {
-		var builder = List(u8).init(allocator);
+		var builder: ListManaged(u8) = .init(allocator);
 		if (index.* == chars.len) return &.{};
 		if (chars[index.*] == '@') {
 			index.* += 1;
@@ -627,7 +628,7 @@ const Parser = struct { // MARK: Parser
 	}
 
 	fn parseArray(allocator: NeverFailingAllocator, filePath: ?[]const u8, chars: []const u8, index: *u32) ZonElement {
-		const list = allocator.create(List(ZonElement));
+		const list = allocator.create(ListManaged(ZonElement));
 		list.* = .init(allocator);
 		while (index.* < chars.len) {
 			skipWhitespaceAndComments(chars, index);
@@ -822,61 +823,63 @@ const Parser = struct { // MARK: Parser
 test "skipWhitespaceAndComments" {
 	var index: u32 = 0;
 	var testString: []const u8 = "  fbdn  ";
-	Parser.skipWhitespaceAndComments(testString, &index);
+	parser.skipWhitespaceAndComments(testString, &index);
 	try std.testing.expectEqual(index, 2);
 	testString = "\nĦŊ@Λħŋ";
 	index = 0;
-	Parser.skipWhitespaceAndComments(testString, &index);
+	parser.skipWhitespaceAndComments(testString, &index);
 	try std.testing.expectEqual(index, 1);
 	testString = "\tβρδ→øβν";
 	index = 0;
-	Parser.skipWhitespaceAndComments(testString, &index);
+	parser.skipWhitespaceAndComments(testString, &index);
 	try std.testing.expectEqual(index, 1);
 	testString = "\t  \n \t  a lot of whitespaces";
 	index = 0;
-	Parser.skipWhitespaceAndComments(testString, &index);
+	parser.skipWhitespaceAndComments(testString, &index);
 	try std.testing.expectEqual(index, 8);
 	testString = " unicode whitespace";
 	index = 0;
-	Parser.skipWhitespaceAndComments(testString, &index);
+	parser.skipWhitespaceAndComments(testString, &index);
 	try std.testing.expectEqual(index, 3);
 	testString = "starting     in the middle";
 	index = 8;
-	Parser.skipWhitespaceAndComments(testString, &index);
+	parser.skipWhitespaceAndComments(testString, &index);
 	try std.testing.expectEqual(index, 13);
 	testString = "// this should all get skipped\nBut Not this";
 	index = 0;
-	Parser.skipWhitespaceAndComments(testString, &index);
+	parser.skipWhitespaceAndComments(testString, &index);
 	try std.testing.expectEqual(index, 31);
 }
 
 test "number parsing" {
 	// Integers:
 	var index: u32 = 0;
-	try std.testing.expectEqual(Parser.parseNumber("0", &index), ZonElement{.int = 0});
+	try std.testing.expectEqual(parser.parseNumber("0", &index), ZonElement{.int = 0});
 	index = 0;
-	try std.testing.expectEqual(Parser.parseNumber("+0", &index), ZonElement{.int = 0});
+	try std.testing.expectEqual(parser.parseNumber("+0", &index), ZonElement{.int = 0});
 	index = 0;
-	try std.testing.expectEqual(Parser.parseNumber("abcd", &index), ZonElement{.int = 0});
+	try std.testing.expectEqual(parser.parseNumber("abcd", &index), ZonElement{.int = 0});
 	index = 0;
-	try std.testing.expectEqual(Parser.parseNumber("-0+1", &index), ZonElement{.int = 0});
+	try std.testing.expectEqual(parser.parseNumber("-0+1", &index), ZonElement{.int = 0});
 	index = 5;
-	try std.testing.expectEqual(Parser.parseNumber(" abcd185473896", &index), ZonElement{.int = 185473896});
+	try std.testing.expectEqual(parser.parseNumber(" abcd185473896", &index), ZonElement{.int = 185473896});
 	index = 0;
-	try std.testing.expectEqual(Parser.parseNumber("0xff34786056.0", &index), ZonElement{.int = 0xff34786056});
+	try std.testing.expectEqual(parser.parseNumber("0xff34786056.0", &index), ZonElement{.int = 0xff34786056});
+	index = 0;
+	try std.testing.expectEqual(parser.parseNumber("0b01010010", &index), ZonElement{.int = 0b01010010});
 	// Floats:
 	index = 0;
-	try std.testing.expectEqual(Parser.parseNumber("0.0", &index), ZonElement{.float = 0.0});
+	try std.testing.expectEqual(parser.parseNumber("0.0", &index), ZonElement{.float = 0.0});
 	index = 0;
-	try std.testing.expectEqual(Parser.parseNumber("0e10e10", &index), ZonElement{.float = 0.0});
+	try std.testing.expectEqual(parser.parseNumber("0e10e10", &index), ZonElement{.float = 0.0});
 	index = 0;
-	try std.testing.expectEqual(Parser.parseNumber("-0.0.0", &index), ZonElement{.float = 0.0});
+	try std.testing.expectEqual(parser.parseNumber("-0.0.0", &index), ZonElement{.float = 0.0});
 	index = 0;
-	try std.testing.expectEqual(Parser.parseNumber("0xabcd.0e10+-+-", &index), ZonElement{.int = 0xabcd});
+	try std.testing.expectEqual(parser.parseNumber("0xabcd.0e10+-+-", &index), ZonElement{.int = 0xabcd});
 	index = 0;
-	try std.testing.expectApproxEqAbs(Parser.parseNumber("1.234589e10", &index).float, 1.234589e10, 1.0);
+	try std.testing.expectApproxEqAbs(parser.parseNumber("1.234589e10", &index).float, 1.234589e10, 1.0);
 	index = 5;
-	try std.testing.expectApproxEqAbs(Parser.parseNumber("_____0.0000000000234589e10abcdfe", &index).float, 0.234589, 1e-10);
+	try std.testing.expectApproxEqAbs(parser.parseNumber("_____0.0000000000234589e10abcdfe", &index).float, 0.234589, 1e-10);
 }
 
 test "element parsing" {
@@ -884,49 +887,49 @@ test "element parsing" {
 	const allocator = wrap.allocator();
 	// Integers:
 	var index: u32 = 0;
-	try std.testing.expectEqual(Parser.parseElement(allocator, null, "0", &index), ZonElement{.int = 0});
+	try std.testing.expectEqual(parser.parseElement(allocator, null, "0", &index), ZonElement{.int = 0});
 	index = 0;
-	try std.testing.expectEqual(Parser.parseElement(allocator, null, "0xff34786056.0, true", &index), ZonElement{.int = 0xff34786056});
+	try std.testing.expectEqual(parser.parseElement(allocator, null, "0xff34786056.0, true", &index), ZonElement{.int = 0xff34786056});
 	// Floats:
 	index = 10;
-	try std.testing.expectEqual(Parser.parseElement(allocator, null, ".{.abcd = 0.0,}", &index), ZonElement{.float = 0.0});
+	try std.testing.expectEqual(parser.parseElement(allocator, null, ".{.abcd = 0.0,}", &index), ZonElement{.float = 0.0});
 	index = 0;
-	try std.testing.expectApproxEqAbs((Parser.parseElement(allocator, null, "1543.234589e10", &index)).float, 1543.234589e10, 1.0);
+	try std.testing.expectApproxEqAbs((parser.parseElement(allocator, null, "1543.234589e10", &index)).float, 1543.234589e10, 1.0);
 	index = 5;
-	try std.testing.expectApproxEqAbs((Parser.parseElement(allocator, null, "_____0.0000000000675849301354e10abcdfe", &index)).float, 0.675849301354, 1e-10);
+	try std.testing.expectApproxEqAbs((parser.parseElement(allocator, null, "_____0.0000000000675849301354e10abcdfe", &index)).float, 0.675849301354, 1e-10);
 	// Null:
 	index = 0;
-	try std.testing.expectEqual(Parser.parseElement(allocator, null, "null", &index), ZonElement{.null = {}});
+	try std.testing.expectEqual(parser.parseElement(allocator, null, "null", &index), ZonElement{.null = {}});
 	// true:
 	index = 0;
-	try std.testing.expectEqual(Parser.parseElement(allocator, null, "true", &index), ZonElement{.bool = true});
+	try std.testing.expectEqual(parser.parseElement(allocator, null, "true", &index), ZonElement{.bool = true});
 	// false:
 	index = 0;
-	try std.testing.expectEqual(Parser.parseElement(allocator, null, "false", &index), ZonElement{.bool = false});
+	try std.testing.expectEqual(parser.parseElement(allocator, null, "false", &index), ZonElement{.bool = false});
 
 	// String:
 	index = 0;
-	var result: ZonElement = Parser.parseElement(allocator, null, "\"abcd\\\"\\\\ħσ→ ↑Φ∫€ ⌬ ε→Π\"", &index);
-	try std.testing.expectEqualStrings("abcd\"\\ħσ→ ↑Φ∫€ ⌬ ε→Π", result.as([]const u8, ""));
+	var result: ZonElement = parser.parseElement(allocator, null, "\"abcd\\\"\\\\ħσ→ ↑Φ∫€ ⌬ ε→Π\"", &index);
+	try std.testing.expectEqualStrings("abcd\"\\ħσ→ ↑Φ∫€ ⌬ ε→Π", result.as([]const u8).?);
 	result.deinit(allocator);
 	index = 0;
-	result = Parser.parseElement(allocator, null, "\"12345", &index);
-	try std.testing.expectEqualStrings("12345", result.as([]const u8, ""));
+	result = parser.parseElement(allocator, null, "\"12345", &index);
+	try std.testing.expectEqualStrings("12345", result.as([]const u8).?);
 	result.deinit(allocator);
 
 	// Object:
 	index = 0;
-	result = Parser.parseElement(allocator, null, ".{.name = 1}", &index);
+	result = parser.parseElement(allocator, null, ".{.name = 1}", &index);
 	try std.testing.expectEqual(.object, std.meta.activeTag(result));
 	try std.testing.expectEqual(result.object.get("name"), ZonElement{.int = 1});
 	result.deinit(allocator);
 	index = 0;
-	result = Parser.parseElement(allocator, null, ".{@\"object\"=.{},}", &index);
+	result = parser.parseElement(allocator, null, ".{@\"object\"=.{},}", &index);
 	try std.testing.expectEqual(.object, std.meta.activeTag(result));
 	try std.testing.expectEqual(.array, std.meta.activeTag(result.object.get("object") orelse .null));
 	result.deinit(allocator);
 	index = 0;
-	result = Parser.parseElement(allocator, null, ".{   .object1   =   \"\"  \n, .object2  =\t.{\n},.object3   =1.0e4\t,@\"\nobject1\"=.{},@\"\tobject1θ\"=.{},}", &index);
+	result = parser.parseElement(allocator, null, ".{   .object1   =   \"\"  \n, .object2  =\t.{\n},.object3   =1.0e4\t,@\"\nobject1\"=.{},@\"\tobject1θ\"=.{},}", &index);
 	try std.testing.expectEqual(.object, std.meta.activeTag(result));
 	try std.testing.expectEqual(.float, std.meta.activeTag(result.object.get("object3") orelse .null));
 	try std.testing.expectEqual(.stringOwned, std.meta.activeTag(result.object.get("object1") orelse .null));
@@ -936,13 +939,13 @@ test "element parsing" {
 
 	// Array:
 	index = 0;
-	result = Parser.parseElement(allocator, null, ".{.name,1}", &index);
+	result = parser.parseElement(allocator, null, ".{.name,1}", &index);
 	try std.testing.expectEqual(.array, std.meta.activeTag(result));
 	try std.testing.expectEqual(.stringOwned, std.meta.activeTag(result.array.items[0]));
 	try std.testing.expectEqual(ZonElement{.int = 1}, result.array.items[1]);
 	result.deinit(allocator);
 	index = 0;
-	result = Parser.parseElement(allocator, null, ".{   \"name\"\t1\n,    17.1}", &index);
+	result = parser.parseElement(allocator, null, ".{   \"name\"\t1\n,    17.1}", &index);
 	try std.testing.expectEqual(.array, std.meta.activeTag(result));
 	try std.testing.expectEqual(.stringOwned, std.meta.activeTag(result.array.items[0]));
 	try std.testing.expectEqual(ZonElement{.int = 1}, result.array.items[1]);
@@ -1001,18 +1004,18 @@ test "merging" {
 	const zon10 = ZonElement.parseFromString(allocator, null, ".{.c = \"foo\", .b = .{.a = \"bar\"}}");
 	defer zon10.deinit(allocator);
 	zon9.join(.preferLeft, zon10);
-	try std.testing.expectEqual(zon9.get(?i32, "a", null), 1);
-	try std.testing.expectEqualSlices(u8, zon9.get(?[]const u8, "c", null).?, "foo");
-	try std.testing.expectEqual(zon9.getChild("b").get(?i32, "a", null), 2);
-	try std.testing.expectEqual(zon9.getChild("b").get(?i32, "b", null), 3);
+	try std.testing.expectEqual(zon9.get(i32, "a"), 1);
+	try std.testing.expectEqualSlices(u8, zon9.get([]const u8, "c").?, "foo");
+	try std.testing.expectEqual(zon9.getChild("b").get(i32, "a"), 2);
+	try std.testing.expectEqual(zon9.getChild("b").get(i32, "b"), 3);
 
 	const zon11 = ZonElement.parseFromString(allocator, null, ".{.a = 1, .b = .{.a = 2, .b = 3}}");
 	defer zon11.deinit(allocator);
 	const zon12 = ZonElement.parseFromString(allocator, null, ".{.c = \"foo\", .b = .{.a = \"bar\"}}");
 	defer zon12.deinit(allocator);
 	zon11.join(.preferRight, zon12);
-	try std.testing.expectEqual(zon11.get(?i32, "a", null), 1);
-	try std.testing.expectEqualSlices(u8, zon11.get(?[]const u8, "c", null).?, "foo");
-	try std.testing.expectEqualSlices(u8, zon11.getChild("b").get(?[]const u8, "a", null).?, "bar");
-	try std.testing.expectEqual(zon11.getChild("b").get(?i32, "b", null), 3);
+	try std.testing.expectEqual(zon11.get(i32, "a"), 1);
+	try std.testing.expectEqualSlices(u8, zon11.get([]const u8, "c").?, "foo");
+	try std.testing.expectEqualSlices(u8, zon11.getChild("b").get([]const u8, "a").?, "bar");
+	try std.testing.expectEqual(zon11.getChild("b").get(i32, "b"), 3);
 }

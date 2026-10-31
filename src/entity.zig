@@ -7,10 +7,9 @@ const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 
 pub const components = @import("entityComponent/_list.zig");
-pub const systems = @import("entitySystem/_list.zig");
 
 pub const EntityNetworkData = struct {
-	id: u32,
+	id: main.entity.Entity,
 	pos: Vec3d,
 	vel: Vec3d,
 	rot: Vec3f,
@@ -22,32 +21,36 @@ pub const EntityComponentLoadError = error{
 	UnreadableVersion,
 	UnreadableComponentData,
 	UnknownComponentId,
+	InvalidComponentVersion,
 };
-// Analogous to Protocols.
+pub const Entity = enum(u32) {
+	noValue = std.math.maxInt(u32),
+	_,
+};
 pub const EntityComponentId = u32;
 const EntityComponentVTable = struct {
-	serverLoad: *const fn (entityId: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
-	clientLoad: *const fn (entityId: u32, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
-	serverUnload: *const fn (entityId: u32) void,
-	clientUnload: *const fn (entityId: u32) void,
+	serverLoad: *const fn (entity: Entity, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
+	clientLoad: *const fn (entity: Entity, reader: *main.utils.BinaryReader, version: u32) EntityComponentLoadError!void,
+	serverUnload: *const fn (entity: Entity) void,
+	clientUnload: *const fn (entity: Entity) void,
 };
 var componentList: []?EntityComponentVTable = undefined;
 
 pub fn initComponents() void {
-	var tmpComponentList: main.ListUnmanaged(?EntityComponentVTable) = .{};
-	inline for (@typeInfo(components).@"struct".decls) |decl| {
-		@field(components, decl.name).client.init();
-		const componentId = @field(components, decl.name).entityComponentID;
+	var tmpComponentList: main.List(?EntityComponentVTable) = .empty;
+	inline for (@typeInfo(components).@"struct".decl_names) |decl| {
+		@field(components, decl).client.init();
+		const componentId = @field(components, decl).entityComponentID;
 
 		if (tmpComponentList.items.len <= componentId) {
 			tmpComponentList.appendNTimes(main.worldArena, null, componentId + 1 - tmpComponentList.items.len);
 		}
 		if (tmpComponentList.items[componentId] == null) {
 			tmpComponentList.items[componentId] = .{
-				.serverLoad = @field(components, decl.name).server.loadFromData,
-				.clientLoad = @field(components, decl.name).client.load,
-				.serverUnload = @field(components, decl.name).server.unload,
-				.clientUnload = @field(components, decl.name).client.unload,
+				.serverLoad = @field(components, decl).server.loadFromData,
+				.clientLoad = @field(components, decl).client.load,
+				.serverUnload = @field(components, decl).server.unload,
+				.clientUnload = @field(components, decl).client.unload,
 			};
 		} else {
 			std.log.err("entity components: Duplicate list id {}.", .{componentId});
@@ -58,7 +61,7 @@ pub fn initComponents() void {
 pub fn deinitComponents() void {
 	componentList = undefined;
 }
-pub fn loadComponent(comptime side: main.sync.Side, componentId: EntityComponentId, entityId: u32, componentData: []const u8, componentVersion: u32) EntityComponentLoadError!void {
+pub fn loadComponent(comptime side: main.sync.Side, componentId: EntityComponentId, entity: Entity, componentData: []const u8, componentVersion: u32) EntityComponentLoadError!void {
 	if (componentId >= componentList.len) {
 		std.log.err("unknown Component Id {} ", .{componentId});
 		return error.UnknownComponentId;
@@ -66,10 +69,10 @@ pub fn loadComponent(comptime side: main.sync.Side, componentId: EntityComponent
 	var componentReader = main.utils.BinaryReader.init(componentData);
 	if (componentList[componentId]) |vtable| {
 		switch (side) {
-			.server => vtable.serverLoad(entityId, &componentReader, componentVersion) catch |err| {
+			.server => vtable.serverLoad(entity, &componentReader, componentVersion) catch |err| {
 				return err;
 			},
-			.client => vtable.clientLoad(entityId, &componentReader, componentVersion) catch |err| {
+			.client => vtable.clientLoad(entity, &componentReader, componentVersion) catch |err| {
 				return err;
 			},
 		}
@@ -78,15 +81,15 @@ pub fn loadComponent(comptime side: main.sync.Side, componentId: EntityComponent
 		return error.UnknownComponentId;
 	}
 }
-pub fn unloadComponent(comptime side: main.sync.Side, componentId: EntityComponentId, entityId: u32) EntityComponentLoadError!void {
+pub fn unloadComponent(comptime side: main.sync.Side, componentId: EntityComponentId, entity: Entity) EntityComponentLoadError!void {
 	if (componentId >= componentList.len) {
 		std.log.err("unknown Component Id {} ", .{componentId});
 		return error.UnknownComponentId;
 	}
 	if (componentList[componentId]) |vtable| {
 		switch (side) {
-			.server => vtable.serverUnload(entityId),
-			.client => vtable.clientUnload(entityId),
+			.server => vtable.serverUnload(entity),
+			.client => vtable.clientUnload(entity),
 		}
 	} else {
 		std.log.err("unknown Component Id {} ", .{componentId});
@@ -96,73 +99,53 @@ pub fn unloadComponent(comptime side: main.sync.Side, componentId: EntityCompone
 
 pub const client = struct {
 	pub fn init() void {
-		inline for (@typeInfo(components).@"struct".decls) |decl| {
-			@field(components, decl.name).client.init();
-		}
-		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).client.init();
+		inline for (@typeInfo(components).@"struct".decl_names) |decl| {
+			@field(components, decl).client.init();
 		}
 		main.client.entity_manager.init();
 	}
 	pub fn deinit() void {
-		inline for (@typeInfo(components).@"struct".decls) |decl| {
-			@field(components, decl.name).client.deinit();
-		}
-		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).client.deinit();
-		}
 		main.client.entity_manager.deinit();
+		inline for (@typeInfo(components).@"struct".decl_names) |decl| {
+			@field(components, decl).client.deinit();
+		}
 	}
 	pub fn clear() void {
-		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).client.clear();
-		}
-		inline for (@typeInfo(components).@"struct".decls) |decl| {
-			@field(components, decl.name).client.clear();
-		}
 		main.client.entity_manager.clear();
+		inline for (@typeInfo(components).@"struct".decl_names) |decl| {
+			@field(components, decl).client.clear();
+		}
 	}
-	pub fn removeAllComponents(id: u32) void {
+	pub fn removeAllComponents(entity: Entity) void {
 		const list = main.entity.components;
-		inline for (@typeInfo(list).@"struct".decls) |decl| {
-			@field(list, decl.name).client.unload(id);
+		inline for (@typeInfo(list).@"struct".decl_names) |decl| {
+			@field(list, decl).client.unload(entity);
 		}
 	}
 };
 pub const server = struct {
 	pub fn init() void {
-		inline for (@typeInfo(components).@"struct".decls) |decl| {
-			@field(components, decl.name).server.init();
-		}
-		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).server.init();
+		inline for (@typeInfo(components).@"struct".decl_names) |decl| {
+			@field(components, decl).server.init();
 		}
 	}
 	pub fn deinit() void {
-		inline for (@typeInfo(components).@"struct".decls) |decl| {
-			@field(components, decl.name).server.deinit();
-		}
-		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).server.deinit();
+		inline for (@typeInfo(components).@"struct".decl_names) |decl| {
+			@field(components, decl).server.deinit();
 		}
 	}
-	pub fn update() void {
-		inline for (@typeInfo(systems).@"struct".decls) |decl| {
-			@field(systems, decl.name).server.update();
-		}
-	}
-	pub fn componentsToBase64(allocator: main.heap.NeverFailingAllocator, entityId: u32, audience: main.entity.AudienceInfo) main.utils.Base64 {
+	pub fn componentsToBase64(allocator: main.heap.NeverFailingAllocator, entity: Entity, audience: main.entity.AudienceInfo) main.utils.Base64 {
 		var writer = main.utils.BinaryWriter.init(main.stackAllocator);
 		defer writer.deinit();
 
-		inline for (@typeInfo(main.entity.components).@"struct".decls) |decl| {
-			if (@field(main.entity.components, decl.name).server.get(entityId)) |component| {
+		inline for (@typeInfo(main.entity.components).@"struct".decl_names) |decl| {
+			if (@field(main.entity.components, decl).server.get(entity)) |component| {
 				var writerComponent = main.utils.BinaryWriter.init(main.stackAllocator);
 				defer writerComponent.deinit();
 
 				if (component.save(&writerComponent, audience) == .save) {
-					writer.writeVarInt(u32, @field(main.entity.components, decl.name).entityComponentID);
-					writer.writeVarInt(u32, @field(main.entity.components, decl.name).entityComponentVersion);
+					writer.writeVarInt(u32, @field(main.entity.components, decl).entityComponentID);
+					writer.writeVarInt(u32, @field(main.entity.components, decl).entityComponentVersion);
 					writer.writeSliceWithSize(writerComponent.data.items);
 				}
 			}
@@ -170,15 +153,35 @@ pub const server = struct {
 		return main.utils.Base64.toBase64(allocator, writer.data.items);
 	}
 
-	pub fn removeAllComponents(entityId: u32) void {
+	pub fn removeAllComponents(entity: Entity) void {
 		const list = main.entity.components;
-		inline for (@typeInfo(list).@"struct".decls) |decl| {
-			@field(list, decl.name).server.unload(entityId);
+		inline for (@typeInfo(list).@"struct".decl_names) |decl| {
+			@field(list, decl).server.unload(entity);
+		}
+	}
+
+	pub fn transmitChange(EntityComponent: type, entity: Entity) void {
+		var binaryWriter = main.utils.BinaryWriter.init(main.stackAllocator);
+		defer binaryWriter.deinit();
+
+		const users = main.server.getUserList(main.stackAllocator);
+		defer main.stackAllocator.free(users);
+
+		if (EntityComponent.server.get(entity)) |ptr| {
+			if (ptr.save(&binaryWriter, .playerNearby) == .save) {
+				for (users) |user| {
+					main.network.protocols.entity_component_update.load(user.conn, entity, EntityComponent.entityComponentID, EntityComponent.entityComponentVersion, binaryWriter.data.items);
+				}
+			}
+		} else {
+			for (users) |user| {
+				main.network.protocols.entity_component_update.unload(user.conn, entity, EntityComponent.entityComponentID);
+			}
 		}
 	}
 };
 
-pub fn loadComponentsFromBase64(base64Data: []const u8, entityId: u32, comptime side: main.sync.Side) EntityComponentLoadError!void {
+pub fn loadComponentsFromBase64(base64Data: []const u8, entity: Entity, comptime side: main.sync.Side) EntityComponentLoadError!void {
 	const data = main.utils.fromBase64(main.stackAllocator, base64Data) catch return EntityComponentLoadError.DecodingBase64;
 	defer main.stackAllocator.free(data);
 
@@ -189,7 +192,7 @@ pub fn loadComponentsFromBase64(base64Data: []const u8, entityId: u32, comptime 
 		const componentVersion: u32 = reader.readVarInt(u32) catch return EntityComponentLoadError.UnreadableVersion;
 		const componentData = reader.readSliceWithSize() catch return EntityComponentLoadError.UnreadableComponentData;
 
-		lastError = loadComponent(side, componentId, entityId, componentData, componentVersion);
+		lastError = loadComponent(side, componentId, entity, componentData, componentVersion);
 	}
 	return lastError;
 }

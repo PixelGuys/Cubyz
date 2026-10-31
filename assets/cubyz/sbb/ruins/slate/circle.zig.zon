@@ -1,0 +1,10 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:ruins/slate/circle/base/0"},
+		.{.id = "cubyz:ruins/slate/circle/base/1"},
+	},
+	.children = .{
+		.grey = "cubyz:ruins/slate/circle/rock",
+		.lime = "cubyz:ruins/slate/circle/treasure_spacer",
+	},
+}

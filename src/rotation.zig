@@ -13,13 +13,13 @@ const Vec3f = vec.Vec3f;
 const Mat4f = vec.Mat4f;
 const ZonElement = main.ZonElement;
 
-pub const list = @import("rotation");
+pub const rotations = @import("rotations");
 
 pub const RayIntersectionResult = struct {
-	distance: f64,
+	distance: f32,
 	min: Vec3f,
 	max: Vec3f,
-	face: Neighbor,
+	normal: Vec3f,
 };
 
 pub const Degrees = enum(u2) {
@@ -34,7 +34,7 @@ pub const Degrees = enum(u2) {
 /// These 16 bits are accessed and interpreted by the `RotationMode`.
 /// With the `RotationMode` interface there is almost no limit to what can be done with those 16 bit.
 pub const RotationMode = struct { // MARK: RotationMode
-	pub const DefaultFunctions = struct {
+	pub const default_functions = struct {
 		pub fn model(block: Block) ModelIndex {
 			return blocks.meshes.modelIndexStart(block);
 		}
@@ -44,8 +44,11 @@ pub const RotationMode = struct { // MARK: RotationMode
 		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, _: *Block, _: Block, blockPlacing: bool) bool {
 			return blockPlacing;
 		}
-		pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
-			return main.models.getModelIndex(zon.as([]const u8, "cubyz:cube"));
+		pub fn createBlockModel(block: Block, _: *u16, zon: ZonElement) ModelIndex {
+			return main.models.getModelIndex(zon.as([]const u8) orelse blk: {
+				std.log.err("Invalid model data for block {s} found {s}, expected string", .{block.id(), @tagName(zon)});
+				break :blk "cubyz:cube";
+			});
 		}
 		pub fn updateData(_: *Block, _: Neighbor, _: Block) bool {
 			return false;
@@ -57,37 +60,38 @@ pub const RotationMode = struct { // MARK: RotationMode
 			return rayModelIntersection(blocks.meshes.model(block), relativePlayerPos, playerDir);
 		}
 		pub fn rayModelIntersection(modelIndex: ModelIndex, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
-			// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
-			const invDir = @as(Vec3f, @splat(1))/playerDir;
 			const modelData = modelIndex.model();
-			const min: Vec3f = modelData.min;
-			const max: Vec3f = modelData.max;
-			const t1 = (min - relativePlayerPos)*invDir;
-			const t2 = (max - relativePlayerPos)*invDir;
-			const boxTMin = @reduce(.Max, @min(t1, t2));
-			const boxTMax = @reduce(.Min, @max(t1, t2));
-			if (boxTMin <= boxTMax and boxTMax > 0) {
-				var face: Neighbor = undefined;
-				if (boxTMin == t1[0]) {
-					face = Neighbor.dirNegX;
-				} else if (boxTMin == t1[1]) {
-					face = Neighbor.dirNegY;
-				} else if (boxTMin == t1[2]) {
-					face = Neighbor.dirDown;
-				} else if (boxTMin == t2[0]) {
-					face = Neighbor.dirPosX;
-				} else if (boxTMin == t2[1]) {
-					face = Neighbor.dirPosY;
-				} else if (boxTMin == t2[2]) {
-					face = Neighbor.dirUp;
-				} else {
-					unreachable;
+			var minimum: ?f32 = null;
+			var normal: ?Vec3f = null;
+			var quadList: main.ListManaged(main.models.QuadInfo) = .init(main.stackAllocator);
+			defer quadList.deinit();
+			modelData.getRawFaces(&quadList);
+			for (quadList.items) |quad| {
+				const triangle1: [3]Vec3f = .{quad.cornerVec(0), quad.cornerVec(1), quad.cornerVec(2)};
+				const triangle2: [3]Vec3f = .{quad.cornerVec(1), quad.cornerVec(2), quad.cornerVec(3)};
+				if (rayTriangleIntersection(relativePlayerPos, playerDir, triangle1)) |distance| {
+					if (minimum == null or distance < minimum.?) {
+						minimum = distance;
+						normal = quad.normalVec();
+					}
+				}
+				if (rayTriangleIntersection(relativePlayerPos, playerDir, triangle2)) |distance| {
+					if (minimum == null or distance < minimum.?) {
+						minimum = distance;
+						normal = quad.normalVec();
+					}
+				}
+			}
+			if (minimum != null) {
+				// Invert the normal if the player is behind the face (eg. cross model)
+				if (vec.dot(normal.?, playerDir) > 0.0) {
+					normal = -normal.?;
 				}
 				return .{
-					.distance = boxTMin,
-					.min = min,
-					.max = max,
-					.face = face,
+					.distance = minimum.?,
+					.min = modelData.min,
+					.max = modelData.max,
+					.normal = normal.?,
 				};
 			}
 			return null;
@@ -99,26 +103,22 @@ pub const RotationMode = struct { // MARK: RotationMode
 			shouldDropSourceBlockOnSuccess.* = true;
 			if (oldBlock == newBlock) return .no;
 			if (oldBlock.typ == newBlock.typ) return .yes;
-			if (!oldBlock.replacable()) {
-				var damage: f32 = main.game.Player.defaultBlockDamage;
-				const isProceduralItem = item.item == .proceduralItem;
-				if (isProceduralItem) {
-					damage = item.item.proceduralItem.getBlockDamage(oldBlock);
-				}
-				damage -= oldBlock.blockResistance();
-				if (damage > 0) {
-					if (isProceduralItem and item.item.proceduralItem.isEffectiveOn(oldBlock)) {
-						return .{.yes_costsDurability = 1};
-					} else return .yes;
-				}
-			} else {
-				if (item.item == .baseItem) {
-					if (item.item.baseItem.block() != null and item.item.baseItem.block().? == newBlock.typ) {
-						return .{.yes_costsItems = 1};
-					}
+			var damage: f32 = main.game.player.defaultBlockDamage;
+			const isProceduralItem = item.item == .proceduralItem;
+			if (isProceduralItem) {
+				damage = item.item.proceduralItem.getBlockDamage(oldBlock);
+			}
+			damage -= oldBlock.blockResistance();
+			if (damage > 0) {
+				if (isProceduralItem and item.item.proceduralItem.isEffectiveOn(oldBlock)) {
+					return .{.yes_costsDurability = 1};
 				}
 				if (newBlock.typ == 0) {
 					return .yes;
+				} else if (item.item == .baseItem and oldBlock.replaceable()) {
+					if (item.item.baseItem.block() != null and item.item.baseItem.block().? == newBlock.typ) {
+						return .{.yes_costsItems = 1};
+					}
 				}
 			}
 			return .no;
@@ -130,7 +130,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 		pub fn getBlockTags() []const Tag {
 			return &.{};
 		}
-		pub fn formatBlockData(block: Block, _list: *main.List(u8)) void {
+		pub fn formatBlockData(block: Block, _list: *main.ListManaged(u8)) void {
 			_list.print("{}", .{block.data});
 		}
 	};
@@ -148,33 +148,33 @@ pub const RotationMode = struct { // MARK: RotationMode
 	/// The default rotation data intended for generation algorithms
 	naturalStandard: u16 = 0,
 
-	model: *const fn (block: Block) ModelIndex = &DefaultFunctions.model,
+	model: *const fn (block: Block) ModelIndex = &default_functions.model,
 
 	// Rotates block data counterclockwise around the Z axis.
-	rotateZ: *const fn (data: u16, angle: Degrees) u16 = DefaultFunctions.rotateZ,
+	rotateZ: *const fn (data: u16, angle: Degrees) u16 = default_functions.rotateZ,
 
-	createBlockModel: *const fn (block: Block, modeData: *u16, zon: ZonElement) ModelIndex = &DefaultFunctions.createBlockModel,
+	createBlockModel: *const fn (block: Block, modeData: *u16, zon: ZonElement) ModelIndex = &default_functions.createBlockModel,
 
 	/// Updates the block data of a block in the world or places a block in the world.
 	/// return true if the placing was successful, false otherwise.
-	generateData: *const fn (world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, blockPlacing: bool) bool = DefaultFunctions.generateData,
+	generateData: *const fn (world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, blockPlacing: bool) bool = default_functions.generateData,
 
 	/// Updates data of a placed block if the RotationMode dependsOnNeighbors.
-	updateData: *const fn (block: *Block, neighbor: Neighbor, neighborBlock: Block) bool = &DefaultFunctions.updateData,
+	updateData: *const fn (block: *Block, neighbor: Neighbor, neighborBlock: Block) bool = &default_functions.updateData,
 
-	modifyBlock: *const fn (block: *Block, newType: u16) bool = DefaultFunctions.modifyBlock,
+	modifyBlock: *const fn (block: *Block, newType: u16) bool = default_functions.modifyBlock,
 
-	rayIntersection: *const fn (block: Block, item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
+	rayIntersection: *const fn (block: Block, item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &default_functions.rayIntersection,
 
-	onBlockBreaking: *const fn (item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void = &DefaultFunctions.onBlockBreaking,
+	onBlockBreaking: *const fn (item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void = &default_functions.onBlockBreaking,
 
-	canBeChangedInto: *const fn (oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) CanBeChangedInto = DefaultFunctions.canBeChangedInto,
+	canBeChangedInto: *const fn (oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) CanBeChangedInto = default_functions.canBeChangedInto,
 
-	itemDropsOnChange: *const fn (oldBlock: Block, newBlock: Block) u16 = DefaultFunctions.itemDropsOnChange,
+	itemDropsOnChange: *const fn (oldBlock: Block, newBlock: Block) u16 = default_functions.itemDropsOnChange,
 
-	getBlockTags: *const fn () []const Tag = DefaultFunctions.getBlockTags,
+	getBlockTags: *const fn () []const Tag = default_functions.getBlockTags,
 
-	formatBlockData: *const fn (block: Block, _list: *main.List(u8)) void = DefaultFunctions.formatBlockData,
+	formatBlockData: *const fn (block: Block, _list: *main.ListManaged(u8)) void = default_functions.formatBlockData,
 };
 
 var rotationModes: std.StringHashMap(RotationMode) = undefined;
@@ -186,25 +186,59 @@ pub fn rotationMatrixTransform(quad: *main.models.QuadInfo, transformMatrix: Mat
 	}
 }
 
+/// Modified from https://en.wikipedia.org/wiki/Möller–Trumbore_intersection_algorithm#Implementations
+fn rayTriangleIntersection(origin: Vec3f, direction: Vec3f, triangle: [3]Vec3f) ?f32 {
+	const e1 = triangle[1] - triangle[0];
+	const e2 = triangle[2] - triangle[0];
+
+	const rayCrossE2 = vec.cross(direction, e2);
+	const det = vec.dot(e1, rayCrossE2);
+
+	if (det > -std.math.floatEps(f32) and det < std.math.floatEps(f32)) {
+		return null;
+	}
+
+	const invDet = 1.0/det;
+	const s = origin - triangle[0];
+	const u = invDet*vec.dot(s, rayCrossE2);
+	if (u < 0.0 or u > 1.0) {
+		return null;
+	}
+
+	const sCrossE1 = vec.cross(s, e1);
+	const v = invDet*vec.dot(direction, sCrossE1);
+	if (v < 0.0 or u + v > 1.0) {
+		return null;
+	}
+
+	const t = invDet*vec.dot(e2, sCrossE1);
+
+	if (t > std.math.floatEps(f32)) {
+		return t;
+	} else {
+		return null;
+	}
+}
+
 // MARK: init/register
 
 pub fn init() void {
 	rotationModes = .init(main.globalAllocator.allocator);
-	inline for (@typeInfo(list).@"struct".decls) |declaration| {
-		register(declaration.name, @field(list, declaration.name));
+	inline for (@typeInfo(rotations).@"struct".decl_names) |declaration| {
+		register(declaration, @field(rotations, declaration));
 	}
 }
 
 pub fn reset() void {
-	inline for (@typeInfo(list).@"struct".decls) |declaration| {
-		@field(list, declaration.name).reset();
+	inline for (@typeInfo(rotations).@"struct".decl_names) |declaration| {
+		@field(rotations, declaration).reset();
 	}
 }
 
 pub fn deinit() void {
 	rotationModes.deinit();
-	inline for (@typeInfo(list).@"struct".decls) |declaration| {
-		@field(list, declaration.name).deinit();
+	inline for (@typeInfo(rotations).@"struct".decl_names) |declaration| {
+		@field(rotations, declaration).deinit();
 	}
 }
 
@@ -217,12 +251,12 @@ pub fn getByID(id: []const u8) *const RotationMode {
 pub fn register(comptime id: []const u8, comptime Mode: type) void {
 	Mode.init();
 	var result: RotationMode = RotationMode{};
-	inline for (@typeInfo(RotationMode).@"struct".fields) |field| {
-		if (@hasDecl(Mode, field.name)) {
-			if (field.type == @TypeOf(@field(Mode, field.name))) {
-				@field(result, field.name) = @field(Mode, field.name);
+	inline for (@typeInfo(RotationMode).@"struct".field_names, @typeInfo(RotationMode).@"struct".field_types) |field, FieldType| {
+		if (@hasDecl(Mode, field)) {
+			if (FieldType == @TypeOf(@field(Mode, field))) {
+				@field(result, field) = @field(Mode, field);
 			} else {
-				@field(result, field.name) = &@field(Mode, field.name);
+				@field(result, field) = &@field(Mode, field);
 			}
 		}
 	}

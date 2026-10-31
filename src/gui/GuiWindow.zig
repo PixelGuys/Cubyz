@@ -21,12 +21,6 @@ pub const AttachmentPoint = enum(u8) {
 	upper = 2,
 };
 
-const OrientationLine = struct {
-	pos: f32,
-	start: f32,
-	end: f32,
-};
-
 const RelativePosition = union(enum) {
 	ratio: f32,
 	attachedToFrame: struct {
@@ -62,11 +56,12 @@ hideIfMouseIsGrabbed: bool = true, // TODO: Allow the user to change this with a
 closeIfMouseIsGrabbed: bool = false,
 closeable: bool = true,
 isHud: bool = false,
+titleBar: ?*GuiComponent.HorizontalList = null,
 
 shiftClickableInventory: ?main.items.Inventory.ClientInventory = null,
 
 /// Called every frame.
-renderFn: *const fn () void = &defaultFunction,
+renderFn: *const fn (*graphics.vulkan.Frame) void = &defaultRenderFunction,
 /// Called every frame before rendering.
 updateFn: *const fn () void = &defaultFunction,
 /// Called every frame for the currently selected window.
@@ -96,6 +91,13 @@ var windowUniforms: struct {
 	color: c_int,
 	scale: c_int,
 } = undefined;
+pub const WindowUniforms = extern struct {
+	start: [2]f32 align(8),
+	size: [2]f32 align(8),
+	screen: [2]f32 align(8),
+	color: i32,
+	scale: f32,
+};
 pub var borderPipeline: graphics.Pipeline = undefined;
 pub var borderUniforms: struct {
 	screen: c_int,
@@ -105,25 +107,44 @@ pub var borderUniforms: struct {
 	scale: c_int,
 	effectLength: c_int,
 } = undefined;
+pub const BorderUniforms = extern struct {
+	start: [2]f32 align(8),
+	size: [2]f32 align(8),
+	screen: [2]f32 align(8),
+	color: i32,
+	scale: f32,
+	effectLength: [2]f32 align(8),
+};
 
-pub fn __init() void {
+pub fn globalInit() void {
 	pipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/ui/button.vert",
 		"assets/cubyz/shaders/ui/button.frag",
 		"",
 		&windowUniforms,
-		.{.cullMode = .none},
-		.{.depthTest = false, .depthWrite = false},
-		.{.attachments = &.{.alphaBlending}},
+		graphics.draw.SimpleVertex2D,
+		.{
+			.bindings = &.{.sampler(0, .{.fragment = true})},
+			.rasterState = .{.cullMode = .none},
+			.depthStencilState = .{.depthTest = false, .depthWrite = false},
+			.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			.inputAssemblyState = .{.topology = .triangleStrip},
+			.pushConstantSize = @sizeOf(WindowUniforms),
+		},
 	);
 	borderPipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/ui/window_border.vert",
 		"assets/cubyz/shaders/ui/window_border.frag",
 		"",
 		&borderUniforms,
-		.{.cullMode = .none},
-		.{.depthTest = false, .depthWrite = false},
-		.{.attachments = &.{.alphaBlending}},
+		graphics.draw.SimpleVertex2D,
+		.{
+			.rasterState = .{.cullMode = .none},
+			.depthStencilState = .{.depthTest = false, .depthWrite = false},
+			.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			.inputAssemblyState = .{.topology = .triangleStrip},
+			.pushConstantSize = @sizeOf(BorderUniforms),
+		},
 	);
 
 	backgroundTexture = Texture.initFromFile("assets/cubyz/ui/window_background.png");
@@ -133,13 +154,14 @@ pub fn __init() void {
 	zoomOutTexture = Texture.initFromFile("assets/cubyz/ui/window_zoom_out.png");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	pipeline.deinit();
 	backgroundTexture.deinit();
 	titleTexture.deinit();
 }
 
 pub fn defaultFunction() void {}
+pub fn defaultRenderFunction(_: *graphics.vulkan.Frame) void {}
 pub fn defaultFunctionWithResult() main.callbacks.Result {
 	return .ignored;
 }
@@ -149,6 +171,9 @@ pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) main.call
 	const btnPos = self.getButtonPositions();
 	const zoomInPos = btnPos[2]/self.scale;
 	if (scaledMousePos[1] < titleBarHeight and (self.showTitleBar or gui.reorderWindows)) {
+		if (self.titleBar) |titleBar| {
+			if (titleBar.mainButtonPressed(scaledMousePos) == .handled) return .handled;
+		}
 		grabbedWindow = self;
 		grabPosition = mousePosition;
 		selfPositionWhenGrabbed = self.pos;
@@ -181,7 +206,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 		const mousePositionRelative = mousePosition - self.pos;
 		const grabPositionRelative = if (grabPosition) |gp| gp - self.pos else @as(@Vector(2, f32), .{0.0, 0.0});
 
-		if (mousePositionRelative[1] >= 0 and mousePositionRelative[1] <= titleBarHeight) {
+		if (mousePositionRelative[1] >= 0 and mousePositionRelative[1] <= titleBarHeight*self.scale) {
 			if (mousePositionRelative[0] > zoomInPos and mousePositionRelative[0] <= zoomOutPos and grabPositionRelative[0] > zoomInPos and grabPositionRelative[0] <= zoomOutPos) {
 				// Zoom in
 				if (self.scale >= 1) {
@@ -211,6 +236,9 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 	}
 	grabPosition = null;
 	grabbedWindow = undefined;
+	if (self.titleBar) |titleBar| {
+		titleBar.mainButtonReleased((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
+	}
 	if (self.rootComponent) |*component| {
 		component.mainButtonReleased((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
 	}
@@ -355,7 +383,8 @@ pub fn update(self: *GuiWindow) void {
 pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) void {
 	self.updateSelectedFn();
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
-	if (self == grabbedWindow and windowMoving and (gui.reorderWindows or self.showTitleBar)) if (grabPosition) |_grabPosition| {
+	if (self == grabbedWindow and windowMoving and (gui.reorderWindows or self.showTitleBar)) blk: {
+		const _grabPosition = grabPosition orelse break :blk;
 		self.relativePosition[0] = .{.ratio = undefined};
 		self.relativePosition[1] = .{.ratio = undefined};
 		self.pos = (mousePosition - _grabPosition) + selfPositionWhenGrabbed;
@@ -371,7 +400,7 @@ pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) void {
 		self.pos = @min(self.pos, windowSize - self.size);
 		gui.updateWindowPositions();
 		gui.save();
-	};
+	}
 	if (self.rootComponent) |*component| {
 		component.updateSelected();
 	}
@@ -379,7 +408,10 @@ pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) void {
 
 pub fn updateHovered(self: *GuiWindow, mousePosition: Vec2f) main.callbacks.Result {
 	const scaledMousePos = (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale));
-	if (scaledMousePos[1] < titleBarHeight and (self.showTitleBar or gui.reorderWindows)) return .handled;
+	if (scaledMousePos[1] < titleBarHeight and (self.showTitleBar or gui.reorderWindows)) {
+		_ = if (self.titleBar) |titleBar| titleBar.updateHovered(scaledMousePos);
+		return .handled;
+	}
 	if (self.updateHoveredFn() == .handled) return .handled;
 	if (self.rootComponent) |component| {
 		if (GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
@@ -446,8 +478,9 @@ pub fn updateWindowPosition(self: *GuiWindow) void {
 	self.pos[1] = @max(self.pos[1], 0);
 }
 
-fn drawOrientationLines(self: *const GuiWindow) void {
-	draw.setColor(0x80000000);
+fn drawOrientationLines(self: *const GuiWindow, currentFrame: *graphics.vulkan.Frame) void {
+	const oldColor = draw.setColor(0x80000000);
+	defer draw.restoreColor(oldColor);
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
 	inline for (self.relativePosition, 0..) |relPos, i| _continue: {
 		switch (relPos) {
@@ -461,9 +494,9 @@ fn drawOrientationLines(self: *const GuiWindow) void {
 					.upper => windowSize[i],
 				};
 				if (i == 0) {
-					draw.line(.{pos, 0}, .{pos, windowSize[i ^ 1]});
+					draw.line(currentFrame, .{pos, 0}, .{pos, windowSize[i ^ 1]});
 				} else {
-					draw.line(.{0, pos}, .{windowSize[i ^ 1], pos});
+					draw.line(currentFrame, .{0, pos}, .{windowSize[i ^ 1], pos});
 				}
 			},
 			.attachedToWindow => |attachedToWindow| {
@@ -477,56 +510,74 @@ fn drawOrientationLines(self: *const GuiWindow) void {
 				const start = @min(self.pos[i ^ 1], other.pos[i ^ 1]);
 				const end = @max(self.pos[i ^ 1] + self.size[i ^ 1], other.pos[i ^ 1] + otherSize[i ^ 1]);
 				if (i == 0) {
-					draw.line(.{pos, start}, .{pos, end});
+					draw.line(currentFrame, .{pos, start}, .{pos, end});
 				} else {
-					draw.line(.{start, pos}, .{end, pos});
+					draw.line(currentFrame, .{start, pos}, .{end, pos});
 				}
 			},
 		}
 	}
 }
 
-pub fn drawIcons(self: *const GuiWindow) void {
-	draw.setColor(0xffffffff);
+pub fn drawIcons(self: *const GuiWindow, currentFrame: *graphics.vulkan.Frame) void {
 	var x = self.size[0]/self.scale;
 	if (self.closeable) {
 		x -= iconWidth;
-		closeTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
+		closeTexture.render(currentFrame, .{x, 0}, .{iconWidth, titleBarHeight});
 	}
 	x -= iconWidth;
-	zoomOutTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
+	zoomOutTexture.render(currentFrame, .{x, 0}, .{iconWidth, titleBarHeight});
 	x -= iconWidth;
-	zoomInTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
+	zoomInTexture.render(currentFrame, .{x, 0}, .{iconWidth, titleBarHeight});
+
+	const oldClip = graphics.draw.setClip(.{x, titleBarHeight});
+	defer graphics.draw.restoreClip(oldClip);
+	if (self.titleBar) |titleBar| titleBar.render(currentFrame, .{0, 0});
 }
 
-pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
+pub fn render(self: *const GuiWindow, currentFrame: *graphics.vulkan.Frame, mousePosition: Vec2f) void {
 	if (self.hideIfMouseIsGrabbed and main.Window.grabbed) return;
 	const oldTranslation = draw.setTranslation(self.pos);
 	const oldScale = draw.setScale(self.scale);
 	if (self.hasBackground) {
-		draw.setColor(0xff000000);
-		pipeline.bind(draw.getScissor());
-		backgroundTexture.bindTo(0);
-		draw.customShadedRect(windowUniforms, .{0, 0}, self.size/@as(Vec2f, @splat(self.scale)));
+		if (main.settings.launch_config.vulkanTestingMode and backgroundTexture.vulkanImage != null) {
+			currentFrame.guiCommands.bindPipeline(currentFrame, pipeline, graphics.draw.getScissor());
+			currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
+				.{.image = .{.binding = 0, .image = backgroundTexture.vulkanImage.?}},
+			});
+			draw.customShadedRect(currentFrame, @as(WindowUniforms, undefined), pipeline, .{0, 0}, self.size/@as(Vec2f, @splat(self.scale)));
+		} else {
+			pipeline.bind(draw.getScissor());
+			backgroundTexture.bindTo(0);
+			draw.customShadedRectOpenGl(windowUniforms, .{0, 0}, self.size/@as(Vec2f, @splat(self.scale)));
+		}
 	}
-	self.renderFn();
+	self.renderFn(currentFrame);
 	if (self.rootComponent) |*component| {
-		component.render((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
+		component.render(currentFrame, (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
 	}
 	if (self.showTitleBar or gui.reorderWindows) {
-		pipeline.bind(draw.getScissor());
-		titleTexture.bindTo(0);
-		draw.setColor(0xff000000);
-		draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, titleBarHeight});
-		self.drawIcons();
+		if (main.settings.launch_config.vulkanTestingMode and titleTexture.vulkanImage != null) {
+			currentFrame.guiCommands.bindPipeline(currentFrame, pipeline, graphics.draw.getScissor());
+			currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
+				.{.image = .{.binding = 0, .image = titleTexture.vulkanImage.?}},
+			});
+			draw.customShadedRect(currentFrame, @as(WindowUniforms, undefined), pipeline, .{0, 0}, .{self.size[0]/self.scale, titleBarHeight});
+		} else {
+			pipeline.bind(draw.getScissor());
+			titleTexture.bindTo(0);
+			draw.customShadedRectOpenGl(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, titleBarHeight});
+		}
+		self.drawIcons(currentFrame);
 	}
 	if (self.hasBackground or (!main.Window.grabbed and gui.reorderWindows)) {
-		draw.setColor(0xff2d2d2d);
-		draw.rectBorder(.{-2, -2}, self.size/@as(Vec2f, @splat(self.scale)) + Vec2f{4, 4}, 2.0);
+		const oldColor = draw.setColor(0xff2d2d2d);
+		defer draw.restoreColor(oldColor);
+		draw.rectBorder(currentFrame, .{-2, -2}, self.size/@as(Vec2f, @splat(self.scale)) + Vec2f{4, 4}, 2.0);
 	}
 	draw.restoreTranslation(oldTranslation);
 	draw.restoreScale(oldScale);
 	if (self == grabbedWindow and windowMoving and (gui.reorderWindows or self.showTitleBar) and grabPosition != null) {
-		self.drawOrientationLines();
+		self.drawOrientationLines(currentFrame);
 	}
 }

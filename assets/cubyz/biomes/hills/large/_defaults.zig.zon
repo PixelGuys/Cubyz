@@ -11,13 +11,12 @@
 	.mountains = 10,
 	.soilCreep = 1.5,
 	.chance = 0.4,
-	.music = "cubyz:sunrise",
 	.validPlayerSpawn = true,
 	.structures = .{
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.005,
-			.block = "cubyz:slate/base",
+			.block = "cubyz:slate/smooth",
 			.size = 5,
 			.size_variance = 1,
 		},

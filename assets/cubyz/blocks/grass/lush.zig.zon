@@ -1,0 +1,7 @@
+.{
+	.drops = .{
+		.{.items = .{"cubyz:mud"}},
+	},
+	.texture = "cubyz:grass/lush",
+	.texture_bottom = "cubyz:mud",
+}

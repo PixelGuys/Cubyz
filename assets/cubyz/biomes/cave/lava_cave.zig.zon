@@ -5,6 +5,7 @@
 	.fogDensity = 20,
 	.chance = 0.1,
 	.fogColor = 0x51240c,
+	.music = "cubyz:totaldemented/scoria",
 	.stoneBlock = "cubyz:obsidian",
 	.stripes = .{
 		.{
