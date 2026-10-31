@@ -1958,7 +1958,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 				.image = self.depth.handle,
 				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = 1},
 			},
-		})[0..if(self.hasDepthTexture) 2 else 1]});
+		})[0..if (self.hasDepthTexture) 2 else 1]});
 		commandBuffer.beginRendering(.{
 			.textures = &.{
 				.{
@@ -2020,7 +2020,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 				.image = self.depth.handle,
 				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = 1},
 			},
-		})[0..if(self.hasDepthTexture) 2 else 1]});
+		})[0..if (self.hasDepthTexture) 2 else 1]});
 	}
 
 	pub fn bindTexture(self: *const FrameBuffer, target: c_uint) void {
