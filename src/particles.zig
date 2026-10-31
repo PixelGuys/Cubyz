@@ -73,9 +73,9 @@ pub const particle_manager = struct { // MARK: particle_manager
 			.rotVel = rotVel,
 			.dragCoefficient = RandomRange(f32).fromZon(zon.getChild("dragCoefficient")) orelse .init(0.5, 0.6),
 			.loopTime = RandomRange(f32).fromZon(zon.getChild("loopTime")),
-			.onTouch = blk: {
+			.onCollide = blk: {
 				break :blk main.callbacks.ParticleCollideCallback.init(
-					zon.getChildOrNull("onTouch") orelse break :blk .noop,
+					zon.getChildOrNull("onCollide") orelse break :blk .noop,
 					.{
 						.particle = .{
 							.typ = @intCast(types.items.len),
@@ -83,7 +83,7 @@ pub const particle_manager = struct { // MARK: particle_manager
 						},
 					},
 				) orelse {
-					std.log.err("Failed to load onTouch event for particle {s}", .{id});
+					std.log.err("Failed to load onCollide event for particle {s}", .{id});
 					break :blk .noop;
 				};
 			},
@@ -289,7 +289,7 @@ pub const particle_system = struct { // MARK: particle_system
 					}
 				}
 				pos = @as(Vec3f, @floatCast(v3Pos - playerPos));
-				_ = if (hasColided) particle_manager.typesLocal.items[particle.typ].onTouch.run(.{.source = particle, .pos = pos});
+				_ = if (hasColided) particle_manager.typesLocal.items[particle.typ].onCollide.run(.{.source = particle, .pos = pos});
 			} else {
 				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
@@ -576,7 +576,7 @@ pub const ParticleTypeLocal = struct {
 	rotVel: RandomRange(f32),
 	dragCoefficient: RandomRange(f32),
 	loopTime: ?RandomRange(f32),
-	onTouch: main.callbacks.ParticleCollideCallback,
+	onCollide: main.callbacks.ParticleCollideCallback,
 };
 
 pub const Particle = extern struct {
