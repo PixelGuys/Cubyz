@@ -542,7 +542,7 @@ const bob_manager = struct {
 		}
 
 		const inputSpeed: f32 = @floatCast(game.player.inputSpeed);
-		const playerVel = @"cubyz:velocity".getVelocity(main.game.player.id, .client) orelse .{};
+		const playerVel = @"cubyz:velocity".getVelocity(main.game.player.id, .client).?;
 		const horizontalVel: Vec3f = .{
 			@floatCast(playerVel[0]),
 			@floatCast(playerVel[1]),
@@ -606,7 +606,7 @@ pub const item_display_manager = struct { // MARK: item_display_manager
 	}
 
 	fn getAscentDescentOffset() Vec3f {
-		const playerVel = @"cubyz:velocity".getVelocity(main.game.player.id, .client) orelse .{};
+		const playerVel = @"cubyz:velocity".getVelocity(main.game.player.id, .client).?;
 		const vel: Vec3f = .{@floatCast((playerVel[2]*0.009 + game.player.eye.vel[2]*0.0075)), 0, 0};
 		return vec.clampMag(vel, 0.32);
 	}
