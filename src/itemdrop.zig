@@ -379,7 +379,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 				ii += 1;
 				continue;
 			}
-			const hitbox = main.game.Player.outerBoundingBox;
+			const hitbox = main.game.player.outerBoundingBox;
 			const min = user.player().pos + hitbox.min;
 			const max = user.player().pos + hitbox.max;
 			const itemPos = self.list.items(.pos)[i];
@@ -484,31 +484,134 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 	}
 };
 
-// Going to handle item animations and other things like - bobbing, interpolation, movement reactions
-pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
+const bob_manager = struct {
+	var phase: f32 = 0;
+	var amplitude: f32 = 0;
+	var crouchOffset: f32 = 0;
+
+	const bobFrequency = 1.5;
+
+	const bobAmountLateral = 0.08;
+	const bobAmountVertical = 0.07;
+
+	const inputSpeedMax = 10;
+	const actualSpeedMax = 5;
+
+	const phaseResetThresholdAirborne = 0.05;
+
+	const phaseFinishHalfLifeAirborne = 0.14;
+	const phaseResetHalfLifeFlying = 0.23;
+	const phaseResetHalfLifeStanding = 0.35;
+
+	const amplitudeThreshold = 0.1;
+
+	const amplitudeHalfLifeWalking = 0.17;
+	const amplitudeHalfLifeFlying = 0.23;
+	const amplitudeHalfLifeStanding = 0.35;
+
+	const crouchOffsetAmount = 0.2;
+	const crouchHalfLife = 0.14;
+
+	fn phaseSpeedCurve() f32 {
+		return std.math.clamp(std.math.pow(f32, 2.21*amplitude - 1.28, 3) + 0.82, 0, 1);
+	}
+
+	fn transition(current: f32, target: f32, halfLife: f32, dt: f32) f32 {
+		return std.math.lerp(target, current, std.math.pow(f32, 0.5, dt/halfLife));
+	}
+
+	fn update(dt: f32) void {
+		defer {
+			const targetOffset = if (game.player.crouching) amplitude*crouchOffsetAmount else 0;
+			crouchOffset = transition(crouchOffset, targetOffset, crouchHalfLife, dt);
+		}
+
+		if (game.player.isFlying.load(.monotonic) or game.player.isGhost.load(.monotonic)) {
+			amplitude = transition(amplitude, 0, amplitudeHalfLifeFlying, dt);
+			const targetPhase = std.math.round(phase/std.math.pi)*std.math.pi;
+			phase = transition(phase, targetPhase, phaseResetHalfLifeFlying, dt);
+			return;
+		}
+
+		if (!game.player.onGround) {
+			const prev = std.math.floor(phase/std.math.pi)*std.math.pi;
+			const next = prev + std.math.pi;
+			const targetPhase = if (prev <= phase - phaseResetThresholdAirborne*std.math.pi) next else prev;
+			phase = transition(phase, targetPhase, phaseFinishHalfLifeAirborne, dt);
+			return;
+		}
+
+		const inputSpeed: f32 = @floatCast(game.player.inputSpeed);
+
+		const horizontalVel: Vec3f = .{
+			@floatCast(game.player.super.vel[0]),
+			@floatCast(game.player.super.vel[1]),
+			0,
+		};
+
+		const actualSpeed = vec.length(horizontalVel);
+
+		const newAmplitude = @min(inputSpeed/inputSpeedMax, actualSpeed/actualSpeedMax, 1);
+
+		if (actualSpeed == 0 and newAmplitude <= amplitudeThreshold) {
+			amplitude = transition(amplitude, 0, amplitudeHalfLifeStanding, dt);
+			const targetPhase = std.math.round(phase/std.math.pi)*std.math.pi;
+			phase = transition(phase, targetPhase, phaseResetHalfLifeStanding, dt);
+			return;
+		}
+
+		amplitude = transition(amplitude, newAmplitude, amplitudeHalfLifeWalking, dt);
+		phase += dt*bobFrequency*std.math.tau*phaseSpeedCurve();
+		while (phase >= std.math.tau) {
+			phase -= std.math.tau;
+		}
+	}
+
+	fn getOffset() Vec3f {
+		const s = std.math.sin(phase);
+		return .{
+			@abs(s)*bobAmountVertical*amplitude + crouchOffset,
+			0,
+			s*bobAmountLateral*amplitude,
+		};
+	}
+};
+
+// Going to handle item animations and other things like - interpolation, movement reactions
+pub const item_display_manager = struct { // MARK: item_display_manager
 	pub var showItem: bool = true;
 	var cameraFollow: Vec3f = @splat(0);
 	var cameraFollowVel: Vec3f = @splat(0);
 	const damping: Vec3f = @splat(130);
 
 	pub fn update(deltaTime: f64) void {
+		if (!settings.bobbing) {
+			cameraFollow = @splat(0);
+			return;
+		}
+
 		if (deltaTime == 0) return;
 		const dt: f32 = @floatCast(deltaTime);
 
-		const playerVel = @"cubyz:velocity".getVelocity(main.game.Player.id, .client) orelse return;
-		var vel: Vec3f = .{@floatCast((game.Player.super.vel[2]*0.009 + game.Player.eye.vel[2]*0.0075)), 0, 0};
-		vel = vec.clampMag(vel, 0.32);
+		bob_manager.update(dt);
+
+		const totalOffset = getAscentDescentOffset() + bob_manager.getOffset();
 
 		// TODO: add *smooth* item sway
-		const n1: Vec3f = cameraFollowVel - (cameraFollow - vel)*damping*damping*@as(Vec3f, @splat(dt));
+		const n1: Vec3f = cameraFollowVel - (cameraFollow - totalOffset)*damping*damping*@as(Vec3f, @splat(dt));
 		const n2: Vec3f = @as(Vec3f, @splat(1)) + damping*@as(Vec3f, @splat(dt));
 		cameraFollowVel = n1/(n2*n2);
 
 		cameraFollow += cameraFollowVel*@as(Vec3f, @splat(dt));
 	}
+
+	fn getAscentDescentOffset() Vec3f {
+		const playerVel: Vec3f = .{@floatCast((game.player.super.vel[2]*0.009 + game.player.eye.vel[2]*0.0075)), 0, 0};
+		return vec.clampMag(playerVel, 0.32);
+	}
 };
 
-pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
+pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 	var itemPipeline: graphics.Pipeline = undefined;
 	var itemUniforms: struct {
 		modelMatrix: c_int,
@@ -556,13 +659,13 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				defer data.deinit();
 				for (model.internalQuads) |quad| {
 					const textureIndex = blocks.meshes.textureIndex(block, quad.quadInfo().textureSlot);
-					data.append(@as(u32, @intFromEnum(quad)) << 16 | textureIndex); // modelAndTexture
+					data.append(@as(u32, @backingInt(quad)) << 16 | textureIndex); // modelAndTexture
 					data.append(0); // offsetByNormal
 				}
 				for (model.neighborFacingQuads) |list| {
 					for (list) |quad| {
 						const textureIndex = blocks.meshes.textureIndex(block, quad.quadInfo().textureSlot);
-						data.append(@as(u32, @intFromEnum(quad)) << 16 | textureIndex); // modelAndTexture
+						data.append(@as(u32, @backingInt(quad)) << 16 | textureIndex); // modelAndTexture
 						data.append(1); // offsetByNormal
 					}
 				}
@@ -729,7 +832,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	}
 
 	pub fn renderDisplayItems(ambientLight: Vec3f, playerPos: Vec3d) void {
-		if (!ItemDisplayManager.showItem) return;
+		if (!item_display_manager.showItem) return;
 
 		const displayItemUbo = graphics.frame_uniforms.StaticUbo.init(.{
 			.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(main.renderer.lastWidth))/@as(f32, @floatFromInt(main.renderer.lastHeight)), 0.01, 3).toGl(),
@@ -742,10 +845,10 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		defer displayItemUbo.unbind();
 		bindCommonUniforms(ambientLight);
 
-		const item = game.Player.inventory.getItem(game.Player.selectedSlot);
+		const item = game.player.inventory.getItem(game.player.selectedSlot);
 		if (item != .null) {
 			var pos: Vec3d = Vec3d{0, 0, 0};
-			const rot: Vec3f = ItemDisplayManager.cameraFollow;
+			const rot: Vec3f = item_display_manager.cameraFollow;
 
 			const lightPos = @as(Vec3d, @floatCast(playerPos)) - @as(Vec3f, @splat(0.5));
 			const blockPos: Vec3i = @floor(lightPos);

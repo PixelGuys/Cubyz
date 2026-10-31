@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const main = @import("main");
 const vulkan = main.graphics.vulkan;
@@ -9,20 +10,16 @@ handle: c.VkCommandBuffer,
 
 const CommandBuffer = @This();
 
-pub fn init() CommandBuffer {
+pub fn init(pool: vulkan.CommandPool) CommandBuffer {
 	var self: CommandBuffer = undefined;
 	const allocInfo = c.VkCommandBufferAllocateInfo{
 		.sType = c.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-		.commandPool = vulkan.command_pool.handle,
+		.commandPool = pool.handle,
 		.level = c.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 		.commandBufferCount = 1,
 	};
 	vulkan.checkResult(c.vkAllocateCommandBuffers(vulkan.device, &allocInfo, &self.handle));
 	return self;
-}
-
-pub fn deinit(self: CommandBuffer) void {
-	c.vkFreeCommandBuffers(vulkan.device, vulkan.command_pool.handle, 1, &self.handle);
 }
 
 pub fn beginRecording(self: CommandBuffer, flags: c.VkCommandBufferUsageFlags) void {
@@ -162,13 +159,13 @@ pub fn endRendering(self: CommandBuffer) void {
 	c.vkCmdEndRendering(self.handle);
 }
 
-pub fn bindPipeline(self: CommandBuffer, pipeline: main.graphics.Pipeline, scissor: ?c.VkRect2D) void {
+pub fn bindPipeline(self: CommandBuffer, currentFrame: *vulkan.Frame, pipeline: main.graphics.Pipeline, scissor: ?c.VkRect2D) void {
 	c.vkCmdBindPipeline(self.handle, c.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.graphicsPipeline);
 	self.setViewport(.{
 		.x = 0,
 		.y = 0,
-		.width = @floatFromInt(vulkan.currentFrame.extent.width),
-		.height = @floatFromInt(vulkan.currentFrame.extent.height),
+		.width = @floatFromInt(currentFrame.extent.width),
+		.height = @floatFromInt(currentFrame.extent.height),
 		.minDepth = 0,
 		.maxDepth = 1,
 	});
@@ -177,7 +174,7 @@ pub fn bindPipeline(self: CommandBuffer, pipeline: main.graphics.Pipeline, sciss
 	} else {
 		self.setScissor(.{
 			.offset = .{.x = 0, .y = 0},
-			.extent = vulkan.currentFrame.extent,
+			.extent = currentFrame.extent,
 		});
 	}
 }
@@ -261,7 +258,8 @@ pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bi
 			},
 		}
 	}
-	c.vkCmdPushDescriptorSetKHR(self.handle, @intFromEnum(bindPoint), pipeline.pipelineLayout, 0, @intCast(writeInfo.len), writeInfo.ptr);
+	const vkCmdPushDescriptorSet = if (builtin.target.os.tag == .macos) c.vkCmdPushDescriptorSet else c.vkCmdPushDescriptorSetKHR;
+	vkCmdPushDescriptorSet(self.handle, @backingInt(bindPoint), pipeline.pipelineLayout, 0, @intCast(writeInfo.len), writeInfo.ptr);
 }
 
 pub fn pushConstants(self: CommandBuffer, pipeline: main.graphics.Pipeline, constants: anytype) void {

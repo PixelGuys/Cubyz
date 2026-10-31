@@ -9,7 +9,7 @@
 	.stoneBlock = "cubyz:slate/smooth",
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:grassland",
+			.id = "cubyz:grassland/base",
 			.chance = 4,
 		},
 		.{
@@ -25,7 +25,7 @@
 			.chance = 6,
 		},
 		.{
-			.id = "cubyz:rocky_grassland",
+			.id = "cubyz:grassland/rocky",
 			.chance = 16,
 		},
 		.{
