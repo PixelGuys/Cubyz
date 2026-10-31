@@ -436,7 +436,7 @@ fn assignBlockItem(stringId: []const u8) !void {
 	const block = blocks.getTypeById(stringId);
 	// TODO: This must be gone in PixelGuys/Cubyz#1205
 	const index = items.BaseItemIndex.fromId(stringId).?;
-	const item = &items.itemList[@intFromEnum(index)];
+	const item = &items.itemList[@backingInt(index)];
 	item.block = block;
 }
 
@@ -617,7 +617,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		}
 	}
 
-	if (!main.settings.launchConfig.headlessServer) blocks.meshes.registerBlockBreakingAnimation(assetFolder);
+	if (!main.settings.launch_config.headlessServer) blocks.meshes.registerBlockBreakingAnimation(assetFolder);
 
 	// Blocks:
 	// First blocks from the palette to enforce ID values.
@@ -727,7 +727,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	iterator = worldAssets.particles.iterator();
 	while (iterator.next()) |entry| {
-		particles.ParticleManager.register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+		particles.particle_manager.register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 	}
 
 	// Biomes:
@@ -761,13 +761,12 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		}
 
 		// now give each component it's id:
-		inline for (@typeInfo(main.entity.components).@"struct".decls) |decl| {
-			const name = decl.name;
-			if (map.get(name)) |id| {
-				@field(main.entity.components, decl.name).entityComponentID = id;
+		inline for (@typeInfo(main.entity.components).@"struct".decl_names) |decl| {
+			if (map.get(decl)) |id| {
+				@field(main.entity.components, decl).entityComponentID = id;
 			} else {
-				entityComponentPalette.add(name);
-				@field(main.entity.components, decl.name).entityComponentID = index;
+				entityComponentPalette.add(decl);
+				@field(main.entity.components, decl).entityComponentID = index;
 				index += 1;
 			}
 		}
@@ -812,7 +811,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	main.server.terrain.structures.reset();
 	main.audio.music_tracks.reset();
 	main.models.reset();
-	main.particles.ParticleManager.reset();
+	main.particles.particle_manager.reset();
 	main.rotation.reset();
 	main.Tag.resetTags();
 	main.entityModel.reset();

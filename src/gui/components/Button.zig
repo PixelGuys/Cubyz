@@ -15,8 +15,6 @@ const Label = GuiComponent.Label;
 
 const Button = @This();
 
-const border: f32 = 3;
-
 const Textures = struct {
 	texture: Texture,
 	outlineTexture: Texture,
@@ -99,14 +97,15 @@ pub fn globalDeinit() void {
 const Options = struct {
 	onAction: main.callbacks.SimpleCallback = .{},
 	disabled: bool = false,
+	border: f32 = 4,
 };
 
 pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *Button {
-	const label = Label.init(undefined, width - 3*border, text, .center);
+	const label = Label.init(undefined, width - 2*options.border, text, .center);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
-		.size = Vec2f{width, label.size[1] + 3*border},
+		.size = Vec2f{width, label.size[1] + 2*options.border},
 		.onAction = options.onAction,
 		.child = label.toComponent(),
 		.disabled = options.disabled,
@@ -119,7 +118,7 @@ pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, options: Opti
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
-		.size = icon.size + @as(Vec2f, @splat(3*border)),
+		.size = icon.size + @as(Vec2f, @splat(2*options.border)),
 		.onAction = options.onAction,
 		.child = icon.toComponent(),
 		.disabled = options.disabled,
@@ -155,7 +154,7 @@ pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn render(self: *Button, mousePosition: Vec2f) void {
+pub fn render(self: *Button, currentFrame: *graphics.vulkan.Frame, mousePosition: Vec2f) void {
 	const textures = blk: {
 		if (self.disabled) break :blk disabledTextures;
 		if (self.pressed) break :blk pressedTextures;
@@ -165,12 +164,12 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 		break :blk normalTextures;
 	};
 	{
-		if (main.settings.launchConfig.vulkanTestingMode and textures.texture.vulkanImage != null) {
-			graphics.vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
-			graphics.vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
+		if (main.settings.launch_config.vulkanTestingMode and textures.texture.vulkanImage != null) {
+			currentFrame.guiCommands.bindPipeline(currentFrame, pipeline, graphics.draw.getScissor());
+			currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
 				.{.image = .{.binding = 0, .image = textures.texture.vulkanImage.?}},
 			});
-			draw.customShadedRect(@as(ButtonUniforms, undefined), pipeline, self.pos + Vec2f{2, 2}, self.size - Vec2f{4, 4});
+			draw.customShadedRect(currentFrame, @as(ButtonUniforms, undefined), pipeline, self.pos + Vec2f{2, 2}, self.size - Vec2f{4, 4});
 		} else {
 			textures.texture.bindTo(0);
 			pipeline.bind(draw.getScissor());
@@ -181,11 +180,11 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 
 	const cornerSize = (textures.outlineTextureSize - Vec2f{1, 1})/Vec2f{2, 2};
 
-	graphics.draw.nineSliceImage(textures.outlineTexture, self.pos, self.size, textures.outlineTextureSize, cornerSize, 2);
+	graphics.draw.nineSliceImage(currentFrame, textures.outlineTexture, self.pos, self.size, textures.outlineTextureSize, cornerSize, 2);
 
 	const oldColor = draw.setColor(if (self.disabled) 0xff808080 else 0xffffffff);
 	defer draw.restoreColor(oldColor);
 	const textPos = self.pos + self.size/@as(Vec2f, @splat(2.0)) - self.child.size()/@as(Vec2f, @splat(2.0));
 	self.child.mutPos().* = textPos;
-	self.child.render(mousePosition - self.pos);
+	self.child.render(currentFrame, mousePosition - self.pos);
 }

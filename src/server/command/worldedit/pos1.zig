@@ -23,7 +23,7 @@ pub fn execute(_: Args, source: Source) void {
 	const pos: Vec3i = @floor(playerPos);
 
 	user.worldEditData.selectionPosition1 = pos;
-	main.network.protocols.genericUpdate.sendWorldEditPos(user.conn, .selectedPos1, pos);
+	main.network.protocols.generic_update.sendWorldEditPos(user.conn, .selectedPos1, pos);
 
 	user.sendMessage("Position 1: {}", .{pos});
 }

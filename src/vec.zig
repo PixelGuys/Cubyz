@@ -20,7 +20,7 @@ pub inline fn swizzle(
 	comptime z: Vec4fComponent,
 	comptime w: Vec4fComponent,
 ) Vec4f {
-	return @shuffle(f32, v, undefined, [4]i32{@intFromEnum(x), @intFromEnum(y), @intFromEnum(z), @intFromEnum(w)});
+	return @shuffle(f32, v, undefined, [4]i32{@backingInt(x), @backingInt(y), @backingInt(z), @backingInt(w)});
 }
 
 pub inline fn combine(pos: Vec3f, w: f32) Vec4f {
