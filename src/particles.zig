@@ -263,7 +263,7 @@ pub const particle_system = struct { // MARK: particle_system
 				var hasCollided = false;
 				v3Pos[0] += posDelta[0];
 				if (physics.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
-					hasColided = true;
+					hasCollided = true;
 					if (posDelta[0] < 0) {
 						v3Pos[0] = box.max[0] - hitBox.min[0] + physics.epsilon;
 					} else {
@@ -272,7 +272,7 @@ pub const particle_system = struct { // MARK: particle_system
 				}
 				v3Pos[1] += posDelta[1];
 				if (physics.collision.collides(.client, .y, -posDelta[1], v3Pos, hitBox)) |box| {
-					hasColided = true;
+					hasCollided = true;
 					if (posDelta[1] < 0) {
 						v3Pos[1] = box.max[1] - hitBox.min[1] + physics.epsilon;
 					} else {
@@ -281,7 +281,7 @@ pub const particle_system = struct { // MARK: particle_system
 				}
 				v3Pos[2] += posDelta[2];
 				if (physics.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
-					hasColided = true;
+					hasCollided = true;
 					if (posDelta[2] < 0) {
 						v3Pos[2] = box.max[2] - hitBox.min[2] + physics.epsilon;
 					} else {
@@ -289,7 +289,7 @@ pub const particle_system = struct { // MARK: particle_system
 					}
 				}
 				pos = @as(Vec3f, @floatCast(v3Pos - playerPos));
-				_ = if (hasColided) particle_manager.typesLocal.items[particle.typ].onCollide.run(.{.source = particle, .pos = pos});
+				_ = if (hasCollided) particle_manager.typesLocal.items[particle.typ].onCollide.run(.{.source = particle, .pos = pos});
 			} else {
 				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
