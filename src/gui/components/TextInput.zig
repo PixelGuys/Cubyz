@@ -516,13 +516,13 @@ fn getRenderCursorPos(self: *const TextInput, pos: u32) u32 {
 	return @intCast(obfuscatedPos);
 }
 
-pub fn render(self: *TextInput, mousePosition: Vec2f) void {
+pub fn render(self: *TextInput, currentFrame: *graphics.vulkan.Frame, mousePosition: Vec2f) void {
 	if (main.settings.launch_config.vulkanTestingMode and texture.vulkanImage != null) {
-		graphics.vulkan.currentFrame.guiCommands.bindPipeline(Button.pipeline, graphics.draw.getScissor());
-		graphics.vulkan.currentFrame.guiCommands.bindDescriptors(Button.pipeline, .graphics, &.{
+		currentFrame.guiCommands.bindPipeline(currentFrame, Button.pipeline, graphics.draw.getScissor());
+		currentFrame.guiCommands.bindDescriptors(Button.pipeline, .graphics, &.{
 			.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
 		});
-		draw.customShadedRect(@as(Button.ButtonUniforms, undefined), Button.pipeline, self.pos, self.size);
+		draw.customShadedRect(currentFrame, @as(Button.ButtonUniforms, undefined), Button.pipeline, self.pos, self.size);
 	} else {
 		Button.pipeline.bind(draw.getScissor());
 		texture.bindTo(0);
@@ -549,11 +549,11 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 		const diff = textSize[1] - (self.maxHeight - 2*border);
 		textPos[1] -= diff*self.scrollBar.currentState;
 		self.scrollBar.pos = .{self.size[0] - self.scrollBar.size[0] - border, border};
-		self.scrollBar.render(mousePosition - self.pos);
+		self.scrollBar.render(currentFrame, mousePosition - self.pos);
 	}
 	const textColor = draw.setColor(if (self.options.disabled) 0xff808080 else 0xffffffff);
 	defer draw.restoreColor(textColor);
-	textBuffer.render(textPos[0], textPos[1], fontSize);
+	textBuffer.render(currentFrame, textPos[0], textPos[1], fontSize);
 	if (self.pressed) {
 		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
 	}
@@ -564,7 +564,7 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 			const selectionStart = self.getRenderCursorPos(_selectionStart);
 			const oldColor = draw.setColor(0x440000ff);
 			defer draw.restoreColor(oldColor);
-			textBuffer.drawSelection(textPos, @min(selectionStart, cursor), @max(selectionStart, cursor));
+			textBuffer.drawSelection(currentFrame, textPos, @min(selectionStart, cursor), @max(selectionStart, cursor));
 		}
 
 		const currentTime = main.timestamp();
@@ -579,7 +579,7 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 			const oldColor = draw.setColor(0xff000000);
 			defer draw.restoreColor(oldColor);
 			const thickness = @min(@ceil(fontSize/8), 1);
-			draw.rect(cursorPos, Vec2f{thickness, fontSize});
+			draw.rect(currentFrame, cursorPos, Vec2f{thickness, fontSize});
 		}
 	}
 }
