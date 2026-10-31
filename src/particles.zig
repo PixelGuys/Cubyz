@@ -260,7 +260,7 @@ pub const particle_system = struct { // MARK: particle_system
 
 				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
-				var hasColided = false;
+				var hasCollided = false;
 				v3Pos[0] += posDelta[0];
 				if (physics.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
 					hasColided = true;
