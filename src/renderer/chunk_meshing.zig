@@ -40,6 +40,19 @@ const UniformStruct = struct {
 	zNear: c_int,
 	zFar: c_int,
 };
+pub const Uniforms = struct {
+	ambientLight: [3]f32 align(16),
+	contrast: f32,
+	@"fog.color": [3]f32 align(16),
+	@"fog.density": f32,
+	@"fog.fogLower": f32,
+	@"fog.fogHigher": f32,
+	reflectionMapSize: f32,
+	lodDistance: f32,
+	zNear: f32,
+	zFar: f32,
+};
+
 pub var uniforms: UniformStruct = undefined;
 pub var transparentUniforms: UniformStruct = undefined;
 pub var commandPipeline: graphics.ComputePipeline = undefined;
@@ -170,36 +183,46 @@ pub fn endRender() void {
 	chunkIDBuffer.endRender();
 }
 
-fn bindCommonUniforms(locations: *UniformStruct, ambient: Vec3f) void {
+fn bindCommonUniforms(vulkanUniforms: *Uniforms, locations: *UniformStruct, ambient: Vec3f) void {
 	c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
+	vulkanUniforms.reflectionMapSize = renderer.reflectionCubeMapSize;
 
 	c.glUniform1f(locations.contrast, main.settings.blockContrast);
+	vulkanUniforms.contrast = main.settings.blockContrast;
 
 	c.glUniform1f(locations.lodDistance, main.settings.@"lod0.5Distance");
+	vulkanUniforms.lodDistance = main.settings.@"lod0.5Distance";
 
 	c.glUniform3f(locations.ambientLight, ambient[0], ambient[1], ambient[2]);
+	vulkanUniforms.ambientLight = ambient;
 
 	c.glUniform1f(locations.zNear, renderer.zNear);
 	c.glUniform1f(locations.zFar, renderer.zFar);
+	vulkanUniforms.zNear = renderer.zNear;
+	vulkanUniforms.zFar = renderer.zFar;
 }
 
-pub fn bindShaderAndUniforms(ambient: Vec3f) void {
+pub fn bindShaderAndUniforms(vulkanUniforms: *Uniforms, ambient: Vec3f) void {
 	pipeline.bind(null);
 
-	bindCommonUniforms(&uniforms, ambient);
+	bindCommonUniforms(vulkanUniforms, &uniforms, ambient);
 
 	vao.bind();
 }
 
-pub fn bindTransparentShaderAndUniforms(ambient: Vec3f) void {
+pub fn bindTransparentShaderAndUniforms(vulkanUniforms: *Uniforms, ambient: Vec3f) void {
 	transparentPipeline.bind(null);
 
 	c.glUniform3fv(transparentUniforms.@"fog.color", 1, @ptrCast(&game.world.?.dayTime.fog.fogColor));
 	c.glUniform1f(transparentUniforms.@"fog.density", game.world.?.dayTime.fog.density);
 	c.glUniform1f(transparentUniforms.@"fog.fogLower", game.world.?.dayTime.fog.fogLower);
 	c.glUniform1f(transparentUniforms.@"fog.fogHigher", game.world.?.dayTime.fog.fogHigher);
+	vulkanUniforms.@"fog.color" = game.world.?.dayTime.fog.fogColor;
+	vulkanUniforms.@"fog.density" = game.world.?.dayTime.fog.density;
+	vulkanUniforms.@"fog.fogLower" = game.world.?.dayTime.fog.fogLower;
+	vulkanUniforms.@"fog.fogHigher" = game.world.?.dayTime.fog.fogHigher;
 
-	bindCommonUniforms(&transparentUniforms, ambient);
+	bindCommonUniforms(vulkanUniforms, &transparentUniforms, ambient);
 
 	vao.bind();
 }
@@ -236,10 +259,11 @@ fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, transparent: bool) voi
 		c.glDispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
 		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
+		var vulkanUniforms: Uniforms = undefined;
 		if (transparent) {
-			bindTransparentShaderAndUniforms(ambient);
+			bindTransparentShaderAndUniforms(&vulkanUniforms, ambient);
 		} else {
-			bindShaderAndUniforms(ambient);
+			bindShaderAndUniforms(&vulkanUniforms, ambient);
 		}
 		c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 		c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
@@ -257,10 +281,11 @@ fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, transparent: bool) voi
 	c.glDispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
+	var vulkanUniforms: Uniforms = undefined;
 	if (transparent) {
-		bindTransparentShaderAndUniforms(ambient);
+		bindTransparentShaderAndUniforms(&vulkanUniforms, ambient);
 	} else {
-		bindShaderAndUniforms(ambient);
+		bindShaderAndUniforms(&vulkanUniforms, ambient);
 	}
 	c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 	c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
