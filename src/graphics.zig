@@ -2661,7 +2661,7 @@ const block_texture = struct { // MARK: block_texture
 		if (main.settings.launch_config.vulkanTestingMode) {
 			std.debug.assert(depthTexture.vulkanImage == null);
 			depthTexture.vulkanImage = vulkan.Image.init(.{textureSize, textureSize, 1}, .{
-				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
 				.format = c.VK_FORMAT_D32_SFLOAT,
 				.aspect = .{.depth = true},
 			});
@@ -2749,7 +2749,7 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 		var fakeFrame: vulkan.Frame = undefined;
 		fakeFrame.extent = .{.width = textureSize, .height = textureSize};
 		if (block.transparent()) {
-			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, frameBuffer.depth, .{1, 1, 1}, 0.25, 0);
+			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, block_texture.depthTexture.vulkanImage.?, .{1, 1, 1}, 0.25, 0);
 		} else {
 			main.renderer.chunk_meshing.bindShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, .{1, 1, 1}, 0.25, 0);
 		}

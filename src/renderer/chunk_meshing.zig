@@ -83,9 +83,22 @@ pub fn init() void {
 		&uniforms,
 		graphics.VertexArray.EmptyVertex,
 		.{
+			.bindings = &.{
+				.sampler(0, .{.fragment = true}),
+				.sampler(1, .{.fragment = true}),
+				.sampler(2, .{.fragment = true}),
+				.sampler(5, .{.fragment = true}),
+				.sampler(11, .{.fragment = true}),
+				.ssbo(3, .{.vertex = true}),
+				.ssbo(4, .{.vertex = true}),
+				.ssbo(6, .{.vertex = true}),
+				.ssbo(10, .{.vertex = true}),
+				.ssbo(12, .{.fragment = true}),
+			},
 			.rasterState = .{},
 			.depthStencilState = .{.depthTest = true, .depthWrite = true},
 			.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.world}},
+			.pushConstantSize = @sizeOf(Uniforms),
 		},
 	);
 	transparentPipeline = graphics.Pipeline.init(
@@ -95,6 +108,19 @@ pub fn init() void {
 		&transparentUniforms,
 		graphics.VertexArray.EmptyVertex,
 		.{
+			.bindings = &.{
+				.sampler(0, .{.fragment = true}),
+				.sampler(1, .{.fragment = true}),
+				.sampler(2, .{.fragment = true}),
+				.sampler(5, .{.fragment = true}),
+				.sampler(11, .{.fragment = true}),
+				.ssbo(3, .{.vertex = true}),
+				.ssbo(4, .{.vertex = true}),
+				.ssbo(6, .{.vertex = true}),
+				.ssbo(7, .{.fragment = true}),
+				.ssbo(10, .{.vertex = true}),
+				.ssbo(12, .{.fragment = true}),
+			},
 			.rasterState = .{},
 			.depthStencilState = .{.depthTest = true, .depthWrite = false, .depthCompare = .lessOrEqual},
 			.blendState = .{.attachments = &.{.{
@@ -105,6 +131,7 @@ pub fn init() void {
 				.dstAlphaBlendFactor = .src1Alpha,
 				.alphaBlendOp = .add,
 			}}, .formats = &.{.world}},
+			.pushConstantSize = @sizeOf(Uniforms),
 		},
 	);
 	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms);

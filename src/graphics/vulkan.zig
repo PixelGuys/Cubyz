@@ -320,7 +320,10 @@ const deviceFeatures: DeviceFeatures = .{
 		// needed to prevent near-plane clipping
 		.depthClamp = c.VK_TRUE,
 	},
-	.v11 = .{},
+	.v11 = .{
+		// Allows accessing gl_BaseVertex
+		.shaderDrawParameters = c.VK_TRUE,
+	},
 	.v12 = .{},
 	.v13 = .{
 		// together they replace render passes, device support is basically at 100%
