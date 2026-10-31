@@ -551,7 +551,7 @@ const bob_manager = struct {
 
 		const newAmplitude = @min(inputSpeed/inputSpeedMax, actualSpeed/actualSpeedMax, 1);
 
-		if (newAmplitude <= amplitudeThreshold) {
+		if (actualSpeed == 0 and newAmplitude <= amplitudeThreshold) {
 			amplitude = transition(amplitude, 0, amplitudeHalfLifeStanding, dt);
 			const targetPhase = std.math.round(phase/std.math.pi)*std.math.pi;
 			phase = transition(phase, targetPhase, phaseResetHalfLifeStanding, dt);
