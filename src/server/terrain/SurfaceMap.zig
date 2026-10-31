@@ -65,7 +65,7 @@ pub fn MapFragmentMapInitializer(comptime keyType: type, comptime storedType: ty
 		pub const mapSize = 1 << mapShift;
 
 		uniqueItems: main.List(storedType),
-		itemIndexes: std.AutoHashMapUnmanaged(keyType, u32),
+		itemIndexes: std.AutoHashMapUnmanaged(keyType, u16),
 		itemMap: [mapSize][mapSize]u16 = undefined,
 
 		pub const empty: @This() = .{
@@ -773,11 +773,14 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 							height += cur.heightMap[curX][curY];
 							const biomeAndSeed = cur.getLocalBiomeAndSeed(@intCast(curX), @intCast(curY));
 							for (0..4) |i| {
-								if (biomeAndSeeds[i] == biomeAndSeed) {
+								if (std.meta.eql(biomeAndSeeds[i], biomeAndSeed)) {
 									biomeAndSeedCounts[i] += 1;
 									break;
 								} else if (biomeAndSeeds[i] == null) {
 									biomeAndSeeds[i] = biomeAndSeed;
+									biomeAndSeedCounts[i] += 1;
+									break;
+								} else if (biomeAndSeeds[i].?.biome == biomeAndSeed.biome) {
 									biomeAndSeedCounts[i] += 1;
 									break;
 								}
