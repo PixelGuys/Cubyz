@@ -44,7 +44,7 @@
 			.lazy = true,
 		},
 		.cubyz_large_assets = .{
-			.url = "https://github.com/PixelGuys/Cubyz-Assets/releases/download/0.3.6/assets.tar.gz",
+			.url = "https://github.com/Crepestrom/Cubyz-Assets/releases/download/44.0.0/assets.tar.gz",
 			.hash = "N-V-__8AABst_gbWhL_Rl--L4bUSOeu2484UhidGfW1DNlOJ",
 		},
 		.cubyz_test_runner = .{
