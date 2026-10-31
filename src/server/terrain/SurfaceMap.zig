@@ -333,6 +333,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 		var writer = BinaryWriter.initCapacity(main.stackAllocator, uniqueBiomeAndSeedDataLength + uniqueBiomeAndSeedSize + palletizedArraySize + heightDataSize + originalHeightDataSize);
 		defer writer.deinit();
 
+		std.debug.assert(mapSize <= 65536); // The mapSize is incompatible with this save system. The system saves the unique BiomeAndSeed List length as a u16 value to fit a max map size of 256x256 (65536)
 		writer.writeInt(u16, @intCast(self.uniqueBiomeAndSeeds.len));
 		for (self.uniqueBiomeAndSeeds) |biomeAndSeed| {
 			writer.writeInt(u32, biomeAndSeed.biome.paletteId);
