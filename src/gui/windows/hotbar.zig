@@ -61,4 +61,5 @@ pub fn update() void {
 	player.mutex.lock();
 	defer player.mutex.unlock();
 	itemSlots[player.selectedSlot].hovered = true;
+	main.sync.client.executeCommand(.{.updateHeldItem = .{.new = .{.inv = player.inventory.super, .slot = player.selectedSlot}}});
 }
