@@ -79,7 +79,7 @@ pub const particle_manager = struct { // MARK: particle_manager
 					.{
 						.particle = .{
 							.typ = @intCast(types.items.len),
-							.pos = .{0, 0, 0},
+							.pos = undefined,
 						},
 					},
 				) orelse {
