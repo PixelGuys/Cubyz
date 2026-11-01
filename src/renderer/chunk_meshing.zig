@@ -40,8 +40,21 @@ const UniformStruct = struct {
 	zNear: c_int,
 	zFar: c_int,
 };
-pub var uniforms: UniformStruct = undefined;
-pub var transparentUniforms: UniformStruct = undefined;
+pub const Uniforms = extern struct {
+	ambientLight: [3]f32 align(16),
+	contrast: f32,
+	@"fog.color": [3]f32 align(16),
+	@"fog.density": f32,
+	@"fog.fogLower": f32,
+	@"fog.fogHigher": f32,
+	reflectionMapSize: f32,
+	lodDistance: f32,
+	zNear: f32,
+	zFar: f32,
+};
+
+var uniforms: UniformStruct = undefined;
+var transparentUniforms: UniformStruct = undefined;
 pub var commandPipeline: graphics.ComputePipeline = undefined;
 pub var commandUniforms: struct {
 	chunkIDIndex: c_int,
@@ -70,9 +83,22 @@ pub fn init() void {
 		&uniforms,
 		graphics.VertexArray.EmptyVertex,
 		.{
+			.bindings = &.{
+				.sampler(0, .{.fragment = true}),
+				.sampler(1, .{.fragment = true}),
+				.sampler(2, .{.fragment = true}),
+				.sampler(5, .{.fragment = true}),
+				.sampler(11, .{.fragment = true}),
+				.ssbo(3, .{.vertex = true}),
+				.ssbo(4, .{.vertex = true}),
+				.ssbo(6, .{.vertex = true}),
+				.ssbo(10, .{.vertex = true}),
+				.ssbo(12, .{.fragment = true}),
+			},
 			.rasterState = .{},
 			.depthStencilState = .{.depthTest = true, .depthWrite = true},
 			.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.world}},
+			.pushConstantSize = @sizeOf(Uniforms),
 		},
 	);
 	transparentPipeline = graphics.Pipeline.init(
@@ -82,6 +108,19 @@ pub fn init() void {
 		&transparentUniforms,
 		graphics.VertexArray.EmptyVertex,
 		.{
+			.bindings = &.{
+				.sampler(0, .{.fragment = true}),
+				.sampler(1, .{.fragment = true}),
+				.sampler(2, .{.fragment = true}),
+				.sampler(5, .{.fragment = true}),
+				.sampler(11, .{.fragment = true}),
+				.ssbo(3, .{.vertex = true}),
+				.ssbo(4, .{.vertex = true}),
+				.ssbo(6, .{.vertex = true}),
+				.ssbo(7, .{.fragment = true}),
+				.ssbo(10, .{.vertex = true}),
+				.ssbo(12, .{.fragment = true}),
+			},
 			.rasterState = .{},
 			.depthStencilState = .{.depthTest = true, .depthWrite = false, .depthCompare = .lessOrEqual},
 			.blendState = .{.attachments = &.{.{
@@ -92,6 +131,7 @@ pub fn init() void {
 				.dstAlphaBlendFactor = .src1Alpha,
 				.alphaBlendOp = .add,
 			}}, .formats = &.{.world}},
+			.pushConstantSize = @sizeOf(Uniforms),
 		},
 	);
 	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms);
@@ -170,38 +210,74 @@ pub fn endRender() void {
 	chunkIDBuffer.endRender();
 }
 
-fn bindCommonUniforms(locations: *UniformStruct, ambient: Vec3f) void {
+fn bindCommonUniforms(vulkanUniforms: *Uniforms, locations: *UniformStruct, ambient: Vec3f, contrast: f32) void {
 	c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
+	vulkanUniforms.reflectionMapSize = renderer.reflectionCubeMapSize;
 
-	c.glUniform1f(locations.contrast, main.settings.blockContrast);
+	c.glUniform1f(locations.contrast, contrast);
+	vulkanUniforms.contrast = contrast;
 
 	c.glUniform1f(locations.lodDistance, main.settings.@"lod0.5Distance");
+	vulkanUniforms.lodDistance = main.settings.@"lod0.5Distance";
 
 	c.glUniform3f(locations.ambientLight, ambient[0], ambient[1], ambient[2]);
+	vulkanUniforms.ambientLight = ambient;
 
 	c.glUniform1f(locations.zNear, renderer.zNear);
 	c.glUniform1f(locations.zFar, renderer.zFar);
+	vulkanUniforms.zNear = renderer.zNear;
+	vulkanUniforms.zFar = renderer.zFar;
 }
 
-pub fn bindShaderAndUniforms(ambient: Vec3f) void {
+fn bindVulkan(selectedPipeline: graphics.Pipeline, commands: graphics.CommandBuffer, currentFrame: *graphics.vulkan.Frame, vulkanUniforms: *Uniforms, lod: usize) void {
+	commands.bindPipeline(currentFrame, selectedPipeline, null);
+	commands.pushConstants(selectedPipeline, vulkanUniforms);
+	commands.bindVertexArray(vao);
+	commands.bindDescriptors(selectedPipeline, .graphics, &.{
+		.{.image = .{.binding = 0, .image = main.blocks.meshes.blockTextureArray.vulkanImage.?}},
+		.{.image = .{.binding = 1, .image = main.blocks.meshes.emissionTextureArray.vulkanImage.?}},
+		.{.image = .{.binding = 2, .image = main.blocks.meshes.reflectivityAndAbsorptionTextureArray.vulkanImage.?}},
+		.{.ssbo = .{.binding = 3, .ssbo = faceBuffers[lod].ssbo}},
+		.{.ssbo = .{.binding = 6, .ssbo = chunkBuffer.ssbo}},
+		.{.ssbo = .{.binding = 10, .ssbo = lightBuffers[lod].ssbo}},
+	});
+}
+
+pub fn bindShaderAndUniforms(commands: graphics.CommandBuffer, currentFrame: *graphics.vulkan.Frame, ambient: Vec3f, contrast: f32, lod: usize) void {
 	pipeline.bind(null);
 
-	bindCommonUniforms(&uniforms, ambient);
+	var vulkanUniforms: Uniforms = undefined;
+	bindCommonUniforms(&vulkanUniforms, &uniforms, ambient, contrast);
 
 	vao.bind();
+	if (main.settings.launch_config.vulkanTestingMode) {
+		bindVulkan(transparentPipeline, commands, currentFrame, &vulkanUniforms, lod);
+	}
 }
 
-pub fn bindTransparentShaderAndUniforms(ambient: Vec3f) void {
+pub fn bindTransparentShaderAndUniforms(commands: graphics.CommandBuffer, currentFrame: *graphics.vulkan.Frame, depthTexture: graphics.vulkan.Image, ambient: Vec3f, contrast: f32, lod: usize) void {
 	transparentPipeline.bind(null);
+
+	var vulkanUniforms: Uniforms = undefined;
 
 	c.glUniform3fv(transparentUniforms.@"fog.color", 1, @ptrCast(&game.world.?.dayTime.fog.fogColor));
 	c.glUniform1f(transparentUniforms.@"fog.density", game.world.?.dayTime.fog.density);
 	c.glUniform1f(transparentUniforms.@"fog.fogLower", game.world.?.dayTime.fog.fogLower);
 	c.glUniform1f(transparentUniforms.@"fog.fogHigher", game.world.?.dayTime.fog.fogHigher);
+	vulkanUniforms.@"fog.color" = game.world.?.dayTime.fog.fogColor;
+	vulkanUniforms.@"fog.density" = game.world.?.dayTime.fog.density;
+	vulkanUniforms.@"fog.fogLower" = game.world.?.dayTime.fog.fogLower;
+	vulkanUniforms.@"fog.fogHigher" = game.world.?.dayTime.fog.fogHigher;
 
-	bindCommonUniforms(&transparentUniforms, ambient);
+	bindCommonUniforms(&vulkanUniforms, &transparentUniforms, ambient, contrast);
 
 	vao.bind();
+	if (main.settings.launch_config.vulkanTestingMode) {
+		bindVulkan(transparentPipeline, commands, currentFrame, &vulkanUniforms, lod);
+		commands.bindDescriptors(transparentPipeline, .graphics, &.{
+			.{.image = .{.binding = 5, .image = depthTexture}},
+		});
+	}
 }
 
 fn bindBuffers(lod: usize) void {
@@ -209,15 +285,15 @@ fn bindBuffers(lod: usize) void {
 	lightBuffers[lod].ssbo.bind(lightBuffers[lod].binding);
 }
 
-pub fn drawChunksIndirect(chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), ambient: Vec3f, transparent: bool) void {
+pub fn drawChunksIndirect(currentFrame: *graphics.vulkan.Frame, depthTexture: graphics.vulkan.Image, chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), ambient: Vec3f, transparent: bool) void {
 	for (0..chunkIds.len) |i| {
 		const lod = if (transparent) main.settings.highestSupportedLod - i else i;
 		bindBuffers(lod);
-		drawChunksOfLod(chunkIds[lod].items, ambient, transparent);
+		drawChunksOfLod(currentFrame, depthTexture, chunkIds[lod].items, ambient, transparent, lod);
 	}
 }
 
-fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, transparent: bool) void {
+fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, depthTexture: graphics.vulkan.Image, chunkIDs: []const u32, ambient: Vec3f, transparent: bool, lod: usize) void {
 	if (chunkIDs.len == 0) return;
 	const drawCallsEstimate: u31 = @intCast(if (transparent) chunkIDs.len else chunkIDs.len*8);
 	var chunkIDAllocation: main.graphics.SubAllocation = .{.start = 0, .len = 0};
@@ -237,9 +313,9 @@ fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, transparent: bool) voi
 		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
 		if (transparent) {
-			bindTransparentShaderAndUniforms(ambient);
+			bindTransparentShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, depthTexture, ambient, main.settings.blockContrast, lod);
 		} else {
-			bindShaderAndUniforms(ambient);
+			bindShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, ambient, main.settings.blockContrast, lod);
 		}
 		c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 		c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
@@ -258,9 +334,9 @@ fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, transparent: bool) voi
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
 	if (transparent) {
-		bindTransparentShaderAndUniforms(ambient);
+		bindTransparentShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, depthTexture, ambient, main.settings.blockContrast, lod);
 	} else {
-		bindShaderAndUniforms(ambient);
+		bindShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, ambient, main.settings.blockContrast, lod);
 	}
 	c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 	c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
