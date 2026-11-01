@@ -31,7 +31,7 @@ fn renderConnectionData(currentFrame: *graphics.vulkan.Frame, conn: *main.networ
 	conn.lossyChannel.getStatistics(&unconfirmed[0], &queued[0]);
 	conn.secureChannel.getStatistics(&unconfirmed[1], &queued[1]);
 	conn.slowChannel.getStatistics(&unconfirmed[2], &queued[2]);
-	draw.print(currentFrame, "{s} | RTT = {d:.1} ± {d:.1} ms | {d:.0} kiB/RTT", .{name, conn.rttEstimate/1000.0, conn.rttUncertainty/1000.0, conn.bandwidthEstimateInBytesPerRtt/1024.0}, 0, y.*, 8);
+	draw.print(currentFrame, "{s} | RTT = {d:.1} ± {d:.1} ms | {d:.0} kiB/RTT | {d} bytes MTU estimate", .{name, conn.rttEstimate/1000.0, conn.rttUncertainty/1000.0, conn.bandwidthEstimateInBytesPerRtt/1024.0, conn.mtuHandler.mtuEstimate}, 0, y.*, 8);
 	y.* += 8;
 	draw.print(currentFrame, "Waiting in queue:      {: >6} kiB |{: >6} kiB |{: >6} kiB", .{queued[0] >> 10, queued[1] >> 10, queued[2] >> 10}, 0, y.*, 8);
 	y.* += 8;
