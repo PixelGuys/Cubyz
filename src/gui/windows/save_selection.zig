@@ -26,7 +26,7 @@ var buttonNameArena: main.heap.NeverFailingArenaAllocator = undefined;
 
 pub var needsUpdate: bool = false;
 
-pub var mode: main.server.ServerWorld.Mode = undefined;
+pub var mode: main.server.World.Mode = undefined;
 
 var deleteIcon: Texture = undefined;
 var fileExplorerIcon: Texture = undefined;
