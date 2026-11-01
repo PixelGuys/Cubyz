@@ -129,7 +129,7 @@ const Material = struct { // MARK: Material
 				outString.appendSlice("\n");
 			} else {
 				outString.appendSlice("§#808080if ");
-				modifier.restriction.printTooltip(outString);
+				modifier.restriction.printTooltip(outString, .{});
 				outString.appendSlice("\n  ");
 				modifier.printTooltip(outString);
 				outString.appendSlice("\n");
@@ -142,10 +142,14 @@ pub const ModifierRestriction = struct {
 	vTable: *const VTable,
 	data: *anyopaque,
 
+	pub const PrintOptions = struct {
+		negated: bool = false,
+	};
+
 	pub const VTable = struct {
 		satisfied: *const fn (data: *anyopaque, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool,
 		loadFromZon: *const fn (allocator: NeverFailingAllocator, zon: ZonElement) *anyopaque,
-		printTooltip: *const fn (data: *anyopaque, outString: *main.ListManaged(u8)) void,
+		printTooltip: *const fn (data: *anyopaque, outString: *main.ListManaged(u8), options: PrintOptions) void,
 	};
 
 	pub fn satisfied(self: ModifierRestriction, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
@@ -164,8 +168,8 @@ pub const ModifierRestriction = struct {
 		};
 	}
 
-	pub fn printTooltip(self: ModifierRestriction, outString: *main.ListManaged(u8)) void {
-		self.vTable.printTooltip(self.data, outString);
+	pub fn printTooltip(self: ModifierRestriction, outString: *main.ListManaged(u8), options: PrintOptions) void {
+		self.vTable.printTooltip(self.data, outString, options);
 	}
 };
 

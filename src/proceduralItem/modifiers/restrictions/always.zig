@@ -13,6 +13,10 @@ pub fn loadFromZon(_: NeverFailingAllocator, _: ZonElement) *const anyopaque {
 	return undefined;
 }
 
-pub fn printTooltip(_: *const anyopaque, outString: *main.ListManaged(u8)) void {
-	outString.appendSlice("always");
+pub fn printTooltip(_: *const anyopaque, outString: *main.ListManaged(u8), options: main.items.ModifierRestriction.PrintOptions) void {
+	if (options.negated) {
+		outString.appendSlice("never");
+	} else {
+		outString.appendSlice("always");
+	}
 }
