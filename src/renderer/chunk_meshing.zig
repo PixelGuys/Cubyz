@@ -43,10 +43,7 @@ const UniformStruct = struct {
 pub const Uniforms = extern struct {
 	ambientLight: [3]f32 align(16),
 	contrast: f32,
-	@"fog.color": [3]f32 align(16),
-	@"fog.density": f32,
-	@"fog.fogLower": f32,
-	@"fog.fogHigher": f32,
+	fog: graphics.Fog.GlslData,
 	reflectionMapSize: f32,
 	lodDistance: f32,
 	zNear: f32,
@@ -264,10 +261,7 @@ pub fn bindTransparentShaderAndUniforms(commands: graphics.CommandBuffer, curren
 	c.glUniform1f(transparentUniforms.@"fog.density", game.world.?.dayTime.fog.density);
 	c.glUniform1f(transparentUniforms.@"fog.fogLower", game.world.?.dayTime.fog.fogLower);
 	c.glUniform1f(transparentUniforms.@"fog.fogHigher", game.world.?.dayTime.fog.fogHigher);
-	vulkanUniforms.@"fog.color" = game.world.?.dayTime.fog.fogColor;
-	vulkanUniforms.@"fog.density" = game.world.?.dayTime.fog.density;
-	vulkanUniforms.@"fog.fogLower" = game.world.?.dayTime.fog.fogLower;
-	vulkanUniforms.@"fog.fogHigher" = game.world.?.dayTime.fog.fogHigher;
+	vulkanUniforms.fog = game.world.?.dayTime.fog.toGlsl();
 
 	bindCommonUniforms(&vulkanUniforms, &transparentUniforms, ambient, contrast);
 

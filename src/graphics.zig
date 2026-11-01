@@ -2621,6 +2621,22 @@ pub const Fog = struct { // MARK: Fog
 	density: f32,
 	fogLower: f32,
 	fogHigher: f32,
+
+	pub const GlslData = extern struct {
+		fogColor: [3]f32 align(16),
+		density: f32,
+		fogLower: f32,
+		fogHigher: f32,
+	};
+
+	pub fn toGlsl(self: Fog) GlslData {
+		return .{
+			.fogColor = self.fogColor,
+			.density = self.density,
+			.fogLower = self.fogLower,
+			.fogHigher = self.fogHigher,
+		};
+	}
 };
 
 const block_texture = struct { // MARK: block_texture
