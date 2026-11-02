@@ -6,7 +6,7 @@
 		.{
 			.id = "cubyz:sbb",
 			.placeMode = .all,
-			.structure = "cubyz:rare/container/base",
+			.structure = "cubyz:rare/blocky_geode/base",
 		},
 		.{
 			.id = "cubyz:sbb",
