@@ -738,7 +738,7 @@ pub fn init() void { // MARK: init()
 		c.glfwWindowHint(c.GLFW_VISIBLE, @intFromBool(main.settings.launch_config.vulkanTestingMode));
 		vulkanWindow = c.glfwCreateWindow(width, height, windowTitle, null, null) orelse @panic("Failed to create GLFW window");
 		vulkan.init(vulkanWindow) catch |err| {
-			std.log.err("Error while initializing Vulkan: {s}", .{@errorName(err)});
+			std.log.err("Error while initializing Vulkan: {s} This may be a driver issue. Please update your drivers if you want to keep playing Cubyz in the future.", .{@errorName(err)});
 			c.glfwDestroyWindow(vulkanWindow);
 			break :blk;
 		};
