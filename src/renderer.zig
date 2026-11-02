@@ -52,10 +52,7 @@ const DeferredUniforms = extern struct {
 	tanXY: [2]f32 align(8),
 	zNear: f32,
 	zFar: f32,
-	@"fog.color": [3]f32 align(16),
-	@"fog.density": f32,
-	@"fog.fogLower": f32,
-	@"fog.fogHigher": f32,
+	fog: graphics.Fog.GlslData,
 };
 var fakeReflectionPipeline: graphics.Pipeline = undefined;
 var fakeReflectionUniforms: struct {
@@ -343,16 +340,15 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 		uniforms.zNear = zNear;
 		uniforms.zFar = zFar;
 		if (!blocks.meshes.hasFog(playerBlock)) {
-			uniforms.@"fog.color" = game.world.?.dayTime.fog.fogColor;
-			uniforms.@"fog.density" = game.world.?.dayTime.fog.density;
-			uniforms.@"fog.fogLower" = game.world.?.dayTime.fog.fogLower;
-			uniforms.@"fog.fogHigher" = game.world.?.dayTime.fog.fogHigher;
+			uniforms.fog = game.world.?.dayTime.fog.toGlsl();
 		} else {
 			const fogColor = blocks.meshes.fogColor(playerBlock);
-			uniforms.@"fog.color" = .{@as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0};
-			uniforms.@"fog.density" = blocks.meshes.fogDensity(playerBlock);
-			uniforms.@"fog.fogLower" = 1e10;
-			uniforms.@"fog.fogHigher" = 1e10;
+			uniforms.fog = .{
+				.fogColor = .{@as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0},
+				.density = blocks.meshes.fogDensity(playerBlock),
+				.fogLower = 1e10,
+				.fogHigher = 1e10,
+			};
 		}
 		currentFrame.guiCommands.pushConstants(deferredRenderPassPipeline, &uniforms);
 		currentFrame.guiCommands.bindVertexArray(graphics.draw.rectVao);
