@@ -27,7 +27,7 @@
 					},
 				},
 				.{
-					.id = "good_at",
+					.id = "block_tag_damage",
 					.strength = 0.5,
 					.tag = .sandstone,
 					.restriction = .{
