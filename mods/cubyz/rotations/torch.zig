@@ -116,7 +116,7 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	};
 	if (data >= 32) return 0;
 	const runtimeTable = rotationTable;
-	return runtimeTable[@intFromEnum(angle)][data];
+	return runtimeTable[@backingInt(angle)][data];
 }
 
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, _: bool) bool {
@@ -144,7 +144,7 @@ fn closestRay(comptime typ: enum { bit, intersection }, block: Block, _: main.it
 	for ([_]u16{1, 2, 4, 8, 16}) |bit| {
 		if (block.data & bit != 0) {
 			const modelIndex: ModelIndex = blocks.meshes.modelIndexStart(block).add(bit - 1);
-			if (RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
+			if (RotationMode.default_functions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 				if (result == null or intersection.distance < result.?.distance) {
 					result = intersection;
 					resultBit = bit;
@@ -167,7 +167,7 @@ pub fn onBlockBreaking(item: main.items.Item, relativePlayerPos: Vec3f, playerDi
 }
 
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
-	switch (RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
+	switch (RotationMode.default_functions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
 		.no, .yes_costsDurability => return .no,
 		.yes, .yes_costsItems => {
 			const torchAmountChange = @as(i32, @popCount(newBlock.data)) - if (oldBlock.typ == newBlock.typ) @as(i32, @popCount(oldBlock.data)) else 0;

@@ -9,7 +9,6 @@ const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
 const Button = @import("../components/Button.zig");
 const Label = GuiComponent.Label;
-const MutexComponent = GuiComponent.MutexComponent;
 const TextInput = GuiComponent.TextInput;
 const VerticalList = @import("../components/VerticalList.zig");
 
@@ -26,18 +25,6 @@ pub var window: GuiWindow = GuiWindow{
 	.hideIfMouseIsGrabbed = true,
 	.closeable = false,
 };
-
-const padding: f32 = 8;
-const messageTimeout: i32 = 10000;
-const messageFade = 1000;
-
-var mutexComponent: MutexComponent = .{};
-var history: main.ListManaged(*Label) = undefined;
-var expirationTime: main.ListManaged(i32) = undefined;
-var historyStart: u32 = 0;
-var fadeOutEnd: u32 = 0;
-var input: *TextInput = undefined;
-var hideInput: bool = true;
 
 var pauseIcon: Texture = undefined;
 

@@ -79,8 +79,8 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:hibiscus"},
-			.chance = 0.04,
+			.blocks = .{"cubyz:hibiscus", "cubyz:bromeliad"},
+			.chance = 0.13,
 			.width = 6,
 			.variation = 3,
 			.density = 0.1,

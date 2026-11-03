@@ -64,7 +64,7 @@ fn invertMouseYCallback(newValue: bool) void {
 	main.settings.save();
 }
 fn sprintIsToggleCallback(newValue: bool) void {
-	main.KeyBoard.setIsToggling("sprint", newValue);
+	main.keyboard.setIsToggling("sprint", newValue);
 	main.settings.save();
 }
 
@@ -73,11 +73,11 @@ fn updateDeadzone(deadzone: f32) void {
 }
 
 fn deadzoneFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
-	return std.fmt.allocPrint(allocator.allocator, "Deadzone: {d:.0}%", .{value*100}) catch unreachable;
+	return allocator.print("Deadzone: {d:.0}%", .{value*100});
 }
 
 fn sensitivityFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
-	return std.fmt.allocPrint(allocator.allocator, "{s} Sensitivity: {d:.0}%", .{if (editingKeyboard) "Mouse" else "Controller", value*100}) catch unreachable;
+	return allocator.print("{s} Sensitivity: {d:.0}%", .{if (editingKeyboard) "Mouse" else "Controller", value*100});
 }
 
 fn abortBindingProcess() void {
@@ -113,12 +113,12 @@ fn initWindow() void {
 	list.add(Button.initText(.{0, 0}, keybindButtonWidth, if (editingKeyboard) "Gamepad" else "Keyboard", .{.onAction = .init(toggleKeyboard)}));
 	list.add(ContinuousSlider.init(.{0, 0}, controlsListWidth, 0, 5, if (editingKeyboard) main.settings.mouseSensitivity else main.settings.controllerSensitivity, &updateSensitivity, &sensitivityFormatter));
 	list.add(CheckBox.init(.{0, 0}, controlsListWidth, "Invert mouse Y", main.settings.invertMouseY, &invertMouseYCallback));
-	list.add(CheckBox.init(.{0, 0}, controlsListWidth, "Toggle sprint", main.KeyBoard.key("sprint").isToggling == .yes, &sprintIsToggleCallback));
+	list.add(CheckBox.init(.{0, 0}, controlsListWidth, "Toggle sprint", main.keyboard.key("sprint").isToggling == .yes, &sprintIsToggleCallback));
 
 	if (!editingKeyboard) {
 		list.add(ContinuousSlider.init(.{0, 0}, controlsListWidth, 0, 1, main.settings.controllerAxisDeadzone, &updateDeadzone, &deadzoneFormatter));
 	}
-	for (&main.KeyBoard.keys) |*key| {
+	for (&main.keyboard.keys) |*key| {
 		const label = Label.init(.{0, 0}, keybindButtonWidth, key.name, .left);
 		const button = blk: {
 			if (key == selectedKey) {
@@ -160,7 +160,7 @@ pub fn onClose() void {
 	deinitWindow();
 }
 
-pub fn render() void {
+pub fn render(_: *main.graphics.vulkan.Frame) void {
 	if (needsUpdate) {
 		needsUpdate = false;
 		const oldScroll = window.rootComponent.?.verticalList.scrollBar.currentState;

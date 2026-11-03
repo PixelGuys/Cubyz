@@ -50,7 +50,7 @@ const ExtraQuadInfo = struct {
 
 const gridSize = 4096;
 const collisionGridSize = 16;
-const CollisionGridInteger = std.meta.Int(.unsigned, collisionGridSize);
+const CollisionGridInteger = @Int(.unsigned, collisionGridSize);
 
 fn snapToGrid(x: anytype) @TypeOf(x) {
 	const T = @TypeOf(x);
@@ -75,10 +75,10 @@ pub const ModelIndex = enum(u32) {
 	_,
 
 	pub fn model(self: ModelIndex) *const Model {
-		return &models.items()[@intFromEnum(self)];
+		return &models.items()[@backingInt(self)];
 	}
 	pub fn add(self: ModelIndex, offset: u32) ModelIndex {
-		return @enumFromInt(@intFromEnum(self) + offset);
+		return @fromBackingInt(@backingInt(self) + offset);
 	}
 };
 
@@ -86,15 +86,15 @@ pub const QuadIndex = enum(u16) {
 	_,
 
 	pub fn quadInfo(self: QuadIndex) *const QuadInfo {
-		return &quads.items[@intFromEnum(self)];
+		return &quads.items[@backingInt(self)];
 	}
 
 	pub fn extraQuadInfo(self: QuadIndex) *const ExtraQuadInfo {
-		return &extraQuadInfos.items[@intFromEnum(self)];
+		return &extraQuadInfos.items[@backingInt(self)];
 	}
 };
 
-pub const Model = struct {
+pub const Model = struct { // MARK: Model
 	min: Vec3f,
 	max: Vec3f,
 	internalQuads: []QuadIndex,
@@ -149,51 +149,40 @@ pub const Model = struct {
 			// Snap the normals as well:
 			dest.normal = snapToGrid(dest.normal);
 		}
-		const modelIndex: ModelIndex = @enumFromInt(models.len);
+		const modelIndex: ModelIndex = @fromBackingInt(@intCast(models.len));
 		const self = models.addOne();
-		var amounts: [6]usize = .{0, 0, 0, 0, 0, 0};
-		var internalAmount: usize = 0;
+
+		var neighborFacingQuads: [6]main.List(QuadIndex) = @splat(.empty);
+		defer for (neighborFacingQuads) |list| {
+			list.deinit(main.stackAllocator);
+		};
+		var internalQuads: main.List(QuadIndex) = .empty;
+		defer internalQuads.deinit(main.stackAllocator);
 		self.min = .{1, 1, 1};
 		self.max = .{0, 0, 0};
 		self.isNeighborOccluded = @splat(false);
-		for (adjustedQuads) |*quad| {
+		for (adjustedQuads) |_quad| {
+			var quad = _quad;
 			for (quad.corners) |corner| {
 				self.min = @min(self.min, @as(Vec3f, corner));
 				self.max = @max(self.max, @as(Vec3f, corner));
 			}
-			if (getFaceNeighbor(quad)) |neighbor| {
-				amounts[neighbor.toInt()] += 1;
-			} else {
-				internalAmount += 1;
-			}
-		}
-
-		for (0..6) |i| {
-			self.neighborFacingQuads[i] = main.globalAllocator.alloc(QuadIndex, amounts[i]);
-		}
-		self.internalQuads = main.globalAllocator.alloc(QuadIndex, internalAmount);
-
-		var indices: [6]usize = .{0, 0, 0, 0, 0, 0};
-		var internalIndex: usize = 0;
-		for (adjustedQuads) |_quad| {
-			var quad = _quad;
 			if (getFaceNeighbor(&quad)) |neighbor| {
 				for (&quad.corners) |*corner| {
 					corner.* = @as(Vec3f, corner.*) - @as(Vec3f, quad.normal);
 				}
 				const quadIndex = addQuad(quad) catch continue;
-				self.neighborFacingQuads[neighbor.toInt()][indices[neighbor.toInt()]] = quadIndex;
-				indices[neighbor.toInt()] += 1;
+				neighborFacingQuads[neighbor.toInt()].append(main.stackAllocator, quadIndex);
 			} else {
 				const quadIndex = addQuad(quad) catch continue;
-				self.internalQuads[internalIndex] = quadIndex;
-				internalIndex += 1;
+				internalQuads.append(main.stackAllocator, quadIndex);
 			}
 		}
 		for (0..6) |i| {
-			self.neighborFacingQuads[i] = main.globalAllocator.realloc(self.neighborFacingQuads[i], indices[i]);
+			self.neighborFacingQuads[i] = main.worldArena.dupe(QuadIndex, neighborFacingQuads[i].items);
 		}
-		self.internalQuads = main.globalAllocator.realloc(self.internalQuads, internalIndex);
+		self.internalQuads = main.worldArena.dupe(QuadIndex, internalQuads.items);
+
 		self.hasNeighborFacingQuads = false;
 		self.allNeighborsOccluded = true;
 		self.noNeighborsOccluded = true;
@@ -208,7 +197,7 @@ pub const Model = struct {
 			self.noNeighborsOccluded = self.noNeighborsOccluded and !self.isNeighborOccluded[neighbor];
 		}
 		if (collisionModel) |collision| {
-			self.collision = main.globalAllocator.dupe(Box, collision);
+			self.collision = main.worldArena.dupe(Box, collision);
 		} else {
 			generateCollision(self, adjustedQuads);
 		}
@@ -372,6 +361,7 @@ pub const Model = struct {
 		}
 
 		var collision: main.List(Box) = .empty;
+		defer collision.deinit(main.stackAllocator);
 
 		for (0..collisionGridSize) |x| {
 			for (0..collisionGridSize) |y| {
@@ -390,12 +380,12 @@ pub const Model = struct {
 					const min = @as(Vec3f, @floatFromInt(boxMin))/@as(Vec3f, @splat(collisionGridSize));
 					const max = @as(Vec3f, @floatFromInt(boxMax))/@as(Vec3f, @splat(collisionGridSize));
 
-					collision.append(main.globalAllocator, Box{.min = min, .max = max});
+					collision.append(main.stackAllocator, Box{.min = min, .max = max});
 				}
 			}
 		}
 
-		self.collision = collision.toOwnedSlice(main.globalAllocator);
+		self.collision = main.worldArena.dupe(Box, collision.items);
 	}
 
 	fn allTrue(grid: *const [collisionGridSize][collisionGridSize]CollisionGridInteger, min: Vec3i, max: Vec3i, mask: CollisionGridInteger) bool {
@@ -425,18 +415,6 @@ pub const Model = struct {
 			.x => allTrue(grid, Vec3i{max[0], min[1], min[2]}, Vec3i{max[0] + 1, max[1], max[2]}, mask),
 			.y => allTrue(grid, Vec3i{min[0], max[1], min[2]}, Vec3i{max[0], max[1] + 1, max[2]}, mask),
 		};
-	}
-
-	fn addVert(vert: Vec3f, vertList: *main.List(Vec3f)) usize {
-		const ind = for (vertList.*.items, 0..) |vertex, index| {
-			if (vertex == vert) break index;
-		} else vertList.*.items.len;
-
-		if (ind == vertList.*.items.len) {
-			vertList.*.append(vert);
-		}
-
-		return ind;
 	}
 
 	pub fn loadModel(data: []const u8, coordinateSystem: vec.CoordinateSystem) ModelIndex {
@@ -608,14 +586,6 @@ pub const Model = struct {
 		return quadInfos.toOwnedSlice();
 	}
 
-	fn deinit(self: *const Model) void {
-		for (0..6) |i| {
-			main.globalAllocator.free(self.neighborFacingQuads[i]);
-		}
-		main.globalAllocator.free(self.internalQuads);
-		main.globalAllocator.free(self.collision);
-	}
-
 	pub fn getRawFaces(model: Model, quadList: *main.ListManaged(QuadInfo)) void {
 		for (model.internalQuads) |quadIndex| {
 			quadList.append(quadIndex.quadInfo().*);
@@ -671,7 +641,7 @@ var nameToIndex: std.StringHashMap(ModelIndex) = undefined;
 pub fn getModelIndex(string: []const u8) ModelIndex {
 	return nameToIndex.get(string) orelse {
 		std.log.err("Couldn't find voxelModel with name: {s}.", .{string});
-		return @enumFromInt(0);
+		return @fromBackingInt(0);
 	};
 }
 
@@ -694,7 +664,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 		}
 	}
 	if (cornerEqualities >= 2) return error.Degenerate; // One corner equality is fine, since then the quad degenerates to a triangle, which has a non-zero area.
-	const index: QuadIndex = @enumFromInt(quads.items.len);
+	const index: QuadIndex = @fromBackingInt(@intCast(quads.items.len));
 	if (info.opaqueInLod == 2) {
 		info.opaqueInLod = 0;
 	} else {
@@ -780,7 +750,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 			}
 		}
 
-		extraQuadInfo.lightSampleListForAxisAlignedModels = main.globalArena.dupe(LightSample, deduplicatedList.items);
+		extraQuadInfo.lightSampleListForAxisAlignedModels = main.worldArena.dupe(LightSample, deduplicatedList.items);
 	}
 	extraQuadInfos.append(main.globalAllocator, extraQuadInfo);
 
@@ -798,64 +768,6 @@ fn addCornerLightSamples(lightSamples: *main.List(LightSample), pos: Vec3i, dire
 			const finalPos = startPos +% @as(Vec3i, @intCast(@abs(direction.textureX())))*@as(Vec3i, @splat(dx)) +% @as(Vec3i, @intCast(@abs(direction.textureY()*@as(Vec3i, @splat(dy)))));
 			lightSamples.appendAssumeCapacity(.{.offset = finalPos, .weights = weights});
 		}
-	}
-}
-
-fn box(min: Vec3f, max: Vec3f, uvOffset: Vec2f) [6]QuadInfo {
-	const corner000: Vec3f = .{min[0], min[1], min[2]};
-	const corner001: Vec3f = .{min[0], min[1], max[2]};
-	const corner010: Vec3f = .{min[0], max[1], min[2]};
-	const corner011: Vec3f = .{min[0], max[1], max[2]};
-	const corner100: Vec3f = .{max[0], min[1], min[2]};
-	const corner101: Vec3f = .{max[0], min[1], max[2]};
-	const corner110: Vec3f = .{max[0], max[1], min[2]};
-	const corner111: Vec3f = .{max[0], max[1], max[2]};
-	return .{
-		.{
-			.normal = .{-1, 0, 0},
-			.corners = .{corner010, corner011, corner000, corner001},
-			.cornerUV = .{uvOffset + Vec2f{1 - max[1], min[2]}, uvOffset + Vec2f{1 - max[1], max[2]}, uvOffset + Vec2f{1 - min[1], min[2]}, uvOffset + Vec2f{1 - min[1], max[2]}},
-			.textureSlot = Neighbor.dirNegX.toInt(),
-		},
-		.{
-			.normal = .{1, 0, 0},
-			.corners = .{corner100, corner101, corner110, corner111},
-			.cornerUV = .{uvOffset + Vec2f{min[1], min[2]}, uvOffset + Vec2f{min[1], max[2]}, uvOffset + Vec2f{max[1], min[2]}, uvOffset + Vec2f{max[1], max[2]}},
-			.textureSlot = Neighbor.dirPosX.toInt(),
-		},
-		.{
-			.normal = .{0, -1, 0},
-			.corners = .{corner000, corner001, corner100, corner101},
-			.cornerUV = .{uvOffset + Vec2f{min[0], min[2]}, uvOffset + Vec2f{min[0], max[2]}, uvOffset + Vec2f{max[0], min[2]}, uvOffset + Vec2f{max[0], max[2]}},
-			.textureSlot = Neighbor.dirNegY.toInt(),
-		},
-		.{
-			.normal = .{0, 1, 0},
-			.corners = .{corner110, corner111, corner010, corner011},
-			.cornerUV = .{uvOffset + Vec2f{1 - max[0], min[2]}, uvOffset + Vec2f{1 - max[0], max[2]}, uvOffset + Vec2f{1 - min[0], min[2]}, uvOffset + Vec2f{1 - min[0], max[2]}},
-			.textureSlot = Neighbor.dirPosY.toInt(),
-		},
-		.{
-			.normal = .{0, 0, -1},
-			.corners = .{corner010, corner000, corner110, corner100},
-			.cornerUV = .{uvOffset + Vec2f{min[0], 1 - max[1]}, uvOffset + Vec2f{min[0], 1 - min[1]}, uvOffset + Vec2f{max[0], 1 - max[1]}, uvOffset + Vec2f{max[0], 1 - min[1]}},
-			.textureSlot = Neighbor.dirDown.toInt(),
-		},
-		.{
-			.normal = .{0, 0, 1},
-			.corners = .{corner111, corner101, corner011, corner001},
-			.cornerUV = .{uvOffset + Vec2f{1 - max[0], 1 - max[1]}, uvOffset + Vec2f{1 - max[0], 1 - min[1]}, uvOffset + Vec2f{1 - min[0], 1 - max[1]}, uvOffset + Vec2f{1 - min[0], 1 - min[1]}},
-			.textureSlot = Neighbor.dirUp.toInt(),
-		},
-	};
-}
-
-fn openBox(min: Vec3f, max: Vec3f, uvOffset: Vec2f, openSide: enum { x, y, z }) [4]QuadInfo {
-	const fullBox = box(min, max, uvOffset);
-	switch (openSide) {
-		.x => return fullBox[2..6].*,
-		.y => return fullBox[0..2].* ++ fullBox[4..6].*,
-		.z => return fullBox[0..4].*,
 	}
 }
 
@@ -877,9 +789,6 @@ pub fn init() void {
 }
 
 pub fn reset() void {
-	for (models.items()) |model| {
-		model.deinit();
-	}
 	models.clearRetainingCapacity();
 	quads.clearRetainingCapacity();
 	extraQuadInfos.clearRetainingCapacity();
@@ -893,9 +802,6 @@ pub fn deinit() void {
 		_quadSSBO.deinit();
 	}
 	nameToIndex.deinit();
-	for (models.items()) |model| {
-		model.deinit();
-	}
 	models.deinit();
 	quads.deinit(main.globalAllocator);
 	extraQuadInfos.deinit(main.globalAllocator);

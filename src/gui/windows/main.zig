@@ -27,7 +27,7 @@ fn singleplayerSelection() void {
 	gui.openWindow("save_selection");
 }
 fn multiplayer() void {
-	if (main.network.authentication.KeyCollection.initialized) {
+	if (main.network.authentication.key_collection.initialized) {
 		gui.openWindow("multiplayer");
 		return;
 	}
@@ -48,7 +48,7 @@ fn multiplayer() void {
 			if (failureText.items.len != 0) {
 				std.log.warn("Encountered errors while verifying your Account. This may happen if you created your account in a future version, in which case it's fine to continue.\n{s}", .{failureText.items});
 			}
-			main.network.authentication.KeyCollection.init(accountCode);
+			main.network.authentication.key_collection.init(accountCode);
 			gui.openWindow("multiplayer");
 		},
 		else => {

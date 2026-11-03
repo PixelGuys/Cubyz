@@ -1,0 +1,3 @@
+.{
+	.coordinateSystem = .left_handed_y_up,
+}

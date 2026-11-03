@@ -15,9 +15,9 @@ pub fn run(_: *anyopaque, params: main.callbacks.ClientBlockCallback.Params) mai
 		std.log.err("Can only open chest if block entity of the block is a chest.", .{});
 		return .ignored;
 	}
-	main.network.protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, params.blockPos);
+	main.network.protocols.block_entity_update.sendClientDataUpdateToServer(main.game.world.?.conn, params.blockPos);
 
-	const inventory = main.items.Inventory.ClientInventory.init(main.globalAllocator, main.block_entity.BlockEntityTypes.@"cubyz:chest".inventorySize, .serverShared, .{.blockInventory = params.blockPos}, .{});
+	const inventory = main.items.Inventory.ClientInventory.init(main.globalAllocator, main.block_entity.block_entity_types.@"cubyz:chest".inventorySize, .serverShared, .{.blockInventory = params.blockPos}, .{});
 
 	main.gui.windowlist.chest.setInventory(inventory);
 	main.gui.openWindow("chest");

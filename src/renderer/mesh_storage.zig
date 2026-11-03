@@ -108,7 +108,7 @@ pub fn deinit() void {
 	mapUpdatableList.deinit();
 	priorityMeshUpdateList.deinit();
 	meshList.clearAndFree(main.globalAllocator);
-	main.heap.GarbageCollection.waitForFreeCompletion();
+	main.heap.garbage_collection.waitForFreeCompletion();
 }
 
 // MARK: getters
@@ -569,8 +569,8 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 	createNewMeshes(olderPx, olderPy, olderPz, olderRD, &meshRequests, &mapRequests);
 
 	// Make requests as soon as possible to reduce latency:
-	network.protocols.lightMapRequest.sendRequest(conn, mapRequests.items);
-	network.protocols.chunkRequest.sendRequest(conn, meshRequests.items, .{lastPx, lastPy, lastPz}, lastRD);
+	network.protocols.light_map_request.sendRequest(conn, mapRequests.items);
+	network.protocols.chunk_request.sendRequest(conn, meshRequests.items, .{lastPx, lastPy, lastPz}, lastRD);
 
 	// Finds all visible chunks and lod chunks using a breadth-first hierarchical search.
 
@@ -735,7 +735,7 @@ pub fn updateMeshes(targetTime: std.Io.Timestamp) void { // MARK: updateMeshes()
 		// TODO: Find a faster solution than going through the entire list every frame.
 		var closestPriority: f32 = -std.math.floatMax(f32);
 		var closestIndex: usize = 0;
-		const playerPos = game.Player.getEyePosBlocking();
+		const playerPos = game.player.getEyePosBlocking();
 		{
 			var i: usize = 0;
 			while (i < updatableList.items.len) {
@@ -829,7 +829,7 @@ pub fn addBreakingAnimation(pos: Vec3i, breakingProgress: f32) void {
 	}
 	for (&model.neighborFacingQuads, 0..) |quads, n| {
 		for (quads) |quadIndex| {
-			addBreakingAnimationFace(pos, quadIndex, texture, @enumFromInt(n), block.transparent());
+			addBreakingAnimationFace(pos, quadIndex, texture, @fromBackingInt(@intCast(n)), block.transparent());
 		}
 	}
 }
@@ -890,7 +890,7 @@ pub fn removeBreakingAnimation(pos: Vec3i) void {
 	}
 	for (&model.neighborFacingQuads, 0..) |quads, n| {
 		for (quads) |quadIndex| {
-			removeBreakingAnimationFace(pos, quadIndex, @enumFromInt(n));
+			removeBreakingAnimationFace(pos, quadIndex, @fromBackingInt(@intCast(n)));
 		}
 	}
 }

@@ -1,12 +1,14 @@
 const std = @import("std");
 
 const main = @import("main");
+const command = main.server.command;
+const Source = command.Source;
 const User = main.server.User;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
 const Dir = main.files.Dir;
-const List = main.List;
+const ListManaged = main.ListManaged;
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
@@ -19,7 +21,7 @@ pub const usage =
 	\\/blueprint list
 ;
 
-const Args = union(enum) {
+pub const Args = union(enum) {
 	@"/blueprint save <filePath>": struct {
 		_: enum { save },
 		filePath: FilePath,
@@ -57,41 +59,35 @@ const Args = union(enum) {
 	}
 };
 
-const ArgParser = main.argparse.Parser(Args, .{.commandName = "/blueprint"});
-
-pub fn execute(args: []const u8, source: *User) void {
-	var errorMessage: List(u8) = .empty;
-	defer errorMessage.deinit(main.stackAllocator);
-
-	const result = ArgParser.parse(main.stackAllocator, args, &errorMessage) catch {
-		source.sendMessage("#ff0000{s}", .{errorMessage.items});
+pub fn execute(args: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
 		return;
-	};
-	defer result.deinit(main.stackAllocator);
-
-	switch (result) {
-		.@"/blueprint save <filePath>" => |params| blueprintSave(params.filePath, source),
-		.@"/blueprint delete <filePath>" => |params| blueprintDelete(params.filePath, source),
-		.@"/blueprint load <filePath>" => |params| blueprintLoad(params.filePath, source),
-		.@"/blueprint list" => blueprintList(source),
+	}
+	const user = source.user;
+	switch (args) {
+		.@"/blueprint save <filePath>" => |params| blueprintSave(params.filePath, user),
+		.@"/blueprint delete <filePath>" => |params| blueprintDelete(params.filePath, user),
+		.@"/blueprint load <filePath>" => |params| blueprintLoad(params.filePath, user),
+		.@"/blueprint list" => blueprintList(user),
 	}
 }
 
-fn blueprintSave(filePath: FilePath, source: *User) void {
-	if (source.worldEditData.clipboard) |clipboard| {
+fn blueprintSave(filePath: FilePath, user: *User) void {
+	if (user.worldEditData.clipboard) |clipboard| {
 		const storedBlueprint = clipboard.store(main.stackAllocator);
 		defer main.stackAllocator.free(storedBlueprint);
 
-		var blueprintsDir = openBlueprintsDir(source) orelse return;
+		var blueprintsDir = openBlueprintsDir(user) orelse return;
 		defer blueprintsDir.close();
 
 		blueprintsDir.write(filePath.path, storedBlueprint) catch |err| {
-			return sendWarningAndLog("Failed to write blueprint file '{s}' ({s})", .{filePath.path, @errorName(err)}, source);
+			return sendWarningAndLog("Failed to write blueprint file '{s}' ({s})", .{filePath.path, @errorName(err)}, user);
 		};
 
-		sendInfoAndLog("Saved clipboard to blueprint file: {s}", .{filePath.path}, source);
+		sendInfoAndLog("Saved clipboard to blueprint file: {s}", .{filePath.path}, user);
 	} else {
-		source.sendMessage("#ff0000Error: No clipboard content to save.", .{});
+		user.sendMessage("#ff0000Error: No clipboard content to save.", .{});
 	}
 }
 
@@ -105,27 +101,27 @@ fn sendInfoAndLog(comptime fmt: []const u8, args: anytype, user: *User) void {
 	user.sendMessage("#00ff00" ++ fmt, args);
 }
 
-fn openBlueprintsDir(source: *User) ?Dir {
+fn openBlueprintsDir(user: *User) ?Dir {
 	return main.files.cubyzDir().openDir("blueprints") catch |err| {
-		sendWarningAndLog("Failed to open 'blueprints' directory ({s})", .{@errorName(err)}, source);
+		sendWarningAndLog("Failed to open 'blueprints' directory ({s})", .{@errorName(err)}, user);
 		return null;
 	};
 }
 
-fn blueprintDelete(filePath: FilePath, source: *User) void {
-	var blueprintsDir = openBlueprintsDir(source) orelse return;
+fn blueprintDelete(filePath: FilePath, user: *User) void {
+	var blueprintsDir = openBlueprintsDir(user) orelse return;
 	defer blueprintsDir.close();
 
 	blueprintsDir.deleteFile(filePath.path) catch |err| {
-		return sendWarningAndLog("Failed to delete blueprint file '{s}' ({s})", .{filePath.path, @errorName(err)}, source);
+		return sendWarningAndLog("Failed to delete blueprint file '{s}' ({s})", .{filePath.path, @errorName(err)}, user);
 	};
 
-	sendWarningAndLog("Deleted blueprint file: {s}", .{filePath.path}, source);
+	sendWarningAndLog("Deleted blueprint file: {s}", .{filePath.path}, user);
 }
 
-fn blueprintList(source: *User) void {
+fn blueprintList(user: *User) void {
 	var blueprintsDir = main.files.cubyzDir().openIterableDir("blueprints") catch |err| {
-		return sendWarningAndLog("Failed to open 'blueprints' directory ({s})", .{@errorName(err)}, source);
+		return sendWarningAndLog("Failed to open 'blueprints' directory ({s})", .{@errorName(err)}, user);
 	};
 	defer blueprintsDir.close();
 
@@ -133,51 +129,47 @@ fn blueprintList(source: *User) void {
 	defer directoryWalker.deinit();
 
 	while (directoryWalker.next(main.io) catch |err| {
-		return sendWarningAndLog("Failed to read blueprint directory ({s})", .{@errorName(err)}, source);
+		return sendWarningAndLog("Failed to read blueprint directory ({s})", .{@errorName(err)}, user);
 	}) |entry| {
 		if (entry.kind != .file) continue;
 		if (!std.ascii.endsWithIgnoreCase(entry.basename, ".blp")) continue;
 
-		source.sendMessage("#ffffff- {s}", .{entry.path});
+		user.sendMessage("#ffffff- {s}", .{entry.path});
 	}
 }
 
-fn blueprintLoad(filePath: FilePath, source: *User) void {
-	var blueprintsDir = openBlueprintsDir(source) orelse return;
+fn blueprintLoad(filePath: FilePath, user: *User) void {
+	var blueprintsDir = openBlueprintsDir(user) orelse return;
 	defer blueprintsDir.close();
 
 	const storedBlueprint = blueprintsDir.read(main.stackAllocator, filePath.path) catch |err| {
-		sendWarningAndLog("Failed to read blueprint file '{s}' ({s})", .{filePath.path, @errorName(err)}, source);
+		sendWarningAndLog("Failed to read blueprint file '{s}' ({s})", .{filePath.path, @errorName(err)}, user);
 		return;
 	};
 	defer main.stackAllocator.free(storedBlueprint);
 
-	if (source.worldEditData.clipboard) |oldClipboard| {
+	if (user.worldEditData.clipboard) |oldClipboard| {
 		oldClipboard.deinit(main.globalAllocator);
 	}
-	source.worldEditData.clipboard = Blueprint.load(main.globalAllocator, storedBlueprint) catch |err| {
-		return sendWarningAndLog("Failed to load blueprint file '{s}' ({s})", .{filePath.path, @errorName(err)}, source);
+	user.worldEditData.clipboard = Blueprint.load(main.globalAllocator, storedBlueprint) catch |err| {
+		return sendWarningAndLog("Failed to load blueprint file '{s}' ({s})", .{filePath.path, @errorName(err)}, user);
 	};
 
-	sendInfoAndLog("Loaded blueprint file: {s}", .{filePath.path}, source);
+	sendInfoAndLog("Loaded blueprint file: {s}", .{filePath.path}, user);
 }
 
 const FilePath = struct {
 	path: []const u8,
 
-	pub fn deinit(self: FilePath, allocator: NeverFailingAllocator) void {
-		allocator.free(self.path);
+	pub fn parse(arena: NeverFailingAllocator, _: []const u8, arg: []const u8, _: *ListManaged(u8)) error{ParseError}!FilePath {
+		return .{.path = ensureBlueprintExtension(arena, arg)};
 	}
 
-	pub fn parse(allocator: NeverFailingAllocator, _: []const u8, arg: []const u8, _: *List(u8)) error{ParseError}!FilePath {
-		return .{.path = ensureBlueprintExtension(allocator, arg)};
-	}
-
-	fn ensureBlueprintExtension(allocator: NeverFailingAllocator, fileName: []const u8) []const u8 {
+	fn ensureBlueprintExtension(arena: NeverFailingAllocator, fileName: []const u8) []const u8 {
 		if (!std.ascii.endsWithIgnoreCase(fileName, ".blp")) {
-			return std.fmt.allocPrint(allocator.allocator, "{s}.blp", .{fileName}) catch unreachable;
+			return arena.print("{s}.blp", .{fileName});
 		} else {
-			return allocator.dupe(u8, fileName);
+			return arena.dupe(u8, fileName);
 		}
 	}
 };

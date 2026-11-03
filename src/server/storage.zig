@@ -40,7 +40,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 			.saveFolder = main.globalAllocator.dupe(u8, saveFolder),
 		};
 
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}/{}.region", .{saveFolder, pos.voxelSize, pos.wx, pos.wy, pos.wz}) catch unreachable;
+		const path = main.stackAllocator.print("{s}/{}/{}/{}/{}.region", .{saveFolder, pos.voxelSize, pos.wx, pos.wy, pos.wz});
 		defer main.stackAllocator.free(path);
 		const data = main.files.cubyzDir().read(main.stackAllocator, path) catch {
 			return self;
@@ -143,9 +143,9 @@ pub const RegionFile = struct { // MARK: RegionFile
 		}
 		std.debug.assert(writer.data.items.len == totalSize + headerSize);
 
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}/{}.region", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy, self.pos.wz}) catch unreachable;
+		const path = main.stackAllocator.print("{s}/{}/{}/{}/{}.region", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy, self.pos.wz});
 		defer main.stackAllocator.free(path);
-		const folder = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy}) catch unreachable;
+		const folder = main.stackAllocator.print("{s}/{}/{}/{}", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy});
 		defer main.stackAllocator.free(folder);
 
 		main.files.cubyzDir().makePath(folder) catch |err| {
@@ -182,7 +182,6 @@ pub const RegionFile = struct { // MARK: RegionFile
 
 // MARK: cache
 const cacheSize = 1 << 8; // Must be a power of 2!
-const cacheMask = cacheSize - 1;
 const associativity = 8;
 var cache: main.utils.Cache(RegionFile, cacheSize, associativity, cacheDeinit) = .{};
 const HashContext = struct {
@@ -215,7 +214,7 @@ fn cacheInit(pos: chunk.ChunkPosition) *RegionFile {
 		return region;
 	}
 	hashMapMutex.unlock();
-	const path: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks", .{server.world.?.path}) catch unreachable;
+	const path: []const u8 = main.stackAllocator.print("saves/{s}/chunks", .{server.world.?.path});
 	defer main.stackAllocator.free(path);
 	return RegionFile.init(pos, path);
 }
@@ -251,7 +250,7 @@ pub fn loadRegionFileAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u
 	return result;
 }
 
-pub const ChunkCompression = struct { // MARK: ChunkCompression
+pub const chunk_compression = struct { // MARK: chunk_compression
 	const ChunkCompressionAlgo = enum(u32) {
 		deflate_with_position_no_block_entities = 0,
 		deflate_no_block_entities = 1,
@@ -319,7 +318,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 					}
 				}
 			}
-			const compressedData = main.utils.Compression.deflate(main.stackAllocator, &uncompressedData, .default);
+			const compressedData = main.utils.compression.deflate(main.stackAllocator, &uncompressedData, .default);
 			defer main.stackAllocator.free(compressedData);
 
 			writer.writeEnum(ChunkCompressionAlgo, .deflate_with_8bit_palette);
@@ -338,7 +337,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		for (0..chunk.chunkVolume) |i| {
 			uncompressedWriter.writeInt(u32, ch.data.getValue(i).toInt());
 		}
-		const compressedData = main.utils.Compression.deflate(main.stackAllocator, uncompressedWriter.data.items, .default);
+		const compressedData = main.utils.compression.deflate(main.stackAllocator, uncompressedWriter.data.items, .default);
 		defer main.stackAllocator.free(compressedData);
 
 		writer.writeEnum(ChunkCompressionAlgo, .deflate);
@@ -359,7 +358,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 
 				const compressedDataLen = if (compressionAlgorithm == .deflate) try reader.readVarInt(usize) else reader.remaining.len;
 				const compressedData = try reader.readSlice(compressedDataLen);
-				const decompressedLength = try main.utils.Compression.inflateTo(decompressedData, compressedData);
+				const decompressedLength = try main.utils.compression.inflateTo(decompressedData, compressedData);
 				if (decompressedLength != chunk.chunkVolume*@sizeOf(u32)) return error.corrupted;
 
 				var decompressedReader = BinaryReader.init(decompressedData);
@@ -384,7 +383,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 				const compressedDataLen = if (compressionAlgorithm == .deflate_with_8bit_palette) try reader.readVarInt(usize) else reader.remaining.len;
 				const compressedData = try reader.readSlice(compressedDataLen);
 
-				const decompressedLength = try main.utils.Compression.inflateTo(decompressedData, compressedData);
+				const decompressedLength = try main.utils.compression.inflateTo(decompressedData, compressedData);
 				if (decompressedLength != chunk.chunkVolume) return error.corrupted;
 
 				for (0..chunk.chunkVolume) |i| {

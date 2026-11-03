@@ -15,9 +15,6 @@ const Label = GuiComponent.Label;
 
 const Button = @This();
 
-const border: f32 = 3;
-const fontSize: f32 = 16;
-
 const Textures = struct {
 	texture: Texture,
 	outlineTexture: Texture,
@@ -25,10 +22,10 @@ const Textures = struct {
 
 	pub fn init(basePath: []const u8) Textures {
 		var self: Textures = undefined;
-		const buttonPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}.png", .{basePath}) catch unreachable;
+		const buttonPath = main.stackAllocator.print("{s}.png", .{basePath});
 		defer main.stackAllocator.free(buttonPath);
 		self.texture = Texture.initFromFile(buttonPath);
-		const outlinePath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}_outline.png", .{basePath}) catch unreachable;
+		const outlinePath = main.stackAllocator.print("{s}_outline.png", .{basePath});
 		defer main.stackAllocator.free(outlinePath);
 		self.outlineTexture = Texture.initFromFile(outlinePath);
 		self.outlineTextureSize = @floatFromInt(self.outlineTexture.size());
@@ -52,6 +49,13 @@ pub var buttonUniforms: struct {
 	color: c_int,
 	scale: c_int,
 } = undefined;
+pub const ButtonUniforms = extern struct {
+	start: [2]f32 align(8),
+	size: [2]f32 align(8),
+	screen: [2]f32 align(8),
+	color: i32,
+	scale: f32,
+};
 
 pos: Vec2f,
 size: Vec2f,
@@ -68,10 +72,14 @@ pub fn globalInit() void {
 		"",
 		&buttonUniforms,
 		graphics.draw.SimpleVertex2D,
-		&.{},
-		.{.cullMode = .none},
-		.{.depthTest = false, .depthWrite = false},
-		.{.attachments = &.{.alphaBlending}},
+		.{
+			.bindings = &.{.sampler(0, .{.fragment = true})},
+			.rasterState = .{.cullMode = .none},
+			.depthStencilState = .{.depthTest = false, .depthWrite = false},
+			.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.swapChain}},
+			.inputAssemblyState = .{.topology = .triangleStrip},
+			.pushConstantSize = @sizeOf(ButtonUniforms),
+		},
 	);
 	normalTextures = Textures.init("assets/cubyz/ui/button");
 	hoveredTextures = Textures.init("assets/cubyz/ui/button_hovered");
@@ -86,19 +94,18 @@ pub fn globalDeinit() void {
 	pressedTextures.deinit();
 }
 
-fn defaultOnAction(_: usize) void {}
-
 const Options = struct {
 	onAction: main.callbacks.SimpleCallback = .{},
 	disabled: bool = false,
+	border: f32 = 4,
 };
 
 pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *Button {
-	const label = Label.init(undefined, width - 3*border, text, .center);
+	const label = Label.init(undefined, width - 2*options.border, text, .center);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
-		.size = Vec2f{width, label.size[1] + 3*border},
+		.size = Vec2f{width, label.size[1] + 2*options.border},
 		.onAction = options.onAction,
 		.child = label.toComponent(),
 		.disabled = options.disabled,
@@ -111,7 +118,7 @@ pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, options: Opti
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
-		.size = icon.size + @as(Vec2f, @splat(3*border)),
+		.size = icon.size + @as(Vec2f, @splat(2*options.border)),
 		.onAction = options.onAction,
 		.child = icon.toComponent(),
 		.disabled = options.disabled,
@@ -147,7 +154,7 @@ pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn render(self: *Button, mousePosition: Vec2f) void {
+pub fn render(self: *Button, currentFrame: *graphics.vulkan.Frame, mousePosition: Vec2f) void {
 	const textures = blk: {
 		if (self.disabled) break :blk disabledTextures;
 		if (self.pressed) break :blk pressedTextures;
@@ -157,20 +164,27 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 		break :blk normalTextures;
 	};
 	{
-		textures.texture.bindTo(0);
-		pipeline.bind(draw.getScissor());
+		if (main.settings.launch_config.vulkanTestingMode and textures.texture.vulkanImage != null) {
+			currentFrame.guiCommands.bindPipeline(currentFrame, pipeline, graphics.draw.getScissor());
+			currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
+				.{.image = .{.binding = 0, .image = textures.texture.vulkanImage.?}},
+			});
+			draw.customShadedRect(currentFrame, @as(ButtonUniforms, undefined), pipeline, self.pos + Vec2f{2, 2}, self.size - Vec2f{4, 4});
+		} else {
+			textures.texture.bindTo(0);
+			pipeline.bind(draw.getScissor());
+			draw.customShadedRectOpenGl(buttonUniforms, self.pos + Vec2f{2, 2}, self.size - Vec2f{4, 4});
+		}
 		self.hovered = false;
-		draw.customShadedRect(buttonUniforms, self.pos + Vec2f{2, 2}, self.size - Vec2f{4, 4});
 	}
 
 	const cornerSize = (textures.outlineTextureSize - Vec2f{1, 1})/Vec2f{2, 2};
 
-	textures.outlineTexture.bindTo(0);
-	graphics.draw.bound9SliceImage(self.pos, self.size, textures.outlineTextureSize, cornerSize, 2);
+	graphics.draw.nineSliceImage(currentFrame, textures.outlineTexture, self.pos, self.size, textures.outlineTextureSize, cornerSize, 2);
 
 	const oldColor = draw.setColor(if (self.disabled) 0xff808080 else 0xffffffff);
 	defer draw.restoreColor(oldColor);
 	const textPos = self.pos + self.size/@as(Vec2f, @splat(2.0)) - self.child.size()/@as(Vec2f, @splat(2.0));
 	self.child.mutPos().* = textPos;
-	self.child.render(mousePosition - self.pos);
+	self.child.render(currentFrame, mousePosition - self.pos);
 }
