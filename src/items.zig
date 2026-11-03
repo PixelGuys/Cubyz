@@ -91,7 +91,7 @@ const Material = struct { // MARK: Material
 		for (modifiersZon.toSlice(), self.modifiers) |item, *modifier| {
 			const id = item.get([]const u8, "id") orelse "not specified";
 			const vTable = modifiers.get(id) orelse blk: {
-				std.log.err("Couldn't find modifier with id '{s}'. Replacing it with 'durable'", .{id});
+				std.log.err("Couldn't find modifier with id '{s}'. Replacing it with 'base_stat'", .{id});
 				break :blk modifiers.get("base_stat").?;
 			};
 			modifier.* = .{
