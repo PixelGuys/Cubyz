@@ -38,7 +38,7 @@
 					},
 				},
 				.{
-					.id = "base_",
+					.id = "base_stat",
 					.targetProperty = "damage",
 					.strength = 0.5,
 					.restriction = .{
