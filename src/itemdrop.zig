@@ -24,6 +24,8 @@ const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
+const @"cubyz:velocity" = main.entity.components.@"cubyz:velocity";
+
 const c = @import("c");
 
 const ItemDrop = struct { // MARK: ItemDrop
@@ -540,10 +542,10 @@ const bob_manager = struct {
 		}
 
 		const inputSpeed: f32 = @floatCast(game.player.inputSpeed);
-
+		const playerVel = @"cubyz:velocity".getVelocity(main.game.player.id, .client).?;
 		const horizontalVel: Vec3f = .{
-			@floatCast(game.player.super.vel[0]),
-			@floatCast(game.player.super.vel[1]),
+			@floatCast(playerVel[0]),
+			@floatCast(playerVel[1]),
 			0,
 		};
 
@@ -604,8 +606,9 @@ pub const item_display_manager = struct { // MARK: item_display_manager
 	}
 
 	fn getAscentDescentOffset() Vec3f {
-		const playerVel: Vec3f = .{@floatCast((game.player.super.vel[2]*0.009 + game.player.eye.vel[2]*0.0075)), 0, 0};
-		return vec.clampMag(playerVel, 0.32);
+		const playerVel = @"cubyz:velocity".getVelocity(main.game.player.id, .client).?;
+		const vel: Vec3f = .{@floatCast((playerVel[2]*0.009 + game.player.eye.vel[2]*0.0075)), 0, 0};
+		return vec.clampMag(vel, 0.32);
 	}
 };
 

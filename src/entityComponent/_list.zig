@@ -5,3 +5,4 @@ pub const @"cubyz:model" = @import("model.zig");
 pub const @"cubyz:permissions" = @import("permissions.zig");
 pub const @"cubyz:player" = @import("player.zig");
 pub const @"cubyz:swinging" = @import("swinging.zig");
+pub const @"cubyz:velocity" = @import("velocity.zig");
