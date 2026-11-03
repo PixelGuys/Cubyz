@@ -39,7 +39,6 @@ pub fn changeBlockDamage(damage: f32, block: main.blocks.Block, data: Data) f32 
 	return damage;
 }
 
-
 pub fn printTooltip(outString: *main.ListManaged(u8), data: Data) void {
 	if (data.strength >= 0) {
 		outString.print("{s} **{s}** #808080(#30ca64+**{d:.0}%#808080 damage against {s})", .{getModifierName(data), data.tag.getName(), data.strength*100, data.tag.getName()});
