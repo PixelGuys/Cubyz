@@ -6,7 +6,8 @@
 	.tags = .{
 		.oak,
 	},
-	.radius = 32,
+	.minRadius = 24,
+	.maxRadius = 32,
 	.keepOriginalTerrain = 1,
 	.minHeight = 22,
 	.maxHeight = 40,
@@ -33,7 +34,7 @@
 
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:grassland",
+			.id = "cubyz:grassland/base",
 			.chance = 0.5,
 		},
 	},
