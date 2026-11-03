@@ -28,10 +28,13 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const And
 }
 
 pub fn printTooltip(self: *const And, outString: *main.ListManaged(u8), options: main.items.ModifierRestriction.PrintOptions) void {
+	if (options.negated) outString.appendSlice("not ");
+	var newOptions = options;
+	newOptions.negated = !options.negated;
 	outString.append('(');
 	for (self.children, 0..) |child, i| {
 		if (i != 0) outString.appendSlice(" and ");
-		child.printTooltip(outString, options);
+		child.printTooltip(outString, newOptions);
 	}
 	outString.append(')');
 }
