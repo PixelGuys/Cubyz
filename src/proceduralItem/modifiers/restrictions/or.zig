@@ -30,7 +30,7 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const Or 
 pub fn printTooltip(self: *const Or, outString: *main.ListManaged(u8), options: main.items.ModifierRestriction.PrintOptions) void {
 	if (options.negated) outString.appendSlice("not ");
 	var newOptions = options;
-	newOptions.negated = !options.negated;
+	newOptions.negated = false;
 	outString.append('(');
 	for (self.children, 0..) |child, i| {
 		if (i != 0) outString.appendSlice(" or ");
