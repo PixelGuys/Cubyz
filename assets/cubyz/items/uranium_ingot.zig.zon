@@ -10,8 +10,8 @@
 		.textureRoughness = 0.3,
 		.modifiers = .{
 			.{
-				.id = "powerful",
-				.flatStrength = 2,
+				.id = "base_stat_flat",
+				.strength = 2,
 			},
 		},
 	},
