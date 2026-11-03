@@ -717,9 +717,9 @@ const procedural_item_physics = struct { // MARK: procedural_item_physics
 	}
 };
 
-const SlotInfo = packed struct { // MARK: SlotInfo
-	disabled: bool = false,
-	optional: bool = false,
+const SlotTag = struct { // MARK: SlotTag
+	hasTagMatrix: [25]bool,
+	tagType: main.Tag,
 };
 
 const PropertyMatrix = struct { // MARK: PropertyMatrix
@@ -765,6 +765,14 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 		return result;
 	}
 
+	pub fn isTagAtSlot(self: ProceduralItemTypeIndex, index: usize, tag: main.Tag) bool {
+		for (proceduralItemTypeList.items[@backingInt(self)].slotTags) |slotTag| {
+			if (!(slotTag.tagType == tag)) continue;
+			return slotTag.hasTagMatrix[index];
+		}
+		return false;
+	}
+
 	pub fn iterator() ProceduralItemTypeIterator {
 		return .{};
 	}
@@ -780,14 +788,14 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 	pub fn properties(self: ProceduralItemTypeIndex) []const PropertyMatrix {
 		return proceduralItemTypeList.items[@backingInt(self)].properties;
 	}
-	pub fn slotInfos(self: ProceduralItemTypeIndex) *const [25]SlotInfo {
-		return &proceduralItemTypeList.items[@backingInt(self)].slotInfos;
-	}
 	pub fn pixelSources(self: ProceduralItemTypeIndex) *const [16][16]u8 {
 		return &proceduralItemTypeList.items[@backingInt(self)].pixelSources;
 	}
 	pub fn pixelSourcesOverlay(self: ProceduralItemTypeIndex) *const [16][16]u8 {
 		return &proceduralItemTypeList.items[@backingInt(self)].pixelSourcesOverlay;
+	}
+	pub fn slotTags(self: ProceduralItemTypeIndex) *const []SlotTag {
+		return &proceduralItemTypeList.items[@backingInt(self)].slotTags;
 	}
 };
 
@@ -795,7 +803,7 @@ pub const ProceduralItemType = struct { // MARK: ProceduralItemType
 	id: []const u8,
 	tags: []main.Tag,
 	properties: []PropertyMatrix,
-	slotInfos: [25]SlotInfo,
+	slotTags: []SlotTag,
 	pixelSources: [16][16]u8,
 	pixelSourcesOverlay: [16][16]u8,
 };
@@ -897,14 +905,14 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 
 	pub fn initFromInventory(inventory: Inventory) ?*ProceduralItem {
 		std.debug.assert(inventory.source == .workbench);
-		const slotInfos = inventory.source.workbench.proceduralItemIndex.slotInfos();
+		const proceduralItemType = inventory.source.workbench.proceduralItemIndex;
 		var availableItems: [25]?main.items.BaseItemIndex = undefined;
 
 		for (0..25) |i| {
 			if (inventory._items[i].item == .baseItem) {
 				availableItems[i] = inventory._items[i].item.baseItem;
 			} else {
-				if (!slotInfos[i].optional and !slotInfos[i].disabled) {
+				if (!proceduralItemType.isTagAtSlot(i, .optional) and !proceduralItemType.isTagAtSlot(i, .disabled)) {
 					return null;
 				}
 				availableItems[i] = null;
@@ -1011,6 +1019,18 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		return self.craftingGrid[@intCast(x + y*5)];
 	}
 
+	pub fn hasMaterialOrSlotTagAt(self: *const ProceduralItem, x: i32, y: i32, checkedTag: main.Tag) bool {
+		if (x < 0 or x >= 5) return false;
+		if (y < 0 or y >= 5) return false;
+
+		for (self.type.slotTags().*) |specificSlotTag| {
+			if (specificSlotTag.tagType != checkedTag) continue;
+			if (specificSlotTag.hasTagMatrix[@intCast(x + y*5)]) return true;
+		}
+		if ((self.getItemAt(x, y) orelse return false).hasTag(checkedTag)) return true;
+		return false;
+	}
+
 	pub fn getProperty(self: *ProceduralItem, prop: ProceduralItemProperty) f32 {
 		return self.properties[@backingInt(prop)];
 	}
@@ -1084,7 +1104,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	}
 
 	pub fn canPutIntoWorkbenchCallback(source: Inventory.Source, item: Item, slot: usize) bool {
-		if (source.workbench.proceduralItemIndex.slotInfos()[slot].disabled) return false;
+		if (source.workbench.proceduralItemIndex.isTagAtSlot(slot, .disabled)) return false;
 		return switch (item) {
 			.null => true,
 			.baseItem => |baseItem| baseItem.material() != null,
@@ -1495,20 +1515,26 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 }
 
 pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
-	var slotInfos: [25]SlotInfo = @splat(.{});
-	for (zon.getChild("disabled").toSlice(), 0..) |zonDisabled, i| {
-		if (i >= 25) {
-			std.log.err("disabled array of {s} has too many entries", .{id});
-			break;
+	var slotTags: main.List(SlotTag) = .empty;
+	defer slotTags.deinit(main.stackAllocator);
+	blk: {
+		if (zon.getChild("tagFields").isNull()) {
+			std.log.err("procedural tool types require tagFields {s}", .{id});
+			break :blk;
 		}
-		slotInfos[i].disabled = (zonDisabled.as(usize) orelse 0) != 0;
-	}
-	for (zon.getChild("optional").toSlice(), 0..) |zonDisabled, i| {
-		if (i >= 25) {
-			std.log.err("disabled array of {s} has too many entries", .{id});
-			break;
+		var it = zon.getChild("tagFields").object.iterator();
+		while (it.next()) |entry| {
+			const slotTagVal = slotTags.addOne(main.stackAllocator);
+			const matrixZon = entry.value_ptr;
+			for (0..25) |i| {
+				slotTagVal.hasTagMatrix[i] = (matrixZon.getAtIndex(usize, i, 0) != 0);
+			}
+			slotTagVal.tagType = main.Tag.find(entry.key_ptr.*);
+			if (!std.mem.endsWith(u8, slotTagVal.tagType.getName(), "_slot")) continue;
+			if (!(slotTagVal.tagType == .disabled)) continue;
+			if (!(slotTagVal.tagType == .optional)) continue;
+			std.log.err("Tool slot tag {s} must end with '_slot'.", .{id});
 		}
-		slotInfos[i].optional = (zonDisabled.as(usize) orelse 0) != 0;
 	}
 	var parameterMatrices: main.List(PropertyMatrix) = .empty;
 	defer parameterMatrices.deinit(main.stackAllocator);
@@ -1541,7 +1567,7 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 	proceduralItemTypeList.append(main.worldArena, .{
 		.id = idDupe,
 		.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
-		.slotInfos = slotInfos,
+		.slotTags = main.worldArena.dupe(SlotTag, slotTags.items),
 		.properties = main.worldArena.dupe(PropertyMatrix, parameterMatrices.items),
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
