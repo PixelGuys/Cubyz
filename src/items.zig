@@ -179,6 +179,7 @@ const Modifier = struct {
 		combineModifiers: *const fn (data1: Data, data2: Data) ?Data,
 		changeProceduralItemParameters: *const fn (proceduralItem: *ProceduralItem, data: Data) void,
 		changeBlockDamage: *const fn (damage: f32, block: Block, data: Data) f32,
+		getItemAvgWeight: *const fn (weight: f32, data: Data) f32,
 		printTooltip: *const fn (outString: *main.ListManaged(u8), data: Data) void,
 		loadData: *const fn (zon: ZonElement) Data,
 		priority: f32,
@@ -188,6 +189,9 @@ const Modifier = struct {
 			pub fn changeBlockDamage(damage: f32, _: Block, _: Data) f32 {
 				return damage;
 			}
+			pub fn getItemAvgWeight(weight: f32, _: Data) f32 {
+				return weight;
+			}
 		};
 
 		inline fn initFromModifierStruct(comptime ModifierStruct: type) VTable {
@@ -196,6 +200,7 @@ const Modifier = struct {
 				.changeBlockDamage = @ptrCast(if (@hasDecl(ModifierStruct, "changeBlockDamage")) &ModifierStruct.changeBlockDamage else &VTable.defaults.changeBlockDamage),
 				.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
 				.printTooltip = @ptrCast(&ModifierStruct.printTooltip),
+				.getItemAvgWeight = @ptrCast(if (@hasDecl(ModifierStruct, "getItemAvgWeight")) &ModifierStruct.getItemAvgWeight else &VTable.defaults.getItemAvgWeight),
 				.loadData = @ptrCast(&ModifierStruct.loadData),
 				.priority = ModifierStruct.priority,
 			};
@@ -217,6 +222,10 @@ const Modifier = struct {
 
 	pub fn changeBlockDamage(self: Modifier, damage: f32, block: Block) f32 {
 		return self.vTable.changeBlockDamage(damage, block, self.data);
+	}
+
+	pub fn getItemAvgWeight(self: Modifier, weight: f32) f32 {
+		return self.vTable.getItemAvgWeight(weight, self.data);
 	}
 
 	pub fn printTooltip(self: Modifier, outString: *main.ListManaged(u8)) void {
@@ -628,8 +637,18 @@ const procedural_item_physics = struct { // MARK: procedural_item_physics
 			var weight: f32 = 0;
 			for (0..25) |i| {
 				const material = (proceduralItem.craftingGrid[i] orelse continue).material() orelse continue;
+				var materialAvgWeight: f32 = 1;
+				std.sort.insertion(Modifier, material.modifiers, {}, struct {
+					fn lessThan(_: void, lhs: Modifier, rhs: Modifier) bool {
+						return lhs.vTable.priority < rhs.vTable.priority;
+					}
+				}.lessThan);
+				for (material.modifiers) |modifier| {
+					if (!modifier.restriction.satisfied(proceduralItem, @intCast(i%5), @intCast(i/5))) continue;
+					materialAvgWeight = modifier.getItemAvgWeight(materialAvgWeight);
+				}
 				sum += property.weights[i]*material.getProperty(property.source orelse break);
-				weight += property.weights[i];
+				weight += property.weights[i]*materialAvgWeight;
 			}
 			if (weight == 0) continue;
 			switch (property.method) {

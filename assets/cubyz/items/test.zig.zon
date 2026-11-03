@@ -1,0 +1,18 @@
+.{
+	.tags = .{.metal},
+	.texture = "uranium_ingot.png",
+	.colorTexture = "uranium_ingot_palette.png",
+	.material = .{
+		.durability = 1500,
+		.massDamage = 10.0,
+		.hardnessDamage = 15.0,
+		.swingSpeed = 0.5,
+		.textureRoughness = 0.3,
+		.modifiers = .{
+			.{
+				.id = "avg_weight",
+				.strength = 0,
+			},
+		},
+	},
+}
