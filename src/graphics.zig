@@ -2322,28 +2322,11 @@ pub const Texture = struct { // MARK: Texture
 
 pub const CubeMapTexture = struct { // MARK: CubeMapTexture
 	textureID: c_uint,
+	vulkanImage: vulkan.Image,
 
-	pub fn init() CubeMapTexture {
+	pub fn init(width: u31, height: u31) CubeMapTexture {
 		var self: CubeMapTexture = undefined;
 		c.glGenTextures(1, &self.textureID);
-		return self;
-	}
-
-	pub fn deinit(self: CubeMapTexture) void {
-		c.glDeleteTextures(1, &self.textureID);
-	}
-
-	pub fn bindTo(self: CubeMapTexture, binding: u5) void {
-		c.glActiveTexture(@intCast(c.GL_TEXTURE0 + binding));
-		c.glBindTexture(c.GL_TEXTURE_CUBE_MAP, self.textureID);
-	}
-
-	pub fn bind(self: CubeMapTexture) void {
-		c.glBindTexture(c.GL_TEXTURE_CUBE_MAP, self.textureID);
-	}
-
-	/// (Re-)Generates the GPU buffer.
-	pub fn generate(self: CubeMapTexture, width: u31, height: u31) void {
 		self.bind();
 
 		c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
@@ -2359,6 +2342,35 @@ pub const CubeMapTexture = struct { // MARK: CubeMapTexture
 		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_WRAP_R, c.GL_CLAMP_TO_EDGE);
 		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_BASE_LEVEL, 0);
 		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_MAX_LEVEL, 0);
+
+		if (main.settings.launch_config.vulkanTestingMode) {
+			self.vulkanImage = .init(.{width, height, 1}, .{
+				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
+				.imageViewType = c.VK_IMAGE_VIEW_TYPE_CUBE,
+				.arrayLayers = 6,
+				.magFilter = .linear,
+				.minFilter = .linear,
+				.addressMode = .clampToEdge,
+			});
+		}
+
+		return self;
+	}
+
+	pub fn deinit(self: CubeMapTexture) void {
+		c.glDeleteTextures(1, &self.textureID);
+		if (main.settings.launch_config.vulkanTestingMode) {
+			self.vulkanImage.deferredDeinit();
+		}
+	}
+
+	pub fn bindTo(self: CubeMapTexture, binding: u5) void {
+		c.glActiveTexture(@intCast(c.GL_TEXTURE0 + binding));
+		c.glBindTexture(c.GL_TEXTURE_CUBE_MAP, self.textureID);
+	}
+
+	pub fn bind(self: CubeMapTexture) void {
+		c.glBindTexture(c.GL_TEXTURE_CUBE_MAP, self.textureID);
 	}
 
 	pub fn faceNormal(face: usize) Vec3f {

@@ -980,7 +980,10 @@ pub const Image = struct { // MARK: Image
 		};
 		const imageInfo: c.VkImageCreateInfo = .{
 			.sType = c.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-			.flags = options.flags,
+			.flags = options.flags | switch (options.imageViewType) {
+				c.VK_IMAGE_VIEW_TYPE_CUBE, c.VK_IMAGE_VIEW_TYPE_CUBE_ARRAY => @as(u32, c.VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT),
+				else => 0,
+			},
 			.imageType = switch (options.imageViewType) {
 				c.VK_IMAGE_VIEW_TYPE_1D => c.VK_IMAGE_TYPE_1D,
 				c.VK_IMAGE_VIEW_TYPE_2D => c.VK_IMAGE_TYPE_2D,

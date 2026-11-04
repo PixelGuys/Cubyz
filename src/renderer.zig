@@ -109,8 +109,7 @@ pub fn init() void {
 	skybox.init();
 	chunk_meshing.init();
 	mesh_storage.init();
-	reflectionCubeMap = .init();
-	reflectionCubeMap.generate(reflectionCubeMapSize, reflectionCubeMapSize);
+	reflectionCubeMap = .init(reflectionCubeMapSize, reflectionCubeMapSize);
 	initReflectionCubeMap();
 }
 
