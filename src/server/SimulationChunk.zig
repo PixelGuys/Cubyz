@@ -38,7 +38,7 @@ pub fn decreaseRefCount(self: *SimulationChunk) void {
 	const prevVal = self.refCount.fetchSub(1, .monotonic);
 	std.debug.assert(prevVal != 0);
 	if (prevVal == 2) {
-		main.server.world_zig.ChunkManager.tryRemoveSimulationChunk(self);
+		main.server.ChunkManager.tryRemoveSimulationChunk(self);
 	}
 	if (prevVal == 1) {
 		self.deinit();

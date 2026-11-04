@@ -52,7 +52,7 @@ fn preventsDecay(self: *@This(), log: Block) bool {
 	}
 	return false;
 }
-fn foundWayToLog(self: *@This(), world: *server.ServerWorld, leaf: Block, wx: i32, wy: i32, wz: i32) bool {
+fn foundWayToLog(self: *@This(), world: *server.World, leaf: Block, wx: i32, wy: i32, wz: i32) bool {
 
 	// init array to mark already searched blocks.
 	const checkRange = 5;

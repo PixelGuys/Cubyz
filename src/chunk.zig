@@ -676,7 +676,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		self.setChanged();
 	}
 
-	pub fn save(self: *ServerChunk, world: *main.server.ServerWorld) void {
+	pub fn save(self: *ServerChunk, world: *main.server.World) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		if (self.shouldStoreNeighbors and self.super.pos.voxelSize == 1) {
