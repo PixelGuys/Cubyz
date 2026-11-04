@@ -930,6 +930,7 @@ pub const Image = struct { // MARK: Image
 	size: main.vec.Vec3i,
 	view: c.VkImageView = undefined,
 	sampler: c.VkSampler = undefined,
+	format: c.VkFormat,
 
 	pub const ImageOptions = struct {
 		usage: c.VkImageUsageFlags,
@@ -977,6 +978,7 @@ pub const Image = struct { // MARK: Image
 		var self: Image = .{
 			.mipLevels = options.mipLevels,
 			.size = size,
+			.format = options.format,
 		};
 		const imageInfo: c.VkImageCreateInfo = .{
 			.sType = c.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -1010,20 +1012,12 @@ pub const Image = struct { // MARK: Image
 		};
 		checkResult(c.vmaCreateImage(gpu_allocator.handle, &imageInfo, &allocCreateInfo, &self.handle, &self.allocation, null));
 
-		const imageViewInfo: c.VkImageViewCreateInfo = .{
-			.sType = c.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-			.image = self.handle,
-			.format = options.format,
-			.subresourceRange = .{
-				.aspectMask = @backingInt(options.aspect),
-				.baseMipLevel = 0,
-				.levelCount = options.mipLevels,
-				.baseArrayLayer = 0,
-				.layerCount = options.arrayLayers,
-			},
-			.viewType = options.imageViewType,
-		};
-		checkResult(c.vkCreateImageView(device, &imageViewInfo, null, &self.view));
+		self.view = self.createImageView(.{
+			.type = options.imageViewType,
+			.aspect = options.aspect,
+			.mipLevels = options.mipLevels,
+			.arrayLayers = options.arrayLayers,
+		});
 
 		const samplerInfo: c.VkSamplerCreateInfo = .{
 			.sType = c.VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -1058,6 +1052,40 @@ pub const Image = struct { // MARK: Image
 
 	pub fn deferredDeinit(self: Image) void {
 		gpu_garbage_collection.deferredFree(.{.image = self});
+	}
+
+	pub const ImageViewOptions = struct {
+		type: c.VkImageViewType,
+		aspect: ImageOptions.Aspect = .{.color = true},
+		baseMipLevel: u32 = 0,
+		mipLevels: u32 = 1,
+		baseArrayLayer: u32 = 0,
+		arrayLayers: u32 = 1,
+	};
+
+	fn createImageView(self: Image, options: ImageViewOptions) c.VkImageView {
+		var result: c.VkImageView = undefined;
+		const imageViewInfo: c.VkImageViewCreateInfo = .{
+			.sType = c.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+			.image = self.handle,
+			.format = self.format,
+			.subresourceRange = .{
+				.aspectMask = @backingInt(options.aspect),
+				.baseMipLevel = options.baseMipLevel,
+				.levelCount = options.mipLevels,
+				.baseArrayLayer = options.baseArrayLayer,
+				.layerCount = options.arrayLayers,
+			},
+			.viewType = options.type,
+		};
+		checkResult(c.vkCreateImageView(device, &imageViewInfo, null, &result));
+		return result;
+	}
+
+	pub fn createTemporaryImageView(self: Image, options: ImageViewOptions) c.VkImageView {
+		const result = createImageView(self, options);
+		gpu_garbage_collection.deferredFree(.{.imageView = result});
+		return result;
 	}
 
 	const UploadDataConfig = struct {
@@ -1227,8 +1255,16 @@ pub const gpu_garbage_collection = struct { // MARK: gpu_garbage_collection
 	const Entry = union(enum) {
 		buf: Buffer,
 		image: Image,
+		imageView: c.VkImageView,
 		semaphore: Semaphore,
 		fence: Fence,
+
+		fn deinit(self: Entry) void {
+			switch (self) {
+				.imageView => |imageView| c.vkDestroyImageView(device, imageView, null),
+				inline else => |item| item.privateDeinit(),
+			}
+		}
 	};
 	var currentList: usize = 0;
 	var lists: [frames.len + 1]main.List(Entry) = @splat(.empty);
@@ -1236,9 +1272,7 @@ pub const gpu_garbage_collection = struct { // MARK: gpu_garbage_collection
 	fn deinit() void {
 		for (lists) |list| {
 			for (list.items) |entry| {
-				switch (entry) {
-					inline else => |item| item.privateDeinit(),
-				}
+				entry.deinit();
 			}
 			list.deinit(main.globalAllocator);
 		}
@@ -1248,9 +1282,7 @@ pub const gpu_garbage_collection = struct { // MARK: gpu_garbage_collection
 		currentList += 1;
 		if (currentList == lists.len) currentList = 0;
 		for (lists[currentList].items) |entry| {
-			switch (entry) {
-				inline else => |item| item.privateDeinit(),
-			}
+			entry.deinit();
 		}
 		lists[currentList].clearRetainingCapacity();
 	}
