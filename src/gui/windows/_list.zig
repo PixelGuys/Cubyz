@@ -23,6 +23,7 @@ pub const hotbar = @import("hotbar.zig");
 pub const inventory = @import("inventory.zig");
 pub const inventory_crafting = @import("inventory_crafting.zig");
 pub const invite = @import("invite.zig");
+pub const low_ram_warning = @import("low_ram_warning.zig");
 pub const main = @import("main.zig");
 pub const players = @import("players.zig");
 pub const multiplayer = @import("multiplayer.zig");

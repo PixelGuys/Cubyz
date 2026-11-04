@@ -510,6 +510,8 @@ pub fn clientMain() void { // MARK: clientMain()
 			if (settings.launch_config.vulkanTestingMode) {
 				graphics.vulkan.endRender();
 			}
+
+			utils.system_resources.detectLowRam(deltaTime);
 		}
 
 		if (shouldExitToMenu.load(.monotonic)) {
