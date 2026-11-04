@@ -1934,7 +1934,12 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 		}
 	}
 
-	pub fn bindAndClear(self: FrameBuffer, commandBuffer: CommandBuffer, clearColor: CommandBuffer.BeginRenderingOptions.LoadOp, clearDepth: CommandBuffer.BeginRenderingOptions.LoadOp) void {
+	const BindAndClearOptions = struct {
+		clearColor: CommandBuffer.BeginRenderingOptions.LoadOp,
+		clearDepth: CommandBuffer.BeginRenderingOptions.LoadOp,
+		baseArrayLayer: ?u32 = null,
+	};
+	pub fn bindAndClear(self: FrameBuffer, commandBuffer: CommandBuffer, options: BindAndClearOptions) void {
 		commandBuffer.pipelineBarrier(.{.imageMemoryBarriers = @as([]const c.VkImageMemoryBarrier2, &.{
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
@@ -1945,7 +1950,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
 				.newLayout = c.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 				.image = self.color.handle,
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .baseArrayLayer = options.baseArrayLayer orelse 0, .layerCount = 1},
 			},
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
@@ -1956,24 +1961,26 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
 				.newLayout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
 				.image = self.depth.handle,
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = 1},
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .baseArrayLayer = options.baseArrayLayer orelse 0, .layerCount = 1},
 			},
 		})[0..if (self.hasDepthTexture) 2 else 1]});
+		const colorView = if (options.baseArrayLayer) |layer| self.color.createTemporaryImageView(.{.type = c.VK_IMAGE_VIEW_TYPE_2D, .baseArrayLayer = layer}) else self.color.view;
 		commandBuffer.beginRendering(.{
 			.textures = &.{
 				.{
-					.imageView = self.color.view,
+					.imageView = colorView,
 					.layout = c.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-					.loadOp = clearColor,
+					.loadOp = options.clearColor,
 					.storeOp = .store,
 				},
 			},
 			.depthTexture = blk: {
 				if (!self.hasDepthTexture) break :blk null;
+				const depthView = if (options.baseArrayLayer) |layer| self.depth.createTemporaryImageView(.{.type = c.VK_IMAGE_VIEW_TYPE_2D, .baseArrayLayer = layer}) else self.depth.view;
 				break :blk .{
-					.imageView = self.depth.view,
+					.imageView = depthView,
 					.layout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-					.loadOp = clearDepth,
+					.loadOp = options.clearDepth,
 					.storeOp = .store,
 				};
 			},
@@ -2010,7 +2017,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 				.oldLayout = c.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 				.newLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
 				.image = self.color.handle,
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = c.VK_REMAINING_ARRAY_LAYERS},
 			},
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
@@ -2021,7 +2028,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 				.oldLayout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
 				.newLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
 				.image = self.depth.handle,
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = 1},
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = c.VK_REMAINING_ARRAY_LAYERS},
 			},
 		})[0..if (self.hasDepthTexture) 2 else 1]});
 	}
@@ -2773,7 +2780,7 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 	const clearColor: [4]f32 = if (block.transparent()) .{0.683421, 0.6854237, 0.685426, 1} else @splat(0);
 	frameBuffer.clear(clearColor);
 	if (main.settings.launch_config.vulkanTestingMode) {
-		frameBuffer.bindAndClear(vulkan.upload.commandBuffer(), .{.clearColor = .{.float32 = clearColor}}, .dontCare);
+		frameBuffer.bindAndClear(vulkan.upload.commandBuffer(), .{.clearColor = .{.clearColor = .{.float32 = clearColor}}, .clearDepth = .dontCare});
 	}
 
 	{
@@ -2803,7 +2810,7 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 	finalFrameBuffer.bind();
 	if (main.settings.launch_config.vulkanTestingMode) {
 		vulkan.upload.commandBuffer().endRendering();
-		finalFrameBuffer.bindAndClear(vulkan.upload.commandBuffer(), .dontCare, .dontCare);
+		finalFrameBuffer.bindAndClear(vulkan.upload.commandBuffer(), .{.clearColor = .dontCare, .clearDepth = .dontCare});
 	}
 	defer if (main.settings.launch_config.vulkanTestingMode) vulkan.upload.commandBuffer().endRendering();
 	const texture = Texture{.textureID = finalFrameBuffer.texture, .vulkanImage = null};

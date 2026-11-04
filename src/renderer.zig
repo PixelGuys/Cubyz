@@ -208,7 +208,7 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 	worldFrameBuffer.clear(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
 	gpu_performance_measuring.stopQuery();
 	if (main.settings.launch_config.vulkanTestingMode) {
-		worldFrameBuffer.bindAndClear(currentFrame.renderCommands, .{.clearColor = .{.float32 = .{skyColor[0], skyColor[1], skyColor[2], 1}}}, .{.clearDepth = .{.depth = 1}});
+		worldFrameBuffer.bindAndClear(currentFrame.renderCommands, .{.clearColor = .{.clearColor = .{.float32 = .{skyColor[0], skyColor[1], skyColor[2], 1}}}, .clearDepth = .{.clearDepth = .{.depth = 1}}});
 	}
 	game.camera.updateViewMatrix();
 
