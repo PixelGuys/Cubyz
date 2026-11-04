@@ -1,0 +1,13 @@
+.{
+	.minHeight = 42,
+	.maxHeight = 42,
+	.radius = 32,
+	.stoneBlock = "cubyz:lava",
+
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:ocean/warm/volcanic_island/base",
+			.chance = 1,
+		},
+	},
+}

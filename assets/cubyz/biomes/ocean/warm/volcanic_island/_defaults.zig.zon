@@ -1,0 +1,19 @@
+.{
+	.chance = 0,
+	.climate = .{
+		.ocean,
+		.hot,
+	},
+	.music = "cubyz:totaldemented/tides",
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:amber_ore:cubyz:basalt/smooth",
+			.chance = 0.0082,
+			.width = 1,
+			.variation = 2,
+			.depth = 1,
+			.smoothness = 0.1,
+		},
+	},
+}
