@@ -372,7 +372,7 @@ pub const particle_system = struct { // MARK: particle_system
 			for (0..count) |i| {
 				const particleOffset = (maxQuads*4)*i;
 				const particleCurrentCount: u32 = @min(maxQuads, particleCount - maxQuads*i);
-				currentFrame.renderCommands.drawIndexed(particleCurrentCount*6, @intCast(particleOffset));
+				currentFrame.renderCommands.drawIndexed(particleCurrentCount*6, .{.firstVertex = @intCast(particleOffset)});
 			}
 		} else {
 			particlesSSBO.bufferSubData(Particle, &particles, particleCount);
