@@ -73,7 +73,7 @@ const FakeReflectionUniforms = extern struct {
 pub var activeFrameBuffer: c_uint = 0;
 
 pub const reflectionCubeMapSize = 64;
-var reflectionCubeMap: graphics.CubeMapTexture = undefined;
+pub var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
 pub const worldFrameBufferFormat = c.VK_FORMAT_R16G16B16A16_SFLOAT;
 
