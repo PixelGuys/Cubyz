@@ -62,6 +62,13 @@ var fakeReflectionUniforms: struct {
 	frequency: c_int,
 	reflectionMapSize: c_int,
 } = undefined;
+const FakeReflectionUniforms = extern struct {
+	reflectionMapSize: f32,
+	normalVector: [3]f32 align(16),
+	upVector: [3]f32 align(16),
+	rightVector: [3]f32 align(16),
+	frequency: f32,
+};
 
 pub var activeFrameBuffer: c_uint = 0;
 
@@ -100,6 +107,8 @@ pub fn init() void {
 			.rasterState = .{.cullMode = .none},
 			.depthStencilState = .{.depthTest = false, .depthWrite = false},
 			.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R8G8B8A8_UNORM}}},
+			.inputAssemblyState = .{.topology = .triangleStrip},
+			.pushConstantSize = @sizeOf(FakeReflectionUniforms),
 		},
 	);
 	worldFrameBuffer = .init(Window.width, Window.height, c.GL_RGBA16F, true, .nearest, .clampToEdge);
@@ -109,8 +118,7 @@ pub fn init() void {
 	skybox.init();
 	chunk_meshing.init();
 	mesh_storage.init();
-	reflectionCubeMap = .init();
-	reflectionCubeMap.generate(reflectionCubeMapSize, reflectionCubeMapSize);
+	reflectionCubeMap = .init(reflectionCubeMapSize, reflectionCubeMapSize);
 	initReflectionCubeMap();
 }
 
@@ -131,6 +139,37 @@ fn initReflectionCubeMap() void {
 	c.glViewport(0, 0, reflectionCubeMapSize, reflectionCubeMapSize);
 	var framebuffer: graphics.FrameBuffer = .init(0, 0, c.GL_RGBA8, false, .linear, .clampToEdge);
 	defer framebuffer.deinit();
+	if (main.settings.launch_config.vulkanTestingMode) {
+		const oldColor = framebuffer.color;
+		defer framebuffer.color = oldColor;
+		framebuffer.color = reflectionCubeMap.vulkanImage;
+
+		const commandBuffer = vulkan.upload.commandBuffer();
+		var fakeFrame: vulkan.Frame = undefined;
+		fakeFrame.extent = .{.width = reflectionCubeMapSize, .height = reflectionCubeMapSize};
+		commandBuffer.bindPipeline(&fakeFrame, fakeReflectionPipeline, null);
+		commandBuffer.bindVertexArray(graphics.draw.rectVao);
+
+		for (0..6) |face| {
+			framebuffer.bindAndClear(commandBuffer, .{
+				.clearColor = .dontCare,
+				.clearDepth = .dontCare,
+				.baseArrayLayer = @intCast(face),
+			});
+			var uniforms: FakeReflectionUniforms = .{
+				.reflectionMapSize = reflectionCubeMapSize,
+				.frequency = 1,
+				.normalVector = graphics.CubeMapTexture.faceNormal(face),
+				.upVector = graphics.CubeMapTexture.faceUp(face),
+				.rightVector = graphics.CubeMapTexture.faceRight(face),
+			};
+			commandBuffer.pushConstants(fakeReflectionPipeline, &uniforms);
+			commandBuffer.draw(4, 0);
+
+			commandBuffer.endRendering();
+		}
+		framebuffer.prepareTexturesForBinding(commandBuffer);
+	}
 	framebuffer.bind();
 	fakeReflectionPipeline.bind(null);
 	c.glUniform1f(fakeReflectionUniforms.frequency, 1);
@@ -209,7 +248,7 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 	worldFrameBuffer.clear(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
 	gpu_performance_measuring.stopQuery();
 	if (main.settings.launch_config.vulkanTestingMode) {
-		worldFrameBuffer.bindAndClear(currentFrame.renderCommands, .{.clearColor = .{.float32 = .{skyColor[0], skyColor[1], skyColor[2], 1}}}, .{.clearDepth = .{.depth = 1}});
+		worldFrameBuffer.bindAndClear(currentFrame.renderCommands, .{.clearColor = .{.clearColor = .{.float32 = .{skyColor[0], skyColor[1], skyColor[2], 1}}}, .clearDepth = .{.clearDepth = .{.depth = 1}}});
 	}
 	game.camera.updateViewMatrix();
 
