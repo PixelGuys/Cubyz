@@ -619,8 +619,6 @@ pub fn getBlockWithSide(comptime side: main.sync.Side, x: i32, y: i32, z: i32) ?
 	}
 }
 
-var timeing: f64 = 0;
-
 pub fn update(deltaTime: f64) void { // MARK: update()
 	if (world.?.shouldRestart.load(.acquire)) {
 		restart();
