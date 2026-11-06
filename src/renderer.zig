@@ -73,7 +73,7 @@ const FakeReflectionUniforms = extern struct {
 pub var activeFrameBuffer: c_uint = 0;
 
 pub const reflectionCubeMapSize = 64;
-var reflectionCubeMap: graphics.CubeMapTexture = undefined;
+pub var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
 pub const worldFrameBufferFormat = c.VK_FORMAT_R16G16B16A16_SFLOAT;
 
@@ -714,7 +714,7 @@ pub const menu_background = struct { // MARK: menu_background
 			});
 			graphics.frame_uniforms.bindToPipeline(currentFrame.guiCommands, pipeline);
 			currentFrame.guiCommands.bindVertexArray(vao);
-			currentFrame.guiCommands.drawIndexed(24, 0);
+			currentFrame.guiCommands.drawIndexed(24, .{});
 		} else {
 			pipeline.bind(null);
 
@@ -1325,7 +1325,7 @@ pub const mesh_selection = struct { // MARK: mesh_selection
 			});
 			graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, pipeline);
 			currentFrame.renderCommands.bindVertexArray(main.renderer.chunk_meshing.vao);
-			currentFrame.renderCommands.drawIndexed(12*6*6, 0);
+			currentFrame.renderCommands.drawIndexed(12*6*6, .{});
 		} else {
 			pipeline.bind(null);
 

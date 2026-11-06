@@ -2248,7 +2248,7 @@ pub const Texture = struct { // MARK: Texture
 	}
 
 	pub fn initFromMipmapFiles(pathPrefix: []const u8, largestSize: u31, lodBias: f32) Texture {
-		const self = Texture.init();
+		var self = Texture.init();
 		self.bind();
 
 		const maxLod = std.math.log2_int(u31, largestSize);
@@ -2256,6 +2256,13 @@ pub const Texture = struct { // MARK: Texture
 		var curSize: u31 = largestSize;
 		while (curSize != 0) : (curSize /= 2) {
 			c.glTexImage2D(c.GL_TEXTURE_2D, maxLod - std.math.log2_int(u31, curSize), c.GL_RGBA8, curSize, curSize, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+		}
+
+		if (main.settings.launch_config.vulkanTestingMode) {
+			self.vulkanImage = .init(.{largestSize, largestSize, 1}, .{
+				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
+				.mipLevels = 1 + std.math.log2_int(u31, largestSize),
+			});
 		}
 
 		curSize = largestSize;
@@ -2268,6 +2275,9 @@ pub const Texture = struct { // MARK: Texture
 			};
 			defer image.deinit(main.stackAllocator);
 			c.glTexSubImage2D(c.GL_TEXTURE_2D, maxLod - std.math.log2_int(u31, curSize), 0, 0, curSize, curSize, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
+			if (main.settings.launch_config.vulkanTestingMode) {
+				self.vulkanImage.?.uploadData(std.mem.sliceAsBytes(image.imageData), .{.imageExtent = .{.width = image.width, .height = image.height, .depth = 1}, .mipLevel = maxLod - std.math.log2_int(u31, curSize)});
+			}
 		}
 
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_LOD, maxLod);
@@ -2628,6 +2638,12 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 			c.glBindBufferBase(c.GL_UNIFORM_BUFFER, 0, self.id);
 		}
 
+		pub fn bindToPipeline(self: StaticUbo, buf: CommandBuffer, pipeline: Pipeline) void {
+			buf.bindDescriptors(pipeline, .graphics, &.{
+				.{.ubo = .{.binding = binding, .buffer = self.vulkanBuffer}},
+			});
+		}
+
 		pub fn unbind(_: StaticUbo) void {
 			c.glBindBufferBase(c.GL_UNIFORM_BUFFER, 0, buffers[currentFrame]); // Bind the current frame default instead
 		}
@@ -2787,9 +2803,9 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 		var fakeFrame: vulkan.Frame = undefined;
 		fakeFrame.extent = .{.width = textureSize, .height = textureSize};
 		if (block.transparent()) {
-			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, block_texture.depthTexture.vulkanImage orelse undefined, .{1, 1, 1}, 0.25, 0);
+			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, block_texture.ubo, block_texture.depthTexture.vulkanImage orelse undefined, .{1, 1, 1}, 0.25, 0);
 		} else {
-			main.renderer.chunk_meshing.bindShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, .{1, 1, 1}, 0.25, 0);
+			main.renderer.chunk_meshing.bindShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, block_texture.ubo, .{1, 1, 1}, 0.25, 0);
 		}
 
 		block_texture.ubo.bind();

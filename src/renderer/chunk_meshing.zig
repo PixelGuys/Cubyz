@@ -89,6 +89,7 @@ pub fn init() void {
 				.ssbo(3, .{.vertex = true}),
 				.ssbo(4, .{.vertex = true}),
 				.ssbo(6, .{.vertex = true}),
+				.ssbo(7, .{}),
 				.ssbo(10, .{.vertex = true}),
 				.ssbo(12, .{.fragment = true}),
 			},
@@ -226,7 +227,7 @@ fn bindCommonUniforms(vulkanUniforms: *Uniforms, locations: *UniformStruct, ambi
 	vulkanUniforms.zFar = renderer.zFar;
 }
 
-fn bindVulkan(selectedPipeline: graphics.Pipeline, commands: graphics.CommandBuffer, currentFrame: *graphics.vulkan.Frame, vulkanUniforms: *Uniforms, lod: usize) void {
+fn bindVulkan(selectedPipeline: graphics.Pipeline, commands: graphics.CommandBuffer, currentFrame: *graphics.vulkan.Frame, frameUbo: ?graphics.frame_uniforms.StaticUbo, vulkanUniforms: *Uniforms, lod: usize) void {
 	commands.bindPipeline(currentFrame, selectedPipeline, null);
 	commands.pushConstants(selectedPipeline, vulkanUniforms);
 	commands.bindVertexArray(vao);
@@ -234,13 +235,22 @@ fn bindVulkan(selectedPipeline: graphics.Pipeline, commands: graphics.CommandBuf
 		.{.image = .{.binding = 0, .image = main.blocks.meshes.blockTextureArray.vulkanImage.?}},
 		.{.image = .{.binding = 1, .image = main.blocks.meshes.emissionTextureArray.vulkanImage.?}},
 		.{.image = .{.binding = 2, .image = main.blocks.meshes.reflectivityAndAbsorptionTextureArray.vulkanImage.?}},
+		.{.image = .{.binding = 5, .image = main.blocks.meshes.ditherTexture.vulkanImage.?}},
+		.{.image = .{.binding = 11, .image = main.renderer.reflectionCubeMap.vulkanImage}},
 		.{.ssbo = .{.binding = 3, .ssbo = faceBuffers[lod].ssbo}},
+		.{.ssbo = .{.binding = 4, .ssbo = main.models.quadSsbo.?}},
 		.{.ssbo = .{.binding = 6, .ssbo = chunkBuffer.ssbo}},
+		.{.ssbo = .{.binding = 7, .ssbo = main.blocks.meshes.fogSsbo.?}},
 		.{.ssbo = .{.binding = 10, .ssbo = lightBuffers[lod].ssbo}},
 	});
+	if (frameUbo) |ubo| {
+		ubo.bindToPipeline(commands, pipeline);
+	} else {
+		graphics.frame_uniforms.bindToPipeline(commands, pipeline);
+	}
 }
 
-pub fn bindShaderAndUniforms(commands: graphics.CommandBuffer, currentFrame: *graphics.vulkan.Frame, ambient: Vec3f, contrast: f32, lod: usize) void {
+pub fn bindShaderAndUniforms(commands: graphics.CommandBuffer, currentFrame: *graphics.vulkan.Frame, frameUbo: ?graphics.frame_uniforms.StaticUbo, ambient: Vec3f, contrast: f32, lod: usize) void {
 	pipeline.bind(null);
 
 	var vulkanUniforms: Uniforms = undefined;
@@ -248,11 +258,11 @@ pub fn bindShaderAndUniforms(commands: graphics.CommandBuffer, currentFrame: *gr
 
 	vao.bind();
 	if (main.settings.launch_config.vulkanTestingMode) {
-		bindVulkan(transparentPipeline, commands, currentFrame, &vulkanUniforms, lod);
+		bindVulkan(pipeline, commands, currentFrame, frameUbo, &vulkanUniforms, lod);
 	}
 }
 
-pub fn bindTransparentShaderAndUniforms(commands: graphics.CommandBuffer, currentFrame: *graphics.vulkan.Frame, depthTexture: graphics.vulkan.Image, ambient: Vec3f, contrast: f32, lod: usize) void {
+pub fn bindTransparentShaderAndUniforms(commands: graphics.CommandBuffer, currentFrame: *graphics.vulkan.Frame, frameUbo: ?graphics.frame_uniforms.StaticUbo, depthTexture: graphics.vulkan.Image, ambient: Vec3f, contrast: f32, lod: usize) void {
 	transparentPipeline.bind(null);
 
 	var vulkanUniforms: Uniforms = undefined;
@@ -267,7 +277,7 @@ pub fn bindTransparentShaderAndUniforms(commands: graphics.CommandBuffer, curren
 
 	vao.bind();
 	if (main.settings.launch_config.vulkanTestingMode) {
-		bindVulkan(transparentPipeline, commands, currentFrame, &vulkanUniforms, lod);
+		bindVulkan(transparentPipeline, commands, currentFrame, frameUbo, &vulkanUniforms, lod);
 		commands.bindDescriptors(transparentPipeline, .graphics, &.{
 			.{.image = .{.binding = 5, .image = depthTexture}},
 		});
@@ -307,9 +317,9 @@ fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, depthTexture: graphics.
 		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
 		if (transparent) {
-			bindTransparentShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, depthTexture, ambient, main.settings.blockContrast, lod);
+			bindTransparentShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, depthTexture, ambient, main.settings.blockContrast, lod);
 		} else {
-			bindShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, ambient, main.settings.blockContrast, lod);
+			bindShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, ambient, main.settings.blockContrast, lod);
 		}
 		c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 		c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
@@ -328,9 +338,9 @@ fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, depthTexture: graphics.
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
 	if (transparent) {
-		bindTransparentShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, depthTexture, ambient, main.settings.blockContrast, lod);
+		bindTransparentShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, depthTexture, ambient, main.settings.blockContrast, lod);
 	} else {
-		bindShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, ambient, main.settings.blockContrast, lod);
+		bindShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, ambient, main.settings.blockContrast, lod);
 	}
 	c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 	c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
