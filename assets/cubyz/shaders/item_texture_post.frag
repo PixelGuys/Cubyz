@@ -6,7 +6,13 @@ layout(location = 0) in vec2 texCoords;
 
 layout(binding = 3) uniform sampler2D color;
 
+#ifdef OPEN_GL
 layout(location = 0) uniform bool transparent;
+#else
+layout(push_constant, std430) uniform _ {
+	bool transparent;
+};
+#endif
 
 void main() {
 	fragColor = texture(color, texCoords);

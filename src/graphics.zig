@@ -2682,6 +2682,9 @@ const block_texture = struct { // MARK: block_texture
 	var uniforms: struct {
 		transparent: c_int,
 	} = undefined;
+	const Uniforms = extern struct {
+		transparent: c_int,
+	};
 	var pipeline: Pipeline = undefined;
 	var depthTexture: Texture = undefined;
 	const textureSize = 128;
@@ -2692,11 +2695,16 @@ const block_texture = struct { // MARK: block_texture
 			"assets/cubyz/shaders/item_texture_post.frag",
 			"",
 			&uniforms,
-			VertexArray.EmptyVertex,
+			draw.SimpleVertex2D,
 			.{
+				.bindings = &.{
+					.sampler(3, .{.fragment = true}),
+				},
 				.rasterState = .{.cullMode = .none},
 				.depthStencilState = .{.depthTest = false, .depthWrite = false},
 				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R8G8B8A8_UNORM}}},
+				.inputAssemblyState = .{.topology = .triangleStrip},
+				.pushConstantSize = @sizeOf(Uniforms),
 			},
 		);
 		depthTexture = .init();
@@ -2752,6 +2760,9 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 	const textureSize = block_texture.textureSize;
 	c.glViewport(0, 0, textureSize, textureSize);
 
+	var fakeFrame: vulkan.Frame = undefined;
+	fakeFrame.extent = .{.width = textureSize, .height = textureSize};
+
 	var faceData: main.ListManaged(main.renderer.chunk_meshing.FaceData) = .init(main.stackAllocator);
 	defer faceData.deinit();
 	const model = main.blocks.meshes.model(block).model();
@@ -2803,8 +2814,6 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 	}
 
 	{
-		var fakeFrame: vulkan.Frame = undefined;
-		fakeFrame.extent = .{.width = textureSize, .height = textureSize};
 		if (block.transparent()) {
 			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, block_texture.ubo, block_texture.depthTexture.vulkanImage orelse undefined, .{1, 1, 1}, 0.25, 0);
 		} else {
@@ -2831,12 +2840,7 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 	c.glDisable(c.GL_CULL_FACE);
 	var finalFrameBuffer: FrameBuffer = .init(textureSize, textureSize, c.GL_RGBA8, false, .nearest, .repeat);
 	finalFrameBuffer.bind();
-	if (main.settings.launch_config.vulkanTestingMode) {
-		vulkan.upload.commandBuffer().endRendering();
-		finalFrameBuffer.bindAndClear(vulkan.upload.commandBuffer(), .{.clearColor = .dontCare, .clearDepth = .dontCare});
-	}
-	defer if (main.settings.launch_config.vulkanTestingMode) vulkan.upload.commandBuffer().endRendering();
-	const texture = Texture{.textureID = finalFrameBuffer.texture, .vulkanImage = null};
+	var texture = Texture{.textureID = finalFrameBuffer.texture, .vulkanImage = null};
 	defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
 	block_texture.pipeline.bind(null);
 	c.glUniform1i(block_texture.uniforms.transparent, if (block.transparent()) c.GL_TRUE else c.GL_FALSE);
@@ -2848,6 +2852,27 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
 	c.glViewport(0, 0, main.Window.width, main.Window.height);
-	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+
+	if (main.settings.launch_config.vulkanTestingMode) {
+		vulkan.upload.commandBuffer().endRendering();
+		frameBuffer.prepareTexturesForBinding(vulkan.upload.commandBuffer());
+		finalFrameBuffer.bindAndClear(vulkan.upload.commandBuffer(), .{.clearColor = .dontCare, .clearDepth = .dontCare});
+
+		vulkan.upload.commandBuffer().bindPipeline(&fakeFrame, block_texture.pipeline, null);
+		const uniforms: block_texture.Uniforms = .{
+			.transparent = if (block.transparent()) c.VK_TRUE else c.VK_FALSE,
+		};
+		vulkan.upload.commandBuffer().pushConstants(block_texture.pipeline, &uniforms);
+		vulkan.upload.commandBuffer().bindDescriptors(block_texture.pipeline, .graphics, &.{
+			.{.image = .{.binding = 3, .image = frameBuffer.color}},
+		});
+		vulkan.upload.commandBuffer().bindVertexArray(draw.rectVao);
+		vulkan.upload.commandBuffer().draw(4, 0);
+
+		vulkan.upload.commandBuffer().endRendering();
+		finalFrameBuffer.prepareTexturesForBinding(vulkan.upload.commandBuffer());
+		texture.vulkanImage = finalFrameBuffer.color;
+	}
+
 	return texture;
 }
