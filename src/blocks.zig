@@ -622,8 +622,8 @@ pub const meshes = struct { // MARK: meshes
 		break :blk names;
 	};
 
-	var animationSSBO: ?SSBO = null;
-	var animatedTextureSSBO: ?SSBO = null;
+	var animationSsbo: ?SSBO = null;
+	pub var animatedTextureSsbo: ?SSBO = null;
 	pub var fogSsbo: ?SSBO = null;
 
 	var animationComputePipeline: graphics.ComputePipeline = undefined;
@@ -660,10 +660,10 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn deinit() void {
-		if (animationSSBO) |ssbo| {
+		if (animationSsbo) |ssbo| {
 			ssbo.deinit();
 		}
-		if (animatedTextureSSBO) |ssbo| {
+		if (animatedTextureSsbo) |ssbo| {
 			ssbo.deinit();
 		}
 		if (fogSsbo) |ssbo| {
@@ -858,8 +858,8 @@ pub const meshes = struct { // MARK: meshes
 			};
 			currentFrame.renderCommands.pushConstants(animationComputePipeline, &uniforms);
 			currentFrame.renderCommands.bindDescriptors(animationComputePipeline, .compute, &.{
-				.{.ssbo = .{.binding = 0, .ssbo = animationSSBO.?}},
-				.{.ssbo = .{.binding = 1, .ssbo = animatedTextureSSBO.?}},
+				.{.ssbo = .{.binding = 0, .ssbo = animationSsbo.?}},
+				.{.ssbo = .{.binding = 1, .ssbo = animatedTextureSsbo.?}},
 			});
 			currentFrame.renderCommands.dispatchCompute(@intCast(@divCeil(animationData.len, 64)), 1, 1);
 		}
@@ -911,20 +911,20 @@ pub const meshes = struct { // MARK: meshes
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
 
 		// Also generate additional buffers:
-		if (animationSSBO) |ssbo| {
+		if (animationSsbo) |ssbo| {
 			ssbo.deinit();
 		}
-		if (animatedTextureSSBO) |ssbo| {
+		if (animatedTextureSsbo) |ssbo| {
 			ssbo.deinit();
 		}
 		if (fogSsbo) |ssbo| {
 			ssbo.deinit();
 		}
-		animationSSBO = SSBO.initStatic(AnimationData, animationData);
-		animationSSBO.?.bind(0);
+		animationSsbo = SSBO.initStatic(AnimationData, animationData);
+		animationSsbo.?.bind(0);
 
-		animatedTextureSSBO = SSBO.initStaticSize(u32, animationData.len);
-		animatedTextureSSBO.?.bind(1);
+		animatedTextureSsbo = SSBO.initStaticSize(u32, animationData.len);
+		animatedTextureSsbo.?.bind(1);
 		fogSsbo = SSBO.initStatic(FogData, textureFogData.items);
 		fogSsbo.?.bind(7);
 	}

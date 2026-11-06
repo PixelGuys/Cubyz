@@ -2811,6 +2811,10 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 			main.renderer.chunk_meshing.bindShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, block_texture.ubo, .{1, 1, 1}, 0.25, 0);
 		}
 
+		if (main.settings.launch_config.vulkanTestingMode) {
+			vulkan.upload.commandBuffer().drawIndexed(@intCast(6*faceData.items.len), .{.firstVertex = allocation.start*4, .firstInstance = chunkAllocation.start});
+		}
+
 		block_texture.ubo.bind();
 		defer block_texture.ubo.unbind();
 
