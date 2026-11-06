@@ -1,4 +1,0 @@
-.{
-	.audio = "cubyz:default_material/break/0",
-	.volume = 1.25,
-}

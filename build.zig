@@ -181,7 +181,7 @@ pub fn build(b: *std.Build) !void {
 	});
 	b.installDirectory(.{
 		.source_dir = largeAssets.path("sounds"),
-		.install_subdir = "assets/cubyz/sounds/audio/",
+		.install_subdir = "assets/cubyz/sounds/",
 		.install_dir = .{.custom = ".."},
 	});
 	b.installDirectory(.{
