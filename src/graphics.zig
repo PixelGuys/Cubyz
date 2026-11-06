@@ -1600,6 +1600,9 @@ pub const SSBO = struct { // MARK: SSBO
 		c.glGenBuffers(1, &self.bufferID);
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
 		c.glBufferStorage(c.GL_SHADER_STORAGE_BUFFER, @intCast(len*@sizeOf(T)), null, 0);
+		if (main.settings.launch_config.vulkanTestingMode) {
+			self.buffer = .init(len*@sizeOf(T), .{.usage = c.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT});
+		}
 		return self;
 	}
 

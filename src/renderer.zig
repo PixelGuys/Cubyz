@@ -247,9 +247,6 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 	gpu_performance_measuring.startQuery(.clear);
 	worldFrameBuffer.clear(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
 	gpu_performance_measuring.stopQuery();
-	if (main.settings.launch_config.vulkanTestingMode) {
-		worldFrameBuffer.bindAndClear(currentFrame.renderCommands, .{.clearColor = .{.clearColor = .{.float32 = .{skyColor[0], skyColor[1], skyColor[2], 1}}}, .clearDepth = .{.clearDepth = .{.depth = 1}}});
-	}
 	game.camera.updateViewMatrix();
 
 	main.graphics.frame_uniforms.uploadNewFrame(.{
@@ -264,12 +261,16 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 
 	const time: u32 = @intCast(main.timestamp().toMilliseconds() & std.math.maxInt(u32));
 
-	gpu_performance_measuring.startQuery(.skybox);
-	skybox.render(currentFrame);
+	gpu_performance_measuring.startQuery(.animation);
+	blocks.meshes.preProcessAnimationData(currentFrame, time);
 	gpu_performance_measuring.stopQuery();
 
-	gpu_performance_measuring.startQuery(.animation);
-	blocks.meshes.preProcessAnimationData(time);
+	if (main.settings.launch_config.vulkanTestingMode) {
+		worldFrameBuffer.bindAndClear(currentFrame.renderCommands, .{.clearColor = .{.clearColor = .{.float32 = .{skyColor[0], skyColor[1], skyColor[2], 1}}}, .clearDepth = .{.clearDepth = .{.depth = 1}}});
+	}
+
+	gpu_performance_measuring.startQuery(.skybox);
+	skybox.render(currentFrame);
 	gpu_performance_measuring.stopQuery();
 
 	c.glActiveTexture(c.GL_TEXTURE0);

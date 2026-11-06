@@ -180,7 +180,7 @@ pub fn bindPipeline(self: CommandBuffer, currentFrame: *vulkan.Frame, pipeline: 
 }
 
 pub fn bindComputePipeline(self: CommandBuffer, pipeline: main.graphics.ComputePipeline) void {
-	c.vkCmdBindPipeline(self.handle, c.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.computePipeline);
+	c.vkCmdBindPipeline(self.handle, c.VK_PIPELINE_BIND_POINT_COMPUTE, pipeline.computePipeline);
 }
 
 pub fn bindVertexArray(self: CommandBuffer, buffer: main.graphics.VertexArray) void {
@@ -217,7 +217,7 @@ const BindingInfo = union(enum) {
 	},
 };
 
-pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bindPoint: DescriptorBindPoint, bindings: []const BindingInfo) void {
+pub fn bindDescriptors(self: CommandBuffer, pipeline: anytype, bindPoint: DescriptorBindPoint, bindings: []const BindingInfo) void {
 	const arena = main.stackAllocator.createArena();
 	defer main.stackAllocator.destroyArena(arena);
 	const writeInfo = arena.alloc(c.VkWriteDescriptorSet, bindings.len);
@@ -266,7 +266,7 @@ pub fn bindDescriptors(self: CommandBuffer, pipeline: main.graphics.Pipeline, bi
 	vkCmdPushDescriptorSet(self.handle, @backingInt(bindPoint), pipeline.pipelineLayout, 0, @intCast(writeInfo.len), writeInfo.ptr);
 }
 
-pub fn pushConstants(self: CommandBuffer, pipeline: main.graphics.Pipeline, constants: anytype) void {
+pub fn pushConstants(self: CommandBuffer, pipeline: anytype, constants: anytype) void {
 	comptime std.debug.assert(@typeInfo(@TypeOf(constants.*)).@"struct".layout == .@"extern");
 	c.vkCmdPushConstants(self.handle, pipeline.pipelineLayout, c.VK_SHADER_STAGE_ALL, 0, @sizeOf(@TypeOf(constants.*)), constants);
 }
@@ -291,6 +291,10 @@ pub fn drawIndexed(self: CommandBuffer, indexCount: u32, options: DrawIndexedOpt
 
 pub fn draw(self: CommandBuffer, vertexCount: u32, firstVertex: u32) void {
 	c.vkCmdDraw(self.handle, vertexCount, 1, firstVertex, 0);
+}
+
+pub fn dispatchCompute(self: CommandBuffer, groupCountX: u32, groupCountY: u32, groupCountZ: u32) void {
+	c.vkCmdDispatch(self.handle, groupCountX, groupCountY, groupCountZ);
 }
 
 pub fn copyBuffer(self: CommandBuffer, dest: vulkan.Buffer, destOffset: usize, source: vulkan.Buffer, sourceOffset: usize, size: usize) void {

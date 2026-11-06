@@ -631,6 +631,10 @@ pub const meshes = struct { // MARK: meshes
 		time: c_int,
 		size: c_int,
 	} = undefined;
+	const AnimationUniforms = extern struct {
+		time: u32,
+		size: u32,
+	};
 
 	pub var blockTextureArray: TextureArray = undefined;
 	pub var emissionTextureArray: TextureArray = undefined;
@@ -642,7 +646,13 @@ pub const meshes = struct { // MARK: meshes
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
 	pub fn init() void {
-		animationComputePipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/animation_pre_processing.comp", "", &animationUniforms, .{});
+		animationComputePipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/animation_pre_processing.comp", "", &animationUniforms, .{
+			.bindings = &.{
+				.ssbo(0, .{.compute = true}),
+				.ssbo(1, .{.compute = true}),
+			},
+			.pushConstantSize = @sizeOf(AnimationUniforms),
+		});
 		blockTextureArray = .init();
 		emissionTextureArray = .init();
 		reflectivityAndAbsorptionTextureArray = .init();
@@ -834,12 +844,25 @@ pub const meshes = struct { // MARK: meshes
 		}
 	}
 
-	pub fn preProcessAnimationData(time: u32) void {
+	pub fn preProcessAnimationData(currentFrame: *graphics.vulkan.Frame, time: u32) void {
 		animationComputePipeline.bind();
 		c.glUniform1ui(animationUniforms.time, time);
 		c.glUniform1ui(animationUniforms.size, @intCast(animationData.len));
 		c.glDispatchCompute(@intCast(@divCeil(animationData.len, 64)), 1, 1);
 		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
+		if (main.settings.launch_config.vulkanTestingMode) {
+			currentFrame.renderCommands.bindComputePipeline(animationComputePipeline);
+			const uniforms: AnimationUniforms = .{
+				.time = time,
+				.size = @intCast(animationData.len),
+			};
+			currentFrame.renderCommands.pushConstants(animationComputePipeline, &uniforms);
+			currentFrame.renderCommands.bindDescriptors(animationComputePipeline, .compute, &.{
+				.{.ssbo = .{.binding = 0, .ssbo = animationSSBO.?}},
+				.{.ssbo = .{.binding = 1, .ssbo = animatedTextureSSBO.?}},
+			});
+			currentFrame.renderCommands.dispatchCompute(@intCast(@divCeil(animationData.len, 64)), 1, 1);
+		}
 	}
 
 	fn finishTextureLoading() void {

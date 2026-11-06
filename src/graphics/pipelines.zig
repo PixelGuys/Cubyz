@@ -941,7 +941,7 @@ pub const ComputePipeline = struct { // MARK: ComputePipeline
 			.pSetLayouts = &self.descriptorSetLayout,
 			.pushConstantRangeCount = if (options.pushConstantSize == 0) 0 else 1,
 			.pPushConstantRanges = &.{
-				.stageFlags = c.VK_SHADER_STAGE_COMPUTE_BIT,
+				.stageFlags = c.VK_SHADER_STAGE_ALL,
 				.offset = 0,
 				.size = @intCast(options.pushConstantSize),
 			},

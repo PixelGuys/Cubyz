@@ -17,8 +17,15 @@ layout(std430, binding = 1) buffer _animatedTexture
 	float animatedTexture[];
 };
 
+#ifdef OPEN_GL
 layout(location = 0) uniform uint time;
 layout(location = 1) uniform uint size;
+#else
+layout(push_constant, std430) uniform _ {
+	uint time;
+	uint size;
+};
+#endif
 
 void main() {
 	uint textureIndex = gl_GlobalInvocationID.x;
