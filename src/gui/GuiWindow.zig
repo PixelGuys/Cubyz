@@ -61,7 +61,7 @@ titleBar: ?*GuiComponent.HorizontalList = null,
 shiftClickableInventory: ?main.items.Inventory.ClientInventory = null,
 
 /// Called every frame.
-renderFn: *const fn () void = &defaultFunction,
+renderFn: *const fn (*graphics.vulkan.Frame) void = &defaultRenderFunction,
 /// Called every frame before rendering.
 updateFn: *const fn () void = &defaultFunction,
 /// Called every frame for the currently selected window.
@@ -161,6 +161,7 @@ pub fn globalDeinit() void {
 }
 
 pub fn defaultFunction() void {}
+pub fn defaultRenderFunction(_: *graphics.vulkan.Frame) void {}
 pub fn defaultFunctionWithResult() main.callbacks.Result {
 	return .ignored;
 }
@@ -477,7 +478,7 @@ pub fn updateWindowPosition(self: *GuiWindow) void {
 	self.pos[1] = @max(self.pos[1], 0);
 }
 
-fn drawOrientationLines(self: *const GuiWindow) void {
+fn drawOrientationLines(self: *const GuiWindow, currentFrame: *graphics.vulkan.Frame) void {
 	const oldColor = draw.setColor(0x80000000);
 	defer draw.restoreColor(oldColor);
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
@@ -493,9 +494,9 @@ fn drawOrientationLines(self: *const GuiWindow) void {
 					.upper => windowSize[i],
 				};
 				if (i == 0) {
-					draw.line(.{pos, 0}, .{pos, windowSize[i ^ 1]});
+					draw.line(currentFrame, .{pos, 0}, .{pos, windowSize[i ^ 1]});
 				} else {
-					draw.line(.{0, pos}, .{windowSize[i ^ 1], pos});
+					draw.line(currentFrame, .{0, pos}, .{windowSize[i ^ 1], pos});
 				}
 			},
 			.attachedToWindow => |attachedToWindow| {
@@ -509,74 +510,74 @@ fn drawOrientationLines(self: *const GuiWindow) void {
 				const start = @min(self.pos[i ^ 1], other.pos[i ^ 1]);
 				const end = @max(self.pos[i ^ 1] + self.size[i ^ 1], other.pos[i ^ 1] + otherSize[i ^ 1]);
 				if (i == 0) {
-					draw.line(.{pos, start}, .{pos, end});
+					draw.line(currentFrame, .{pos, start}, .{pos, end});
 				} else {
-					draw.line(.{start, pos}, .{end, pos});
+					draw.line(currentFrame, .{start, pos}, .{end, pos});
 				}
 			},
 		}
 	}
 }
 
-pub fn drawIcons(self: *const GuiWindow) void {
+pub fn drawIcons(self: *const GuiWindow, currentFrame: *graphics.vulkan.Frame) void {
 	var x = self.size[0]/self.scale;
 	if (self.closeable) {
 		x -= iconWidth;
-		closeTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
+		closeTexture.render(currentFrame, .{x, 0}, .{iconWidth, titleBarHeight});
 	}
 	x -= iconWidth;
-	zoomOutTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
+	zoomOutTexture.render(currentFrame, .{x, 0}, .{iconWidth, titleBarHeight});
 	x -= iconWidth;
-	zoomInTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
+	zoomInTexture.render(currentFrame, .{x, 0}, .{iconWidth, titleBarHeight});
 
 	const oldClip = graphics.draw.setClip(.{x, titleBarHeight});
 	defer graphics.draw.restoreClip(oldClip);
-	if (self.titleBar) |titleBar| titleBar.render(.{0, 0});
+	if (self.titleBar) |titleBar| titleBar.render(currentFrame, .{0, 0});
 }
 
-pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
+pub fn render(self: *const GuiWindow, currentFrame: *graphics.vulkan.Frame, mousePosition: Vec2f) void {
 	if (self.hideIfMouseIsGrabbed and main.Window.grabbed) return;
 	const oldTranslation = draw.setTranslation(self.pos);
 	const oldScale = draw.setScale(self.scale);
 	if (self.hasBackground) {
 		if (main.settings.launch_config.vulkanTestingMode and backgroundTexture.vulkanImage != null) {
-			graphics.vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
-			graphics.vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
+			currentFrame.guiCommands.bindPipeline(currentFrame, pipeline, graphics.draw.getScissor());
+			currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
 				.{.image = .{.binding = 0, .image = backgroundTexture.vulkanImage.?}},
 			});
-			draw.customShadedRect(@as(WindowUniforms, undefined), pipeline, .{0, 0}, self.size/@as(Vec2f, @splat(self.scale)));
+			draw.customShadedRect(currentFrame, @as(WindowUniforms, undefined), pipeline, .{0, 0}, self.size/@as(Vec2f, @splat(self.scale)));
 		} else {
 			pipeline.bind(draw.getScissor());
 			backgroundTexture.bindTo(0);
 			draw.customShadedRectOpenGl(windowUniforms, .{0, 0}, self.size/@as(Vec2f, @splat(self.scale)));
 		}
 	}
-	self.renderFn();
+	self.renderFn(currentFrame);
 	if (self.rootComponent) |*component| {
-		component.render((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
+		component.render(currentFrame, (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
 	}
 	if (self.showTitleBar or gui.reorderWindows) {
 		if (main.settings.launch_config.vulkanTestingMode and titleTexture.vulkanImage != null) {
-			graphics.vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
-			graphics.vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
+			currentFrame.guiCommands.bindPipeline(currentFrame, pipeline, graphics.draw.getScissor());
+			currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
 				.{.image = .{.binding = 0, .image = titleTexture.vulkanImage.?}},
 			});
-			draw.customShadedRect(@as(WindowUniforms, undefined), pipeline, .{0, 0}, .{self.size[0]/self.scale, titleBarHeight});
+			draw.customShadedRect(currentFrame, @as(WindowUniforms, undefined), pipeline, .{0, 0}, .{self.size[0]/self.scale, titleBarHeight});
 		} else {
 			pipeline.bind(draw.getScissor());
 			titleTexture.bindTo(0);
 			draw.customShadedRectOpenGl(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, titleBarHeight});
 		}
-		self.drawIcons();
+		self.drawIcons(currentFrame);
 	}
 	if (self.hasBackground or (!main.Window.grabbed and gui.reorderWindows)) {
 		const oldColor = draw.setColor(0xff2d2d2d);
 		defer draw.restoreColor(oldColor);
-		draw.rectBorder(.{-2, -2}, self.size/@as(Vec2f, @splat(self.scale)) + Vec2f{4, 4}, 2.0);
+		draw.rectBorder(currentFrame, .{-2, -2}, self.size/@as(Vec2f, @splat(self.scale)) + Vec2f{4, 4}, 2.0);
 	}
 	draw.restoreTranslation(oldTranslation);
 	draw.restoreScale(oldScale);
 	if (self == grabbedWindow and windowMoving and (gui.reorderWindows or self.showTitleBar) and grabPosition != null) {
-		self.drawOrientationLines();
+		self.drawOrientationLines(currentFrame);
 	}
 }

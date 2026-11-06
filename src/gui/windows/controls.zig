@@ -92,14 +92,18 @@ fn toggleKeyboard() void {
 }
 
 fn unbindKey(keyPtr: usize) void {
-	var key: ?*main.Window.Key = @ptrFromInt(keyPtr);
+	var key: *main.Window.Key = @ptrFromInt(keyPtr);
+	key.value = 0;
+	if (key.pressed and key.pressAction != null) {
+		key.releaseAction.?(.{});
+	}
 	if (editingKeyboard) {
-		key.?.key = c.GLFW_KEY_UNKNOWN;
-		key.?.mouseButton = -1;
-		key.?.scancode = 0;
+		key.key = c.GLFW_KEY_UNKNOWN;
+		key.mouseButton = -1;
+		key.scancode = 0;
 	} else {
-		key.?.gamepadAxis = null;
-		key.?.gamepadButton = -1;
+		key.gamepadAxis = null;
+		key.gamepadButton = -1;
 	}
 	needsUpdate = true;
 }
@@ -130,7 +134,7 @@ fn initWindow() void {
 			}
 		};
 
-		const unbindBtn = Button.initText(.{16, 0}, unbindButtonWidth, "Unbind", .{.onAction = .initWithPtr(unbindKey, key)});
+		const unbindBtn = Button.initText(.{16, 0}, unbindButtonWidth, "Unbind", .{.onAction = .initWithPtr(unbindKey, key), .disabled = std.mem.eql(u8, key.name, "mainGuiButton")});
 		const row = HorizontalList.init();
 		row.add(label);
 		row.add(button);
@@ -160,7 +164,7 @@ pub fn onClose() void {
 	deinitWindow();
 }
 
-pub fn render() void {
+pub fn render(_: *main.graphics.vulkan.Frame) void {
 	if (needsUpdate) {
 		needsUpdate = false;
 		const oldScroll = window.rootComponent.?.verticalList.scrollBar.currentState;

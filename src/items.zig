@@ -129,7 +129,7 @@ const Material = struct { // MARK: Material
 				outString.appendSlice("\n");
 			} else {
 				outString.appendSlice("§#808080if ");
-				modifier.restriction.printTooltip(outString);
+				modifier.restriction.printTooltip(outString, .{});
 				outString.appendSlice("\n  ");
 				modifier.printTooltip(outString);
 				outString.appendSlice("\n");
@@ -142,10 +142,14 @@ pub const ModifierRestriction = struct {
 	vTable: *const VTable,
 	data: *anyopaque,
 
+	pub const PrintOptions = struct {
+		negated: bool = false,
+	};
+
 	pub const VTable = struct {
 		satisfied: *const fn (data: *anyopaque, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool,
 		loadFromZon: *const fn (allocator: NeverFailingAllocator, zon: ZonElement) *anyopaque,
-		printTooltip: *const fn (data: *anyopaque, outString: *main.ListManaged(u8)) void,
+		printTooltip: *const fn (data: *anyopaque, outString: *main.ListManaged(u8), options: PrintOptions) void,
 	};
 
 	pub fn satisfied(self: ModifierRestriction, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
@@ -164,8 +168,8 @@ pub const ModifierRestriction = struct {
 		};
 	}
 
-	pub fn printTooltip(self: ModifierRestriction, outString: *main.ListManaged(u8)) void {
-		self.vTable.printTooltip(self.data, outString);
+	pub fn printTooltip(self: ModifierRestriction, outString: *main.ListManaged(u8), options: PrintOptions) void {
+		self.vTable.printTooltip(self.data, outString, options);
 	}
 };
 
@@ -800,13 +804,13 @@ pub const ProceduralItemType = struct { // MARK: ProceduralItemType
 	pixelSourcesOverlay: [16][16]u8,
 };
 
-const ProceduralItemProperty = enum {
+pub const ProceduralItemProperty = enum(u32) {
 	damage,
 	maxDurability,
 	/// how long it takes before the next swing happens
 	swingSpeed,
 
-	fn fromString(string: []const u8) ?ProceduralItemProperty {
+	pub fn fromString(string: []const u8) ?ProceduralItemProperty {
 		return std.meta.stringToEnum(ProceduralItemProperty, string) orelse {
 			std.log.err("Couldn't find procedural Item property {s}.", .{string});
 			return null;
@@ -1232,9 +1236,9 @@ pub const Item = union(ItemType) { // MARK: Item
 		};
 	}
 
-	pub fn render(self: Item, pos: Vec2f, slotSize: Vec2f, border: f32) void {
+	pub fn render(self: Item, currentFrame: *graphics.vulkan.Frame, pos: Vec2f, slotSize: Vec2f, border: f32) void {
 		const itemTexture = self.getTexture();
-		graphics.draw.image(itemTexture, pos + @as(Vec2f, @splat(border)), slotSize - @as(Vec2f, @splat(2*border)));
+		graphics.draw.image(currentFrame, itemTexture, pos + @as(Vec2f, @splat(border)), slotSize - @as(Vec2f, @splat(2*border)));
 
 		if (self == .proceduralItem) {
 			const proceduralItem = self.proceduralItem;
@@ -1245,7 +1249,7 @@ pub const Item = union(ItemType) { // MARK: Item
 				{
 					const oldColor = graphics.draw.setColor(0xff000000);
 					defer graphics.draw.restoreColor(oldColor);
-					graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{slotSize[0] - 2*border, (slotSize[1] - 2*border)/16.0});
+					graphics.draw.rect(currentFrame, pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{slotSize[0] - 2*border, (slotSize[1] - 2*border)/16.0});
 				}
 
 				const red = std.math.lossyCast(u8, (2 - durabilityPercentage*2)*255);
@@ -1254,7 +1258,7 @@ pub const Item = union(ItemType) { // MARK: Item
 				{
 					const oldColor = graphics.draw.setColor(0xff000000 | (@as(u32, red) << 16) | (@as(u32, green) << 8));
 					defer graphics.draw.restoreColor(oldColor);
-					graphics.draw.rect(pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{width, (slotSize[1] - 2*border)/16.0});
+					graphics.draw.rect(currentFrame, pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{width, (slotSize[1] - 2*border)/16.0});
 				}
 			}
 		}

@@ -23,15 +23,15 @@ pub const client = struct {
 			@field(systems, decl).client.clear();
 		}
 	}
-	pub fn render(ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
+	pub fn render(currentFrame: *main.graphics.vulkan.Frame, ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
 		main.client.entity_manager.update();
 		inline for (@typeInfo(systems).@"struct".decl_names) |decl| {
-			@field(systems, decl).client.render(ambientLight, playerPos, deltaTime);
+			@field(systems, decl).client.render(currentFrame, ambientLight, playerPos, deltaTime);
 		}
 	}
-	pub fn renderHud(ambientLight: Vec3f, playerPos: Vec3d) void {
+	pub fn renderHud(currentFrame: *main.graphics.vulkan.Frame, ambientLight: Vec3f, playerPos: Vec3d) void {
 		inline for (@typeInfo(systems).@"struct".decl_names) |decl| {
-			@field(systems, decl).client.renderHud(ambientLight, playerPos);
+			@field(systems, decl).client.renderHud(currentFrame, ambientLight, playerPos);
 		}
 	}
 };

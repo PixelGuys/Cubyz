@@ -80,9 +80,9 @@ pub fn mainButtonReleased(self: *BagSlot, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn render(self: *BagSlot, _: Vec2f) void {
+pub fn render(self: *BagSlot, currentFrame: *graphics.vulkan.Frame, _: Vec2f) void {
 	texture.bindTo(0);
-	draw.image(texture, self.pos, @splat(sizeWithBorder));
+	draw.image(currentFrame, texture, self.pos, @splat(sizeWithBorder));
 
 	for (0..5) |_i| {
 		const i = 4 - _i;
@@ -91,7 +91,7 @@ pub fn render(self: *BagSlot, _: Vec2f) void {
 		const opacity: f32 = std.math.pow(f32, 0.5, @as(f32, @floatFromInt(i)));
 		const oldColor = draw.setColor(0xffffff | @as(u32, @trunc(opacity*255)) << 24);
 		defer draw.restoreColor(oldColor);
-		item.render(self.pos, @splat(sizeWithBorder), border);
+		item.render(currentFrame, self.pos, @splat(sizeWithBorder), border);
 	}
 
 	const topItem = self.inventory.peek(0);
@@ -113,15 +113,15 @@ pub fn render(self: *BagSlot, _: Vec2f) void {
 		);
 		defer text.deinit();
 		const textSize = text.calculateLineBreaks(8, self.size[0] - 2*border);
-		text.render(self.pos[0] + sizeWithBorder - textSize[0] - border, self.pos[1] + sizeWithBorder - textSize[1] - border, 8);
+		text.render(currentFrame, self.pos[0] + sizeWithBorder - textSize[0] - border, self.pos[1] + sizeWithBorder - textSize[1] - border, 8);
 	}
 
-	draw.print("{}/{}", .{self.inventory.slots.items.len, self.inventory.sizeLimit}, self.pos[0], self.pos[1] + sizeWithBorder, 8);
+	draw.print(currentFrame, "{}/{}", .{self.inventory.slots.items.len, self.inventory.sizeLimit}, self.pos[0], self.pos[1] + sizeWithBorder, 8);
 
 	if (self.hovered) {
 		self.hovered = false;
 		const oldColor = draw.setColor(0x300000ff);
 		defer draw.restoreColor(oldColor);
-		draw.rect(self.pos, @splat(sizeWithBorder));
+		draw.rect(currentFrame, self.pos, @splat(sizeWithBorder));
 	}
 }

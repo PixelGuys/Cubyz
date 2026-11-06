@@ -94,7 +94,7 @@ pub fn mainButtonReleased(self: *CheckBox, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn render(self: *CheckBox, mousePosition: Vec2f) void {
+pub fn render(self: *CheckBox, currentFrame: *graphics.vulkan.Frame, mousePosition: Vec2f) void {
 	const texture = blk: {
 		if (self.state) {
 			if (self.pressed) {
@@ -115,11 +115,11 @@ pub fn render(self: *CheckBox, mousePosition: Vec2f) void {
 		}
 	};
 	if (main.settings.launch_config.vulkanTestingMode and texture.vulkanImage != null) {
-		graphics.vulkan.currentFrame.guiCommands.bindPipeline(Button.pipeline, graphics.draw.getScissor());
-		graphics.vulkan.currentFrame.guiCommands.bindDescriptors(Button.pipeline, .graphics, &.{
+		currentFrame.guiCommands.bindPipeline(currentFrame, Button.pipeline, graphics.draw.getScissor());
+		currentFrame.guiCommands.bindDescriptors(Button.pipeline, .graphics, &.{
 			.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
 		});
-		draw.customShadedRect(@as(Button.ButtonUniforms, undefined), Button.pipeline, self.pos + Vec2f{0, self.size[1]/2 - boxSize/2}, @as(Vec2f, @splat(boxSize)));
+		draw.customShadedRect(currentFrame, @as(Button.ButtonUniforms, undefined), Button.pipeline, self.pos + Vec2f{0, self.size[1]/2 - boxSize/2}, @as(Vec2f, @splat(boxSize)));
 	} else {
 		Button.pipeline.bind(draw.getScissor());
 		texture.bindTo(0);
@@ -128,5 +128,5 @@ pub fn render(self: *CheckBox, mousePosition: Vec2f) void {
 	self.hovered = false;
 	const textPos = self.pos + Vec2f{boxSize/2, 0} + self.size/@as(Vec2f, @splat(2.0)) - self.label.size/@as(Vec2f, @splat(2.0));
 	self.label.pos = textPos;
-	self.label.render(mousePosition - textPos);
+	self.label.render(currentFrame, mousePosition - textPos);
 }

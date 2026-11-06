@@ -42,7 +42,7 @@ pub fn deinit() void {
 	noEnergyTexture.deinit();
 }
 
-pub fn render() void {
+pub fn render(currentFrame: *graphics.vulkan.Frame) void {
 	if (main.game.player.isCreative()) return;
 
 	var y: f32 = 0;
@@ -62,7 +62,7 @@ pub fn render() void {
 				break :blk noEnergyTexture;
 			}
 		};
-		draw.image(texture, Vec2f{x, window.contentSize[1] - y - 20}, .{20, 20});
+		draw.image(currentFrame, texture, Vec2f{x, window.contentSize[1] - y - 20}, .{20, 20});
 		x += 20;
 	}
 	y += 20;

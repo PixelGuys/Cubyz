@@ -63,7 +63,7 @@ pub const globalArena = heap.allocators.globalArenaAllocator.allocator();
 pub const worldArena = heap.allocators.worldArenaAllocator.allocator();
 pub var threadPool: *utils.ThreadPool = undefined;
 var threadedIo: std.Io.Threaded = undefined;
-pub var io: std.Io = threadedIo.io();
+pub var io: std.Io = if (builtin.is_test) std.testing.io else threadedIo.io();
 
 pub fn initThreadLocals() void {
 	seed = @bitCast(@as(i64, @truncate(timestamp().nanoseconds)));
@@ -445,6 +445,7 @@ pub fn clientMain() void { // MARK: clientMain()
 	while (c.glfwWindowShouldClose(Window.window) == 0) {
 		heap.garbage_collection.syncPoint();
 		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
+		var currentFrame: *graphics.vulkan.Frame = undefined;
 		if (!isHidden) {
 			c.glfwSwapBuffers(Window.window);
 			// Clear may also wait on vsync, so it's done before handling events:
@@ -457,10 +458,13 @@ pub fn clientMain() void { // MARK: clientMain()
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 
 			if (settings.launch_config.vulkanTestingMode) {
-				graphics.vulkan.beginRender();
+				currentFrame = graphics.vulkan.beginRender();
 			}
 		} else {
 			io.sleep(.fromMilliseconds(16), .awake) catch {};
+			if (settings.launch_config.vulkanTestingMode) {
+				currentFrame = graphics.vulkan.beginRender();
+			}
 		}
 
 		const endRendering = timestamp();
@@ -493,14 +497,14 @@ pub fn clientMain() void { // MARK: clientMain()
 		if (!isHidden) {
 			if (game.world != null) {
 				renderer.updateFov(settings.fov);
-				renderer.render(game.player.getEyePosBlocking(), deltaTime);
+				renderer.render(currentFrame, game.player.getEyePosBlocking(), deltaTime);
 			} else {
 				renderer.updateFov(70.0);
-				renderer.menu_background.render(deltaTime);
+				renderer.menu_background.render(currentFrame, deltaTime);
 			}
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
-			gui.updateAndRenderGui();
+			gui.updateAndRenderGui(currentFrame);
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 
 			if (settings.launch_config.vulkanTestingMode) {

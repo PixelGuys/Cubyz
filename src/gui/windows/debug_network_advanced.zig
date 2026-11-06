@@ -23,7 +23,7 @@ pub var window = GuiWindow{
 	.hideIfMouseIsGrabbed = false,
 };
 
-fn renderConnectionData(conn: *main.network.Connection, name: []const u8, y: *f32) void {
+fn renderConnectionData(currentFrame: *graphics.vulkan.Frame, conn: *main.network.Connection, name: []const u8, y: *f32) void {
 	conn.mutex.lock();
 	defer conn.mutex.unlock();
 	var unconfirmed: [3]usize = @splat(0);
@@ -31,25 +31,25 @@ fn renderConnectionData(conn: *main.network.Connection, name: []const u8, y: *f3
 	conn.lossyChannel.getStatistics(&unconfirmed[0], &queued[0]);
 	conn.secureChannel.getStatistics(&unconfirmed[1], &queued[1]);
 	conn.slowChannel.getStatistics(&unconfirmed[2], &queued[2]);
-	draw.print("{s} | RTT = {d:.1} ms | {d:.0} kiB/RTT", .{name, conn.rttEstimate/1000.0, conn.bandwidthEstimateInBytesPerRtt/1024.0}, 0, y.*, 8);
+	draw.print(currentFrame, "{s} | RTT = {d:.1} ± {d:.1} ms | {d:.0} kiB/RTT", .{name, conn.rttEstimate/1000.0, conn.rttUncertainty/1000.0, conn.bandwidthEstimateInBytesPerRtt/1024.0}, 0, y.*, 8);
 	y.* += 8;
-	draw.print("Waiting in queue:      {: >6} kiB |{: >6} kiB |{: >6} kiB", .{queued[0] >> 10, queued[1] >> 10, queued[2] >> 10}, 0, y.*, 8);
+	draw.print(currentFrame, "Waiting in queue:      {: >6} kiB |{: >6} kiB |{: >6} kiB", .{queued[0] >> 10, queued[1] >> 10, queued[2] >> 10}, 0, y.*, 8);
 	y.* += 8;
-	draw.print("Sent but not confirmed:{: >6} kiB |{: >6} kiB |{: >6} kiB", .{unconfirmed[0] >> 10, unconfirmed[1] >> 10, unconfirmed[2] >> 10}, 0, y.*, 8);
+	draw.print(currentFrame, "Sent but not confirmed:{: >6} kiB |{: >6} kiB |{: >6} kiB", .{unconfirmed[0] >> 10, unconfirmed[1] >> 10, unconfirmed[2] >> 10}, 0, y.*, 8);
 	y.* += 8;
 }
 
-pub fn render() void {
+pub fn render(currentFrame: *graphics.vulkan.Frame) void {
 	var y: f32 = 0;
 	if (main.game.world != null) {
-		renderConnectionData(main.game.world.?.conn, "Client", &y);
+		renderConnectionData(currentFrame, main.game.world.?.conn, "Client", &y);
 	}
 	y += 8;
 	if (main.server.world != null) {
 		const userList = main.server.getUserList(main.stackAllocator);
 		defer main.stackAllocator.free(userList);
 		for (userList) |user| {
-			renderConnectionData(user.conn, user.name, &y);
+			renderConnectionData(currentFrame, user.conn, user.name, &y);
 		}
 	}
 	if (window.contentSize[1] != y) {
