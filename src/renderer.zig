@@ -1222,6 +1222,7 @@ pub const mesh_selection = struct { // MARK: mesh_selection
 						const swings = @ceil(block.blockHealth()/damage);
 						const damagePerSwing = block.blockHealth()/swings;
 						swinging.currentSwingTime = damagePerSwing/damage*swingTime;
+						main.audio.playSpatialSound("cubyz:default_material/block_hit", Vec3f{0, 0, 0}, 20);
 					}
 					if (breaking.progress < 0.9999) {
 						mesh_storage.removeBreakingAnimation(breaking.blockPos);
@@ -1233,7 +1234,6 @@ pub const mesh_selection = struct { // MARK: mesh_selection
 						return;
 					} else {
 						mesh_storage.removeBreakingAnimation(breaking.blockPos);
-						main.audio.playSpatialSound("cubyz:block_break", Vec3f{0, 0, 0}, 20);
 						breaking.progress = 0;
 						swinging.currentSwingProgress = 0;
 						swinging.currentSwingTime = 0;
@@ -1251,7 +1251,7 @@ pub const mesh_selection = struct { // MARK: mesh_selection
 			main.sync.client.mutex.unlock();
 
 			if (newBlock != block) {
-				main.audio.playSpatialSound("cubyz:block_break", @floatFromInt(selectedPos), 13);
+				main.audio.playSpatialSound("cubyz:default_material/block_break", @floatFromInt(selectedPos), 13);
 				updateBlockAndSendUpdate(inventory, slot, selectedPos, block, newBlock);
 			}
 		}

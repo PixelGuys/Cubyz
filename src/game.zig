@@ -712,7 +712,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 					movementDir[2] += 5.5;
 				}
 			} else if ((player.onGround or player.jumpCoyote > 0.0) and player.jumpCooldown <= 0) {
-				main.audio.playSound("cubyz:jump");
+				main.audio.playSound("cubyz:player/jump");
 				jumping = true;
 				player.jumpCooldown = player.jumpCooldownConstant;
 				if (!player.onGround) {
