@@ -23,11 +23,11 @@
 			.chance = 3,
 		},
 		.{
-			.id = "cubyz:grassland",
+			.id = "cubyz:grassland/base",
 			.chance = 3,
 		},
 		.{
-			.id = "cubyz:rocky_grassland",
+			.id = "cubyz:grassland/rocky",
 			.chance = 24,
 		},
 		.{

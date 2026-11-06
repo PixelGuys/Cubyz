@@ -4,7 +4,17 @@ layout(location = 0) in vec2 inTexCoords;
 
 layout(location = 0) out vec3 coords;
 
+#ifdef OPEN_GL
 layout(location = 0) uniform float reflectionMapSize;
+#else
+layout(push_constant, std430) uniform _ {
+	float reflectionMapSize;
+	vec3 normalVector;
+	vec3 upVector;
+	vec3 rightVector;
+	float frequency;
+};
+#endif
 
 void main() {
 #ifdef OPEN_GL

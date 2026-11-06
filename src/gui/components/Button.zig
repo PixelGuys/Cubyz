@@ -15,8 +15,6 @@ const Label = GuiComponent.Label;
 
 const Button = @This();
 
-const border: f32 = 3;
-
 const Textures = struct {
 	texture: Texture,
 	outlineTexture: Texture,
@@ -99,14 +97,15 @@ pub fn globalDeinit() void {
 const Options = struct {
 	onAction: main.callbacks.SimpleCallback = .{},
 	disabled: bool = false,
+	border: f32 = 4,
 };
 
 pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *Button {
-	const label = Label.init(undefined, width - 3*border, text, .center);
+	const label = Label.init(undefined, width - 2*options.border, text, .center);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
-		.size = Vec2f{width, label.size[1] + 3*border},
+		.size = Vec2f{width, label.size[1] + 2*options.border},
 		.onAction = options.onAction,
 		.child = label.toComponent(),
 		.disabled = options.disabled,
@@ -119,7 +118,7 @@ pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, options: Opti
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
-		.size = icon.size + @as(Vec2f, @splat(3*border)),
+		.size = icon.size + @as(Vec2f, @splat(2*options.border)),
 		.onAction = options.onAction,
 		.child = icon.toComponent(),
 		.disabled = options.disabled,
