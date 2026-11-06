@@ -1232,9 +1232,10 @@ pub const mesh_selection = struct { // MARK: mesh_selection
 
 						return;
 					} else {
-						swinging.currentSwingProgress = 0;
 						mesh_storage.removeBreakingAnimation(breaking.blockPos);
+						main.audio.playSpatialSound("cubyz:block_break", Vec3f{0, 0, 0}, 20);
 						breaking.progress = 0;
+						swinging.currentSwingProgress = 0;
 						swinging.currentSwingTime = 0;
 					}
 				} else {
