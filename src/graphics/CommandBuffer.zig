@@ -179,6 +179,10 @@ pub fn bindPipeline(self: CommandBuffer, currentFrame: *vulkan.Frame, pipeline: 
 	}
 }
 
+pub fn bindComputePipeline(self: CommandBuffer, pipeline: main.graphics.ComputePipeline) void {
+	c.vkCmdBindPipeline(self.handle, c.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.computePipeline);
+}
+
 pub fn bindVertexArray(self: CommandBuffer, buffer: main.graphics.VertexArray) void {
 	c.vkCmdBindVertexBuffers(self.handle, 0, 1, &buffer.buffer.handle, &@as(usize, 0));
 	if (buffer.hasIndices) {
