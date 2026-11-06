@@ -275,8 +275,14 @@ pub fn setScissor(self: CommandBuffer, scissor: c.VkRect2D) void {
 	c.vkCmdSetScissor(self.handle, 0, 1, &scissor);
 }
 
-pub fn drawIndexed(self: CommandBuffer, indexCount: u32, firstVertex: i32) void {
-	c.vkCmdDrawIndexed(self.handle, indexCount, 1, 0, firstVertex, 0);
+const DrawIndexedOptions = struct {
+	firstIndex: u32 = 0,
+	firstVertex: i32 = 0,
+	firstInstance: u32 = 0,
+	instanceCount: u32 = 1,
+};
+pub fn drawIndexed(self: CommandBuffer, indexCount: u32, options: DrawIndexedOptions) void {
+	c.vkCmdDrawIndexed(self.handle, indexCount, options.instanceCount, options.firstIndex, options.firstVertex, options.firstInstance);
 }
 
 pub fn draw(self: CommandBuffer, vertexCount: u32, firstVertex: u32) void {

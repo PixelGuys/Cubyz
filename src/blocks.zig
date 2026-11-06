@@ -624,7 +624,7 @@ pub const meshes = struct { // MARK: meshes
 
 	var animationSSBO: ?SSBO = null;
 	var animatedTextureSSBO: ?SSBO = null;
-	var fogSSBO: ?SSBO = null;
+	pub var fogSsbo: ?SSBO = null;
 
 	var animationComputePipeline: graphics.ComputePipeline = undefined;
 	var animationUniforms: struct {
@@ -656,7 +656,7 @@ pub const meshes = struct { // MARK: meshes
 		if (animatedTextureSSBO) |ssbo| {
 			ssbo.deinit();
 		}
-		if (fogSSBO) |ssbo| {
+		if (fogSsbo) |ssbo| {
 			ssbo.deinit();
 		}
 		animationComputePipeline.deinit();
@@ -894,7 +894,7 @@ pub const meshes = struct { // MARK: meshes
 		if (animatedTextureSSBO) |ssbo| {
 			ssbo.deinit();
 		}
-		if (fogSSBO) |ssbo| {
+		if (fogSsbo) |ssbo| {
 			ssbo.deinit();
 		}
 		animationSSBO = SSBO.initStatic(AnimationData, animationData);
@@ -902,7 +902,7 @@ pub const meshes = struct { // MARK: meshes
 
 		animatedTextureSSBO = SSBO.initStaticSize(u32, animationData.len);
 		animatedTextureSSBO.?.bind(1);
-		fogSSBO = SSBO.initStatic(FogData, textureFogData.items);
-		fogSSBO.?.bind(7);
+		fogSsbo = SSBO.initStatic(FogData, textureFogData.items);
+		fogSsbo.?.bind(7);
 	}
 };

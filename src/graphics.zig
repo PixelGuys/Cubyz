@@ -1934,7 +1934,12 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 		}
 	}
 
-	pub fn bindAndClear(self: FrameBuffer, commandBuffer: CommandBuffer, clearColor: CommandBuffer.BeginRenderingOptions.LoadOp, clearDepth: CommandBuffer.BeginRenderingOptions.LoadOp) void {
+	const BindAndClearOptions = struct {
+		clearColor: CommandBuffer.BeginRenderingOptions.LoadOp,
+		clearDepth: CommandBuffer.BeginRenderingOptions.LoadOp,
+		baseArrayLayer: ?u32 = null,
+	};
+	pub fn bindAndClear(self: FrameBuffer, commandBuffer: CommandBuffer, options: BindAndClearOptions) void {
 		commandBuffer.pipelineBarrier(.{.imageMemoryBarriers = @as([]const c.VkImageMemoryBarrier2, &.{
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
@@ -1945,7 +1950,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
 				.newLayout = c.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 				.image = self.color.handle,
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .baseArrayLayer = options.baseArrayLayer orelse 0, .layerCount = 1},
 			},
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
@@ -1956,24 +1961,26 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
 				.newLayout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
 				.image = self.depth.handle,
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = 1},
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .baseArrayLayer = options.baseArrayLayer orelse 0, .layerCount = 1},
 			},
 		})[0..if (self.hasDepthTexture) 2 else 1]});
+		const colorView = if (options.baseArrayLayer) |layer| self.color.createTemporaryImageView(.{.type = c.VK_IMAGE_VIEW_TYPE_2D, .baseArrayLayer = layer}) else self.color.view;
 		commandBuffer.beginRendering(.{
 			.textures = &.{
 				.{
-					.imageView = self.color.view,
+					.imageView = colorView,
 					.layout = c.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-					.loadOp = clearColor,
+					.loadOp = options.clearColor,
 					.storeOp = .store,
 				},
 			},
 			.depthTexture = blk: {
 				if (!self.hasDepthTexture) break :blk null;
+				const depthView = if (options.baseArrayLayer) |layer| self.depth.createTemporaryImageView(.{.type = c.VK_IMAGE_VIEW_TYPE_2D, .baseArrayLayer = layer}) else self.depth.view;
 				break :blk .{
-					.imageView = self.depth.view,
+					.imageView = depthView,
 					.layout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-					.loadOp = clearDepth,
+					.loadOp = options.clearDepth,
 					.storeOp = .store,
 				};
 			},
@@ -2010,7 +2017,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 				.oldLayout = c.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 				.newLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
 				.image = self.color.handle,
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = c.VK_REMAINING_ARRAY_LAYERS},
 			},
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
@@ -2021,7 +2028,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 				.oldLayout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
 				.newLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
 				.image = self.depth.handle,
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = 1},
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = c.VK_REMAINING_ARRAY_LAYERS},
 			},
 		})[0..if (self.hasDepthTexture) 2 else 1]});
 	}
@@ -2241,7 +2248,7 @@ pub const Texture = struct { // MARK: Texture
 	}
 
 	pub fn initFromMipmapFiles(pathPrefix: []const u8, largestSize: u31, lodBias: f32) Texture {
-		const self = Texture.init();
+		var self = Texture.init();
 		self.bind();
 
 		const maxLod = std.math.log2_int(u31, largestSize);
@@ -2249,6 +2256,13 @@ pub const Texture = struct { // MARK: Texture
 		var curSize: u31 = largestSize;
 		while (curSize != 0) : (curSize /= 2) {
 			c.glTexImage2D(c.GL_TEXTURE_2D, maxLod - std.math.log2_int(u31, curSize), c.GL_RGBA8, curSize, curSize, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+		}
+
+		if (main.settings.launch_config.vulkanTestingMode) {
+			self.vulkanImage = .init(.{largestSize, largestSize, 1}, .{
+				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
+				.mipLevels = 1 + std.math.log2_int(u31, largestSize),
+			});
 		}
 
 		curSize = largestSize;
@@ -2261,6 +2275,9 @@ pub const Texture = struct { // MARK: Texture
 			};
 			defer image.deinit(main.stackAllocator);
 			c.glTexSubImage2D(c.GL_TEXTURE_2D, maxLod - std.math.log2_int(u31, curSize), 0, 0, curSize, curSize, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
+			if (main.settings.launch_config.vulkanTestingMode) {
+				self.vulkanImage.?.uploadData(std.mem.sliceAsBytes(image.imageData), .{.imageExtent = .{.width = image.width, .height = image.height, .depth = 1}, .mipLevel = maxLod - std.math.log2_int(u31, curSize)});
+			}
 		}
 
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_LOD, maxLod);
@@ -2322,28 +2339,11 @@ pub const Texture = struct { // MARK: Texture
 
 pub const CubeMapTexture = struct { // MARK: CubeMapTexture
 	textureID: c_uint,
+	vulkanImage: vulkan.Image,
 
-	pub fn init() CubeMapTexture {
+	pub fn init(width: u31, height: u31) CubeMapTexture {
 		var self: CubeMapTexture = undefined;
 		c.glGenTextures(1, &self.textureID);
-		return self;
-	}
-
-	pub fn deinit(self: CubeMapTexture) void {
-		c.glDeleteTextures(1, &self.textureID);
-	}
-
-	pub fn bindTo(self: CubeMapTexture, binding: u5) void {
-		c.glActiveTexture(@intCast(c.GL_TEXTURE0 + binding));
-		c.glBindTexture(c.GL_TEXTURE_CUBE_MAP, self.textureID);
-	}
-
-	pub fn bind(self: CubeMapTexture) void {
-		c.glBindTexture(c.GL_TEXTURE_CUBE_MAP, self.textureID);
-	}
-
-	/// (Re-)Generates the GPU buffer.
-	pub fn generate(self: CubeMapTexture, width: u31, height: u31) void {
 		self.bind();
 
 		c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
@@ -2359,6 +2359,35 @@ pub const CubeMapTexture = struct { // MARK: CubeMapTexture
 		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_WRAP_R, c.GL_CLAMP_TO_EDGE);
 		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_BASE_LEVEL, 0);
 		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_MAX_LEVEL, 0);
+
+		if (main.settings.launch_config.vulkanTestingMode) {
+			self.vulkanImage = .init(.{width, height, 1}, .{
+				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
+				.imageViewType = c.VK_IMAGE_VIEW_TYPE_CUBE,
+				.arrayLayers = 6,
+				.magFilter = .linear,
+				.minFilter = .linear,
+				.addressMode = .clampToEdge,
+			});
+		}
+
+		return self;
+	}
+
+	pub fn deinit(self: CubeMapTexture) void {
+		c.glDeleteTextures(1, &self.textureID);
+		if (main.settings.launch_config.vulkanTestingMode) {
+			self.vulkanImage.deferredDeinit();
+		}
+	}
+
+	pub fn bindTo(self: CubeMapTexture, binding: u5) void {
+		c.glActiveTexture(@intCast(c.GL_TEXTURE0 + binding));
+		c.glBindTexture(c.GL_TEXTURE_CUBE_MAP, self.textureID);
+	}
+
+	pub fn bind(self: CubeMapTexture) void {
+		c.glBindTexture(c.GL_TEXTURE_CUBE_MAP, self.textureID);
 	}
 
 	pub fn faceNormal(face: usize) Vec3f {
@@ -2609,6 +2638,12 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 			c.glBindBufferBase(c.GL_UNIFORM_BUFFER, 0, self.id);
 		}
 
+		pub fn bindToPipeline(self: StaticUbo, buf: CommandBuffer, pipeline: Pipeline) void {
+			buf.bindDescriptors(pipeline, .graphics, &.{
+				.{.ubo = .{.binding = binding, .buffer = self.vulkanBuffer}},
+			});
+		}
+
 		pub fn unbind(_: StaticUbo) void {
 			c.glBindBufferBase(c.GL_UNIFORM_BUFFER, 0, buffers[currentFrame]); // Bind the current frame default instead
 		}
@@ -2761,16 +2796,16 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 	const clearColor: [4]f32 = if (block.transparent()) .{0.683421, 0.6854237, 0.685426, 1} else @splat(0);
 	frameBuffer.clear(clearColor);
 	if (main.settings.launch_config.vulkanTestingMode) {
-		frameBuffer.bindAndClear(vulkan.upload.commandBuffer(), .{.clearColor = .{.float32 = clearColor}}, .dontCare);
+		frameBuffer.bindAndClear(vulkan.upload.commandBuffer(), .{.clearColor = .{.clearColor = .{.float32 = clearColor}}, .clearDepth = .dontCare});
 	}
 
 	{
 		var fakeFrame: vulkan.Frame = undefined;
 		fakeFrame.extent = .{.width = textureSize, .height = textureSize};
 		if (block.transparent()) {
-			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, block_texture.depthTexture.vulkanImage orelse undefined, .{1, 1, 1}, 0.25, 0);
+			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, block_texture.ubo, block_texture.depthTexture.vulkanImage orelse undefined, .{1, 1, 1}, 0.25, 0);
 		} else {
-			main.renderer.chunk_meshing.bindShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, .{1, 1, 1}, 0.25, 0);
+			main.renderer.chunk_meshing.bindShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, block_texture.ubo, .{1, 1, 1}, 0.25, 0);
 		}
 
 		block_texture.ubo.bind();
@@ -2791,7 +2826,7 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 	finalFrameBuffer.bind();
 	if (main.settings.launch_config.vulkanTestingMode) {
 		vulkan.upload.commandBuffer().endRendering();
-		finalFrameBuffer.bindAndClear(vulkan.upload.commandBuffer(), .dontCare, .dontCare);
+		finalFrameBuffer.bindAndClear(vulkan.upload.commandBuffer(), .{.clearColor = .dontCare, .clearDepth = .dontCare});
 	}
 	defer if (main.settings.launch_config.vulkanTestingMode) vulkan.upload.commandBuffer().endRendering();
 	const texture = Texture{.textureID = finalFrameBuffer.texture, .vulkanImage = null};
