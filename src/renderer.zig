@@ -1289,6 +1289,7 @@ pub const mesh_selection = struct { // MARK: mesh_selection
 			main.sync.client.mutex.unlock();
 
 			if (newBlock != block) {
+				main.audio.mood.onBlockMined(block);
 				updateBlockAndSendUpdate(inventory, slot, selectedPos, block, newBlock);
 			}
 		}

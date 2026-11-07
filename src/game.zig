@@ -202,6 +202,8 @@ pub const player = struct { // MARK: player
 	}
 
 	pub fn kill(spawnPos: Vec3d) void {
+		main.audio.mood.onDeath();
+
 		player.super.pos = spawnPos;
 		player.super.vel = .{0, 0, 0};
 
@@ -347,6 +349,7 @@ pub const World = struct { // MARK: World
 		player.super.deinit(.client);
 		main.entity.client.clear();
 		main.systems.client.clear();
+		main.audio.mood.deinit();
 		self.itemDrops.deinit();
 		self.blockPalette.deinit();
 		self.itemPalette.deinit();
@@ -390,6 +393,8 @@ pub const World = struct { // MARK: World
 		player.setGamemode(std.enums.fromInt(Gamemode, zon.get(u8, "gamemode") orelse return error.Invalid) orelse return error.Invalid);
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
+		main.audio.mood.init();
+		main.audio.mood.onBiomeChanged(self.playerBiome.raw);
 
 		main.Window.setMouseGrabbed(true);
 		main.blocks.meshes.generateTextureArray();
@@ -852,6 +857,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	}
 
 	world.?.update(deltaTime);
+	main.audio.mood.update(deltaTime);
 	particles.particle_system.update(@floatCast(deltaTime));
 }
 pub fn restart() void {
