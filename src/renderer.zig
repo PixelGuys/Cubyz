@@ -368,7 +368,7 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 	gpu_performance_measuring.startQuery(.final_copy);
 	if (settings.launch_config.vulkanTestingMode) {
 		currentFrame.guiCommands.bindPipeline(currentFrame, deferredRenderPassPipeline, null);
-		currentFrame.guiCommands.bindDescriptors(deferredRenderPassPipeline, .graphics, &.{
+		currentFrame.guiCommands.bindDescriptors(deferredRenderPassPipeline, &.{
 			.{.image = .{.binding = 3, .image = worldFrameBuffer.color}},
 			.{.image = .{.binding = 4, .image = worldFrameBuffer.depth}},
 			.{.image = .{.binding = 5, .image = bloom.emptyBuffer.vulkanImage.?}},
@@ -710,7 +710,7 @@ pub const menu_background = struct { // MARK: menu_background
 		});
 		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, pipeline, graphics.draw.getScissor());
-			currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
+			currentFrame.guiCommands.bindDescriptors(pipeline, &.{
 				.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
 			});
 			graphics.frame_uniforms.bindToPipeline(currentFrame.guiCommands, pipeline);
@@ -938,7 +938,7 @@ pub const skybox = struct { // MARK: skybox
 
 			if (main.settings.launch_config.vulkanTestingMode) {
 				currentFrame.renderCommands.bindPipeline(currentFrame, starPipeline, null);
-				currentFrame.renderCommands.bindDescriptors(starPipeline, .graphics, &.{
+				currentFrame.renderCommands.bindDescriptors(starPipeline, &.{
 					.{.ssbo = .{.binding = 12, .ssbo = starSsbo}},
 				});
 				currentFrame.renderCommands.pushConstants(starPipeline, &StarUniforms{

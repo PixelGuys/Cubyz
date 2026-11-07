@@ -167,7 +167,7 @@ pub const client = struct { // MARK: client
 
 			if (settings.launch_config.vulkanTestingMode) {
 				currentFrame.renderCommands.bindPipeline(currentFrame, pipeline, null);
-				currentFrame.renderCommands.bindDescriptors(pipeline, .graphics, &.{
+				currentFrame.renderCommands.bindDescriptors(pipeline, &.{
 					.{.image = .{.binding = 0, .image = entModel.defaultTexture.?.vulkanImage.?}},
 					.{.ssbo = .{.binding = 15, .ssbo = nodeBuffer.ssbo}},
 				});

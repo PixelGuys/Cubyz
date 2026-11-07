@@ -99,7 +99,7 @@ pub fn render(currentFrame: *vulkan.Frame) void {
 
 	if (main.settings.launch_config.vulkanTestingMode) {
 		currentFrame.guiCommands.bindPipeline(currentFrame, pipeline, null);
-		currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
+		currentFrame.guiCommands.bindDescriptors(pipeline, &.{
 			.{.ssbo = .{.binding = 5, .ssbo = ssbo}},
 		});
 		currentFrame.guiCommands.pushConstants(pipeline, &Uniforms{

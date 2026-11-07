@@ -857,7 +857,7 @@ pub const meshes = struct { // MARK: meshes
 				.size = @intCast(animationData.len),
 			};
 			currentFrame.renderCommands.pushConstants(animationComputePipeline, &uniforms);
-			currentFrame.renderCommands.bindDescriptors(animationComputePipeline, .compute, &.{
+			currentFrame.renderCommands.bindDescriptors(animationComputePipeline, &.{
 				.{.ssbo = .{.binding = 0, .ssbo = animationSsbo.?}},
 				.{.ssbo = .{.binding = 1, .ssbo = animatedTextureSsbo.?}},
 			});
