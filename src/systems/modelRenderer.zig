@@ -155,13 +155,7 @@ pub const client = struct { // MARK: client
 			main.systems.systems.modelRenderer.client.nodeBuffer.uploadData(component.matrices, &component.bufferAllocation);
 		}
 
-		nodeBuffer.ssbo.bind(nodeBuffer.binding);
 		pipeline.bind(null);
-
-		if (!settings.launch_config.vulkanTestingMode) {
-			c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
-			c.glUniform1f(uniforms.contrast, 0.12);
-		}
 
 		main.systems.systems.modelRenderer.client.nodeBuffer.beginRender();
 
@@ -213,6 +207,8 @@ pub const client = struct { // MARK: client
 				});
 				currentFrame.renderCommands.drawIndexed(@intCast(entModel.indexCount), .{});
 			} else {
+				c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
+				c.glUniform1f(uniforms.contrast, 0.12);
 				c.glUniform1ui(uniforms.light, @bitCast(@as(u32, light)));
 				c.glUniform1ui(uniforms.nodeBufferOffset, @bitCast(@as(u32, component.bufferAllocation.start)));
 				c.glUniformMatrix4fv(uniforms.modelViewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
