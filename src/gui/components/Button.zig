@@ -166,7 +166,7 @@ pub fn render(self: *Button, currentFrame: *graphics.vulkan.Frame, mousePosition
 	{
 		if (main.settings.launch_config.vulkanTestingMode and textures.texture.vulkanImage != null) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, pipeline, graphics.draw.getScissor());
-			currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
+			currentFrame.guiCommands.bindDescriptors(pipeline, &.{
 				.{.image = .{.binding = 0, .image = textures.texture.vulkanImage.?}},
 			});
 			draw.customShadedRect(currentFrame, @as(ButtonUniforms, undefined), pipeline, self.pos + Vec2f{2, 2}, self.size - Vec2f{4, 4});

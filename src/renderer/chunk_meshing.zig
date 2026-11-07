@@ -231,7 +231,7 @@ fn bindVulkan(selectedPipeline: graphics.Pipeline, commands: graphics.CommandBuf
 	commands.bindPipeline(currentFrame, selectedPipeline, null);
 	commands.pushConstants(selectedPipeline, vulkanUniforms);
 	commands.bindVertexArray(vao);
-	commands.bindDescriptors(selectedPipeline, .graphics, &.{
+	commands.bindDescriptors(selectedPipeline, &.{
 		.{.image = .{.binding = 0, .image = main.blocks.meshes.blockTextureArray.vulkanImage.?}},
 		.{.image = .{.binding = 1, .image = main.blocks.meshes.emissionTextureArray.vulkanImage.?}},
 		.{.image = .{.binding = 2, .image = main.blocks.meshes.reflectivityAndAbsorptionTextureArray.vulkanImage.?}},
@@ -279,7 +279,7 @@ pub fn bindTransparentShaderAndUniforms(commands: graphics.CommandBuffer, curren
 	vao.bind();
 	if (main.settings.launch_config.vulkanTestingMode) {
 		bindVulkan(transparentPipeline, commands, currentFrame, frameUbo, &vulkanUniforms, lod);
-		commands.bindDescriptors(transparentPipeline, .graphics, &.{
+		commands.bindDescriptors(transparentPipeline, &.{
 			.{.image = .{.binding = 5, .image = depthTexture}},
 		});
 	}

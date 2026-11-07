@@ -449,7 +449,7 @@ pub const draw = struct { // MARK: draw
 
 		if (main.settings.launch_config.vulkanTestingMode and texture.vulkanImage != null) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, imagePipeline, getScissor());
-			currentFrame.guiCommands.bindDescriptors(imagePipeline, .graphics, &.{
+			currentFrame.guiCommands.bindDescriptors(imagePipeline, &.{
 				.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
 			});
 			customShadedImage(currentFrame, @as(ImageUniforms, undefined), imagePipeline, _pos, _dim);
@@ -474,7 +474,7 @@ pub const draw = struct { // MARK: draw
 
 		if (main.settings.launch_config.vulkanTestingMode and texture.vulkanImage != null) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, imagePipeline, getScissor());
-			currentFrame.guiCommands.bindDescriptors(imagePipeline, .graphics, &.{
+			currentFrame.guiCommands.bindDescriptors(imagePipeline, &.{
 				.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
 			});
 			currentFrame.guiCommands.pushConstants(imagePipeline, &ImageUniforms{
@@ -1094,7 +1094,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 				.inColor = @bitCast(draw.getColor()),
 				.fontSize = .{@floatFromInt(text_rendering.textureWidth), @floatFromInt(text_rendering.textureHeight)},
 			});
-			currentFrame.guiCommands.bindDescriptors(text_rendering.pipeline, .graphics, &.{
+			currentFrame.guiCommands.bindDescriptors(text_rendering.pipeline, &.{
 				.{.image = .{.binding = 0, .image = text_rendering.glyphTexture[0].vulkanImage.?}},
 			});
 
@@ -1180,7 +1180,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 				.inColor = @bitCast(draw.getColor()),
 				.fontSize = .{@floatFromInt(text_rendering.textureWidth), @floatFromInt(text_rendering.textureHeight)},
 			});
-			currentFrame.guiCommands.bindDescriptors(text_rendering.pipeline, .graphics, &.{
+			currentFrame.guiCommands.bindDescriptors(text_rendering.pipeline, &.{
 				.{.image = .{.binding = 0, .image = text_rendering.glyphTexture[0].vulkanImage.?}},
 			});
 
@@ -2599,7 +2599,7 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 	const binding = 31; // maxPushDescriptors is at least 32 for all devices that support it
 
 	pub fn bindToPipeline(buf: CommandBuffer, pipeline: Pipeline) void {
-		buf.bindDescriptors(pipeline, .graphics, &.{
+		buf.bindDescriptors(pipeline, &.{
 			.{.ubo = .{.binding = binding, .buffer = vulkanBuffers[currentFrame]}},
 		});
 	}
@@ -2642,7 +2642,7 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 		}
 
 		pub fn bindToPipeline(self: StaticUbo, buf: CommandBuffer, pipeline: Pipeline) void {
-			buf.bindDescriptors(pipeline, .graphics, &.{
+			buf.bindDescriptors(pipeline, &.{
 				.{.ubo = .{.binding = binding, .buffer = self.vulkanBuffer}},
 			});
 		}
@@ -2863,7 +2863,7 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 			.transparent = if (block.transparent()) c.VK_TRUE else c.VK_FALSE,
 		};
 		vulkan.upload.commandBuffer().pushConstants(block_texture.pipeline, &uniforms);
-		vulkan.upload.commandBuffer().bindDescriptors(block_texture.pipeline, .graphics, &.{
+		vulkan.upload.commandBuffer().bindDescriptors(block_texture.pipeline, &.{
 			.{.image = .{.binding = 3, .image = frameBuffer.color}},
 		});
 		vulkan.upload.commandBuffer().bindVertexArray(draw.rectVao);
