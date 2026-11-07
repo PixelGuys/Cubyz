@@ -219,6 +219,7 @@ pub const client = struct { // MARK: client
 				c.glDrawElements(c.GL_TRIANGLES, entModel.indexCount, c.GL_UNSIGNED_INT, null);
 			}
 		}
+
 		main.systems.systems.modelRenderer.client.nodeBuffer.endRender();
 	}
 };

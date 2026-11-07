@@ -6,6 +6,7 @@ layout(location = 2) in vec3 outLight;
 layout(location = 3) flat in vec3 normal;
 
 layout(location = 0) out vec4 fragColor;
+
 layout(binding = 0) uniform sampler2D textureSampler;
 
 #ifdef OPEN_GL
