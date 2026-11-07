@@ -32,7 +32,6 @@ const c = @import("c");
 pub const client = struct { // MARK: client
 	var pipeline: graphics.Pipeline = undefined;
 	pub var nodeBuffer: graphics.LargeBuffer(Mat4f) = undefined;
-	pub var vkNodeBuffer: ?graphics.vulkan.Buffer = null;
 
 	var uniforms: struct {
 		modelViewMatrix: c_int,
@@ -57,7 +56,10 @@ pub const client = struct { // MARK: client
 			&uniforms,
 			main.entityModel.EntityModel.Vertex,
 			.{
-				.bindings = &.{.sampler(0, .{.fragment = true})},
+				.bindings = &.{
+					.sampler(0, .{.fragment = true}),
+					.ssbo(15, .{.vertex = true}),
+				},
 				.rasterState = .{},
 				.depthStencilState = .{.depthTest = true},
 				.inputAssemblyState = .{.topology = .triangleList},
@@ -66,22 +68,11 @@ pub const client = struct { // MARK: client
 			},
 		);
 
-		if (main.settings.launch_config.vulkanTestingMode) {
-			vkNodeBuffer = .init(1 << 20, .{
-				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT | c.VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-			});
-		} else {
-			nodeBuffer.init(main.globalAllocator, 1 << 20, 15);
-		}
+		nodeBuffer.init(main.globalAllocator, 1 << 20, 15);
 	}
 	pub fn deinit() void {
 		pipeline.deinit();
-		if (vkNodeBuffer) |_| {
-			vkNodeBuffer.?.deferredDeinit();
-			vkNodeBuffer = null;
-		} else {
-			nodeBuffer.deinit();
-		}
+		nodeBuffer.deinit();
 	}
 	pub fn clear() void {}
 
@@ -134,9 +125,11 @@ pub const client = struct { // MARK: client
 		}
 	}
 	pub fn render(currentFrame: *graphics.vulkan.Frame, ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
-		_ = deltaTime; // autofix
+		_ = deltaTime;
 		main.client.entity_manager.mutex.lock();
 		defer main.client.entity_manager.mutex.unlock();
+
+		nodeBuffer.ssbo.bind(nodeBuffer.binding);
 
 		// TODO: #3342
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |*component, id| {
@@ -161,11 +154,7 @@ pub const client = struct { // MARK: client
 
 				component.matrices[i] = parentMat.mul(node.recalc(entModel.nodePivots[i])).transpose();
 			}
-			if (vkNodeBuffer) |_| {
-				vkNodeBuffer.?.uploadData(0, std.mem.sliceAsBytes(component.matrices));
-			} else {
-				main.systems.systems.modelRenderer.client.nodeBuffer.uploadData(component.matrices, &component.bufferAllocation);
-			}
+			main.systems.systems.modelRenderer.client.nodeBuffer.uploadData(component.matrices, &component.bufferAllocation);
 		}
 
 		pipeline.bind(null);
@@ -175,9 +164,7 @@ pub const client = struct { // MARK: client
 			c.glUniform1f(uniforms.contrast, 0.12);
 		}
 
-		if (vkNodeBuffer == null) {
-			main.systems.systems.modelRenderer.client.nodeBuffer.beginRender();
-		}
+		main.systems.systems.modelRenderer.client.nodeBuffer.beginRender();
 
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |component, id| {
 			if (id == game.player.id) continue; // don't render local player
@@ -189,7 +176,9 @@ pub const client = struct { // MARK: client
 				currentFrame.renderCommands.bindPipeline(currentFrame, pipeline, null);
 				currentFrame.renderCommands.bindDescriptors(pipeline, .graphics, &.{
 					.{.image = .{.binding = 0, .image = entModel.defaultTexture.?.vulkanImage.?}},
+					.{.ssbo = .{.binding = 15, .ssbo = nodeBuffer.ssbo}},
 				});
+				graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, pipeline);
 			} else {
 				entModel.bind();
 				const entTexture = entModel.defaultTexture;
@@ -222,7 +211,7 @@ pub const client = struct { // MARK: client
 					.ambientLight = ambientLight,
 					.contrast = 0.12,
 				});
-				currentFrame.renderCommands.drawIndexed(@intCast(entModel.indexCount), 0);
+				currentFrame.renderCommands.drawIndexed(@intCast(entModel.indexCount), .{});
 			} else {
 				c.glUniform1ui(uniforms.light, @bitCast(@as(u32, light)));
 				c.glUniform1ui(uniforms.nodeBufferOffset, @bitCast(@as(u32, component.bufferAllocation.start)));
@@ -230,9 +219,7 @@ pub const client = struct { // MARK: client
 				c.glDrawElements(c.GL_TRIANGLES, entModel.indexCount, c.GL_UNSIGNED_INT, null);
 			}
 		}
-		if (vkNodeBuffer == null) {
-			main.systems.systems.modelRenderer.client.nodeBuffer.endRender();
-		}
+		main.systems.systems.modelRenderer.client.nodeBuffer.endRender();
 	}
 };
 // ############################# Server only stuff ################################
