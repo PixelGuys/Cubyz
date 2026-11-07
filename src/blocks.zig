@@ -622,8 +622,8 @@ pub const meshes = struct { // MARK: meshes
 		break :blk names;
 	};
 
-	var animationSSBO: ?SSBO = null;
-	var animatedTextureSSBO: ?SSBO = null;
+	var animationSsbo: ?SSBO = null;
+	pub var animatedTextureSsbo: ?SSBO = null;
 	pub var fogSsbo: ?SSBO = null;
 
 	var animationComputePipeline: graphics.ComputePipeline = undefined;
@@ -631,6 +631,10 @@ pub const meshes = struct { // MARK: meshes
 		time: c_int,
 		size: c_int,
 	} = undefined;
+	const AnimationUniforms = extern struct {
+		time: u32,
+		size: u32,
+	};
 
 	pub var blockTextureArray: TextureArray = undefined;
 	pub var emissionTextureArray: TextureArray = undefined;
@@ -642,7 +646,13 @@ pub const meshes = struct { // MARK: meshes
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
 	pub fn init() void {
-		animationComputePipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/animation_pre_processing.comp", "", &animationUniforms);
+		animationComputePipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/animation_pre_processing.comp", "", &animationUniforms, .{
+			.bindings = &.{
+				.ssbo(0, .{.compute = true}),
+				.ssbo(1, .{.compute = true}),
+			},
+			.pushConstantSize = @sizeOf(AnimationUniforms),
+		});
 		blockTextureArray = .init();
 		emissionTextureArray = .init();
 		reflectivityAndAbsorptionTextureArray = .init();
@@ -650,10 +660,10 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn deinit() void {
-		if (animationSSBO) |ssbo| {
+		if (animationSsbo) |ssbo| {
 			ssbo.deinit();
 		}
-		if (animatedTextureSSBO) |ssbo| {
+		if (animatedTextureSsbo) |ssbo| {
 			ssbo.deinit();
 		}
 		if (fogSsbo) |ssbo| {
@@ -834,12 +844,25 @@ pub const meshes = struct { // MARK: meshes
 		}
 	}
 
-	pub fn preProcessAnimationData(time: u32) void {
+	pub fn preProcessAnimationData(currentFrame: *graphics.vulkan.Frame, time: u32) void {
 		animationComputePipeline.bind();
 		c.glUniform1ui(animationUniforms.time, time);
 		c.glUniform1ui(animationUniforms.size, @intCast(animationData.len));
 		c.glDispatchCompute(@intCast(@divCeil(animationData.len, 64)), 1, 1);
 		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
+		if (main.settings.launch_config.vulkanTestingMode) {
+			currentFrame.renderCommands.bindComputePipeline(animationComputePipeline);
+			const uniforms: AnimationUniforms = .{
+				.time = time,
+				.size = @intCast(animationData.len),
+			};
+			currentFrame.renderCommands.pushConstants(animationComputePipeline, &uniforms);
+			currentFrame.renderCommands.bindDescriptors(animationComputePipeline, .compute, &.{
+				.{.ssbo = .{.binding = 0, .ssbo = animationSsbo.?}},
+				.{.ssbo = .{.binding = 1, .ssbo = animatedTextureSsbo.?}},
+			});
+			currentFrame.renderCommands.dispatchCompute(@intCast(@divCeil(animationData.len, 64)), 1, 1);
+		}
 	}
 
 	fn finishTextureLoading() void {
@@ -888,20 +911,20 @@ pub const meshes = struct { // MARK: meshes
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
 
 		// Also generate additional buffers:
-		if (animationSSBO) |ssbo| {
+		if (animationSsbo) |ssbo| {
 			ssbo.deinit();
 		}
-		if (animatedTextureSSBO) |ssbo| {
+		if (animatedTextureSsbo) |ssbo| {
 			ssbo.deinit();
 		}
 		if (fogSsbo) |ssbo| {
 			ssbo.deinit();
 		}
-		animationSSBO = SSBO.initStatic(AnimationData, animationData);
-		animationSSBO.?.bind(0);
+		animationSsbo = SSBO.initStatic(AnimationData, animationData);
+		animationSsbo.?.bind(0);
 
-		animatedTextureSSBO = SSBO.initStaticSize(u32, animationData.len);
-		animatedTextureSSBO.?.bind(1);
+		animatedTextureSsbo = SSBO.initStaticSize(u32, animationData.len);
+		animatedTextureSsbo.?.bind(1);
 		fogSsbo = SSBO.initStatic(FogData, textureFogData.items);
 		fogSsbo.?.bind(7);
 	}

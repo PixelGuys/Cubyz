@@ -890,15 +890,81 @@ pub const Pipeline = struct { // MARK: Pipeline
 
 pub const ComputePipeline = struct { // MARK: ComputePipeline
 	shader: Shader,
+	computePipeline: c.VkPipeline = undefined,
+	descriptorSetLayout: c.VkDescriptorSetLayout = undefined,
+	pipelineLayout: c.VkPipelineLayout = undefined,
+	vulkanCreationSuccessful: bool = false,
 
-	pub fn init(computePath: []const u8, defines: []const u8, uniformStruct: anytype) ComputePipeline {
-		return .{
+	const Options = struct {
+		bindings: []const DescriptorSetLayoutBinding = &.{},
+		pushConstantSize: usize = 0,
+	};
+
+	pub fn init(computePath: []const u8, defines: []const u8, uniformStruct: anytype, options: Options) ComputePipeline {
+		var self: ComputePipeline = .{
 			.shader = .initCompute(computePath, defines, uniformStruct),
 		};
+		if (main.settings.launch_config.vulkanTestingMode) {
+			self.initVulkan(computePath, defines, options) catch |err| {
+				std.log.err("Vulkan compute pipeline creation for paths {s} failed with error {s}", .{computePath, @errorName(err)});
+			};
+		}
+		return self;
+	}
+
+	fn initVulkan(self: *ComputePipeline, computePath: []const u8, defines: []const u8, options: Options) !void {
+		const computeModule = try Shader.createShaderModule(computePath, defines, .comp);
+		defer c.vkDestroyShaderModule(vulkan.device, computeModule, null);
+
+		const shaderStage: c.VkPipelineShaderStageCreateInfo = .{
+			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+			.stage = c.VK_SHADER_STAGE_COMPUTE_BIT,
+			.module = computeModule,
+			.pName = "main",
+		};
+
+		const fullBindings = std.mem.concat(main.stackAllocator.allocator, DescriptorSetLayoutBinding, &.{options.bindings, &.{graphics.frame_uniforms.descriptorSetLayoutBinding}}) catch unreachable;
+		defer main.stackAllocator.free(fullBindings);
+
+		const descriptorSetLayoutInfo = c.VkDescriptorSetLayoutCreateInfo{
+			.sType = c.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+			.flags = c.VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR,
+			.bindingCount = @intCast(fullBindings.len),
+			.pBindings = @ptrCast(fullBindings.ptr),
+		};
+		try vulkan.checkResultErr(c.vkCreateDescriptorSetLayout(vulkan.device, &descriptorSetLayoutInfo, null, &self.descriptorSetLayout));
+
+		std.debug.assert(options.pushConstantSize <= 128); // Some devices have a limit of just 128 bytes for push constants
+		const pipelineLayoutInfo = c.VkPipelineLayoutCreateInfo{ // TODO: Configure push constants
+			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+			.setLayoutCount = 1,
+			.pSetLayouts = &self.descriptorSetLayout,
+			.pushConstantRangeCount = if (options.pushConstantSize == 0) 0 else 1,
+			.pPushConstantRanges = &.{
+				.stageFlags = c.VK_SHADER_STAGE_ALL,
+				.offset = 0,
+				.size = @intCast(options.pushConstantSize),
+			},
+		};
+		try vulkan.checkResultErr(c.vkCreatePipelineLayout(vulkan.device, &pipelineLayoutInfo, null, &self.pipelineLayout));
+		errdefer c.vkDestroyPipelineLayout(vulkan.device, self.pipelineLayout, null);
+
+		const pipelineInfo = c.VkComputePipelineCreateInfo{
+			.sType = c.VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+			.stage = shaderStage,
+			.layout = self.pipelineLayout,
+		};
+		try vulkan.checkResultErr(c.vkCreateComputePipelines(vulkan.device, null, 1, &pipelineInfo, null, &self.computePipeline));
+		self.vulkanCreationSuccessful = true;
 	}
 
 	pub fn deinit(self: ComputePipeline) void {
 		self.shader.deinit();
+		if (self.vulkanCreationSuccessful) {
+			c.vkDestroyPipeline(vulkan.device, self.computePipeline, null);
+			c.vkDestroyPipelineLayout(vulkan.device, self.pipelineLayout, null);
+			c.vkDestroyDescriptorSetLayout(vulkan.device, self.descriptorSetLayout, null);
+		}
 	}
 
 	pub fn bind(self: ComputePipeline) void {

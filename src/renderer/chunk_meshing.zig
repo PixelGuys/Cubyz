@@ -132,7 +132,7 @@ pub fn init() void {
 			.pushConstantSize = @sizeOf(Uniforms),
 		},
 	);
-	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms);
+	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms, .{});
 	occlusionTestPipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/chunks/occlusionTestVertex.vert",
 		"assets/cubyz/shaders/chunks/occlusionTestFragment.frag",
@@ -242,11 +242,12 @@ fn bindVulkan(selectedPipeline: graphics.Pipeline, commands: graphics.CommandBuf
 		.{.ssbo = .{.binding = 6, .ssbo = chunkBuffer.ssbo}},
 		.{.ssbo = .{.binding = 7, .ssbo = main.blocks.meshes.fogSsbo.?}},
 		.{.ssbo = .{.binding = 10, .ssbo = lightBuffers[lod].ssbo}},
+		.{.ssbo = .{.binding = 12, .ssbo = main.blocks.meshes.animatedTextureSsbo.?}},
 	});
 	if (frameUbo) |ubo| {
-		ubo.bindToPipeline(commands, pipeline);
+		ubo.bindToPipeline(commands, selectedPipeline);
 	} else {
-		graphics.frame_uniforms.bindToPipeline(commands, pipeline);
+		graphics.frame_uniforms.bindToPipeline(commands, selectedPipeline);
 	}
 }
 
