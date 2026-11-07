@@ -51,7 +51,7 @@ const float[6] normalVariations = float[6](
 #ifdef OPEN_GL
 layout(std430, binding = 1) buffer _animatedTexture
 #else
-layout(std430, binding = 12) buffer _animatedTexture
+layout(std430, binding = 5) buffer _animatedTexture
 #endif
 {
 	float animatedTexture[];

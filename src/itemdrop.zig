@@ -733,11 +733,12 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 				.bindings = &.{
 					.sampler(0, .{.fragment = true}),
 					.sampler(1, .{.fragment = true}),
-					.sampler(5, .{.fragment = true}),
-					.sampler(6, .{.fragment = true}),
-					.sampler(7, .{.fragment = true}),
-					.ssbo(2, .{.vertex = true}),
-					.ssbo(4, .{.vertex = true}),
+					.sampler(2, .{.fragment = true}),
+					.sampler(3, .{.fragment = true}),
+					.sampler(4, .{.fragment = true}),
+					.ssbo(5, .{.vertex = true}),
+					.ssbo(6, .{.vertex = true}),
+					.ssbo(7, .{.vertex = true}),
 				},
 				.rasterState = .{},
 				.depthStencilState = .{.depthTest = true},
@@ -745,7 +746,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 				.pushConstantSize = @sizeOf(ItemUniforms),
 			},
 		);
-		itemModelSSBO = .initDynamicSize(i32, 3);
+		itemModelSSBO = .initDynamicSize(i32, 48);
 		itemModelSSBO.bufferData(i32, &[3]i32{1, 1, 1});
 		itemModelSSBO.bind(2);
 
@@ -812,8 +813,9 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 
 	fn drawItem(currentFrame: *graphics.vulkan.Frame, vertices: u31, modelMatrix: Mat4f, uniforms: *?ItemUniforms) void {
 		if (uniforms.*) |*u| {
-                        if(!main.blocks.meshes.ran) return;
 			u.modelMatrix = modelMatrix.toGl();
+			currentFrame.renderCommands.bindPipeline(currentFrame, itemPipeline, null);
+			graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, itemPipeline);
 			currentFrame.renderCommands.bindVertexArray(main.renderer.chunk_meshing.vao);
 			currentFrame.renderCommands.bindDescriptors(itemPipeline, .graphics, &.{
 				.{.image = .{.binding = 0, .image = main.blocks.meshes.blockTextureArray.vulkanImage.?}},
@@ -836,7 +838,6 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 	pub fn renderItemDrops(currentFrame: *graphics.vulkan.Frame, ambientLight: Vec3f, playerPos: Vec3d) void {
 		game.world.?.itemDrops.updateInterpolationData();
 
-		currentFrame.guiCommands.bindPipeline(currentFrame, itemPipeline, null);
 		var uniforms: ?ItemUniforms = if (!main.settings.launch_config.vulkanTestingMode) null else .{};
 
 		bindCommonUniforms(ambientLight, &uniforms);
@@ -900,7 +901,6 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 		displayItemUbo.bind();
 		defer displayItemUbo.unbind();
 		if (main.settings.launch_config.vulkanTestingMode) {
-			currentFrame.renderCommands.bindPipeline(currentFrame, itemPipeline, null);
 			displayItemUbo.bindToPipeline(currentFrame.renderCommands, itemPipeline);
 		}
 
