@@ -306,7 +306,7 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 	gpu_performance_measuring.startQuery(.entity_rendering);
 	main.systems.client.render(currentFrame, ambientLight, playerPos, main.lastDeltaTime.load(.monotonic));
 
-	itemdrop.item_drop_renderer.renderItemDrops(ambientLight, playerPos);
+	itemdrop.item_drop_renderer.renderItemDrops(currentFrame, ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.block_entity_rendering);
@@ -346,7 +346,7 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 	}
 
 	c.glDepthRange(0, 0.001);
-	itemdrop.item_drop_renderer.renderDisplayItems(ambientLight, playerPos);
+	itemdrop.item_drop_renderer.renderDisplayItems(currentFrame, ambientLight, playerPos);
 	c.glDepthRange(0.001, 1);
 
 	chunk_meshing.endRender();

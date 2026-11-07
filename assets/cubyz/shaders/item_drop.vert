@@ -13,14 +13,34 @@ layout(location = 7) flat out int textureIndex;
 layout(location = 8) flat out uvec3 lower;
 layout(location = 9) flat out uvec3 upper;
 
+#ifdef OPEN_GL
 layout(location = 2) uniform mat4 modelMatrix;
 layout(location = 3) uniform int modelIndex;
 layout(location = 4) uniform int block;
+#else
+layout(push_constant, std430) uniform _ {
+	mat4 modelMatrix;
+	int modelIndex;
+	int block;
+	vec3 ambientLight;
+	float sizeScale;
+	float reflectionMapSize;
+	float contrast;
+	vec2 glDepthRange;
+};
+#endif
 
+#ifdef OPEN_GL
 layout(std430, binding = 2) buffer _modelInfo
 {
 	uint modelInfo[];
 };
+#else
+layout(std430, binding = 6) buffer _modelInfo
+{
+	uint modelInfo[];
+};
+#endif
 
 struct QuadInfo {
 	vec3 normal;
@@ -30,11 +50,17 @@ struct QuadInfo {
 	int opaqueInLod;
 };
 
+#ifdef OPEN_GL
 layout(std430, binding = 4) buffer _quads
 {
 	QuadInfo quads[];
 };
-
+#else
+layout(std430, binding = 7) buffer _quads
+{
+	QuadInfo quads[];
+};
+#endif
 
 const int[24] positions = int[24](
 	0x010,

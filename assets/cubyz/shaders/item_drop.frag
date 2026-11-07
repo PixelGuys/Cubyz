@@ -20,13 +20,24 @@ layout(binding = 1) uniform sampler2DArray emissionSampler;
 layout(binding = 2) uniform sampler2DArray reflectivityAndAbsorptionSampler;
 layout(binding = 4) uniform samplerCube reflectionMap;
 
+#ifdef OPEN_GL
 layout(location = 5) uniform vec3 ambientLight;
 layout(location = 7) uniform float sizeScale;
-
 layout(location = 8) uniform float reflectionMapSize;
 layout(location = 9) uniform float contrast;
-
 layout(location = 10) uniform vec2 glDepthRange;
+#else
+layout(push_constant, std430) uniform _ {
+	mat4 modelMatrix;
+	int modelIndex;
+	int block;
+	vec3 ambientLight;
+	float sizeScale;
+	float reflectionMapSize;
+	float contrast;
+	vec2 glDepthRange;
+};
+#endif
 
 const float[6] normalVariations = float[6](
 	1.0,
@@ -37,10 +48,15 @@ const float[6] normalVariations = float[6](
 	0.85
 );
 
+#ifdef OPEN_GL
 layout(std430, binding = 1) buffer _animatedTexture
+#else
+layout(std430, binding = 12) buffer _animatedTexture
+#endif
 {
 	float animatedTexture[];
 };
+
 
 // block drops -------------------------------------------------------------------------------------------------------------------------
 
@@ -94,11 +110,18 @@ void mainBlockDrop() {
 }
 
 // itemDrops -------------------------------------------------------------------------------------------------------------------------
-
+#ifdef OPEN_GL
 layout(std430, binding = 2) buffer _modelInfo
 {
 	uint modelInfo[];
 };
+#else
+layout(std430, binding = 6) buffer _modelInfo
+{
+	uint modelInfo[];
+};
+#endif
+
 
 uint getVoxel(ivec3 pos) {
 	pos = max(ivec3(0), min(pos, ivec3(upper)));
