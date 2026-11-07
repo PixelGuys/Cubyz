@@ -11,7 +11,7 @@ layout(binding = 0) uniform sampler2D textureSampler;
 
 #ifdef OPEN_GL
 layout(location = 5) uniform float contrast;
-#else 
+#else
 layout(push_constant, std430) uniform _ {
 	mat4 modelViewMatrix;
 	vec3 ambientLight;
