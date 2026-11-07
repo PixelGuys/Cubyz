@@ -1,7 +1,7 @@
 .{
 	.id = "cubyz:rare",
 	.tags = .{},
-	.chance = 0.001005,
+	.chance = 0.000005,
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
@@ -16,7 +16,7 @@
 		.{
 			.id = "cubyz:sbb",
 			.placeMode = .all,
-			.structure = "cubyz:rare/bottle/base",
+			.structure = "cubyz:rare/bobble/base",
 		},
 		.{
 			.id = "cubyz:sbb",

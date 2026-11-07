@@ -8,5 +8,11 @@
 		.{.id = "cubyz:rare/bobble/5"},
 		.{.id = "cubyz:rare/bobble/6"},
 		.{.id = "cubyz:rare/bobble/7"},
+		.{.id = "cubyz:rare/bobble/8"},
+		.{.id = "cubyz:rare/bobble/9"},
+		.{.id = "cubyz:rare/bobble/10"},
+		.{.id = "cubyz:rare/bobble/11"},
+		.{.id = "cubyz:rare/bobble/12"},
+		.{.id = "cubyz:rare/bobble/13"},
 	},
 }
