@@ -38,4 +38,7 @@
 	.{.old = "cave/void/rare/phantasmal/streamer", .new = "cave/void/void_roots"},
 	.{.old = "cave/void/rare/phantasmal/starlight", .new = "cave/void/void_roots"},
 	.{.old = "cave/rare/phantasmal", .new = "cave/rare/phantasmal/base"},
+	.{.old = "grassland", .new = "grassland/base"},
+	.{.old = "rocky_grassland", .new = "grassland/rocky"},
+	.{.old = "thicket", .new = "grassland/thicket"},
 }

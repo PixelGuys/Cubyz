@@ -13,7 +13,8 @@
 			.textureRoughness = 0.1,
 			.modifiers = .{
 				.{
-					.id = "durable",
+					.id = "base_stat",
+					.targetProperty = "maxDurability",
 					.strength = 1.5,
 					.restriction = .{
 						.id = .encased,
