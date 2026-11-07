@@ -190,11 +190,6 @@ pub fn bindVertexArray(self: CommandBuffer, buffer: main.graphics.VertexArray) v
 	}
 }
 
-const DescriptorBindPoint = enum(c.VkPipelineBindPoint) {
-	graphics = c.VK_PIPELINE_BIND_POINT_GRAPHICS,
-	compute = c.VK_PIPELINE_BIND_POINT_COMPUTE,
-};
-
 const BindingInfo = union(enum) {
 	ssbo: struct {
 		binding: u32,
@@ -217,7 +212,7 @@ const BindingInfo = union(enum) {
 	},
 };
 
-pub fn bindDescriptors(self: CommandBuffer, pipeline: anytype, bindPoint: DescriptorBindPoint, bindings: []const BindingInfo) void {
+pub fn bindDescriptors(self: CommandBuffer, pipeline: anytype, bindings: []const BindingInfo) void {
 	const arena = main.stackAllocator.createArena();
 	defer main.stackAllocator.destroyArena(arena);
 	const writeInfo = arena.alloc(c.VkWriteDescriptorSet, bindings.len);
@@ -263,7 +258,12 @@ pub fn bindDescriptors(self: CommandBuffer, pipeline: anytype, bindPoint: Descri
 		}
 	}
 	const vkCmdPushDescriptorSet = if (builtin.target.os.tag == .macos) c.vkCmdPushDescriptorSet else c.vkCmdPushDescriptorSetKHR;
-	vkCmdPushDescriptorSet(self.handle, @backingInt(bindPoint), pipeline.pipelineLayout, 0, @intCast(writeInfo.len), writeInfo.ptr);
+	const bindPoint = switch (@TypeOf(pipeline)) {
+		main.graphics.Pipeline => c.VK_PIPELINE_BIND_POINT_GRAPHICS,
+		main.graphics.ComputePipeline => c.VK_PIPELINE_BIND_POINT_COMPUTE,
+		else => unreachable,
+	};
+	vkCmdPushDescriptorSet(self.handle, bindPoint, pipeline.pipelineLayout, 0, @intCast(writeInfo.len), writeInfo.ptr);
 }
 
 pub fn pushConstants(self: CommandBuffer, pipeline: anytype, constants: anytype) void {

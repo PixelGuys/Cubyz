@@ -116,7 +116,7 @@ pub fn render(self: *CheckBox, currentFrame: *graphics.vulkan.Frame, mousePositi
 	};
 	if (main.settings.launch_config.vulkanTestingMode and texture.vulkanImage != null) {
 		currentFrame.guiCommands.bindPipeline(currentFrame, Button.pipeline, graphics.draw.getScissor());
-		currentFrame.guiCommands.bindDescriptors(Button.pipeline, .graphics, &.{
+		currentFrame.guiCommands.bindDescriptors(Button.pipeline, &.{
 			.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
 		});
 		draw.customShadedRect(currentFrame, @as(Button.ButtonUniforms, undefined), Button.pipeline, self.pos + Vec2f{0, self.size[1]/2 - boxSize/2}, @as(Vec2f, @splat(boxSize)));
