@@ -773,15 +773,15 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 		return voxelModels.findOrCreate(compareObject, ItemVoxelModel.init, null);
 	}
 
-	fn bindCommonUniforms(ambientLight: Vec3f, uniforms: *?ItemUniforms) void {
+	fn bindCommonUniforms(ambientLight: Vec3f, uniforms: *ItemUniforms) void {
 		itemPipeline.bind(null);
-		if (uniforms.*) |*u| {
-			u.reflectionMapSize = main.renderer.reflectionCubeMapSize;
-			u.ambientLight = ambientLight;
-			u.contrast = 0.12;
+		if (main.settings.launch_config.vulkanTestingMode) {
+			uniforms.reflectionMapSize = main.renderer.reflectionCubeMapSize;
+			uniforms.ambientLight = ambientLight;
+			uniforms.contrast = 0.12;
 			var depthRange: [2]f32 = undefined;
 			c.glGetFloatv(c.GL_DEPTH_RANGE, &depthRange);
-			u.glDepthRange = depthRange;
+			uniforms.glDepthRange = depthRange;
 		} else {
 			c.glUniform1f(itemUniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
 			c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
@@ -792,29 +792,29 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 		}
 	}
 
-	fn bindLightUniform(light: [6]u8, ambientLight: Vec3f, uniforms: *?ItemUniforms) void {
+	fn bindLightUniform(light: [6]u8, ambientLight: Vec3f, uniforms: *ItemUniforms) void {
 		const sunLight: Vec3f = ambientLight*@as(Vec3f, @floatFromInt(Vec3i{light[0], light[1], light[2]}))/@as(Vec3f, @splat(255));
 		const blockLight: Vec3f = @as(Vec3f, @floatFromInt(Vec3i{light[3], light[4], light[5]}))/@as(Vec3f, @splat(255));
-		if (uniforms.*) |*u| {
-			u.ambientLight = @min(@sqrt(sunLight*sunLight + blockLight*blockLight), @as(Vec3f, @splat(1)));
+		if (main.settings.launch_config.vulkanTestingMode) {
+			uniforms.ambientLight = @min(@sqrt(sunLight*sunLight + blockLight*blockLight), @as(Vec3f, @splat(1)));
 		} else {
 			c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&@min(@sqrt(sunLight*sunLight + blockLight*blockLight), @as(Vec3f, @splat(1)))));
 		}
 	}
 
-	fn bindModelUniforms(modelIndex: u31, blockType: u16, uniforms: *?ItemUniforms) void {
-		if (uniforms.*) |*u| {
-			u.modelIndex = modelIndex;
-			u.block = blockType;
+	fn bindModelUniforms(modelIndex: u31, blockType: u16, uniforms: *ItemUniforms) void {
+		if (main.settings.launch_config.vulkanTestingMode) {
+			uniforms.modelIndex = modelIndex;
+			uniforms.block = blockType;
 		} else {
 			c.glUniform1i(itemUniforms.modelIndex, modelIndex);
 			c.glUniform1i(itemUniforms.block, blockType);
 		}
 	}
 
-	fn drawItem(currentFrame: *graphics.vulkan.Frame, vertices: u31, modelMatrix: Mat4f, uniforms: *?ItemUniforms) void {
-		if (uniforms.*) |*u| {
-			u.modelMatrix = modelMatrix.toGl();
+	fn drawItem(currentFrame: *graphics.vulkan.Frame, vertices: u31, modelMatrix: Mat4f, uniforms: *ItemUniforms) void {
+		if (main.settings.launch_config.vulkanTestingMode) {
+			uniforms.modelMatrix = modelMatrix.toGl();
 			currentFrame.renderCommands.bindPipeline(currentFrame, itemPipeline, null);
 			graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, itemPipeline);
 			currentFrame.renderCommands.bindDescriptors(itemPipeline, &.{
@@ -827,7 +827,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 				.{.ssbo = .{.binding = 4, .ssbo = main.models.quadSsbo.?}},
 			});
 			currentFrame.renderCommands.bindVertexArray(main.renderer.chunk_meshing.vao);
-			currentFrame.renderCommands.pushConstants(itemPipeline, u);
+			currentFrame.renderCommands.pushConstants(itemPipeline, uniforms);
 			currentFrame.renderCommands.drawIndexed(vertices, .{});
 		} else {
 			c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
@@ -839,7 +839,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 	pub fn renderItemDrops(currentFrame: *graphics.vulkan.Frame, ambientLight: Vec3f, playerPos: Vec3d) void {
 		game.world.?.itemDrops.updateInterpolationData();
 
-		var uniforms: ?ItemUniforms = if (!main.settings.launch_config.vulkanTestingMode) null else .{};
+		var uniforms: ItemUniforms = .{};
 
 		bindCommonUniforms(ambientLight, &uniforms);
 		const itemDrops = &game.world.?.itemDrops.super;
