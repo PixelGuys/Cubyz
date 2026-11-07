@@ -22,8 +22,8 @@ layout(push_constant, std430) uniform _ {
 #endif
 
 float lightVariation(vec3 normal) {
-	vec3 directionalPart = vec3(0, contrast/2, contrast);
-	float baseLighting = 1 - contrast;
+	const vec3 directionalPart = vec3(0, contrast/2, contrast);
+	const float baseLighting = 1 - contrast;
 	return baseLighting + dot(normal, directionalPart);
 }
 
