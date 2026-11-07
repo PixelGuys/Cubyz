@@ -266,4 +266,12 @@ pub fn build(b: *std.Build) !void {
 
 	const test_step = b.step("test", "Run unit tests");
 	test_step.dependOn(&run_exe_tests.step);
+
+	const exe_check = b.addExecutable(.{
+		.name = "cubyz",
+		.root_module = mainModule,
+	});
+
+	const check = b.step("check", "Check if Cubyz compiles");
+	check.dependOn(&exe_check.step);
 }
