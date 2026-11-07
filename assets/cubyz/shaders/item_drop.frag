@@ -18,7 +18,11 @@ layout(location = 0) out vec4 fragColor;
 layout(binding = 0) uniform sampler2DArray textureSampler;
 layout(binding = 1) uniform sampler2DArray emissionSampler;
 layout(binding = 2) uniform sampler2DArray reflectivityAndAbsorptionSampler;
+#ifdef OPEN_GL
 layout(binding = 4) uniform samplerCube reflectionMap;
+#else
+layout(binding = 11) uniform samplerCube reflectionMap;
+#endif
 
 #ifdef OPEN_GL
 layout(location = 5) uniform vec3 ambientLight;

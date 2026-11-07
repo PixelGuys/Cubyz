@@ -50,17 +50,10 @@ struct QuadInfo {
 	int opaqueInLod;
 };
 
-#ifdef OPEN_GL
 layout(std430, binding = 4) buffer _quads
 {
 	QuadInfo quads[];
 };
-#else
-layout(std430, binding = 7) buffer _quads
-{
-	QuadInfo quads[];
-};
-#endif
 
 const int[24] positions = int[24](
 	0x010,

@@ -735,14 +735,15 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 					.sampler(1, .{.fragment = true}),
 					.sampler(2, .{.fragment = true}),
 					.sampler(3, .{.fragment = true}),
-					.sampler(4, .{.fragment = true}),
+					.sampler(11, .{.fragment = true}),
 					.ssbo(5, .{.vertex = true}),
 					.ssbo(6, .{.vertex = true}),
-					.ssbo(7, .{.vertex = true}),
+					.ssbo(4, .{.vertex = true}),
 				},
 				.rasterState = .{},
 				.depthStencilState = .{.depthTest = true},
 				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
+				.inputAssemblyState = .{.topology = .triangleList},
 				.pushConstantSize = @sizeOf(ItemUniforms),
 			},
 		);
@@ -816,16 +817,16 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 			u.modelMatrix = modelMatrix.toGl();
 			currentFrame.renderCommands.bindPipeline(currentFrame, itemPipeline, null);
 			graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, itemPipeline);
-			currentFrame.renderCommands.bindVertexArray(main.renderer.chunk_meshing.vao);
-			currentFrame.renderCommands.bindDescriptors(itemPipeline, .graphics, &.{
+			currentFrame.renderCommands.bindDescriptors(itemPipeline, &.{
 				.{.image = .{.binding = 0, .image = main.blocks.meshes.blockTextureArray.vulkanImage.?}},
 				.{.image = .{.binding = 1, .image = main.blocks.meshes.emissionTextureArray.vulkanImage.?}},
 				.{.image = .{.binding = 2, .image = main.blocks.meshes.reflectivityAndAbsorptionTextureArray.vulkanImage.?}},
-				.{.image = .{.binding = 4, .image = main.renderer.reflectionCubeMap.vulkanImage}},
+				.{.image = .{.binding = 11, .image = main.renderer.reflectionCubeMap.vulkanImage}},
 				.{.ssbo = .{.binding = 5, .ssbo = main.blocks.meshes.animatedTextureSsbo.?}},
 				.{.ssbo = .{.binding = 6, .ssbo = itemModelSSBO}},
-				.{.ssbo = .{.binding = 7, .ssbo = main.models.quadSsbo.?}},
+				.{.ssbo = .{.binding = 4, .ssbo = main.models.quadSsbo.?}},
 			});
+			currentFrame.renderCommands.bindVertexArray(main.renderer.chunk_meshing.vao);
 			currentFrame.renderCommands.pushConstants(itemPipeline, u);
 			currentFrame.renderCommands.drawIndexed(vertices, .{});
 		} else {
