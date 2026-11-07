@@ -129,8 +129,6 @@ pub const client = struct { // MARK: client
 		main.client.entity_manager.mutex.lock();
 		defer main.client.entity_manager.mutex.unlock();
 
-		nodeBuffer.ssbo.bind(nodeBuffer.binding);
-
 		// TODO: #3342
 		for (entity.components.@"cubyz:model".client.components.dense.items, entity.components.@"cubyz:model".client.components.denseToSparseIndex.items) |*component, id| {
 			if (id == game.player.id) continue; // don't process local player
@@ -157,6 +155,7 @@ pub const client = struct { // MARK: client
 			main.systems.systems.modelRenderer.client.nodeBuffer.uploadData(component.matrices, &component.bufferAllocation);
 		}
 
+		nodeBuffer.ssbo.bind(nodeBuffer.binding);
 		pipeline.bind(null);
 
 		if (!settings.launch_config.vulkanTestingMode) {
@@ -179,6 +178,7 @@ pub const client = struct { // MARK: client
 					.{.ssbo = .{.binding = 15, .ssbo = nodeBuffer.ssbo}},
 				});
 				graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, pipeline);
+				currentFrame.renderCommands.bindVertexArray(entModel.vao.?);
 			} else {
 				entModel.bind();
 				const entTexture = entModel.defaultTexture;

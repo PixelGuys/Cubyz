@@ -1661,7 +1661,6 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		capacity: u31,
 		used: u31,
 		binding: c_uint,
-		vulkanBuffer: vulkan.Buffer,
 
 		const Self = @This();
 
