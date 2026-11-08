@@ -341,7 +341,7 @@ const PlayingSound = struct {
 };
 
 var soundDataIdMap: std.StringHashMapUnmanaged(u32) = .{};
-var soundDatas: main.List(SoundData) = .empty;
+var soundDatas: main.List([]const SoundData) = .empty;
 var activeSounds: main.List(PlayingSound) = .empty;
 
 pub fn getActiveSoundCount() u32 {
@@ -349,20 +349,25 @@ pub fn getActiveSoundCount() u32 {
 }
 
 pub fn registerSound(assetsFolder: []const u8, id: []const u8, zon: ZonElement) void {
-	const audioId = zon.get([]const u8, "audio") orelse {
+	const soundZons = zon.getChild("drops").toSlice();
+	var resultSoundDatas = main.List(SoundData).initCapacity(main.worldArena, soundZons.len);
+	for (soundZons) |soundZon| {
+		const audioId = soundZon.get([]const u8, "audio") orelse {
 		std.log.err("Error: Sound Data audio was not specified: {s} ({s})", .{id, assetsFolder});
 		return;
-	};
-	if (findSound(audioId) == null) {
-		std.log.err("Error: Sound Data audio was not found: {s} ({s})", .{id, assetsFolder});
-		return;
+		};
+		if (findSound(audioId) == null) {
+			std.log.err("Error: Sound Data audio was not found: {s} ({s})", .{id, assetsFolder});
+			return;
+		}
+		resultSoundDatas.appendAssumeCapacity(.{
+			.audioName = audioId,
+			.volume = zon.get(f32, "volume") orelse 1.0,
+		});
 	}
 
 	soundDataIdMap.put(main.globalAllocator.allocator, id, @intCast(soundDatas.items.len)) catch unreachable;
-	soundDatas.append(main.globalAllocator, SoundData{
-		.audioName = audioId,
-		.volume = zon.get(f32, "volume") orelse 1.0,
-	});
+	soundDatas.append(main.globalAllocator, resultSoundDatas.items);
 
 	std.log.debug("Registered sound data: {s}", .{id});
 }
@@ -378,7 +383,7 @@ pub fn addSound(id: []const u8, soundParameters: AddSoundParameters) void {
 	defer mutex.unlock();
 
 	const idx = soundDataIdMap.get(id) orelse return;
-	const soundData = soundDatas.items[idx];
+	const soundData = soundDatas.items[idx][main.random.nextIntBounded(u32, main.seed, soundDatas.items[idx].len - 1)];
 	activeSounds.append(main.globalAllocator, PlayingSound{
 		.audioName = soundData.audioName,
 		.volume = soundData.volume,
