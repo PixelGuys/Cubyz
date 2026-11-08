@@ -171,7 +171,9 @@ pub fn init(window: ?*c.GLFWwindow) !void {
 		}
 	}
 	createInstance();
+	errdefer c.vkDestroyInstance(instance, null);
 	checkResult(c.glfwCreateWindowSurface(instance, window, null, &surface));
+	errdefer c.vkDestroySurfaceKHR(instance, surface, null);
 	try pickPhysicalDevice();
 	if (builtin.target.os.tag != .macos) {
 		if (c.gladLoaderLoadVulkan(instance, physicalDevice, null) == 0) {
