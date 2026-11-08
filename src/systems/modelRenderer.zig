@@ -200,7 +200,7 @@ pub const client = struct { // MARK: client
 			if (settings.launch_config.vulkanTestingMode) {
 				currentFrame.renderCommands.pushConstants(pipeline, &Uniforms{
 					.light = @bitCast(@as(u32, light)),
-					.nodeBufferOffset = @bitCast(@as(u32, 0)),
+					.nodeBufferOffset = @bitCast(@as(u32, component.bufferAllocation.start)),
 					.modelViewMatrix = modelViewMatrix.toGl(),
 					.ambientLight = ambientLight,
 					.contrast = 0.12,
