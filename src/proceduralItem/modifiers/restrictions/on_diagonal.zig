@@ -50,6 +50,9 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const OnD
 }
 
 pub fn printTooltip(self: *const OnDiagonal, outString: *main.ListManaged(u8), options: main.items.ModifierRestriction.PrintOptions) void {
-	if (options.negated) outString.appendSlice("not ");
-	outString.print("on diagonal lines there is {} .{s}", .{self.amount, self.tag.getName()});
+	if (options.negated) {
+		outString.print("on diagonal lines there is {} .{s}", .{self.amount, self.tag.getName()});
+	} else {
+		outString.print("on diagonal lines there is not {} .{s}", .{self.amount, self.tag.getName()});
+	}
 }
