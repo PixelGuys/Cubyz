@@ -18,14 +18,12 @@ layout(location = 0, index = 1) out vec4 blendColor;
 layout(binding = 0) uniform sampler2DArray textureSampler;
 layout(binding = 1) uniform sampler2DArray emissionSampler;
 layout(binding = 2) uniform sampler2DArray reflectivityAndAbsorptionSampler;
+#ifdef OPEN_GL
 layout(binding = 4) uniform samplerCube reflectionMap;
+#else
+layout(binding = 11) uniform samplerCube reflectionMap;
+#endif
 layout(binding = 5) uniform sampler2D depthTexture;
-
-layout(location = 5) uniform float reflectionMapSize;
-layout(location = 6) uniform float contrast;
-
-layout(location = 8) uniform float zNear;
-layout(location = 9) uniform float zFar;
 
 struct Fog {
 	vec3 color;
@@ -34,9 +32,29 @@ struct Fog {
 	float fogHigher;
 };
 
+#ifdef OPEN_GL
+layout(location = 5) uniform float reflectionMapSize;
+layout(location = 6) uniform float contrast;
+layout(location = 8) uniform float zNear;
+layout(location = 9) uniform float zFar;
 layout(location = 10) uniform Fog fog;
+#else
+layout(push_constant, std430) uniform _ {
+	vec3 ambientLight;
+	float contrast;
+	Fog fog;
+	float reflectionMapSize;
+	float lodDistance;
+	float zNear;
+	float zFar;
+};
+#endif
 
+#ifdef OPEN_GL
 layout(std430, binding = 1) buffer _animatedTexture
+#else
+layout(std430, binding = 12) buffer _animatedTexture
+#endif
 {
 	float animatedTexture[];
 };

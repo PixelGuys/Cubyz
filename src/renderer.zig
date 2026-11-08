@@ -52,10 +52,7 @@ const DeferredUniforms = extern struct {
 	tanXY: [2]f32 align(8),
 	zNear: f32,
 	zFar: f32,
-	@"fog.color": [3]f32 align(16),
-	@"fog.density": f32,
-	@"fog.fogLower": f32,
-	@"fog.fogHigher": f32,
+	fog: graphics.Fog.GlslData,
 };
 var fakeReflectionPipeline: graphics.Pipeline = undefined;
 var fakeReflectionUniforms: struct {
@@ -65,11 +62,18 @@ var fakeReflectionUniforms: struct {
 	frequency: c_int,
 	reflectionMapSize: c_int,
 } = undefined;
+const FakeReflectionUniforms = extern struct {
+	reflectionMapSize: f32,
+	normalVector: [3]f32 align(16),
+	upVector: [3]f32 align(16),
+	rightVector: [3]f32 align(16),
+	frequency: f32,
+};
 
 pub var activeFrameBuffer: c_uint = 0;
 
 pub const reflectionCubeMapSize = 64;
-var reflectionCubeMap: graphics.CubeMapTexture = undefined;
+pub var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
 pub const worldFrameBufferFormat = c.VK_FORMAT_R16G16B16A16_SFLOAT;
 
@@ -103,6 +107,8 @@ pub fn init() void {
 			.rasterState = .{.cullMode = .none},
 			.depthStencilState = .{.depthTest = false, .depthWrite = false},
 			.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R8G8B8A8_UNORM}}},
+			.inputAssemblyState = .{.topology = .triangleStrip},
+			.pushConstantSize = @sizeOf(FakeReflectionUniforms),
 		},
 	);
 	worldFrameBuffer = .init(Window.width, Window.height, c.GL_RGBA16F, true, .nearest, .clampToEdge);
@@ -112,8 +118,7 @@ pub fn init() void {
 	skybox.init();
 	chunk_meshing.init();
 	mesh_storage.init();
-	reflectionCubeMap = .init();
-	reflectionCubeMap.generate(reflectionCubeMapSize, reflectionCubeMapSize);
+	reflectionCubeMap = .init(reflectionCubeMapSize, reflectionCubeMapSize);
 	initReflectionCubeMap();
 }
 
@@ -134,6 +139,37 @@ fn initReflectionCubeMap() void {
 	c.glViewport(0, 0, reflectionCubeMapSize, reflectionCubeMapSize);
 	var framebuffer: graphics.FrameBuffer = .init(0, 0, c.GL_RGBA8, false, .linear, .clampToEdge);
 	defer framebuffer.deinit();
+	if (main.settings.launch_config.vulkanTestingMode) {
+		const oldColor = framebuffer.color;
+		defer framebuffer.color = oldColor;
+		framebuffer.color = reflectionCubeMap.vulkanImage;
+
+		const commandBuffer = vulkan.upload.commandBuffer();
+		var fakeFrame: vulkan.Frame = undefined;
+		fakeFrame.extent = .{.width = reflectionCubeMapSize, .height = reflectionCubeMapSize};
+		commandBuffer.bindPipeline(&fakeFrame, fakeReflectionPipeline, null);
+		commandBuffer.bindVertexArray(graphics.draw.rectVao);
+
+		for (0..6) |face| {
+			framebuffer.bindAndClear(commandBuffer, .{
+				.clearColor = .dontCare,
+				.clearDepth = .dontCare,
+				.baseArrayLayer = @intCast(face),
+			});
+			var uniforms: FakeReflectionUniforms = .{
+				.reflectionMapSize = reflectionCubeMapSize,
+				.frequency = 1,
+				.normalVector = graphics.CubeMapTexture.faceNormal(face),
+				.upVector = graphics.CubeMapTexture.faceUp(face),
+				.rightVector = graphics.CubeMapTexture.faceRight(face),
+			};
+			commandBuffer.pushConstants(fakeReflectionPipeline, &uniforms);
+			commandBuffer.draw(4, 0);
+
+			commandBuffer.endRendering();
+		}
+		framebuffer.prepareTexturesForBinding(commandBuffer);
+	}
 	framebuffer.bind();
 	fakeReflectionPipeline.bind(null);
 	c.glUniform1f(fakeReflectionUniforms.frequency, 1);
@@ -211,9 +247,6 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 	gpu_performance_measuring.startQuery(.clear);
 	worldFrameBuffer.clear(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
 	gpu_performance_measuring.stopQuery();
-	if (main.settings.launch_config.vulkanTestingMode) {
-		worldFrameBuffer.bindAndClear(currentFrame.renderCommands, .{.clearColor = .{.float32 = .{skyColor[0], skyColor[1], skyColor[2], 1}}}, .{.clearDepth = .{.depth = 1}});
-	}
 	game.camera.updateViewMatrix();
 
 	main.graphics.frame_uniforms.uploadNewFrame(.{
@@ -228,12 +261,16 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 
 	const time: u32 = @intCast(main.timestamp().toMilliseconds() & std.math.maxInt(u32));
 
-	gpu_performance_measuring.startQuery(.skybox);
-	skybox.render(currentFrame);
+	gpu_performance_measuring.startQuery(.animation);
+	blocks.meshes.preProcessAnimationData(currentFrame, time);
 	gpu_performance_measuring.stopQuery();
 
-	gpu_performance_measuring.startQuery(.animation);
-	blocks.meshes.preProcessAnimationData(time);
+	if (main.settings.launch_config.vulkanTestingMode) {
+		worldFrameBuffer.bindAndClear(currentFrame.renderCommands, .{.clearColor = .{.clearColor = .{.float32 = .{skyColor[0], skyColor[1], skyColor[2], 1}}}, .clearDepth = .{.clearDepth = .{.depth = 1}}});
+	}
+
+	gpu_performance_measuring.startQuery(.skybox);
+	skybox.render(currentFrame);
 	gpu_performance_measuring.stopQuery();
 
 	c.glActiveTexture(c.GL_TEXTURE0);
@@ -263,7 +300,7 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 	}
 	gpu_performance_measuring.stopQuery();
 	gpu_performance_measuring.startQuery(.chunk_rendering);
-	chunk_meshing.drawChunksIndirect(&chunkLists, ambientLight, false);
+	chunk_meshing.drawChunksIndirect(currentFrame, worldFrameBuffer.depth, &chunkLists, ambientLight, false);
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
@@ -304,7 +341,7 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 		}
 		gpu_performance_measuring.stopQuery();
 		gpu_performance_measuring.startQuery(.transparent_rendering);
-		chunk_meshing.drawChunksIndirect(&chunkLists, ambientLight, true);
+		chunk_meshing.drawChunksIndirect(currentFrame, worldFrameBuffer.depth, &chunkLists, ambientLight, true);
 		gpu_performance_measuring.stopQuery();
 	}
 
@@ -331,7 +368,7 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 	gpu_performance_measuring.startQuery(.final_copy);
 	if (settings.launch_config.vulkanTestingMode) {
 		currentFrame.guiCommands.bindPipeline(currentFrame, deferredRenderPassPipeline, null);
-		currentFrame.guiCommands.bindDescriptors(deferredRenderPassPipeline, .graphics, &.{
+		currentFrame.guiCommands.bindDescriptors(deferredRenderPassPipeline, &.{
 			.{.image = .{.binding = 3, .image = worldFrameBuffer.color}},
 			.{.image = .{.binding = 4, .image = worldFrameBuffer.depth}},
 			.{.image = .{.binding = 5, .image = bloom.emptyBuffer.vulkanImage.?}},
@@ -343,16 +380,15 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 		uniforms.zNear = zNear;
 		uniforms.zFar = zFar;
 		if (!blocks.meshes.hasFog(playerBlock)) {
-			uniforms.@"fog.color" = game.world.?.dayTime.fog.fogColor;
-			uniforms.@"fog.density" = game.world.?.dayTime.fog.density;
-			uniforms.@"fog.fogLower" = game.world.?.dayTime.fog.fogLower;
-			uniforms.@"fog.fogHigher" = game.world.?.dayTime.fog.fogHigher;
+			uniforms.fog = game.world.?.dayTime.fog.toGlsl();
 		} else {
 			const fogColor = blocks.meshes.fogColor(playerBlock);
-			uniforms.@"fog.color" = .{@as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0};
-			uniforms.@"fog.density" = blocks.meshes.fogDensity(playerBlock);
-			uniforms.@"fog.fogLower" = 1e10;
-			uniforms.@"fog.fogHigher" = 1e10;
+			uniforms.fog = .{
+				.fogColor = .{@as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0},
+				.density = blocks.meshes.fogDensity(playerBlock),
+				.fogLower = 1e10,
+				.fogHigher = 1e10,
+			};
 		}
 		currentFrame.guiCommands.pushConstants(deferredRenderPassPipeline, &uniforms);
 		currentFrame.guiCommands.bindVertexArray(graphics.draw.rectVao);
@@ -674,12 +710,12 @@ pub const menu_background = struct { // MARK: menu_background
 		});
 		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, pipeline, graphics.draw.getScissor());
-			currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
+			currentFrame.guiCommands.bindDescriptors(pipeline, &.{
 				.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
 			});
 			graphics.frame_uniforms.bindToPipeline(currentFrame.guiCommands, pipeline);
 			currentFrame.guiCommands.bindVertexArray(vao);
-			currentFrame.guiCommands.drawIndexed(24, 0);
+			currentFrame.guiCommands.drawIndexed(24, .{});
 		} else {
 			pipeline.bind(null);
 
@@ -902,7 +938,7 @@ pub const skybox = struct { // MARK: skybox
 
 			if (main.settings.launch_config.vulkanTestingMode) {
 				currentFrame.renderCommands.bindPipeline(currentFrame, starPipeline, null);
-				currentFrame.renderCommands.bindDescriptors(starPipeline, .graphics, &.{
+				currentFrame.renderCommands.bindDescriptors(starPipeline, &.{
 					.{.ssbo = .{.binding = 12, .ssbo = starSsbo}},
 				});
 				currentFrame.renderCommands.pushConstants(starPipeline, &StarUniforms{
@@ -1290,7 +1326,7 @@ pub const mesh_selection = struct { // MARK: mesh_selection
 			});
 			graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, pipeline);
 			currentFrame.renderCommands.bindVertexArray(main.renderer.chunk_meshing.vao);
-			currentFrame.renderCommands.drawIndexed(12*6*6, 0);
+			currentFrame.renderCommands.drawIndexed(12*6*6, .{});
 		} else {
 			pipeline.bind(null);
 
