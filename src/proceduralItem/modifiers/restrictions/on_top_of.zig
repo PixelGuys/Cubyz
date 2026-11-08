@@ -29,6 +29,7 @@ pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *const OnT
 	return result;
 }
 
-pub fn printTooltip(self: *const OnTopOf, outString: *main.ListManaged(u8)) void {
-	outString.print("on top of .{s}", .{self.tag.getName()});
+pub fn printTooltip(self: *const OnTopOf, outString: *main.ListManaged(u8), options: main.items.ModifierRestriction.PrintOptions) void {
+	if (options.negated) outString.appendSlice("not ");
+	outString.print("on top of slot with .{s}", .{self.tag.getName()});
 }
