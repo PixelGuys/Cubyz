@@ -511,17 +511,11 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 
 				var finalFrameBuffer: graphics.FrameBuffer = .init(textureWidth, textureHeight, c.GL_RGBA8, false, .nearest, .repeat);
 				defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
-				if (main.settings.launch_config.vulkanTestingMode) {
-					finalFrameBuffer.color.deferredDeinit();
-				}
-
 				finalFrameBuffer.bind();
 				finalFrameBuffer.clear(.{0, 0, 0, 0});
-				signData.renderedTexture = .{.textureID = finalFrameBuffer.texture, .vulkanImage = undefined};
 
-				if (main.settings.launch_config.vulkanTestingMode) {
-					finalFrameBuffer.bindAndClear(graphics.vulkan.upload.commandBuffer(), .{.clearColor = .dontCare, .clearDepth = .dontCare});
-				}
+				finalFrameBuffer.bindAndClear(graphics.vulkan.upload.commandBuffer(), .{.clearColor = .dontCare, .clearDepth = .dontCare});
+				signData.renderedTexture = .{.textureID = finalFrameBuffer.texture, .vulkanImage = undefined};
 
 				const oldTranslation = graphics.draw.setTranslation(.{textureMargin, textureMargin});
 				defer graphics.draw.restoreTranslation(oldTranslation);
