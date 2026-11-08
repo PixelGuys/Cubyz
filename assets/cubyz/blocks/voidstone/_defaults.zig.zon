@@ -20,7 +20,7 @@
 					.strength = 0.1,
 				},
 				.{
-					.id = "good_at",
+					.id = "block_tag_damage",
 					.strength = 0.5,
 					.tag = .voidstone,
 					.restriction = .{
