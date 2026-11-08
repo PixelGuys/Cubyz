@@ -765,7 +765,7 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 		return result;
 	}
 
-	pub fn isTagAtSlot(self: ProceduralItemTypeIndex, index: usize, tag: main.Tag) bool {
+	pub fn hasSlotTag(self: ProceduralItemTypeIndex, index: usize, tag: main.Tag) bool {
 		for (proceduralItemTypeList.items[@backingInt(self)].slotTags) |slotTag| {
 			if (!(slotTag.tag == tag)) continue;
 			return slotTag.hasTag[index];
@@ -912,7 +912,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 			if (inventory._items[i].item == .baseItem) {
 				availableItems[i] = inventory._items[i].item.baseItem;
 			} else {
-				if (!proceduralItemType.isTagAtSlot(i, .optional) and !proceduralItemType.isTagAtSlot(i, .disabled)) {
+				if (!proceduralItemType.hasSlotTag(i, .optional) and !proceduralItemType.hasSlotTag(i, .disabled)) {
 					return null;
 				}
 				availableItems[i] = null;
@@ -1104,7 +1104,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 	}
 
 	pub fn canPutIntoWorkbenchCallback(source: Inventory.Source, item: Item, slot: usize) bool {
-		if (source.workbench.proceduralItemIndex.isTagAtSlot(slot, .disabled)) return false;
+		if (source.workbench.proceduralItemIndex.hasSlotTag(slot, .disabled)) return false;
 		return switch (item) {
 			.null => true,
 			.baseItem => |baseItem| baseItem.material() != null,
