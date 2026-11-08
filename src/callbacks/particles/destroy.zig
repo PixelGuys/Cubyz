@@ -11,6 +11,6 @@ pub fn init(_: ZonElement, _: main.callbacks.Creator) ?*@This() {
 }
 
 pub fn run(_: *@This(), params: main.callbacks.ParticleCollideCallback.Params) main.callbacks.Result {
-	params.source.currentFrame = 0;
+	main.particles.particle_system.removeParticle(params.particleIndex);
 	return .handled;
 }

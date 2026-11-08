@@ -252,6 +252,11 @@ pub const particle_system = struct { // MARK: particle_system
 			const particle = &particles[i];
 			const particleLocal = &particlesLocal[i];
 
+			if (particle.currentFrame < 0) {
+				removeParticle(i);
+				continue;
+			}
+
 			var pos: Vec3f = particle.pos;
 			var rot = particle.rot;
 			const rotVel = particleLocal.velAndRotationVel[3];
@@ -272,35 +277,12 @@ pub const particle_system = struct { // MARK: particle_system
 				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
 				var hasCollided = false;
-				v3Pos[0] += posDelta[0];
-				if (physics.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
-					hasCollided = true;
-					if (posDelta[0] < 0) {
-						v3Pos[0] = box.max[0] - hitBox.min[0] + physics.epsilon;
-					} else {
-						v3Pos[0] = box.min[0] - hitBox.max[0] - physics.epsilon;
-					}
-				}
-				v3Pos[1] += posDelta[1];
-				if (physics.collision.collides(.client, .y, -posDelta[1], v3Pos, hitBox)) |box| {
-					hasCollided = true;
-					if (posDelta[1] < 0) {
-						v3Pos[1] = box.max[1] - hitBox.min[1] + physics.epsilon;
-					} else {
-						v3Pos[1] = box.min[1] - hitBox.max[1] - physics.epsilon;
-					}
-				}
-				v3Pos[2] += posDelta[2];
-				if (physics.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
-					hasCollided = true;
-					if (posDelta[2] < 0) {
-						v3Pos[2] = box.max[2] - hitBox.min[2] + physics.epsilon;
-					} else {
-						v3Pos[2] = box.min[2] - hitBox.max[2] - physics.epsilon;
-					}
-				}
+				var colisionDelta: Vec3f = .{0, 0, 0};
+				hasCollided = hasCollided or collideOnAxis(&v3Pos, posDelta, hitBox, 0, &colisionDelta);
+				hasCollided = hasCollided or collideOnAxis(&v3Pos, posDelta, hitBox, 1, &colisionDelta);
+				hasCollided = hasCollided or collideOnAxis(&v3Pos, posDelta, hitBox, 2, &colisionDelta);
 				pos = @as(Vec3f, @floatCast(v3Pos - playerPos));
-				_ = if (hasCollided) particle_manager.typesLocal.items[particle.typ].onCollide.run(.{.source = particle, .pos = pos});
+				_ = if (hasCollided) particle_manager.typesLocal.items[particle.typ].onCollide.run(.{.source = particle, .pos = pos, .particleIndex = i, .colisionDelta = colisionDelta});
 			} else {
 				const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
@@ -312,12 +294,6 @@ pub const particle_system = struct { // MARK: particle_system
 			particleLocal.velAndRotationVel[3] = rotVel;
 
 			particle.currentFrame -= particleLocal.frameRate*deltaTime;
-			if (particle.currentFrame < 0) {
-				particleCount -= 1;
-				particles[i] = particles[particleCount];
-				particlesLocal[i] = particlesLocal[particleCount];
-				continue;
-			}
 
 			const positionf64 = @as(Vec3d, @floatCast(pos)) + playerPos;
 			const intPos: vec.Vec3i = @floor(positionf64);
@@ -334,6 +310,27 @@ pub const particle_system = struct { // MARK: particle_system
 			i += 1;
 		}
 		previousPlayerPos = playerPosInt;
+	}
+
+	fn collideOnAxis(v3Pos: *Vec3d, posDelta: Vec4f, hitBox: physics.collision.Box, comptime dir: u2, colisionDelta: *Vec3f) bool {
+		v3Pos.*[dir] += posDelta[dir];
+		if (physics.collision.collides(.client, @fromBackingInt(dir), -posDelta[dir], v3Pos.*, hitBox)) |box| {
+			if (posDelta[dir] < 0) {
+				colisionDelta[dir] = 1;
+				v3Pos.*[dir] = box.max[dir] - hitBox.min[dir] + physics.epsilon;
+			} else {
+				colisionDelta[dir] = -1;
+				v3Pos.*[dir] = box.min[dir] - hitBox.max[dir] - physics.epsilon;
+			}
+			return true;
+		}
+		return false;
+	}
+
+	pub fn removeParticle(i: u32) void {
+		particleCount -= 1;
+		particles[i] = particles[particleCount];
+		particlesLocal[i] = particlesLocal[particleCount];
 	}
 
 	fn addParticle(typ: u32, particleTypeLocal: ParticleTypeLocal, particleType: ParticleType, pos: Vec3d, vel: Vec3f, collides: bool, properties: EmitterProperties) void {
