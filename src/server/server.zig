@@ -695,25 +695,8 @@ fn update() void { // MARK: update()
 		user.update();
 	}
 
-	// Send the entity data:
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
 	defer main.stackAllocator.free(itemData);
-
-	var entityData: main.ListManaged(main.entity.EntityNetworkData) = .init(main.stackAllocator);
-	defer entityData.deinit();
-
-	for (userList) |user| {
-		const id = user.id; // TODO
-		entityData.append(.{
-			.id = id,
-			.pos = @"cubyz:physics_body".getPosition(user.player().id, .server).?,
-			.vel = @"cubyz:physics_body".getVelocity(user.player().id, .server).?,
-			.rot = @"cubyz:physics_body".getRotation(user.player().id, .server).?,
-		});
-	}
-	for (userList) |user| {
-		main.network.protocols.entity_position.send(user.conn, @"cubyz:physics_body".getPosition(user.player().id, .server).?, entityData.items, itemData);
-	}
 
 	for (userList) |user| {
 		const playerPos = @"cubyz:physics_body".getPosition(user.player().id, .server).?;
