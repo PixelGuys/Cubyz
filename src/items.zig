@@ -718,8 +718,8 @@ const procedural_item_physics = struct { // MARK: procedural_item_physics
 };
 
 const SlotTag = struct { // MARK: SlotTag
-	hasTagMatrix: [25]bool,
-	tagType: main.Tag,
+	hasTag: [25]bool,
+	tag: main.Tag,
 };
 
 const PropertyMatrix = struct { // MARK: PropertyMatrix
@@ -767,8 +767,8 @@ pub const ProceduralItemTypeIndex = enum(u16) {
 
 	pub fn isTagAtSlot(self: ProceduralItemTypeIndex, index: usize, tag: main.Tag) bool {
 		for (proceduralItemTypeList.items[@backingInt(self)].slotTags) |slotTag| {
-			if (!(slotTag.tagType == tag)) continue;
-			return slotTag.hasTagMatrix[index];
+			if (!(slotTag.tag == tag)) continue;
+			return slotTag.hasTag[index];
 		}
 		return false;
 	}
@@ -1024,8 +1024,8 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 		if (y < 0 or y >= 5) return false;
 
 		for (self.type.slotTags().*) |specificSlotTag| {
-			if (specificSlotTag.tagType != checkedTag) continue;
-			if (specificSlotTag.hasTagMatrix[@intCast(x + y*5)]) return true;
+			if (specificSlotTag.tag != checkedTag) continue;
+			if (specificSlotTag.hasTag[@intCast(x + y*5)]) return true;
 		}
 		if ((self.getItemAt(x, y) orelse return false).hasTag(checkedTag)) return true;
 		return false;
@@ -1527,12 +1527,12 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 			const slotTagVal = slotTags.addOne(main.stackAllocator);
 			const matrixZon = entry.value_ptr;
 			for (0..25) |i| {
-				slotTagVal.hasTagMatrix[i] = (matrixZon.getAtIndex(usize, i, 0) != 0);
+				slotTagVal.hasTag[i] = (matrixZon.getAtIndex(usize, i, 0) != 0);
 			}
-			slotTagVal.tagType = main.Tag.find(entry.key_ptr.*);
-			if (!std.mem.endsWith(u8, slotTagVal.tagType.getName(), "_slot")) continue;
-			if (!(slotTagVal.tagType == .disabled)) continue;
-			if (!(slotTagVal.tagType == .optional)) continue;
+			slotTagVal.tag = main.Tag.find(entry.key_ptr.*);
+			if (!std.mem.endsWith(u8, slotTagVal.tag.getName(), "_slot")) continue;
+			if (!(slotTagVal.tag == .disabled)) continue;
+			if (!(slotTagVal.tag == .optional)) continue;
 			std.log.err("Tool slot tag {s} must end with '_slot'.", .{id});
 		}
 	}
