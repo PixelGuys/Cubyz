@@ -331,11 +331,11 @@ const SoundData = struct { // MARK: Sounds
 };
 
 const PlayingSound = struct {
+	id: []const u8,
 	pos: Vec3f = @splat(0),
-	audioName: []const u8,
+	soundDatas: []const SoundData,
 	bufPos: u32 = 0,
 
-	volume: f32 = 1,
 	maxDistance: f32 = 10,
 	isSpatial: bool = false,
 };
@@ -351,6 +351,12 @@ pub fn getActiveSoundCount() u32 {
 pub fn registerSound(assetsFolder: []const u8, id: []const u8, zon: ZonElement) void {
 	const soundZons = zon.getChild("sounds").toSlice();
 	var resultSoundDatas = main.List(SoundData).initCapacity(main.worldArena, soundZons.len);
+
+	if (soundZons.len == 0) {
+		std.log.err("Error: A Sound Zon must have .sounds with items in it: {s} ({s})", .{id, assetsFolder});
+		return;
+	}
+
 	for (soundZons) |soundZon| {
 		const audioId = soundZon.get([]const u8, "audio") orelse {
 		std.log.err("Error: Sound Data audio was not specified: {s} ({s})", .{id, assetsFolder});
@@ -372,7 +378,7 @@ pub fn registerSound(assetsFolder: []const u8, id: []const u8, zon: ZonElement) 
 	std.log.debug("Registered sound data: {s}", .{id});
 }
 
-const AddSoundParameters = struct { // MARK: Sounds
+const AddSoundParameters = struct {
 	isSpatial: bool,
 	maxDistance: f32,
 	pos: Vec3f,
@@ -383,10 +389,10 @@ pub fn addSound(id: []const u8, soundParameters: AddSoundParameters) void {
 	defer mutex.unlock();
 
 	const idx = soundDataIdMap.get(id) orelse return;
-	const soundData = soundDatas.items[idx][main.random.nextIntBounded(u32, main.seed, soundDatas.items[idx].len - 1)];
+	const soundData = soundDatas.items[idx];
 	activeSounds.append(main.globalAllocator, PlayingSound{
-		.audioName = soundData.audioName,
-		.volume = soundData.volume,
+		.id = id,
+		.soundDatas = soundData,
 		.pos = soundParameters.pos,
 		.isSpatial = soundParameters.isSpatial,
 		.maxDistance = soundParameters.maxDistance,
@@ -461,7 +467,8 @@ fn mixSound(buffer: []f32) void {
 	var i: u32 = 0;
 	main: while (i < activeSounds.items.len) {
 		var sound = activeSounds.items[i];
-		const audioData = findSound(sound.audioName) orelse continue :main;
+		const pickedSound = sound.soundDatas[if (sound.soundDatas.len > 1) main.random.nextIntBounded(u32, &main.seed, @intCast(sound.soundDatas.len - 1)) else 0];
+		const audioData = findSound(pickedSound.audioName) orelse continue :main;
 		const soundBuffer = audioData.data;
 
 		var leftVol: f32 = 1;
@@ -494,7 +501,7 @@ fn mixSound(buffer: []f32) void {
 
 		var j: usize = 0;
 		while (j < buffer.len) : (j += 2) {
-			const amplitude: f32 = main.settings.soundVolume*sound.volume;
+			const amplitude: f32 = main.settings.soundVolume*pickedSound.volume;
 
 			buffer[j] += soundBuffer[sound.bufPos]*amplitude*leftVol;
 			buffer[j + 1] += soundBuffer[sound.bufPos]*amplitude*rightVol;
