@@ -19,7 +19,7 @@ pub fn execute(_: Args, source: Source) void {
 		return;
 	}
 	const user = source.user;
-	const playerPos = @"cubyz:physics_body".getPosition(user.player().id).?;
+	const playerPos = @"cubyz:physics_body".getPosition(user.player().id, .server).?;
 	const pos: Vec3i = @floor(playerPos);
 
 	user.worldEditData.selectionPosition1 = pos;

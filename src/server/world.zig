@@ -223,7 +223,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 			switch (self.source) {
 				.player => |player| {
 					const user = server.getUserByIndex(player) orelse return 0;
-					return self.pos.getPriority(@"cubyz:physics_body".getPosition(user.player().id) orelse .{0, 0, 0});
+					return self.pos.getPriority(@"cubyz:physics_body".getPosition(user.player().id, .server) orelse .{0, 0, 0});
 				},
 				else => return std.math.floatMax(f32),
 			}
@@ -286,7 +286,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		pub fn getPriority(self: *LightMapLoadTask) f32 {
 			if (self.source) |playerIndex| {
 				const user = server.getUserByIndex(playerIndex) orelse return 0;
-				return self.pos.getPriority(@"cubyz:physics_body".getPosition(user.player().id).?, terrain.LightMap.LightMapFragment.mapSize) + 100;
+				return self.pos.getPriority(@"cubyz:physics_body".getPosition(user.player().id, .server).?, terrain.LightMap.LightMapFragment.mapSize) + 100;
 			} else {
 				return std.math.floatMax(f32);
 			}

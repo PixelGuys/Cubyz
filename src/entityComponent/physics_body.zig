@@ -31,69 +31,81 @@ const c = @import("c");
 pub var entityComponentID: main.entity.EntityComponentId = undefined;
 pub const entityComponentVersion = 0;
 
-pub fn getPosition(entity: Entity) ?Vec3d {
-	return switch (main.sync.threadContext) {
+pub fn getPosition(entity: Entity, side: main.sync.Side) ?Vec3d {
+	correctSideCheck(side);
+	return switch (side) {
 		.client => client.getPosition(entity),
 		.server => server.getPosition(entity),
-		else => return null,
 	};
 }
-pub fn getPositionPointer(entity: Entity) ?*Vec3d {
-	return switch (main.sync.threadContext) {
+pub fn getPositionPointer(entity: Entity, side: main.sync.Side) ?*Vec3d {
+	correctSideCheck(side);
+	return switch (side) {
 		.client => &(client.get(entity) orelse return null).position,
 		.server => &(server.get(entity) orelse return null).position,
-		else => return null,
 	};
 }
-pub fn setPosition(entity: Entity, givenPosition: Vec3d) void {
-	return switch (main.sync.threadContext) {
+pub fn setPosition(entity: Entity, givenPosition: Vec3d, side: main.sync.Side) void {
+	correctSideCheck(side);
+	return switch (side) {
 		.client => client.setPosition(entity, givenPosition),
 		.server => server.setPosition(entity, givenPosition),
-		else => return,
 	};
 }
-pub fn getVelocity(entity: Entity) ?Vec3d {
-	return switch (main.sync.threadContext) {
+pub fn getVelocity(entity: Entity, side: main.sync.Side) ?Vec3d {
+	correctSideCheck(side);
+	return switch (side) {
 		.client => client.getVelocity(entity),
 		.server => server.getVelocity(entity),
-		else => return null,
 	};
 }
-pub fn getVelocityPointer(entity: Entity) ?*Vec3d {
-	return switch (main.sync.threadContext) {
+pub fn getVelocityPointer(entity: Entity, side: main.sync.Side) ?*Vec3d {
+	correctSideCheck(side);
+	return switch (side) {
 		.client => &(client.get(entity) orelse return null).velocity,
 		.server => &(server.get(entity) orelse return null).velocity,
-		else => return null,
 	};
 }
-pub fn setVelocity(entity: Entity, givenVelocity: Vec3d) void {
-	return switch (main.sync.threadContext) {
+pub fn setVelocity(entity: Entity, givenVelocity: Vec3d, side: main.sync.Side) void {
+	correctSideCheck(side);
+	return switch (side) {
 		.client => client.setVelocity(entity, givenVelocity),
 		.server => server.setVelocity(entity, givenVelocity),
-		else => return,
 	};
 }
-pub fn getRotation(entity: Entity) ?Vec3f {
-	return switch (main.sync.threadContext) {
+pub fn getRotation(entity: Entity, side: main.sync.Side) ?Vec3f {
+	correctSideCheck(side);
+	return switch (side) {
 		.client => client.getRotation(entity),
 		.server => server.getRotation(entity),
-		else => return null,
 	};
 }
-pub fn getRotationPointer(entity: Entity) ?*Vec3f {
-	return switch (main.sync.threadContext) {
+pub fn getRotationPointer(entity: Entity, side: main.sync.Side) ?*Vec3f {
+	correctSideCheck(side);
+	return switch (side) {
 		.client => &(client.get(entity) orelse return null).roation,
 		.server => &(server.get(entity) orelse return null).roation,
-		else => return null,
 	};
 }
-pub fn setRotation(entity: Entity, givenRotation: Vec3f) void {
-	return switch (main.sync.threadContext) {
+pub fn setRotation(entity: Entity, givenRotation: Vec3f, side: main.sync.Side) void {
+	correctSideCheck(side);
+	return switch (side) {
 		.client => client.setRotation(entity, givenRotation),
 		.server => server.setRotation(entity, givenRotation),
-		else => return,
 	};
 }
+
+fn correctSideCheck(side: main.sync.Side) void {
+	if ((main.sync.threadContext == .client) and (side == .server)) {
+		std.log.debug("trying to use a server component on the client side", .{});
+		unreachable;
+	}
+	if ((main.sync.threadContext == .server) and (side == .client)) {
+		std.log.debug("trying to use a client component on the server side", .{});
+		unreachable;
+	}
+}
+
 
 // ############################# Client only stuff ################################
 pub const client = struct {

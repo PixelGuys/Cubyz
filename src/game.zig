@@ -125,25 +125,25 @@ pub const player = struct { // MARK: player
 	pub fn setPosBlocking(newPos: Vec3d) void {
 		mutex.lock();
 		defer mutex.unlock();
-		@"cubyz:physics_body".setPosition(super.id, newPos);
+		@"cubyz:physics_body".setPosition(super.id, newPos, .client);
 	}
 
 	pub fn getPosBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		return @"cubyz:physics_body".getPosition(super.id).?;
+		return @"cubyz:physics_body".getPosition(super.id, .client).?;
 	}
 
 	pub fn getVelBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		return @"cubyz:physics_body".getVelocity(super.id).?;
+		return @"cubyz:physics_body".getVelocity(super.id, .client).?;
 	}
 
 	pub fn getEyePosBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		return eye.pos + @"cubyz:physics_body".getPosition(super.id).? + eye.desiredPos;
+		return eye.pos + @"cubyz:physics_body".getPosition(super.id, .client).? + eye.desiredPos;
 	}
 
 	pub fn getEyeVelBlocking() Vec3d {
@@ -204,8 +204,8 @@ pub const player = struct { // MARK: player
 	}
 
 	pub fn kill(spawnPos: Vec3d) void {
-		@"cubyz:physics_body".setPosition(player.id, spawnPos);
-		@"cubyz:physics_body".setVelocity(main.game.player.id, .{0, 0, 0});
+		@"cubyz:physics_body".setPosition(player.id, spawnPos, .client);
+		@"cubyz:physics_body".setVelocity(main.game.player.id, .{0, 0, 0}, .client);
 
 		player.super.health = player.super.maxHealth;
 		player.super.energy = player.super.maxEnergy;
@@ -631,8 +631,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		return;
 	};
 
-	const playerPos = @"cubyz:physics_body".getPositionPointer(player.id).?;
-	const playerVel = @"cubyz:physics_body".getVelocityPointer(player.id).?;
+	const playerPos = @"cubyz:physics_body".getPositionPointer(player.id, .client).?;
+	const playerVel = @"cubyz:physics_body".getVelocityPointer(player.id, .client).?;
 	physics.calculateVolumeProperties(.client, &player.volumeProperties, playerPos.*, player.outerBoundingBox, physics.playerAirTerminalVelocity);
 	if (player.isFlying.load(.monotonic)) {
 		player.friction = .{.current = 20, .mobile = 20};
@@ -787,7 +787,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 		const newOuterBox = (player.crouchingBoundingBoxExtent - player.standingBoundingBoxExtent)*@as(Vec3d, @splat(smoothPerc)) + player.standingBoundingBoxExtent;
 
-		@"cubyz:physics_body".setPosition(player.super.id, playerPos.* + newOuterBox - player.outerBoundingBoxExtent + Vec3d{0.0, 0.0, 0.0001*@abs(newOuterBox[2] - player.outerBoundingBoxExtent[2])});
+		@"cubyz:physics_body".setPosition(player.super.id, playerPos.* + newOuterBox - player.outerBoundingBoxExtent + Vec3d{0.0, 0.0, 0.0001*@abs(newOuterBox[2] - player.outerBoundingBoxExtent[2])}, .client);
 
 		player.outerBoundingBoxExtent = newOuterBox;
 

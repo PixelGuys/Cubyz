@@ -325,7 +325,7 @@ pub const User = struct { // MARK: User
 			}
 		}
 
-		self.interpolation.init(@ptrCast(@"cubyz:physics_body".getPositionPointer(self.id)), @ptrCast(@"cubyz:physics_body".getVelocityPointer(self.id)));
+		self.interpolation.init(@ptrCast(@"cubyz:physics_body".getPositionPointer(self.id, .server)), @ptrCast(@"cubyz:physics_body".getVelocityPointer(self.id, .server)));
 		self.loadUnloadChunks();
 
 		main.entity.components.@"cubyz:player".server.load(self.id, @truncate(self.playerIndex));
@@ -383,7 +383,7 @@ pub const User = struct { // MARK: User
 	}
 
 	fn loadUnloadChunks(self: *User) void {
-		const playerPos = @"cubyz:physics_body".getPosition(self.player().id).?;
+		const playerPos = @"cubyz:physics_body".getPosition(self.player().id, .server).?;
 		const newPos: Vec3i = @as(Vec3i, @trunc(playerPos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
 		const newRenderDistance = main.settings.simulationDistance;
 		if (@reduce(.Or, newPos != self.lastPos) or newRenderDistance != self.lastRenderDistance) {
@@ -551,7 +551,7 @@ pub const User = struct { // MARK: User
 		const position: [3]f64 = try reader.readVec(Vec3d);
 		const velocity: [3]f64 = try reader.readVec(Vec3d);
 		const rotation: [3]f32 = try reader.readVec(Vec3f);
-		@"cubyz:physics_body".setRotation(self.id, rotation);
+		@"cubyz:physics_body".setRotation(self.id, rotation, .server);
 		const time = try reader.readInt(i16);
 		self.timeDifference.addDataPoint(time);
 		self.interpolation.updatePosition(&position, &velocity, time);
@@ -706,17 +706,17 @@ fn update() void { // MARK: update()
 		const id = user.id; // TODO
 		entityData.append(.{
 			.id = id,
-			.pos = @"cubyz:physics_body".getPosition(user.player().id).?,
-			.vel = @"cubyz:physics_body".getVelocity(user.player().id).?,
-			.rot = @"cubyz:physics_body".getRotation(user.player().id).?,
+			.pos = @"cubyz:physics_body".getPosition(user.player().id, .server).?,
+			.vel = @"cubyz:physics_body".getVelocity(user.player().id, .server).?,
+			.rot = @"cubyz:physics_body".getRotation(user.player().id, .server).?,
 		});
 	}
 	for (userList) |user| {
-		main.network.protocols.entity_position.send(user.conn, @"cubyz:physics_body".getPosition(user.player().id).?, entityData.items, itemData);
+		main.network.protocols.entity_position.send(user.conn, @"cubyz:physics_body".getPosition(user.player().id, .server).?, entityData.items, itemData);
 	}
 
 	for (userList) |user| {
-		const playerPos = @"cubyz:physics_body".getPosition(user.player().id).?;
+		const playerPos = @"cubyz:physics_body".getPosition(user.player().id, .server).?;
 		const pos = @as(Vec3i, @trunc(playerPos));
 		const biomeId = world.?.getBiome(pos[0], pos[1], pos[2]).paletteId;
 		if (biomeId != user.lastSentBiomeId) {
