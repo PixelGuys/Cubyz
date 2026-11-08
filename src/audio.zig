@@ -349,7 +349,7 @@ pub fn getActiveSoundCount() u32 {
 }
 
 pub fn registerSound(assetsFolder: []const u8, id: []const u8, zon: ZonElement) void {
-	const soundZons = zon.getChild("drops").toSlice();
+	const soundZons = zon.getChild("sounds").toSlice();
 	var resultSoundDatas = main.List(SoundData).initCapacity(main.worldArena, soundZons.len);
 	for (soundZons) |soundZon| {
 		const audioId = soundZon.get([]const u8, "audio") orelse {
