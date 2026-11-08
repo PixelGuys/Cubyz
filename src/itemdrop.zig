@@ -24,11 +24,11 @@ const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
-const @"cubyz:velocity" = main.entity.components.@"cubyz:velocity";
+const @"cubyz:physics_body" = main.entity.components.@"cubyz:physics_body";
 
 const c = @import("c");
 
-const @"cubyz:position" = main.entity.components.@"cubyz:position";
+const @"cubyz:physics_body" = main.entity.components.@"cubyz:physics_body";
 
 const ItemDrop = struct { // MARK: ItemDrop
 	pos: Vec3d,
@@ -381,7 +381,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 				ii += 1;
 				continue;
 			}
-			const playerPos = @"cubyz:position".getPosition(user.player().id, .server).?;
+			const playerPos = @"cubyz:physics_body".getPosition(user.player().id, .server).?;
 			const hitbox = main.game.player.outerBoundingBox;
 			const min = playerPos + hitbox.min;
 			const max = playerPos + hitbox.max;
@@ -545,7 +545,7 @@ const bob_manager = struct {
 		}
 
 		const inputSpeed: f32 = @floatCast(game.player.inputSpeed);
-		const playerVel = @"cubyz:velocity".getVelocity(main.game.player.id, .client).?;
+		const playerVel = @"cubyz:physics_body".getVelocity(main.game.player.id, .client).?;
 		const horizontalVel: Vec3f = .{
 			@floatCast(playerVel[0]),
 			@floatCast(playerVel[1]),
@@ -609,7 +609,7 @@ pub const item_display_manager = struct { // MARK: item_display_manager
 	}
 
 	fn getAscentDescentOffset() Vec3f {
-		const playerVel = @"cubyz:velocity".getVelocity(main.game.player.id, .client).?;
+		const playerVel = @"cubyz:physics_body".getVelocity(main.game.player.id, .client).?;
 		const vel: Vec3f = .{@floatCast((playerVel[2]*0.009 + game.player.eye.vel[2]*0.0075)), 0, 0};
 		return vec.clampMag(vel, 0.32);
 	}

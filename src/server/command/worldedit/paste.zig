@@ -7,7 +7,7 @@ const Vec3i = vec.Vec3i;
 
 const Blueprint = main.blueprint.Blueprint;
 
-const @"cubyz:position" = main.entity.components.@"cubyz:position";
+const @"cubyz:physics_body" = main.entity.components.@"cubyz:physics_body";
 
 pub const description =
 	\\Paste clipboard content to current player position.
@@ -26,7 +26,7 @@ pub fn execute(args: Args, source: Source) void {
 	}
 	const user = source.user;
 	if (user.worldEditData.clipboard) |clipboard| {
-		const playerPos = @"cubyz:position".getPosition(user.player().id, .server).?;
+		const playerPos = @"cubyz:physics_body".getPosition(user.player().id, .server).?;
 		const pos: Vec3i = @floor(playerPos);
 		user.sendMessage("Pasting: {}", .{pos});
 

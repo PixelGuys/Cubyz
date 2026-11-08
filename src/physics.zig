@@ -11,7 +11,7 @@ const settings = @import("settings.zig");
 const player = main.game.player;
 const camera = main.game.camera;
 
-const @"cubyz:position" = main.entity.components.@"cubyz:position";
+const @"cubyz:physics_body" = main.entity.components.@"cubyz:physics_body";
 
 pub const baseGravity = 30.0;
 pub const playerAirTerminalVelocity = 90.0;
@@ -316,7 +316,7 @@ pub const collision = struct { // MARK: collision
 	}
 
 	pub fn touchBlocks(comptime side: main.sync.Side, entity: *main.server.Entity, hitBox: Box, deltaTime: f64) void {
-		const entityPos = @"cubyz:position".getPosition(entity.id, side).?;
+		const entityPos = @"cubyz:physics_body".getPosition(entity.id, side).?;
 		const boundingBox: Box = .{.min = entityPos + hitBox.min, .max = entityPos + hitBox.max};
 
 		const minX: i32 = @floor(boundingBox.min[0] - 0.01);

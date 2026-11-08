@@ -9,7 +9,7 @@ const ListManaged = main.ListManaged;
 const User = main.server.User;
 pub const commandList = @import("command/_list.zig");
 
-const @"cubyz:position" = main.entity.components.@"cubyz:position";
+const @"cubyz:physics_body" = main.entity.components.@"cubyz:physics_body";
 
 pub const Source = union(enum) {
 	user: *User,
@@ -136,7 +136,7 @@ pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, source: S
 		source.sendMessage("Command was run without a user; unable to interpret relative coordinates.", .{});
 		return error.InvalidArg;
 	}
-	const pos = @"cubyz:position".getPosition(source.user.player().id, .server).?;
+	const pos = @"cubyz:physics_body".getPosition(source.user.player().id, .server).?;
 	return .{
 		// TODO: Remove clamp after #310 is implemented
 		std.math.clamp(if (x == .relative) pos[0] + x.relative else x.absolute, -1e9, 1e9),

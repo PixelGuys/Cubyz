@@ -4,7 +4,7 @@ const main = @import("main");
 const Source = main.server.command.Source;
 const Vec3i = main.vec.Vec3i;
 
-const @"cubyz:position" = main.entity.components.@"cubyz:position";
+const @"cubyz:physics_body" = main.entity.components.@"cubyz:physics_body";
 
 pub const description = "Select the player position as position 2.";
 pub const usage = "/pos2";
@@ -19,7 +19,7 @@ pub fn execute(_: Args, source: Source) void {
 		return;
 	}
 	const user = source.user;
-	const playerPos = @"cubyz:position".getPosition(user.player().id, .server).?;
+	const playerPos = @"cubyz:physics_body".getPosition(user.player().id, .server).?;
 	const pos: Vec3i = @floor(playerPos);
 
 	user.worldEditData.selectionPosition2 = pos;
