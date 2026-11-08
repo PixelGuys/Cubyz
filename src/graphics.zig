@@ -624,14 +624,14 @@ pub const draw = struct { // MARK: draw
 	// ----------------------------------------------------------------------------
 	// MARK: text()
 
-	pub fn text(currentFrame: *vulkan.Frame, _text: []const u8, x: f32, y: f32, fontSize: f32) void {
-		text_rendering.renderText(currentFrame, _text, x, y, fontSize, .{});
+	pub fn text(commands: CommandBuffer, currentFrame: *vulkan.Frame, _text: []const u8, x: f32, y: f32, fontSize: f32) void {
+		text_rendering.renderText(commands, currentFrame, _text, x, y, fontSize, .{});
 	}
 
-	pub inline fn print(currentFrame: *vulkan.Frame, comptime format: []const u8, args: anytype, x: f32, y: f32, fontSize: f32) void {
+	pub inline fn print(commands: CommandBuffer, currentFrame: *vulkan.Frame, comptime format: []const u8, args: anytype, x: f32, y: f32, fontSize: f32) void {
 		const string = main.stackAllocator.print(format, args);
 		defer main.stackAllocator.free(string);
-		text(currentFrame, string, x, y, fontSize);
+		text(commands, currentFrame, string, x, y, fontSize);
 	}
 };
 
@@ -1070,12 +1070,12 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		}
 	}
 
-	pub fn render(self: TextBuffer, currentFrame: *vulkan.Frame, _x: f32, _y: f32, _fontSize: f32) void {
-		self.renderShadow(currentFrame, _x, _y, _fontSize);
-		self.renderTextWithoutShadow(currentFrame, _x, _y, _fontSize);
+	pub fn render(self: TextBuffer, commands: CommandBuffer, currentFrame: *vulkan.Frame, _x: f32, _y: f32, _fontSize: f32) void {
+		self.renderShadow(commands, currentFrame, _x, _y, _fontSize);
+		self.renderTextWithoutShadow(commands, currentFrame, _x, _y, _fontSize);
 	}
 
-	pub fn renderTextWithoutShadow(self: TextBuffer, currentFrame: *vulkan.Frame, _x: f32, _y: f32, _fontSize: f32) void {
+	pub fn renderTextWithoutShadow(self: TextBuffer, commands: CommandBuffer, currentFrame: *vulkan.Frame, _x: f32, _y: f32, _fontSize: f32) void {
 		const oldTranslation = draw.setTranslation(.{_x, _y});
 		defer draw.restoreTranslation(oldTranslation);
 		const oldScale = draw.setScale(_fontSize/16.0);
@@ -1086,19 +1086,19 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 
 		if (main.settings.launch_config.vulkanTestingMode) {
-			currentFrame.guiCommands.bindPipeline(currentFrame, text_rendering.pipeline, draw.getScissor());
-			currentFrame.guiCommands.pushConstants(text_rendering.pipeline, &text_rendering.CompleteUniforms{
+			commands.bindPipeline(currentFrame, text_rendering.pipeline, draw.getScissor());
+			commands.pushConstants(text_rendering.pipeline, &text_rendering.CompleteUniforms{
 				.glyphData = undefined,
 				.scene = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
 				.ratio = draw.scale,
 				.inColor = @bitCast(draw.getColor()),
 				.fontSize = .{@floatFromInt(text_rendering.textureWidth), @floatFromInt(text_rendering.textureHeight)},
 			});
-			currentFrame.guiCommands.bindDescriptors(text_rendering.pipeline, &.{
+			commands.bindDescriptors(text_rendering.pipeline, &.{
 				.{.image = .{.binding = 0, .image = text_rendering.glyphTexture[0].vulkanImage}},
 			});
 
-			currentFrame.guiCommands.bindVertexArray(draw.rectVao);
+			commands.bindVertexArray(draw.rectVao);
 		} else {
 			text_rendering.pipeline.bind(draw.getScissor());
 
@@ -1118,7 +1118,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 			for (self.glyphs[self.lineBreaks.items[i].index..self.lineBreaks.items[i + 1].index]) |glyph| {
 				if (glyph.character != '\n') {
 					const ftGlyph = text_rendering.getGlyph(glyph.index) catch continue;
-					text_rendering.drawGlyph(currentFrame, ftGlyph, x + glyph.x_offset, y - glyph.y_offset, @bitCast(glyph.fontEffect));
+					text_rendering.drawGlyph(commands, currentFrame, ftGlyph, x + glyph.x_offset, y - glyph.y_offset, @bitCast(glyph.fontEffect));
 				}
 				x += glyph.x_advance;
 				y -= glyph.y_advance;
@@ -1161,7 +1161,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		}
 	}
 
-	fn renderShadow(self: TextBuffer, currentFrame: *vulkan.Frame, _x: f32, _y: f32, _fontSize: f32) void { // Basically a copy of render with some color and position changes.
+	fn renderShadow(self: TextBuffer, commands: CommandBuffer, currentFrame: *vulkan.Frame, _x: f32, _y: f32, _fontSize: f32) void { // Basically a copy of render with some color and position changes.
 		const oldTranslation = draw.setTranslation(.{_x + _fontSize/16.0, _y + _fontSize/16.0});
 		defer draw.restoreTranslation(oldTranslation);
 		const oldScale = draw.setScale(_fontSize/16.0);
@@ -1172,19 +1172,19 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 
 		if (main.settings.launch_config.vulkanTestingMode) {
-			currentFrame.guiCommands.bindPipeline(currentFrame, text_rendering.pipeline, draw.getScissor());
-			currentFrame.guiCommands.pushConstants(text_rendering.pipeline, &text_rendering.CompleteUniforms{
+			commands.bindPipeline(currentFrame, text_rendering.pipeline, draw.getScissor());
+			commands.pushConstants(text_rendering.pipeline, &text_rendering.CompleteUniforms{
 				.glyphData = undefined,
 				.scene = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
 				.ratio = draw.scale,
 				.inColor = @bitCast(draw.getColor()),
 				.fontSize = .{@floatFromInt(text_rendering.textureWidth), @floatFromInt(text_rendering.textureHeight)},
 			});
-			currentFrame.guiCommands.bindDescriptors(text_rendering.pipeline, &.{
+			commands.bindDescriptors(text_rendering.pipeline, &.{
 				.{.image = .{.binding = 0, .image = text_rendering.glyphTexture[0].vulkanImage}},
 			});
 
-			currentFrame.guiCommands.bindVertexArray(draw.rectVao);
+			commands.bindVertexArray(draw.rectVao);
 		} else {
 			text_rendering.pipeline.bind(draw.getScissor());
 
@@ -1205,7 +1205,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 					const ftGlyph = text_rendering.getGlyph(glyph.index) catch continue;
 					var fontEffect = glyph.fontEffect;
 					fontEffect.color = shadowColor(fontEffect.color);
-					text_rendering.drawGlyph(currentFrame, ftGlyph, x + glyph.x_offset, y - glyph.y_offset, @bitCast(fontEffect));
+					text_rendering.drawGlyph(commands, currentFrame, ftGlyph, x + glyph.x_offset, y - glyph.y_offset, @bitCast(fontEffect));
 				}
 				x += glyph.x_advance;
 				y -= glyph.y_advance;
@@ -1420,7 +1420,7 @@ const text_rendering = struct { // MARK: text_rendering
 		return glyphData.items[glyphMapping.items[index]];
 	}
 
-	fn drawGlyph(currentFrame: *vulkan.Frame, glyph: Glyph, _x: f32, _y: f32, fontEffects: u28) void {
+	fn drawGlyph(commands: CommandBuffer, _: *vulkan.Frame, glyph: Glyph, _x: f32, _y: f32, fontEffects: u28) void {
 		var x = _x;
 		var y = _y;
 		x *= draw.scale;
@@ -1442,8 +1442,8 @@ const text_rendering = struct { // MARK: text_rendering
 		}
 
 		if (main.settings.launch_config.vulkanTestingMode) {
-			currentFrame.guiCommands.pushConstants(text_rendering.pipeline, &glypUniforms);
-			currentFrame.guiCommands.draw(4, 0);
+			commands.pushConstants(text_rendering.pipeline, &glypUniforms);
+			commands.draw(4, 0);
 		} else {
 			c.glUniform1i(uniforms.fontEffects, glypUniforms.fontEffects);
 			c.glUniform4f(uniforms.textureBounds, glypUniforms.textureBounds[0], glypUniforms.textureBounds[1], glypUniforms.textureBounds[2], glypUniforms.textureBounds[3]);
@@ -1453,11 +1453,11 @@ const text_rendering = struct { // MARK: text_rendering
 		}
 	}
 
-	fn renderText(currentFrame: *vulkan.Frame, text: []const u8, x: f32, y: f32, fontSize: f32, initialFontEffect: TextBuffer.FontEffect) void {
+	fn renderText(commands: CommandBuffer, currentFrame: *vulkan.Frame, text: []const u8, x: f32, y: f32, fontSize: f32, initialFontEffect: TextBuffer.FontEffect) void {
 		const buf = TextBuffer.init(main.stackAllocator, text, initialFontEffect, false, .left);
 		defer buf.deinit();
 
-		buf.render(currentFrame, x, y, fontSize);
+		buf.render(commands, currentFrame, x, y, fontSize);
 	}
 };
 

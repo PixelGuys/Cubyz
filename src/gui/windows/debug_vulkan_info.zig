@@ -30,11 +30,11 @@ pub var window = GuiWindow{
 
 pub fn render(currentFrame: *graphics.vulkan.Frame) void {
 	var y: f32 = 0;
-	draw.print(currentFrame, "Vulkan Version: {d}.{d}", .{vulkan.version.major, vulkan.version.minor}, 0, y, 8);
+	draw.print(currentFrame.guiCommands, currentFrame, "Vulkan Version: {d}.{d}", .{vulkan.version.major, vulkan.version.minor}, 0, y, 8);
 	y += 8;
 	inline for (@typeInfo(@TypeOf(vulkan.interestingExtensions)).@"struct".field_names) |extensionName| {
 		if (@field(vulkan.interestingExtensions, extensionName)) {
-			draw.print(currentFrame, "{s} present", .{extensionName}, 0, y, 8);
+			draw.print(currentFrame.guiCommands, currentFrame, "{s} present", .{extensionName}, 0, y, 8);
 			y += 8;
 		}
 	}

@@ -553,7 +553,7 @@ pub fn render(self: *TextInput, currentFrame: *graphics.vulkan.Frame, mousePosit
 	}
 	const textColor = draw.setColor(if (self.options.disabled) 0xff808080 else 0xffffffff);
 	defer draw.restoreColor(textColor);
-	textBuffer.render(currentFrame, textPos[0], textPos[1], fontSize);
+	textBuffer.render(currentFrame.guiCommands, currentFrame, textPos[0], textPos[1], fontSize);
 	if (self.pressed) {
 		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
 	}

@@ -113,10 +113,10 @@ pub fn render(self: *BagSlot, currentFrame: *graphics.vulkan.Frame, _: Vec2f) vo
 		);
 		defer text.deinit();
 		const textSize = text.calculateLineBreaks(8, self.size[0] - 2*border);
-		text.render(currentFrame, self.pos[0] + sizeWithBorder - textSize[0] - border, self.pos[1] + sizeWithBorder - textSize[1] - border, 8);
+		text.render(currentFrame.guiCommands, currentFrame, self.pos[0] + sizeWithBorder - textSize[0] - border, self.pos[1] + sizeWithBorder - textSize[1] - border, 8);
 	}
 
-	draw.print(currentFrame, "{}/{}", .{self.inventory.slots.items.len, self.inventory.sizeLimit}, self.pos[0], self.pos[1] + sizeWithBorder, 8);
+	draw.print(currentFrame.guiCommands, currentFrame, "{}/{}", .{self.inventory.slots.items.len, self.inventory.sizeLimit}, self.pos[0], self.pos[1] + sizeWithBorder, 8);
 
 	if (self.hovered) {
 		self.hovered = false;

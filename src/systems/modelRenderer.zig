@@ -121,7 +121,7 @@ pub const client = struct { // MARK: client
 			defer buf.deinit();
 			const fontSize = std.mem.max(f32, &.{fontMinScreenSize, fontScreenSize/projectedPos[3]});
 			const size = buf.calculateLineBreaks(fontSize, @floatFromInt(main.Window.width*8));
-			buf.render(currentFrame, xCenter - size[0]/2, yCenter - size[1], fontSize);
+			buf.render(currentFrame.renderCommands, currentFrame, xCenter - size[0]/2, yCenter - size[1], fontSize);
 		}
 	}
 	pub fn render(currentFrame: *graphics.vulkan.Frame, ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {

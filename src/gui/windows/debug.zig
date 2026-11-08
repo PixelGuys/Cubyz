@@ -36,36 +36,36 @@ pub fn render(currentFrame: *graphics.vulkan.Frame) void {
 		if (main.settings.vsync) " (vsync)" else "",
 	});
 	defer main.stackAllocator.allocator.free(fpsLimit);
-	draw.print(currentFrame, "fps: {d:.0} Hz{s}", .{1.0/main.lastDeltaTime.load(.monotonic), fpsLimit}, 0, y, 8);
+	draw.print(currentFrame.guiCommands, currentFrame, "fps: {d:.0} Hz{s}", .{1.0/main.lastDeltaTime.load(.monotonic), fpsLimit}, 0, y, 8);
 	y += 8;
-	draw.print(currentFrame, "frameTime: {d:.1} ms", .{main.lastFrameTime.load(.monotonic)*1000.0}, 0, y, 8);
+	draw.print(currentFrame.guiCommands, currentFrame, "frameTime: {d:.1} ms", .{main.lastFrameTime.load(.monotonic)*1000.0}, 0, y, 8);
 	y += 8;
-	draw.print(currentFrame, "window size: {}×{}", .{main.Window.width, main.Window.height}, 0, y, 8);
+	draw.print(currentFrame.guiCommands, currentFrame, "window size: {}×{}", .{main.Window.width, main.Window.height}, 0, y, 8);
 	y += 8;
 	if (main.game.world != null) {
 		const player = main.game.player;
-		draw.print(currentFrame, "Pos: {d:.1}", .{player.getPosBlocking()}, 0, y, 8);
+		draw.print(currentFrame.guiCommands, currentFrame, "Pos: {d:.1}", .{player.getPosBlocking()}, 0, y, 8);
 		y += 8;
-		draw.print(currentFrame, "Gamemode: {} IsFlying: {} IsGhost: {} HyperSpeed: {}", .{
+		draw.print(currentFrame.guiCommands, currentFrame, "Gamemode: {} IsFlying: {} IsGhost: {} HyperSpeed: {}", .{
 			player.gamemode.load(.monotonic),
 			player.isFlying.load(.monotonic),
 			player.isGhost.load(.monotonic),
 			player.hyperSpeed.load(.monotonic),
 		}, 0, y, 8);
 		y += 8;
-		draw.print(currentFrame, "OnGround: {} JumpCooldown: {d:.3} JumpCoyote: {d:.3}", .{
+		draw.print(currentFrame.guiCommands, currentFrame, "OnGround: {} JumpCooldown: {d:.3} JumpCoyote: {d:.3}", .{
 			player.onGround,
 			player.jumpCooldown,
 			@max(0, player.getJumpCoyoteBlocking()),
 		}, 0, y, 8);
 		y += 8;
-		draw.print(currentFrame, "Velocity: {d:.1}", .{player.getVelBlocking()}, 0, y, 8);
+		draw.print(currentFrame.guiCommands, currentFrame, "Velocity: {d:.1}", .{player.getVelBlocking()}, 0, y, 8);
 		y += 8;
-		draw.print(currentFrame, "EyePos: {d:.1} EyeVelocity: {d:.1} EyeCoyote: {d:.3}", .{player.getEyePosBlocking(), player.getEyeVelBlocking(), @max(0, player.getEyeCoyoteBlocking())}, 0, y, 8);
+		draw.print(currentFrame.guiCommands, currentFrame, "EyePos: {d:.1} EyeVelocity: {d:.1} EyeCoyote: {d:.3}", .{player.getEyePosBlocking(), player.getEyeVelBlocking(), @max(0, player.getEyeCoyoteBlocking())}, 0, y, 8);
 		y += 8;
-		draw.print(currentFrame, "Game Time: {} Day Phase: {}", .{main.game.world.?.gameTime.load(.monotonic), main.game.world.?.dayTime.dayPhase}, 0, y, 8);
+		draw.print(currentFrame.guiCommands, currentFrame, "Game Time: {} Day Phase: {}", .{main.game.world.?.gameTime.load(.monotonic), main.game.world.?.dayTime.dayPhase}, 0, y, 8);
 		y += 8;
-		draw.print(currentFrame, "Queue size: {}", .{main.threadPool.queueSize()}, 0, y, 8);
+		draw.print(currentFrame.guiCommands, currentFrame, "Queue size: {}", .{main.threadPool.queueSize()}, 0, y, 8);
 		y += 8;
 		const perf = main.threadPool.performance.read();
 		const values = comptime std.enums.values(TaskType);
@@ -78,23 +78,23 @@ pub fn render(currentFrame: *graphics.vulkan.Frame) void {
 			const i = @backingInt(t);
 			const taskTime = @divFloor(perf.utime[i], @max(1, perf.tasks[i]));
 			const relativeTime = 100.0*@as(f32, @floatFromInt(perf.utime[i]))/@as(f32, @floatFromInt(totalUtime));
-			draw.print(currentFrame, "    {s}: {} µs/task ({d:.1}%)", .{name, taskTime, relativeTime}, 0, y, 8);
+			draw.print(currentFrame.guiCommands, currentFrame, "    {s}: {} µs/task ({d:.1}%)", .{name, taskTime, relativeTime}, 0, y, 8);
 			y += 8;
 		}
-		draw.print(currentFrame, "Mesh Queue size: {}", .{main.renderer.mesh_storage.updatableList.items.len}, 0, y, 8);
+		draw.print(currentFrame.guiCommands, currentFrame, "Mesh Queue size: {}", .{main.renderer.mesh_storage.updatableList.items.len}, 0, y, 8);
 		y += 8;
 		for (0..main.settings.highestLod + 1) |lod| {
 			const faceDataSize: usize = @sizeOf(main.renderer.chunk_meshing.FaceData);
 			const size: usize = main.renderer.chunk_meshing.faceBuffers[lod].capacity*faceDataSize;
 			const used: usize = main.renderer.chunk_meshing.faceBuffers[lod].used*faceDataSize;
-			draw.print(currentFrame, "ChunkMesh memory LOD{}: {} MiB / {} MiB", .{lod, used >> 20, size >> 20}, 0, y, 8);
+			draw.print(currentFrame.guiCommands, currentFrame, "ChunkMesh memory LOD{}: {} MiB / {} MiB", .{lod, used >> 20, size >> 20}, 0, y, 8);
 			y += 8;
 		}
 		for (0..main.settings.highestLod + 1) |lod| {
 			const lightDataSize: usize = @sizeOf(u32);
 			const size: usize = main.renderer.chunk_meshing.lightBuffers[lod].capacity*lightDataSize;
 			const used: usize = main.renderer.chunk_meshing.lightBuffers[lod].used*lightDataSize;
-			draw.print(currentFrame, "Light memory LOD{}: {} MiB / {} MiB", .{lod, used >> 20, size >> 20}, 0, y, 8);
+			draw.print(currentFrame.guiCommands, currentFrame, "Light memory LOD{}: {} MiB / {} MiB", .{lod, used >> 20, size >> 20}, 0, y, 8);
 			y += 8;
 		}
 		{
@@ -107,16 +107,16 @@ pub fn render(currentFrame: *graphics.vulkan.Frame) void {
 					tags.appendSlice(name);
 				}
 			}
-			draw.print(currentFrame, "Biome: {s}", .{biome.id}, 0, y, 8);
+			draw.print(currentFrame.guiCommands, currentFrame, "Biome: {s}", .{biome.id}, 0, y, 8);
 			y += 8;
-			draw.print(currentFrame, "Biome Climate: {s}", .{tags.items}, 0, y, 8);
+			draw.print(currentFrame.guiCommands, currentFrame, "Biome Climate: {s}", .{tags.items}, 0, y, 8);
 			y += 8;
 		}
-		draw.print(currentFrame, "Opaque faces: {}, Transparent faces: {}", .{main.renderer.chunk_meshing.quadsDrawn, main.renderer.chunk_meshing.transparentQuadsDrawn}, 0, y, 8);
+		draw.print(currentFrame.guiCommands, currentFrame, "Opaque faces: {}, Transparent faces: {}", .{main.renderer.chunk_meshing.quadsDrawn, main.renderer.chunk_meshing.transparentQuadsDrawn}, 0, y, 8);
 		y += 8;
-		draw.print(currentFrame, "Particle count: {}/{}", .{main.particles.particle_system.getParticleCount(), main.particles.particle_system.maxCapacity}, 0, y, 8);
+		draw.print(currentFrame.guiCommands, currentFrame, "Particle count: {}/{}", .{main.particles.particle_system.getParticleCount(), main.particles.particle_system.maxCapacity}, 0, y, 8);
 		y += 8;
-		draw.print(currentFrame, "items: {} entities: {}", .{main.game.world.?.itemDrops.super.size, main.client.entity_manager.entities.len}, 0, y, 8);
+		draw.print(currentFrame.guiCommands, currentFrame, "items: {} entities: {}", .{main.game.world.?.itemDrops.super.size, main.client.entity_manager.entities.len}, 0, y, 8);
 		y += 8;
 	}
 }

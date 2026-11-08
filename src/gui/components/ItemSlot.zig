@@ -139,7 +139,7 @@ pub fn render(self: *ItemSlot, currentFrame: *graphics.vulkan.Frame, _: Vec2f) v
 		item.render(currentFrame, self.pos, self.size, border);
 		const shouldRenderStackSizeText = item.stackSize() > 1 and self.inventory.type != .creative;
 		if (shouldRenderStackSizeText) {
-			self.text.render(currentFrame, self.pos[0] + self.size[0] - self.textSize[0] - border, self.pos[1] + self.size[1] - self.textSize[1] - border, 8);
+			self.text.render(currentFrame.guiCommands, currentFrame, self.pos[0] + self.size[0] - self.textSize[0] - border, self.pos[1] + self.size[1] - self.textSize[1] - border, 8);
 		}
 	}
 	if (self.mode != .immutable) {

@@ -101,9 +101,9 @@ pub fn render(currentFrame: *graphics.vulkan.Frame) void {
 	inline for (0..queryObjects[curBuffer].len) |i| {
 		var result: u32 = undefined;
 		c.glGetQueryObjectuiv(queryObjects[curBuffer][i], c.GL_QUERY_RESULT, &result);
-		draw.print(currentFrame, "{s}: {} µs", .{names[i], @divTrunc(result, 1000)}, 0, y, 8);
+		draw.print(currentFrame.guiCommands, currentFrame, "{s}: {} µs", .{names[i], @divTrunc(result, 1000)}, 0, y, 8);
 		sum += result;
 		y += 8;
 	}
-	draw.print(currentFrame, "Total: {} µs", .{@divTrunc(sum, 1000)}, 0, 0, 8);
+	draw.print(currentFrame.guiCommands, currentFrame, "Total: {} µs", .{@divTrunc(sum, 1000)}, 0, 0, 8);
 }

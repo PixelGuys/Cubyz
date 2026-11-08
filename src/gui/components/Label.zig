@@ -49,5 +49,5 @@ pub fn updateText(self: *Label, newText: []const u8) void {
 pub fn render(self: *Label, currentFrame: *graphics.vulkan.Frame, _: Vec2f) void {
 	const oldColor = draw.setColor(@as(u32, @trunc(self.alpha*255)) << 24 | 0xffffff);
 	defer draw.restoreColor(oldColor);
-	self.text.render(currentFrame, self.pos[0], self.pos[1], fontSize);
+	self.text.render(currentFrame.guiCommands, currentFrame, self.pos[0], self.pos[1], fontSize);
 }
