@@ -64,7 +64,7 @@ fn invertMouseYCallback(newValue: bool) void {
 	main.settings.save();
 }
 fn sprintIsToggleCallback(newValue: bool) void {
-	main.KeyBoard.setIsToggling("sprint", newValue);
+	main.keyboard.setIsToggling("sprint", newValue);
 	main.settings.save();
 }
 
@@ -92,14 +92,18 @@ fn toggleKeyboard() void {
 }
 
 fn unbindKey(keyPtr: usize) void {
-	var key: ?*main.Window.Key = @ptrFromInt(keyPtr);
+	var key: *main.Window.Key = @ptrFromInt(keyPtr);
+	key.value = 0;
+	if (key.pressed and key.pressAction != null) {
+		key.releaseAction.?(.{});
+	}
 	if (editingKeyboard) {
-		key.?.key = c.GLFW_KEY_UNKNOWN;
-		key.?.mouseButton = -1;
-		key.?.scancode = 0;
+		key.key = c.GLFW_KEY_UNKNOWN;
+		key.mouseButton = -1;
+		key.scancode = 0;
 	} else {
-		key.?.gamepadAxis = null;
-		key.?.gamepadButton = -1;
+		key.gamepadAxis = null;
+		key.gamepadButton = -1;
 	}
 	needsUpdate = true;
 }
@@ -113,12 +117,12 @@ fn initWindow() void {
 	list.add(Button.initText(.{0, 0}, keybindButtonWidth, if (editingKeyboard) "Gamepad" else "Keyboard", .{.onAction = .init(toggleKeyboard)}));
 	list.add(ContinuousSlider.init(.{0, 0}, controlsListWidth, 0, 5, if (editingKeyboard) main.settings.mouseSensitivity else main.settings.controllerSensitivity, &updateSensitivity, &sensitivityFormatter));
 	list.add(CheckBox.init(.{0, 0}, controlsListWidth, "Invert mouse Y", main.settings.invertMouseY, &invertMouseYCallback));
-	list.add(CheckBox.init(.{0, 0}, controlsListWidth, "Toggle sprint", main.KeyBoard.key("sprint").isToggling == .yes, &sprintIsToggleCallback));
+	list.add(CheckBox.init(.{0, 0}, controlsListWidth, "Toggle sprint", main.keyboard.key("sprint").isToggling == .yes, &sprintIsToggleCallback));
 
 	if (!editingKeyboard) {
 		list.add(ContinuousSlider.init(.{0, 0}, controlsListWidth, 0, 1, main.settings.controllerAxisDeadzone, &updateDeadzone, &deadzoneFormatter));
 	}
-	for (&main.KeyBoard.keys) |*key| {
+	for (&main.keyboard.keys) |*key| {
 		const label = Label.init(.{0, 0}, keybindButtonWidth, key.name, .left);
 		const button = blk: {
 			if (key == selectedKey) {
@@ -130,7 +134,7 @@ fn initWindow() void {
 			}
 		};
 
-		const unbindBtn = Button.initText(.{16, 0}, unbindButtonWidth, "Unbind", .{.onAction = .initWithPtr(unbindKey, key)});
+		const unbindBtn = Button.initText(.{16, 0}, unbindButtonWidth, "Unbind", .{.onAction = .initWithPtr(unbindKey, key), .disabled = std.mem.eql(u8, key.name, "mainGuiButton")});
 		const row = HorizontalList.init();
 		row.add(label);
 		row.add(button);
@@ -160,7 +164,7 @@ pub fn onClose() void {
 	deinitWindow();
 }
 
-pub fn render() void {
+pub fn render(_: *main.graphics.vulkan.Frame) void {
 	if (needsUpdate) {
 		needsUpdate = false;
 		const oldScroll = window.rootComponent.?.verticalList.scrollBar.currentState;

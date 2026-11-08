@@ -125,7 +125,7 @@ fn anisotropicFilteringCallback(newValue: u16) void {
 fn resolutionScaleCallback(newValue: u16) void {
 	settings.resolutionScale = std.math.pow(f32, 2.0, @as(f32, @floatFromInt(newValue)) - 2.0);
 	settings.save();
-	main.Window.GLFWCallbacks.framebufferSize(null, main.Window.width, main.Window.height);
+	main.Window.glfw_callbacks.framebufferSize(null, main.Window.width, main.Window.height);
 }
 
 pub fn onOpen() void {

@@ -9,7 +9,7 @@ var running: bool = true;
 
 pub fn update() void {
 	if (!running) return;
-	if (builtin.os.tag == .windows) {
+	if (builtin.target.os.tag == .windows) {
 		std.log.warn("Console per stdin is currently not supported on windows", .{});
 		running = false;
 		return;

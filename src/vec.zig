@@ -20,7 +20,7 @@ pub inline fn swizzle(
 	comptime z: Vec4fComponent,
 	comptime w: Vec4fComponent,
 ) Vec4f {
-	return @shuffle(f32, v, undefined, [4]i32{@intFromEnum(x), @intFromEnum(y), @intFromEnum(z), @intFromEnum(w)});
+	return @shuffle(f32, v, undefined, [4]i32{@backingInt(x), @backingInt(y), @backingInt(z), @backingInt(w)});
 }
 
 pub inline fn combine(pos: Vec3f, w: f32) Vec4f {
@@ -303,7 +303,7 @@ pub const Mat4f = struct { // MARK: Mat4f
 			.rows = [4]Vec4f{
 				Vec4f{1/tanX, 0,                          0,      0},
 				Vec4f{0,      0,                          -1/tanY, 0},
-				Vec4f{0,      -(far + near)/(near - far), 0,      2*near*far/(near - far)},
+				Vec4f{0,      -far/(near - far), 0,      near*far/(near - far)},
 				Vec4f{0,      1,                          0,      0},
 			},
 		};

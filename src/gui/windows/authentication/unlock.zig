@@ -46,7 +46,7 @@ fn apply() void {
 		std.log.warn("Encountered errors while verifying your Account. This may happen if you created your account in a future version, in which case it's fine to continue.\n{s}", .{failureText.items});
 	}
 
-	main.network.authentication.KeyCollection.init(accountCode);
+	main.network.authentication.key_collection.init(accountCode);
 
 	gui.closeWindowFromRef(&window);
 	gui.openWindow("multiplayer");

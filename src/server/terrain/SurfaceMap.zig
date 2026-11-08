@@ -96,7 +96,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 	}
 
 	pub fn deferredDeinit(self: *MapFragment) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
+		main.heap.garbage_collection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	pub fn getBiome(self: *MapFragment, wx: i32, wy: i32) *const Biome {
@@ -153,7 +153,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 			0 => { // TODO: Remove after next breaking change
 				const rawData: []u8 = main.stackAllocator.alloc(u8, mapSize*mapSize*(@sizeOf(u32) + 2*@sizeOf(f32)));
 				defer main.stackAllocator.free(rawData);
-				if (try main.utils.Compression.inflateTo(rawData, fullReader.remaining) != rawData.len) return error.CorruptedFile;
+				if (try main.utils.compression.inflateTo(rawData, fullReader.remaining) != rawData.len) return error.CorruptedFile;
 				const biomeData = rawData[0 .. mapSize*mapSize*@sizeOf(u32)];
 				const heightData = rawData[mapSize*mapSize*@sizeOf(u32) ..][0 .. mapSize*mapSize*@sizeOf(f32)];
 				const originalHeightData = rawData[mapSize*mapSize*(@sizeOf(u32) + @sizeOf(f32)) ..][0 .. mapSize*mapSize*@sizeOf(f32)];
@@ -172,7 +172,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 
 				const rawData: []u8 = main.stackAllocator.alloc(u8, biomeDataSize + heightDataSize + originalHeightDataSize);
 				defer main.stackAllocator.free(rawData);
-				if (try main.utils.Compression.inflateTo(rawData, fullReader.remaining) != rawData.len) return error.CorruptedFile;
+				if (try main.utils.compression.inflateTo(rawData, fullReader.remaining) != rawData.len) return error.CorruptedFile;
 
 				var reader = BinaryReader.init(rawData);
 
@@ -212,7 +212,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 		for (0..mapSize) |x| for (0..mapSize) |y| writer.writeInt(i32, self.heightMap[x][y]);
 		for (0..mapSize) |x| for (0..mapSize) |y| writer.writeInt(i32, (if (originalData) |map| map else &self.heightMap)[x][y]);
 
-		const compressedData = main.utils.Compression.deflate(main.stackAllocator, writer.data.items, .fastest); // Using fast to increase performance of the regenerating map LODs step
+		const compressedData = main.utils.compression.deflate(main.stackAllocator, writer.data.items, .fastest); // Using fast to increase performance of the regenerating map LODs step
 		defer main.stackAllocator.free(compressedData);
 
 		var outputWriter = BinaryWriter.initCapacity(main.stackAllocator, @sizeOf(StorageHeader) + compressedData.len);
@@ -249,10 +249,10 @@ pub const MapGenerator = struct {
 	generateMapFragment: *const fn (fragment: *MapFragment, seed: u64) void,
 
 	const generatorRegistry: std.StaticStringMap(MapGenerator) = .initComptime(blk: {
-		const decls = @typeInfo(map_generators).@"struct".decls;
+		const decls = @typeInfo(map_generators).@"struct".decl_names;
 		var generators: [decls.len]struct { []const u8, MapGenerator } = undefined;
 		for (0..decls.len) |i| {
-			const Generator = @field(map_generators, decls[i].name);
+			const Generator = @field(map_generators, decls[i]);
 			generators[i] = .{Generator.id, .{
 				.init = &Generator.init,
 				.generateMapFragment = &Generator.generateMapFragment,
@@ -389,9 +389,9 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 	// Load all the stored maps and update their next LODs.
 	const interpolationDistance = MapFragment.mapSize/2;
 	for (mapPositions.items) |pos| {
-		main.heap.GarbageCollection.syncPoint();
+		main.heap.garbage_collection.syncPoint();
 		var neighborInfo: MapFragment.NeighborInfo = undefined;
-		inline for (comptime std.meta.fieldNames(MapFragment.NeighborInfo)) |name| {
+		inline for (@typeInfo(MapFragment.NeighborInfo).@"struct".field_names) |name| {
 			var neighborPos = pos;
 			if (name[0] == '+') neighborPos.wx +%= MapFragment.mapSize;
 			if (name[0] == '-') neighborPos.wx -%= MapFragment.mapSize;

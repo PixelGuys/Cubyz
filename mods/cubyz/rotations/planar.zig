@@ -55,13 +55,13 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	};
 	comptime for (1..4) |a| {
 		for (0..4) |i| {
-			const neighbor: Neighbor = @enumFromInt(rotationTable[a - 1][i] + 2);
+			const neighbor: Neighbor = @fromBackingInt(rotationTable[a - 1][i] + 2);
 			rotationTable[a][i] = neighbor.rotateZ().toInt() - 2;
 		}
 	};
 	if (data >= 4) return 0;
 	const runtimeTable = rotationTable;
-	return runtimeTable[@intFromEnum(angle)][data];
+	return runtimeTable[@backingInt(angle)][data];
 }
 
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {

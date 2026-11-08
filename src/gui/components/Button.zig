@@ -15,8 +15,6 @@ const Label = GuiComponent.Label;
 
 const Button = @This();
 
-const border: f32 = 3;
-
 const Textures = struct {
 	texture: Texture,
 	outlineTexture: Texture,
@@ -101,15 +99,21 @@ const Options = struct {
 	onAction: main.callbacks.SimpleCallback = .{},
 	disabled: bool = false,
 	hideBackground: bool = false,
+	border: f32 = 4,
 };
 
 pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *Button {
-	const borderWidth = if (options.hideBackground) 0 else 3*border;
+	const borderWidth = if (options.hideBackground) 0 else 3*options.border;
+	const label = Label.init(undefined, width - borderWidth, text, .center);
+};
+
+pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *Button {
+	const borderWidth = if (options.hideBackground) 0 else 2*options.border;
 	const label = Label.init(undefined, width - borderWidth, text, .center);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
-		.size = Vec2f{width, label.size[1] + 3*border},
+		.size = Vec2f{width, label.size[1] + 2*options.border},
 		.onAction = options.onAction,
 		.child = label.toComponent(),
 		.disabled = options.disabled,
@@ -119,12 +123,11 @@ pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *But
 }
 
 pub fn initIcon(pos: Vec2f, givenIconSize: Vec2f, iconTexture: Texture, options: Options) *Button {
-	const extraIconSize: Vec2f = @as(Vec2f, @splat(if (options.hideBackground) 3*border else 0));
-	const icon = Icon.init(undefined, givenIconSize + extraIconSize, iconTexture);
+	const icon = Icon.init(undefined, givenIconSize + 2*options.border, iconTexture);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
-		.size = givenIconSize + @as(Vec2f, @splat(3*border)),
+		.size = givenIconSize + @as(Vec2f, @splat(2*border)),
 		.onAction = options.onAction,
 		.child = icon.toComponent(),
 		.disabled = options.disabled,
@@ -161,8 +164,8 @@ pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn render(self: *Button, mousePosition: Vec2f) void {
-	if (!self.hideBackground) renderBackground(self, mousePosition);
+pub fn render(self: *Button, currentFrame: *graphics.vulkan.Frame, mousePosition: Vec2f) void {
+	if (!self.hideBackground) renderBackground(self, currentFrame, mousePosition);
 
 	const oldColor = draw.setColor(if (self.disabled) 0xff808080 else 0xffffffff);
 	defer draw.restoreColor(oldColor);
@@ -171,7 +174,7 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 	self.child.render(mousePosition - self.pos);
 }
 
-fn renderBackground(self: *Button, mousePosition: Vec2f) void {
+fn renderBackground(self: *Button, currentFrame: *graphics.vulkan.Frame, mousePosition: Vec2f) void {
 	const textures = blk: {
 		if (self.disabled) break :blk disabledTextures;
 		if (self.pressed) break :blk pressedTextures;
@@ -181,12 +184,12 @@ fn renderBackground(self: *Button, mousePosition: Vec2f) void {
 		break :blk normalTextures;
 	};
 	{
-		if (main.settings.launchConfig.vulkanTestingMode and textures.texture.vulkanImage != null) {
-			graphics.vulkan.currentFrame.guiCommands.bindPipeline(pipeline, graphics.draw.getScissor());
-			graphics.vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
+		if (main.settings.launch_config.vulkanTestingMode and textures.texture.vulkanImage != null) {
+			currentFrame.guiCommands.bindPipeline(currentFrame, pipeline, graphics.draw.getScissor());
+			currentFrame.guiCommands.bindDescriptors(pipeline, &.{
 				.{.image = .{.binding = 0, .image = textures.texture.vulkanImage.?}},
 			});
-			draw.customShadedRect(@as(ButtonUniforms, undefined), pipeline, self.pos + Vec2f{2, 2}, self.size - Vec2f{4, 4});
+			draw.customShadedRect(currentFrame, @as(ButtonUniforms, undefined), pipeline, self.pos + Vec2f{2, 2}, self.size - Vec2f{4, 4});
 		} else {
 			textures.texture.bindTo(0);
 			pipeline.bind(draw.getScissor());
@@ -197,5 +200,5 @@ fn renderBackground(self: *Button, mousePosition: Vec2f) void {
 
 	const cornerSize = (textures.outlineTextureSize - Vec2f{1, 1})/Vec2f{2, 2};
 
-	graphics.draw.nineSliceImage(textures.outlineTexture, self.pos, self.size, textures.outlineTextureSize, cornerSize, 2);
+	graphics.draw.nineSliceImage(currentFrame, textures.outlineTexture, self.pos, self.size, textures.outlineTextureSize, cornerSize, 2);
 }

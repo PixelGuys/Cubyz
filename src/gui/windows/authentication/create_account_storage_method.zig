@@ -25,16 +25,16 @@ const padding: f32 = 8;
 
 fn next(storageMethod: usize) void {
 	gui.closeWindowFromRef(&window);
-	gui.windowlist.@"authentication/create_account_account_code".setStorageMethod(@enumFromInt(storageMethod));
+	gui.windowlist.@"authentication/create_account_account_code".setStorageMethod(@fromBackingInt(storageMethod));
 	gui.openWindow("authentication/create_account_account_code");
 }
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(Label.init(.{0, 0}, 300, "Please select how you would like to store your Account Code", .left));
-	list.add(Button.initText(.{0, 0}, 300, "Save as file", .{.onAction = .initWithInt(next, @intFromEnum(StorageMethod.file))}));
-	list.add(Button.initText(.{0, 0}, 300, "Password Manager (recommended)", .{.onAction = .initWithInt(next, @intFromEnum(StorageMethod.passwordManager))}));
-	list.add(Button.initText(.{0, 0}, 300, "Write it down yourself", .{.onAction = .initWithInt(next, @intFromEnum(StorageMethod.paper))}));
+	list.add(Button.initText(.{0, 0}, 300, "Save as file", .{.onAction = .initWithInt(next, @backingInt(StorageMethod.file))}));
+	list.add(Button.initText(.{0, 0}, 300, "Password Manager (recommended)", .{.onAction = .initWithInt(next, @backingInt(StorageMethod.passwordManager))}));
+	list.add(Button.initText(.{0, 0}, 300, "Write it down yourself", .{.onAction = .initWithInt(next, @backingInt(StorageMethod.paper))}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

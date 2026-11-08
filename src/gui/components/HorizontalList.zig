@@ -89,10 +89,10 @@ pub fn updateHovered(self: *HorizontalList, mousePosition: Vec2f) main.callbacks
 	return .ignored;
 }
 
-pub fn render(self: *HorizontalList, mousePosition: Vec2f) void {
+pub fn render(self: *HorizontalList, currentFrame: *graphics.vulkan.Frame, mousePosition: Vec2f) void {
 	const oldTranslation = draw.setTranslation(self.pos);
 	for (self.children.items) |*child| {
-		child.render(mousePosition - self.pos);
+		child.render(currentFrame, mousePosition - self.pos);
 	}
 	draw.restoreTranslation(oldTranslation);
 }

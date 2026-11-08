@@ -160,7 +160,7 @@ pub const User = struct { // MARK: User
 		self.* = .{};
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.@"continue"();
-		network.protocols.handShake.serverSide(self.conn);
+		network.protocols.handshake.serverSide(self.conn);
 		return self;
 	}
 	pub fn @"continue"(self: *User) void {
@@ -192,8 +192,8 @@ pub const User = struct { // MARK: User
 			};
 		}
 
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(pause)});
+		main.heap.garbage_collection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
+		main.heap.garbage_collection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(pause)});
 	}
 	pub fn pause(self: *User) void {
 		self.state = switch (self.state) {
@@ -238,12 +238,12 @@ pub const User = struct { // MARK: User
 		self.name = main.globalAllocator.dupe(u8, name);
 		var allowedToJoin = !whitelistEnabled;
 		{
-			const keyBase64 = keys.get([]const u8, @tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm)) orelse return error.PublicKeyNotPresent;
-			self.key = try .initFromBase64(keyBase64, main.settings.launchConfig.preferredAuthenticationAlgorithm);
-			self.newKeyString = main.globalAllocator.print("{s}:{s}", .{@tagName(main.settings.launchConfig.preferredAuthenticationAlgorithm), keyBase64});
+			const keyBase64 = keys.get([]const u8, @tagName(main.settings.launch_config.preferredAuthenticationAlgorithm)) orelse return error.PublicKeyNotPresent;
+			self.key = try .initFromBase64(keyBase64, main.settings.launch_config.preferredAuthenticationAlgorithm);
+			self.newKeyString = main.globalAllocator.print("{s}:{s}", .{@tagName(main.settings.launch_config.preferredAuthenticationAlgorithm), keyBase64});
 		}
 		var foundKey: bool = false;
-		for (std.meta.fieldNames(main.network.authentication.KeyTypeEnum)) |keyTypeName| {
+		for (@typeInfo(main.network.authentication.KeyTypeEnum).@"enum".field_names) |keyTypeName| {
 			const keyBase64 = keys.get([]const u8, keyTypeName) orelse continue;
 			const keyWithType = main.stackAllocator.print("{s}:{s}", .{keyTypeName, keyBase64});
 			defer main.stackAllocator.free(keyWithType);
@@ -293,7 +293,7 @@ pub const User = struct { // MARK: User
 
 	var freeId: u32 = 0; // TODO: Use id provided by the ECS.
 	pub fn initPlayer(self: *User) void {
-		self.id = @enumFromInt(freeId);
+		self.id = @fromBackingInt(freeId);
 		freeId += 1;
 
 		world.?.loadPlayer(self) catch {
@@ -394,7 +394,7 @@ pub const User = struct { // MARK: User
 		if (vec.lengthSquare(@as(@Vector(3, i64), self.jobQueueLastUpdate.position -% self.lastPos)) > 32*32) {
 			const startTime = main.timestamp();
 			if (self.jobQueueLastUpdate.time.durationTo(startTime).toMilliseconds() > 100 and !self.jobQueueLastUpdate.alreadyInUpdate) {
-				const ResortTaskTask = struct { // MARK: ResortTaskTask
+				const resort_task_task = struct { // MARK: resort_task_task
 					const vtable = utils.ThreadPool.VTable{
 						.getPriority = &getPriority,
 						.isStillNeeded = &isStillNeeded,
@@ -441,7 +441,7 @@ pub const User = struct { // MARK: User
 				return .{
 					.{
 						.cachedPriority = undefined,
-						.vtable = &ResortTaskTask.vtable,
+						.vtable = &resort_task_task.vtable,
 						.self = self,
 					},
 					.hasMoreTasks,
@@ -706,7 +706,7 @@ fn update() void { // MARK: update()
 		});
 	}
 	for (userList) |user| {
-		main.network.protocols.entityPosition.send(user.conn, user.player().pos, entityData.items, itemData);
+		main.network.protocols.entity_position.send(user.conn, user.player().pos, entityData.items, itemData);
 	}
 
 	for (userList) |user| {
@@ -714,7 +714,7 @@ fn update() void { // MARK: update()
 		const biomeId = world.?.getBiome(pos[0], pos[1], pos[2]).paletteId;
 		if (biomeId != user.lastSentBiomeId) {
 			user.lastSentBiomeId = biomeId;
-			main.network.protocols.genericUpdate.sendBiome(user.conn, biomeId);
+			main.network.protocols.generic_update.sendBiome(user.conn, biomeId);
 		}
 	}
 
@@ -773,7 +773,7 @@ pub fn startFromExistingThread(name: []const u8, port: ?u16, mode: ServerWorld.M
 
 		running.store(true, .release);
 		while (running.load(.monotonic)) {
-			main.heap.GarbageCollection.syncPoint();
+			main.heap.garbage_collection.syncPoint();
 			const newTime = main.timestamp();
 			if (lastTime.durationTo(newTime).nanoseconds < updateTime.nanoseconds) {
 				main.io.sleep(newTime.durationTo(lastTime.addDuration(updateTime)), .awake) catch {};
@@ -825,7 +825,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	// Let the other clients know about that this new one left.
 	const zonArray = main.ZonElement.initArray(main.stackAllocator);
 	defer zonArray.deinit(main.stackAllocator);
-	zonArray.array.append(.{.int = @intFromEnum(user.id)});
+	zonArray.array.append(.{.int = @backingInt(user.id)});
 	const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 	defer main.stackAllocator.free(data);
 	const userList = getUserList(main.stackAllocator);
@@ -841,7 +841,7 @@ pub fn connect(user: *User) void {
 
 pub fn connectInternal(user: *User) void {
 	user.initPlayer();
-	main.network.protocols.handShake.sendServerPlayerData(user.conn);
+	main.network.protocols.handshake.sendServerPlayerData(user.conn);
 	user.conn.handShakeState.store(.complete, .monotonic);
 
 	// TODO: addEntity(player);
