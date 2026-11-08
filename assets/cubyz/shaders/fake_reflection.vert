@@ -4,9 +4,24 @@ layout(location = 0) in vec2 inTexCoords;
 
 layout(location = 0) out vec3 coords;
 
+#ifdef OPEN_GL
 layout(location = 0) uniform float reflectionMapSize;
+#else
+layout(push_constant, std430) uniform _ {
+	float reflectionMapSize;
+	vec3 normalVector;
+	vec3 upVector;
+	vec3 rightVector;
+	float frequency;
+};
+#endif
 
 void main() {
-	coords = vec3((inTexCoords*2 - vec2(1, 1))*(reflectionMapSize + 1)/reflectionMapSize, 1);
-	gl_Position = vec4(inTexCoords*2 - vec2(1, 1), 0, 1);
+#ifdef OPEN_GL
+	vec2 texCoords = vec2(inTexCoords.x, 1 - inTexCoords.y);
+	coords = vec3((texCoords*2 + vec2(-1, -1))*(reflectionMapSize + 1)/reflectionMapSize, 1);
+#else
+	coords = vec3((inTexCoords*2 + vec2(-1, -1))*(reflectionMapSize + 1)/reflectionMapSize, 1);
+#endif
+	gl_Position = vec4(inTexCoords*2 + vec2(-1, -1), 0, 1);
 }

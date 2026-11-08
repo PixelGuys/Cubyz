@@ -6,6 +6,7 @@ layout (std140, binding = 31) uniform _frameData
 {
 	mat4 projectionMatrix;
 	mat4 viewMatrix;
+	mat4 projectionAndViewMatrix;
 	ivec3 playerPositionInteger;
 	vec3 playerPositionFraction;
 };

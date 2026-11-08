@@ -1,0 +1,9 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:rock/chalk_amber_deposit/0"},
+		.{.id = "cubyz:rock/chalk_amber_deposit/1"},
+		.{.id = "cubyz:rock/chalk_amber_deposit/2"},
+		.{.id = "cubyz:rock/chalk_amber_deposit/3"},
+		.{.id = "cubyz:rock/chalk_amber_deposit/4"},
+	},
+}

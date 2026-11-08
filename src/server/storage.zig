@@ -250,7 +250,7 @@ pub fn loadRegionFileAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u
 	return result;
 }
 
-pub const ChunkCompression = struct { // MARK: ChunkCompression
+pub const chunk_compression = struct { // MARK: chunk_compression
 	const ChunkCompressionAlgo = enum(u32) {
 		deflate_with_position_no_block_entities = 0,
 		deflate_no_block_entities = 1,
@@ -318,7 +318,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 					}
 				}
 			}
-			const compressedData = main.utils.Compression.deflate(main.stackAllocator, &uncompressedData, .default);
+			const compressedData = main.utils.compression.deflate(main.stackAllocator, &uncompressedData, .default);
 			defer main.stackAllocator.free(compressedData);
 
 			writer.writeEnum(ChunkCompressionAlgo, .deflate_with_8bit_palette);
@@ -337,7 +337,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		for (0..chunk.chunkVolume) |i| {
 			uncompressedWriter.writeInt(u32, ch.data.getValue(i).toInt());
 		}
-		const compressedData = main.utils.Compression.deflate(main.stackAllocator, uncompressedWriter.data.items, .default);
+		const compressedData = main.utils.compression.deflate(main.stackAllocator, uncompressedWriter.data.items, .default);
 		defer main.stackAllocator.free(compressedData);
 
 		writer.writeEnum(ChunkCompressionAlgo, .deflate);
@@ -358,7 +358,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 
 				const compressedDataLen = if (compressionAlgorithm == .deflate) try reader.readVarInt(usize) else reader.remaining.len;
 				const compressedData = try reader.readSlice(compressedDataLen);
-				const decompressedLength = try main.utils.Compression.inflateTo(decompressedData, compressedData);
+				const decompressedLength = try main.utils.compression.inflateTo(decompressedData, compressedData);
 				if (decompressedLength != chunk.chunkVolume*@sizeOf(u32)) return error.corrupted;
 
 				var decompressedReader = BinaryReader.init(decompressedData);
@@ -383,7 +383,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 				const compressedDataLen = if (compressionAlgorithm == .deflate_with_8bit_palette) try reader.readVarInt(usize) else reader.remaining.len;
 				const compressedData = try reader.readSlice(compressedDataLen);
 
-				const decompressedLength = try main.utils.Compression.inflateTo(decompressedData, compressedData);
+				const decompressedLength = try main.utils.compression.inflateTo(decompressedData, compressedData);
 				if (decompressedLength != chunk.chunkVolume) return error.corrupted;
 
 				for (0..chunk.chunkVolume) |i| {

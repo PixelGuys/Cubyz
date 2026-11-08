@@ -24,23 +24,23 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 	dirNegY = 5,
 
 	pub inline fn toInt(self: Neighbor) u3 {
-		return @intFromEnum(self);
+		return @backingInt(self);
 	}
 
 	/// Index to relative position
 	pub fn relX(self: Neighbor) i32 {
 		const arr = [_]i32{0, 0, 1, -1, 0, 0};
-		return arr[@intFromEnum(self)];
+		return arr[@backingInt(self)];
 	}
 	/// Index to relative position
 	pub fn relY(self: Neighbor) i32 {
 		const arr = [_]i32{0, 0, 0, 0, 1, -1};
-		return arr[@intFromEnum(self)];
+		return arr[@backingInt(self)];
 	}
 	/// Index to relative position
 	pub fn relZ(self: Neighbor) i32 {
 		const arr = [_]i32{1, -1, 0, 0, 0, 0};
-		return arr[@intFromEnum(self)];
+		return arr[@backingInt(self)];
 	}
 	/// Index to relative position
 	pub fn relPos(self: Neighbor) Vec3i {
@@ -68,10 +68,10 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 
 	/// Index to bitMask for bitmap direction data
 	pub inline fn bitMask(self: Neighbor) u6 {
-		return @as(u6, 1) << @intFromEnum(self);
+		return @as(u6, 1) << @backingInt(self);
 	}
 	/// To iterate over all neighbors easily
-	pub const iterable = [_]Neighbor{@enumFromInt(0), @enumFromInt(1), @enumFromInt(2), @enumFromInt(3), @enumFromInt(4), @enumFromInt(5)};
+	pub const iterable = [_]Neighbor{@fromBackingInt(0), @fromBackingInt(1), @fromBackingInt(2), @fromBackingInt(3), @fromBackingInt(4), @fromBackingInt(5)};
 	/// Marks the two dimension that are orthogonal
 	pub fn orthogonalComponents(self: Neighbor) Vec3i {
 		const arr = [_]Vec3i{
@@ -82,7 +82,7 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 			.{1, 0, 1},
 			.{1, 0, 1},
 		};
-		return arr[@intFromEnum(self)];
+		return arr[@backingInt(self)];
 	}
 	pub fn textureX(self: Neighbor) Vec3i {
 		const arr = [_]Vec3i{
@@ -93,7 +93,7 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 			.{-1, 0, 0},
 			.{1, 0, 0},
 		};
-		return arr[@intFromEnum(self)];
+		return arr[@backingInt(self)];
 	}
 	pub fn textureY(self: Neighbor) Vec3i {
 		const arr = [_]Vec3i{
@@ -104,26 +104,26 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 			.{0, 0, 1},
 			.{0, 0, 1},
 		};
-		return arr[@intFromEnum(self)];
+		return arr[@backingInt(self)];
 	}
 
 	pub inline fn reverse(self: Neighbor) Neighbor {
-		return @enumFromInt(@intFromEnum(self) ^ 1);
+		return @fromBackingInt(@backingInt(self) ^ 1);
 	}
 
 	pub inline fn isPositive(self: Neighbor) bool {
-		return @intFromEnum(self) & 1 == 0;
+		return @backingInt(self) & 1 == 0;
 	}
 	const VectorComponentEnum = enum(u2) { x = 0, y = 1, z = 2 };
 	pub fn vectorComponent(self: Neighbor) VectorComponentEnum {
 		const arr = [_]VectorComponentEnum{.z, .z, .x, .x, .y, .y};
-		return arr[@intFromEnum(self)];
+		return arr[@backingInt(self)];
 	}
 
 	pub fn extractDirectionComponent(self: Neighbor, in: anytype) @TypeOf(in[0]) {
 		switch (self) {
 			inline else => |val| {
-				return in[@intFromEnum(comptime val.vectorComponent())];
+				return in[@backingInt(comptime val.vectorComponent())];
 			},
 		}
 	}
@@ -131,7 +131,7 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 	// Returns the neighbor that is rotated by 90 degrees counterclockwise around the z axis.
 	pub inline fn rotateZ(self: Neighbor) Neighbor {
 		const arr = [_]Neighbor{.dirUp, .dirDown, .dirPosY, .dirNegY, .dirNegX, .dirPosX};
-		return arr[@intFromEnum(self)];
+		return arr[@backingInt(self)];
 	}
 };
 
@@ -146,27 +146,27 @@ pub const Lod = enum(u5) {
 	@"16" = 4,
 	@"32" = 5,
 
-	const min: Lod = @enumFromInt(@typeInfo(Lod).@"enum".fields[0].value);
+	const min: Lod = @fromBackingInt(@typeInfo(Lod).@"enum".field_values[0]);
 	const max: Lod = blk: {
-		const fields = @typeInfo(Lod).@"enum".fields;
-		const maxValue = fields[fields.len - 1].value;
-		break :blk @enumFromInt(maxValue);
+		const fields = @typeInfo(Lod).@"enum".field_values;
+		const maxValue = fields[fields.len - 1];
+		break :blk @fromBackingInt(maxValue);
 	};
 
 	pub inline fn next(self: Lod) Lod {
-		return @enumFromInt(@intFromEnum(self) + 1);
+		return @fromBackingInt(@backingInt(self) + 1);
 	}
 
 	pub inline fn previous(self: Lod) Lod {
-		return @enumFromInt(@intFromEnum(self) - 1);
+		return @fromBackingInt(@backingInt(self) - 1);
 	}
 
 	pub inline fn toInt(self: Lod) @typeInfo(Lod).@"enum".tag_type {
-		return @intFromEnum(self);
+		return @backingInt(self);
 	}
 
 	pub inline fn voxelSize(self: Lod) u31 {
-		return 1 << @intFromEnum(self);
+		return 1 << @backingInt(self);
 	}
 
 	pub inline fn chunkWidth(self: Lod) u31 {
@@ -730,7 +730,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 			const regionMask: i32 = regionSize - 1;
 			const region = main.server.storage.loadRegionFileAndIncreaseRefCount(pos.wx & ~regionMask, pos.wy & ~regionMask, pos.wz & ~regionMask, pos.voxelSize);
 			defer region.decreaseRefCount();
-			const data = main.server.storage.ChunkCompression.storeChunk(main.stackAllocator, &self.super, .toDisk, false);
+			const data = main.server.storage.chunk_compression.storeChunk(main.stackAllocator, &self.super, .toDisk, false);
 			defer main.stackAllocator.free(data);
 			region.storeChunk(
 				data,

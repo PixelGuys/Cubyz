@@ -59,7 +59,7 @@ pub fn openWorld(name: []const u8) void {
 
 	while (!main.server.running.load(.acquire)) {
 		main.io.sleep(.fromMilliseconds(1), .awake) catch {};
-		main.heap.GarbageCollection.syncPoint();
+		main.heap.garbage_collection.syncPoint();
 	}
 	const ipPort = main.stackAllocator.print("127.0.0.1:{}", .{main.server.connectionManager.localPort});
 	defer main.stackAllocator.free(ipPort);

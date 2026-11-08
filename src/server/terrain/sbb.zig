@@ -35,7 +35,7 @@ pub const BlueprintIndex = enum(u32) {
 		return blueprintMap.get(_id);
 	}
 	pub fn get(self: BlueprintIndex) [4]BlueprintEntry {
-		return blueprintList.items[@intFromEnum(self)];
+		return blueprintList.items[@backingInt(self)];
 	}
 };
 
@@ -46,7 +46,7 @@ pub const StructureIndex = enum(u32) {
 		return structureMap.get(_id);
 	}
 	pub fn get(self: StructureIndex) *StructureBuildingBlock {
-		return &structureList.items[@intFromEnum(self)];
+		return &structureList.items[@backingInt(self)];
 	}
 };
 
@@ -55,7 +55,7 @@ pub const LocalBlockIndex = enum(u16) {
 	_,
 
 	pub fn name(self: LocalBlockIndex) []const u8 {
-		return childBlockName.items[@intFromEnum(self)];
+		return childBlockName.items[@backingInt(self)];
 	}
 	pub fn fromName(_name: []const u8) ?LocalBlockIndex {
 		return childBlockNameToLocalIndex.get(_name) orelse return null;
@@ -81,7 +81,7 @@ const BlueprintEntry = struct {
 		data: u16,
 
 		pub inline fn direction(self: StructureBlock) Neighbor {
-			return @enumFromInt(self.data);
+			return @fromBackingInt(@intCast(self.data));
 		}
 
 		pub inline fn pos(self: StructureBlock) Vec3i {
@@ -175,7 +175,7 @@ pub const Rotation = union(RotationMode) {
 
 	pub fn apply(self: Rotation, rotation: FixedRotation) Rotation {
 		return .{.fixed = switch (self) {
-			.fixed => |fixed| @enumFromInt(@intFromEnum(rotation) +% @intFromEnum(fixed)),
+			.fixed => |fixed| @fromBackingInt(@backingInt(rotation) +% @backingInt(fixed)),
 			.random, .inherit => rotation,
 		}};
 	}
@@ -187,7 +187,7 @@ pub const Rotation = union(RotationMode) {
 		};
 	}
 	fn sampleRandom(seed: *u64) Rotation {
-		return .{.fixed = @enumFromInt(main.random.nextInt(u2, seed))};
+		return .{.fixed = @fromBackingInt(main.random.nextInt(u2, seed))};
 	}
 	pub fn getChildRotation(self: Rotation, seed: *u64, child: Rotation, direction: Neighbor) Rotation {
 		return switch (direction) {
@@ -214,8 +214,8 @@ pub const Rotation = union(RotationMode) {
 				}
 				return error.UnknownString;
 			},
-			.int => |value| .{.fixed = @enumFromInt(@abs(@divTrunc(value, 90))%4)},
-			.float => |value| .{.fixed = @enumFromInt(@abs(@as(u64, @trunc(value/90.0)))%4)},
+			.int => |value| .{.fixed = @fromBackingInt(@intCast(@abs(@divTrunc(value, 90))%4))},
+			.float => |value| .{.fixed = @fromBackingInt(@intCast(@abs(@as(u64, @trunc(value/90.0)))%4))},
 			.null => Rotation.random,
 			else => return error.UnknownType,
 		};
@@ -293,7 +293,7 @@ pub const StructureBuildingBlock = struct { // MARK: StructureBuildingBlock
 				while (childrenDictIterator.next()) |entry| {
 					if (LocalBlockIndex.fromName(entry.key_ptr.*)) |localIndex| {
 						switch (entry.value_ptr.*) {
-							.string, .stringOwned => |_id| childrenToResolve.append(.{.structureId = _id, .structure = &self.children[@intFromEnum(localIndex)]}),
+							.string, .stringOwned => |_id| childrenToResolve.append(.{.structureId = _id, .structure = &self.children[@backingInt(localIndex)]}),
 							.null => std.log.err("['{s}'] Child '{s}' ID can not be null. Leave child key undefined if it is not used by blueprints.", .{stringId, localIndex.name()}),
 							else => |e| std.log.err("['{s}'->'{s}'] Value has to be a string ID of one of the structures, found {s}.", .{stringId, localIndex.name(), @tagName(e)}),
 						}
@@ -316,25 +316,25 @@ pub const StructureBuildingBlock = struct { // MARK: StructureBuildingBlock
 			if (blueprints.items == null) continue;
 
 			for (blueprints.items.?[0].childBlocks) |child| {
-				if (std.mem.containsAtLeastScalar(LocalBlockIndex, childBlocksInBlueprints.items, 1, child.index)) continue;
+				if (std.mem.containsAtLeastScalar(LocalBlockIndex, childBlocksInBlueprints.items, child.index, 1)) continue;
 				childBlocksInBlueprints.append(main.stackAllocator, child.index);
 				// Check that all child blocks present in any of the blueprints have corresponding configurations.
-				if (self.children[@intFromEnum(child.index)] != null) continue;
+				if (self.children[@backingInt(child.index)] != null) continue;
 				std.log.err("['{s}'] Blueprint ({}) requires child block {s} but no configuration was specified for it.", .{self.id, blueprintIndex, child.id()});
 			}
 		}
 		// Check that all configured child blocks are used somewhere in one of the blueprints.
 		for (self.children, 0..) |child, childBlockIndex| {
 			if (child == null) continue;
-			if (std.mem.containsAtLeastScalar(LocalBlockIndex, childBlocksInBlueprints.items, 1, @enumFromInt(childBlockIndex))) continue;
-			std.log.err("['{s}'] None of the blueprints contains a child '{s}' but configuration for it was specified.", .{self.id, @as(LocalBlockIndex, @enumFromInt(childBlockIndex)).name()});
+			if (std.mem.containsAtLeastScalar(LocalBlockIndex, childBlocksInBlueprints.items, @fromBackingInt(@intCast(childBlockIndex)), 1)) continue;
+			std.log.err("['{s}'] None of the blueprints contains a child '{s}' but configuration for it was specified.", .{self.id, @as(LocalBlockIndex, @fromBackingInt(@intCast(childBlockIndex))).name()});
 		}
 	}
 	pub fn getBlueprints(self: StructureBuildingBlock, seed: *u64) *?[4]BlueprintEntry {
 		return &self.blueprints.sample(seed).items;
 	}
 	pub fn getChildStructure(self: StructureBuildingBlock, block: BlueprintEntry.StructureBlock) ?*const StructureBuildingBlock {
-		return self.children[@intFromEnum(block.index)];
+		return self.children[@backingInt(block.index)];
 	}
 };
 
@@ -357,7 +357,7 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 			});
 
 			const key = main.worldArena.dupe(u8, entry.key_ptr.*);
-			structureMap.put(main.worldArena.allocator, key, @enumFromInt(loadedCount)) catch unreachable;
+			structureMap.put(main.worldArena.allocator, key, @fromBackingInt(loadedCount)) catch unreachable;
 
 			std.log.debug("Registered structure building block: '{s}'", .{entry.key_ptr.*});
 			loadedCount += 1;
@@ -379,14 +379,14 @@ pub fn registerChildBlock(numericId: u16, stringId: []const u8) void {
 	std.debug.assert(numericId != 0);
 
 	const index: u16 = @intCast(childBlockNumericIdMap.count());
-	childBlockNumericIdMap.put(main.worldArena.allocator, numericId, @enumFromInt(index)) catch unreachable;
+	childBlockNumericIdMap.put(main.worldArena.allocator, numericId, @fromBackingInt(index)) catch unreachable;
 	// Take only color name from the ID.
 	var iterator = std.mem.splitBackwardsScalar(u8, stringId, '/');
 	const colorName = iterator.first();
 	const colorNameDupe = main.worldArena.dupe(u8, colorName);
 	childBlockName.append(main.worldArena, colorNameDupe);
 
-	childBlockNameToLocalIndex.put(main.worldArena.allocator, colorNameDupe, @enumFromInt(index)) catch unreachable;
+	childBlockNameToLocalIndex.put(main.worldArena.allocator, colorNameDupe, @fromBackingInt(index)) catch unreachable;
 }
 
 pub fn registerBlueprints(blueprints: *Assets.BytesHashMap) !void {
@@ -420,7 +420,7 @@ pub fn registerBlueprints(blueprints: *Assets.BytesHashMap) !void {
 		blueprintList.items[index][2] = BlueprintEntry.init(blueprint180, stringId) catch continue;
 		blueprintList.items[index][3] = BlueprintEntry.init(blueprint270, stringId) catch continue;
 
-		blueprintMap.put(main.worldArena.allocator, main.worldArena.dupe(u8, stringId), @enumFromInt(index)) catch unreachable;
+		blueprintMap.put(main.worldArena.allocator, main.worldArena.dupe(u8, stringId), @fromBackingInt(index)) catch unreachable;
 		std.log.debug("Registered blueprint: '{s}'", .{stringId});
 	}
 }
