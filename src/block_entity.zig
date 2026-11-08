@@ -509,12 +509,14 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 				c.glViewport(0, 0, textureWidth, textureHeight);
 				defer c.glViewport(oldViewport[0], oldViewport[1], oldViewport[2], oldViewport[3]);
 
-				var finalFrameBuffer: graphics.FrameBuffer = .init(textureWidth, textureHeight, c.GL_RGBA8, false, .nearest, .repeat);
+				var finalFrameBuffer: graphics.FrameBuffer = .init(textureWidth, textureHeight, c.GL_RGBA16F, false, .nearest, .repeat);
 				defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
-				finalFrameBuffer.bind();
-				finalFrameBuffer.clear(.{0, 0, 0, 0});
-
-				finalFrameBuffer.bindAndClear(graphics.vulkan.upload.commandBuffer(), .{.clearColor = .dontCare, .clearDepth = .dontCare});
+				if (main.settings.launch_config.vulkanTestingMode) {
+					finalFrameBuffer.bindAndClear(graphics.vulkan.upload.commandBuffer(), .{.clearColor = .{.clearColor = .{.float32 = .{0, 0, 0, 0}}}, .clearDepth = .dontCare});
+				} else {
+					finalFrameBuffer.bind();
+					finalFrameBuffer.clear(.{0, 0, 0, 0});
+				}
 				signData.renderedTexture = .{.textureID = finalFrameBuffer.texture, .vulkanImage = undefined};
 
 				const oldTranslation = graphics.draw.setTranslation(.{textureMargin, textureMargin});
@@ -525,7 +527,10 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, signData.text, .{.color = 0x000000}, false, .center); // TODO: Make the color configurable in the zon
 				defer textBuffer.deinit();
 				_ = textBuffer.calculateLineBreaks(16, textureWidth - 2*textureMargin);
-				textBuffer.renderTextWithoutShadow(graphics.vulkan.upload.commandBuffer(), &fakeFrame, 0, 0, 16);
+				textBuffer.renderTextWithoutShadow(.{
+					.currentFrame = currentFrame,
+					.commands = if (main.settings.launch_config.vulkanTestingMode) graphics.vulkan.upload.commandBuffer() else undefined,
+				}, 0, 0, 16);
 				if (main.settings.launch_config.vulkanTestingMode) {
 					graphics.vulkan.upload.commandBuffer().endRendering();
 					finalFrameBuffer.prepareTexturesForBinding(graphics.vulkan.upload.commandBuffer());
@@ -541,6 +546,9 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 					.{.ssbo = .{.binding = 4, .ssbo = main.models.quadSsbo.?}},
 				});
 				graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, pipeline);
+			} else {
+				pipeline.bind(null);
+				main.renderer.chunk_meshing.vao.bind();
 			}
 
 			outer: for (StorageClient.storage.dense.items) |signData| {

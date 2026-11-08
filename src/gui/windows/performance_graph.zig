@@ -77,9 +77,9 @@ pub fn deinit() void {
 pub fn render(currentFrame: *vulkan.Frame) void {
 	lastFrameTime[index] = @floatCast(main.lastFrameTime.load(.monotonic)*1000.0);
 	index = (index + 1)%@as(u31, @intCast(lastFrameTime.len));
-	draw.text(currentFrame.guiCommands, currentFrame, "32 ms", 0, 16, 8);
-	draw.text(currentFrame.guiCommands, currentFrame, "16 ms", 0, 32, 8);
-	draw.text(currentFrame.guiCommands, currentFrame, "00 ms", 0, 48, 8);
+	draw.text(.fromGui(currentFrame), "32 ms", 0, 16, 8);
+	draw.text(.fromGui(currentFrame), "16 ms", 0, 32, 8);
+	draw.text(.fromGui(currentFrame), "00 ms", 0, 48, 8);
 	{
 		const oldColor = draw.setColor(0x80ffffff);
 		defer draw.restoreColor(oldColor);
