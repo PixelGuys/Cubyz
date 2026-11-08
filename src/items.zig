@@ -1522,6 +1522,8 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 			std.log.err("procedural tool types require slotTags {s}", .{id});
 			break :blk;
 		}
+		var foundDisabled = false;
+		var foundOptional = false;
 		var it = zon.getChild("slotTags").object.iterator();
 		while (it.next()) |entry| {
 			const slotTagVal = slotTags.addOne(main.stackAllocator);
@@ -1531,10 +1533,12 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 			}
 			slotTagVal.tag = main.Tag.find(entry.key_ptr.*);
 			if (!std.mem.endsWith(u8, slotTagVal.tag.getName(), "_slot")) continue;
-			if (!(slotTagVal.tag == .disabled)) continue;
-			if (!(slotTagVal.tag == .optional)) continue;
+			if (!(slotTagVal.tag == .disabled)) {foundDisabled = true; continue;}
+			if (!(slotTagVal.tag == .optional)) {foundOptional = true; continue;}
 			std.log.err("Tool slot tag {s} must end with '_slot'.", .{id});
 		}
+		if (!foundDisabled) std.log.err("procedural tool types require .disabled slotTags {s}", .{id});
+		if (!foundOptional) std.log.err("procedural tool types require .optional slotTags {s}", .{id});
 	}
 	var parameterMatrices: main.List(PropertyMatrix) = .empty;
 	defer parameterMatrices.deinit(main.stackAllocator);
