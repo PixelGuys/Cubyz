@@ -9,11 +9,11 @@ pub fn openDirInWindow(path: []const u8) void {
 	const newPath = main.stackAllocator.dupe(u8, path);
 	defer main.stackAllocator.free(newPath);
 
-	if (builtin.os.tag == .windows) {
+	if (builtin.target.os.tag == .windows) {
 		std.mem.replaceScalar(u8, newPath, '/', '\\');
 	}
 
-	const command = switch (builtin.os.tag) {
+	const command = switch (builtin.target.os.tag) {
 		.windows => .{"explorer", newPath},
 		.macos => .{"open", newPath},
 		else => .{"xdg-open", newPath},
@@ -23,20 +23,16 @@ pub fn openDirInWindow(path: []const u8) void {
 		break :blk std.process.Environ.Map.init(main.stackAllocator.allocator);
 	};
 	defer envMap.deinit();
-	const result = std.process.run(main.stackAllocator.allocator, main.io, .{
+	_ = std.process.spawn(main.io, .{
 		.argv = &command,
 		.environ_map = &envMap,
+		.stderr = .ignore,
+		.stdout = .ignore,
+		.stdin = .ignore,
 	}) catch |err| {
 		std.log.err("Got error while trying to open file explorer: {s}", .{@errorName(err)});
 		return;
 	};
-	defer {
-		main.stackAllocator.free(result.stderr);
-		main.stackAllocator.free(result.stdout);
-	}
-	if (result.stderr.len != 0) {
-		std.log.err("Got error while trying to open file explorer: {s}", .{result.stderr});
-	}
 }
 
 pub fn cwd() Dir {
@@ -59,14 +55,14 @@ pub fn cubyzDirStr() []const u8 {
 }
 
 fn flawedInit(homePath: []const u8) !void {
-	if (main.settings.launchConfig.cubyzDir.len != 0) {
-		cubyzDir_ = try std.Io.Dir.cwd().createDirPathOpen(main.io, main.settings.launchConfig.cubyzDir, .{});
-		cubyzDirStr_ = main.globalAllocator.dupe(u8, main.settings.launchConfig.cubyzDir);
+	if (main.settings.launch_config.cubyzDir.len != 0) {
+		cubyzDir_ = try std.Io.Dir.cwd().createDirPathOpen(main.io, main.settings.launch_config.cubyzDir, .{});
+		cubyzDirStr_ = main.globalAllocator.dupe(u8, main.settings.launch_config.cubyzDir);
 		return;
 	}
 	var homeDir = try std.Io.Dir.openDirAbsolute(main.io, homePath, .{});
 	defer homeDir.close(main.io);
-	if (builtin.os.tag == .windows) {
+	if (builtin.target.os.tag == .windows) {
 		cubyzDir_ = try homeDir.createDirPathOpen(main.io, "Saved Games/Cubyz", .{});
 		cubyzDirStr_ = std.mem.concat(main.globalAllocator.allocator, u8, &.{homePath, "/Saved Games/Cubyz"}) catch unreachable;
 	} else {

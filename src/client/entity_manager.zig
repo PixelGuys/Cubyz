@@ -76,19 +76,19 @@ pub fn addEntity(zon: ZonElement) !void {
 }
 pub fn getEntity(entity: main.entity.Entity) ?*main.client.Entity {
 	mutex.assertLocked();
-	if (@intFromEnum(entity) >= idMapping.items.len) return null;
-	return &entities.items()[idMapping.items[@intFromEnum(entity)] orelse return null];
+	if (@backingInt(entity) >= idMapping.items.len) return null;
+	return &entities.items()[idMapping.items[@backingInt(entity)] orelse return null];
 }
 pub fn removeEntity(entity: main.entity.Entity) void {
 	mutex.lock();
 	defer mutex.unlock();
 
-	if (idMapping.items.len <= @intFromEnum(entity)) return;
-	const index: u32 = idMapping.items[@intFromEnum(entity)] orelse return;
+	if (idMapping.items.len <= @backingInt(entity)) return;
+	const index: u32 = idMapping.items[@backingInt(entity)] orelse return;
 	const ent = entities.items()[index];
 
 	// remove id
-	idMapping.items[@intFromEnum(entity)] = null;
+	idMapping.items[@backingInt(entity)] = null;
 
 	// remove entity
 	{
@@ -97,7 +97,7 @@ pub fn removeEntity(entity: main.entity.Entity) void {
 		_ = entities.swapRemove(index);
 
 		if (index != entities.len) {
-			idMapping.items[@intFromEnum(entities.items()[index].id)] = index;
+			idMapping.items[@backingInt(entities.items()[index].id)] = index;
 			entities.items()[index].interpolatedValues.outPos = &entities.items()[index]._interpolationPos;
 			entities.items()[index].interpolatedValues.outVel = &entities.items()[index]._interpolationVel;
 		}

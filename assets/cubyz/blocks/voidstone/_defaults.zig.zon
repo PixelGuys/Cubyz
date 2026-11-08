@@ -12,10 +12,11 @@
 			.massDamage = 3.0,
 			.hardnessDamage = 7.0,
 			.swingSpeed = 4.7,
-			.textureRoughness = 0.2,
+			.textureRoughness = 0.4,
 			.modifiers = .{
 				.{
-					.id = "durable",
+					.id = "base_stat",
+					.targetProperty = "maxDurability",
 					.strength = 0.1,
 				},
 				.{

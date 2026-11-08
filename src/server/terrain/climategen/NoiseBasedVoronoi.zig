@@ -401,7 +401,7 @@ const GenerationStructure = struct { // MARK: GenerationStructure
 		defer main.stackAllocator.destroy(neighborData);
 		for (0..preMapSize) |x| {
 			for (0..preMapSize) |y| {
-				neighborData[0][x][y] = @bitCast(map[x][y].biome.properties);
+				neighborData[0][x][y] = @bitCast(map[x][y].biome.climate);
 			}
 		}
 		for (1..neighborData.len) |i| {
@@ -423,12 +423,12 @@ const GenerationStructure = struct { // MARK: GenerationStructure
 				}
 				var seed = point.seed;
 				for (point.biome.transitionBiomes) |transitionBiome| {
-					const biomeMask: u15 = @bitCast(transitionBiome.propertyMask);
+					const biomeMask: u15 = @bitCast(transitionBiome.climateMask);
 					const neighborMask = neighborData[@min(neighborData.len - 1, transitionBiome.width)][x][y];
 					// Check if all triplets have a matching entry:
 					var result = biomeMask & neighborMask;
 					result = (result | result >> 1 | result >> 2);
-					if (result & Biome.GenerationProperties.mask == Biome.GenerationProperties.mask) {
+					if (result & Biome.ClimateProperties.mask == Biome.ClimateProperties.mask) {
 						if (random.nextFloat(&seed) < transitionBiome.chance) {
 							const newHeight = @as(f32, @floatFromInt(transitionBiome.biome.minHeight)) + @as(f32, @floatFromInt(transitionBiome.biome.maxHeight - transitionBiome.biome.minHeight))*random.nextFloat(&seed);
 							map[x][y] = .{

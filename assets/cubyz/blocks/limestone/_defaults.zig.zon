@@ -12,7 +12,7 @@
 			.massDamage = 1.0,
 			.hardnessDamage = 3.4,
 			.swingSpeed = 2.6,
-			.textureRoughness = 0.5,
+			.textureRoughness = 0.6,
 			.modifiers = .{
 				.{
 					.id = "good_at",

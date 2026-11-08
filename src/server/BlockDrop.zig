@@ -27,15 +27,16 @@ pub fn isDroppedWhenBrokenWithItem(self: @This(), item: Item) bool {
 	return true;
 }
 
-pub fn drop(self: @This(), pos: Vec3d, dir: Vec3f, velocity: f32) void {
+pub fn drop(self: @This(), loc: Location, spread: Location.Spread) void {
 	if (self.chance == 1 or main.random.nextFloat(&main.seed) < self.chance) {
 		for (self.itemStacks) |itemStack| {
-			main.server.world.?.drop(itemStack.clone(), pos, dir, velocity);
+			main.server.world.?.drop(itemStack.clone(), spread.dropPos(loc), loc.dropDir(), loc.dropVelocity());
 		}
 	}
 }
 
 pub const Location = struct {
+	worldPos: Vec3i,
 	normalDir: Vec3f,
 	min: Vec3f,
 	max: Vec3f,
@@ -44,8 +45,29 @@ pub const Location = struct {
 	const itemHitBoxMargin: f32 = @floatCast(main.itemdrop.ItemDropManager.radius);
 	const itemHitBoxMarginVec: Vec3f = @splat(itemHitBoxMargin);
 
-	fn insidePos(self: Location, _pos: Vec3i) Vec3d {
-		const pos: Vec3d = @floatFromInt(_pos);
+	pub inline fn natural(worldPos: Vec3i, modelMin: Vec3f, modelMax: Vec3f) Location {
+		return .{
+			.worldPos = worldPos,
+			.normalDir = .{0, 0, 1},
+			.min = modelMin,
+			.max = modelMax,
+		};
+	}
+
+	pub const Spread = enum {
+		inside,
+		outside,
+
+		pub inline fn dropPos(self: Spread, loc: Location) Vec3d {
+			return switch (self) {
+				.inside => loc.insidePos(),
+				.outside => loc.outsidePos(),
+			};
+		}
+	};
+
+	fn insidePos(self: Location) Vec3d {
+		const pos: Vec3d = @floatFromInt(self.worldPos);
 		return pos + self.randomOffset();
 	}
 	fn randomOffset(self: Location) Vec3f {
@@ -55,8 +77,8 @@ pub const Location = struct {
 		const width = (max - min)*half;
 		return center + width*main.random.nextFloatVectorSigned(3, &main.seed)*half;
 	}
-	fn outsidePos(self: Location, _pos: Vec3i) Vec3d {
-		const pos: Vec3d = @floatFromInt(_pos);
+	fn outsidePos(self: Location) Vec3d {
+		const pos: Vec3d = @floatFromInt(self.worldPos);
 		const random = self.randomOffset();
 		const minorVectors = minors(self);
 		const minor1Offset = @as(Vec3f, @splat(vec.dot(random, minorVectors[0])))*minorVectors[0];
@@ -99,18 +121,16 @@ pub const Context = struct {
 	newBlock: Block,
 	item: Item = .null,
 
-	pub fn drop(self: Context, location: Location, pos: Vec3i) void {
+	pub fn drop(self: Context, location: Location) void {
 		const dropAmount = self.oldBlock.mode().itemDropsOnChange(self.oldBlock, self.newBlock);
 		if (dropAmount == 0) return;
 
-		const dropPos = if (self.newBlock.collide()) location.outsidePos(pos) else location.insidePos(pos);
-		const dropDir = location.dropDir();
-		const dropVelocity = location.dropVelocity();
+		const spread: Location.Spread = if (self.newBlock.collide()) .outside else .inside;
 
 		for (0..dropAmount) |_| {
 			for (self.oldBlock.blockDrops()) |blockDrop| {
 				if (blockDrop.isDroppedWhenBrokenWithItem(self.item)) {
-					blockDrop.drop(dropPos, dropDir, dropVelocity);
+					blockDrop.drop(location, spread);
 				}
 			}
 		}

@@ -31,6 +31,14 @@ var uniforms: struct {
 	uvOffset: c_int,
 	uvDim: c_int,
 } = undefined;
+const Uniforms = extern struct {
+	start: [2]f32 align(8),
+	size: [2]f32 align(8),
+	screen: [2]f32 align(8),
+	color: i32,
+	uvOffset: [2]f32 align(8),
+	uvDim: [2]f32 align(8),
+};
 
 pub fn init() void {
 	pipeline = graphics.Pipeline.init(
@@ -40,6 +48,7 @@ pub fn init() void {
 		&uniforms,
 		graphics.draw.SimpleVertex2D,
 		.{
+			.bindings = &.{.sampler(0, .{.fragment = true})},
 			.rasterState = .{.cullMode = .none},
 			.depthStencilState = .{.depthTest = false, .depthWrite = false},
 			.blendState = .{.attachments = &.{.{
@@ -50,6 +59,8 @@ pub fn init() void {
 				.dstAlphaBlendFactor = .one,
 				.alphaBlendOp = .subtract,
 			}}, .formats = &.{.swapChain}},
+			.inputAssemblyState = .{.topology = .triangleStrip},
+			.pushConstantSize = @sizeOf(Uniforms),
 		},
 	);
 	texture = Texture.initFromFile("assets/cubyz/ui/hud/crosshair.png");
@@ -60,8 +71,16 @@ pub fn deinit() void {
 	texture.deinit();
 }
 
-pub fn render() void {
-	texture.bindTo(0);
-	pipeline.bind(graphics.draw.getScissor());
-	graphics.draw.customShadedImage(&uniforms, .{0, 0}, .{size, size});
+pub fn render(currentFrame: *graphics.vulkan.Frame) void {
+	if (main.settings.launch_config.vulkanTestingMode and texture.vulkanImage != null) {
+		currentFrame.guiCommands.bindPipeline(currentFrame, pipeline, graphics.draw.getScissor());
+		currentFrame.guiCommands.bindDescriptors(pipeline, &.{
+			.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
+		});
+		graphics.draw.customShadedImage(currentFrame, @as(Uniforms, undefined), pipeline, .{0, 0}, .{size, size});
+	} else {
+		texture.bindTo(0);
+		pipeline.bind(graphics.draw.getScissor());
+		graphics.draw.customShadedImageOpenGl(&uniforms, .{0, 0}, .{size, size});
+	}
 }

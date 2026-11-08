@@ -41,7 +41,7 @@ pub fn execute(args: Args, source: Source) void {
 	const users = main.server.getUserList(main.stackAllocator);
 	defer main.stackAllocator.free(users);
 	for (users) |user| {
-		main.network.protocols.genericUpdate.sendParticles(
+		main.network.protocols.generic_update.sendParticles(
 			user.conn,
 			args.@"/particles <id> <x> <y> <z> <collides> <count> <spawnDataZon>".id,
 			command.resolveCoordinates(

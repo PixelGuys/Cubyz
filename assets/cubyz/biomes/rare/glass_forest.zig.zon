@@ -1,6 +1,6 @@
 .{
 	.chance = 0.01,
-	.properties = .{},
+	.climate = .{},
 	.minHeightLimit = 7,
 	.minHeight = 22,
 	.maxHeight = 40,

@@ -42,25 +42,27 @@ pub fn deinit() void {
 	noEnergyTexture.deinit();
 }
 
-pub fn render() void {
-	if (main.game.Player.isCreative()) return;
+pub fn render(currentFrame: *graphics.vulkan.Frame) void {
+	if (main.game.player.isCreative()) return;
 
 	var y: f32 = 0;
 	var x: f32 = 0;
 	var energy: f32 = 0;
-	while (energy < main.game.Player.super.maxEnergy) : (energy += 1) {
+	while (energy < main.game.player.super.maxEnergy) : (energy += 1) {
 		if (x >= window.contentSize[0]) {
 			x = 0;
 			y += 20;
 		}
-		if (energy + 1 <= main.game.Player.super.energy) {
-			energyTexture.bindTo(0);
-		} else if (energy + 0.5 <= main.game.Player.super.energy) {
-			halfEnergyTexture.bindTo(0);
-		} else {
-			noEnergyTexture.bindTo(0);
-		}
-		draw.boundImage(Vec2f{x, window.contentSize[1] - y - 20}, .{20, 20});
+		const texture = blk: {
+			if (energy + 1 <= main.game.player.super.energy) {
+				break :blk energyTexture;
+			} else if (energy + 0.5 <= main.game.player.super.energy) {
+				break :blk halfEnergyTexture;
+			} else {
+				break :blk noEnergyTexture;
+			}
+		};
+		draw.image(currentFrame, texture, Vec2f{x, window.contentSize[1] - y - 20}, .{20, 20});
 		x += 20;
 	}
 	y += 20;

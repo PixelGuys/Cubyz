@@ -1,7 +1,7 @@
 .{
 	.drops = .{
-		.{.items = .{"cubyz:permafrost"}},
+		.{.items = .{"cubyz:silt"}},
 	},
 	.texture = "cubyz:grass/cold",
-	.texture_bottom = "cubyz:permafrost",
+	.texture_bottom = "cubyz:silt",
 }
