@@ -1533,8 +1533,14 @@ pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonE
 			}
 			slotTagVal.tag = main.Tag.find(entry.key_ptr.*);
 			if (!std.mem.endsWith(u8, slotTagVal.tag.getName(), "_slot")) continue;
-			if (!(slotTagVal.tag == .disabled)) {foundDisabled = true; continue;}
-			if (!(slotTagVal.tag == .optional)) {foundOptional = true; continue;}
+			if (!(slotTagVal.tag == .disabled)) {
+				foundDisabled = true;
+				continue;
+			}
+			if (!(slotTagVal.tag == .optional)) {
+				foundOptional = true;
+				continue;
+			}
 			std.log.err("Tool slot tag {s} must end with '_slot'.", .{id});
 		}
 		if (!foundDisabled) std.log.err("procedural tool types require .disabled slotTags {s}", .{id});
