@@ -83,8 +83,8 @@ pub fn getRotation(entity: Entity, side: main.sync.Side) ?Vec3f {
 pub fn getRotationPointer(entity: Entity, side: main.sync.Side) ?*Vec3f {
 	correctSideCheck(side);
 	return switch (side) {
-		.client => &(client.get(entity) orelse return null).roation,
-		.server => &(server.get(entity) orelse return null).roation,
+		.client => &(client.get(entity) orelse return null).rotation,
+		.server => &(server.get(entity) orelse return null).rotation,
 	};
 }
 pub fn setRotation(entity: Entity, givenRotation: Vec3f, side: main.sync.Side) void {
