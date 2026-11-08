@@ -695,9 +695,6 @@ fn update() void { // MARK: update()
 		user.update();
 	}
 
-	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
-	defer main.stackAllocator.free(itemData);
-
 	for (userList) |user| {
 		const playerPos = @"cubyz:physics_body".getPosition(user.player().id, .server).?;
 		const pos = @as(Vec3i, @trunc(playerPos));

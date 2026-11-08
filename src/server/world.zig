@@ -1154,8 +1154,19 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			const itemData = self.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
 			defer main.stackAllocator.free(itemData);
 
+			var startingEntityData: main.ListManaged(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 			for (userList) |user| {
-				var entityData: main.ListManaged(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+				const id = user.id; // TODO
+				startingEntityData.append(.{
+					.id = id,
+					.pos = @"cubyz:physics_body".getPosition(user.player().id, .server).?,
+					.vel = @"cubyz:physics_body".getVelocity(user.player().id, .server).?,
+					.rot = @"cubyz:physics_body".getRotation(user.player().id, .server).?,
+				});
+			}
+
+			for (userList) |user| {
+				var entityData: main.ListManaged(main.entity.EntityNetworkData) = main.stackAllocator.dupe(main.entity.EntityNetworkData, startingEntityData);
 				defer entityData.deinit();
 				for (user.loadedChunks) |xChunks| {
 					for (xChunks) |yChunks| {
