@@ -45,7 +45,7 @@ pub fn deinit() void {
 var itemSlots: [20]*ItemSlot = undefined;
 
 fn sortItems() void {
-	const target = Player.inventory;
+	const target = main.player.inventory;
 	target.sortItems(.{.ignoredSlotCount = 12});
 }
 
