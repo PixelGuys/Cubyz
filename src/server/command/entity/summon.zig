@@ -35,6 +35,7 @@ pub fn execute(args: Args, source: Source) void {
 	}
 	var serverEntity = main.server.Entity.createEmptyServerEntity(entity);
 	serverEntity.pos = entityPos;
+	serverEntity.name = "summoned entity";
 
 	const userList = main.server.getUserList(main.stackAllocator);
 	defer main.stackAllocator.free(userList);
