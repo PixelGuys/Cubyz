@@ -292,7 +292,7 @@ pub const User = struct { // MARK: User
 	}
 
 	pub fn initPlayer(self: *User) void {
-		self.id = main.entity.createEntityWithNextFreeId();
+		self.id = main.entity.assignEntityWithNextFreeId();
 
 		world.?.loadPlayer(self) catch {
 			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
