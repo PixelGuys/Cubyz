@@ -105,8 +105,6 @@ fn correctSideCheck(side: main.sync.Side) void {
 		unreachable;
 	}
 }
-
-
 // ############################# Client only stuff ################################
 pub const client = struct {
 	const Component = struct {
