@@ -1,7 +1,10 @@
 .{
-	.keepOriginalTerrain = 1,
+	.keepOriginalTerrain = 0.75,
 	.minRadius = 60,
 	.maxRadius = 80,
+	.minHeightLimit = 1,
+	.minHeight = 10,
+	.maxHeight = 20,
 	.hills = 20,
 	.structures = .{
 		.{

@@ -1,8 +1,11 @@
 .{
 	.keepOriginalTerrain = 1,
-	.minRadius = 30,
-	.maxRadius = 50,
+	.minRadius = 20,
+	.maxRadius = 30,
 	.hills = 20,
+	.minHeightLimit = 1,
+	.minHeight = 10,
+	.maxHeight = 20,
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
@@ -74,7 +77,7 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:desert/shrubland/base",
-			.chance = 3,
+			.chance = 1,
 		},
 	},
 }
