@@ -38,7 +38,7 @@ fn openLog() void {
 
 const padding: f32 = 8;
 pub fn update() void {
-	if (main.Window.Gamepad.wereControllerMappingsDownloaded()) {
+	if (main.Window.gamepad.wereControllerMappingsDownloaded()) {
 		gui.closeWindowFromRef(&window);
 	}
 }

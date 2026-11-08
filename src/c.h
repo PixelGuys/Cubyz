@@ -21,6 +21,8 @@
 #include <glad/vulkan.h>
 #endif
 #include <GLFW/glfw3.h>
+// vulkan memory allocator
+#include <vk_mem_alloc_extended.h>
 
 // used for reading and writing image files
 #include <stb/stb_image.h>
@@ -41,6 +43,7 @@
 // used to handle sockets in Windows
 #ifdef _WIN32
 #include <winsock2.h>
+#include <ws2tcpip.h>
 #endif
 
 // used in file monitoring
@@ -51,6 +54,11 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <errno.h>
+#endif
+
+// Used for platform-speciffic keystorage
+#ifdef _WIN32
+#include <wincrypt.h>
 #endif
 
 // used for audio

@@ -20,7 +20,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const c = @import("c");
 
-pub const EntityModel = struct {
+pub const EntityModel = struct { // MARK: EntityModel
 	height: f32,
 	texturePath: []const u8,
 	modelId: ?[]const u8,
@@ -121,10 +121,10 @@ pub const EntityModel = struct {
 				var split = std.mem.splitScalar(u8, texture, ':');
 				const mod = split.first();
 				const textureName = split.next().?;
-				self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "{s}/{s}/entity_models/textures/{s}{s}", .{assetFolder, mod, textureName, fileEnding}) catch unreachable;
+				self.texturePath = main.worldArena.print("{s}/{s}/entity_models/textures/{s}{s}", .{assetFolder, mod, textureName, fileEnding});
 				main.files.cubyzDir().dir.access(main.io, self.texturePath, .{}) catch {
 					main.worldArena.free(self.texturePath);
-					self.texturePath = std.fmt.allocPrint(main.worldArena.allocator, "assets/{s}/entity_models/textures/{s}{s}", .{mod, textureName, fileEnding}) catch unreachable;
+					self.texturePath = main.worldArena.print("assets/{s}/entity_models/textures/{s}{s}", .{mod, textureName, fileEnding});
 				};
 			}
 		}
@@ -301,7 +301,7 @@ pub const EntityModel = struct {
 
 						var uv: [2]f32 = undefined;
 						_ = uvAttr.read_float(v, @ptrCast(&uv), 2);
-						vertSlice[v].uv = .{uv[0], 1 - uv[1]};
+						vertSlice[v].uv = .{uv[0], uv[1]};
 
 						vertSlice[v].nodeId = @intCast(parentNodeID);
 					}

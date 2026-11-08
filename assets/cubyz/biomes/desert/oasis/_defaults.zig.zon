@@ -1,5 +1,5 @@
 .{
-	.properties = .{
+	.climate = .{
 		.hot,
 	},
 	.music = "cubyz:mischol/desert_firefly",

@@ -38,6 +38,6 @@ pub fn updateTexture(self: *Icon, newTexture: Texture) !void {
 	self.texture = newTexture;
 }
 
-pub fn render(self: *Icon, _: Vec2f) void {
-	self.texture.render(self.pos, self.size);
+pub fn render(self: *Icon, currentFrame: *graphics.vulkan.Frame, _: Vec2f) void {
+	self.texture.render(currentFrame, self.pos, self.size);
 }

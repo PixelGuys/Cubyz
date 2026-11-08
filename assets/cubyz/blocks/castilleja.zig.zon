@@ -1,5 +1,5 @@
 .{
-	.tags = .{.cuttable, .sliceable},
+	.tags = .{.cuttable, .sliceable, .flower},
 	.blockHealth = 0.2,
 	.drops = .{
 		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
@@ -10,7 +10,7 @@
 	.viewThrough = true,
 	.absorbedLight = 0x000000,
 	.collide = false,
-	.model = "cubyz:flower/height_10",
+	.model = "cubyz:flower/castelleja",
 	.rotation = "cubyz:planar",
 	.texture = "cubyz:castilleja",
 	.texture_top = "cubyz:castilleja_top",

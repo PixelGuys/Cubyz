@@ -1,6 +1,5 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
-const builtin = @import("builtin");
 
 const main = @import("main");
 const blocks = main.blocks;
@@ -41,8 +40,18 @@ const UniformStruct = struct {
 	zNear: c_int,
 	zFar: c_int,
 };
-pub var uniforms: UniformStruct = undefined;
-pub var transparentUniforms: UniformStruct = undefined;
+pub const Uniforms = extern struct {
+	ambientLight: [3]f32 align(16),
+	contrast: f32,
+	fog: graphics.Fog.GlslData,
+	reflectionMapSize: f32,
+	lodDistance: f32,
+	zNear: f32,
+	zFar: f32,
+};
+
+var uniforms: UniformStruct = undefined;
+var transparentUniforms: UniformStruct = undefined;
 pub var commandPipeline: graphics.ComputePipeline = undefined;
 pub var commandUniforms: struct {
 	chunkIDIndex: c_int,
@@ -70,10 +79,25 @@ pub fn init() void {
 		"",
 		&uniforms,
 		graphics.VertexArray.EmptyVertex,
-		&.{},
-		.{},
-		.{.depthTest = true, .depthWrite = true},
-		.{.attachments = &.{.noBlending}},
+		.{
+			.bindings = &.{
+				.sampler(0, .{.fragment = true}),
+				.sampler(1, .{.fragment = true}),
+				.sampler(2, .{.fragment = true}),
+				.sampler(5, .{.fragment = true}),
+				.sampler(11, .{.fragment = true}),
+				.ssbo(3, .{.vertex = true}),
+				.ssbo(4, .{.vertex = true}),
+				.ssbo(6, .{.vertex = true}),
+				.ssbo(7, .{}),
+				.ssbo(10, .{.vertex = true}),
+				.ssbo(12, .{.fragment = true}),
+			},
+			.rasterState = .{},
+			.depthStencilState = .{.depthTest = true, .depthWrite = true},
+			.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.world}},
+			.pushConstantSize = @sizeOf(Uniforms),
+		},
 	);
 	transparentPipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/chunks/chunk_vertex.vert",
@@ -81,38 +105,55 @@ pub fn init() void {
 		"#define transparent\n",
 		&transparentUniforms,
 		graphics.VertexArray.EmptyVertex,
-		&.{},
-		.{},
-		.{.depthTest = true, .depthWrite = false, .depthCompare = .lessOrEqual},
-		.{.attachments = &.{.{
-			.srcColorBlendFactor = .one,
-			.dstColorBlendFactor = .src1Color,
-			.colorBlendOp = .add,
-			.srcAlphaBlendFactor = .one,
-			.dstAlphaBlendFactor = .src1Alpha,
-			.alphaBlendOp = .add,
-		}}},
+		.{
+			.bindings = &.{
+				.sampler(0, .{.fragment = true}),
+				.sampler(1, .{.fragment = true}),
+				.sampler(2, .{.fragment = true}),
+				.sampler(5, .{.fragment = true}),
+				.sampler(11, .{.fragment = true}),
+				.ssbo(3, .{.vertex = true}),
+				.ssbo(4, .{.vertex = true}),
+				.ssbo(6, .{.vertex = true}),
+				.ssbo(7, .{.fragment = true}),
+				.ssbo(10, .{.vertex = true}),
+				.ssbo(12, .{.fragment = true}),
+			},
+			.rasterState = .{},
+			.depthStencilState = .{.depthTest = true, .depthWrite = false, .depthCompare = .lessOrEqual},
+			.blendState = .{.attachments = &.{.{
+				.srcColorBlendFactor = .one,
+				.dstColorBlendFactor = .src1Color,
+				.colorBlendOp = .add,
+				.srcAlphaBlendFactor = .one,
+				.dstAlphaBlendFactor = .src1Alpha,
+				.alphaBlendOp = .add,
+			}}, .formats = &.{.world}},
+			.pushConstantSize = @sizeOf(Uniforms),
+		},
 	);
-	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms);
+	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms, .{});
 	occlusionTestPipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/chunks/occlusionTestVertex.vert",
 		"assets/cubyz/shaders/chunks/occlusionTestFragment.frag",
 		"",
 		null,
 		graphics.VertexArray.EmptyVertex,
-		&.{},
-		.{},
-		.{.depthTest = true, .depthWrite = false},
-		.{.attachments = &.{.{
-			.enabled = false,
-			.srcColorBlendFactor = .zero,
-			.dstColorBlendFactor = .zero,
-			.colorBlendOp = .add,
-			.srcAlphaBlendFactor = .zero,
-			.dstAlphaBlendFactor = .zero,
-			.alphaBlendOp = .add,
-			.colorWriteMask = .none,
-		}}},
+		.{
+			.bindings = &.{.ssbo(6, .{.vertex = true, .fragment = true}), .ssbo(9, .{.vertex = true})},
+			.rasterState = .{},
+			.depthStencilState = .{.depthTest = true, .depthWrite = false},
+			.blendState = .{.attachments = &.{.{
+				.enabled = false,
+				.srcColorBlendFactor = .zero,
+				.dstColorBlendFactor = .zero,
+				.colorBlendOp = .add,
+				.srcAlphaBlendFactor = .zero,
+				.dstAlphaBlendFactor = .zero,
+				.alphaBlendOp = .add,
+				.colorWriteMask = .none,
+			}}, .formats = &.{.world}},
+		},
 	);
 
 	var rawData: [6*maxQuadsInIndexBuffer]u32 = undefined;
@@ -167,38 +208,81 @@ pub fn endRender() void {
 	chunkIDBuffer.endRender();
 }
 
-fn bindCommonUniforms(locations: *UniformStruct, ambient: Vec3f) void {
+fn bindCommonUniforms(vulkanUniforms: *Uniforms, locations: *UniformStruct, ambient: Vec3f, contrast: f32) void {
 	c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
+	vulkanUniforms.reflectionMapSize = renderer.reflectionCubeMapSize;
 
-	c.glUniform1f(locations.contrast, main.settings.blockContrast);
+	c.glUniform1f(locations.contrast, contrast);
+	vulkanUniforms.contrast = contrast;
 
 	c.glUniform1f(locations.lodDistance, main.settings.@"lod0.5Distance");
+	vulkanUniforms.lodDistance = main.settings.@"lod0.5Distance";
 
 	c.glUniform3f(locations.ambientLight, ambient[0], ambient[1], ambient[2]);
+	vulkanUniforms.ambientLight = ambient;
 
 	c.glUniform1f(locations.zNear, renderer.zNear);
 	c.glUniform1f(locations.zFar, renderer.zFar);
+	vulkanUniforms.zNear = renderer.zNear;
+	vulkanUniforms.zFar = renderer.zFar;
 }
 
-pub fn bindShaderAndUniforms(ambient: Vec3f) void {
+fn bindVulkan(selectedPipeline: graphics.Pipeline, commands: graphics.CommandBuffer, currentFrame: *graphics.vulkan.Frame, frameUbo: ?graphics.frame_uniforms.StaticUbo, vulkanUniforms: *Uniforms, lod: usize) void {
+	commands.bindPipeline(currentFrame, selectedPipeline, null);
+	commands.pushConstants(selectedPipeline, vulkanUniforms);
+	commands.bindVertexArray(vao);
+	commands.bindDescriptors(selectedPipeline, &.{
+		.{.image = .{.binding = 0, .image = main.blocks.meshes.blockTextureArray.vulkanImage.?}},
+		.{.image = .{.binding = 1, .image = main.blocks.meshes.emissionTextureArray.vulkanImage.?}},
+		.{.image = .{.binding = 2, .image = main.blocks.meshes.reflectivityAndAbsorptionTextureArray.vulkanImage.?}},
+		.{.image = .{.binding = 5, .image = main.blocks.meshes.ditherTexture.vulkanImage.?}},
+		.{.image = .{.binding = 11, .image = main.renderer.reflectionCubeMap.vulkanImage}},
+		.{.ssbo = .{.binding = 3, .ssbo = faceBuffers[lod].ssbo}},
+		.{.ssbo = .{.binding = 4, .ssbo = main.models.quadSsbo.?}},
+		.{.ssbo = .{.binding = 6, .ssbo = chunkBuffer.ssbo}},
+		.{.ssbo = .{.binding = 7, .ssbo = main.blocks.meshes.fogSsbo.?}},
+		.{.ssbo = .{.binding = 10, .ssbo = lightBuffers[lod].ssbo}},
+		.{.ssbo = .{.binding = 12, .ssbo = main.blocks.meshes.animatedTextureSsbo.?}},
+	});
+	if (frameUbo) |ubo| {
+		ubo.bindToPipeline(commands, selectedPipeline);
+	} else {
+		graphics.frame_uniforms.bindToPipeline(commands, selectedPipeline);
+	}
+}
+
+pub fn bindShaderAndUniforms(commands: graphics.CommandBuffer, currentFrame: *graphics.vulkan.Frame, frameUbo: ?graphics.frame_uniforms.StaticUbo, ambient: Vec3f, contrast: f32, lod: usize) void {
 	pipeline.bind(null);
 
-	bindCommonUniforms(&uniforms, ambient);
+	var vulkanUniforms: Uniforms = undefined;
+	bindCommonUniforms(&vulkanUniforms, &uniforms, ambient, contrast);
 
 	vao.bind();
+	if (main.settings.launch_config.vulkanTestingMode) {
+		bindVulkan(pipeline, commands, currentFrame, frameUbo, &vulkanUniforms, lod);
+	}
 }
 
-pub fn bindTransparentShaderAndUniforms(ambient: Vec3f) void {
+pub fn bindTransparentShaderAndUniforms(commands: graphics.CommandBuffer, currentFrame: *graphics.vulkan.Frame, frameUbo: ?graphics.frame_uniforms.StaticUbo, depthTexture: graphics.vulkan.Image, ambient: Vec3f, contrast: f32, lod: usize) void {
 	transparentPipeline.bind(null);
+
+	var vulkanUniforms: Uniforms = undefined;
 
 	c.glUniform3fv(transparentUniforms.@"fog.color", 1, @ptrCast(&game.world.?.dayTime.fog.fogColor));
 	c.glUniform1f(transparentUniforms.@"fog.density", game.world.?.dayTime.fog.density);
 	c.glUniform1f(transparentUniforms.@"fog.fogLower", game.world.?.dayTime.fog.fogLower);
 	c.glUniform1f(transparentUniforms.@"fog.fogHigher", game.world.?.dayTime.fog.fogHigher);
+	vulkanUniforms.fog = game.world.?.dayTime.fog.toGlsl();
 
-	bindCommonUniforms(&transparentUniforms, ambient);
+	bindCommonUniforms(&vulkanUniforms, &transparentUniforms, ambient, contrast);
 
 	vao.bind();
+	if (main.settings.launch_config.vulkanTestingMode) {
+		bindVulkan(transparentPipeline, commands, currentFrame, frameUbo, &vulkanUniforms, lod);
+		commands.bindDescriptors(transparentPipeline, &.{
+			.{.image = .{.binding = 5, .image = depthTexture}},
+		});
+	}
 }
 
 fn bindBuffers(lod: usize) void {
@@ -206,15 +290,15 @@ fn bindBuffers(lod: usize) void {
 	lightBuffers[lod].ssbo.bind(lightBuffers[lod].binding);
 }
 
-pub fn drawChunksIndirect(chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), ambient: Vec3f, transparent: bool) void {
+pub fn drawChunksIndirect(currentFrame: *graphics.vulkan.Frame, depthTexture: graphics.vulkan.Image, chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), ambient: Vec3f, transparent: bool) void {
 	for (0..chunkIds.len) |i| {
 		const lod = if (transparent) main.settings.highestSupportedLod - i else i;
 		bindBuffers(lod);
-		drawChunksOfLod(chunkIds[lod].items, ambient, transparent);
+		drawChunksOfLod(currentFrame, depthTexture, chunkIds[lod].items, ambient, transparent, lod);
 	}
 }
 
-fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, transparent: bool) void {
+fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, depthTexture: graphics.vulkan.Image, chunkIDs: []const u32, ambient: Vec3f, transparent: bool, lod: usize) void {
 	if (chunkIDs.len == 0) return;
 	const drawCallsEstimate: u31 = @intCast(if (transparent) chunkIDs.len else chunkIDs.len*8);
 	var chunkIDAllocation: main.graphics.SubAllocation = .{.start = 0, .len = 0};
@@ -230,13 +314,13 @@ fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, transparent: bool) voi
 	c.glUniform1i(commandUniforms.isTransparent, @intFromBool(transparent));
 	if (!transparent) {
 		c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 0);
-		c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
+		c.glDispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
 		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
 		if (transparent) {
-			bindTransparentShaderAndUniforms(ambient);
+			bindTransparentShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, depthTexture, ambient, main.settings.blockContrast, lod);
 		} else {
-			bindShaderAndUniforms(ambient);
+			bindShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, ambient, main.settings.blockContrast, lod);
 		}
 		c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 		c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
@@ -251,13 +335,13 @@ fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, transparent: bool) voi
 	// Draw again:
 	commandPipeline.bind();
 	c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 1);
-	c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
+	c.glDispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
 	if (transparent) {
-		bindTransparentShaderAndUniforms(ambient);
+		bindTransparentShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, depthTexture, ambient, main.settings.blockContrast, lod);
 	} else {
-		bindShaderAndUniforms(ambient);
+		bindShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, ambient, main.settings.blockContrast, lod);
 	}
 	c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 	c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
@@ -285,10 +369,10 @@ pub const FaceData = extern struct {
 };
 
 pub const ChunkData = extern struct {
-	position: Vec3i align(16),
-	min: Vec3f align(16),
-	max: Vec3f align(16),
-	voxelSize: i32,
+	position: [3]i32 align(16),
+	min: [3]f32 align(16),
+	max: [3]f32 align(16),
+	voxelSize: i32 align(16),
 	lightStart: u32,
 	vertexStartOpaque: u32,
 	faceCountsByNormalOpaque: [14]u32,
@@ -323,11 +407,11 @@ const FaceGroups = enum(u32) {
 	optional,
 
 	pub fn neighbor(n: main.chunk.Neighbor) FaceGroups {
-		return @enumFromInt(@intFromEnum(FaceGroups.neighbor0) + @intFromEnum(n));
+		return @fromBackingInt(@backingInt(FaceGroups.neighbor0) + @backingInt(n));
 	}
 
 	pub fn neighborLod(n: main.chunk.Neighbor) FaceGroups {
-		return @enumFromInt(@intFromEnum(FaceGroups.neighborLod0) + @intFromEnum(n));
+		return @fromBackingInt(@backingInt(FaceGroups.neighborLod0) + @backingInt(n));
 	}
 };
 
@@ -383,9 +467,9 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		var list: [6][]FaceData = undefined;
 		for (0..6) |i| {
 			if (!isNeighborLod[i]) {
-				list[i] = self.completeList.getRange(.neighbor(@enumFromInt(i)));
+				list[i] = self.completeList.getRange(.neighbor(@fromBackingInt(@intCast(i))));
 			} else {
-				list[i] = self.completeList.getRange(.neighborLod(@enumFromInt(i)));
+				list[i] = self.completeList.getRange(.neighborLod(@fromBackingInt(@intCast(i))));
 			}
 			len += list[i].len;
 		}
@@ -408,7 +492,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				}
 			}
 			if (normal < 6) {
-				const normalDir: chunk.Neighbor = @enumFromInt(normal);
+				const normalDir: chunk.Neighbor = @fromBackingInt(@intCast(normal));
 				@memcpy(fullBuffer[i..][0..list[normalDir.reverse().toInt()].len], list[normalDir.reverse().toInt()]);
 				i += @intCast(list[normalDir.reverse().toInt()].len);
 			}
@@ -504,7 +588,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		errdefer mesh_storage.meshMemoryPool.destroy(self);
 		self.chunk = .init(pos);
 		errdefer self.chunk.deinit();
-		try main.server.storage.ChunkCompression.loadChunk(self.chunk, .client, chunkData);
+		try main.server.storage.chunk_compression.loadChunk(self.chunk, .client, chunkData);
 		self.* = ChunkMesh{
 			.pos = pos,
 			.size = chunk.chunkSize*pos.voxelSize,
@@ -545,7 +629,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	pub fn deferredDeinit(self: *ChunkMesh) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
+		main.heap.garbage_collection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	pub fn isEmpty(self: *const ChunkMesh) bool {
@@ -1276,7 +1360,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 
 		pub fn getPriority(self: *BlockUpdateTask) f32 {
-			return 1000000 + self.pos.getPriority(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
+			return 1000000 + self.pos.getPriority(game.player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 		}
 
 		pub fn isStillNeeded(_: *BlockUpdateTask) bool {
@@ -1454,9 +1538,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		var list: [6][]FaceData = undefined;
 		for (0..6) |i| {
 			if (!self.isNeighborLod[i]) {
-				list[i] = self.transparentMesh.completeList.getRange(.neighbor(@enumFromInt(i)));
+				list[i] = self.transparentMesh.completeList.getRange(.neighbor(@fromBackingInt(@intCast(i))));
 			} else {
-				list[i] = self.transparentMesh.completeList.getRange(.neighborLod(@enumFromInt(i)));
+				list[i] = self.transparentMesh.completeList.getRange(.neighborLod(@fromBackingInt(@intCast(i))));
 			}
 			len += list[i].len;
 		}

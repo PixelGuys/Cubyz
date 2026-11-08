@@ -88,7 +88,7 @@ pub fn initalOrientation(block: main.blocks.Block, orientation: Neighbor, mode: 
 			return .{.typ = block.typ, .data = orientation.reverse().bitMask()};
 		},
 		.direction => {
-			return .{.typ = block.typ, .data = @intFromEnum(orientation)};
+			return .{.typ = block.typ, .data = @backingInt(orientation)};
 		},
 		.unknown => return block,
 	}
@@ -107,21 +107,21 @@ pub fn generateStem(self: *SimpleTreeModel, x: i32, y: i32, z: i32, height: i32,
 	if (chunk.super.pos.voxelSize <= 2) {
 		var pz: i32 = chunk.startIndex(z);
 		while (pz < z + height) : (pz += chunk.super.pos.voxelSize) {
-			if (chunk.liesInChunk(x, y, pz)) {
-				var block = if (pz == z + height - 1) self.topWoodBlock else self.woodBlock;
-				const rotationModeType = if (pz == z + height - 1) self.topRotationModeType else self.woodRotationModeType;
-				block = initalOrientation(block, .dirUp, rotationModeType);
-				if (pz != z + height - 1) block = addNeighbor(block, .dirUp, rotationModeType);
+			var block = if (pz == z + height - 1) self.topWoodBlock else self.woodBlock;
+			const rotationModeType = if (pz == z + height - 1) self.topRotationModeType else self.woodRotationModeType;
+			block = initalOrientation(block, .dirUp, rotationModeType);
+			if (pz != z + height - 1) block = addNeighbor(block, .dirUp, rotationModeType);
 
-				if (self.branched) {
-					const chance = @sqrt(@as(f32, @floatFromInt(pz - z))/@as(f32, @floatFromInt(height*2)));
-					if (main.random.nextFloat(seed) < chance) {
-						const dir: Neighbor = @enumFromInt(main.random.nextIntBounded(u32, seed, 4) + 2);
-						generateBranch(self, x, y, pz, dir, chunk);
-						block = addNeighbor(block, dir, rotationModeType);
-					}
+			if (self.branched) {
+				const chance = @sqrt(@as(f32, @floatFromInt(pz - z))/@as(f32, @floatFromInt(height*2)));
+				if (main.random.nextFloat(seed) < chance) {
+					const dir: Neighbor = @fromBackingInt(@intCast(main.random.nextIntBounded(u32, seed, 4) + 2));
+					generateBranch(self, x, y, pz, dir, chunk);
+					block = addNeighbor(block, dir, rotationModeType);
 				}
+			}
 
+			if (chunk.liesInChunk(x, y, pz)) {
 				chunk.updateBlockIfDegradable(x, y, pz, block);
 			}
 		}

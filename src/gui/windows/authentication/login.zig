@@ -46,7 +46,7 @@ fn login() void {
 		return;
 	}
 
-	main.network.authentication.KeyCollection.init(accountCode);
+	main.network.authentication.key_collection.init(accountCode);
 
 	gui.closeWindowFromRef(&window);
 	gui.windowlist.@"authentication/stay_logged_in".setAccountCode(accountCode);

@@ -1,5 +1,7 @@
 #version 460
 
+#include "frame_uniforms.glsl"
+
 layout (location = 0) in vec3 inPos;
 layout (location = 1) in vec3 inNormal;
 layout (location = 2) in vec2 inUV;
@@ -10,11 +12,20 @@ layout(location = 1) out vec3 mvVertexPos;
 layout(location = 2) out vec3 outLight;
 layout(location = 3) flat out vec3 normal;
 
-layout(location = 0) uniform mat4 projectionMatrix;
-layout(location = 1) uniform mat4 viewMatrix;
+#ifdef OPEN_GL
+layout(location = 1) uniform mat4 modelViewMatrix;
 layout(location = 2) uniform vec3 ambientLight;
 layout(location = 3) uniform uint light;
 layout(location = 6) uniform uint nodeBufferOffset;
+#else
+layout(push_constant, std430) uniform _ {
+	mat4 modelViewMatrix;
+	vec3 ambientLight;
+	uint light;
+	uint nodeBufferOffset;
+	float contrast;
+};
+#endif
 
 layout(std430, binding = 15) buffer _nodeMatrices
 {
@@ -42,7 +53,7 @@ vec3 calcLight(uint fullLight) {
 void main() {
 	normal = inNormal;
 
-	vec4 mvPos = viewMatrix*nodeMatrices[nodeBufferOffset + inNodeId]*vec4(inPos, 1);
+	vec4 mvPos = modelViewMatrix*nodeMatrices[nodeBufferOffset + inNodeId]*vec4(inPos, 1);
 	gl_Position = projectionMatrix*mvPos;
 	mvVertexPos = mvPos.xyz;
 	outTexCoord = inUV;

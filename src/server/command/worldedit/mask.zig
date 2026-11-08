@@ -2,8 +2,8 @@ const std = @import("std");
 
 const main = @import("main");
 const command = main.server.command;
+const Source = command.Source;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const User = main.server.User;
 
 pub const description = "Set edit mask. When used with no mask expression it will clear current mask.";
 pub const usage =
@@ -30,15 +30,20 @@ pub const Args = union(enum) {
 	}
 };
 
-pub fn execute(args: Args, source: *User) void {
+pub fn execute(args: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
+		return;
+	}
+	const user = source.user;
 	switch (args) {
 		.@"/mask <mask>" => |cmd| {
-			source.worldEditData.mask = cmd.mask.mask.clone(main.globalAllocator);
-			source.sendMessage("#00ff00Mask set.", .{});
+			user.worldEditData.mask = cmd.mask.mask.clone(main.globalAllocator);
+			user.sendMessage("#00ff00Mask set.", .{});
 		},
 		.@"/mask" => {
-			source.worldEditData.mask = null;
-			source.sendMessage("#00ff00Mask cleared.", .{});
+			user.worldEditData.mask = null;
+			user.sendMessage("#00ff00Mask cleared.", .{});
 		},
 	}
 }

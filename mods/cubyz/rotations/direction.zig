@@ -57,13 +57,13 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	};
 	comptime for (1..4) |a| {
 		for (0..6) |i| {
-			const neighbor: Neighbor = @enumFromInt(rotationTable[a - 1][i]);
+			const neighbor: Neighbor = @fromBackingInt(rotationTable[a - 1][i]);
 			rotationTable[a][i] = neighbor.rotateZ().toInt();
 		}
 	};
 	if (data >= 6) return 0;
 	const runtimeTable = rotationTable;
-	return runtimeTable[@intFromEnum(angle)][data];
+	return runtimeTable[@backingInt(angle)][data];
 }
 
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, neighbor: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
@@ -78,5 +78,5 @@ pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i,
 
 pub fn updateBlockFromNeighborConnectivity(block: *Block, neighborSupportive: [6]bool) void {
 	if (block.data >= 6) return;
-	if (!neighborSupportive[@as(Neighbor, @enumFromInt(block.data)).reverse().toInt()]) block.* = .air;
+	if (!neighborSupportive[@as(Neighbor, @fromBackingInt(@intCast(block.data))).reverse().toInt()]) block.* = .air;
 }
