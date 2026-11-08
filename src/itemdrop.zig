@@ -621,14 +621,14 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 		glDepthRange: c_int,
 	} = undefined;
 	const ItemUniforms = extern struct {
-		modelMatrix: [4][4]f32 = undefined,
+		modelMatrix: [4][4]f32 align(16) = undefined,
 		modelIndex: i32 = undefined,
 		block: i32 = undefined,
-		ambientLight: [3]f32 = undefined,
+		ambientLight: [3]f32 align(16) = undefined,
 		sizeScale: f32 = undefined,
 		reflectionMapSize: f32 = undefined,
 		contrast: f32 = undefined,
-		glDepthRange: [2]f32 = undefined,
+		glDepthRange: [2]f32 align(8) = undefined,
 	};
 
 	var itemModelSSBO: graphics.SSBO = undefined;
