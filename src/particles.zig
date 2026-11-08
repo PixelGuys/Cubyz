@@ -73,20 +73,7 @@ pub const particle_manager = struct { // MARK: particle_manager
 			.rotVel = rotVel,
 			.dragCoefficient = RandomRange(f32).fromZon(zon.getChild("dragCoefficient")) orelse .init(0.5, 0.6),
 			.loopTime = RandomRange(f32).fromZon(zon.getChild("loopTime")),
-			.onCollide = blk: {
-				break :blk main.callbacks.ParticleCollideCallback.init(
-					zon.getChildOrNull("onCollide") orelse break :blk .noop,
-					.{
-						.particle = .{
-							.typ = @intCast(types.items.len),
-							.pos = undefined,
-						},
-					},
-				) orelse {
-					std.log.err("Failed to load onCollide event for particle {s}", .{id});
-					break :blk .noop;
-				};
-			},
+			.onCollide = .noop,
 		};
 
 		particleTypeHashmap.put(main.worldArena.allocator, id, @intCast(types.items.len)) catch unreachable;
@@ -94,6 +81,30 @@ pub const particle_manager = struct { // MARK: particle_manager
 		typesLocal.append(main.worldArena, particleTypeLocal);
 
 		std.log.debug("Registered particle type: {s}", .{id});
+	}
+
+	pub fn finishParticles(id: []const u8, zon: ZonElement) void {
+		var i: u16 = 0;
+		while (i < types.items.len) : (i += 1) {
+			registerCallbacks(zon, @intCast(particleTypeHashmap.get(id) orelse continue), id);
+		}
+	}
+
+	fn registerCallbacks(zon: ZonElement, typ: u32, id: []const u8) void {
+		typesLocal.items[typ].onCollide = blk: {
+			break :blk main.callbacks.ParticleCollideCallback.init(
+				zon.getChildOrNull("onCollide") orelse break :blk .noop,
+				.{
+					.particle = .{
+						.typ = typ,
+						.pos = undefined,
+					},
+				},
+			) orelse {
+				std.log.err("Failed to load onCollide event for particle {s}", .{id});
+				break :blk .noop;
+			};
+		};
 	}
 
 	fn readTextureDataAndParticleType(assetsFolder: []const u8, textureId: []const u8) ParticleType {
