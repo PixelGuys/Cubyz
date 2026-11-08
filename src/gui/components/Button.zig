@@ -103,13 +103,7 @@ const Options = struct {
 };
 
 pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *Button {
-	const borderWidth = if (options.hideBackground) 0 else 3*options.border;
-	const label = Label.init(undefined, width - borderWidth, text, .center);
-};
-
-pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *Button {
-	const borderWidth = if (options.hideBackground) 0 else 2*options.border;
-	const label = Label.init(undefined, width - borderWidth, text, .center);
+	const label = Label.init(undefined, width - 2*options.border, text, .center);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
@@ -123,11 +117,11 @@ pub fn initText(pos: Vec2f, width: f32, text: []const u8, options: Options) *But
 }
 
 pub fn initIcon(pos: Vec2f, givenIconSize: Vec2f, iconTexture: Texture, options: Options) *Button {
-	const icon = Icon.init(undefined, givenIconSize + 2*options.border, iconTexture);
+	const icon = Icon.init(undefined, givenIconSize, iconTexture);
 	const self = main.globalAllocator.create(Button);
 	self.* = Button{
 		.pos = pos,
-		.size = givenIconSize + @as(Vec2f, @splat(2*border)),
+		.size = givenIconSize + @as(Vec2f, @splat(2*options.border)),
 		.onAction = options.onAction,
 		.child = icon.toComponent(),
 		.disabled = options.disabled,
@@ -171,7 +165,7 @@ pub fn render(self: *Button, currentFrame: *graphics.vulkan.Frame, mousePosition
 	defer draw.restoreColor(oldColor);
 	const textPos = self.pos + self.size/@as(Vec2f, @splat(2.0)) - self.child.size()/@as(Vec2f, @splat(2.0));
 	self.child.mutPos().* = textPos;
-	self.child.render(mousePosition - self.pos);
+	self.child.render(currentFrame, mousePosition - self.pos);
 }
 
 fn renderBackground(self: *Button, currentFrame: *graphics.vulkan.Frame, mousePosition: Vec2f) void {

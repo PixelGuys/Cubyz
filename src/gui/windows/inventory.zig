@@ -45,13 +45,13 @@ pub fn deinit() void {
 var itemSlots: [20]*ItemSlot = undefined;
 
 fn sortItems() void {
-	const target = main.player.inventory;
+	const target = main.game.player.inventory;
 	target.sortItems(.{.ignoredSlotCount = 12});
 }
 
 pub fn onOpen() void {
 	window.titleBar = HorizontalList.init();
-	window.titleBar.?.add(Button.initIcon(.{0, 0}, .{9, 9}, sortIcon, .{.onAction = .init(sortItems), .hideBackground = true}));
+	window.titleBar.?.add(Button.initIcon(.{0, 0}, .{16, 16}, sortIcon, .{.onAction = .init(sortItems), .hideBackground = true, .border = 0}));
 
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
 	// Some miscellanious slots and buttons:
