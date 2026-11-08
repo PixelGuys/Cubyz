@@ -118,10 +118,10 @@ pub fn execute(args: Args, source: Source) void {
 		},
 		inline .@"/tp <destinationPlayerIndex>", .@"/tp <sourcePlayerIndex> <destinationPlayerIndex>" => |index| {
 			const dest = command.Target.fromPlayerIndex(index.destinationPlayerIndex, source) catch return;
-			break :blk @"cubyz:physics_body".getPosition(dest.user.player().id, .server).?;
+			break :blk @"cubyz:physics_body".getPosition(dest.user.player().id).?;
 		},
 	};
 
-	const targetPos = @"cubyz:physics_body".getPosition(target.user.player().id, .server).?;
+	const targetPos = @"cubyz:physics_body".getPosition(target.user.player().id).?;
 	if (!std.meta.eql(targetPos, pos)) main.network.protocols.generic_update.sendTPCoordinates(target.user.conn, pos);
 }

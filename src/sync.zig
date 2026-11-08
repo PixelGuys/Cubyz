@@ -1163,8 +1163,9 @@ pub const Command = struct { // MARK: Command
 
 			const amount = @min(self.source.ref().amount, self.desiredAmount);
 			if (ctx.side == .server) {
-				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -ctx.user.?.player().rot[0]), -ctx.user.?.player().rot[2]);
-				main.server.world.?.dropWithCooldown(.{.item = self.source.ref().item.clone(), .amount = amount}, @"cubyz:physics_body".getPosition(ctx.user.?.player().id, .server) orelse return, direction, 20, main.server.updatesPerSec*2);
+				const playerRot = if (ctx.user) |_user| @"cubyz:physics_body".getRotation(_user.player().id) orelse null else null;
+				const direction = if (playerRot != null) vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -playerRot.?[0]), -playerRot.?[2]) else Vec3f{0, 0, 0};
+				main.server.world.?.dropWithCooldown(.{.item = self.source.ref().item.clone(), .amount = amount}, @"cubyz:physics_body".getPosition(ctx.user.?.player().id) orelse return, direction, 20, main.server.updatesPerSec*2);
 			}
 			ctx.execute(.{.delete = .{
 				.source = self.source,
@@ -1325,7 +1326,8 @@ pub const Command = struct { // MARK: Command
 				const remainingAmount = self.destinations.putItemsInto(ctx, sourceStack.amount, .{.move = .{.inv = self.source, .slot = @intCast(sourceSlot)}});
 				if (remainingAmount == 0) continue;
 				if (ctx.side == .server) {
-					const direction = if (ctx.user) |_user| vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -_user.player().rot[0]), -_user.player().rot[2]) else Vec3f{0, 0, 0};
+					const playerRot = if (ctx.user) |_user| @"cubyz:physics_body".getRotation(_user.player().id) orelse null else null;
+					const direction = if (playerRot != null) vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -playerRot.?[0]), -playerRot.?[2]) else Vec3f{0, 0, 0};
 					main.server.world.?.drop(sourceStack.clone(), self.dropLocation, direction, 20);
 				}
 				ctx.execute(.{.delete = .{
@@ -1347,7 +1349,7 @@ pub const Command = struct { // MARK: Command
 			return .{
 				.destinations = destinations,
 				.source = Inventory.getInventory(sourceId, side, user) orelse return error.InventoryNotFound,
-				.dropLocation = @"cubyz:physics_body".getPosition((user orelse return error.Invalid).player().id, side) orelse return error.MissingPositionComponent,
+				.dropLocation = @"cubyz:physics_body".getPosition((user orelse return error.Invalid).player().id) orelse return error.MissingPositionComponent,
 			};
 		}
 	};

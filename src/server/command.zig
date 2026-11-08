@@ -136,7 +136,7 @@ pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, source: S
 		source.sendMessage("Command was run without a user; unable to interpret relative coordinates.", .{});
 		return error.InvalidArg;
 	}
-	const pos = @"cubyz:physics_body".getPosition(source.user.player().id, .server).?;
+	const pos = @"cubyz:physics_body".getPosition(source.user.player().id).?;
 	return .{
 		// TODO: Remove clamp after #310 is implemented
 		std.math.clamp(if (x == .relative) pos[0] + x.relative else x.absolute, -1e9, 1e9),
@@ -151,10 +151,11 @@ pub fn resolveRotation(yaw: Rotation, pitch: Rotation, source: Source) error{Inv
 		return error.InvalidArg;
 	}
 	const bound = std.math.pi/2.0 - 0.001;
+	const playerRot = @"cubyz:physics_body".getRotation(source.user.id).?;
 	return .{
-		std.math.clamp(if (yaw == .relative) source.user.player().rot[0] + yaw.relative else yaw.absolute, -bound, bound),
+		std.math.clamp(if (yaw == .relative) playerRot[0] + yaw.relative else yaw.absolute, -bound, bound),
 		0,
-		if (pitch == .relative) source.user.player().rot[2] + pitch.relative else pitch.absolute,
+		if (pitch == .relative) playerRot[2] + pitch.relative else pitch.absolute,
 	};
 }
 

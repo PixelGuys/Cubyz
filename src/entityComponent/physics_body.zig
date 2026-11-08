@@ -35,6 +35,7 @@ pub fn getPosition(entity: Entity) ?Vec3d {
 	return switch (main.sync.threadContext) {
 		.client => client.getPosition(entity),
 		.server => server.getPosition(entity),
+		else => return null,
 	};
 }
 pub fn getPositionPointer(entity: Entity) ?*Vec3d {
@@ -48,12 +49,14 @@ pub fn setPosition(entity: Entity, givenPosition: Vec3d) void {
 	return switch (main.sync.threadContext) {
 		.client => client.setPosition(entity, givenPosition),
 		.server => server.setPosition(entity, givenPosition),
+		else => return,
 	};
 }
 pub fn getVelocity(entity: Entity) ?Vec3d {
 	return switch (main.sync.threadContext) {
 		.client => client.getVelocity(entity),
 		.server => server.getVelocity(entity),
+		else => return null,
 	};
 }
 pub fn getVelocityPointer(entity: Entity) ?*Vec3d {
@@ -67,25 +70,28 @@ pub fn setVelocity(entity: Entity, givenVelocity: Vec3d) void {
 	return switch (main.sync.threadContext) {
 		.client => client.setVelocity(entity, givenVelocity),
 		.server => server.setVelocity(entity, givenVelocity),
+		else => return,
 	};
 }
-pub fn getRotation(entity: Entity) ?Vec3d {
+pub fn getRotation(entity: Entity) ?Vec3f {
 	return switch (main.sync.threadContext) {
-		.client => client.getVelocity(entity),
-		.server => server.getVelocity(entity),
+		.client => client.getRotation(entity),
+		.server => server.getRotation(entity),
+		else => return null,
 	};
 }
-pub fn getRotationPointer(entity: Entity) ?*Vec3d {
+pub fn getRotationPointer(entity: Entity) ?*Vec3f {
 	return switch (main.sync.threadContext) {
 		.client => &(client.get(entity) orelse return null).roation,
 		.server => &(server.get(entity) orelse return null).roation,
 		else => return null,
 	};
 }
-pub fn setRotation(entity: Entity, givenVelocity: Vec3d) void {
+pub fn setRotation(entity: Entity, givenRotation: Vec3f) void {
 	return switch (main.sync.threadContext) {
-		.client => client.setPosition(entity, givenVelocity),
-		.server => server.setPosition(entity, givenVelocity),
+		.client => client.setRotation(entity, givenRotation),
+		.server => server.setRotation(entity, givenRotation),
+		else => return,
 	};
 }
 
@@ -93,6 +99,8 @@ pub fn setRotation(entity: Entity, givenVelocity: Vec3d) void {
 pub const client = struct {
 	const Component = struct {
 		position: Vec3d,
+		velocity: Vec3d,
+		rotation: Vec3f,
 	};
 	pub var components: main.utils.SparseSet(Component, Entity) = .{};
 
@@ -107,13 +115,6 @@ pub const client = struct {
 	pub fn get(entity: Entity) ?*Component {
 		return (components.get(entity) orelse return null);
 	}
-	pub fn find(entity: Entity, defaultPos: Vec3d) *Component {
-		return (components.get(entity) orelse {
-			const position = components.add(main.globalAllocator, entity);
-			position.position = defaultPos;
-			return position;
-		});
-	}
 
 	pub fn load(entity: Entity, reader: *utils.BinaryReader, version: u32) main.entity.EntityComponentLoadError!void {
 		if (version != entityComponentVersion) return error.InvalidComponentVersion;
@@ -126,6 +127,8 @@ pub const client = struct {
 
 		ptr.* = Component{
 			.position = reader.readVec(Vec3d) catch return error.UnreadableComponentData,
+			.velocity = reader.readVec(Vec3d) catch return error.UnreadableComponentData,
+			.rotation = reader.readVec(Vec3f) catch return error.UnreadableComponentData,
 		};
 	}
 	pub fn unload(entity: Entity) void {
@@ -133,12 +136,28 @@ pub const client = struct {
 	}
 
 	fn getPosition(entity: Entity) ?Vec3d {
-		const positionComponent = components.get(entity) orelse return null;
-		return positionComponent.position;
+		const component = components.get(entity) orelse return null;
+		return component.position;
 	}
 	fn setPosition(entity: Entity, givenPosition: Vec3d) void {
-		const positionComponent = components.get(entity) orelse return;
-		positionComponent.position = givenPosition;
+		const component = components.get(entity) orelse return;
+		component.position = givenPosition;
+	}
+	fn getVelocity(entity: Entity) ?Vec3d {
+		const component = components.get(entity) orelse return null;
+		return component.velocity;
+	}
+	fn setVelocity(entity: Entity, givenVelocity: Vec3d) void {
+		const component = components.get(entity) orelse return;
+		component.velocity = givenVelocity;
+	}
+	fn getRotation(entity: Entity) ?Vec3f {
+		const component = components.get(entity) orelse return null;
+		return component.rotation;
+	}
+	fn setRotation(entity: Entity, givenRotation: Vec3f) void {
+		const component = components.get(entity) orelse return;
+		component.rotation = givenRotation;
 	}
 };
 
@@ -146,9 +165,13 @@ pub const client = struct {
 pub const server = struct {
 	pub const Component = struct {
 		position: Vec3d,
+		velocity: Vec3d,
+		rotation: Vec3f,
 		pub fn save(self: *Component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
 			_ = audience;
 			writer.writeVec(Vec3d, self.position);
+			writer.writeVec(Vec3d, self.velocity);
+			writer.writeVec(Vec3d, self.rotation);
 			return .save;
 		}
 	};
@@ -177,12 +200,16 @@ pub const server = struct {
 		const ptr: *Component = components.add(main.globalAllocator, entity);
 		ptr.* = Component{
 			.position = reader.readVec(Vec3d) catch return error.UnreadableComponentData,
+			.velocity = reader.readVec(Vec3d) catch return error.UnreadableComponentData,
+			.rotation = reader.readVec(Vec3f) catch return error.UnreadableComponentData,
 		};
 	}
-	pub fn loadFromValues(entity: Entity, position: Vec3d) void {
+	pub fn loadFromPosition(entity: Entity, position: Vec3d) void {
 		const ptr: *Component = components.add(main.globalAllocator, entity);
 		ptr.* = Component{
 			.position = position,
+			.velocity = .{0, 0, 0},
+			.rotation = .{0, 0, 0},
 		};
 	}
 	pub fn unload(entity: Entity) void {
@@ -190,11 +217,27 @@ pub const server = struct {
 	}
 
 	fn getPosition(entity: Entity) ?Vec3d {
-		const positionComponent = components.get(entity) orelse return null;
-		return positionComponent.position;
+		const component = components.get(entity) orelse return null;
+		return component.position;
 	}
 	fn setPosition(entity: Entity, givenPosition: Vec3d) void {
-		const positionComponent = components.get(entity) orelse return;
-		positionComponent.position = givenPosition;
+		const component = components.get(entity) orelse return;
+		component.position = givenPosition;
+	}
+	fn getVelocity(entity: Entity) ?Vec3d {
+		const component = components.get(entity) orelse return null;
+		return component.velocity;
+	}
+	fn setVelocity(entity: Entity, givenVelocity: Vec3d) void {
+		const component = components.get(entity) orelse return;
+		component.velocity = givenVelocity;
+	}
+	fn getRotation(entity: Entity) ?Vec3f {
+		const component = components.get(entity) orelse return null;
+		return component.rotation;
+	}
+	fn setRotation(entity: Entity, givenRotation: Vec3f) void {
+		const component = components.get(entity) orelse return;
+		component.rotation = givenRotation;
 	}
 };
