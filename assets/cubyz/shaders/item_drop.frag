@@ -61,7 +61,6 @@ layout(std430, binding = 5) buffer _animatedTexture
 	float animatedTexture[];
 };
 
-
 // block drops -------------------------------------------------------------------------------------------------------------------------
 
 float lightVariation(vec3 normal) {
@@ -116,15 +115,12 @@ void mainBlockDrop() {
 // itemDrops -------------------------------------------------------------------------------------------------------------------------
 #ifdef OPEN_GL
 layout(std430, binding = 2) buffer _modelInfo
-{
-	uint modelInfo[];
-};
 #else
 layout(std430, binding = 6) buffer _modelInfo
+#endif
 {
 	uint modelInfo[];
 };
-#endif
 
 
 uint getVoxel(ivec3 pos) {

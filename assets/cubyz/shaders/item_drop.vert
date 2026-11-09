@@ -32,15 +32,12 @@ layout(push_constant, std430) uniform _ {
 
 #ifdef OPEN_GL
 layout(std430, binding = 2) buffer _modelInfo
-{
-	uint modelInfo[];
-};
 #else
 layout(std430, binding = 6) buffer _modelInfo
+#endif
 {
 	uint modelInfo[];
 };
-#endif
 
 struct QuadInfo {
 	vec3 normal;
