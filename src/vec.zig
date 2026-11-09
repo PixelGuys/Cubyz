@@ -20,7 +20,7 @@ pub inline fn swizzle(
 	comptime z: Vec4fComponent,
 	comptime w: Vec4fComponent,
 ) Vec4f {
-	return @shuffle(f32, v, undefined, [4]i32{@intFromEnum(x), @intFromEnum(y), @intFromEnum(z), @intFromEnum(w)});
+	return @shuffle(f32, v, undefined, [4]i32{@backingInt(x), @backingInt(y), @backingInt(z), @backingInt(w)});
 }
 
 pub inline fn combine(pos: Vec3f, w: f32) Vec4f {
@@ -113,6 +113,39 @@ pub fn rotate2d(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child, cen
 		sin*pos[0] + cos*pos[1],
 	} + center;
 }
+
+pub const CoordinateSystem = enum {
+	right_handed_z_up,
+	right_handed_y_up,
+	left_handed_z_up,
+	left_handed_y_up,
+
+	pub fn convertVec(self: CoordinateSystem, pos: [3]f32, centerOfRotation: Vec3f) Vec3f {
+		const v = pos - centerOfRotation;
+		return centerOfRotation + switch (self) {
+			.right_handed_z_up => Vec3f{v[0], v[1], v[2]},
+			.right_handed_y_up => Vec3f{v[0], v[2], -v[1]},
+			.left_handed_z_up => Vec3f{-v[0], v[1], v[2]},
+			.left_handed_y_up => Vec3f{-v[0], v[2], v[1]},
+		};
+	}
+
+	pub fn convertQuat(self: CoordinateSystem, q: [4]f32) Quat {
+		return switch (self) {
+			.right_handed_z_up => Quat{.q = Vec4f{q[0], q[1], q[2], q[3]}},
+			.right_handed_y_up => Quat{.q = Vec4f{q[0], q[2], -q[1], q[3]}},
+			.left_handed_z_up => Quat{.q = Vec4f{-q[0], q[1], q[2], q[3]}},
+			.left_handed_y_up => Quat{.q = Vec4f{-q[0], q[2], q[1], q[3]}},
+		};
+	}
+
+	pub fn convertScale(self: CoordinateSystem, s: [3]f32) Vec3f {
+		return switch (self) {
+			.right_handed_z_up, .left_handed_z_up => Vec3f{s[0], s[1], s[2]},
+			.right_handed_y_up, .left_handed_y_up => Vec3f{s[0], s[2], s[1]},
+		};
+	}
+};
 
 // MARK: Quaternion
 pub const Quat = struct {
@@ -269,8 +302,8 @@ pub const Mat4f = struct { // MARK: Mat4f
 		return Mat4f{
 			.rows = [4]Vec4f{
 				Vec4f{1/tanX, 0,                          0,      0},
-				Vec4f{0,      0,                          1/tanY, 0},
-				Vec4f{0,      -(far + near)/(near - far), 0,      2*near*far/(near - far)},
+				Vec4f{0,      0,                          -1/tanY, 0},
+				Vec4f{0,      -far/(near - far), 0,      near*far/(near - far)},
 				Vec4f{0,      1,                          0,      0},
 			},
 		};
@@ -307,6 +340,28 @@ pub const Mat4f = struct { // MARK: Mat4f
 			dot(self.rows[1], vec),
 			dot(self.rows[2], vec),
 			dot(self.rows[3], vec),
+		};
+	}
+
+	pub fn fromGl(mat: [4][4]f32) Mat4f {
+		const t: Mat4f = .{
+			.rows = .{
+				mat[0],
+				mat[1],
+				mat[2],
+				mat[3],
+			},
+		};
+		return t.transpose();
+	}
+
+	pub fn toGl(self: Mat4f) [4][4]f32 {
+		const t = self.transpose();
+		return .{
+			t.rows[0],
+			t.rows[1],
+			t.rows[2],
+			t.rows[3],
 		};
 	}
 };

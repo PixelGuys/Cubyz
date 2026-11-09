@@ -7,7 +7,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 // TODO: Simplify with Vec2f and Vec2i.
 
-const Context = struct {
+const Context = struct { // MARK: Context
 	xGridPoints: Array2D(f32) = undefined,
 	yGridPoints: Array2D(f32) = undefined,
 	l1: u64,

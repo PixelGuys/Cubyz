@@ -8,7 +8,6 @@ const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
 const Button = @import("../components/Button.zig");
 const Label = GuiComponent.Label;
-const MutexComponent = GuiComponent.MutexComponent;
 const TextInput = GuiComponent.TextInput;
 const VerticalList = @import("../components/VerticalList.zig");
 const FixedSizeCircularBuffer = main.utils.FixedSizeCircularBuffer;
@@ -165,7 +164,7 @@ fn refresh() void {
 		}
 	} else {
 		list.scrollBar.currentState = 1;
-		list.scrollBar.size = .{0, 0};
+		list.scrollBar.hidden = true;
 	}
 }
 
@@ -240,11 +239,11 @@ pub fn update() void {
 	}
 }
 
-pub fn render() void {
+pub fn render(currentFrame: *main.graphics.vulkan.Frame) void {
 	if (!hideInput) {
 		const oldColor = main.graphics.draw.setColor(0x80000000);
 		defer main.graphics.draw.restoreColor(oldColor);
-		main.graphics.draw.rect(.{0, 0}, window.contentSize);
+		main.graphics.draw.rect(currentFrame, .{0, 0}, window.contentSize);
 	}
 }
 

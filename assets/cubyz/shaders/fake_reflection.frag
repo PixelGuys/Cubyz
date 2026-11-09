@@ -4,10 +4,20 @@ layout(location = 0) in vec3 coords;
 
 layout(location = 0) out vec4 fragColor;
 
+#ifdef OPEN_GL
 layout(location = 1) uniform vec3 normalVector;
 layout(location = 2) uniform vec3 upVector;
 layout(location = 3) uniform vec3 rightVector;
 layout(location = 4) uniform float frequency;
+#else
+layout(push_constant, std430) uniform _ {
+	float reflectionMapSize;
+	vec3 normalVector;
+	vec3 upVector;
+	vec3 rightVector;
+	float frequency;
+};
+#endif
 
 ivec3 random3to3(ivec3 v) {
 	v &= 15;

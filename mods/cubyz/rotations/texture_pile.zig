@@ -31,8 +31,8 @@ fn transform(quad: *main.models.QuadInfo, data: u16) void {
 }
 
 pub fn createBlockModel(block: Block, modeData: *u16, zon: ZonElement) ModelIndex {
-	const modelId = zon.get([]const u8, "model", "cubyz:cube");
-	const stateCount = zon.get(u16, "states", 2);
+	const modelId = zon.get([]const u8, "model") orelse "cubyz:cube";
+	const stateCount = zon.get(u16, "states") orelse 2;
 	const blockId = block.id();
 	if (stateCount <= 1) {
 		std.log.err("Block '{s}' uses texture pile with {} states. 'texturePile' should have at least 2 states, use 'no_rotation' instead", .{blockId, stateCount});
@@ -82,7 +82,7 @@ fn isItemBlock(block: Block, item: main.items.ItemStack) bool {
 }
 
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
-	switch (RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
+	switch (RotationMode.default_functions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
 		.no, .yes_costsDurability => return .no,
 		.yes_costsItems => |r| return .{.yes_costsItems = r},
 		.yes => {

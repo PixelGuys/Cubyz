@@ -34,7 +34,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	generationMode: GenerationMode,
 
 	pub fn initModel(parameters: ZonElement) ?SimpleStructureModel {
-		const id = parameters.get([]const u8, "id", "");
+		const id = parameters.get([]const u8, "id") orelse "";
 		const vtable = modelRegistry.get(id) orelse {
 			std.log.err("Couldn't find structure model with id {s}", .{id});
 			return null;
@@ -46,9 +46,9 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		return SimpleStructureModel{
 			.vtable = vtable,
 			.data = vtableModel,
-			.chance = parameters.get(f32, "chance", 0.1),
-			.priority = parameters.get(f32, "priority", 1),
-			.generationMode = std.meta.stringToEnum(GenerationMode, parameters.get([]const u8, "generationMode", "")) orelse vtable.generationMode,
+			.chance = parameters.get(f32, "chance") orelse 0.1,
+			.priority = parameters.get(f32, "priority") orelse 1,
+			.generationMode = std.meta.stringToEnum(GenerationMode, parameters.get([]const u8, "generationMode") orelse "") orelse vtable.generationMode,
 		};
 	}
 
@@ -57,10 +57,10 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	}
 
 	const modelRegistry: std.StaticStringMap(VTable) = .initComptime(blk: {
-		const decls = @typeInfo(simple_structures).@"struct".decls;
+		const decls = @typeInfo(simple_structures).@"struct".decl_names;
 		var generators: [decls.len]struct { []const u8, VTable } = undefined;
 		for (0..decls.len) |i| {
-			const Generator = @field(simple_structures, decls[i].name);
+			const Generator = @field(simple_structures, decls[i]);
 			generators[i] = .{Generator.id, .{
 				.loadModel = main.meta.castFunctionReturnToOptionalAnyopaque(Generator.loadModel),
 				.generate = main.meta.castFunctionSelfToAnyopaque(Generator.generate),
@@ -74,10 +74,6 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		}
 		break :blk generators;
 	});
-
-	fn getHash(self: SimpleStructureModel) u64 {
-		return self.vtable.hashFunction(self.data);
-	}
 };
 
 pub const StructureTable = struct {
@@ -89,7 +85,7 @@ pub const StructureTable = struct {
 			.id = main.worldArena.dupe(u8, id),
 			.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
 		};
-		const tableChance: ?f32 = zon.get(?f32, "chance", null);
+		const tableChance: ?f32 = zon.get(f32, "chance");
 		var structureList: main.List(SimpleStructureModel) = .empty;
 		defer structureList.deinit(main.stackAllocator);
 

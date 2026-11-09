@@ -1,0 +1,55 @@
+.{
+	.chance = 0.075,
+	.climate = .{
+		.ocean,
+	},
+	.radius = 500,
+	.minHeight = -40,
+	.maxHeight = -22,
+	.maxHeightLimit = 7,
+	.smoothBeaches = true,
+	.stoneBlock = "cubyz:chalk/white",
+
+	.roughness = 15,
+	.hills = 8,
+
+	.rivers = true,
+
+	.music = "cubyz:totaldemented/tides",
+
+	.ground_structure = .{
+		"2 to 3 cubyz:sand",
+	},
+
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:chalk/white",
+			.chance = 0.05,
+			.width = 10,
+			.variation = 5,
+			.depth = 2,
+			.smoothness = 0.4,
+		},
+	},
+	.transitionBiomes = .{
+		.{
+			.id = "cubyz:beach/warm/wide",
+			.chance = 0.2,
+			.width = 2,
+			.climate = .{.land, .inland},
+		},
+		.{
+			.id = "cubyz:beach/warm/base",
+			.chance = 1,
+			.width = 1,
+			.climate = .{.land, .inland},
+		},
+		.{
+			.id = "cubyz:ocean/temperate/shelf",
+			.chance = 1,
+			.width = 3,
+			.climate = .{.land, .inland},
+		},
+	},
+}

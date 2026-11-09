@@ -23,11 +23,11 @@ placeMode: Blueprint.PasteMode,
 rotation: sbb.Rotation,
 
 pub fn getHash(self: SbbGen) u64 {
-	return std.hash.Wyhash.hash(@intFromEnum(self.placeMode), self.structureRef.id);
+	return std.hash.Wyhash.hash(@backingInt(self.placeMode), self.structureRef.id);
 }
 
 pub fn loadModel(parameters: ZonElement) ?*SbbGen {
-	const structureId = parameters.get(?[]const u8, "structure", null) orelse {
+	const structureId = parameters.get([]const u8, "structure") orelse {
 		std.log.err("Error loading generator 'cubyz:sbb' structure field is mandatory.", .{});
 		return null;
 	};
@@ -46,7 +46,7 @@ pub fn loadModel(parameters: ZonElement) ?*SbbGen {
 	const self = main.worldArena.create(SbbGen);
 	self.* = .{
 		.structureRef = structureRef,
-		.placeMode = std.meta.stringToEnum(Blueprint.PasteMode, parameters.get([]const u8, "placeMode", "degradable")) orelse Blueprint.PasteMode.degradable,
+		.placeMode = std.meta.stringToEnum(Blueprint.PasteMode, parameters.get([]const u8, "placeMode") orelse "degradable") orelse Blueprint.PasteMode.degradable,
 		.rotation = rotation,
 	};
 	return self;
@@ -64,7 +64,7 @@ fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placeme
 		std.log.err("Could not align directions for structure '{s}' for directions '{s}'' and '{s}', error: {s}", .{structure.id, @tagName(origin.direction()), @tagName(placementDirection orelse origin.direction()), @errorName(err)});
 		return;
 	});
-	const rotated = &blueprints[@intFromEnum(blueprintRotation.fixed)];
+	const rotated = &blueprints[@backingInt(blueprintRotation.fixed)];
 	const rotatedOrigin = rotated.originBlock.pos();
 	const pastePosition = placementPosition - rotatedOrigin - (placementDirection orelse origin.direction()).relPos();
 
@@ -84,7 +84,7 @@ fn alignDirections(input: Neighbor, desired: Neighbor) !sbb.Rotation.FixedRotati
 			var current = in;
 			for (0..4) |i| {
 				if (current == out) {
-					alignTable[in.toInt()][out.toInt()] = @enumFromInt(i);
+					alignTable[in.toInt()][out.toInt()] = @fromBackingInt(@intCast(i));
 					break :blk;
 				}
 				current = current.rotateZ();

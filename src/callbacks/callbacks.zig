@@ -37,9 +37,9 @@ fn Callback(_Params: type, list: type) type {
 		var eventCreationMap: std.StringHashMapUnmanaged(VTable) = .{};
 
 		fn globalInit() void {
-			inline for (@typeInfo(list).@"struct".decls) |decl| {
-				const CallbackStruct = @field(list, decl.name);
-				eventCreationMap.put(main.globalArena.allocator, decl.name, .{
+			inline for (@typeInfo(list).@"struct".decl_names) |decl| {
+				const CallbackStruct = @field(list, decl);
+				eventCreationMap.put(main.globalArena.allocator, decl, .{
 					.init = main.meta.castFunctionReturnToOptionalAnyopaque(CallbackStruct.init),
 					.run = main.meta.castFunctionSelfToAnyopaque(CallbackStruct.run),
 				}) catch unreachable;
@@ -47,7 +47,7 @@ fn Callback(_Params: type, list: type) type {
 		}
 
 		pub fn init(zon: main.ZonElement, creator: Creator) ?@This() {
-			const typ = zon.get(?[]const u8, "type", null) orelse {
+			const typ = zon.get([]const u8, "type") orelse {
 				std.log.err("Missing field \"type\"", .{});
 				return null;
 			};

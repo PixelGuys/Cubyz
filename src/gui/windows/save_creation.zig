@@ -49,7 +49,7 @@ fn chooseSeed(seedStr: []const u8) u64 {
 }
 
 fn gamemodeCallback() void {
-	worldSettings.defaultGamemode = std.enums.fromInt(main.game.Gamemode, @intFromEnum(worldSettings.defaultGamemode) + 1) orelse @enumFromInt(0);
+	worldSettings.defaultGamemode = std.enums.fromInt(main.game.Gamemode, @backingInt(worldSettings.defaultGamemode) + 1) orelse @fromBackingInt(@intCast(0));
 	gamemodeInput.child.label.updateText(@tagName(worldSettings.defaultGamemode));
 }
 
@@ -106,12 +106,12 @@ pub fn onOpen() void {
 
 	var num: usize = 1;
 	while (true) {
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/Save{}", .{num}) catch unreachable;
+		const path = main.stackAllocator.print("saves/Save{}", .{num});
 		defer main.stackAllocator.free(path);
 		if (!main.files.cubyzDir().hasDir(path)) break;
 		num += 1;
 	}
-	const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
+	const name = main.stackAllocator.print("Save{}", .{num});
 	defer main.stackAllocator.free(name);
 	nameInput = TextInput.init(.{0, 0}, 128, 22, name, .{.onNewline = .init(createWorld)});
 	list.add(nameInput);

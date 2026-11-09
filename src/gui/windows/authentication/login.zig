@@ -17,7 +17,6 @@ const VerticalList = GuiComponent.VerticalList;
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
 	.closeIfMouseIsGrabbed = true,
-	.closeable = false,
 };
 var textComponent: *TextInput = undefined;
 var loginButton: *Button = undefined;
@@ -47,7 +46,7 @@ fn login() void {
 		return;
 	}
 
-	main.network.authentication.KeyCollection.init(accountCode);
+	main.network.authentication.key_collection.init(accountCode);
 
 	gui.closeWindowFromRef(&window);
 	gui.windowlist.@"authentication/stay_logged_in".setAccountCode(accountCode);
@@ -75,6 +74,7 @@ fn openCreateAccountWindow() void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 320, 8);
 	const width = 480;
+	list.add(Label.init(.{0, 0}, width, "You need to login to play Multiplayer", .left));
 	list.add(Label.init(.{0, 0}, width, "Please enter your Account Code:", .left));
 	const textRow = HorizontalList.init();
 	textComponent = TextInput.init(.{0, 0}, 400, 38, "", .{.onNewline = .init(none), .onUpdate = .init(updateText)});

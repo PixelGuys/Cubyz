@@ -28,13 +28,13 @@ baseSlope: f32,
 
 pub fn loadModel(parameters: ZonElement) ?*Stalagmite {
 	const self = main.worldArena.create(Stalagmite);
-	const baseSlope = parameters.get(f32, "baseSlope", 4.0);
+	const baseSlope = parameters.get(f32, "baseSlope") orelse 4.0;
 	self.* = .{
-		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "cubyz:stalagmite")),
-		.size = parameters.get(f32, "size", 12),
-		.sizeVariation = parameters.get(f32, "size_variation", 8),
+		.block = main.blocks.parseBlock(parameters.get([]const u8, "block") orelse "cubyz:stalagmite"),
+		.size = parameters.get(f32, "size") orelse 12,
+		.sizeVariation = parameters.get(f32, "size_variation") orelse 8,
 		.baseSlope = baseSlope,
-		.topSlope = parameters.get(f32, "topSlope", baseSlope),
+		.topSlope = parameters.get(f32, "topSlope") orelse baseSlope,
 	};
 	return self;
 }

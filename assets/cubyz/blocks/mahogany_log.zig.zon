@@ -10,4 +10,5 @@
 	.texture_top = "cubyz:mahogany_log_top",
 	.texture_bottom = "cubyz:mahogany_log_top",
 	.decayProhibitor = true,
+	.hasItem = false,
 }

@@ -1,5 +1,5 @@
 .{
-	.properties = .{
+	.climate = .{
 		.ocean,
 	},
 	.radius = 500,
@@ -21,7 +21,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:moss:cubyz:slate/cobble",
+			.block = "cubyz:moss:cubyz:slate/rough",
 			.chance = 0.032,
 			.width = 6,
 			.variation = 2,
@@ -43,19 +43,19 @@
 			.id = "cubyz:beach/warm/wide",
 			.chance = 0.2,
 			.width = 2,
-			.properties = .{.land, .inland},
+			.climate = .{.land, .inland},
 		},
 		.{
 			.id = "cubyz:beach/warm/base",
 			.chance = 1,
 			.width = 1,
-			.properties = .{.land, .inland},
+			.climate = .{.land, .inland},
 		},
 		.{
 			.id = "cubyz:ocean/temperate/shelf",
 			.chance = 1,
 			.width = 3,
-			.properties = .{.land, .inland},
+			.climate = .{.land, .inland},
 		},
 	},
 }

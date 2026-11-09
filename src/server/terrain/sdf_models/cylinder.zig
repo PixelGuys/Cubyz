@@ -26,10 +26,10 @@ const Instance = struct {
 
 pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
 	const self = main.worldArena.create(@This());
-	self.minRadius = zon.get(f32, "minRadius", 16);
-	self.maxRadius = zon.get(f32, "maxRadius", self.minRadius);
-	self.minHalfHeight = zon.get(f32, "minHeight", 32)/2;
-	self.maxHalfHeight = zon.get(f32, "maxfHeight", self.minHalfHeight*2)/2;
+	self.minRadius = zon.get(f32, "minRadius") orelse 16;
+	self.maxRadius = zon.get(f32, "maxRadius") orelse self.minRadius;
+	self.minHalfHeight = (zon.get(f32, "minHeight") orelse 32)/2;
+	self.maxHalfHeight = (zon.get(f32, "maxfHeight") orelse self.minHalfHeight*2)/2;
 
 	return .{.model = self, .maxExtend = .{
 		.min = .{@floor(-self.maxRadius), @floor(-self.maxRadius), @floor(-self.maxHalfHeight)},

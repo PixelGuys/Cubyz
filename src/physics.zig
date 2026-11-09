@@ -8,7 +8,7 @@ const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Vec3i = vec.Vec3i;
 const settings = @import("settings.zig");
-const Player = main.game.Player;
+const player = main.game.player;
 const camera = main.game.camera;
 
 pub const baseGravity = 30.0;
@@ -16,7 +16,9 @@ pub const playerAirTerminalVelocity = 90.0;
 pub const airDensity = 0.001;
 pub const playerDensity = 1.2;
 
-pub const collision = struct {
+pub const epsilon: f64 = 1.0/@as(comptime_float, 1 << (std.math.floatMantissaBits(f64) - 31)); // Should be the last bit when at the integer limit
+
+pub const collision = struct { // MARK: collision
 	pub const Box = struct {
 		min: Vec3d,
 		max: Vec3d,
@@ -130,7 +132,7 @@ pub const collision = struct {
 
 	pub fn calculateSurfaceProperties(comptime side: main.sync.Side, pos: Vec3d, hitBox: Box, defaultFriction: f32) SurfaceProperties {
 		const boundingBox: Box = .{
-			.min = pos + hitBox.min,
+			.min = pos + hitBox.min - Vec3d{0, 0, 0.01},
 			.max = pos + hitBox.max,
 		};
 		const minX: i32 = @floor(boundingBox.min[0]);
@@ -138,7 +140,7 @@ pub const collision = struct {
 		const minY: i32 = @floor(boundingBox.min[1]);
 		const maxY: i32 = @floor(boundingBox.max[1]);
 
-		const z: i32 = @floor(boundingBox.min[2] - 0.01);
+		const z: i32 = @floor(boundingBox.min[2]);
 
 		var friction: f64 = 0;
 		var bounciness: f64 = 0;
@@ -265,7 +267,7 @@ pub const collision = struct {
 	}
 
 	pub fn collideOrStep(comptime side: main.sync.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Box, steppingHeight: f64) Vec3d {
-		const index = @intFromEnum(dir);
+		const index = @backingInt(dir);
 
 		// First argument is amount we end up moving in dir, second argument is how far up we step
 		var resultingMovement: Vec3d = .{0, 0, 0};
@@ -274,7 +276,7 @@ pub const collision = struct {
 		checkPos[index] += amount;
 
 		if (collision.collides(side, dir, -amount, checkPos, hitBox)) |box| {
-			const newFloor = box.max[2] + hitBox.max[2];
+			const newFloor = box.max[2] + hitBox.max[2] + epsilon;
 			const heightDifference = newFloor - checkPos[2];
 			if (heightDifference <= steppingHeight) {
 				// If we collide but might be able to step up
@@ -288,9 +290,9 @@ pub const collision = struct {
 
 			// Otherwise move as close to the container as possible
 			if (amount < 0) {
-				resultingMovement[index] = box.max[index] - hitBox.min[index] - pos[index];
+				resultingMovement[index] = box.max[index] - hitBox.min[index] - pos[index] + epsilon;
 			} else {
-				resultingMovement[index] = box.min[index] - hitBox.max[index] - pos[index];
+				resultingMovement[index] = box.min[index] - hitBox.max[index] - pos[index] - epsilon;
 			}
 		}
 
@@ -415,7 +417,7 @@ pub fn calculateMotion(comptime side: main.sync.Side, deltaTime: f64, friction: 
 	return move;
 }
 
-pub fn calculateEyeMovement(comptime side: main.sync.Side, deltaTime: f64, pos: Vec3d, vel: Vec3d, eye: *Player.EyeData, stepAmount: f64) void {
+pub fn calculateEyeMovement(comptime side: main.sync.Side, deltaTime: f64, pos: Vec3d, vel: Vec3d, eye: *player.EyeData, stepAmount: f64) void {
 	if (main.game.getBlockWithSide(side, @floor(pos[0]), @floor(pos[1]), @floor(pos[2])) != null) {
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
 		var acc: Vec3d = @splat(0);
@@ -560,16 +562,16 @@ pub fn calculateVerticalCollision(comptime side: main.sync.Side, deltaTime: f64,
 	if (collision.collides(side, .z, -motion[2], pos.*, hitBox)) |box| {
 		if (motion[2] < 0) {
 			onGround.* = true;
-			pos[2] = box.max[2] - hitBox.min[2];
+			pos[2] = box.max[2] - hitBox.min[2] + epsilon;
 		} else {
-			pos[2] = box.min[2] - hitBox.max[2];
+			pos[2] = box.min[2] - hitBox.max[2] - epsilon;
 		}
 		const bounciness = if (bouncinessMultiplier == 0) 0 else collision.calculateSurfaceProperties(side, pos.*, hitBox, 0.0).bounciness*bouncinessMultiplier;
 
 		if (bounciness != 0.0 and vel[2] < -3.0) {
 			vel[2] = -vel[2]*bounciness;
 			if (jumpCoyote) |coyote| {
-				coyote.* = Player.jumpCoyoteTimeConstant + deltaTime;
+				coyote.* = player.jumpCoyoteTimeConstant + deltaTime;
 			}
 		} else {
 			vel[2] = 0;
@@ -582,13 +584,13 @@ pub fn calculateVerticalCollision(comptime side: main.sync.Side, deltaTime: f64,
 		return true;
 	} else {
 		if (wasOnGround and motion[2] < 0 and jumpCoyote != null) {
-			jumpCoyote.?.* = Player.jumpCoyoteTimeConstant + deltaTime;
+			jumpCoyote.?.* = player.jumpCoyoteTimeConstant + deltaTime;
 		}
 		return false;
 	}
 }
 
-pub fn calculateVerticalCollisionEyeMovement(deltaTime: f64, eye: *Player.EyeData, didCollide: bool, onGround: bool, wasOnGround: bool, prevPos: Vec3d, pos: Vec3d, prevVel: Vec3d, vel: Vec3d, motion: Vec3d, steppingHeight: f64) void {
+pub fn calculateVerticalCollisionEyeMovement(deltaTime: f64, eye: *player.EyeData, didCollide: bool, onGround: bool, wasOnGround: bool, prevPos: Vec3d, pos: Vec3d, prevVel: Vec3d, vel: Vec3d, motion: Vec3d, steppingHeight: f64) void {
 	if (didCollide) {
 		if (onGround) {
 			if (!wasOnGround) {
@@ -606,7 +608,7 @@ pub fn calculateVerticalCollisionEyeMovement(deltaTime: f64, eye: *Player.EyeDat
 		// We add deltaTime because we subtract deltaTime at the bottom of update
 		eye.coyote = @sqrt(2*steppingHeight/baseGravity) + deltaTime;
 		eye.pos[2] -= motion[2];
-	} else if (Player.eye.coyote > 0) {
+	} else if (player.eye.coyote > 0) {
 		eye.pos[2] -= motion[2];
 	}
 }
