@@ -816,7 +816,6 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 		if (main.settings.launch_config.vulkanTestingMode) {
 			uniforms.modelMatrix = modelMatrix.toGl();
 			currentFrame.renderCommands.bindPipeline(currentFrame, itemPipeline, null);
-			graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, itemPipeline);
 			currentFrame.renderCommands.bindDescriptors(itemPipeline, &.{
 				.{.image = .{.binding = 0, .image = main.blocks.meshes.blockTextureArray.vulkanImage.?}},
 				.{.image = .{.binding = 1, .image = main.blocks.meshes.emissionTextureArray.vulkanImage.?}},
@@ -840,6 +839,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 		game.world.?.itemDrops.updateInterpolationData();
 
 		var uniforms: ItemUniforms = .{};
+		graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, itemPipeline);
 
 		bindCommonUniforms(ambientLight, &uniforms);
 		const itemDrops = &game.world.?.itemDrops.super;
@@ -890,7 +890,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 	}
 
 	pub fn renderDisplayItems(currentFrame: *graphics.vulkan.Frame, ambientLight: Vec3f, playerPos: Vec3d) void {
-		if (!item_display_manager.showItem or true) return;
+		if (!item_display_manager.showItem) return;
 
 		const displayItemUbo = graphics.frame_uniforms.StaticUbo.init(.{
 			.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(main.renderer.lastWidth))/@as(f32, @floatFromInt(main.renderer.lastHeight)), 0.01, 3).toGl(),
@@ -899,11 +899,12 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 			.playerPositionFraction = @splat(0),
 		});
 		defer displayItemUbo.deinit();
-		displayItemUbo.bind();
-		defer displayItemUbo.unbind();
 		if (main.settings.launch_config.vulkanTestingMode) {
 			displayItemUbo.bindToPipeline(currentFrame.renderCommands, itemPipeline);
+		} else {
+			displayItemUbo.bind();
 		}
+		defer displayItemUbo.unbind();
 
 		var uniforms: ItemUniforms = .{};
 
