@@ -190,7 +190,7 @@ pub const client = struct { // MARK: client
 				@as(u32, lightVals[4] >> 3) << 5 |
 				@as(u32, lightVals[5] >> 3) << 0);
 
-			const pos: Vec3d = physicsBodyComponent.getRenderPosition() - playerPos;
+			const pos: Vec3d = physicsBodyComponent.position - playerPos;
 			const modelMatrix = (Mat4f.identity()
 				.mul(Mat4f.translation(Vec3f{
 					@floatCast(pos[0]),
