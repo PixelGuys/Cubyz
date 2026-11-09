@@ -48,7 +48,7 @@ pub fn addEntity() main.entity.Entity {
 	var ent: *server.Entity = undefined;
 	if (freeIdList.items.len > 0) {
 		entityId = freeIdList.swapRemove(0);
-		ent = &entities.items()[@intFromEnum(entityId)];
+		ent = &entities.items()[@backingInt(entityId)];
 	} else {
 		entityId = @enumFromInt(entities.len);
 		ent = entities.addOne();
@@ -62,19 +62,19 @@ pub fn addEntity() main.entity.Entity {
 }
 
 pub fn getEntity(entityId: main.entity.Entity) *server.Entity {
-	std.debug.assert(@intFromEnum(entityId) < entities.len);
-	std.debug.assert(entities.items()[@intFromEnum(entityId)].used);
+	std.debug.assert(@backingInt(entityId) < entities.len);
+	std.debug.assert(entities.items()[@backingInt(entityId)].used);
 
-	return &entities.items()[@intFromEnum(entityId)];
+	return &entities.items()[@backingInt(entityId)];
 }
 
 pub fn removeEntity(entityId: main.entity.Entity) void {
 	sync.threadContext.assertCorrectContext(.server);
 
-	if (@intFromEnum(entityId) >= entities.len) return;
-	if (!entities.items()[@intFromEnum(entityId)].used) return;
+	if (@backingInt(entityId) >= entities.len) return;
+	if (!entities.items()[@backingInt(entityId)].used) return;
 
-	const ent = &entities.items()[@intFromEnum(entityId)];
+	const ent = &entities.items()[@backingInt(entityId)];
 
 	// remove entity
 	{
