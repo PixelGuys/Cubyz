@@ -263,6 +263,7 @@ pub const Biome = struct { // MARK: Biome
 	isValidPlayerSpawn: bool,
 	chance: f32,
 	tags: []const Tag,
+	liquidBlock: main.blocks.Block,
 
 	pub fn init(self: *Biome, id: []const u8, paletteId: u32, zon: ZonElement) void {
 		const minRadius = zon.get(f32, "radius") orelse zon.get(f32, "minRadius") orelse 256;
@@ -306,6 +307,7 @@ pub const Biome = struct { // MARK: Biome
 			.chance = zon.get(f32, "chance") orelse if (zon == .null) 0 else 1,
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount") orelse std.math.floatMax(f32),
 			.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
+			.liquidBlock = blocks.parseBlock(zon.get([]const u8, "liquidBlock") orelse "cubyz:water"),
 		};
 		if (self.isCave) {
 			for (self.tags) |tag| {
