@@ -33,9 +33,9 @@ layout(location = 10) uniform vec2 glDepthRange;
 #else
 layout(push_constant, std430) uniform _ {
 	mat4 modelMatrix;
+	vec3 ambientLight;
 	int modelIndex;
 	int block;
-	vec3 ambientLight;
 	float sizeScale;
 	float reflectionMapSize;
 	float contrast;
