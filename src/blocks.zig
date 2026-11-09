@@ -640,7 +640,6 @@ pub const meshes = struct { // MARK: meshes
 	pub var emissionTextureArray: TextureArray = undefined;
 	pub var reflectivityAndAbsorptionTextureArray: TextureArray = undefined;
 	pub var ditherTexture: graphics.Texture = undefined;
-	pub var ran: bool = false;
 
 	const black: Color = Color{.r = 0, .g = 0, .b = 0, .a = 255};
 	var emptyTexture = [_]Color{black};
@@ -909,7 +908,6 @@ pub const meshes = struct { // MARK: meshes
 			}
 		}
 		reflectivityAndAbsorptionTextureArray.generate(reflectivityAndAbsorptionTextures, true, false);
-                ran = true;
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
 
 		// Also generate additional buffers:
