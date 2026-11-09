@@ -408,9 +408,15 @@ pub const Biome = struct { // MARK: Biome
 		if (self.reservedBufferAbove != 128 and self.isCave) {
 			std.log.err("Cave biome {s} has reservedBufferAbove changed from the default value. reservedBufferAbove has no affect on cave biomes.\n", .{self.id});
 		}
+		if (self.reservedBufferAbove < 0) {
+			std.log.err("Biome {s} has invalid reservedBufferAbove. It should be 0 or greater.\n", .{self.id});
+		}
 
 		if (self.reservedBufferBelow != 32 and self.isCave) {
 			std.log.err("Cave biome {s} has reservedBufferBelow changed from the default value. reservedBufferBelow has no affect on cave biomes.\n", .{self.id});
+		}
+		if (self.reservedBufferBelow < 0) {
+			std.log.err("Biome {s} has invalid reservedBufferBelow. It should be 0 or greater.\n", .{self.id});
 		}
 	}
 
