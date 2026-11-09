@@ -1664,6 +1664,7 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		capacity: u31,
 		used: u31,
 		binding: c_uint,
+		stagingBuffer: ?vulkan.Buffer.Staging = null,
 
 		const Self = @This();
 
@@ -1683,6 +1684,7 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		}
 
 		pub fn init(self: *Self, allocator: NeverFailingAllocator, size: u31, binding: c_uint) void {
+			self.stagingBuffer = null;
 			self.used = 0;
 			self.binding = binding;
 			self.createBuffer(size);
@@ -1797,20 +1799,43 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 				return &.{};
 			}
 			allocation.* = self.rawAlloc(@intCast(len));
-			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
-			const ptr: [*]Entry = @ptrCast(@alignCast(c.glMapBufferRange(
-				c.GL_SHADER_STORAGE_BUFFER,
-				@as(c.GLintptr, allocation.start)*@sizeOf(Entry),
-				@as(c.GLsizeiptr, allocation.len)*@sizeOf(Entry),
-				c.GL_MAP_WRITE_BIT | c.GL_MAP_INVALIDATE_RANGE_BIT,
-			)));
-			return ptr[0..len];
+			if (main.settings.launch_config.vulkanTestingMode) {
+				std.debug.assert(self.stagingBuffer == null);
+				self.stagingBuffer = vulkan.Buffer.createStagingBuffer(len*@sizeOf(Entry), .{.alignment = @alignOf(Entry)});
+				return std.mem.bytesAsSlice(Entry, @as([]align(@alignOf(Entry)) u8, @alignCast(self.stagingBuffer.?.mapping)));
+			} else {
+				c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
+				const ptr: [*]Entry = @ptrCast(@alignCast(c.glMapBufferRange(
+					c.GL_SHADER_STORAGE_BUFFER,
+					@as(c.GLintptr, allocation.start)*@sizeOf(Entry),
+					@as(c.GLsizeiptr, allocation.len)*@sizeOf(Entry),
+					c.GL_MAP_WRITE_BIT | c.GL_MAP_INVALIDATE_RANGE_BIT,
+				)));
+				return ptr[0..len];
+			}
 		}
 
-		pub fn unmapRange(self: *Self, range: []Entry) void {
+		pub fn unmapRange(self: *Self, range: []Entry, allocation: SubAllocation) void {
 			if (range.len == 0) return;
-			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
-			std.debug.assert(c.glUnmapBuffer(c.GL_SHADER_STORAGE_BUFFER) == c.GL_TRUE);
+			if (main.settings.launch_config.vulkanTestingMode) {
+				// TODO: Remove after the OpenGL window is closed
+				c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
+				const ptr: [*]Entry = @ptrCast(@alignCast(c.glMapBufferRange(
+					c.GL_SHADER_STORAGE_BUFFER,
+					@as(c.GLintptr, allocation.start)*@sizeOf(Entry),
+					@as(c.GLsizeiptr, allocation.len)*@sizeOf(Entry),
+					c.GL_MAP_WRITE_BIT | c.GL_MAP_INVALIDATE_RANGE_BIT,
+				)));
+				@memcpy(ptr, range);
+				std.debug.assert(c.glUnmapBuffer(c.GL_SHADER_STORAGE_BUFFER) == c.GL_TRUE);
+
+				std.debug.assert(std.meta.eql(self.stagingBuffer.?.mapping, std.mem.sliceAsBytes(range)));
+				self.ssbo.buffer.?.uploadAndDestroyStaging(self.stagingBuffer.?, @as(usize, allocation.start)*@sizeOf(Entry));
+				self.stagingBuffer = null;
+			} else {
+				c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
+				std.debug.assert(c.glUnmapBuffer(c.GL_SHADER_STORAGE_BUFFER) == c.GL_TRUE);
+			}
 		}
 
 		pub fn uploadData(self: *Self, data: []const Entry, allocation: *SubAllocation) void {
