@@ -418,28 +418,39 @@ pub const World = struct { // MARK: World
 
 		self.randomTicksTime += deltaTime;
 		const tickrate: f32 = 1.0/20.0;
-		if (self.randomTicksTime >= tickrate) {
+		while (self.randomTicksTime >= tickrate) {
 			updateRandomTickBlocks(self);
-			self.randomTicksTime = 0;
+			self.randomTicksTime -= tickrate;
 		}
 	}
 
 	pub fn updateRandomTickBlocks(_: *World) void {
-		const chunkRadius = settings.visualRandomTickRadius;
-		const playerBlockPos: Vec3i = @intFromFloat(@floor(Player.getPosBlocking()));
-		const thing: i32 = @intCast(if (@mod(chunkRadius, 2) == 0) @divFloor(chunkRadius, 2) else @divFloor(chunkRadius - 1, 2));
-		for (0..chunkRadius) |cx| {
-			for (0..chunkRadius) |cy| {
-				for (0..chunkRadius) |cz| {
-					const chunkMultiplierPos: Vec3i = playerBlockPos +% @as(Vec3i, @splat(32))*Vec3i{@as(i32, @intCast(cx)) - thing, @as(i32, @intCast(cy)) - thing, @as(i32, @intCast(cz)) - thing};
+		const chunkRadius: i32 = @intCast(settings.visualRandomTickRadius + 1);
+		const playerPos = player.getPosBlocking();
+		const playerBlockPos: Vec3i = @intFromFloat(@floor(playerPos));
+		
+		var cx = -chunkRadius;
+		while (cx <= chunkRadius) : (cx += 1) {
+			var cy = -chunkRadius;
+			while (cy <= chunkRadius) : (cy += 1) {
+				var cz = -chunkRadius;
+				while (cz <= chunkRadius) : (cz += 1) {
+					const chunkMultiplierPos: Vec3i = playerBlockPos +% @as(Vec3i, @splat(32))*Vec3i{cx, cy, cz};
 					const chunkMesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(chunkMultiplierPos, 1));
+					
+					if (chunkMesh != null and chunkMesh.?.pos.voxelSize == 1) {
+						const cm = chunkMesh.?;
+						const chunkPos = Vec3i{cm.pos.wx, cm.pos.wy, cm.pos.wz};
+						const chunkPosF = @as(Vec3f, @floatFromInt(chunkPos)) + @as(Vec3f, @splat(16));
+						const radius = @as(f32, @floatFromInt(chunkRadius)) * main.chunk.chunkSize;
 
-					if (chunkMesh) |mesh| {
-						for (0..20) |_| {
-							const curBlockPos = Vec3i{main.random.nextIntBounded(i32, &main.seed, 32), main.random.nextIntBounded(i32, &main.seed, 32), main.random.nextIntBounded(i32, &main.seed, 32)};
-							const block = mesh.chunk.getBlock(curBlockPos[0], curBlockPos[1], curBlockPos[2]);
-							const onClientUpdate = block.onClientUpdate();
-							if (onClientUpdate.run(.{.blockPos = curBlockPos + Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, .block = block, .chunk = mesh.chunk}) == .handled) continue;
+						if (vec.lengthSquare(chunkPosF - playerPos) < radius*radius) {
+							for (0..(settings.visualRandomTickCount + 1)*5) |_| {
+								const curBlockPos = Vec3i{main.random.nextIntBounded(i32, &main.seed, 32), main.random.nextIntBounded(i32, &main.seed, 32), main.random.nextIntBounded(i32, &main.seed, 32)};
+								const block = cm.chunk.getBlock(curBlockPos[0], curBlockPos[1], curBlockPos[2]);
+								const onClientRandomTick = block.onClientRandomTick();
+								if (onClientRandomTick.run(.{.blockPos = curBlockPos + Vec3i{cm.pos.wx, cm.pos.wy, cm.pos.wz}, .block = block, .chunk = cm.chunk}) == .handled) continue;
+							}
 						}
 					}
 				}

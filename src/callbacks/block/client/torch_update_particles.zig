@@ -14,11 +14,11 @@ pub fn init(_: ZonElement, _: main.callbacks.Creator) ?*anyopaque {
 pub fn run(_: *anyopaque, params: main.callbacks.ClientBlockCallback.Params) main.callbacks.Result {
 	var emitter: particles.Emitter = undefined;
 	const emitterProperties = particles.EmitterProperties{
-		.speed = .init(0.15, 0.2),
-		.lifeTime = .init(0.25, 0.5),
+		.speed = .init(0.1, 0.2),
+		.lifeTime = .init(0.2, 0.5),
 		.randomizeRotation = false,
 	};
 	emitter = .init("cubyz:flame", false, .{.point = .{}}, emitterProperties, .spread);
-	emitter.spawnParticles(@as(vec.Vec3f, @floatFromInt(params.blockPos)) + vec.Vec3f{0.5, 0.5, 0.85}, 1);
+	emitter.spawnParticles(@as(vec.Vec3f, @floatFromInt(params.blockPos)) + vec.Vec3f{0.5, 0.5, 0.85}, 2);
 	return .handled;
 }
