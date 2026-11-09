@@ -11,5 +11,6 @@
 		.blue = "cubyz:tree/mahogany/sapele/large/branch/blue",
 		.white = "cubyz:tree/mahogany/sapele/large/top",
 		.yellow = "cubyz:tree/mahogany/deco",
+		.lime = "cubyz:tree/mahogany/young_vine",
 	},
 }
