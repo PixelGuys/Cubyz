@@ -625,7 +625,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 		modelIndex: i32 = undefined,
 		block: i32 = undefined,
 		ambientLight: [3]f32 align(16) = undefined,
-		sizeScale: f32 = undefined,
+		sizeScale: f32 = 0,
 		reflectionMapSize: f32 = undefined,
 		contrast: f32 = undefined,
 		glDepthRange: [2]f32 align(8) = undefined,
@@ -747,7 +747,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 				.pushConstantSize = @sizeOf(ItemUniforms),
 			},
 		);
-		itemModelSSBO = .initDynamicSize(i32, 48);
+		itemModelSSBO = .initDynamicSize(i32, 32*32*@sizeOf(ItemVoxelModel));
 		itemModelSSBO.bufferData(i32, &[3]i32{1, 1, 1});
 		itemModelSSBO.bind(2);
 
@@ -905,7 +905,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 			displayItemUbo.bindToPipeline(currentFrame.renderCommands, itemPipeline);
 		}
 
-		var uniforms: ?ItemUniforms = if (!main.settings.launch_config.vulkanTestingMode) null else .{};
+		var uniforms: ItemUniforms = .{};
 
 		bindCommonUniforms(ambientLight, &uniforms);
 
