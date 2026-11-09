@@ -428,7 +428,7 @@ pub const World = struct { // MARK: World
 		const chunkRadius: i32 = @intCast(settings.visualRandomTickRadius + 1);
 		const playerPos = player.getPosBlocking();
 		const playerBlockPos: Vec3i = @intFromFloat(@floor(playerPos));
-		
+
 		var cx = -chunkRadius;
 		while (cx <= chunkRadius) : (cx += 1) {
 			var cy = -chunkRadius;
@@ -437,12 +437,12 @@ pub const World = struct { // MARK: World
 				while (cz <= chunkRadius) : (cz += 1) {
 					const chunkMultiplierPos: Vec3i = playerBlockPos +% @as(Vec3i, @splat(32))*Vec3i{cx, cy, cz};
 					const chunkMesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(chunkMultiplierPos, 1));
-					
+
 					if (chunkMesh != null and chunkMesh.?.pos.voxelSize == 1) {
 						const cm = chunkMesh.?;
 						const chunkPos = Vec3i{cm.pos.wx, cm.pos.wy, cm.pos.wz};
 						const chunkPosF = @as(Vec3f, @floatFromInt(chunkPos)) + @as(Vec3f, @splat(16));
-						const radius = @as(f32, @floatFromInt(chunkRadius)) * main.chunk.chunkSize;
+						const radius = @as(f32, @floatFromInt(chunkRadius))*main.chunk.chunkSize;
 
 						if (vec.lengthSquare(chunkPosF - playerPos) < radius*radius) {
 							for (0..(settings.visualRandomTickCount + 1)*5) |_| {
