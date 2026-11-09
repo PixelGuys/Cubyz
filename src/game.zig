@@ -446,10 +446,12 @@ pub const World = struct { // MARK: World
 
 						if (vec.lengthSquare(chunkPosF - playerPos) < radius*radius) {
 							for (0..(settings.visualRandomTickCount + 1)*5) |_| {
-								const curBlockPos = Vec3i{main.random.nextIntBounded(i32, &main.seed, 32), main.random.nextIntBounded(i32, &main.seed, 32), main.random.nextIntBounded(i32, &main.seed, 32)};
-								const block = cm.chunk.getBlock(curBlockPos[0], curBlockPos[1], curBlockPos[2]);
+								const curBlockPos = main.chunk.BlockPos.fromIndex(main.random.nextInt(u15, &main.seed));
+								const block = cm.chunk.getBlock(curBlockPos.x, curBlockPos.y, curBlockPos.z);
 								const onClientRandomTick = block.onClientRandomTick();
-								if (onClientRandomTick.run(.{.blockPos = curBlockPos + Vec3i{cm.pos.wx, cm.pos.wy, cm.pos.wz}, .block = block, .chunk = cm.chunk}) == .handled) continue;
+
+								const blockWorldPos = Vec3i{curBlockPos.x + cm.pos.wx, curBlockPos.y + cm.pos.wy, curBlockPos.z + cm.pos.wz};
+								if (onClientRandomTick.run(.{.blockPos = blockWorldPos, .block = block, .chunk = cm.chunk}) == .handled) continue;
 							}
 						}
 					}
