@@ -181,7 +181,7 @@ pub const client = struct { // MARK: client
 
 				entTexture.?.bindTo(0);
 			}
-			const blockPos: vec.Vec3i = @floor(physicsBodyComponent.pos);
+			const blockPos: vec.Vec3i = @floor(physicsBodyComponent.position);
 			const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
 			const light = (@as(u32, lightVals[0] >> 3) << 25 |
 				@as(u32, lightVals[1] >> 3) << 20 |
