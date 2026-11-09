@@ -62,8 +62,6 @@ pub fn addEntity() main.entity.Entity {
 }
 
 pub fn getEntity(entityId: main.entity.Entity) *server.Entity {
-	sync.threadContext.assertCorrectContext(.server);
-
 	std.debug.assert(@intFromEnum(entityId) < entities.len);
 	std.debug.assert(entities.items()[@intFromEnum(entityId)].used);
 
