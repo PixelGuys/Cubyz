@@ -359,8 +359,8 @@ pub fn registerSound(assetsFolder: []const u8, id: []const u8, zon: ZonElement) 
 
 	for (soundZons) |soundZon| {
 		const audioId = soundZon.get([]const u8, "audio") orelse {
-		std.log.err("Error: Sound Data audio was not specified: {s} ({s})", .{id, assetsFolder});
-		return;
+			std.log.err("Error: Sound Data audio was not specified: {s} ({s})", .{id, assetsFolder});
+			return;
 		};
 		if (findSound(audioId) == null) {
 			std.log.err("Error: Sound Data audio was not found: {s} ({s})", .{id, assetsFolder});
