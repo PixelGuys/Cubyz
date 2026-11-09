@@ -266,6 +266,8 @@ pub const Biome = struct { // MARK: Biome
 	liquidBlock: main.blocks.Block,
 	reservedBufferAbove: i32,
 	reservedBufferBelow: i32,
+	isReservedBufferAboveAbsolute: bool,
+	isReservedBufferBelowAbsolute: bool,
 
 	pub fn init(self: *Biome, id: []const u8, paletteId: u32, zon: ZonElement) void {
 		const minRadius = zon.get(f32, "radius") orelse zon.get(f32, "minRadius") orelse 256;
@@ -312,6 +314,8 @@ pub const Biome = struct { // MARK: Biome
 			.liquidBlock = blocks.parseBlock(zon.get([]const u8, "liquidBlock") orelse "cubyz:water"),
 			.reservedBufferAbove = zon.get(i32, "reservedBufferAbove") orelse 128,
 			.reservedBufferBelow = zon.get(i32, "reservedBufferBelow") orelse 32,
+			.isReservedBufferAboveAbsolute = zon.get(bool, "isReservedBufferAboveAbsolute") orelse false,
+			.isReservedBufferBelowAbsolute = zon.get(bool, "isReservedBufferBelowAbsolute") orelse false,
 		};
 		if (self.isCave) {
 			for (self.tags) |tag| {
@@ -408,15 +412,27 @@ pub const Biome = struct { // MARK: Biome
 		if (self.reservedBufferAbove != 128 and self.isCave) {
 			std.log.err("Cave biome {s} has reservedBufferAbove changed from the default value. reservedBufferAbove has no affect on cave biomes.\n", .{self.id});
 		}
-		if (self.reservedBufferAbove < 0) {
-			std.log.err("Biome {s} has invalid reservedBufferAbove. It should be 0 or greater.\n", .{self.id});
+		if (self.isReservedBufferAboveAbsolute) {
+			if (self.reservedBufferAbove < self.minHeight) {
+				std.log.err("Biome {s} has invalid reservedBufferAbove. It should be greater than minHeight.\n", .{self.id});
+			}
+		} else {
+			if (self.reservedBufferAbove < 0) {
+				std.log.err("Biome {s} has invalid reservedBufferAbove. It should be 0 or greater.\n", .{self.id});
+			}
 		}
 
 		if (self.reservedBufferBelow != 32 and self.isCave) {
 			std.log.err("Cave biome {s} has reservedBufferBelow changed from the default value. reservedBufferBelow has no affect on cave biomes.\n", .{self.id});
 		}
-		if (self.reservedBufferBelow < 0) {
-			std.log.err("Biome {s} has invalid reservedBufferBelow. It should be 0 or greater.\n", .{self.id});
+		if (self.isReservedBufferBelowAbsolute) {
+			if (self.reservedBufferBelow > self.maxHeight) {
+				std.log.err("Biome {s} has invalid reservedBufferBelow. It should be less than maxHeight.\n", .{self.id});
+			}
+		} else {
+			if (self.reservedBufferBelow < 0) {
+				std.log.err("Biome {s} has invalid reservedBufferBelow. It should be 0 or greater.\n", .{self.id});
+			}
 		}
 	}
 
