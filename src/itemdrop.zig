@@ -774,7 +774,6 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 	}
 
 	fn bindCommonUniforms(ambientLight: Vec3f, uniforms: *ItemUniforms) void {
-		itemPipeline.bind(null);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			uniforms.reflectionMapSize = main.renderer.reflectionCubeMapSize;
 			uniforms.ambientLight = ambientLight;
@@ -783,6 +782,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 			c.glGetFloatv(c.GL_DEPTH_RANGE, &depthRange);
 			uniforms.glDepthRange = depthRange;
 		} else {
+			itemPipeline.bind(null);
 			c.glUniform1f(itemUniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
 			c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
 			c.glUniform1f(itemUniforms.contrast, 0.12);
