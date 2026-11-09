@@ -1157,21 +1157,16 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			for (userList) |user| {
 				var entityData: main.ListManaged(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 				defer entityData.deinit();
-				for (user.loadedChunks) |xChunks| {
-					for (xChunks) |yChunks| {
-						for (yChunks) |zChunk| {
-							std.log.debug("sadsd {}", .{yChunks.len});
-							if (zChunk.getChunk() == null) continue;
-							for (zChunk.storedEntities.items) |entity| {
-								const id = entity; // TODO
-								entityData.append(.{
-									.id = id,
-									.pos = @"cubyz:physics_body".getPosition(entity, .server).?,
-									.vel = @"cubyz:physics_body".getVelocity(entity, .server).?,
-									.rot = @"cubyz:physics_body".getRotation(entity, .server).?,
-								});
-							}
-						}
+				var it = ChunkManager.simulationChunkHashMap.iterator();
+				while (it.next()) |simChunk| {
+					for (simChunk.value_ptr.*.*.storedEntities.items) |entity| {
+						const id = entity; // TODO
+						entityData.append(.{
+							.id = id,
+							.pos = @"cubyz:physics_body".getPosition(entity, .server).?,
+							.vel = @"cubyz:physics_body".getVelocity(entity, .server).?,
+							.rot = @"cubyz:physics_body".getRotation(entity, .server).?,
+						});
 					}
 				}
 				main.network.protocols.entity_position.send(user.conn, @"cubyz:physics_body".getPosition(user.player().id, .server).?, entityData.items, itemData);
