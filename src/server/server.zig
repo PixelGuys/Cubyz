@@ -598,7 +598,6 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 	main.systems.server.init();
 	main.entity.server.init();
 	main.items.Inventory.server.init();
-	entity_manager.init();
 
 	world = ServerWorld.init(name, mode) catch |err| {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
@@ -645,7 +644,6 @@ fn deinit() void {
 	}
 	world = null;
 
-	entity_manager.deinit();
 	main.items.Inventory.server.deinit();
 	main.entity.server.deinit();
 	main.sync.server.deinit();
