@@ -1123,16 +1123,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			}
 		}
 		self.tick();
-		// Entities
-		for (main.entity.components.@"cubyz:physics_body".server.components.dense.items, main.entity.components.@"cubyz:physics_body".server.components.denseToSparseIndex.items) |component, id| {
-			if (self.getSimulationChunkAndIncreaseRefCount(@trunc(component.position[0]), @trunc(component.position[1]), @trunc(component.position[2]))) |simChunk| {
-				defer simChunk.decreaseRefCount();
-				if (simChunk.getChunk() != null) {
-					simChunk.addEntityToChunk(id);
-					defer simChunk.removeEntityFromChunk(id);
-				}
-			}
-		}
 		// Item Entities
 		self.itemDropManager.update(deltaTime);
 		{ // Collect item entities:
@@ -1147,30 +1137,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			self.saveItemdrops() catch |err| {
 				std.log.err("Error while saving item data: {s}", .{@errorName(err)});
 			};
-		}
-		{ // Send Entity Positions To Players:
-			const userList = server.getUserList(main.stackAllocator);
-			defer main.stackAllocator.free(userList);
-			const itemData = self.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
-			defer main.stackAllocator.free(itemData);
-
-			for (userList) |user| {
-				var entityData: main.ListManaged(main.entity.EntityNetworkData) = .init(main.stackAllocator);
-				defer entityData.deinit();
-				var it = ChunkManager.simulationChunkHashMap.iterator();
-				while (it.next()) |simChunk| {
-					for (simChunk.value_ptr.*.*.storedEntities.items) |entity| {
-						const id = entity; // TODO
-						entityData.append(.{
-							.id = id,
-							.pos = @"cubyz:physics_body".getPosition(entity, .server).?,
-							.vel = @"cubyz:physics_body".getVelocity(entity, .server).?,
-							.rot = @"cubyz:physics_body".getRotation(entity, .server).?,
-						});
-					}
-				}
-				main.network.protocols.entity_position.send(user.conn, @"cubyz:physics_body".getPosition(user.player().id, .server).?, entityData.items, itemData);
-			}
 		}
 
 		// Store chunks and regions.
@@ -1192,6 +1158,48 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			updateRequest.region.store();
 			updateRequest.region.decreaseRefCount();
 			if (updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() >= 0) break;
+		}
+
+		// Entities
+		for (main.entity.components.@"cubyz:physics_body".server.components.dense.items, main.entity.components.@"cubyz:physics_body".server.components.denseToSparseIndex.items) |component, id| {
+			if (self.getSimulationChunkAndIncreaseRefCount(@trunc(component.position[0]), @trunc(component.position[1]), @trunc(component.position[2]))) |simChunk| {
+				defer simChunk.decreaseRefCount();
+				if (simChunk.getChunk() != null) {
+					simChunk.addEntityToChunk(id);
+					defer simChunk.removeEntityFromChunk(id);
+					std.log.debug("added entity to chunk {}", .{simChunk.storedEntities.items});
+				}
+			}
+		}
+		{ // Send Entity Positions To Players:
+			const userList = server.getUserList(main.stackAllocator);
+			defer main.stackAllocator.free(userList);
+			const itemData = self.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
+			defer main.stackAllocator.free(itemData);
+
+			for (userList) |user| {
+				var entityData: main.ListManaged(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+				defer entityData.deinit();
+				var it = ChunkManager.simulationChunkHashMap.iterator();
+				while (it.next()) |simChunk| {
+					if (simChunk.value_ptr.*.*.getChunk() == null) {
+						std.log.debug("discarding chunk", .{});
+						continue;
+					}
+					for (simChunk.value_ptr.*.*.storedEntities.items) |entity| {
+						std.log.debug("found entity ##################################################", .{});
+						const id = entity; // TODO
+						entityData.append(.{
+							.id = id,
+							.pos = @"cubyz:physics_body".getPosition(entity, .server).?,
+							.vel = @"cubyz:physics_body".getVelocity(entity, .server).?,
+							.rot = @"cubyz:physics_body".getRotation(entity, .server).?,
+						});
+					}
+				}
+				std.log.debug("sending {} entities", .{entityData.items.len});
+				main.network.protocols.entity_position.send(user.conn, @"cubyz:physics_body".getPosition(user.player().id, .server).?, entityData.items, itemData);
+			}
 		}
 	}
 
