@@ -15,6 +15,11 @@
 		},
 		.{
 			.id = "cubyz:sbb",
+			.placeMode = .all,
+			.structure = "cubyz:rare/bobble/base",
+		},
+		.{
+			.id = "cubyz:sbb",
 			.placeMode = .degradable,
 			.structure = "cubyz:rare/mushroom_pole/base",
 		},
