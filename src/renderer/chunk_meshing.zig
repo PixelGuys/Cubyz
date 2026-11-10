@@ -475,7 +475,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		}
 
 		const fullBuffer = faceBuffers[self.lod].allocateAndMapRange(len, &self.bufferAllocation);
-		defer faceBuffers[self.lod].unmapRange(fullBuffer);
+		defer faceBuffers[self.lod].unmapRange(fullBuffer, self.bufferAllocation);
 		// Sort the faces by normal to allow for backface culling on the GPU:
 		var i: u32 = 0;
 		var iStart = i;

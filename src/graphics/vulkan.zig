@@ -171,7 +171,9 @@ pub fn init(window: ?*c.GLFWwindow) !void {
 		}
 	}
 	createInstance();
+	errdefer c.vkDestroyInstance(instance, null);
 	checkResult(c.glfwCreateWindowSurface(instance, window, null, &surface));
+	errdefer c.vkDestroySurfaceKHR(instance, surface, null);
 	try pickPhysicalDevice();
 	if (builtin.target.os.tag != .macos) {
 		if (c.gladLoaderLoadVulkan(instance, physicalDevice, null) == 0) {
@@ -886,6 +888,7 @@ pub const Buffer = struct { // MARK: Buffer
 	const BufferOptions = struct {
 		usage: c.VkBufferUsageFlags,
 		hostAccessible: bool = false,
+		alignment: usize = 0,
 	};
 	pub fn init(size: usize, options: BufferOptions) Buffer {
 		std.debug.assert(size != 0); // Vulkan cannot handle empty buffers
@@ -898,6 +901,7 @@ pub const Buffer = struct { // MARK: Buffer
 		const allocCreateInfo: c.VmaAllocationCreateInfo = .{
 			.usage = c.VMA_MEMORY_USAGE_AUTO,
 			.flags = if (options.hostAccessible) c.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT else 0,
+			.minAlignment = options.alignment,
 		};
 		checkResult(c.vmaCreateBuffer(gpu_allocator.handle, &bufferInfo, &allocCreateInfo, &self.handle, &self.allocation, null));
 		return self;
@@ -913,13 +917,30 @@ pub const Buffer = struct { // MARK: Buffer
 
 	pub fn uploadData(self: Buffer, offset: usize, data: []const u8) void {
 		if (data.len == 0) return;
-		const stagingBuffer: Buffer = .init(data.len, .{.usage = c.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, .hostAccessible = true});
-		defer stagingBuffer.deferredDeinit();
+		const staging = createStagingBuffer(data.len, .{});
+		@memcpy(staging.mapping, data);
+		self.uploadAndDestroyStaging(staging, offset);
+	}
+
+	pub const Staging = struct {
+		buffer: Buffer,
+		mapping: []u8,
+	};
+
+	pub fn createStagingBuffer(len: usize, options: struct {alignment: usize = 0}) Staging {
+		const stagingBuffer: Buffer = .init(len, .{.usage = c.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, .hostAccessible = true, .alignment = options.alignment});
 		var gpuMemory: ?*anyopaque = undefined;
 		checkResult(c.vmaMapMemory(gpu_allocator.handle, stagingBuffer.allocation, &gpuMemory));
-		@memcpy(@as([*]u8, @ptrCast(gpuMemory.?)), data);
-		c.vmaUnmapMemory(gpu_allocator.handle, stagingBuffer.allocation);
-		upload.commands.copyBuffer(self, offset, stagingBuffer, 0, data.len);
+		return .{
+			.buffer = stagingBuffer,
+			.mapping = @as([*]u8, @ptrCast(gpuMemory.?))[0..len],
+		};
+	}
+
+	pub fn uploadAndDestroyStaging(self: Buffer, staging: Staging, offset: usize) void {
+		c.vmaUnmapMemory(gpu_allocator.handle, staging.buffer.allocation);
+		upload.commands.copyBuffer(self, offset, staging.buffer, 0, staging.mapping.len*@sizeOf(@TypeOf(staging.mapping[0])));
+		staging.buffer.deferredDeinit();
 	}
 };
 
