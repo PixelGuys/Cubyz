@@ -927,7 +927,7 @@ pub const Buffer = struct { // MARK: Buffer
 		mapping: []u8,
 	};
 
-	pub fn createStagingBuffer(len: usize, options: struct {alignment: usize = 0}) Staging {
+	pub fn createStagingBuffer(len: usize, options: struct { alignment: usize = 0 }) Staging {
 		const stagingBuffer: Buffer = .init(len, .{.usage = c.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, .hostAccessible = true, .alignment = options.alignment});
 		var gpuMemory: ?*anyopaque = undefined;
 		checkResult(c.vmaMapMemory(gpu_allocator.handle, stagingBuffer.allocation, &gpuMemory));
