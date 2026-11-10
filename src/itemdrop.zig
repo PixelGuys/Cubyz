@@ -759,6 +759,8 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 
 	pub fn renderItemDrops(ambientLight: Vec3f, playerPos: Vec3d) void {
 		game.world.?.itemDrops.updateInterpolationData();
+		modelData.beginRender();
+		defer modelData.endRender();
 
 		bindCommonUniforms(ambientLight);
 		const itemDrops = &game.world.?.itemDrops.super;
@@ -810,6 +812,8 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 
 	pub fn renderDisplayItems(ambientLight: Vec3f, playerPos: Vec3d) void {
 		if (!item_display_manager.showItem) return;
+		modelData.beginRender();
+		defer modelData.endRender();
 
 		const displayItemUbo = graphics.frame_uniforms.StaticUbo.init(.{
 			.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(main.renderer.lastWidth))/@as(f32, @floatFromInt(main.renderer.lastHeight)), 0.01, 3).toGl(),
