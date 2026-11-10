@@ -1,5 +1,7 @@
 #version 460
 
+#include "frame_uniforms.glsl"
+
 layout(location = 0) out vec3 startPosition;
 layout(location = 1) out vec3 direction;
 layout(location = 2) out vec3 cameraSpacePos;
@@ -11,8 +13,6 @@ layout(location = 7) flat out int textureIndex;
 layout(location = 8) flat out uvec3 lower;
 layout(location = 9) flat out uvec3 upper;
 
-layout(location = 0) uniform mat4 projectionMatrix;
-layout(location = 1) uniform mat4 viewMatrix;
 layout(location = 2) uniform mat4 modelMatrix;
 layout(location = 3) uniform int modelIndex;
 layout(location = 4) uniform int block;
@@ -69,8 +69,8 @@ const int[24] positions = int[24](
 );
 
 void main() {
-	int faceID = gl_VertexID >> 2;
-	int vertexID = gl_VertexID & 3;
+	int faceID = gl_VertexIndex >> 2;
+	int vertexID = gl_VertexIndex & 3;
 	int voxelModelIndex = modelIndex;
 	bool isBlock = block != 0;
 	vec3 pos;
@@ -87,7 +87,7 @@ void main() {
 		}
 		faceNormal = quads[quadIndex].normal;
 	} else {
-		int position = positions[gl_VertexID];
+		int position = positions[gl_VertexIndex];
 		pos = vec3 (
 			position >> 8 & 1,
 			position >> 4 & 1,

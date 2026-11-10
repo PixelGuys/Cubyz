@@ -9,15 +9,15 @@ var testingErrorHandlingAllocator = ErrorHandlingAllocator.init(std.testing.allo
 pub const testingAllocator = testingErrorHandlingAllocator.allocator();
 
 pub const allocators = struct { // MARK: allocators
-	pub var globalGpa = std.heap.GeneralPurposeAllocator(.{.thread_safe = true}){};
+	pub var globalGpa = std.heap.DebugAllocator(.{.thread_safe = true}){};
 	pub var handledGpa = ErrorHandlingAllocator.init(globalGpa.allocator());
-	pub var globalArenaAllocator: ThreadSafeAllocator(NeverFailingArenaAllocator) = .init(.init(handledGpa.allocator()));
-	pub var worldArenaAllocator: ThreadSafeAllocator(NeverFailingArenaAllocator) = undefined;
+	pub var globalArenaAllocator: NeverFailingArenaAllocator = .init(handledGpa.allocator());
+	pub var worldArenaAllocator: NeverFailingArenaAllocator = undefined;
 	var worldArenaOpenCount: usize = 0;
-	var worldArenaMutex: std.Thread.Mutex = .{};
+	var worldArenaMutex: main.utils.Mutex = .{};
 
 	pub fn deinit() void {
-		std.log.info("Clearing global arena with {} MiB", .{globalArenaAllocator.child.arena.queryCapacity() >> 20});
+		std.log.info("Clearing global arena with {} MiB", .{globalArenaAllocator.arena.queryCapacity() >> 20});
 		globalArenaAllocator.deinit();
 		globalArenaAllocator = undefined;
 		if (globalGpa.deinit() == .leak) {
@@ -30,7 +30,7 @@ pub const allocators = struct { // MARK: allocators
 		worldArenaMutex.lock();
 		defer worldArenaMutex.unlock();
 		if (worldArenaOpenCount == 0) {
-			worldArenaAllocator = .init(.init(handledGpa.allocator()));
+			worldArenaAllocator = .init(handledGpa.allocator());
 		}
 		worldArenaOpenCount += 1;
 	}
@@ -40,7 +40,7 @@ pub const allocators = struct { // MARK: allocators
 		defer worldArenaMutex.unlock();
 		worldArenaOpenCount -= 1;
 		if (worldArenaOpenCount == 0) {
-			std.log.info("Clearing world arena with {} MiB", .{worldArenaAllocator.child.arena.queryCapacity() >> 20});
+			std.log.info("Clearing world arena with {} MiB", .{worldArenaAllocator.arena.queryCapacity() >> 20});
 			worldArenaAllocator.deinit();
 			worldArenaAllocator = undefined;
 		}
@@ -110,7 +110,7 @@ pub const StackAllocator = struct { // MARK: StackAllocator
 
 	fn alloc(ctx: *anyopaque, len: usize, alignment: std.mem.Alignment, ret_addr: usize) ?[*]u8 {
 		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
-		const start = std.mem.alignForward(usize, self.index, @as(usize, 1) << @intCast(@intFromEnum(alignment)));
+		const start = std.mem.alignForward(usize, self.index, @as(usize, 1) << @intCast(@backingInt(alignment)));
 		const end = getTrueAllocationEnd(start, len);
 		if (end >= self.buffer.len) return self.backingAllocator.rawAlloc(len, alignment, ret_addr);
 		const trailer = self.getTrailerBefore(end);
@@ -450,10 +450,7 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 	///   do the realloc more efficiently than the caller
 	/// * `resize` which returns `false` when the `Allocator` implementation cannot
 	///   change the size without relocating the allocation.
-	pub fn realloc(self: NeverFailingAllocator, old_mem: anytype, new_n: usize) t: {
-		const Slice = @typeInfo(@TypeOf(old_mem)).pointer;
-		break :t []align(Slice.alignment) Slice.child;
-	} {
+	pub fn realloc(self: NeverFailingAllocator, old_mem: anytype, new_n: usize) std.meta.Slice(std.meta.AbsorbSentinel(@TypeOf(old_mem))) {
 		return self.allocator.realloc(old_mem, new_n) catch unreachable;
 	}
 
@@ -462,10 +459,7 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 		old_mem: anytype,
 		new_n: usize,
 		return_address: usize,
-	) t: {
-		const Slice = @typeInfo(@TypeOf(old_mem)).pointer;
-		break :t []align(Slice.alignment) Slice.child;
-	} {
+	) std.meta.Slice(std.meta.AbsorbSentinel(@TypeOf(old_mem))) {
 		return self.allocator.reallocAdvanced(old_mem, new_n, return_address) catch unreachable;
 	}
 
@@ -482,8 +476,34 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 	}
 
 	/// Copies `m` to newly allocated memory, with a null-terminated element. Caller owns the memory.
-	pub fn dupeZ(self: NeverFailingAllocator, comptime T: type, m: []const T) [:0]T {
-		return self.allocator.dupeZ(T, m) catch unreachable;
+	pub fn dupeSentinel(self: NeverFailingAllocator, comptime T: type, m: []const T, comptime sentinel: T) [:sentinel]T {
+		return self.allocator.dupeSentinel(T, m, sentinel) catch unreachable;
+	}
+
+	/// Allocates a formatted string which is returned on success.
+	///
+	/// Returned slice can be deallocated with `free`. If an arena-style allocator
+	/// is used instead, such as `std.heap.ArenaAllocator`, then no call to `free`
+	/// is necessary.
+	///
+	/// See `std.Io.Writer.print`.
+	pub fn print(a: NeverFailingAllocator, comptime format: []const u8, args: anytype) []u8 {
+		return std.fmt.allocPrint(a.allocator, format, args) catch unreachable;
+	}
+
+	/// Like `print` but returned slice has the provided sentinel.
+	///
+	/// Returned slice can be deallocated with `free`. If an arena-style allocator
+	/// is used instead, such as `std.heap.ArenaAllocator`, then no call to `free`
+	/// is necessary. Illegal behavior occurs if the returned slice is type-coerced
+	/// to a slice without the sentinel and then passed to `free`.
+	pub fn printSentinel(
+		a: NeverFailingAllocator,
+		comptime format: []const u8,
+		args: anytype,
+		comptime sentinel: u8,
+	) [:sentinel]u8 {
+		return std.fmt.allocPrintSentinel(a.allocator, format, args, sentinel) catch unreachable;
 	}
 
 	pub fn createArena(self: NeverFailingAllocator) NeverFailingAllocator {
@@ -539,87 +559,11 @@ pub const NeverFailingArenaAllocator = struct { // MARK: NeverFailingArena
 		const node = self.arena.state.buffer_list.first orelse return;
 		const allocBuf = @as([*]u8, @ptrCast(node))[0..node.data];
 		const dataSize = std.mem.alignForward(usize, @sizeOf(std.SinglyLinkedList(usize).Node) + self.arena.state.end_index, @alignOf(std.SinglyLinkedList(usize).Node));
-		if (self.arena.childAllocator.rawResize(allocBuf, @enumFromInt(std.math.log2(@alignOf(std.SinglyLinkedList(usize).Node))), dataSize, @returnAddress())) {
+		if (self.arena.childAllocator.rawResize(allocBuf, @fromBackingInt(std.math.log2(@alignOf(std.SinglyLinkedList(usize).Node))), dataSize, @returnAddress())) {
 			node.data = dataSize;
 		}
 	}
 };
-
-pub fn ThreadSafeAllocator(ChildAllocatorType: type) type { // MARK: ThreadSafeAllocator
-	std.debug.assert(@TypeOf(ChildAllocatorType.allocator(undefined)) == NeverFailingAllocator);
-
-	return struct {
-		child: ChildAllocatorType,
-		mutex: std.Thread.Mutex = .{},
-
-		pub fn init(childAllocator: ChildAllocatorType) @This() {
-			return .{
-				.child = childAllocator,
-			};
-		}
-
-		pub fn deinit(self: @This()) void {
-			self.child.deinit();
-		}
-
-		pub fn allocator(self: *@This()) NeverFailingAllocator {
-			return .{
-				.allocator = .{
-					.ptr = self,
-					.vtable = &.{
-						.alloc = alloc,
-						.resize = resize,
-						.remap = remap,
-						.free = free,
-					},
-				},
-				.IAssertThatTheProvidedAllocatorCantFail = {},
-			};
-		}
-
-		pub fn swapChild(self: *@This(), other: *ChildAllocatorType) void {
-			self.mutex.lock();
-			defer self.mutex.unlock();
-			std.mem.swap(ChildAllocatorType, &self.child, other);
-		}
-
-		fn alloc(context: *anyopaque, n: usize, alignment: std.mem.Alignment, ra: usize) ?[*]u8 {
-			const self: *@This() = @ptrCast(@alignCast(context));
-
-			self.mutex.lock();
-			defer self.mutex.unlock();
-
-			return self.child.allocator().rawAlloc(n, alignment, ra);
-		}
-
-		fn resize(context: *anyopaque, buf: []u8, alignment: std.mem.Alignment, new_len: usize, ret_addr: usize) bool {
-			const self: *@This() = @ptrCast(@alignCast(context));
-
-			self.mutex.lock();
-			defer self.mutex.unlock();
-
-			return self.child.allocator().rawResize(buf, alignment, new_len, ret_addr);
-		}
-
-		fn remap(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, return_address: usize) ?[*]u8 {
-			const self: *@This() = @ptrCast(@alignCast(context));
-
-			self.mutex.lock();
-			defer self.mutex.unlock();
-
-			return self.child.allocator().rawRemap(memory, alignment, new_len, return_address);
-		}
-
-		fn free(context: *anyopaque, buf: []u8, alignment: std.mem.Alignment, ret_addr: usize) void {
-			const self: *@This() = @ptrCast(@alignCast(context));
-
-			self.mutex.lock();
-			defer self.mutex.unlock();
-
-			return self.child.allocator().rawFree(buf, alignment, ret_addr);
-		}
-	};
-}
 
 /// basically a copy of std.heap.MemoryPool, except it's thread-safe and has some more diagnostics.
 pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
@@ -643,15 +587,16 @@ pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 		const NodePtr = *align(item_alignment) Node;
 		const ItemPtr = *align(item_alignment) Item;
 
-		arena: NeverFailingArenaAllocator,
+		arena: NeverFailingAllocator,
 		free_list: ?NodePtr = null,
 		freeAllocations: usize = 0,
 		totalAllocations: usize = 0,
-		mutex: std.Thread.Mutex = .{},
+		mutex: main.utils.Mutex = .{},
 
 		/// Creates a new memory pool.
-		pub fn init(allocator: NeverFailingAllocator) Pool {
-			return .{.arena = NeverFailingArenaAllocator.init(allocator)};
+		pub fn init(arena: NeverFailingAllocator) Pool {
+			std.debug.assert(arena.allocator.vtable.alloc == comptime NeverFailingArenaAllocator.allocator(@ptrFromInt(1024)).allocator.vtable.alloc);
+			return .{.arena = arena};
 		}
 
 		/// Destroys the memory pool and frees all allocated memory.
@@ -661,7 +606,6 @@ pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 			} else if (pool.totalAllocations != 0) {
 				std.log.info("{} MiB ({} elements) in {s} Memory pool", .{pool.totalAllocations*item_size >> 20, pool.totalAllocations, @typeName(Item)});
 			}
-			pool.arena.deinit();
 			pool.* = undefined;
 		}
 
@@ -696,16 +640,16 @@ pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 		}
 
 		fn allocNew(pool: *Pool) *align(item_alignment) [item_size]u8 {
-			main.utils.assertLocked(&pool.mutex);
+			pool.mutex.assertLocked();
 			pool.totalAllocations += 1;
 			pool.freeAllocations += 1;
-			const mem = pool.arena.allocator().alignedAlloc(u8, .fromByteUnits(item_alignment), item_size);
+			const mem = pool.arena.alignedAlloc(u8, .fromByteUnits(item_alignment), item_size);
 			return mem[0..item_size]; // coerce slice to array pointer
 		}
 	};
 }
 
-pub const GarbageCollection = struct { // MARK: GarbageCollection
+pub const garbage_collection = struct { // MARK: garbage_collection
 	var sharedState: std.atomic.Value(u32) = .init(0);
 	threadlocal var threadCycle: u2 = undefined;
 	threadlocal var lastSyncPointTime: std.Io.Timestamp = undefined;
@@ -713,7 +657,7 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		ptr: *anyopaque,
 		freeFunction: *const fn (*anyopaque) void,
 	};
-	threadlocal var lists: [4]main.ListUnmanaged(FreeItem) = undefined;
+	threadlocal var lists: [4]main.List(FreeItem) = undefined;
 
 	const State = packed struct {
 		waitingThreads: u15 = 0,
@@ -734,7 +678,7 @@ pub const GarbageCollection = struct { // MARK: GarbageCollection
 		}
 	}
 
-	fn freeItemsFromList(list: *main.ListUnmanaged(FreeItem)) void {
+	fn freeItemsFromList(list: *main.List(FreeItem)) void {
 		while (list.popOrNull()) |item| {
 			item.freeFunction(item.ptr);
 		}
@@ -877,7 +821,7 @@ pub fn PowerOfTwoPoolAllocator(minSize: comptime_int, maxSize: comptime_int, max
 
 		arena: NeverFailingArenaAllocator,
 		buckets: [bucketCount]Bucket = @splat(.{}),
-		mutex: std.Thread.Mutex = .{},
+		mutex: main.utils.Mutex = .{},
 
 		pub fn init(backingAllocator: NeverFailingAllocator) Self {
 			return .{.arena = .init(backingAllocator)};
@@ -906,7 +850,7 @@ pub fn PowerOfTwoPoolAllocator(minSize: comptime_int, maxSize: comptime_int, max
 		}
 
 		fn alloc(ctx: *anyopaque, len: usize, _alignment: std.mem.Alignment, _: usize) ?[*]u8 {
-			std.debug.assert(@as(usize, 1) << @intFromEnum(_alignment) <= maxAlignment);
+			std.debug.assert(@as(usize, 1) << @backingInt(_alignment) <= maxAlignment);
 			std.debug.assert(std.math.isPowerOfTwo(len));
 			std.debug.assert(len >= minSize);
 			std.debug.assert(len <= maxSize);
@@ -926,7 +870,7 @@ pub fn PowerOfTwoPoolAllocator(minSize: comptime_int, maxSize: comptime_int, max
 		}
 
 		fn free(ctx: *anyopaque, memory: []u8, _alignment: std.mem.Alignment, _: usize) void {
-			std.debug.assert(@as(usize, 1) << @intFromEnum(_alignment) <= maxAlignment);
+			std.debug.assert(@as(usize, 1) << @backingInt(_alignment) <= maxAlignment);
 			std.debug.assert(std.math.isPowerOfTwo(memory.len));
 			const self: *Self = @ptrCast(@alignCast(ctx));
 			const bucket = @ctz(memory.len) - baseShift;

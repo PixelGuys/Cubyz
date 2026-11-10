@@ -4,27 +4,27 @@ const main = @import("main");
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 
-pub const GuiComponent = union(enum) {
+pub const GuiComponent = union(enum) { // MARK: GuiComponent
+	pub const BagSlot = @import("components/BagSlot.zig");
 	pub const Button = @import("components/Button.zig");
 	pub const CheckBox = @import("components/CheckBox.zig");
 	pub const HorizontalList = @import("components/HorizontalList.zig");
 	pub const Icon = @import("components/Icon.zig");
 	pub const ItemSlot = @import("components/ItemSlot.zig");
 	pub const Label = @import("components/Label.zig");
-	pub const MutexComponent = @import("components/MutexComponent.zig");
 	pub const ScrollBar = @import("components/ScrollBar.zig");
 	pub const ContinuousSlider = @import("components/ContinuousSlider.zig");
 	pub const DiscreteSlider = @import("components/DiscreteSlider.zig");
 	pub const TextInput = @import("components/TextInput.zig");
 	pub const VerticalList = @import("components/VerticalList.zig");
 
+	bagSlot: *BagSlot,
 	button: *Button,
 	checkBox: *CheckBox,
 	horizontalList: *HorizontalList,
 	icon: *Icon,
 	itemSlot: *ItemSlot,
 	label: *Label,
-	mutexComponent: *MutexComponent,
 	scrollBar: *ScrollBar,
 	continuousSlider: *ContinuousSlider,
 	discreteSlider: *DiscreteSlider,
@@ -94,11 +94,11 @@ pub const GuiComponent = union(enum) {
 		return .ignored;
 	}
 
-	pub fn render(self: GuiComponent, mousePosition: Vec2f) void {
+	pub fn render(self: GuiComponent, currentFrame: *main.graphics.vulkan.Frame, mousePosition: Vec2f) void {
 		switch (self) {
 			inline else => |impl| {
 				if (@hasDecl(@TypeOf(impl.*), "render")) {
-					impl.render(mousePosition);
+					impl.render(currentFrame, mousePosition);
 				}
 			},
 		}

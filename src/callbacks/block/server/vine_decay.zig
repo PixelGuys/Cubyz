@@ -6,7 +6,7 @@ const blocks = main.blocks;
 const ZonElement = main.ZonElement;
 const server = main.server;
 
-pub fn init(_: ZonElement) ?*@This() {
+pub fn init(_: ZonElement, _: main.callbacks.Creator) ?*@This() {
 	return main.worldArena.create(@This());
 }
 pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.callbacks.Result {
@@ -25,15 +25,16 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 	if (params.block != thisBlock) return .ignored;
 
 	const blockAbove = world.getBlock(wx, wy, wz +% 1) orelse return .ignored;
-	if (blockAbove.typ == params.block.typ) return .ignored;
-	if (blockAbove.replacable()) return .ignored;
-
 	const blockAboveModel = blocks.meshes.model(blockAbove).model();
-	if (blockAboveModel.neighborFacingQuads[main.chunk.Neighbor.dirDown.toInt()].len != 0) return .ignored;
 
-	if (world.cmpxchgBlock(wx, wy, wz, thisBlock, blocks.Block.air) == null) {
-		return .handled;
-	}
+	if (blockAbove.typ == params.block.typ) return .ignored;
+	if (blockAbove.replaceable()) return decay(wx, wy, wz, thisBlock);
+	if (blockAboveModel.neighborFacingQuads[main.chunk.Neighbor.dirDown.toInt()].len == 0) return decay(wx, wy, wz, thisBlock);
 
+	return .ignored;
+}
+
+fn decay(x: i32, y: i32, z: i32, current: Block) main.callbacks.Result {
+	if (server.world.?.cmpxchgBlock(x, y, z, current, blocks.Block.air) == null) return .handled;
 	return .ignored;
 }

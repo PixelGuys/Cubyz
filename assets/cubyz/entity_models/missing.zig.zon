@@ -1,0 +1,6 @@
+.{
+	.model = "cubyz:missing",
+	.defaultTexture = "cubyz:missing",
+	.height = 1,
+	.coordinateSystem = .right_handed_y_up,
+}

@@ -1,5 +1,5 @@
 .{
-	.properties = .{
+	.climate = .{
 		.hot,
 		.ocean,
 	},
@@ -12,22 +12,22 @@
 	.roughness = 10,
 	.hills = 20,
 
-	.music = "cubyz:tides",
+	.music = "cubyz:totaldemented/tides",
 
 	.ground_structure = .{
 		"2 to 4 cubyz:sand",
 	},
-	.stoneBlock = "cubyz:sandstone/base",
+	.stoneBlock = "cubyz:sandstone/rough",
 
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:gravel",
-			.chance = 0.032,
-			.width = 6,
-			.variation = 2,
+			.chance = 0.01,
+			.width = 10,
+			.variation = 5,
 			.depth = 2,
-			.smoothness = 0.2,
+			.smoothness = 0.4,
 		},
 	},
 	.transitionBiomes = .{
@@ -35,19 +35,19 @@
 			.id = "cubyz:beach/warm/wide",
 			.chance = 0.2,
 			.width = 2,
-			.properties = .{.land, .inland},
+			.climate = .{.land, .inland},
 		},
 		.{
 			.id = "cubyz:beach/warm/base",
 			.chance = 1,
 			.width = 1,
-			.properties = .{.land, .inland},
+			.climate = .{.land, .inland},
 		},
 		.{
 			.id = "cubyz:ocean/temperate/shelf",
 			.chance = 1,
 			.width = 3,
-			.properties = .{.land, .inland},
+			.climate = .{.land, .inland},
 		},
 	},
 }

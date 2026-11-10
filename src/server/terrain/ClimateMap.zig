@@ -11,6 +11,8 @@ const Biome = terrain.biomes.Biome;
 const MapFragment = terrain.SurfaceMap.MapFragment;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
+pub const climate_generators = @import("climategen/_list.zig");
+
 pub const BiomeSample = struct {
 	biome: *const Biome,
 	height: f32,
@@ -59,7 +61,7 @@ pub const ClimateMapFragment = struct {
 	}
 
 	pub fn deferredDeinit(self: *ClimateMapFragment) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
+		main.heap.garbage_collection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	pub fn hashCode(wx: i32, wy: i32) u32 {
@@ -72,15 +74,18 @@ pub const ClimateMapGenerator = struct {
 	init: *const fn (parameters: ZonElement) void,
 	generateMapFragment: *const fn (fragment: *ClimateMapFragment, seed: u64) void,
 
-	var generatorRegistry: std.StringHashMapUnmanaged(ClimateMapGenerator) = .{};
-
-	pub fn registerGenerator(comptime Generator: type) void {
-		const self = ClimateMapGenerator{
-			.init = &Generator.init,
-			.generateMapFragment = &Generator.generateMapFragment,
-		};
-		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
-	}
+	const generatorRegistry: std.StaticStringMap(ClimateMapGenerator) = .initComptime(blk: {
+		const decls = @typeInfo(climate_generators).@"struct".decl_names;
+		var generators: [decls.len]struct { []const u8, ClimateMapGenerator } = undefined;
+		for (0..decls.len) |i| {
+			const Generator = @field(climate_generators, decls[i]);
+			generators[i] = .{Generator.id, .{
+				.init = &Generator.init,
+				.generateMapFragment = &Generator.generateMapFragment,
+			}};
+		}
+		break :blk generators;
+	});
 
 	pub fn getGeneratorById(id: []const u8) !ClimateMapGenerator {
 		return generatorRegistry.get(id) orelse {
@@ -91,25 +96,11 @@ pub const ClimateMapGenerator = struct {
 };
 
 const cacheSize = 1 << 5; // Must be a power of 2!
-const cacheMask = cacheSize - 1;
 const associativity = 8; // ~400 MiB
 var cache: Cache(ClimateMapFragment, cacheSize, associativity, ClimateMapFragment.deferredDeinit) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
-var memoryPool: main.heap.MemoryPool(ClimateMapFragment) = undefined;
-
-pub fn globalInit() void {
-	const list = @import("climategen/_list.zig");
-	inline for (@typeInfo(list).@"struct".decls) |decl| {
-		ClimateMapGenerator.registerGenerator(@field(list, decl.name));
-	}
-	memoryPool = .init(main.globalAllocator);
-}
-
-pub fn globalDeinit() void {
-	ClimateMapGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
-	memoryPool.deinit();
-}
+var memoryPool: main.heap.MemoryPool(ClimateMapFragment) = .init(main.globalArena);
 
 fn cacheInit(pos: ClimateMapFragmentPosition) *ClimateMapFragment {
 	const mapFragment = memoryPool.create();

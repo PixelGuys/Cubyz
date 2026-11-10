@@ -1,7 +1,10 @@
 .{
-	.properties = .{
+	.climate = .{
 		.hot,
 		.dry,
+	},
+	.tags = .{
+		.baobab,
 	},
 	.chance = 0,
 	.keepOriginalTerrain = 0.6,
@@ -14,10 +17,10 @@
 	.maxRadius = 128,
 	.hills = 10,
 	.validPlayerSpawn = true,
-	.music = "cubyz:EasternThought",
+	.music = "cubyz:mischol/desert_firefly",
 	.ground_structure = .{
-		"cubyz:dry_grass",
-		"7 to 8 cubyz:limestone/base",
+		"cubyz:grass/dry",
+		"7 to 8 cubyz:limestone/smooth",
 	},
 	.structures = .{
 		.{
@@ -43,7 +46,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.blocks = .{"cubyz:dry_grass_vegetation"},
+			.blocks = .{"cubyz:grass/vegetation/dry"},
 			.chance = 0.5,
 			.width = 5,
 			.variation = 8,
@@ -60,7 +63,7 @@
 			.priority = 0.1,
 		},
 	},
-	.stoneBlock = "cubyz:sandstone/base",
+	.stoneBlock = "cubyz:sandstone/rough",
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:savannah/base",
