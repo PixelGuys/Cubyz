@@ -621,9 +621,6 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 		glDepthRange: c_int,
 	} = undefined;
 
-	// var itemModelSSBO: graphics.SSBO = undefined;
-	// var modelData: main.ListManaged(u32) = undefined;
-	// var freeSlots: main.ListManaged(*ItemVoxelModel) = undefined;
 	var modelData: graphics.LargeBuffer(u32) = undefined;
 
 	const ItemVoxelModel = struct {
