@@ -634,7 +634,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 	var modelData: graphics.LargeBuffer(u32) = undefined;
 
 	const ItemVoxelModel = struct {
-		allocation: graphics.SubAllocation = undefined,
+		allocation: graphics.SubAllocation = .{.start = 0, .len = 0},
 		item: items.Item,
 
 		fn init(template: ItemVoxelModel) *ItemVoxelModel {
@@ -727,7 +727,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 			},
 		);
 		modelData.init(main.globalAllocator, 1 << 20, 2);
-		var allocation: graphics.SubAllocation = undefined;
+		var allocation: graphics.SubAllocation = .{.start = 0, .len = 0};
 		modelData.uploadData(&[3]u32{1, 1, 1}, &allocation);
 	}
 
@@ -784,6 +784,8 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 	}
 
 	fn drawItem(currentFrame: *graphics.vulkan.Frame, vertices: u31, modelMatrix: Mat4f, uniforms: *ItemUniforms) void {
+		modelData.beginRender();
+		defer modelData.endRender();
 		if (main.settings.launch_config.vulkanTestingMode) {
 			uniforms.modelMatrix = modelMatrix.toGl();
 			currentFrame.renderCommands.bindPipeline(currentFrame, itemPipeline, null);
@@ -793,7 +795,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 				.{.image = .{.binding = 2, .image = main.blocks.meshes.reflectivityAndAbsorptionTextureArray.vulkanImage.?}},
 				.{.image = .{.binding = 11, .image = main.renderer.reflectionCubeMap.vulkanImage}},
 				.{.ssbo = .{.binding = 5, .ssbo = main.blocks.meshes.animatedTextureSsbo.?}},
-				.{.ssbo = .{.binding = 6, .ssbo = itemModelSSBO}},
+				.{.ssbo = .{.binding = 6, .ssbo = modelData.ssbo}},
 				.{.ssbo = .{.binding = 4, .ssbo = main.models.quadSsbo.?}},
 			});
 			currentFrame.renderCommands.bindVertexArray(main.renderer.chunk_meshing.vao);
@@ -810,7 +812,11 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 		game.world.?.itemDrops.updateInterpolationData();
 
 		var uniforms: ItemUniforms = .{};
-		graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, itemPipeline);
+		if (main.settings.launch_config.vulkanTestingMode) {
+			graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, itemPipeline);
+		} else {
+			itemPipeline.bind(null);
+		}
 
 		bindCommonUniforms(ambientLight, &uniforms);
 		const itemDrops = &game.world.?.itemDrops.super;
