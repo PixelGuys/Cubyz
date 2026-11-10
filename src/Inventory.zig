@@ -565,13 +565,13 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 		defer sortList.deinit();
 		var intermediaryList = main.ListManaged(usize).init(main.stackAllocator);
 		defer intermediaryList.deinit();
-		for (0..InventorySize) |i| {
+		for (0..inventorySize) |i| {
 			sortList.append(i + options.ignoredSlotCount);
 			intermediaryList.append(i + options.ignoredSlotCount);
 		}
 		const ctx: SortContext = .{.inv = source, .sortlist = sortList};
 		std.sort.insertion(usize, sortList.items, ctx, SortContext.lessThan);
-		for (0..InventorySize) |i| {
+		for (0..inventorySize) |i| {
 			if (sortList.items[i] == intermediaryList.items[i]) continue;
 			var previousIndex: usize = i;
 			var checkedIndex = sortList.items[i] - options.ignoredSlotCount;
