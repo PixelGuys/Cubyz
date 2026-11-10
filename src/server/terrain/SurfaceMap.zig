@@ -292,7 +292,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 				var mapInitializer: MapFragmentMapInitializer(u64, BiomeAndSeed) = .empty;
 				defer mapInitializer.finalizePopulation(&self.uniqueBiomeAndSeeds, &self.biomeAndSeedMap);
 
-				if (uniqueBiomeAndSeedDataLength < 54614) { //Once the unique entries pass 54613 items storing with a palette is larger than just storing the unique entries themselves
+				if (uniqueBiomeAndSeedDataLength < 54614) { // Once the unique entries pass 54613 items storing with a palette is larger than just storing the unique entries themselves
 					for (0..uniqueBiomeAndSeedsLength) |_| {
 						const newBiomeAndSeed: BiomeAndSeed = .{
 							.biome = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)]),
@@ -347,7 +347,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 
 		std.debug.assert(mapSize <= 65536); // The mapSize is incompatible with this save system. The system saves the unique BiomeAndSeed List length as a u16 value to fit a max map size of 256x256 (65536)
 		writer.writeInt(u16, @intCast(self.uniqueBiomeAndSeeds.len));
-		if (self.uniqueBiomeAndSeeds.len < 54614) { //Once the unique entries pass 54613 items storing with a palette is larger than just storing the unique entries themselves
+		if (self.uniqueBiomeAndSeeds.len < 54614) { // Once the unique entries pass 54613 items storing with a palette is larger than just storing the unique entries themselves
 			for (self.uniqueBiomeAndSeeds) |biomeAndSeed| {
 				writer.writeInt(u32, biomeAndSeed.biome.paletteId);
 				writer.writeInt(u64, biomeAndSeed.seed);
