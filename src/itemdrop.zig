@@ -621,28 +621,14 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 		glDepthRange: c_int,
 	} = undefined;
 
-	var itemModelSSBO: graphics.SSBO = undefined;
-	var modelData: main.ListManaged(u32) = undefined;
-	var freeSlots: main.ListManaged(*ItemVoxelModel) = undefined;
+	// var itemModelSSBO: graphics.SSBO = undefined;
+	// var modelData: main.ListManaged(u32) = undefined;
+	// var freeSlots: main.ListManaged(*ItemVoxelModel) = undefined;
+	var modelData: graphics.LargeBuffer(u32) = undefined;
 
 	const ItemVoxelModel = struct {
-		index: u31 = undefined,
-		len: u31 = undefined,
+		allocation: graphics.SubAllocation,
 		item: items.Item,
-
-		fn getSlot(len: u31) u31 {
-			for (freeSlots.items, 0..) |potentialSlot, i| {
-				if (len == potentialSlot.len) {
-					_ = freeSlots.swapRemove(i);
-					const result = potentialSlot.index;
-					main.globalAllocator.destroy(potentialSlot);
-					return result;
-				}
-			}
-			const result: u31 = @intCast(modelData.items.len);
-			modelData.resize(result + len);
-			return result;
-		}
 
 		fn init(template: ItemVoxelModel) *ItemVoxelModel {
 			const self = main.globalAllocator.create(ItemVoxelModel);
@@ -667,17 +653,12 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 						data.append(1); // offsetByNormal
 					}
 				}
-				self.len = @intCast(data.items.len);
-				self.index = getSlot(self.len);
-				@memcpy(modelData.items[self.index..][0..self.len], data.items);
+				modelData.uploadData(data.items, &self.allocation);
 			} else {
 				// Find sizes and free index:
 				const img = self.item.getImage();
 				const size = Vec3i{img.width, 1, img.height};
-				self.len = @intCast(3 + @reduce(.Mul, size));
-				self.index = getSlot(self.len);
-				var dataSection: []u32 = undefined;
-				dataSection = modelData.items[self.index..][0..self.len];
+				var dataSection = modelData.allocateAndMapRange(3 + @reduce(.Mul, size), &self.allocation);
 				dataSection[0] = @intCast(size[0]);
 				dataSection[1] = @intCast(size[1]);
 				dataSection[2] = @intCast(size[2]);
@@ -694,12 +675,11 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 					}
 				}
 			}
-			itemModelSSBO.bufferData(u32, modelData.items);
 			return self;
 		}
 
 		fn deinit(self: *ItemVoxelModel) void {
-			freeSlots.append(self);
+			modelData.free(self.allocation);
 		}
 
 		pub fn equals(self: ItemVoxelModel, other: ?*ItemVoxelModel) bool {
