@@ -627,7 +627,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 	var modelData: graphics.LargeBuffer(u32) = undefined;
 
 	const ItemVoxelModel = struct {
-		allocation: graphics.SubAllocation,
+		allocation: graphics.SubAllocation = undefined,
 		item: items.Item,
 
 		fn init(template: ItemVoxelModel) *ItemVoxelModel {
@@ -658,7 +658,8 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 				// Find sizes and free index:
 				const img = self.item.getImage();
 				const size = Vec3i{img.width, 1, img.height};
-				var dataSection = modelData.allocateAndMapRange(3 + @reduce(.Mul, size), &self.allocation);
+				var dataSection = modelData.allocateAndMapRange(@intCast(3 + @reduce(.Mul, size)), &self.allocation);
+				defer modelData.unmapRange(dataSection, self.allocation);
 				dataSection[0] = @intCast(size[0]);
 				dataSection[1] = @intCast(size[1]);
 				dataSection[2] = @intCast(size[2]);
@@ -705,23 +706,16 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
 			},
 		);
-		itemModelSSBO = .init();
-		itemModelSSBO.bufferData(i32, &[3]i32{1, 1, 1});
-		itemModelSSBO.bind(2);
-
-		modelData = .init(main.globalAllocator);
-		freeSlots = .init(main.globalAllocator);
+		modelData.init(main.globalAllocator, 1 << 20, 2);
+		var allocation: graphics.SubAllocation = undefined;
+		modelData.uploadData(&[3]u32{1, 1, 1}, &allocation);
 	}
 
 	pub fn deinit() void {
 		itemPipeline.deinit();
-		itemModelSSBO.deinit();
+		voxelModels.foreach(ItemVoxelModel.deinit);
 		modelData.deinit();
 		voxelModels.clear();
-		for (freeSlots.items) |freeSlot| {
-			main.globalAllocator.destroy(freeSlot);
-		}
-		freeSlots.deinit();
 	}
 
 	var voxelModels: utils.Cache(ItemVoxelModel, 32, 32, ItemVoxelModel.deinit) = .{};
@@ -780,11 +774,11 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 				var blockType: u16 = 0;
 				if (item == .baseItem and item.baseItem.block() != null and item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
 					blockType = item.baseItem.block().?;
-					vertices = model.len/2*6;
+					vertices = model.allocation.len/2*6;
 				} else {
 					scale = 0.5;
 				}
-				bindModelUniforms(model.index, blockType);
+				bindModelUniforms(model.allocation.start, blockType);
 
 				var modelMatrix = Mat4f.translation(@floatCast(pos));
 				modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
@@ -875,14 +869,14 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 			var blockType: u16 = 0;
 			if (isBlock) {
 				blockType = item.baseItem.block().?;
-				vertices = model.len/2*6;
+				vertices = model.allocation.len/2*6;
 				scale = 0.3;
 				pos = Vec3d{0.4, 0.55, -0.32};
 			} else {
 				scale = 0.57;
 				pos = Vec3d{0.4, 0.65, -0.3};
 			}
-			bindModelUniforms(model.index, blockType);
+			bindModelUniforms(model.allocation.start, blockType);
 
 			var modelMatrix = Mat4f.rotationZ(-rot[2]);
 			modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));

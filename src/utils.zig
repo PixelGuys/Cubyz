@@ -1402,10 +1402,10 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 			}
 		}
 
-		fn foreach(self: @This(), comptime function: fn (*T) void) void {
+		fn foreach(self: *@This(), comptime function: fn (*T) void) void {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			for (self.items) |*nullItem| {
+			for (self.items) |nullItem| {
 				if (nullItem) |item| {
 					function(item);
 				}
