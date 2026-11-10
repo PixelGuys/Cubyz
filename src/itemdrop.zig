@@ -681,6 +681,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 
 		fn deinit(self: *ItemVoxelModel) void {
 			modelData.free(self.allocation);
+			main.globalAllocator.destroy(self);
 		}
 
 		pub fn equals(self: ItemVoxelModel, other: ?*ItemVoxelModel) bool {
@@ -713,9 +714,8 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 
 	pub fn deinit() void {
 		itemPipeline.deinit();
-		voxelModels.foreach(ItemVoxelModel.deinit);
-		modelData.deinit();
 		voxelModels.clear();
+		modelData.deinit();
 	}
 
 	var voxelModels: utils.Cache(ItemVoxelModel, 32, 32, ItemVoxelModel.deinit) = .{};
