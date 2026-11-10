@@ -704,7 +704,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
 			},
 		);
-		modelData.init(main.globalAllocator, 1 << 20, 2);
+		modelData.init(main.globalAllocator, 1 << 16, 2);
 		var allocation: graphics.SubAllocation = undefined;
 		modelData.uploadData(&[3]u32{1, 1, 1}, &allocation);
 	}
