@@ -292,16 +292,28 @@ pub const MapFragment = struct { // MARK: MapFragment
 				var mapInitializer: MapFragmentMapInitializer(u64, BiomeAndSeed) = .empty;
 				defer mapInitializer.finalizePopulation(&self.uniqueBiomeAndSeeds, &self.biomeAndSeedMap);
 
-				for (0..uniqueBiomeAndSeedsLength) |_| {
-					const newBiomeAndSeed: BiomeAndSeed = .{
-						.biome = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)]),
-						.seed = try reader.readInt(u64),
-					};
-					mapInitializer.uniqueItems.append(main.globalAllocator, newBiomeAndSeed);
-				}
-				for (0..mapSize) |x| {
-					for (0..mapSize) |y| {
-						mapInitializer.itemMap[x][y] = try reader.readInt(u16);
+				if (uniqueBiomeAndSeedDataLength < 54614) { //Once the unique entries pass 54613 items storing with a palette is larger than just storing the unique entries themselves
+					for (0..uniqueBiomeAndSeedsLength) |_| {
+						const newBiomeAndSeed: BiomeAndSeed = .{
+							.biome = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)]),
+							.seed = try reader.readInt(u64),
+						};
+						mapInitializer.uniqueItems.append(main.globalAllocator, newBiomeAndSeed);
+					}
+					for (0..mapSize) |x| {
+						for (0..mapSize) |y| {
+							mapInitializer.itemMap[x][y] = try reader.readInt(u16);
+						}
+					}
+				} else {
+					for (0..mapSize) |x| {
+						for (0..mapSize) |y| {
+							const newBiomeAndSeed: BiomeAndSeed = .{
+								.biome = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)]),
+								.seed = try reader.readInt(u64),
+							};
+							mapInitializer.addItem(@intCast(x), @intCast(y), newBiomeAndSeed.hash(), newBiomeAndSeed);
+						}
 					}
 				}
 				for (0..mapSize) |x| {
@@ -335,13 +347,22 @@ pub const MapFragment = struct { // MARK: MapFragment
 
 		std.debug.assert(mapSize <= 65536); // The mapSize is incompatible with this save system. The system saves the unique BiomeAndSeed List length as a u16 value to fit a max map size of 256x256 (65536)
 		writer.writeInt(u16, @intCast(self.uniqueBiomeAndSeeds.len));
-		for (self.uniqueBiomeAndSeeds) |biomeAndSeed| {
-			writer.writeInt(u32, biomeAndSeed.biome.paletteId);
-			writer.writeInt(u64, biomeAndSeed.seed);
-		}
-		for (0..mapSize) |x| {
-			for (0..mapSize) |y| {
-				writer.writeInt(u16, self.biomeAndSeedMap[x][y]);
+		if (self.uniqueBiomeAndSeeds.len < 54614) { //Once the unique entries pass 54613 items storing with a palette is larger than just storing the unique entries themselves
+			for (self.uniqueBiomeAndSeeds) |biomeAndSeed| {
+				writer.writeInt(u32, biomeAndSeed.biome.paletteId);
+				writer.writeInt(u64, biomeAndSeed.seed);
+			}
+			for (0..mapSize) |x| {
+				for (0..mapSize) |y| {
+					writer.writeInt(u16, self.biomeAndSeedMap[x][y]);
+				}
+			}
+		} else {
+			for (0..mapSize) |x| {
+				for (0..mapSize) |y| {
+					writer.writeInt(u32, self.uniqueBiomeAndSeeds[self.biomeAndSeedMap[x][y]].biome.paletteId);
+					writer.writeInt(u64, self.uniqueBiomeAndSeeds[self.biomeAndSeedMap[x][y]].seed);
+				}
 			}
 		}
 		for (0..mapSize) |x| for (0..mapSize) |y| writer.writeInt(i32, self.heightMap[x][y]);
