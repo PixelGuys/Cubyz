@@ -624,7 +624,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 	var modelData: graphics.LargeBuffer(u32) = undefined;
 
 	const ItemVoxelModel = struct {
-		allocation: graphics.SubAllocation = undefined,
+		allocation: graphics.SubAllocation = .{.start = 0, .len = 0},
 		item: items.Item,
 
 		fn init(template: ItemVoxelModel) *ItemVoxelModel {
@@ -705,7 +705,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 			},
 		);
 		modelData.init(main.globalAllocator, 1 << 16, 2);
-		var allocation: graphics.SubAllocation = undefined;
+		var allocation: graphics.SubAllocation = .{.start = 0, .len = 0};
 		modelData.uploadData(&[3]u32{1, 1, 1}, &allocation);
 	}
 
@@ -751,6 +751,8 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 
 	pub fn renderItemDrops(ambientLight: Vec3f, playerPos: Vec3d) void {
 		game.world.?.itemDrops.updateInterpolationData();
+		modelData.beginRender();
+		defer modelData.endRender();
 
 		bindCommonUniforms(ambientLight);
 		const itemDrops = &game.world.?.itemDrops.super;
@@ -802,6 +804,8 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 
 	pub fn renderDisplayItems(ambientLight: Vec3f, playerPos: Vec3d) void {
 		if (!item_display_manager.showItem) return;
+		modelData.beginRender();
+		defer modelData.endRender();
 
 		const displayItemUbo = graphics.frame_uniforms.StaticUbo.init(.{
 			.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(main.renderer.lastWidth))/@as(f32, @floatFromInt(main.renderer.lastHeight)), 0.01, 3).toGl(),
