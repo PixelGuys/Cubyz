@@ -345,14 +345,17 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		if (wy -% self.surfaceFragments[0].pos.wy >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 1;
 		}
+		const returnBiome = self.surfaceFragments[index].getBiome(wx, wy);
 		const height: i32 = self.surfaceFragments[index].getHeight(wx, wy);
-		if (wz < height - 32*self.pos.voxelSize or wz >= height + 128 + self.pos.voxelSize) {
-			const len = height - 32*self.pos.voxelSize -% wz;
+		const reservedBelowWz = @min(returnBiome.surfaceThicknessBelowAbsolute, height - returnBiome.surfaceThicknessBelow*self.pos.voxelSize);
+		const reservedAboveWz = @max(returnBiome.surfaceThicknessAboveAbsolute, height + returnBiome.surfaceThicknessAbove + self.pos.voxelSize);
+		if (wz < reservedBelowWz or wz >= reservedAboveWz) {
+			const len = reservedBelowWz -% wz;
 			if (len > 0) returnHeight.* = @min(returnHeight.*, len);
 			return null;
 		}
-		returnHeight.* = height + 128 + self.pos.voxelSize - wz;
-		return self.surfaceFragments[index].getBiome(wx, wy);
+		returnHeight.* = reservedAboveWz - wz;
+		return returnBiome;
 	}
 
 	fn checkSurfaceBiome(self: CaveBiomeMapView, wx: i32, wy: i32, wz: i32) ?*const Biome {
@@ -363,9 +366,12 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		if (wy -% self.surfaceFragments[0].pos.wy >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 1;
 		}
+		const returnBiome = self.surfaceFragments[index].getBiome(wx, wy);
 		const height: i32 = self.surfaceFragments[index].getHeight(wx, wy);
-		if (wz < height - 32*self.pos.voxelSize or wz > height + 128 + self.pos.voxelSize) return null;
-		return self.surfaceFragments[index].getBiome(wx, wy);
+		const reservedBelowWz = @min(returnBiome.surfaceThicknessBelowAbsolute, height - returnBiome.surfaceThicknessBelow*self.pos.voxelSize);
+		const reservedAboveWz = @max(returnBiome.surfaceThicknessAboveAbsolute, height + returnBiome.surfaceThicknessAbove + self.pos.voxelSize);
+		if (wz < reservedBelowWz or wz > reservedAboveWz) return null;
+		return returnBiome;
 	}
 
 	pub fn getSurfaceHeight(self: CaveBiomeMapView, wx: i32, wy: i32) i32 {
