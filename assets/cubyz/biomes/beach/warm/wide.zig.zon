@@ -1,6 +1,9 @@
 .{
-	.properties = .{
+	.climate = .{
 		.ocean,
+	},
+	.tags = .{
+		.palm,
 	},
 	.radius = 500,
 	.minHeight = 5,
@@ -11,9 +14,9 @@
 
 	.hills = 5,
 
-	.music = "cubyz:tides",
+	.music = "cubyz:totaldemented/tides",
 
-	.stoneBlock = "cubyz:sandstone",
+	.stoneBlock = "cubyz:sandstone/rough",
 	.ground_structure = .{
 		"2 to 4 cubyz:sand",
 	},
@@ -35,7 +38,7 @@
 		},
 		.{
 			.id = "cubyz:flower_patch",
-			.block = "cubyz:tussock",
+			.blocks = .{"cubyz:tussock"},
 			.chance = 0.07,
 			.width = 4,
 			.variation = 4,

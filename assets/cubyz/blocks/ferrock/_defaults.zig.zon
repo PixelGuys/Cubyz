@@ -1,0 +1,30 @@
+.{
+	.tags = .{.stone, .mineable, .ferrock},
+	.blockHealth = 32.5,
+	.blockResistance = 1,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.item = .{
+		.colorTexture = "ferrock_palette.png",
+		.material = .{
+			.durability = 45,
+			.massDamage = 1.0,
+			.hardnessDamage = 3.8,
+			.swingSpeed = 2.9,
+			.textureRoughness = 0.75,
+			.modifiers = .{
+				.{
+					.id = "good_at",
+					.strength = 0.5,
+					.tag = .ferrock,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 2,
+					},
+				},
+			},
+		},
+	},
+}

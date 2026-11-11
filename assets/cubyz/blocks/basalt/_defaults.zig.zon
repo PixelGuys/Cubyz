@@ -1,0 +1,30 @@
+.{
+	.tags = .{.stone, .mineable, .basalt},
+	.blockHealth = 30,
+	.blockResistance = 1,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.item = .{
+		.colorTexture = "basalt_palette.png",
+		.material = .{
+			.durability = 75,
+			.massDamage = 2.0,
+			.hardnessDamage = 4.0,
+			.swingSpeed = 2.9,
+			.textureRoughness = 0.6,
+			.modifiers = .{
+				.{
+					.id = "good_at",
+					.strength = 0.5,
+					.tag = .basalt,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 2,
+					},
+				},
+			},
+		},
+	},
+}

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 fail () {
 	exit 1
@@ -6,7 +6,7 @@ fail () {
 
 echo "Detecting Zig compiler..."
 
-BASE_VERSION=$(< .zigversion)
+BASE_VERSION=$(grep -i "minimum_zig_version" build.zig.zon | cut -d'"' -f2)
 
 case "$(uname -s)" in
 "Darwin")

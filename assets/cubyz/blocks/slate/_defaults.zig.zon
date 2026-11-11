@@ -1,0 +1,30 @@
+.{
+	.tags = .{.stone, .mineable, .slate},
+	.blockHealth = 30,
+	.blockResistance = 1,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.item = .{
+		.colorTexture = "slate_palette.png",
+		.material = .{
+			.durability = 60,
+			.massDamage = 1.0,
+			.hardnessDamage = 3.9,
+			.swingSpeed = 3.2,
+			.textureRoughness = 1.0,
+			.modifiers = .{
+				.{
+					.id = "good_at",
+					.strength = 0.5,
+					.tag = .slate,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 2,
+					},
+				},
+			},
+		},
+	},
+}

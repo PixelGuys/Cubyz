@@ -1,0 +1,13 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:rare/triclops_statue/base/0", .chance = 3},
+		.{.id = "cubyz:rare/triclops_statue/base/1", .chance = 5},
+		.{.id = "cubyz:rare/triclops_statue/base/2", .chance = 4},
+		.{.id = "cubyz:rare/triclops_statue/base/3", .chance = 3},
+		.{.id = "cubyz:rare/triclops_statue/base/4", .chance = 3},
+	},
+	.children = .{
+		.red = "cubyz:rare/triclops_statue/root/base",
+		.white = "cubyz:rare/triclops_statue/head",
+	},
+}

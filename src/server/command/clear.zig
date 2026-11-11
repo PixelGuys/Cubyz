@@ -1,15 +1,23 @@
 const std = @import("std");
 
 const main = @import("main");
-const User = main.server.User;
+const Source = main.server.command.Source;
 
-pub const description = "Clears your inventory";
-pub const usage = "/clear";
+pub const description = "Clears your inventory/chat";
+pub const usage = "/clear <inventory/chat>";
 
-pub fn execute(args: []const u8, source: *User) void {
-	if(args.len != 0) {
-		source.sendMessage("#ff0000Too many arguments for command /clear. Expected no arguments.", .{});
+pub const Args = union(enum) {
+	@"/clear <target>": struct { target: enum { inventory, chat } },
+};
+
+pub fn execute(args: Args, source: Source) void {
+	if (source != .user) {
+		source.sendMessage("Command cannot be run without a user", .{});
 		return;
 	}
-	main.items.Inventory.Sync.ServerSide.clearPlayerInventory(source);
+	const user = source.user;
+	switch (args.@"/clear <target>".target) {
+		.inventory => main.items.Inventory.server.clearPlayerInventory(user),
+		.chat => main.network.protocols.generic_update.sendClear(user.conn, .chat),
+	}
 }

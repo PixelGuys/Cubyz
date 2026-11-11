@@ -1,0 +1,16 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:phantasmal/auroras/high/0", .chance = 1},
+		.{.id = "cubyz:phantasmal/auroras/high/1", .chance = 1},
+		.{.id = "cubyz:phantasmal/auroras/high/2", .chance = 1},
+		.{.id = "cubyz:phantasmal/auroras/high/3", .chance = 1},
+		.{.id = "cubyz:phantasmal/auroras/high/4", .chance = 1},
+		.{.id = "cubyz:phantasmal/auroras/high/5", .chance = 1},
+		.{.id = "cubyz:phantasmal/auroras/high/6", .chance = 1},
+		.{.id = "cubyz:phantasmal/auroras/high/7", .chance = 1},
+		.{.id = "cubyz:phantasmal/auroras/high/8", .chance = 1},
+		.{.id = "cubyz:phantasmal/auroras/high/broken_0", .chance = 0.5},
+		.{.id = "cubyz:phantasmal/auroras/high/broken_1", .chance = 0.5},
+		.{.id = "cubyz:phantasmal/auroras/high/broken_2", .chance = 0.5},
+	},
+}

@@ -1,0 +1,8 @@
+.{
+	.texture = "cubyz:fence/pine",
+	.texture_top = "cubyz:fence/top/pine",
+	.texture_bottom = "cubyz:fence/top/pine",
+	.item = .{
+		.texture = "fence/pine.png",
+	},
+}

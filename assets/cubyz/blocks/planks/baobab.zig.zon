@@ -1,0 +1,20 @@
+.{
+	.item = .{
+		.colorTexture = "baobab_planks_palette.png",
+		.material = .{
+			.durability = 20,
+			.massDamage = 0.8,
+			.hardnessDamage = 0.8,
+			.swingSpeed = 4.2,
+			.modifiers = .{
+				.{
+					.id = "base_stat",
+					.targetProperty = "maxDurability",
+					.strength = 0.4,
+				},
+			},
+		},
+	},
+
+	.texture = "cubyz:planks/baobab",
+}

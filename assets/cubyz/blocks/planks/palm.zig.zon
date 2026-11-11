@@ -1,0 +1,20 @@
+.{
+	.item = .{
+		.colorTexture = "palm_planks_palette.png",
+		.material = .{
+			.durability = 23,
+			.massDamage = 0.8,
+			.hardnessDamage = 0.8,
+			.swingSpeed = 5.2,
+			.modifiers = .{
+				.{
+					.id = "base_stat",
+					.targetProperty = "maxDurability",
+					.strength = 0.4,
+				},
+			},
+		},
+	},
+
+	.texture = "cubyz:planks/palm",
+}

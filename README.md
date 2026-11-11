@@ -4,7 +4,7 @@ Cubyz is a 3D voxel sandbox game (inspired by Minecraft).
 Cubyz has a bunch of interesting/unique features such as:
 - Level of Detail (→ This enables far view distances.)
 - 3D Chunks (→ There is no height or depth limit.)
-- Procedural Crafting (→ You can craft anything you want, and the game will figure out what kind of tool you tried to make.)
+- Procedural Crafting (→ There are infinite possibilites for tool crafting.)
 
 # About
 Cubyz is written in <img src="https://github.com/PixelGuys/Cubyz/assets/43880493/04dc89ca-3ef2-4167-9e1a-e23f25feb67c" width="20" height="20">
@@ -50,19 +50,5 @@ Check out the [Contributing Guidelines](https://github.com/PixelGuys/Cubyz/blob/
 ### Gameplay Additions
 Check out the [Game Design Principles](https://github.com/PixelGuys/Cubyz/blob/master/docs/GAME_DESIGN_PRINCIPLES.md)
 
-### Textures
-If you want to add new textures, make sure they fit the style of the game. It's recommended that you have baseline skills in pixel art before attempting to make textures. A great collection of tutorials can be found [here](https://lospec.com/pixel-art-tutorials)
-
-If any of the following points are ignored, your texture will be rejected:
-1. Resolution is 16 x 16
-2. Lighting direction is top-left for items and blocks.
-3. Keep colour palettes small. Do not use near-duplicate colours, do not use noise, filters, or brushes that create unnecessary amounts of colours. Most blocks can be textured with ~4-6 colours.
-4. Reference other block textures to see how colours & contrast is used. Test your textures ingame alongside other blocks.
-5. Blocks should tile smoothly. Avoid creating seams or repetitive patterns.
-6. Use hue shifting conservatively. Take the material into account when choosing colours.
-7. Items have full, coloured, 1-pixel outlines. It should be shaded so that the side in light (top left) is brighter, while the side in shadow (bottom right) is darker.
-8. Items should have higher contrast than their block counterparts.
-
-Your texture may be edited or replaced to ensure a consistent art style throughout the game.
-
-For further information, ask <img src="https://avatars.githubusercontent.com/u/122191047" width="20" height="20">[careeoki](https://github.com/careeoki) on [Discord](https://discord.gg/XtqCRRG). She has made a majority of the art for Cubyz.
+### Content Additions
+Check out the [Content Guidelines](https://github.com/PixelGuys/Cubyz/blob/master/docs/CONTENT_SUGGESTIONS.md)

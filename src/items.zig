@@ -1,13 +1,13 @@
 const std = @import("std");
 
+const main = @import("main");
 const blocks = @import("blocks.zig");
 const Block = blocks.Block;
 const graphics = @import("graphics.zig");
 const Color = graphics.Color;
 const Tag = main.Tag;
-const ZonElement = @import("zon.zig").ZonElement;
-const main = @import("main");
-const ListUnmanaged = main.ListUnmanaged;
+const ZonElement = main.ZonElement;
+const List = main.List;
 const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
@@ -20,10 +20,10 @@ const Vec2i = vec.Vec2i;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 
-const modifierList = @import("tool/modifiers/_list.zig");
-const modifierRestrictionList = @import("tool/modifiers/restrictions/_list.zig");
+const modifierList = @import("proceduralItem/modifiers/_list.zig");
+const modifierRestrictionList = @import("proceduralItem/modifiers/restrictions/_list.zig");
 
-pub const recipes_zig = @import("items/recipes.zig");
+pub const recipes = @import("items/recipes.zig");
 
 pub const Inventory = @import("Inventory.zig");
 
@@ -35,44 +35,64 @@ const Material = struct { // MARK: Material
 
 	textureRoughness: f32 = undefined,
 	colorPalette: []Color = undefined,
+	outlineColorLight: Color = undefined,
+	outlineColorShadow: Color = undefined,
 	modifiers: []Modifier = undefined,
 
-	pub fn init(self: *Material, allocator: NeverFailingAllocator, zon: ZonElement) void {
-		self.massDamage = zon.get(?f32, "massDamage", null) orelse blk: {
+	fn loadColorsFromTexture(self: *Material, allocator: NeverFailingAllocator, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8) !void {
+		if (colorTexturePath.len == 0) return error.@"Missing attribute 'colorTexture'";
+		const image = graphics.Image.readFromFile(main.stackAllocator, colorTexturePath, .{.orientation = .asIs}) catch try graphics.Image.readFromFile(main.stackAllocator, colorReplacementTexturePath, .{.orientation = .asIs});
+		defer image.deinit(main.stackAllocator);
+
+		if (image.width < 2 or image.height < 2) return error.@"Color texture must be at least 2x2 pixels";
+
+		self.colorPalette = allocator.alloc(Color, image.width);
+		for (0..image.width) |x| {
+			self.colorPalette[x] = image.getRGB(x, 0);
+		}
+		const shadow = image.getRGB(0, 1);
+		if (shadow.a != 255) return error.@"outlineColorShadow pixel (0,1) must be fully opaque";
+		self.outlineColorShadow = shadow;
+		const light = image.getRGB(1, 1);
+		if (light.a != 255) return error.@"outlineColorLight pixel (1,1) must be fully opaque";
+		self.outlineColorLight = light;
+	}
+
+	pub fn init(self: *Material, allocator: NeverFailingAllocator, zon: ZonElement, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8) void {
+		self.massDamage = zon.get(f32, "massDamage") orelse blk: {
 			std.log.err("Couldn't find material attribute 'massDamage'", .{});
 			break :blk 0;
 		};
-		self.hardnessDamage = zon.get(?f32, "hardnessDamage", null) orelse blk: {
+		self.hardnessDamage = zon.get(f32, "hardnessDamage") orelse blk: {
 			std.log.err("Couldn't find material attribute 'hardnessDamage'", .{});
 			break :blk 0;
 		};
-		self.durability = zon.get(?f32, "durability", null) orelse blk: {
+		self.durability = zon.get(f32, "durability") orelse blk: {
 			std.log.err("Couldn't find material attribute 'durability'", .{});
 			break :blk 0;
 		};
-		self.swingSpeed = zon.get(?f32, "swingSpeed", null) orelse blk: {
+		self.swingSpeed = zon.get(f32, "swingSpeed") orelse blk: {
 			std.log.err("Couldn't find material attribute 'swingSpeed'", .{});
 			break :blk 0;
 		};
-		self.textureRoughness = @max(0, zon.get(f32, "textureRoughness", 1.0));
-		const colors = zon.getChild("colors");
-		self.colorPalette = allocator.alloc(Color, colors.toSlice().len);
-		for(colors.toSlice(), self.colorPalette) |item, *color| {
-			const colorInt: u32 = @intCast(item.as(i64, 0xff000000) & 0xffffffff);
-			color.* = Color{
-				.r = @intCast(colorInt >> 16 & 0xff),
-				.g = @intCast(colorInt >> 8 & 0xff),
-				.b = @intCast(colorInt >> 0 & 0xff),
-				.a = @intCast(colorInt >> 24 & 0xff),
-			};
-		}
+		self.textureRoughness = @max(0, zon.get(f32, "textureRoughness") orelse 1.0);
+		self.loadColorsFromTexture(allocator, colorTexturePath, colorReplacementTexturePath) catch |err| {
+			std.log.err("Could not load material colors. Tried '{s}' and '{s}': {s}", .{colorTexturePath, colorReplacementTexturePath, @errorName(err)});
+			const defaultImage = graphics.Image.defaultImage;
+			self.colorPalette = allocator.alloc(Color, defaultImage.width);
+			for (0..defaultImage.width) |x| {
+				self.colorPalette[x] = defaultImage.getRGB(x, 0);
+			}
+			self.outlineColorShadow = defaultImage.getRGB(0, 1);
+			self.outlineColorLight = defaultImage.getRGB(1, 1);
+		};
 		const modifiersZon = zon.getChild("modifiers");
 		self.modifiers = allocator.alloc(Modifier, modifiersZon.toSlice().len);
-		for(modifiersZon.toSlice(), self.modifiers) |item, *modifier| {
-			const id = item.get([]const u8, "id", "not specified");
+		for (modifiersZon.toSlice(), self.modifiers) |item, *modifier| {
+			const id = item.get([]const u8, "id") orelse "not specified";
 			const vTable = modifiers.get(id) orelse blk: {
-				std.log.err("Couldn't find modifier with id '{s}'. Replacing it with 'durable'", .{id});
-				break :blk modifiers.get("durable") orelse unreachable;
+				std.log.err("Couldn't find modifier with id '{s}'. Replacing it with 'base_stat'", .{id});
+				break :blk modifiers.get("base_stat").?;
 			};
 			modifier.* = .{
 				.vTable = vTable,
@@ -94,22 +114,22 @@ const Material = struct { // MARK: Material
 	}
 
 	fn getProperty(self: Material, prop: MaterialProperty) f32 {
-		switch(prop) {
+		switch (prop) {
 			inline else => |field| return @field(self, @tagName(field)),
 		}
 	}
 
-	pub fn printTooltip(self: Material, outString: *main.List(u8)) void {
-		if(self.modifiers.len == 0) {
+	pub fn printTooltip(self: Material, outString: *main.ListManaged(u8)) void {
+		if (self.modifiers.len == 0) {
 			outString.appendSlice("§#808080Material\n");
 		}
-		for(self.modifiers) |modifier| {
-			if(modifier.restriction.vTable == modifierRestrictions.get("always") orelse unreachable) {
+		for (self.modifiers) |modifier| {
+			if (modifier.restriction.vTable == modifierRestrictions.get("always").?) {
 				modifier.printTooltip(outString);
 				outString.appendSlice("\n");
 			} else {
 				outString.appendSlice("§#808080if ");
-				modifier.restriction.printTooltip(outString);
+				modifier.restriction.printTooltip(outString, .{});
 				outString.appendSlice("\n  ");
 				modifier.printTooltip(outString);
 				outString.appendSlice("\n");
@@ -122,21 +142,25 @@ pub const ModifierRestriction = struct {
 	vTable: *const VTable,
 	data: *anyopaque,
 
-	pub const VTable = struct {
-		satisfied: *const fn(data: *anyopaque, tool: *const Tool, x: i32, y: i32) bool,
-		loadFromZon: *const fn(allocator: NeverFailingAllocator, zon: ZonElement) *anyopaque,
-		printTooltip: *const fn(data: *anyopaque, outString: *main.List(u8)) void,
+	pub const PrintOptions = struct {
+		negated: bool = false,
 	};
 
-	pub fn satisfied(self: ModifierRestriction, tool: *const Tool, x: i32, y: i32) bool {
-		return self.vTable.satisfied(self.data, tool, x, y);
+	pub const VTable = struct {
+		satisfied: *const fn (data: *anyopaque, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool,
+		loadFromZon: *const fn (allocator: NeverFailingAllocator, zon: ZonElement) *anyopaque,
+		printTooltip: *const fn (data: *anyopaque, outString: *main.ListManaged(u8), options: PrintOptions) void,
+	};
+
+	pub fn satisfied(self: ModifierRestriction, proceduralItem: *const ProceduralItem, x: i32, y: i32) bool {
+		return self.vTable.satisfied(self.data, proceduralItem, x, y);
 	}
 
 	pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) ModifierRestriction {
-		const id = zon.get([]const u8, "id", "always");
+		const id = zon.get([]const u8, "id") orelse "always";
 		const vTable = modifierRestrictions.get(id) orelse blk: {
 			std.log.err("Couldn't find modifier restriction with id '{s}'. Replacing it with 'always'", .{id});
-			break :blk modifierRestrictions.get("always") orelse unreachable;
+			break :blk modifierRestrictions.get("always").?;
 		};
 		return .{
 			.vTable = vTable,
@@ -144,8 +168,8 @@ pub const ModifierRestriction = struct {
 		};
 	}
 
-	pub fn printTooltip(self: ModifierRestriction, outString: *main.List(u8)) void {
-		self.vTable.printTooltip(self.data, outString);
+	pub fn printTooltip(self: ModifierRestriction, outString: *main.ListManaged(u8), options: PrintOptions) void {
+		self.vTable.printTooltip(self.data, outString, options);
 	}
 };
 
@@ -155,13 +179,31 @@ const Modifier = struct {
 	vTable: *const VTable,
 
 	pub const VTable = struct {
-		const Data = packed struct(u128) {pad: u128};
-		combineModifiers: *const fn(data1: Data, data2: Data) ?Data,
-		changeToolParameters: *const fn(tool: *Tool, data: Data) void,
-		changeBlockDamage: *const fn(damage: f32, block: main.blocks.Block, data: Data) f32,
-		printTooltip: *const fn(outString: *main.List(u8), data: Data) void,
-		loadData: *const fn(zon: ZonElement) Data,
+		const Data = packed struct(u128) { pad: u128 };
+		combineModifiers: *const fn (data1: Data, data2: Data) ?Data,
+		changeProceduralItemParameters: *const fn (proceduralItem: *ProceduralItem, data: Data) void,
+		changeBlockDamage: *const fn (damage: f32, block: Block, data: Data) f32,
+		printTooltip: *const fn (outString: *main.ListManaged(u8), data: Data) void,
+		loadData: *const fn (zon: ZonElement) Data,
 		priority: f32,
+
+		const defaults = struct {
+			pub fn changeProceduralItemParameters(_: *ProceduralItem, _: Data) void {}
+			pub fn changeBlockDamage(damage: f32, _: Block, _: Data) f32 {
+				return damage;
+			}
+		};
+
+		inline fn initFromModifierStruct(comptime ModifierStruct: type) VTable {
+			return comptime .{
+				.changeProceduralItemParameters = @ptrCast(if (@hasDecl(ModifierStruct, "changeProceduralItemParameters")) &ModifierStruct.changeProceduralItemParameters else &VTable.defaults.changeProceduralItemParameters),
+				.changeBlockDamage = @ptrCast(if (@hasDecl(ModifierStruct, "changeBlockDamage")) &ModifierStruct.changeBlockDamage else &VTable.defaults.changeBlockDamage),
+				.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
+				.printTooltip = @ptrCast(&ModifierStruct.printTooltip),
+				.loadData = @ptrCast(&ModifierStruct.loadData),
+				.priority = ModifierStruct.priority,
+			};
+		}
 	};
 
 	pub fn combineModifiers(a: Modifier, b: Modifier) ?Modifier {
@@ -173,15 +215,15 @@ const Modifier = struct {
 		};
 	}
 
-	pub fn changeToolParameters(self: Modifier, tool: *Tool) void {
-		self.vTable.changeToolParameters(tool, self.data);
+	pub fn changeProceduralItemParameters(self: Modifier, proceduralItem: *ProceduralItem) void {
+		self.vTable.changeProceduralItemParameters(proceduralItem, self.data);
 	}
 
-	pub fn changeBlockDamage(self: Modifier, damage: f32, block: main.blocks.Block) f32 {
+	pub fn changeBlockDamage(self: Modifier, damage: f32, block: Block) f32 {
 		return self.vTable.changeBlockDamage(damage, block, self.data);
 	}
 
-	pub fn printTooltip(self: Modifier, outString: *main.List(u8)) void {
+	pub fn printTooltip(self: Modifier, outString: *main.ListManaged(u8)) void {
 		self.vTable.printTooltip(outString, self.data);
 	}
 };
@@ -207,40 +249,46 @@ pub const BaseItemIndex = enum(u16) { // MARK: BaseItemIndex
 		return reverseIndices.get(_id);
 	}
 	pub fn image(self: BaseItemIndex) graphics.Image {
-		return itemList[@intFromEnum(self)].image;
+		return itemList[@backingInt(self)].image;
 	}
 	pub fn texture(self: BaseItemIndex) ?graphics.Texture {
-		return itemList[@intFromEnum(self)].texture;
+		return itemList[@backingInt(self)].texture;
 	}
 	pub fn id(self: BaseItemIndex) []const u8 {
-		return itemList[@intFromEnum(self)].id;
+		return itemList[@backingInt(self)].id;
 	}
 	pub fn name(self: BaseItemIndex) []const u8 {
-		return itemList[@intFromEnum(self)].name;
+		return itemList[@backingInt(self)].name;
 	}
 	pub fn tags(self: BaseItemIndex) []const Tag {
-		return itemList[@intFromEnum(self)].tags;
+		return itemList[@backingInt(self)].tags;
 	}
 	pub fn stackSize(self: BaseItemIndex) u16 {
-		return itemList[@intFromEnum(self)].stackSize;
+		return itemList[@backingInt(self)].stackSize;
 	}
 	pub fn material(self: BaseItemIndex) ?Material {
-		return itemList[@intFromEnum(self)].material;
+		return itemList[@backingInt(self)].material;
 	}
 	pub fn block(self: BaseItemIndex) ?u16 {
-		return itemList[@intFromEnum(self)].block;
+		return itemList[@backingInt(self)].block;
+	}
+	pub fn displayBlockData(self: BaseItemIndex) ?u16 {
+		return itemList[@backingInt(self)].displayBlockData;
 	}
 	pub fn hasTag(self: BaseItemIndex, tag: Tag) bool {
-		return itemList[@intFromEnum(self)].hasTag(tag);
+		return itemList[@backingInt(self)].hasTag(tag);
 	}
 	pub fn hashCode(self: BaseItemIndex) u32 {
-		return itemList[@intFromEnum(self)].hashCode();
+		return itemList[@backingInt(self)].hashCode();
 	}
 	pub fn getTexture(self: BaseItemIndex) graphics.Texture {
-		return itemList[@intFromEnum(self)].getTexture();
+		return itemList[@backingInt(self)].getTexture();
 	}
 	pub fn getTooltip(self: BaseItemIndex) []const u8 {
-		return itemList[@intFromEnum(self)].getTooltip();
+		return itemList[@backingInt(self)].getTooltip();
+	}
+	pub fn getDisplayBlock(self: BaseItemIndex) ?Block {
+		return itemList[@backingInt(self)].getDisplayBlock();
 	}
 };
 
@@ -255,49 +303,52 @@ pub const BaseItem = struct { // MARK: BaseItem
 	stackSize: u16,
 	material: ?Material,
 	block: ?u16,
+	displayBlockData: ?u16,
 	foodValue: f32, // TODO: Effects.
 
-	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
+	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
 		self.id = allocator.dupe(u8, id);
-		if(texturePath.len == 0) {
+		if (texturePath.len == 0) {
 			self.image = graphics.Image.defaultImage;
 		} else {
-			self.image = graphics.Image.readFromFile(allocator, texturePath) catch graphics.Image.readFromFile(allocator, replacementTexturePath) catch blk: {
+			self.image = graphics.Image.readFromFile(allocator, texturePath, .{.orientation = .asIs}) catch graphics.Image.readFromFile(allocator, replacementTexturePath, .{.orientation = .asIs}) catch blk: {
 				std.log.err("Item texture not found in {s} and {s}.", .{texturePath, replacementTexturePath});
 				break :blk graphics.Image.defaultImage;
 			};
 		}
-		self.name = allocator.dupe(u8, zon.get([]const u8, "name", id));
+		self.name = allocator.dupe(u8, zon.get([]const u8, "name") orelse id);
 		self.tags = Tag.loadTagsFromZon(allocator, zon.getChild("tags"));
-		self.stackSize = zon.get(u16, "stackSize", 120);
+		self.stackSize = zon.get(u16, "stackSize") orelse 120;
 		const material = zon.getChild("material");
-		if(material == .object) {
+		if (material == .object) {
 			self.material = Material{};
-			self.material.?.init(allocator, material);
+			self.material.?.init(allocator, material, colorTexturePath, colorReplacementTexturePath);
 		} else {
 			self.material = null;
 		}
 		self.block = blk: {
-			break :blk blocks.getTypeById(zon.get(?[]const u8, "block", null) orelse break :blk null);
+			break :blk blocks.getTypeById(zon.get([]const u8, "block") orelse break :blk null);
 		};
-		self.texture = null;
-		self.foodValue = zon.get(f32, "food", 0);
+		self.displayBlockData = zon.get(u16, "displayBlockData");
 
-		var tooltip: main.List(u8) = .init(allocator);
+		self.texture = null;
+		self.foodValue = zon.get(f32, "food") orelse 0;
+
+		var tooltip: main.ListManaged(u8) = .init(allocator);
 		tooltip.appendSlice(self.name);
 		tooltip.append('\n');
-		if(self.material) |mat| {
+		if (self.material) |mat| {
 			mat.printTooltip(&tooltip);
 		}
-		if(self.tags.len != 0) {
+		if (self.tags.len != 0) {
 			tooltip.appendSlice("§#808080");
-			for(self.tags, 0..) |tag, i| {
-				if(i != 0) tooltip.append(' ');
+			for (self.tags, 0..) |tag, i| {
+				if (i != 0) tooltip.append(' ');
 				tooltip.append('.');
 				tooltip.appendSlice(tag.getName());
 			}
 		}
-		if(tooltip.items[tooltip.items.len - 1] == '\n') {
+		if (tooltip.items[tooltip.items.len - 1] == '\n') {
 			_ = tooltip.swapRemove(tooltip.items.len - 1);
 		}
 		self.tooltip = tooltip.toOwnedSlice();
@@ -305,17 +356,17 @@ pub const BaseItem = struct { // MARK: BaseItem
 
 	fn hashCode(self: BaseItem) u32 {
 		var hash: u32 = 0;
-		for(self.id) |char| {
+		for (self.id) |char| {
 			hash = hash*%33 +% char;
 		}
 		return hash;
 	}
 
 	pub fn getTexture(self: *BaseItem) graphics.Texture {
-		if(self.texture == null) {
-			if(self.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
-				if(self.block) |blockType| {
-					self.texture = graphics.generateBlockTexture(blockType);
+		if (self.texture == null) {
+			if (self.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
+				if (self.getDisplayBlock()) |block| {
+					self.texture = graphics.generateBlockTexture(block);
 				} else {
 					self.texture = graphics.Texture.init();
 					self.texture.?.generate(self.image);
@@ -333,55 +384,67 @@ pub const BaseItem = struct { // MARK: BaseItem
 	}
 
 	pub fn hasTag(self: *const BaseItem, tag: Tag) bool {
-		for(self.tags) |other| {
-			if(other == tag) return true;
+		for (self.tags) |other| {
+			if (other == tag) return true;
 		}
 		return false;
 	}
+
+	pub fn getDisplayBlock(self: *const BaseItem) ?Block {
+		if (self.block) |blockType| {
+			const data = if (self.displayBlockData) |d| d else (Block{.typ = blockType, .data = 0}).mode().naturalStandard;
+			return .{.typ = blockType, .data = data};
+		}
+		return null;
+	}
 };
 
-/// Generates the texture of a Tool using the material information.
-const TextureGenerator = struct { // MARK: TextureGenerator
+const allNeighborOffsets = [_][2]i8{.{-1, -1}, .{0, -1}, .{1, -1}, .{-1, 0}, .{1, 0}, .{-1, 1}, .{0, 1}, .{1, 1}};
+const orthogonalOffsets = [_][2]i8{.{0, -1}, .{-1, 0}, .{1, 0}, .{0, 1}};
+const diagonalOffsets = [_][2]i8{.{-1, -1}, .{1, -1}, .{-1, 1}, .{1, 1}};
+
+/// Generates the texture of a ProceduralItem using the material information.
+const texture_generator = struct { // MARK: texture_generator
 	fn generateHeightMap(itemGrid: *[16][16]?BaseItemIndex, seed: *u64) [17][17]f32 {
 		var heightMap: [17][17]f32 = undefined;
 		var x: u8 = 0;
-		while(x < 17) : (x += 1) {
+		while (x < 17) : (x += 1) {
 			var y: u8 = 0;
-			while(y < 17) : (y += 1) {
+			while (y < 17) : (y += 1) {
 				heightMap[x][y] = 0;
 				// The heighmap basically consists of the amount of neighbors this pixel has.
 				// Also check if there are different neighbors.
-				const oneItem = itemGrid[if(x == 0) x else x - 1][if(y == 0) y else y - 1];
+				const oneItem = itemGrid[if (x == 0) x else x - 1][if (y == 0) y else y - 1];
 				var hasDifferentItems: bool = false;
 				var dx: i32 = -1;
-				while(dx <= 0) : (dx += 1) {
-					if(x + dx < 0 or x + dx >= 16) continue;
+				while (dx <= 0) : (dx += 1) {
+					if (x + dx < 0 or x + dx >= 16) continue;
 					var dy: i32 = -1;
-					while(dy <= 0) : (dy += 1) {
-						if(y + dy < 0 or y + dy >= 16) continue;
+					while (dy <= 0) : (dy += 1) {
+						if (y + dy < 0 or y + dy >= 16) continue;
 						const otherItem = itemGrid[@intCast(x + dx)][@intCast(y + dy)];
-						heightMap[x][y] = if(otherItem) |item| (if(item.material()) |material| 1 + (4*random.nextFloat(seed) - 2)*material.textureRoughness else 0) else 0;
-						if(otherItem != oneItem) {
+						heightMap[x][y] = if (otherItem) |item| (if (item.material()) |material| 1 + (4*random.nextFloat(seed) - 2)*material.textureRoughness else 0) else 0;
+						if (otherItem != oneItem) {
 							hasDifferentItems = true;
 						}
 					}
 				}
 
 				// If there is multiple items at this junction, make it go inward to make embedded parts stick out more:
-				if(hasDifferentItems) {
+				if (hasDifferentItems) {
 					heightMap[x][y] -= 1;
 				}
 
 				// Take into account further neighbors with lower priority:
 				dx = -2;
-				while(dx <= 1) : (dx += 1) {
-					if(x + dx < 0 or x + dx >= 16) continue;
+				while (dx <= 1) : (dx += 1) {
+					if (x + dx < 0 or x + dx >= 16) continue;
 					var dy: i32 = -2;
-					while(dy <= 1) : (dy += 1) {
-						if(y + dy < 0 or y + dy >= 16) continue;
+					while (dy <= 1) : (dy += 1) {
+						if (y + dy < 0 or y + dy >= 16) continue;
 						const otherItem = itemGrid[@intCast(x + dx)][@intCast(y + dy)];
 						const dVec = Vec2f{@as(f32, @floatFromInt(dx)) + 0.5, @as(f32, @floatFromInt(dy)) + 0.5};
-						heightMap[x][y] += if(otherItem != null) 1.0/vec.dot(dVec, dVec) else 0;
+						heightMap[x][y] += if (otherItem != null) 1.0/vec.dot(dVec, dVec) else 0;
 					}
 				}
 			}
@@ -389,90 +452,212 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 		return heightMap;
 	}
 
-	pub fn generate(tool: *Tool) void {
-		const img = tool.image;
-		for(0..16) |x| {
-			for(0..16) |y| {
-				const source = tool.type.pixelSources()[x][y];
-				const sourceOverlay = tool.type.pixelSourcesOverlay()[x][y];
-				if(sourceOverlay < 25 and tool.craftingGrid[sourceOverlay] != null) {
-					tool.materialGrid[x][y] = tool.craftingGrid[sourceOverlay];
-				} else if(source < 25) {
-					tool.materialGrid[x][y] = tool.craftingGrid[source];
+	fn calculateRawLight(heightMap: *const [17][17]f32, pos: [2]u8) f32 {
+		const lightTL = heightMap[pos[0] + 1][pos[1] + 1] - heightMap[pos[0]][pos[1]];
+		const lightTR = heightMap[pos[0]][pos[1] + 1] - heightMap[pos[0] + 1][pos[1]];
+		var light = (lightTL*2 + lightTR)/3; // value of this typically ranges from -7 to 5
+		light += 4; // illuminate everything by an amount
+		light /= 8; // near-normalize the light value
+		return light;
+	}
+
+	fn calculateLight(heightMap: *const [17][17]f32, pos: [2]u8) f32 {
+		return @max(@min(calculateRawLight(heightMap, pos), 1), 0);
+	}
+
+	fn materialAt(materialGrid: *const [16][16]?BaseItemIndex, pos: ?[2]u8) ?Material {
+		const p = pos orelse return null;
+		const item = materialGrid[p[0]][p[1]] orelse return null;
+		return item.material();
+	}
+
+	fn neighborCoord(pos: [2]u8, offset: [2]i8) ?[2]u8 {
+		const nx = @as(i32, pos[0]) + offset[0];
+		const ny = @as(i32, pos[1]) + offset[1];
+		if (nx < 0 or nx >= 16 or ny < 0 or ny >= 16) return null;
+		return .{@intCast(nx), @intCast(ny)};
+	}
+
+	fn tipCornerDirection(materialGrid: *const [16][16]?BaseItemIndex, pos: [2]u8) ?[2]i8 {
+		var found: ?[2]i8 = null;
+		var count: u32 = 0;
+		for (allNeighborOffsets) |offset| {
+			if (materialAt(materialGrid, neighborCoord(pos, offset)) != null) {
+				count += 1;
+				found = offset;
+			}
+		}
+
+		if (count == 1) {
+			const offset = found.?;
+			if (offset[0] != 0 and offset[1] != 0) return .{-offset[0], -offset[1]};
+			const turnDiagonals: [2][2]i8 = if (offset[0] != 0) .{.{offset[0], -1}, .{offset[0], 1}} else .{.{-1, offset[1]}, .{1, offset[1]}};
+			var current = neighborCoord(pos, offset).?;
+			while (true) {
+				const occ0 = materialAt(materialGrid, neighborCoord(current, turnDiagonals[0])) != null;
+				const occ1 = materialAt(materialGrid, neighborCoord(current, turnDiagonals[1])) != null;
+				if (occ0 and occ1) return null;
+				if (occ0 or occ1) {
+					const turn = if (occ0) turnDiagonals[0] else turnDiagonals[1];
+					return .{-turn[0], -turn[1]};
+				}
+				const next = neighborCoord(current, offset) orelse return null;
+				if (materialAt(materialGrid, next) == null) return null;
+				current = next;
+			}
+		}
+
+		if (count == 3) {
+			for (diagonalOffsets) |d| {
+				if (materialAt(materialGrid, neighborCoord(pos, d)) != null and
+					materialAt(materialGrid, neighborCoord(pos, .{d[0], 0})) != null and
+					materialAt(materialGrid, neighborCoord(pos, .{0, d[1]})) != null)
+				{
+					return .{-d[0], -d[1]};
+				}
+			}
+		}
+		return null;
+	}
+
+	fn isOutlinePixel(materialGrid: *const [16][16]?BaseItemIndex, pos: [2]u8) bool {
+		for (orthogonalOffsets) |offset| {
+			if (materialAt(materialGrid, neighborCoord(pos, offset)) != null) return true;
+		}
+		for (diagonalOffsets) |offset| {
+			const m = neighborCoord(pos, offset) orelse continue;
+			if (materialAt(materialGrid, m) == null) continue;
+			const corner = tipCornerDirection(materialGrid, m) orelse continue;
+			if (corner[0] == -offset[0] and corner[1] == -offset[1]) return true;
+		}
+		return false;
+	}
+
+	fn neighborWeight(offset: [2]i8) f32 {
+		return if (offset[0] != 0 and offset[1] != 0) 1.0/@sqrt(2.0) else 1.0;
+	}
+
+	fn mostCommonNeighborMaterial(materialGrid: *const [16][16]?BaseItemIndex, heightMap: *const [17][17]f32, pos: [2]u8, offsets: []const [2]i8) ?Material {
+		const Tally = struct { item: BaseItemIndex, score: f32, lightWeight: f32 };
+		var tallies: main.List(Tally) = .empty;
+		defer tallies.deinit(main.stackAllocator);
+
+		outer: for (offsets) |offset| {
+			const neighborPos = neighborCoord(pos, offset) orelse continue;
+			const item = materialGrid[neighborPos[0]][neighborPos[1]] orelse continue;
+			if (item.material() == null) continue;
+			const score = neighborWeight(offset);
+			const light = calculateRawLight(heightMap, neighborPos);
+
+			for (tallies.items) |*tally| {
+				if (tally.item == item) {
+					tally.score += score;
+					tally.lightWeight += light;
+					continue :outer;
+				}
+			}
+			tallies.append(main.stackAllocator, .{.item = item, .score = score, .lightWeight = light});
+		}
+
+		var best: ?Tally = null;
+		for (tallies.items) |tally| {
+			const better = best == null or tally.score > best.?.score or
+				(tally.score == best.?.score and tally.lightWeight > best.?.lightWeight) or
+				(tally.score == best.?.score and tally.lightWeight == best.?.lightWeight and @backingInt(tally.item) < @backingInt(best.?.item));
+			if (better) best = tally;
+		}
+		return if (best) |b| b.item.material() else null;
+	}
+
+	fn findNeighborMaterial(materialGrid: *const [16][16]?BaseItemIndex, heightMap: *const [17][17]f32, pos: [2]u8) ?Material {
+		if (!isOutlinePixel(materialGrid, pos)) return null;
+		return mostCommonNeighborMaterial(materialGrid, heightMap, pos, &allNeighborOffsets);
+	}
+
+	pub fn generate(proceduralItem: *ProceduralItem) void {
+		const img = proceduralItem.image;
+		for (0..16) |x| {
+			for (0..16) |y| {
+				const source = proceduralItem.type.pixelSources()[x][y];
+				const sourceOverlay = proceduralItem.type.pixelSourcesOverlay()[x][y];
+				if (sourceOverlay < 25 and proceduralItem.craftingGrid[sourceOverlay] != null) {
+					proceduralItem.materialGrid[x][y] = proceduralItem.craftingGrid[sourceOverlay];
+				} else if (source < 25) {
+					proceduralItem.materialGrid[x][y] = proceduralItem.craftingGrid[source];
 				} else {
-					tool.materialGrid[x][y] = null;
+					proceduralItem.materialGrid[x][y] = null;
 				}
 			}
 		}
 
-		var seed: u64 = tool.seed;
+		var seed: u64 = proceduralItem.seed;
 		random.scrambleSeed(&seed);
 
 		// Generate a height map, which will be used for lighting calulations.
-		const heightMap = generateHeightMap(&tool.materialGrid, &seed);
+		const heightMap = generateHeightMap(&proceduralItem.materialGrid, &seed);
 		var x: u8 = 0;
-		while(x < 16) : (x += 1) {
+		while (x < 16) : (x += 1) {
 			var y: u8 = 0;
-			while(y < 16) : (y += 1) {
-				if(tool.materialGrid[x][y]) |item| {
-					if(item.material()) |material| {
+			while (y < 16) : (y += 1) {
+				if (proceduralItem.materialGrid[x][y]) |item| {
+					if (item.material()) |material| {
 						// Calculate the lighting based on the nearest free space:
-						const lightTL = heightMap[x][y] - heightMap[x + 1][y + 1];
-						const lightTR = heightMap[x + 1][y] - heightMap[x][y + 1];
-						var light = 2 - @as(i32, @intFromFloat(@round((lightTL*2 + lightTR)/6)));
-						light = @max(@min(light, 4), 0);
-						img.setRGB(x, 15 - y, material.colorPalette[@intCast(light)]);
+						const light = calculateLight(&heightMap, .{x, y});
+						const colorIndex: usize = @round(light*@as(f32, @floatFromInt(material.colorPalette.len - 1)));
+						img.setRGB(x, y, material.colorPalette[colorIndex]);
 					} else {
-						img.setRGB(x, 15 - y, if((x ^ y) & 1 == 0) Color{.r = 255, .g = 0, .b = 255, .a = 255} else Color{.r = 0, .g = 0, .b = 0, .a = 255});
+						img.setRGB(x, y, if ((x ^ y) & 1 == 0) Color{.r = 255, .g = 0, .b = 255, .a = 255} else Color{.r = 0, .g = 0, .b = 0, .a = 255});
 					}
+				} else if (findNeighborMaterial(&proceduralItem.materialGrid, &heightMap, .{x, y})) |material| {
+					const light = calculateLight(&heightMap, .{x, y});
+					img.setRGB(x, y, if (light > 0.5) material.outlineColorLight else material.outlineColorShadow);
 				} else {
-					img.setRGB(x, 15 - y, Color{.r = 0, .g = 0, .b = 0, .a = 0});
+					img.setRGB(x, y, Color{.r = 0, .g = 0, .b = 0, .a = 0});
 				}
 			}
 		}
 	}
 };
 
-/// Determines the physical properties of a tool to calculate in-game parameters such as durability and speed.
-const ToolPhysics = struct { // MARK: ToolPhysics
-	/// Determines all the basic properties of the tool.
-	pub fn evaluateTool(tool: *Tool) void {
-		inline for(comptime std.meta.fieldNames(ToolProperty)) |name| {
-			@field(tool, name) = 0;
-		}
-		var tempModifiers: main.List(Modifier) = .init(main.stackAllocator);
-		defer tempModifiers.deinit();
-		for(tool.type.properties()) |property| {
+/// Determines the physical properties of a proceduralItem to calculate in-game parameters such as durability and speed.
+const procedural_item_physics = struct { // MARK: procedural_item_physics
+	/// Determines all the basic properties of the proceduralItem.
+	pub fn evaluateProceduralItem(proceduralItem: *ProceduralItem) void {
+		proceduralItem.properties = @splat(0);
+		var tempModifiers: main.List(Modifier) = .empty;
+		defer tempModifiers.deinit(main.stackAllocator);
+		for (proceduralItem.type.properties()) |property| {
+			if (property.destination == null) continue;
 			var sum: f32 = 0;
 			var weight: f32 = 0;
-			for(0..25) |i| {
-				const material = (tool.craftingGrid[i] orelse continue).material() orelse continue;
+			for (0..25) |i| {
+				const material = (proceduralItem.craftingGrid[i] orelse continue).material() orelse continue;
 				sum += property.weights[i]*material.getProperty(property.source orelse break);
 				weight += property.weights[i];
 			}
-			if(weight == 0) continue;
-			switch(property.method) {
+			if (weight == 0) continue;
+			switch (property.method) {
 				.sum => {},
 				.average => {
 					sum /= weight;
 				},
 			}
 			sum *= property.resultScale;
-			tool.getProperty(property.destination orelse continue).* += sum;
+			proceduralItem.setProperty(property.destination.?, proceduralItem.getProperty(property.destination.?) + sum);
 		}
-		if(tool.damage < 1) tool.damage = 1/(2 - tool.damage);
-		if(tool.swingSpeed < 1) tool.swingSpeed = 1/(2 - tool.swingSpeed);
-		for(0..25) |i| {
-			const material = (tool.craftingGrid[i] orelse continue).material() orelse continue;
-			outer: for(material.modifiers) |newMod| {
-				if(!newMod.restriction.satisfied(tool, @intCast(i%5), @intCast(i/5))) continue;
-				for(tempModifiers.items) |*oldMod| {
-					if(oldMod.vTable == newMod.vTable) {
+		if (proceduralItem.getProperty(.damage) < 1) proceduralItem.setProperty(.damage, 1/(2 - proceduralItem.getProperty(.damage)));
+		if (proceduralItem.getProperty(.swingSpeed) < 1) proceduralItem.setProperty(.swingSpeed, 1/(2 - proceduralItem.getProperty(.swingSpeed)));
+		for (0..25) |i| {
+			const material = (proceduralItem.craftingGrid[i] orelse continue).material() orelse continue;
+			outer: for (material.modifiers) |newMod| {
+				if (!newMod.restriction.satisfied(proceduralItem, @intCast(i%5), @intCast(i/5))) continue;
+				for (tempModifiers.items) |*oldMod| {
+					if (oldMod.vTable == newMod.vTable) {
 						oldMod.* = oldMod.combineModifiers(newMod) orelse continue;
 						continue :outer;
 					}
 				}
-				tempModifiers.append(newMod);
+				tempModifiers.append(main.stackAllocator, newMod);
 			}
 		}
 		std.sort.insertion(Modifier, tempModifiers.items, {}, struct {
@@ -480,50 +665,54 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 				return lhs.vTable.priority < rhs.vTable.priority;
 			}
 		}.lessThan);
-		tool.modifiers = main.globalAllocator.dupe(Modifier, tempModifiers.items);
-		for(tempModifiers.items) |mod| {
-			mod.changeToolParameters(tool);
+		proceduralItem.modifiers = main.globalAllocator.dupe(Modifier, tempModifiers.items);
+		for (tempModifiers.items) |mod| {
+			mod.changeProceduralItemParameters(proceduralItem);
 		}
 
-		tool.maxDurability = @round(tool.maxDurability);
-		if(tool.maxDurability < 1) tool.maxDurability = 1;
-		tool.durability = std.math.lossyCast(u32, tool.maxDurability);
+		proceduralItem.setProperty(.damage, @round(10*proceduralItem.getProperty(.damage))/10);
+		proceduralItem.setProperty(.swingSpeed, @round(10*proceduralItem.getProperty(.swingSpeed))/10);
+		proceduralItem.setProperty(.maxDurability, @round(proceduralItem.getProperty(.maxDurability)));
+		if (proceduralItem.getProperty(.maxDurability) < 1) proceduralItem.setProperty(.maxDurability, 1);
+		proceduralItem.durability = std.math.lossyCast(u32, proceduralItem.getProperty(.maxDurability));
 
-		if(!checkConnectivity(tool)) {
-			tool.maxDurability = 0;
-			tool.durability = 1;
+		if (!checkConnectivity(proceduralItem)) {
+			proceduralItem.setProperty(.maxDurability, 0);
+			proceduralItem.durability = 1;
 		}
+		proceduralItem.finishedPropertyEvaluation = true;
 	}
 
-	fn checkConnectivity(tool: *Tool) bool {
+	fn checkConnectivity(proceduralItem: *ProceduralItem) bool {
 		var gridCellsReached: [16][16]bool = @splat(@splat(false));
 		var floodfillQueue = main.utils.CircularBufferQueue(Vec2i).init(main.stackAllocator, 16);
 		defer floodfillQueue.deinit();
-		outer: for(tool.materialGrid, 0..) |row, x| {
-			for(row, 0..) |entry, y| {
-				if(entry != null) {
+		outer: for (proceduralItem.materialGrid, 0..) |row, x| {
+			for (row, 0..) |entry, y| {
+				if (entry != null) {
 					floodfillQueue.pushBack(.{@intCast(x), @intCast(y)});
 					gridCellsReached[x][y] = true;
 					break :outer;
 				}
 			}
 		}
-		while(floodfillQueue.popFront()) |pos| {
-			for([4]Vec2i{.{-1, 0}, .{1, 0}, .{0, -1}, .{0, 1}}) |delta| {
+		while (floodfillQueue.popFront()) |pos| {
+			for (allNeighborOffsets) |offset| {
+				const delta = Vec2i{offset[0], offset[1]};
 				const newPos = pos + delta;
-				if(newPos[0] < 0 or newPos[0] >= gridCellsReached.len) continue;
-				if(newPos[1] < 0 or newPos[1] >= gridCellsReached.len) continue;
+				if (newPos[0] < 0 or newPos[0] >= gridCellsReached.len) continue;
+				if (newPos[1] < 0 or newPos[1] >= gridCellsReached.len) continue;
 				const x: usize = @intCast(newPos[0]);
 				const y: usize = @intCast(newPos[1]);
-				if(gridCellsReached[x][y]) continue;
-				if(tool.materialGrid[x][y] == null) continue;
+				if (gridCellsReached[x][y]) continue;
+				if (proceduralItem.materialGrid[x][y] == null) continue;
 				gridCellsReached[x][y] = true;
 				floodfillQueue.pushBack(newPos);
 			}
 		}
-		for(tool.materialGrid, 0..) |row, x| {
-			for(row, 0..) |entry, y| {
-				if(entry != null and !gridCellsReached[x][y]) {
+		for (proceduralItem.materialGrid, 0..) |row, x| {
+			for (row, 0..) |entry, y| {
+				if (entry != null and !gridCellsReached[x][y]) {
 					return false;
 				}
 			}
@@ -539,7 +728,7 @@ const SlotInfo = packed struct { // MARK: SlotInfo
 
 const PropertyMatrix = struct { // MARK: PropertyMatrix
 	source: ?MaterialProperty,
-	destination: ?ToolProperty,
+	destination: ?ProceduralItemProperty,
 	weights: [25]f32,
 	resultScale: f32,
 	method: Method,
@@ -557,109 +746,115 @@ const PropertyMatrix = struct { // MARK: PropertyMatrix
 	};
 };
 
-pub const ToolTypeIndex = enum(u16) {
+pub const ProceduralItemTypeIndex = enum(u16) {
 	_,
 
-	const ToolTypeIterator = struct {
+	const ProceduralItemTypeIterator = struct {
 		i: u16 = 0,
 
-		pub fn next(self: *ToolTypeIterator) ?ToolTypeIndex {
-			if(self.i >= toolTypeList.items.len) return null;
+		pub fn next(self: *ProceduralItemTypeIterator) ?ProceduralItemTypeIndex {
+			if (self.i >= proceduralItemTypeList.items.len) return null;
 			defer self.i += 1;
-			return @enumFromInt(self.i);
+			return @fromBackingInt(self.i);
 		}
 	};
 
-	pub fn iterator() ToolTypeIterator {
+	pub fn toBytes(self: ProceduralItemTypeIndex, writer: *BinaryWriter) void {
+		writer.writeEnum(ProceduralItemTypeIndex, self);
+	}
+
+	pub fn fromBytes(reader: *BinaryReader) !ProceduralItemTypeIndex {
+		const result = try reader.readEnum(ProceduralItemTypeIndex);
+		if (@backingInt(result) >= proceduralItemTypeList.items.len) return error.InvalidEnumTag;
+		return result;
+	}
+
+	pub fn iterator() ProceduralItemTypeIterator {
 		return .{};
 	}
-	pub fn fromId(_id: []const u8) ?ToolTypeIndex {
-		return toolTypeIdToIndex.get(_id);
+	pub fn fromId(_id: []const u8) ?ProceduralItemTypeIndex {
+		return proceduralItemTypeIdToIndex.get(_id);
 	}
-	pub fn id(self: ToolTypeIndex) []const u8 {
-		return toolTypeList.items[@intFromEnum(self)].id;
+	pub fn id(self: ProceduralItemTypeIndex) []const u8 {
+		return proceduralItemTypeList.items[@backingInt(self)].id;
 	}
-	pub fn blockTags(self: ToolTypeIndex) []const Tag {
-		return toolTypeList.items[@intFromEnum(self)].blockTags;
+	pub fn tags(self: ProceduralItemTypeIndex) []const Tag {
+		return proceduralItemTypeList.items[@backingInt(self)].tags;
 	}
-	pub fn properties(self: ToolTypeIndex) []const PropertyMatrix {
-		return toolTypeList.items[@intFromEnum(self)].properties;
+	pub fn properties(self: ProceduralItemTypeIndex) []const PropertyMatrix {
+		return proceduralItemTypeList.items[@backingInt(self)].properties;
 	}
-	pub fn slotInfos(self: ToolTypeIndex) *const [25]SlotInfo {
-		return &toolTypeList.items[@intFromEnum(self)].slotInfos;
+	pub fn slotInfos(self: ProceduralItemTypeIndex) *const [25]SlotInfo {
+		return &proceduralItemTypeList.items[@backingInt(self)].slotInfos;
 	}
-	pub fn pixelSources(self: ToolTypeIndex) *const [16][16]u8 {
-		return &toolTypeList.items[@intFromEnum(self)].pixelSources;
+	pub fn pixelSources(self: ProceduralItemTypeIndex) *const [16][16]u8 {
+		return &proceduralItemTypeList.items[@backingInt(self)].pixelSources;
 	}
-	pub fn pixelSourcesOverlay(self: ToolTypeIndex) *const [16][16]u8 {
-		return &toolTypeList.items[@intFromEnum(self)].pixelSourcesOverlay;
+	pub fn pixelSourcesOverlay(self: ProceduralItemTypeIndex) *const [16][16]u8 {
+		return &proceduralItemTypeList.items[@backingInt(self)].pixelSourcesOverlay;
 	}
 };
 
-pub const ToolType = struct { // MARK: ToolType
+pub const ProceduralItemType = struct { // MARK: ProceduralItemType
 	id: []const u8,
-	blockTags: []main.Tag,
+	tags: []main.Tag,
 	properties: []PropertyMatrix,
 	slotInfos: [25]SlotInfo,
 	pixelSources: [16][16]u8,
 	pixelSourcesOverlay: [16][16]u8,
 };
 
-const ToolProperty = enum {
+pub const ProceduralItemProperty = enum(u32) {
 	damage,
 	maxDurability,
+	/// how long it takes before the next swing happens
 	swingSpeed,
 
-	fn fromString(string: []const u8) ?ToolProperty {
-		return std.meta.stringToEnum(ToolProperty, string) orelse {
-			std.log.err("Couldn't find tool property {s}.", .{string});
+	pub fn fromString(string: []const u8) ?ProceduralItemProperty {
+		return std.meta.stringToEnum(ProceduralItemProperty, string) orelse {
+			std.log.err("Couldn't find procedural Item property {s}.", .{string});
 			return null;
 		};
 	}
 };
 
-pub const Tool = struct { // MARK: Tool
+pub const ProceduralItem = struct { // MARK: ProceduralItem
 	const craftingGridSize = 25;
-	const CraftingGridMask = std.meta.Int(.unsigned, craftingGridSize);
+	const CraftingGridMask = @Int(.unsigned, craftingGridSize);
 
 	craftingGrid: [craftingGridSize]?BaseItemIndex,
 	materialGrid: [16][16]?BaseItemIndex,
 	modifiers: []Modifier,
-	tooltip: main.List(u8),
+	tooltip: main.ListManaged(u8),
 	image: graphics.Image,
 	texture: ?graphics.Texture,
 	seed: u32,
-	type: ToolTypeIndex,
+	type: ProceduralItemTypeIndex,
+	finishedPropertyEvaluation: bool = false,
 
-	damage: f32,
+	properties: [@typeInfo(ProceduralItemProperty).@"enum".field_names.len]f32 = @splat(0),
 
 	durability: u32,
-	maxDurability: f32,
 
-	/// swings per second
-	swingSpeed: f32,
-
-	mass: f32,
-
-	///  Where the player holds the tool.
+	///  Where the player holds the procedural Item.
 	handlePosition: Vec2f,
 	/// Moment of inertia relative to the handle.
 	inertiaHandle: f32,
 
-	/// Where the tool rotates around when being thrown.
+	/// Where the procedural Item rotates around when being thrown.
 	centerOfMass: Vec2f,
 	/// Moment of inertia relative to the center of mass.
 	inertiaCenterOfMass: f32,
 
-	pub fn init() *Tool {
-		const self = main.globalAllocator.create(Tool);
+	pub fn init() *ProceduralItem {
+		const self = main.globalAllocator.create(ProceduralItem);
 		self.image = graphics.Image.init(main.globalAllocator, 16, 16);
 		self.texture = null;
 		self.tooltip = .init(main.globalAllocator);
 		return self;
 	}
 
-	pub fn deinit(self: *const Tool) void {
+	pub fn deinit(self: *const ProceduralItem) void {
 		// TODO: This is leaking textures!
 		// if(self.texture) |texture| {
 		// texture.deinit();
@@ -670,8 +865,8 @@ pub const Tool = struct { // MARK: Tool
 		main.globalAllocator.destroy(self);
 	}
 
-	pub fn clone(self: *const Tool) *Tool {
-		const result = main.globalAllocator.create(Tool);
+	pub fn clone(self: *const ProceduralItem) *ProceduralItem {
+		const result = main.globalAllocator.create(ProceduralItem);
 		result.* = .{
 			.craftingGrid = self.craftingGrid,
 			.materialGrid = self.materialGrid,
@@ -681,11 +876,8 @@ pub const Tool = struct { // MARK: Tool
 			.texture = null,
 			.seed = self.seed,
 			.type = self.type,
-			.damage = self.damage,
+			.properties = self.properties,
 			.durability = self.durability,
-			.maxDurability = self.maxDurability,
-			.swingSpeed = self.swingSpeed,
-			.mass = self.mass,
 			.handlePosition = self.handlePosition,
 			.inertiaHandle = self.inertiaHandle,
 			.centerOfMass = self.centerOfMass,
@@ -695,41 +887,67 @@ pub const Tool = struct { // MARK: Tool
 		return result;
 	}
 
-	pub fn initFromCraftingGrid(craftingGrid: [25]?BaseItemIndex, seed: u32, typ: ToolTypeIndex) *Tool {
+	fn initFromCraftingGrid(craftingGrid: [25]?BaseItemIndex, seed: u32, typ: ProceduralItemTypeIndex) *ProceduralItem {
 		const self = init();
 		self.seed = seed;
 		self.craftingGrid = craftingGrid;
 		self.type = typ;
-		// Produce the tool and its textures:
-		// The material grid, which comes from texture generation, is needed on both server and client, to generate the tool properties.
-		TextureGenerator.generate(self);
-		ToolPhysics.evaluateTool(self);
+		// Produce the procedural Item and its textures:
+		// The material grid, which comes from texture generation, is needed on both server and client, to generate the procedural item properties.
+		texture_generator.generate(self);
+		procedural_item_physics.evaluateProceduralItem(self);
 		return self;
 	}
 
-	pub fn initFromZon(zon: ZonElement) *Tool {
-		const self = initFromCraftingGrid(extractItemsFromZon(zon.getChild("grid")), zon.get(u32, "seed", 0), ToolTypeIndex.fromId(zon.get([]const u8, "type", "cubyz:pickaxe")) orelse blk: {
-			std.log.err("Couldn't find tool with type {s}. Replacing it with cubyz:pickaxe", .{zon.get([]const u8, "type", "cubyz:pickaxe")});
-			break :blk ToolTypeIndex.fromId("cubyz:pickaxe") orelse @panic("cubyz:pickaxe tool not found. Did you load the game with the correct assets?");
+	pub fn initFromInventory(inventory: Inventory) ?*ProceduralItem {
+		std.debug.assert(inventory.source == .workbench);
+		const slotInfos = inventory.source.workbench.proceduralItemIndex.slotInfos();
+		var availableItems: [25]?main.items.BaseItemIndex = undefined;
+
+		for (0..25) |i| {
+			if (inventory._items[i].item == .baseItem) {
+				availableItems[i] = inventory._items[i].item.baseItem;
+			} else {
+				if (!slotInfos[i].optional and !slotInfos[i].disabled) {
+					return null;
+				}
+				availableItems[i] = null;
+			}
+		}
+		var hash = std.hash.Crc32.init();
+		for (availableItems) |item| {
+			if (item != null) {
+				hash.update(item.?.id());
+			} else {
+				hash.update("none");
+			}
+		}
+		return initFromCraftingGrid(availableItems, hash.final(), inventory.source.workbench.proceduralItemIndex);
+	}
+
+	pub fn initFromZon(zon: ZonElement) *ProceduralItem {
+		const self = initFromCraftingGrid(extractItemsFromZon(zon.getChild("grid")), zon.get(u32, "seed") orelse 0, ProceduralItemTypeIndex.fromId(zon.get([]const u8, "type") orelse "cubyz:pickaxe") orelse blk: {
+			std.log.err("Couldn't find procedural item with type {s}. Replacing it with cubyz:pickaxe", .{zon.get([]const u8, "type") orelse "cubyz:pickaxe"});
+			break :blk ProceduralItemTypeIndex.fromId("cubyz:pickaxe") orelse @panic("cubyz:pickaxe procedural item not found. Did you load the game with the correct assets?");
 		});
-		self.durability = zon.get(u32, "durability", std.math.lossyCast(u32, self.maxDurability));
+		self.durability = zon.get(u32, "durability") orelse std.math.lossyCast(u32, self.getProperty(.maxDurability));
 		return self;
 	}
 
 	fn extractItemsFromZon(zonArray: ZonElement) [craftingGridSize]?BaseItemIndex {
 		var items: [craftingGridSize]?BaseItemIndex = undefined;
-		for(&items, 0..) |*item, i| {
+		for (&items, 0..) |*item, i| {
 			item.* = .fromId(zonArray.getAtIndex([]const u8, i, "null"));
-			if(item.* != null and item.*.?.material() == null) item.* = null;
+			if (item.* != null and item.*.?.material() == null) item.* = null;
 		}
 		return items;
 	}
 
-	pub fn save(self: *const Tool, allocator: NeverFailingAllocator) ZonElement {
+	pub fn save(self: *const ProceduralItem, allocator: NeverFailingAllocator) ZonElement {
 		const zonObject = ZonElement.initObject(allocator);
 		const zonArray = ZonElement.initArray(allocator);
-		for(self.craftingGrid) |nullableItem| {
-			if(nullableItem) |item| {
+		for (self.craftingGrid) |nullableItem| {
+			if (nullableItem) |item| {
 				zonArray.array.append(.{.string = item.id()});
 			} else {
 				zonArray.array.append(.null);
@@ -742,15 +960,15 @@ pub const Tool = struct { // MARK: Tool
 		return zonObject;
 	}
 
-	pub fn fromBytes(reader: *BinaryReader) !*Tool {
+	pub fn fromBytes(reader: *BinaryReader) !*ProceduralItem {
 		const durability = try reader.readInt(u32);
 		const seed = try reader.readInt(u32);
-		const typ = try reader.readEnum(ToolTypeIndex);
+		const typ = try reader.readEnum(ProceduralItemTypeIndex);
 
 		var craftingGridMask = try reader.readInt(CraftingGridMask);
 		var craftingGrid: [craftingGridSize]?BaseItemIndex = @splat(null);
 
-		while(craftingGridMask != 0) {
+		while (craftingGridMask != 0) {
 			const i = @ctz(craftingGridMask);
 			craftingGridMask &= ~(@as(CraftingGridMask, 1) << @intCast(i));
 			craftingGrid[i] = try reader.readEnum(BaseItemIndex);
@@ -761,73 +979,76 @@ pub const Tool = struct { // MARK: Tool
 		return self;
 	}
 
-	pub fn toBytes(self: Tool, writer: *BinaryWriter) void {
+	pub fn toBytes(self: ProceduralItem, writer: *BinaryWriter) void {
 		writer.writeInt(u32, self.durability);
 		writer.writeInt(u32, self.seed);
-		writer.writeEnum(ToolTypeIndex, self.type);
+		writer.writeEnum(ProceduralItemTypeIndex, self.type);
 
 		var craftingGridMask: CraftingGridMask = 0;
-		for(0..craftingGridSize) |i| {
-			if(self.craftingGrid[i] != null) {
+		for (0..craftingGridSize) |i| {
+			if (self.craftingGrid[i] != null) {
 				craftingGridMask |= @as(CraftingGridMask, 1) << @intCast(i);
 			}
 		}
 		writer.writeInt(CraftingGridMask, craftingGridMask);
 
-		for(0..craftingGridSize) |i| {
-			if(self.craftingGrid[i]) |baseItem| {
+		for (0..craftingGridSize) |i| {
+			if (self.craftingGrid[i]) |baseItem| {
 				writer.writeEnum(BaseItemIndex, baseItem);
 			}
 		}
 	}
 
-	pub fn hashCode(self: Tool) u32 {
+	pub fn hashCode(self: ProceduralItem) u32 {
 		var hash: u32 = 0;
-		for(self.craftingGrid) |nullItem| {
-			if(nullItem) |item| {
+		for (self.craftingGrid) |nullItem| {
+			if (nullItem) |item| {
 				hash = 33*%hash +% item.material().?.hashCode();
 			}
 		}
 		return hash;
 	}
 
-	pub fn getItemAt(self: *const Tool, x: i32, y: i32) ?BaseItemIndex {
-		if(x < 0 or x >= 5) return null;
-		if(y < 0 or y >= 5) return null;
+	pub fn getItemAt(self: *const ProceduralItem, x: i32, y: i32) ?BaseItemIndex {
+		if (x < 0 or x >= 5) return null;
+		if (y < 0 or y >= 5) return null;
 		return self.craftingGrid[@intCast(x + y*5)];
 	}
 
-	fn getProperty(self: *Tool, prop: ToolProperty) *f32 {
-		switch(prop) {
-			inline else => |field| return &@field(self, @tagName(field)),
-		}
+	pub fn getProperty(self: *ProceduralItem, prop: ProceduralItemProperty) f32 {
+		return self.properties[@backingInt(prop)];
 	}
 
-	fn getTexture(self: *Tool) graphics.Texture {
-		if(self.texture == null) {
+	pub fn setProperty(self: *ProceduralItem, prop: ProceduralItemProperty, value: f32) void {
+		std.debug.assert(!self.finishedPropertyEvaluation);
+		self.properties[@backingInt(prop)] = value;
+	}
+
+	fn getTexture(self: *ProceduralItem) graphics.Texture {
+		if (self.texture == null) {
 			self.texture = graphics.Texture.init();
 			self.texture.?.generate(self.image);
 		}
 		return self.texture.?;
 	}
 
-	fn getTooltip(self: *Tool) []const u8 {
+	fn getTooltip(self: *ProceduralItem) []const u8 {
 		self.tooltip.clearRetainingCapacity();
 		self.tooltip.print(
 			\\{s}
-			\\{d:.2} swings/s
-			\\Damage: {d:.2}
+			\\{d:.1} swings/s
+			\\Damage: {d:.1}
 			\\Durability: {}/{}
 		, .{
 			self.type.id(),
-			self.swingSpeed,
-			self.damage,
+			self.getProperty(.swingSpeed),
+			self.getProperty(.damage),
 			self.durability,
-			std.math.lossyCast(u32, self.maxDurability),
+			std.math.lossyCast(u32, self.getProperty(.maxDurability)),
 		});
-		if(self.modifiers.len != 0) {
+		if (self.modifiers.len != 0) {
 			self.tooltip.appendSlice("\nModifiers:\n");
-			for(self.modifiers) |modifier| {
+			for (self.modifiers) |modifier| {
 				modifier.printTooltip(&self.tooltip);
 				self.tooltip.appendSlice("§\n");
 			}
@@ -836,77 +1057,91 @@ pub const Tool = struct { // MARK: Tool
 		return self.tooltip.items;
 	}
 
-	pub fn isEffectiveOn(self: *Tool, block: main.blocks.Block) bool {
-		for(block.blockTags()) |blockTag| {
-			for(self.type.blockTags()) |toolTag| {
-				if(toolTag == blockTag) return true;
-			}
+	pub fn hasTag(self: *ProceduralItem, tag: Tag) bool {
+		for (self.type.tags()) |proceduralItemTag| {
+			if (proceduralItemTag == tag) return true;
 		}
 		return false;
 	}
 
-	pub fn getBlockDamage(self: *Tool, block: main.blocks.Block) f32 {
-		var damage = self.damage;
-		for(self.modifiers) |modifier| {
-			damage = modifier.changeBlockDamage(damage, block);
+	pub fn isEffectiveOn(self: *ProceduralItem, block: Block) bool {
+		for (block.tags()) |tag| {
+			if (self.hasTag(tag)) return true;
 		}
-		if(self.isEffectiveOn(block)) {
-			return damage;
-		}
-		return main.game.Player.defaultBlockDamage;
+		return false;
 	}
 
-	pub fn onUseReturnBroken(self: *Tool) bool {
+	pub fn getBlockDamage(self: *ProceduralItem, block: Block) f32 {
+		var damage = self.getProperty(.damage);
+		for (self.modifiers) |modifier| {
+			damage = modifier.changeBlockDamage(damage, block);
+		}
+		if (self.isEffectiveOn(block)) {
+			return damage;
+		}
+		return main.game.player.defaultBlockDamage;
+	}
+
+	pub fn onUseReturnBroken(self: *ProceduralItem) bool {
 		self.durability -|= 1;
 		return self.durability == 0;
+	}
+
+	pub fn canPutIntoWorkbenchCallback(source: Inventory.Source, item: Item, slot: usize) bool {
+		if (source.workbench.proceduralItemIndex.slotInfos()[slot].disabled) return false;
+		return switch (item) {
+			.null => true,
+			.baseItem => |baseItem| baseItem.material() != null,
+			.proceduralItem => false,
+		};
 	}
 };
 
 const ItemType = enum(u7) {
 	baseItem,
-	tool,
+	proceduralItem,
 	null,
 };
 
 pub const Item = union(ItemType) { // MARK: Item
 	baseItem: BaseItemIndex,
-	tool: *Tool,
+	proceduralItem: *ProceduralItem,
 	null: void,
 
 	pub fn init(zon: ZonElement) !Item {
-		if(BaseItemIndex.fromId(zon.get([]const u8, "item", "null"))) |baseItem| {
+		if (BaseItemIndex.fromId(zon.get([]const u8, "item") orelse "null")) |baseItem| {
 			return Item{.baseItem = baseItem};
 		} else {
-			const toolZon = zon.getChild("tool");
-			if(toolZon != .object) return error.ItemNotFound;
-			return Item{.tool = Tool.initFromZon(toolZon)};
+			const proceduralItemZon = zon.getChild("tool");
+			if (proceduralItemZon != .object) return error.ItemNotFound;
+			return Item{.proceduralItem = ProceduralItem.initFromZon(proceduralItemZon)};
 		}
 	}
 
 	pub fn deinit(self: Item) void {
-		switch(self) {
+		switch (self) {
 			.baseItem, .null => {},
-			.tool => |_tool| {
-				_tool.deinit();
+			.proceduralItem => |_proceduralItem| {
+				_proceduralItem.deinit();
 			},
 		}
 	}
 
 	pub fn clone(self: Item) Item {
-		switch(self) {
+		switch (self) {
 			.baseItem, .null => return self,
-			.tool => |tool| {
-				return .{.tool = tool.clone()};
+			.proceduralItem => |proceduralItem| {
+				return .{.proceduralItem = proceduralItem.clone()};
 			},
 		}
 	}
 
 	pub fn stackSize(self: Item) u16 {
-		switch(self) {
+		switch (self) {
 			.baseItem => |_baseItem| {
 				return _baseItem.stackSize();
 			},
-			.tool => {
+			.proceduralItem => {
 				return 1;
 			},
 			.null => {
@@ -916,12 +1151,12 @@ pub const Item = union(ItemType) { // MARK: Item
 	}
 
 	pub fn insertIntoZon(self: Item, allocator: NeverFailingAllocator, zonObject: ZonElement) void {
-		switch(self) {
+		switch (self) {
 			.baseItem => |_baseItem| {
 				zonObject.put("item", _baseItem.id());
 			},
-			.tool => |_tool| {
-				zonObject.put("tool", _tool.save(allocator));
+			.proceduralItem => |_proceduralItem| {
+				zonObject.put("tool", _proceduralItem.save(allocator));
 			},
 			.null => unreachable,
 		}
@@ -929,12 +1164,13 @@ pub const Item = union(ItemType) { // MARK: Item
 
 	pub fn fromBytes(reader: *BinaryReader) !Item {
 		const typ = try reader.readEnum(ItemType);
-		switch(typ) {
+		switch (typ) {
 			.baseItem => {
-				return .{.baseItem = try reader.readEnum(BaseItemIndex)};
+				const index = try reader.readEnum(BaseItemIndex);
+				return .{.baseItem = itemDeduplicationMap[@backingInt(index)]};
 			},
-			.tool => {
-				return .{.tool = try Tool.fromBytes(reader)};
+			.proceduralItem => {
+				return .{.proceduralItem = try ProceduralItem.fromBytes(reader)};
 			},
 			.null => return error.UnexpectedItemType, // null should be handled at the call-site
 		}
@@ -942,25 +1178,25 @@ pub const Item = union(ItemType) { // MARK: Item
 
 	pub fn toBytes(self: Item, writer: *BinaryWriter) void {
 		writer.writeEnum(ItemType, self);
-		switch(self) {
+		switch (self) {
 			.baseItem => writer.writeEnum(BaseItemIndex, self.baseItem),
-			.tool => |tool| tool.toBytes(writer),
+			.proceduralItem => |proceduralItem| proceduralItem.toBytes(writer),
 			.null => unreachable,
 		}
 	}
 
 	pub fn getTexture(self: Item) graphics.Texture {
-		return switch(self) {
+		return switch (self) {
 			.baseItem => |_baseItem| _baseItem.getTexture(),
-			.tool => |_tool| _tool.getTexture(),
+			.proceduralItem => |_proceduralItem| _proceduralItem.getTexture(),
 			.null => unreachable,
 		};
 	}
 
 	pub fn id(self: Item) ?[]const u8 {
-		switch(self) {
-			.tool => |tool| {
-				return tool.type.id();
+		switch (self) {
+			.proceduralItem => |proceduralItem| {
+				return proceduralItem.type.id();
 			},
 			.baseItem => |item| {
 				return item.id();
@@ -970,34 +1206,62 @@ pub const Item = union(ItemType) { // MARK: Item
 	}
 
 	pub fn getTooltip(self: Item) ?[]const u8 {
-		switch(self) {
+		switch (self) {
 			.baseItem => |_baseItem| {
 				return _baseItem.getTooltip();
 			},
-			.tool => |_tool| {
-				return _tool.getTooltip();
+			.proceduralItem => |_proceduralItem| {
+				return _proceduralItem.getTooltip();
 			},
 			.null => return null,
 		}
 	}
 
 	pub fn getImage(self: Item) graphics.Image {
-		switch(self) {
+		switch (self) {
 			.baseItem => |_baseItem| {
 				return _baseItem.image();
 			},
-			.tool => |_tool| {
-				return _tool.image;
+			.proceduralItem => |_proceduralItem| {
+				return _proceduralItem.image;
 			},
 			.null => unreachable,
 		}
 	}
 
 	pub fn hashCode(self: Item) u32 {
-		return switch(self) {
+		return switch (self) {
 			.null => unreachable,
 			inline else => |item| item.hashCode(),
 		};
+	}
+
+	pub fn render(self: Item, currentFrame: *graphics.vulkan.Frame, pos: Vec2f, slotSize: Vec2f, border: f32) void {
+		const itemTexture = self.getTexture();
+		graphics.draw.image(currentFrame, itemTexture, pos + @as(Vec2f, @splat(border)), slotSize - @as(Vec2f, @splat(2*border)));
+
+		if (self == .proceduralItem) {
+			const proceduralItem = self.proceduralItem;
+			const durabilityPercentage = @as(f32, @floatFromInt(proceduralItem.durability))/proceduralItem.getProperty(.maxDurability);
+
+			if (durabilityPercentage < 1) {
+				const width = durabilityPercentage*(slotSize[0] - 2*border);
+				{
+					const oldColor = graphics.draw.setColor(0xff000000);
+					defer graphics.draw.restoreColor(oldColor);
+					graphics.draw.rect(currentFrame, pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{slotSize[0] - 2*border, (slotSize[1] - 2*border)/16.0});
+				}
+
+				const red = std.math.lossyCast(u8, (2 - durabilityPercentage*2)*255);
+				const green = std.math.lossyCast(u8, durabilityPercentage*2*255);
+
+				{
+					const oldColor = graphics.draw.setColor(0xff000000 | (@as(u32, red) << 16) | (@as(u32, green) << 8));
+					defer graphics.draw.restoreColor(oldColor);
+					graphics.draw.rect(currentFrame, pos + Vec2f{border, 15*(slotSize[1] - border)/16.0}, .{width, (slotSize[1] - 2*border)/16.0});
+				}
+			}
+		}
 	}
 };
 
@@ -1008,7 +1272,7 @@ pub const ItemStack = struct { // MARK: ItemStack
 	pub fn load(zon: ZonElement) !ItemStack {
 		return .{
 			.item = try Item.init(zon),
-			.amount = zon.get(?u16, "amount", null) orelse return error.InvalidAmount,
+			.amount = zon.get(u16, "amount") orelse return error.InvalidAmount,
 		};
 	}
 
@@ -1028,7 +1292,7 @@ pub const ItemStack = struct { // MARK: ItemStack
 	}
 
 	pub fn storeToZon(self: *const ItemStack, allocator: NeverFailingAllocator, zonObject: ZonElement) void {
-		if(self.item != .null) {
+		if (self.item != .null) {
 			self.item.insertIntoZon(allocator, zonObject);
 			zonObject.put("amount", self.amount);
 		}
@@ -1036,7 +1300,7 @@ pub const ItemStack = struct { // MARK: ItemStack
 
 	pub fn fromBytes(reader: *BinaryReader) !ItemStack {
 		const amount = try reader.readVarInt(u16);
-		if(amount == 0) {
+		if (amount == 0) {
 			return .{};
 		}
 		const item = try Item.fromBytes(reader);
@@ -1047,7 +1311,7 @@ pub const ItemStack = struct { // MARK: ItemStack
 	}
 
 	pub fn toBytes(self: *const ItemStack, writer: *BinaryWriter) void {
-		if(self.item != .null) {
+		if (self.item != .null) {
 			writer.writeVarInt(u16, self.amount);
 			self.item.toBytes(writer);
 		} else {
@@ -1061,69 +1325,138 @@ pub const Recipe = struct { // MARK: Recipe
 	sourceAmounts: []u16,
 	resultItem: BaseItemIndex,
 	resultAmount: u16,
-	cachedInventory: ?Inventory = null,
+	craftingTags: []const Tag,
+
+	fn getValidRecipe(self: Recipe) error{Invalid}!*Recipe {
+		outer: for (main.items.getRecipes()) |*recipe| {
+			if (recipe.resultItem != self.resultItem) continue;
+			if (recipe.resultAmount != self.resultAmount) continue;
+			if (recipe.sourceItems.len != self.sourceItems.len) continue;
+			if (recipe.craftingTags.len != self.craftingTags.len) continue;
+			for (recipe.sourceItems, recipe.sourceAmounts, self.sourceItems, self.sourceAmounts) |recipeItem, recipeAmount, selfItem, selfAmount| {
+				if (recipeItem != selfItem) continue :outer;
+				if (recipeAmount != selfAmount) continue :outer;
+			}
+			for (recipe.craftingTags, self.craftingTags) |recipeCraftingTag, selfCraftingTag| {
+				if (recipeCraftingTag != selfCraftingTag) continue :outer;
+			}
+			return recipe;
+		}
+		return error.Invalid;
+	}
+
+	pub fn toBytes(self: *const Recipe, writer: *BinaryWriter) void {
+		writer.writeEnum(BaseItemIndex, self.resultItem);
+		writer.writeVarInt(u16, self.resultAmount);
+		writer.writeVarInt(usize, self.sourceItems.len);
+		for (self.sourceItems, self.sourceAmounts) |item, amount| {
+			writer.writeEnum(BaseItemIndex, item);
+			writer.writeVarInt(u16, amount);
+		}
+		writer.writeVarInt(usize, self.craftingTags.len);
+		for (self.craftingTags) |tag| {
+			writer.writeSliceWithSize(tag.getName());
+		}
+	}
+
+	pub fn fromBytes(reader: *BinaryReader) !*Recipe {
+		const resultItem = try reader.readEnum(BaseItemIndex);
+		const resultAmount = try reader.readVarInt(u16);
+		const sourceCount = try reader.readVarInt(usize);
+
+		var sourceItems: main.List(BaseItemIndex) = .initCapacity(main.stackAllocator, @min(256, sourceCount));
+		defer sourceItems.deinit(main.stackAllocator);
+		var sourceAmounts: main.List(u16) = .initCapacity(main.stackAllocator, @min(256, sourceCount));
+		defer sourceAmounts.deinit(main.stackAllocator);
+
+		while (reader.remaining.len > 0 and sourceItems.items.len < sourceCount) {
+			sourceItems.append(main.stackAllocator, try reader.readEnum(BaseItemIndex));
+			sourceAmounts.append(main.stackAllocator, try reader.readVarInt(u16));
+		}
+
+		const tagCount = try reader.readVarInt(usize);
+		var craftingTagTypes: main.List(Tag) = .initCapacity(main.stackAllocator, @min(256, tagCount));
+		defer craftingTagTypes.deinit(main.stackAllocator);
+
+		while (craftingTagTypes.items.len < tagCount) {
+			craftingTagTypes.append(main.stackAllocator, Tag.get(try reader.readSliceWithSize()) orelse return error.invalidTag);
+		}
+
+		return getValidRecipe(.{.sourceItems = sourceItems.items, .sourceAmounts = sourceAmounts.items, .resultItem = resultItem, .resultAmount = resultAmount, .craftingTags = craftingTagTypes.items});
+	}
 };
 
-var toolTypeList: ListUnmanaged(ToolType) = .{};
-var toolTypeIdToIndex: std.StringHashMapUnmanaged(ToolTypeIndex) = .{};
+var proceduralItemTypeList: List(ProceduralItemType) = .empty;
+var proceduralItemTypeIdToIndex: std.StringHashMapUnmanaged(ProceduralItemTypeIndex) = .{};
 
 var reverseIndices: std.StringHashMapUnmanaged(BaseItemIndex) = .{};
 var modifiers: std.StringHashMapUnmanaged(*const Modifier.VTable) = .{};
 var modifierRestrictions: std.StringHashMapUnmanaged(*const ModifierRestriction.VTable) = .{};
-pub var itemList: [65536]BaseItem = undefined;
 pub var itemListSize: u16 = 0;
+pub var itemList: [65536]BaseItem = undefined;
 
-var recipeList: main.List(Recipe) = undefined;
+// Due to migrations multiple indices can map to the same item. This must be resolved during inventory loading using this map.
+var itemDeduplicationMap: [65536]BaseItemIndex = undefined;
+
+var recipeList: main.ListManaged(Recipe) = .init(main.worldArena);
 
 pub fn hasRegistered(id: []const u8) bool {
 	return reverseIndices.contains(id);
 }
 
-pub fn hasRegisteredTool(id: []const u8) bool {
-	return toolTypeIdToIndex.contains(id);
+pub fn hasRegisteredProceduralItem(id: []const u8) bool {
+	return proceduralItemTypeIdToIndex.contains(id);
 }
 
 pub fn iterator() std.StringHashMap(BaseItemIndex).ValueIterator {
 	return reverseIndices.valueIterator();
 }
 
-pub fn recipes() []Recipe {
+pub fn getRecipes() []Recipe {
 	return recipeList.items;
 }
 
 pub fn globalInit() void {
-	toolTypeIdToIndex = .{};
+	proceduralItemTypeIdToIndex = .{};
 
-	recipeList = .init(main.worldArena);
 	itemListSize = 0;
-	inline for(@typeInfo(modifierList).@"struct".decls) |decl| {
-		const ModifierStruct = @field(modifierList, decl.name);
-		modifiers.put(main.globalArena.allocator, decl.name, &.{
-			.changeToolParameters = @ptrCast(&ModifierStruct.changeToolParameters),
-			.changeBlockDamage = @ptrCast(&ModifierStruct.changeBlockDamage),
-			.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
-			.printTooltip = @ptrCast(&ModifierStruct.printTooltip),
-			.loadData = @ptrCast(&ModifierStruct.loadData),
-			.priority = ModifierStruct.priority,
-		}) catch unreachable;
+	inline for (@typeInfo(modifierList).@"struct".decl_names) |decl| {
+		const ModifierStruct: type = @field(modifierList, decl);
+		modifiers.put(main.globalArena.allocator, decl, &Modifier.VTable.initFromModifierStruct(ModifierStruct)) catch unreachable;
 	}
-	inline for(@typeInfo(modifierRestrictionList).@"struct".decls) |decl| {
-		const ModifierRestrictionStruct = @field(modifierRestrictionList, decl.name);
-		modifierRestrictions.put(main.globalArena.allocator, decl.name, &.{
+	inline for (@typeInfo(modifierRestrictionList).@"struct".decl_names) |decl| {
+		const ModifierRestrictionStruct = @field(modifierRestrictionList, decl);
+		modifierRestrictions.put(main.globalArena.allocator, decl, &.{
 			.satisfied = comptime main.meta.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.satisfied),
 			.loadFromZon = comptime main.meta.castFunctionReturnToAnyopaque(ModifierRestrictionStruct.loadFromZon),
 			.printTooltip = comptime main.meta.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.printTooltip),
 		}) catch unreachable;
 	}
-	Inventory.Sync.ClientSide.init();
+	Inventory.client.init();
 }
 
-pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) *BaseItem {
+pub fn globalDeinit() void {
+	Inventory.client.deinit();
+}
+
+pub fn reset() void {
+	proceduralItemTypeList = .empty;
+	proceduralItemTypeIdToIndex = .{};
+	reverseIndices = .{};
+	recipeList.clearAndFree();
+	itemListSize = 0;
+}
+
+pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, colorTexturePath: []const u8, colorReplacementTexturePath: []const u8, id: []const u8, zon: ZonElement) *BaseItem {
 	const newItem = &itemList[itemListSize];
 	defer itemListSize += 1;
 
-	newItem.init(main.worldArena, texturePath, replacementTexturePath, id, zon);
-	reverseIndices.put(main.worldArena.allocator, newItem.id, @enumFromInt(itemListSize)) catch unreachable;
+	newItem.init(main.worldArena, texturePath, replacementTexturePath, colorTexturePath, colorReplacementTexturePath, id, zon);
+	const result = reverseIndices.getOrPut(main.worldArena.allocator, newItem.id) catch unreachable;
+	if (!result.found_existing) {
+		result.value_ptr.* = @fromBackingInt(itemListSize);
+	}
+	itemDeduplicationMap[itemListSize] = result.value_ptr.*;
 
 	std.log.debug("Registered item: {d: >5} '{s}'", .{itemListSize, id});
 	return newItem;
@@ -1132,30 +1465,31 @@ pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: 
 fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []const u8, pixelSources: *[16][16]u8) void {
 	var split = std.mem.splitScalar(u8, id, ':');
 	const mod = split.first();
-	const tool = split.rest();
-	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/tools/{s}{s}.png", .{assetFolder, mod, tool, layerPostfix}) catch unreachable;
+	const proceduralItem = split.rest();
+	const path = main.stackAllocator.print("{s}/{s}/tools/{s}{s}.png", .{assetFolder, mod, proceduralItem, layerPostfix});
 	defer main.stackAllocator.free(path);
-	const image = main.graphics.Image.readFromFile(main.stackAllocator, path) catch |err| blk: {
-		if(err != error.FileNotFound) {
-			std.log.err("Error while reading tool image '{s}': {s}", .{path, @errorName(err)});
+	const image = main.graphics.Image.readFromFile(main.stackAllocator, path, .{.orientation = .openGl}) catch |err| blk: {
+		if (err != error.FileNotFound) {
+			std.log.err("Error while reading procedural item image '{s}': {s}", .{path, @errorName(err)});
 		}
-		const replacementPath = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/tools/{s}{s}.png", .{mod, tool, layerPostfix}) catch unreachable;
+		const replacementPath = main.stackAllocator.print("assets/{s}/tools/{s}{s}.png", .{mod, proceduralItem, layerPostfix});
 		defer main.stackAllocator.free(replacementPath);
-		break :blk main.graphics.Image.readFromFile(main.stackAllocator, replacementPath) catch |err2| {
-			if(layerPostfix.len == 0 or err2 != error.FileNotFound)
-				std.log.err("Error while reading tool image. Tried '{s}' and '{s}': {s}", .{path, replacementPath, @errorName(err2)});
+		break :blk main.graphics.Image.readFromFile(main.stackAllocator, replacementPath, .{.orientation = .openGl}) catch |err2| {
+			if (layerPostfix.len == 0 or err2 != error.FileNotFound) {
+				std.log.err("Error while reading procedural item image. Tried '{s}' and '{s}': {s}", .{path, replacementPath, @errorName(err2)});
+			}
 			break :blk main.graphics.Image.emptyImage;
 		};
 	};
 	defer image.deinit(main.stackAllocator);
-	if((image.width != 16 or image.height != 16) and image.imageData.ptr != main.graphics.Image.emptyImage.imageData.ptr) {
+	if ((image.width != 16 or image.height != 16) and image.imageData.ptr != main.graphics.Image.emptyImage.imageData.ptr) {
 		std.log.err("Truncating image for {s} with incorrect dimensions. Should be 16×16.", .{id});
 	}
-	for(0..16) |x| {
-		for(0..16) |y| {
-			const color = if(image.width != 0 and image.height != 0) image.getRGB(@min(image.width - 1, x), image.height - 1 - @min(image.height - 1, y)) else main.graphics.Color{.r = 0, .g = 0, .b = 0, .a = 0};
+	for (0..16) |x| {
+		for (0..16) |y| {
+			const color = if (image.width != 0 and image.height != 0) image.getRGB(@min(image.width - 1, x), image.height - 1 - @min(image.height - 1, y)) else main.graphics.Color{.r = 0, .g = 0, .b = 0, .a = 0};
 			pixelSources[x][y] = blk: {
-				if(color.a == 0) break :blk 255;
+				if (color.a == 0) break :blk 255;
 				const xPos = color.r/52;
 				const yPos = color.b/52;
 				break :blk xPos + 5*yPos;
@@ -1164,39 +1498,40 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 	}
 }
 
-pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
+pub fn registerProceduralItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
 	var slotInfos: [25]SlotInfo = @splat(.{});
-	for(zon.getChild("disabled").toSlice(), 0..) |zonDisabled, i| {
-		if(i >= 25) {
+	for (zon.getChild("disabled").toSlice(), 0..) |zonDisabled, i| {
+		if (i >= 25) {
 			std.log.err("disabled array of {s} has too many entries", .{id});
 			break;
 		}
-		slotInfos[i].disabled = zonDisabled.as(usize, 0) != 0;
+		slotInfos[i].disabled = (zonDisabled.as(usize) orelse 0) != 0;
 	}
-	for(zon.getChild("optional").toSlice(), 0..) |zonDisabled, i| {
-		if(i >= 25) {
+	for (zon.getChild("optional").toSlice(), 0..) |zonDisabled, i| {
+		if (i >= 25) {
 			std.log.err("disabled array of {s} has too many entries", .{id});
 			break;
 		}
-		slotInfos[i].optional = zonDisabled.as(usize, 0) != 0;
+		slotInfos[i].optional = (zonDisabled.as(usize) orelse 0) != 0;
 	}
-	var parameterMatrices: main.List(PropertyMatrix) = .init(main.worldArena);
-	for(zon.getChild("parameters").toSlice()) |paramZon| {
-		const val = parameterMatrices.addOne();
-		val.source = MaterialProperty.fromString(paramZon.get([]const u8, "source", "not specified"));
-		val.destination = ToolProperty.fromString(paramZon.get([]const u8, "destination", "not specified"));
-		val.resultScale = paramZon.get(f32, "factor", 1.0);
-		val.method = PropertyMatrix.Method.fromString(paramZon.get([]const u8, "method", "not specified")) orelse .sum;
+	var parameterMatrices: main.List(PropertyMatrix) = .empty;
+	defer parameterMatrices.deinit(main.stackAllocator);
+	for (zon.getChild("parameters").toSlice()) |paramZon| {
+		const val = parameterMatrices.addOne(main.stackAllocator);
+		val.source = MaterialProperty.fromString(paramZon.get([]const u8, "source") orelse "not specified");
+		val.destination = ProceduralItemProperty.fromString(paramZon.get([]const u8, "destination") orelse "not specified");
+		val.resultScale = paramZon.get(f32, "factor") orelse 1.0;
+		val.method = PropertyMatrix.Method.fromString(paramZon.get([]const u8, "method") orelse "not specified") orelse .sum;
 		const matrixZon = paramZon.getChild("matrix");
 		var total_weight: f32 = 0.0;
-		for(0..25) |i| {
+		for (0..25) |i| {
 			val.weights[i] = matrixZon.getAtIndex(f32, i, 0.0);
 		}
-		for(0..25) |i| {
+		for (0..25) |i| {
 			total_weight += val.weights[i];
 		}
-		for(0..25) |i| {
-			if(val.weights[i] != 0x0) {
+		for (0..25) |i| {
+			if (val.weights[i] != 0x0) {
 				val.weights[i] /= total_weight;
 			}
 		}
@@ -1207,78 +1542,26 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 	loadPixelSources(assetFolder, id, "_overlay", &pixelSourcesOverlay);
 
 	const idDupe = main.worldArena.dupe(u8, id);
-	toolTypeList.append(main.worldArena, .{
+	proceduralItemTypeList.append(main.worldArena, .{
 		.id = idDupe,
-		.blockTags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("blockTags")),
+		.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
 		.slotInfos = slotInfos,
-		.properties = parameterMatrices.toOwnedSlice(),
+		.properties = main.worldArena.dupe(PropertyMatrix, parameterMatrices.items),
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
 	});
-	toolTypeIdToIndex.put(main.worldArena.allocator, idDupe, @enumFromInt(toolTypeList.items.len - 1)) catch unreachable;
+	proceduralItemTypeIdToIndex.put(main.worldArena.allocator, idDupe, @fromBackingInt(@intCast(proceduralItemTypeList.items.len - 1))) catch unreachable;
 
-	std.log.debug("Registered tool: '{s}'", .{id});
-}
-
-fn parseRecipeItem(zon: ZonElement) !ItemStack {
-	var id = zon.as([]const u8, "");
-	id = std.mem.trim(u8, id, &std.ascii.whitespace);
-	var result: ItemStack = .{.amount = 1};
-	if(std.mem.indexOfScalar(u8, id, ' ')) |index| blk: {
-		result.amount = std.fmt.parseInt(u16, id[0..index], 0) catch break :blk;
-		id = id[index + 1 ..];
-		id = std.mem.trim(u8, id, &std.ascii.whitespace);
-	}
-	result.item = .{.baseItem = BaseItemIndex.fromId(id) orelse return error.ItemNotFound};
-	return result;
-}
-
-fn parseRecipe(zon: ZonElement) !Recipe {
-	const inputs = zon.getChild("inputs").toSlice();
-	const output = try parseRecipeItem(zon.getChild("output"));
-	const recipe = Recipe{
-		.sourceItems = main.worldArena.alloc(BaseItemIndex, inputs.len),
-		.sourceAmounts = main.worldArena.alloc(u16, inputs.len),
-		.resultItem = output.item.baseItem,
-		.resultAmount = output.amount,
-	};
-	for(inputs, 0..) |inputZon, i| {
-		const input = try parseRecipeItem(inputZon);
-		recipe.sourceItems[i] = input.item.baseItem;
-		recipe.sourceAmounts[i] = input.amount;
-	}
-	return recipe;
+	std.log.debug("Registered procedural item: '{s}'", .{id});
 }
 
 pub fn registerRecipes(zon: ZonElement) void {
-	for(zon.toSlice()) |recipeZon| {
-		recipes_zig.parseRecipe(main.globalAllocator, recipeZon, &recipeList) catch |err| {
+	for (zon.toSlice()) |recipeZon| {
+		recipes.parseRecipe(recipeZon, &recipeList) catch |err| {
 			const recipeString = recipeZon.toString(main.stackAllocator);
 			defer main.stackAllocator.free(recipeString);
 			std.log.err("Skipping recipe with error {s}:\n{s}", .{@errorName(err), recipeString});
 			continue;
 		};
 	}
-}
-
-pub fn clearRecipeCachedInventories() void {
-	for(recipeList.items) |recipe| {
-		main.globalAllocator.free(recipe.sourceItems);
-		main.globalAllocator.free(recipe.sourceAmounts);
-		if(recipe.cachedInventory) |inv| {
-			inv.deinit(main.globalAllocator);
-		}
-	}
-}
-
-pub fn reset() void {
-	toolTypeList = .{};
-	toolTypeIdToIndex = .{};
-	reverseIndices = .{};
-	recipeList.clearAndFree();
-	itemListSize = 0;
-}
-
-pub fn deinit() void {
-	Inventory.Sync.ClientSide.deinit();
 }

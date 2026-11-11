@@ -1,0 +1,7 @@
+.{
+	.tags = .{.surface_caves_layer},
+	.layerHeight = 250,
+	.depthHint = -1,
+
+	.caveDensity = 0.008,
+}

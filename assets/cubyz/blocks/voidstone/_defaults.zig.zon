@@ -1,0 +1,35 @@
+.{
+	.tags = .{.stone, .mineable, .voidstone},
+	.blockHealth = 60,
+	.blockResistance = 5,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.item = .{
+		.colorTexture = "voidstone_palette.png",
+		.material = .{
+			.durability = 200,
+			.massDamage = 3.0,
+			.hardnessDamage = 7.0,
+			.swingSpeed = 4.7,
+			.textureRoughness = 0.4,
+			.modifiers = .{
+				.{
+					.id = "base_stat",
+					.targetProperty = "maxDurability",
+					.strength = 0.1,
+				},
+				.{
+					.id = "good_at",
+					.strength = 0.5,
+					.tag = .voidstone,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 2,
+					},
+				},
+			},
+		},
+	},
+}

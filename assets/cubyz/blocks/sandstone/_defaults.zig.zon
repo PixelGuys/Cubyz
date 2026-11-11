@@ -1,0 +1,42 @@
+.{
+	.tags = .{.stone, .mineable, .sandstone},
+	.blockHealth = 20,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.item = .{
+		.colorTexture = "sandstone_palette.png",
+		.material = .{
+			.durability = 10,
+			.massDamage = 1.0,
+			.hardnessDamage = 3.0,
+			.swingSpeed = 3.0,
+			.textureRoughness = 0.9,
+			.modifiers = .{
+				.{
+					.id = "base_stat",
+					.targetProperty = "maxDurability",
+					.strength = -0.20,
+					.restriction = .{
+						.id = .not,
+						.child = .{
+							.id = .encased,
+							.tag = .precious,
+							.amount = 2,
+						},
+					},
+				},
+				.{
+					.id = "good_at",
+					.strength = 0.5,
+					.tag = .sandstone,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 2,
+					},
+				},
+			},
+		},
+	},
+}

@@ -1,0 +1,8 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:rare/mushroom_pole/top/bolete"},
+		.{.id = "cubyz:rare/mushroom_pole/top/glimmergill", .chance = 0.01},
+		.{.id = "cubyz:rare/mushroom_pole/top/toadstool", .chance = 0.01},
+	},
+	.rotation = .inherit,
+}

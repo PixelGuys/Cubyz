@@ -1,0 +1,9 @@
+.{
+	.blueprints = .{
+		.{.id = null},
+		.{.id = "cubyz:deco/bolete_side", .chance = 0.07},
+		.{.id = "cubyz:deco/toadstool_side", .chance = 0.02},
+		.{.id = "cubyz:deco/ivy_side_2", .chance = 0.02},
+		.{.id = "cubyz:deco/ivy_side_3", .chance = 0.02},
+	},
+}

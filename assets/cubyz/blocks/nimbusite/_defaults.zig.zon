@@ -1,0 +1,30 @@
+.{
+	.tags = .{.stone, .mineable, .nimbusite},
+	.blockHealth = 40,
+	.blockResistance = 4,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.item = .{
+		.colorTexture = "nimbusite_palette.png",
+		.material = .{
+			.durability = 80,
+			.massDamage = 1.0,
+			.hardnessDamage = 3.9,
+			.swingSpeed = 4.8,
+			.textureRoughness = 0.5,
+			.modifiers = .{
+				.{
+					.id = "good_at",
+					.strength = 0.5,
+					.tag = .nimbusite,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 2,
+					},
+				},
+			},
+		},
+	},
+}

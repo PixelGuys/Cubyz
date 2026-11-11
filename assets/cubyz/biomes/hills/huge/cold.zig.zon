@@ -1,0 +1,75 @@
+.{
+	.climate = .{
+		.cold,
+	},
+	.tags = .{
+		.pine,
+	},
+	.ground_structure = .{
+		"cubyz:grass/cold",
+		"cubyz:silt",
+	},
+	.music = "cubyz:totaldemented/hypoxia",
+	.structures = .{
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.015,
+			.block = "cubyz:slate/smooth",
+			.size = 3,
+			.size_variance = 1,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:pebbles:cubyz:grass/cold",
+			.chance = 0.02,
+			.width = 4,
+			.variation = 3,
+			.depth = 1,
+			.smoothness = 0.1,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:slate/smooth",
+			.chance = 0.015,
+			.width = 8,
+			.variation = 4,
+			.depth = 3,
+			.smoothness = 0.5,
+		},
+		.{
+			.id = "cubyz:fallen_tree",
+			.log = "cubyz:log/pine",
+			.height = 6,
+			.height_variation = 3,
+			.chance = 0.002,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.blocks = .{"cubyz:grass/vegetation/cold"},
+			.chance = 0.1,
+			.width = 5,
+			.variation = 8,
+			.density = 0.5,
+			.priority = 0.2,
+		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:grass/vegetation/cold",
+			.chance = 0.4,
+			.height = 1,
+			.height_variation = 0,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/eastern_white",
+			.placeMode = .degradable,
+			.chance = 0.008,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/pine/young_tree",
+			.placeMode = .degradable,
+			.chance = 0.004,
+		},
+	},
+}

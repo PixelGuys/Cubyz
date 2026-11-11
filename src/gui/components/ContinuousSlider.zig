@@ -18,7 +18,6 @@ const Label = GuiComponent.Label;
 const ContinuousSlider = @This();
 
 const border: f32 = 3;
-const fontSize: f32 = 16;
 
 var texture: Texture = undefined;
 
@@ -26,23 +25,23 @@ pos: Vec2f,
 size: Vec2f,
 minValue: f32,
 maxValue: f32,
-callback: *const fn(f32) void,
-formatter: *const fn(NeverFailingAllocator, f32) []const u8,
+callback: *const fn (f32) void,
+formatter: *const fn (NeverFailingAllocator, f32) []const u8,
 currentValue: f32,
 currentText: []const u8,
 label: *Label,
 button: *Button,
 mouseAnchor: f32 = undefined,
 
-pub fn __init() void {
+pub fn globalInit() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/slider.png");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	texture.deinit();
 }
 
-pub fn init(pos: Vec2f, width: f32, minValue: f32, maxValue: f32, initialValue: f32, callback: *const fn(f32) void, formatter: *const fn(NeverFailingAllocator, f32) []const u8) *ContinuousSlider {
+pub fn init(pos: Vec2f, width: f32, minValue: f32, maxValue: f32, initialValue: f32, callback: *const fn (f32) void, formatter: *const fn (NeverFailingAllocator, f32) []const u8) *ContinuousSlider {
 	const initialText = formatter(main.globalAllocator, initialValue);
 	const label = Label.init(undefined, width - 3*border, initialText, .center);
 	const button = Button.initText(.{0, 0}, undefined, "", .{});
@@ -80,7 +79,8 @@ pub fn toComponent(self: *ContinuousSlider) GuiComponent {
 fn setButtonPosFromValue(self: *ContinuousSlider) void {
 	const range: f32 = self.size[0] - 3*border - self.button.size[0];
 	const len: f32 = self.maxValue - self.minValue;
-	self.button.pos[0] = 1.5*border + range*(self.currentValue - self.minValue)/len;
+	const val = std.math.clamp(self.currentValue, self.minValue, self.maxValue);
+	self.button.pos[0] = 1.5*border + range*(val - self.minValue)/len;
 	self.updateLabel(self.currentValue, self.size[0]);
 }
 
@@ -96,49 +96,77 @@ fn updateValueFromButtonPos(self: *ContinuousSlider) void {
 	const range: f32 = self.size[0] - 3*border - self.button.size[0];
 	const len: f32 = self.maxValue - self.minValue;
 	const value: f32 = (self.button.pos[0] - 1.5*border)/range*len + self.minValue;
-	if(value != self.currentValue) {
+	if (value != self.currentValue) {
 		self.currentValue = value;
 		self.updateLabel(value, self.size[0]);
 		self.callback(value);
 	}
 }
 
-pub fn updateHovered(self: *ContinuousSlider, mousePosition: Vec2f) void {
-	if(GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
-		self.button.updateHovered(mousePosition - self.pos);
+pub fn updateHovered(self: *ContinuousSlider, mousePosition: Vec2f) main.callbacks.Result {
+	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
+		if (self.button.updateHovered(mousePosition - self.pos) == .handled) return .handled;
 	}
+	return .ignored;
 }
 
-pub fn mainButtonPressed(self: *ContinuousSlider, mousePosition: Vec2f) void {
-	if(GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
-		self.button.mainButtonPressed(mousePosition - self.pos);
-		self.mouseAnchor = mousePosition[0] - self.button.pos[0];
+inline fn getBarPos(self: *ContinuousSlider) Vec2f {
+	return Vec2f{1.5*border + self.button.size[0]/2, self.button.pos[1] + self.button.size[1]/2 - border};
+}
+
+inline fn getBarSize(self: *ContinuousSlider) Vec2f {
+	const range: f32 = self.size[0] - 3*border - self.button.size[0];
+	return .{range, 2*border};
+}
+
+pub fn mainButtonPressed(self: *ContinuousSlider, mousePosition: Vec2f) main.callbacks.Result {
+	const mousePositionRelativeToSelf = mousePosition - self.pos;
+
+	if (GuiComponent.contains(self.button.pos, self.button.size, mousePositionRelativeToSelf)) {
+		if (self.button.mainButtonPressed(mousePositionRelativeToSelf) == .handled) {
+			self.mouseAnchor = mousePosition[0] - self.button.pos[0];
+			return .handled;
+		}
+	} else if (GuiComponent.contains(self.getBarPos(), self.getBarSize(), mousePositionRelativeToSelf)) {
+		self.mouseAnchor = self.pos[0] + self.button.size[0]/2;
+		self.button.pos[0] = mousePositionRelativeToSelf[0] - self.mouseAnchor;
+		return self.button.mainButtonPressed(mousePositionRelativeToSelf);
 	}
+	return .ignored;
 }
 
 pub fn mainButtonReleased(self: *ContinuousSlider, _: Vec2f) void {
 	self.button.mainButtonReleased(undefined);
 }
 
-pub fn render(self: *ContinuousSlider, mousePosition: Vec2f) void {
-	texture.bindTo(0);
-	Button.pipeline.bind(draw.getScissor());
-	draw.setColor(0xff000000);
-	draw.customShadedRect(Button.buttonUniforms, self.pos, self.size);
+pub fn render(self: *ContinuousSlider, currentFrame: *graphics.vulkan.Frame, mousePosition: Vec2f) void {
+	if (main.settings.launch_config.vulkanTestingMode and texture.vulkanImage != null) {
+		currentFrame.guiCommands.bindPipeline(currentFrame, Button.pipeline, graphics.draw.getScissor());
+		currentFrame.guiCommands.bindDescriptors(Button.pipeline, &.{
+			.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
+		});
+		draw.customShadedRect(currentFrame, @as(Button.ButtonUniforms, undefined), Button.pipeline, self.pos, self.size);
+	} else {
+		Button.pipeline.bind(draw.getScissor());
+		texture.bindTo(0);
+		draw.customShadedRectOpenGl(Button.buttonUniforms, self.pos, self.size);
+	}
 
-	const range: f32 = self.size[0] - 3*border - self.button.size[0];
-	draw.setColor(0x80000000);
-	draw.rect(self.pos + Vec2f{1.5*border + self.button.size[0]/2, self.button.pos[1] + self.button.size[1]/2 - border}, .{range, 2*border});
+	{
+		const oldColor = draw.setColor(0x80000000);
+		defer draw.restoreColor(oldColor);
+		draw.rect(currentFrame, self.pos + self.getBarPos(), self.getBarSize());
+	}
 
 	self.label.pos = self.pos + @as(Vec2f, @splat(1.5*border));
-	self.label.render(mousePosition);
+	self.label.render(currentFrame, mousePosition);
 
-	if(self.button.pressed) {
+	if (self.button.pressed) {
 		self.button.pos[0] = mousePosition[0] - self.mouseAnchor;
-		self.button.pos[0] = @min(@max(self.button.pos[0], 1.5*border), 1.5*border + range - 0.001);
+		self.button.pos[0] = @min(@max(self.button.pos[0], 1.5*border), 1.5*border + self.getBarSize()[0] - 0.001);
 		self.updateValueFromButtonPos();
 	}
 	const oldTranslation = draw.setTranslation(self.pos);
 	defer draw.restoreTranslation(oldTranslation);
-	self.button.render(mousePosition - self.pos);
+	self.button.render(currentFrame, mousePosition - self.pos);
 }

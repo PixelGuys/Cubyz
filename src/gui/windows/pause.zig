@@ -16,17 +16,19 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 
-fn reorderHudCallbackFunction(_: usize) void {
+fn reorderHudCallbackFunction() void {
 	gui.reorderWindows = !gui.reorderWindows;
 }
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	if(main.server.world != null) {
-		list.add(Button.initText(.{0, 0}, 128, "Invite Player", gui.openWindowCallback("invite")));
+	const isSingleplayer = if (main.server.world) |w| w.mode == .singleplayer else false;
+	list.add(Button.initText(.{0, 0}, 128, "Players", .{.onAction = gui.openWindowCallback("players"), .disabled = isSingleplayer}));
+	if (main.server.world != null) {
+		list.add(Button.initText(.{0, 0}, 128, "Invite Player", .{.onAction = gui.openWindowCallback("invite"), .disabled = isSingleplayer}));
 	}
-	list.add(Button.initText(.{0, 0}, 128, "Settings", gui.openWindowCallback("settings")));
-	list.add(Button.initText(.{0, 0}, 128, "Reorder HUD", .{.callback = &reorderHudCallbackFunction}));
-	list.add(Button.initText(.{0, 0}, 128, "Exit World", .{.callback = &main.exitToMenu}));
+	list.add(Button.initText(.{0, 0}, 128, "Settings", .{.onAction = gui.openWindowCallback("settings")}));
+	list.add(Button.initText(.{0, 0}, 128, "Reorder HUD", .{.onAction = .init(reorderHudCallbackFunction)}));
+	list.add(Button.initText(.{0, 0}, 128, "Exit World", .{.onAction = .init(main.exitToMenu)}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
@@ -34,7 +36,7 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }

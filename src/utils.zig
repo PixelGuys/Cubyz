@@ -6,15 +6,18 @@ const builtin = @import("builtin");
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
+pub const list = @import("utils/list.zig");
 pub const file_monitor = @import("utils/file_monitor.zig");
-pub const VirtualList = @import("utils/virtual_mem.zig").VirtualList;
+const virtual_mem = @import("utils/virtual_mem.zig");
+pub const VirtualList = virtual_mem.VirtualList;
 
-pub const Compression = struct { // MARK: Compression
+pub const compression = struct { // MARK: compression
 	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8, level: std.compress.flate.Compress.Options) []u8 {
 		var result = std.Io.Writer.Allocating.initCapacity(allocator.allocator, 16) catch unreachable;
 		var buffer: [65536]u8 = undefined;
 		var compress = std.compress.flate.Compress.init(&result.writer, &buffer, .raw, level) catch unreachable;
 		compress.writer.writeAll(data) catch unreachable;
+		compress.finish() catch unreachable;
 		compress.writer.flush() catch unreachable;
 		result.writer.flush() catch unreachable;
 		return result.toOwnedSlice() catch unreachable;
@@ -33,30 +36,31 @@ pub const Compression = struct { // MARK: Compression
 		var walker = sourceDir.walk(main.stackAllocator);
 		defer walker.deinit();
 
-		while(try walker.next()) |entry| {
-			if(entry.kind == .file) {
+		while (try walker.next(main.io)) |entry| {
+			if (entry.kind == .file) {
 				var relPath: []const u8 = entry.path;
-				if(builtin.os.tag == .windows) { // I hate you
+				if (builtin.target.os.tag == .windows) { // I hate you
 					const copy = main.stackAllocator.dupe(u8, relPath);
 					std.mem.replaceScalar(u8, copy, '\\', '/');
 					relPath = copy;
 				}
-				defer if(builtin.os.tag == .windows) {
+				defer if (builtin.target.os.tag == .windows) {
 					main.stackAllocator.free(relPath);
 				};
 				var len: [4]u8 = undefined;
 				std.mem.writeInt(u32, &len, @as(u32, @intCast(relPath.len)), endian);
-				_ = try comp.writer.write(&len);
-				_ = try comp.writer.write(relPath);
+				_ = try comp.writer.writeAll(&len);
+				_ = try comp.writer.writeAll(relPath);
 
 				const fileData = try sourceDir.read(main.stackAllocator, relPath);
 				defer main.stackAllocator.free(fileData);
 
 				std.mem.writeInt(u32, &len, @as(u32, @intCast(fileData.len)), endian);
-				_ = try comp.writer.write(&len);
-				_ = try comp.writer.write(fileData);
+				_ = try comp.writer.writeAll(&len);
+				_ = try comp.writer.writeAll(fileData);
 			}
 		}
+		try comp.finish();
 		try comp.writer.flush();
 		try writer.flush();
 	}
@@ -69,7 +73,7 @@ pub const Compression = struct { // MARK: Compression
 		const _data = try reader.allocRemainingAlignedSentinel(main.stackAllocator.allocator, .unlimited, .@"1", null);
 		defer main.stackAllocator.free(_data);
 		var data = _data;
-		while(data.len != 0) {
+		while (data.len != 0) {
 			var len = std.mem.readInt(u32, data[0..4], endian);
 			data = data[4..];
 			const path = data[0..len];
@@ -103,25 +107,23 @@ pub fn AliasTable(comptime T: type) type { // MARK: AliasTable
 
 			var lastOverfullIndex: u16 = 0;
 			var lastUnderfullIndex: u16 = 0;
-			outer: while(true) {
-				while(currentChances[lastOverfullIndex] <= desiredChance) {
+			outer: while (true) {
+				while (currentChances[lastOverfullIndex] <= desiredChance) {
 					lastOverfullIndex += 1;
-					if(lastOverfullIndex == self.items.len)
-						break :outer;
+					if (lastOverfullIndex == self.items.len) break :outer;
 				}
-				while(currentChances[lastUnderfullIndex] >= desiredChance) {
+				while (currentChances[lastUnderfullIndex] >= desiredChance) {
 					lastUnderfullIndex += 1;
-					if(lastUnderfullIndex == self.items.len)
-						break :outer;
+					if (lastUnderfullIndex == self.items.len) break :outer;
 				}
 				const delta = desiredChance - currentChances[lastUnderfullIndex];
 				currentChances[lastUnderfullIndex] = desiredChance;
 				currentChances[lastOverfullIndex] -= delta;
 				self.aliasData[lastUnderfullIndex] = .{
 					.alias = lastOverfullIndex,
-					.chance = @intFromFloat(delta/desiredChance*std.math.maxInt(u16)),
+					.chance = @trunc(delta/desiredChance*std.math.maxInt(u16)),
 				};
-				if(currentChances[lastOverfullIndex] < desiredChance) {
+				if (currentChances[lastOverfullIndex] < desiredChance) {
 					lastUnderfullIndex = @min(lastUnderfullIndex, lastOverfullIndex);
 				}
 			}
@@ -132,12 +134,12 @@ pub fn AliasTable(comptime T: type) type { // MARK: AliasTable
 				.items = items,
 				.aliasData = allocator.alloc(AliasData, items.len),
 			};
-			if(items.len == 0) return self;
+			if (items.len == 0) return self;
 			@memset(self.aliasData, AliasData{.chance = 0, .alias = 0});
 			const currentChances = main.stackAllocator.alloc(f32, items.len);
 			defer main.stackAllocator.free(currentChances);
 			var totalChance: f32 = 0;
-			for(items, 0..) |*item, i| {
+			for (items, 0..) |item, i| {
 				totalChance += item.chance;
 				currentChances[i] = item.chance;
 			}
@@ -149,7 +151,7 @@ pub fn AliasTable(comptime T: type) type { // MARK: AliasTable
 
 		pub fn initFromContext(allocator: NeverFailingAllocator, slice: anytype) @This() {
 			const items = allocator.alloc(T, slice.len);
-			for(slice, items) |context, *result| {
+			for (slice, items) |context, *result| {
 				result.* = context.getItem();
 			}
 			var self: @This() = .{
@@ -157,12 +159,12 @@ pub fn AliasTable(comptime T: type) type { // MARK: AliasTable
 				.aliasData = allocator.alloc(AliasData, items.len),
 				.ownsSlice = true,
 			};
-			if(items.len == 0) return self;
+			if (items.len == 0) return self;
 			@memset(self.aliasData, AliasData{.chance = 0, .alias = 0});
 			const currentChances = main.stackAllocator.alloc(f32, items.len);
 			defer main.stackAllocator.free(currentChances);
 			var totalChance: f32 = 0;
-			for(slice, 0..) |context, i| {
+			for (slice, 0..) |context, i| {
 				totalChance += context.chance;
 				currentChances[i] = context.chance;
 			}
@@ -174,14 +176,14 @@ pub fn AliasTable(comptime T: type) type { // MARK: AliasTable
 
 		pub fn deinit(self: *const @This(), allocator: NeverFailingAllocator) void {
 			allocator.free(self.aliasData);
-			if(self.ownsSlice) {
+			if (self.ownsSlice) {
 				allocator.free(self.items);
 			}
 		}
 
 		pub fn sample(self: *const @This(), seed: *u64) *T {
 			const initialIndex = main.random.nextIntBounded(u16, seed, @as(u16, @intCast(self.items.len)));
-			if(main.random.nextInt(u16, seed) < self.aliasData[initialIndex].chance) {
+			if (main.random.nextInt(u16, seed) < self.aliasData[initialIndex].chance) {
 				return &self.items[self.aliasData[initialIndex].alias];
 			}
 			return &self.items[initialIndex];
@@ -214,12 +216,12 @@ pub fn SortedList(comptime T: type) type { // MARK: SortedList
 		}
 
 		pub fn insertSorted(self: *Self, allocator: NeverFailingAllocator, object: T) void {
-			if(self.len == self.capacity) {
+			if (self.len == self.capacity) {
 				self.increaseCapacity(allocator);
 			}
 			var i = self.len;
-			while(i != 0) { // Find the point to insert and move the rest out of the way.
-				if(object.lessThan(self.ptr[i - 1])) {
+			while (i != 0) { // Find the point to insert and move the rest out of the way.
+				if (object.lessThan(self.ptr[i - 1])) {
 					self.ptr[i] = self.ptr[i - 1];
 				} else {
 					break;
@@ -343,22 +345,22 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 		}
 
 		pub fn peekBack(self: Self) ?T {
-			if(self.len == 0) return null;
+			if (self.len == 0) return null;
 			return self.mem[self.startIndex + self.len - 1 & mask];
 		}
 
 		pub fn peekFront(self: Self) ?T {
-			if(self.len == 0) return null;
+			if (self.len == 0) return null;
 			return self.mem[self.startIndex];
 		}
 
 		pub fn pushBack(self: *Self, elem: T) !void {
-			if(self.len >= capacity) return error.OutOfMemory;
+			if (self.len >= capacity) return error.OutOfMemory;
 			self.pushBackAssumeCapacity(elem);
 		}
 
 		pub fn forcePushBack(self: *Self, elem: T) ?T {
-			const result = if(self.len >= capacity) self.popFront() else null;
+			const result = if (self.len >= capacity) self.popFront() else null;
 			self.pushBackAssumeCapacity(elem);
 			return result;
 		}
@@ -369,7 +371,7 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 		}
 
 		pub fn pushFront(self: *Self, elem: T) !void {
-			if(self.len >= capacity) return error.OutOfMemory;
+			if (self.len >= capacity) return error.OutOfMemory;
 			self.pushFrontAssumeCapacity(elem);
 		}
 
@@ -380,18 +382,18 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 		}
 
 		pub fn forcePushFront(self: *Self, elem: T) ?T {
-			const result = if(self.len >= capacity) self.popBack() else null;
+			const result = if (self.len >= capacity) self.popBack() else null;
 			self.pushFrontAssumeCapacity(elem);
 			return result;
 		}
 
 		pub fn pushBackSlice(self: *Self, elems: []const T) !void {
-			if(elems.len + self.len > capacity) {
+			if (elems.len + self.len > capacity) {
 				return error.OutOfMemory;
 			}
 			const start = self.startIndex + self.len & mask;
 			const end = start + elems.len;
-			if(end < self.mem.len) {
+			if (end < self.mem.len) {
 				@memcpy(self.mem[start..end], elems);
 			} else {
 				const mid = self.mem.len - start;
@@ -402,13 +404,13 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 		}
 
 		pub fn insertSliceAtOffset(self: *Self, elems: []const T, offset: usize) !void {
-			if(offset + elems.len > capacity) {
+			if (offset + elems.len > capacity) {
 				return error.OutOfMemory;
 			}
 			self.len = @max(self.len, offset + elems.len);
 			const start = self.startIndex + offset & mask;
 			const end = start + elems.len;
-			if(end < self.mem.len) {
+			if (end < self.mem.len) {
 				@memcpy(self.mem[start..end], elems);
 			} else {
 				const mid = self.mem.len - start;
@@ -418,13 +420,13 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 		}
 
 		pub fn popBack(self: *Self) ?T {
-			if(self.len == 0) return null;
+			if (self.len == 0) return null;
 			self.len -= 1;
 			return self.mem[self.startIndex + self.len & mask];
 		}
 
 		pub fn popFront(self: *Self) ?T {
-			if(self.len == 0) return null;
+			if (self.len == 0) return null;
 			const result = self.mem[self.startIndex];
 			self.startIndex = (self.startIndex + 1) & mask;
 			self.len -= 1;
@@ -432,10 +434,10 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 		}
 
 		pub fn popSliceFront(self: *Self, out: []T) !void {
-			if(out.len > self.len) return error.OutOfBounds;
+			if (out.len > self.len) return error.OutOfBounds;
 			const start = self.startIndex;
 			const end = start + out.len;
-			if(end < self.mem.len) {
+			if (end < self.mem.len) {
 				@memcpy(out, self.mem[start..end]);
 			} else {
 				const mid = self.mem.len - start;
@@ -452,7 +454,7 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 		}
 
 		pub fn getAtOffset(self: Self, i: usize) ?T {
-			if(i >= self.len) return null;
+			if (i >= self.len) return null;
 			return self.mem[(self.startIndex + i) & mask];
 		}
 	};
@@ -498,7 +500,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 		}
 
 		pub fn pushBack(self: *Self, elem: T) void {
-			if(self.len == self.mem.len) {
+			if (self.len == self.mem.len) {
 				self.increaseCapacity();
 			}
 			self.mem[self.startIndex + self.len & self.mask] = elem;
@@ -506,12 +508,12 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 		}
 
 		pub fn pushBackSlice(self: *Self, elems: []const T) void {
-			while(elems.len + self.len > self.mem.len) {
+			while (elems.len + self.len > self.mem.len) {
 				self.increaseCapacity();
 			}
 			const start = self.startIndex + self.len & self.mask;
 			const end = start + elems.len;
-			if(end < self.mem.len) {
+			if (end < self.mem.len) {
 				@memcpy(self.mem[start..end], elems);
 			} else {
 				const mid = self.mem.len - start;
@@ -522,7 +524,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 		}
 
 		pub fn pushFront(self: *Self, elem: T) void {
-			if(self.len == self.mem.len) {
+			if (self.len == self.mem.len) {
 				self.increaseCapacity();
 			}
 			self.startIndex = (self.startIndex -% 1) & self.mask;
@@ -531,7 +533,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 		}
 
 		pub fn popFront(self: *Self) ?T {
-			if(self.isEmpty()) return null;
+			if (self.isEmpty()) return null;
 			const result = self.mem[self.startIndex];
 			self.startIndex = (self.startIndex + 1) & self.mask;
 			self.len -= 1;
@@ -539,27 +541,27 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 		}
 
 		pub fn popBack(self: *Self) ?T {
-			if(self.isEmpty()) return null;
+			if (self.isEmpty()) return null;
 			self.len -= 1;
 			return self.mem[self.startIndex + self.len & self.mask];
 		}
 
 		pub fn discardFront(self: *Self, amount: usize) !void {
-			if(amount > self.len) return error.OutOfBounds;
+			if (amount > self.len) return error.OutOfBounds;
 			self.startIndex = (self.startIndex + amount) & self.mask;
 			self.len -= amount;
 		}
 
 		pub fn peekFront(self: *Self) ?T {
-			if(self.isEmpty()) return null;
+			if (self.isEmpty()) return null;
 			return self.mem[self.startIndex];
 		}
 
 		pub fn getSliceAtOffset(self: Self, offset: usize, result: []T) !void {
-			if(offset + result.len > self.len) return error.OutOfBounds;
+			if (offset + result.len > self.len) return error.OutOfBounds;
 			const start = self.startIndex + offset & self.mask;
 			const end = start + result.len;
-			if(end < self.mem.len) {
+			if (end < self.mem.len) {
 				@memcpy(result, self.mem[start..end]);
 			} else {
 				const mid = self.mem.len - start;
@@ -569,7 +571,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 		}
 
 		pub fn getAtOffset(self: Self, offset: usize) !T {
-			if(offset >= self.len) return error.OutOfBounds;
+			if (offset >= self.len) return error.OutOfBounds;
 			return self.mem[(self.startIndex + offset) & self.mask];
 		}
 
@@ -588,7 +590,7 @@ pub fn ConcurrentQueue(comptime T: type) type { // MARK: ConcurrentQueue
 	return struct {
 		const Self = @This();
 		super: CircularBufferQueue(T),
-		mutex: std.Thread.Mutex = .{},
+		mutex: main.utils.Mutex = .{},
 
 		pub fn init(allocator: NeverFailingAllocator, initialCapacity: usize) Self {
 			return .{
@@ -621,51 +623,37 @@ pub fn ConcurrentQueue(comptime T: type) type { // MARK: ConcurrentQueue
 }
 
 /// A simple binary heap.
-/// Thread safe and blocking.
+/// Thread safe.
 /// Expects T to have a `biggerThan(T) bool` function
-pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
+pub fn ConcurrentMaxHeap(comptime T: type) type { // MARK: ConcurrentMaxHeap
 	return struct {
 		const initialSize = 16;
 		size: usize,
 		array: []T,
-		waitingThreads: std.Thread.Condition,
-		waitingThreadCount: u32 = 0,
-		mutex: std.Thread.Mutex,
+		mutex: main.utils.Mutex = .{},
 		allocator: NeverFailingAllocator,
-		closed: bool = false,
 
 		pub fn init(allocator: NeverFailingAllocator) @This() {
 			return .{
 				.size = 0,
 				.array = allocator.alloc(T, initialSize),
-				.waitingThreads = .{},
-				.mutex = .{},
 				.allocator = allocator,
 			};
 		}
 
 		pub fn deinit(self: *@This()) void {
-			self.mutex.lock();
-			self.closed = true;
-			// Wait for all waiting threads to leave before cleaning memory.
-			self.waitingThreads.broadcast();
-			while(self.waitingThreadCount != 0) {
-				self.mutex.unlock();
-				main.io.sleep(.fromMilliseconds(1), .awake) catch {};
-				self.mutex.lock();
-			}
-			self.mutex.unlock();
 			self.allocator.free(self.array);
+			self.* = undefined;
 		}
 
 		/// Moves an element from a given index down the heap, such that all children are always smaller than their parents.
 		fn siftDown(self: *@This(), _i: usize) void {
-			assertLocked(&self.mutex);
+			self.mutex.assertLocked();
 			var i = _i;
-			while(2*i + 1 < self.size) {
-				const biggest = if(2*i + 2 < self.size and self.array[2*i + 2].biggerThan(self.array[2*i + 1])) 2*i + 2 else 2*i + 1;
+			while (2*i + 1 < self.size) {
+				const biggest = if (2*i + 2 < self.size and self.array[2*i + 2].biggerThan(self.array[2*i + 1])) 2*i + 2 else 2*i + 1;
 				// Break if all childs are smaller.
-				if(self.array[i].biggerThan(self.array[biggest])) return;
+				if (self.array[i].biggerThan(self.array[biggest])) return;
 				// Swap it:
 				const local = self.array[biggest];
 				self.array[biggest] = self.array[i];
@@ -677,11 +665,11 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 
 		/// Moves an element from a given index up the heap, such that all children are always smaller than their parents.
 		fn siftUp(self: *@This(), _i: usize) void {
-			assertLocked(&self.mutex);
+			self.mutex.assertLocked();
 			var i = _i;
-			while(i > 0) {
+			while (i > 0) {
 				const parentIndex = (i - 1)/2;
-				if(!self.array[i].biggerThan(self.array[parentIndex])) break;
+				if (!self.array[i].biggerThan(self.array[parentIndex])) break;
 				const local = self.array[parentIndex];
 				self.array[parentIndex] = self.array[i];
 				self.array[i] = local;
@@ -693,15 +681,15 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 		pub fn updatePriority(self: *@This()) void {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			for(0..self.size) |i| {
+			for (0..self.size) |i| {
 				self.siftUp(i);
 			}
 		}
 
 		/// Returns the i-th element in the heap. Useless for most applications.
 		pub fn get(self: *@This(), i: usize) ?T {
-			assertLocked(&self.mutex);
-			if(i >= self.size) return null;
+			self.mutex.assertLocked();
+			if (i >= self.size) return null;
 			return self.array[i];
 		}
 
@@ -710,34 +698,30 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 			self.mutex.lock();
 			defer self.mutex.unlock();
 
-			if(self.size == self.array.len) {
+			if (self.size == self.array.len) {
 				self.increaseCapacity(self.size*2);
 			}
 			self.array[self.size] = elem;
 			self.siftUp(self.size);
 			self.size += 1;
-
-			self.waitingThreads.signal();
 		}
 
 		pub fn addMany(self: *@This(), elems: []const T) void {
 			self.mutex.lock();
 			defer self.mutex.unlock();
 
-			if(self.size + elems.len > self.array.len) {
+			if (self.size + elems.len > self.array.len) {
 				self.increaseCapacity(self.size*2 + elems.len);
 			}
-			for(elems) |elem| {
+			for (elems) |elem| {
 				self.array[self.size] = elem;
 				self.siftUp(self.size);
 				self.size += 1;
 			}
-
-			self.waitingThreads.broadcast();
 		}
 
 		fn removeIndex(self: *@This(), i: usize) void {
-			assertLocked(&self.mutex);
+			self.mutex.assertLocked();
 			self.size -= 1;
 			self.array[i] = self.array[self.size];
 			self.siftDown(i);
@@ -745,33 +729,19 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 
 		/// Returns the biggest element and removes it from the heap.
 		/// If empty blocks until a new object is added or the datastructure is closed.
-		pub fn extractMax(self: *@This()) error{Timeout, Closed}!T {
+		pub fn extractMax(self: *@This()) ?T {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-
-			const startTime = main.timestamp();
-
-			while(true) {
-				if(self.size == 0) {
-					self.waitingThreadCount += 1;
-					defer self.waitingThreadCount -= 1;
-					try self.waitingThreads.timedWait(&self.mutex, 10_000_000);
-				} else {
-					const ret = self.array[0];
-					self.removeIndex(0);
-					return ret;
-				}
-				if(self.closed) {
-					return error.Closed;
-				}
-				if(startTime.durationTo(main.timestamp()).toMilliseconds() > 10) return error.Timeout;
-			}
+			if (self.size == 0) return null;
+			const ret = self.array[0];
+			self.removeIndex(0);
+			return ret;
 		}
 
-		fn extractAny(self: *@This()) ?T {
+		pub fn extractAny(self: *@This()) ?T {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			if(self.size == 0) return null;
+			if (self.size == 0) return null;
 			self.size -= 1;
 			return self.array[self.size];
 		}
@@ -784,12 +754,14 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 
 pub const ThreadPool = struct { // MARK: ThreadPool
 	pub const TaskType = enum(usize) {
+		blockUpdate,
 		chunkgen,
 		meshgenAndLighting,
 		misc,
+		taskPriorityUpdate,
 	};
 	pub const taskTypes = std.enums.directEnumArrayLen(TaskType, 0);
-	const Task = struct {
+	pub const Task = struct {
 		cachedPriority: f32,
 		self: *anyopaque,
 		vtable: *const VTable,
@@ -799,21 +771,21 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		}
 	};
 	pub const VTable = struct {
-		getPriority: *const fn(*anyopaque) f32,
-		isStillNeeded: *const fn(*anyopaque) bool,
-		run: *const fn(*anyopaque) void,
-		clean: *const fn(*anyopaque) void,
+		getPriority: *const fn (*anyopaque) f32,
+		isStillNeeded: *const fn (*anyopaque) bool,
+		run: *const fn (*anyopaque) void,
+		clean: *const fn (*anyopaque) void,
 		taskType: TaskType = .misc,
 	};
 	pub const Performance = struct {
-		mutex: std.Thread.Mutex = .{},
+		mutex: main.utils.Mutex = .{},
 		tasks: [taskTypes]u32 = undefined,
 		utime: [taskTypes]i64 = undefined,
 
-		fn add(self: *Performance, task: TaskType, time: i64) void {
+		pub fn add(self: *Performance, task: TaskType, time: i64) void {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			const i = @intFromEnum(task);
+			const i = @backingInt(task);
 			self.tasks[i] += 1;
 			self.utime[i] += time;
 		}
@@ -821,7 +793,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		pub fn clear(self: *Performance) void {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			for(0..taskTypes) |i| {
+			for (0..taskTypes) |i| {
 				self.tasks[i] = 0;
 				self.utime[i] = 0;
 			}
@@ -837,8 +809,14 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 
 	threads: []std.Thread,
 	currentTasks: []Atomic(?*const VTable),
-	loadList: BlockingMaxHeap(Task),
+	loadList: ConcurrentMaxHeap(Task),
+	playerJobQueue: ConcurrentQueue(main.server.PlayerIndex),
+	taskCountSemaphore: std.Io.Semaphore = .{},
+	stopSemaphore: std.Io.Semaphore = .{},
+	startSemaphore: std.Io.Semaphore = .{},
 	allocator: NeverFailingAllocator,
+	running: Atomic(bool) = .init(true),
+	paused: Atomic(bool) = .init(false),
 
 	performance: Performance,
 
@@ -849,58 +827,109 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		self.* = .{
 			.threads = allocator.alloc(std.Thread, threadCount),
 			.currentTasks = allocator.alloc(Atomic(?*const VTable), threadCount),
-			.loadList = BlockingMaxHeap(Task).init(allocator),
+			.loadList = .init(allocator),
+			.playerJobQueue = .init(allocator, 1024),
 			.performance = .{},
 			.allocator = allocator,
 		};
 		self.performance.clear();
-		for(self.threads, 0..) |*thread, i| {
+		for (self.threads, 0..) |*thread, i| {
 			thread.* = std.Thread.spawn(.{}, run, .{self, i}) catch |err| {
 				std.log.err("Could not spawn Thread due to {s}", .{@errorName(err)});
 				@panic("ThreadPool Creation Failed.");
 			};
 			var buf: [std.Thread.max_name_len]u8 = undefined;
-			thread.setName(std.fmt.bufPrint(&buf, "Worker {}", .{i + 1}) catch "Worker n") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
+			thread.setName(main.io, std.fmt.bufPrint(&buf, "Worker {}", .{i + 1}) catch "Worker n") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
 		}
 		return self;
 	}
 
 	pub fn deinit(self: *ThreadPool) void {
+		self.running.store(false, .monotonic);
 		// Clear the remaining tasks:
-		self.loadList.mutex.lock();
-		for(self.loadList.array[0..self.loadList.size]) |task| {
+		while (self.loadList.extractAny()) |task| {
 			task.vtable.clean(task.self);
 		}
-		self.loadList.mutex.unlock();
 
-		self.loadList.deinit();
-		for(self.threads) |thread| {
+		for (self.threads) |thread| {
 			thread.join();
 		}
+
+		self.loadList.deinit();
+
+		self.playerJobQueue.deinit();
+
 		self.allocator.free(self.currentTasks);
 		self.allocator.free(self.threads);
 		self.allocator.destroy(self);
 	}
 
+	pub fn @"continue"(self: *ThreadPool) void {
+		std.debug.assert(self.paused.swap(false, .monotonic));
+		for (0..self.threads.len) |_| {
+			self.startSemaphore.post(main.io);
+		}
+	}
+
+	pub fn pause(self: *ThreadPool) void {
+		std.debug.assert(!self.paused.swap(true, .monotonic));
+		for (0..self.threads.len) |_| {
+			self.stopSemaphore.waitUncancelable(main.io);
+		}
+	}
+
 	pub fn closeAllTasksOfType(self: *ThreadPool, vtable: *const VTable) void {
+		std.debug.assert(vtable.taskType != .chunkgen);
 		self.loadList.mutex.lock();
 		defer self.loadList.mutex.unlock();
 		var i: u32 = 0;
-		while(i < self.loadList.size) {
+		while (i < self.loadList.size) {
 			const task = &self.loadList.array[i];
-			if(task.vtable == vtable) {
+			if (task.vtable == vtable) {
 				task.vtable.clean(task.self);
 				self.loadList.removeIndex(i);
+				self.taskCountSemaphore.waitTimeout(main.io, .{.duration = .{.raw = .zero, .clock = .awake}}) catch {};
 			} else {
 				i += 1;
 			}
 		}
 		// Wait for active tasks:
-		for(self.currentTasks) |*task| {
-			while(task.load(.monotonic) == vtable) {
+		for (self.currentTasks) |*task| {
+			while (task.load(.monotonic) == vtable) {
 				main.io.sleep(.fromMilliseconds(1), .awake) catch {};
 			}
 		}
+	}
+
+	pub fn unschedulePlayers(self: *ThreadPool) void {
+		while (self.playerJobQueue.popFront()) |_| {
+			self.taskCountSemaphore.waitTimeout(main.io, .{.duration = .{.raw = .zero, .clock = .awake}}) catch {};
+			_ = self.trueQueueSize.fetchSub(1, .monotonic);
+		}
+	}
+
+	fn getNextTask(self: *ThreadPool) ?Task {
+		blk: {
+			return self.loadList.extractMax() orelse break :blk;
+		}
+		blk: {
+			const player = self.playerJobQueue.popFront() orelse break :blk;
+			const user = main.server.getUserByIndex(player) orelse break :blk;
+			const result, const hasMoreTasks = user.getTaskFromJobQueue() orelse {
+				_ = self.trueQueueSize.fetchSub(1, .monotonic);
+				break :blk;
+			};
+			switch (hasMoreTasks) {
+				.empty => {},
+				.hasMoreTasks => {
+					self.playerJobQueue.pushBack(player);
+					self.taskCountSemaphore.post(main.io);
+					_ = self.trueQueueSize.fetchAdd(1, .monotonic);
+				},
+			}
+			return result;
+		}
+		return null;
 	}
 
 	fn run(self: *ThreadPool, id: usize) void {
@@ -908,39 +937,59 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		defer main.deinitThreadLocals();
 
 		var lastUpdate = main.timestamp();
-		outer: while(true) {
-			main.heap.GarbageCollection.syncPoint();
+		outer: while (self.running.load(.monotonic)) {
+			main.heap.garbage_collection.syncPoint();
+
+			if (self.paused.load(.monotonic)) {
+				self.stopSemaphore.post(main.io);
+				while (true) {
+					main.heap.garbage_collection.syncPoint();
+					self.startSemaphore.waitTimeout(main.io, .{.duration = .{.raw = .fromMilliseconds(10), .clock = .awake}}) catch continue;
+					break;
+				}
+			}
+
+			self.taskCountSemaphore.waitTimeout(main.io, .{.duration = .{.raw = .fromMilliseconds(10), .clock = .awake}}) catch continue :outer;
+
 			{
-				const task = self.loadList.extractMax() catch |err| switch(err) {
-					error.Timeout => continue :outer,
-					error.Closed => break :outer,
-				};
+				const task = self.getNextTask() orelse continue :outer;
 				self.currentTasks[id].store(task.vtable, .monotonic);
-				const start = main.timestamp();
+				const startTime = main.timestamp();
 				task.vtable.run(task.self);
-				const end = main.timestamp();
-				self.performance.add(task.vtable.taskType, @intCast(@divTrunc(start.durationTo(end).toNanoseconds(), 1000)));
+				const endTime = main.timestamp();
+				self.performance.add(task.vtable.taskType, @intCast(@divTrunc(startTime.durationTo(endTime).toNanoseconds(), 1000)));
 				self.currentTasks[id].store(null, .monotonic);
 				_ = self.trueQueueSize.fetchSub(1, .monotonic);
 			}
 
-			if(id == 0 and lastUpdate.durationTo(main.timestamp()).nanoseconds > refreshTime.nanoseconds) {
-				var temporaryTaskList = main.List(Task).init(main.stackAllocator);
-				defer temporaryTaskList.deinit();
-				while(self.loadList.extractAny()) |task| {
-					if(!task.vtable.isStillNeeded(task.self)) {
-						task.vtable.clean(task.self);
-						_ = self.trueQueueSize.fetchSub(1, .monotonic);
-					} else {
-						const taskPtr = temporaryTaskList.addOne();
-						taskPtr.* = task;
-						taskPtr.cachedPriority = task.vtable.getPriority(task.self);
-					}
-				}
-				self.loadList.addMany(temporaryTaskList.items);
+			if (id == 0 and lastUpdate.durationTo(main.timestamp()).nanoseconds > refreshTime.nanoseconds) {
+				self.updateTaskPriority();
 				lastUpdate = main.timestamp();
 			}
 		}
+	}
+
+	pub fn updateTaskPriority(self: *ThreadPool) void {
+		const startTime = main.timestamp();
+		var temporaryTaskList: main.List(Task) = .empty;
+		defer temporaryTaskList.deinit(main.stackAllocator);
+		while (self.loadList.extractAny()) |task| {
+			self.taskCountSemaphore.waitTimeout(main.io, .{.duration = .{.raw = .zero, .clock = .awake}}) catch {};
+			if (!task.vtable.isStillNeeded(task.self)) {
+				task.vtable.clean(task.self);
+				_ = self.trueQueueSize.fetchSub(1, .monotonic);
+			} else {
+				const taskPtr = temporaryTaskList.addOne(main.stackAllocator);
+				taskPtr.* = task;
+				taskPtr.cachedPriority = task.vtable.getPriority(task.self);
+			}
+		}
+		self.loadList.addMany(temporaryTaskList.items);
+		for (0..temporaryTaskList.items.len) |_| {
+			self.taskCountSemaphore.post(main.io);
+		}
+		const endTime = main.timestamp();
+		self.performance.add(.taskPriorityUpdate, @intCast(@divTrunc(startTime.durationTo(endTime).toNanoseconds(), 1000)));
 	}
 
 	pub fn addTask(self: *ThreadPool, task: *anyopaque, vtable: *const VTable) void {
@@ -949,28 +998,14 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			.vtable = vtable,
 			.self = task,
 		});
+		self.taskCountSemaphore.post(main.io);
 		_ = self.trueQueueSize.fetchAdd(1, .monotonic);
 	}
 
-	pub fn clear(self: *ThreadPool) void {
-		// Clear the remaining tasks:
-		self.loadList.mutex.lock();
-		for(self.loadList.array[0..self.loadList.size]) |task| {
-			task.vtable.clean(task.self);
-		}
-		_ = self.trueQueueSize.fetchSub(self.loadList.size, .monotonic);
-		self.loadList.size = 0;
-		self.loadList.mutex.unlock();
-		// Wait for the in-progress tasks to finish:
-		while(true) {
-			if(self.loadList.mutex.tryLock()) {
-				defer self.loadList.mutex.unlock();
-				if(self.loadList.waitingThreadCount == self.threads.len) {
-					break;
-				}
-			}
-			main.io.sleep(.fromMilliseconds(1), .awake) catch {};
-		}
+	pub fn addPlayer(self: *ThreadPool, player: *main.server.User) void {
+		self.playerJobQueue.pushBack(player.playerIndex);
+		self.taskCountSemaphore.post(main.io);
+		_ = self.trueQueueSize.fetchAdd(1, .monotonic);
 	}
 
 	pub fn queueSize(self: *const ThreadPool) usize {
@@ -1013,21 +1048,21 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 
 		inline fn bitInterleave(bits: comptime_int, source: u32) u32 {
 			var result = source;
-			if(bits <= 8) result = (result ^ (result << 8)) & 0x00ff00ff;
-			if(bits <= 4) result = (result ^ (result << 4)) & 0x0f0f0f0f;
-			if(bits <= 2) result = (result ^ (result << 2)) & 0x33333333;
-			if(bits <= 1) result = (result ^ (result << 1)) & 0x55555555;
+			if (bits <= 8) result = (result ^ (result << 8)) & 0x00ff00ff;
+			if (bits <= 4) result = (result ^ (result << 4)) & 0x0f0f0f0f;
+			if (bits <= 2) result = (result ^ (result << 2)) & 0x33333333;
+			if (bits <= 1) result = (result ^ (result << 1)) & 0x55555555;
 			return result;
 		}
 
 		pub fn resizeOnceFrom(self: *Self, other: *const Self) void {
-			const newBitSize = if(other.bitSize != 0) other.bitSize*2 else 1;
+			const newBitSize = if (other.bitSize != 0) other.bitSize*2 else 1;
 			std.debug.assert(self.bitSize == newBitSize);
 
-			switch(other.bitSize) {
+			switch (other.bitSize) {
 				0 => @memset(self.data, .init(0)),
 				inline 1, 2, 4, 8 => |bits| {
-					for(0..other.data.len) |i| {
+					for (0..other.data.len) |i| {
 						const oldVal = other.data[i].load(.unordered);
 						self.data[2*i].store(bitInterleave(bits, oldVal & 0xffff), .unordered);
 						self.data[2*i + 1].store(bitInterleave(bits, oldVal >> 16), .unordered);
@@ -1039,7 +1074,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 
 		pub fn getValue(self: *const Self, i: usize) u32 {
 			std.debug.assert(i < size);
-			if(self.bitSize == 0) return 0;
+			if (self.bitSize == 0) return 0;
 			const bitIndex = i*self.bitSize;
 			const intIndex = bitIndex >> 5;
 			const bitOffset: u5 = @intCast(bitIndex & 31);
@@ -1049,7 +1084,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 
 		pub fn setValue(self: *Self, i: usize, value: u32) void {
 			std.debug.assert(i < size);
-			if(self.bitSize == 0) return;
+			if (self.bitSize == 0) return;
 			const bitIndex = i*self.bitSize;
 			const intIndex = bitIndex >> 5;
 			const bitOffset: u5 = @intCast(bitIndex & 31);
@@ -1062,7 +1097,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 
 		pub fn setAndGetValue(self: *Self, i: usize, value: u32) u32 {
 			std.debug.assert(i < size);
-			if(self.bitSize == 0) return 0;
+			if (self.bitSize == 0) return 0;
 			const bitIndex = i*self.bitSize;
 			const intIndex = bitIndex >> 5;
 			const bitOffset: u5 = @intCast(bitIndex & 31);
@@ -1151,12 +1186,12 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 		}
 
 		pub fn deferredDeinit(self: *Self) void {
-			main.heap.GarbageCollection.deferredFree(.{.ptr = self.impl.raw, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
+			main.heap.garbage_collection.deferredFree(.{.ptr = self.impl.raw, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 		}
 
 		fn getTargetBitSize(paletteLength: u32) u5 {
 			const base: u5 = @intCast(std.math.log2_int_ceil(u32, paletteLength));
-			if(base == 0) return 0;
+			if (base == 0) return 0;
 			const logLog = std.math.log2_int_ceil(u5, base);
 			return @as(u5, 1) << logLog;
 		}
@@ -1173,7 +1208,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 
 		pub fn fillUniform(self: *Self, value: T) void {
 			const impl = self.impl.raw;
-			if(impl.paletteLength == 1) {
+			if (impl.paletteLength == 1) {
 				impl.palette[0].store(value, .unordered);
 				return;
 			}
@@ -1188,13 +1223,17 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			var impl = self.impl.raw;
 			std.debug.assert(impl.paletteLength <= impl.palette.len);
 			var paletteIndex: u32 = 0;
-			while(paletteIndex < impl.paletteLength) : (paletteIndex += 1) {
-				if(std.meta.eql(impl.palette[paletteIndex].load(.unordered), val)) {
+			while (paletteIndex < impl.paletteLength) : (paletteIndex += 1) {
+				if (std.meta.eql(impl.palette[paletteIndex].load(.unordered), val)) {
 					break;
 				}
 			}
-			if(paletteIndex == impl.paletteLength) {
-				if(impl.paletteLength == impl.palette.len) {
+			if (paletteIndex == impl.paletteLength) {
+				if (impl.paletteLength == impl.palette.len) {
+					if (impl.data.bitSize == 16) {
+						self.optimizeLayoutInternal();
+						return self.getOrInsertPaletteIndex(val);
+					}
 					var newSelf: Self = undefined;
 					newSelf.initCapacity(impl.paletteLength*2);
 					const newImpl = newSelf.impl.raw;
@@ -1219,13 +1258,13 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 		pub fn setRawValue(noalias self: *Self, i: usize, paletteIndex: u32) void {
 			const impl = self.impl.raw;
 			const previousPaletteIndex = impl.data.setAndGetValue(i, paletteIndex);
-			if(previousPaletteIndex != paletteIndex) {
-				if(impl.paletteOccupancy[paletteIndex] == 0) {
+			if (previousPaletteIndex != paletteIndex) {
+				if (impl.paletteOccupancy[paletteIndex] == 0) {
 					impl.activePaletteEntries += 1;
 				}
 				impl.paletteOccupancy[paletteIndex] += 1;
 				impl.paletteOccupancy[previousPaletteIndex] -= 1;
-				if(impl.paletteOccupancy[previousPaletteIndex] == 0) {
+				if (impl.paletteOccupancy[previousPaletteIndex] == 0) {
 					impl.activePaletteEntries -= 1;
 				}
 			}
@@ -1235,13 +1274,13 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			const paletteIndex = self.getOrInsertPaletteIndex(val);
 			const impl = self.impl.raw;
 			const previousPaletteIndex = impl.data.setAndGetValue(i, paletteIndex);
-			if(previousPaletteIndex != paletteIndex) {
-				if(impl.paletteOccupancy[paletteIndex] == 0) {
+			if (previousPaletteIndex != paletteIndex) {
+				if (impl.paletteOccupancy[paletteIndex] == 0) {
 					impl.activePaletteEntries += 1;
 				}
 				impl.paletteOccupancy[paletteIndex] += 1;
 				impl.paletteOccupancy[previousPaletteIndex] -= 1;
-				if(impl.paletteOccupancy[previousPaletteIndex] == 0) {
+				if (impl.paletteOccupancy[previousPaletteIndex] == 0) {
 					impl.activePaletteEntries -= 1;
 				}
 			}
@@ -1251,14 +1290,14 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			std.debug.assert(startIndex < endIndex);
 			const paletteIndex = self.getOrInsertPaletteIndex(val);
 			const impl = self.impl.raw;
-			for(startIndex..endIndex) |i| {
+			for (startIndex..endIndex) |i| {
 				const previousPaletteIndex = impl.data.setAndGetValue(i, paletteIndex);
 				impl.paletteOccupancy[previousPaletteIndex] -= 1;
-				if(impl.paletteOccupancy[previousPaletteIndex] == 0) {
+				if (impl.paletteOccupancy[previousPaletteIndex] == 0) {
 					impl.activePaletteEntries -= 1;
 				}
 			}
-			if(impl.paletteOccupancy[paletteIndex] == 0) {
+			if (impl.paletteOccupancy[paletteIndex] == 0) {
 				impl.activePaletteEntries += 1;
 			}
 			impl.paletteOccupancy[paletteIndex] += @intCast(endIndex - startIndex);
@@ -1267,8 +1306,12 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 		pub fn optimizeLayout(self: *Self) void {
 			const impl = self.impl.raw;
 			const newBitSize = getTargetBitSize(@intCast(impl.activePaletteEntries));
-			if(impl.data.bitSize == newBitSize) return;
+			if (impl.data.bitSize == newBitSize) return;
+			self.optimizeLayoutInternal();
+		}
 
+		fn optimizeLayoutInternal(self: *Self) void {
+			const impl = self.impl.raw;
 			var newSelf: Self = undefined;
 			newSelf.initCapacity(impl.activePaletteEntries);
 			const newImpl = newSelf.impl.raw;
@@ -1278,15 +1321,14 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 				var iNew: u32 = 0;
 				var iOld: u32 = 0;
 				const len: u32 = impl.paletteLength;
-				while(iOld < len) : ({
+				while (iOld < len) : ({
 					iNew += 1;
 					iOld += 1;
 				}) outer: {
-					while(impl.paletteOccupancy[iOld] == 0) {
+					while (impl.paletteOccupancy[iOld] == 0) {
 						iOld += 1;
-						if(iOld >= len) break :outer;
+						if (iOld >= len) break :outer;
 					}
-					if(iNew >= impl.activePaletteEntries) std.log.err("{} {}", .{iNew, impl.activePaletteEntries});
 					std.debug.assert(iNew < impl.activePaletteEntries);
 					std.debug.assert(iOld < impl.paletteLength);
 					paletteMap[iOld] = iNew;
@@ -1294,7 +1336,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 					newImpl.paletteOccupancy[iNew] = impl.paletteOccupancy[iOld];
 				}
 			}
-			for(0..size) |i| {
+			for (0..size) |i| {
 				newImpl.data.setValue(i, paletteMap[impl.data.getValue(i)]);
 			}
 			newImpl.paletteLength = impl.activePaletteEntries;
@@ -1306,19 +1348,19 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 }
 
 /// Implements a simple set associative cache with LRU replacement strategy.
-pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSize: u32, comptime deinitFunction: fn(*T) void) type { // MARK: Cache
+pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSize: u32, comptime deinitFunction: fn (*T) void) type { // MARK: Cache
 	const hashMask = numberOfBuckets - 1;
-	if(numberOfBuckets & hashMask != 0) @compileError("The number of buckets should be a power of 2!");
+	if (numberOfBuckets & hashMask != 0) @compileError("The number of buckets should be a power of 2!");
 
 	const Bucket = struct {
-		mutex: std.Thread.Mutex = .{},
+		mutex: main.utils.Mutex = .{},
 		items: [bucketSize]?*T = @splat(null),
 
 		fn find(self: *@This(), compare: anytype) ?*T {
-			assertLocked(&self.mutex);
-			for(self.items, 0..) |item, i| {
-				if(compare.equals(item)) {
-					if(i != 0) {
+			self.mutex.assertLocked();
+			for (self.items, 0..) |item, i| {
+				if (compare.equals(item)) {
+					if (i != 0) {
 						std.mem.copyBackwards(?*T, self.items[1..], self.items[0..i]);
 						self.items[0] = item;
 					}
@@ -1330,20 +1372,20 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 
 		/// Returns the object that got kicked out of the cache. This must be deinited by the user.
 		fn add(self: *@This(), item: *T) ?*T {
-			assertLocked(&self.mutex);
+			self.mutex.assertLocked();
 			const previous = self.items[bucketSize - 1];
 			std.mem.copyBackwards(?*T, self.items[1..], self.items[0 .. bucketSize - 1]);
 			self.items[0] = item;
 			return previous;
 		}
 
-		fn findOrCreate(self: *@This(), compare: anytype, comptime initFunction: fn(@TypeOf(compare)) *T) *T {
-			assertLocked(&self.mutex);
-			if(self.find(compare)) |item| {
+		fn findOrCreate(self: *@This(), compare: anytype, comptime initFunction: fn (@TypeOf(compare)) *T) *T {
+			self.mutex.assertLocked();
+			if (self.find(compare)) |item| {
 				return item;
 			}
 			const new = initFunction(compare);
-			if(self.add(new)) |toRemove| {
+			if (self.add(new)) |toRemove| {
 				deinitFunction(toRemove);
 			}
 			return new;
@@ -1352,19 +1394,19 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 		fn clear(self: *@This()) void {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			for(&self.items) |*nullItem| {
-				if(nullItem.*) |item| {
+			for (&self.items) |*nullItem| {
+				if (nullItem.*) |item| {
 					deinitFunction(item);
 					nullItem.* = null;
 				}
 			}
 		}
 
-		fn foreach(self: @This(), comptime function: fn(*T) void) void {
+		fn foreach(self: @This(), comptime function: fn (*T) void) void {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			for(self.items) |*nullItem| {
-				if(nullItem) |item| {
+			for (self.items) |*nullItem| {
+				if (nullItem) |item| {
 					function(item);
 				}
 			}
@@ -1377,13 +1419,13 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 		cacheMisses: Atomic(usize) = .init(0),
 
 		///  Tries to find the entry that fits to the supplied hashable.
-		pub fn find(self: *@This(), compareAndHash: anytype, comptime postGetFunction: ?fn(*T) void) ?*T {
+		pub fn find(self: *@This(), compareAndHash: anytype, comptime postGetFunction: ?fn (*T) void) ?*T {
 			const index: u32 = compareAndHash.hashCode() & hashMask;
 			_ = @atomicRmw(usize, &self.cacheRequests.raw, .Add, 1, .monotonic);
 			self.buckets[index].mutex.lock();
 			defer self.buckets[index].mutex.unlock();
-			if(self.buckets[index].find(compareAndHash)) |item| {
-				if(postGetFunction) |fun| fun(item);
+			if (self.buckets[index].find(compareAndHash)) |item| {
+				if (postGetFunction) |fun| fun(item);
 				return item;
 			}
 			_ = @atomicRmw(usize, &self.cacheMisses.raw, .Add, 1, .monotonic);
@@ -1392,13 +1434,13 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 
 		/// Clears all elements calling the deinitFunction for each element.
 		pub fn clear(self: *@This()) void {
-			for(&self.buckets) |*bucket| {
+			for (&self.buckets) |*bucket| {
 				bucket.clear();
 			}
 		}
 
-		pub fn foreach(self: *@This(), comptime function: fn(*T) void) void {
-			for(&self.buckets) |*bucket| {
+		pub fn foreach(self: *@This(), comptime function: fn (*T) void) void {
+			for (&self.buckets) |*bucket| {
 				bucket.foreach(function);
 			}
 		}
@@ -1411,12 +1453,12 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 			return self.buckets[index].add(item);
 		}
 
-		pub fn findOrCreate(self: *@This(), compareAndHash: anytype, comptime initFunction: fn(@TypeOf(compareAndHash)) *T, comptime postGetFunction: ?fn(*T) void) *T {
+		pub fn findOrCreate(self: *@This(), compareAndHash: anytype, comptime initFunction: fn (@TypeOf(compareAndHash)) *T, comptime postGetFunction: ?fn (*T) void) *T {
 			const index: u32 = compareAndHash.hashCode() & hashMask;
 			self.buckets[index].mutex.lock();
 			defer self.buckets[index].mutex.unlock();
 			const result = self.buckets[index].findOrCreate(compareAndHash, initFunction);
-			if(postGetFunction) |fun| fun(result);
+			if (postGetFunction) |fun| fun(result);
 			return result;
 		}
 	};
@@ -1474,7 +1516,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type { // MARK: Gen
 		}
 
 		fn interpolateCoordinate(self: *@This(), i: usize, t: f64, tScale: f64) void {
-			if(self.outVel[i] == 0 and self.lastVel[self.currentPoint.?][i] == 0) {
+			if (self.outVel[i] == 0 and self.lastVel[self.currentPoint.?][i] == 0) {
 				self.outPos[i] += (self.lastPos[self.currentPoint.?][i] - self.outPos[i])*t/tScale;
 			} else {
 				// Use cubic interpolation to interpolate the velocity as well.
@@ -1485,7 +1527,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type { // MARK: Gen
 		}
 
 		fn determineNextDataPoint(self: *@This(), time: i16, lastTime: *i16) void {
-			if(self.currentPoint != null and self.lastTimes[self.currentPoint.?] -% time <= 0) {
+			if (self.currentPoint != null and self.lastTimes[self.currentPoint.?] -% time <= 0) {
 				// Jump to the last used value and adjust the time to start at that point.
 				lastTime.* = self.lastTimes[self.currentPoint.?];
 				@memcpy(self.outPos, &self.lastPos[self.currentPoint.?]);
@@ -1493,13 +1535,13 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type { // MARK: Gen
 				self.currentPoint = null;
 			}
 
-			if(self.currentPoint == null) {
+			if (self.currentPoint == null) {
 				// Need a new point:
 				var smallestTime: i16 = std.math.maxInt(i16);
 				var smallestIndex: ?u31 = null;
-				for(self.lastTimes, 0..) |lastTimeI, i| {
+				for (self.lastTimes, 0..) |lastTimeI, i| {
 					//                   ↓ Only using a future time value that is far enough away to prevent jumping.
-					if(lastTimeI -% time >= 50 and lastTimeI -% time < smallestTime) {
+					if (lastTimeI -% time >= 50 and lastTimeI -% time < smallestTime) {
 						smallestTime = lastTimeI -% time;
 						smallestIndex = @intCast(i);
 					}
@@ -1513,15 +1555,15 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type { // MARK: Gen
 			self.determineNextDataPoint(time, &lastTime);
 
 			var deltaTime = @as(f64, @floatFromInt(time -% lastTime))/1000;
-			if(deltaTime < 0) {
+			if (deltaTime < 0) {
 				std.log.warn("Experienced time travel. Current time: {} Last time: {}", .{time, lastTime});
 				lastTime = time;
 				deltaTime = 0;
 			}
 
-			if(self.currentPoint == null) {
+			if (self.currentPoint == null) {
 				const drag = std.math.pow(f64, 0.5, deltaTime);
-				for(self.outPos, self.outVel) |*pos, *vel| {
+				for (self.outPos, self.outVel) |*pos, *vel| {
 					// Just move on with the current velocity.
 					pos.* += (vel.*)*deltaTime;
 					// Add some drag to prevent moving far away on short connection loss.
@@ -1530,7 +1572,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type { // MARK: Gen
 			} else {
 				const tScale = @as(f64, @floatFromInt(self.lastTimes[self.currentPoint.?] -% lastTime))/1000;
 				const t = deltaTime;
-				for(self.outPos, 0..) |_, i| {
+				for (self.outPos, 0..) |_, i| {
 					self.interpolateCoordinate(i, t, tScale);
 				}
 			}
@@ -1541,17 +1583,17 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type { // MARK: Gen
 			self.determineNextDataPoint(time, &lastTime);
 
 			var deltaTime = @as(f64, @floatFromInt(time -% lastTime))/1000;
-			if(deltaTime < 0) {
+			if (deltaTime < 0) {
 				std.log.warn("Experienced time travel. Current time: {} Last time: {}", .{time, lastTime});
 				lastTime = time;
 				deltaTime = 0;
 			}
 
-			if(self.currentPoint == null) {
+			if (self.currentPoint == null) {
 				const drag = std.math.pow(f64, 0.5, deltaTime);
-				for(indices) |i| {
+				for (indices) |i| {
 					const index = @as(usize, i)*coordinatesPerIndex;
-					for(0..coordinatesPerIndex) |j| {
+					for (0..coordinatesPerIndex) |j| {
 						// Just move on with the current velocity.
 						self.outPos[index + j] += self.outVel[index + j]*deltaTime;
 						// Add some drag to prevent moving far away on short connection loss.
@@ -1561,9 +1603,9 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type { // MARK: Gen
 			} else {
 				const tScale = @as(f64, @floatFromInt(self.lastTimes[self.currentPoint.?] -% lastTime))/1000;
 				const t = deltaTime;
-				for(indices) |i| {
+				for (indices) |i| {
 					const index = @as(usize, i)*coordinatesPerIndex;
-					for(0..coordinatesPerIndex) |j| {
+					for (0..coordinatesPerIndex) |j| {
 						self.interpolateCoordinate(index + j, t, tScale);
 					}
 				}
@@ -1574,103 +1616,69 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type { // MARK: Gen
 
 pub const TimeDifference = struct { // MARK: TimeDifference
 	difference: Atomic(i16) = .init(0),
-	firstValue: bool = true,
+	// Checks how many times in a row we are off in the same direction
+	biasCounter: Atomic(i16) = .init(std.math.maxInt(i16)),
 
 	pub fn addDataPoint(self: *TimeDifference, time: i16) void {
 		const currentTime: i16 = @truncate(main.timestamp().toMilliseconds());
 		const timeDifference = currentTime -% time;
-		if(self.firstValue) {
+		if (@abs(self.biasCounter.load(.monotonic)) > main.server.updatesPerSec*5) {
 			self.difference.store(timeDifference, .monotonic);
-			self.firstValue = false;
+			self.biasCounter.store(0, .monotonic);
 		}
-		if(timeDifference -% self.difference.load(.monotonic) > 0) {
+		if (timeDifference -% self.difference.load(.monotonic) > 0) {
 			_ = @atomicRmw(i16, &self.difference.raw, .Add, 1, .monotonic);
-		} else if(timeDifference -% self.difference.load(.monotonic) < 0) {
+			if (self.biasCounter.fetchAdd(1, .monotonic) < 0) {
+				self.biasCounter.store(0, .monotonic);
+			}
+		} else if (timeDifference -% self.difference.load(.monotonic) < 0) {
 			_ = @atomicRmw(i16, &self.difference.raw, .Add, -1, .monotonic);
-		}
-	}
-};
-
-pub fn assertLocked(mutex: *const std.Thread.Mutex) void { // MARK: assertLocked()
-	if(builtin.mode == .Debug) {
-		std.debug.assert(!@constCast(mutex).tryLock());
-	}
-}
-
-pub fn assertLockedShared(lock: *const std.Thread.RwLock) void {
-	if(builtin.mode == .Debug) {
-		std.debug.assert(!@constCast(lock).tryLock());
-	}
-}
-
-/// A read-write lock with read priority.
-pub const ReadWriteLock = struct { // MARK: ReadWriteLock
-	condition: std.Thread.Condition = .{},
-	mutex: std.Thread.Mutex = .{},
-	readers: u32 = 0,
-
-	pub fn lockRead(self: *ReadWriteLock) void {
-		self.mutex.lock();
-		self.readers += 1;
-		self.mutex.unlock();
-	}
-
-	pub fn unlockRead(self: *ReadWriteLock) void {
-		self.mutex.lock();
-		self.readers -= 1;
-		if(self.readers == 0) {
-			self.condition.broadcast();
-		}
-		self.mutex.unlock();
-	}
-
-	pub fn lockWrite(self: *ReadWriteLock) void {
-		self.mutex.lock();
-		while(self.readers != 0) {
-			self.condition.wait(&self.mutex);
-		}
-	}
-
-	pub fn unlockWrite(self: *ReadWriteLock) void {
-		self.mutex.unlock();
-	}
-
-	pub fn assertLockedWrite(self: *ReadWriteLock) void {
-		if(builtin.mode == .Debug) {
-			std.debug.assert(!self.mutex.tryLock());
-		}
-	}
-
-	pub fn assertLockedRead(self: *ReadWriteLock) void {
-		if(builtin.mode == .Debug and !builtin.sanitize_thread) {
-			if(self.readers == 0) {
-				std.debug.assert(!self.mutex.tryLock());
+			if (self.biasCounter.fetchAdd(-1, .monotonic) > 0) {
+				self.biasCounter.store(0, .monotonic);
 			}
 		}
 	}
 };
 
-pub const Side = enum {
-	client,
-	server,
+/// A wrapper over Zig's mutex to avoid having to pass the io everywhere
+pub const Mutex = struct { // MARK: Mutex
+	super: std.Io.Mutex = .init,
+
+	pub fn tryLock(self: *Mutex) bool {
+		return self.super.tryLock();
+	}
+
+	pub fn lock(self: *Mutex) void {
+		self.super.lockUncancelable(main.io);
+	}
+
+	pub fn unlock(self: *Mutex) void {
+		self.super.unlock(main.io);
+	}
+
+	pub fn assertLocked(self: *const main.utils.Mutex) void {
+		if (builtin.mode == .debug) {
+			std.debug.assert(!@constCast(self).tryLock());
+		}
+	}
 };
 
-const endian: std.builtin.Endian = .big;
+const endian: std.lang.Endian = .big;
 
-pub const BinaryReader = struct {
+pub const BinaryReader = struct { // MARK: BinaryReader
 	remaining: []const u8,
 
-	pub const AllErrors = error{OutOfBounds, IntOutOfBounds, InvalidEnumTag, InvalidFloat};
+	pub const AllErrors = error{ OutOfBounds, IntOutOfBounds, InvalidEnumTag, InvalidFloat };
 
 	pub fn init(data: []const u8) BinaryReader {
 		return .{.remaining = data};
 	}
 
-	pub fn readVec(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds, InvalidFloat}!T {
+	pub fn readVec(self: *BinaryReader, T: type) error{ OutOfBounds, IntOutOfBounds, InvalidFloat }!T {
 		const typeInfo = @typeInfo(T).vector;
 		var result: T = undefined;
-		inline for(0..typeInfo.len) |i| {
-			switch(@typeInfo(typeInfo.child)) {
+		inline for (0..typeInfo.len) |i| {
+			switch (@typeInfo(typeInfo.child)) {
 				.int => {
 					result[i] = try self.readInt(typeInfo.child);
 				},
@@ -1683,47 +1691,47 @@ pub const BinaryReader = struct {
 		return result;
 	}
 
-	pub fn readInt(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
-		if(@mod(@typeInfo(T).int.bits, 8) != 0) {
+	pub fn readInt(self: *BinaryReader, T: type) error{ OutOfBounds, IntOutOfBounds }!T {
+		if (@mod(@typeInfo(T).int.bits, 8) != 0) {
 			const fullBits = comptime std.mem.alignForward(u16, @typeInfo(T).int.bits, 8);
-			const FullType = std.meta.Int(@typeInfo(T).int.signedness, fullBits);
+			const FullType = @Int(@typeInfo(T).int.signedness, fullBits);
 			const val = try self.readInt(FullType);
 			return std.math.cast(T, val) orelse return error.IntOutOfBounds;
 		}
 		const bufSize = @divExact(@typeInfo(T).int.bits, 8);
-		if(self.remaining.len < bufSize) return error.OutOfBounds;
+		if (self.remaining.len < bufSize) return error.OutOfBounds;
 		defer self.remaining = self.remaining[bufSize..];
 		return std.mem.readInt(T, self.remaining[0..bufSize], endian);
 	}
 
-	pub fn readVarInt(self: *BinaryReader, T: type) !T {
+	pub fn readVarInt(self: *BinaryReader, T: type) error{ OutOfBounds, IntOutOfBounds }!T {
 		comptime std.debug.assert(@typeInfo(T).int.signedness == .unsigned);
 		comptime std.debug.assert(@bitSizeOf(T) > 8); // Why would you use a VarInt for this?
 		var result: T = 0;
-		var shift: std.meta.Int(.unsigned, std.math.log2_int_ceil(usize, @bitSizeOf(T))) = 0;
-		while(true) {
+		var shift: @Int(.unsigned, std.math.log2_int_ceil(usize, @bitSizeOf(T))) = 0;
+		while (true) {
 			const nextByte = try self.readInt(u8);
 			const value: T = nextByte & 0x7f;
-			result |= try std.math.shlExact(T, value, shift);
-			if(nextByte & 0x80 == 0) break;
-			shift = try std.math.add(@TypeOf(shift), shift, 7);
+			result |= std.math.shlExact(T, value, shift) catch return error.IntOutOfBounds;
+			if (nextByte & 0x80 == 0) break;
+			shift = std.math.add(@TypeOf(shift), shift, 7) catch return error.IntOutOfBounds;
 		}
 		return result;
 	}
 
-	pub fn readFloat(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds, InvalidFloat}!T {
-		const IntT = std.meta.Int(.unsigned, @typeInfo(T).float.bits);
+	pub fn readFloat(self: *BinaryReader, T: type) error{ OutOfBounds, IntOutOfBounds, InvalidFloat }!T {
+		const IntT = @Int(.unsigned, @typeInfo(T).float.bits);
 		const result: T = @bitCast(try self.readInt(IntT));
-		if(!std.math.isFinite(result)) return error.InvalidFloat;
+		if (!std.math.isFinite(result)) return error.InvalidFloat;
 		return result;
 	}
 
-	pub fn readEnum(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds, InvalidEnumTag}!T {
+	pub fn readEnum(self: *BinaryReader, T: type) error{ OutOfBounds, IntOutOfBounds, InvalidEnumTag }!T {
 		const int = try self.readInt(@typeInfo(T).@"enum".tag_type);
-		return std.meta.intToEnum(T, int);
+		return std.enums.fromInt(T, int) orelse error.InvalidEnumTag;
 	}
 
-	pub fn readBool(self: *BinaryReader) error{OutOfBounds, IntOutOfBounds, InvalidEnumTag}!bool {
+	pub fn readBool(self: *BinaryReader) error{ OutOfBounds, IntOutOfBounds, InvalidEnumTag }!bool {
 		const int = try self.readInt(u1);
 		return int != 0;
 	}
@@ -1734,15 +1742,18 @@ pub const BinaryReader = struct {
 		return self.remaining[0..len :delimiter];
 	}
 
-	pub fn readSlice(self: *BinaryReader, length: usize) error{OutOfBounds, IntOutOfBounds}![]const u8 {
-		if(self.remaining.len < length) return error.OutOfBounds;
+	pub fn readSlice(self: *BinaryReader, length: usize) error{ OutOfBounds, IntOutOfBounds }![]const u8 {
+		if (self.remaining.len < length) return error.OutOfBounds;
 		defer self.remaining = self.remaining[length..];
 		return self.remaining[0..length];
 	}
+	pub fn readSliceWithSize(self: *BinaryReader) ![]const u8 {
+		return try self.readSlice(try self.readVarInt(usize));
+	}
 };
 
-pub const BinaryWriter = struct {
-	data: main.List(u8),
+pub const BinaryWriter = struct { // MARK: BinaryWriter
+	data: main.ListManaged(u8),
 
 	pub fn init(allocator: NeverFailingAllocator) BinaryWriter {
 		return .{.data = .init(allocator)};
@@ -1758,8 +1769,8 @@ pub const BinaryWriter = struct {
 
 	pub fn writeVec(self: *BinaryWriter, T: type, value: T) void {
 		const typeInfo = @typeInfo(T).vector;
-		inline for(0..typeInfo.len) |i| {
-			switch(@typeInfo(typeInfo.child)) {
+		inline for (0..typeInfo.len) |i| {
+			switch (@typeInfo(typeInfo.child)) {
 				.int => {
 					self.writeInt(typeInfo.child, value[i]);
 				},
@@ -1772,9 +1783,9 @@ pub const BinaryWriter = struct {
 	}
 
 	pub fn writeInt(self: *BinaryWriter, T: type, value: T) void {
-		if(@mod(@typeInfo(T).int.bits, 8) != 0) {
+		if (@mod(@typeInfo(T).int.bits, 8) != 0) {
 			const fullBits = comptime std.mem.alignForward(u16, @typeInfo(T).int.bits, 8);
-			const FullType = std.meta.Int(@typeInfo(T).int.signedness, fullBits);
+			const FullType = @Int(@typeInfo(T).int.signedness, fullBits);
 			return self.writeInt(FullType, value);
 		}
 		const bufSize = @divExact(@typeInfo(T).int.bits, 8);
@@ -1785,22 +1796,22 @@ pub const BinaryWriter = struct {
 		comptime std.debug.assert(@typeInfo(T).int.signedness == .unsigned);
 		comptime std.debug.assert(@bitSizeOf(T) > 8); // Why would you use a VarInt for this?
 		var remaining: T = value;
-		while(true) {
+		while (true) {
 			var writeByte: u8 = @intCast(remaining & 0x7f);
 			remaining >>= 7;
-			if(remaining != 0) writeByte |= 0x80;
+			if (remaining != 0) writeByte |= 0x80;
 			self.writeInt(u8, writeByte);
-			if(remaining == 0) break;
+			if (remaining == 0) break;
 		}
 	}
 
 	pub fn writeFloat(self: *BinaryWriter, T: type, value: T) void {
-		const IntT = std.meta.Int(.unsigned, @typeInfo(T).float.bits);
+		const IntT = @Int(.unsigned, @typeInfo(T).float.bits);
 		self.writeInt(IntT, @bitCast(value));
 	}
 
 	pub fn writeEnum(self: *BinaryWriter, T: type, value: T) void {
-		self.writeInt(@typeInfo(T).@"enum".tag_type, @intFromEnum(value));
+		self.writeInt(@typeInfo(T).@"enum".tag_type, @backingInt(value));
 	}
 
 	pub fn writeBool(self: *BinaryWriter, value: bool) void {
@@ -1810,6 +1821,10 @@ pub const BinaryWriter = struct {
 	pub fn writeSlice(self: *BinaryWriter, slice: []const u8) void {
 		self.data.appendSlice(slice);
 	}
+	pub fn writeSliceWithSize(self: *BinaryWriter, slice: []const u8) void {
+		self.writeVarInt(usize, slice.len);
+		self.writeSlice(slice);
+	}
 
 	pub fn writeWithDelimiter(self: *BinaryWriter, slice: []const u8, delimiter: u8) void {
 		std.debug.assert(!std.mem.containsAtLeast(u8, slice, 1, &.{delimiter}));
@@ -1818,7 +1833,7 @@ pub const BinaryWriter = struct {
 	}
 };
 
-const ReadWriteTest = struct {
+const read_write_test = struct {
 	fn getWriter() BinaryWriter {
 		return .init(main.heap.testingAllocator);
 	}
@@ -1830,7 +1845,7 @@ const ReadWriteTest = struct {
 		defer writer.deinit();
 		writer.writeInt(IntT, expected);
 
-		const expectedWidth = std.math.divCeil(comptime_int, @bitSizeOf(IntT), 8);
+		const expectedWidth = @divCeil(@bitSizeOf(IntT), 8);
 		try std.testing.expectEqual(expectedWidth, writer.data.items.len);
 
 		var reader = getReader(writer.data.items);
@@ -1901,85 +1916,85 @@ const ReadWriteTest = struct {
 };
 
 test "read/write unsigned int" {
-	inline for([_]type{u0, u1, u2, u4, u5, u8, u16, u31, u32, u64, u128}) |intT| {
+	inline for ([_]type{u0, u1, u2, u4, u5, u8, u16, u31, u32, u64, u128}) |intT| {
 		const min = std.math.minInt(intT);
 		const max = std.math.maxInt(intT);
 		const mid = (max + min)/2;
 
-		try ReadWriteTest.testInt(intT, min);
-		try ReadWriteTest.testInt(intT, mid);
-		try ReadWriteTest.testInt(intT, max);
+		try read_write_test.testInt(intT, min);
+		try read_write_test.testInt(intT, mid);
+		try read_write_test.testInt(intT, max);
 	}
 }
 
 test "read/write signed int" {
-	inline for([_]type{i1, i2, i4, i5, i8, i16, i31, i32, i64, i128}) |intT| {
+	inline for ([_]type{i1, i2, i4, i5, i8, i16, i31, i32, i64, i128}) |intT| {
 		const min = std.math.minInt(intT);
 		const lowerMid = std.math.minInt(intT)/2;
 		const upperMid = std.math.maxInt(intT)/2;
 		const max = std.math.maxInt(intT);
 
-		try ReadWriteTest.testInt(intT, min);
-		try ReadWriteTest.testInt(intT, lowerMid);
-		try ReadWriteTest.testInt(intT, 0);
-		try ReadWriteTest.testInt(intT, upperMid);
-		try ReadWriteTest.testInt(intT, max);
+		try read_write_test.testInt(intT, min);
+		try read_write_test.testInt(intT, lowerMid);
+		try read_write_test.testInt(intT, 0);
+		try read_write_test.testInt(intT, upperMid);
+		try read_write_test.testInt(intT, max);
 	}
 }
 
 test "read/write unsigned varint" {
-	inline for([_]type{u9, u16, u31, u32, u64, u128}) |IntT| {
-		for(0..@bitSizeOf(IntT)) |i| {
-			try ReadWriteTest.testVarInt(IntT, @as(IntT, 1) << @intCast(i));
-			try ReadWriteTest.testVarInt(IntT, (@as(IntT, 1) << @intCast(i)) - 1);
+	inline for ([_]type{u9, u16, u31, u32, u64, u128}) |IntT| {
+		for (0..@bitSizeOf(IntT)) |i| {
+			try read_write_test.testVarInt(IntT, @as(IntT, 1) << @intCast(i));
+			try read_write_test.testVarInt(IntT, (@as(IntT, 1) << @intCast(i)) - 1);
 		}
 		const max = std.math.maxInt(IntT);
-		try ReadWriteTest.testVarInt(IntT, max);
+		try read_write_test.testVarInt(IntT, max);
 	}
 }
 
 test "read/write float" {
-	inline for([_]type{f16, f32, f64, f80, f128}) |floatT| {
-		try ReadWriteTest.testFloat(floatT, std.math.floatMax(floatT));
-		try ReadWriteTest.testFloat(floatT, 0.0012443);
-		try ReadWriteTest.testFloat(floatT, 0.0);
-		try ReadWriteTest.testFloat(floatT, 6457.0);
-		try ReadWriteTest.testInvalidFloat(floatT, std.math.inf(floatT));
-		try ReadWriteTest.testInvalidFloat(floatT, -std.math.inf(floatT));
-		try ReadWriteTest.testInvalidFloat(floatT, std.math.nan(floatT));
-		try ReadWriteTest.testFloat(floatT, std.math.floatMin(floatT));
+	inline for ([_]type{f16, f32, f64, f80, f128}) |floatT| {
+		try read_write_test.testFloat(floatT, std.math.floatMax(floatT));
+		try read_write_test.testFloat(floatT, 0.0012443);
+		try read_write_test.testFloat(floatT, 0.0);
+		try read_write_test.testFloat(floatT, 6457.0);
+		try read_write_test.testInvalidFloat(floatT, std.math.inf(floatT));
+		try read_write_test.testInvalidFloat(floatT, -std.math.inf(floatT));
+		try read_write_test.testInvalidFloat(floatT, std.math.nan(floatT));
+		try read_write_test.testFloat(floatT, std.math.floatMin(floatT));
 	}
 }
 
 test "read/write enum" {
-	inline for([_]type{
-		ReadWriteTest.TestEnum(u2),
-		ReadWriteTest.TestEnum(u4),
-		ReadWriteTest.TestEnum(u5),
-		ReadWriteTest.TestEnum(u8),
-		ReadWriteTest.TestEnum(u16),
-		ReadWriteTest.TestEnum(u32),
-		ReadWriteTest.TestEnum(i2),
-		ReadWriteTest.TestEnum(i4),
-		ReadWriteTest.TestEnum(i5),
-		ReadWriteTest.TestEnum(i8),
-		ReadWriteTest.TestEnum(i16),
-		ReadWriteTest.TestEnum(i32),
+	inline for ([_]type{
+		read_write_test.TestEnum(u2),
+		read_write_test.TestEnum(u4),
+		read_write_test.TestEnum(u5),
+		read_write_test.TestEnum(u8),
+		read_write_test.TestEnum(u16),
+		read_write_test.TestEnum(u32),
+		read_write_test.TestEnum(i2),
+		read_write_test.TestEnum(i4),
+		read_write_test.TestEnum(i5),
+		read_write_test.TestEnum(i8),
+		read_write_test.TestEnum(i16),
+		read_write_test.TestEnum(i32),
 	}) |enumT| {
-		try ReadWriteTest.testEnum(enumT, .first);
-		try ReadWriteTest.testEnum(enumT, .center);
-		try ReadWriteTest.testEnum(enumT, .last);
+		try read_write_test.testEnum(enumT, .first);
+		try read_write_test.testEnum(enumT, .center);
+		try read_write_test.testEnum(enumT, .last);
 	}
 }
 
 test "read/write Vec3i" {
-	try ReadWriteTest.testVec(main.vec.Vec3i, .{0, 0, 0});
-	try ReadWriteTest.testVec(main.vec.Vec3i, .{
+	try read_write_test.testVec(main.vec.Vec3i, .{0, 0, 0});
+	try read_write_test.testVec(main.vec.Vec3i, .{
 		std.math.maxInt(@typeInfo(main.vec.Vec3i).vector.child),
 		std.math.minInt(@typeInfo(main.vec.Vec3i).vector.child),
 		std.math.minInt(@typeInfo(main.vec.Vec3i).vector.child),
 	});
-	try ReadWriteTest.testVec(main.vec.Vec3i, .{
+	try read_write_test.testVec(main.vec.Vec3i, .{
 		std.math.minInt(@typeInfo(main.vec.Vec3i).vector.child),
 		std.math.maxInt(@typeInfo(main.vec.Vec3i).vector.child),
 		std.math.maxInt(@typeInfo(main.vec.Vec3i).vector.child),
@@ -1987,16 +2002,16 @@ test "read/write Vec3i" {
 }
 
 test "read/write Vec3f/Vec3d" {
-	inline for([_]type{main.vec.Vec3f, main.vec.Vec3d}) |vecT| {
-		try ReadWriteTest.testVec(vecT, .{0, 0, 0});
-		try ReadWriteTest.testVec(vecT, .{0.0043, 0.01123, 0.05043});
-		try ReadWriteTest.testVec(vecT, .{5345.0, 42.0, 7854.0});
-		try ReadWriteTest.testVec(vecT, .{
+	inline for ([_]type{main.vec.Vec3f, main.vec.Vec3d}) |vecT| {
+		try read_write_test.testVec(vecT, .{0, 0, 0});
+		try read_write_test.testVec(vecT, .{0.0043, 0.01123, 0.05043});
+		try read_write_test.testVec(vecT, .{5345.0, 42.0, 7854.0});
+		try read_write_test.testVec(vecT, .{
 			std.math.floatMax(@typeInfo(vecT).vector.child),
 			std.math.floatMin(@typeInfo(vecT).vector.child),
 			std.math.floatMin(@typeInfo(vecT).vector.child),
 		});
-		try ReadWriteTest.testVec(vecT, .{
+		try read_write_test.testVec(vecT, .{
 			std.math.floatMin(@typeInfo(vecT).vector.child),
 			std.math.floatMax(@typeInfo(vecT).vector.child),
 			std.math.floatMax(@typeInfo(vecT).vector.child),
@@ -2005,35 +2020,35 @@ test "read/write Vec3f/Vec3d" {
 }
 
 test "read/write mixed" {
-	const type0 = u4;
+	const Type0 = u4;
 	const expected0 = 5;
 
-	const type1 = main.vec.Vec3i;
-	const expected1 = type1{3, -10, 44};
+	const Type1 = main.vec.Vec3i;
+	const expected1 = Type1{3, -10, 44};
 
-	const type2 = enum(u3) {first, second, third};
+	const Type2 = enum(u3) { first, second, third };
 	const expected2 = .second;
 
-	const type3 = f32;
+	const Type3 = f32;
 	const expected3 = 0.1234;
 
 	const expected4 = "Hello World!";
 
-	var writer = ReadWriteTest.getWriter();
+	var writer = read_write_test.getWriter();
 	defer writer.deinit();
 
-	writer.writeInt(type0, expected0);
-	writer.writeVec(type1, expected1);
-	writer.writeEnum(type2, expected2);
-	writer.writeFloat(type3, expected3);
+	writer.writeInt(Type0, expected0);
+	writer.writeVec(Type1, expected1);
+	writer.writeEnum(Type2, expected2);
+	writer.writeFloat(Type3, expected3);
 	writer.writeSlice(expected4);
 
-	var reader = ReadWriteTest.getReader(writer.data.items);
+	var reader = read_write_test.getReader(writer.data.items);
 
-	try std.testing.expectEqual(expected0, try reader.readInt(type0));
-	try std.testing.expectEqual(expected1, try reader.readVec(type1));
-	try std.testing.expectEqual(expected2, try reader.readEnum(type2));
-	try std.testing.expectEqual(expected3, try reader.readFloat(type3));
+	try std.testing.expectEqual(expected0, try reader.readInt(Type0));
+	try std.testing.expectEqual(expected1, try reader.readVec(Type1));
+	try std.testing.expectEqual(expected2, try reader.readEnum(Type2));
+	try std.testing.expectEqual(expected3, try reader.readFloat(Type3));
 	try std.testing.expectEqualStrings(expected4, try reader.readSlice(expected4.len));
 
 	try std.testing.expect(reader.remaining.len == 0);
@@ -2050,14 +2065,14 @@ pub fn DenseId(comptime IdType: type) type {
 }
 
 pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: SparseSet
-	std.debug.assert(@intFromEnum(IdType.noValue) == std.math.maxInt(@typeInfo(IdType).@"enum".tag_type));
+	std.debug.assert(@backingInt(IdType.noValue) == std.math.maxInt(@typeInfo(IdType).@"enum".tag_type));
 
 	return struct {
 		const Self = @This();
 
-		dense: main.ListUnmanaged(T) = .{},
-		denseToSparseIndex: main.ListUnmanaged(IdType) = .{},
-		sparseToDenseIndex: main.ListUnmanaged(IdType) = .{},
+		dense: main.List(T) = .empty,
+		denseToSparseIndex: main.List(IdType) = .empty,
+		sparseToDenseIndex: main.List(IdType) = .empty,
 
 		pub fn clear(self: *Self) void {
 			self.dense.clearRetainingCapacity();
@@ -2072,40 +2087,42 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 		}
 
 		pub fn contains(self: *Self, id: IdType) bool {
-			return @intFromEnum(id) < self.sparseToDenseIndex.items.len and self.sparseToDenseIndex.items[@intFromEnum(id)] != .noValue;
+			std.debug.assert(id != .noValue);
+			return @backingInt(id) < self.sparseToDenseIndex.items.len and self.sparseToDenseIndex.items[@backingInt(id)] != .noValue;
 		}
 
 		pub fn add(self: *Self, allocator: NeverFailingAllocator, id: IdType) *T {
 			std.debug.assert(id != .noValue);
 
-			const denseId: IdType = @enumFromInt(self.dense.items.len);
+			const denseId: IdType = @fromBackingInt(@intCast(self.dense.items.len));
 
-			if(@intFromEnum(id) >= self.sparseToDenseIndex.items.len) {
-				self.sparseToDenseIndex.appendNTimes(allocator, .noValue, @intFromEnum(id) - self.sparseToDenseIndex.items.len + 1);
+			if (@backingInt(id) >= self.sparseToDenseIndex.items.len) {
+				self.sparseToDenseIndex.appendNTimes(allocator, .noValue, @backingInt(id) - self.sparseToDenseIndex.items.len + 1);
 			}
 
-			std.debug.assert(self.sparseToDenseIndex.items[@intFromEnum(id)] == .noValue);
+			std.debug.assert(self.sparseToDenseIndex.items[@backingInt(id)] == .noValue);
 
-			self.sparseToDenseIndex.items[@intFromEnum(id)] = denseId;
+			self.sparseToDenseIndex.items[@backingInt(id)] = denseId;
 			self.denseToSparseIndex.append(allocator, id);
 			return self.dense.addOne(allocator);
 		}
 
 		pub fn set(self: *Self, allocator: NeverFailingAllocator, id: IdType, value: T) void {
+			std.debug.assert(id != .noValue);
 			self.add(allocator, id).* = value;
 		}
 
 		pub fn fetchRemove(self: *Self, id: IdType) !T {
-			if(!self.contains(id)) return error.ElementNotFound;
+			if (!self.contains(id)) return error.ElementNotFound;
 
-			const denseId = @intFromEnum(self.sparseToDenseIndex.items[@intFromEnum(id)]);
-			self.sparseToDenseIndex.items[@intFromEnum(id)] = .noValue;
+			const denseId = @backingInt(self.sparseToDenseIndex.items[@backingInt(id)]);
+			self.sparseToDenseIndex.items[@backingInt(id)] = .noValue;
 
 			const result = self.dense.swapRemove(denseId);
 			_ = self.denseToSparseIndex.swapRemove(denseId);
 
-			if(denseId != self.dense.items.len) {
-				self.sparseToDenseIndex.items[@intFromEnum(self.denseToSparseIndex.items[denseId])] = @enumFromInt(denseId);
+			if (denseId != self.dense.items.len) {
+				self.sparseToDenseIndex.items[@backingInt(self.denseToSparseIndex.items[denseId])] = @fromBackingInt(@intCast(denseId));
 			}
 			return result;
 		}
@@ -2115,10 +2132,11 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 		}
 
 		pub fn get(self: *Self, id: IdType) ?*T {
-			if(@intFromEnum(id) >= self.sparseToDenseIndex.items.len) return null;
-			const index = self.sparseToDenseIndex.items[@intFromEnum(id)];
-			if(index == .noValue) return null;
-			return &self.dense.items[@intFromEnum(index)];
+			std.debug.assert(id != .noValue);
+			if (@backingInt(id) >= self.sparseToDenseIndex.items.len) return null;
+			const index = self.sparseToDenseIndex.items[@backingInt(id)];
+			if (index == .noValue) return null;
+			return &self.dense.items[@backingInt(index)];
 		}
 	};
 }
@@ -2128,7 +2146,7 @@ test "SparseSet/set at zero" {
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
-	const index: IdType = @enumFromInt(0);
+	const index: IdType = @fromBackingInt(0);
 
 	set.set(main.heap.testingAllocator, index, 5);
 	try std.testing.expectEqual(set.get(index).?.*, 5);
@@ -2139,7 +2157,7 @@ test "SparseSet/set at 100" {
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
-	const index: IdType = @enumFromInt(100);
+	const index: IdType = @fromBackingInt(100);
 
 	set.set(main.heap.testingAllocator, index, 5);
 	try std.testing.expectEqual(set.get(index).?.*, 5);
@@ -2152,8 +2170,8 @@ test "SparseSet/remove first" {
 
 	const expectSecond: u32 = 100;
 
-	const firstId: IdType = @enumFromInt(0);
-	const secondId: IdType = @enumFromInt(1);
+	const firstId: IdType = @fromBackingInt(0);
+	const secondId: IdType = @fromBackingInt(1);
 
 	set.set(main.heap.testingAllocator, firstId, 5);
 	set.set(main.heap.testingAllocator, secondId, expectSecond);
@@ -2168,9 +2186,9 @@ test "SparseSet/remove last" {
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
-	set.set(main.heap.testingAllocator, @enumFromInt(0), 5);
+	set.set(main.heap.testingAllocator, @fromBackingInt(0), 5);
 
-	try set.remove(@enumFromInt(0));
+	try set.remove(@fromBackingInt(0));
 }
 
 test "SparseSet/remove entry that doesn't exist" {
@@ -2178,7 +2196,7 @@ test "SparseSet/remove entry that doesn't exist" {
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
-	try std.testing.expectError(error.ElementNotFound, set.remove(@enumFromInt(0)));
+	try std.testing.expectError(error.ElementNotFound, set.remove(@fromBackingInt(0)));
 }
 
 test "SparseSet/remove entry twice" {
@@ -2186,10 +2204,10 @@ test "SparseSet/remove entry twice" {
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
-	set.set(main.heap.testingAllocator, @enumFromInt(0), 5);
+	set.set(main.heap.testingAllocator, @fromBackingInt(0), 5);
 
-	try set.remove(@enumFromInt(0));
-	try std.testing.expectError(error.ElementNotFound, set.remove(@enumFromInt(0)));
+	try set.remove(@fromBackingInt(0));
+	try std.testing.expectError(error.ElementNotFound, set.remove(@fromBackingInt(0)));
 }
 
 test "SparseSet/reusing" {
@@ -2200,8 +2218,8 @@ test "SparseSet/reusing" {
 	const expectSecond = 100;
 	const expectNew = 10;
 
-	const firstId: IdType = @enumFromInt(0);
-	const secondId: IdType = @enumFromInt(1);
+	const firstId: IdType = @fromBackingInt(0);
+	const secondId: IdType = @fromBackingInt(1);
 
 	set.set(main.heap.testingAllocator, firstId, 5);
 	set.set(main.heap.testingAllocator, secondId, expectSecond);
@@ -2215,7 +2233,7 @@ test "SparseSet/reusing" {
 }
 
 pub fn panicWithMessage(comptime fmt: []const u8, args: anytype) noreturn {
-	const message = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
+	const message = main.stackAllocator.print(fmt, args);
 	@panic(message);
 }
 
@@ -2225,8 +2243,34 @@ pub fn obfuscateString(allocator: NeverFailingAllocator, string: []const u8) []c
 	const len = std.unicode.utf8CountCodepoints(string) catch 0;
 	const obfuscated = allocator.alloc(u8, len*obfuscationChar.len);
 	var i: usize = 0;
-	while(i < obfuscated.len) : (i += obfuscationChar.len) {
+	while (i < obfuscated.len) : (i += obfuscationChar.len) {
 		@memcpy(obfuscated[i .. i + obfuscationChar.len], &obfuscationChar);
 	}
 	return obfuscated;
+}
+
+pub const Base64 = struct {
+	fullBuffer: []u8,
+	base64Encoded: []const u8,
+
+	pub fn toBase64(allocator: NeverFailingAllocator, source: []const u8) Base64 {
+		const fullBuffer = allocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(source.len));
+		return Base64{
+			.fullBuffer = fullBuffer,
+			.base64Encoded = std.base64.url_safe.Encoder.encode(fullBuffer, source),
+		};
+	}
+	pub fn getEncodedMessage(self: Base64) []const u8 {
+		return self.base64Encoded;
+	}
+	pub fn deinit(self: Base64, allocator: NeverFailingAllocator) void {
+		allocator.free(self.fullBuffer);
+	}
+};
+pub fn fromBase64(allocator: NeverFailingAllocator, base64EncodedData: []const u8) ![]const u8 {
+	const decodedSize = try std.base64.url_safe.Decoder.calcSizeForSlice(base64EncodedData);
+	const bytes: []u8 = allocator.alloc(u8, decodedSize);
+	errdefer allocator.free(bytes);
+	try std.base64.url_safe.Decoder.decode(bytes, base64EncodedData);
+	return bytes;
 }

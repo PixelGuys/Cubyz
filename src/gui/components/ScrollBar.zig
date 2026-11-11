@@ -16,8 +16,6 @@ const Label = GuiComponent.Label;
 
 const ScrollBar = @This();
 
-const fontSize: f32 = 16;
-
 var texture: Texture = undefined;
 
 pos: Vec2f,
@@ -25,12 +23,13 @@ size: Vec2f,
 currentState: f32,
 button: *Button,
 mouseAnchor: f32 = undefined,
+hidden: bool = false,
 
-pub fn __init() void {
+pub fn globalInit() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/scrollbar.png");
 }
 
-pub fn __deinit() void {
+pub fn globalDeinit() void {
 	texture.deinit();
 }
 
@@ -65,7 +64,7 @@ fn setButtonPosFromValue(self: *ScrollBar) void {
 fn updateValueFromButtonPos(self: *ScrollBar) void {
 	const range: f32 = self.size[1] - self.button.size[1];
 	const value = self.button.pos[1]/range;
-	if(value != self.currentState) {
+	if (value != self.currentState) {
 		self.currentState = value;
 	}
 }
@@ -75,37 +74,51 @@ pub fn scroll(self: *ScrollBar, offset: f32) void {
 	self.currentState = @min(1, @max(0, self.currentState));
 }
 
-pub fn updateHovered(self: *ScrollBar, mousePosition: Vec2f) void {
-	if(GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
-		self.button.updateHovered(mousePosition - self.pos);
+pub fn updateHovered(self: *ScrollBar, mousePosition: Vec2f) main.callbacks.Result {
+	if (self.hidden) return .ignored;
+	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
+		if (self.button.updateHovered(mousePosition - self.pos) == .handled) return .handled;
 	}
+	return .ignored;
 }
 
-pub fn mainButtonPressed(self: *ScrollBar, mousePosition: Vec2f) void {
-	if(GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
-		self.button.mainButtonPressed(mousePosition - self.pos);
-		self.mouseAnchor = mousePosition[1] - self.button.pos[1];
+pub fn mainButtonPressed(self: *ScrollBar, mousePosition: Vec2f) main.callbacks.Result {
+	if (self.hidden) return .ignored;
+	if (GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
+		if (self.button.mainButtonPressed(mousePosition - self.pos) == .handled) {
+			self.mouseAnchor = mousePosition[1] - self.button.pos[1];
+			return .handled;
+		}
 	}
+	return .ignored;
 }
 
 pub fn mainButtonReleased(self: *ScrollBar, mousePosition: Vec2f) void {
 	self.button.mainButtonReleased(mousePosition - self.pos);
 }
 
-pub fn render(self: *ScrollBar, mousePosition: Vec2f) void {
-	texture.bindTo(0);
-	Button.pipeline.bind(draw.getScissor());
-	draw.setColor(0xff000000);
-	draw.customShadedRect(Button.buttonUniforms, self.pos, self.size);
+pub fn render(self: *ScrollBar, currentFrame: *graphics.vulkan.Frame, mousePosition: Vec2f) void {
+	if (self.hidden) return;
+	if (main.settings.launch_config.vulkanTestingMode and texture.vulkanImage != null) {
+		currentFrame.guiCommands.bindPipeline(currentFrame, Button.pipeline, graphics.draw.getScissor());
+		currentFrame.guiCommands.bindDescriptors(Button.pipeline, &.{
+			.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
+		});
+		draw.customShadedRect(currentFrame, @as(Button.ButtonUniforms, undefined), Button.pipeline, self.pos, self.size);
+	} else {
+		Button.pipeline.bind(draw.getScissor());
+		texture.bindTo(0);
+		draw.customShadedRectOpenGl(Button.buttonUniforms, self.pos, self.size);
+	}
 
 	const range: f32 = self.size[1] - self.button.size[1];
 	self.setButtonPosFromValue();
-	if(self.button.pressed) {
+	if (self.button.pressed) {
 		self.button.pos[1] = mousePosition[1] - self.mouseAnchor;
 		self.button.pos[1] = @min(@max(self.button.pos[1], 0), range - 0.001);
 		self.updateValueFromButtonPos();
 	}
 	const oldTranslation = draw.setTranslation(self.pos);
 	defer draw.restoreTranslation(oldTranslation);
-	self.button.render(mousePosition - self.pos);
+	self.button.render(currentFrame, mousePosition - self.pos);
 }

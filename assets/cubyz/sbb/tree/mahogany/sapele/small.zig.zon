@@ -1,0 +1,9 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:tree/mahogany/sapele/small/1"},
+		.{.id = "cubyz:tree/mahogany/sapele/small/2"},
+		.{.id = "cubyz:tree/mahogany/sapele/small/3"},
+		.{.id = "cubyz:tree/mahogany/sapele/small/4"},
+		.{.id = "cubyz:tree/mahogany/sapele/small/5"},
+	},
+}

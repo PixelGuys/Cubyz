@@ -1,0 +1,28 @@
+.{
+	.tags = .{.choppable, .wood, .branch},
+	.blockHealth = 4,
+	.texture0 = "cubyz:branch/oak/dot",
+	.texture1 = "cubyz:branch/oak/half_line",
+	.texture2 = "cubyz:branch/oak/line",
+	.texture3 = "cubyz:branch/oak/bend",
+	.texture4 = "cubyz:branch/oak/intersection",
+	.texture5 = "cubyz:branch/oak/cross",
+	.item = .{
+		.colorTexture = "oak_branch_palette.png",
+		.material = .{
+			.durability = 36,
+			.massDamage = 1.25,
+			.hardnessDamage = 0.70,
+			.swingSpeed = 4.3,
+			.textureRoughness = 0.7,
+			.modifiers = .{
+				.{
+					.id = "base_stat",
+					.targetProperty = "maxDurability",
+					.strength = 0.45,
+				},
+			},
+		},
+		.texture = "branch/oak.png",
+	},
+}

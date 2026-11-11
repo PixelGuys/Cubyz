@@ -1,0 +1,30 @@
+.{
+	.tags = .{.stone, .mineable, .limestone},
+	.blockHealth = 27.5,
+	.blockResistance = 1,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.item = .{
+		.colorTexture = "limestone_palette.png",
+		.material = .{
+			.durability = 50,
+			.massDamage = 1.0,
+			.hardnessDamage = 3.4,
+			.swingSpeed = 2.6,
+			.textureRoughness = 0.6,
+			.modifiers = .{
+				.{
+					.id = "good_at",
+					.strength = 0.5,
+					.tag = .limestone,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 2,
+					},
+				},
+			},
+		},
+	},
+}

@@ -1,0 +1,8 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:meteorite/crater/0"},
+	},
+	.children = .{
+		.white = "cubyz:meteorite/rock",
+	},
+}

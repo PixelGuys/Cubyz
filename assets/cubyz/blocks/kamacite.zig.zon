@@ -1,0 +1,12 @@
+.{
+	.tags = .{.stone, .mineable},
+	.blockHealth = 25,
+	.blockResistance = 7,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.allowOres = true,
+	.rotation = "cubyz:stairs",
+	.model = "cubyz:cube",
+	.texture = "cubyz:kamacite",
+}

@@ -1,0 +1,28 @@
+.{
+	.tags = .{.choppable, .cuttable, .sliceable, .mushroom},
+	.blockHealth = 2,
+	.texture0 = "cubyz:branch/bolete/dot",
+	.texture1 = "cubyz:branch/bolete/half_line",
+	.texture2 = "cubyz:branch/bolete/line",
+	.texture3 = "cubyz:branch/bolete/bend",
+	.texture4 = "cubyz:branch/bolete/intersection",
+	.texture5 = "cubyz:branch/bolete/cross",
+	.item = .{
+		.colorTexture = "bolete_branch_palette.png",
+		.material = .{
+			.durability = 200,
+			.massDamage = 1.0,
+			.hardnessDamage = 0.0,
+			.swingSpeed = 4.6,
+			.textureRoughness = 0.5,
+			.modifiers = .{
+				.{
+					.id = "base_stat",
+					.targetProperty = "maxDurability",
+					.strength = 0.45,
+				},
+			},
+		},
+		.texture = "branch/bolete.png",
+	},
+}

@@ -1,18 +1,23 @@
 .{
 	.{
-		.inputs = .{"cubyz:{item}"},
-		.output = "cubyz:{item}_tile",
+		.inputs = .{"cubyz:{item}/smooth"},
+		.output = "cubyz:{item}/rough",
+		.reversible = true,
 	},
 	.{
-		.inputs = .{"cubyz:{item}"},
-		.output = "cubyz:{item}_bricks",
+		.inputs = .{"cubyz:{item}/smooth"},
+		.output = "cubyz:{item}/tile",
 	},
 	.{
-		.inputs = .{"cubyz:{item}"},
-		.output = "2 cubyz:{item}_wall",
+		.inputs = .{"cubyz:{item}/smooth"},
+		.output = "cubyz:{item}/bricks",
 	},
 	.{
-		.inputs = .{"cubyz:slate"},
-		.output = "cubyz:cobblestone",
+		.inputs = .{"cubyz:{item}/smooth"},
+		.output = "2 cubyz:{item}/wall",
+	},
+	.{
+		.inputs = .{"cubyz:{item}/smooth"},
+		.output = "cubyz:{item}/pillar",
 	},
 }

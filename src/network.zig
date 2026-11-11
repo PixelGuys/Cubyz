@@ -1,6 +1,7 @@
 const builtin = @import("builtin");
 const std = @import("std");
 const Atomic = std.atomic.Value;
+const IpAddress = std.Io.net.IpAddress;
 
 const main = @import("main");
 const game = main.game;
@@ -8,7 +9,10 @@ const settings = main.settings;
 const utils = main.utils;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
+pub const authentication = @import("network/authentication.zig");
 pub const protocols = @import("network/protocols.zig");
+
+const c = @import("c");
 
 // TODO: Might want to use SSL or something similar to encode the message
 
@@ -17,37 +21,36 @@ inline fn networkTimestamp() i64 {
 	return @truncate(@divTrunc(main.timestamp().toNanoseconds(), 1000));
 }
 
-const Socket = struct {
-	const ws2 = @cImport({
-		@cInclude("winsock2.h");
-	});
+const Socket = struct { // MARK: Socket
 	const posix = std.posix;
-	socketID: if(builtin.os.tag == .windows) ws2.SOCKET else posix.socket_t,
+	socketID: if (builtin.target.os.tag == .windows) c.SOCKET else posix.socket_t,
 
 	fn windowsError(err: c_int) !void {
-		if(err == 0) return;
-		switch(err) {
-			ws2.WSASYSNOTREADY => return error.WSASYSNOTREADY,
-			ws2.WSAVERNOTSUPPORTED => return error.WSAVERNOTSUPPORTED,
-			ws2.WSAEINPROGRESS => return error.WSAEINPROGRESS,
-			ws2.WSAEPROCLIM => return error.WSAEPROCLIM,
-			ws2.WSAEFAULT => return error.WSAEFAULT,
-			ws2.WSANOTINITIALISED => return error.WSANOTINITIALISED,
-			ws2.WSAENETDOWN => return error.WSAENETDOWN,
-			ws2.WSAEACCES => return error.WSAEACCES,
-			ws2.WSAEADDRINUSE => return error.WSAEADDRINUSE,
-			ws2.WSAEADDRNOTAVAIL => return error.WSAEADDRNOTAVAIL,
-			ws2.WSAEINVAL => return error.WSAEINVAL,
-			ws2.WSAENOBUFS => return error.WSAENOBUFS,
-			ws2.WSAENOTSOCK => return error.WSAENOTSOCK,
+		if (err == 0) return;
+		switch (err) {
+			c.WSASYSNOTREADY => return error.NetworkDown,
+			c.WSAVERNOTSUPPORTED => return error.VersionUnsupported,
+			c.WSAEINPROGRESS => return error.BlockingOperationInProgress,
+			c.WSAEPROCLIM => return error.ProcessFdQuotaExceeded,
+			c.WSAEFAULT => unreachable,
+			c.WSANOTINITIALISED => unreachable,
+			c.WSAENETDOWN => return error.NetworkDown,
+			c.WSAEACCES => return error.AccessDenied,
+			c.WSAEADDRINUSE => return error.AddressInUse,
+			c.WSAEADDRNOTAVAIL => return error.AddressNotAvailable,
+			c.WSAEINVAL => unreachable,
+			c.WSAENOBUFS => return error.SystemResources,
+			c.WSAENOTSOCK => return error.FileDescriptorNotASocket,
+			c.WSAECONNRESET => return error.ConnectionResetByPeer,
+			c.WSAEMSGSIZE => return error.MessageTooLong,
 			else => return error.UNKNOWN,
 		}
 	}
 
 	fn startup() void {
-		if(builtin.os.tag == .windows) {
-			var data: ws2.WSADATA = undefined;
-			windowsError(ws2.WSAStartup(0x0202, &data)) catch |err| {
+		if (builtin.target.os.tag == .windows) {
+			var data: c.WSADATA = undefined;
+			windowsError(c.WSAStartup(0x0202, &data)) catch |err| {
 				std.log.err("Could not initialize the Windows Socket API: {s}", .{@errorName(err)});
 				@panic("Could not init networking.");
 			};
@@ -57,15 +60,40 @@ const Socket = struct {
 	fn init(localPort: u16) !Socket {
 		const self = Socket{
 			.socketID = blk: {
-				if(builtin.os.tag == .windows) {
-					const socket = ws2.socket(ws2.AF_INET, ws2.SOCK_DGRAM, ws2.IPPROTO_UDP);
-					if(socket == ws2.INVALID_SOCKET) {
-						try windowsError(ws2.WSAGetLastError());
+				if (builtin.target.os.tag == .windows) {
+					const socket = c.socket(c.AF_INET, c.SOCK_DGRAM, c.IPPROTO_UDP);
+					if (socket == c.INVALID_SOCKET) {
+						try windowsError(c.WSAGetLastError());
 						return error.UNKNOWN;
+					}
+					const setting: c_int = c.TRUE;
+					if (c.setsockopt(socket, c.IPPROTO_IP, c.IP_DONTFRAGMENT, @ptrCast(&setting), @sizeOf(c_int)) != 0) {
+						try windowsError(c.WSAGetLastError());
 					}
 					break :blk socket;
 				} else {
-					break :blk try posix.socket(posix.AF.INET, posix.SOCK.DGRAM, posix.IPPROTO.UDP);
+					const socket = std.c.socket(posix.AF.INET, posix.SOCK.DGRAM, posix.IPPROTO.UDP);
+					switch (std.c.errno(socket)) {
+						.SUCCESS => {},
+						else => |err| {
+							std.log.warn("Got error while creating socket: {s}", .{@tagName(err)});
+							return error.SocketCreationFailed;
+						},
+					}
+					const result = option: {
+						if (builtin.target.os.tag == .macos) {
+							const probe: c_int = 1;
+							break :option std.c.setsockopt(socket, std.c.IPPROTO.IP, std.c.IP.DONTFRAG, &probe, @sizeOf(c_int));
+						} else {
+							const probe: c_int = std.c.IP.PMTUDISC_PROBE;
+							break :option std.c.setsockopt(socket, std.c.IPPROTO.IP, std.c.IP.MTU_DISCOVER, &probe, @sizeOf(c_int));
+						}
+					};
+					switch (std.c.errno(result)) {
+						.SUCCESS => {},
+						else => |err| std.log.warn("Got error while setting socket option: {s}", .{@tagName(err)}),
+					}
+					break :blk socket;
 				}
 			},
 		};
@@ -74,54 +102,76 @@ const Socket = struct {
 			.port = @byteSwap(localPort),
 			.addr = 0,
 		};
-		if(builtin.os.tag == .windows) {
-			if(ws2.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in)) == ws2.SOCKET_ERROR) {
-				try windowsError(ws2.WSAGetLastError());
+		if (builtin.target.os.tag == .windows) {
+			if (c.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in)) == c.SOCKET_ERROR) {
+				try windowsError(c.WSAGetLastError());
 			}
 		} else {
-			try posix.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in));
+			const result = std.c.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in));
+			switch (std.c.errno(result)) {
+				.SUCCESS => {},
+				.ADDRINUSE => {
+					return error.AddressInUse;
+				},
+				else => |err| {
+					std.log.warn("Got error while binding socket: {s}", .{@tagName(err)});
+					return error.SocketCreationFailed;
+				},
+			}
 		}
 		return self;
 	}
 
 	fn deinit(self: Socket) void {
-		if(builtin.os.tag == .windows) {
-			_ = ws2.closesocket(self.socketID);
+		if (builtin.target.os.tag == .windows) {
+			_ = c.closesocket(self.socketID);
 		} else {
-			posix.close(self.socketID);
+			const err = std.c.errno(std.c.close(self.socketID));
+			switch (err) {
+				.SUCCESS => {},
+				else => {
+					std.log.warn("Got error while closing socket: {s}", .{@tagName(err)});
+				},
+			}
 		}
 	}
 
-	fn send(self: Socket, data: []const u8, destination: Address) void {
-		const addr = posix.sockaddr.in{
-			.port = @byteSwap(destination.port),
-			.addr = destination.ip,
+	fn send(self: Socket, data: []const u8, destination: SocketAddress) void {
+		const addr, const addrLen = blk: {
+			var posixAddr: std.Io.Threaded.PosixAddress = undefined;
+			const addrLen = std.Io.Threaded.addressToPosix(&destination.address, &posixAddr);
+			break :blk .{posixAddr.in, addrLen};
 		};
-		if(builtin.os.tag == .windows) {
-			const result = ws2.sendto(self.socketID, data.ptr, @intCast(data.len), 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in));
-			if(result == ws2.SOCKET_ERROR) {
-				const err: anyerror = if(windowsError(ws2.WSAGetLastError())) error.Unknown else |err| err;
+		if (builtin.target.os.tag == .windows) {
+			const result = c.sendto(self.socketID, data.ptr, @intCast(data.len), 0, @ptrCast(&addr), @intCast(addrLen));
+			if (result == c.SOCKET_ERROR) {
+				const err = if (windowsError(c.WSAGetLastError())) error.Unknown else |err| err;
 				std.log.warn("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
 			} else {
 				std.debug.assert(@as(usize, @intCast(result)) == data.len);
 			}
 		} else {
-			std.debug.assert(data.len == posix.sendto(self.socketID, data, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in)) catch |err| {
-				std.log.warn("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
-				return;
-			});
+			const result = std.c.sendto(self.socketID, data.ptr, data.len, 0, @ptrCast(&addr), addrLen);
+			switch (std.c.errno(result)) {
+				.SUCCESS => {
+					std.debug.assert(data.len == result);
+				},
+				else => |err| {
+					std.log.warn("Got error while sending to {f}: {s}", .{destination, @tagName(err)});
+				},
+			}
 		}
 	}
 
-	fn receive(self: Socket, buffer: []u8, timeout: i32, resultAddress: *Address) ![]u8 {
-		if(builtin.os.tag == .windows) { // Of course Windows always has it's own special thing.
-			var pfd = [1]ws2.pollfd{
-				.{.fd = self.socketID, .events = std.c.POLL.RDNORM | std.c.POLL.RDBAND, .revents = undefined},
+	fn receive(self: Socket, buffer: []u8, timeout: i32, resultAddress: *SocketAddress) ![]u8 {
+		if (builtin.target.os.tag == .windows) { // Of course Windows always has it's own special thing.
+			var pfd = [1]c.pollfd{
+				.{.fd = self.socketID, .events = c.POLLRDNORM | c.POLLRDBAND, .revents = undefined},
 			};
-			const length = ws2.WSAPoll(&pfd, pfd.len, 0); // The timeout is set to zero. Otherwise sendto operations from other threads will block on this.
-			if(length == ws2.SOCKET_ERROR) {
-				try windowsError(ws2.WSAGetLastError());
-			} else if(length == 0) {
+			const length = c.WSAPoll(&pfd, pfd.len, 0); // The timeout is set to zero. Otherwise sendto operations from other threads will block on this.
+			if (length == c.SOCKET_ERROR) {
+				try windowsError(c.WSAGetLastError());
+			} else if (length == 0) {
 				main.io.sleep(.fromMilliseconds(1), .awake) catch {}; // Manually sleep, since WSAPoll is blocking.
 				return error.Timeout;
 			}
@@ -130,44 +180,46 @@ const Socket = struct {
 				.{.fd = self.socketID, .events = posix.POLL.IN, .revents = undefined},
 			};
 			const length = try posix.poll(&pfd, timeout);
-			if(length == 0) return error.Timeout;
+			if (length == 0) return error.Timeout;
 		}
 		var addr: posix.sockaddr.in = undefined;
 		const length: usize = blk: {
-			if(builtin.os.tag == .windows) {
+			if (builtin.target.os.tag == .windows) {
 				var addrLen: c_int = @sizeOf(posix.sockaddr.in);
-				const result = ws2.recvfrom(self.socketID, buffer.ptr, @intCast(buffer.len), 0, @ptrCast(&addr), &addrLen);
-				if(result == ws2.SOCKET_ERROR) {
-					try windowsError(ws2.WSAGetLastError());
+				const result = c.recvfrom(self.socketID, buffer.ptr, @intCast(buffer.len), 0, @ptrCast(&addr), &addrLen);
+				if (result == c.SOCKET_ERROR) {
+					try windowsError(c.WSAGetLastError());
 				}
 				break :blk @intCast(result);
 			} else {
 				var addrLen: posix.socklen_t = @sizeOf(posix.sockaddr.in);
-				break :blk try posix.recvfrom(self.socketID, buffer, 0, @ptrCast(&addr), &addrLen);
+				const result = std.c.recvfrom(self.socketID, buffer.ptr, buffer.len, 0, @ptrCast(&addr), &addrLen);
+				switch (std.c.errno(result)) {
+					.SUCCESS => break :blk @intCast(result),
+					else => |err| {
+						std.log.warn("recvfrom failed with error {s}", .{@tagName(err)});
+						return error.Failed;
+					},
+				}
 			}
 		};
-		resultAddress.ip = addr.addr;
-		resultAddress.port = @byteSwap(addr.port);
+		resultAddress.address = std.Io.Threaded.addressFromPosix(&std.Io.Threaded.PosixAddress{.in = addr});
 		return buffer[0..length];
 	}
 
-	fn resolveIP(name: []const u8) !u32 {
-		var nameBuf: [255]u8 = undefined;
+	fn resolveIP(name: []const u8, port: u16) !IpAddress {
+		var nameBuf: [254]u8 = undefined;
 		var buf: [16]std.Io.net.HostName.LookupResult = undefined;
 		var resultQueue = std.Io.Queue(std.Io.net.HostName.LookupResult).init(&buf);
-		std.Io.net.HostName.lookup(.{.bytes = name}, main.io, &resultQueue, .{.canonical_name_buffer = &nameBuf, .port = 0});
-		while(true) {
-			const entry = resultQueue.getOneUncancelable(main.io);
-			switch(entry) {
+		try std.Io.net.HostName.lookup(try .init(name), main.io, &resultQueue, .{.canonical_name_buffer = &nameBuf, .port = port});
+		while (true) {
+			const entry = resultQueue.getOneUncancelable(main.io) catch break;
+			switch (entry) {
 				.address => |addr| {
-					if(addr != .ip4) continue;
-					return std.mem.bytesToValue(u32, addr.ip4.bytes[0..4]);
+					if (addr != .ip4) continue;
+					return addr;
 				},
 				.canonical_name => {},
-				.end => |err| {
-					try err;
-					break;
-				},
 			}
 		}
 		return error.ReachedEndWithoutFindingAnything;
@@ -175,44 +227,97 @@ const Socket = struct {
 
 	fn getPort(self: Socket) !u16 {
 		var addr: posix.sockaddr.in = undefined;
-		if(builtin.os.tag == .windows) {
+		if (builtin.target.os.tag == .windows) {
 			var addrLen: c_int = @sizeOf(posix.sockaddr.in);
-			if(ws2.getsockname(self.socketID, @ptrCast(&addr), &addrLen) == ws2.SOCKET_ERROR) {
-				try windowsError(ws2.WSAGetLastError());
+			if (c.getsockname(self.socketID, @ptrCast(&addr), &addrLen) == c.SOCKET_ERROR) {
+				try windowsError(c.WSAGetLastError());
 			}
 		} else {
 			var addrLen: posix.socklen_t = @sizeOf(posix.sockaddr.in);
-			try posix.getsockname(self.socketID, @ptrCast(&addr), &addrLen);
+			const result = std.c.getsockname(self.socketID, @ptrCast(&addr), &addrLen);
+			switch (std.c.errno(result)) {
+				.SUCCESS => {},
+				else => |err| {
+					std.log.warn("Failed to get the port from getsockname: {s}", .{@tagName(err)});
+					return error.Failed;
+				},
+			}
 		}
 		return @byteSwap(addr.port);
 	}
 };
 
-pub fn init() void {
+pub fn init() !void {
 	Socket.startup();
 	protocols.init();
+	authentication.init();
+	try Connection.SecureChannel.checkResult(c.psa_crypto_init(), "psa_crypto_init");
 }
 
-pub const Address = struct {
-	ip: u32,
-	port: u16,
+pub fn deinit() void {
+	c.mbedtls_psa_crypto_free();
+}
+
+pub const SocketAddress = struct {
+	address: IpAddress,
 	isSymmetricNAT: bool = false,
 
-	pub const localHost = 0x0100007f;
-
-	pub fn format(self: Address, writer: anytype) !void {
-		if(self.isSymmetricNAT) {
-			try writer.print("{}.{}.{}.{}:?{}", .{self.ip & 255, self.ip >> 8 & 255, self.ip >> 16 & 255, self.ip >> 24, self.port});
+	pub fn format(self: SocketAddress, writer: anytype) !void {
+		if (self.isSymmetricNAT) {
+			try writer.print("{f}?", .{self.address});
 		} else {
-			try writer.print("{}.{}.{}.{}:{}", .{self.ip & 255, self.ip >> 8 & 255, self.ip >> 16 & 255, self.ip >> 24, self.port});
+			try writer.print("{f}", .{self.address});
 		}
+	}
+
+	fn parseInner(string: []const u8, defaultPort: ?u16) !struct { ip: []const u8, isSymmetricNAT: bool, port: u16 } {
+		var parts = std.mem.splitScalar(u8, string, ':');
+		const ip = parts.first();
+		var portString = parts.rest();
+		var isSymmetricNAT = false;
+		if (portString.len > 0 and portString[portString.len - 1] == '?') {
+			isSymmetricNAT = true;
+			portString = portString[0 .. portString.len - 1];
+		}
+		const port = try (std.fmt.parseUnsigned(u16, portString, 10) catch |err| (if (portString.len == 0) defaultPort orelse err else err));
+		return .{
+			.ip = ip,
+			.isSymmetricNAT = isSymmetricNAT,
+			.port = port,
+		};
+	}
+
+	pub fn resolve(string: []const u8, defaultPort: ?u16) !SocketAddress {
+		const innerResult = try parseInner(string, defaultPort);
+		return .{
+			.address = try Socket.resolveIP(innerResult.ip, innerResult.port),
+			.isSymmetricNAT = innerResult.isSymmetricNAT,
+		};
+	}
+
+	// copied from zig std, just without the port == port
+	pub fn eqlInnerWithoutPort(self: *const SocketAddress, other: *const SocketAddress) bool {
+		return switch (self.address) {
+			.ip4 => |a_ip4| switch (other.address) {
+				.ip4 => |b_ip4| {
+					const a_int: u32 = @bitCast(a_ip4.bytes);
+					const b_int: u32 = @bitCast(b_ip4.bytes);
+					return a_int == b_int;
+				},
+				else => false,
+			},
+			.ip6 => |a_ip6| switch (other.address) {
+				.ip6 => |b_ip6| std.mem.eql(u8, &a_ip6.bytes, &b_ip6.bytes),
+				else => false,
+			},
+		};
 	}
 };
 
 const Request = struct {
-	address: Address,
+	address: SocketAddress,
 	data: []const u8,
-	requestNotifier: std.Thread.Condition = std.Thread.Condition{},
+	requestNotifier: std.Io.Condition = .init,
 };
 
 /// Implements parts of the STUN(Session Traversal Utilities for NAT) protocol to discover public IP+Port
@@ -320,12 +425,12 @@ const stun = struct { // MARK: stun
 	const XOR_MAPPED_ADDRESS: u16 = 0x0020;
 	const MAGIC_COOKIE = [_]u8{0x21, 0x12, 0xA4, 0x42};
 
-	fn requestAddress(connection: *ConnectionManager) Address {
-		var oldAddress: ?Address = null;
+	fn requestAddress(connection: *ConnectionManager) SocketAddress {
+		var oldAddress: ?SocketAddress = null;
 		var seed: [std.Random.DefaultCsprng.secret_seed_length]u8 = @splat(0);
-		std.mem.writeInt(i128, seed[0..16], main.timestamp().toMilliseconds(), builtin.cpu.arch.endian()); // Not the best seed, but it's not that important.
+		std.mem.writeInt(i128, seed[0..16], main.timestamp().toMilliseconds(), builtin.target.cpu.arch.endian()); // Not the best seed, but it's not that important.
 		var random = std.Random.DefaultCsprng.init(seed);
-		for(0..16) |_| {
+		for (0..16) |_| {
 			// Choose a somewhat random server, so we faster notice if any one of them stopped working.
 			const server = ipServerList[random.random().intRangeAtMost(usize, 0, ipServerList.len - 1)];
 			var data = [_]u8{
@@ -336,16 +441,11 @@ const stun = struct { // MARK: stun
 			};
 			random.fill(data[8..]); // Fill the transaction ID.
 
-			var splitter = std.mem.splitScalar(u8, server, ':');
-			const ip = splitter.first();
-			const serverAddress = Address{
-				.ip = Socket.resolveIP(ip) catch |err| {
-					std.log.warn("Cannot resolve STUN server address: {s}, error: {s}", .{ip, @errorName(err)});
-					continue;
-				},
-				.port = std.fmt.parseUnsigned(u16, splitter.rest(), 10) catch 3478,
+			const serverAddress = SocketAddress.resolve(server, null) catch |err| {
+				std.log.warn("Cannot resolve STUN server address: {s}, error: {s}", .{server, @errorName(err)});
+				continue;
 			};
-			if(connection.sendRequest(main.globalAllocator, &data, serverAddress, 500*1000000)) |answer| {
+			if (connection.sendRequest(main.globalAllocator, &data, serverAddress, .fromMilliseconds(500))) |answer| {
 				defer main.globalAllocator.free(answer);
 				verifyHeader(answer, data[8..20]) catch |err| {
 					std.log.err("Header verification failed with {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
@@ -355,11 +455,11 @@ const stun = struct { // MARK: stun
 					std.log.err("Could not parse IP+Port: {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
 					continue;
 				};
-				if(oldAddress) |other| {
-					std.log.info("{f}", .{result});
-					if(other.ip == result.ip and other.port == result.port) {
+				if (oldAddress) |other| {
+					if (other.address.eql(&result.address)) {
 						return result;
 					} else {
+						std.log.warn("Detected symmetric NAT. UDP-holepunching may not work reliably", .{});
 						result.isSymmetricNAT = true;
 						return result;
 					}
@@ -370,22 +470,22 @@ const stun = struct { // MARK: stun
 				std.log.warn("Couldn't reach STUN server: {s}", .{server});
 			}
 		}
-		return Address{.ip = Socket.resolveIP("127.0.0.1") catch unreachable, .port = settings.defaultPort}; // TODO: Return ip address in LAN.
+		return SocketAddress{.address = .{.ip4 = .loopback(settings.defaultPort)}}; // TODO: Return ip address in LAN.
 	}
 
-	fn findIPPort(_data: []const u8) !Address {
+	fn findIPPort(_data: []const u8) !SocketAddress {
 		var data = _data[20..]; // Skip the header.
-		while(data.len > 0) {
+		while (data.len > 0) {
 			const typ = std.mem.readInt(u16, data[0..2], .big);
 			const len = std.mem.readInt(u16, data[2..4], .big);
 			data = data[4..];
-			switch(typ) {
+			switch (typ) {
 				XOR_MAPPED_ADDRESS, MAPPED_ADDRESS => {
 					const xor = data[0];
-					if(typ == MAPPED_ADDRESS and xor != 0) return error.NonZeroXORForMappedAddress;
-					if(data[1] == 0x01) {
+					if (typ == MAPPED_ADDRESS and xor != 0) return error.NonZeroXORForMappedAddress;
+					if (data[1] == 0x01) {
 						var addressData: [6]u8 = data[2..8].*;
-						if(typ == XOR_MAPPED_ADDRESS) {
+						if (typ == XOR_MAPPED_ADDRESS) {
 							addressData[0] ^= MAGIC_COOKIE[0];
 							addressData[1] ^= MAGIC_COOKIE[1];
 							addressData[2] ^= MAGIC_COOKIE[0];
@@ -393,11 +493,15 @@ const stun = struct { // MARK: stun
 							addressData[4] ^= MAGIC_COOKIE[2];
 							addressData[5] ^= MAGIC_COOKIE[3];
 						}
-						return Address{
-							.port = std.mem.readInt(u16, addressData[0..2], .big),
-							.ip = std.mem.readInt(u32, addressData[2..6], builtin.cpu.arch.endian()), // Needs to stay in big endian → native.
+						return SocketAddress{
+							.address = .{
+								.ip4 = .{
+									.port = std.mem.readInt(u16, addressData[0..2], .big),
+									.bytes = std.mem.toBytes(std.mem.readInt(u32, addressData[2..6], builtin.target.cpu.arch.endian())), // Needs to stay in big endian → native.
+								},
+							},
 						};
-					} else if(data[1] == 0x02) {
+					} else if (data[1] == 0x02) {
 						data = data[(len + 3) & ~@as(usize, 3) ..]; // Pad to 32 Bit.
 						continue; // I don't care about IPv6.
 					} else {
@@ -413,13 +517,13 @@ const stun = struct { // MARK: stun
 	}
 
 	fn verifyHeader(data: []const u8, transactionID: []const u8) !void {
-		if(data[0] != 0x01 or data[1] != 0x01) return error.NotABinding;
-		if(@as(u16, @intCast(data[2] & 0xff))*256 + (data[3] & 0xff) != data.len - 20) return error.BadSize;
-		for(MAGIC_COOKIE, 0..) |cookie, i| {
-			if(data[i + 4] != cookie) return error.WrongCookie;
+		if (data[0] != 0x01 or data[1] != 0x01) return error.NotABinding;
+		if (@as(u16, @intCast(data[2] & 0xff))*256 + (data[3] & 0xff) != data.len - 20) return error.BadSize;
+		for (MAGIC_COOKIE, 0..) |cookie, i| {
+			if (data[i + 4] != cookie) return error.WrongCookie;
 		}
-		for(transactionID, 0..) |_, i| {
-			if(data[i + 8] != transactionID[i]) return error.WrongTransaction;
+		for (transactionID, 0..) |_, i| {
+			if (data[i + 8] != transactionID[i]) return error.WrongTransaction;
 		}
 	}
 };
@@ -428,18 +532,18 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	socket: Socket = undefined,
 	thread: std.Thread = undefined,
 	threadId: std.Thread.Id = undefined,
-	externalAddress: Address = undefined,
+	externalAddress: SocketAddress = undefined,
 	online: Atomic(bool) = .init(false),
-	running: Atomic(bool) = .init(true),
+	running: Atomic(bool) = .init(false),
 
-	connections: main.List(*Connection) = undefined,
-	requests: main.List(*Request) = undefined,
+	connections: main.List(*Connection) = .empty,
+	requests: main.List(*Request) = .empty,
 
-	mutex: std.Thread.Mutex = .{},
-	waitingToFinishReceive: std.Thread.Condition = std.Thread.Condition{},
-	allowNewConnections: Atomic(bool) = .init(false),
+	mutex: main.utils.Mutex = .{},
+	waitingToFinishReceive: std.Io.Condition = .init,
+	allowNewConnections: bool,
 
-	receiveBuffer: [Connection.maxMtu]u8 = undefined,
+	receiveBuffer: [Connection.MtuHandler.maxMtu]u8 = undefined,
 
 	world: ?*game.World = null,
 
@@ -449,7 +553,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 	const PacketSendRequest = struct {
 		data: []const u8,
-		target: Address,
+		target: SocketAddress,
 		time: i64,
 
 		fn compare(_: void, a: PacketSendRequest, b: PacketSendRequest) std.math.Order {
@@ -457,69 +561,91 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 	};
 
-	pub fn init(localPort: u16, online: bool) !*ConnectionManager {
+	pub fn init(localPort: u16, options: struct { allowNewConnections: bool = false }) !*ConnectionManager {
 		const result: *ConnectionManager = main.globalAllocator.create(ConnectionManager);
 		errdefer main.globalAllocator.destroy(result);
-		result.* = .{};
-		result.connections = .init(main.globalAllocator);
-		result.requests = .init(main.globalAllocator);
-		result.packetSendRequests = .init(main.globalAllocator.allocator, {});
+		result.* = .{
+			.allowNewConnections = options.allowNewConnections,
+		};
 
 		result.localPort = localPort;
 		result.socket = Socket.init(localPort) catch |err| blk: {
-			if(err == error.AddressInUse) {
+			if (err == error.AddressInUse) {
 				const socket = try Socket.init(0); // Use any port.
 				result.localPort = try socket.getPort();
 				break :blk socket;
 			} else return err;
 		};
 		errdefer result.socket.deinit();
-		if(localPort == 0) result.localPort = try result.socket.getPort();
+		if (localPort == 0) result.localPort = try result.socket.getPort();
 
-		result.thread = try std.Thread.spawn(.{}, run, .{result});
-		result.thread.setName("Network Thread") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
-		if(online) {
-			result.makeOnline();
-		}
-		if(main.settings.launchConfig.headlessServer) {
-			result.allowNewConnections.store(true, .monotonic);
-		}
+		try result.@"continue"();
+
 		return result;
 	}
+	pub fn @"continue"(result: *ConnectionManager) !void {
+		if (result.running.load(.monotonic)) return;
 
+		result.mutex.lock();
+		defer result.mutex.unlock();
+
+		for (result.connections.items) |conn| {
+			conn.@"continue"();
+		}
+
+		result.requests = .empty;
+		result.packetSendRequests = .initContext({});
+		result.running.store(true, .monotonic);
+		result.thread = try std.Thread.spawn(.{}, run, .{result});
+		result.thread.setName(main.io, "Network Thread") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
+	}
 	pub fn deinit(self: *ConnectionManager) void {
-		for(self.connections.items) |conn| {
+		if (self.running.load(.monotonic)) self.pause();
+
+		for (self.connections.items) |conn| {
 			conn.disconnect();
 		}
 
+		self.socket.deinit();
+		self.connections.deinit(main.globalAllocator);
+		main.globalAllocator.destroy(self);
+	}
+	pub fn pause(self: *ConnectionManager) void {
+		std.debug.assert(self.running.load(.monotonic));
+
 		self.running.store(false, .monotonic);
 		self.thread.join();
-		self.socket.deinit();
-		self.connections.deinit();
-		for(self.requests.items) |request| {
-			request.requestNotifier.signal();
+
+		self.mutex.lock();
+		defer self.mutex.unlock();
+
+		for (self.requests.items) |request| {
+			request.requestNotifier.signal(main.io);
 		}
-		self.requests.deinit();
-		while(self.packetSendRequests.removeOrNull()) |packet| {
+		self.requests.deinit(main.globalAllocator);
+
+		while (self.packetSendRequests.pop()) |packet| {
 			main.globalAllocator.free(packet.data);
 		}
-		self.packetSendRequests.deinit();
+		self.packetSendRequests.deinit(main.globalAllocator.allocator);
 
-		main.globalAllocator.destroy(self);
+		for (self.connections.items) |conn| {
+			conn.pause();
+		}
 	}
 
 	pub fn makeOnline(self: *ConnectionManager) void {
-		if(!self.online.load(.acquire)) {
+		if (!self.online.load(.acquire)) {
 			self.externalAddress = stun.requestAddress(self);
 			self.online.store(true, .release);
 		}
 	}
 
-	pub fn send(self: *ConnectionManager, data: []const u8, target: Address, nanoTime: ?i64) void {
-		if(nanoTime) |time| {
+	pub fn send(self: *ConnectionManager, data: []const u8, target: SocketAddress, nanoTime: ?i64) void {
+		if (nanoTime) |time| {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			self.packetSendRequests.add(.{
+			self.packetSendRequests.push(main.globalAllocator.allocator, .{
 				.data = main.globalAllocator.dupe(u8, data),
 				.target = target,
 				.time = time,
@@ -529,18 +655,18 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 	}
 
-	pub fn sendRequest(self: *ConnectionManager, allocator: NeverFailingAllocator, data: []const u8, target: Address, timeout_ns: u64) ?[]const u8 {
+	pub fn sendRequest(self: *ConnectionManager, allocator: NeverFailingAllocator, data: []const u8, target: SocketAddress, timeout: std.Io.Duration) ?[]const u8 {
 		self.socket.send(data, target);
 		var request = Request{.address = target, .data = data};
 		{
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			self.requests.append(&request);
+			self.requests.append(main.globalAllocator, &request);
 
-			request.requestNotifier.timedWait(&self.mutex, timeout_ns) catch {};
+			request.requestNotifier.waitTimeout(main.io, &self.mutex.super, .{.duration = .{.raw = timeout, .clock = .awake}}) catch {};
 
-			for(self.requests.items, 0..) |req, i| {
-				if(req == &request) {
+			for (self.requests.items, 0..) |req, i| {
+				if (req == &request) {
 					_ = self.requests.swapRemove(i);
 					break;
 				}
@@ -548,10 +674,10 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		}
 
 		// The request data gets modified when a result was received.
-		if(request.data.ptr == data.ptr) {
+		if (request.data.ptr == data.ptr) {
 			return null;
 		} else {
-			if(allocator.allocator.ptr == main.globalAllocator.allocator.ptr) {
+			if (allocator.allocator.ptr == main.globalAllocator.allocator.ptr) {
 				return request.data;
 			} else {
 				const result = allocator.dupe(u8, request.data);
@@ -564,42 +690,42 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	pub fn addConnection(self: *ConnectionManager, conn: *Connection) error{AlreadyConnected}!void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		for(self.connections.items) |other| {
-			if(other.remoteAddress.ip == conn.remoteAddress.ip and other.remoteAddress.port == conn.remoteAddress.port) return error.AlreadyConnected;
+		for (self.connections.items) |other| {
+			if (other.remoteAddress.address.eql(&conn.remoteAddress.address)) return error.AlreadyConnected;
 		}
-		self.connections.append(conn);
+		self.connections.append(main.globalAllocator, conn);
 	}
 
 	pub fn finishCurrentReceive(self: *ConnectionManager) void {
 		std.debug.assert(self.threadId != std.Thread.getCurrentId()); // WOuld cause deadlock, since we are in a receive.
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		self.waitingToFinishReceive.wait(&self.mutex);
+		self.waitingToFinishReceive.waitUncancelable(main.io, &self.mutex.super);
 	}
 
 	pub fn removeConnection(self: *ConnectionManager, conn: *Connection) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
-		for(self.connections.items, 0..) |other, i| {
-			if(other == conn) {
+		for (self.connections.items, 0..) |other, i| {
+			if (other == conn) {
 				_ = self.connections.swapRemove(i);
 				break;
 			}
 		}
 	}
 
-	fn onReceive(self: *ConnectionManager, data: []const u8, source: Address) void {
+	fn onReceive(self: *ConnectionManager, data: []const u8, source: SocketAddress) void {
 		std.debug.assert(self.threadId == std.Thread.getCurrentId());
 		self.mutex.lock();
 
-		for(self.connections.items) |conn| {
-			if(conn.remoteAddress.ip == source.ip) {
-				if(conn.bruteforcingPort) {
-					conn.remoteAddress.port = source.port;
+		for (self.connections.items) |conn| {
+			if (conn.remoteAddress.eqlInnerWithoutPort(&source)) {
+				if (conn.bruteforcingPort) {
+					conn.remoteAddress.address.setPort(source.address.getPort());
 					conn.bruteforcingPort = false;
 				}
-				if(conn.remoteAddress.port == source.port) {
+				if (conn.remoteAddress.address.getPort() == source.address.getPort()) {
 					self.mutex.unlock();
 					conn.receive(data);
 					return;
@@ -609,24 +735,24 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		{
 			defer self.mutex.unlock();
 			// Check if it's part of an active request:
-			for(self.requests.items) |request| {
-				if(request.address.ip == source.ip and request.address.port == source.port) {
+			for (self.requests.items) |request| {
+				if (request.address.address.eql(&source.address)) {
 					request.data = main.globalAllocator.dupe(u8, data);
-					request.requestNotifier.signal();
+					request.requestNotifier.signal(main.io);
 					return;
 				}
 			}
-			if(self.online.load(.acquire) and source.ip == self.externalAddress.ip and source.port == self.externalAddress.port) return;
+			if (self.online.load(.acquire) and source.address.eql(&self.externalAddress.address)) return;
 		}
-		if(self.allowNewConnections.load(.monotonic) or source.ip == Address.localHost) {
-			if(data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
-				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{f}", .{source}) catch unreachable;
+		if (self.allowNewConnections or source.address.eql(&IpAddress{.ip4 = .loopback(source.address.getPort())})) {
+			if (data.len != 0 and data[0] == @backingInt(Connection.ChannelId.init)) {
+				const ip = main.stackAllocator.print("{f}", .{source});
 				defer main.stackAllocator.free(ip);
-				const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ip) catch |err| {
+				const user = main.server.User.init(main.server.connectionManager, ip) catch |err| {
 					std.log.err("Cannot connect user from external IP {f}: {s}", .{source, @errorName(err)});
 					return;
 				};
-				user.decreaseRefCount();
+				user.conn.receive(data);
 			}
 		} else {
 			// TODO: Reduce the number of false alarms in the short period after a disconnect.
@@ -642,16 +768,16 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 		var lastTime: i64 = networkTimestamp();
 		var lastExternalPacketTime = lastTime;
-		while(self.running.load(.monotonic)) {
-			main.heap.GarbageCollection.syncPoint();
-			self.waitingToFinishReceive.broadcast();
-			var source: Address = undefined;
-			if(self.socket.receive(&self.receiveBuffer, 1, &source)) |data| {
+		while (self.running.load(.monotonic)) {
+			main.heap.garbage_collection.syncPoint();
+			self.waitingToFinishReceive.broadcast(main.io);
+			var source: SocketAddress = undefined;
+			if (self.socket.receive(&self.receiveBuffer, 1, &source)) |data| {
 				self.onReceive(data, source);
 			} else |err| {
-				if(err == error.Timeout) {
+				if (err == error.Timeout) {
 					// No message within the last ~100 ms.
-				} else if(err == error.ConnectionResetByPeer) {
+				} else if (err == error.ConnectionResetByPeer) {
 					std.log.err("Got error.ConnectionResetByPeer on receive. This indicates that a previous message did not find a valid destination.", .{});
 				} else {
 					std.log.warn("Got error on receive: {s}", .{@errorName(err)});
@@ -661,27 +787,27 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			{
 				self.mutex.lock();
 				defer self.mutex.unlock();
-				while(self.packetSendRequests.peek() != null and self.packetSendRequests.peek().?.time -% curTime <= 0) {
-					const packet = self.packetSendRequests.remove();
+				while (self.packetSendRequests.peek() != null and self.packetSendRequests.peek().?.time -% curTime <= 0) {
+					const packet = self.packetSendRequests.pop().?;
 					self.socket.send(packet.data, packet.target);
 					main.globalAllocator.free(packet.data);
 				}
 			}
 
 			// Send packets roughly every 1 ms:
-			if(curTime -% lastTime > 1*ms) {
+			if (curTime -% lastTime > 1*ms) {
 				lastTime = curTime;
 				var i: u32 = 0;
 				self.mutex.lock();
 				defer self.mutex.unlock();
-				while(i < self.connections.items.len) {
+				while (i < self.connections.items.len) {
 					var conn = self.connections.items[i];
 					self.mutex.unlock();
 					conn.processNextPackets();
 					self.mutex.lock();
 					i += 1;
 				}
-				if(self.connections.items.len == 0 and self.online.load(.acquire) and curTime -% lastExternalPacketTime > 1000*ms) {
+				if (self.connections.items.len == 0 and self.online.load(.acquire) and curTime -% lastExternalPacketTime > 1000*ms) {
 					lastExternalPacketTime = curTime;
 					// Send a message to external ip, to keep the port open:
 					const data = [1]u8{0};
@@ -692,20 +818,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	}
 };
 
-const UnconfirmedPacket = struct {
-	data: []const u8,
-	lastKeepAliveSentBefore: u32,
-	id: u32,
-};
-
 pub const Connection = struct { // MARK: Connection
-	const maxMtu: u32 = 65507; // max udp packet size
-	const importantHeaderSize: u32 = 5;
-	const minMtu: u32 = 576 - 20 - 8; // IPv4 MTU minus IP header minus udp header
 	const headerOverhead = 20 + 8 + 42; // IP Header + UDP Header + Ethernet header/footer
-	const congestionControl_historySize = 16;
-	const congestionControl_historyMask = congestionControl_historySize - 1;
-	const minimumBandWidth = 10_000;
 
 	const receiveBufferSize = 8 << 20;
 
@@ -718,10 +832,13 @@ pub const Connection = struct { // MARK: Connection
 
 	const SequenceIndex = i32;
 
-	const LossStatus = enum {
-		noLoss,
-		singleLoss,
-		doubleLoss,
+	const LossStatus = struct {
+		state: enum {
+			noLoss,
+			singleLoss,
+			doubleLoss,
+		},
+		packetLen: i32,
 	};
 
 	const RangeBuffer = struct { // MARK: RangeBuffer
@@ -733,11 +850,11 @@ pub const Connection = struct { // MARK: Connection
 				return self.start +% self.len;
 			}
 		};
-		ranges: main.ListUnmanaged(Range),
+		ranges: main.List(Range),
 
 		pub fn init() RangeBuffer {
 			return .{
-				.ranges = .{},
+				.ranges = .empty,
 			};
 		}
 
@@ -750,22 +867,22 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		pub fn addRange(self: *RangeBuffer, allocator: NeverFailingAllocator, range: Range) void {
-			if(self.hasRange(range)) return;
+			if (self.hasRange(range)) return;
 			var startRange: ?Range = null;
 			var endRange: ?Range = null;
 			var i: usize = 0;
-			while(i < self.ranges.items.len) {
+			while (i < self.ranges.items.len) {
 				const other = self.ranges.items[i];
-				if(range.start -% other.start <= 0 and range.end() -% other.end() >= 0) {
+				if (range.start -% other.start <= 0 and range.end() -% other.end() >= 0) {
 					_ = self.ranges.swapRemove(i);
 					continue;
 				}
-				if(range.start -% other.end() <= 0 and range.start -% other.start >= 0) {
+				if (range.start -% other.end() <= 0 and range.start -% other.start >= 0) {
 					_ = self.ranges.swapRemove(i);
 					startRange = other;
 					continue;
 				}
-				if(range.end() -% other.start >= 0 and range.end() -% other.end() <= 0) {
+				if (range.end() -% other.start >= 0 and range.end() -% other.end() <= 0) {
 					_ = self.ranges.swapRemove(i);
 					endRange = other;
 					continue;
@@ -773,19 +890,19 @@ pub const Connection = struct { // MARK: Connection
 				i += 1;
 			}
 			var mergedRange = range;
-			if(startRange) |start| {
+			if (startRange) |start| {
 				mergedRange.start = start.start;
 				mergedRange.len = range.end() -% mergedRange.start;
 			}
-			if(endRange) |end| {
+			if (endRange) |end| {
 				mergedRange.len = end.end() -% mergedRange.start;
 			}
 			self.ranges.append(allocator, mergedRange);
 		}
 
 		pub fn hasRange(self: *RangeBuffer, range: Range) bool {
-			for(self.ranges.items) |other| {
-				if(range.start -% other.start >= 0 and range.end() -% other.end() <= 0) {
+			for (self.ranges.items) |other| {
+				if (range.start -% other.start >= 0 and range.end() -% other.end() <= 0) {
 					return true;
 				}
 			}
@@ -793,11 +910,11 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		pub fn extractFirstRange(self: *RangeBuffer) ?Range {
-			if(self.ranges.items.len == 0) return null;
+			if (self.ranges.items.len == 0) return null;
 			var firstRange = self.ranges.items[0];
 			var index: usize = 0;
-			for(self.ranges.items[1..], 1..) |range, i| {
-				if(range.start -% firstRange.start < 0) {
+			for (self.ranges.items[1..], 1..) |range, i| {
+				if (range.start -% firstRange.start < 0) {
 					firstRange = range;
 					index = i;
 				}
@@ -819,14 +936,18 @@ pub const Connection = struct { // MARK: Connection
 		ranges: RangeBuffer,
 		availablePosition: SequenceIndex = undefined,
 		currentReadPosition: SequenceIndex = undefined,
+		decryptedBuffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
 		buffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
 		header: ?Header = null,
-		protocolBuffer: main.ListUnmanaged(u8) = .{},
+		protocolBuffer: main.List(u8) = .empty,
+		channelId: ChannelId,
 
-		pub fn init() ReceiveBuffer {
+		pub fn init(channelId: ChannelId) ReceiveBuffer {
 			return .{
 				.ranges = .init(),
+				.decryptedBuffer = .init(main.globalAllocator),
 				.buffer = .init(main.globalAllocator),
+				.channelId = channelId,
 			};
 		}
 
@@ -834,52 +955,61 @@ pub const Connection = struct { // MARK: Connection
 			self.ranges.deinit(main.globalAllocator);
 			self.protocolBuffer.deinit(main.globalAllocator);
 			self.buffer.deinit(main.globalAllocator);
+			self.decryptedBuffer.deinit(main.globalAllocator);
 		}
 
-		fn applyRanges(self: *ReceiveBuffer) void {
-			const range = self.ranges.extractFirstRange() orelse unreachable;
+		fn applyRanges(self: *ReceiveBuffer, secureChannel: ?*SecureChannel) !void {
+			const range = self.ranges.extractFirstRange().?;
 			std.debug.assert(range.start == self.availablePosition);
 			self.availablePosition = range.end();
+			const data = main.stackAllocator.alloc(u8, @intCast(range.len));
+			defer main.stackAllocator.free(data);
+			self.buffer.popSliceFront(data) catch unreachable;
+			if (secureChannel) |ch| {
+				try ch.receiveThroughTls(data);
+			} else {
+				try self.decryptedBuffer.pushBackSlice(data);
+			}
 		}
 
 		fn getHeaderInformation(self: *ReceiveBuffer) !?Header {
-			if(self.currentReadPosition == self.availablePosition) return null;
+			if (self.decryptedBuffer.len == 0) return null;
 			var header: Header = .{
-				.protocolIndex = self.buffer.getAtOffset(0) orelse unreachable,
+				.protocolIndex = self.decryptedBuffer.getAtOffset(0).?,
 				.size = 0,
 			};
 			var i: u8 = 1;
-			while(true) : (i += 1) {
-				if(self.currentReadPosition +% i == self.availablePosition) return null;
-				const nextByte = self.buffer.getAtOffset(i) orelse unreachable;
+			while (true) : (i += 1) {
+				if (i == self.decryptedBuffer.len) return null;
+				const nextByte = self.decryptedBuffer.getAtOffset(i).?;
 				header.size = header.size << 7 | (nextByte & 0x7f);
-				if(nextByte & 0x80 == 0) break;
-				if(header.size > std.math.maxInt(@TypeOf(header.size)) >> 7) return error.Invalid;
+				if (nextByte & 0x80 == 0) break;
+				if (header.size > std.math.maxInt(@TypeOf(header.size)) >> 7) return error.Invalid;
 			}
-			self.buffer.discardElementsFront(i + 1);
-			self.currentReadPosition +%= @intCast(i + 1);
+			self.decryptedBuffer.discardElementsFront(i + 1);
 			return header;
 		}
 
-		fn collectRangesAndExecuteProtocols(self: *ReceiveBuffer, conn: *Connection) !void {
-			self.applyRanges();
-			while(true) {
-				if(self.header == null) {
+		fn collectRangesAndExecuteProtocols(self: *ReceiveBuffer, secureChannel: ?*SecureChannel, conn: *Connection) !void {
+			try self.applyRanges(secureChannel);
+			while (true) {
+				if (self.header == null) {
 					self.header = try self.getHeaderInformation() orelse return;
 					self.protocolBuffer.ensureCapacity(main.globalAllocator, self.header.?.size);
 				}
-				const amount = @min(@as(usize, @intCast(self.availablePosition -% self.currentReadPosition)), self.header.?.size - self.protocolBuffer.items.len);
-				if(self.availablePosition -% self.currentReadPosition == 0) return;
+				const amount = @min(@as(usize, @intCast(self.decryptedBuffer.len)), self.header.?.size - self.protocolBuffer.items.len);
+				if (self.decryptedBuffer.len == 0) return;
 
-				self.buffer.popSliceFront(self.protocolBuffer.addManyAssumeCapacity(amount)) catch unreachable;
-				self.currentReadPosition +%= @intCast(amount);
-				if(self.protocolBuffer.items.len != self.header.?.size) return;
+				self.decryptedBuffer.popSliceFront(self.protocolBuffer.addManyAssumeCapacity(amount)) catch unreachable;
+				if (self.protocolBuffer.items.len != self.header.?.size) return;
 
 				const protocolIndex = self.header.?.protocolIndex;
 				self.header = null;
-				try protocols.onReceive(conn, protocolIndex, self.protocolBuffer.items);
+				if (try conn.checkRestartCounter(protocolIndex, self.protocolBuffer.items, self.channelId) != .discard) {
+					try protocols.onReceive(conn, protocolIndex, self.protocolBuffer.items);
+				}
 				self.protocolBuffer.clearRetainingCapacity();
-				if(self.protocolBuffer.items.len > 1 << 24) {
+				if (self.protocolBuffer.items.len > 1 << 24) {
 					self.protocolBuffer.shrinkAndFree(main.globalAllocator, 1 << 24);
 				}
 			}
@@ -891,13 +1021,17 @@ pub const Connection = struct { // MARK: Connection
 		};
 
 		pub fn receive(self: *ReceiveBuffer, conn: *Connection, start: SequenceIndex, data: []const u8) !ReceiveStatus {
+			return self.receiveSecure(null, conn, start, data);
+		}
+
+		pub fn receiveSecure(self: *ReceiveBuffer, secureChannel: ?*SecureChannel, conn: *Connection, start: SequenceIndex, data: []const u8) !ReceiveStatus {
 			const len: SequenceIndex = @intCast(data.len);
-			if(start -% self.availablePosition < 0) return .accepted; // We accepted it in the past.
-			const offset: usize = @intCast(start -% self.currentReadPosition);
+			if (start -% self.availablePosition < 0) return .accepted; // We accepted it in the past.
+			const offset: usize = @intCast(start -% self.availablePosition);
 			self.buffer.insertSliceAtOffset(data, offset) catch return .rejected;
 			self.ranges.addRange(main.globalAllocator, .{.start = start, .len = len});
-			if(start == self.availablePosition) {
-				try self.collectRangesAndExecuteProtocols(conn);
+			if (start == self.availablePosition) {
+				try self.collectRangesAndExecuteProtocols(secureChannel, conn);
 			}
 			return .accepted;
 		}
@@ -913,12 +1047,12 @@ pub const Connection = struct { // MARK: Connection
 			considerForCongestionControl: bool,
 
 			fn compareTime(_: void, a: Range, b: Range) std.math.Order {
-				if(a.timestamp == b.timestamp) return .eq;
-				if(a.timestamp -% b.timestamp > 0) return .gt;
+				if (a.timestamp == b.timestamp) return .eq;
+				if (a.timestamp -% b.timestamp > 0) return .gt;
 				return .lt;
 			}
 		};
-		unconfirmedRanges: std.PriorityQueue(Range, void, Range.compareTime),
+		unconfirmedRanges: std.PriorityQueue(Range, void, Range.compareTime) = .initContext({}),
 		lostRanges: main.utils.CircularBufferQueue(Range),
 		buffer: main.utils.CircularBufferQueue(u8),
 		fullyConfirmedIndex: SequenceIndex,
@@ -928,7 +1062,6 @@ pub const Connection = struct { // MARK: Connection
 
 		pub fn init(index: SequenceIndex) SendBuffer {
 			return .{
-				.unconfirmedRanges = .init(main.globalAllocator.allocator, {}),
 				.lostRanges = .init(main.globalAllocator, 1 << 10),
 				.buffer = .init(main.globalAllocator, 1 << 20),
 				.fullyConfirmedIndex = index,
@@ -938,61 +1071,72 @@ pub const Connection = struct { // MARK: Connection
 			};
 		}
 
-		pub fn deinit(self: SendBuffer) void {
-			self.unconfirmedRanges.deinit();
+		pub fn deinit(self: *SendBuffer) void {
+			self.unconfirmedRanges.deinit(main.globalAllocator.allocator);
 			self.lostRanges.deinit();
 			self.buffer.deinit();
 		}
 
 		pub fn insertMessage(self: *SendBuffer, protocolIndex: u8, data: []const u8, time: i64) !void {
-			if(self.highestSentIndex == self.fullyConfirmedIndex) {
+			try self.insertMessageSecure(null, protocolIndex, data, time);
+		}
+
+		pub fn insertMessageSecure(self: *SendBuffer, secureChannel: ?*SecureChannel, protocolIndex: u8, data: []const u8, time: i64) !void {
+			if (self.highestSentIndex == self.fullyConfirmedIndex) {
 				self.lastUnsentTime = time;
 			}
-			if(data.len + self.buffer.len > std.math.maxInt(SequenceIndex)) return error.OutOfMemory;
-			self.buffer.pushBack(protocolIndex);
-			self.nextIndex +%= 1;
+			var fullData: main.ListManaged(u8) = .init(main.stackAllocator);
+			defer fullData.deinit();
+			if (data.len + self.buffer.len > std.math.maxInt(SequenceIndex)) return error.OutOfMemory;
+			fullData.append(protocolIndex);
 			_ = internalHeaderOverhead.fetchAdd(1, .monotonic);
-			const bits = 1 + if(data.len == 0) 0 else std.math.log2_int(usize, data.len);
-			const bytes = std.math.divCeil(usize, bits, 7) catch unreachable;
-			for(0..bytes) |i| {
+			const bits = 1 + if (data.len == 0) 0 else std.math.log2_int(usize, data.len);
+			const bytes = @divCeil(bits, 7);
+			for (0..bytes) |i| {
 				const shift = 7*(bytes - i - 1);
-				const byte = (data.len >> @intCast(shift) & 0x7f) | if(i == bytes - 1) @as(u8, 0) else 0x80;
-				self.buffer.pushBack(@intCast(byte));
-				self.nextIndex +%= 1;
+				const byte = (data.len >> @intCast(shift) & 0x7f) | if (i == bytes - 1) @as(u8, 0) else 0x80;
+				fullData.append(@intCast(byte));
 				_ = internalHeaderOverhead.fetchAdd(1, .monotonic);
 			}
-			self.buffer.pushBackSlice(data);
-			self.nextIndex +%= @intCast(data.len);
+			fullData.appendSlice(data);
+			if (secureChannel) |ch| {
+				try ch.sendThroughTls(fullData.items);
+			} else {
+				self.buffer.pushBackSlice(fullData.items);
+				self.nextIndex +%= @intCast(fullData.items.len);
+			}
 		}
 
 		const ReceiveConfirmationResult = struct {
 			timestamp: i64,
 			packetLen: SequenceIndex,
 			considerForCongestionControl: bool,
+			considerForRtt: bool,
 		};
 
 		pub fn receiveConfirmationAndGetTimestamp(self: *SendBuffer, start: SequenceIndex) ?ReceiveConfirmationResult {
 			var result: ?ReceiveConfirmationResult = null;
-			for(self.unconfirmedRanges.items, 0..) |range, i| {
-				if(range.start == start) {
+			for (self.unconfirmedRanges.items, 0..) |range, i| {
+				if (range.start == start) {
 					result = .{
 						.timestamp = range.timestamp,
 						.considerForCongestionControl = range.considerForCongestionControl,
+						.considerForRtt = !range.wasResent,
 						.packetLen = range.len,
 					};
-					_ = self.unconfirmedRanges.removeIndex(i);
+					_ = self.unconfirmedRanges.popIndex(i);
 					break;
 				}
 			}
 			var smallestUnconfirmed = self.highestSentIndex;
-			for(self.unconfirmedRanges.items) |range| {
-				if(smallestUnconfirmed -% range.start > 0) {
+			for (self.unconfirmedRanges.items) |range| {
+				if (smallestUnconfirmed -% range.start > 0) {
 					smallestUnconfirmed = range.start;
 				}
 			}
-			for(0..self.lostRanges.len) |i| {
+			for (0..self.lostRanges.len) |i| {
 				const range = self.lostRanges.getAtOffset(i) catch unreachable;
-				if(smallestUnconfirmed -% range.start > 0) {
+				if (smallestUnconfirmed -% range.start > 0) {
 					smallestUnconfirmed = range.start;
 				}
 			}
@@ -1002,34 +1146,38 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		pub fn checkForLosses(self: *SendBuffer, time: i64, retransmissionTimeout: i64) LossStatus {
-			var hadLoss: bool = false;
-			var hadDoubleLoss: bool = false;
-			while(true) {
+			var loss: LossStatus = .{
+				.state = .noLoss,
+				.packetLen = 0,
+			};
+			while (true) {
 				var range = self.unconfirmedRanges.peek() orelse break;
-				if(range.timestamp +% retransmissionTimeout -% time >= 0) break;
-				_ = self.unconfirmedRanges.remove();
-				if(self.fullyConfirmedIndex == range.start) {
+				if (range.timestamp +% retransmissionTimeout -% time >= 0) break;
+				_ = self.unconfirmedRanges.pop();
+				if (self.fullyConfirmedIndex == range.start) {
 					// In TCP effectively only the second loss of the lowest unconfirmed packet is counted for congestion control
 					// This decreases the chance of triggering congestion control from random packet loss
-					if(range.wasResentAsFirstPacket) hadDoubleLoss = true;
-					hadLoss = true;
-					range.wasResentAsFirstPacket = true;
+					if (range.wasResentAsFirstPacket) {
+						loss.state = .doubleLoss;
+					} else {
+						loss.state = .singleLoss;
+					}
+					range.wasResentAsFirstPacket = loss.state != .doubleLoss;
 				}
+				loss.packetLen = range.len;
 				range.wasResent = true;
 				self.lostRanges.pushBack(range);
 				_ = packetsResent.fetchAdd(1, .monotonic);
 			}
-			if(hadDoubleLoss) return .doubleLoss;
-			if(hadLoss) return .singleLoss;
-			return .noLoss;
+			return loss;
 		}
 
 		pub fn getNextPacketToSend(self: *SendBuffer, byteIndex: *SequenceIndex, buf: []u8, time: i64, considerForCongestionControl: bool, allowedDelay: i64) ?usize {
-			self.unconfirmedRanges.ensureUnusedCapacity(1) catch unreachable;
+			self.unconfirmedRanges.ensureUnusedCapacity(main.globalAllocator.allocator, 1) catch unreachable;
 			// Resend old packet:
-			if(self.lostRanges.popFront()) |_range| {
+			if (self.lostRanges.popFront()) |_range| {
 				var range = _range;
-				if(range.len > buf.len) { // MTU changed → split the data
+				if (range.len > buf.len) { // MTU changed → split the data
 					self.lostRanges.pushFront(.{
 						.start = range.start +% @as(SequenceIndex, @intCast(buf.len)),
 						.len = range.len - @as(SequenceIndex, @intCast(buf.len)),
@@ -1042,19 +1190,19 @@ pub const Connection = struct { // MARK: Connection
 				self.buffer.getSliceAtOffset(@intCast(range.start -% self.fullyConfirmedIndex), buf[0..@intCast(range.len)]) catch unreachable;
 				range.timestamp = time;
 				byteIndex.* = range.start;
-				self.unconfirmedRanges.add(range) catch unreachable;
+				self.unconfirmedRanges.push(main.globalAllocator.allocator, range) catch unreachable;
 				return @intCast(range.len);
 			}
 
-			if(self.highestSentIndex == self.nextIndex) return null;
-			if(self.highestSentIndex +% @as(i32, @intCast(buf.len)) -% self.fullyConfirmedIndex > receiveBufferSize) return null;
+			if (self.highestSentIndex == self.nextIndex) return null;
+			if (self.highestSentIndex +% @as(i32, @intCast(buf.len)) -% self.fullyConfirmedIndex > receiveBufferSize) return null;
 			// Send new packet:
 			const len: SequenceIndex = @min(self.nextIndex -% self.highestSentIndex, @as(i32, @intCast(buf.len)));
-			if(len < buf.len and time -% self.lastUnsentTime < allowedDelay) return null;
+			if (len < buf.len and time -% self.lastUnsentTime < allowedDelay) return null;
 
 			self.buffer.getSliceAtOffset(@intCast(self.highestSentIndex -% self.fullyConfirmedIndex), buf[0..@intCast(len)]) catch unreachable;
 			byteIndex.* = self.highestSentIndex;
-			self.unconfirmedRanges.add(.{
+			self.unconfirmedRanges.push(main.globalAllocator.allocator, .{
 				.start = self.highestSentIndex,
 				.len = len,
 				.timestamp = time,
@@ -1073,7 +1221,7 @@ pub const Connection = struct { // MARK: Connection
 
 		pub fn init(sequenceIndex: SequenceIndex, delay: i64, id: ChannelId) Channel {
 			return .{
-				.receiveBuffer = .init(),
+				.receiveBuffer = .init(id),
 				.sendBuffer = .init(sequenceIndex),
 				.allowedDelay = delay,
 				.channelId = id,
@@ -1104,12 +1252,12 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		pub fn checkForLosses(self: *Channel, conn: *Connection, time: i64) LossStatus {
-			const retransmissionTimeout: i64 = @intFromFloat(conn.rttEstimate + 3*conn.rttUncertainty + @as(f32, @floatFromInt(self.allowedDelay)));
+			const retransmissionTimeout: i64 = @trunc(conn.rttEstimate + 3*conn.rttUncertainty + @as(f32, @floatFromInt(self.allowedDelay)));
 			return self.sendBuffer.checkForLosses(time, retransmissionTimeout);
 		}
 
 		pub fn sendNextPacketAndGetSize(self: *Channel, conn: *Connection, time: i64, considerForCongestionControl: bool) ?usize {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, conn.mtuEstimate);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, conn.mtuHandler.mtuEstimate);
 			defer writer.deinit();
 
 			writer.writeEnum(ChannelId, self.channelId);
@@ -1127,21 +1275,365 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		pub fn getStatistics(self: *Channel, unconfirmed: *usize, queued: *usize) void {
-			for(self.sendBuffer.unconfirmedRanges.items) |range| {
+			for (self.sendBuffer.unconfirmedRanges.items) |range| {
 				unconfirmed.* += @intCast(range.len);
 			}
 			queued.* = @intCast(self.sendBuffer.nextIndex -% self.sendBuffer.highestSentIndex);
 		}
 	};
 
-	const ChannelId = enum(u8) { // MARK: ChannelId
+	const MtuHandler = struct { // MARK: MtuHandler
+		/// max udp packet size
+		const maxMtu: u32 = 65507;
+		const minMtu: u32 = 576 - 20 - 8; // IPv4 MTU minus IP header minus udp header
+		const ethernetMtu = 1500 - 14 - 20 - 8; // Ethernet MTU minus Ethernet header minus IP header minus udp header
+		const lossCounterLimit = 3;
+
+		mtuEstimate: u16 = minMtu,
+		probingState: ProbingState = .{.searching = .{}},
+		/// counter of lost packets which are bigger than the minMtu, this is needed to know when we need to reset the mtu again
+		lossCounter: usize = 0,
+		/// the maximum Size a packet that was counted into our lossCounter had. Packets that are confirmed and bigger than this reduce the lossCounter to 0 again.
+		maxLossSize: SequenceIndex = 0,
+
+		/// Reference: RFC8899
+		/// Declarations can be found in 5.1
+		/// fields in the 5.2 state machine
+		/// how to handle reseting of the mtu is not clearly defined in the RFC, so anything related to that is custom code created by us.
+		const ProbingState = union(enum) { // MARK: ProbingState
+			/// the time to wait until a probe is unconfirmed (RFC recommnds at least 15 seconds)
+			const probeTimer: i64 = 15*1000*ms;
+			/// max probes are done until the probing is seen as failed (RFC default: 3)
+			const maxProbes: u8 = 3;
+			/// how long we wait after a finished search to search for an higher mtu again. (RFC default: 10 minutes)
+			const pmtuRaiseTimer = 10*60*1000*ms;
+			/// how long we wait after a mtu reset to enter the a new searching phase.
+			const resetTimer = 5*1000*ms;
+
+			var nextIndex: SequenceIndex = 0;
+
+			/// In this state we are actively searching with probes for a higher mtu
+			searching: struct {
+				firstProbe: bool = true,
+				nextProbeTime: i64 = 0,
+				probeCount: u8 = 0,
+			},
+			/// in this state we had a succesfull search and now use until the pmtuRaiseTimer is over the current mtu estimate
+			searchFinished: struct {
+				/// when we will enter the next searching phase
+				nextSearchingTime: i64,
+			},
+
+			fn nextPacketIsProbe(self: *ProbingState, conn: *Connection, time: i64) bool {
+				switch (self.*) {
+					.searching => |*state| {
+						if (conn.mtuHandler.mtuEstimate >= MtuHandler.maxMtu) {
+							self.* = .{.searchFinished = .{
+								.nextSearchingTime = time + pmtuRaiseTimer,
+							}};
+							return false;
+						}
+						if (time > state.nextProbeTime) {
+							state.probeCount += 1;
+
+							if (state.probeCount > maxProbes) {
+								self.* = .{.searchFinished = .{
+									.nextSearchingTime = time + pmtuRaiseTimer,
+								}};
+							} else return true;
+						}
+						return false;
+					},
+					.searchFinished => |state| {
+						if (time > state.nextSearchingTime) {
+							return false;
+						}
+						if (conn.mtuHandler.mtuEstimate >= MtuHandler.maxMtu - 50) return false;
+						self.* = .{.searching = .{}};
+						return true;
+					},
+				}
+			}
+
+			fn nextProbeSize(self: *ProbingState, conn: *Connection) u16 {
+				std.debug.assert(self.* == .searching);
+				// we first test if the expected ethernetMtu is possible
+				if (self.searching.firstProbe) {
+					self.searching.firstProbe = false;
+					return MtuHandler.ethernetMtu;
+				} else {
+					return @min(conn.mtuHandler.mtuEstimate +| 50, MtuHandler.maxMtu);
+				}
+			}
+
+			fn receiveConfirmationAndGetTimestamp(self: *ProbingState, mtuHandler: *MtuHandler, probeLen: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
+				if (self.* != .searching) return null;
+
+				self.searching.probeCount = 0;
+				self.searching.nextProbeTime = 0; // next probe can be send
+				mtuHandler.mtuEstimate = @max(mtuHandler.mtuEstimate, @as(u16, @intCast(probeLen)));
+				return .{
+					.timestamp = networkTimestamp(),
+					.packetLen = probeLen,
+					.considerForCongestionControl = false,
+					.considerForRtt = false,
+				};
+			}
+
+			fn setProbeInfo(self: *ProbingState, time: i64) void {
+				std.debug.assert(self.* == .searching);
+				self.searching.nextProbeTime = time + probeTimer;
+			}
+		};
+
+		fn sendNextPacketAndGetSize(self: *MtuHandler, conn: *Connection, time: i64) ?usize {
+			if (!self.probingState.nextPacketIsProbe(conn, time)) return null;
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, self.probingState.nextProbeSize(conn));
+			defer writer.deinit();
+
+			self.probingState.setProbeInfo(time);
+			writer.writeEnum(ChannelId, ChannelId.probe);
+			writer.writeInt(SequenceIndex, @intCast(writer.data.capacity));
+			writer.data.items.len = writer.data.capacity;
+
+			conn.manager.send(writer.data.items, conn.remoteAddress, null);
+			return writer.data.items.len;
+		}
+
+		fn receiveConfirmationAndGetTimestamp(self: *MtuHandler, probeLen: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
+			if (self.maxLossSize <= probeLen) {
+				self.lossCounter = 0;
+				self.maxLossSize = 0;
+			}
+			return self.probingState.receiveConfirmationAndGetTimestamp(self, probeLen);
+		}
+
+		/// handles packet loss that could be because of the mtu changing.
+		fn handeLoss(self: *MtuHandler, packetLen: SequenceIndex) void {
+			if (packetLen <= minMtu) return; // normal packet loss, shouldn't be counted into the mtu handler
+			self.lossCounter += 1;
+			self.maxLossSize = @max(self.maxLossSize, packetLen);
+			if (self.lossCounter > lossCounterLimit) {
+				self.mtuEstimate = minMtu;
+				self.lossCounter = 0;
+				self.maxLossSize = 0;
+				self.probingState = .{.searchFinished = .{
+					.nextSearchingTime = networkTimestamp() + ProbingState.resetTimer,
+				}};
+			}
+		}
+
+		fn handleConfirmation(self: *MtuHandler, packetLen: SequenceIndex) void {
+			// confirmation of a big packet can tell us that the mtu estimate is still valid
+			if (self.maxLossSize > packetLen) return;
+			self.lossCounter = 0;
+			self.maxLossSize = 0;
+		}
+	};
+
+	const SecureChannel = struct { // MARK: SecureChannel
+		super: Channel,
+		sslContext: c.mbedtls_ssl_context = .{},
+		sslConfig: c.mbedtls_ssl_config = .{},
+		serverCertificate: c.mbedtls_x509_crt = .{},
+		serverKey: c.mbedtls_pk_context = .{},
+		dataToReceive: []const u8 = &.{},
+		mutex: main.utils.Mutex = .{},
+
+		side: main.sync.Side,
+		finishedCollectingClientVerificationData: bool = false,
+		verificationDataForClientSignature: main.List(u8) = .empty,
+
+		pub fn init(self: *SecureChannel, sequenceIndex: SequenceIndex, delay: i64, id: ChannelId, side: main.sync.Side) !void {
+			self.* = .{
+				.super = .init(sequenceIndex, delay, id),
+				.side = side,
+			};
+
+			c.mbedtls_ssl_init(&self.sslContext);
+			c.mbedtls_ssl_config_init(&self.sslConfig);
+
+			try checkResult(c.mbedtls_ssl_config_defaults(
+				&self.sslConfig,
+				if (side == .client) c.MBEDTLS_SSL_IS_CLIENT else c.MBEDTLS_SSL_IS_SERVER,
+				c.MBEDTLS_SSL_TRANSPORT_STREAM,
+				c.MBEDTLS_SSL_PRESET_DEFAULT,
+			), "mbedtls_ssl_config_defaults");
+			c.mbedtls_ssl_conf_authmode(&self.sslConfig, c.MBEDTLS_SSL_VERIFY_NONE); // We don't care about server certificates for now. Only the client is authenticated, through an outside mechanism.
+			c.mbedtls_ssl_conf_dbg(&self.sslConfig, &debugOutput, undefined);
+
+			if (side == .server) { // Generate a self-signed certificate, since we do not key about authenticating the server. MITM will be mitigated during the client authentication
+				var certificate: c.mbedtls_x509write_cert = .{};
+				c.mbedtls_x509write_crt_init(&certificate);
+				defer c.mbedtls_x509write_crt_free(&certificate);
+				var attributes = c.psa_key_attributes_init();
+				c.psa_set_key_type(&attributes, c.PSA_KEY_TYPE_RSA_KEY_PAIR);
+				c.psa_set_key_bits(&attributes, 2048);
+				c.psa_set_key_usage_flags(&attributes, c.PSA_KEY_USAGE_SIGN_HASH | c.PSA_KEY_USAGE_SIGN_MESSAGE);
+				c.psa_set_key_algorithm(&attributes, c.PSA_ALG_RSA_PSS(c.PSA_ALG_ANY_HASH));
+				var key: c.psa_key_id_t = 0;
+				try checkResult(c.psa_generate_key(&attributes, &key), "psa_generate_key");
+				try checkResult(c.mbedtls_pk_wrap_psa(&self.serverKey, key), "mbedtls_pk_wrap_psa");
+
+				try checkResult(c.mbedtls_x509write_crt_set_subject_name(&certificate, "CN=localhost,O=Cubyz,C=Cubyz"), "mbedtls_x509write_crt_set_subject_name");
+				try checkResult(c.mbedtls_x509write_crt_set_issuer_name(&certificate, "CN=localhost,O=Cubyz,C=Cubyz"), "mbedtls_x509write_crt_set_issuer_name");
+				c.mbedtls_x509write_crt_set_issuer_key(&certificate, &self.serverKey);
+				c.mbedtls_x509write_crt_set_subject_key(&certificate, &self.serverKey);
+
+				c.mbedtls_x509write_crt_set_md_alg(&certificate, c.MBEDTLS_MD_SHA256);
+				try checkResult(c.mbedtls_x509write_crt_set_validity(&certificate, "20000101000000", "50000101000000"), "mbedtls_x509write_crt_set_validity");
+
+				var buf: [4096]u8 = undefined;
+				try checkResult(c.mbedtls_x509write_crt_pem(&certificate, &buf, buf.len), "mbedtls_x509write_crt_pem");
+
+				c.mbedtls_x509_crt_init(&self.serverCertificate);
+				try checkResult(c.mbedtls_x509_crt_parse(&self.serverCertificate, &buf, buf.len), "mbedtls_x509_crt_parse");
+
+				try checkResult(c.mbedtls_ssl_conf_own_cert(&self.sslConfig, &self.serverCertificate, &self.serverKey), "mbedtls_ssl_conf_own_cert");
+			}
+
+			try checkResult(c.mbedtls_ssl_setup(&self.sslContext, &self.sslConfig), "mbedtls_ssl_setup");
+			try checkResult(c.mbedtls_ssl_set_hostname(&self.sslContext, "localhost"), "mbedtls_ssl_set_hostname");
+			c.mbedtls_ssl_set_bio(&self.sslContext, self, &mbedTlsSend, null, &mbedTlsReceive);
+		}
+
+		pub fn deinit(self: *SecureChannel) void {
+			c.mbedtls_ssl_free(&self.sslContext);
+			c.mbedtls_ssl_config_free(&self.sslConfig);
+			c.mbedtls_x509_crt_free(&self.serverCertificate);
+			c.mbedtls_pk_free(&self.serverKey);
+			self.super.deinit();
+			self.verificationDataForClientSignature.deinit(main.globalAllocator);
+		}
+
+		fn checkResult(result: c_int, function: []const u8) !void {
+			if (result != 0) {
+				std.log.err("TLS function {s} failed with error code {}/0x{x}", .{function, result, result});
+				return error.Failed;
+			}
+		}
+
+		fn debugOutput(_: ?*anyopaque, debugLevel: c_int, fileName: [*c]const u8, lineNumber: c_int, message: [*c]const u8) callconv(.c) void {
+			std.log.warn("Mbed TLS level: {} message: {s}, fileName: {s} line: {}", .{debugLevel, message, fileName, lineNumber});
+		}
+
+		pub fn connect(self: *SecureChannel, remoteStart: SequenceIndex) void {
+			self.super.connect(remoteStart);
+		}
+
+		pub fn startTlsHandshake(self: *SecureChannel) !void {
+			while (true) {
+				self.mutex.lock();
+				const result = c.mbedtls_ssl_handshake(&self.sslContext);
+				self.mutex.unlock();
+				if (result == c.MBEDTLS_ERR_SSL_WANT_READ) {
+					main.heap.garbage_collection.syncPoint();
+					try main.io.sleep(.fromMilliseconds(10), .awake);
+					continue;
+				}
+				try checkResult(result, "mbedtls_ssl_handshake");
+				break;
+			}
+		}
+
+		fn mbedTlsSend(self_: ?*anyopaque, data: [*c]const u8, len: usize) callconv(.c) c_int {
+			const self: *SecureChannel = @ptrCast(@alignCast(self_.?));
+			self.mutex.assertLocked();
+			self.super.sendBuffer.buffer.pushBackSlice(data[0..len]);
+			self.super.sendBuffer.nextIndex +%= @intCast(len);
+			if (!self.finishedCollectingClientVerificationData) {
+				@branchHint(.unlikely);
+				if (self.side == .server) {
+					self.verificationDataForClientSignature.appendSlice(main.globalAllocator, data[0..len]);
+				}
+			}
+			return @intCast(len);
+		}
+
+		fn mbedTlsReceive(self_: ?*anyopaque, data: [*c]u8, len: usize, timeout: u32) callconv(.c) c_int {
+			const self: *SecureChannel = @ptrCast(@alignCast(self_.?));
+			self.mutex.assertLocked();
+			std.debug.assert(timeout == 0);
+			const copyLen = @min(len, self.dataToReceive.len);
+			if (copyLen == 0) return c.MBEDTLS_ERR_SSL_WANT_READ;
+			@memcpy(data[0..copyLen], self.dataToReceive[0..copyLen]);
+			if (!self.finishedCollectingClientVerificationData) {
+				@branchHint(.unlikely);
+				if (self.side == .client) {
+					self.verificationDataForClientSignature.appendSlice(main.globalAllocator, self.dataToReceive[0..copyLen]);
+				}
+			}
+			self.dataToReceive = self.dataToReceive[copyLen..];
+			return @intCast(copyLen);
+		}
+
+		fn receiveThroughTls(self: *SecureChannel, data: []const u8) !void {
+			self.mutex.lock();
+			defer self.mutex.unlock();
+			std.debug.assert(self.dataToReceive.len == 0);
+			self.dataToReceive = data;
+			var outBuffer: [4096]u8 = undefined;
+			while (true) {
+				const len = c.mbedtls_ssl_read(&self.sslContext, &outBuffer, outBuffer.len);
+				if (len == c.MBEDTLS_ERR_SSL_WANT_READ) break;
+				if (len == 0) return error.Closed;
+				if (len < 0) {
+					try checkResult(len, "mbedtls_ssl_read");
+				}
+				try self.super.receiveBuffer.decryptedBuffer.pushBackSlice(outBuffer[0..@intCast(len)]);
+			}
+		}
+
+		fn sendThroughTls(self: *SecureChannel, data: []const u8) !void {
+			var remaining = data;
+			while (remaining.len != 0) {
+				self.mutex.lock();
+				const len = c.mbedtls_ssl_write(&self.sslContext, remaining.ptr, remaining.len);
+				self.mutex.unlock();
+				if (len == c.MBEDTLS_ERR_SSL_WANT_READ) continue;
+				if (len == 0) return error.Closed;
+				if (len < 0) {
+					try checkResult(len, "mbedtls_ssl_write");
+				}
+				remaining = remaining[@intCast(len)..];
+			}
+		}
+
+		pub fn receive(self: *SecureChannel, conn: *Connection, start: SequenceIndex, data: []const u8) !ReceiveBuffer.ReceiveStatus {
+			return self.super.receiveBuffer.receiveSecure(self, conn, start, data);
+		}
+
+		pub fn send(self: *SecureChannel, protocolIndex: u8, data: []const u8, time: i64) !void {
+			std.debug.assert(c.mbedtls_ssl_is_handshake_over(&self.sslContext) != 0);
+			return self.super.sendBuffer.insertMessageSecure(self, protocolIndex, data, time);
+		}
+
+		pub fn receiveConfirmationAndGetTimestamp(self: *SecureChannel, start: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
+			return self.super.receiveConfirmationAndGetTimestamp(start);
+		}
+
+		pub fn checkForLosses(self: *SecureChannel, conn: *Connection, time: i64) LossStatus {
+			return self.super.checkForLosses(conn, time);
+		}
+
+		pub fn sendNextPacketAndGetSize(self: *SecureChannel, conn: *Connection, time: i64, considerForCongestionControl: bool) ?usize {
+			return self.super.sendNextPacketAndGetSize(conn, time, considerForCongestionControl);
+		}
+
+		pub fn getStatistics(self: *SecureChannel, unconfirmed: *usize, queued: *usize) void {
+			self.super.getStatistics(unconfirmed, queued);
+		}
+	};
+
+	pub const ChannelId = enum(u8) { // MARK: ChannelId
 		lossy = 0,
-		fast = 1,
+		secure = 1,
 		slow = 2,
 		confirmation = 3,
 		init = 4,
 		keepalive = 5,
 		disconnect = 6,
+		probe = 7,
 	};
 
 	const ConfirmationData = struct {
@@ -1155,14 +1647,18 @@ pub const Connection = struct { // MARK: Connection
 		awaitingServerResponse,
 		awaitingClientAcknowledgement,
 		connected,
-		disconnectDesired,
+		disconnected,
+		paused,
 	};
 
 	pub const HandShakeState = enum(u8) {
 		start = 0,
 		userData = 1,
-		assets = 2,
-		serverData = 3,
+		signatureRequest = 2,
+		signatureResponse = 3,
+		reload = 4,
+		assets = 5,
+		serverData = 6,
 		complete = 255,
 	};
 
@@ -1171,13 +1667,16 @@ pub const Connection = struct { // MARK: Connection
 	manager: *ConnectionManager,
 	user: ?*main.server.User,
 
-	remoteAddress: Address,
+	remoteAddress: SocketAddress,
 	bruteforcingPort: bool = false,
 	bruteForcedPortRange: u16 = 0,
 
 	lossyChannel: Channel, // TODO: Actually allow it to be lossy
-	fastChannel: Channel,
+	secureChannel: SecureChannel,
 	slowChannel: Channel,
+
+	restartChannelCounter: [3]u32 = .{0, 0, 0},
+	restartCounter: u32 = 0,
 
 	hasRttEstimate: bool = false,
 	rttEstimate: f32 = 1000*ms,
@@ -1186,23 +1685,23 @@ pub const Connection = struct { // MARK: Connection
 	nextPacketTimestamp: i64,
 	nextConfirmationTimestamp: i64,
 	queuedConfirmations: main.utils.CircularBufferQueue(ConfirmationData),
-	mtuEstimate: u16 = minMtu,
+	mtuHandler: MtuHandler,
 
-	bandwidthEstimateInBytesPerRtt: f32 = minMtu,
+	bandwidthEstimateInBytesPerRtt: f32 = MtuHandler.minMtu,
 	slowStart: bool = true,
 	relativeSendTime: i64 = 0,
 	relativeIdleTime: i64 = 0,
 
 	connectionState: Atomic(ConnectionState),
 	handShakeState: Atomic(HandShakeState) = .init(.start),
-	handShakeWaiting: std.Thread.Condition = std.Thread.Condition{},
-	lastConnection: i64,
+	handShakeWaiting: std.Io.Condition = .init,
+	lastConnectionTime: ?i64,
 
 	// To distinguish different connections from the same computer to avoid multiple reconnects
 	connectionIdentifier: i64,
 	remoteConnectionIdentifier: i64,
 
-	mutex: std.Thread.Mutex = .{},
+	mutex: main.utils.Mutex = .{},
 
 	pub fn init(manager: *ConnectionManager, ipPort: []const u8, user: ?*main.server.User) !*Connection {
 		const result: *Connection = main.globalAllocator.create(Connection);
@@ -1211,62 +1710,111 @@ pub const Connection = struct { // MARK: Connection
 			.manager = manager,
 			.user = user,
 			.remoteAddress = undefined,
-			.connectionState = .init(if(user != null) .awaitingClientConnection else .awaitingServerResponse),
-			.lastConnection = networkTimestamp(),
+			.connectionState = .init(if (user != null) .awaitingClientConnection else .awaitingServerResponse),
+			.lastConnectionTime = null,
 			.nextPacketTimestamp = networkTimestamp(),
 			.nextConfirmationTimestamp = networkTimestamp(),
 			.lastRttSampleTime = networkTimestamp() -% 10_000*ms,
 			.queuedConfirmations = .init(main.globalAllocator, 1024),
 			.lossyChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 1*ms, .lossy),
-			.fastChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 10*ms, .fast),
+			.secureChannel = undefined,
 			.slowChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 100*ms, .slow),
 			.connectionIdentifier = networkTimestamp(),
 			.remoteConnectionIdentifier = 0,
+			.mtuHandler = .{},
 		};
 		errdefer {
 			result.lossyChannel.deinit();
-			result.fastChannel.deinit();
 			result.slowChannel.deinit();
 			result.queuedConfirmations.deinit();
 		}
-		if(result.connectionIdentifier == 0) result.connectionIdentifier = 1;
-
-		var splitter = std.mem.splitScalar(u8, ipPort, ':');
-		const ip = splitter.first();
-		result.remoteAddress.ip = try Socket.resolveIP(ip);
-		var port = splitter.rest();
-		if(port.len != 0 and port[0] == '?') {
-			result.remoteAddress.isSymmetricNAT = true;
-			result.bruteforcingPort = true;
-			port = port[1..];
-		}
-		result.remoteAddress.port = std.fmt.parseUnsigned(u16, port, 10) catch blk: {
-			if(ip.len != ipPort.len) std.log.err("Could not parse port \"{s}\". Using default port instead.", .{port});
-			break :blk settings.defaultPort;
-		};
+		try result.secureChannel.init(main.random.nextInt(SequenceIndex, &main.seed), 10*ms, .secure, if (user != null) .server else .client);
+		errdefer result.secureChannel.deinit();
+		if (result.connectionIdentifier == 0) result.connectionIdentifier = 1;
+		result.remoteAddress = try SocketAddress.resolve(ipPort, settings.defaultPort);
+		result.bruteforcingPort = result.remoteAddress.isSymmetricNAT;
 
 		try result.manager.addConnection(result);
 		return result;
 	}
 
 	pub fn deinit(self: *Connection) void {
-		self.disconnect();
-		self.manager.finishCurrentReceive(); // Wait until all currently received packets are done.
+		if (self.connectionState.load(.monotonic) != .disconnected) {
+			self.disconnect();
+			self.manager.finishCurrentReceive(); // Wait until all currently received packets are done.
+		}
 		self.lossyChannel.deinit();
-		self.fastChannel.deinit();
+		self.secureChannel.deinit();
 		self.slowChannel.deinit();
 		self.queuedConfirmations.deinit();
 		main.globalAllocator.destroy(self);
 	}
 
+	// pretending the connection is closed
+	fn pause(self: *Connection) void {
+		std.debug.assert(self.connectionState.load(.monotonic) != .paused);
+		if (self.connectionState.load(.monotonic) == .connected) {
+			self.connectionState.store(.paused, .monotonic);
+		}
+		self.restartCounter += 1;
+		if (self.user) |user| {
+			user.pause();
+		}
+	}
+	fn @"continue"(self: *Connection) void {
+		std.debug.assert(self.connectionState.load(.monotonic) != .connected);
+		if (self.connectionState.load(.monotonic) == .paused) {
+			self.connectionState.store(.connected, .monotonic);
+		}
+		main.network.protocols.reload.informClientOfRestart(self);
+		self.handShakeState.store(.signatureResponse, .monotonic);
+		if (self.user) |user| {
+			user.@"continue"();
+		}
+	}
+	fn checkRestartCounter(conn: *Connection, protocolIndex: u8, data: []const u8, channelId: ChannelId) !enum { discard, evaluate } { // MARK: checkRestartCounter()
+		// Reload protocol bypasses everything else
+		std.debug.assert(channelId == .lossy or channelId == .secure or channelId == .slow);
+
+		if (protocolIndex != protocols.reload.id) {
+			// Throw away everything from before the restart
+			if (conn.restartChannelCounter[@backingInt(channelId)] != conn.restartCounter) return .discard;
+			return .evaluate;
+		}
+
+		var reader = utils.BinaryReader.init(data);
+
+		const restartCounter = try reader.readInt(u32);
+
+		if (!conn.isServerSide()) {
+			const state = try reader.readEnum(main.server.User.State);
+
+			if (conn.restartCounter < restartCounter) {
+				conn.restartCounter = restartCounter;
+				switch (state) {
+					.awaitingKeyVerification => main.game.world.?.shouldReload = false,
+					.connectedVerified, .awaitingReloadVerified => main.game.world.?.shouldReload = true,
+				}
+				main.game.world.?.shouldRestart.store(true, .release);
+				conn.handShakeWaiting.broadcast(main.io);
+			}
+		}
+		if (conn.restartChannelCounter[@backingInt(channelId)] < restartCounter) {
+			conn.restartChannelCounter[@backingInt(channelId)] = restartCounter;
+		}
+		return .discard;
+	}
+
 	pub fn send(self: *Connection, comptime channel: ChannelId, protocolIndex: u8, data: []const u8) void {
+		std.debug.assert(self.handShakeState.raw == .complete or protocolIndex == protocols.handshake.id or protocolIndex == protocols.reload.id);
+		std.debug.assert(self.handShakeState.raw != .complete or protocolIndex != protocols.handshake.id);
 		_ = protocols.bytesSent[protocolIndex].fetchAdd(data.len, .monotonic);
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
-		_ = switch(channel) {
+		_ = switch (channel) {
 			.lossy => self.lossyChannel.send(protocolIndex, data, networkTimestamp()),
-			.fast => self.fastChannel.send(protocolIndex, data, networkTimestamp()),
+			.secure => self.secureChannel.send(protocolIndex, data, networkTimestamp()),
 			.slow => self.slowChannel.send(protocolIndex, data, networkTimestamp()),
 			else => comptime unreachable,
 		} catch {
@@ -1279,7 +1827,7 @@ pub const Connection = struct { // MARK: Connection
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
-		return self.connectionState.load(.unordered) == .connected;
+		return self.connectionState.load(.monotonic) == .connected;
 	}
 
 	pub fn isServerSide(conn: *Connection) bool {
@@ -1287,21 +1835,22 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	fn handlePacketLoss(self: *Connection, loss: LossStatus) void {
-		if(loss == .noLoss) return;
+		if (loss.state == .noLoss) return;
 		self.slowStart = false;
-		if(loss == .doubleLoss) {
-			self.rttEstimate *= 1.5;
+		if (loss.state == .doubleLoss) {
+			self.rttUncertainty += 0.05*self.rttEstimate;
 			self.bandwidthEstimateInBytesPerRtt /= 2;
-			self.bandwidthEstimateInBytesPerRtt = @max(self.bandwidthEstimateInBytesPerRtt, minMtu);
+			self.bandwidthEstimateInBytesPerRtt = @max(self.bandwidthEstimateInBytesPerRtt, self.mtuHandler.mtuEstimate);
+			self.mtuHandler.handeLoss(loss.packetLen);
 		}
 	}
 
 	fn increaseCongestionBandwidth(self: *Connection, packetLen: SequenceIndex) void {
 		const fullPacketLen: f32 = @floatFromInt(packetLen + headerOverhead);
-		if(self.slowStart) {
+		if (self.slowStart) {
 			self.bandwidthEstimateInBytesPerRtt += fullPacketLen;
 		} else {
-			self.bandwidthEstimateInBytesPerRtt += fullPacketLen/self.bandwidthEstimateInBytesPerRtt*@as(f32, @floatFromInt(self.mtuEstimate)) + fullPacketLen/100.0;
+			self.bandwidthEstimateInBytesPerRtt += fullPacketLen/self.bandwidthEstimateInBytesPerRtt*@as(f32, @floatFromInt(self.mtuHandler.mtuEstimate)) + fullPacketLen/100.0;
 		}
 	}
 
@@ -1313,26 +1862,30 @@ pub const Connection = struct { // MARK: Connection
 		var maxRtt: f32 = 1000;
 		var sumRtt: f32 = 0;
 		var numRtt: f32 = 0;
-		while(reader.remaining.len != 0) {
+		while (reader.remaining.len != 0) {
 			const channel = try reader.readEnum(ChannelId);
 			const timeOffset = 2*@as(i64, try reader.readInt(u16));
 			const start = try reader.readInt(SequenceIndex);
-			const confirmationResult = switch(channel) {
+			const confirmationResult = switch (channel) {
 				.lossy => self.lossyChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
-				.fast => self.fastChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
+				.secure => self.secureChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
 				.slow => self.slowChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
+				.probe => self.mtuHandler.receiveConfirmationAndGetTimestamp(start) orelse continue,
 				else => return error.Invalid,
 			};
-			const rtt: f32 = @floatFromInt(@max(1, timestamp -% confirmationResult.timestamp -% timeOffset));
-			numRtt += 1;
-			sumRtt += rtt;
-			minRtt = @min(minRtt, rtt);
-			maxRtt = @max(maxRtt, rtt);
-			if(confirmationResult.considerForCongestionControl) {
+			self.mtuHandler.handleConfirmation(confirmationResult.packetLen);
+			if (confirmationResult.considerForRtt) {
+				const rtt: f32 = @floatFromInt(@max(1, timestamp -% confirmationResult.timestamp -% timeOffset));
+				numRtt += 1;
+				sumRtt += rtt;
+				minRtt = @min(minRtt, rtt);
+				maxRtt = @max(maxRtt, rtt);
+			}
+			if (confirmationResult.considerForCongestionControl) {
 				self.increaseCongestionBandwidth(confirmationResult.packetLen);
 			}
 		}
-		if(numRtt > 0) {
+		if (numRtt > 0) {
 			// Taken mostly from RFC 6298 with some minor changes
 			const averageRtt = sumRtt/numRtt;
 			const largestDifference = @max(maxRtt - averageRtt, averageRtt - minRtt, @abs(maxRtt - self.rttEstimate), @abs(self.rttEstimate - minRtt));
@@ -1342,25 +1895,30 @@ pub const Connection = struct { // MARK: Connection
 			self.rttEstimate = (1 - alpha)*self.rttEstimate + alpha*averageRtt;
 			self.rttUncertainty = (1 - beta)*self.rttUncertainty + beta*largestDifference;
 			self.lastRttSampleTime = timestamp;
-			if(!self.hasRttEstimate) { // Kill the 1 second delay caused by the first packet
+			if (!self.hasRttEstimate) { // Kill the 1 second delay caused by the first packet
+				self.rttEstimate = averageRtt;
 				self.nextPacketTimestamp = timestamp;
 				self.hasRttEstimate = true;
+			}
+			if (self.rttEstimate/averageRtt > 10) { // Quickly recover from spikes in RTT, as e.g. caused by /server restart
+				self.rttEstimate = averageRtt;
+				self.nextPacketTimestamp = timestamp;
 			}
 		}
 	}
 
 	fn sendConfirmationPacket(self: *Connection, timestamp: i64) void {
 		std.debug.assert(self.manager.threadId == std.Thread.getCurrentId());
-		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, self.mtuEstimate);
+		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, self.mtuHandler.mtuEstimate);
 		defer writer.deinit();
 
 		writer.writeEnum(ChannelId, .confirmation);
 
-		while(self.queuedConfirmations.popFront()) |confirmation| {
+		while (self.queuedConfirmations.popFront()) |confirmation| {
 			writer.writeEnum(ChannelId, confirmation.channel);
 			writer.writeInt(u16, std.math.lossyCast(u16, @divTrunc(timestamp -% confirmation.receiveTimeStamp, 2)));
 			writer.writeInt(SequenceIndex, confirmation.start);
-			if(writer.data.capacity - writer.data.items.len < @sizeOf(ChannelId) + @sizeOf(u16) + @sizeOf(SequenceIndex)) break;
+			if (writer.data.capacity - writer.data.items.len < @sizeOf(ChannelId) + @sizeOf(u16) + @sizeOf(SequenceIndex)) break;
 		}
 
 		_ = internalMessageOverhead.fetchAdd(writer.data.items.len + headerOverhead, .monotonic);
@@ -1369,9 +1927,9 @@ pub const Connection = struct { // MARK: Connection
 
 	pub fn receive(self: *Connection, data: []const u8) void {
 		self.tryReceive(data) catch |err| {
-			std.log.err("Got error while processing received network data: {s}", .{@errorName(err)});
-			if(@errorReturnTrace()) |trace| {
-				std.log.info("{f}", .{std.debug.FormatStackTrace{.stack_trace = trace.*, .tty_config = .no_color}});
+			std.log.warn("Got error while processing received network data: {s}", .{@errorName(err)});
+			if (@errorReturnTrace()) |trace| {
+				std.log.info("{f}", .{main.fmt.FormatErrorTrace{.stackTrace = trace.*}});
 			}
 			std.log.debug("Packet data: {any}", .{data});
 			self.disconnect();
@@ -1380,15 +1938,16 @@ pub const Connection = struct { // MARK: Connection
 
 	fn tryReceive(self: *Connection, data: []const u8) !void {
 		std.debug.assert(self.manager.threadId == std.Thread.getCurrentId());
+		self.lastConnectionTime = networkTimestamp();
 		var reader = utils.BinaryReader.init(data);
 		const channel = try reader.readEnum(ChannelId);
-		if(channel == .init) {
+		if (channel == .init) {
 			const remoteConnectionIdentifier = try reader.readInt(i64);
 			const isAcknowledgement = reader.remaining.len == 0;
-			if(isAcknowledgement) {
-				switch(self.connectionState.load(.monotonic)) {
+			if (isAcknowledgement) {
+				switch (self.connectionState.load(.monotonic)) {
 					.awaitingClientAcknowledgement => {
-						if(self.remoteConnectionIdentifier == remoteConnectionIdentifier) {
+						if (self.remoteConnectionIdentifier == remoteConnectionIdentifier) {
 							_ = self.connectionState.cmpxchgStrong(.awaitingClientAcknowledgement, .connected, .monotonic, .monotonic);
 						}
 					},
@@ -1397,27 +1956,27 @@ pub const Connection = struct { // MARK: Connection
 				return;
 			}
 			const lossyStart = try reader.readInt(SequenceIndex);
-			const fastStart = try reader.readInt(SequenceIndex);
+			const secureStart = try reader.readInt(SequenceIndex);
 			const slowStart = try reader.readInt(SequenceIndex);
-			switch(self.connectionState.load(.monotonic)) {
+			switch (self.connectionState.load(.monotonic)) {
 				.awaitingClientConnection => {
 					self.lossyChannel.connect(lossyStart);
-					self.fastChannel.connect(fastStart);
+					self.secureChannel.connect(secureStart);
 					self.slowChannel.connect(slowStart);
 					_ = self.connectionState.cmpxchgStrong(.awaitingClientConnection, .awaitingClientAcknowledgement, .monotonic, .monotonic);
 					self.remoteConnectionIdentifier = remoteConnectionIdentifier;
 				},
 				.awaitingServerResponse => {
 					self.lossyChannel.connect(lossyStart);
-					self.fastChannel.connect(fastStart);
+					self.secureChannel.connect(secureStart);
 					self.slowChannel.connect(slowStart);
 					_ = self.connectionState.cmpxchgStrong(.awaitingServerResponse, .connected, .monotonic, .monotonic);
 					self.remoteConnectionIdentifier = remoteConnectionIdentifier;
 				},
 				.awaitingClientAcknowledgement => {},
 				.connected => {
-					if(self.remoteConnectionIdentifier != remoteConnectionIdentifier) { // Reconnection attempt
-						if(self.user) |user| {
+					if (self.remoteConnectionIdentifier != remoteConnectionIdentifier) { // Reconnection attempt
+						if (self.user) |user| {
 							self.manager.removeConnection(self);
 							main.server.disconnect(user);
 						} else {
@@ -1427,10 +1986,10 @@ pub const Connection = struct { // MARK: Connection
 						return;
 					}
 				},
-				.disconnectDesired => {},
+				.disconnected, .paused => {},
 			}
 			// Acknowledge the packet on the client:
-			if(self.user == null) {
+			if (self.user == null) {
 				var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 1 + @sizeOf(i64));
 				defer writer.deinit();
 
@@ -1442,11 +2001,21 @@ pub const Connection = struct { // MARK: Connection
 			}
 			return;
 		}
-		if(self.connectionState.load(.monotonic) != .connected) return; // Reject all non-handshake packets until the handshake is done.
-		switch(channel) {
+		if (channel == .probe) {
+			const start = try reader.readInt(SequenceIndex);
+			self.queuedConfirmations.pushBack(.{
+				.channel = channel,
+				.start = start,
+				.receiveTimeStamp = networkTimestamp(),
+			});
+			return;
+		}
+		if (self.connectionState.load(.monotonic) != .connected) return; // Reject all non-handshake packets until the handshake is done.
+		if (self.handShakeState.load(.monotonic) != .complete and (channel == .lossy or channel == .slow)) return; // Reject all non-handshake packets from other channels.
+		switch (channel) {
 			.lossy => {
 				const start = try reader.readInt(SequenceIndex);
-				if(try self.lossyChannel.receive(self, start, reader.remaining) == .accepted) {
+				if (try self.lossyChannel.receive(self, start, reader.remaining) == .accepted) {
 					self.queuedConfirmations.pushBack(.{
 						.channel = channel,
 						.start = start,
@@ -1454,9 +2023,9 @@ pub const Connection = struct { // MARK: Connection
 					});
 				}
 			},
-			.fast => {
+			.secure => {
 				const start = try reader.readInt(SequenceIndex);
-				if(try self.fastChannel.receive(self, start, reader.remaining) == .accepted) {
+				if (try self.secureChannel.receive(self, start, reader.remaining) == .accepted) {
 					self.queuedConfirmations.pushBack(.{
 						.channel = channel,
 						.start = start,
@@ -1466,7 +2035,7 @@ pub const Connection = struct { // MARK: Connection
 			},
 			.slow => {
 				const start = try reader.readInt(SequenceIndex);
-				if(try self.slowChannel.receive(self, start, reader.remaining) == .accepted) {
+				if (try self.slowChannel.receive(self, start, reader.remaining) == .accepted) {
 					self.queuedConfirmations.pushBack(.{
 						.channel = channel,
 						.start = start,
@@ -1474,6 +2043,7 @@ pub const Connection = struct { // MARK: Connection
 					});
 				}
 			},
+			.probe => unreachable,
 			.confirmation => {
 				try self.receiveConfirmationPacket(&reader, networkTimestamp());
 			},
@@ -1483,23 +2053,27 @@ pub const Connection = struct { // MARK: Connection
 				self.disconnect();
 			},
 		}
-		self.lastConnection = networkTimestamp();
 
 		// TODO: Packet statistics
 	}
 
 	pub fn processNextPackets(self: *Connection) void {
 		const timestamp = networkTimestamp();
+		if (self.lastConnectionTime != null and timestamp -% self.lastConnectionTime.? -% settings.connectionTimeout > 0) {
+			std.log.info("timeout", .{});
+			self.disconnect();
+			return;
+		}
 
-		switch(self.connectionState.load(.monotonic)) {
+		switch (self.connectionState.load(.monotonic)) {
 			.awaitingClientConnection => {
-				if(timestamp -% self.nextPacketTimestamp < 0) return;
+				if (timestamp -% self.nextPacketTimestamp < 0) return;
 				self.nextPacketTimestamp = timestamp +% 100*ms;
-				self.manager.send(&.{@intFromEnum(ChannelId.keepalive)}, self.remoteAddress, null);
+				self.manager.send(&.{@backingInt(ChannelId.keepalive)}, self.remoteAddress, null);
 			},
 			.awaitingServerResponse, .awaitingClientAcknowledgement => {
 				// Send the initial packet once every 100 ms.
-				if(timestamp -% self.nextPacketTimestamp < 0) return;
+				if (timestamp -% self.nextPacketTimestamp < 0) return;
 				self.nextPacketTimestamp = timestamp +% 100*ms;
 				var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 1 + @sizeOf(i64) + 3*@sizeOf(SequenceIndex));
 				defer writer.deinit();
@@ -1507,73 +2081,122 @@ pub const Connection = struct { // MARK: Connection
 				writer.writeEnum(ChannelId, .init);
 				writer.writeInt(i64, self.connectionIdentifier);
 				writer.writeInt(SequenceIndex, self.lossyChannel.sendBuffer.fullyConfirmedIndex);
-				writer.writeInt(SequenceIndex, self.fastChannel.sendBuffer.fullyConfirmedIndex);
+				writer.writeInt(SequenceIndex, self.secureChannel.super.sendBuffer.fullyConfirmedIndex);
 				writer.writeInt(SequenceIndex, self.slowChannel.sendBuffer.fullyConfirmedIndex);
 				_ = internalMessageOverhead.fetchAdd(writer.data.items.len + headerOverhead, .monotonic);
 				self.manager.send(writer.data.items, self.remoteAddress, null);
 				return;
 			},
-			.connected => {
-				if(timestamp -% self.lastConnection -% settings.connectionTimeout > 0) {
-					std.log.info("timeout", .{});
-					self.disconnect();
-					return;
-				}
-			},
-			.disconnectDesired => return,
+			.connected => {},
+			.disconnected, .paused => return,
 		}
 
 		self.handlePacketLoss(self.lossyChannel.checkForLosses(self, timestamp));
-		self.handlePacketLoss(self.fastChannel.checkForLosses(self, timestamp));
+		self.handlePacketLoss(self.secureChannel.checkForLosses(self, timestamp));
 		self.handlePacketLoss(self.slowChannel.checkForLosses(self, timestamp));
 
 		// We don't want to send too many packets at once if there was a period of no traffic.
-		if(timestamp -% 10*ms -% self.nextPacketTimestamp > 0) {
+		if (timestamp -% 10*ms -% self.nextPacketTimestamp > 0) {
 			self.relativeIdleTime += timestamp -% 10*ms -% self.nextPacketTimestamp;
 			self.nextPacketTimestamp = timestamp -% 10*ms;
 		}
 
-		if(self.relativeIdleTime + self.relativeSendTime > @as(i64, @intFromFloat(self.rttEstimate))) {
+		if (self.relativeIdleTime + self.relativeSendTime > @as(i64, @trunc(self.rttEstimate))) {
 			self.relativeIdleTime >>= 1;
 			self.relativeSendTime >>= 1;
 		}
 
-		while(timestamp -% self.nextConfirmationTimestamp > 0 and !self.queuedConfirmations.isEmpty()) {
+		while (timestamp -% self.nextConfirmationTimestamp > 0 and !self.queuedConfirmations.isEmpty()) {
 			self.sendConfirmationPacket(timestamp);
 		}
 
-		while(timestamp -% self.nextPacketTimestamp > 0) {
+		var permutation: usize = main.random.nextInt(usize, &main.seed);
+		while (timestamp -% self.nextPacketTimestamp > 0) {
 			// Only attempt to increase the congestion bandwidth if we actual use the bandwidth, to prevent unbounded growth
 			const considerForCongestionControl = @divFloor(self.relativeSendTime, 2) > self.relativeIdleTime;
 			const dataLen = blk: {
 				self.mutex.lock();
 				defer self.mutex.unlock();
-				if(self.lossyChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
-				if(self.fastChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
-				if(self.slowChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
-
+				for (0..2) |_| {
+					permutation +%= 1;
+					break :blk switch (permutation%2) {
+						0 => self.lossyChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl),
+						1 => self.secureChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl),
+						else => unreachable,
+					} orelse continue;
+				}
+				if (self.mtuHandler.sendNextPacketAndGetSize(self, timestamp)) |dataLen| break :blk dataLen;
+				if (self.slowChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
 				break;
 			};
 			const networkLen: f32 = @floatFromInt(dataLen + headerOverhead);
-			const packetTime: i64 = @intFromFloat(@max(1, networkLen/self.bandwidthEstimateInBytesPerRtt*self.rttEstimate));
+			const packetTime: i64 = @trunc(@max(1, networkLen/self.bandwidthEstimateInBytesPerRtt*self.rttEstimate));
 			self.nextPacketTimestamp +%= packetTime;
 			self.relativeSendTime += packetTime;
 		}
 	}
 
 	pub fn disconnect(self: *Connection) void {
-		self.manager.send(&.{@intFromEnum(ChannelId.disconnect)}, self.remoteAddress, null);
-		self.connectionState.store(.disconnectDesired, .unordered);
-		if(builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
+		self.manager.send(&.{@backingInt(ChannelId.disconnect)}, self.remoteAddress, null);
+		self.connectionState.store(.disconnected, .monotonic);
+		if (builtin.target.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
 			main.io.sleep(.fromMilliseconds(10), .awake) catch {}; // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
 		}
 		self.manager.removeConnection(self);
-		if(self.user) |user| {
+		if (self.user) |user| {
 			main.server.disconnect(user);
 		} else {
-			self.handShakeWaiting.broadcast();
-			main.exitToMenu(undefined);
+			self.handShakeWaiting.broadcast(main.io);
+			if (self.handShakeState.load(.monotonic) == .complete) {
+				main.exitToMenu();
+			}
 		}
 		std.log.info("Disconnected", .{});
 	}
 };
+
+test "Resolve address" {
+	const addresses: [4][]const u8 = .{
+		"127.0.0.1",
+		"123.1.111.222",
+		"1.1.1.1",
+		"0.0.0.0",
+	};
+	for (addresses) |addressStr| {
+		const parsedAddress = try IpAddress.parse(addressStr, 0);
+		const resolvedAddress = try Socket.resolveIP(addressStr, 0);
+		try std.testing.expectEqualDeep(parsedAddress, resolvedAddress);
+	}
+	const resolvedLocalhost = try Socket.resolveIP("localhost", 0);
+	try std.testing.expectEqualDeep(IpAddress{.ip4 = .loopback(0)}, resolvedLocalhost);
+
+	const localhostSocketAddresses: [3][]const u8 = .{
+		"localhost",
+		"localhost:1234",
+		"localhost:11111?",
+	};
+	const expectedLocalhostSocketAddresses: [3]SocketAddress = .{
+		.{.address = .{.ip4 = .loopback(888)}},
+		.{.address = .{.ip4 = .loopback(1234)}},
+		.{.address = .{.ip4 = .loopback(11111)}, .isSymmetricNAT = true},
+	};
+	for (localhostSocketAddresses, expectedLocalhostSocketAddresses) |addressStr, expected| {
+		const resolvedAddress = try SocketAddress.resolve(addressStr, 888);
+		try std.testing.expectEqualDeep(expected, resolvedAddress);
+	}
+}
+
+test "Format address" {
+	const socketAddresses: [4][]const u8 = .{
+		"127.0.0.1:1234",
+		"123.1.111.222:11111?",
+		"1.1.1.1:255",
+		"0.0.0.0:3333?",
+	};
+	for (socketAddresses) |addressStr| {
+		const address = try SocketAddress.resolve(addressStr, null);
+		const reformattedAddress = std.fmt.allocPrint(main.heap.testingAllocator.allocator, "{f}", .{address}) catch unreachable;
+		defer main.heap.testingAllocator.free(reformattedAddress);
+		try std.testing.expectEqualStrings(addressStr, reformattedAddress);
+	}
+}

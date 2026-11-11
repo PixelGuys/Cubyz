@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("main");
 const ItemStack = main.items.ItemStack;
-const Player = main.game.Player;
+const player = main.game.player;
 const Vec2f = main.vec.Vec2f;
 const Texture = main.graphics.Texture;
 
@@ -41,8 +41,8 @@ var itemSlots: [12]*ItemSlot = undefined;
 
 pub fn onOpen() void {
 	const list = HorizontalList.init();
-	for(0..12) |i| {
-		itemSlots[i] = ItemSlot.init(.{0, 0}, Player.inventory, @intCast(i), .{.custom = hotbarSlotTexture}, .normal);
+	for (0..12) |i| {
+		itemSlots[i] = ItemSlot.init(.{0, 0}, player.inventory, @intCast(i), .{.custom = hotbarSlotTexture}, .normal);
 		list.add(itemSlots[i]);
 	}
 	list.finish(.{0, 0}, .center);
@@ -52,13 +52,13 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }
 
 pub fn update() void {
-	Player.mutex.lock();
-	defer Player.mutex.unlock();
-	itemSlots[Player.selectedSlot].hovered = true;
+	player.mutex.lock();
+	defer player.mutex.unlock();
+	itemSlots[player.selectedSlot].hovered = true;
 }

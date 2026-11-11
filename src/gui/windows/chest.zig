@@ -27,31 +27,27 @@ pub var window = GuiWindow{
 };
 
 const padding: f32 = 8;
-var itemSlots: main.List(*ItemSlot) = undefined;
-
-pub fn init() void {
-	itemSlots = .init(main.globalAllocator);
-}
+var itemSlots: main.List(*ItemSlot) = .empty;
 
 pub fn deinit() void {
-	itemSlots.deinit();
+	itemSlots.clearAndFree(main.globalAllocator);
 }
 
-pub var openInventory: main.items.Inventory = undefined;
+pub var openInventory: main.items.Inventory.ClientInventory = undefined;
 
-pub fn setInventory(selectedInventory: main.items.Inventory) void {
+pub fn setInventory(selectedInventory: main.items.Inventory.ClientInventory) void {
 	openInventory = selectedInventory;
 }
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
 
-	for(0..2) |y| {
+	for (0..2) |y| {
 		const row = HorizontalList.init();
-		for(0..10) |x| {
+		for (0..10) |x| {
 			const index: usize = y*10 + x;
 			const slot = ItemSlot.init(.{0, 0}, openInventory, @intCast(index), .default, .normal);
-			itemSlots.append(slot);
+			itemSlots.append(main.globalAllocator, slot);
 			row.add(slot);
 		}
 		list.add(row);
@@ -67,7 +63,7 @@ pub fn onClose() void {
 	openInventory.deinit(main.globalAllocator);
 
 	itemSlots.clearRetainingCapacity();
-	if(window.rootComponent) |*comp| {
+	if (window.rootComponent) |*comp| {
 		comp.deinit();
 		window.rootComponent = null;
 	}

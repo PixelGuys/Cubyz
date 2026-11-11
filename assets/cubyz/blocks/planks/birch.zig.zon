@@ -1,0 +1,21 @@
+.{
+	.item = .{
+		.colorTexture = "birch_planks_palette.png",
+		.material = .{
+			.durability = 24,
+			.massDamage = 0.9,
+			.hardnessDamage = 0.9,
+			.swingSpeed = 4.6,
+			.textureRoughness = 0.7,
+			.modifiers = .{
+				.{
+					.id = "base_stat",
+					.targetProperty = "maxDurability",
+					.strength = 0.4,
+				},
+			},
+		},
+	},
+
+	.texture = "cubyz:planks/birch",
+}

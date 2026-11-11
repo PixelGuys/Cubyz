@@ -9,20 +9,20 @@ const Recipe = items.Recipe;
 const BaseItemIndex = items.BaseItemIndex;
 const Block = main.blocks.Block;
 
-const Segment = union(enum) {literal: []const u8, symbol: []const u8};
+const Segment = union(enum) { literal: []const u8, symbol: []const u8 };
 
 fn parsePattern(allocator: NeverFailingAllocator, pattern: []const u8) ![]const Segment {
-	var segments: main.List(Segment) = .init(allocator);
+	var segments: main.ListManaged(Segment) = .init(allocator);
 	defer segments.deinit();
 	var idx: usize = 0;
-	while(idx < pattern.len) {
-		if(pattern[idx] == '{') {
-			if(segments.items.len > 0 and segments.items[segments.items.len - 1] == .symbol) {
+	while (idx < pattern.len) {
+		if (pattern[idx] == '{') {
+			if (segments.items.len > 0 and segments.items[segments.items.len - 1] == .symbol) {
 				return error.AmbiguousSymbols;
 			}
 			idx += 1;
 			const endIndex = std.mem.indexOfScalarPos(u8, pattern, idx, '}') orelse return error.UnclosedBraces;
-			if(idx == endIndex) return error.EmptyBraces;
+			if (idx == endIndex) return error.EmptyBraces;
 			const symbol = pattern[idx..endIndex];
 			segments.append(.{.symbol = symbol});
 			idx = endIndex + 1;
@@ -41,9 +41,9 @@ const ItemStackPattern = struct {
 };
 
 fn parseItemZon(allocator: NeverFailingAllocator, zon: ZonElement) !ItemStackPattern {
-	var id = zon.as([]const u8, "");
+	var id = zon.as([]const u8) orelse return error.ExpectedString;
 	var amount: u16 = 1;
-	if(std.mem.indexOfScalar(u8, id, ' ')) |index| blk: {
+	if (std.mem.indexOfScalar(u8, id, ' ')) |index| blk: {
 		amount = std.fmt.parseInt(u16, id[0..index], 0) catch break :blk;
 		id = id[index + 1 ..];
 	}
@@ -59,58 +59,58 @@ fn matchWithKeys(allocator: NeverFailingAllocator, target: []const u8, pattern: 
 	var newKeys = keys.clone() catch unreachable;
 	errdefer newKeys.deinit();
 
-	for(0.., pattern) |i, segment| {
-		switch(segment) {
+	for (0.., pattern) |i, segment| {
+		switch (segment) {
 			.literal => |literal| {
-				if(!std.mem.startsWith(u8, target[idx..], literal)) {
+				if (!std.mem.startsWith(u8, target[idx..], literal)) {
 					return error.NoMatch;
 				}
 				idx += literal.len;
 			},
 			.symbol => |symbol| {
-				var endIndices: main.List(usize) = .init(allocator);
+				var endIndices: main.ListManaged(usize) = .init(allocator);
 				defer endIndices.deinit();
-				if(newKeys.get(symbol)) |value| {
-					if(!std.mem.startsWith(u8, target[idx..], value)) {
+				if (newKeys.get(symbol)) |value| {
+					if (!std.mem.startsWith(u8, target[idx..], value)) {
 						return error.NoMatch;
 					}
 					idx += value.len;
 				} else {
-					if(i + 1 < pattern.len) {
+					if (i + 1 < pattern.len) {
 						const nextSegment = pattern[i + 1];
 						var nextIndex = idx;
-						while(std.mem.indexOfPos(u8, target, nextIndex, nextSegment.literal)) |endIndex| {
+						while (std.mem.indexOfPos(u8, target, nextIndex, nextSegment.literal)) |endIndex| {
 							endIndices.append(endIndex);
 							nextIndex = endIndex + 1;
 						}
 					} else {
 						endIndices.append(target.len);
 					}
-					if(endIndices.items.len == 0) {
+					if (endIndices.items.len == 0) {
 						return error.NoMatch;
 					}
-					if(endIndices.items.len == 1) {
+					if (endIndices.items.len == 1) {
 						newKeys.put(symbol, target[idx..endIndices.items[0]]) catch unreachable;
 						idx = endIndices.items[0];
 					} else {
 						defer newKeys.deinit();
-						var newKeyPairs: main.List(std.StringHashMap([]const u8)) = .init(allocator);
+						var newKeyPairs: main.ListManaged(std.StringHashMap([]const u8)) = .init(allocator);
 						defer newKeyPairs.deinit();
-						for(endIndices.items) |endIndex| {
+						for (endIndices.items) |endIndex| {
 							newKeys.put(symbol, target[idx..endIndex]) catch unreachable;
-							if(matchWithKeys(allocator, target[endIndex..], pattern[i + 1 ..], &newKeys) catch null) |newKeyMatches| {
+							if (matchWithKeys(allocator, target[endIndex..], pattern[i + 1 ..], &newKeys) catch null) |newKeyMatches| {
 								newKeyPairs.appendSlice(newKeyMatches);
 								allocator.free(newKeyMatches);
 							}
 						}
-						if(newKeyPairs.items.len == 0) return error.NoMatch;
+						if (newKeyPairs.items.len == 0) return error.NoMatch;
 						return newKeyPairs.toOwnedSlice();
 					}
 				}
 			},
 		}
 	}
-	if(idx == target.len) {
+	if (idx == target.len) {
 		var newKeyPairs = allocator.alloc(std.StringHashMap([]const u8), 1);
 		newKeyPairs[0] = newKeys;
 		return newKeyPairs;
@@ -124,13 +124,13 @@ const ItemWithAmount = struct {
 	amount: u16,
 };
 
-const ItemKeyPair = struct {item: ItemWithAmount, keys: std.StringHashMap([]const u8)};
+const ItemKeyPair = struct { item: ItemWithAmount, keys: std.StringHashMap([]const u8) };
 
 fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: ItemStackPattern, keys: *const std.StringHashMap([]const u8)) ![]const ItemKeyPair {
 	const pattern = itemStackPattern.pattern;
 	const amount = itemStackPattern.amount;
 
-	if(pattern.len == 1 and pattern[0] == .literal) {
+	if (pattern.len == 1 and pattern[0] == .literal) {
 		const item = BaseItemIndex.fromId(pattern[0].literal) orelse return error.ItemNotFound;
 		return allocator.dupe(ItemKeyPair, &.{.{
 			.item = .{
@@ -140,12 +140,12 @@ fn findRecipeItemOptions(allocator: NeverFailingAllocator, itemStackPattern: Ite
 			.keys = keys.clone() catch unreachable,
 		}});
 	}
-	var itemPairs: main.List(ItemKeyPair) = .initCapacity(allocator, 1);
+	var itemPairs: main.ListManaged(ItemKeyPair) = .initCapacity(allocator, 1);
 	defer itemPairs.deinit();
 	var iter = items.iterator();
-	while(iter.next()) |item| {
+	while (iter.next()) |item| {
 		const newKeyMatches = matchWithKeys(allocator, item.id(), pattern, keys) catch continue;
-		for(newKeyMatches) |match| {
+		for (newKeyMatches) |match| {
 			itemPairs.append(.{
 				.item = .{
 					.item = item.*,
@@ -162,18 +162,18 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []const ZonEleme
 	const arena = main.stackAllocator.createArena();
 	defer main.stackAllocator.destroyArena(arena);
 
-	var inputCombos: main.List([]const ItemWithAmount) = .initCapacity(arena, 1);
+	var inputCombos: main.ListManaged([]const ItemWithAmount) = .initCapacity(arena, 1);
 	inputCombos.append(arena.alloc(ItemWithAmount, recipe.len));
-	var keyList: main.List(std.StringHashMap([]const u8)) = .initCapacity(arena, 1);
+	var keyList: main.ListManaged(std.StringHashMap([]const u8)) = .initCapacity(arena, 1);
 	keyList.append(.init(arena.allocator));
-	for(0.., recipe[0..]) |i, itemZon| {
+	for (0.., recipe[0..]) |i, itemZon| {
 		const pattern = try parseItemZon(arena, itemZon);
-		var newKeyList: main.List(std.StringHashMap([]const u8)) = .init(arena);
-		var newInputCombos: main.List([]const ItemWithAmount) = .init(arena);
+		var newKeyList: main.ListManaged(std.StringHashMap([]const u8)) = .init(arena);
+		var newInputCombos: main.ListManaged([]const ItemWithAmount) = .init(arena);
 
-		for(keyList.items, inputCombos.items) |*keys, inputs| {
+		for (keyList.items, inputCombos.items) |*keys, inputs| {
 			const parsedItems = try findRecipeItemOptions(arena, pattern, keys);
-			for(parsedItems) |item| {
+			for (parsedItems) |item| {
 				const newInputs = arena.dupe(ItemWithAmount, inputs);
 				newInputs[i] = item.item;
 				newInputCombos.append(newInputs);
@@ -184,45 +184,50 @@ fn generateItemCombos(allocator: NeverFailingAllocator, recipe: []const ZonEleme
 		inputCombos = newInputCombos;
 	}
 	const newInputCombos = allocator.alloc([]const ItemWithAmount, inputCombos.items.len);
-	for(inputCombos.items, 0..) |inputCombo, i| {
+	for (inputCombos.items, 0..) |inputCombo, i| {
 		newInputCombos[i] = allocator.dupe(ItemWithAmount, inputCombo);
 	}
 	return newInputCombos;
 }
 
-pub fn addRecipe(allocator: NeverFailingAllocator, itemCombo: []const ItemWithAmount, list: *main.List(Recipe)) void {
+pub fn addRecipe(itemCombo: []const ItemWithAmount, list: *main.ListManaged(Recipe), craftingTags: []const Tag) void {
 	const inputs = itemCombo[0 .. itemCombo.len - 1];
 	const output = itemCombo[itemCombo.len - 1];
 	const recipe = Recipe{
-		.sourceItems = allocator.alloc(BaseItemIndex, inputs.len),
-		.sourceAmounts = allocator.alloc(u16, inputs.len),
+		.sourceItems = main.worldArena.alloc(BaseItemIndex, inputs.len),
+		.sourceAmounts = main.worldArena.alloc(u16, inputs.len),
 		.resultItem = output.item,
 		.resultAmount = output.amount,
+		.craftingTags = main.worldArena.dupe(Tag, craftingTags),
 	};
-	for(inputs, 0..) |input, i| {
+	for (inputs, 0..) |input, i| {
 		recipe.sourceItems[i] = input.item;
 		recipe.sourceAmounts[i] = input.amount;
 	}
 	list.append(recipe);
 }
 
-pub fn parseRecipe(allocator: NeverFailingAllocator, zon: ZonElement, list: *main.List(Recipe)) !void {
+pub fn parseRecipe(zon: ZonElement, list: *main.ListManaged(Recipe)) !void {
 	const arena = main.stackAllocator.createArena();
 	defer main.stackAllocator.destroyArena(arena);
 
 	const inputs = zon.getChild("inputs").toSlice();
 	const recipeItems = std.mem.concat(arena.allocator, ZonElement, &.{inputs, &.{zon.getChild("output")}}) catch unreachable;
 
-	const reversible = zon.get(bool, "reversible", false);
-	if(reversible and recipeItems.len != 2) {
+	const reversible = zon.get(bool, "reversible") orelse false;
+	if (reversible and recipeItems.len != 2) {
 		return error.InvalidReversibleRecipe;
 	}
 
+	const defaultCraftingTags: []const Tag = &.{.handCraftable};
+	const foundCraftingTags = Tag.loadTagsFromZon(arena, zon.getChild("craftingTags"));
+	const craftingTags = if (foundCraftingTags.len != 0) foundCraftingTags else defaultCraftingTags;
+
 	const itemCombos = try generateItemCombos(arena, recipeItems);
-	for(itemCombos) |itemCombo| {
-		addRecipe(allocator, itemCombo, list);
-		if(reversible) {
-			addRecipe(allocator, &.{itemCombo[1], itemCombo[0]}, list);
+	for (itemCombos) |itemCombo| {
+		addRecipe(itemCombo, list, craftingTags);
+		if (reversible) {
+			addRecipe(&.{itemCombo[1], itemCombo[0]}, list, craftingTags);
 		}
 	}
 }
@@ -251,7 +256,7 @@ test "pattern matching" {
 
 	const newKeys = try matchWithKeys(main.heap.testingAllocator, "foo:1/2/3", pattern, &keys);
 	defer {
-		for(newKeys) |*keySet| {
+		for (newKeys) |*keySet| {
 			@constCast(keySet).deinit();
 		}
 		main.heap.testingAllocator.free(newKeys);
@@ -274,7 +279,7 @@ test "pattern matching with keys" {
 
 	const newKeys = try matchWithKeys(main.heap.testingAllocator, "foo:1/2/3", pattern, &keys);
 	defer {
-		for(newKeys) |*keySet| {
+		for (newKeys) |*keySet| {
 			@constCast(keySet).deinit();
 		}
 		main.heap.testingAllocator.free(newKeys);

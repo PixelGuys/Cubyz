@@ -14,6 +14,8 @@ const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 const Biome = terrain.biomes.Biome;
 
+pub const map_generators = @import("mapgen/_list.zig");
+
 pub const MapFragmentPosition = struct {
 	wx: i32,
 	wy: i32,
@@ -32,7 +34,7 @@ pub const MapFragmentPosition = struct {
 	}
 
 	pub fn equals(self: MapFragmentPosition, other: anytype) bool {
-		if(other) |ch| {
+		if (other) |ch| {
 			return self.wx == ch.pos.wx and self.wy == ch.pos.wy and self.voxelSize == ch.pos.voxelSize;
 		}
 		return false;
@@ -68,6 +70,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 
 	heightMap: [mapSize][mapSize]i32 = undefined,
 	biomeMap: [mapSize][mapSize]*const Biome = undefined,
+	caveBiomeOffsetMap: [mapSize][mapSize]i16 = undefined,
 	minHeight: i32 = std.math.maxInt(i32),
 	maxHeight: i32 = 0,
 	pos: MapFragmentPosition,
@@ -78,6 +81,14 @@ pub const MapFragment = struct { // MARK: MapFragment
 		self.* = .{
 			.pos = MapFragmentPosition.init(wx, wy, voxelSize),
 		};
+		const caveBiomeOffsetMap = main.utils.Array2D(f32).init(main.stackAllocator, mapSize, mapSize);
+		defer caveBiomeOffsetMap.deinit(main.stackAllocator);
+		terrain.noise.FractalNoise.generateSparseFractalTerrain(wx, wy, 64, main.server.world.?.settings.seed ^ 0x764923684396, caveBiomeOffsetMap, voxelSize);
+		for (0..mapSize) |x| {
+			for (0..mapSize) |y| {
+				self.caveBiomeOffsetMap[x][y] = @floor(caveBiomeOffsetMap.get(x, y));
+			}
+		}
 	}
 
 	fn privateDeinit(self: *MapFragment) void {
@@ -85,7 +96,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 	}
 
 	pub fn deferredDeinit(self: *MapFragment) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
+		main.heap.garbage_collection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	pub fn getBiome(self: *MapFragment, wx: i32, wy: i32) *const Biome {
@@ -100,8 +111,13 @@ pub const MapFragment = struct { // MARK: MapFragment
 		return self.heightMap[@intCast(xIndex)][@intCast(yIndex)];
 	}
 
+	pub fn getCaveBiomeOffset(self: *MapFragment, wx: i32, wy: i32) i16 {
+		const xIndex = wx >> self.pos.voxelSizeShift & mapMask;
+		const yIndex = wy >> self.pos.voxelSizeShift & mapMask;
+		return self.caveBiomeOffsetMap[@intCast(xIndex)][@intCast(yIndex)];
+	}
+
 	const StorageHeader = struct {
-		const minSupportedVersion: u8 = 0;
 		const activeVersion: u8 = 1;
 		version: u8 = activeVersion,
 		neighborInfo: NeighborInfo,
@@ -118,10 +134,10 @@ pub const MapFragment = struct { // MARK: MapFragment
 	};
 
 	pub fn load(self: *MapFragment, biomePalette: *main.assets.Palette, originalHeightMap: ?*[mapSize][mapSize]i32) !NeighborInfo {
-		const saveFolder: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{main.server.world.?.path}) catch unreachable;
+		const saveFolder: []const u8 = main.stackAllocator.print("saves/{s}/maps", .{main.server.world.?.path});
 		defer main.stackAllocator.free(saveFolder);
 
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}.surface", .{saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy}) catch unreachable;
+		const path = main.stackAllocator.print("{s}/{}/{}/{}.surface", .{saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy});
 		defer main.stackAllocator.free(path);
 
 		const fullData = try main.files.cubyzDir().read(main.stackAllocator, path);
@@ -133,19 +149,19 @@ pub const MapFragment = struct { // MARK: MapFragment
 			.version = try fullReader.readInt(u8),
 			.neighborInfo = @bitCast(try fullReader.readInt(u8)),
 		};
-		switch(header.version) {
+		switch (header.version) {
 			0 => { // TODO: Remove after next breaking change
 				const rawData: []u8 = main.stackAllocator.alloc(u8, mapSize*mapSize*(@sizeOf(u32) + 2*@sizeOf(f32)));
 				defer main.stackAllocator.free(rawData);
-				if(try main.utils.Compression.inflateTo(rawData, fullReader.remaining) != rawData.len) return error.CorruptedFile;
+				if (try main.utils.compression.inflateTo(rawData, fullReader.remaining) != rawData.len) return error.CorruptedFile;
 				const biomeData = rawData[0 .. mapSize*mapSize*@sizeOf(u32)];
 				const heightData = rawData[mapSize*mapSize*@sizeOf(u32) ..][0 .. mapSize*mapSize*@sizeOf(f32)];
 				const originalHeightData = rawData[mapSize*mapSize*(@sizeOf(u32) + @sizeOf(f32)) ..][0 .. mapSize*mapSize*@sizeOf(f32)];
-				for(0..mapSize) |x| {
-					for(0..mapSize) |y| {
+				for (0..mapSize) |x| {
+					for (0..mapSize) |y| {
 						self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[std.mem.readInt(u32, biomeData[4*(x*mapSize + y) ..][0..4], .big)]);
-						self.heightMap[x][y] = @intFromFloat(@as(f32, @bitCast(std.mem.readInt(u32, heightData[4*(x*mapSize + y) ..][0..4], .big))));
-						if(originalHeightMap) |map| map[x][y] = @intFromFloat(@as(f32, @bitCast(std.mem.readInt(u32, originalHeightData[4*(x*mapSize + y) ..][0..4], .big))));
+						self.heightMap[x][y] = @trunc(@as(f32, @bitCast(std.mem.readInt(u32, heightData[4*(x*mapSize + y) ..][0..4], .big))));
+						if (originalHeightMap) |map| map[x][y] = @trunc(@as(f32, @bitCast(std.mem.readInt(u32, originalHeightData[4*(x*mapSize + y) ..][0..4], .big))));
 					}
 				}
 			},
@@ -156,19 +172,27 @@ pub const MapFragment = struct { // MARK: MapFragment
 
 				const rawData: []u8 = main.stackAllocator.alloc(u8, biomeDataSize + heightDataSize + originalHeightDataSize);
 				defer main.stackAllocator.free(rawData);
-				if(try main.utils.Compression.inflateTo(rawData, fullReader.remaining) != rawData.len) return error.CorruptedFile;
+				if (try main.utils.compression.inflateTo(rawData, fullReader.remaining) != rawData.len) return error.CorruptedFile;
 
 				var reader = BinaryReader.init(rawData);
 
-				for(0..mapSize) |x| for(0..mapSize) |y| {
-					self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)]);
-				};
-				for(0..mapSize) |x| for(0..mapSize) |y| {
-					self.heightMap[x][y] = try reader.readInt(i32);
-				};
-				if(originalHeightMap) |map| for(0..mapSize) |x| for(0..mapSize) |y| {
-					map[x][y] = try reader.readInt(i32);
-				};
+				for (0..mapSize) |x| {
+					for (0..mapSize) |y| {
+						self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)]);
+					}
+				}
+				for (0..mapSize) |x| {
+					for (0..mapSize) |y| {
+						self.heightMap[x][y] = try reader.readInt(i32);
+					}
+				}
+				if (originalHeightMap) |map| {
+					for (0..mapSize) |x| {
+						for (0..mapSize) |y| {
+							map[x][y] = try reader.readInt(i32);
+						}
+					}
+				}
 			},
 			else => return error.OutdatedFileVersion,
 		}
@@ -184,11 +208,11 @@ pub const MapFragment = struct { // MARK: MapFragment
 		var writer = BinaryWriter.initCapacity(main.stackAllocator, biomeDataSize + heightDataSize + originalHeightDataSize);
 		defer writer.deinit();
 
-		for(0..mapSize) |x| for(0..mapSize) |y| writer.writeInt(u32, self.biomeMap[x][y].paletteId);
-		for(0..mapSize) |x| for(0..mapSize) |y| writer.writeInt(i32, self.heightMap[x][y]);
-		for(0..mapSize) |x| for(0..mapSize) |y| writer.writeInt(i32, (if(originalData) |map| map else &self.heightMap)[x][y]);
+		for (0..mapSize) |x| for (0..mapSize) |y| writer.writeInt(u32, self.biomeMap[x][y].paletteId);
+		for (0..mapSize) |x| for (0..mapSize) |y| writer.writeInt(i32, self.heightMap[x][y]);
+		for (0..mapSize) |x| for (0..mapSize) |y| writer.writeInt(i32, (if (originalData) |map| map else &self.heightMap)[x][y]);
 
-		const compressedData = main.utils.Compression.deflate(main.stackAllocator, writer.data.items, .fastest); // Using fast to increase performance of the regenerating map LODs step
+		const compressedData = main.utils.compression.deflate(main.stackAllocator, writer.data.items, .fastest); // Using fast to increase performance of the regenerating map LODs step
 		defer main.stackAllocator.free(compressedData);
 
 		var outputWriter = BinaryWriter.initCapacity(main.stackAllocator, @sizeOf(StorageHeader) + compressedData.len);
@@ -201,12 +225,12 @@ pub const MapFragment = struct { // MARK: MapFragment
 		outputWriter.writeInt(u8, @bitCast(header.neighborInfo));
 		outputWriter.writeSlice(compressedData);
 
-		const saveFolder: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{main.server.world.?.path}) catch unreachable;
+		const saveFolder: []const u8 = main.stackAllocator.print("saves/{s}/maps", .{main.server.world.?.path});
 		defer main.stackAllocator.free(saveFolder);
 
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}.surface", .{saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy}) catch unreachable;
+		const path = main.stackAllocator.print("{s}/{}/{}/{}.surface", .{saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy});
 		defer main.stackAllocator.free(path);
-		const folder = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}", .{saveFolder, self.pos.voxelSize, self.pos.wx}) catch unreachable;
+		const folder = main.stackAllocator.print("{s}/{}/{}", .{saveFolder, self.pos.voxelSize, self.pos.wx});
 		defer main.stackAllocator.free(folder);
 
 		main.files.cubyzDir().makePath(folder) catch |err| {
@@ -221,18 +245,21 @@ pub const MapFragment = struct { // MARK: MapFragment
 
 /// Generates the detailed(block-level precision) height and biome maps from the climate map.
 pub const MapGenerator = struct {
-	init: *const fn(parameters: ZonElement) void,
-	generateMapFragment: *const fn(fragment: *MapFragment, seed: u64) void,
+	init: *const fn (parameters: ZonElement) void,
+	generateMapFragment: *const fn (fragment: *MapFragment, seed: u64) void,
 
-	var generatorRegistry: std.StringHashMapUnmanaged(MapGenerator) = .{};
-
-	fn registerGenerator(comptime Generator: type) void {
-		const self = MapGenerator{
-			.init = &Generator.init,
-			.generateMapFragment = &Generator.generateMapFragment,
-		};
-		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
-	}
+	const generatorRegistry: std.StaticStringMap(MapGenerator) = .initComptime(blk: {
+		const decls = @typeInfo(map_generators).@"struct".decl_names;
+		var generators: [decls.len]struct { []const u8, MapGenerator } = undefined;
+		for (0..decls.len) |i| {
+			const Generator = @field(map_generators, decls[i]);
+			generators[i] = .{Generator.id, .{
+				.init = &Generator.init,
+				.generateMapFragment = &Generator.generateMapFragment,
+			}};
+		}
+		break :blk generators;
+	});
 
 	pub fn getGeneratorById(id: []const u8) !MapGenerator {
 		return generatorRegistry.get(id) orelse {
@@ -243,25 +270,11 @@ pub const MapGenerator = struct {
 };
 
 const cacheSize = 1 << 6; // Must be a power of 2!
-const cacheMask = cacheSize - 1;
 const associativity = 8; // ~400MiB MiB Cache size
 var cache: Cache(MapFragment, cacheSize, associativity, MapFragment.deferredDeinit) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
-var memoryPool: main.heap.MemoryPool(MapFragment) = undefined;
-
-pub fn globalInit() void {
-	const list = @import("mapgen/_list.zig");
-	inline for(@typeInfo(list).@"struct".decls) |decl| {
-		MapGenerator.registerGenerator(@field(list, decl.name));
-	}
-	memoryPool = .init(main.globalAllocator);
-}
-
-pub fn globalDeinit() void {
-	MapGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
-	memoryPool.deinit();
-}
+var memoryPool: main.heap.MemoryPool(MapFragment) = .init(main.globalArena);
 
 fn cacheInit(pos: MapFragmentPosition) *MapFragment {
 	const mapFragment = memoryPool.create();
@@ -272,56 +285,121 @@ fn cacheInit(pos: MapFragmentPosition) *MapFragment {
 	return mapFragment;
 }
 
+const InterpolationPolynomial = struct {
+	// Basically we want an interpolation function with the following properties:
+	// f(0) = 0
+	// f(1) = 1
+	// f'(0) = 0
+	// f'(1) = 0
+	// f(0.5) = noise
+	// This must be a polynomial of degree 4 with a factor x²
+	// f(x) = ax⁴ + bx³ + cx²
+	// f'(x) = 4ax³ + 3x² + 2cx
+	// f(1) = a + b + c = 1 → c = 1 - a - b
+	// f'(1) = 4a + 3b + 2c = 0 → 4a + 3b + 2 - 2a - 2b = 0 → 2a + b + 2 = 0 → b = -2a - 2
+	// f(0.5) = a 0.5⁴ + b 0.5³ + c 0.5² = noise → a 0.5⁴ + (-2a - 2) 0.5³ + (3 + a) 0.5² = noise → a (0.5⁴ - 2·0.5³ + 0.5²) = 2·0.5³ - 3 0.5² + noise
+	// → a 0.5⁴ = 0.5² - 3 0.5² + noise
+	// → a = (-0.5 + noise)·2⁴
+	// → a = 16·noise - 8
+	a: f32,
+	b: f32,
+	c: f32,
+	fn init(noise: f32) @This() {
+		const a = 16*noise - 8;
+		const b = -2*a - 2;
+		const c = 1 - a - b;
+		return .{.a = a, .b = b, .c = c};
+	}
+	fn eval(self: @This(), x: f32) f32 {
+		return @max(0, @min(0.99999, ((self.a*x + self.b)*x + self.c)*x*x));
+	}
+};
+
+const TiledNoise = struct {
+	noisePolynomials: main.utils.Array2D(InterpolationPolynomial),
+	sizeMask: u31,
+
+	fn init(allocator: main.heap.NeverFailingAllocator, size: u31) TiledNoise {
+		std.debug.assert(std.math.isPowerOfTwo(size));
+
+		var rawNoise: main.utils.Array2D(f32) = .init(main.stackAllocator, size, size);
+		defer rawNoise.deinit(main.stackAllocator);
+		terrain.noise.FractalNoise.generateSparseFractalTerrain(0, 0, @intCast(MapFragment.mapSize*@as(usize, 1 << 32)/size), 0, rawNoise, @intCast(@as(usize, 1 << 32)/size));
+
+		const result: TiledNoise = .{
+			.noisePolynomials = .init(allocator, size, size),
+			.sizeMask = size - 1,
+		};
+		for (rawNoise.mem, result.noisePolynomials.mem) |noise, *polynomial| {
+			polynomial.* = .init(noise);
+		}
+		return result;
+	}
+
+	fn deinit(self: TiledNoise, allocator: main.heap.NeverFailingAllocator) void {
+		self.noisePolynomials.deinit(allocator);
+	}
+
+	fn get(self: TiledNoise, wx: i32, wy: i32) InterpolationPolynomial {
+		const x = wx & self.sizeMask;
+		const y = wy & self.sizeMask;
+		return self.noisePolynomials.get(@intCast(x), @intCast(y));
+	}
+};
+
 pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 	std.log.info("Regenerating map LODs...", .{});
+
+	var noise: TiledNoise = .init(main.stackAllocator, 8*MapFragment.mapSize);
+	defer noise.deinit(main.stackAllocator);
 	// Delete old LODs:
-	for(1..main.settings.highestSupportedLod + 1) |i| {
+	for (1..main.settings.highestSupportedLod + 1) |i| {
 		const lod = @as(u32, 1) << @intCast(i);
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps/{}", .{worldName, lod}) catch unreachable;
+		const path = main.stackAllocator.print("saves/{s}/maps/{}", .{worldName, lod});
 		defer main.stackAllocator.free(path);
 		main.files.cubyzDir().deleteTree(path) catch |err| {
-			if(err != error.FileNotFound) {
+			if (err != error.FileNotFound) {
 				std.log.err("Error while deleting directory {s}: {s}", .{path, @errorName(err)});
 			}
 		};
 	}
 	// Find all the stored maps:
-	var mapPositions = main.List(MapFragmentPosition).init(main.stackAllocator);
-	defer mapPositions.deinit();
-	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps/1", .{worldName}) catch unreachable;
+	var mapPositions: main.List(MapFragmentPosition) = .empty;
+	defer mapPositions.deinit(main.stackAllocator);
+	const path = main.stackAllocator.print("saves/{s}/maps/1", .{worldName});
 	defer main.stackAllocator.free(path);
 	{
 		var dirX = try main.files.cubyzDir().openIterableDir(path);
 		defer dirX.close();
 		var iterX = dirX.iterate();
-		while(try iterX.next()) |entryX| {
-			if(entryX.kind != .directory) continue;
+		while (try iterX.next(main.io)) |entryX| {
+			if (entryX.kind != .directory) continue;
 			const wx = std.fmt.parseInt(i32, entryX.name, 0) catch continue;
 			var dirY = try dirX.openIterableDir(entryX.name);
 			defer dirY.close();
 			var iterY = dirY.iterate();
-			while(try iterY.next()) |entryY| {
-				if(entryY.kind != .file) continue;
+			while (try iterY.next(main.io)) |entryY| {
+				if (entryY.kind != .file) continue;
 				const nameY = entryY.name[0 .. std.mem.indexOfScalar(u8, entryY.name, '.') orelse entryY.name.len];
 				const wy = std.fmt.parseInt(i32, nameY, 0) catch continue;
-				mapPositions.append(.{.wx = wx, .wy = wy, .voxelSize = 1, .voxelSizeShift = 0});
+				mapPositions.append(main.stackAllocator, .{.wx = wx, .wy = wy, .voxelSize = 1, .voxelSizeShift = 0});
 			}
 		}
 	}
 	// Load all the stored maps and update their next LODs.
-	const interpolationDistance = 64;
-	for(mapPositions.items) |pos| {
-		main.heap.GarbageCollection.syncPoint();
+	const interpolationDistance = MapFragment.mapSize/2;
+	for (mapPositions.items) |pos| {
+		main.heap.garbage_collection.syncPoint();
 		var neighborInfo: MapFragment.NeighborInfo = undefined;
-		inline for(comptime std.meta.fieldNames(MapFragment.NeighborInfo)) |name| {
+		inline for (@typeInfo(MapFragment.NeighborInfo).@"struct".field_names) |name| {
 			var neighborPos = pos;
-			if(name[0] == '+') neighborPos.wx +%= MapFragment.mapSize;
-			if(name[0] == '-') neighborPos.wx -%= MapFragment.mapSize;
-			if(name[1] == '+') neighborPos.wy +%= MapFragment.mapSize;
-			if(name[1] == '-') neighborPos.wy -%= MapFragment.mapSize;
+			if (name[0] == '+') neighborPos.wx +%= MapFragment.mapSize;
+			if (name[0] == '-') neighborPos.wx -%= MapFragment.mapSize;
+			if (name[1] == '+') neighborPos.wy +%= MapFragment.mapSize;
+			if (name[1] == '-') neighborPos.wy -%= MapFragment.mapSize;
 			var isPresent: bool = false;
-			for(mapPositions.items) |otherPos| {
-				if(neighborPos.wx == otherPos.wx and neighborPos.wy == otherPos.wy) {
+			for (mapPositions.items) |otherPos| {
+				if (neighborPos.wx == otherPos.wx and neighborPos.wy == otherPos.wy) {
 					isPresent = true;
 					break;
 				}
@@ -331,38 +409,34 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 		const mapFragment = main.stackAllocator.create(MapFragment);
 		defer main.stackAllocator.destroy(mapFragment);
 		mapFragment.init(pos.wx, pos.wy, pos.voxelSize);
-		var xNoise: [MapFragment.mapSize]f32 = undefined;
-		var yNoise: [MapFragment.mapSize]f32 = undefined;
-		terrain.noise.FractalNoise1D.generateSparseFractalTerrain(pos.wx, 32, main.server.world.?.seed, &xNoise);
-		terrain.noise.FractalNoise1D.generateSparseFractalTerrain(pos.wy, 32, main.server.world.?.seed ^ 0x785298638131, &yNoise);
 		var originalHeightMap: [MapFragment.mapSize][MapFragment.mapSize]i32 = undefined;
 		const oldNeighborInfo = mapFragment.load(main.server.world.?.biomePalette, &originalHeightMap) catch |err| {
 			std.log.err("Error loading map at position {}: {s}", .{pos, @errorName(err)});
 			continue;
 		};
-		if(@as(u8, @bitCast(neighborInfo)) != @as(u8, @bitCast(oldNeighborInfo))) {
+		if (@as(u8, @bitCast(neighborInfo)) != @as(u8, @bitCast(oldNeighborInfo))) {
 			// Now we do the fun stuff
 			// Basically we want to only keep the interpolated map in the direction of the changes.
 			// Edges:
-			if(neighborInfo.@"+o" != oldNeighborInfo.@"+o" or neighborInfo.@"-o" != oldNeighborInfo.@"-o" or neighborInfo.@"o+" != oldNeighborInfo.@"o+" or neighborInfo.@"o-" != oldNeighborInfo.@"o-") {
-				for(0..interpolationDistance) |a| { // edges
-					for(interpolationDistance..MapFragment.mapSize - interpolationDistance) |b| {
-						if(neighborInfo.@"+o" and !oldNeighborInfo.@"+o") {
+			if (neighborInfo.@"+o" != oldNeighborInfo.@"+o" or neighborInfo.@"-o" != oldNeighborInfo.@"-o" or neighborInfo.@"o+" != oldNeighborInfo.@"o+" or neighborInfo.@"o-" != oldNeighborInfo.@"o-") {
+				for (0..interpolationDistance) |a| { // edges
+					for (interpolationDistance..MapFragment.mapSize - interpolationDistance) |b| {
+						if (neighborInfo.@"+o" and !oldNeighborInfo.@"+o") {
 							const x = MapFragment.mapSize - 1 - a;
 							const y = b;
 							originalHeightMap[x][y] = mapFragment.heightMap[x][y];
 						}
-						if(neighborInfo.@"-o" and !oldNeighborInfo.@"-o") {
+						if (neighborInfo.@"-o" and !oldNeighborInfo.@"-o") {
 							const x = a;
 							const y = b;
 							originalHeightMap[x][y] = mapFragment.heightMap[x][y];
 						}
-						if(neighborInfo.@"o+" and !oldNeighborInfo.@"o+") {
+						if (neighborInfo.@"o+" and !oldNeighborInfo.@"o+") {
 							const x = b;
 							const y = MapFragment.mapSize - 1 - a;
 							originalHeightMap[x][y] = mapFragment.heightMap[x][y];
 						}
-						if(neighborInfo.@"o-" and !oldNeighborInfo.@"o-") {
+						if (neighborInfo.@"o-" and !oldNeighborInfo.@"o-") {
 							const x = b;
 							const y = a;
 							originalHeightMap[x][y] = mapFragment.heightMap[x][y];
@@ -372,13 +446,13 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 			}
 			// Corners:
 			{
-				for(0..interpolationDistance) |a| { // corners:
-					for(0..interpolationDistance) |b| {
+				for (0..interpolationDistance) |a| { // corners:
+					for (0..interpolationDistance) |b| {
 						const weirdSquareInterpolation = struct {
 							fn interp(x: f32, y: f32) f32 {
 								// Basically we want to interpolate the values such that two sides of the square have value zero, while the opposing two sides have value 1.
 								// Change coordinate system:
-								if(x == y) return 0.5;
+								if (x == y) return 0.5;
 								const sqrt2 = @sqrt(0.5);
 								const k = sqrt2*x + sqrt2*y - sqrt2;
 								const l = -sqrt2*x + sqrt2*y;
@@ -391,172 +465,148 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 						factorA = (3 - 2*factorA)*factorA*factorA;
 						var factorB = @as(f32, @floatFromInt(b))/interpolationDistance;
 						factorB = (3 - 2*factorB)*factorB*factorB;
-						if(neighborInfo.@"+o" or neighborInfo.@"o+") {
+						if (neighborInfo.@"+o" or neighborInfo.@"o+") {
 							var factor: f32 = 1;
-							if(neighborInfo.@"+o" and neighborInfo.@"o+" == oldNeighborInfo.@"o+" and !oldNeighborInfo.@"+o") factor = weirdSquareInterpolation(1 - factorB, 1 - factorA);
-							if(neighborInfo.@"o+" and neighborInfo.@"+o" == oldNeighborInfo.@"+o" and !oldNeighborInfo.@"o+") factor = weirdSquareInterpolation(1 - factorA, 1 - factorB);
-							if(neighborInfo.@"+o" == oldNeighborInfo.@"+o" and neighborInfo.@"o+" == oldNeighborInfo.@"o+") factor = 0;
-							if(neighborInfo.@"+o" and neighborInfo.@"o+" and neighborInfo.@"++") factor = 1;
+							if (neighborInfo.@"+o" and neighborInfo.@"o+" == oldNeighborInfo.@"o+" and !oldNeighborInfo.@"+o") factor = weirdSquareInterpolation(1 - factorB, 1 - factorA);
+							if (neighborInfo.@"o+" and neighborInfo.@"+o" == oldNeighborInfo.@"+o" and !oldNeighborInfo.@"o+") factor = weirdSquareInterpolation(1 - factorA, 1 - factorB);
+							if (neighborInfo.@"+o" == oldNeighborInfo.@"+o" and neighborInfo.@"o+" == oldNeighborInfo.@"o+") factor = 0;
+							if (neighborInfo.@"+o" and neighborInfo.@"o+" and neighborInfo.@"++") factor = 1;
 							const x = MapFragment.mapSize - 1 - a;
 							const y = MapFragment.mapSize - 1 - b;
-							originalHeightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
+							originalHeightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
 						}
-						if(neighborInfo.@"+o" or neighborInfo.@"o-") {
+						if (neighborInfo.@"+o" or neighborInfo.@"o-") {
 							var factor: f32 = 1;
-							if(neighborInfo.@"+o" and neighborInfo.@"o-" == oldNeighborInfo.@"o-" and !oldNeighborInfo.@"+o") factor = weirdSquareInterpolation(1 - factorB, 1 - factorA);
-							if(neighborInfo.@"o-" and neighborInfo.@"+o" == oldNeighborInfo.@"+o" and !oldNeighborInfo.@"o-") factor = weirdSquareInterpolation(1 - factorA, 1 - factorB);
-							if(neighborInfo.@"+o" == oldNeighborInfo.@"+o" and neighborInfo.@"o-" == oldNeighborInfo.@"o-") factor = 0;
-							if(neighborInfo.@"+o" and neighborInfo.@"o-" and neighborInfo.@"+-") factor = 1;
+							if (neighborInfo.@"+o" and neighborInfo.@"o-" == oldNeighborInfo.@"o-" and !oldNeighborInfo.@"+o") factor = weirdSquareInterpolation(1 - factorB, 1 - factorA);
+							if (neighborInfo.@"o-" and neighborInfo.@"+o" == oldNeighborInfo.@"+o" and !oldNeighborInfo.@"o-") factor = weirdSquareInterpolation(1 - factorA, 1 - factorB);
+							if (neighborInfo.@"+o" == oldNeighborInfo.@"+o" and neighborInfo.@"o-" == oldNeighborInfo.@"o-") factor = 0;
+							if (neighborInfo.@"+o" and neighborInfo.@"o-" and neighborInfo.@"+-") factor = 1;
 							const x = MapFragment.mapSize - 1 - a;
 							const y = b;
-							originalHeightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
+							originalHeightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
 						}
-						if(neighborInfo.@"-o" or neighborInfo.@"o+") {
+						if (neighborInfo.@"-o" or neighborInfo.@"o+") {
 							var factor: f32 = 1;
-							if(neighborInfo.@"-o" and neighborInfo.@"o+" == oldNeighborInfo.@"o+" and !oldNeighborInfo.@"-o") factor = weirdSquareInterpolation(1 - factorB, 1 - factorA);
-							if(neighborInfo.@"o+" and neighborInfo.@"-o" == oldNeighborInfo.@"-o" and !oldNeighborInfo.@"o+") factor = weirdSquareInterpolation(1 - factorA, 1 - factorB);
-							if(neighborInfo.@"-o" == oldNeighborInfo.@"-o" and neighborInfo.@"o+" == oldNeighborInfo.@"o+") factor = 0;
-							if(neighborInfo.@"-o" and neighborInfo.@"o+" and neighborInfo.@"-+") factor = 1;
+							if (neighborInfo.@"-o" and neighborInfo.@"o+" == oldNeighborInfo.@"o+" and !oldNeighborInfo.@"-o") factor = weirdSquareInterpolation(1 - factorB, 1 - factorA);
+							if (neighborInfo.@"o+" and neighborInfo.@"-o" == oldNeighborInfo.@"-o" and !oldNeighborInfo.@"o+") factor = weirdSquareInterpolation(1 - factorA, 1 - factorB);
+							if (neighborInfo.@"-o" == oldNeighborInfo.@"-o" and neighborInfo.@"o+" == oldNeighborInfo.@"o+") factor = 0;
+							if (neighborInfo.@"-o" and neighborInfo.@"o+" and neighborInfo.@"-+") factor = 1;
 							const x = a;
 							const y = MapFragment.mapSize - 1 - b;
-							originalHeightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
+							originalHeightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
 						}
-						if(neighborInfo.@"-o" or neighborInfo.@"o-") {
+						if (neighborInfo.@"-o" or neighborInfo.@"o-") {
 							var factor: f32 = 1;
-							if(neighborInfo.@"-o" and neighborInfo.@"o-" == oldNeighborInfo.@"o-" and !oldNeighborInfo.@"-o") factor = weirdSquareInterpolation(1 - factorB, 1 - factorA);
-							if(neighborInfo.@"o-" and neighborInfo.@"-o" == oldNeighborInfo.@"-o" and !oldNeighborInfo.@"o-") factor = weirdSquareInterpolation(1 - factorA, 1 - factorB);
-							if(neighborInfo.@"-o" == oldNeighborInfo.@"-o" and neighborInfo.@"o-" == oldNeighborInfo.@"o-") factor = 0;
-							if(neighborInfo.@"-o" and neighborInfo.@"o-" and neighborInfo.@"--") factor = 1;
+							if (neighborInfo.@"-o" and neighborInfo.@"o-" == oldNeighborInfo.@"o-" and !oldNeighborInfo.@"-o") factor = weirdSquareInterpolation(1 - factorB, 1 - factorA);
+							if (neighborInfo.@"o-" and neighborInfo.@"-o" == oldNeighborInfo.@"-o" and !oldNeighborInfo.@"o-") factor = weirdSquareInterpolation(1 - factorA, 1 - factorB);
+							if (neighborInfo.@"-o" == oldNeighborInfo.@"-o" and neighborInfo.@"o-" == oldNeighborInfo.@"o-") factor = 0;
+							if (neighborInfo.@"-o" and neighborInfo.@"o-" and neighborInfo.@"--") factor = 1;
 							const x = a;
 							const y = b;
-							originalHeightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
+							originalHeightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
 						}
 					}
 				}
 			}
 		}
 		{ // Interpolate the terraing height:
-			const InterpolationPolynomial = struct {
-				// Basically we want an interpolation function with the following properties:
-				// f(0) = 0
-				// f(1) = 1
-				// f'(0) = 0
-				// f'(1) = 0
-				// f(noise) = 0.5
-				// This must be a polynomial of degree 4 with a factor x²
-				// f(x) = ax⁴ + bx³ + cx²
-				// f'(x) = 4ax³ + 3x² + 2cx
-				// f(1) = a + b + c = 1 → c = 1 - a - b
-				// f'(1) = 4a + 3b + 2c = 0 → 4a + 3b + 2 - 2a - 2b = 0 → 2a + b + 2 = 0 → b = -2a - 2
-				// f(noise) = a noise⁴ + b noise³ + c noise² = 0.5 → a noise⁴ + (-2a - 2) noise³ + (3 + a) noise² = 0.5 → a (noise⁴ - 2noise³ + noise²) = 2noise³ - 3 noise² + 0.5
-				// → a = (2noise³ - 3 noise² + 0.5)/(noise⁴ - 2noise³ + noise²)
-				// → a = (2noise - 3 + 0.5/noise²)/(noise² - 2noise + 1)
-				// → a = (2noise - 3 + 0.5/noise²)/(noise - 1)²
-				a: f32,
-				b: f32,
-				c: f32,
-				fn get(noise: f32) @This() {
-					const noise2 = noise*noise;
-					const noise3 = noise2*noise;
-					const noise4 = noise2*noise2;
-					const a = (2*noise3 - 3*noise2 + 0.5)/(noise4 - 2*noise3 + noise2);
-					const b = -2*a - 2;
-					const c = 1 - a - b;
-					return .{.a = a, .b = b, .c = c};
-				}
-				fn eval(self: @This(), x: f32) f32 {
-					return @max(0, @min(0.99999, ((self.a*x + self.b)*x + self.c)*x*x));
-				}
-			};
 			const generatedMap = main.stackAllocator.create(MapFragment);
 			defer main.stackAllocator.destroy(generatedMap);
 			generatedMap.init(pos.wx, pos.wy, pos.voxelSize);
 			profile.mapFragmentGenerator.generateMapFragment(generatedMap, profile.seed);
 
 			@memcpy(&mapFragment.heightMap, &originalHeightMap);
-			for(0..MapFragment.mapSize) |b| {
-				const polynomialX = InterpolationPolynomial.get(yNoise[b]*0.5 + 0.25);
-				const polynomialY = InterpolationPolynomial.get(xNoise[b]*0.5 + 0.25);
-				for(0..interpolationDistance) |a| { // edges
-					const factorX = polynomialX.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
-					const factorY = polynomialY.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
-					if(!neighborInfo.@"+o") {
+			for (0..MapFragment.mapSize) |b| {
+				for (0..interpolationDistance) |a| { // edges
+					if (!neighborInfo.@"+o") {
 						const x = MapFragment.mapSize - 1 - a;
 						const y = b;
-						mapFragment.heightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factorX + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factorX));
-						if(factorX < 0.25) {
+						const polynomial = noise.get(mapFragment.pos.wx + @as(i32, @intCast(x)), mapFragment.pos.wy + @as(i32, @intCast(y)));
+						const factor = polynomial.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
+						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
+						if (factor < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
 					}
-					if(!neighborInfo.@"-o") {
+					if (!neighborInfo.@"-o") {
 						const x = a;
 						const y = b;
-						mapFragment.heightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factorX + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factorX));
-						if(factorX < 0.25) {
+						const polynomial = noise.get(mapFragment.pos.wx + @as(i32, @intCast(x)), mapFragment.pos.wy + @as(i32, @intCast(y)));
+						const factor = polynomial.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
+						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
+						if (factor < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
 					}
-					if(!neighborInfo.@"o+") {
+					if (!neighborInfo.@"o+") {
 						const x = b;
 						const y = MapFragment.mapSize - 1 - a;
-						mapFragment.heightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factorY + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factorY));
-						if(factorY < 0.25) {
+						const polynomial = noise.get(mapFragment.pos.wx + @as(i32, @intCast(x)), mapFragment.pos.wy + @as(i32, @intCast(y)));
+						const factor = polynomial.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
+						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
+						if (factor < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
 					}
-					if(!neighborInfo.@"o-") {
+					if (!neighborInfo.@"o-") {
 						const x = b;
 						const y = a;
-						mapFragment.heightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factorY + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factorY));
-						if(factorY < 0.25) {
+						const polynomial = noise.get(mapFragment.pos.wx + @as(i32, @intCast(x)), mapFragment.pos.wy + @as(i32, @intCast(y)));
+						const factor = polynomial.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
+						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
+						if (factor < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
 					}
 				}
 			}
-			for(0..interpolationDistance) |a| { // corners:
-				const polynomialY1 = InterpolationPolynomial.get(xNoise[a]*0.5 + 0.25);
-				const polynomialY2 = InterpolationPolynomial.get(xNoise[MapFragment.mapSize - 1 - a]*0.5 + 0.25);
-				for(0..interpolationDistance) |b| {
-					const polynomialX1 = InterpolationPolynomial.get(yNoise[b]*0.5 + 0.25);
-					const polynomialX2 = InterpolationPolynomial.get(yNoise[MapFragment.mapSize - 1 - b]*0.5 + 0.25);
-					const factorX1 = polynomialX1.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
-					const factorX2 = polynomialX2.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
-					const factorY1 = polynomialY1.eval(@as(f32, @floatFromInt(b))/interpolationDistance);
-					const factorY2 = polynomialY2.eval(@as(f32, @floatFromInt(b))/interpolationDistance);
-					if(!neighborInfo.@"++" and neighborInfo.@"+o" and neighborInfo.@"o+") {
-						const factor = 1 - (1 - factorX2)*(1 - factorY2);
+			for (0..interpolationDistance) |a| { // corners:
+				for (0..interpolationDistance) |b| {
+					if (!neighborInfo.@"++" and neighborInfo.@"+o" and neighborInfo.@"o+") {
 						const x = MapFragment.mapSize - 1 - a;
 						const y = MapFragment.mapSize - 1 - b;
-						mapFragment.heightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
-						if(factor < 0.25) {
+						const polynomial = noise.get(mapFragment.pos.wx + @as(i32, @intCast(x)), mapFragment.pos.wy + @as(i32, @intCast(y)));
+						const factorX = polynomial.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
+						const factorY = polynomial.eval(@as(f32, @floatFromInt(b))/interpolationDistance);
+						const factor = 1 - (1 - factorX)*(1 - factorY);
+						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
+						if (factor < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
 					}
-					if(!neighborInfo.@"+-" and neighborInfo.@"+o" and neighborInfo.@"o-") {
-						const factor = 1 - (1 - factorX1)*(1 - factorY2);
+					if (!neighborInfo.@"+-" and neighborInfo.@"+o" and neighborInfo.@"o-") {
 						const x = MapFragment.mapSize - 1 - a;
 						const y = b;
-						mapFragment.heightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
-						if(factor < 0.25) {
+						const polynomial = noise.get(mapFragment.pos.wx + @as(i32, @intCast(x)), mapFragment.pos.wy + @as(i32, @intCast(y)));
+						const factorX = polynomial.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
+						const factorY = polynomial.eval(@as(f32, @floatFromInt(b))/interpolationDistance);
+						const factor = 1 - (1 - factorX)*(1 - factorY);
+						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
+						if (factor < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
 					}
-					if(!neighborInfo.@"-+" and neighborInfo.@"-o" and neighborInfo.@"o+") {
-						const factor = 1 - (1 - factorX2)*(1 - factorY1);
+					if (!neighborInfo.@"-+" and neighborInfo.@"-o" and neighborInfo.@"o+") {
 						const x = a;
 						const y = MapFragment.mapSize - 1 - b;
-						mapFragment.heightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
-						if(factor < 0.25) {
+						const polynomial = noise.get(mapFragment.pos.wx + @as(i32, @intCast(x)), mapFragment.pos.wy + @as(i32, @intCast(y)));
+						const factorX = polynomial.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
+						const factorY = polynomial.eval(@as(f32, @floatFromInt(b))/interpolationDistance);
+						const factor = 1 - (1 - factorX)*(1 - factorY);
+						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
+						if (factor < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
 					}
-					if(!neighborInfo.@"--" and neighborInfo.@"-o" and neighborInfo.@"o-") {
-						const factor = 1 - (1 - factorX1)*(1 - factorY1);
+					if (!neighborInfo.@"--" and neighborInfo.@"-o" and neighborInfo.@"o-") {
 						const x = a;
 						const y = b;
-						mapFragment.heightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
-						if(factor < 0.25) {
+						const polynomial = noise.get(mapFragment.pos.wx + @as(i32, @intCast(x)), mapFragment.pos.wy + @as(i32, @intCast(y)));
+						const factorX = polynomial.eval(@as(f32, @floatFromInt(a))/interpolationDistance);
+						const factorY = polynomial.eval(@as(f32, @floatFromInt(b))/interpolationDistance);
+						const factor = 1 - (1 - factorX)*(1 - factorY);
+						mapFragment.heightMap[x][y] = @trunc(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
+						if (factor < 0.25) {
 							mapFragment.biomeMap[x][y] = generatedMap.biomeMap[x][y];
 						}
 					}
@@ -566,7 +616,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 		mapFragment.save(&originalHeightMap, neighborInfo); // Store the interpolated map
 		// Generate LODs
 		var cur = mapFragment;
-		while(cur.pos.voxelSizeShift < main.settings.highestSupportedLod) {
+		while (cur.pos.voxelSizeShift < main.settings.highestSupportedLod) {
 			var nextPos = cur.pos;
 			nextPos.voxelSize *= 2;
 			nextPos.voxelSizeShift += 1;
@@ -576,22 +626,22 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 			const next = getOrGenerateFragment(nextPos.wx, nextPos.wy, nextPos.voxelSize);
 			const offSetX: usize = @intCast((cur.pos.wx -% nextPos.wx) >> nextPos.voxelSizeShift);
 			const offSetY: usize = @intCast((cur.pos.wy -% nextPos.wy) >> nextPos.voxelSizeShift);
-			for(0..MapFragment.mapSize/2) |x| {
-				for(0..MapFragment.mapSize/2) |y| {
+			for (0..MapFragment.mapSize/2) |x| {
+				for (0..MapFragment.mapSize/2) |y| {
 					var biomes: [4]?*const Biome = @splat(null);
 					var biomeCounts: [4]u8 = @splat(0);
 					var height: i32 = 0;
-					for(0..2) |dx| {
-						for(0..2) |dy| {
+					for (0..2) |dx| {
+						for (0..2) |dy| {
 							const curX = x*2 + dx;
 							const curY = y*2 + dy;
 							height += cur.heightMap[curX][curY];
 							const biome = cur.biomeMap[curX][curY];
-							for(0..4) |i| {
-								if(biomes[i] == biome) {
+							for (0..4) |i| {
+								if (biomes[i] == biome) {
 									biomeCounts[i] += 1;
 									break;
-								} else if(biomes[i] == null) {
+								} else if (biomes[i] == null) {
 									biomes[i] = biome;
 									biomeCounts[i] += 1;
 									break;
@@ -601,8 +651,8 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 					}
 					var bestBiome: *const Biome = biomes[0].?;
 					var bestBiomeCount: u8 = biomeCounts[0];
-					for(1..4) |i| {
-						if(biomeCounts[i] > bestBiomeCount) {
+					for (1..4) |i| {
+						if (biomeCounts[i] > bestBiomeCount) {
 							bestBiomeCount = biomeCounts[i];
 							bestBiome = biomes[i].?;
 						}

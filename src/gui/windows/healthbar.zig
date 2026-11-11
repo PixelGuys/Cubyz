@@ -42,36 +42,39 @@ pub fn deinit() void {
 	deadHeartTexture.deinit();
 }
 
-pub fn render() void {
-	draw.setColor(0xffffffff);
-	const displayHealth = @max(0, main.game.Player.super.health);
-	const halfHeartUnits: usize = @intFromFloat(@ceil(displayHealth*2));
+pub fn render(currentFrame: *graphics.vulkan.Frame) void {
+	if (main.game.player.isCreative()) return;
+
+	const displayHealth = @max(0, main.game.player.super.health);
+	const halfHeartUnits: usize = @ceil(displayHealth*2);
 	const wholeHearts = halfHeartUnits/2;
 	const halfHeart = halfHeartUnits%2;
-	const totalHearts: usize = @intFromFloat(@ceil(main.game.Player.super.maxHealth));
+	const totalHearts: usize = @ceil(main.game.player.super.maxHealth);
 
 	var x: f32 = 0;
 	var y: f32 = 0;
-	for(0..totalHearts) |i| {
-		if(x >= window.contentSize[0]) {
+	for (0..totalHearts) |i| {
+		if (x >= window.contentSize[0]) {
 			x = 0;
 			y += 20;
 		}
 
-		if(i < wholeHearts) {
-			heartTexture.bindTo(0);
-		} else if(i < wholeHearts + halfHeart) {
-			halfHeartTexture.bindTo(0);
-		} else {
-			deadHeartTexture.bindTo(0);
-		}
+		const texture = blk: {
+			if (i < wholeHearts) {
+				break :blk heartTexture;
+			} else if (i < wholeHearts + halfHeart) {
+				break :blk halfHeartTexture;
+			} else {
+				break :blk deadHeartTexture;
+			}
+		};
 
-		draw.boundImage(Vec2f{x, window.contentSize[1] - y - 20}, .{20, 20});
+		draw.image(currentFrame, texture, Vec2f{x, window.contentSize[1] - y - 20}, .{20, 20});
 		x += 20;
 	}
 
 	y += 20;
-	if(y != window.contentSize[1]) {
+	if (y != window.contentSize[1]) {
 		window.contentSize[1] = y;
 		gui.updateWindowPositions();
 	}

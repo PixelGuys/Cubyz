@@ -1,6 +1,10 @@
 .{
+	.onUpdate = .{
+		.type = .decay,
+	},
 	.drops = .{
-		.{.items = .{"cubyz:leaves/pine", "cubyz:pine_branch"}},
+		.{.items = .{"cubyz:branch/pine"}},
+		.{.items = .{"cubyz:leaves/pine"}, .allowedToolTags = .{.cuttable}},
 	},
 	.texture = "cubyz:leaves/pine",
 	.texture6 = "cubyz:branch/pine/dot",
