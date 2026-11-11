@@ -44,5 +44,13 @@
 			.placeMode = .degradable,
 			.chance = 0.02,
 		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:vine/glimmer_worms",
+			.generationMode = .ceiling,
+			.chance = 0.25,
+			.height = 9,
+			.height_variation = 7,
+		},
 	},
 }
