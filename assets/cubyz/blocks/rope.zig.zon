@@ -1,0 +1,15 @@
+.{
+	.tags = .{.cuttable},
+	.blockHealth = 1.0,
+	.item = .{
+		.texture = "rope.png",
+	},
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = "cubyz:rope",
+	.model = "cubyz:cross",
+	.transparent = true,
+	.collide = false,
+	.texture = "cubyz:rope",
+}

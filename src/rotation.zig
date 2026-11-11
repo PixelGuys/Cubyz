@@ -44,6 +44,9 @@ pub const RotationMode = struct { // MARK: RotationMode
 		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, _: *Block, _: Block, blockPlacing: bool) bool {
 			return blockPlacing;
 		}
+		pub fn findPlacementPos(_: *main.game.World, pos: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, _: *Block, _: Block) Vec3i {
+			return pos;
+		}
 		pub fn createBlockModel(block: Block, _: *u16, zon: ZonElement) ModelIndex {
 			return main.models.getModelIndex(zon.as([]const u8) orelse blk: {
 				std.log.err("Invalid model data for block {s} found {s}, expected string", .{block.id(), @tagName(zon)});
@@ -158,6 +161,8 @@ pub const RotationMode = struct { // MARK: RotationMode
 	/// Updates the block data of a block in the world or places a block in the world.
 	/// return true if the placing was successful, false otherwise.
 	generateData: *const fn (world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, blockPlacing: bool) bool = default_functions.generateData,
+
+	findPlacementPos: *const fn (world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, _: ?Neighbor, currentData: *Block, neighborBlock: Block) Vec3i = default_functions.findPlacementPos,
 
 	/// Updates data of a placed block if the RotationMode dependsOnNeighbors.
 	updateData: *const fn (block: *Block, neighbor: Neighbor, neighborBlock: Block) bool = &default_functions.updateData,

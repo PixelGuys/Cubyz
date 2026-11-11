@@ -1183,8 +1183,10 @@ pub const mesh_selection = struct { // MARK: mesh_selection
 							block.typ = itemBlock;
 							block.data = 0;
 							if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelectionValue, &block, neighborBlock, true)) {
-								if (!canPlaceBlock(neighborPos, block)) return;
-								updateBlockAndSendUpdate(inventory, slot, neighborPos, oldBlock, block);
+								const newBlockPos = rotationMode.findPlacementPos(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelectionValue, &block, neighborBlock);
+								if (!canPlaceBlock(newBlockPos, block)) return;
+								if (!(mesh_storage.getBlockFromRenderThread(newBlockPos[0], newBlockPos[1], newBlockPos[2]) orelse return).replaceable()) return;
+								updateBlockAndSendUpdate(inventory, slot, newBlockPos, oldBlock, block);
 								return;
 							}
 						}
