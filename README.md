@@ -6,7 +6,7 @@ Cubyz is a 3D voxel sandbox game (inspired by Minecraft).
 Cubyz has a bunch of interesting/unique features such as:
 - Level of Detail (→ This enables far view distances.)
 - 3D Chunks (→ There is no height or depth limit.)
-- Procedural Crafting (→ There are infinite possibilites for tool crafting.)
+- Procedural Crafting (→ There are infinite possibilities for tool crafting.)
 
 # About
 Cubyz is written in <img src="https://github.com/PixelGuys/Cubyz/assets/43880493/04dc89ca-3ef2-4167-9e1a-e23f25feb67c" width="20" height="20">
@@ -31,7 +31,7 @@ However, both of them lost interest at some point, and now Cubyz is maintained b
 ## The Easy Way (no tools needed)
 1. Download the latest [source code](https://codeload.github.com/PixelGuys/Cubyz/zip/refs/heads/master)
 2. Extract the zip file
-3. Go into the extraced folder and double click the `run_linux.sh` or `run_windows.bat` depending on your operating system.
+3. Go into the extracted folder and double click the `run_linux.sh` or `run_windows.bat` depending on your operating system.
 4. Congratulations: You just compiled your first program!
 
 ### It doesn't work?
