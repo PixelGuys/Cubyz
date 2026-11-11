@@ -1,5 +1,5 @@
 .{
-	.tags = .{.mineable},
+	.tags = .{.cuttable},
 	.blockHealth = 1.0,
 	.item = .{
 		.texture = "rope.png",
@@ -11,7 +11,5 @@
 	.model = "cubyz:cross",
 	.transparent = true,
 	.collide = false,
-	.climbable = true,
-	.climbingSpeed = 100,
 	.texture = "cubyz:rope",
 }
