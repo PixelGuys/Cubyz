@@ -97,7 +97,7 @@ pub const player = struct { // MARK: player
 	pub var selectionPosition2: ?Vec3i = null;
 
 	pub var friction: physics.FrictionState = .{.current = 0, .mobile = 0};
-	pub var volumeProperties: physics.collision.VolumeProperties = .{.density = 0, .maxDensity = 0, .mobileFriction = 0, .terminalVelocity = 0};
+	pub var volumeProperties: physics.collision.VolumeProperties = .{.density = 0, .maxDensity = 0, .mobileFriction = 0, .terminalVelocity = 0, .climbingSpeed = 1.0};
 
 	pub var onGround: bool = false;
 	pub var jumpCooldown: f64 = 0;
@@ -640,6 +640,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	const density = if (player.isFlying.load(.monotonic)) 0.0 else player.volumeProperties.density;
 	const maxDensity = if (player.isFlying.load(.monotonic)) 0.0 else player.volumeProperties.maxDensity;
+	const isClimbing = if(player.isFlying.load(.monotonic)) false else player.volumeProperties.climbable;
+	const climbingSpeed = if(player.isFlying.load(.monotonic)) 1.0 else player.volumeProperties.climbingSpeed;
 
 	var jumping = false;
 	player.jumpCooldown -= deltaTime;
@@ -662,6 +664,10 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 		var isSprintingOnGround = false;
 		var speedModifier = walkingSpeed;
+		const horizontalClimbSpeed = 8;
+		if (isClimbing) {
+			speedModifier = horizontalClimbSpeed;
+		}
 		if (keyboard.key("sprint").pressed and !player.crouching) {
 			if (player.isGhost.load(.monotonic)) {
 				speedModifier = 128;
@@ -730,16 +736,75 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementSpeed = @max(movementSpeed, 60);
 						movementDir[2] -= 60;
 					} else {
-						movementSpeed = @max(movementSpeed, 25);
-						movementDir[2] -= 25;
+						movementSpeed = @max(movementSpeed, 8)*keyboard.key("forward").value;
+						movementDir += forward*@as(Vec3d, @splat(8*keyboard.key("forward").value));
 					}
 				} else {
-					movementSpeed = @max(movementSpeed, 5.5);
-					movementDir[2] -= 5.5;
+					movementSpeed = @max(movementSpeed, walkingSpeed)*keyboard.key("forward").value;
+					movementDir += forward*@as(Vec3d, @splat(walkingSpeed*keyboard.key("forward").value));
+				}
+			}
+			if(keyboard.key("backward").value > 0.0) {
+				movementSpeed = @max(movementSpeed, walkingSpeed)*keyboard.key("backward").value;
+				movementDir += forward*@as(Vec3d, @splat(-walkingSpeed*keyboard.key("backward").value));
+			}
+			if(keyboard.key("left").value > 0.0) {
+				movementSpeed = @max(movementSpeed, walkingSpeed)*keyboard.key("left").value;
+				movementDir += right*@as(Vec3d, @splat(walkingSpeed*keyboard.key("left").value));
+			}
+			if(keyboard.key("right").value > 0.0) {
+				movementSpeed = @max(movementSpeed, walkingSpeed)*keyboard.key("right").value;
+				movementDir += right*@as(Vec3d, @splat(-walkingSpeed*keyboard.key("right").value));
+			}
+			if(keyboard.key("jump").pressed) {
+				if(player.isFlying.load(.monotonic)) {
+					if(keyboard.key("sprint").pressed) {
+						if(player.isGhost.load(.monotonic)) {
+							movementSpeed = @max(movementSpeed, 60);
+							movementDir[2] += 60;
+						} else {
+							movementSpeed = @max(movementSpeed, 25);
+							movementDir[2] += 25;
+						}
+					} else {
+						movementSpeed = @max(movementSpeed, 5.5);
+						movementDir[2] += 5.5;
+					}
+				} else if((player.onGround or player.jumpCoyote > 0.0) and player.jumpCooldown <= 0) {
+					jumping = true;
+					player.jumpCooldown = player.jumpCooldownConstant;
+					if(!player.onGround) {
+						player.eye.coyote = 0;
+					}
+					player.jumpCoyote = 0;
+				} else if(!keyboard.key("fall").pressed) {
+					movementSpeed = @max(movementSpeed, walkingSpeed);
+					movementDir[2] += walkingSpeed*climbingSpeed;
+				}
+			} else {
+				player.jumpCooldown = 0;
+			}
+			if(keyboard.key("fall").pressed) {
+				if(player.isFlying.load(.monotonic)) {
+					if(keyboard.key("sprint").pressed) {
+						if(player.isGhost.load(.monotonic)) {
+							movementSpeed = @max(movementSpeed, 60);
+							movementDir[2] -= 60;
+						} else {
+							movementSpeed = @max(movementSpeed, 25);
+							movementDir[2] -= 25;
+						}
+					} else {
+						movementSpeed = @max(movementSpeed, 5.5);
+						movementDir[2] -= 5.5;
+					}
+				} else if(!keyboard.key("jump").pressed) {
+					movementSpeed = @max(movementSpeed, walkingSpeed);
+					movementDir[2] -= walkingSpeed*climbingSpeed;
 				}
 			} else if (!keyboard.key("jump").pressed) {
 				movementSpeed = @max(movementSpeed, walkingSpeed);
-				movementDir[2] -= walkingSpeed;
+				movementDir[2] -= walkingSpeed*climbingSpeed;
 			}
 		}
 

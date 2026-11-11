@@ -377,9 +377,12 @@ pub fn calculateMotion(comptime side: main.sync.Side, deltaTime: f64, friction: 
 	if (main.game.getBlockWithSide(side, @floor(pos[0]), @floor(pos[1]), @floor(pos[2])) != null) {
 		const effectiveGravity = gravity*(density - volumeProperties.density)/density;
 		const volumeFrictionCoeffecient: f32 = @floatCast(baseGravity/volumeProperties.terminalVelocity);
+		const isClimbing = player.volumeProperties.climbable and !player.onGround;
 
 		var acc = inputAcc;
-		acc[2] -= effectiveGravity;
+		if(!player.isFlying.load(.monotonic) and !isClimbing) {
+			acc[2] -= effectiveGravity;
+		}
 
 		const baseFrictionCoefficient: f32 = friction.current;
 
@@ -394,6 +397,10 @@ pub fn calculateMotion(comptime side: main.sync.Side, deltaTime: f64, friction: 
 				const jumpVelocity = @sqrt(jumpHeight*baseGravity*2);
 				velocity[i] = @max(jumpVelocity, velocity[i] + jumpVelocity);
 				frictionCoefficient = volumeFrictionCoeffecient;
+			}
+			if(isClimbing and !player.isFlying.load(.monotonic)) { // High friction while climbing
+				const climbingFriction = 10;
+				frictionCoefficient = climbingFriction;
 			}
 			const v_0 = velocity[i];
 			const a = acc[i];
