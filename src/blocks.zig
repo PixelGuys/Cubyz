@@ -199,7 +199,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_density[size] = zon.get(f32, "density") orelse main.physics.airDensity;
 	_terminalVelocity[size] = zon.get(f32, "terminalVelocity") orelse 90;
 	_mobility[size] = zon.get(f32, "mobility") orelse 1.0;
-	_climbable[size] = zon.get(bool, "climbable", false);
+	_climbable[size] = zon.get(bool, "climbable") orelse false;
 	_allowOres[size] = zon.get(bool, "allowOres") orelse false;
 
 	_blockEntity[size] = block_entity.getByID(zon.get([]const u8, "blockEntity"));
