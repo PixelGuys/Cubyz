@@ -1163,11 +1163,10 @@ pub const mesh_selection = struct { // MARK: mesh_selection
 							}
 						}
 						// Check the block in front of it:
-						const newBlockPos = rotationMode.findPlacementPos(main.game.world.?, selectedPos, @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos))), lastDir, neighborDir, &block, .{.typ = 0, .data = 0}, false);
-						const selectedRelPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(newBlockPos)));
+						const selectedRelPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
 						const boxFaceNormal: ?Vec3i = if (oldBlock.placementMode() == .boundingBox) boundingBoxFaceNormal(selectedRelPos, lastDir, selectionMin, selectionMax) else null;
-						const neighborPos = if (boxFaceNormal) |normal| newBlockPos + normal else posBeforeBlock;
-						neighborDir = if (boxFaceNormal) |normal| -normal else newBlockPos - posBeforeBlock;
+						const neighborPos = if (boxFaceNormal) |normal| selectedPos + normal else posBeforeBlock;
+						neighborDir = if (boxFaceNormal) |normal| -normal else selectedPos - posBeforeBlock;
 						const neighborOfSelectionValue = if (boxFaceNormal != null) chunk.Neighbor.fromRelPos(neighborDir).? else neighborOfSelection;
 						const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(neighborPos)));
 						const neighborBlock = block;
@@ -1184,8 +1183,10 @@ pub const mesh_selection = struct { // MARK: mesh_selection
 							block.typ = itemBlock;
 							block.data = 0;
 							if (rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelectionValue, &block, neighborBlock, true)) {
-								if (!canPlaceBlock(neighborPos, block)) return;
-								updateBlockAndSendUpdate(inventory, slot, neighborPos, oldBlock, block);
+								const newBlockPos = rotationMode.findPlacementPos(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelectionValue, &block, neighborBlock);
+								if (!canPlaceBlock(newBlockPos, block)) return;
+								if (!(mesh_storage.getBlockFromRenderThread(newBlockPos[0], newBlockPos[1], newBlockPos[2]) orelse return).replaceable()) return;
+								updateBlockAndSendUpdate(inventory, slot, newBlockPos, oldBlock, block);
 								return;
 							}
 						}
