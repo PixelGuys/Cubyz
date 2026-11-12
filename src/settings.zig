@@ -51,6 +51,8 @@ pub var storedAccount: main.network.authentication.PasswordEncodedAccountCode = 
 
 pub var guiScale: ?f32 = null;
 
+pub var masterVolume: f32 = 1;
+
 pub var musicVolume: f32 = 1;
 
 pub var soundVolume: f32 = 1;

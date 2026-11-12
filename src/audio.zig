@@ -448,7 +448,7 @@ fn mixMusic(buffer: []f32) void {
 	var i: usize = 0;
 	while (i < buffer.len) : (i += 2) {
 		current_music.animationProgress += 1.0/(animationLengthInSeconds*sampleRate);
-		var amplitude: f32 = main.settings.musicVolume;
+		var amplitude: f32 = main.settings.musicVolume*main.settings.masterVolume;
 		if (current_music.animationProgress > 1) {
 			if (current_music.animationDecaying) {
 				main.globalAllocator.free(activeMusicId);
@@ -518,7 +518,7 @@ fn mixSound(buffer: []f32) void {
 
 		var j: usize = 0;
 		while (j < buffer.len) : (j += 2) {
-			const amplitude: f32 = main.settings.soundVolume*pickedSound.volume;
+			const amplitude: f32 = main.settings.masterVolume*main.settings.soundVolume*pickedSound.volume;
 
 			buffer[j] += soundBuffer[sound.bufPos]*amplitude*leftVol;
 			buffer[j + 1] += soundBuffer[sound.bufPos]*amplitude*rightVol;

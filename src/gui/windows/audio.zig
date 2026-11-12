@@ -17,6 +17,11 @@ pub var window = GuiWindow{
 	.closeIfMouseIsGrabbed = true,
 };
 
+fn masterCallback(newValue: f32) void {
+	settings.masterVolume = deziBelToLinear(newValue);
+	settings.save();
+}
+
 fn musicCallback(newValue: f32) void {
 	settings.musicVolume = deziBelToLinear(newValue);
 	settings.save();
@@ -38,6 +43,12 @@ fn linearToDezibel(x: f32) f32 {
 	return db;
 }
 
+fn masterFormatter(allocator: NeverFailingAllocator, value: f32) []const u8 {
+	const percentage = 100*deziBelToLinear(value);
+	if (percentage == 0) return allocator.dupe(u8, "Master volume: Off");
+	return allocator.print("Master volume:", .{});
+}
+
 fn musicFormatter(allocator: NeverFailingAllocator, value: f32) []const u8 {
 	const percentage = 100*deziBelToLinear(value);
 	if (percentage == 0) return allocator.dupe(u8, "Music volume: Off");
@@ -54,6 +65,7 @@ const padding: f32 = 8;
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	list.add(ContinuousSlider.init(.{0, 0}, 128, -60, 0, linearToDezibel(settings.masterVolume), &masterCallback, &masterFormatter));
 	list.add(ContinuousSlider.init(.{0, 0}, 128, -60, 0, linearToDezibel(settings.musicVolume), &musicCallback, &musicFormatter));
 	list.add(ContinuousSlider.init(.{0, 0}, 128, -60, 0, linearToDezibel(settings.soundVolume), &soundCallback, &soundFormatter));
 	list.finish(.center);
