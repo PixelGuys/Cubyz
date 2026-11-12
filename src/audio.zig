@@ -181,7 +181,7 @@ fn findSound(musicId: []const u8) ?*AudioData {
 		}
 		return data;
 	}
-	return null;
+	unreachable;
 }
 
 const MusicLoadTask = struct {
