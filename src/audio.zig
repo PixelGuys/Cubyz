@@ -3,6 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const vec = main.vec;
 const Vec3f = vec.Vec3f;
+const Assets = main.assets;
 const utils = main.utils;
 const ZonElement = @import("zon.zig").ZonElement;
 
@@ -348,22 +349,29 @@ pub fn getActiveSoundCount() u32 {
 	return @intCast(activeSounds.items.len);
 }
 
-pub fn registerSound(assetsFolder: []const u8, id: []const u8, zon: ZonElement) void {
+pub fn registerSounds(soundsZon: *Assets.ZonHashMap) void {
+	const iterator = soundsZon.iterator();
+	while (iterator.next()) |entry| {
+		registerSound(entry.key_ptr.*, entry.value_ptr.*);
+	}
+}
+
+fn registerSound(id: []const u8, zon: ZonElement) void {
 	const soundZons = zon.getChild("sounds").toSlice();
 	var resultSoundDatas = main.List(SoundData).initCapacity(main.worldArena, soundZons.len);
 
 	if (soundZons.len == 0) {
-		std.log.err("Error: A Sound Zon must have .sounds with items in it: {s} ({s})", .{id, assetsFolder});
+		std.log.err("Error: A Sound Zon must have .sounds with items in it: {s} ({s})", .{id});
 		return;
 	}
 
 	for (soundZons) |soundZon| {
 		const audioId = soundZon.get([]const u8, "audio") orelse {
-			std.log.err("Error: Sound Data audio was not specified: {s} ({s})", .{id, assetsFolder});
+			std.log.err("Error: Sound Data audio was not specified: {s} ({s})", .{id});
 			return;
 		};
 		if (findSound(audioId) == null) {
-			std.log.err("Error: Sound Data audio was not found: {s} ({s})", .{id, assetsFolder});
+			std.log.err("Error: Sound Data audio was not found: {s} ({s})", .{id});
 			return;
 		}
 		resultSoundDatas.appendAssumeCapacity(.{

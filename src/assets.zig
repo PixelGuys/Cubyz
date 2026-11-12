@@ -736,10 +736,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		particles.particle_manager.register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 	}
 
-	iterator = worldAssets.sounds.iterator();
-	while (iterator.next()) |entry| {
-		audio.registerSound(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
-	}
+	audio.registerSounds(&worldAssets.musicTracks);
 
 	// Biomes:
 	var nextBiomeNumericId: u32 = 0;
