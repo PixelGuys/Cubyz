@@ -291,10 +291,8 @@ pub const User = struct { // MARK: User
 		}
 	}
 
-	var freeId: u32 = 0; // TODO: Use id provided by the ECS.
 	pub fn initPlayer(self: *User) void {
-		self.id = @fromBackingInt(freeId);
-		freeId += 1;
+		self.id = main.entity.assignEntityWithNextFreeId();
 
 		world.?.loadPlayer(self) catch {
 			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
