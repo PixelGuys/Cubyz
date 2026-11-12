@@ -144,7 +144,7 @@ var activeTasks: main.List([]const u8) = .empty; // MARK: Music
 var taskMutex: main.utils.Mutex = .{};
 
 var musicCache: utils.Cache(AudioData, 4, 4, AudioData.deinit) = .{};
-var audioCache: utils.Cache(AudioData, 4, 4, AudioData.deinit) = .{};
+var audioCache: utils.Cache(AudioData, 32, 32, AudioData.deinit) = .{};
 
 fn findMusic(musicId: []const u8) ?[]f32 {
 	{
@@ -163,26 +163,32 @@ fn findMusic(musicId: []const u8) ?[]f32 {
 	return null;
 }
 
-fn findSound(musicId: []const u8) ?*AudioData {
-	{
-		taskMutex.lock();
-		defer taskMutex.unlock();
-		if (audioCache.find(AudioData{.audioId = musicId}, null)) |musicData| {
-			return musicData;
-		}
-		const data = AudioData.init(musicId, "sounds");
-		// we convert to mono for easier audio processing
-		if (data.channelType == .stereo) {
-			std.log.err("Sound effects must be mono. Error on {s}", .{musicId});
-			return null;
-		}
-		const hasOld = audioCache.addToCache(data, data.hashCode());
-		if (hasOld) |old| {
-			old.deinit();
-		}
-		return data;
+fn findSound(soundId: []const u8) ?*AudioData {
+	taskMutex.lock();
+	defer taskMutex.unlock();
+	if (audioCache.find(AudioData{.audioId = soundId}, null)) |soundData| {
+		return soundData;
 	}
-	unreachable;
+	const data = AudioData.init(soundId, "sounds");
+	// we convert to mono for easier audio processing
+	if (data.channelType == .stereo) {
+		std.log.err("Sound effects must be mono. Error on {s}", .{soundId});
+		return null;
+	}
+	const hasOld = audioCache.addToCache(data, data.hashCode());
+	if (hasOld) |old| {
+		old.deinit();
+	}
+	return data;
+}
+
+fn getSound(musicId: []const u8) ?*AudioData {
+	taskMutex.lock();
+	defer taskMutex.unlock();
+	if (audioCache.find(AudioData{.audioId = musicId}, null)) |musicData| {
+		return musicData;
+	}
+	return null;
 }
 
 const MusicLoadTask = struct {
@@ -476,7 +482,10 @@ fn mixSound(buffer: []f32) void {
 	main: while (i < activeSounds.items.len) {
 		var sound = activeSounds.items[i];
 		const pickedSound = sound.soundDatas[if (sound.soundDatas.len > 1) main.random.nextIntBounded(u32, &main.seed, @intCast(sound.soundDatas.len - 1)) else 0];
-		const audioData = findSound(pickedSound.audioName) orelse continue :main;
+		const audioData = getSound(pickedSound.audioName) orelse {
+			defer findSound(pickedSound.audioName);
+			continue :main;
+		};
 		const soundBuffer = audioData.data;
 
 		var leftVol: f32 = 1;
