@@ -729,6 +729,10 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	while (iterator.next()) |entry| {
 		particles.particle_manager.register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 	}
+	iterator.index = 0;
+	while (iterator.next()) |entry| {
+		particles.particle_manager.finishParticles(entry.key_ptr.*, entry.value_ptr.*);
+	}
 
 	// Biomes:
 	var nextBiomeNumericId: u32 = 0;
