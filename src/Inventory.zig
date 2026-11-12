@@ -589,10 +589,10 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 
 	pub fn compressItems(source: ClientInventory, options: SortOptions) void {
 		for (source.super._items, 0..) |invStack, slot| {
-			if (!(invStack.item == .baseItem)) continue;
+			if (invStack.item != .baseItem) continue;
 			if (slot < options.ignoredSlotCount) continue;
 			for (source.super._items, 0..) |checkedInvStack, checkedSlot| {
-				if (!(checkedInvStack.item == .baseItem)) continue;
+				if (checkedInvStack.item != .baseItem) continue;
 				if (checkedSlot < slot) continue;
 				if (checkedSlot < options.ignoredSlotCount) continue;
 				if (!std.meta.eql(checkedInvStack.item, invStack.item)) continue;
