@@ -13,6 +13,9 @@
 	.onUpdate = .{
 		.type = .check_support_blocks,
 	},
+	.onClientUpdate = .{
+		.type = .torch_update_particles,
+	},
 	.model = .{
 		.base = "cubyz:torch",
 		.side = "cubyz:torch_side",
