@@ -1016,9 +1016,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			} else @panic("The player hand inventory wasn't found. Cannot save player data.");
 		}
 
-		if (user.spawnPos) |spawnPos| {
-			playerZon.put("playerSpawnPos", spawnPos);
-		}
+		playerZon.put("playerSpawnPos", user.spawnPos);
 
 		const playerPath = main.stackAllocator.print("saves/{s}/players", .{self.path});
 		defer main.stackAllocator.free(playerPath);
