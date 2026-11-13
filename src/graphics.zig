@@ -1665,6 +1665,7 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		used: u31,
 		binding: c_uint,
 		stagingBuffer: ?vulkan.Buffer.Staging = null,
+		options: Options,
 
 		const Self = @This();
 
@@ -1678,15 +1679,19 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 			self.capacity = size;
 			if (main.settings.launch_config.vulkanTestingMode) {
 				self.ssbo.buffer = .init(bytes, .{
-					.usage = c.VK_BUFFER_USAGE_TRANSFER_DST_BIT | c.VK_BUFFER_USAGE_TRANSFER_SRC_BIT | c.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+					.usage = @as(c.VkBufferUsageFlags, c.VK_BUFFER_USAGE_TRANSFER_DST_BIT | c.VK_BUFFER_USAGE_TRANSFER_SRC_BIT | c.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) | self.options.extraUsageFlags,
 				});
 			}
 		}
 
-		pub fn init(self: *Self, allocator: NeverFailingAllocator, size: u31, binding: c_uint) void {
+		const Options = struct {
+			extraUsageFlags: c.VkBufferUsageFlags = 0,
+		};
+		pub fn init(self: *Self, allocator: NeverFailingAllocator, size: u31, binding: c_uint, options: Options) void {
 			self.stagingBuffer = null;
 			self.used = 0;
 			self.binding = binding;
+			self.options = options;
 			self.createBuffer(size);
 			self.activeFence = 0;
 			for (&self.fences) |*fence| {

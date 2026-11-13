@@ -68,7 +68,7 @@ pub const client = struct { // MARK: client
 			},
 		);
 
-		nodeBuffer.init(main.globalAllocator, 1 << 20, 15);
+		nodeBuffer.init(main.globalAllocator, 1 << 20, 15, .{});
 	}
 	pub fn deinit() void {
 		pipeline.deinit();

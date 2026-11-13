@@ -180,12 +180,12 @@ pub fn init() void {
 	vao = .init(graphics.VertexArray.EmptyVertex, &.{}, &rawData);
 
 	for (0..settings.highestSupportedLod + 1) |i| {
-		faceBuffers[i].init(main.globalAllocator, 1 << 20, 3);
-		lightBuffers[i].init(main.globalAllocator, 1 << 20, 10);
+		faceBuffers[i].init(main.globalAllocator, 1 << 20, 3, .{});
+		lightBuffers[i].init(main.globalAllocator, 1 << 20, 10, .{});
 	}
-	chunkBuffer.init(main.globalAllocator, 1 << 20, 6);
-	commandBuffer.init(main.globalAllocator, 1 << 20, 8);
-	chunkIDBuffer.init(main.globalAllocator, 1 << 20, 9);
+	chunkBuffer.init(main.globalAllocator, 1 << 20, 6, .{});
+	commandBuffer.init(main.globalAllocator, 1 << 10, 8, .{.extraUsageFlags = c.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT});
+	chunkIDBuffer.init(main.globalAllocator, 1 << 20, 9, .{});
 }
 
 pub fn deinit() void {
