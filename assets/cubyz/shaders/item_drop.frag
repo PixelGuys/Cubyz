@@ -109,7 +109,7 @@ void mainBlockDrop() {
 
 	if(!passDitherTest(fragColor.a)) discard;
 	fragColor.a = 1;
-	gl_FragDepth = (glDepthRange.y - glDepthRange.x)*gl_FragCoord.z + glDepthRange.x;
+	gl_FragDepth = gl_FragCoord.z;
 }
 
 // itemDrops -------------------------------------------------------------------------------------------------------------------------

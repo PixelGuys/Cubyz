@@ -347,9 +347,16 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 	}
 
 	c.glDepthRange(0, 0.001);
+	if (main.settings.launch_config.vulkanTestingMode) {
+		currentFrame.maxDepth = 0.001;
+	}
 	itemdrop.item_drop_renderer.renderDisplayItems(currentFrame, ambientLight, playerPos);
 	itemdrop.item_drop_renderer.endRender();
 	c.glDepthRange(0.001, 1);
+	if (main.settings.launch_config.vulkanTestingMode) {
+		currentFrame.maxDepth = 1;
+		currentFrame.minDepth = 0.01;
+	}
 
 	chunk_meshing.endRender();
 
