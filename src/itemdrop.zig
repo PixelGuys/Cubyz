@@ -726,7 +726,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 				.pushConstantSize = @sizeOf(ItemUniforms),
 			},
 		);
-		modelData.init(main.globalAllocator, 1 << 20, 2);
+		modelData.init(main.globalAllocator, 1 << 16, 2);
 		var allocation: graphics.SubAllocation = .{.start = 0, .len = 0};
 		modelData.uploadData(&[3]u32{1, 1, 1}, &allocation);
 	}
@@ -806,6 +806,14 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 			main.renderer.chunk_meshing.vao.bind();
 			c.glDrawElements(c.GL_TRIANGLES, vertices, c.GL_UNSIGNED_INT, null);
 		}
+	}
+
+	pub fn beginRender() void {
+		modelData.beginRender();
+	}
+
+	pub fn endRender() void {
+		modelData.endRender();
 	}
 
 	pub fn renderItemDrops(currentFrame: *graphics.vulkan.Frame, ambientLight: Vec3f, playerPos: Vec3d) void {
