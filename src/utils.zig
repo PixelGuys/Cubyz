@@ -1429,12 +1429,6 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 			}
 		}
 
-		pub fn foreach(self: *@This(), comptime function: fn (*T) void) void {
-			for (&self.buckets) |*bucket| {
-				bucket.foreach(function);
-			}
-		}
-
 		/// Returns the object that got kicked out of the cache. This must be deinited by the user.
 		pub fn addToCache(self: *@This(), item: *T, hash: u32) ?*T {
 			const index = hash & hashMask;
