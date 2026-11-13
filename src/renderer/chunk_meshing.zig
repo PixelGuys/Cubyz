@@ -61,6 +61,14 @@ pub var commandUniforms: struct {
 	onlyDrawPreviouslyInvisible: c_int,
 	lodDistance: c_int,
 } = undefined;
+pub const CommandUniforms = extern struct {
+	chunkIDIndex: c_uint,
+	commandIndexStart: c_uint,
+	size: c_uint,
+	isTransparent: c_int,
+	onlyDrawPreviouslyInvisible: c_int,
+	lodDistance: f32,
+};
 pub var occlusionTestPipeline: graphics.Pipeline = undefined;
 pub var vao: graphics.VertexArray = undefined;
 pub var faceBuffers: [settings.highestSupportedLod + 1]graphics.LargeBuffer(FaceData) = undefined;
@@ -132,7 +140,14 @@ pub fn init() void {
 			.pushConstantSize = @sizeOf(Uniforms),
 		},
 	);
-	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms, .{});
+	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms, .{
+		.bindings = &.{
+			.ssbo(6, .{.compute = true}),
+			.ssbo(8, .{.compute = true}),
+			.ssbo(9, .{.compute = true}),
+		},
+		.pushConstantSize = @sizeOf(CommandUniforms),
+	});
 	occlusionTestPipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/chunks/occlusionTestVertex.vert",
 		"assets/cubyz/shaders/chunks/occlusionTestFragment.frag",
@@ -290,15 +305,15 @@ fn bindBuffers(lod: usize) void {
 	lightBuffers[lod].ssbo.bind(lightBuffers[lod].binding);
 }
 
-pub fn drawChunksIndirect(currentFrame: *graphics.vulkan.Frame, depthTexture: graphics.vulkan.Image, chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), ambient: Vec3f, transparent: bool) void {
+pub fn drawChunksIndirect(currentFrame: *graphics.vulkan.Frame, currentFrameBuffer: graphics.FrameBuffer, chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), ambient: Vec3f, transparent: bool) void {
 	for (0..chunkIds.len) |i| {
 		const lod = if (transparent) main.settings.highestSupportedLod - i else i;
 		bindBuffers(lod);
-		drawChunksOfLod(currentFrame, depthTexture, chunkIds[lod].items, ambient, transparent, lod);
+		drawChunksOfLod(currentFrame, currentFrameBuffer, chunkIds[lod].items, ambient, transparent, lod);
 	}
 }
 
-fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, depthTexture: graphics.vulkan.Image, chunkIDs: []const u32, ambient: Vec3f, transparent: bool, lod: usize) void {
+fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, currentFrameBuffer: graphics.FrameBuffer, chunkIDs: []const u32, ambient: Vec3f, transparent: bool, lod: usize) void {
 	if (chunkIDs.len == 0) return;
 	const drawCallsEstimate: u31 = @intCast(if (transparent) chunkIDs.len else chunkIDs.len*8);
 	var chunkIDAllocation: main.graphics.SubAllocation = .{.start = 0, .len = 0};
@@ -314,11 +329,33 @@ fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, depthTexture: graphics.
 	c.glUniform1i(commandUniforms.isTransparent, @intFromBool(transparent));
 	if (!transparent) {
 		c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 0);
-		c.glDispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
-		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
+
+		if (main.settings.launch_config.vulkanTestingMode) {
+			currentFrame.renderCommands.endRendering();
+			defer currentFrameBuffer.bindAndClear(currentFrame.renderCommands, .{.clearColor = .load, .clearDepth = .load, .transitionImageLayout = false});
+			currentFrame.renderCommands.bindComputePipeline(commandPipeline);
+			currentFrame.renderCommands.pushConstants(commandPipeline, &CommandUniforms{
+				.chunkIDIndex = chunkIDAllocation.start,
+				.commandIndexStart = allocation.start,
+				.size = @intCast(chunkIDs.len),
+				.lodDistance = main.settings.@"lod0.5Distance",
+				.isTransparent = if (transparent) c.VK_TRUE else c.VK_FALSE,
+				.onlyDrawPreviouslyInvisible = c.VK_FALSE,
+			});
+			currentFrame.renderCommands.bindDescriptors(commandPipeline, &.{
+				.{.ssbo = .{.binding = 6, .ssbo = chunkBuffer.ssbo}},
+				.{.ssbo = .{.binding = 8, .ssbo = commandBuffer.ssbo}},
+				.{.ssbo = .{.binding = 9, .ssbo = chunkIDBuffer.ssbo}},
+			});
+			graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, commandPipeline);
+			currentFrame.renderCommands.dispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
+		} else {
+			c.glDispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
+			c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
+		}
 
 		if (transparent) {
-			bindTransparentShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, depthTexture, ambient, main.settings.blockContrast, lod);
+			bindTransparentShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, currentFrameBuffer.depth, ambient, main.settings.blockContrast, lod);
 		} else {
 			bindShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, ambient, main.settings.blockContrast, lod);
 		}
@@ -339,7 +376,7 @@ fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, depthTexture: graphics.
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
 	if (transparent) {
-		bindTransparentShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, depthTexture, ambient, main.settings.blockContrast, lod);
+		bindTransparentShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, currentFrameBuffer.depth, ambient, main.settings.blockContrast, lod);
 	} else {
 		bindShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, ambient, main.settings.blockContrast, lod);
 	}

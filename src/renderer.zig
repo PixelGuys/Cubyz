@@ -300,7 +300,7 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 	}
 	gpu_performance_measuring.stopQuery();
 	gpu_performance_measuring.startQuery(.chunk_rendering);
-	chunk_meshing.drawChunksIndirect(currentFrame, worldFrameBuffer.depth, &chunkLists, ambientLight, false);
+	chunk_meshing.drawChunksIndirect(currentFrame, worldFrameBuffer, &chunkLists, ambientLight, false);
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
@@ -342,7 +342,7 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 		}
 		gpu_performance_measuring.stopQuery();
 		gpu_performance_measuring.startQuery(.transparent_rendering);
-		chunk_meshing.drawChunksIndirect(currentFrame, worldFrameBuffer.depth, &chunkLists, ambientLight, true);
+		chunk_meshing.drawChunksIndirect(currentFrame, worldFrameBuffer, &chunkLists, ambientLight, true);
 		gpu_performance_measuring.stopQuery();
 	}
 

@@ -2626,7 +2626,7 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 
 	const binding = 31; // maxPushDescriptors is at least 32 for all devices that support it
 
-	pub fn bindToPipeline(buf: CommandBuffer, pipeline: Pipeline) void {
+	pub fn bindToPipeline(buf: CommandBuffer, pipeline: anytype) void {
 		buf.bindDescriptors(pipeline, &.{
 			.{.ubo = .{.binding = binding, .buffer = vulkanBuffers[currentFrame]}},
 		});
