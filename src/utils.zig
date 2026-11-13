@@ -1401,16 +1401,6 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 				}
 			}
 		}
-
-		fn foreach(self: @This(), comptime function: fn (*T) void) void {
-			self.mutex.lock();
-			defer self.mutex.unlock();
-			for (self.items) |*nullItem| {
-				if (nullItem) |item| {
-					function(item);
-				}
-			}
-		}
 	};
 
 	return struct {
@@ -1436,12 +1426,6 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 		pub fn clear(self: *@This()) void {
 			for (&self.buckets) |*bucket| {
 				bucket.clear();
-			}
-		}
-
-		pub fn foreach(self: *@This(), comptime function: fn (*T) void) void {
-			for (&self.buckets) |*bucket| {
-				bucket.foreach(function);
 			}
 		}
 
