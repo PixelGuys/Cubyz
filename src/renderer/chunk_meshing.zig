@@ -364,13 +364,13 @@ fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, currentFrameBuffer: gra
 			c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 		}
 
-		if (transparent) {
-			bindTransparentShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, currentFrameBuffer.depth, ambient, main.settings.blockContrast, lod);
+		bindShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, ambient, main.settings.blockContrast, lod);
+		if (main.settings.launch_config.vulkanTestingMode) {
+			currentFrame.renderCommands.drawIndexedIndirect(commandBuffer.ssbo.buffer.?, @as(usize, allocation.start)*@sizeOf(IndirectData), drawCallsEstimate, @sizeOf(IndirectData));
 		} else {
-			bindShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, ambient, main.settings.blockContrast, lod);
+			c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
+			c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
 		}
-		c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
-		c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
 	}
 
 	// Occlusion tests:
