@@ -349,6 +349,16 @@ fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, currentFrameBuffer: gra
 			});
 			graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, commandPipeline);
 			currentFrame.renderCommands.dispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
+			currentFrame.renderCommands.pipelineBarrier(.{.bufferMemoryBarriers = &.{.{
+				.sType = c.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+				.srcAccessMask = c.VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
+				.dstAccessMask = c.VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
+				.buffer = commandBuffer.ssbo.buffer.?.handle,
+				.offset = 0,
+				.size = c.VK_WHOLE_SIZE,
+			}}});
 		} else {
 			c.glDispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
 			c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
