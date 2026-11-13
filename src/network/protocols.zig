@@ -670,7 +670,6 @@ pub const generic_update = struct { // MARK: generic_update
 				const oldBiome = world.playerBiome.swap(newBiome, .monotonic);
 				if (oldBiome != newBiome) {
 					main.audio.setMusic(newBiome.preferredMusic);
-					main.audio.mood.onBiomeChanged(newBiome);
 				}
 			},
 			.particles => {

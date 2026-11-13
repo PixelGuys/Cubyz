@@ -2,55 +2,43 @@ const std = @import("std");
 
 const main = @import("main");
 const Vec3d = main.vec.Vec3d;
-const Vec3i = main.vec.Vec3i;
 
 const Mood = main.audio.music_tracks.MusicTrack.Mood;
+const Biome = main.server.terrain.biomes.Biome;
 
 pub var current: Mood = undefined;
 pub var target: Mood = undefined;
-var darknessSanityPenalty: f32 = undefined;
-var energyBoost: f32 = undefined;
-var sanityBoost: f32 = undefined;
+var baseMood: Mood = undefined;
+var energyPulse: f32 = undefined;
+var sanityPulse: f32 = undefined;
 
-var lastPlayerChunk: Vec3i = undefined;
-var visitedChunks: std.AutoHashMapUnmanaged(Vec3i, void) = undefined;
+var lastBiome: ?*const Biome = undefined;
+var lastHealth: ?f32 = undefined;
+
+var checkpoint: ?Vec3d = undefined;
 
 const nearbyPlayerRadius: f64 = 32;
-const darknessThreshold: u8 = 3;
+const sanityPerNearbyPlayer: f32 = 0.05;
+const maxNearbyPlayerSanity: f32 = 0.2;
+const darknessThreshold: f32 = 0.1;
+const darknessSanityPenalty: f32 = 0.3;
+const walkingSpeed: f64 = 4.5;
+const maxSpeedEnergy: f32 = 0.5;
+
+const checkpointDistance: f64 = 100;
+const checkpointEnergy: f32 = 0.2;
+const sanityPerHealthLost: f32 = 0.1;
 
 pub fn init() void {
 	const defaultMood = Mood.loadFromZon(.null, .{});
 	current = defaultMood;
 	target = defaultMood;
-	darknessSanityPenalty = 0;
-	energyBoost = 0;
-	sanityBoost = 0;
-	lastPlayerChunk = .{std.math.minInt(i32), std.math.minInt(i32), std.math.minInt(i32)};
-	visitedChunks = .{};
-}
-
-pub fn deinit() void {
-	visitedChunks.deinit(main.globalAllocator.allocator);
-}
-
-pub fn onBiomeChanged(biome: *const main.server.terrain.biomes.Biome) void {
-	target = biome.baseMood;
-}
-
-pub fn nudgeEnergy(amount: f32) void {
-	energyBoost = std.math.clamp(energyBoost + amount, -1, 1);
-}
-
-pub fn nudgeSanity(amount: f32) void {
-	sanityBoost = std.math.clamp(sanityBoost + amount, -1, 1);
-}
-
-pub fn onCombatEvent(intensity: f32) void {
-	nudgeEnergy(intensity);
-}
-
-pub fn onDeath() void {
-	current.sanity = @max(0, current.sanity - 0.5);
+	baseMood = defaultMood;
+	energyPulse = 0;
+	sanityPulse = 0;
+	lastBiome = null;
+	lastHealth = null;
+	checkpoint = null;
 }
 
 fn approach(value: f32, goal: f32, rate: f32, deltaTime: f64) f32 {
@@ -59,41 +47,59 @@ fn approach(value: f32, goal: f32, rate: f32, deltaTime: f64) f32 {
 }
 
 pub fn update(deltaTime: f64) void {
-	updateChunkExploration();
-	updateNearbyPlayers();
-	updateDarkness(deltaTime);
+	updateBiome();
+	updateHealth();
+	updateCheckpoint();
+
+	target = baseMood;
+	target.energy += energyPulse + speedEnergy();
+	target.sanity += sanityPulse + nearbyPlayersSanity() - darknessSanity();
+	target.anxiety = std.math.clamp(target.anxiety, 0, 1);
+	target.energy = std.math.clamp(target.energy, 0, 1);
+	target.sanity = std.math.clamp(target.sanity, 0, 1);
 
 	current.anxiety = approach(current.anxiety, target.anxiety, 0.15, deltaTime);
+	current.energy = approach(current.energy, target.energy, 0.2, deltaTime);
+	current.sanity = approach(current.sanity, target.sanity, 0.25, deltaTime);
 
-	const energyTarget = std.math.clamp(target.energy + energyBoost, 0, 1);
-	current.energy = approach(current.energy, energyTarget, 0.2, deltaTime);
-	energyBoost = approach(energyBoost, 0, 0.3, deltaTime);
-
-	const sanityTarget = std.math.clamp(target.sanity + sanityBoost - darknessSanityPenalty, 0, 1);
-	current.sanity = approach(current.sanity, sanityTarget, 0.25, deltaTime);
-	sanityBoost = approach(sanityBoost, 0, 0.2, deltaTime);
-
-	current.anxiety = std.math.clamp(current.anxiety, 0, 1);
-	current.energy = std.math.clamp(current.energy, 0, 1);
-	current.sanity = std.math.clamp(current.sanity, 0, 1);
+	energyPulse = approach(energyPulse, 0, 0.3, deltaTime);
+	sanityPulse = approach(sanityPulse, 0, 0.2, deltaTime);
 }
 
-fn updateChunkExploration() void {
+fn updateBiome() void {
+	const biome = main.game.world.?.playerBiome.load(.monotonic);
+	if (biome == lastBiome) return;
+	lastBiome = biome;
+	baseMood = biome.baseMood;
+}
+
+fn updateHealth() void {
+	const health = main.game.player.super.health;
+	if (lastHealth) |last| {
+		if (health < last) sanityPulse += (health - last)*sanityPerHealthLost;
+	}
+	lastHealth = health;
+}
+
+fn updateCheckpoint() void {
 	const pos = main.game.player.getPosBlocking();
-	const chunkPos: Vec3i = .{
-		@as(i32, @intFromFloat(@floor(pos[0]))) >> main.chunk.chunkShift,
-		@as(i32, @intFromFloat(@floor(pos[1]))) >> main.chunk.chunkShift,
-		@as(i32, @intFromFloat(@floor(pos[2]))) >> main.chunk.chunkShift,
+	const last = checkpoint orelse {
+		checkpoint = pos;
+		return;
 	};
-	if (@reduce(.And, chunkPos == lastPlayerChunk)) return;
-	lastPlayerChunk = chunkPos;
-
-	const wasAlreadyVisited = visitedChunks.contains(chunkPos);
-	visitedChunks.put(main.globalAllocator.allocator, chunkPos, {}) catch unreachable;
-	nudgeEnergy(if (wasAlreadyVisited) 0.05 else 0.2);
+	if (main.vec.lengthSquare(pos - last) >= checkpointDistance*checkpointDistance) {
+		checkpoint = pos;
+		energyPulse += checkpointEnergy;
+	}
 }
 
-fn updateNearbyPlayers() void {
+fn speedEnergy() f32 {
+	const speed = main.vec.length(main.game.player.getVelBlocking());
+	const intensity: f32 = @floatCast(std.math.clamp((speed - walkingSpeed)/walkingSpeed, 0, 1));
+	return maxSpeedEnergy*intensity;
+}
+
+fn nearbyPlayersSanity() f32 {
 	const playerPos = main.game.player.getPosBlocking();
 	var nearbyCount: u32 = 0;
 	for (main.client.entity_manager.entities.items()) |ent| {
@@ -102,32 +108,15 @@ fn updateNearbyPlayers() void {
 			nearbyCount += 1;
 		}
 	}
-	if (nearbyCount != 0) nudgeSanity(0.02*@as(f32, @floatFromInt(nearbyCount)));
+	return @min(sanityPerNearbyPlayer*@as(f32, @floatFromInt(nearbyCount)), maxNearbyPlayerSanity);
 }
 
-fn updateDarkness(deltaTime: f64) void {
+fn darknessSanity() f32 {
 	const eyePos = main.game.player.getEyePosBlocking();
 	const wx: i32 = @intFromFloat(@floor(eyePos[0]));
 	const wy: i32 = @intFromFloat(@floor(eyePos[1]));
 	const wz: i32 = @intFromFloat(@floor(eyePos[2]));
-	const light = main.renderer.mesh_storage.getLight(wx, wy, wz) orelse {
-		darknessSanityPenalty = approach(darknessSanityPenalty, 0, 0.2, deltaTime);
-		return;
-	};
+	const light = main.renderer.mesh_storage.getLight(wx, wy, wz) orelse return 0;
 	const maxLight = @reduce(.Max, @as(@Vector(6, u8), light));
-	const targetPenalty: f32 = if (maxLight <= darknessThreshold) 0.3 else 0;
-	darknessSanityPenalty = approach(darknessSanityPenalty, targetPenalty, 0.2, deltaTime);
-}
-
-pub fn onBlockMined(block: main.blocks.Block) void {
-	for (main.blocks.ores.items) |ore| {
-		if (ore.blockType == block.typ) {
-			nudgeSanity(0.15);
-			return;
-		}
-	}
-}
-
-pub fn onHealthChanged(delta: f32) void {
-	if (delta < 0) nudgeSanity(delta*0.1);
+	return if (@as(f32, @floatFromInt(maxLight))/256 <= darknessThreshold) darknessSanityPenalty else 0;
 }
