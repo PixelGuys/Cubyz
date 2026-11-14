@@ -336,7 +336,7 @@ fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, currentFrameBuffer: *gr
 		.size = @intCast(chunkIDs.len),
 		.lodDistance = main.settings.@"lod0.5Distance",
 		.isTransparent = if (transparent) c.VK_TRUE else c.VK_FALSE,
-		.onlyDrawPreviouslyInvisible = undefined
+		.onlyDrawPreviouslyInvisible = undefined,
 	};
 	if (!transparent) {
 		c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 0);
