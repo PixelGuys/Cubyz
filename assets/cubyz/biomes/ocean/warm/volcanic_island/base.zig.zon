@@ -1,0 +1,25 @@
+.{
+	.minHeight = 55,
+	.maxHeight = 60,
+	.radius = 82,
+	.mountains = 20,
+	.roughness = 25,
+	.stoneBlock = "cubyz:basalt/smooth",
+	.structures = .{
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.016,
+			.block = "cubyz:basalt/rough",
+			.size = 3,
+			.size_variance = 7,
+		},
+	},
+
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:ocean/warm/volcanic_island/shelf",
+			.chance = 1,
+			.parentEdgeDistance = 37,
+		},
+	},
+}
