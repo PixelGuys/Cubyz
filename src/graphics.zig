@@ -2787,6 +2787,8 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 
 	var fakeFrame: vulkan.Frame = undefined;
 	fakeFrame.extent = .{.width = textureSize, .height = textureSize};
+	fakeFrame.minDepth = 0;
+	fakeFrame.maxDepth = 1;
 
 	var faceData: main.ListManaged(main.renderer.chunk_meshing.FaceData) = .init(main.stackAllocator);
 	defer faceData.deinit();

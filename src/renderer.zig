@@ -147,6 +147,8 @@ fn initReflectionCubeMap() void {
 		const commandBuffer = vulkan.upload.commandBuffer();
 		var fakeFrame: vulkan.Frame = undefined;
 		fakeFrame.extent = .{.width = reflectionCubeMapSize, .height = reflectionCubeMapSize};
+		fakeFrame.minDepth = 0;
+		fakeFrame.maxDepth = 1;
 		commandBuffer.bindPipeline(&fakeFrame, fakeReflectionPipeline, null);
 		commandBuffer.bindVertexArray(graphics.draw.rectVao);
 
@@ -355,7 +357,7 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 	c.glDepthRange(0.001, 1);
 	if (main.settings.launch_config.vulkanTestingMode) {
 		currentFrame.maxDepth = 1;
-		currentFrame.minDepth = 0.01;
+		currentFrame.minDepth = 0.001;
 	}
 
 	chunk_meshing.endRender();
