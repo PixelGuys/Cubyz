@@ -1873,6 +1873,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 	depthTexture: c_uint,
 	color: vulkan.Image,
 	depth: vulkan.Image,
+	depthLayout: c.VkImageLayout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
 
 	pub fn init(_width: u31, _height: u31, internalFormat: c_int, hasDepthTexture: bool, textureFilter: vulkan.Image.ImageOptions.Filter, textureWrap: vulkan.Image.ImageOptions.AddressMode) FrameBuffer {
 		var self: FrameBuffer = .{
@@ -1972,8 +1973,9 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 		clearDepth: CommandBuffer.BeginRenderingOptions.LoadOp,
 		baseArrayLayer: ?u32 = null,
 		transitionImageLayout: bool = true,
+		fun: bool = false,
 	};
-	pub fn bindAndClear(self: FrameBuffer, commandBuffer: CommandBuffer, options: BindAndClearOptions) void {
+	pub fn bindAndClear(self: *FrameBuffer, commandBuffer: CommandBuffer, options: BindAndClearOptions) void {
 		if (options.transitionImageLayout) {
 			commandBuffer.pipelineBarrier(.{.imageMemoryBarriers = @as([]const c.VkImageMemoryBarrier2, &.{
 				.{
@@ -1999,6 +2001,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 					.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .baseArrayLayer = options.baseArrayLayer orelse 0, .layerCount = 1},
 				},
 			})[0..if (self.hasDepthTexture) 2 else 1]});
+			self.depthLayout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
 		}
 		const colorView = if (options.baseArrayLayer) |layer| self.color.createTemporaryImageView(.{.type = c.VK_IMAGE_VIEW_TYPE_2D, .baseArrayLayer = layer}) else self.color.view;
 		commandBuffer.beginRendering(.{
@@ -2015,13 +2018,32 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 				const depthView = if (options.baseArrayLayer) |layer| self.depth.createTemporaryImageView(.{.type = c.VK_IMAGE_VIEW_TYPE_2D, .baseArrayLayer = layer}) else self.depth.view;
 				break :blk .{
 					.imageView = depthView,
-					.layout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+					.layout = self.depthLayout,
 					.loadOp = options.clearDepth,
 					.storeOp = .store,
 				};
 			},
 			.renderArea = .{.extent = .{.width = @intCast(self.color.size[0]), .height = @intCast(self.color.size[1])}},
 		});
+	}
+
+	pub fn makeDepthReadOnly(self: *FrameBuffer, commandBuffer: CommandBuffer) void {
+		std.debug.assert(self.hasDepthTexture);
+		std.debug.assert(self.depthLayout == c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+		commandBuffer.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | c.VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+				.srcAccessMask = c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | c.VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+				.dstAccessMask = c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+				.oldLayout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+				.newLayout = c.VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL,
+				.image = self.depth.handle,
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = c.VK_REMAINING_ARRAY_LAYERS},
+			},
+		}});
+		self.depthLayout = c.VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
 	}
 
 	pub fn clear(_: FrameBuffer, clearColor: Vec4f) void {
@@ -2061,7 +2083,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 				.srcAccessMask = c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
 				.dstStageMask = c.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
 				.dstAccessMask = c.VK_ACCESS_2_SHADER_READ_BIT,
-				.oldLayout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+				.oldLayout = self.depthLayout,
 				.newLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
 				.image = self.depth.handle,
 				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = c.VK_REMAINING_ARRAY_LAYERS},

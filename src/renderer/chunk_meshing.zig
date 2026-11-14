@@ -308,7 +308,7 @@ fn bindBuffers(lod: usize) void {
 	lightBuffers[lod].ssbo.bind(lightBuffers[lod].binding);
 }
 
-pub fn drawChunksIndirect(currentFrame: *graphics.vulkan.Frame, currentFrameBuffer: graphics.FrameBuffer, chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), ambient: Vec3f, transparent: bool) void {
+pub fn drawChunksIndirect(currentFrame: *graphics.vulkan.Frame, currentFrameBuffer: *graphics.FrameBuffer, chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), ambient: Vec3f, transparent: bool) void {
 	for (0..chunkIds.len) |i| {
 		const lod = if (transparent) main.settings.highestSupportedLod - i else i;
 		bindBuffers(lod);
@@ -316,7 +316,7 @@ pub fn drawChunksIndirect(currentFrame: *graphics.vulkan.Frame, currentFrameBuff
 	}
 }
 
-fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, currentFrameBuffer: graphics.FrameBuffer, chunkIDs: []const u32, ambient: Vec3f, transparent: bool, lod: usize) void {
+fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, currentFrameBuffer: *graphics.FrameBuffer, chunkIDs: []const u32, ambient: Vec3f, transparent: bool, lod: usize) void {
 	if (chunkIDs.len == 0) return;
 	const drawCallsEstimate: u31 = @intCast(if (transparent) chunkIDs.len else chunkIDs.len*8);
 	var chunkIDAllocation: main.graphics.SubAllocation = .{.start = 0, .len = 0};
