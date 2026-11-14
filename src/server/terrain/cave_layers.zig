@@ -120,17 +120,26 @@ fn lessThan(_: void, lhs: CaveLayer, rhs: CaveLayer) bool {
 }
 
 pub fn getLayer(height: i32) CaveLayer {
-	var minIndex: usize = 0;
+	const index: usize = getLayerIndex(height, 0);
+	return caveLayers.items[index];
+}
+
+pub fn getLayerIndex(height: i32, lastLayer: usize) usize {
+	var minIndex: usize = lastLayer;
 	var maxIndex = caveLayers.items.len - 1;
-	while (minIndex != maxIndex) {
+	while (minIndex < maxIndex) {
 		const centerIndex = (minIndex + maxIndex)/2;
 		if (caveLayers.items[centerIndex].minHeight > height) {
 			maxIndex = centerIndex;
 		} else if (caveLayers.items[centerIndex].maxHeight <= height) {
 			minIndex = centerIndex + 1;
-		} else return caveLayers.items[centerIndex];
+		} else return centerIndex;
 	}
-	return caveLayers.items[minIndex];
+	return minIndex;
+}
+
+pub fn getLayerFromIndex(index: usize) CaveLayer {
+	return caveLayers.items[index];
 }
 
 pub fn reset() void {
