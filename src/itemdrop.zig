@@ -784,8 +784,6 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 	}
 
 	fn drawItem(currentFrame: *graphics.vulkan.Frame, vertices: u31, modelMatrix: Mat4f, uniforms: *ItemUniforms) void {
-		modelData.beginRender();
-		defer modelData.endRender();
 		if (main.settings.launch_config.vulkanTestingMode) {
 			uniforms.modelMatrix = modelMatrix.toGl();
 			currentFrame.renderCommands.bindPipeline(currentFrame, itemPipeline, null);
