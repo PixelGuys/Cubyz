@@ -29,8 +29,8 @@ pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) void {
 
 	var seed = random.initSeed3D(worldSeed, .{map.pos.wx, map.pos.wy, map.pos.wz});
 	var z: u31 = 0;
+	var hint: [2]usize = .{0, 0};
 	while (z < CaveBiomeMapFragment.caveBiomeMapSize) : (z += CaveBiomeMapFragment.caveBiomeSize) {
-		var hint: [2]usize = .{0, 0};
 		var x: u31 = 0;
 		while (x < CaveBiomeMapFragment.caveBiomeMapSize) : (x += CaveBiomeMapFragment.caveBiomeSize) {
 			var y: u31 = 0;
