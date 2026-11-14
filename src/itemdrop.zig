@@ -620,6 +620,16 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 		contrast: c_int,
 		glDepthRange: c_int,
 	} = undefined;
+	const ItemUniforms = extern struct {
+		modelMatrix: [4][4]f32 align(16) = undefined,
+		ambientLight: [3]f32 align(16) = undefined,
+		modelIndex: i32 = undefined,
+		block: i32 = undefined,
+		sizeScale: f32 = 0,
+		reflectionMapSize: f32 = undefined,
+		contrast: f32 = undefined,
+		glDepthRange: [2]f32 align(8) = undefined,
+	};
 
 	var modelData: graphics.LargeBuffer(u32) = undefined;
 
@@ -699,9 +709,21 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 			&itemUniforms,
 			graphics.VertexArray.EmptyVertex,
 			.{
+				.bindings = &.{
+					.sampler(0, .{.fragment = true}),
+					.sampler(1, .{.fragment = true}),
+					.sampler(2, .{.fragment = true}),
+					.sampler(3, .{.fragment = true}),
+					.sampler(11, .{.fragment = true}),
+					.ssbo(5, .{.vertex = true}),
+					.ssbo(6, .{.vertex = true}),
+					.ssbo(4, .{.vertex = true}),
+				},
 				.rasterState = .{},
 				.depthStencilState = .{.depthTest = true},
 				.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
+				.inputAssemblyState = .{.topology = .triangleList},
+				.pushConstantSize = @sizeOf(ItemUniforms),
 			},
 		);
 		modelData.init(main.globalAllocator, 1 << 16, 2);
@@ -722,31 +744,66 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 		return voxelModels.findOrCreate(compareObject, ItemVoxelModel.init, null);
 	}
 
-	fn bindCommonUniforms(ambientLight: Vec3f) void {
-		itemPipeline.bind(null);
-		c.glUniform1f(itemUniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
-		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
-		c.glUniform1f(itemUniforms.contrast, 0.12);
-		var depthRange: [2]f32 = undefined;
-		c.glGetFloatv(c.GL_DEPTH_RANGE, &depthRange);
-		c.glUniform2fv(itemUniforms.glDepthRange, 1, &depthRange);
+	fn bindCommonUniforms(ambientLight: Vec3f, uniforms: *ItemUniforms) void {
+		if (main.settings.launch_config.vulkanTestingMode) {
+			uniforms.reflectionMapSize = main.renderer.reflectionCubeMapSize;
+			uniforms.ambientLight = ambientLight;
+			uniforms.contrast = 0.12;
+			var depthRange: [2]f32 = undefined;
+			c.glGetFloatv(c.GL_DEPTH_RANGE, &depthRange);
+			uniforms.glDepthRange = depthRange;
+		} else {
+			itemPipeline.bind(null);
+			c.glUniform1f(itemUniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
+			c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
+			c.glUniform1f(itemUniforms.contrast, 0.12);
+			var depthRange: [2]f32 = undefined;
+			c.glGetFloatv(c.GL_DEPTH_RANGE, &depthRange);
+			c.glUniform2fv(itemUniforms.glDepthRange, 1, &depthRange);
+		}
 	}
 
-	fn bindLightUniform(light: [6]u8, ambientLight: Vec3f) void {
+	fn bindLightUniform(light: [6]u8, ambientLight: Vec3f, uniforms: *ItemUniforms) void {
 		const sunLight: Vec3f = ambientLight*@as(Vec3f, @floatFromInt(Vec3i{light[0], light[1], light[2]}))/@as(Vec3f, @splat(255));
 		const blockLight: Vec3f = @as(Vec3f, @floatFromInt(Vec3i{light[3], light[4], light[5]}))/@as(Vec3f, @splat(255));
-		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&@min(@sqrt(sunLight*sunLight + blockLight*blockLight), @as(Vec3f, @splat(1)))));
+		if (main.settings.launch_config.vulkanTestingMode) {
+			uniforms.ambientLight = @min(@sqrt(sunLight*sunLight + blockLight*blockLight), @as(Vec3f, @splat(1)));
+		} else {
+			c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&@min(@sqrt(sunLight*sunLight + blockLight*blockLight), @as(Vec3f, @splat(1)))));
+		}
 	}
 
-	fn bindModelUniforms(modelIndex: u31, blockType: u16) void {
-		c.glUniform1i(itemUniforms.modelIndex, modelIndex);
-		c.glUniform1i(itemUniforms.block, blockType);
+	fn bindModelUniforms(modelIndex: u31, blockType: u16, uniforms: *ItemUniforms) void {
+		if (main.settings.launch_config.vulkanTestingMode) {
+			uniforms.modelIndex = modelIndex;
+			uniforms.block = blockType;
+		} else {
+			c.glUniform1i(itemUniforms.modelIndex, modelIndex);
+			c.glUniform1i(itemUniforms.block, blockType);
+		}
 	}
 
-	fn drawItem(vertices: u31, modelMatrix: Mat4f) void {
-		c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
-		main.renderer.chunk_meshing.vao.bind();
-		c.glDrawElements(c.GL_TRIANGLES, vertices, c.GL_UNSIGNED_INT, null);
+	fn drawItem(currentFrame: *graphics.vulkan.Frame, vertices: u31, modelMatrix: Mat4f, uniforms: *ItemUniforms) void {
+		if (main.settings.launch_config.vulkanTestingMode) {
+			uniforms.modelMatrix = modelMatrix.toGl();
+			currentFrame.renderCommands.bindPipeline(currentFrame, itemPipeline, null);
+			currentFrame.renderCommands.bindDescriptors(itemPipeline, &.{
+				.{.image = .{.binding = 0, .image = main.blocks.meshes.blockTextureArray.vulkanImage.?}},
+				.{.image = .{.binding = 1, .image = main.blocks.meshes.emissionTextureArray.vulkanImage.?}},
+				.{.image = .{.binding = 2, .image = main.blocks.meshes.reflectivityAndAbsorptionTextureArray.vulkanImage.?}},
+				.{.image = .{.binding = 11, .image = main.renderer.reflectionCubeMap.vulkanImage}},
+				.{.ssbo = .{.binding = 5, .ssbo = main.blocks.meshes.animatedTextureSsbo.?}},
+				.{.ssbo = .{.binding = 6, .ssbo = modelData.ssbo}},
+				.{.ssbo = .{.binding = 4, .ssbo = main.models.quadSsbo.?}},
+			});
+			currentFrame.renderCommands.bindVertexArray(main.renderer.chunk_meshing.vao);
+			currentFrame.renderCommands.pushConstants(itemPipeline, uniforms);
+			currentFrame.renderCommands.drawIndexed(vertices, .{});
+		} else {
+			c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
+			main.renderer.chunk_meshing.vao.bind();
+			c.glDrawElements(c.GL_TRIANGLES, vertices, c.GL_UNSIGNED_INT, null);
+		}
 	}
 
 	pub fn beginRender() void {
@@ -757,10 +814,17 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 		modelData.endRender();
 	}
 
-	pub fn renderItemDrops(ambientLight: Vec3f, playerPos: Vec3d) void {
+	pub fn renderItemDrops(currentFrame: *graphics.vulkan.Frame, ambientLight: Vec3f, playerPos: Vec3d) void {
 		game.world.?.itemDrops.updateInterpolationData();
 
-		bindCommonUniforms(ambientLight);
+		var uniforms: ItemUniforms = .{};
+		if (main.settings.launch_config.vulkanTestingMode) {
+			graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, itemPipeline);
+		} else {
+			itemPipeline.bind(null);
+		}
+
+		bindCommonUniforms(ambientLight, &uniforms);
 		const itemDrops = &game.world.?.itemDrops.super;
 		for (itemDrops.indices[0..itemDrops.size]) |i| {
 			const item = itemDrops.list.items(.itemStack)[i].item;
@@ -769,7 +833,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 				const rot = itemDrops.list.items(.rot)[i];
 				const blockPos: Vec3i = @floor(pos);
 				const light: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
-				bindLightUniform(light, ambientLight);
+				bindLightUniform(light, ambientLight, &uniforms);
 				pos -= playerPos;
 
 				const model = getModel(item);
@@ -783,7 +847,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 				} else {
 					scale = 0.5;
 				}
-				bindModelUniforms(model.allocation.start, blockType);
+				bindModelUniforms(model.allocation.start, blockType, &uniforms);
 
 				var modelMatrix = Mat4f.translation(@floatCast(pos));
 				modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
@@ -791,7 +855,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2]));
 				modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
 				modelMatrix = modelMatrix.mul(Mat4f.translation(@splat(-0.5)));
-				drawItem(vertices, modelMatrix);
+				drawItem(currentFrame, vertices, modelMatrix, &uniforms);
 			}
 		}
 	}
@@ -808,7 +872,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 		return result;
 	}
 
-	pub fn renderDisplayItems(ambientLight: Vec3f, playerPos: Vec3d) void {
+	pub fn renderDisplayItems(currentFrame: *graphics.vulkan.Frame, ambientLight: Vec3f, playerPos: Vec3d) void {
 		if (!item_display_manager.showItem) return;
 
 		const displayItemUbo = graphics.frame_uniforms.StaticUbo.init(.{
@@ -818,9 +882,16 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 			.playerPositionFraction = @splat(0),
 		});
 		defer displayItemUbo.deinit();
-		displayItemUbo.bind();
+		if (main.settings.launch_config.vulkanTestingMode) {
+			displayItemUbo.bindToPipeline(currentFrame.renderCommands, itemPipeline);
+		} else {
+			displayItemUbo.bind();
+		}
 		defer displayItemUbo.unbind();
-		bindCommonUniforms(ambientLight);
+
+		var uniforms: ItemUniforms = .{};
+
+		bindCommonUniforms(ambientLight, &uniforms);
 
 		const item = game.player.inventory.getItem(game.player.selectedSlot);
 		if (item != .null) {
@@ -864,7 +935,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 				result[i] = @floor(val);
 			}
 
-			bindLightUniform(result, ambientLight);
+			bindLightUniform(result, ambientLight, &uniforms);
 
 			const model = getModel(item);
 			var vertices: u31 = 36;
@@ -881,7 +952,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 				scale = 0.57;
 				pos = Vec3d{0.4, 0.65, -0.3};
 			}
-			bindModelUniforms(model.allocation.start, blockType);
+			bindModelUniforms(model.allocation.start, blockType, &uniforms);
 
 			var modelMatrix = Mat4f.rotationZ(-rot[2]);
 			modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
@@ -899,7 +970,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 			}
 			modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
 			modelMatrix = modelMatrix.mul(Mat4f.translation(@splat(-0.5)));
-			drawItem(vertices, modelMatrix);
+			drawItem(currentFrame, vertices, modelMatrix, &uniforms);
 		}
 	}
 };

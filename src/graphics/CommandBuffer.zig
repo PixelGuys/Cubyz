@@ -166,8 +166,8 @@ pub fn bindPipeline(self: CommandBuffer, currentFrame: *vulkan.Frame, pipeline: 
 		.y = 0,
 		.width = @floatFromInt(currentFrame.extent.width),
 		.height = @floatFromInt(currentFrame.extent.height),
-		.minDepth = 0,
-		.maxDepth = 1,
+		.minDepth = currentFrame.minDepth,
+		.maxDepth = currentFrame.maxDepth,
 	});
 	if (scissor) |s| {
 		self.setScissor(s);

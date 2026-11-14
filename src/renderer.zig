@@ -147,6 +147,8 @@ fn initReflectionCubeMap() void {
 		const commandBuffer = vulkan.upload.commandBuffer();
 		var fakeFrame: vulkan.Frame = undefined;
 		fakeFrame.extent = .{.width = reflectionCubeMapSize, .height = reflectionCubeMapSize};
+		fakeFrame.minDepth = 0;
+		fakeFrame.maxDepth = 1;
 		commandBuffer.bindPipeline(&fakeFrame, fakeReflectionPipeline, null);
 		commandBuffer.bindVertexArray(graphics.draw.rectVao);
 
@@ -307,7 +309,7 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 	main.systems.client.render(currentFrame, ambientLight, playerPos, main.lastDeltaTime.load(.monotonic));
 
 	itemdrop.item_drop_renderer.beginRender();
-	itemdrop.item_drop_renderer.renderItemDrops(ambientLight, playerPos);
+	itemdrop.item_drop_renderer.renderItemDrops(currentFrame, ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.block_entity_rendering);
@@ -347,9 +349,16 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 	}
 
 	c.glDepthRange(0, 0.001);
-	itemdrop.item_drop_renderer.renderDisplayItems(ambientLight, playerPos);
+	if (main.settings.launch_config.vulkanTestingMode) {
+		currentFrame.maxDepth = 0.001;
+	}
+	itemdrop.item_drop_renderer.renderDisplayItems(currentFrame, ambientLight, playerPos);
 	itemdrop.item_drop_renderer.endRender();
 	c.glDepthRange(0.001, 1);
+	if (main.settings.launch_config.vulkanTestingMode) {
+		currentFrame.maxDepth = 1;
+		currentFrame.minDepth = 0.001;
+	}
 
 	chunk_meshing.endRender();
 
