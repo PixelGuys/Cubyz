@@ -19,42 +19,40 @@ pub const generatorSeed = 765893678349;
 pub const defaultState = .enabled;
 
 pub fn init(parameters: ZonElement) void {
-	_ = parameters;
+    _ = parameters;
 }
 
 pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) void {
-	const marginDiv = 1024;
-	const marginMulPositive: comptime_int = comptime CaveBiomeMapFragment.rotateInverse(.{marginDiv, 0, marginDiv})[2];
-	const marginMulNegative: comptime_int = comptime CaveBiomeMapFragment.rotateInverse(.{0, marginDiv, 0})[2];
+    const marginDiv = 1024;
+    const marginMulPositive: comptime_int = comptime CaveBiomeMapFragment.rotateInverse(.{ marginDiv, 0, marginDiv })[2];
+    const marginMulNegative: comptime_int = comptime CaveBiomeMapFragment.rotateInverse(.{ 0, marginDiv, 0 })[2];
 
-	var seed = random.initSeed3D(worldSeed, .{map.pos.wx, map.pos.wy, map.pos.wz});
-	var z: u31 = 0;
-	while (z < CaveBiomeMapFragment.caveBiomeMapSize) : (z += CaveBiomeMapFragment.caveBiomeSize) {
-		var lastLayer = terrain.cave_layers.getLayerIndex(map.pos.wz + z, 0);
-		var lastLayer2 = terrain.cave_layers.getLayerIndex(map.pos.wz + z, 0);
-		var x: u31 = 0;
-		while (x < CaveBiomeMapFragment.caveBiomeMapSize) : (x += CaveBiomeMapFragment.caveBiomeSize) {
-			var y: u31 = 0;
-			while (y < CaveBiomeMapFragment.caveBiomeMapSize) : (y += CaveBiomeMapFragment.caveBiomeSize) {
-				const pos: main.vec.Vec3i = .{map.pos.wx + x, map.pos.wy + y, map.pos.wz + z};
-				for (0..2) |_map| {
-					const offset: Vec3i = @splat(if (_map == 0) 0 else CaveBiomeMapFragment.caveBiomeSize/2);
-					const biomeWorldPos = CaveBiomeMapFragment.rotateInverse(pos + offset);
+    var seed = random.initSeed3D(worldSeed, .{ map.pos.wx, map.pos.wy, map.pos.wz });
+    var z: u31 = 0;
+    while (z < CaveBiomeMapFragment.caveBiomeMapSize) : (z += CaveBiomeMapFragment.caveBiomeSize) {
+        var hint: [2]usize = .{ 0, 0 };
+        var x: u31 = 0;
+        while (x < CaveBiomeMapFragment.caveBiomeMapSize) : (x += CaveBiomeMapFragment.caveBiomeSize) {
+            var y: u31 = 0;
+            while (y < CaveBiomeMapFragment.caveBiomeMapSize) : (y += CaveBiomeMapFragment.caveBiomeSize) {
+                const pos: main.vec.Vec3i = .{ map.pos.wx + x, map.pos.wy + y, map.pos.wz + z };
+                for (0..2) |_map| {
+                    const offset: Vec3i = @splat(if (_map == 0) 0 else CaveBiomeMapFragment.caveBiomeSize / 2);
+                    const biomeWorldPos = CaveBiomeMapFragment.rotateInverse(pos + offset);
 
-					if (_map == 0) lastLayer = terrain.cave_layers.getLayerIndex(biomeWorldPos[2], lastLayer);
-					if (_map == 1) lastLayer2 = terrain.cave_layers.getLayerIndex(biomeWorldPos[2], lastLayer2);
-					const caveLayer = if (_map == 0) terrain.cave_layers.getLayerFromIndex(lastLayer) else terrain.cave_layers.getLayerFromIndex(lastLayer);
+                    hint[_map] = terrain.cave_layers.getLayerIndex(biomeWorldPos[2], hint[_map]);
+                    const caveLayer = terrain.cave_layers.getLayerFromIndex(hint[_map]);
 
-					while (true) {
-						const biome = caveLayer.biomes.sample(&seed).*;
-						if ((biome.minHeight < biomeWorldPos[2] + CaveBiomeMapFragment.caveBiomeSize*marginMulPositive/marginDiv) & (biome.maxHeight > biomeWorldPos[2] + CaveBiomeMapFragment.caveBiomeSize*marginMulNegative/marginDiv)) {
-							const index = CaveBiomeMapFragment.getIndex(x, y, z);
-							map.biomeMap[index][_map] = biome;
-							break;
-						}
-					}
-				}
-			}
-		}
-	}
+                    while (true) {
+                        const biome = caveLayer.biomes.sample(&seed).*;
+                        if ((biome.minHeight < biomeWorldPos[2] + CaveBiomeMapFragment.caveBiomeSize * marginMulPositive / marginDiv) & (biome.maxHeight > biomeWorldPos[2] + CaveBiomeMapFragment.caveBiomeSize * marginMulNegative / marginDiv)) {
+                            const index = CaveBiomeMapFragment.getIndex(x, y, z);
+                            map.biomeMap[index][_map] = biome;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
