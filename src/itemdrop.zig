@@ -26,6 +26,8 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const c = @import("c");
 
+const @"cubyz:physics_body" = main.entity.components.@"cubyz:physics_body";
+
 const ItemDrop = struct { // MARK: ItemDrop
 	pos: Vec3d,
 	vel: Vec3d,
@@ -377,9 +379,10 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 				ii += 1;
 				continue;
 			}
+			const playerPos = @"cubyz:physics_body".getPosition(user.player().id, .server).?;
 			const hitbox = main.game.player.outerBoundingBox;
-			const min = user.player().pos + hitbox.min;
-			const max = user.player().pos + hitbox.max;
+			const min = playerPos + hitbox.min;
+			const max = playerPos + hitbox.max;
 			const itemPos = self.list.items(.pos)[i];
 			const dist = @max(min - itemPos, itemPos - max);
 			if (@reduce(.Max, dist) < radius + pickupRange) {
@@ -540,10 +543,10 @@ const bob_manager = struct {
 		}
 
 		const inputSpeed: f32 = @floatCast(game.player.inputSpeed);
-
+		const playerVel = @"cubyz:physics_body".getVelocity(main.game.player.id, .client).?;
 		const horizontalVel: Vec3f = .{
-			@floatCast(game.player.super.vel[0]),
-			@floatCast(game.player.super.vel[1]),
+			@floatCast(playerVel[0]),
+			@floatCast(playerVel[1]),
 			0,
 		};
 
@@ -604,8 +607,9 @@ pub const item_display_manager = struct { // MARK: item_display_manager
 	}
 
 	fn getAscentDescentOffset() Vec3f {
-		const playerVel: Vec3f = .{@floatCast((game.player.super.vel[2]*0.009 + game.player.eye.vel[2]*0.0075)), 0, 0};
-		return vec.clampMag(playerVel, 0.32);
+		const playerVel = @"cubyz:physics_body".getVelocity(main.game.player.id, .client).?;
+		const vel: Vec3f = .{@floatCast((playerVel[2]*0.009 + game.player.eye.vel[2]*0.0075)), 0, 0};
+		return vec.clampMag(vel, 0.32);
 	}
 };
 

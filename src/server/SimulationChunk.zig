@@ -11,6 +11,7 @@ chunk: std.atomic.Value(?*ServerChunk) = .init(null),
 refCount: std.atomic.Value(u32),
 pos: ChunkPosition,
 blockUpdateSystem: BlockUpdateSystem,
+storedEntities: main.List(main.entity.Entity),
 
 pub fn initAndIncreaseRefCount(pos: ChunkPosition) *SimulationChunk {
 	const self = main.globalAllocator.create(SimulationChunk);
@@ -18,6 +19,7 @@ pub fn initAndIncreaseRefCount(pos: ChunkPosition) *SimulationChunk {
 		.refCount = .init(1),
 		.pos = pos,
 		.blockUpdateSystem = .init(),
+		.storedEntities = .initCapacity(main.globalAllocator, 0),
 	};
 	return self;
 }
@@ -26,6 +28,7 @@ fn deinit(self: *SimulationChunk) void {
 	std.debug.assert(self.refCount.load(.monotonic) == 0);
 	self.blockUpdateSystem.deinit();
 	if (self.chunk.raw) |ch| ch.decreaseRefCount();
+	self.storedEntities.deinit(main.globalAllocator);
 	main.globalAllocator.destroy(self);
 }
 
@@ -57,6 +60,19 @@ pub fn update(self: *SimulationChunk, randomTickSpeed: u32) void {
 	const serverChunk = self.getChunk() orelse return;
 	tickBlocksInChunk(serverChunk, randomTickSpeed);
 	self.blockUpdateSystem.update(serverChunk);
+}
+
+pub fn addEntityToChunk(self: *SimulationChunk, entity: main.entity.Entity) void {
+	self.storedEntities.append(main.globalAllocator, entity);
+}
+
+pub fn removeEntityFromChunk(self: *SimulationChunk, entity: main.entity.Entity) void {
+	for (self.storedEntities.items, 0..) |storedEntity, i| {
+		if (storedEntity == entity) {
+			_ = self.storedEntities.swapRemove(i);
+			break;
+		}
+	}
 }
 
 fn tickBlocksInChunk(_chunk: *ServerChunk, randomTickSpeed: u32) void {

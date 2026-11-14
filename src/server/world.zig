@@ -31,6 +31,8 @@ const Gamemode = main.game.Gamemode;
 const BlockUpdateSystem = main.server.BlockUpdateSystem;
 const SimulationChunk = main.server.SimulationChunk;
 
+const @"cubyz:physics_body" = main.entity.components.@"cubyz:physics_body";
+
 pub const Settings = struct {
 	defaultGamemode: Gamemode = .creative,
 	allowCheats: bool = true,
@@ -221,7 +223,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 			switch (self.source) {
 				.player => |player| {
 					const user = server.getUserByIndex(player) orelse return 0;
-					return self.pos.getPriority(user.player().pos);
+					return self.pos.getPriority(@"cubyz:physics_body".getPosition(user.player().id, .server) orelse .{0, 0, 0});
 				},
 				else => return std.math.floatMax(f32),
 			}
@@ -284,7 +286,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		pub fn getPriority(self: *LightMapLoadTask) f32 {
 			if (self.source) |playerIndex| {
 				const user = server.getUserByIndex(playerIndex) orelse return 0;
-				return self.pos.getPriority(user.player().pos, terrain.LightMap.LightMapFragment.mapSize) + 100;
+				return self.pos.getPriority(@"cubyz:physics_body".getPosition(user.player().id, .server).?, terrain.LightMap.LightMapFragment.mapSize) + 100;
 			} else {
 				return std.math.floatMax(f32);
 			}
@@ -935,7 +937,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			}
 		}
 		const player = user.player();
-		const loadingError = player.loadFrom(user.id, playerData.getChild("entity"), .server, @floatFromInt(self.spawn));
+		const loadingError = player.loadFrom(user.id, playerData.getChild("entity"), .server);
 
 		// override the name for players.
 		if (player.name) |name| {
@@ -1121,8 +1123,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			}
 		}
 		self.tick();
-		// TODO: Entities
-
 		// Item Entities
 		self.itemDropManager.update(deltaTime);
 		{ // Collect item entities:
@@ -1158,6 +1158,48 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			updateRequest.region.store();
 			updateRequest.region.decreaseRefCount();
 			if (updateRequest.milliTimeStamp -% insertionTime.toMilliseconds() >= 0) break;
+		}
+
+		// Entities
+		for (main.entity.components.@"cubyz:physics_body".server.components.dense.items, main.entity.components.@"cubyz:physics_body".server.components.denseToSparseIndex.items) |component, id| {
+			if (self.getSimulationChunkAndIncreaseRefCount(@trunc(component.position[0]), @trunc(component.position[1]), @trunc(component.position[2]))) |simChunk| {
+				defer simChunk.decreaseRefCount();
+				if (simChunk.getChunk() != null) {
+					simChunk.addEntityToChunk(id);
+					defer simChunk.removeEntityFromChunk(id);
+					std.log.debug("added entity to chunk {}", .{simChunk.storedEntities.items});
+				}
+			}
+		}
+		{ // Send Entity Positions To Players:
+			const userList = server.getUserList(main.stackAllocator);
+			defer main.stackAllocator.free(userList);
+			const itemData = self.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
+			defer main.stackAllocator.free(itemData);
+
+			for (userList) |user| {
+				var entityData: main.ListManaged(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+				defer entityData.deinit();
+				var it = ChunkManager.simulationChunkHashMap.iterator();
+				while (it.next()) |simChunk| {
+					if (simChunk.value_ptr.*.*.getChunk() == null) {
+						std.log.debug("discarding chunk", .{});
+						continue;
+					}
+					for (simChunk.value_ptr.*.*.storedEntities.items) |entity| {
+						std.log.debug("found entity ##################################################", .{});
+						const id = entity; // TODO
+						entityData.append(.{
+							.id = id,
+							.pos = @"cubyz:physics_body".getPosition(entity, .server).?,
+							.vel = @"cubyz:physics_body".getVelocity(entity, .server).?,
+							.rot = @"cubyz:physics_body".getRotation(entity, .server).?,
+						});
+					}
+				}
+				std.log.debug("sending {} entities", .{entityData.items.len});
+				main.network.protocols.entity_position.send(user.conn, @"cubyz:physics_body".getPosition(user.player().id, .server).?, entityData.items, itemData);
+			}
 		}
 	}
 
