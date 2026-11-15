@@ -293,6 +293,14 @@ pub fn draw(self: CommandBuffer, vertexCount: u32, firstVertex: u32) void {
 	c.vkCmdDraw(self.handle, vertexCount, 1, firstVertex, 0);
 }
 
+pub fn drawIndexedIndirect(self: CommandBuffer, buffer: vulkan.Buffer, byteOffset: usize, drawCount: u32, stride: u32) void {
+	c.vkCmdDrawIndexedIndirect(self.handle, buffer.handle, byteOffset, drawCount, stride);
+}
+
+pub fn drawIndirect(self: CommandBuffer, buffer: vulkan.Buffer, offset: usize, drawCount: u32, stride: u32) void {
+	c.vkCmdDrawIndirect(self.handle, buffer.handle, offset, drawCount, stride);
+}
+
 pub fn dispatchCompute(self: CommandBuffer, groupCountX: u32, groupCountY: u32, groupCountZ: u32) void {
 	c.vkCmdDispatch(self.handle, groupCountX, groupCountY, groupCountZ);
 }

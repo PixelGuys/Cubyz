@@ -1665,6 +1665,7 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		used: u31,
 		binding: c_uint,
 		stagingBuffer: ?vulkan.Buffer.Staging = null,
+		options: Options,
 
 		const Self = @This();
 
@@ -1678,15 +1679,19 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 			self.capacity = size;
 			if (main.settings.launch_config.vulkanTestingMode) {
 				self.ssbo.buffer = .init(bytes, .{
-					.usage = c.VK_BUFFER_USAGE_TRANSFER_DST_BIT | c.VK_BUFFER_USAGE_TRANSFER_SRC_BIT | c.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+					.usage = @as(c.VkBufferUsageFlags, c.VK_BUFFER_USAGE_TRANSFER_DST_BIT | c.VK_BUFFER_USAGE_TRANSFER_SRC_BIT | c.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) | self.options.extraUsageFlags,
 				});
 			}
 		}
 
-		pub fn init(self: *Self, allocator: NeverFailingAllocator, size: u31, binding: c_uint) void {
+		const Options = struct {
+			extraUsageFlags: c.VkBufferUsageFlags = 0,
+		};
+		pub fn init(self: *Self, allocator: NeverFailingAllocator, size: u31, binding: c_uint, options: Options) void {
 			self.stagingBuffer = null;
 			self.used = 0;
 			self.binding = binding;
+			self.options = options;
 			self.createBuffer(size);
 			self.activeFence = 0;
 			for (&self.fences) |*fence| {
@@ -1759,7 +1764,7 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 				c.glCopyBufferSubData(c.GL_COPY_READ_BUFFER, c.GL_COPY_WRITE_BUFFER, 0, 0, @as(c.GLsizeiptr, oldCapacity)*@sizeOf(Entry));
 
 				if (main.settings.launch_config.vulkanTestingMode) {
-					vulkan.upload.commandBuffer().copyBuffer(self.ssbo.buffer.?, 0, oldBuffer.buffer.?, 0, oldCapacity);
+					vulkan.upload.commandBuffer().copyBuffer(self.ssbo.buffer.?, 0, oldBuffer.buffer.?, 0, @as(usize, oldCapacity)*@sizeOf(Entry));
 				}
 
 				return rawAlloc(self, size);
@@ -1868,6 +1873,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 	depthTexture: c_uint,
 	color: vulkan.Image,
 	depth: vulkan.Image,
+	depthLayout: c.VkImageLayout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
 
 	pub fn init(_width: u31, _height: u31, internalFormat: c_int, hasDepthTexture: bool, textureFilter: vulkan.Image.ImageOptions.Filter, textureWrap: vulkan.Image.ImageOptions.AddressMode) FrameBuffer {
 		var self: FrameBuffer = .{
@@ -1966,32 +1972,36 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 		clearColor: CommandBuffer.BeginRenderingOptions.LoadOp,
 		clearDepth: CommandBuffer.BeginRenderingOptions.LoadOp,
 		baseArrayLayer: ?u32 = null,
+		transitionImageLayout: bool = true,
 	};
-	pub fn bindAndClear(self: FrameBuffer, commandBuffer: CommandBuffer, options: BindAndClearOptions) void {
-		commandBuffer.pipelineBarrier(.{.imageMemoryBarriers = @as([]const c.VkImageMemoryBarrier2, &.{
-			.{
-				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-				.srcStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-				.srcAccessMask = 0,
-				.dstStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-				.dstAccessMask = c.VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | c.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
-				.newLayout = c.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-				.image = self.color.handle,
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .baseArrayLayer = options.baseArrayLayer orelse 0, .layerCount = 1},
-			},
-			.{
-				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-				.srcStageMask = c.VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | c.VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-				.srcAccessMask = 0,
-				.dstStageMask = c.VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | c.VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-				.dstAccessMask = c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-				.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
-				.newLayout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-				.image = self.depth.handle,
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .baseArrayLayer = options.baseArrayLayer orelse 0, .layerCount = 1},
-			},
-		})[0..if (self.hasDepthTexture) 2 else 1]});
+	pub fn bindAndClear(self: *FrameBuffer, commandBuffer: CommandBuffer, options: BindAndClearOptions) void {
+		if (options.transitionImageLayout) {
+			commandBuffer.pipelineBarrier(.{.imageMemoryBarriers = @as([]const c.VkImageMemoryBarrier2, &.{
+				.{
+					.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+					.srcStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+					.srcAccessMask = 0,
+					.dstStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+					.dstAccessMask = c.VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | c.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+					.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
+					.newLayout = c.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+					.image = self.color.handle,
+					.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .baseArrayLayer = options.baseArrayLayer orelse 0, .layerCount = 1},
+				},
+				.{
+					.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+					.srcStageMask = c.VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | c.VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+					.srcAccessMask = 0,
+					.dstStageMask = c.VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | c.VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+					.dstAccessMask = c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+					.oldLayout = c.VK_IMAGE_LAYOUT_UNDEFINED,
+					.newLayout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+					.image = self.depth.handle,
+					.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .baseArrayLayer = options.baseArrayLayer orelse 0, .layerCount = 1},
+				},
+			})[0..if (self.hasDepthTexture) 2 else 1]});
+			self.depthLayout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+		}
 		const colorView = if (options.baseArrayLayer) |layer| self.color.createTemporaryImageView(.{.type = c.VK_IMAGE_VIEW_TYPE_2D, .baseArrayLayer = layer}) else self.color.view;
 		commandBuffer.beginRendering(.{
 			.textures = &.{
@@ -2007,13 +2017,32 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 				const depthView = if (options.baseArrayLayer) |layer| self.depth.createTemporaryImageView(.{.type = c.VK_IMAGE_VIEW_TYPE_2D, .baseArrayLayer = layer}) else self.depth.view;
 				break :blk .{
 					.imageView = depthView,
-					.layout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+					.layout = self.depthLayout,
 					.loadOp = options.clearDepth,
 					.storeOp = .store,
 				};
 			},
 			.renderArea = .{.extent = .{.width = @intCast(self.color.size[0]), .height = @intCast(self.color.size[1])}},
 		});
+	}
+
+	pub fn makeDepthReadOnly(self: *FrameBuffer, commandBuffer: CommandBuffer) void {
+		std.debug.assert(self.hasDepthTexture);
+		std.debug.assert(self.depthLayout == c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+		commandBuffer.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | c.VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+				.srcAccessMask = c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | c.VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+				.dstAccessMask = c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+				.oldLayout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+				.newLayout = c.VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL,
+				.image = self.depth.handle,
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = c.VK_REMAINING_ARRAY_LAYERS},
+			},
+		}});
+		self.depthLayout = c.VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
 	}
 
 	pub fn clear(_: FrameBuffer, clearColor: Vec4f) void {
@@ -2053,7 +2082,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 				.srcAccessMask = c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
 				.dstStageMask = c.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
 				.dstAccessMask = c.VK_ACCESS_2_SHADER_READ_BIT,
-				.oldLayout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+				.oldLayout = self.depthLayout,
 				.newLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
 				.image = self.depth.handle,
 				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = c.VK_REMAINING_ARRAY_LAYERS},
@@ -2623,7 +2652,7 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 
 	const binding = 31; // maxPushDescriptors is at least 32 for all devices that support it
 
-	pub fn bindToPipeline(buf: CommandBuffer, pipeline: Pipeline) void {
+	pub fn bindToPipeline(buf: CommandBuffer, pipeline: anytype) void {
 		buf.bindDescriptors(pipeline, &.{
 			.{.ubo = .{.binding = binding, .buffer = vulkanBuffers[currentFrame]}},
 		});

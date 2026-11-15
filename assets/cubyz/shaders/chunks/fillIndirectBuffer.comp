@@ -26,6 +26,7 @@ layout(std430, binding = 9) buffer _chunkIDs
 	uint chunkIDs[];
 };
 
+#ifdef OPEN_GL
 layout(location = 0) uniform uint chunkIDIndex;
 layout(location = 1) uniform uint commandIndexStart;
 layout(location = 2) uniform uint size;
@@ -33,6 +34,16 @@ layout(location = 3) uniform bool isTransparent;
 layout(location = 4) uniform bool onlyDrawPreviouslyInvisible;
 
 layout(location = 6) uniform float lodDistance;
+#else
+layout(push_constant, std430) uniform _ {
+	uint chunkIDIndex;
+	uint commandIndexStart;
+	uint size;
+	bool isTransparent;
+	bool onlyDrawPreviouslyInvisible;
+	float lodDistance;
+};
+#endif
 
 bool isVisible(int dir, ivec3 playerDist) {
 	switch(dir) {
