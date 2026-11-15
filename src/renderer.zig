@@ -334,7 +334,7 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 	if (main.settings.launch_config.vulkanTestingMode) {
 		currentFrame.renderCommands.endRendering();
 		worldFrameBuffer.makeDepthReadOnly(currentFrame.renderCommands);
-		worldFrameBuffer.bindAndClear(currentFrame.renderCommands, .{.clearColor = .load, .clearDepth = .load, .transitionImageLayout = false, .fun = true});
+		worldFrameBuffer.bindAndClear(currentFrame.renderCommands, .{.clearColor = .load, .clearDepth = .load, .transitionImageLayout = false});
 	}
 
 	{

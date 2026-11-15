@@ -1973,7 +1973,6 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 		clearDepth: CommandBuffer.BeginRenderingOptions.LoadOp,
 		baseArrayLayer: ?u32 = null,
 		transitionImageLayout: bool = true,
-		fun: bool = false,
 	};
 	pub fn bindAndClear(self: *FrameBuffer, commandBuffer: CommandBuffer, options: BindAndClearOptions) void {
 		if (options.transitionImageLayout) {
