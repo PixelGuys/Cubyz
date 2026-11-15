@@ -111,7 +111,7 @@ pub fn init() void {
 			.pushConstantSize = @sizeOf(FakeReflectionUniforms),
 		},
 	);
-	worldFrameBuffer = .init(Window.width, Window.height, c.GL_RGBA16F, true, .nearest, .clampToEdge);
+	worldFrameBuffer = .init(Window.width, Window.height, c.VK_FORMAT_R16G16B16A16_SFLOAT, true, .nearest, .clampToEdge);
 	bloom.init();
 	mesh_selection.init();
 	menu_background.init();
@@ -137,7 +137,7 @@ pub fn deinit() void {
 
 fn initReflectionCubeMap() void {
 	c.glViewport(0, 0, reflectionCubeMapSize, reflectionCubeMapSize);
-	var framebuffer: graphics.FrameBuffer = .init(0, 0, c.GL_RGBA8, false, .linear, .clampToEdge);
+	var framebuffer: graphics.FrameBuffer = .init(0, 0, c.VK_FORMAT_R8G8B8A8_UNORM, false, .linear, .clampToEdge);
 	defer framebuffer.deinit();
 	if (main.settings.launch_config.vulkanTestingMode) {
 		const oldColor = framebuffer.color;
@@ -202,7 +202,7 @@ pub fn updateViewport(width: u31, height: u31) void {
 	lastHeight = @trunc(@as(f32, @floatFromInt(height))*main.settings.resolutionScale);
 	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(lastFov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
 	worldFrameBuffer.deinit();
-	worldFrameBuffer = .init(lastWidth, lastHeight, c.GL_RGBA16F, true, .nearest, .clampToEdge);
+	worldFrameBuffer = .init(lastWidth, lastHeight, c.VK_FORMAT_R16G16B16A16_SFLOAT, true, .nearest, .clampToEdge);
 	worldFrameBuffer.unbind();
 }
 
@@ -477,8 +477,8 @@ const bloom = struct { // MARK: bloom
 	};
 
 	pub fn init() void {
-		buffer1 = .init(0, 0, c.GL_R11F_G11F_B10F, false, .linear, .clampToEdge);
-		buffer2 = .init(0, 0, c.GL_R11F_G11F_B10F, false, .linear, .clampToEdge);
+		buffer1 = .init(0, 0, c.VK_FORMAT_B10G11R11_UFLOAT_PACK32, false, .linear, .clampToEdge);
+		buffer2 = .init(0, 0, c.VK_FORMAT_B10G11R11_UFLOAT_PACK32, false, .linear, .clampToEdge);
 		emptyBuffer = .initFromImage(graphics.Image.emptyImage);
 		firstPassPipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/bloom/first_pass.vert",
@@ -845,7 +845,7 @@ pub const menu_background = struct { // MARK: menu_background
 		main.settings.resolutionScale = oldResolutionScale;
 		defer updateViewport(Window.width, Window.height);
 
-		var buffer: graphics.FrameBuffer = .init(size, size, c.GL_RGBA8, false, .nearest, .repeat);
+		var buffer: graphics.FrameBuffer = .init(size, size, c.VK_FORMAT_R8G8B8A8_UNORM, false, .nearest, .repeat);
 		defer buffer.deinit();
 
 		activeFrameBuffer = buffer.frameBuffer;

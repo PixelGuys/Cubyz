@@ -509,9 +509,11 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 				c.glViewport(0, 0, textureWidth, textureHeight);
 				defer c.glViewport(oldViewport[0], oldViewport[1], oldViewport[2], oldViewport[3]);
 
-				var finalFrameBuffer: graphics.FrameBuffer = .init(textureWidth, textureHeight, c.GL_RGBA16F, false, .nearest, .repeat);
+				var finalFrameBuffer: graphics.FrameBuffer = .init(textureWidth, textureHeight, c.VK_FORMAT_B8G8R8A8_UNORM, false, .nearest, .repeat);
 				defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
 				if (main.settings.launch_config.vulkanTestingMode) {
+					graphics.vulkan.upload.commandBuffer().endRendering();
+
 					finalFrameBuffer.bindAndClear(graphics.vulkan.upload.commandBuffer(), .{.clearColor = .{.clearColor = .{.float32 = .{0, 0, 0, 0}}}, .clearDepth = .dontCare});
 				} else {
 					finalFrameBuffer.bind();
@@ -528,13 +530,15 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 				defer textBuffer.deinit();
 				_ = textBuffer.calculateLineBreaks(16, textureWidth - 2*textureMargin);
 				textBuffer.renderTextWithoutShadow(.{
-					.currentFrame = currentFrame,
+					.currentFrame = &fakeFrame,
 					.commands = if (main.settings.launch_config.vulkanTestingMode) graphics.vulkan.upload.commandBuffer() else undefined,
 				}, 0, 0, 16);
 				if (main.settings.launch_config.vulkanTestingMode) {
 					graphics.vulkan.upload.commandBuffer().endRendering();
 					finalFrameBuffer.prepareTexturesForBinding(graphics.vulkan.upload.commandBuffer());
-					signData.renderedTexture.?.vulkanImage = finalFrameBuffer.color;
+					signData.renderedTexture = .{.textureID = finalFrameBuffer.texture, .vulkanImage = finalFrameBuffer.color};
+				} else {
+					signData.renderedTexture = .{.textureID = finalFrameBuffer.texture, .vulkanImage = undefined};
 				}
 			}
 
