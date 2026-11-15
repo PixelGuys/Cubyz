@@ -61,6 +61,14 @@ pub var commandUniforms: struct {
 	onlyDrawPreviouslyInvisible: c_int,
 	lodDistance: c_int,
 } = undefined;
+pub const CommandUniforms = extern struct {
+	chunkIDIndex: c_uint,
+	commandIndexStart: c_uint,
+	size: c_uint,
+	isTransparent: c_int,
+	onlyDrawPreviouslyInvisible: c_int,
+	lodDistance: f32,
+};
 pub var occlusionTestPipeline: graphics.Pipeline = undefined;
 pub var vao: graphics.VertexArray = undefined;
 pub var faceBuffers: [settings.highestSupportedLod + 1]graphics.LargeBuffer(FaceData) = undefined;
@@ -132,7 +140,14 @@ pub fn init() void {
 			.pushConstantSize = @sizeOf(Uniforms),
 		},
 	);
-	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms, .{});
+	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms, .{
+		.bindings = &.{
+			.ssbo(6, .{.compute = true}),
+			.ssbo(8, .{.compute = true}),
+			.ssbo(9, .{.compute = true}),
+		},
+		.pushConstantSize = @sizeOf(CommandUniforms),
+	});
 	occlusionTestPipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/chunks/occlusionTestVertex.vert",
 		"assets/cubyz/shaders/chunks/occlusionTestFragment.frag",
@@ -140,7 +155,10 @@ pub fn init() void {
 		null,
 		graphics.VertexArray.EmptyVertex,
 		.{
-			.bindings = &.{.ssbo(6, .{.vertex = true, .fragment = true}), .ssbo(9, .{.vertex = true})},
+			.bindings = &.{
+				.ssbo(6, .{.vertex = true, .fragment = true}),
+				.ssbo(9, .{.vertex = true}),
+			},
 			.rasterState = .{},
 			.depthStencilState = .{.depthTest = true, .depthWrite = false},
 			.blendState = .{.attachments = &.{.{
@@ -165,12 +183,12 @@ pub fn init() void {
 	vao = .init(graphics.VertexArray.EmptyVertex, &.{}, &rawData);
 
 	for (0..settings.highestSupportedLod + 1) |i| {
-		faceBuffers[i].init(main.globalAllocator, 1 << 20, 3);
-		lightBuffers[i].init(main.globalAllocator, 1 << 20, 10);
+		faceBuffers[i].init(main.globalAllocator, 1 << 20, 3, .{});
+		lightBuffers[i].init(main.globalAllocator, 1 << 20, 10, .{});
 	}
-	chunkBuffer.init(main.globalAllocator, 1 << 20, 6);
-	commandBuffer.init(main.globalAllocator, 1 << 20, 8);
-	chunkIDBuffer.init(main.globalAllocator, 1 << 20, 9);
+	chunkBuffer.init(main.globalAllocator, 1 << 20, 6, .{});
+	commandBuffer.init(main.globalAllocator, 1 << 10, 8, .{.extraUsageFlags = c.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT});
+	chunkIDBuffer.init(main.globalAllocator, 1 << 20, 9, .{});
 }
 
 pub fn deinit() void {
@@ -290,15 +308,15 @@ fn bindBuffers(lod: usize) void {
 	lightBuffers[lod].ssbo.bind(lightBuffers[lod].binding);
 }
 
-pub fn drawChunksIndirect(currentFrame: *graphics.vulkan.Frame, depthTexture: graphics.vulkan.Image, chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), ambient: Vec3f, transparent: bool) void {
+pub fn drawChunksIndirect(currentFrame: *graphics.vulkan.Frame, currentFrameBuffer: *graphics.FrameBuffer, chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), ambient: Vec3f, transparent: bool) void {
 	for (0..chunkIds.len) |i| {
 		const lod = if (transparent) main.settings.highestSupportedLod - i else i;
 		bindBuffers(lod);
-		drawChunksOfLod(currentFrame, depthTexture, chunkIds[lod].items, ambient, transparent, lod);
+		drawChunksOfLod(currentFrame, currentFrameBuffer, chunkIds[lod].items, ambient, transparent, lod);
 	}
 }
 
-fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, depthTexture: graphics.vulkan.Image, chunkIDs: []const u32, ambient: Vec3f, transparent: bool, lod: usize) void {
+fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, currentFrameBuffer: *graphics.FrameBuffer, chunkIDs: []const u32, ambient: Vec3f, transparent: bool, lod: usize) void {
 	if (chunkIDs.len == 0) return;
 	const drawCallsEstimate: u31 = @intCast(if (transparent) chunkIDs.len else chunkIDs.len*8);
 	var chunkIDAllocation: main.graphics.SubAllocation = .{.start = 0, .len = 0};
@@ -312,39 +330,125 @@ fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, depthTexture: graphics.
 	c.glUniform1ui(commandUniforms.commandIndexStart, allocation.start);
 	c.glUniform1ui(commandUniforms.size, @intCast(chunkIDs.len));
 	c.glUniform1i(commandUniforms.isTransparent, @intFromBool(transparent));
+	var vulkanUniforms: CommandUniforms = .{
+		.chunkIDIndex = chunkIDAllocation.start,
+		.commandIndexStart = allocation.start,
+		.size = @intCast(chunkIDs.len),
+		.lodDistance = main.settings.@"lod0.5Distance",
+		.isTransparent = if (transparent) c.VK_TRUE else c.VK_FALSE,
+		.onlyDrawPreviouslyInvisible = undefined,
+	};
 	if (!transparent) {
 		c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 0);
-		c.glDispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
-		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
+		vulkanUniforms.onlyDrawPreviouslyInvisible = c.VK_FALSE;
 
-		if (transparent) {
-			bindTransparentShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, depthTexture, ambient, main.settings.blockContrast, lod);
+		if (main.settings.launch_config.vulkanTestingMode) {
+			currentFrame.renderCommands.endRendering();
+			defer currentFrameBuffer.bindAndClear(currentFrame.renderCommands, .{.clearColor = .load, .clearDepth = .load, .transitionImageLayout = false});
+
+			currentFrame.renderCommands.bindComputePipeline(commandPipeline);
+			currentFrame.renderCommands.pushConstants(commandPipeline, &vulkanUniforms);
+			currentFrame.renderCommands.bindDescriptors(commandPipeline, &.{
+				.{.ssbo = .{.binding = 6, .ssbo = chunkBuffer.ssbo}},
+				.{.ssbo = .{.binding = 8, .ssbo = commandBuffer.ssbo}},
+				.{.ssbo = .{.binding = 9, .ssbo = chunkIDBuffer.ssbo}},
+			});
+			graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, commandPipeline);
+			currentFrame.renderCommands.dispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
+			currentFrame.renderCommands.pipelineBarrier(.{.bufferMemoryBarriers = &.{.{
+				.sType = c.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+				.srcAccessMask = c.VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
+				.dstAccessMask = c.VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
+				.buffer = commandBuffer.ssbo.buffer.?.handle,
+				.offset = 0,
+				.size = c.VK_WHOLE_SIZE,
+			}}});
 		} else {
-			bindShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, ambient, main.settings.blockContrast, lod);
+			c.glDispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
+			c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 		}
-		c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
-		c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
+
+		bindShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, ambient, main.settings.blockContrast, lod);
+		if (main.settings.launch_config.vulkanTestingMode) {
+			currentFrame.renderCommands.drawIndexedIndirect(commandBuffer.ssbo.buffer.?, @as(usize, allocation.start)*@sizeOf(IndirectData), drawCallsEstimate, @sizeOf(IndirectData));
+		} else {
+			c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
+			c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
+		}
 	}
 
 	// Occlusion tests:
-	occlusionTestPipeline.bind(null);
-	vao.bind();
-	c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(6*6*chunkIDs.len), c.GL_UNSIGNED_INT, null, chunkIDAllocation.start*24);
-	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
+	if (main.settings.launch_config.vulkanTestingMode) {
+		currentFrame.renderCommands.bindPipeline(currentFrame, occlusionTestPipeline, null);
+		currentFrame.renderCommands.bindDescriptors(occlusionTestPipeline, &.{
+			.{.ssbo = .{.binding = 6, .ssbo = chunkBuffer.ssbo}},
+			.{.ssbo = .{.binding = 9, .ssbo = chunkIDBuffer.ssbo}},
+		});
+		main.graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, occlusionTestPipeline);
+		currentFrame.renderCommands.bindVertexArray(vao);
+		currentFrame.renderCommands.drawIndexed(@intCast(6*6*chunkIDs.len), .{.firstVertex = chunkIDAllocation.start*24});
+		currentFrame.renderCommands.endRendering();
+		currentFrame.renderCommands.pipelineBarrier(.{.bufferMemoryBarriers = &.{.{
+			.sType = c.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+			.srcStageMask = c.VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+			.srcAccessMask = c.VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+			.dstStageMask = c.VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+			.dstAccessMask = c.VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+			.buffer = chunkBuffer.ssbo.buffer.?.handle,
+			.offset = 0,
+			.size = c.VK_WHOLE_SIZE,
+		}}});
+	} else {
+		occlusionTestPipeline.bind(null);
+		vao.bind();
+		c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(6*6*chunkIDs.len), c.GL_UNSIGNED_INT, null, chunkIDAllocation.start*24);
+		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
+	}
 
 	// Draw again:
 	commandPipeline.bind();
 	c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 1);
-	c.glDispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
-	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
+	vulkanUniforms.onlyDrawPreviouslyInvisible = c.VK_TRUE;
+	if (main.settings.launch_config.vulkanTestingMode) {
+		currentFrame.renderCommands.bindComputePipeline(commandPipeline);
+		currentFrame.renderCommands.pushConstants(commandPipeline, &vulkanUniforms);
+		currentFrame.renderCommands.bindDescriptors(commandPipeline, &.{
+			.{.ssbo = .{.binding = 6, .ssbo = chunkBuffer.ssbo}},
+			.{.ssbo = .{.binding = 8, .ssbo = commandBuffer.ssbo}},
+			.{.ssbo = .{.binding = 9, .ssbo = chunkIDBuffer.ssbo}},
+		});
+		graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, commandPipeline);
+		currentFrame.renderCommands.dispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
+		currentFrame.renderCommands.pipelineBarrier(.{.bufferMemoryBarriers = &.{.{
+			.sType = c.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+			.srcStageMask = c.VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+			.srcAccessMask = c.VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+			.dstStageMask = c.VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
+			.dstAccessMask = c.VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
+			.buffer = commandBuffer.ssbo.buffer.?.handle,
+			.offset = 0,
+			.size = c.VK_WHOLE_SIZE,
+		}}});
+
+		currentFrameBuffer.bindAndClear(currentFrame.renderCommands, .{.clearColor = .load, .clearDepth = .load, .transitionImageLayout = false});
+	} else {
+		c.glDispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
+		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
+	}
 
 	if (transparent) {
-		bindTransparentShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, depthTexture, ambient, main.settings.blockContrast, lod);
+		bindTransparentShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, currentFrameBuffer.depth, ambient, main.settings.blockContrast, lod);
 	} else {
 		bindShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, ambient, main.settings.blockContrast, lod);
 	}
-	c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
-	c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
+	if (main.settings.launch_config.vulkanTestingMode) {
+		currentFrame.renderCommands.drawIndexedIndirect(commandBuffer.ssbo.buffer.?, @as(usize, allocation.start)*@sizeOf(IndirectData), drawCallsEstimate, @sizeOf(IndirectData));
+	} else {
+		c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
+		c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
+	}
 }
 
 pub const FaceData = extern struct {
