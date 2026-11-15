@@ -11,10 +11,6 @@ layout(location = 2) in vec3 direction;
 layout(binding = 3) uniform sampler2D color;
 layout(binding = 4) uniform sampler2D depthTexture;
 
-layout(location = 1) uniform vec2 tanXY;
-layout(location = 2) uniform float zNear;
-layout(location = 3) uniform float zFar;
-
 struct Fog {
 	vec3 color;
 	float density;
@@ -22,7 +18,20 @@ struct Fog {
 	float fogHigher;
 };
 
+#ifdef OPEN_GL
+layout(location = 1) uniform vec2 tanXY;
+layout(location = 2) uniform float zNear;
+layout(location = 3) uniform float zFar;
 layout(location = 6) uniform Fog fog;
+#else
+layout(push_constant, std430) uniform _ {
+	mat4 invViewMatrix;
+	vec2 tanXY;
+	float zNear;
+	float zFar;
+	Fog fog;
+};
+#endif
 
 float zFromDepth(float depthBufferValue) {
 	return zNear*zFar/(depthBufferValue*(zNear - zFar) + zFar);

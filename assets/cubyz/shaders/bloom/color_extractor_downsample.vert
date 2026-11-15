@@ -8,8 +8,25 @@ layout(location = 2) out vec3 direction;
 
 layout(binding = 3) uniform sampler2D color;
 
+struct Fog {
+	vec3 color;
+	float density;
+	float fogLower;
+	float fogHigher;
+};
+
+#ifdef OPEN_GL
 layout(location = 0) uniform mat4 invViewMatrix;
 layout(location = 1) uniform vec2 tanXY;
+#else
+layout(push_constant, std430) uniform _ {
+	mat4 invViewMatrix;
+	vec2 tanXY;
+	float zNear;
+	float zFar;
+	Fog fog;
+};
+#endif
 
 void main() {
 #ifdef OPEN_GL

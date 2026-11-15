@@ -380,10 +380,12 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 
 	const playerBlock = mesh_storage.getBlockFromAnyLodFromRenderThread(@floor(playerPos[0]), @floor(playerPos[1]), @floor(playerPos[2]));
 
-	if (settings.bloom and !settings.launch_config.vulkanTestingMode) { // TODO: Enable bloom in Vulkan
-		bloom.render(lastWidth, lastHeight, playerBlock, game.camera.viewMatrix);
+	var bloomImage: vulkan.Image = undefined;
+	if (settings.bloom) {
+		bloomImage = bloom.render(currentFrame, lastWidth, lastHeight, playerBlock, game.camera.viewMatrix);
 	} else {
 		bloom.bindReplacementImage();
+		bloomImage = bloom.emptyBuffer.vulkanImage orelse undefined;
 	}
 	gpu_performance_measuring.startQuery(.final_copy);
 	if (settings.launch_config.vulkanTestingMode) {
@@ -391,7 +393,7 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 		currentFrame.guiCommands.bindDescriptors(deferredRenderPassPipeline, &.{
 			.{.image = .{.binding = 3, .image = worldFrameBuffer.color}},
 			.{.image = .{.binding = 4, .image = worldFrameBuffer.depth}},
-			.{.image = .{.binding = 5, .image = bloom.emptyBuffer.vulkanImage.?}},
+			.{.image = .{.binding = 5, .image = bloomImage}},
 		});
 		graphics.frame_uniforms.bindToPipeline(currentFrame.guiCommands, deferredRenderPassPipeline);
 		var uniforms: DeferredUniforms = undefined;
@@ -466,6 +468,13 @@ const bloom = struct { // MARK: bloom
 		@"fog.fogHigher": c_int,
 		invViewMatrix: c_int,
 	} = undefined;
+	const ColorExtractUniforms = extern struct {
+		invViewMatrix: [4][4]f32 align(16),
+		tanXY: [2]f32 align(8),
+		zNear: f32,
+		zFar: f32,
+		fog: graphics.Fog.GlslData,
+	};
 
 	pub fn init() void {
 		buffer1 = .init(0, 0, c.GL_R11F_G11F_B10F, false, .linear, .clampToEdge);
@@ -482,7 +491,8 @@ const bloom = struct { // MARK: bloom
 				.bindings = &.{.sampler(3, .{.fragment = true})},
 				.rasterState = .{.cullMode = .none},
 				.depthStencilState = .{.depthTest = false, .depthWrite = false},
-				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R16G16B16A16_SFLOAT}}},
+				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_B10G11R11_UFLOAT_PACK32}}},
+				.inputAssemblyState = .{.topology = .triangleStrip},
 			},
 		);
 		secondPassPipeline = graphics.Pipeline.init(
@@ -495,7 +505,8 @@ const bloom = struct { // MARK: bloom
 				.bindings = &.{.sampler(3, .{.fragment = true})},
 				.rasterState = .{.cullMode = .none},
 				.depthStencilState = .{.depthTest = false, .depthWrite = false},
-				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R16G16B16A16_SFLOAT}}},
+				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_B10G11R11_UFLOAT_PACK32}}},
+				.inputAssemblyState = .{.topology = .triangleStrip},
 			},
 		);
 		colorExtractAndDownsamplePipeline = graphics.Pipeline.init(
@@ -505,9 +516,15 @@ const bloom = struct { // MARK: bloom
 			&colorExtractUniforms,
 			graphics.draw.SimpleVertex2D,
 			.{
+				.bindings = &.{
+					.sampler(3, .{.fragment = true, .vertex = true}),
+					.sampler(4, .{.fragment = true}),
+				},
 				.rasterState = .{.cullMode = .none},
 				.depthStencilState = .{.depthTest = false, .depthWrite = false},
-				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_R16G16B16A16_SFLOAT}}},
+				.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.{.custom = c.VK_FORMAT_B10G11R11_UFLOAT_PACK32}}},
+				.inputAssemblyState = .{.topology = .triangleStrip},
+				.pushConstantSize = @sizeOf(ColorExtractUniforms),
 			},
 		);
 	}
@@ -520,49 +537,108 @@ const bloom = struct { // MARK: bloom
 		colorExtractAndDownsamplePipeline.deinit();
 	}
 
-	fn extractImageDataAndDownsample(playerBlock: blocks.Block, viewMatrix: Mat4f) void {
-		colorExtractAndDownsamplePipeline.bind(null);
-		worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
-		worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
-		buffer1.bind();
+	fn extractImageDataAndDownsample(currentFrame: *vulkan.Frame, playerBlock: blocks.Block, viewMatrix: Mat4f) void {
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			colorExtractAndDownsamplePipeline.bind(null);
+			if (!blocks.meshes.hasFog(playerBlock)) {
+				c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.world.?.dayTime.fog.fogColor));
+				c.glUniform1f(colorExtractUniforms.@"fog.density", game.world.?.dayTime.fog.density);
+				c.glUniform1f(colorExtractUniforms.@"fog.fogLower", game.world.?.dayTime.fog.fogLower);
+				c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", game.world.?.dayTime.fog.fogHigher);
+			} else {
+				const fogColor = blocks.meshes.fogColor(playerBlock);
+				c.glUniform3f(colorExtractUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
+				c.glUniform1f(colorExtractUniforms.@"fog.density", blocks.meshes.fogDensity(playerBlock));
+				c.glUniform1f(colorExtractUniforms.@"fog.fogLower", 1e10);
+				c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", 1e10);
+			}
+			c.glUniformMatrix4fv(colorExtractUniforms.invViewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix.transpose()));
+			c.glUniform1f(colorExtractUniforms.zNear, zNear);
+			c.glUniform1f(colorExtractUniforms.zFar, zFar);
+			c.glUniform2f(colorExtractUniforms.tanXY, 1.0/game.projectionMatrix.rows[0][0], 1.0/game.projectionMatrix.rows[1][2]);
+		}
+		var uniforms: ColorExtractUniforms = undefined;
 		if (!blocks.meshes.hasFog(playerBlock)) {
-			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.world.?.dayTime.fog.fogColor));
-			c.glUniform1f(colorExtractUniforms.@"fog.density", game.world.?.dayTime.fog.density);
-			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", game.world.?.dayTime.fog.fogLower);
-			c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", game.world.?.dayTime.fog.fogHigher);
+			uniforms.fog = game.world.?.dayTime.fog.toGlsl();
 		} else {
 			const fogColor = blocks.meshes.fogColor(playerBlock);
-			c.glUniform3f(colorExtractUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
-			c.glUniform1f(colorExtractUniforms.@"fog.density", blocks.meshes.fogDensity(playerBlock));
-			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", 1e10);
-			c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", 1e10);
+			uniforms.fog = (graphics.Fog{
+				.fogColor = .{@as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0},
+				.density = blocks.meshes.fogDensity(playerBlock),
+				.fogLower = 1e10,
+				.fogHigher = 1e10,
+				.skyColor = undefined,
+			}).toGlsl();
 		}
 
-		c.glUniformMatrix4fv(colorExtractUniforms.invViewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix.transpose()));
-		c.glUniform1f(colorExtractUniforms.zNear, zNear);
-		c.glUniform1f(colorExtractUniforms.zFar, zFar);
-		c.glUniform2f(colorExtractUniforms.tanXY, 1.0/game.projectionMatrix.rows[0][0], 1.0/game.projectionMatrix.rows[1][2]);
-		graphics.draw.rectVao.bind();
-		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+		uniforms.invViewMatrix = viewMatrix.toGl();
+		uniforms.zNear = zNear;
+		uniforms.zFar = zFar;
+		uniforms.tanXY = .{1.0/game.projectionMatrix.rows[0][0], 1.0/game.projectionMatrix.rows[1][2]};
+
+		if (main.settings.launch_config.vulkanTestingMode) {
+			currentFrame.renderCommands.bindPipeline(currentFrame, colorExtractAndDownsamplePipeline, null);
+			currentFrame.renderCommands.bindDescriptors(colorExtractAndDownsamplePipeline, &.{
+				.{.image = .{.binding = 3, .image = worldFrameBuffer.color}},
+				.{.image = .{.binding = 4, .image = worldFrameBuffer.depth}},
+			});
+			currentFrame.renderCommands.pushConstants(colorExtractAndDownsamplePipeline, &uniforms);
+			graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, colorExtractAndDownsamplePipeline);
+			buffer1.bindAndClear(currentFrame.renderCommands, .{.clearColor = .dontCare, .clearDepth = .dontCare});
+			currentFrame.renderCommands.bindVertexArray(graphics.draw.rectVao);
+			currentFrame.renderCommands.draw(4, 0);
+			currentFrame.renderCommands.endRendering();
+			buffer1.prepareTexturesForBinding(currentFrame.renderCommands);
+		} else {
+			worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
+			worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
+			buffer1.bind();
+			graphics.draw.rectVao.bind();
+			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+		}
 	}
 
-	fn firstPass() void {
-		firstPassPipeline.bind(null);
-		buffer1.bindTexture(c.GL_TEXTURE3);
-		buffer2.bind();
-		graphics.draw.rectVao.bind();
-		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+	fn firstPass(currentFrame: *vulkan.Frame) void {
+		if (main.settings.launch_config.vulkanTestingMode) {
+			currentFrame.renderCommands.bindPipeline(currentFrame, firstPassPipeline, null);
+			currentFrame.renderCommands.bindDescriptors(firstPassPipeline, &.{
+				.{.image = .{.binding = 3, .image = buffer1.color}},
+			});
+			buffer2.bindAndClear(currentFrame.renderCommands, .{.clearColor = .dontCare, .clearDepth = .dontCare});
+			currentFrame.renderCommands.bindVertexArray(graphics.draw.rectVao);
+			currentFrame.renderCommands.draw(4, 0);
+			currentFrame.renderCommands.endRendering();
+			buffer2.prepareTexturesForBinding(currentFrame.renderCommands);
+		} else {
+			firstPassPipeline.bind(null);
+			buffer1.bindTexture(c.GL_TEXTURE3);
+			buffer2.bind();
+			graphics.draw.rectVao.bind();
+			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+		}
 	}
 
-	fn secondPass() void {
-		secondPassPipeline.bind(null);
-		buffer2.bindTexture(c.GL_TEXTURE3);
-		buffer1.bind();
-		graphics.draw.rectVao.bind();
-		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+	fn secondPass(currentFrame: *vulkan.Frame) void {
+		if (main.settings.launch_config.vulkanTestingMode) {
+			currentFrame.renderCommands.bindPipeline(currentFrame, secondPassPipeline, null);
+			currentFrame.renderCommands.bindDescriptors(secondPassPipeline, &.{
+				.{.image = .{.binding = 3, .image = buffer2.color}},
+			});
+			buffer1.bindAndClear(currentFrame.renderCommands, .{.clearColor = .dontCare, .clearDepth = .dontCare});
+			currentFrame.renderCommands.bindVertexArray(graphics.draw.rectVao);
+			currentFrame.renderCommands.draw(4, 0);
+			currentFrame.renderCommands.endRendering();
+			buffer1.prepareTexturesForBinding(currentFrame.renderCommands);
+		} else {
+			secondPassPipeline.bind(null);
+			buffer2.bindTexture(c.GL_TEXTURE3);
+			buffer1.bind();
+			graphics.draw.rectVao.bind();
+			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+		}
 	}
 
-	fn render(currentWidth: u31, currentHeight: u31, playerBlock: blocks.Block, viewMatrix: Mat4f) void {
+	fn render(currentFrame: *vulkan.Frame, currentWidth: u31, currentHeight: u31, playerBlock: blocks.Block, viewMatrix: Mat4f) vulkan.Image {
 		if (width != currentWidth or height != currentHeight) {
 			width = currentWidth;
 			height = currentHeight;
@@ -575,19 +651,26 @@ const bloom = struct { // MARK: bloom
 		}
 		gpu_performance_measuring.startQuery(.bloom_extract_downsample);
 
+		if (main.settings.launch_config.vulkanTestingMode) {
+			currentFrame.extent = .{.width = width/4, .height = height/4};
+		}
 		c.glViewport(0, 0, width/4, height/4);
-		extractImageDataAndDownsample(playerBlock, viewMatrix);
+		extractImageDataAndDownsample(currentFrame, playerBlock, viewMatrix);
 		gpu_performance_measuring.stopQuery();
 		gpu_performance_measuring.startQuery(.bloom_first_pass);
-		firstPass();
+		firstPass(currentFrame);
 		gpu_performance_measuring.stopQuery();
 		gpu_performance_measuring.startQuery(.bloom_second_pass);
-		secondPass();
+		secondPass(currentFrame);
 
 		c.glViewport(0, 0, width, height);
+		if (main.settings.launch_config.vulkanTestingMode) {
+			currentFrame.extent = .{.width = width, .height = height};
+		}
 		buffer1.bindTexture(c.GL_TEXTURE5);
 
 		gpu_performance_measuring.stopQuery();
+		return buffer1.color;
 	}
 
 	fn bindReplacementImage() void {
