@@ -593,6 +593,9 @@ pub const Frame = struct { // MARK: Frame
 	renderCommands: main.graphics.CommandBuffer,
 	extent: c.VkExtent2D,
 
+	minDepth: f32 = 0,
+	maxDepth: f32 = 1,
+
 	fn init() Frame {
 		return .{
 			.fence = .init(true),
