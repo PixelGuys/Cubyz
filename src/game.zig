@@ -324,6 +324,10 @@ pub const World = struct { // MARK: World
 	pub fn deinit(self: *World) void {
 		main.server.stop(.stopAndWait);
 
+		if (main.settings.launch_config.vulkanTestingMode) {
+			graphics.vulkan.waitForDeviceToFinish();
+		}
+
 		self.conn.deinit();
 
 		self.connected = false;

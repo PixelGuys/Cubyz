@@ -201,6 +201,12 @@ pub fn deinit() void {
 	c.vkDestroyInstance(instance, null);
 }
 
+// MARK: Utility
+
+pub fn waitForDeviceToFinish() void {
+	checkResult(c.vkDeviceWaitIdle(device));
+}
+
 // MARK: Instance
 
 const validationLayers: []const [*:0]const u8 = &.{
