@@ -92,6 +92,7 @@ pub fn globalDeinit() void {
 	normalTextures.deinit();
 	hoveredTextures.deinit();
 	pressedTextures.deinit();
+	disabledTextures.deinit();
 }
 
 const Options = struct {

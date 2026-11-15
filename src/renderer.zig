@@ -515,6 +515,7 @@ const bloom = struct { // MARK: bloom
 	pub fn deinit() void {
 		buffer1.deinit();
 		buffer2.deinit();
+		emptyBuffer.deinit();
 		firstPassPipeline.deinit();
 		secondPassPipeline.deinit();
 		colorExtractAndDownsamplePipeline.deinit();
@@ -670,6 +671,12 @@ pub const menu_background = struct { // MARK: menu_background
 		texture = graphics.Texture.initFromFile(backgroundPath);
 	}
 
+	pub fn deinit() void {
+		texture.deinit();
+		pipeline.deinit();
+		vao.deinit();
+	}
+
 	fn chooseBackgroundImagePath(allocator: main.heap.NeverFailingAllocator) ![]const u8 {
 		var dir = try main.files.cubyzDir().openIterableDir("backgrounds");
 		defer dir.close();
@@ -704,11 +711,6 @@ pub const menu_background = struct { // MARK: menu_background
 		}
 		const theChosenOne = main.random.nextIntBounded(u32, &main.seed, @as(u32, @intCast(fileList.items.len)));
 		return allocator.print("{s}/backgrounds/{s}", .{main.files.cubyzDirStr(), fileList.items[theChosenOne]});
-	}
-
-	pub fn deinit() void {
-		pipeline.deinit();
-		vao.deinit();
 	}
 
 	pub fn hasImage() bool {

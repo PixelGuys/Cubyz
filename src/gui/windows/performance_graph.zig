@@ -71,6 +71,7 @@ pub fn init() void {
 
 pub fn deinit() void {
 	ssbo.deinit();
+	pipeline.deinit();
 }
 
 pub fn render(currentFrame: *vulkan.Frame) void {
