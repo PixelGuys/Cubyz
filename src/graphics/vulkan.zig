@@ -204,7 +204,9 @@ pub fn deinit() void {
 // MARK: Utility
 
 pub fn waitForDeviceToFinish() void {
-	checkResult(c.vkDeviceWaitIdle(device));
+	if (main.settings.launch_config.vulkanTestingMode) {
+		checkResult(c.vkDeviceWaitIdle(device));
+	}
 }
 
 // MARK: Instance
