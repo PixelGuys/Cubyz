@@ -2045,6 +2045,25 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 		self.depthLayout = c.VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
 	}
 
+	pub fn makeDepthWritable(self: *FrameBuffer, commandBuffer: CommandBuffer) void {
+		std.debug.assert(self.hasDepthTexture);
+		std.debug.assert(self.depthLayout == c.VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL);
+		commandBuffer.pipelineBarrier(.{.imageMemoryBarriers = &.{
+			.{
+				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | c.VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+				.srcAccessMask = c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | c.VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+				.dstAccessMask = c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | c.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+				.newLayout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+				.oldLayout = c.VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL,
+				.image = self.depth.handle,
+				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = c.VK_REMAINING_ARRAY_LAYERS},
+			},
+		}});
+		self.depthLayout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+	}
+
 	pub fn clear(_: FrameBuffer, clearColor: Vec4f) void {
 		c.glDepthFunc(c.GL_LESS);
 		c.glDepthMask(c.GL_TRUE);

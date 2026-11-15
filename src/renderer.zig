@@ -357,6 +357,9 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 	if (main.settings.launch_config.vulkanTestingMode) {
 		currentFrame.minDepth = 0;
 		currentFrame.maxDepth = 0.001;
+		currentFrame.renderCommands.endRendering();
+		worldFrameBuffer.makeDepthWritable(currentFrame.renderCommands);
+		worldFrameBuffer.bindAndClear(currentFrame.renderCommands, .{.clearColor = .load, .clearDepth = .load, .transitionImageLayout = false});
 	}
 	itemdrop.item_drop_renderer.renderDisplayItems(currentFrame, ambientLight, playerPos);
 	itemdrop.item_drop_renderer.endRender();
