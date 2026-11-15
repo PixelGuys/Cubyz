@@ -1764,7 +1764,7 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 				c.glCopyBufferSubData(c.GL_COPY_READ_BUFFER, c.GL_COPY_WRITE_BUFFER, 0, 0, @as(c.GLsizeiptr, oldCapacity)*@sizeOf(Entry));
 
 				if (main.settings.launch_config.vulkanTestingMode) {
-					vulkan.upload.commandBuffer().copyBuffer(self.ssbo.buffer.?, 0, oldBuffer.buffer.?, 0, oldCapacity);
+					vulkan.upload.commandBuffer().copyBuffer(self.ssbo.buffer.?, 0, oldBuffer.buffer.?, 0, @as(usize, oldCapacity)*@sizeOf(Entry));
 				}
 
 				return rawAlloc(self, size);
