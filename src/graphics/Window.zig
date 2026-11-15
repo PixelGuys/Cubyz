@@ -16,7 +16,7 @@ pub var lastUsedMouse: bool = true;
 pub var width: u31 = 1280;
 pub var height: u31 = 720;
 pub var window: *c.GLFWwindow = undefined;
-pub var vulkanWindow: *c.GLFWwindow = undefined;
+pub var openGlWindow: *c.GLFWwindow = undefined;
 pub var grabbed: bool = false;
 pub var scrollOffset: f32 = 0;
 pub var scrollOffsetInteger: i32 = 0;
@@ -736,14 +736,14 @@ pub fn init() void { // MARK: init()
 	} else blk: {
 		c.glfwWindowHint(c.GLFW_CLIENT_API, c.GLFW_NO_API);
 		c.glfwWindowHint(c.GLFW_VISIBLE, @intFromBool(main.settings.launch_config.vulkanTestingMode));
-		vulkanWindow = c.glfwCreateWindow(width, height, windowTitle, null, null) orelse @panic("Failed to create GLFW window");
-		vulkan.init(vulkanWindow) catch |err| {
+		window = c.glfwCreateWindow(width, height, windowTitle, null, null) orelse @panic("Failed to create GLFW window");
+		vulkan.init(window) catch |err| {
 			std.log.err("Error while initializing Vulkan: {s} This may be a driver issue. Please update your drivers if you want to keep playing Cubyz in the future.", .{@errorName(err)});
-			c.glfwDestroyWindow(vulkanWindow);
+			c.glfwDestroyWindow(window);
 			break :blk;
 		};
 		if (!settings.launch_config.vulkanTestingMode) {
-			c.glfwDestroyWindow(vulkanWindow);
+			c.glfwDestroyWindow(window);
 			vulkan.deinit();
 		}
 	}
@@ -754,7 +754,13 @@ pub fn init() void { // MARK: init()
 	c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MAJOR, 4);
 	c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 6);
 
-	window = c.glfwCreateWindow(width, height, windowTitle, null, null) orelse @panic("Failed to create GLFW window");
+	if (!settings.launch_config.vulkanTestingMode) {
+		window = c.glfwCreateWindow(width, height, windowTitle, null, null) orelse @panic("Failed to create GLFW window");
+		openGlWindow = window;
+	} else {
+		c.glfwWindowHint(c.GLFW_VISIBLE, c.GLFW_FALSE);
+		openGlWindow = c.glfwCreateWindow(width, height, windowTitle, null, null) orelse @panic("Failed to create GLFW window");
+	}
 	iconBlock: {
 		const image = main.graphics.Image.readFromFile(main.stackAllocator, "assets/cubyz/logo.png", .{.orientation = .asIs}) catch |err| {
 			std.log.err("Error loading logo: {s}", .{@errorName(err)});
@@ -776,7 +782,7 @@ pub fn init() void { // MARK: init()
 	_ = c.glfwSetMouseButtonCallback(window, glfw_callbacks.mouseButton);
 	_ = c.glfwSetScrollCallback(window, glfw_callbacks.scroll);
 
-	c.glfwMakeContextCurrent(window);
+	c.glfwMakeContextCurrent(openGlWindow);
 
 	if (c.gladLoadGL(c.glfwGetProcAddress) == 0) {
 		@panic("Failed to load OpenGL functions from GLAD");
@@ -795,7 +801,7 @@ pub fn deinit() void {
 	gamepad.deinit();
 	c.glfwDestroyWindow(window);
 	if (settings.launch_config.vulkanTestingMode) {
-		c.glfwDestroyWindow(vulkanWindow);
+		c.glfwDestroyWindow(openGlWindow);
 		vulkan.deinit();
 	}
 	c.glfwTerminate();
