@@ -76,13 +76,13 @@ vec3 applyFrontfaceFog(float fogDistance, vec3 fogColor, vec3 inColor) {
 }
 
 vec3 fetch(ivec2 pos) {
-	vec4 rgba = texelFetch(color, pos, 0);
+	vec3 rgb = texelFetch(color, pos, 0).rgb;
 	float densityAdjustment = sqrt(dot(tanXY*(normalizedTexCoords*2 - 1), tanXY*(normalizedTexCoords*2 - 1)) + 1);
 	float dist = zFromDepth(texelFetch(depthTexture, pos, 0).r);
 	float fogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionFraction.z, normalize(direction).z, fog.density, fog.fogLower - playerPositionInteger.z, fog.fogHigher - playerPositionInteger.z);
 	vec3 fogColor = fog.color;
-	rgba.rgb = applyFrontfaceFog(fogDistance, fog.color, rgba.rgb);
-	return rgba.rgb/rgba.a;
+	rgb = applyFrontfaceFog(fogDistance, fog.color, rgb);
+	return rgb;
 }
 
 vec3 linearSample(ivec2 start) {

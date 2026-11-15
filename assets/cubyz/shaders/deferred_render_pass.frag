@@ -88,8 +88,8 @@ vec3 applyFrontfaceFog(float fogDistance, vec3 fogColor, vec3 inColor) {
 }
 
 void main() {
-	fragColor = texture(color, texCoords);
-	fragColor += texture(bloomColor, texCoords);
+	fragColor = vec4(texture(color, texCoords).rgb, 1);
+	fragColor += vec4(texture(bloomColor, texCoords).rgb, 0);
 	vec2 clampedTexCoords = (floor(texCoords*vec2(textureSize(color, 0))) + 0.5)/vec2(textureSize(color, 0));
 	vec3 direction = clampedTexCoords.x*(
 		clampedTexCoords.y*directions[0] + (1 - clampedTexCoords.y)*directions[1]
