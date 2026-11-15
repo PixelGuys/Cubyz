@@ -302,6 +302,7 @@ pub fn exitToMenu() void {
 }
 
 pub fn main(args: std.process.Init.Minimal) void { // MARK: main()
+	defer _ = utils.leak.checkForLeaks();
 	defer heap.allocators.deinit();
 	defer heap.garbage_collection.assertAllThreadsStopped();
 	initThreadLocals();
