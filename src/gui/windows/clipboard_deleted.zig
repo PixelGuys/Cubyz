@@ -37,5 +37,5 @@ pub fn render(currentFrame: *graphics.vulkan.Frame) void {
 	}
 	const oldColor = draw.setColor(0xffff8080);
 	defer draw.restoreColor(oldColor);
-	draw.print(.fromGui(currentFrame), "Your clipboard was cleared.", .{}, 0, 0, 16);
+	draw.print(currentFrame, "Your clipboard was cleared.", .{}, 0, 0, 16);
 }

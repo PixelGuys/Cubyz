@@ -500,6 +500,7 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 
 			var fakeFrame: graphics.vulkan.Frame = undefined;
 			fakeFrame.extent = .{.width = textureWidth, .height = textureHeight};
+			fakeFrame.guiCommands = graphics.vulkan.upload.commandBuffer();
 
 			for (StorageClient.storage.dense.items) |*signData| {
 				if (signData.renderedTexture != null) continue;
@@ -529,10 +530,7 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, signData.text, .{.color = 0x000000}, false, .center); // TODO: Make the color configurable in the zon
 				defer textBuffer.deinit();
 				_ = textBuffer.calculateLineBreaks(16, textureWidth - 2*textureMargin);
-				textBuffer.renderTextWithoutShadow(.{
-					.currentFrame = &fakeFrame,
-					.commands = if (main.settings.launch_config.vulkanTestingMode) graphics.vulkan.upload.commandBuffer() else undefined,
-				}, 0, 0, 16);
+				textBuffer.renderTextWithoutShadow(&fakeFrame, 0, 0, 16);
 				if (main.settings.launch_config.vulkanTestingMode) {
 					graphics.vulkan.upload.commandBuffer().endRendering();
 					finalFrameBuffer.prepareTexturesForBinding(graphics.vulkan.upload.commandBuffer());
