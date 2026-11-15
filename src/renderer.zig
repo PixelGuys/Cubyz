@@ -355,6 +355,7 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 
 	c.glDepthRange(0, 0.001);
 	if (main.settings.launch_config.vulkanTestingMode) {
+		currentFrame.minDepth = 0;
 		currentFrame.maxDepth = 0.001;
 	}
 	itemdrop.item_drop_renderer.renderDisplayItems(currentFrame, ambientLight, playerPos);

@@ -715,9 +715,9 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 					.sampler(2, .{.fragment = true}),
 					.sampler(3, .{.fragment = true}),
 					.sampler(11, .{.fragment = true}),
-					.ssbo(5, .{.vertex = true}),
-					.ssbo(6, .{.vertex = true}),
 					.ssbo(4, .{.vertex = true}),
+					.ssbo(5, .{.fragment = true}),
+					.ssbo(6, .{.vertex = true, .fragment = true}),
 				},
 				.rasterState = .{},
 				.depthStencilState = .{.depthTest = true},
@@ -744,14 +744,12 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 		return voxelModels.findOrCreate(compareObject, ItemVoxelModel.init, null);
 	}
 
-	fn bindCommonUniforms(ambientLight: Vec3f, uniforms: *ItemUniforms) void {
+	fn bindCommonUniforms(currentFrame: *graphics.vulkan.Frame, ambientLight: Vec3f, uniforms: *ItemUniforms) void {
 		if (main.settings.launch_config.vulkanTestingMode) {
 			uniforms.reflectionMapSize = main.renderer.reflectionCubeMapSize;
 			uniforms.ambientLight = ambientLight;
 			uniforms.contrast = 0.12;
-			var depthRange: [2]f32 = undefined;
-			c.glGetFloatv(c.GL_DEPTH_RANGE, &depthRange);
-			uniforms.glDepthRange = depthRange;
+			uniforms.glDepthRange = .{currentFrame.minDepth, currentFrame.maxDepth};
 		} else {
 			itemPipeline.bind(null);
 			c.glUniform1f(itemUniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
@@ -792,9 +790,9 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 				.{.image = .{.binding = 1, .image = main.blocks.meshes.emissionTextureArray.vulkanImage.?}},
 				.{.image = .{.binding = 2, .image = main.blocks.meshes.reflectivityAndAbsorptionTextureArray.vulkanImage.?}},
 				.{.image = .{.binding = 11, .image = main.renderer.reflectionCubeMap.vulkanImage}},
+				.{.ssbo = .{.binding = 4, .ssbo = main.models.quadSsbo.?}},
 				.{.ssbo = .{.binding = 5, .ssbo = main.blocks.meshes.animatedTextureSsbo.?}},
 				.{.ssbo = .{.binding = 6, .ssbo = modelData.ssbo}},
-				.{.ssbo = .{.binding = 4, .ssbo = main.models.quadSsbo.?}},
 			});
 			currentFrame.renderCommands.bindVertexArray(main.renderer.chunk_meshing.vao);
 			currentFrame.renderCommands.pushConstants(itemPipeline, uniforms);
@@ -824,7 +822,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 			itemPipeline.bind(null);
 		}
 
-		bindCommonUniforms(ambientLight, &uniforms);
+		bindCommonUniforms(currentFrame, ambientLight, &uniforms);
 		const itemDrops = &game.world.?.itemDrops.super;
 		for (itemDrops.indices[0..itemDrops.size]) |i| {
 			const item = itemDrops.list.items(.itemStack)[i].item;
@@ -891,7 +889,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 
 		var uniforms: ItemUniforms = .{};
 
-		bindCommonUniforms(ambientLight, &uniforms);
+		bindCommonUniforms(currentFrame, ambientLight, &uniforms);
 
 		const item = game.player.inventory.getItem(game.player.selectedSlot);
 		if (item != .null) {

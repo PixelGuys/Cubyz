@@ -122,7 +122,6 @@ layout(std430, binding = 6) buffer _modelInfo
 	uint modelInfo[];
 };
 
-
 uint getVoxel(ivec3 pos) {
 	pos = max(ivec3(0), min(pos, ivec3(upper)));
 	int index = (pos.x | pos.y*int(upper.x))*int(upper.z) | pos.z;
