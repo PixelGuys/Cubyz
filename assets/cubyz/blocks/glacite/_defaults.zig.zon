@@ -15,7 +15,7 @@
 			.textureRoughness = 0.6,
 			.modifiers = .{
 				.{
-					.id = "good_at",
+					.id = "block_tag_damage",
 					.strength = 0.5,
 					.tag = .glacite,
 					.restriction = .{
