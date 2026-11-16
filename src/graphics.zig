@@ -1928,6 +1928,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 			c.VK_FORMAT_R16G16B16A16_SFLOAT => c.GL_RGBA16F,
 			c.VK_FORMAT_R8G8B8A8_UNORM => c.GL_RGBA8,
 			c.VK_FORMAT_B10G11R11_UFLOAT_PACK32 => c.GL_R11F_G11F_B10F,
+			c.VK_FORMAT_B8G8R8A8_UNORM => c.GL_RGBA,
 			else => null,
 		};
 

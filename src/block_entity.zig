@@ -500,8 +500,9 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 
 			var fakeFrame: graphics.vulkan.Frame = undefined;
 			fakeFrame.extent = .{.width = textureWidth, .height = textureHeight};
-			fakeFrame.guiCommands = graphics.vulkan.upload.commandBuffer();
-
+			if (main.settings.launch_config.vulkanTestingMode) {
+				fakeFrame.guiCommands = graphics.vulkan.upload.commandBuffer();
+			}
 			for (StorageClient.storage.dense.items) |*signData| {
 				if (signData.renderedTexture != null) continue;
 
@@ -520,7 +521,6 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 					finalFrameBuffer.bind();
 					finalFrameBuffer.clear(.{0, 0, 0, 0});
 				}
-				signData.renderedTexture = .{.textureID = finalFrameBuffer.texture, .vulkanImage = undefined};
 
 				const oldTranslation = graphics.draw.setTranslation(.{textureMargin, textureMargin});
 				defer graphics.draw.restoreTranslation(oldTranslation);
