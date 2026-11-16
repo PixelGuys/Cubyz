@@ -7,6 +7,9 @@ const terrain = main.server.terrain;
 const Biome = terrain.biomes.Biome;
 const Assets = main.assets.Assets;
 const Tag = main.Tag;
+pub var cacheHitCount: usize = 0;
+pub var cacheMissCount: usize = 0;
+pub var cacheMissInnerIterations: usize = 0;
 
 pub const CaveLayer = struct {
 	minHeight: i32,
@@ -127,9 +130,9 @@ pub fn getLayer(height: i32) CaveLayer {
 pub fn getLayerIndex(height: i32, hint: usize) usize {
 	var index = hint;
 	while (true) {
-		if ((caveLayers.items[index].minHeight > height) & (index > 0)) {
+		if ((caveLayers.items[index].minHeight > height) and (index > 0)) {
 			index -= 1;
-		} else if ((caveLayers.items[index].maxHeight <= height) & (index < caveLayers.items.len - 1)) {
+		} else if ((caveLayers.items[index].maxHeight <= height) and (index < caveLayers.items.len - 1)) {
 			index += 1;
 		} else {
 			return index;
