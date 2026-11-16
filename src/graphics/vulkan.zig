@@ -201,6 +201,14 @@ pub fn deinit() void {
 	c.vkDestroyInstance(instance, null);
 }
 
+// MARK: Utility
+
+pub fn waitForDeviceToFinish() void {
+	if (main.settings.launch_config.vulkanTestingMode) {
+		checkResult(c.vkDeviceWaitIdle(device));
+	}
+}
+
 // MARK: Instance
 
 const validationLayers: []const [*:0]const u8 = &.{

@@ -1440,6 +1440,9 @@ pub fn globalDeinit() void {
 }
 
 pub fn reset() void {
+	for (itemList[0..itemListSize]) |item| {
+		if (item.texture) |tex| tex.deinit();
+	}
 	proceduralItemTypeList = .empty;
 	proceduralItemTypeIdToIndex = .{};
 	reverseIndices = .{};

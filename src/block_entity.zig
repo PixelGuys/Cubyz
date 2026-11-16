@@ -495,6 +495,9 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 				var finalFrameBuffer: graphics.FrameBuffer = .init(textureWidth, textureHeight, c.GL_RGBA8, false, .nearest, .repeat);
 				finalFrameBuffer.bind();
 				finalFrameBuffer.clear(.{0, 0, 0, 0});
+				if (main.settings.launch_config.vulkanTestingMode) {
+					finalFrameBuffer.color.deferredDeinit();
+				}
 				signData.renderedTexture = .{.textureID = finalFrameBuffer.texture, .vulkanImage = null};
 				defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
 

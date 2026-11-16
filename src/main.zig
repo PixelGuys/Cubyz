@@ -524,6 +524,8 @@ pub fn clientMain() void { // MARK: clientMain()
 		}
 	}
 
+	graphics.vulkan.waitForDeviceToFinish();
+
 	if (game.world) |world| {
 		world.deinit();
 		game.world = null;

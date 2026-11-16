@@ -156,8 +156,12 @@ pub fn globalInit() void {
 
 pub fn globalDeinit() void {
 	pipeline.deinit();
+	borderPipeline.deinit();
 	backgroundTexture.deinit();
 	titleTexture.deinit();
+	closeTexture.deinit();
+	zoomInTexture.deinit();
+	zoomOutTexture.deinit();
 }
 
 pub fn defaultFunction() void {}
