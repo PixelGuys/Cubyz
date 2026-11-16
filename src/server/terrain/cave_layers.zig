@@ -7,9 +7,6 @@ const terrain = main.server.terrain;
 const Biome = terrain.biomes.Biome;
 const Assets = main.assets.Assets;
 const Tag = main.Tag;
-pub var cacheHitCount: usize = 0;
-pub var cacheMissCount: usize = 0;
-pub var cacheMissInnerIterations: usize = 0;
 
 pub const CaveLayer = struct {
 	minHeight: i32,
