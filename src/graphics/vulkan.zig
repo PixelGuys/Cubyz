@@ -737,7 +737,7 @@ pub const swap_chain = struct { // MARK: swap_chain
 			}
 			var width: i32 = undefined;
 			var height: i32 = undefined;
-			c.glfwGetFramebufferSize(main.Window.vulkanWindow, &width, &height);
+			c.glfwGetFramebufferSize(main.Window.window, &width, &height);
 			return .{
 				.width = @min(self.capabilities.maxImageExtent.width, @max(self.capabilities.minImageExtent.width, @max(0, width))),
 				.height = @min(self.capabilities.maxImageExtent.height, @max(self.capabilities.minImageExtent.height, @max(0, height))),
