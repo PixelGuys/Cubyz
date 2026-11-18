@@ -368,12 +368,10 @@ pub const BaseItem = struct { // MARK: BaseItem
 				if (self.getDisplayBlock()) |block| {
 					self.texture = graphics.generateBlockTexture(block);
 				} else {
-					self.texture = graphics.Texture.init();
-					self.texture.?.generate(self.image);
+					self.texture = .initFromImage(self.image);
 				}
 			} else {
-				self.texture = graphics.Texture.init();
-				self.texture.?.generate(self.image);
+				self.texture = .initFromImage(self.image);
 			}
 		}
 		return self.texture.?;
@@ -1026,8 +1024,7 @@ pub const ProceduralItem = struct { // MARK: ProceduralItem
 
 	fn getTexture(self: *ProceduralItem) graphics.Texture {
 		if (self.texture == null) {
-			self.texture = graphics.Texture.init();
-			self.texture.?.generate(self.image);
+			self.texture = graphics.Texture.initFromImage(self.image);
 		}
 		return self.texture.?;
 	}

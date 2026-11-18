@@ -1318,8 +1318,8 @@ const text_rendering = struct { // MARK: text_rendering
 		glyphData = .init(main.globalAllocator);
 		glyphData.append(undefined); // 0 is a reserved value.
 		glyphTexture = .{
-			.init(),
-			.init(),
+			.initFromImage(Image.emptyImage),
+			.initFromImage(Image.emptyImage),
 		};
 
 		if (main.settings.launch_config.vulkanTestingMode) {
@@ -2305,26 +2305,38 @@ pub const Texture = struct { // MARK: Texture
 	textureID: c_uint,
 	vulkanImage: ?vulkan.Image,
 
-	pub fn init() Texture {
+	pub fn initFromImage(image: Image) Texture {
 		var self: Texture = undefined;
 		c.glGenTextures(1, &self.textureID);
-		self.vulkanImage = null;
+		self.bind();
+
+		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_RGBA8, image.width, image.height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
+
+		if (main.settings.launch_config.vulkanTestingMode) {
+			self.vulkanImage = vulkan.Image.init(.{image.width, image.height, 1}, .{
+				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
+			});
+			self.vulkanImage.?.uploadData(std.mem.sliceAsBytes(image.imageData), .{.imageExtent = .{.width = image.width, .height = image.height, .depth = 1}});
+		}
 		return self;
 	}
 
 	pub fn initFromFile(path: []const u8) Texture {
-		var self = Texture.init();
 		const image = Image.readFromFile(main.stackAllocator, path, .{.orientation = .asIs}) catch |err| blk: {
 			std.log.err("Couldn't read image from {s}: {s}", .{path, @errorName(err)});
 			break :blk Image.defaultImage;
 		};
 		defer image.deinit(main.stackAllocator);
-		self.generate(image);
-		return self;
+		return .initFromImage(image);
 	}
 
 	pub fn initFromMipmapFiles(pathPrefix: []const u8, largestSize: u31, lodBias: f32) Texture {
-		var self = Texture.init();
+		var self: Texture = undefined;
+		c.glGenTextures(1, &self.textureID);
 		self.bind();
 
 		const maxLod = std.math.log2_int(u31, largestSize);
@@ -2367,8 +2379,10 @@ pub const Texture = struct { // MARK: Texture
 
 	pub fn deinit(self: Texture) void {
 		c.glDeleteTextures(1, &self.textureID);
-		if (self.vulkanImage) |image| {
-			image.deferredDeinit();
+		if (main.settings.launch_config.vulkanTestingMode) {
+			if (self.vulkanImage) |image| {
+				image.deferredDeinit();
+			}
 		}
 	}
 
@@ -2379,25 +2393,6 @@ pub const Texture = struct { // MARK: Texture
 
 	pub fn bind(self: Texture) void {
 		c.glBindTexture(c.GL_TEXTURE_2D, self.textureID);
-	}
-
-	/// (Re-)Generates the GPU buffer.
-	pub fn generate(self: *Texture, image: Image) void {
-		self.bind();
-
-		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_RGBA8, image.width, image.height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
-
-		if (main.settings.launch_config.vulkanTestingMode) {
-			std.debug.assert(self.vulkanImage == null);
-			self.vulkanImage = vulkan.Image.init(.{image.width, image.height, 1}, .{
-				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
-			});
-			self.vulkanImage.?.uploadData(std.mem.sliceAsBytes(image.imageData), .{.imageExtent = .{.width = image.width, .height = image.height, .depth = 1}});
-		}
 	}
 
 	pub fn render(self: Texture, currentFrame: *vulkan.Frame, pos: Vec2f, dim: Vec2f) void {
@@ -2780,7 +2775,8 @@ const block_texture = struct { // MARK: block_texture
 				.pushConstantSize = @sizeOf(Uniforms),
 			},
 		);
-		depthTexture = .init();
+		depthTexture = undefined;
+		c.glGenTextures(1, &depthTexture.textureID);
 		depthTexture.bind();
 		var data: [128*128]f32 = undefined;
 
@@ -2797,7 +2793,6 @@ const block_texture = struct { // MARK: block_texture
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
 
 		if (main.settings.launch_config.vulkanTestingMode) {
-			std.debug.assert(depthTexture.vulkanImage == null);
 			depthTexture.vulkanImage = vulkan.Image.init(.{textureSize, textureSize, 1}, .{
 				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
 				.format = c.VK_FORMAT_D32_SFLOAT,

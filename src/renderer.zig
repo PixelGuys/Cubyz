@@ -479,8 +479,7 @@ const bloom = struct { // MARK: bloom
 	pub fn init() void {
 		buffer1 = .init(0, 0, c.GL_R11F_G11F_B10F, false, .linear, .clampToEdge);
 		buffer2 = .init(0, 0, c.GL_R11F_G11F_B10F, false, .linear, .clampToEdge);
-		emptyBuffer = .init();
-		emptyBuffer.generate(graphics.Image.emptyImage);
+		emptyBuffer = .initFromImage(graphics.Image.emptyImage);
 		firstPassPipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/bloom/first_pass.vert",
 			"assets/cubyz/shaders/bloom/first_pass.frag",
