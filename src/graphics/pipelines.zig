@@ -730,7 +730,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 
 		for (self.blendState.formats, 0..) |format, i| {
 			formats[i] = switch (format) {
-				.swapChain => vulkan.swap_chain.imageFormat,
+				.swapChain => vulkan.SwapChain.imageFormat,
 				.world => main.renderer.worldFrameBufferFormat,
 				.custom => |custom| custom,
 			};
