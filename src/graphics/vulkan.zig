@@ -857,9 +857,22 @@ pub const SwapChain = struct { // MARK: SwapChain
 		main.globalAllocator.destroy(self);
 	}
 
+	fn recreate() void {
+		waitForDeviceToFinish();
+		gpu_garbage_collection.deferredFree(.{.swapChain = SwapChain.instance});
+		SwapChain.instance = .init();
+	}
+
 	fn beginRender() *Frame {
 		frames[frameIndex].fence.waitAndReset();
-		checkResult(c.vkAcquireNextImageKHR(device, SwapChain.instance.handle, c.UINT64_MAX, frames[frameIndex].imageAvailable.handle, null, &SwapChain.instance.currentImageIndex);
+		while (true) {
+			const result = c.vkAcquireNextImageKHR(device, SwapChain.instance.handle, c.UINT64_MAX, frames[frameIndex].imageAvailable.handle, null, &SwapChain.instance.currentImageIndex);
+			if (result != c.VK_ERROR_OUT_OF_DATE_KHR and result != c.VK_SUBOPTIMAL_KHR) {
+				checkResult(result);
+				break;
+			}
+			recreate();
+		}
 
 		frames[frameIndex].swapChainImage = SwapChain.instance.images[SwapChain.instance.currentImageIndex];
 		frames[frameIndex].swapChainImageView = SwapChain.instance.imageViews[SwapChain.instance.currentImageIndex];
@@ -882,7 +895,11 @@ pub const SwapChain = struct { // MARK: SwapChain
 		const result = c.vkQueuePresentKHR(presentQueue, &presentInfo);
 		frameIndex = (frameIndex + 1)%frames.len;
 		upload.changeFrame();
-		checkResult(result); // TODO: swapchain recreation
+		if (result != c.VK_ERROR_OUT_OF_DATE_KHR and result != c.VK_SUBOPTIMAL_KHR) {
+			checkResult(result);
+		} else {
+			recreate();
+		}
 	}
 };
 
