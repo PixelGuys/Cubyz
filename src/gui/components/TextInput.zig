@@ -517,10 +517,10 @@ fn getRenderCursorPos(self: *const TextInput, pos: u32) u32 {
 }
 
 pub fn render(self: *TextInput, currentFrame: *graphics.vulkan.Frame, mousePosition: Vec2f) void {
-	if (main.settings.launch_config.vulkanTestingMode and texture.vulkanImage != null) {
+	if (main.settings.launch_config.vulkanTestingMode) {
 		currentFrame.guiCommands.bindPipeline(currentFrame, Button.pipeline, graphics.draw.getScissor());
 		currentFrame.guiCommands.bindDescriptors(Button.pipeline, &.{
-			.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
+			.{.image = .{.binding = 0, .image = texture.vulkanImage}},
 		});
 		draw.customShadedRect(currentFrame, @as(Button.ButtonUniforms, undefined), Button.pipeline, self.pos, self.size);
 	} else {

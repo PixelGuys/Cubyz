@@ -253,7 +253,7 @@ fn bindVulkan(selectedPipeline: graphics.Pipeline, commands: graphics.CommandBuf
 		.{.image = .{.binding = 0, .image = main.blocks.meshes.blockTextureArray.vulkanImage.?}},
 		.{.image = .{.binding = 1, .image = main.blocks.meshes.emissionTextureArray.vulkanImage.?}},
 		.{.image = .{.binding = 2, .image = main.blocks.meshes.reflectivityAndAbsorptionTextureArray.vulkanImage.?}},
-		.{.image = .{.binding = 5, .image = main.blocks.meshes.ditherTexture.vulkanImage.?}},
+		.{.image = .{.binding = 5, .image = main.blocks.meshes.ditherTexture.vulkanImage}},
 		.{.image = .{.binding = 11, .image = main.renderer.reflectionCubeMap.vulkanImage}},
 		.{.ssbo = .{.binding = 3, .ssbo = faceBuffers[lod].ssbo}},
 		.{.ssbo = .{.binding = 4, .ssbo = main.models.quadSsbo.?}},

@@ -498,7 +498,7 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 				if (main.settings.launch_config.vulkanTestingMode) {
 					finalFrameBuffer.color.deferredDeinit();
 				}
-				signData.renderedTexture = .{.textureID = finalFrameBuffer.texture, .vulkanImage = null};
+				signData.renderedTexture = .{.textureID = finalFrameBuffer.texture, .vulkanImage = undefined};
 				defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
 
 				const oldTranslation = graphics.draw.setTranslation(.{textureMargin, textureMargin});
