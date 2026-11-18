@@ -276,11 +276,11 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 	gpu_performance_measuring.stopQuery();
 
 	c.glActiveTexture(c.GL_TEXTURE0);
-	blocks.meshes.blockTextureArray.bind();
+	blocks.meshes.blockTextureArray.?.bind();
 	c.glActiveTexture(c.GL_TEXTURE1);
-	blocks.meshes.emissionTextureArray.bind();
+	blocks.meshes.emissionTextureArray.?.bind();
 	c.glActiveTexture(c.GL_TEXTURE2);
-	blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
+	blocks.meshes.reflectivityAndAbsorptionTextureArray.?.bind();
 	c.glActiveTexture(c.GL_TEXTURE5);
 	blocks.meshes.ditherTexture.bind();
 	reflectionCubeMap.bindTo(4);
@@ -322,9 +322,9 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 
 	// Rebind block textures back to their original slots
 	c.glActiveTexture(c.GL_TEXTURE0);
-	blocks.meshes.blockTextureArray.bind();
+	blocks.meshes.blockTextureArray.?.bind();
 	c.glActiveTexture(c.GL_TEXTURE1);
-	blocks.meshes.emissionTextureArray.bind();
+	blocks.meshes.emissionTextureArray.?.bind();
 
 	mesh_selection.render(currentFrame, playerPos);
 

@@ -2131,63 +2131,12 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 
 pub const TextureArray = struct { // MARK: TextureArray
 	textureID: c_uint,
-	vulkanImage: ?vulkan.Image,
-
-	pub fn init() TextureArray {
-		var self: TextureArray = undefined;
-		c.glGenTextures(1, &self.textureID);
-		self.vulkanImage = null;
-		return self;
-	}
-
-	pub fn deinit(self: TextureArray) void {
-		c.glDeleteTextures(1, &self.textureID);
-		if (self.vulkanImage) |image| {
-			image.deferredDeinit();
-		}
-	}
-
-	pub fn bind(self: TextureArray) void {
-		c.glBindTexture(c.GL_TEXTURE_2D_ARRAY, self.textureID);
-	}
-
-	fn lodColorInterpolation(colors: [4]Color, alphaCorrection: bool) Color {
-		var r: [4]f32 = undefined;
-		var g: [4]f32 = undefined;
-		var b: [4]f32 = undefined;
-		var a: [4]f32 = undefined;
-		for (0..4) |i| {
-			r[i] = @floatFromInt(colors[i].r);
-			g[i] = @floatFromInt(colors[i].g);
-			b[i] = @floatFromInt(colors[i].b);
-			a[i] = @floatFromInt(colors[i].a);
-		}
-		// Use gamma corrected average(https://stackoverflow.com/a/832314/13082649):
-		var aSum: f32 = 0;
-		var rSum: f32 = 0;
-		var gSum: f32 = 0;
-		var bSum: f32 = 0;
-		for (0..4) |i| {
-			const w = if (alphaCorrection) a[i]*a[i] else 1;
-			aSum += a[i]*a[i];
-			rSum += w*r[i]*r[i];
-			gSum += w*g[i]*g[i];
-			bSum += w*b[i]*b[i];
-		}
-		aSum = @sqrt(aSum)/2;
-		rSum = @sqrt(rSum)/2;
-		gSum = @sqrt(gSum)/2;
-		bSum = @sqrt(bSum)/2;
-		if (alphaCorrection and aSum != 0) {
-			rSum /= aSum;
-			gSum /= aSum;
-			bSum /= aSum;
-		}
-		return Color{.r = @trunc(rSum), .g = @trunc(gSum), .b = @trunc(bSum), .a = @trunc(aSum)};
-	}
+	vulkanImage: vulkan.Image,
 
 	/// (Re-)Generates the GPU buffer.
-	pub fn generate(self: *TextureArray, images: []Image, mipmapping: bool, alphaCorrectMipmapping: bool) void {
+	pub fn init(images: []Image, mipmapping: bool, alphaCorrectMipmapping: bool) TextureArray {
+		var self: TextureArray = undefined;
+		c.glGenTextures(1, &self.textureID);
 		var maxWidth: u31 = 1;
 		var maxHeight: u31 = 1;
 		for (images) |image| {
@@ -2212,9 +2161,6 @@ pub const TextureArray = struct { // MARK: TextureArray
 		}
 
 		if (main.settings.launch_config.vulkanTestingMode) {
-			if (self.vulkanImage) |image| {
-				image.deferredDeinit();
-			}
 			self.vulkanImage = vulkan.Image.init(.{maxWidth, maxHeight, 1}, .{
 				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
 				.imageViewType = c.VK_IMAGE_VIEW_TYPE_2D_ARRAY,
@@ -2285,7 +2231,7 @@ pub const TextureArray = struct { // MARK: TextureArray
 				const curHeight = @max(1, maxHeight >> lod);
 				c.glTexSubImage3D(c.GL_TEXTURE_2D_ARRAY, lod, 0, 0, @intCast(i), curWidth, curHeight, 1, c.GL_RGBA, c.GL_UNSIGNED_BYTE, lodBuffer[lod].ptr);
 				if (main.settings.launch_config.vulkanTestingMode) {
-					self.vulkanImage.?.uploadData(std.mem.sliceAsBytes(lodBuffer[lod]), .{
+					self.vulkanImage.uploadData(std.mem.sliceAsBytes(lodBuffer[lod]), .{
 						.imageExtent = .{.width = curWidth, .height = curHeight, .depth = 1},
 						.arrayLayer = @intCast(i),
 						.mipLevel = lod,
@@ -2298,6 +2244,54 @@ pub const TextureArray = struct { // MARK: TextureArray
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
+
+		return self;
+	}
+
+	pub fn deinit(self: TextureArray) void {
+		c.glDeleteTextures(1, &self.textureID);
+		if (main.settings.launch_config.vulkanTestingMode) {
+			self.vulkanImage.deferredDeinit();
+		}
+	}
+
+	pub fn bind(self: TextureArray) void {
+		c.glBindTexture(c.GL_TEXTURE_2D_ARRAY, self.textureID);
+	}
+
+	fn lodColorInterpolation(colors: [4]Color, alphaCorrection: bool) Color {
+		var r: [4]f32 = undefined;
+		var g: [4]f32 = undefined;
+		var b: [4]f32 = undefined;
+		var a: [4]f32 = undefined;
+		for (0..4) |i| {
+			r[i] = @floatFromInt(colors[i].r);
+			g[i] = @floatFromInt(colors[i].g);
+			b[i] = @floatFromInt(colors[i].b);
+			a[i] = @floatFromInt(colors[i].a);
+		}
+		// Use gamma corrected average(https://stackoverflow.com/a/832314/13082649):
+		var aSum: f32 = 0;
+		var rSum: f32 = 0;
+		var gSum: f32 = 0;
+		var bSum: f32 = 0;
+		for (0..4) |i| {
+			const w = if (alphaCorrection) a[i]*a[i] else 1;
+			aSum += a[i]*a[i];
+			rSum += w*r[i]*r[i];
+			gSum += w*g[i]*g[i];
+			bSum += w*b[i]*b[i];
+		}
+		aSum = @sqrt(aSum)/2;
+		rSum = @sqrt(rSum)/2;
+		gSum = @sqrt(gSum)/2;
+		bSum = @sqrt(bSum)/2;
+		if (alphaCorrection and aSum != 0) {
+			rSum /= aSum;
+			gSum /= aSum;
+			bSum /= aSum;
+		}
+		return Color{.r = @trunc(rSum), .g = @trunc(gSum), .b = @trunc(bSum), .a = @trunc(aSum)};
 	}
 };
 
@@ -2896,11 +2890,11 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 		defer block_texture.ubo.unbind();
 
 		c.glActiveTexture(c.GL_TEXTURE0);
-		main.blocks.meshes.blockTextureArray.bind();
+		main.blocks.meshes.blockTextureArray.?.bind();
 		c.glActiveTexture(c.GL_TEXTURE1);
-		main.blocks.meshes.emissionTextureArray.bind();
+		main.blocks.meshes.emissionTextureArray.?.bind();
 		c.glActiveTexture(c.GL_TEXTURE2);
-		main.blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
+		main.blocks.meshes.reflectivityAndAbsorptionTextureArray.?.bind();
 		block_texture.depthTexture.bindTo(5);
 		c.glDrawElementsInstancedBaseVertexBaseInstance(c.GL_TRIANGLES, @intCast(6*faceData.items.len), c.GL_UNSIGNED_INT, null, 1, allocation.start*4, chunkAllocation.start);
 	}
