@@ -887,7 +887,9 @@ pub const CommandArena = struct { // MARK: CommandArena
 	}
 
 	fn deinit(self: CommandArena) void {
-		c.vkFreeCommandBuffers(device, self.handle, @intCast(self.buffers.items.len), @ptrCast(self.buffers.items.ptr));
+		if (self.buffers.items.len != 0) {
+			c.vkFreeCommandBuffers(device, self.handle, @intCast(self.buffers.items.len), @ptrCast(self.buffers.items.ptr));
+		}
 		self.buffers.deinit(main.globalAllocator);
 		c.vkDestroyCommandPool(device, self.handle, null);
 	}
