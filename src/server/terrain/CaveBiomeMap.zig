@@ -347,8 +347,8 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		}
 		const returnBiome = self.surfaceFragments[index].getBiome(wx, wy);
 		const height: i32 = self.surfaceFragments[index].getHeight(wx, wy);
-		const reservedBelowWz = @min(returnBiome.surfaceThicknessBelowMax, height - returnBiome.surfaceThicknessBelow*self.pos.voxelSize);
-		const reservedAboveWz = @max(returnBiome.surfaceThicknessAboveMin, height + returnBiome.surfaceThicknessAbove + self.pos.voxelSize);
+		const reservedBelowWz = @min(returnBiome.surfaceLimits[0], height - returnBiome.surfaceThickness[0]*self.pos.voxelSize);
+		const reservedAboveWz = @max(returnBiome.surfaceLimits[1], height + returnBiome.surfaceThickness[1] + self.pos.voxelSize);
 		if (wz < reservedBelowWz or wz >= reservedAboveWz) {
 			const len = reservedBelowWz -% wz;
 			if (len > 0) returnHeight.* = @min(returnHeight.*, len);
@@ -368,8 +368,8 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 		}
 		const returnBiome = self.surfaceFragments[index].getBiome(wx, wy);
 		const height: i32 = self.surfaceFragments[index].getHeight(wx, wy);
-		const reservedBelowWz = @min(returnBiome.surfaceThicknessBelowMax, height - returnBiome.surfaceThicknessBelow*self.pos.voxelSize);
-		const reservedAboveWz = @max(returnBiome.surfaceThicknessAboveMin, height + returnBiome.surfaceThicknessAbove + self.pos.voxelSize);
+		const reservedBelowWz = @min(returnBiome.surfaceLimits[0], height - returnBiome.surfaceThickness[0]*self.pos.voxelSize);
+		const reservedAboveWz = @max(returnBiome.surfaceLimits[1], height + returnBiome.surfaceThickness[1] + self.pos.voxelSize);
 		if (wz < reservedBelowWz or wz > reservedAboveWz) return null;
 		return returnBiome;
 	}
