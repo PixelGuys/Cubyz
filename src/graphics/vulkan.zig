@@ -542,7 +542,7 @@ pub const Fence = struct { // MARK: Fence
 pub const upload = struct { // MARK: upload
 	var commands: main.graphics.CommandBuffer = undefined;
 	const frameCount = 3;
-	var pools: [frameCount]CommandPool = undefined;
+	var pools: [frameCount]CommandArena = undefined;
 	var fences: [frameCount]Fence = undefined;
 	var activePool: usize = 0;
 
@@ -552,7 +552,7 @@ pub const upload = struct { // MARK: upload
 			fences[i] = .init(true);
 		}
 		fences[activePool].waitAndReset();
-		commands = .init(pools[activePool]);
+		commands = pools[activePool].createBuffer();
 		commands.beginRecording(0);
 	}
 
@@ -567,7 +567,7 @@ pub const upload = struct { // MARK: upload
 		commands.endRecording();
 		commands.submit(graphicsQueue, &.{}, &.{}, &.{}, null);
 
-		commands = .init(pools[activePool]);
+		commands = pools[activePool].createBuffer();
 		commands.beginRecording(0);
 	}
 
@@ -581,8 +581,9 @@ pub const upload = struct { // MARK: upload
 
 		activePool = (activePool + 1)%frameCount;
 		fences[activePool].waitAndReset();
+		pools[activePool].reset();
 
-		commands = .init(pools[activePool]);
+		commands = pools[activePool].createBuffer();
 		commands.beginRecording(0);
 	}
 };
@@ -596,7 +597,7 @@ pub const Frame = struct { // MARK: Frame
 	imageAvailable: Semaphore,
 	renderFinished: Semaphore,
 
-	commandPool: CommandPool,
+	commandArena: CommandArena,
 	guiCommands: main.graphics.CommandBuffer,
 	renderCommands: main.graphics.CommandBuffer,
 	extent: c.VkExtent2D,
@@ -612,7 +613,7 @@ pub const Frame = struct { // MARK: Frame
 			.renderFinished = .init(),
 			.swapChainImage = undefined,
 			.swapChainImageView = undefined,
-			.commandPool = .init(),
+			.commandArena = .init(),
 			.guiCommands = undefined,
 			.renderCommands = undefined,
 			.extent = undefined,
@@ -624,13 +625,13 @@ pub const Frame = struct { // MARK: Frame
 		self.uploadFence.privateDeinit();
 		self.imageAvailable.privateDeinit();
 		self.renderFinished.privateDeinit();
-		self.commandPool.deinit();
+		self.commandArena.deinit();
 	}
 
 	fn beginRender(self: *Frame) void {
-		self.commandPool.reset();
-		self.guiCommands = .init(self.commandPool);
-		self.renderCommands = .init(self.commandPool);
+		self.commandArena.reset();
+		self.guiCommands = self.commandArena.createBuffer();
+		self.renderCommands = self.commandArena.createBuffer();
 
 		self.guiCommands.beginRecording(0);
 		self.guiCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
@@ -868,27 +869,52 @@ pub const swap_chain = struct { // MARK: swap_chain
 	}
 };
 
-pub const CommandPool = struct { // MARK: CommandPool
+pub const CommandArena = struct { // MARK: CommandArena
 	handle: c.VkCommandPool,
+	buffers: main.List(c.VkCommandBuffer) = .empty,
+	currentBuffer: usize = 0,
 
-	fn init() CommandPool {
+	fn init() CommandArena {
 		const queueFamilies = findQueueFamilies(physicalDevice);
 		const poolInfo = c.VkCommandPoolCreateInfo{
 			.sType = c.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 			.flags = 0,
 			.queueFamilyIndex = queueFamilies.graphicsFamily.?,
 		};
-		var result: CommandPool = undefined;
+		var result: CommandArena = .{.handle = undefined};
 		checkResult(c.vkCreateCommandPool(device, &poolInfo, null, &result.handle));
 		return result;
 	}
 
-	fn deinit(self: CommandPool) void {
+	fn deinit(self: CommandArena) void {
+		c.vkFreeCommandBuffers(device, self.handle, @intCast(self.buffers.items.len), @ptrCast(self.buffers.items.ptr));
+		self.buffers.deinit(main.globalAllocator);
 		c.vkDestroyCommandPool(device, self.handle, null);
 	}
 
-	fn reset(self: CommandPool) void {
-		checkResult(c.vkResetCommandPool(device, self.handle, 0));
+	fn createBuffer(self: *CommandArena) main.graphics.CommandBuffer {
+		defer self.currentBuffer += 1;
+
+		if (self.currentBuffer < self.buffers.items.len) {
+			return .{.handle = self.buffers.items[self.currentBuffer]};
+		}
+
+		var result: c.VkCommandBuffer = undefined;
+		const allocInfo = c.VkCommandBufferAllocateInfo{
+			.sType = c.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+			.commandPool = self.handle,
+			.level = c.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+			.commandBufferCount = 1,
+		};
+		checkResult(c.vkAllocateCommandBuffers(device, &allocInfo, &result));
+
+		self.buffers.append(main.globalAllocator, result);
+		return .{.handle = result};
+	}
+
+	fn reset(self: *CommandArena) void {
+		checkResult(c.vkResetCommandPool(device, self.handle, c.VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT));
+		self.currentBuffer = 0;
 	}
 };
 
