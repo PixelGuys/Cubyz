@@ -186,7 +186,7 @@ pub fn init(window: ?*c.GLFWwindow) !void {
 			@panic("GLAD failed to load Vulkan functions");
 		}
 	}
-	swap_chain.init();
+	SwapChain.globalInit();
 	upload.init();
 	gpu_allocator.init();
 }
@@ -195,7 +195,7 @@ pub fn deinit() void {
 	gpu_garbage_collection.deinit();
 	gpu_allocator.deinit();
 	upload.deinit();
-	swap_chain.deinit();
+	SwapChain.globalDeinit();
 	c.vkDestroyDevice(device, null);
 	c.vkDestroySurfaceKHR(instance, surface, null);
 	c.vkDestroyInstance(instance, null);
@@ -700,13 +700,15 @@ pub const Frame = struct { // MARK: Frame
 
 var frames: [2]Frame = undefined;
 
-pub const swap_chain = struct { // MARK: swap_chain
-	var swapChain: c.VkSwapchainKHR = null;
-	var images: []c.VkImage = undefined;
-	var imageViews: []c.VkImageView = undefined;
+pub const SwapChain = struct { // MARK: SwapChain
+	handle: c.VkSwapchainKHR,
+	images: []c.VkImage,
+	imageViews: []c.VkImageView,
+	extent: c.VkExtent2D,
+	currentImageIndex: u32,
+
 	pub var imageFormat: c.VkFormat = undefined;
-	var extent: c.VkExtent2D = undefined;
-	var currentImageIndex: u32 = undefined;
+	var instance: *SwapChain = undefined;
 
 	const SupportDetails = struct {
 		capabilities: c.VkSurfaceCapabilitiesKHR,
@@ -779,14 +781,32 @@ pub const swap_chain = struct { // MARK: swap_chain
 		return result;
 	}
 
-	fn init() void {
+	fn globalInit() void {
+		for (&frames) |*frame| {
+			frame.* = .init();
+		}
+
+		SwapChain.instance = .init();
+	}
+
+	fn globalDeinit() void {
+		SwapChain.instance.privateDeinit();
+		for (&frames) |frame| {
+			frame.deinit();
+		}
+	}
+
+	fn init() *SwapChain {
+		var self: *SwapChain = main.globalAllocator.create(SwapChain);
 		const support = SupportDetails.init(main.stackAllocator, physicalDevice);
 		defer support.deinit(main.stackAllocator);
 
 		const surfaceFormat = support.chooseFormat();
 		imageFormat = surfaceFormat.format;
+
 		const presentMode = support.chooseSwapPresentMode();
-		extent = support.chooseSwapExtent();
+		self.extent = support.chooseSwapExtent();
+		std.log.info("Creating swapchain of size {}×{}", .{self.extent.width, self.extent.height});
 		const imageCount: u32 = @max(2, support.capabilities.minImageCount);
 
 		var createInfo: c.VkSwapchainCreateInfoKHR = .{
@@ -795,7 +815,7 @@ pub const swap_chain = struct { // MARK: swap_chain
 			.minImageCount = imageCount,
 			.imageFormat = surfaceFormat.format,
 			.imageColorSpace = surfaceFormat.colorSpace,
-			.imageExtent = extent,
+			.imageExtent = self.extent,
 			.imageArrayLayers = 1,
 			.imageUsage = c.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 			.preTransform = support.capabilities.currentTransform,
@@ -814,39 +834,49 @@ pub const swap_chain = struct { // MARK: swap_chain
 			createInfo.imageSharingMode = c.VK_SHARING_MODE_EXCLUSIVE;
 		}
 
-		checkResult(c.vkCreateSwapchainKHR(device, &createInfo, null, &swapChain));
+		checkResult(c.vkCreateSwapchainKHR(device, &createInfo, null, &self.handle));
 		var newImageCount = imageCount;
-		checkResult(c.vkGetSwapchainImagesKHR(device, swapChain, &newImageCount, null));
-		images = main.globalArena.alloc(c.VkImage, newImageCount);
-		checkResult(c.vkGetSwapchainImagesKHR(device, swapChain, &newImageCount, images.ptr));
+		checkResult(c.vkGetSwapchainImagesKHR(device, self.handle, &newImageCount, null));
+		self.images = main.globalAllocator.alloc(c.VkImage, newImageCount);
+		checkResult(c.vkGetSwapchainImagesKHR(device, self.handle, &newImageCount, self.images.ptr));
 
-		imageViews = main.globalArena.alloc(c.VkImageView, newImageCount);
-		for (0..images.len) |i| {
-			imageViews[i] = createImageView(images[i]);
+		self.imageViews = main.globalAllocator.alloc(c.VkImageView, newImageCount);
+		for (0..self.images.len) |i| {
+			self.imageViews[i] = createImageView(self.images[i]);
 		}
-
-		for (&frames) |*frame| {
-			frame.* = .init();
-		}
+		return self;
 	}
 
-	fn deinit() void {
-		for (imageViews) |imageView| {
+	fn privateDeinit(self: *SwapChain) void {
+		for (self.imageViews) |imageView| {
 			c.vkDestroyImageView(device, imageView, null);
 		}
-		for (&frames) |frame| {
-			frame.deinit();
-		}
-		c.vkDestroySwapchainKHR(device, swapChain, null);
+		main.globalAllocator.free(self.imageViews);
+		main.globalAllocator.free(self.images);
+		c.vkDestroySwapchainKHR(device, self.handle, null);
+		main.globalAllocator.destroy(self);
+	}
+
+	fn recreate() void {
+		waitForDeviceToFinish();
+		gpu_garbage_collection.deferredFree(.{.swapChain = SwapChain.instance});
+		SwapChain.instance = .init();
 	}
 
 	fn beginRender() *Frame {
 		frames[frameIndex].fence.waitAndReset();
-		checkResult(c.vkAcquireNextImageKHR(device, swapChain, c.UINT64_MAX, frames[frameIndex].imageAvailable.handle, null, &currentImageIndex));
+		while (true) {
+			const result = c.vkAcquireNextImageKHR(device, SwapChain.instance.handle, c.UINT64_MAX, frames[frameIndex].imageAvailable.handle, null, &SwapChain.instance.currentImageIndex);
+			if (result != c.VK_ERROR_OUT_OF_DATE_KHR and result != c.VK_SUBOPTIMAL_KHR) {
+				checkResult(result);
+				break;
+			}
+			recreate();
+		}
 
-		frames[frameIndex].swapChainImage = images[currentImageIndex];
-		frames[frameIndex].swapChainImageView = imageViews[currentImageIndex];
-		frames[frameIndex].extent = extent;
+		frames[frameIndex].swapChainImage = SwapChain.instance.images[SwapChain.instance.currentImageIndex];
+		frames[frameIndex].swapChainImageView = SwapChain.instance.imageViews[SwapChain.instance.currentImageIndex];
+		frames[frameIndex].extent = SwapChain.instance.extent;
 		frames[frameIndex].beginRender();
 		return &frames[frameIndex];
 	}
@@ -859,13 +889,17 @@ pub const swap_chain = struct { // MARK: swap_chain
 			.waitSemaphoreCount = 1,
 			.pWaitSemaphores = &frames[frameIndex].renderFinished.handle,
 			.swapchainCount = 1,
-			.pSwapchains = &swapChain,
-			.pImageIndices = &currentImageIndex,
+			.pSwapchains = &SwapChain.instance.handle,
+			.pImageIndices = &SwapChain.instance.currentImageIndex,
 		};
 		const result = c.vkQueuePresentKHR(presentQueue, &presentInfo);
 		frameIndex = (frameIndex + 1)%frames.len;
 		upload.changeFrame();
-		checkResult(result); // TODO: swapchain recreation
+		if (result != c.VK_ERROR_OUT_OF_DATE_KHR and result != c.VK_SUBOPTIMAL_KHR) {
+			checkResult(result);
+		} else {
+			recreate();
+		}
 	}
 };
 
@@ -1316,6 +1350,7 @@ pub const gpu_garbage_collection = struct { // MARK: gpu_garbage_collection
 		imageView: c.VkImageView,
 		semaphore: Semaphore,
 		fence: Fence,
+		swapChain: *SwapChain,
 
 		fn deinit(self: Entry) void {
 			switch (self) {
@@ -1353,10 +1388,10 @@ pub const gpu_garbage_collection = struct { // MARK: gpu_garbage_collection
 var frameIndex: usize = 0;
 
 pub fn beginRender() *Frame {
-	return swap_chain.beginRender();
+	return SwapChain.beginRender();
 }
 
 pub fn endRender() void {
-	swap_chain.endRender();
+	SwapChain.endRender();
 	gpu_garbage_collection.cleanupFrame();
 }
