@@ -165,10 +165,10 @@ pub fn render(self: *Button, currentFrame: *graphics.vulkan.Frame, mousePosition
 		break :blk normalTextures;
 	};
 	{
-		if (main.settings.launch_config.vulkanTestingMode and textures.texture.vulkanImage != null) {
+		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, pipeline, graphics.draw.getScissor());
 			currentFrame.guiCommands.bindDescriptors(pipeline, &.{
-				.{.image = .{.binding = 0, .image = textures.texture.vulkanImage.?}},
+				.{.image = .{.binding = 0, .image = textures.texture.vulkanImage}},
 			});
 			draw.customShadedRect(currentFrame, @as(ButtonUniforms, undefined), pipeline, self.pos + Vec2f{2, 2}, self.size - Vec2f{4, 4});
 		} else {

@@ -636,9 +636,9 @@ pub const meshes = struct { // MARK: meshes
 		size: u32,
 	};
 
-	pub var blockTextureArray: TextureArray = undefined;
-	pub var emissionTextureArray: TextureArray = undefined;
-	pub var reflectivityAndAbsorptionTextureArray: TextureArray = undefined;
+	pub var blockTextureArray: ?TextureArray = undefined;
+	pub var emissionTextureArray: ?TextureArray = undefined;
+	pub var reflectivityAndAbsorptionTextureArray: ?TextureArray = undefined;
 	pub var ditherTexture: graphics.Texture = undefined;
 
 	const black: Color = Color{.r = 0, .g = 0, .b = 0, .a = 255};
@@ -653,9 +653,9 @@ pub const meshes = struct { // MARK: meshes
 			},
 			.pushConstantSize = @sizeOf(AnimationUniforms),
 		});
-		blockTextureArray = .init();
-		emissionTextureArray = .init();
-		reflectivityAndAbsorptionTextureArray = .init();
+		blockTextureArray = null;
+		emissionTextureArray = null;
+		reflectivityAndAbsorptionTextureArray = null;
 		ditherTexture = .initFromMipmapFiles("assets/cubyz/blocks/textures/dither/", 64, 0.5);
 	}
 
@@ -670,9 +670,9 @@ pub const meshes = struct { // MARK: meshes
 			ssbo.deinit();
 		}
 		animationComputePipeline.deinit();
-		blockTextureArray.deinit();
-		emissionTextureArray.deinit();
-		reflectivityAndAbsorptionTextureArray.deinit();
+		if (blockTextureArray) |tex| tex.deinit();
+		if (emissionTextureArray) |tex| tex.deinit();
+		if (reflectivityAndAbsorptionTextureArray) |tex| tex.deinit();
 		ditherTexture.deinit();
 	}
 
@@ -886,9 +886,12 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn generateTextureArray() void {
-		blockTextureArray.generate(blockTextures.items, true, true);
+		if (blockTextureArray) |tex| tex.deinit();
+		if (emissionTextureArray) |tex| tex.deinit();
+		if (reflectivityAndAbsorptionTextureArray) |tex| tex.deinit();
+		blockTextureArray = .init(blockTextures.items, true, true);
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
-		emissionTextureArray.generate(emissionTextures.items, true, false);
+		emissionTextureArray = .init(emissionTextures.items, true, false);
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
 		const reflectivityAndAbsorptionTextures = main.stackAllocator.alloc(Image, reflectivityTextures.items.len);
 		defer main.stackAllocator.free(reflectivityAndAbsorptionTextures);
@@ -907,7 +910,7 @@ pub const meshes = struct { // MARK: meshes
 				}
 			}
 		}
-		reflectivityAndAbsorptionTextureArray.generate(reflectivityAndAbsorptionTextures, true, false);
+		reflectivityAndAbsorptionTextureArray = .init(reflectivityAndAbsorptionTextures, true, false);
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
 
 		// Also generate additional buffers:

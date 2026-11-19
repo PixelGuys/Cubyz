@@ -786,9 +786,9 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 			uniforms.modelMatrix = modelMatrix.toGl();
 			currentFrame.renderCommands.bindPipeline(currentFrame, itemPipeline, null);
 			currentFrame.renderCommands.bindDescriptors(itemPipeline, &.{
-				.{.image = .{.binding = 0, .image = main.blocks.meshes.blockTextureArray.vulkanImage.?}},
-				.{.image = .{.binding = 1, .image = main.blocks.meshes.emissionTextureArray.vulkanImage.?}},
-				.{.image = .{.binding = 2, .image = main.blocks.meshes.reflectivityAndAbsorptionTextureArray.vulkanImage.?}},
+				.{.image = .{.binding = 0, .image = main.blocks.meshes.blockTextureArray.?.vulkanImage}},
+				.{.image = .{.binding = 1, .image = main.blocks.meshes.emissionTextureArray.?.vulkanImage}},
+				.{.image = .{.binding = 2, .image = main.blocks.meshes.reflectivityAndAbsorptionTextureArray.?.vulkanImage}},
 				.{.image = .{.binding = 11, .image = main.renderer.reflectionCubeMap.vulkanImage}},
 				.{.ssbo = .{.binding = 4, .ssbo = main.models.quadSsbo.?}},
 				.{.ssbo = .{.binding = 5, .ssbo = main.blocks.meshes.animatedTextureSsbo.?}},

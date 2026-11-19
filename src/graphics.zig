@@ -447,10 +447,10 @@ pub const draw = struct { // MARK: draw
 		var viewport: [4]c_int = undefined;
 		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 
-		if (main.settings.launch_config.vulkanTestingMode and texture.vulkanImage != null) {
+		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, imagePipeline, getScissor());
 			currentFrame.guiCommands.bindDescriptors(imagePipeline, &.{
-				.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
+				.{.image = .{.binding = 0, .image = texture.vulkanImage}},
 			});
 			customShadedImage(currentFrame, @as(ImageUniforms, undefined), imagePipeline, _pos, _dim);
 		} else {
@@ -472,10 +472,10 @@ pub const draw = struct { // MARK: draw
 		var viewport: [4]c_int = undefined;
 		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 
-		if (main.settings.launch_config.vulkanTestingMode and texture.vulkanImage != null) {
+		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, imagePipeline, getScissor());
 			currentFrame.guiCommands.bindDescriptors(imagePipeline, &.{
-				.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
+				.{.image = .{.binding = 0, .image = texture.vulkanImage}},
 			});
 			currentFrame.guiCommands.pushConstants(imagePipeline, &ImageUniforms{
 				.start = pos,
@@ -1095,7 +1095,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 				.fontSize = .{@floatFromInt(text_rendering.textureWidth), @floatFromInt(text_rendering.textureHeight)},
 			});
 			currentFrame.guiCommands.bindDescriptors(text_rendering.pipeline, &.{
-				.{.image = .{.binding = 0, .image = text_rendering.glyphTexture[0].vulkanImage.?}},
+				.{.image = .{.binding = 0, .image = text_rendering.glyphTexture[0].vulkanImage}},
 			});
 
 			currentFrame.guiCommands.bindVertexArray(draw.rectVao);
@@ -1181,7 +1181,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 				.fontSize = .{@floatFromInt(text_rendering.textureWidth), @floatFromInt(text_rendering.textureHeight)},
 			});
 			currentFrame.guiCommands.bindDescriptors(text_rendering.pipeline, &.{
-				.{.image = .{.binding = 0, .image = text_rendering.glyphTexture[0].vulkanImage.?}},
+				.{.image = .{.binding = 0, .image = text_rendering.glyphTexture[0].vulkanImage}},
 			});
 
 			currentFrame.guiCommands.bindVertexArray(draw.rectVao);
@@ -1318,8 +1318,8 @@ const text_rendering = struct { // MARK: text_rendering
 		glyphData = .init(main.globalAllocator);
 		glyphData.append(undefined); // 0 is a reserved value.
 		glyphTexture = .{
-			.init(),
-			.init(),
+			.initFromImage(Image.emptyImage),
+			.initFromImage(Image.emptyImage),
 		};
 
 		if (main.settings.launch_config.vulkanTestingMode) {
@@ -1364,8 +1364,8 @@ const text_rendering = struct { // MARK: text_rendering
 				.format = c.VK_FORMAT_R8_UNORM,
 				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT | c.VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
 			});
-			glyphTexture[0].vulkanImage.?.uploadImage(old.vulkanImage.?);
-			old.vulkanImage.?.deferredDeinit();
+			glyphTexture[0].vulkanImage.uploadImage(old.vulkanImage);
+			old.vulkanImage.deferredDeinit();
 		} else {
 			const swap = glyphTexture[1];
 			glyphTexture[1] = glyphTexture[0];
@@ -1387,7 +1387,7 @@ const text_rendering = struct { // MARK: text_rendering
 			resizeTexture(textureWidth*2);
 		}
 		if (main.settings.launch_config.vulkanTestingMode) {
-			glyphTexture[0].vulkanImage.?.uploadData(buffer[0 .. pitch*bitmap.rows], .{
+			glyphTexture[0].vulkanImage.uploadData(buffer[0 .. pitch*bitmap.rows], .{
 				.imageOffset = .{.x = textureOffset},
 				.imageExtent = .{.width = bitmap.width, .height = bitmap.rows, .depth = 1},
 			});
@@ -2131,63 +2131,12 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 
 pub const TextureArray = struct { // MARK: TextureArray
 	textureID: c_uint,
-	vulkanImage: ?vulkan.Image,
-
-	pub fn init() TextureArray {
-		var self: TextureArray = undefined;
-		c.glGenTextures(1, &self.textureID);
-		self.vulkanImage = null;
-		return self;
-	}
-
-	pub fn deinit(self: TextureArray) void {
-		c.glDeleteTextures(1, &self.textureID);
-		if (self.vulkanImage) |image| {
-			image.deferredDeinit();
-		}
-	}
-
-	pub fn bind(self: TextureArray) void {
-		c.glBindTexture(c.GL_TEXTURE_2D_ARRAY, self.textureID);
-	}
-
-	fn lodColorInterpolation(colors: [4]Color, alphaCorrection: bool) Color {
-		var r: [4]f32 = undefined;
-		var g: [4]f32 = undefined;
-		var b: [4]f32 = undefined;
-		var a: [4]f32 = undefined;
-		for (0..4) |i| {
-			r[i] = @floatFromInt(colors[i].r);
-			g[i] = @floatFromInt(colors[i].g);
-			b[i] = @floatFromInt(colors[i].b);
-			a[i] = @floatFromInt(colors[i].a);
-		}
-		// Use gamma corrected average(https://stackoverflow.com/a/832314/13082649):
-		var aSum: f32 = 0;
-		var rSum: f32 = 0;
-		var gSum: f32 = 0;
-		var bSum: f32 = 0;
-		for (0..4) |i| {
-			const w = if (alphaCorrection) a[i]*a[i] else 1;
-			aSum += a[i]*a[i];
-			rSum += w*r[i]*r[i];
-			gSum += w*g[i]*g[i];
-			bSum += w*b[i]*b[i];
-		}
-		aSum = @sqrt(aSum)/2;
-		rSum = @sqrt(rSum)/2;
-		gSum = @sqrt(gSum)/2;
-		bSum = @sqrt(bSum)/2;
-		if (alphaCorrection and aSum != 0) {
-			rSum /= aSum;
-			gSum /= aSum;
-			bSum /= aSum;
-		}
-		return Color{.r = @trunc(rSum), .g = @trunc(gSum), .b = @trunc(bSum), .a = @trunc(aSum)};
-	}
+	vulkanImage: vulkan.Image,
 
 	/// (Re-)Generates the GPU buffer.
-	pub fn generate(self: *TextureArray, images: []Image, mipmapping: bool, alphaCorrectMipmapping: bool) void {
+	pub fn init(images: []Image, mipmapping: bool, alphaCorrectMipmapping: bool) TextureArray {
+		var self: TextureArray = undefined;
+		c.glGenTextures(1, &self.textureID);
 		var maxWidth: u31 = 1;
 		var maxHeight: u31 = 1;
 		for (images) |image| {
@@ -2212,9 +2161,6 @@ pub const TextureArray = struct { // MARK: TextureArray
 		}
 
 		if (main.settings.launch_config.vulkanTestingMode) {
-			if (self.vulkanImage) |image| {
-				image.deferredDeinit();
-			}
 			self.vulkanImage = vulkan.Image.init(.{maxWidth, maxHeight, 1}, .{
 				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
 				.imageViewType = c.VK_IMAGE_VIEW_TYPE_2D_ARRAY,
@@ -2285,7 +2231,7 @@ pub const TextureArray = struct { // MARK: TextureArray
 				const curHeight = @max(1, maxHeight >> lod);
 				c.glTexSubImage3D(c.GL_TEXTURE_2D_ARRAY, lod, 0, 0, @intCast(i), curWidth, curHeight, 1, c.GL_RGBA, c.GL_UNSIGNED_BYTE, lodBuffer[lod].ptr);
 				if (main.settings.launch_config.vulkanTestingMode) {
-					self.vulkanImage.?.uploadData(std.mem.sliceAsBytes(lodBuffer[lod]), .{
+					self.vulkanImage.uploadData(std.mem.sliceAsBytes(lodBuffer[lod]), .{
 						.imageExtent = .{.width = curWidth, .height = curHeight, .depth = 1},
 						.arrayLayer = @intCast(i),
 						.mipLevel = lod,
@@ -2298,33 +2244,93 @@ pub const TextureArray = struct { // MARK: TextureArray
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
+
+		return self;
+	}
+
+	pub fn deinit(self: TextureArray) void {
+		c.glDeleteTextures(1, &self.textureID);
+		if (main.settings.launch_config.vulkanTestingMode) {
+			self.vulkanImage.deferredDeinit();
+		}
+	}
+
+	pub fn bind(self: TextureArray) void {
+		c.glBindTexture(c.GL_TEXTURE_2D_ARRAY, self.textureID);
+	}
+
+	fn lodColorInterpolation(colors: [4]Color, alphaCorrection: bool) Color {
+		var r: [4]f32 = undefined;
+		var g: [4]f32 = undefined;
+		var b: [4]f32 = undefined;
+		var a: [4]f32 = undefined;
+		for (0..4) |i| {
+			r[i] = @floatFromInt(colors[i].r);
+			g[i] = @floatFromInt(colors[i].g);
+			b[i] = @floatFromInt(colors[i].b);
+			a[i] = @floatFromInt(colors[i].a);
+		}
+		// Use gamma corrected average(https://stackoverflow.com/a/832314/13082649):
+		var aSum: f32 = 0;
+		var rSum: f32 = 0;
+		var gSum: f32 = 0;
+		var bSum: f32 = 0;
+		for (0..4) |i| {
+			const w = if (alphaCorrection) a[i]*a[i] else 1;
+			aSum += a[i]*a[i];
+			rSum += w*r[i]*r[i];
+			gSum += w*g[i]*g[i];
+			bSum += w*b[i]*b[i];
+		}
+		aSum = @sqrt(aSum)/2;
+		rSum = @sqrt(rSum)/2;
+		gSum = @sqrt(gSum)/2;
+		bSum = @sqrt(bSum)/2;
+		if (alphaCorrection and aSum != 0) {
+			rSum /= aSum;
+			gSum /= aSum;
+			bSum /= aSum;
+		}
+		return Color{.r = @trunc(rSum), .g = @trunc(gSum), .b = @trunc(bSum), .a = @trunc(aSum)};
 	}
 };
 
 pub const Texture = struct { // MARK: Texture
 	textureID: c_uint,
-	vulkanImage: ?vulkan.Image,
+	vulkanImage: vulkan.Image,
 
-	pub fn init() Texture {
+	pub fn initFromImage(image: Image) Texture {
 		var self: Texture = undefined;
 		c.glGenTextures(1, &self.textureID);
-		self.vulkanImage = null;
+		self.bind();
+
+		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_RGBA8, image.width, image.height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
+
+		if (main.settings.launch_config.vulkanTestingMode) {
+			self.vulkanImage = vulkan.Image.init(.{image.width, image.height, 1}, .{
+				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
+			});
+			self.vulkanImage.uploadData(std.mem.sliceAsBytes(image.imageData), .{.imageExtent = .{.width = image.width, .height = image.height, .depth = 1}});
+		}
 		return self;
 	}
 
 	pub fn initFromFile(path: []const u8) Texture {
-		var self = Texture.init();
 		const image = Image.readFromFile(main.stackAllocator, path, .{.orientation = .asIs}) catch |err| blk: {
 			std.log.err("Couldn't read image from {s}: {s}", .{path, @errorName(err)});
 			break :blk Image.defaultImage;
 		};
 		defer image.deinit(main.stackAllocator);
-		self.generate(image);
-		return self;
+		return .initFromImage(image);
 	}
 
 	pub fn initFromMipmapFiles(pathPrefix: []const u8, largestSize: u31, lodBias: f32) Texture {
-		var self = Texture.init();
+		var self: Texture = undefined;
+		c.glGenTextures(1, &self.textureID);
 		self.bind();
 
 		const maxLod = std.math.log2_int(u31, largestSize);
@@ -2352,7 +2358,7 @@ pub const Texture = struct { // MARK: Texture
 			defer image.deinit(main.stackAllocator);
 			c.glTexSubImage2D(c.GL_TEXTURE_2D, maxLod - std.math.log2_int(u31, curSize), 0, 0, curSize, curSize, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
 			if (main.settings.launch_config.vulkanTestingMode) {
-				self.vulkanImage.?.uploadData(std.mem.sliceAsBytes(image.imageData), .{.imageExtent = .{.width = image.width, .height = image.height, .depth = 1}, .mipLevel = maxLod - std.math.log2_int(u31, curSize)});
+				self.vulkanImage.uploadData(std.mem.sliceAsBytes(image.imageData), .{.imageExtent = .{.width = image.width, .height = image.height, .depth = 1}, .mipLevel = maxLod - std.math.log2_int(u31, curSize)});
 			}
 		}
 
@@ -2367,8 +2373,8 @@ pub const Texture = struct { // MARK: Texture
 
 	pub fn deinit(self: Texture) void {
 		c.glDeleteTextures(1, &self.textureID);
-		if (self.vulkanImage) |image| {
-			image.deferredDeinit();
+		if (main.settings.launch_config.vulkanTestingMode) {
+			self.vulkanImage.deferredDeinit();
 		}
 	}
 
@@ -2379,25 +2385,6 @@ pub const Texture = struct { // MARK: Texture
 
 	pub fn bind(self: Texture) void {
 		c.glBindTexture(c.GL_TEXTURE_2D, self.textureID);
-	}
-
-	/// (Re-)Generates the GPU buffer.
-	pub fn generate(self: *Texture, image: Image) void {
-		self.bind();
-
-		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_RGBA8, image.width, image.height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
-
-		if (main.settings.launch_config.vulkanTestingMode) {
-			std.debug.assert(self.vulkanImage == null);
-			self.vulkanImage = vulkan.Image.init(.{image.width, image.height, 1}, .{
-				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
-			});
-			self.vulkanImage.?.uploadData(std.mem.sliceAsBytes(image.imageData), .{.imageExtent = .{.width = image.width, .height = image.height, .depth = 1}});
-		}
 	}
 
 	pub fn render(self: Texture, currentFrame: *vulkan.Frame, pos: Vec2f, dim: Vec2f) void {
@@ -2780,7 +2767,8 @@ const block_texture = struct { // MARK: block_texture
 				.pushConstantSize = @sizeOf(Uniforms),
 			},
 		);
-		depthTexture = .init();
+		depthTexture = undefined;
+		c.glGenTextures(1, &depthTexture.textureID);
 		depthTexture.bind();
 		var data: [128*128]f32 = undefined;
 
@@ -2797,13 +2785,12 @@ const block_texture = struct { // MARK: block_texture
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
 
 		if (main.settings.launch_config.vulkanTestingMode) {
-			std.debug.assert(depthTexture.vulkanImage == null);
 			depthTexture.vulkanImage = vulkan.Image.init(.{textureSize, textureSize, 1}, .{
 				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
 				.format = c.VK_FORMAT_D32_SFLOAT,
 				.aspect = .{.depth = true},
 			});
-			depthTexture.vulkanImage.?.uploadData(std.mem.sliceAsBytes(&data), .{.imageExtent = .{.width = textureSize, .height = textureSize, .depth = 1}, .aspect = .{.depth = true}});
+			depthTexture.vulkanImage.uploadData(std.mem.sliceAsBytes(&data), .{.imageExtent = .{.width = textureSize, .height = textureSize, .depth = 1}, .aspect = .{.depth = true}});
 		}
 
 		ubo = .init(.{
@@ -2890,7 +2877,7 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 
 	{
 		if (block.transparent()) {
-			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, block_texture.ubo, block_texture.depthTexture.vulkanImage orelse undefined, .{1, 1, 1}, 0.25, 0);
+			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, block_texture.ubo, block_texture.depthTexture.vulkanImage, .{1, 1, 1}, 0.25, 0);
 		} else {
 			main.renderer.chunk_meshing.bindShaderAndUniforms(vulkan.upload.commandBuffer(), &fakeFrame, block_texture.ubo, .{1, 1, 1}, 0.25, 0);
 		}
@@ -2903,11 +2890,11 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 		defer block_texture.ubo.unbind();
 
 		c.glActiveTexture(c.GL_TEXTURE0);
-		main.blocks.meshes.blockTextureArray.bind();
+		main.blocks.meshes.blockTextureArray.?.bind();
 		c.glActiveTexture(c.GL_TEXTURE1);
-		main.blocks.meshes.emissionTextureArray.bind();
+		main.blocks.meshes.emissionTextureArray.?.bind();
 		c.glActiveTexture(c.GL_TEXTURE2);
-		main.blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
+		main.blocks.meshes.reflectivityAndAbsorptionTextureArray.?.bind();
 		block_texture.depthTexture.bindTo(5);
 		c.glDrawElementsInstancedBaseVertexBaseInstance(c.GL_TRIANGLES, @intCast(6*faceData.items.len), c.GL_UNSIGNED_INT, null, 1, allocation.start*4, chunkAllocation.start);
 	}
@@ -2915,7 +2902,7 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 	c.glDisable(c.GL_CULL_FACE);
 	var finalFrameBuffer: FrameBuffer = .init(textureSize, textureSize, c.GL_RGBA8, false, .nearest, .repeat);
 	finalFrameBuffer.bind();
-	var texture = Texture{.textureID = finalFrameBuffer.texture, .vulkanImage = null};
+	var texture = Texture{.textureID = finalFrameBuffer.texture, .vulkanImage = undefined};
 	defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
 	block_texture.pipeline.bind(null);
 	c.glUniform1i(block_texture.uniforms.transparent, if (block.transparent()) c.GL_TRUE else c.GL_FALSE);

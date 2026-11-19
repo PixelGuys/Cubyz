@@ -29,22 +29,22 @@ pub const particle_manager = struct { // MARK: particle_manager
 	var textures: main.List(Image) = .empty;
 	var emissionTextures: main.List(Image) = .empty;
 
-	var textureArray: TextureArray = undefined;
-	var emissionTextureArray: TextureArray = undefined;
+	var textureArray: ?TextureArray = undefined;
+	var emissionTextureArray: ?TextureArray = undefined;
 
 	const ParticleIndex = u16;
 	var particleTypeHashmap: std.StringHashMapUnmanaged(ParticleIndex) = .{};
 
 	pub fn init() void {
-		textureArray = .init();
-		emissionTextureArray = .init();
+		textureArray = null;
+		emissionTextureArray = null;
 		particleTypesSSBO = SSBO.init();
 		particle_system.init();
 	}
 
 	pub fn deinit() void {
-		textureArray.deinit();
-		emissionTextureArray.deinit();
+		if (textureArray) |tex| tex.deinit();
+		if (emissionTextureArray) |tex| tex.deinit();
 		particle_system.deinit();
 		particleTypesSSBO.deinit();
 	}
@@ -152,8 +152,10 @@ pub const particle_manager = struct { // MARK: particle_manager
 	}
 
 	pub fn generateTextureArray() void {
-		textureArray.generate(textures.items, true, true);
-		emissionTextureArray.generate(emissionTextures.items, true, false);
+		if (textureArray) |tex| tex.deinit();
+		if (emissionTextureArray) |tex| tex.deinit();
+		textureArray = .init(textures.items, true, true);
+		emissionTextureArray = .init(emissionTextures.items, true, false);
 
 		particleTypesSSBO.deinit();
 		particleTypesSSBO = .initStatic(ParticleType, particle_manager.types.items);
@@ -353,8 +355,8 @@ pub const particle_system = struct { // MARK: particle_system
 			currentFrame.renderCommands.bindPipeline(currentFrame, pipeline, null);
 
 			currentFrame.renderCommands.bindDescriptors(pipeline, &.{
-				.{.image = .{.binding = 0, .image = particle_manager.textureArray.vulkanImage.?}},
-				.{.image = .{.binding = 1, .image = particle_manager.emissionTextureArray.vulkanImage.?}},
+				.{.image = .{.binding = 0, .image = particle_manager.textureArray.?.vulkanImage}},
+				.{.image = .{.binding = 1, .image = particle_manager.emissionTextureArray.?.vulkanImage}},
 				.{.ssbo = .{.binding = 13, .ssbo = particlesSSBO}},
 				.{.ssbo = .{.binding = 14, .ssbo = particle_manager.particleTypesSSBO}},
 			});
@@ -385,9 +387,9 @@ pub const particle_system = struct { // MARK: particle_system
 			c.glUniformMatrix4fv(uniforms.billboardMatrix, 1, c.GL_TRUE, @ptrCast(&billboardMatrix));
 
 			c.glActiveTexture(c.GL_TEXTURE0);
-			particle_manager.textureArray.bind();
+			particle_manager.textureArray.?.bind();
 			c.glActiveTexture(c.GL_TEXTURE1);
-			particle_manager.emissionTextureArray.bind();
+			particle_manager.emissionTextureArray.?.bind();
 
 			chunk_meshing.vao.bind();
 

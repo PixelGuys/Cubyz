@@ -276,11 +276,11 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 	gpu_performance_measuring.stopQuery();
 
 	c.glActiveTexture(c.GL_TEXTURE0);
-	blocks.meshes.blockTextureArray.bind();
+	blocks.meshes.blockTextureArray.?.bind();
 	c.glActiveTexture(c.GL_TEXTURE1);
-	blocks.meshes.emissionTextureArray.bind();
+	blocks.meshes.emissionTextureArray.?.bind();
 	c.glActiveTexture(c.GL_TEXTURE2);
-	blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
+	blocks.meshes.reflectivityAndAbsorptionTextureArray.?.bind();
 	c.glActiveTexture(c.GL_TEXTURE5);
 	blocks.meshes.ditherTexture.bind();
 	reflectionCubeMap.bindTo(4);
@@ -322,9 +322,9 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 
 	// Rebind block textures back to their original slots
 	c.glActiveTexture(c.GL_TEXTURE0);
-	blocks.meshes.blockTextureArray.bind();
+	blocks.meshes.blockTextureArray.?.bind();
 	c.glActiveTexture(c.GL_TEXTURE1);
-	blocks.meshes.emissionTextureArray.bind();
+	blocks.meshes.emissionTextureArray.?.bind();
 
 	mesh_selection.render(currentFrame, playerPos);
 
@@ -385,7 +385,7 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 		bloomImage = bloom.render(currentFrame, lastWidth, lastHeight, playerBlock, game.camera.viewMatrix);
 	} else {
 		bloom.bindReplacementImage();
-		bloomImage = bloom.emptyBuffer.vulkanImage orelse undefined;
+		bloomImage = bloom.emptyBuffer.vulkanImage;
 	}
 	gpu_performance_measuring.startQuery(.final_copy);
 	if (settings.launch_config.vulkanTestingMode) {
@@ -479,8 +479,7 @@ const bloom = struct { // MARK: bloom
 	pub fn init() void {
 		buffer1 = .init(0, 0, c.GL_R11F_G11F_B10F, false, .linear, .clampToEdge);
 		buffer2 = .init(0, 0, c.GL_R11F_G11F_B10F, false, .linear, .clampToEdge);
-		emptyBuffer = .init();
-		emptyBuffer.generate(graphics.Image.emptyImage);
+		emptyBuffer = .initFromImage(graphics.Image.emptyImage);
 		firstPassPipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/bloom/first_pass.vert",
 			"assets/cubyz/shaders/bloom/first_pass.frag",
@@ -747,7 +746,7 @@ pub const menu_background = struct { // MARK: menu_background
 
 		const backgroundPath = chooseBackgroundImagePath(main.stackAllocator) catch |err| {
 			std.log.err("Couldn't open background path: {s}", .{@errorName(err)});
-			texture = .{.textureID = 0, .vulkanImage = null};
+			texture = .initFromImage(.emptyImage);
 			return;
 		};
 		defer main.stackAllocator.free(backgroundPath);
@@ -816,7 +815,7 @@ pub const menu_background = struct { // MARK: menu_background
 		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, pipeline, graphics.draw.getScissor());
 			currentFrame.guiCommands.bindDescriptors(pipeline, &.{
-				.{.image = .{.binding = 0, .image = texture.vulkanImage.?}},
+				.{.image = .{.binding = 0, .image = texture.vulkanImage}},
 			});
 			graphics.frame_uniforms.bindToPipeline(currentFrame.guiCommands, pipeline);
 			currentFrame.guiCommands.bindVertexArray(vao);
