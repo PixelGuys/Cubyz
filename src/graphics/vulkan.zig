@@ -589,17 +589,17 @@ pub const upload = struct { // MARK: upload
 };
 
 pub const Frame = struct { // MARK: Frame
-	fence: Fence,
-	uploadFence: Fence,
-	swapChainImage: c.VkImage,
-	swapChainImageView: c.VkImageView,
+	fence: Fence = undefined,
+	uploadFence: Fence = undefined,
+	swapChainImage: c.VkImage = undefined,
+	swapChainImageView: c.VkImageView = undefined,
 
-	imageAvailable: Semaphore,
-	renderFinished: Semaphore,
+	imageAvailable: Semaphore = undefined,
+	renderFinished: Semaphore = undefined,
 
-	commandArena: CommandArena,
-	guiCommands: main.graphics.CommandBuffer,
-	renderCommands: main.graphics.CommandBuffer,
+	commandArena: CommandArena = undefined,
+	guiCommands: main.graphics.CommandBuffer = undefined,
+	renderCommands: main.graphics.CommandBuffer = undefined,
 	extent: c.VkExtent2D,
 
 	minDepth: f32 = 0,

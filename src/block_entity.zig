@@ -498,8 +498,9 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 			StorageClient.mutex.lock();
 			defer StorageClient.mutex.unlock();
 
-			var fakeFrame: graphics.vulkan.Frame = undefined;
-			fakeFrame.extent = .{.width = textureWidth, .height = textureHeight};
+			var fakeFrame: graphics.vulkan.Frame = .{
+				.extent = .{.width = textureWidth, .height = textureHeight},
+			};
 			if (main.settings.launch_config.vulkanTestingMode) {
 				fakeFrame.guiCommands = graphics.vulkan.upload.commandBuffer();
 			}
