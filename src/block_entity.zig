@@ -549,6 +549,7 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 				currentFrame.renderCommands.bindDescriptors(pipeline, &.{
 					.{.ssbo = .{.binding = 4, .ssbo = main.models.quadSsbo.?}},
 				});
+				currentFrame.renderCommands.bindVertexArray(main.renderer.chunk_meshing.vao);
 				graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, pipeline);
 			} else {
 				pipeline.bind(null);
