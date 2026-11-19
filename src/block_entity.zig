@@ -575,7 +575,7 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 						.chunkPos = .{signData.blockPos[0] & ~main.chunk.chunkMask, signData.blockPos[1] & ~main.chunk.chunkMask, signData.blockPos[2] & ~main.chunk.chunkMask},
 						.blockPos = .{signData.blockPos[0] & main.chunk.chunkMask, signData.blockPos[1] & main.chunk.chunkMask, signData.blockPos[2] & main.chunk.chunkMask},
 						.quadIndex = @backingInt(quad),
-						.contrast = 0.12,
+						.contrast = main.settings.blockContrast,
 					});
 					currentFrame.renderCommands.drawIndexed(6, .{});
 				} else {
