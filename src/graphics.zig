@@ -1883,7 +1883,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 	depth: vulkan.Image,
 	depthLayout: c.VkImageLayout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
 
-	pub fn init(_width: u31, _height: u31, internalFormat: c_uint, hasDepthTexture: bool, textureFilter: vulkan.Image.ImageOptions.Filter, textureWrap: vulkan.Image.ImageOptions.AddressMode) FrameBuffer {
+	pub fn init(_width: u31, _height: u31, format: c.VkFormat, hasDepthTexture: bool, textureFilter: vulkan.Image.ImageOptions.Filter, textureWrap: vulkan.Image.ImageOptions.AddressMode) FrameBuffer {
 		var self: FrameBuffer = .{
 			.frameBuffer = undefined,
 			.texture = undefined,
@@ -1932,7 +1932,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 			c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_DEPTH_COMPONENT32F, width, height, 0, c.GL_DEPTH_COMPONENT, c.GL_FLOAT, null);
 		}
 
-		const glFormat: c_int = switch (internalFormat) {
+		const glFormat: c_int = switch (format) {
 			c.VK_FORMAT_R16G16B16A16_SFLOAT => c.GL_RGBA16F,
 			c.VK_FORMAT_R8G8B8A8_UNORM => c.GL_RGBA8,
 			c.VK_FORMAT_B10G11R11_UFLOAT_PACK32 => c.GL_R11F_G11F_B10F,
@@ -1945,7 +1945,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.color = .init(.{width, height, 1}, .{
 				.usage = c.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
-				.format = internalFormat,
+				.format = format,
 				.magFilter = textureFilter,
 				.minFilter = textureFilter,
 				.addressMode = textureWrap,
