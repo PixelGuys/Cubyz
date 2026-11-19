@@ -170,7 +170,7 @@ fn initReflectionCubeMap() void {
 
 			commandBuffer.endRendering();
 		}
-		framebuffer.prepareTexturesForBinding(commandBuffer);
+		framebuffer.prepareTexturesForBinding(commandBuffer, .{});
 	}
 	framebuffer.bind();
 	fakeReflectionPipeline.bind(null);
@@ -373,7 +373,7 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 
 	if (main.settings.launch_config.vulkanTestingMode) {
 		currentFrame.renderCommands.endRendering();
-		worldFrameBuffer.prepareTexturesForBinding(currentFrame.renderCommands);
+		worldFrameBuffer.prepareTexturesForBinding(currentFrame.renderCommands, .{});
 	}
 
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
@@ -588,7 +588,7 @@ const bloom = struct { // MARK: bloom
 			currentFrame.renderCommands.bindVertexArray(graphics.draw.rectVao);
 			currentFrame.renderCommands.draw(4, 0);
 			currentFrame.renderCommands.endRendering();
-			buffer1.prepareTexturesForBinding(currentFrame.renderCommands);
+			buffer1.prepareTexturesForBinding(currentFrame.renderCommands, .{});
 		} else {
 			worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 			worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
@@ -608,7 +608,7 @@ const bloom = struct { // MARK: bloom
 			currentFrame.renderCommands.bindVertexArray(graphics.draw.rectVao);
 			currentFrame.renderCommands.draw(4, 0);
 			currentFrame.renderCommands.endRendering();
-			buffer2.prepareTexturesForBinding(currentFrame.renderCommands);
+			buffer2.prepareTexturesForBinding(currentFrame.renderCommands, .{});
 		} else {
 			firstPassPipeline.bind(null);
 			buffer1.bindTexture(c.GL_TEXTURE3);
@@ -628,7 +628,7 @@ const bloom = struct { // MARK: bloom
 			currentFrame.renderCommands.bindVertexArray(graphics.draw.rectVao);
 			currentFrame.renderCommands.draw(4, 0);
 			currentFrame.renderCommands.endRendering();
-			buffer1.prepareTexturesForBinding(currentFrame.renderCommands);
+			buffer1.prepareTexturesForBinding(currentFrame.renderCommands, .{});
 		} else {
 			secondPassPipeline.bind(null);
 			buffer2.bindTexture(c.GL_TEXTURE3);
