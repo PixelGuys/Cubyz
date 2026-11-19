@@ -643,10 +643,10 @@ const bloom = struct { // MARK: bloom
 			width = currentWidth;
 			height = currentHeight;
 			buffer1.deinit();
-			buffer1 = .init(width/4, height/4, c.GL_R11F_G11F_B10F, false, .linear, .clampToEdge);
+			buffer1 = .init(width/4, height/4, c.VK_FORMAT_B10G11R11_UFLOAT_PACK32, false, .linear, .clampToEdge);
 			std.debug.assert(buffer1.validate());
 			buffer2.deinit();
-			buffer2 = .init(width/4, height/4, c.GL_R11F_G11F_B10F, false, .linear, .clampToEdge);
+			buffer2 = .init(width/4, height/4, c.VK_FORMAT_B10G11R11_UFLOAT_PACK32, false, .linear, .clampToEdge);
 			std.debug.assert(buffer2.validate());
 		}
 		gpu_performance_measuring.startQuery(.bloom_extract_downsample);

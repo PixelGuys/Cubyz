@@ -1924,18 +1924,16 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 			c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_DEPTH_COMPONENT32F, width, height, 0, c.GL_DEPTH_COMPONENT, c.GL_FLOAT, null);
 		}
 
-		const _glFormat: ?c_int = switch (internalFormat) {
+		const glFormat: c_int = switch (internalFormat) {
 			c.VK_FORMAT_R16G16B16A16_SFLOAT => c.GL_RGBA16F,
 			c.VK_FORMAT_R8G8B8A8_UNORM => c.GL_RGBA8,
 			c.VK_FORMAT_B10G11R11_UFLOAT_PACK32 => c.GL_R11F_G11F_B10F,
 			c.VK_FORMAT_B8G8R8A8_UNORM => c.GL_RGBA,
-			else => null,
+			else => @panic("Unrecognized format"),
 		};
 
-		if (_glFormat) |glFormat| {
-			c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
-			c.glTexImage2D(c.GL_TEXTURE_2D, 0, glFormat, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
-		}
+		c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
+		c.glTexImage2D(c.GL_TEXTURE_2D, 0, glFormat, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.color = .init(.{width, height, 1}, .{
 				.usage = c.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
