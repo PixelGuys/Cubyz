@@ -520,8 +520,6 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 				var finalFrameBuffer: graphics.FrameBuffer = .init(textureWidth, textureHeight, c.VK_FORMAT_B8G8R8A8_UNORM, false, .nearest, .repeat);
 				defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
 				if (main.settings.launch_config.vulkanTestingMode) {
-					graphics.vulkan.upload.commandBuffer().endRendering();
-
 					finalFrameBuffer.bindAndClear(graphics.vulkan.upload.commandBuffer(), .{.clearColor = .{.clearColor = .{.float32 = .{0, 0, 0, 0}}}, .clearDepth = .dontCare});
 				} else {
 					finalFrameBuffer.bind();
