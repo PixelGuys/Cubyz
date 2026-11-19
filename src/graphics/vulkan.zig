@@ -604,7 +604,7 @@ pub const Frame = struct { // MARK: Frame
 	minDepth: f32 = 0,
 	maxDepth: f32 = 1,
 
-	fn init() Frame {
+	pub fn init() Frame {
 		return .{
 			.fence = .init(true),
 			.uploadFence = .init(true),
@@ -618,14 +618,14 @@ pub const Frame = struct { // MARK: Frame
 		};
 	}
 
-	fn deinit(self: Frame) void {
+	pub fn deinit(self: Frame) void {
 		self.fence.privateDeinit();
 		self.uploadFence.privateDeinit();
 		self.renderFinished.privateDeinit();
 		self.commandArena.deinit();
 	}
 
-	fn beginRender(self: *Frame) void {
+	pub fn beginRender(self: *Frame) void {
 		self.commandArena.reset();
 		self.guiCommands = self.commandArena.createBuffer();
 		self.renderCommands = self.commandArena.createBuffer();
@@ -1326,7 +1326,7 @@ pub const Image = struct { // MARK: Image
 };
 
 pub const gpu_allocator = struct { // MARK: gpu_allocator
-	var handle: c.VmaAllocator = undefined;
+	pub var handle: c.VmaAllocator = undefined;
 
 	fn init() void {
 		var vkFunctions: c.VmaVulkanFunctions = undefined;

@@ -832,8 +832,6 @@ pub const menu_background = struct { // MARK: menu_background
 
 	pub fn takeBackgroundImage() void {
 		const size: usize = 1024; // Use a power of 2 here, to reduce video memory waste.
-		const pixels: []u32 = main.stackAllocator.alloc(u32, size*size);
-		defer main.stackAllocator.free(pixels);
 
 		// Change the viewport and the matrices to render 4 cube faces:
 
@@ -845,8 +843,13 @@ pub const menu_background = struct { // MARK: menu_background
 		main.settings.resolutionScale = oldResolutionScale;
 		defer updateViewport(Window.width, Window.height);
 
-		var buffer: graphics.FrameBuffer = .init(size, size, c.VK_FORMAT_R8G8B8A8_UNORM, false, .nearest, .repeat);
+		var buffer: graphics.FrameBuffer = .init(0, 0, c.VK_FORMAT_B8G8R8A8_UNORM, false, .nearest, .repeat);
 		defer buffer.deinit();
+		buffer.color.deferredDeinit();
+		buffer.color = .init(.{size, size, 1}, .{
+			.usage = c.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | c.VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+			.format = c.VK_FORMAT_B8G8R8A8_UNORM,
+		});
 
 		activeFrameBuffer = buffer.frameBuffer;
 		defer activeFrameBuffer = 0;
@@ -861,6 +864,16 @@ pub const menu_background = struct { // MARK: menu_background
 		defer image.deinit(main.stackAllocator);
 
 		for (0..4) |i| {
+			var frame: vulkan.Frame = .init();
+			defer frame.deinit();
+
+			frame.extent = .{.width = size, .height = size};
+			frame.swapChainImage = buffer.color.handle;
+			frame.swapChainImageView = buffer.color.view;
+
+			frame.fence.waitAndReset();
+			frame.beginRender();
+
 			c.glDepthFunc(c.GL_LESS);
 			c.glDepthMask(c.GL_TRUE);
 			c.glDisable(c.GL_SCISSOR_TEST);
@@ -868,16 +881,61 @@ pub const menu_background = struct { // MARK: menu_background
 			// Draw to frame buffer.
 			buffer.bind();
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-			main.renderer.render(undefined, game.player.getEyePosBlocking(), 0); // TODO: Pass vulkan.Frame here
-			// Copy the pixels directly from OpenGL
-			buffer.bind();
-			c.glReadPixels(0, 0, size, size, c.GL_RGBA, c.GL_UNSIGNED_BYTE, pixels.ptr);
+			main.renderer.render(&frame, game.player.getEyePosBlocking(), 0);
 
-			for (0..size) |y| {
-				for (0..size) |x| {
-					const index = x + y*size;
-					// Needs to flip the image in y-direction.
-					image.setRGB(x + size*i, size - 1 - y, @bitCast(pixels[index]));
+			if (main.settings.launch_config.vulkanTestingMode) {
+				// Copy the pixels directly from Vulkan
+				const tempBuffer: vulkan.Buffer = .init(4*size*size, .{.usage = c.VK_BUFFER_USAGE_TRANSFER_DST_BIT, .hostAccessible = true, .alignment = 4});
+				defer tempBuffer.deferredDeinit();
+				frame.guiCommands.endRendering();
+				buffer.prepareTexturesForBinding(frame.guiCommands, .{.targetLayout = c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL});
+				frame.guiCommands.copyImageToBuffer(tempBuffer, buffer.color, c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, &.{.{
+					.sType = c.VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2,
+					.bufferOffset = 0,
+					.imageSubresource = .{
+						.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
+						.mipLevel = 0,
+						.baseArrayLayer = 0,
+						.layerCount = 1,
+					},
+					.imageOffset = .{},
+					.imageExtent = .{.width = size, .height = size, .depth = 1},
+				}});
+				
+				frame.endRender(.{});
+
+				frame.fence.waitAndReset();
+
+				var gpuMemory: ?*anyopaque = undefined;
+				vulkan.checkResult(c.vmaMapMemory(vulkan.gpu_allocator.handle, tempBuffer.allocation, &gpuMemory));
+				defer c.vmaUnmapMemory(vulkan.gpu_allocator.handle, tempBuffer.allocation);
+				const pixels: []u32 = @as([*]u32, @ptrCast(@alignCast(gpuMemory)))[0..size*size];
+
+				for (0..size) |y| {
+					for (0..size) |x| {
+						const index = x + y*size;
+						// Needs to flip the image in y-direction.
+						image.setRGB(x + size*i, y, .{
+							.r = @truncate(pixels[index] >> 16),
+							.g = @truncate(pixels[index] >> 8),
+							.b = @truncate(pixels[index]),
+							.a = 255,
+						});
+					}
+				}
+			} else {
+				// Copy the pixels directly from OpenGL
+				const pixels: []u32 = main.stackAllocator.alloc(u32, size*size);
+				defer main.stackAllocator.free(pixels);
+				buffer.bind();
+				c.glReadPixels(0, 0, size, size, c.GL_RGBA, c.GL_UNSIGNED_BYTE, pixels.ptr);
+
+				for (0..size) |y| {
+					for (0..size) |x| {
+						const index = x + y*size;
+						// Needs to flip the image in y-direction.
+						image.setRGB(x + size*i, size - 1 - y, @bitCast(pixels[index]));
+					}
 				}
 			}
 		}
