@@ -507,6 +507,11 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 			for (StorageClient.storage.dense.items) |*signData| {
 				if (signData.renderedTexture != null) continue;
 
+				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, signData.text, .{.color = 0x000000}, false, .center); // TODO: Make the color configurable in the zon
+				defer textBuffer.deinit();
+				_ = textBuffer.calculateLineBreaks(16, textureWidth - 2*textureMargin);
+				textBuffer.uploadRequiredGlyphTextures();
+
 				var oldViewport: [4]c_int = undefined;
 				c.glGetIntegerv(c.GL_VIEWPORT, &oldViewport);
 				c.glViewport(0, 0, textureWidth, textureHeight);
@@ -527,10 +532,6 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 				defer graphics.draw.restoreTranslation(oldTranslation);
 				const oldClip = graphics.draw.setClip(.{textureWidth - 2*textureMargin, textureHeight - 2*textureMargin});
 				defer graphics.draw.restoreClip(oldClip);
-
-				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, signData.text, .{.color = 0x000000}, false, .center); // TODO: Make the color configurable in the zon
-				defer textBuffer.deinit();
-				_ = textBuffer.calculateLineBreaks(16, textureWidth - 2*textureMargin);
 				textBuffer.renderTextWithoutShadow(&fakeFrame, 0, 0, 16);
 				if (main.settings.launch_config.vulkanTestingMode) {
 					graphics.vulkan.upload.commandBuffer().endRendering();

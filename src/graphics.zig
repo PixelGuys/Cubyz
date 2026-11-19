@@ -1070,6 +1070,14 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		}
 	}
 
+	pub fn uploadRequiredGlyphTextures(self: TextBuffer) void {
+		for (self.glyphs) |glyph| {
+			if (glyph.character != '\n') {
+				_ = text_rendering.getGlyph(glyph.index) catch continue;
+			}
+		}
+	}
+
 	pub fn render(self: TextBuffer, currentFrame: *vulkan.Frame, _x: f32, _y: f32, _fontSize: f32) void {
 		self.renderShadow(currentFrame, _x, _y, _fontSize);
 		self.renderTextWithoutShadow(currentFrame, _x, _y, _fontSize);
