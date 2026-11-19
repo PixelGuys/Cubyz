@@ -74,5 +74,9 @@ void main() {
 		minUv = min(minUv, quads[quadIndex].cornerUV[i]);
 	}
 	uv.x = (quads[quadIndex].cornerUV[vertexID].x == maxUv.x) ? 1 : 0;
+#ifdef OPEN_GL
 	uv.y = (quads[quadIndex].cornerUV[vertexID].y == maxUv.y) ? 1 : 0;
+#else
+	uv.y = (quads[quadIndex].cornerUV[vertexID].y == maxUv.y) ? 0 : 1;
+#endif
 }
