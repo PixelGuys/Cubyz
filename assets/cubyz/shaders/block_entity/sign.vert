@@ -8,11 +8,22 @@ layout(location = 2) out vec3 light;
 layout(location = 3) out vec2 uv;
 layout(location = 4) flat out vec3 normal;
 
+#ifdef OPEN_GL
 layout(location = 0) uniform vec3 ambientLight;
 layout(location = 5) uniform int quadIndex;
 layout(location = 6) uniform uvec4 lightData;
 layout(location = 7) uniform ivec3 chunkPos;
 layout(location = 8) uniform ivec3 blockPos;
+#else
+layout(push_constant, std430) uniform _ {
+	vec3 ambientLight;
+	uvec4 lightData;
+	ivec3 chunkPos;
+	ivec3 blockPos;
+	int quadIndex;
+	float contrast;
+};
+#endif
 
 struct QuadInfo {
 	vec3 normal;
@@ -63,5 +74,9 @@ void main() {
 		minUv = min(minUv, quads[quadIndex].cornerUV[i]);
 	}
 	uv.x = (quads[quadIndex].cornerUV[vertexID].x == maxUv.x) ? 1 : 0;
+#ifdef OPEN_GL
 	uv.y = (quads[quadIndex].cornerUV[vertexID].y == maxUv.y) ? 1 : 0;
+#else
+	uv.y = (quads[quadIndex].cornerUV[vertexID].y == maxUv.y) ? 0 : 1;
+#endif
 }

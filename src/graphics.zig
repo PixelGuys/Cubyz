@@ -1070,6 +1070,14 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		}
 	}
 
+	pub fn uploadRequiredGlyphTextures(self: TextBuffer) void {
+		for (self.glyphs) |glyph| {
+			if (glyph.character != '\n') {
+				_ = text_rendering.getGlyph(glyph.index) catch continue;
+			}
+		}
+	}
+
 	pub fn render(self: TextBuffer, currentFrame: *vulkan.Frame, _x: f32, _y: f32, _fontSize: f32) void {
 		self.renderShadow(currentFrame, _x, _y, _fontSize);
 		self.renderTextWithoutShadow(currentFrame, _x, _y, _fontSize);
@@ -1875,7 +1883,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 	depth: vulkan.Image,
 	depthLayout: c.VkImageLayout = c.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
 
-	pub fn init(_width: u31, _height: u31, internalFormat: c_int, hasDepthTexture: bool, textureFilter: vulkan.Image.ImageOptions.Filter, textureWrap: vulkan.Image.ImageOptions.AddressMode) FrameBuffer {
+	pub fn init(_width: u31, _height: u31, format: c.VkFormat, hasDepthTexture: bool, textureFilter: vulkan.Image.ImageOptions.Filter, textureWrap: vulkan.Image.ImageOptions.AddressMode) FrameBuffer {
 		var self: FrameBuffer = .{
 			.frameBuffer = undefined,
 			.texture = undefined,
@@ -1924,18 +1932,20 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 			c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_DEPTH_COMPONENT32F, width, height, 0, c.GL_DEPTH_COMPONENT, c.GL_FLOAT, null);
 		}
 
-		c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
-		c.glTexImage2D(c.GL_TEXTURE_2D, 0, internalFormat, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+		const glFormat: c_int = switch (format) {
+			c.VK_FORMAT_R16G16B16A16_SFLOAT => c.GL_RGBA16F,
+			c.VK_FORMAT_R8G8B8A8_UNORM => c.GL_RGBA8,
+			c.VK_FORMAT_B10G11R11_UFLOAT_PACK32 => c.GL_R11F_G11F_B10F,
+			c.VK_FORMAT_B8G8R8A8_UNORM => c.GL_RGBA,
+			else => @panic("Unrecognized format"),
+		};
 
+		c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
+		c.glTexImage2D(c.GL_TEXTURE_2D, 0, glFormat, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.color = .init(.{width, height, 1}, .{
 				.usage = c.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
-				.format = switch (internalFormat) {
-					c.GL_RGBA16F => c.VK_FORMAT_R16G16B16A16_SFLOAT,
-					c.GL_RGBA8 => c.VK_FORMAT_R8G8B8A8_UNORM,
-					c.GL_R11F_G11F_B10F => c.VK_FORMAT_B10G11R11_UFLOAT_PACK32,
-					else => @panic("Can we please use vulkan types here???"),
-				},
+				.format = format,
 				.magFilter = textureFilter,
 				.minFilter = textureFilter,
 				.addressMode = textureWrap,
@@ -2866,7 +2876,7 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 	}}, &chunkAllocation);
 	defer main.renderer.chunk_meshing.chunkBuffer.free(chunkAllocation);
 
-	var frameBuffer: FrameBuffer = .init(textureSize, textureSize, c.GL_RGBA16F, false, .nearest, .repeat);
+	var frameBuffer: FrameBuffer = .init(textureSize, textureSize, c.VK_FORMAT_R16G16B16A16_SFLOAT, false, .nearest, .repeat);
 	defer frameBuffer.deinit();
 	frameBuffer.bind();
 	const clearColor: [4]f32 = if (block.transparent()) .{0.683421, 0.6854237, 0.685426, 1} else @splat(0);
@@ -2900,7 +2910,7 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 	}
 
 	c.glDisable(c.GL_CULL_FACE);
-	var finalFrameBuffer: FrameBuffer = .init(textureSize, textureSize, c.GL_RGBA8, false, .nearest, .repeat);
+	var finalFrameBuffer: FrameBuffer = .init(textureSize, textureSize, c.VK_FORMAT_R8G8B8A8_UNORM, false, .nearest, .repeat);
 	finalFrameBuffer.bind();
 	var texture = Texture{.textureID = finalFrameBuffer.texture, .vulkanImage = undefined};
 	defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);

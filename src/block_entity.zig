@@ -322,6 +322,14 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 			chunkPos: c_int,
 			blockPos: c_int,
 		} = undefined;
+		const Uniforms = extern struct {
+			ambientLight: [3]f32 align(16),
+			lightData: [4]c_uint align(16),
+			chunkPos: [3]c_int align(16),
+			blockPos: [3]c_int align(16),
+			quadIndex: c_int,
+			contrast: f32,
+		};
 
 		// TODO: Load these from some per-block settings
 		const textureWidth = 128;
@@ -339,9 +347,15 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 					&uniforms,
 					graphics.VertexArray.EmptyVertex,
 					.{
+						.bindings = &.{
+							.sampler(0, .{.fragment = true}),
+							.ssbo(4, .{.vertex = true}),
+						},
 						.rasterState = .{},
 						.depthStencilState = .{.depthTest = true, .depthCompare = .equal, .depthWrite = false},
 						.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
+						.inputAssemblyState = .{.topology = .triangleList},
+						.pushConstantSize = @sizeOf(Uniforms),
 					},
 				);
 			}
@@ -484,55 +498,95 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 			StorageClient.mutex.lock();
 			defer StorageClient.mutex.unlock();
 
+			var fakeFrame: graphics.vulkan.Frame = .{
+				.extent = .{.width = textureWidth, .height = textureHeight},
+			};
+			if (main.settings.launch_config.vulkanTestingMode) {
+				fakeFrame.guiCommands = graphics.vulkan.upload.commandBuffer();
+			}
 			for (StorageClient.storage.dense.items) |*signData| {
 				if (signData.renderedTexture != null) continue;
+
+				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, signData.text, .{.color = 0x000000}, false, .center); // TODO: Make the color configurable in the zon
+				defer textBuffer.deinit();
+				_ = textBuffer.calculateLineBreaks(16, textureWidth - 2*textureMargin);
+				textBuffer.uploadRequiredGlyphTextures();
 
 				var oldViewport: [4]c_int = undefined;
 				c.glGetIntegerv(c.GL_VIEWPORT, &oldViewport);
 				c.glViewport(0, 0, textureWidth, textureHeight);
 				defer c.glViewport(oldViewport[0], oldViewport[1], oldViewport[2], oldViewport[3]);
 
-				var finalFrameBuffer: graphics.FrameBuffer = .init(textureWidth, textureHeight, c.GL_RGBA8, false, .nearest, .repeat);
-				finalFrameBuffer.bind();
-				finalFrameBuffer.clear(.{0, 0, 0, 0});
-				if (main.settings.launch_config.vulkanTestingMode) {
-					finalFrameBuffer.color.deferredDeinit();
-				}
-				signData.renderedTexture = .{.textureID = finalFrameBuffer.texture, .vulkanImage = undefined};
+				var finalFrameBuffer: graphics.FrameBuffer = .init(textureWidth, textureHeight, c.VK_FORMAT_B8G8R8A8_UNORM, false, .nearest, .repeat);
 				defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
+				if (main.settings.launch_config.vulkanTestingMode) {
+					finalFrameBuffer.bindAndClear(graphics.vulkan.upload.commandBuffer(), .{.clearColor = .{.clearColor = .{.float32 = .{0, 0, 0, 0}}}, .clearDepth = .dontCare});
+				} else {
+					finalFrameBuffer.bind();
+					finalFrameBuffer.clear(.{0, 0, 0, 0});
+				}
 
 				const oldTranslation = graphics.draw.setTranslation(.{textureMargin, textureMargin});
 				defer graphics.draw.restoreTranslation(oldTranslation);
 				const oldClip = graphics.draw.setClip(.{textureWidth - 2*textureMargin, textureHeight - 2*textureMargin});
 				defer graphics.draw.restoreClip(oldClip);
-
-				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, signData.text, .{.color = 0x000000}, false, .center); // TODO: Make the color configurable in the zon
-				defer textBuffer.deinit();
-				_ = textBuffer.calculateLineBreaks(16, textureWidth - 2*textureMargin);
-				textBuffer.renderTextWithoutShadow(currentFrame, 0, 0, 16);
+				textBuffer.renderTextWithoutShadow(&fakeFrame, 0, 0, 16);
+				if (main.settings.launch_config.vulkanTestingMode) {
+					graphics.vulkan.upload.commandBuffer().endRendering();
+					finalFrameBuffer.prepareTexturesForBinding(graphics.vulkan.upload.commandBuffer());
+					signData.renderedTexture = .{.textureID = finalFrameBuffer.texture, .vulkanImage = finalFrameBuffer.color};
+				} else {
+					signData.renderedTexture = .{.textureID = finalFrameBuffer.texture, .vulkanImage = undefined};
+				}
 			}
 
 			c.glBindFramebuffer(c.GL_FRAMEBUFFER, @bitCast(oldFramebufferBinding));
 
-			pipeline.bind(null);
-			main.renderer.chunk_meshing.vao.bind();
-
-			c.glUniform3f(uniforms.ambientLight, ambientLight[0], ambientLight[1], ambientLight[2]);
+			if (main.settings.launch_config.vulkanTestingMode) {
+				currentFrame.renderCommands.bindPipeline(currentFrame, pipeline, null);
+				currentFrame.renderCommands.bindDescriptors(pipeline, &.{
+					.{.ssbo = .{.binding = 4, .ssbo = main.models.quadSsbo.?}},
+				});
+				currentFrame.renderCommands.bindVertexArray(main.renderer.chunk_meshing.vao);
+				graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, pipeline);
+			} else {
+				pipeline.bind(null);
+				main.renderer.chunk_meshing.vao.bind();
+			}
 
 			outer: for (StorageClient.storage.dense.items) |signData| {
 				if (main.blocks.meshes.model(signData.block).model().internalQuads.len == 0) continue;
 				const quad = main.blocks.meshes.model(signData.block).model().internalQuads[0];
 
 				signData.renderedTexture.?.bindTo(0);
+				if (main.settings.launch_config.vulkanTestingMode) {
+					currentFrame.renderCommands.bindDescriptors(pipeline, &.{
+						.{.image = .{.binding = 0, .image = signData.renderedTexture.?.vulkanImage}},
+					});
+				}
 
-				c.glUniform1i(uniforms.quadIndex, @backingInt(quad));
 				const mesh = main.renderer.mesh_storage.getMesh(main.chunk.ChunkPosition.initFromWorldPos(signData.blockPos, 1)) orelse continue :outer;
 				const light: [4]u32 = main.renderer.lighting.getLight(mesh, signData.blockPos -% Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, 0, quad);
-				c.glUniform4ui(uniforms.lightData, light[0], light[1], light[2], light[3]);
-				c.glUniform3i(uniforms.chunkPos, signData.blockPos[0] & ~main.chunk.chunkMask, signData.blockPos[1] & ~main.chunk.chunkMask, signData.blockPos[2] & ~main.chunk.chunkMask);
-				c.glUniform3i(uniforms.blockPos, signData.blockPos[0] & main.chunk.chunkMask, signData.blockPos[1] & main.chunk.chunkMask, signData.blockPos[2] & main.chunk.chunkMask);
 
-				c.glDrawElements(c.GL_TRIANGLES, 6, c.GL_UNSIGNED_INT, null);
+				if (main.settings.launch_config.vulkanTestingMode) {
+					currentFrame.renderCommands.pushConstants(pipeline, &Uniforms{
+						.ambientLight = ambientLight,
+						.lightData = light,
+						.chunkPos = .{signData.blockPos[0] & ~main.chunk.chunkMask, signData.blockPos[1] & ~main.chunk.chunkMask, signData.blockPos[2] & ~main.chunk.chunkMask},
+						.blockPos = .{signData.blockPos[0] & main.chunk.chunkMask, signData.blockPos[1] & main.chunk.chunkMask, signData.blockPos[2] & main.chunk.chunkMask},
+						.quadIndex = @backingInt(quad),
+						.contrast = main.settings.blockContrast,
+					});
+					currentFrame.renderCommands.drawIndexed(6, .{});
+				} else {
+					c.glUniform3f(uniforms.ambientLight, ambientLight[0], ambientLight[1], ambientLight[2]);
+					c.glUniform1i(uniforms.quadIndex, @backingInt(quad));
+					c.glUniform4ui(uniforms.lightData, light[0], light[1], light[2], light[3]);
+					c.glUniform3i(uniforms.chunkPos, signData.blockPos[0] & ~main.chunk.chunkMask, signData.blockPos[1] & ~main.chunk.chunkMask, signData.blockPos[2] & ~main.chunk.chunkMask);
+					c.glUniform3i(uniforms.blockPos, signData.blockPos[0] & main.chunk.chunkMask, signData.blockPos[1] & main.chunk.chunkMask, signData.blockPos[2] & main.chunk.chunkMask);
+
+					c.glDrawElements(c.GL_TRIANGLES, 6, c.GL_UNSIGNED_INT, null);
+				}
 			}
 		}
 	};
