@@ -354,7 +354,7 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 						.rasterState = .{},
 						.depthStencilState = .{.depthTest = true, .depthCompare = .equal, .depthWrite = false},
 						.blendState = .{.attachments = &.{.alphaBlending}, .formats = &.{.world}},
-						.inputAssemblyState = .{.topology = .triangleStrip},
+						.inputAssemblyState = .{.topology = .triangleList},
 						.pushConstantSize = @sizeOf(Uniforms),
 					},
 				);
