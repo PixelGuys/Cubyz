@@ -594,7 +594,6 @@ pub const Frame = struct { // MARK: Frame
 	swapChainImage: c.VkImage = undefined,
 	swapChainImageView: c.VkImageView = undefined,
 
-	imageAvailable: Semaphore = undefined,
 	renderFinished: Semaphore = undefined,
 
 	commandArena: CommandArena = undefined,
@@ -609,7 +608,6 @@ pub const Frame = struct { // MARK: Frame
 		return .{
 			.fence = .init(true),
 			.uploadFence = .init(true),
-			.imageAvailable = .init(),
 			.renderFinished = .init(),
 			.swapChainImage = undefined,
 			.swapChainImageView = undefined,
@@ -623,7 +621,6 @@ pub const Frame = struct { // MARK: Frame
 	fn deinit(self: Frame) void {
 		self.fence.privateDeinit();
 		self.uploadFence.privateDeinit();
-		self.imageAvailable.privateDeinit();
 		self.renderFinished.privateDeinit();
 		self.commandArena.deinit();
 	}
@@ -661,7 +658,11 @@ pub const Frame = struct { // MARK: Frame
 		self.renderCommands.beginRecording(0);
 	}
 
-	fn endRender(self: Frame) void {
+	const EndRenderOptions = struct {
+		imageAvailable: ?Semaphore = null,
+		transitionToPresent: bool = false,
+	};
+	pub fn endRender(self: Frame, options: EndRenderOptions) void {
 		upload.submitCommands();
 
 		self.renderCommands.endRecording();
@@ -674,24 +675,26 @@ pub const Frame = struct { // MARK: Frame
 		);
 
 		self.guiCommands.endRendering();
-		self.guiCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
-			.{
-				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-				.srcStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-				.srcAccessMask = c.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-				.dstStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-				.dstAccessMask = 0,
-				.oldLayout = c.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-				.newLayout = c.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-				.image = self.swapChainImage,
-				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
-			},
-		}});
+		if (options.transitionToPresent) {
+			self.guiCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+				.{
+					.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+					.srcStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+					.srcAccessMask = c.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+					.dstStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+					.dstAccessMask = 0,
+					.oldLayout = c.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+					.newLayout = c.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+					.image = self.swapChainImage,
+					.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
+				},
+			}});
+		}
 		self.guiCommands.endRecording();
 		self.guiCommands.submit(
 			graphicsQueue,
-			&.{self.imageAvailable.handle},
-			&.{c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT},
+			if (options.imageAvailable) |semaphore| &.{semaphore.handle} else &.{},
+			if (options.imageAvailable != null) &.{c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT} else &.{},
 			&.{self.renderFinished.handle},
 			self.fence.handle,
 		);
@@ -709,6 +712,7 @@ pub const SwapChain = struct { // MARK: SwapChain
 
 	pub var imageFormat: c.VkFormat = undefined;
 	var instance: *SwapChain = undefined;
+	var imageAvailable: [frames.len]Semaphore = undefined;
 
 	const SupportDetails = struct {
 		capabilities: c.VkSurfaceCapabilitiesKHR,
@@ -785,12 +789,18 @@ pub const SwapChain = struct { // MARK: SwapChain
 		for (&frames) |*frame| {
 			frame.* = .init();
 		}
+		for (0..imageAvailable.len) |i| {
+			imageAvailable[i] = .init();
+		}
 
 		SwapChain.instance = .init();
 	}
 
 	fn globalDeinit() void {
 		SwapChain.instance.privateDeinit();
+		for (imageAvailable) |semaphore| {
+			semaphore.privateDeinit();
+		}
 		for (&frames) |frame| {
 			frame.deinit();
 		}
@@ -866,7 +876,7 @@ pub const SwapChain = struct { // MARK: SwapChain
 	fn beginRender() *Frame {
 		frames[frameIndex].fence.waitAndReset();
 		while (true) {
-			const result = c.vkAcquireNextImageKHR(device, SwapChain.instance.handle, c.UINT64_MAX, frames[frameIndex].imageAvailable.handle, null, &SwapChain.instance.currentImageIndex);
+			const result = c.vkAcquireNextImageKHR(device, SwapChain.instance.handle, c.UINT64_MAX, imageAvailable[frameIndex].handle, null, &SwapChain.instance.currentImageIndex);
 			if (result != c.VK_ERROR_OUT_OF_DATE_KHR and result != c.VK_SUBOPTIMAL_KHR) {
 				checkResult(result);
 				break;
@@ -882,7 +892,10 @@ pub const SwapChain = struct { // MARK: SwapChain
 	}
 
 	fn endRender() void {
-		frames[frameIndex].endRender();
+		frames[frameIndex].endRender(.{
+			.imageAvailable = imageAvailable[frameIndex],
+			.transitionToPresent = true,
+		});
 
 		const presentInfo: c.VkPresentInfoKHR = .{
 			.sType = c.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
