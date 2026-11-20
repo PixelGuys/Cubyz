@@ -864,32 +864,41 @@ pub const menu_background = struct { // MARK: menu_background
 		defer image.deinit(main.stackAllocator);
 
 		for (0..4) |i| {
-			var frame: vulkan.Frame = .init();
-			defer frame.deinit();
-
-			frame.extent = .{.width = size, .height = size};
-			frame.swapChainImage = buffer.color.handle;
-			frame.swapChainImageView = buffer.color.view;
-
-			frame.fence.waitAndReset();
-			frame.beginRender();
-
-			c.glDepthFunc(c.GL_LESS);
-			c.glDepthMask(c.GL_TRUE);
-			c.glDisable(c.GL_SCISSOR_TEST);
-			game.camera.rotation = .{0, 0, angles[i]};
-			// Draw to frame buffer.
-			buffer.bind();
-			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-			main.renderer.render(&frame, game.player.getEyePosBlocking(), 0);
-
 			if (main.settings.launch_config.vulkanTestingMode) {
+				var frame: vulkan.Frame = .init();
+				defer frame.deinit();
+
+				const frameBufferImage: vulkan.Image = .init(.{size, size, 1}, .{
+					.usage = c.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | c.VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+					.format = c.VK_FORMAT_B8G8R8A8_UNORM,
+				});
+				defer frameBufferImage.deferredDeinit();
+
+				frame.extent = .{.width = size, .height = size};
+				frame.swapChainImage = frameBufferImage.handle;
+				frame.swapChainImageView = frameBufferImage.view;
+
+				frame.fence.waitAndReset();
+				frame.beginRender();
+				main.renderer.render(&frame, game.player.getEyePosBlocking(), 0);
 				// Copy the pixels directly from Vulkan
 				const tempBuffer: vulkan.Buffer = .init(4*size*size, .{.usage = c.VK_BUFFER_USAGE_TRANSFER_DST_BIT, .hostAccessible = true, .alignment = 4});
 				defer tempBuffer.deferredDeinit();
 				frame.guiCommands.endRendering();
-				buffer.prepareTexturesForBinding(frame.guiCommands, .{.targetLayout = c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL});
-				frame.guiCommands.copyImageToBuffer(tempBuffer, buffer.color, c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, &.{.{
+				frame.guiCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+					.{
+						.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+						.srcStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+						.srcAccessMask = c.VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | c.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+						.dstStageMask = c.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+						.dstAccessMask = c.VK_ACCESS_2_SHADER_READ_BIT,
+						.oldLayout = c.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+						.newLayout = c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+						.image = frameBufferImage.handle,
+						.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = c.VK_REMAINING_ARRAY_LAYERS},
+					},
+				}});
+				frame.guiCommands.copyImageToBuffer(tempBuffer, frameBufferImage, c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, &.{.{
 					.sType = c.VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2,
 					.bufferOffset = 0,
 					.imageSubresource = .{
@@ -924,6 +933,15 @@ pub const menu_background = struct { // MARK: menu_background
 					}
 				}
 			} else {
+				c.glDepthFunc(c.GL_LESS);
+				c.glDepthMask(c.GL_TRUE);
+				c.glDisable(c.GL_SCISSOR_TEST);
+				game.camera.rotation = .{0, 0, angles[i]};
+				// Draw to frame buffer.
+				buffer.bind();
+				c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
+				main.renderer.render(undefined, game.player.getEyePosBlocking(), 0);
+
 				// Copy the pixels directly from OpenGL
 				const pixels: []u32 = main.stackAllocator.alloc(u32, size*size);
 				defer main.stackAllocator.free(pixels);
