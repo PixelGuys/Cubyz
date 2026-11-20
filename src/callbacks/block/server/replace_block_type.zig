@@ -41,6 +41,6 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 		.typ = self.blockType,
 		.data = params.block.data,
 	};
-	_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, params.block, replacingBlock, false);
+	_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, params.block, replacingBlock, .neighbors);
 	return .handled;
 }

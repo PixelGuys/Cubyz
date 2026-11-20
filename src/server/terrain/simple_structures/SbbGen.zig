@@ -16,7 +16,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 pub const id = "cubyz:sbb";
 pub const generationMode = .floor;
 
-pub const SbbGen = @This();
+const SbbGen = @This();
 
 structureRef: *const sbb.StructureBuildingBlock,
 placeMode: Blueprint.PasteMode,

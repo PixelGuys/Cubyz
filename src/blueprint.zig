@@ -191,8 +191,9 @@ pub const Blueprint = struct { // MARK: Blueprint
 						if (oldBlock) |_oldBlock| {
 							if (!_oldBlock.degradable() and !flags.replaceUndegradable) break;
 						}
-						if (main.server.world.?.cmpxchgBlock(worldX, worldY, worldZ, oldBlock, block, true) == null)
+						if (main.server.world.?.cmpxchgBlock(worldX, worldY, worldZ, oldBlock, block, .none) == null) {
 							break;
+						}
 					}
 				}
 			}

@@ -5,7 +5,7 @@ const Vec3i = main.vec.Vec3i;
 const SbbGen = main.server.terrain.structures.simple_structures.SbbGen;
 const SimpleStructureModel = main.server.terrain.biomes.SimpleStructureModel;
 
-sbb: *SbbGen.SbbGen,
+sbb: *SbbGen,
 chance: f32,
 
 pub fn init(zon: main.ZonElement, _: main.callbacks.Creator) ?*@This() {
