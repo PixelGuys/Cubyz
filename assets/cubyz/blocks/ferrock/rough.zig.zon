@@ -1,5 +1,5 @@
 .{
-	.allowOres = true,
+	.tags = .{.allowOres},
 	.model = "cubyz:cube",
 	.rotation = "cubyz:stairs",
 	.texture = "cubyz:ferrock/rough",
