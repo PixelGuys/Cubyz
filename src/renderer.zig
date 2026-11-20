@@ -853,6 +853,7 @@ pub const menu_background = struct { // MARK: menu_background
 		defer image.deinit(main.stackAllocator);
 
 		for (0..4) |i| {
+			game.camera.rotation = .{0, 0, angles[i]};
 			if (main.settings.launch_config.vulkanTestingMode) {
 				var frame: vulkan.Frame = .init();
 				defer frame.deinit();
@@ -931,7 +932,6 @@ pub const menu_background = struct { // MARK: menu_background
 				c.glDepthFunc(c.GL_LESS);
 				c.glDepthMask(c.GL_TRUE);
 				c.glDisable(c.GL_SCISSOR_TEST);
-				game.camera.rotation = .{0, 0, angles[i]};
 				// Draw to frame buffer.
 				buffer.bind();
 				c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
