@@ -533,7 +533,7 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 				textBuffer.renderTextWithoutShadow(&fakeFrame, 0, 0, 16);
 				if (main.settings.launch_config.vulkanTestingMode) {
 					graphics.vulkan.upload.commandBuffer().endRendering();
-					finalFrameBuffer.prepareTexturesForBinding(graphics.vulkan.upload.commandBuffer());
+					finalFrameBuffer.prepareTexturesForBinding(graphics.vulkan.upload.commandBuffer(), .{});
 					signData.renderedTexture = .{.textureID = finalFrameBuffer.texture, .vulkanImage = finalFrameBuffer.color};
 				} else {
 					signData.renderedTexture = .{.textureID = finalFrameBuffer.texture, .vulkanImage = undefined};

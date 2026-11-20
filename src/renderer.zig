@@ -170,7 +170,7 @@ fn initReflectionCubeMap() void {
 
 			commandBuffer.endRendering();
 		}
-		framebuffer.prepareTexturesForBinding(commandBuffer);
+		framebuffer.prepareTexturesForBinding(commandBuffer, .{});
 	}
 	framebuffer.bind();
 	fakeReflectionPipeline.bind(null);
@@ -373,7 +373,7 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 
 	if (main.settings.launch_config.vulkanTestingMode) {
 		currentFrame.renderCommands.endRendering();
-		worldFrameBuffer.prepareTexturesForBinding(currentFrame.renderCommands);
+		worldFrameBuffer.prepareTexturesForBinding(currentFrame.renderCommands, .{});
 	}
 
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
@@ -588,7 +588,7 @@ const bloom = struct { // MARK: bloom
 			currentFrame.renderCommands.bindVertexArray(graphics.draw.rectVao);
 			currentFrame.renderCommands.draw(4, 0);
 			currentFrame.renderCommands.endRendering();
-			buffer1.prepareTexturesForBinding(currentFrame.renderCommands);
+			buffer1.prepareTexturesForBinding(currentFrame.renderCommands, .{});
 		} else {
 			worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 			worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
@@ -608,7 +608,7 @@ const bloom = struct { // MARK: bloom
 			currentFrame.renderCommands.bindVertexArray(graphics.draw.rectVao);
 			currentFrame.renderCommands.draw(4, 0);
 			currentFrame.renderCommands.endRendering();
-			buffer2.prepareTexturesForBinding(currentFrame.renderCommands);
+			buffer2.prepareTexturesForBinding(currentFrame.renderCommands, .{});
 		} else {
 			firstPassPipeline.bind(null);
 			buffer1.bindTexture(c.GL_TEXTURE3);
@@ -628,7 +628,7 @@ const bloom = struct { // MARK: bloom
 			currentFrame.renderCommands.bindVertexArray(graphics.draw.rectVao);
 			currentFrame.renderCommands.draw(4, 0);
 			currentFrame.renderCommands.endRendering();
-			buffer1.prepareTexturesForBinding(currentFrame.renderCommands);
+			buffer1.prepareTexturesForBinding(currentFrame.renderCommands, .{});
 		} else {
 			secondPassPipeline.bind(null);
 			buffer2.bindTexture(c.GL_TEXTURE3);
@@ -832,8 +832,6 @@ pub const menu_background = struct { // MARK: menu_background
 
 	pub fn takeBackgroundImage() void {
 		const size: usize = 1024; // Use a power of 2 here, to reduce video memory waste.
-		const pixels: []u32 = main.stackAllocator.alloc(u32, size*size);
-		defer main.stackAllocator.free(pixels);
 
 		// Change the viewport and the matrices to render 4 cube faces:
 
@@ -845,12 +843,6 @@ pub const menu_background = struct { // MARK: menu_background
 		main.settings.resolutionScale = oldResolutionScale;
 		defer updateViewport(Window.width, Window.height);
 
-		var buffer: graphics.FrameBuffer = .init(size, size, c.VK_FORMAT_R8G8B8A8_UNORM, false, .nearest, .repeat);
-		defer buffer.deinit();
-
-		activeFrameBuffer = buffer.frameBuffer;
-		defer activeFrameBuffer = 0;
-
 		const oldRotation = game.camera.rotation;
 		defer game.camera.rotation = oldRotation;
 
@@ -861,27 +853,108 @@ pub const menu_background = struct { // MARK: menu_background
 		defer image.deinit(main.stackAllocator);
 
 		for (0..4) |i| {
-			c.glDepthFunc(c.GL_LESS);
-			c.glDepthMask(c.GL_TRUE);
-			c.glDisable(c.GL_SCISSOR_TEST);
 			game.camera.rotation = .{0, 0, angles[i]};
-			// Draw to frame buffer.
-			buffer.bind();
-			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-			main.renderer.render(undefined, game.player.getEyePosBlocking(), 0); // TODO: Pass vulkan.Frame here
-			// Copy the pixels directly from OpenGL
-			buffer.bind();
-			c.glReadPixels(0, 0, size, size, c.GL_RGBA, c.GL_UNSIGNED_BYTE, pixels.ptr);
+			if (main.settings.launch_config.vulkanTestingMode) {
+				var frame: vulkan.Frame = .init();
+				defer frame.deinit();
 
-			for (0..size) |y| {
-				for (0..size) |x| {
-					const index = x + y*size;
-					// Needs to flip the image in y-direction.
-					image.setRGB(x + size*i, size - 1 - y, @bitCast(pixels[index]));
+				const frameBufferImage: vulkan.Image = .init(.{size, size, 1}, .{
+					.usage = c.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | c.VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+					.format = c.VK_FORMAT_B8G8R8A8_UNORM,
+				});
+				defer frameBufferImage.deferredDeinit();
+
+				frame.extent = .{.width = size, .height = size};
+				frame.swapChainImage = frameBufferImage.handle;
+				frame.swapChainImageView = frameBufferImage.view;
+
+				frame.fence.waitAndReset();
+				frame.beginRender();
+				main.renderer.render(&frame, game.player.getEyePosBlocking(), 0);
+				// Copy the pixels directly from Vulkan
+				const tempBuffer: vulkan.Buffer = .init(4*size*size, .{.usage = c.VK_BUFFER_USAGE_TRANSFER_DST_BIT, .hostAccessible = true, .alignment = 4});
+				defer tempBuffer.deferredDeinit();
+				frame.guiCommands.endRendering();
+				frame.guiCommands.pipelineBarrier(.{.imageMemoryBarriers = &.{
+					.{
+						.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+						.srcStageMask = c.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+						.srcAccessMask = c.VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | c.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+						.dstStageMask = c.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+						.dstAccessMask = c.VK_ACCESS_2_SHADER_READ_BIT,
+						.oldLayout = c.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+						.newLayout = c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+						.image = frameBufferImage.handle,
+						.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = c.VK_REMAINING_ARRAY_LAYERS},
+					},
+				}});
+				frame.guiCommands.copyImageToBuffer(tempBuffer, frameBufferImage, c.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, &.{.{
+					.sType = c.VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2,
+					.bufferOffset = 0,
+					.imageSubresource = .{
+						.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
+						.mipLevel = 0,
+						.baseArrayLayer = 0,
+						.layerCount = 1,
+					},
+					.imageOffset = .{},
+					.imageExtent = .{.width = size, .height = size, .depth = 1},
+				}});
+
+				frame.endRender(.{});
+
+				frame.fence.waitAndReset();
+
+				var gpuMemory: ?*anyopaque = undefined;
+				vulkan.checkResult(c.vmaMapMemory(vulkan.gpu_allocator.handle, tempBuffer.allocation, &gpuMemory));
+				defer c.vmaUnmapMemory(vulkan.gpu_allocator.handle, tempBuffer.allocation);
+				const pixels: []u32 = @as([*]u32, @ptrCast(@alignCast(gpuMemory)))[0 .. size*size];
+
+				for (0..size) |y| {
+					for (0..size) |x| {
+						const index = x + y*size;
+						// Needs to flip the image in y-direction.
+						image.setRGB(x + size*i, y, .{
+							.r = @truncate(pixels[index] >> 16),
+							.g = @truncate(pixels[index] >> 8),
+							.b = @truncate(pixels[index]),
+							.a = 255,
+						});
+					}
+				}
+			} else {
+				var buffer: graphics.FrameBuffer = .init(size, size, c.VK_FORMAT_B8G8R8A8_UNORM, false, .nearest, .repeat);
+				defer buffer.deinit();
+
+				activeFrameBuffer = buffer.frameBuffer;
+				defer activeFrameBuffer = 0;
+
+				c.glDepthFunc(c.GL_LESS);
+				c.glDepthMask(c.GL_TRUE);
+				c.glDisable(c.GL_SCISSOR_TEST);
+				// Draw to frame buffer.
+				buffer.bind();
+				c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
+				main.renderer.render(undefined, game.player.getEyePosBlocking(), 0);
+
+				// Copy the pixels directly from OpenGL
+				const pixels: []u32 = main.stackAllocator.alloc(u32, size*size);
+				defer main.stackAllocator.free(pixels);
+				buffer.bind();
+				c.glReadPixels(0, 0, size, size, c.GL_RGBA, c.GL_UNSIGNED_BYTE, pixels.ptr);
+
+				for (0..size) |y| {
+					for (0..size) |x| {
+						const index = x + y*size;
+						// Needs to flip the image in y-direction.
+						image.setRGB(x + size*i, size - 1 - y, @bitCast(pixels[index]));
+					}
 				}
 			}
 		}
-		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
+		}
 
 		const fileName = main.stackAllocator.print("{s}/backgrounds/{s}_{}.png", .{main.files.cubyzDirStr(), game.world.?.name, game.world.?.gameTime.load(.monotonic)});
 		defer main.stackAllocator.free(fileName);

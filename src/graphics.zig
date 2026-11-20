@@ -2092,7 +2092,10 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 		return true;
 	}
 
-	pub fn prepareTexturesForBinding(self: *FrameBuffer, commandBuffer: CommandBuffer) void {
+	const TextureBindingOptions = struct {
+		targetLayout: c.VkImageLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
+	};
+	pub fn prepareTexturesForBinding(self: *FrameBuffer, commandBuffer: CommandBuffer, options: TextureBindingOptions) void {
 		commandBuffer.pipelineBarrier(.{.imageMemoryBarriers = @as([]const c.VkImageMemoryBarrier2, &.{
 			.{
 				.sType = c.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
@@ -2101,7 +2104,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 				.dstStageMask = c.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
 				.dstAccessMask = c.VK_ACCESS_2_SHADER_READ_BIT,
 				.oldLayout = c.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-				.newLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
+				.newLayout = options.targetLayout,
 				.image = self.color.handle,
 				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = c.VK_REMAINING_ARRAY_LAYERS},
 			},
@@ -2112,7 +2115,7 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 				.dstStageMask = c.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
 				.dstAccessMask = c.VK_ACCESS_2_SHADER_READ_BIT,
 				.oldLayout = self.depthLayout,
-				.newLayout = c.VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
+				.newLayout = options.targetLayout,
 				.image = self.depth.handle,
 				.subresourceRange = .{.aspectMask = c.VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = c.VK_REMAINING_ARRAY_LAYERS},
 			},
@@ -2927,7 +2930,7 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 
 	if (main.settings.launch_config.vulkanTestingMode) {
 		vulkan.upload.commandBuffer().endRendering();
-		frameBuffer.prepareTexturesForBinding(vulkan.upload.commandBuffer());
+		frameBuffer.prepareTexturesForBinding(vulkan.upload.commandBuffer(), .{});
 		finalFrameBuffer.bindAndClear(vulkan.upload.commandBuffer(), .{.clearColor = .dontCare, .clearDepth = .dontCare});
 
 		vulkan.upload.commandBuffer().bindPipeline(&fakeFrame, block_texture.pipeline, null);
@@ -2942,7 +2945,7 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 		vulkan.upload.commandBuffer().draw(4, 0);
 
 		vulkan.upload.commandBuffer().endRendering();
-		finalFrameBuffer.prepareTexturesForBinding(vulkan.upload.commandBuffer());
+		finalFrameBuffer.prepareTexturesForBinding(vulkan.upload.commandBuffer(), .{});
 		texture.vulkanImage = finalFrameBuffer.color;
 	}
 
