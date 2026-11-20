@@ -901,7 +901,7 @@ pub const menu_background = struct { // MARK: menu_background
 					.imageOffset = .{},
 					.imageExtent = .{.width = size, .height = size, .depth = 1},
 				}});
-				
+
 				frame.endRender(.{});
 
 				frame.fence.waitAndReset();
@@ -909,7 +909,7 @@ pub const menu_background = struct { // MARK: menu_background
 				var gpuMemory: ?*anyopaque = undefined;
 				vulkan.checkResult(c.vmaMapMemory(vulkan.gpu_allocator.handle, tempBuffer.allocation, &gpuMemory));
 				defer c.vmaUnmapMemory(vulkan.gpu_allocator.handle, tempBuffer.allocation);
-				const pixels: []u32 = @as([*]u32, @ptrCast(@alignCast(gpuMemory)))[0..size*size];
+				const pixels: []u32 = @as([*]u32, @ptrCast(@alignCast(gpuMemory)))[0 .. size*size];
 
 				for (0..size) |y| {
 					for (0..size) |x| {
