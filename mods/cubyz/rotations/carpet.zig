@@ -49,7 +49,7 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	};
 	if (data >= 64) return 0;
 	const runtimeTable = rotationTable;
-	return runtimeTable[@intFromEnum(angle)][data];
+	return runtimeTable[@backingInt(angle)][data];
 }
 
 pub fn init() void {
@@ -159,7 +159,7 @@ fn closestRay(comptime typ: enum { bit, intersection }, block: Block, _: main.it
 	for ([_]u16{1, 2, 4, 8, 16, 32}) |bit| {
 		if (block.data & bit != 0) {
 			const modelIndex: ModelIndex = blocks.meshes.modelIndexStart(block).add(bit - 1);
-			if (RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
+			if (RotationMode.default_functions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 				if (result == null or result.?.distance > intersection.distance) {
 					result = intersection;
 					resultBit = bit;

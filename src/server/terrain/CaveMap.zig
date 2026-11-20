@@ -44,7 +44,7 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 	}
 
 	pub fn deferredDeinit(self: *CaveMapFragment) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
+		main.heap.garbage_collection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	fn getIndex(x: i32, y: i32) usize {
@@ -95,10 +95,10 @@ pub const CaveGenerator = struct { // MARK: CaveGenerator
 	defaultState: GeneratorState,
 
 	const generatorRegistry: std.StaticStringMap(CaveGenerator) = .initComptime(blk: {
-		const decls = @typeInfo(cave_generators).@"struct".decls;
+		const decls = @typeInfo(cave_generators).@"struct".decl_names;
 		var generators: [decls.len]struct { []const u8, CaveGenerator } = undefined;
 		for (0..decls.len) |i| {
-			const Generator = @field(cave_generators, decls[i].name);
+			const Generator = @field(cave_generators, decls[i]);
 			generators[i] = .{Generator.id, .{
 				.init = &Generator.init,
 				.generate = &Generator.generate,
@@ -114,7 +114,7 @@ pub const CaveGenerator = struct { // MARK: CaveGenerator
 		var list: main.List(CaveGenerator) = .initCapacity(allocator, generatorRegistry.values().len);
 		for (generatorRegistry.keys(), generatorRegistry.values()) |id, generator| {
 			const generatorSettings = settings.getChild(id);
-			if (generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
+			if ((generatorSettings.get(GeneratorState, "state") orelse generator.defaultState) == .disabled) continue;
 			generator.init(generatorSettings);
 			list.appendAssumeCapacity(generator);
 		}
@@ -271,7 +271,6 @@ pub const CaveMapView = struct { // MARK: CaveMapView
 
 // MARK: cache
 const cacheSize = 1 << 12; // Must be a power of 2!
-const cacheMask = cacheSize - 1;
 const associativity = 8; // 1024 MiB Cache size
 var cache: Cache(CaveMapFragment, cacheSize, associativity, CaveMapFragment.deferredDeinit) = .{};
 var profile: TerrainGenerationProfile = undefined;

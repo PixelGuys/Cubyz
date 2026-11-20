@@ -6,14 +6,6 @@ const ChunkPosition = main.chunk.ChunkPosition;
 const random = main.random;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
-const FractalNoise3D = @This();
-
-pos: ChunkPosition,
-cache: Array3D(f32),
-voxelShift: u5,
-scale: u31,
-worldSeed: u64,
-
 pub fn generateAligned(allocator: NeverFailingAllocator, wx: i32, wy: i32, wz: i32, voxelSize: u31, width: u31, depth: u31, height: u31, worldSeed: u64, scale: u31) Array3D(f32) {
 	std.debug.assert(wx & scale - 1 == 0 and wy & scale - 1 == 0 and wz & scale - 1 == 0); // Alignment;
 	std.debug.assert(width - 1 & scale/voxelSize - 1 == 0 and height - 1 & scale/voxelSize - 1 == 0 and depth - 1 & scale/voxelSize - 1 == 0); // dimensions need to be of the form n*scale + 1 with n ∈ ℕ \ {0}

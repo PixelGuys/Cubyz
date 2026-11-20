@@ -31,7 +31,7 @@ pub const LightMapFragment = struct {
 	}
 
 	pub fn deferredDeinit(self: *LightMapFragment) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
+		main.heap.garbage_collection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	pub fn getHeight(self: *LightMapFragment, wx: i32, wy: i32) i32 {
@@ -42,7 +42,6 @@ pub const LightMapFragment = struct {
 };
 
 const cacheSize = 1 << 6; // Must be a power of 2!
-const cacheMask = cacheSize - 1;
 const associativity = 8; // 64MiB MiB Cache size
 var cache: Cache(LightMapFragment, cacheSize, associativity, LightMapFragment.deferredDeinit) = .{};
 

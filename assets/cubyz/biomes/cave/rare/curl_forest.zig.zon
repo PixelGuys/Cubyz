@@ -1,0 +1,52 @@
+.{
+	.isCave = true,
+	.tags = .{.cave_layer},
+	.maxHeight = -512,
+
+	.fogDensity = 2,
+
+	.chance = 0.01,
+
+	.music = "cubyz:ikabod/live",
+
+	.structures = .{
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/curl",
+			.placeMode = .degradable,
+			.chance = 0.15,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:gravel",
+			.chance = 0.064,
+			.width = 5,
+			.variation = 5,
+			.depth = 3,
+			.smoothness = 0.1,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.016,
+			.block = "cubyz:slate/rough",
+			.size = 4,
+			.size_variance = 3,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.016,
+			.block = "cubyz:slate/smooth",
+			.size = 4,
+			.size_variance = 4,
+		},
+	},
+	.caveModels = .{
+		.{
+			.id = "cubyz:partial_sphere",
+			.minAmount = 10,
+			.maxAmount = 30,
+			.minRadius = 10,
+			.maxRadius = 20,
+		},
+	},
+}

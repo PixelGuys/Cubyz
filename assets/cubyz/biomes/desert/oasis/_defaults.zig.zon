@@ -1,5 +1,5 @@
 .{
-	.properties = .{
+	.climate = .{
 		.hot,
 	},
 	.music = "cubyz:mischol/desert_firefly",
@@ -9,5 +9,5 @@
 	.ground_structure = .{
 		"3 to 4 cubyz:sand",
 	},
-	.stoneBlock = "cubyz:sandstone/base",
+	.stoneBlock = "cubyz:sandstone/rough",
 }

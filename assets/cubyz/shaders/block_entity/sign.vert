@@ -1,20 +1,29 @@
 #version 460
 
+#include "frame_uniforms.glsl"
+
 layout(location = 0) out vec3 mvVertexPos;
 layout(location = 1) out vec3 direction;
 layout(location = 2) out vec3 light;
 layout(location = 3) out vec2 uv;
 layout(location = 4) flat out vec3 normal;
 
+#ifdef OPEN_GL
 layout(location = 0) uniform vec3 ambientLight;
-layout(location = 1) uniform mat4 projectionMatrix;
-layout(location = 2) uniform mat4 viewMatrix;
-layout(location = 3) uniform ivec3 playerPositionInteger;
-layout(location = 4) uniform vec3 playerPositionFraction;
 layout(location = 5) uniform int quadIndex;
 layout(location = 6) uniform uvec4 lightData;
 layout(location = 7) uniform ivec3 chunkPos;
 layout(location = 8) uniform ivec3 blockPos;
+#else
+layout(push_constant, std430) uniform _ {
+	vec3 ambientLight;
+	uvec4 lightData;
+	ivec3 chunkPos;
+	ivec3 blockPos;
+	int quadIndex;
+	float contrast;
+};
+#endif
 
 struct QuadInfo {
 	vec3 normal;
@@ -30,8 +39,8 @@ layout(std430, binding = 4) buffer _quads
 };
 
 void main() {
-	int faceID = gl_VertexID >> 2;
-	int vertexID = gl_VertexID & 3;
+	int faceID = gl_VertexIndex >> 2;
+	int vertexID = gl_VertexIndex & 3;
 	uint fullLight = lightData[vertexID];
 	vec3 sunLight = vec3(
 		fullLight >> 25 & 31u,
@@ -65,5 +74,9 @@ void main() {
 		minUv = min(minUv, quads[quadIndex].cornerUV[i]);
 	}
 	uv.x = (quads[quadIndex].cornerUV[vertexID].x == maxUv.x) ? 1 : 0;
+#ifdef OPEN_GL
 	uv.y = (quads[quadIndex].cornerUV[vertexID].y == maxUv.y) ? 1 : 0;
+#else
+	uv.y = (quads[quadIndex].cornerUV[vertexID].y == maxUv.y) ? 0 : 1;
+#endif
 }

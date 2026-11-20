@@ -1,4 +1,7 @@
 .{
+	.onUpdate = .{
+		.type = .decay,
+	},
 	.drops = .{
 		.{.items = .{.auto}},
 	},
@@ -7,5 +10,4 @@
 	.model = .{
 		.radius = 4,
 	},
-	.decayProhibitor = true,
 }

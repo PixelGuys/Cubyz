@@ -39,8 +39,8 @@ pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
 		const childModelAndExtend = sdf.SdfModel.initModel(child) orelse return null;
 		const childEntry: Entry = .{
 			.model = childModelAndExtend.model,
-			.positionOffset = child.get(Vec3f, "positionOffset", @splat(0)),
-			.randomOffset = child.get(Vec3f, "randomOffset", @splat(0)),
+			.positionOffset = child.get(Vec3f, "positionOffset") orelse @splat(0),
+			.randomOffset = child.get(Vec3f, "randomOffset") orelse @splat(0),
 		};
 		maxExtend.min = @min(maxExtend.min, @as(Vec3i, @floor(@as(Vec3f, @floatFromInt(childModelAndExtend.maxExtend.min)) + childEntry.positionOffset - childEntry.randomOffset)));
 		maxExtend.max = @max(maxExtend.max, @as(Vec3i, @ceil(@as(Vec3f, @floatFromInt(childModelAndExtend.maxExtend.max)) + childEntry.positionOffset + childEntry.randomOffset)));
@@ -54,7 +54,7 @@ pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
 
 	const self = main.worldArena.create(@This());
 	self.children = main.worldArena.dupe(Entry, list.items);
-	self.smoothness = zon.get(f32, "smothness", 4);
+	self.smoothness = zon.get(f32, "smothness") orelse 4;
 	return .{.model = self, .maxExtend = maxExtend};
 }
 

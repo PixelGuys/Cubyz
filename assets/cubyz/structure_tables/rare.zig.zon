@@ -6,12 +6,22 @@
 		.{
 			.id = "cubyz:sbb",
 			.placeMode = .all,
+			.structure = "cubyz:rare/blocky_geode/base",
+		},
+		.{
+			.id = "cubyz:sbb",
+			.placeMode = .all,
 			.structure = "cubyz:rare/triclops_statue/structure",
 		},
 		.{
 			.id = "cubyz:sbb",
 			.placeMode = .degradable,
 			.structure = "cubyz:rare/mushroom_pole/base",
+		},
+		.{
+			.id = "cubyz:sbb",
+			.placeMode = .degradable,
+			.structure = "cubyz:rare/fingerpost/base",
 		},
 	},
 }

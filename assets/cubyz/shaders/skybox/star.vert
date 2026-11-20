@@ -17,13 +17,20 @@ layout (std430, binding = 12) buffer _starBuffer {
 	star starData[];
 };
 
+#ifdef OPEN_GL
 layout(location = 0) uniform mat4 mvp;
 layout(location = 1) uniform float starOpacity;
+#else
+layout(push_constant, std430) uniform _ {
+	mat4 mvp;
+	float starOpacity;
+};
+#endif
 
 void main() {
-	gl_Position = mvp*vec4(starData[gl_VertexID/3].vertexPositions[gl_VertexID%3].xyz, 1);
+	gl_Position = mvp*vec4(starData[gl_VertexIndex/3].vertexPositions[gl_VertexIndex%3].xyz, 1);
 
-	pos = starData[gl_VertexID/3].vertexPositions[gl_VertexID%3].xyz;
-	centerPos = starData[gl_VertexID/3].pos;
-	color = starData[gl_VertexID/3].color*starOpacity;
+	pos = starData[gl_VertexIndex/3].vertexPositions[gl_VertexIndex%3].xyz;
+	centerPos = starData[gl_VertexIndex/3].pos;
+	color = starData[gl_VertexIndex/3].color*starOpacity;
 }

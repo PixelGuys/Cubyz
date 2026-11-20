@@ -61,7 +61,7 @@ pub const ClimateMapFragment = struct {
 	}
 
 	pub fn deferredDeinit(self: *ClimateMapFragment) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
+		main.heap.garbage_collection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	pub fn hashCode(wx: i32, wy: i32) u32 {
@@ -75,10 +75,10 @@ pub const ClimateMapGenerator = struct {
 	generateMapFragment: *const fn (fragment: *ClimateMapFragment, seed: u64) void,
 
 	const generatorRegistry: std.StaticStringMap(ClimateMapGenerator) = .initComptime(blk: {
-		const decls = @typeInfo(climate_generators).@"struct".decls;
+		const decls = @typeInfo(climate_generators).@"struct".decl_names;
 		var generators: [decls.len]struct { []const u8, ClimateMapGenerator } = undefined;
 		for (0..decls.len) |i| {
-			const Generator = @field(climate_generators, decls[i].name);
+			const Generator = @field(climate_generators, decls[i]);
 			generators[i] = .{Generator.id, .{
 				.init = &Generator.init,
 				.generateMapFragment = &Generator.generateMapFragment,
@@ -96,7 +96,6 @@ pub const ClimateMapGenerator = struct {
 };
 
 const cacheSize = 1 << 5; // Must be a power of 2!
-const cacheMask = cacheSize - 1;
 const associativity = 8; // ~400 MiB
 var cache: Cache(ClimateMapFragment, cacheSize, associativity, ClimateMapFragment.deferredDeinit) = .{};
 var profile: TerrainGenerationProfile = undefined;

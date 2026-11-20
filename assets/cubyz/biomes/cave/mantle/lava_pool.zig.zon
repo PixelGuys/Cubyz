@@ -9,7 +9,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:pyrolite/base",
+			.block = "cubyz:pyrolite/rough",
 			.chance = 0.1,
 			.width = 4,
 			.variation = 2,

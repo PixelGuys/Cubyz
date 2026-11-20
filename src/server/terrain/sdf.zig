@@ -27,7 +27,7 @@ pub const SdfModel = struct { // MARK: SdfModel
 	};
 
 	pub fn initModel(parameters: ZonElement) ?struct { model: SdfModel, maxExtend: vec.Boxi } {
-		const id = parameters.get([]const u8, "id", "");
+		const id = parameters.get([]const u8, "id") orelse "";
 		const vtable = modelRegistry.get(id) orelse {
 			std.log.err("Couldn't find SDF model with id {s}", .{id});
 			return null;
@@ -40,10 +40,10 @@ pub const SdfModel = struct { // MARK: SdfModel
 			.model = .{
 				.data = result.model,
 				.instantiateFn = vtable.instantiate,
-				.maxBiomeCenterDistance = std.math.clamp(parameters.get(f32, "maxBiomeCenterDistance", terrain.CaveBiomeMap.CaveBiomeMapFragment.caveBiomeSize/2), 0, terrain.CaveBiomeMap.CaveBiomeMapFragment.caveBiomeSize/2),
-				.minAmount = parameters.get(f32, "minAmount", 1),
-				.maxAmount = parameters.get(f32, "maxAmount", parameters.get(f32, "minAmount", 1)),
-				.mode = parameters.get(@TypeOf(@as(SdfModel, undefined).mode), "mode", .subtractive),
+				.maxBiomeCenterDistance = std.math.clamp(parameters.get(f32, "maxBiomeCenterDistance") orelse terrain.CaveBiomeMap.CaveBiomeMapFragment.caveBiomeSize/2, 0, terrain.CaveBiomeMap.CaveBiomeMapFragment.caveBiomeSize/2),
+				.minAmount = parameters.get(f32, "minAmount") orelse 1,
+				.maxAmount = parameters.get(f32, "maxAmount") orelse parameters.get(f32, "minAmount") orelse 1,
+				.mode = parameters.get(@TypeOf(@as(SdfModel, undefined).mode), "mode") orelse .subtractive,
 			},
 			.maxExtend = result.maxExtend,
 		};
@@ -72,10 +72,10 @@ pub const SdfModel = struct { // MARK: SdfModel
 	}
 
 	const modelRegistry: std.StaticStringMap(VTable) = .initComptime(blk: {
-		const decls = @typeInfo(sdf_models).@"struct".decls;
+		const decls = @typeInfo(sdf_models).@"struct".decl_names;
 		var generators: [decls.len]struct { []const u8, VTable } = undefined;
 		for (0..decls.len) |i| {
-			const Generator = @field(sdf_models, decls[i].name);
+			const Generator = @field(sdf_models, decls[i]);
 			generators[i] = .{Generator.id, .{
 				.initAndGetExtend = Generator.initAndGetExtend,
 				.instantiate = main.meta.castFunctionSelfToAnyopaque(Generator.instantiate),

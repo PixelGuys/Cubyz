@@ -142,7 +142,7 @@ pub const Placeholder = struct { // Copied from std.fmt.Placeholder and adjusted
 };
 
 pub const FormatErrorTrace = struct {
-	stackTrace: std.builtin.StackTrace,
+	stackTrace: std.lang.StackTrace,
 	terminalMode: std.Io.Terminal.Mode = .no_color,
 
 	pub fn format(self: FormatErrorTrace, writer: *std.Io.Writer) std.Io.Writer.Error!void {

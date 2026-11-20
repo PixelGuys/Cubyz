@@ -1,9 +1,6 @@
 .{
 	.onUpdate = .{
 		.type = .decay,
-		.drops = .{
-			.{.items = .{"cubyz:branch/baobab"}},
-		},
 	},
 	.drops = .{
 		.{.items = .{"cubyz:branch/baobab"}},

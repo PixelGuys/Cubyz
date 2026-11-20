@@ -16,7 +16,7 @@ jobs:
       tag: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v3
-      - run: echo "VERSION=$(cat .zigversion)" >> $GITHUB_ENV
+      - run: echo "VERSION=$(grep -i "minimum_zig_version" build.zig.zon | cut -d'"' -f2)" >> $GITHUB_ENV
       - uses: mlugg/setup-zig@v2
         with:
           version: ${{ env.VERSION }}

@@ -26,11 +26,11 @@ const Instance = struct {
 
 pub fn initAndGetExtend(zon: ZonElement) sdf.SdfModel.InitResult {
 	const self = main.worldArena.create(@This());
-	self.minRadius = zon.get(f32, "minRadius", 16);
-	self.maxRadius = zon.get(f32, "maxRadius", self.minRadius);
-	self.cutPercentage = zon.get(f32, "cutPercentage", 0.5);
-	self.cutDirection = vec.normalize(zon.get(Vec3f, "cutDirection", .{0, 0, -1}));
-	self.cutDirectionRandomness = zon.get(f32, "cutDirectionRandomness", 0);
+	self.minRadius = zon.get(f32, "minRadius") orelse 16;
+	self.maxRadius = zon.get(f32, "maxRadius") orelse self.minRadius;
+	self.cutPercentage = zon.get(f32, "cutPercentage") orelse 0.5;
+	self.cutDirection = vec.normalize(zon.get(Vec3f, "cutDirection") orelse .{0, 0, -1});
+	self.cutDirectionRandomness = zon.get(f32, "cutDirectionRandomness") orelse 0;
 
 	return .{.model = self, .maxExtend = .{
 		.min = @splat(@floor(-self.maxRadius)),

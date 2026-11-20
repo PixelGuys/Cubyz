@@ -34,7 +34,7 @@ fn apply() void {
 		if (err == error.AuthenticationFailed) {
 			incorrectPasswordLabel.updateText("#ff0000Incorrect password.");
 		} else {
-			const formattedError = std.fmt.allocPrint(main.stackAllocator.allocator, "#ff0000Authentication data is corrupted: {s}", .{@errorName(err)}) catch unreachable;
+			const formattedError = main.stackAllocator.print("#ff0000Authentication data is corrupted: {s}", .{@errorName(err)});
 			defer main.stackAllocator.free(formattedError);
 			incorrectPasswordLabel.updateText(formattedError);
 		}
@@ -46,7 +46,7 @@ fn apply() void {
 		std.log.warn("Encountered errors while verifying your Account. This may happen if you created your account in a future version, in which case it's fine to continue.\n{s}", .{failureText.items});
 	}
 
-	main.network.authentication.KeyCollection.init(accountCode);
+	main.network.authentication.key_collection.init(accountCode);
 
 	gui.closeWindowFromRef(&window);
 	gui.openWindow("multiplayer");

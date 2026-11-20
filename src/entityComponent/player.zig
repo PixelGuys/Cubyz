@@ -59,8 +59,8 @@ pub const server = struct {
 	pub const Component = struct {
 		playerIndex: u32, // model
 		pub fn save(self: Component, writer: *utils.BinaryWriter, audience: main.entity.AudienceInfo) main.entity.ComponentSaveBehaviour {
-			writer.writeVarInt(u32, self.playerIndex);
 			if (audience == .disk) return .discard;
+			writer.writeVarInt(u32, self.playerIndex);
 			return .save;
 		}
 	};

@@ -1,0 +1,13 @@
+.{
+	.maxHeight = -5000,
+
+	.caveModels = .{
+		.{
+			.id = "cubyz:partial_sphere",
+			.minAmount = 1,
+			.maxAmount = 5,
+			.minRadius = 30,
+			.maxRadius = 40,
+		},
+	},
+}

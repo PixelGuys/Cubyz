@@ -47,7 +47,7 @@ pub const CaveBiomeMapFragment = struct { // MARK: caveBiomeMapFragment
 	}
 
 	pub fn deferredDeinit(self: *CaveBiomeMapFragment) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
+		main.heap.garbage_collection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	const rotationMatrixShift = 30;
@@ -105,10 +105,10 @@ pub const CaveBiomeGenerator = struct { // MARK: CaveBiomeGenerator
 	defaultState: GeneratorState,
 
 	const generatorRegistry: std.StaticStringMap(CaveBiomeGenerator) = .initComptime(blk: {
-		const decls = @typeInfo(cave_biome_generators).@"struct".decls;
+		const decls = @typeInfo(cave_biome_generators).@"struct".decl_names;
 		var generators: [decls.len]struct { []const u8, CaveBiomeGenerator } = undefined;
 		for (0..decls.len) |i| {
-			const Generator = @field(cave_biome_generators, decls[i].name);
+			const Generator = @field(cave_biome_generators, decls[i]);
 			generators[i] = .{Generator.id, .{
 				.init = &Generator.init,
 				.generate = &Generator.generate,
@@ -124,7 +124,7 @@ pub const CaveBiomeGenerator = struct { // MARK: CaveBiomeGenerator
 		var list: main.List(CaveBiomeGenerator) = .initCapacity(allocator, generatorRegistry.values().len);
 		for (generatorRegistry.keys(), generatorRegistry.values()) |id, generator| {
 			const generatorSettings = settings.getChild(id);
-			if (generatorSettings.get(GeneratorState, "state", generator.defaultState) == .disabled) continue;
+			if ((generatorSettings.get(GeneratorState, "state") orelse generator.defaultState) == .disabled) continue;
 			generator.init(generatorSettings);
 			list.appendAssumeCapacity(generator);
 		}
@@ -529,7 +529,6 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 
 // MARK: cache
 const cacheSize = 1 << 8; // Must be a power of 2!
-const cacheMask = cacheSize - 1;
 const associativity = 8; // 128 MiB
 var cache: Cache(CaveBiomeMapFragment, cacheSize, associativity, CaveBiomeMapFragment.deferredDeinit) = .{};
 

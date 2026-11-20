@@ -21,6 +21,8 @@
 #include <glad/vulkan.h>
 #endif
 #include <GLFW/glfw3.h>
+// vulkan memory allocator
+#include <vk_mem_alloc_extended.h>
 
 // used for reading and writing image files
 #include <stb/stb_image.h>
@@ -41,6 +43,7 @@
 // used to handle sockets in Windows
 #ifdef _WIN32
 #include <winsock2.h>
+#include <ws2tcpip.h>
 #endif
 
 // used in file monitoring
@@ -53,6 +56,11 @@
 #include <errno.h>
 #endif
 
+// Used for platform-speciffic keystorage
+#ifdef _WIN32
+#include <wincrypt.h>
+#endif
+
 // used for audio
 #include <miniaudio.h>
 #define STB_VORBIS_HEADER_ONLY
@@ -61,3 +69,6 @@
 // used to compile shaders to SPIR-V
 #include <glslang/Include/glslang_c_interface.h>
 #include <glslang/Public/resource_limits_c.h>
+
+// file save/open dialog
+#include <tinyfiledialogs.h>

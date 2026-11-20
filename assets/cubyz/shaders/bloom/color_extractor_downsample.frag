@@ -1,5 +1,7 @@
 #version 460
 
+#include "frame_uniforms.glsl"
+
 layout(location = 0) out vec4 fragColor;
 
 layout(location = 0) in vec2 texCoords;
@@ -9,13 +11,6 @@ layout(location = 2) in vec3 direction;
 layout(binding = 3) uniform sampler2D color;
 layout(binding = 4) uniform sampler2D depthTexture;
 
-layout(location = 1) uniform vec2 tanXY;
-layout(location = 2) uniform float zNear;
-layout(location = 3) uniform float zFar;
-
-layout(location = 4) uniform ivec3 playerPositionInteger;
-layout(location = 5) uniform vec3 playerPositionFraction;
-
 struct Fog {
 	vec3 color;
 	float density;
@@ -23,7 +18,20 @@ struct Fog {
 	float fogHigher;
 };
 
+#ifdef OPEN_GL
+layout(location = 1) uniform vec2 tanXY;
+layout(location = 2) uniform float zNear;
+layout(location = 3) uniform float zFar;
 layout(location = 6) uniform Fog fog;
+#else
+layout(push_constant, std430) uniform _ {
+	mat4 invViewMatrix;
+	vec2 tanXY;
+	float zNear;
+	float zFar;
+	Fog fog;
+};
+#endif
 
 float zFromDepth(float depthBufferValue) {
 	return zNear*zFar/(depthBufferValue*(zNear - zFar) + zFar);
@@ -77,13 +85,13 @@ vec3 applyFrontfaceFog(float fogDistance, vec3 fogColor, vec3 inColor) {
 }
 
 vec3 fetch(ivec2 pos) {
-	vec4 rgba = texelFetch(color, pos, 0);
+	vec3 rgb = texelFetch(color, pos, 0).rgb;
 	float densityAdjustment = sqrt(dot(tanXY*(normalizedTexCoords*2 - 1), tanXY*(normalizedTexCoords*2 - 1)) + 1);
 	float dist = zFromDepth(texelFetch(depthTexture, pos, 0).r);
 	float fogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionFraction.z, normalize(direction).z, fog.density, fog.fogLower - playerPositionInteger.z, fog.fogHigher - playerPositionInteger.z);
 	vec3 fogColor = fog.color;
-	rgba.rgb = applyFrontfaceFog(fogDistance, fog.color, rgba.rgb);
-	return rgba.rgb/rgba.a;
+	rgb = applyFrontfaceFog(fogDistance, fog.color, rgb);
+	return rgb;
 }
 
 vec3 linearSample(ivec2 start) {

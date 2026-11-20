@@ -1,5 +1,5 @@
 .{
-	.properties = .{
+	.climate = .{
 		.hot,
 		.dry,
 		.barren,
@@ -45,5 +45,5 @@
 			.priority = 0.1,
 		},
 	},
-	.stoneBlock = "cubyz:sandstone/base",
+	.stoneBlock = "cubyz:sandstone/rough",
 }

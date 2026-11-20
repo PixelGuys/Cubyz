@@ -1,5 +1,5 @@
 .{
-	.properties = .{.mountain},
+	.climate = .{.mountain},
 	.radius = 180,
 	.minHeight = 480,
 	.maxHeight = 480,
@@ -22,5 +22,5 @@
 
 	.maxSubBiomeCount = 1,
 
-	.stoneBlock = "cubyz:basalt/base",
+	.stoneBlock = "cubyz:basalt/smooth",
 }

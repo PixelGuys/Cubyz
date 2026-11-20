@@ -53,7 +53,7 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	};
 	if (data >= 16) return 0;
 	const runtimeTable = rotationTable;
-	return runtimeTable[@intFromEnum(angle)][data];
+	return runtimeTable[@backingInt(angle)][data];
 }
 
 fn fenceTransform(quad: *main.models.QuadInfo, data: FenceData) void {

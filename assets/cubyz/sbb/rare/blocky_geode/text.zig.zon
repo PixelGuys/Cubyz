@@ -1,0 +1,9 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:rare/blocky_geode/text/1"},
+		.{.id = "cubyz:rare/blocky_geode/text/2"},
+		.{.id = "cubyz:rare/blocky_geode/text/3"},
+		.{.id = "cubyz:rare/blocky_geode/text/4"},
+		.{.id = "cubyz:rare/blocky_geode/text/5"},
+	},
+}

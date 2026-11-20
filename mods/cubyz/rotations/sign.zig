@@ -34,9 +34,9 @@ const centerRotations = 8;
 const sideRotations = 4;
 
 pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
-	const floorModelId: []const u8 = zon.get([]const u8, "floor", "cubyz:cube");
-	const sideModelId: []const u8 = zon.get([]const u8, "side", "cubyz:cube");
-	const ceilingModelId: []const u8 = zon.get([]const u8, "ceiling", "cubyz:cube");
+	const floorModelId: []const u8 = zon.get([]const u8, "floor") orelse "cubyz:cube";
+	const sideModelId: []const u8 = zon.get([]const u8, "side") orelse "cubyz:cube";
+	const ceilingModelId: []const u8 = zon.get([]const u8, "ceiling") orelse "cubyz:cube";
 	const key: []const u8 = std.mem.concat(main.stackAllocator.allocator, u8, &.{floorModelId, sideModelId, ceilingModelId}) catch unreachable;
 	defer main.stackAllocator.free(key);
 
@@ -89,7 +89,7 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 		},
 	};
 	if (data >= 2*centerRotations + sideRotations) return 0;
-	return rotationTable[@intFromEnum(angle)][data];
+	return rotationTable[@backingInt(angle)][data];
 }
 
 fn getRotationFromDir(dir: Vec3f) u16 {
@@ -129,7 +129,7 @@ fn getRotationFromDir(dir: Vec3f) u16 {
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
 	if (neighbor == null) return false;
 	if (!blockPlacing) return false;
-	currentData.data = switch (Neighbor.fromRelPos(relativeDir) orelse unreachable) {
+	currentData.data = switch (Neighbor.fromRelPos(relativeDir).?) {
 		.dirNegX => 2*centerRotations,
 		.dirNegY => 2*centerRotations + 1,
 		.dirPosX => 2*centerRotations + 2,

@@ -1,5 +1,7 @@
 #version 460
 
+#include "frame_uniforms.glsl"
+
 layout(location = 0) in vec3 startPosition;
 layout(location = 1) in vec3 direction;
 layout(location = 2) in vec3 cameraSpacePos;
@@ -16,17 +18,30 @@ layout(location = 0) out vec4 fragColor;
 layout(binding = 0) uniform sampler2DArray textureSampler;
 layout(binding = 1) uniform sampler2DArray emissionSampler;
 layout(binding = 2) uniform sampler2DArray reflectivityAndAbsorptionSampler;
+#ifdef OPEN_GL
 layout(binding = 4) uniform samplerCube reflectionMap;
+#else
+layout(binding = 11) uniform samplerCube reflectionMap;
+#endif
 
-layout(location = 0) uniform mat4 projectionMatrix;
-
+#ifdef OPEN_GL
 layout(location = 5) uniform vec3 ambientLight;
 layout(location = 7) uniform float sizeScale;
-
 layout(location = 8) uniform float reflectionMapSize;
 layout(location = 9) uniform float contrast;
-
 layout(location = 10) uniform vec2 glDepthRange;
+#else
+layout(push_constant, std430) uniform _ {
+	mat4 modelMatrix;
+	vec3 ambientLight;
+	int modelIndex;
+	int block;
+	float sizeScale;
+	float reflectionMapSize;
+	float contrast;
+	vec2 glDepthRange;
+};
+#endif
 
 const float[6] normalVariations = float[6](
 	1.0,
@@ -37,7 +52,11 @@ const float[6] normalVariations = float[6](
 	0.85
 );
 
+#ifdef OPEN_GL
 layout(std430, binding = 1) buffer _animatedTexture
+#else
+layout(std430, binding = 5) buffer _animatedTexture
+#endif
 {
 	float animatedTexture[];
 };
@@ -94,8 +113,11 @@ void mainBlockDrop() {
 }
 
 // itemDrops -------------------------------------------------------------------------------------------------------------------------
-
+#ifdef OPEN_GL
 layout(std430, binding = 2) buffer _modelInfo
+#else
+layout(std430, binding = 6) buffer _modelInfo
+#endif
 {
 	uint modelInfo[];
 };
@@ -178,7 +200,7 @@ void mainItemDrop() {
 	vec3 modifiedCameraSpacePos = cameraSpacePos*(1 + total_tMax*sizeScale*length(direction)/length(cameraSpacePos));
 	vec4 projection = projectionMatrix*vec4(modifiedCameraSpacePos, 1);
 	float depth = projection.z/projection.w;
-	gl_FragDepth = (((glDepthRange.y - glDepthRange.x) * depth) + glDepthRange.x + glDepthRange.y)/2.0;
+	gl_FragDepth = (glDepthRange.y - glDepthRange.x)*depth + glDepthRange.x;
 
 	fragColor = decodeColor(block);
 	fragColor.a = 1; // No transparency supported!

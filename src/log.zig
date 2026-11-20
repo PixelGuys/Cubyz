@@ -89,7 +89,7 @@ noinline fn runtimeLogFn(level: Level, format: []const u8, args: []const fmt.For
 		logToStdErr(level, "[{s}]: {s}{s}", .{filePrefix, writer.buffered(), fileSuffix});
 	}
 
-	if (level == .err and !openingErrorWindow and !settings.launchConfig.headlessServer) {
+	if (level == .err and !openingErrorWindow and !settings.launch_config.headlessServer) {
 		openingErrorWindow = true;
 		gui.openWindow("error_prompt");
 		openingErrorWindow = false;
@@ -109,7 +109,7 @@ pub fn init() void {
 
 	const _timestamp = std.Io.Clock.Timestamp.now(main.io, .real).raw;
 
-	const _path_str = std.fmt.allocPrint(main.stackAllocator.allocator, "logs/ts_{}.log", .{_timestamp.nanoseconds}) catch unreachable;
+	const _path_str = main.stackAllocator.print("logs/ts_{}.log", .{_timestamp.nanoseconds});
 	defer main.stackAllocator.free(_path_str);
 
 	logFileTs = std.Io.Dir.cwd().createFile(main.io, _path_str, .{}) catch |err| {

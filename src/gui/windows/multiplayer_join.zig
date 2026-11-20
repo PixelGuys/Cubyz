@@ -35,7 +35,7 @@ fn discoverIpAddress() void {
 		return;
 	};
 	connection.?.makeOnline();
-	ipAddress = std.fmt.allocPrint(main.globalAllocator.allocator, "{f}", .{connection.?.externalAddress}) catch unreachable;
+	ipAddress = main.globalAllocator.print("{f}", .{connection.?.externalAddress});
 	gotIpAddress.store(true, .release);
 }
 
@@ -56,28 +56,17 @@ fn join() void {
 		ipAddress = "";
 	}
 	if (connection) |_connection| {
-		_connection.world = &main.game.testWorld;
-		main.game.world = &main.game.testWorld;
 		std.log.info("Connecting to server: {s}", .{ipAddressEntry.currentString.items});
-		main.game.testWorld.init(ipAddressEntry.currentString.items, _connection) catch |err| {
-			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
-			main.gui.windowlist.notification.raiseNotification("Encountered error while opening world: {s}", .{@errorName(err)});
-			main.game.world = null;
-			_connection.world = null;
-			return;
-		};
-		main.globalAllocator.free(settings.lastUsedIPAddress);
-		settings.lastUsedIPAddress = main.globalAllocator.dupe(u8, ipAddressEntry.currentString.items);
-		settings.save();
+		gui.windowlist.connecting.start(ipAddressEntry.currentString.items, _connection);
 		connection = null;
 	} else {
 		std.log.err("No connection found. Cannot connect.", .{});
 		main.gui.windowlist.notification.raiseNotification("No connection found. Cannot connect.", .{});
 	}
-	for (gui.openWindows.items) |openWindow| {
-		gui.closeWindowFromRef(openWindow);
-	}
-	gui.openHud();
+}
+
+pub fn restoreConnection(manager: *ConnectionManager) void {
+	connection = manager;
 }
 
 fn copyIp() void {

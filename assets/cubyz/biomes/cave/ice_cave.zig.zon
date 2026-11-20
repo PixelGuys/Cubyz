@@ -7,7 +7,7 @@
 	.fogDensity = 20,
 	.fogColor = 0xbabfbf,
 	.music = "cubyz:sebastiansoundz/the_deepest_ascent",
-	.stoneBlock = "cubyz:glacite/base",
+	.stoneBlock = "cubyz:glacite/smooth",
 	.ground_structure = .{
 		"cubyz:ice",
 		"7 to 8 cubyz:frost",
