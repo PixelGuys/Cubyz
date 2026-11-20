@@ -843,17 +843,6 @@ pub const menu_background = struct { // MARK: menu_background
 		main.settings.resolutionScale = oldResolutionScale;
 		defer updateViewport(Window.width, Window.height);
 
-		var buffer: graphics.FrameBuffer = .init(0, 0, c.VK_FORMAT_B8G8R8A8_UNORM, false, .nearest, .repeat);
-		defer buffer.deinit();
-		buffer.color.deferredDeinit();
-		buffer.color = .init(.{size, size, 1}, .{
-			.usage = c.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | c.VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-			.format = c.VK_FORMAT_B8G8R8A8_UNORM,
-		});
-
-		activeFrameBuffer = buffer.frameBuffer;
-		defer activeFrameBuffer = 0;
-
 		const oldRotation = game.camera.rotation;
 		defer game.camera.rotation = oldRotation;
 
@@ -933,6 +922,12 @@ pub const menu_background = struct { // MARK: menu_background
 					}
 				}
 			} else {
+				var buffer: graphics.FrameBuffer = .init(size, size, c.VK_FORMAT_B8G8R8A8_UNORM, false, .nearest, .repeat);
+				defer buffer.deinit();
+
+				activeFrameBuffer = buffer.frameBuffer;
+				defer activeFrameBuffer = 0;
+
 				c.glDepthFunc(c.GL_LESS);
 				c.glDepthMask(c.GL_TRUE);
 				c.glDisable(c.GL_SCISSOR_TEST);
@@ -957,7 +952,9 @@ pub const menu_background = struct { // MARK: menu_background
 				}
 			}
 		}
-		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
+		}
 
 		const fileName = main.stackAllocator.print("{s}/backgrounds/{s}_{}.png", .{main.files.cubyzDirStr(), game.world.?.name, game.world.?.gameTime.load(.monotonic)});
 		defer main.stackAllocator.free(fileName);
