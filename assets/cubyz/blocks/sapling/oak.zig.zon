@@ -1,8 +1,8 @@
 .{
-	.tags = .{.cuttable},
+	.tags = .{.cuttable, .sliceable, .flower},
 	.blockHealth = 0.2,
 	.drops = .{
-		.{.items = .{.auto}},
+		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
 	},
 	.onTick = .{
 		.type = .sapling,
@@ -12,11 +12,13 @@
 			.chance = 0.03,
 		},
 	},
+	.selectionCapabilities = .{.toolEffective},
+	.replaceable = true,
 	.degradable = true,
 	.collide = false,
 	.alwaysViewThrough = true,
 	.absorbedLight = 0x121012,
-	.model = "cubyz:cactus_flower",
+	.model = "cubyz:flower/cactus",
 	.rotation = "cubyz:direction",
 	.texture = "cubyz:cactus_flower",
 	.texture_top = "cubyz:cactus_flower_top",
@@ -31,6 +33,6 @@
 		.damageType = .spiky,
 	},
 	.onUpdate = .{
-		.type = .checkSupportBlocks,
+		.type = .check_support_blocks,
 	},
 }

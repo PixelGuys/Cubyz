@@ -2,21 +2,26 @@ const std = @import("std");
 
 const main = @import("main");
 const Vec3i = main.vec.Vec3i;
-const sbbGen = main.server.terrain.structures.simple_structures.SbbGen;
+const SbbGen = main.server.terrain.structures.simple_structures.SbbGen;
 const SimpleStructureModel = main.server.terrain.biomes.SimpleStructureModel;
 
-sbb: *sbbGen.SbbGen,
+sbb: *SbbGen.SbbGen,
 chance: f32,
 
 pub fn init(zon: main.ZonElement, _: main.callbacks.Creator) ?*@This() {
 	const result = main.worldArena.create(@This());
 
-	const vtableModel = sbbGen.loadModel(zon.getChild("sbb")) orelse {
+	const sbbZon = zon.getChild("sbb");
+
+	const vtableModel = SbbGen.loadModel(sbbZon) orelse {
 		std.log.err("Error occurred while loading structure for saplings", .{});
 		return null;
 	};
 	result.sbb = vtableModel;
-	result.chance = zon.get(f32, "chance", 0.1);
+	result.chance = sbbZon.get(f32, "chance") orelse {
+		std.log.err("Missing field \"chance\" for sapling event", .{});
+		return null;
+	};
 	return result;
 }
 
