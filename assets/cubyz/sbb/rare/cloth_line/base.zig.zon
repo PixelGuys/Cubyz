@@ -6,5 +6,8 @@
 		.{.id = "cubyz:rare/cloth_line/3"},
 		.{.id = "cubyz:rare/cloth_line/4"},
 		.{.id = "cubyz:rare/cloth_line/5"},
+		.{.id = "cubyz:rare/cloth_line/6"},
+		.{.id = "cubyz:rare/cloth_line/7"},
+		.{.id = "cubyz:rare/cloth_line/8"},
 	},
 }
