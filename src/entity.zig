@@ -128,8 +128,10 @@ pub const server = struct {
 		inline for (@typeInfo(components).@"struct".decl_names) |decl| {
 			@field(components, decl).server.init();
 		}
+		main.server.entity_manager.init();
 	}
 	pub fn deinit() void {
+		main.server.entity_manager.deinit();
 		inline for (@typeInfo(components).@"struct".decl_names) |decl| {
 			@field(components, decl).server.deinit();
 		}

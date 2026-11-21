@@ -18,6 +18,8 @@ maxEnergy: f32 = 8,
 name: ?[]const u8 = null,
 id: main.entity.Entity = .noValue,
 
+used: bool = false,
+
 pub fn loadFrom(self: *@This(), id: main.entity.Entity, zon: ZonElement, comptime side: main.sync.Side, defaultPos: Vec3d) !void {
 	self.id = id;
 	self.pos = zon.get(Vec3d, "position") orelse defaultPos;
