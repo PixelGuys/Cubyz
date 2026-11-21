@@ -14,7 +14,7 @@ Examples:
 
 ## Break the Cycle
 ### No Dimensions
-Instead of creating seperate dimensions, we can fit these places physically into Cubyz' massive world for the player to come across.
+Instead of creating separate dimensions, we can fit these places physically into Cubyz' massive world for the player to come across.
 
 ### No Teleportation
 Teleportation makes the game less immersive, as it diminishes the exploring aspect and doesn't let the player get a good sense of the scale of the world.
