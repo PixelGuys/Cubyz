@@ -13,6 +13,8 @@ pub const Tag = enum(u32) {
 	chiselable = 4,
 	playerModel = 5,
 	handCraftable = 6,
+	disabled = 7,
+	optional = 8,
 	_,
 
 	pub fn initTags() void {
