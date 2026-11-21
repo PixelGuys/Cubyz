@@ -2813,8 +2813,6 @@ const block_texture = struct { // MARK: block_texture
 			},
 		);
 		depthTexture = undefined;
-		c.glGenTextures(1, &depthTexture.textureID);
-		depthTexture.bind();
 		var data: [128*128]f32 = undefined;
 
 		const zMax: f32 = 134;
@@ -2823,11 +2821,6 @@ const block_texture = struct { // MARK: block_texture
 		const depth = ((far + near)/(near - far)*(-zMax) + 2*near*far/(near - far))/zMax*0.5 + 0.5;
 
 		@memset(&data, depth);
-		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_R32F, textureSize, textureSize, 0, c.GL_RED, c.GL_FLOAT, &data);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
 
 		if (main.settings.launch_config.vulkanTestingMode) {
 			depthTexture.vulkanImage = vulkan.Image.init(.{textureSize, textureSize, 1}, .{
@@ -2836,6 +2829,14 @@ const block_texture = struct { // MARK: block_texture
 				.aspect = .{.depth = true},
 			});
 			depthTexture.vulkanImage.uploadData(std.mem.sliceAsBytes(&data), .{.imageExtent = .{.width = textureSize, .height = textureSize, .depth = 1}, .aspect = .{.depth = true}});
+		} else {
+			c.glGenTextures(1, &depthTexture.textureID);
+			depthTexture.bind();
+			c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_R32F, textureSize, textureSize, 0, c.GL_RED, c.GL_FLOAT, &data);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
 		}
 
 		ubo = .init(.{
@@ -2863,7 +2864,9 @@ const block_texture = struct { // MARK: block_texture
 
 pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 	const textureSize = block_texture.textureSize;
-	c.glViewport(0, 0, textureSize, textureSize);
+	if (!main.settings.launch_config.vulkanTestingMode) {
+		c.glViewport(0, 0, textureSize, textureSize);
+	}
 
 	var fakeFrame: vulkan.Frame = undefined;
 	fakeFrame.extent = .{.width = textureSize, .height = textureSize};
@@ -2913,11 +2916,12 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 
 	var frameBuffer: FrameBuffer = .init(textureSize, textureSize, c.VK_FORMAT_R16G16B16A16_SFLOAT, false, .nearest, .repeat);
 	defer frameBuffer.deinit();
-	frameBuffer.bind();
 	const clearColor: [4]f32 = if (block.transparent()) .{0.683421, 0.6854237, 0.685426, 1} else @splat(0);
-	frameBuffer.clear(clearColor);
 	if (main.settings.launch_config.vulkanTestingMode) {
 		frameBuffer.bindAndClear(vulkan.upload.commandBuffer(), .{.clearColor = .{.clearColor = .{.float32 = clearColor}}, .clearDepth = .dontCare});
+	} else {
+		frameBuffer.bind();
+		frameBuffer.clear(clearColor);
 	}
 
 	{
@@ -2929,36 +2933,24 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 
 		if (main.settings.launch_config.vulkanTestingMode) {
 			vulkan.upload.commandBuffer().drawIndexed(@intCast(6*faceData.items.len), .{.firstVertex = allocation.start*4, .firstInstance = chunkAllocation.start});
+		} else {
+			block_texture.ubo.bind();
+			defer block_texture.ubo.unbind();
+
+			c.glActiveTexture(c.GL_TEXTURE0);
+			main.blocks.meshes.blockTextureArray.?.bind();
+			c.glActiveTexture(c.GL_TEXTURE1);
+			main.blocks.meshes.emissionTextureArray.?.bind();
+			c.glActiveTexture(c.GL_TEXTURE2);
+			main.blocks.meshes.reflectivityAndAbsorptionTextureArray.?.bind();
+			block_texture.depthTexture.bindTo(5);
+			c.glDrawElementsInstancedBaseVertexBaseInstance(c.GL_TRIANGLES, @intCast(6*faceData.items.len), c.GL_UNSIGNED_INT, null, 1, allocation.start*4, chunkAllocation.start);
 		}
-
-		block_texture.ubo.bind();
-		defer block_texture.ubo.unbind();
-
-		c.glActiveTexture(c.GL_TEXTURE0);
-		main.blocks.meshes.blockTextureArray.?.bind();
-		c.glActiveTexture(c.GL_TEXTURE1);
-		main.blocks.meshes.emissionTextureArray.?.bind();
-		c.glActiveTexture(c.GL_TEXTURE2);
-		main.blocks.meshes.reflectivityAndAbsorptionTextureArray.?.bind();
-		block_texture.depthTexture.bindTo(5);
-		c.glDrawElementsInstancedBaseVertexBaseInstance(c.GL_TRIANGLES, @intCast(6*faceData.items.len), c.GL_UNSIGNED_INT, null, 1, allocation.start*4, chunkAllocation.start);
 	}
 
-	c.glDisable(c.GL_CULL_FACE);
 	var finalFrameBuffer: FrameBuffer = .init(textureSize, textureSize, c.VK_FORMAT_R8G8B8A8_UNORM, false, .nearest, .repeat);
-	finalFrameBuffer.bind();
+	defer if (!main.settings.launch_config.vulkanTestingMode) c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
 	var texture = Texture{.textureID = finalFrameBuffer.texture, .vulkanImage = undefined};
-	defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
-	block_texture.pipeline.bind(null);
-	c.glUniform1i(block_texture.uniforms.transparent, if (block.transparent()) c.GL_TRUE else c.GL_FALSE);
-	frameBuffer.bindTexture(c.GL_TEXTURE3);
-
-	draw.rectVao.bind();
-	c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
-
-	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
-
-	c.glViewport(0, 0, main.Window.width, main.Window.height);
 
 	if (main.settings.launch_config.vulkanTestingMode) {
 		vulkan.upload.commandBuffer().endRendering();
@@ -2979,6 +2971,19 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 		vulkan.upload.commandBuffer().endRendering();
 		finalFrameBuffer.prepareTexturesForBinding(vulkan.upload.commandBuffer(), .{});
 		texture.vulkanImage = finalFrameBuffer.color;
+	} else {
+		c.glDisable(c.GL_CULL_FACE);
+		finalFrameBuffer.bind();
+		block_texture.pipeline.bind(null);
+		c.glUniform1i(block_texture.uniforms.transparent, if (block.transparent()) c.GL_TRUE else c.GL_FALSE);
+		frameBuffer.bindTexture(c.GL_TEXTURE3);
+
+		draw.rectVao.bind();
+		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+
+		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
+
+		c.glViewport(0, 0, main.Window.width, main.Window.height);
 	}
 
 	return texture;
