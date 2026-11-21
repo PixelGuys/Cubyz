@@ -155,7 +155,9 @@ pub const client = struct { // MARK: client
 			main.systems.systems.modelRenderer.client.nodeBuffer.uploadData(component.matrices, &component.bufferAllocation);
 		}
 
-		pipeline.bind(null);
+		if (!settings.launch_config.vulkanTestingMode) {
+			pipeline.bind(null);
+		}
 
 		main.systems.systems.modelRenderer.client.nodeBuffer.beginRender();
 

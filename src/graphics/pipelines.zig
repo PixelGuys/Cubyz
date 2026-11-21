@@ -623,7 +623,7 @@ pub const InputAssemblyState = struct { // MARK: InputAssemblyState
 };
 
 pub const Pipeline = struct { // MARK: Pipeline
-	shader: Shader,
+	shader: Shader = undefined,
 	rasterState: RasterizationState,
 	multisampleState: MultisampleState = .{}, // TODO: Not implemented
 	depthStencilState: DepthStencilState,
@@ -778,7 +778,6 @@ pub const Pipeline = struct { // MARK: Pipeline
 		std.debug.assert(options.rasterState.lineWidth <= 1); // Larger values are poorly supported among drivers
 		std.debug.assert(options.blendState.logicOp == null); // TODO: Not yet implemented
 		var self: Pipeline = .{
-			.shader = .init(vertexPath, fragmentPath, defines, uniformStruct),
 			.rasterState = options.rasterState,
 			.multisampleState = .{}, // TODO: Not implemented
 			.depthStencilState = options.depthStencilState,
@@ -788,12 +787,16 @@ pub const Pipeline = struct { // MARK: Pipeline
 			self.initVulkan(vertexPath, fragmentPath, defines, VertexType, options) catch |err| {
 				std.log.err("Vulkan pipeline creation for paths {s} {s} failed with error {s}", .{vertexPath, fragmentPath, @errorName(err)});
 			};
+		} else {
+			self.shader = .init(vertexPath, fragmentPath, defines, uniformStruct);
 		}
 		return self;
 	}
 
 	pub fn deinit(self: Pipeline) void {
-		self.shader.deinit();
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			self.shader.deinit();
+		}
 		if (self.vulkanCreationSuccessful) {
 			c.vkDestroyPipeline(vulkan.device, self.graphicsPipeline, null);
 			c.vkDestroyPipelineLayout(vulkan.device, self.pipelineLayout, null);
@@ -889,7 +892,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 };
 
 pub const ComputePipeline = struct { // MARK: ComputePipeline
-	shader: Shader,
+	shader: Shader = undefined,
 	computePipeline: c.VkPipeline = undefined,
 	descriptorSetLayout: c.VkDescriptorSetLayout = undefined,
 	pipelineLayout: c.VkPipelineLayout = undefined,
@@ -901,13 +904,13 @@ pub const ComputePipeline = struct { // MARK: ComputePipeline
 	};
 
 	pub fn init(computePath: []const u8, defines: []const u8, uniformStruct: anytype, options: Options) ComputePipeline {
-		var self: ComputePipeline = .{
-			.shader = .initCompute(computePath, defines, uniformStruct),
-		};
+		var self: ComputePipeline = .{};
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.initVulkan(computePath, defines, options) catch |err| {
 				std.log.err("Vulkan compute pipeline creation for paths {s} failed with error {s}", .{computePath, @errorName(err)});
 			};
+		} else {
+			self.shader = .initCompute(computePath, defines, uniformStruct);
 		}
 		return self;
 	}
@@ -959,7 +962,9 @@ pub const ComputePipeline = struct { // MARK: ComputePipeline
 	}
 
 	pub fn deinit(self: ComputePipeline) void {
-		self.shader.deinit();
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			self.shader.deinit();
+		}
 		if (self.vulkanCreationSuccessful) {
 			c.vkDestroyPipeline(vulkan.device, self.computePipeline, null);
 			c.vkDestroyPipelineLayout(vulkan.device, self.pipelineLayout, null);

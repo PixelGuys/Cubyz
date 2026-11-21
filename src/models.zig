@@ -810,5 +810,7 @@ pub fn deinit() void {
 
 pub fn uploadModels() void {
 	quadSsbo = graphics.SSBO.initStatic(QuadInfo, quads.items);
-	quadSsbo.?.bind(4);
+	if (!main.settings.launch_config.vulkanTestingMode) {
+		quadSsbo.?.bind(4);
+	}
 }

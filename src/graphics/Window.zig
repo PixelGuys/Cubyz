@@ -16,7 +16,6 @@ pub var lastUsedMouse: bool = true;
 pub var width: u31 = 1280;
 pub var height: u31 = 720;
 pub var window: *c.GLFWwindow = undefined;
-pub var openGlWindow: *c.GLFWwindow = undefined;
 pub var grabbed: bool = false;
 pub var scrollOffset: f32 = 0;
 pub var scrollOffsetInteger: i32 = 0;
@@ -702,7 +701,9 @@ pub fn getWindowSize() Vec2f {
 }
 
 pub fn reloadSettings() void {
-	c.glfwSwapInterval(@intFromBool(main.settings.vsync));
+	if (!settings.launch_config.vulkanTestingMode) {
+		c.glfwSwapInterval(@intFromBool(main.settings.vsync));
+	}
 }
 
 pub fn getClipboardString() []const u8 {
@@ -748,18 +749,14 @@ pub fn init() void { // MARK: init()
 		}
 	}
 
-	c.glfwWindowHint(c.GLFW_CLIENT_API, c.GLFW_OPENGL_API);
-	c.glfwWindowHint(c.GLFW_VISIBLE, c.GLFW_TRUE);
-	c.glfwWindowHint(c.GLFW_OPENGL_DEBUG_CONTEXT, 1);
-	c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MAJOR, 4);
-	c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 6);
-
 	if (!settings.launch_config.vulkanTestingMode) {
+		c.glfwWindowHint(c.GLFW_CLIENT_API, c.GLFW_OPENGL_API);
+		c.glfwWindowHint(c.GLFW_VISIBLE, c.GLFW_TRUE);
+		c.glfwWindowHint(c.GLFW_OPENGL_DEBUG_CONTEXT, 1);
+		c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MAJOR, 4);
+		c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 6);
+
 		window = c.glfwCreateWindow(width, height, windowTitle, null, null) orelse @panic("Failed to create GLFW window");
-		openGlWindow = window;
-	} else {
-		c.glfwWindowHint(c.GLFW_VISIBLE, c.GLFW_FALSE);
-		openGlWindow = c.glfwCreateWindow(width, height, windowTitle, null, null) orelse @panic("Failed to create GLFW window");
 	}
 	iconBlock: {
 		const image = main.graphics.Image.readFromFile(main.stackAllocator, "assets/cubyz/logo.png", .{.orientation = .asIs}) catch |err| {
@@ -782,25 +779,28 @@ pub fn init() void { // MARK: init()
 	_ = c.glfwSetMouseButtonCallback(window, glfw_callbacks.mouseButton);
 	_ = c.glfwSetScrollCallback(window, glfw_callbacks.scroll);
 
-	c.glfwMakeContextCurrent(openGlWindow);
+	if (!settings.launch_config.vulkanTestingMode) {
+		c.glfwMakeContextCurrent(window);
 
-	if (c.gladLoadGL(c.glfwGetProcAddress) == 0) {
-		@panic("Failed to load OpenGL functions from GLAD");
+		if (c.gladLoadGL(c.glfwGetProcAddress) == 0) {
+			@panic("Failed to load OpenGL functions from GLAD");
+		}
+		c.glClipControl(c.GL_UPPER_LEFT, c.GL_ZERO_TO_ONE);
 	}
-	c.glClipControl(c.GL_UPPER_LEFT, c.GL_ZERO_TO_ONE);
 	reloadSettings();
 
-	c.glEnable(c.GL_DEBUG_OUTPUT);
-	c.glEnable(c.GL_DEBUG_OUTPUT_SYNCHRONOUS);
-	c.glDebugMessageCallback(glfw_callbacks.glDebugOutput, null);
-	c.glDebugMessageControl(c.GL_DONT_CARE, c.GL_DONT_CARE, c.GL_DONT_CARE, 0, null, c.GL_TRUE);
+	if (!settings.launch_config.vulkanTestingMode) {
+		c.glEnable(c.GL_DEBUG_OUTPUT);
+		c.glEnable(c.GL_DEBUG_OUTPUT_SYNCHRONOUS);
+		c.glDebugMessageCallback(glfw_callbacks.glDebugOutput, null);
+		c.glDebugMessageControl(c.GL_DONT_CARE, c.GL_DONT_CARE, c.GL_DONT_CARE, 0, null, c.GL_TRUE);
+	}
 	gamepad.init();
 }
 
 pub fn deinit() void {
 	gamepad.deinit();
 	if (settings.launch_config.vulkanTestingMode) {
-		c.glfwDestroyWindow(openGlWindow);
 		vulkan.deinit();
 	}
 	c.glfwDestroyWindow(window);

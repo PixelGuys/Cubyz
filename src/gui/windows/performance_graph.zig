@@ -120,7 +120,9 @@ pub fn render(currentFrame: *vulkan.Frame) void {
 		c.glUniform2f(uniforms.screen, @floatFromInt(main.Window.width), @floatFromInt(main.Window.height));
 		c.glUniform2f(uniforms.start, pos[0], pos[1]);
 		c.glUniform2f(uniforms.dimension, dim[0], draw.setScale(1));
-		ssbo.bind(5);
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			ssbo.bind(5);
+		}
 		c.glDrawArrays(c.GL_LINE_STRIP, 0, lastFrameTime.len);
 	}
 }

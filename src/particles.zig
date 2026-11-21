@@ -159,7 +159,9 @@ pub const particle_manager = struct { // MARK: particle_manager
 
 		particleTypesSSBO.deinit();
 		particleTypesSSBO = .initStatic(ParticleType, particle_manager.types.items);
-		particleTypesSSBO.bind(14);
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			particleTypesSSBO.bind(14);
+		}
 	}
 };
 
@@ -211,7 +213,9 @@ pub const particle_system = struct { // MARK: particle_system
 		);
 
 		particlesSSBO = SSBO.initDynamicSize(Particle, maxCapacity);
-		particlesSSBO.bind(13);
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			particlesSSBO.bind(13);
+		}
 	}
 
 	fn deinit() void {

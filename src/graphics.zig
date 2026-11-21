@@ -76,8 +76,6 @@ pub const draw = struct { // MARK: draw
 	/// Returns the previous clip.
 	pub fn setClip(clipRect: Vec2f) ?Vec4i {
 		std.debug.assert(@reduce(.And, clipRect >= Vec2f{0, 0}));
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 		var newClip = Vec4i{
 			std.math.lossyCast(i32, translation[0]),
 			std.math.lossyCast(i32, translation[1]),
@@ -192,20 +190,19 @@ pub const draw = struct { // MARK: draw
 		pos += translation;
 		dim *= @splat(scale);
 
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-
 		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, rectPipeline, getScissor());
 			currentFrame.guiCommands.pushConstants(rectPipeline, &RectUniforms{
 				.start = pos,
 				.size = dim,
-				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.screen = .{@floatFromInt(currentFrame.extent.width), @floatFromInt(currentFrame.extent.height)},
 				.rectColor = @bitCast(getColor()),
 			});
 			currentFrame.guiCommands.bindVertexArray(rectVao);
 			currentFrame.guiCommands.draw(4, 0);
 		} else {
+			var viewport: [4]c_int = undefined;
+			c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 			rectPipeline.bind(getScissor());
 
 			c.glUniform2f(rectUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
@@ -293,21 +290,20 @@ pub const draw = struct { // MARK: draw
 		dim *= @splat(scale);
 		width *= scale;
 
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-
 		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, rectBorderPipeline, getScissor());
 			currentFrame.guiCommands.pushConstants(rectBorderPipeline, &RectBorderUniforms{
 				.start = pos,
 				.size = dim,
-				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.screen = .{@floatFromInt(currentFrame.extent.width), @floatFromInt(currentFrame.extent.height)},
 				.lineWidth = width,
 				.rectColor = @bitCast(getColor()),
 			});
 			currentFrame.guiCommands.bindVertexArray(rectBorderVao);
 			currentFrame.guiCommands.draw(10, 0);
 		} else {
+			var viewport: [4]c_int = undefined;
+			c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 			rectBorderPipeline.bind(getScissor());
 
 			c.glUniform2f(rectBorderUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
@@ -374,20 +370,19 @@ pub const draw = struct { // MARK: draw
 		pos2 *= @splat(scale);
 		pos2 += translation;
 
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-
 		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, linePipeline, getScissor());
 			currentFrame.guiCommands.pushConstants(linePipeline, &LineUniforms{
 				.start = pos1,
 				.direction = pos2 - pos1,
-				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.screen = .{@floatFromInt(currentFrame.extent.width), @floatFromInt(currentFrame.extent.height)},
 				.lineColor = @bitCast(getColor()),
 			});
 			currentFrame.guiCommands.bindVertexArray(rectBorderVao);
 			currentFrame.guiCommands.draw(10, 0);
 		} else {
+			var viewport: [4]c_int = undefined;
+			c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 			linePipeline.bind(getScissor());
 
 			c.glUniform2f(lineUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
@@ -444,9 +439,6 @@ pub const draw = struct { // MARK: draw
 	}
 
 	pub fn image(currentFrame: *vulkan.Frame, texture: Texture, _pos: Vec2f, _dim: Vec2f) void {
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-
 		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, imagePipeline, getScissor());
 			currentFrame.guiCommands.bindDescriptors(imagePipeline, &.{
@@ -469,9 +461,6 @@ pub const draw = struct { // MARK: draw
 		pos = @floor(pos);
 		dim = @ceil(dim);
 
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-
 		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, imagePipeline, getScissor());
 			currentFrame.guiCommands.bindDescriptors(imagePipeline, &.{
@@ -480,7 +469,7 @@ pub const draw = struct { // MARK: draw
 			currentFrame.guiCommands.pushConstants(imagePipeline, &ImageUniforms{
 				.start = pos,
 				.size = dim,
-				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.screen = .{@floatFromInt(currentFrame.extent.width), @floatFromInt(currentFrame.extent.height)},
 				.color = @bitCast(getColor()),
 				.uvOffset = .{uvOffset[0], uvOffset[1]},
 				.uvDim = .{uvDim[0], uvDim[1]},
@@ -488,6 +477,8 @@ pub const draw = struct { // MARK: draw
 			currentFrame.guiCommands.bindVertexArray(rectVao);
 			currentFrame.guiCommands.draw(4, 0);
 		} else {
+			var viewport: [4]c_int = undefined;
+			c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 			imagePipeline.bind(getScissor());
 			texture.bindTo(0);
 
@@ -558,13 +549,10 @@ pub const draw = struct { // MARK: draw
 		pos = @floor(pos);
 		dim = @ceil(dim);
 
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-
 		var uniforms = _uniforms;
 		uniforms.start = pos;
 		uniforms.size = dim;
-		uniforms.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])};
+		uniforms.screen = .{@floatFromInt(currentFrame.extent.width), @floatFromInt(currentFrame.extent.height)};
 		uniforms.color = @bitCast(getColor());
 		uniforms.uvOffset = .{0, 0};
 		uniforms.uvDim = .{1, 1};
@@ -607,12 +595,10 @@ pub const draw = struct { // MARK: draw
 		pos = @floor(pos);
 		dim = @ceil(dim);
 
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 		var uniforms = _uniforms;
 		uniforms.start = pos;
 		uniforms.size = dim;
-		uniforms.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])};
+		uniforms.screen = .{@floatFromInt(currentFrame.extent.width), @floatFromInt(currentFrame.extent.height)};
 		uniforms.color = @bitCast(getColor());
 		uniforms.scale = scale;
 
@@ -1090,14 +1076,12 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		defer draw.restoreScale(oldScale);
 		var x: f32 = 0;
 		var y: f32 = 0;
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 
 		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, text_rendering.pipeline, draw.getScissor());
 			currentFrame.guiCommands.pushConstants(text_rendering.pipeline, &text_rendering.CompleteUniforms{
 				.glyphData = undefined,
-				.scene = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.scene = .{@floatFromInt(currentFrame.extent.width), @floatFromInt(currentFrame.extent.height)},
 				.ratio = draw.scale,
 				.inColor = @bitCast(draw.getColor()),
 				.fontSize = .{@floatFromInt(text_rendering.textureWidth), @floatFromInt(text_rendering.textureHeight)},
@@ -1108,6 +1092,8 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 
 			currentFrame.guiCommands.bindVertexArray(draw.rectVao);
 		} else {
+			var viewport: [4]c_int = undefined;
+			c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 			text_rendering.pipeline.bind(draw.getScissor());
 
 			c.glUniform2f(text_rendering.uniforms.scene, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
@@ -1176,14 +1162,12 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		defer draw.restoreScale(oldScale);
 		var x: f32 = 0;
 		var y: f32 = 0;
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 
 		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, text_rendering.pipeline, draw.getScissor());
 			currentFrame.guiCommands.pushConstants(text_rendering.pipeline, &text_rendering.CompleteUniforms{
 				.glyphData = undefined,
-				.scene = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.scene = .{@floatFromInt(currentFrame.extent.width), @floatFromInt(currentFrame.extent.height)},
 				.ratio = draw.scale,
 				.inColor = @bitCast(draw.getColor()),
 				.fontSize = .{@floatFromInt(text_rendering.textureWidth), @floatFromInt(text_rendering.textureHeight)},
@@ -1194,6 +1178,8 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 
 			currentFrame.guiCommands.bindVertexArray(draw.rectVao);
 		} else {
+			var viewport: [4]c_int = undefined;
+			c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 			text_rendering.pipeline.bind(draw.getScissor());
 
 			c.glUniform2f(text_rendering.uniforms.scene, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
@@ -1508,51 +1494,53 @@ pub const VertexArray = struct { // MARK: VertexArray
 
 	pub fn init(T: type, data: []const T, indices_: ?[]const u32) VertexArray {
 		var result: VertexArray = undefined;
-		c.glGenVertexArrays(1, &result.vao);
-		c.glBindVertexArray(result.vao);
-		c.glGenBuffers(1, &result.vbo);
-		c.glBindBuffer(c.GL_ARRAY_BUFFER, result.vbo);
-		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(data.len*@sizeOf(T)), data.ptr, c.GL_STATIC_DRAW);
-		if (indices_) |indices| {
-			std.debug.assert(indices.len != 0);
-			result.hasIndices = true;
-			result.ibo = 0;
-			c.glGenBuffers(1, &result.ibo.?);
-			c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, result.ibo.?);
-			c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(u32)), indices.ptr, c.GL_STATIC_DRAW);
-		} else {
-			result.ibo = null;
-			result.hasIndices = false;
-		}
+		result.hasIndices = indices_ != null;
+		result.ibo = null;
 
-		const attributeDescriptions: []const c.VkVertexInputAttributeDescription = T.attributeDescriptions;
-		inline for (attributeDescriptions) |desc| {
-			std.debug.assert(desc.binding == 0);
-			c.glEnableVertexAttribArray(desc.location);
-			const glType = comptime switch (desc.format) {
-				c.VK_FORMAT_R32_SFLOAT => c.GL_FLOAT,
-				c.VK_FORMAT_R32G32_SFLOAT => c.GL_FLOAT,
-				c.VK_FORMAT_R32G32B32_SFLOAT => c.GL_FLOAT,
-				c.VK_FORMAT_R32G32B32A32_SFLOAT => c.GL_FLOAT,
-				c.VK_FORMAT_R32_UINT => c.GL_UNSIGNED_INT,
-				else => @compileError("Unrecognized format"),
-			};
-			const size = comptime switch (desc.format) {
-				c.VK_FORMAT_R32_SFLOAT => 1,
-				c.VK_FORMAT_R32G32_SFLOAT => 2,
-				c.VK_FORMAT_R32G32B32_SFLOAT => 3,
-				c.VK_FORMAT_R32G32B32A32_SFLOAT => 4,
-				c.VK_FORMAT_R32_UINT => 1,
-				else => @compileError("Unrecognized format"),
-			};
-			switch (glType) {
-				c.GL_UNSIGNED_INT => c.glVertexAttribIPointer(desc.location, size, glType, @sizeOf(T), @ptrFromInt(desc.offset)),
-				c.GL_FLOAT => c.glVertexAttribPointer(desc.location, size, glType, c.GL_FALSE, @sizeOf(T), @ptrFromInt(desc.offset)),
-				else => unreachable,
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			c.glGenVertexArrays(1, &result.vao);
+			c.glBindVertexArray(result.vao);
+			c.glGenBuffers(1, &result.vbo);
+			c.glBindBuffer(c.GL_ARRAY_BUFFER, result.vbo);
+			c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(data.len*@sizeOf(T)), data.ptr, c.GL_STATIC_DRAW);
+			if (indices_) |indices| {
+				std.debug.assert(indices.len != 0);
+				result.ibo = 0;
+				c.glGenBuffers(1, &result.ibo.?);
+				c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, result.ibo.?);
+				c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(u32)), indices.ptr, c.GL_STATIC_DRAW);
 			}
+
+			const attributeDescriptions: []const c.VkVertexInputAttributeDescription = T.attributeDescriptions;
+			inline for (attributeDescriptions) |desc| {
+				std.debug.assert(desc.binding == 0);
+				c.glEnableVertexAttribArray(desc.location);
+				const glType = comptime switch (desc.format) {
+					c.VK_FORMAT_R32_SFLOAT => c.GL_FLOAT,
+					c.VK_FORMAT_R32G32_SFLOAT => c.GL_FLOAT,
+					c.VK_FORMAT_R32G32B32_SFLOAT => c.GL_FLOAT,
+					c.VK_FORMAT_R32G32B32A32_SFLOAT => c.GL_FLOAT,
+					c.VK_FORMAT_R32_UINT => c.GL_UNSIGNED_INT,
+					else => @compileError("Unrecognized format"),
+				};
+				const size = comptime switch (desc.format) {
+					c.VK_FORMAT_R32_SFLOAT => 1,
+					c.VK_FORMAT_R32G32_SFLOAT => 2,
+					c.VK_FORMAT_R32G32B32_SFLOAT => 3,
+					c.VK_FORMAT_R32G32B32A32_SFLOAT => 4,
+					c.VK_FORMAT_R32_UINT => 1,
+					else => @compileError("Unrecognized format"),
+				};
+				switch (glType) {
+					c.GL_UNSIGNED_INT => c.glVertexAttribIPointer(desc.location, size, glType, @sizeOf(T), @ptrFromInt(desc.offset)),
+					c.GL_FLOAT => c.glVertexAttribPointer(desc.location, size, glType, c.GL_FALSE, @sizeOf(T), @ptrFromInt(desc.offset)),
+					else => unreachable,
+				}
+			}
+
+			c.glBindVertexArray(0);
 		}
 
-		c.glBindVertexArray(0);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			const indices = indices_ orelse &.{};
 			result.indicesOffset = std.mem.alignForward(usize, data.len*@sizeOf(T), @alignOf(u32));
@@ -1567,13 +1555,14 @@ pub const VertexArray = struct { // MARK: VertexArray
 	}
 
 	pub fn deinit(self: VertexArray) void {
-		c.glDeleteVertexArrays(1, &self.vao);
-		c.glDeleteBuffers(1, &self.vbo);
-		if (self.ibo != null) {
-			c.glDeleteBuffers(1, &self.ibo.?);
-		}
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.buffer.deferredDeinit();
+		} else {
+			c.glDeleteVertexArrays(1, &self.vao);
+			c.glDeleteBuffers(1, &self.vbo);
+			if (self.ibo != null) {
+				c.glDeleteBuffers(1, &self.ibo.?);
+			}
 		}
 	}
 
@@ -1587,50 +1576,56 @@ pub const SSBO = struct { // MARK: SSBO
 	buffer: ?vulkan.Buffer = null,
 	pub fn init() SSBO {
 		var self = SSBO{.bufferID = undefined};
-		c.glGenBuffers(1, &self.bufferID);
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			c.glGenBuffers(1, &self.bufferID);
+		}
 		return self;
 	}
 
 	pub fn initStatic(comptime T: type, data: []const T) SSBO {
 		var self = SSBO{.bufferID = undefined};
-		c.glGenBuffers(1, &self.bufferID);
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
-		c.glBufferStorage(c.GL_SHADER_STORAGE_BUFFER, @intCast(data.len*@sizeOf(T)), data.ptr, 0);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.buffer = .init(data.len*@sizeOf(T), .{.usage = c.VK_BUFFER_USAGE_TRANSFER_DST_BIT | c.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT});
 			self.buffer.?.uploadData(0, std.mem.sliceAsBytes(data));
+		} else {
+			c.glGenBuffers(1, &self.bufferID);
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
+			c.glBufferStorage(c.GL_SHADER_STORAGE_BUFFER, @intCast(data.len*@sizeOf(T)), data.ptr, 0);
 		}
 		return self;
 	}
 
 	pub fn initStaticSize(comptime T: type, len: usize) SSBO {
 		var self = SSBO{.bufferID = undefined};
-		c.glGenBuffers(1, &self.bufferID);
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
-		c.glBufferStorage(c.GL_SHADER_STORAGE_BUFFER, @intCast(len*@sizeOf(T)), null, 0);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.buffer = .init(len*@sizeOf(T), .{.usage = c.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT});
+		} else {
+			c.glGenBuffers(1, &self.bufferID);
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
+			c.glBufferStorage(c.GL_SHADER_STORAGE_BUFFER, @intCast(len*@sizeOf(T)), null, 0);
 		}
 		return self;
 	}
 
 	pub fn initDynamicSize(comptime T: type, len: usize) SSBO {
 		var self = SSBO{.bufferID = undefined};
-		c.glGenBuffers(1, &self.bufferID);
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
-		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(len*@sizeOf(T)), null, c.GL_DYNAMIC_DRAW);
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.buffer = .init(len*@sizeOf(T), .{.usage = c.VK_BUFFER_USAGE_TRANSFER_DST_BIT | c.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT});
+		} else {
+			c.glGenBuffers(1, &self.bufferID);
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
+			c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(len*@sizeOf(T)), null, c.GL_DYNAMIC_DRAW);
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 		}
 		return self;
 	}
 
 	pub fn deinit(self: SSBO) void {
-		if (self.buffer) |buffer| {
-			buffer.deferredDeinit();
+		if (main.settings.launch_config.vulkanTestingMode) {
+			if (self.buffer) |buffer| buffer.deferredDeinit();
+		} else {
+			c.glDeleteBuffers(1, &self.bufferID);
 		}
-		c.glDeleteBuffers(1, &self.bufferID);
 	}
 
 	pub fn bind(self: SSBO, binding: c_uint) void {
@@ -1638,20 +1633,22 @@ pub const SSBO = struct { // MARK: SSBO
 	}
 
 	pub fn bufferData(self: SSBO, comptime T: type, data: []const T) void {
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
-		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(data.len*@sizeOf(T)), data.ptr, c.GL_STATIC_DRAW);
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 		if (self.buffer) |buffer| {
 			buffer.uploadData(0, std.mem.sliceAsBytes(data));
+		} else {
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
+			c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(data.len*@sizeOf(T)), data.ptr, c.GL_STATIC_DRAW);
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 		}
 	}
 
 	pub fn bufferSubData(self: SSBO, comptime T: type, data: []const T, length: usize) void {
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
-		c.glBufferSubData(c.GL_SHADER_STORAGE_BUFFER, 0, @intCast(length*@sizeOf(T)), data.ptr);
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 		if (self.buffer) |buffer| {
 			buffer.uploadData(0, std.mem.sliceAsBytes(data));
+		} else {
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
+			c.glBufferSubData(c.GL_SHADER_STORAGE_BUFFER, 0, @intCast(length*@sizeOf(T)), data.ptr);
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 		}
 	}
 };
@@ -1666,9 +1663,10 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 	return struct {
 		ssbo: SSBO,
 		freeBlocks: main.ListManaged(SubAllocation),
-		fences: [3]c.GLsync, // TODO: Also needs fences for vulkan!
+		fences: [3]c.GLsync,
 		fencedFreeLists: [3]main.ListManaged(SubAllocation),
-		activeFence: u8,
+		activeFreeList: u8,
+		lastFrameFreed: usize,
 		capacity: u31,
 		used: u31,
 		binding: c_uint,
@@ -1679,16 +1677,17 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 
 		fn createBuffer(self: *Self, size: u31) void {
 			self.ssbo = .init();
-			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
-			const flags = c.GL_MAP_WRITE_BIT | c.GL_DYNAMIC_STORAGE_BIT;
 			const bytes = @as(u63, size)*@sizeOf(Entry);
-			c.glBufferStorage(c.GL_SHADER_STORAGE_BUFFER, bytes, null, flags);
-			self.ssbo.bind(self.binding);
 			self.capacity = size;
 			if (main.settings.launch_config.vulkanTestingMode) {
 				self.ssbo.buffer = .init(bytes, .{
 					.usage = @as(c.VkBufferUsageFlags, c.VK_BUFFER_USAGE_TRANSFER_DST_BIT | c.VK_BUFFER_USAGE_TRANSFER_SRC_BIT | c.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) | self.options.extraUsageFlags,
 				});
+			} else {
+				c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
+				const flags = c.GL_MAP_WRITE_BIT | c.GL_DYNAMIC_STORAGE_BIT;
+				c.glBufferStorage(c.GL_SHADER_STORAGE_BUFFER, bytes, null, flags);
+				self.ssbo.bind(self.binding);
 			}
 		}
 
@@ -1701,9 +1700,13 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 			self.binding = binding;
 			self.options = options;
 			self.createBuffer(size);
-			self.activeFence = 0;
-			for (&self.fences) |*fence| {
-				fence.* = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+			self.activeFreeList = 0;
+			if (main.settings.launch_config.vulkanTestingMode) {
+				self.lastFrameFreed = vulkan.gpu_garbage_collection.currentFrame;
+			} else {
+				for (&self.fences) |*fence| {
+					fence.* = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+				}
 			}
 			for (&self.fencedFreeLists) |*list| {
 				list.* = .init(allocator);
@@ -1714,8 +1717,10 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		}
 
 		pub fn deinit(self: *Self) void {
-			for (self.fences) |fence| {
-				c.glDeleteSync(fence);
+			if (!main.settings.launch_config.vulkanTestingMode) {
+				for (self.fences) |fence| {
+					c.glDeleteSync(fence);
+				}
 			}
 			for (self.fencedFreeLists) |list| {
 				list.deinit();
@@ -1725,22 +1730,42 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		}
 
 		pub fn beginRender(self: *Self) void {
-			self.activeFence += 1;
-			if (self.activeFence == self.fences.len) self.activeFence = 0;
-			const endTime = main.timestamp().addDuration(.fromMilliseconds(5));
-			while (self.fencedFreeLists[self.activeFence].popOrNull()) |allocation| {
-				self.finalFree(allocation);
-				if (main.timestamp().durationTo(endTime).nanoseconds < 0) break; // TODO: Remove after #1434
+			if (!main.settings.launch_config.vulkanTestingMode) {
+				self.activeFreeList += 1;
+				if (self.activeFreeList == self.fences.len) self.activeFreeList = 0;
+				const endTime = main.timestamp().addDuration(.fromMilliseconds(5));
+				while (self.fencedFreeLists[self.activeFreeList].popOrNull()) |allocation| {
+					self.finalFree(allocation);
+					if (main.timestamp().durationTo(endTime).nanoseconds < 0) break; // TODO: Remove after #1434
+				}
+				_ = c.glClientWaitSync(self.fences[self.activeFreeList], 0, c.GL_TIMEOUT_IGNORED); // Make sure the render calls that accessed these parts of the buffer have finished.
 			}
-			_ = c.glClientWaitSync(self.fences[self.activeFence], 0, c.GL_TIMEOUT_IGNORED); // Make sure the render calls that accessed these parts of the buffer have finished.
 		}
 
 		pub fn endRender(self: *Self) void {
-			c.glDeleteSync(self.fences[self.activeFence]);
-			self.fences[self.activeFence] = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+			if (main.settings.launch_config.vulkanTestingMode) return;
+
+			c.glDeleteSync(self.fences[self.activeFreeList]);
+			self.fences[self.activeFreeList] = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+		}
+
+		pub fn processFreeLists(self: *Self) void {
+			if (!main.settings.launch_config.vulkanTestingMode) return;
+			if (self.activeFreeList == vulkan.gpu_garbage_collection.currentFrame) return;
+			while (self.lastFrameFreed != vulkan.gpu_garbage_collection.currentFrame) {
+				self.lastFrameFreed += 1;
+				self.activeFreeList += 1;
+				if (self.activeFreeList == self.fences.len) self.activeFreeList = 0;
+				const endTime = main.timestamp().addDuration(.fromMilliseconds(5));
+				while (self.fencedFreeLists[self.activeFreeList].popOrNull()) |toFree| {
+					self.finalFree(toFree);
+					if (main.timestamp().durationTo(endTime).nanoseconds < 0) break; // TODO: Remove after #1434
+				}
+			}
 		}
 
 		pub fn rawAlloc(self: *Self, size: u31) SubAllocation {
+			self.processFreeLists();
 			var smallestBlock: ?*SubAllocation = null;
 			for (self.freeBlocks.items, 0..) |*block, i| {
 				if (size == block.len) {
@@ -1767,12 +1792,12 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 				self.used += self.capacity - oldCapacity;
 				self.finalFree(.{.start = oldCapacity, .len = self.capacity - oldCapacity});
 
-				c.glBindBuffer(c.GL_COPY_READ_BUFFER, oldBuffer.bufferID);
-				c.glBindBuffer(c.GL_COPY_WRITE_BUFFER, self.ssbo.bufferID);
-				c.glCopyBufferSubData(c.GL_COPY_READ_BUFFER, c.GL_COPY_WRITE_BUFFER, 0, 0, @as(c.GLsizeiptr, oldCapacity)*@sizeOf(Entry));
-
 				if (main.settings.launch_config.vulkanTestingMode) {
 					vulkan.upload.commandBuffer().copyBuffer(self.ssbo.buffer.?, 0, oldBuffer.buffer.?, 0, @as(usize, oldCapacity)*@sizeOf(Entry));
+				} else {
+					c.glBindBuffer(c.GL_COPY_READ_BUFFER, oldBuffer.bufferID);
+					c.glBindBuffer(c.GL_COPY_WRITE_BUFFER, self.ssbo.bufferID);
+					c.glCopyBufferSubData(c.GL_COPY_READ_BUFFER, c.GL_COPY_WRITE_BUFFER, 0, 0, @as(c.GLsizeiptr, oldCapacity)*@sizeOf(Entry));
 				}
 
 				return rawAlloc(self, size);
@@ -1801,7 +1826,8 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 
 		pub fn free(self: *Self, allocation: SubAllocation) void {
 			if (allocation.len == 0) return;
-			self.fencedFreeLists[self.activeFence].append(allocation);
+			self.processFreeLists();
+			self.fencedFreeLists[self.activeFreeList].append(allocation);
 		}
 
 		/// Must unmap after use!
@@ -1831,17 +1857,6 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		pub fn unmapRange(self: *Self, range: []Entry, allocation: SubAllocation) void {
 			if (range.len == 0) return;
 			if (main.settings.launch_config.vulkanTestingMode) {
-				// TODO: Remove after the OpenGL window is closed
-				c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
-				const ptr: [*]Entry = @ptrCast(@alignCast(c.glMapBufferRange(
-					c.GL_SHADER_STORAGE_BUFFER,
-					@as(c.GLintptr, allocation.start)*@sizeOf(Entry),
-					@as(c.GLsizeiptr, allocation.len)*@sizeOf(Entry),
-					c.GL_MAP_WRITE_BIT | c.GL_MAP_INVALIDATE_RANGE_BIT,
-				)));
-				@memcpy(ptr, range);
-				std.debug.assert(c.glUnmapBuffer(c.GL_SHADER_STORAGE_BUFFER) == c.GL_TRUE);
-
 				std.debug.assert(std.meta.eql(self.stagingBuffer.?.mapping, std.mem.sliceAsBytes(range)));
 				self.ssbo.buffer.?.uploadAndDestroyStaging(self.stagingBuffer.?, @as(usize, allocation.start)*@sizeOf(Entry));
 				self.stagingBuffer = null;
@@ -1858,18 +1873,19 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 				return;
 			}
 			allocation.* = self.rawAlloc(@intCast(data.len));
-			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
-			const ptr: [*]Entry = @ptrCast(@alignCast(c.glMapBufferRange(
-				c.GL_SHADER_STORAGE_BUFFER,
-				@as(c.GLintptr, allocation.start)*@sizeOf(Entry),
-				@as(c.GLsizeiptr, allocation.len)*@sizeOf(Entry),
-				c.GL_MAP_WRITE_BIT | c.GL_MAP_INVALIDATE_RANGE_BIT,
-			)));
-			@memcpy(ptr, data);
 			if (main.settings.launch_config.vulkanTestingMode) {
 				self.ssbo.buffer.?.uploadData(@as(usize, allocation.start)*@sizeOf(Entry), std.mem.sliceAsBytes(data));
+			} else {
+				c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
+				const ptr: [*]Entry = @ptrCast(@alignCast(c.glMapBufferRange(
+					c.GL_SHADER_STORAGE_BUFFER,
+					@as(c.GLintptr, allocation.start)*@sizeOf(Entry),
+					@as(c.GLsizeiptr, allocation.len)*@sizeOf(Entry),
+					c.GL_MAP_WRITE_BIT | c.GL_MAP_INVALIDATE_RANGE_BIT,
+				)));
+				@memcpy(ptr, data);
+				std.debug.assert(c.glUnmapBuffer(c.GL_SHADER_STORAGE_BUFFER) == c.GL_TRUE);
 			}
-			std.debug.assert(c.glUnmapBuffer(c.GL_SHADER_STORAGE_BUFFER) == c.GL_TRUE);
 		}
 	};
 }
@@ -1892,56 +1908,9 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 			.color = undefined,
 			.depth = undefined,
 		};
-		c.glGenFramebuffers(1, &self.frameBuffer);
-		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
-		const glFilter = switch (textureFilter) {
-			.nearest => c.GL_NEAREST,
-			.linear => c.GL_LINEAR,
-		};
-		const glWrap = switch (textureWrap) {
-			.repeat => c.GL_REPEAT,
-			.mirroredRepeat => c.GL_MIRRORED_REPEAT,
-			.clampToEdge => c.GL_CLAMP_TO_EDGE,
-			.clampToBorder => c.GL_CLAMP_TO_BORDER,
-			.mirrorClampToEdge => c.GL_MIRROR_CLAMP_TO_EDGE,
-		};
-		if (hasDepthTexture) {
-			c.glGenTextures(1, &self.depthTexture);
-			c.glBindTexture(c.GL_TEXTURE_2D, self.depthTexture);
-			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, glFilter);
-			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, glFilter);
-			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, glWrap);
-			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, glWrap);
-			c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_DEPTH_ATTACHMENT, c.GL_TEXTURE_2D, self.depthTexture, 0);
-		}
-		c.glGenTextures(1, &self.texture);
-		c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, glFilter);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, glFilter);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, glWrap);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, glWrap);
-		c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_COLOR_ATTACHMENT0, c.GL_TEXTURE_2D, self.texture, 0);
-
-		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
 		const width = @max(_width, 1);
 		const height = @max(_height, 1);
-		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
-		if (self.hasDepthTexture) {
-			c.glBindTexture(c.GL_TEXTURE_2D, self.depthTexture);
-			c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_DEPTH_COMPONENT32F, width, height, 0, c.GL_DEPTH_COMPONENT, c.GL_FLOAT, null);
-		}
-
-		const glFormat: c_int = switch (format) {
-			c.VK_FORMAT_R16G16B16A16_SFLOAT => c.GL_RGBA16F,
-			c.VK_FORMAT_R8G8B8A8_UNORM => c.GL_RGBA8,
-			c.VK_FORMAT_B10G11R11_UFLOAT_PACK32 => c.GL_R11F_G11F_B10F,
-			c.VK_FORMAT_B8G8R8A8_UNORM => c.GL_RGBA,
-			else => @panic("Unrecognized format"),
-		};
-
-		c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
-		c.glTexImage2D(c.GL_TEXTURE_2D, 0, glFormat, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.color = .init(.{width, height, 1}, .{
 				.usage = c.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -1960,21 +1929,68 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 					.aspect = .{.depth = true},
 				});
 			}
+		} else {
+			c.glGenFramebuffers(1, &self.frameBuffer);
+			c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
+			const glFilter = switch (textureFilter) {
+				.nearest => c.GL_NEAREST,
+				.linear => c.GL_LINEAR,
+			};
+			const glWrap = switch (textureWrap) {
+				.repeat => c.GL_REPEAT,
+				.mirroredRepeat => c.GL_MIRRORED_REPEAT,
+				.clampToEdge => c.GL_CLAMP_TO_EDGE,
+				.clampToBorder => c.GL_CLAMP_TO_BORDER,
+				.mirrorClampToEdge => c.GL_MIRROR_CLAMP_TO_EDGE,
+			};
+			if (hasDepthTexture) {
+				c.glGenTextures(1, &self.depthTexture);
+				c.glBindTexture(c.GL_TEXTURE_2D, self.depthTexture);
+				c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, glFilter);
+				c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, glFilter);
+				c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, glWrap);
+				c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, glWrap);
+				c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_DEPTH_ATTACHMENT, c.GL_TEXTURE_2D, self.depthTexture, 0);
+			}
+			c.glGenTextures(1, &self.texture);
+			c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, glFilter);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, glFilter);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, glWrap);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, glWrap);
+			c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_COLOR_ATTACHMENT0, c.GL_TEXTURE_2D, self.texture, 0);
+
+			if (self.hasDepthTexture) {
+				c.glBindTexture(c.GL_TEXTURE_2D, self.depthTexture);
+				c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_DEPTH_COMPONENT32F, width, height, 0, c.GL_DEPTH_COMPONENT, c.GL_FLOAT, null);
+			}
+
+			const glFormat: c_int = switch (format) {
+				c.VK_FORMAT_R16G16B16A16_SFLOAT => c.GL_RGBA16F,
+				c.VK_FORMAT_R8G8B8A8_UNORM => c.GL_RGBA8,
+				c.VK_FORMAT_B10G11R11_UFLOAT_PACK32 => c.GL_R11F_G11F_B10F,
+				c.VK_FORMAT_B8G8R8A8_UNORM => c.GL_RGBA,
+				else => @panic("Unrecognized format"),
+			};
+
+			c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
+			c.glTexImage2D(c.GL_TEXTURE_2D, 0, glFormat, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
 		}
 		return self;
 	}
 
 	pub fn deinit(self: *FrameBuffer) void {
-		c.glDeleteFramebuffers(1, &self.frameBuffer);
-		if (self.hasDepthTexture) {
-			c.glDeleteRenderbuffers(1, &self.depthTexture);
-		}
-		c.glDeleteTextures(1, &self.texture);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.color.deferredDeinit();
 			if (self.hasDepthTexture) {
 				self.depth.deferredDeinit();
 			}
+		} else {
+			c.glDeleteFramebuffers(1, &self.frameBuffer);
+			if (self.hasDepthTexture) {
+				c.glDeleteRenderbuffers(1, &self.depthTexture);
+			}
+			c.glDeleteTextures(1, &self.texture);
 		}
 	}
 
@@ -2149,7 +2165,6 @@ pub const TextureArray = struct { // MARK: TextureArray
 	/// (Re-)Generates the GPU buffer.
 	pub fn init(images: []Image, mipmapping: bool, alphaCorrectMipmapping: bool) TextureArray {
 		var self: TextureArray = undefined;
-		c.glGenTextures(1, &self.textureID);
 		var maxWidth: u31 = 1;
 		var maxHeight: u31 = 1;
 		for (images) |image| {
@@ -2166,12 +2181,7 @@ pub const TextureArray = struct { // MARK: TextureArray
 
 		std.log.debug("Creating Texture Array of size {}×{} with {} layers.", .{maxWidth, maxHeight, images.len});
 
-		self.bind();
-
 		const maxLOD = if (mipmapping) 1 + std.math.log2_int(u31, @max(maxWidth, maxHeight)) else 1;
-		for (0..maxLOD) |i| {
-			c.glTexImage3D(c.GL_TEXTURE_2D_ARRAY, @intCast(i), c.GL_RGBA8, @max(1, maxWidth >> @intCast(i)), @max(1, maxHeight >> @intCast(i)), @intCast(images.len), 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
-		}
 
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.vulkanImage = vulkan.Image.init(.{maxWidth, maxHeight, 1}, .{
@@ -2181,6 +2191,17 @@ pub const TextureArray = struct { // MARK: TextureArray
 				.arrayLayers = @intCast(images.len),
 				.mipmapFilter = .linear,
 			});
+		} else {
+			c.glGenTextures(1, &self.textureID);
+			self.bind();
+			for (0..maxLOD) |i| {
+				c.glTexImage3D(c.GL_TEXTURE_2D_ARRAY, @intCast(i), c.GL_RGBA8, @max(1, maxWidth >> @intCast(i)), @max(1, maxHeight >> @intCast(i)), @intCast(images.len), 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+			}
+			c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_LOD, maxLOD);
+			c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST_MIPMAP_LINEAR);
+			c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
+			c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
+			c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
 		}
 
 		const arena = main.stackAllocator.createArena();
@@ -2242,29 +2263,26 @@ pub const TextureArray = struct { // MARK: TextureArray
 				const lod: u5 = @intCast(lodBuffer.len - 1 - _lod);
 				const curWidth = @max(1, maxWidth >> lod);
 				const curHeight = @max(1, maxHeight >> lod);
-				c.glTexSubImage3D(c.GL_TEXTURE_2D_ARRAY, lod, 0, 0, @intCast(i), curWidth, curHeight, 1, c.GL_RGBA, c.GL_UNSIGNED_BYTE, lodBuffer[lod].ptr);
 				if (main.settings.launch_config.vulkanTestingMode) {
 					self.vulkanImage.uploadData(std.mem.sliceAsBytes(lodBuffer[lod]), .{
 						.imageExtent = .{.width = curWidth, .height = curHeight, .depth = 1},
 						.arrayLayer = @intCast(i),
 						.mipLevel = lod,
 					});
+				} else {
+					c.glTexSubImage3D(c.GL_TEXTURE_2D_ARRAY, lod, 0, 0, @intCast(i), curWidth, curHeight, 1, c.GL_RGBA, c.GL_UNSIGNED_BYTE, lodBuffer[lod].ptr);
 				}
 			}
 		}
-		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_LOD, maxLOD);
-		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST_MIPMAP_LINEAR);
-		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
-		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
-		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
 
 		return self;
 	}
 
 	pub fn deinit(self: TextureArray) void {
-		c.glDeleteTextures(1, &self.textureID);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.vulkanImage.deferredDeinit();
+		} else {
+			c.glDeleteTextures(1, &self.textureID);
 		}
 	}
 
@@ -2314,20 +2332,21 @@ pub const Texture = struct { // MARK: Texture
 
 	pub fn initFromImage(image: Image) Texture {
 		var self: Texture = undefined;
-		c.glGenTextures(1, &self.textureID);
-		self.bind();
-
-		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_RGBA8, image.width, image.height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
 
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.vulkanImage = vulkan.Image.init(.{image.width, image.height, 1}, .{
 				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
 			});
 			self.vulkanImage.uploadData(std.mem.sliceAsBytes(image.imageData), .{.imageExtent = .{.width = image.width, .height = image.height, .depth = 1}});
+		} else {
+			c.glGenTextures(1, &self.textureID);
+			self.bind();
+
+			c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_RGBA8, image.width, image.height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
 		}
 		return self;
 	}
@@ -2343,24 +2362,30 @@ pub const Texture = struct { // MARK: Texture
 
 	pub fn initFromMipmapFiles(pathPrefix: []const u8, largestSize: u31, lodBias: f32) Texture {
 		var self: Texture = undefined;
-		c.glGenTextures(1, &self.textureID);
-		self.bind();
 
 		const maxLod = std.math.log2_int(u31, largestSize);
-
-		var curSize: u31 = largestSize;
-		while (curSize != 0) : (curSize /= 2) {
-			c.glTexImage2D(c.GL_TEXTURE_2D, maxLod - std.math.log2_int(u31, curSize), c.GL_RGBA8, curSize, curSize, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
-		}
 
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.vulkanImage = .init(.{largestSize, largestSize, 1}, .{
 				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
 				.mipLevels = 1 + std.math.log2_int(u31, largestSize),
 			});
+		} else {
+			c.glGenTextures(1, &self.textureID);
+			self.bind();
+			var curSize: u31 = largestSize;
+			while (curSize != 0) : (curSize /= 2) {
+				c.glTexImage2D(c.GL_TEXTURE_2D, maxLod - std.math.log2_int(u31, curSize), c.GL_RGBA8, curSize, curSize, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+			}
+			c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_LOD, maxLod);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST_MIPMAP_LINEAR);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
+			c.glTexParameterf(c.GL_TEXTURE_2D, c.GL_TEXTURE_LOD_BIAS, lodBias);
 		}
 
-		curSize = largestSize;
+		var curSize: u31 = largestSize;
 		while (curSize != 0) : (curSize /= 2) {
 			const path = main.stackAllocator.print("{s}{}.png", .{pathPrefix, curSize});
 			defer main.stackAllocator.free(path);
@@ -2369,25 +2394,21 @@ pub const Texture = struct { // MARK: Texture
 				break :blk Image.defaultImage;
 			};
 			defer image.deinit(main.stackAllocator);
-			c.glTexSubImage2D(c.GL_TEXTURE_2D, maxLod - std.math.log2_int(u31, curSize), 0, 0, curSize, curSize, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
 			if (main.settings.launch_config.vulkanTestingMode) {
 				self.vulkanImage.uploadData(std.mem.sliceAsBytes(image.imageData), .{.imageExtent = .{.width = image.width, .height = image.height, .depth = 1}, .mipLevel = maxLod - std.math.log2_int(u31, curSize)});
+			} else {
+				c.glTexSubImage2D(c.GL_TEXTURE_2D, maxLod - std.math.log2_int(u31, curSize), 0, 0, curSize, curSize, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
 			}
 		}
 
-		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_LOD, maxLod);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST_MIPMAP_LINEAR);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
-		c.glTexParameterf(c.GL_TEXTURE_2D, c.GL_TEXTURE_LOD_BIAS, lodBias);
 		return self;
 	}
 
 	pub fn deinit(self: Texture) void {
-		c.glDeleteTextures(1, &self.textureID);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.vulkanImage.deferredDeinit();
+		} else {
+			c.glDeleteTextures(1, &self.textureID);
 		}
 	}
 
@@ -2405,6 +2426,9 @@ pub const Texture = struct { // MARK: Texture
 	}
 
 	pub fn size(self: Texture) Vec2i {
+		if (main.settings.launch_config.vulkanTestingMode) {
+			return .{self.vulkanImage.size[0], self.vulkanImage.size[1]};
+		}
 		self.bind();
 		var result: [2]i32 = undefined;
 		c.glGetTexLevelParameteriv(c.GL_TEXTURE_2D, 0, c.GL_TEXTURE_WIDTH, &result[0]);
@@ -2419,22 +2443,6 @@ pub const CubeMapTexture = struct { // MARK: CubeMapTexture
 
 	pub fn init(width: u31, height: u31) CubeMapTexture {
 		var self: CubeMapTexture = undefined;
-		c.glGenTextures(1, &self.textureID);
-		self.bind();
-
-		c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
-		c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
-		c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
-		c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
-		c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
-		c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
-		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_MIN_FILTER, c.GL_LINEAR);
-		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_MAG_FILTER, c.GL_LINEAR);
-		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_WRAP_S, c.GL_CLAMP_TO_EDGE);
-		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_WRAP_T, c.GL_CLAMP_TO_EDGE);
-		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_WRAP_R, c.GL_CLAMP_TO_EDGE);
-		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_BASE_LEVEL, 0);
-		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_MAX_LEVEL, 0);
 
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.vulkanImage = .init(.{width, height, 1}, .{
@@ -2445,15 +2453,33 @@ pub const CubeMapTexture = struct { // MARK: CubeMapTexture
 				.minFilter = .linear,
 				.addressMode = .clampToEdge,
 			});
+		} else {
+			c.glGenTextures(1, &self.textureID);
+			self.bind();
+
+			c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+			c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+			c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+			c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+			c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+			c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+			c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_MIN_FILTER, c.GL_LINEAR);
+			c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_MAG_FILTER, c.GL_LINEAR);
+			c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_WRAP_S, c.GL_CLAMP_TO_EDGE);
+			c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_WRAP_T, c.GL_CLAMP_TO_EDGE);
+			c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_WRAP_R, c.GL_CLAMP_TO_EDGE);
+			c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_BASE_LEVEL, 0);
+			c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_MAX_LEVEL, 0);
 		}
 
 		return self;
 	}
 
 	pub fn deinit(self: CubeMapTexture) void {
-		c.glDeleteTextures(1, &self.textureID);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.vulkanImage.deferredDeinit();
+		} else {
+			c.glDeleteTextures(1, &self.textureID);
 		}
 	}
 
@@ -2619,32 +2645,34 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 	var currentData: Data = undefined;
 
 	fn init() void {
-		c.glGenBuffers(buffers.len, &buffers);
-		for (buffers) |buffer| {
-			c.glBindBuffer(c.GL_UNIFORM_BUFFER, buffer);
-			c.glBufferStorage(c.GL_UNIFORM_BUFFER, @sizeOf(Data), null, c.GL_DYNAMIC_STORAGE_BIT);
-		}
 		if (main.settings.launch_config.vulkanTestingMode) {
 			for (&vulkanBuffers) |*buf| {
 				buf.* = .init(@sizeOf(Data), .{
 					.usage = c.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | c.VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 				});
 			}
+		} else {
+			c.glGenBuffers(buffers.len, &buffers);
+			for (buffers) |buffer| {
+				c.glBindBuffer(c.GL_UNIFORM_BUFFER, buffer);
+				c.glBufferStorage(c.GL_UNIFORM_BUFFER, @sizeOf(Data), null, c.GL_DYNAMIC_STORAGE_BIT);
+			}
+			for (&fences) |*fence| {
+				fence.* = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+			}
+			c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
 		}
-		for (&fences) |*fence| {
-			fence.* = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-		}
-		c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
 	}
 
 	fn deinit() void {
-		c.glDeleteBuffers(buffers.len, &buffers);
-		for (fences) |fence| {
-			c.glDeleteSync(fence);
-		}
 		if (main.settings.launch_config.vulkanTestingMode) {
 			for (vulkanBuffers) |buf| {
 				buf.deferredDeinit();
+			}
+		} else {
+			c.glDeleteBuffers(buffers.len, &buffers);
+			for (fences) |fence| {
+				c.glDeleteSync(fence);
 			}
 		}
 	}
@@ -2656,16 +2684,18 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 	pub fn uploadNewFrame(data: Data) void {
 		currentData = data;
 		currentData.projectionAndViewMatrix = Mat4f.fromGl(currentData.projectionMatrix).mul(.fromGl(currentData.viewMatrix)).toGl();
-		c.glDeleteSync(fences[currentFrame]);
-		fences[currentFrame] = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-		currentFrame = (currentFrame + 1)%buffers.len;
-		_ = c.glClientWaitSync(fences[currentFrame], 0, c.GL_TIMEOUT_IGNORED); // Make sure the render calls that accessed these parts of the buffer have finished.
-		c.glBindBuffer(c.GL_UNIFORM_BUFFER, buffers[currentFrame]);
-		c.glBufferSubData(c.GL_UNIFORM_BUFFER, 0, @sizeOf(Data), &currentData);
-		c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
-		c.glBindBufferBase(c.GL_UNIFORM_BUFFER, 0, buffers[currentFrame]);
 		if (main.settings.launch_config.vulkanTestingMode) {
+			currentFrame = (currentFrame + 1)%buffers.len;
 			vulkanBuffers[currentFrame].uploadData(0, std.mem.asBytes(&currentData));
+		} else {
+			c.glDeleteSync(fences[currentFrame]);
+			fences[currentFrame] = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+			currentFrame = (currentFrame + 1)%buffers.len;
+			_ = c.glClientWaitSync(fences[currentFrame], 0, c.GL_TIMEOUT_IGNORED); // Make sure the render calls that accessed these parts of the buffer have finished.
+			c.glBindBuffer(c.GL_UNIFORM_BUFFER, buffers[currentFrame]);
+			c.glBufferSubData(c.GL_UNIFORM_BUFFER, 0, @sizeOf(Data), &currentData);
+			c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
+			c.glBindBufferBase(c.GL_UNIFORM_BUFFER, 0, buffers[currentFrame]);
 		}
 	}
 
@@ -2690,23 +2720,25 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 
 		pub fn init(data: Data) StaticUbo {
 			var self: StaticUbo = undefined;
-			c.glGenBuffers(1, &self.id);
-			c.glBindBuffer(c.GL_UNIFORM_BUFFER, self.id);
-			c.glBufferData(c.GL_UNIFORM_BUFFER, @sizeOf(Data), &data, c.GL_STATIC_DRAW);
-			c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
 			if (main.settings.launch_config.vulkanTestingMode) {
 				self.vulkanBuffer = .init(@sizeOf(Data), .{
 					.usage = c.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | c.VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 				});
 				self.vulkanBuffer.uploadData(0, std.mem.asBytes(&data));
+			} else {
+				c.glGenBuffers(1, &self.id);
+				c.glBindBuffer(c.GL_UNIFORM_BUFFER, self.id);
+				c.glBufferData(c.GL_UNIFORM_BUFFER, @sizeOf(Data), &data, c.GL_STATIC_DRAW);
+				c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
 			}
 			return self;
 		}
 
 		pub fn deinit(self: StaticUbo) void {
-			c.glDeleteBuffers(1, &self.id);
 			if (main.settings.launch_config.vulkanTestingMode) {
 				self.vulkanBuffer.deferredDeinit();
+			} else {
+				c.glDeleteBuffers(1, &self.id);
 			}
 		}
 
@@ -2781,8 +2813,6 @@ const block_texture = struct { // MARK: block_texture
 			},
 		);
 		depthTexture = undefined;
-		c.glGenTextures(1, &depthTexture.textureID);
-		depthTexture.bind();
 		var data: [128*128]f32 = undefined;
 
 		const zMax: f32 = 134;
@@ -2791,11 +2821,6 @@ const block_texture = struct { // MARK: block_texture
 		const depth = ((far + near)/(near - far)*(-zMax) + 2*near*far/(near - far))/zMax*0.5 + 0.5;
 
 		@memset(&data, depth);
-		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_R32F, textureSize, textureSize, 0, c.GL_RED, c.GL_FLOAT, &data);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
 
 		if (main.settings.launch_config.vulkanTestingMode) {
 			depthTexture.vulkanImage = vulkan.Image.init(.{textureSize, textureSize, 1}, .{
@@ -2804,6 +2829,14 @@ const block_texture = struct { // MARK: block_texture
 				.aspect = .{.depth = true},
 			});
 			depthTexture.vulkanImage.uploadData(std.mem.sliceAsBytes(&data), .{.imageExtent = .{.width = textureSize, .height = textureSize, .depth = 1}, .aspect = .{.depth = true}});
+		} else {
+			c.glGenTextures(1, &depthTexture.textureID);
+			depthTexture.bind();
+			c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_R32F, textureSize, textureSize, 0, c.GL_RED, c.GL_FLOAT, &data);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
 		}
 
 		ubo = .init(.{
@@ -2831,7 +2864,9 @@ const block_texture = struct { // MARK: block_texture
 
 pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 	const textureSize = block_texture.textureSize;
-	c.glViewport(0, 0, textureSize, textureSize);
+	if (!main.settings.launch_config.vulkanTestingMode) {
+		c.glViewport(0, 0, textureSize, textureSize);
+	}
 
 	var fakeFrame: vulkan.Frame = undefined;
 	fakeFrame.extent = .{.width = textureSize, .height = textureSize};
@@ -2881,11 +2916,12 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 
 	var frameBuffer: FrameBuffer = .init(textureSize, textureSize, c.VK_FORMAT_R16G16B16A16_SFLOAT, false, .nearest, .repeat);
 	defer frameBuffer.deinit();
-	frameBuffer.bind();
 	const clearColor: [4]f32 = if (block.transparent()) .{0.683421, 0.6854237, 0.685426, 1} else @splat(0);
-	frameBuffer.clear(clearColor);
 	if (main.settings.launch_config.vulkanTestingMode) {
 		frameBuffer.bindAndClear(vulkan.upload.commandBuffer(), .{.clearColor = .{.clearColor = .{.float32 = clearColor}}, .clearDepth = .dontCare});
+	} else {
+		frameBuffer.bind();
+		frameBuffer.clear(clearColor);
 	}
 
 	{
@@ -2897,36 +2933,24 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 
 		if (main.settings.launch_config.vulkanTestingMode) {
 			vulkan.upload.commandBuffer().drawIndexed(@intCast(6*faceData.items.len), .{.firstVertex = allocation.start*4, .firstInstance = chunkAllocation.start});
+		} else {
+			block_texture.ubo.bind();
+			defer block_texture.ubo.unbind();
+
+			c.glActiveTexture(c.GL_TEXTURE0);
+			main.blocks.meshes.blockTextureArray.?.bind();
+			c.glActiveTexture(c.GL_TEXTURE1);
+			main.blocks.meshes.emissionTextureArray.?.bind();
+			c.glActiveTexture(c.GL_TEXTURE2);
+			main.blocks.meshes.reflectivityAndAbsorptionTextureArray.?.bind();
+			block_texture.depthTexture.bindTo(5);
+			c.glDrawElementsInstancedBaseVertexBaseInstance(c.GL_TRIANGLES, @intCast(6*faceData.items.len), c.GL_UNSIGNED_INT, null, 1, allocation.start*4, chunkAllocation.start);
 		}
-
-		block_texture.ubo.bind();
-		defer block_texture.ubo.unbind();
-
-		c.glActiveTexture(c.GL_TEXTURE0);
-		main.blocks.meshes.blockTextureArray.?.bind();
-		c.glActiveTexture(c.GL_TEXTURE1);
-		main.blocks.meshes.emissionTextureArray.?.bind();
-		c.glActiveTexture(c.GL_TEXTURE2);
-		main.blocks.meshes.reflectivityAndAbsorptionTextureArray.?.bind();
-		block_texture.depthTexture.bindTo(5);
-		c.glDrawElementsInstancedBaseVertexBaseInstance(c.GL_TRIANGLES, @intCast(6*faceData.items.len), c.GL_UNSIGNED_INT, null, 1, allocation.start*4, chunkAllocation.start);
 	}
 
-	c.glDisable(c.GL_CULL_FACE);
 	var finalFrameBuffer: FrameBuffer = .init(textureSize, textureSize, c.VK_FORMAT_R8G8B8A8_UNORM, false, .nearest, .repeat);
-	finalFrameBuffer.bind();
+	defer if (!main.settings.launch_config.vulkanTestingMode) c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
 	var texture = Texture{.textureID = finalFrameBuffer.texture, .vulkanImage = undefined};
-	defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
-	block_texture.pipeline.bind(null);
-	c.glUniform1i(block_texture.uniforms.transparent, if (block.transparent()) c.GL_TRUE else c.GL_FALSE);
-	frameBuffer.bindTexture(c.GL_TEXTURE3);
-
-	draw.rectVao.bind();
-	c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
-
-	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
-
-	c.glViewport(0, 0, main.Window.width, main.Window.height);
 
 	if (main.settings.launch_config.vulkanTestingMode) {
 		vulkan.upload.commandBuffer().endRendering();
@@ -2947,6 +2971,19 @@ pub fn generateBlockTexture(block: main.blocks.Block) Texture {
 		vulkan.upload.commandBuffer().endRendering();
 		finalFrameBuffer.prepareTexturesForBinding(vulkan.upload.commandBuffer(), .{});
 		texture.vulkanImage = finalFrameBuffer.color;
+	} else {
+		c.glDisable(c.GL_CULL_FACE);
+		finalFrameBuffer.bind();
+		block_texture.pipeline.bind(null);
+		c.glUniform1i(block_texture.uniforms.transparent, if (block.transparent()) c.GL_TRUE else c.GL_FALSE);
+		frameBuffer.bindTexture(c.GL_TEXTURE3);
+
+		draw.rectVao.bind();
+		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+
+		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
+
+		c.glViewport(0, 0, main.Window.width, main.Window.height);
 	}
 
 	return texture;

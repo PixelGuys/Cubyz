@@ -845,11 +845,6 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn preProcessAnimationData(currentFrame: *graphics.vulkan.Frame, time: u32) void {
-		animationComputePipeline.bind();
-		c.glUniform1ui(animationUniforms.time, time);
-		c.glUniform1ui(animationUniforms.size, @intCast(animationData.len));
-		c.glDispatchCompute(@intCast(@divCeil(animationData.len, 64)), 1, 1);
-		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.renderCommands.bindComputePipeline(animationComputePipeline);
 			const uniforms: AnimationUniforms = .{
@@ -862,6 +857,12 @@ pub const meshes = struct { // MARK: meshes
 				.{.ssbo = .{.binding = 1, .ssbo = animatedTextureSsbo.?}},
 			});
 			currentFrame.renderCommands.dispatchCompute(@intCast(@divCeil(animationData.len, 64)), 1, 1);
+		} else {
+			animationComputePipeline.bind();
+			c.glUniform1ui(animationUniforms.time, time);
+			c.glUniform1ui(animationUniforms.size, @intCast(animationData.len));
+			c.glDispatchCompute(@intCast(@divCeil(animationData.len, 64)), 1, 1);
+			c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
 		}
 	}
 
@@ -890,9 +891,13 @@ pub const meshes = struct { // MARK: meshes
 		if (emissionTextureArray) |tex| tex.deinit();
 		if (reflectivityAndAbsorptionTextureArray) |tex| tex.deinit();
 		blockTextureArray = .init(blockTextures.items, true, true);
-		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
+		}
 		emissionTextureArray = .init(emissionTextures.items, true, false);
-		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
+		}
 		const reflectivityAndAbsorptionTextures = main.stackAllocator.alloc(Image, reflectivityTextures.items.len);
 		defer main.stackAllocator.free(reflectivityAndAbsorptionTextures);
 		defer for (reflectivityAndAbsorptionTextures) |texture| {
@@ -911,7 +916,9 @@ pub const meshes = struct { // MARK: meshes
 			}
 		}
 		reflectivityAndAbsorptionTextureArray = .init(reflectivityAndAbsorptionTextures, true, false);
-		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
+		}
 
 		// Also generate additional buffers:
 		if (animationSsbo) |ssbo| {
@@ -924,11 +931,12 @@ pub const meshes = struct { // MARK: meshes
 			ssbo.deinit();
 		}
 		animationSsbo = SSBO.initStatic(AnimationData, animationData);
-		animationSsbo.?.bind(0);
-
 		animatedTextureSsbo = SSBO.initStaticSize(u32, animationData.len);
-		animatedTextureSsbo.?.bind(1);
 		fogSsbo = SSBO.initStatic(FogData, textureFogData.items);
-		fogSsbo.?.bind(7);
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			animationSsbo.?.bind(0);
+			animatedTextureSsbo.?.bind(1);
+			fogSsbo.?.bind(7);
+		}
 	}
 };
