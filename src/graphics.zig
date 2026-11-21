@@ -2165,7 +2165,6 @@ pub const TextureArray = struct { // MARK: TextureArray
 	/// (Re-)Generates the GPU buffer.
 	pub fn init(images: []Image, mipmapping: bool, alphaCorrectMipmapping: bool) TextureArray {
 		var self: TextureArray = undefined;
-		c.glGenTextures(1, &self.textureID);
 		var maxWidth: u31 = 1;
 		var maxHeight: u31 = 1;
 		for (images) |image| {
@@ -2182,12 +2181,7 @@ pub const TextureArray = struct { // MARK: TextureArray
 
 		std.log.debug("Creating Texture Array of size {}×{} with {} layers.", .{maxWidth, maxHeight, images.len});
 
-		self.bind();
-
 		const maxLOD = if (mipmapping) 1 + std.math.log2_int(u31, @max(maxWidth, maxHeight)) else 1;
-		for (0..maxLOD) |i| {
-			c.glTexImage3D(c.GL_TEXTURE_2D_ARRAY, @intCast(i), c.GL_RGBA8, @max(1, maxWidth >> @intCast(i)), @max(1, maxHeight >> @intCast(i)), @intCast(images.len), 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
-		}
 
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.vulkanImage = vulkan.Image.init(.{maxWidth, maxHeight, 1}, .{
@@ -2197,6 +2191,17 @@ pub const TextureArray = struct { // MARK: TextureArray
 				.arrayLayers = @intCast(images.len),
 				.mipmapFilter = .linear,
 			});
+		} else {
+			c.glGenTextures(1, &self.textureID);
+			self.bind();
+			for (0..maxLOD) |i| {
+				c.glTexImage3D(c.GL_TEXTURE_2D_ARRAY, @intCast(i), c.GL_RGBA8, @max(1, maxWidth >> @intCast(i)), @max(1, maxHeight >> @intCast(i)), @intCast(images.len), 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+			}
+			c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_LOD, maxLOD);
+			c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST_MIPMAP_LINEAR);
+			c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
+			c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
+			c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
 		}
 
 		const arena = main.stackAllocator.createArena();
@@ -2258,29 +2263,26 @@ pub const TextureArray = struct { // MARK: TextureArray
 				const lod: u5 = @intCast(lodBuffer.len - 1 - _lod);
 				const curWidth = @max(1, maxWidth >> lod);
 				const curHeight = @max(1, maxHeight >> lod);
-				c.glTexSubImage3D(c.GL_TEXTURE_2D_ARRAY, lod, 0, 0, @intCast(i), curWidth, curHeight, 1, c.GL_RGBA, c.GL_UNSIGNED_BYTE, lodBuffer[lod].ptr);
 				if (main.settings.launch_config.vulkanTestingMode) {
 					self.vulkanImage.uploadData(std.mem.sliceAsBytes(lodBuffer[lod]), .{
 						.imageExtent = .{.width = curWidth, .height = curHeight, .depth = 1},
 						.arrayLayer = @intCast(i),
 						.mipLevel = lod,
 					});
+				} else {
+					c.glTexSubImage3D(c.GL_TEXTURE_2D_ARRAY, lod, 0, 0, @intCast(i), curWidth, curHeight, 1, c.GL_RGBA, c.GL_UNSIGNED_BYTE, lodBuffer[lod].ptr);
 				}
 			}
 		}
-		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_LOD, maxLOD);
-		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST_MIPMAP_LINEAR);
-		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
-		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
-		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
 
 		return self;
 	}
 
 	pub fn deinit(self: TextureArray) void {
-		c.glDeleteTextures(1, &self.textureID);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.vulkanImage.deferredDeinit();
+		} else {
+			c.glDeleteTextures(1, &self.textureID);
 		}
 	}
 
@@ -2330,20 +2332,21 @@ pub const Texture = struct { // MARK: Texture
 
 	pub fn initFromImage(image: Image) Texture {
 		var self: Texture = undefined;
-		c.glGenTextures(1, &self.textureID);
-		self.bind();
-
-		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_RGBA8, image.width, image.height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
 
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.vulkanImage = vulkan.Image.init(.{image.width, image.height, 1}, .{
 				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
 			});
 			self.vulkanImage.uploadData(std.mem.sliceAsBytes(image.imageData), .{.imageExtent = .{.width = image.width, .height = image.height, .depth = 1}});
+		} else {
+			c.glGenTextures(1, &self.textureID);
+			self.bind();
+
+			c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_RGBA8, image.width, image.height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
 		}
 		return self;
 	}
@@ -2359,24 +2362,30 @@ pub const Texture = struct { // MARK: Texture
 
 	pub fn initFromMipmapFiles(pathPrefix: []const u8, largestSize: u31, lodBias: f32) Texture {
 		var self: Texture = undefined;
-		c.glGenTextures(1, &self.textureID);
-		self.bind();
 
 		const maxLod = std.math.log2_int(u31, largestSize);
-
-		var curSize: u31 = largestSize;
-		while (curSize != 0) : (curSize /= 2) {
-			c.glTexImage2D(c.GL_TEXTURE_2D, maxLod - std.math.log2_int(u31, curSize), c.GL_RGBA8, curSize, curSize, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
-		}
 
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.vulkanImage = .init(.{largestSize, largestSize, 1}, .{
 				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
 				.mipLevels = 1 + std.math.log2_int(u31, largestSize),
 			});
+		} else {
+			c.glGenTextures(1, &self.textureID);
+			self.bind();
+			var curSize: u31 = largestSize;
+			while (curSize != 0) : (curSize /= 2) {
+				c.glTexImage2D(c.GL_TEXTURE_2D, maxLod - std.math.log2_int(u31, curSize), c.GL_RGBA8, curSize, curSize, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+			}
+			c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_LOD, maxLod);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST_MIPMAP_LINEAR);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
+			c.glTexParameterf(c.GL_TEXTURE_2D, c.GL_TEXTURE_LOD_BIAS, lodBias);
 		}
 
-		curSize = largestSize;
+		var curSize: u31 = largestSize;
 		while (curSize != 0) : (curSize /= 2) {
 			const path = main.stackAllocator.print("{s}{}.png", .{pathPrefix, curSize});
 			defer main.stackAllocator.free(path);
@@ -2385,25 +2394,21 @@ pub const Texture = struct { // MARK: Texture
 				break :blk Image.defaultImage;
 			};
 			defer image.deinit(main.stackAllocator);
-			c.glTexSubImage2D(c.GL_TEXTURE_2D, maxLod - std.math.log2_int(u31, curSize), 0, 0, curSize, curSize, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
 			if (main.settings.launch_config.vulkanTestingMode) {
 				self.vulkanImage.uploadData(std.mem.sliceAsBytes(image.imageData), .{.imageExtent = .{.width = image.width, .height = image.height, .depth = 1}, .mipLevel = maxLod - std.math.log2_int(u31, curSize)});
+			} else {
+				c.glTexSubImage2D(c.GL_TEXTURE_2D, maxLod - std.math.log2_int(u31, curSize), 0, 0, curSize, curSize, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
 			}
 		}
 
-		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_LOD, maxLod);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST_MIPMAP_LINEAR);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
-		c.glTexParameterf(c.GL_TEXTURE_2D, c.GL_TEXTURE_LOD_BIAS, lodBias);
 		return self;
 	}
 
 	pub fn deinit(self: Texture) void {
-		c.glDeleteTextures(1, &self.textureID);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.vulkanImage.deferredDeinit();
+		} else {
+			c.glDeleteTextures(1, &self.textureID);
 		}
 	}
 
@@ -2421,6 +2426,9 @@ pub const Texture = struct { // MARK: Texture
 	}
 
 	pub fn size(self: Texture) Vec2i {
+		if (main.settings.launch_config.vulkanTestingMode) {
+			return .{self.vulkanImage.size[0], self.vulkanImage.size[1]};
+		}
 		self.bind();
 		var result: [2]i32 = undefined;
 		c.glGetTexLevelParameteriv(c.GL_TEXTURE_2D, 0, c.GL_TEXTURE_WIDTH, &result[0]);
@@ -2435,22 +2443,6 @@ pub const CubeMapTexture = struct { // MARK: CubeMapTexture
 
 	pub fn init(width: u31, height: u31) CubeMapTexture {
 		var self: CubeMapTexture = undefined;
-		c.glGenTextures(1, &self.textureID);
-		self.bind();
-
-		c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
-		c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
-		c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
-		c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
-		c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
-		c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
-		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_MIN_FILTER, c.GL_LINEAR);
-		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_MAG_FILTER, c.GL_LINEAR);
-		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_WRAP_S, c.GL_CLAMP_TO_EDGE);
-		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_WRAP_T, c.GL_CLAMP_TO_EDGE);
-		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_WRAP_R, c.GL_CLAMP_TO_EDGE);
-		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_BASE_LEVEL, 0);
-		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_MAX_LEVEL, 0);
 
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.vulkanImage = .init(.{width, height, 1}, .{
@@ -2461,15 +2453,33 @@ pub const CubeMapTexture = struct { // MARK: CubeMapTexture
 				.minFilter = .linear,
 				.addressMode = .clampToEdge,
 			});
+		} else {
+			c.glGenTextures(1, &self.textureID);
+			self.bind();
+
+			c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+			c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+			c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+			c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+			c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+			c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+			c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_MIN_FILTER, c.GL_LINEAR);
+			c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_MAG_FILTER, c.GL_LINEAR);
+			c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_WRAP_S, c.GL_CLAMP_TO_EDGE);
+			c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_WRAP_T, c.GL_CLAMP_TO_EDGE);
+			c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_WRAP_R, c.GL_CLAMP_TO_EDGE);
+			c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_BASE_LEVEL, 0);
+			c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_MAX_LEVEL, 0);
 		}
 
 		return self;
 	}
 
 	pub fn deinit(self: CubeMapTexture) void {
-		c.glDeleteTextures(1, &self.textureID);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.vulkanImage.deferredDeinit();
+		} else {
+			c.glDeleteTextures(1, &self.textureID);
 		}
 	}
 
