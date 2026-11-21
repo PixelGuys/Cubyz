@@ -4,6 +4,7 @@ pub const help = @import("help.zig");
 pub const invite = @import("invite.zig");
 pub const kick = @import("kick.zig");
 pub const kill = @import("kill.zig");
+pub const unstuck = @import("unstuck.zig");
 pub const particles = @import("particles.zig");
 pub const players = @import("players.zig");
 pub const seed = @import("seed.zig");
