@@ -76,8 +76,6 @@ pub const draw = struct { // MARK: draw
 	/// Returns the previous clip.
 	pub fn setClip(clipRect: Vec2f) ?Vec4i {
 		std.debug.assert(@reduce(.And, clipRect >= Vec2f{0, 0}));
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 		var newClip = Vec4i{
 			std.math.lossyCast(i32, translation[0]),
 			std.math.lossyCast(i32, translation[1]),
@@ -192,20 +190,19 @@ pub const draw = struct { // MARK: draw
 		pos += translation;
 		dim *= @splat(scale);
 
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-
 		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, rectPipeline, getScissor());
 			currentFrame.guiCommands.pushConstants(rectPipeline, &RectUniforms{
 				.start = pos,
 				.size = dim,
-				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.screen = .{@floatFromInt(currentFrame.extent.width), @floatFromInt(currentFrame.extent.height)},
 				.rectColor = @bitCast(getColor()),
 			});
 			currentFrame.guiCommands.bindVertexArray(rectVao);
 			currentFrame.guiCommands.draw(4, 0);
 		} else {
+			var viewport: [4]c_int = undefined;
+			c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 			rectPipeline.bind(getScissor());
 
 			c.glUniform2f(rectUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
@@ -293,21 +290,20 @@ pub const draw = struct { // MARK: draw
 		dim *= @splat(scale);
 		width *= scale;
 
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-
 		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, rectBorderPipeline, getScissor());
 			currentFrame.guiCommands.pushConstants(rectBorderPipeline, &RectBorderUniforms{
 				.start = pos,
 				.size = dim,
-				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.screen = .{@floatFromInt(currentFrame.extent.width), @floatFromInt(currentFrame.extent.height)},
 				.lineWidth = width,
 				.rectColor = @bitCast(getColor()),
 			});
 			currentFrame.guiCommands.bindVertexArray(rectBorderVao);
 			currentFrame.guiCommands.draw(10, 0);
 		} else {
+			var viewport: [4]c_int = undefined;
+			c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 			rectBorderPipeline.bind(getScissor());
 
 			c.glUniform2f(rectBorderUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
@@ -374,20 +370,19 @@ pub const draw = struct { // MARK: draw
 		pos2 *= @splat(scale);
 		pos2 += translation;
 
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-
 		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, linePipeline, getScissor());
 			currentFrame.guiCommands.pushConstants(linePipeline, &LineUniforms{
 				.start = pos1,
 				.direction = pos2 - pos1,
-				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.screen = .{@floatFromInt(currentFrame.extent.width), @floatFromInt(currentFrame.extent.height)},
 				.lineColor = @bitCast(getColor()),
 			});
 			currentFrame.guiCommands.bindVertexArray(rectBorderVao);
 			currentFrame.guiCommands.draw(10, 0);
 		} else {
+			var viewport: [4]c_int = undefined;
+			c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 			linePipeline.bind(getScissor());
 
 			c.glUniform2f(lineUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
@@ -444,9 +439,6 @@ pub const draw = struct { // MARK: draw
 	}
 
 	pub fn image(currentFrame: *vulkan.Frame, texture: Texture, _pos: Vec2f, _dim: Vec2f) void {
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-
 		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, imagePipeline, getScissor());
 			currentFrame.guiCommands.bindDescriptors(imagePipeline, &.{
@@ -469,9 +461,6 @@ pub const draw = struct { // MARK: draw
 		pos = @floor(pos);
 		dim = @ceil(dim);
 
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-
 		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, imagePipeline, getScissor());
 			currentFrame.guiCommands.bindDescriptors(imagePipeline, &.{
@@ -480,7 +469,7 @@ pub const draw = struct { // MARK: draw
 			currentFrame.guiCommands.pushConstants(imagePipeline, &ImageUniforms{
 				.start = pos,
 				.size = dim,
-				.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.screen = .{@floatFromInt(currentFrame.extent.width), @floatFromInt(currentFrame.extent.height)},
 				.color = @bitCast(getColor()),
 				.uvOffset = .{uvOffset[0], uvOffset[1]},
 				.uvDim = .{uvDim[0], uvDim[1]},
@@ -488,6 +477,8 @@ pub const draw = struct { // MARK: draw
 			currentFrame.guiCommands.bindVertexArray(rectVao);
 			currentFrame.guiCommands.draw(4, 0);
 		} else {
+			var viewport: [4]c_int = undefined;
+			c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 			imagePipeline.bind(getScissor());
 			texture.bindTo(0);
 
@@ -558,13 +549,10 @@ pub const draw = struct { // MARK: draw
 		pos = @floor(pos);
 		dim = @ceil(dim);
 
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
-
 		var uniforms = _uniforms;
 		uniforms.start = pos;
 		uniforms.size = dim;
-		uniforms.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])};
+		uniforms.screen = .{@floatFromInt(currentFrame.extent.width), @floatFromInt(currentFrame.extent.height)};
 		uniforms.color = @bitCast(getColor());
 		uniforms.uvOffset = .{0, 0};
 		uniforms.uvDim = .{1, 1};
@@ -607,12 +595,10 @@ pub const draw = struct { // MARK: draw
 		pos = @floor(pos);
 		dim = @ceil(dim);
 
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 		var uniforms = _uniforms;
 		uniforms.start = pos;
 		uniforms.size = dim;
-		uniforms.screen = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])};
+		uniforms.screen = .{@floatFromInt(currentFrame.extent.width), @floatFromInt(currentFrame.extent.height)};
 		uniforms.color = @bitCast(getColor());
 		uniforms.scale = scale;
 
@@ -1090,14 +1076,12 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		defer draw.restoreScale(oldScale);
 		var x: f32 = 0;
 		var y: f32 = 0;
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 
 		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, text_rendering.pipeline, draw.getScissor());
 			currentFrame.guiCommands.pushConstants(text_rendering.pipeline, &text_rendering.CompleteUniforms{
 				.glyphData = undefined,
-				.scene = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.scene = .{@floatFromInt(currentFrame.extent.width), @floatFromInt(currentFrame.extent.height)},
 				.ratio = draw.scale,
 				.inColor = @bitCast(draw.getColor()),
 				.fontSize = .{@floatFromInt(text_rendering.textureWidth), @floatFromInt(text_rendering.textureHeight)},
@@ -1108,6 +1092,8 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 
 			currentFrame.guiCommands.bindVertexArray(draw.rectVao);
 		} else {
+			var viewport: [4]c_int = undefined;
+			c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 			text_rendering.pipeline.bind(draw.getScissor());
 
 			c.glUniform2f(text_rendering.uniforms.scene, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
@@ -1176,14 +1162,12 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		defer draw.restoreScale(oldScale);
 		var x: f32 = 0;
 		var y: f32 = 0;
-		var viewport: [4]c_int = undefined;
-		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 
 		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.guiCommands.bindPipeline(currentFrame, text_rendering.pipeline, draw.getScissor());
 			currentFrame.guiCommands.pushConstants(text_rendering.pipeline, &text_rendering.CompleteUniforms{
 				.glyphData = undefined,
-				.scene = .{@floatFromInt(viewport[2]), @floatFromInt(viewport[3])},
+				.scene = .{@floatFromInt(currentFrame.extent.width), @floatFromInt(currentFrame.extent.height)},
 				.ratio = draw.scale,
 				.inColor = @bitCast(draw.getColor()),
 				.fontSize = .{@floatFromInt(text_rendering.textureWidth), @floatFromInt(text_rendering.textureHeight)},
@@ -1194,6 +1178,8 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 
 			currentFrame.guiCommands.bindVertexArray(draw.rectVao);
 		} else {
+			var viewport: [4]c_int = undefined;
+			c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 			text_rendering.pipeline.bind(draw.getScissor());
 
 			c.glUniform2f(text_rendering.uniforms.scene, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
