@@ -2645,32 +2645,34 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 	var currentData: Data = undefined;
 
 	fn init() void {
-		c.glGenBuffers(buffers.len, &buffers);
-		for (buffers) |buffer| {
-			c.glBindBuffer(c.GL_UNIFORM_BUFFER, buffer);
-			c.glBufferStorage(c.GL_UNIFORM_BUFFER, @sizeOf(Data), null, c.GL_DYNAMIC_STORAGE_BIT);
-		}
 		if (main.settings.launch_config.vulkanTestingMode) {
 			for (&vulkanBuffers) |*buf| {
 				buf.* = .init(@sizeOf(Data), .{
 					.usage = c.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | c.VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 				});
 			}
+		} else {
+			c.glGenBuffers(buffers.len, &buffers);
+			for (buffers) |buffer| {
+				c.glBindBuffer(c.GL_UNIFORM_BUFFER, buffer);
+				c.glBufferStorage(c.GL_UNIFORM_BUFFER, @sizeOf(Data), null, c.GL_DYNAMIC_STORAGE_BIT);
+			}
+			for (&fences) |*fence| {
+				fence.* = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+			}
+			c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
 		}
-		for (&fences) |*fence| {
-			fence.* = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-		}
-		c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
 	}
 
 	fn deinit() void {
-		c.glDeleteBuffers(buffers.len, &buffers);
-		for (fences) |fence| {
-			c.glDeleteSync(fence);
-		}
 		if (main.settings.launch_config.vulkanTestingMode) {
 			for (vulkanBuffers) |buf| {
 				buf.deferredDeinit();
+			}
+		} else {
+			c.glDeleteBuffers(buffers.len, &buffers);
+			for (fences) |fence| {
+				c.glDeleteSync(fence);
 			}
 		}
 	}
@@ -2682,16 +2684,18 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 	pub fn uploadNewFrame(data: Data) void {
 		currentData = data;
 		currentData.projectionAndViewMatrix = Mat4f.fromGl(currentData.projectionMatrix).mul(.fromGl(currentData.viewMatrix)).toGl();
-		c.glDeleteSync(fences[currentFrame]);
-		fences[currentFrame] = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-		currentFrame = (currentFrame + 1)%buffers.len;
-		_ = c.glClientWaitSync(fences[currentFrame], 0, c.GL_TIMEOUT_IGNORED); // Make sure the render calls that accessed these parts of the buffer have finished.
-		c.glBindBuffer(c.GL_UNIFORM_BUFFER, buffers[currentFrame]);
-		c.glBufferSubData(c.GL_UNIFORM_BUFFER, 0, @sizeOf(Data), &currentData);
-		c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
-		c.glBindBufferBase(c.GL_UNIFORM_BUFFER, 0, buffers[currentFrame]);
 		if (main.settings.launch_config.vulkanTestingMode) {
+			currentFrame = (currentFrame + 1)%buffers.len;
 			vulkanBuffers[currentFrame].uploadData(0, std.mem.asBytes(&currentData));
+		} else {
+			c.glDeleteSync(fences[currentFrame]);
+			fences[currentFrame] = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+			currentFrame = (currentFrame + 1)%buffers.len;
+			_ = c.glClientWaitSync(fences[currentFrame], 0, c.GL_TIMEOUT_IGNORED); // Make sure the render calls that accessed these parts of the buffer have finished.
+			c.glBindBuffer(c.GL_UNIFORM_BUFFER, buffers[currentFrame]);
+			c.glBufferSubData(c.GL_UNIFORM_BUFFER, 0, @sizeOf(Data), &currentData);
+			c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
+			c.glBindBufferBase(c.GL_UNIFORM_BUFFER, 0, buffers[currentFrame]);
 		}
 	}
 
@@ -2716,23 +2720,25 @@ pub const frame_uniforms = struct { // MARK: frame_uniforms
 
 		pub fn init(data: Data) StaticUbo {
 			var self: StaticUbo = undefined;
-			c.glGenBuffers(1, &self.id);
-			c.glBindBuffer(c.GL_UNIFORM_BUFFER, self.id);
-			c.glBufferData(c.GL_UNIFORM_BUFFER, @sizeOf(Data), &data, c.GL_STATIC_DRAW);
-			c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
 			if (main.settings.launch_config.vulkanTestingMode) {
 				self.vulkanBuffer = .init(@sizeOf(Data), .{
 					.usage = c.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | c.VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 				});
 				self.vulkanBuffer.uploadData(0, std.mem.asBytes(&data));
+			} else {
+				c.glGenBuffers(1, &self.id);
+				c.glBindBuffer(c.GL_UNIFORM_BUFFER, self.id);
+				c.glBufferData(c.GL_UNIFORM_BUFFER, @sizeOf(Data), &data, c.GL_STATIC_DRAW);
+				c.glBindBuffer(c.GL_UNIFORM_BUFFER, 0);
 			}
 			return self;
 		}
 
 		pub fn deinit(self: StaticUbo) void {
-			c.glDeleteBuffers(1, &self.id);
 			if (main.settings.launch_config.vulkanTestingMode) {
 				self.vulkanBuffer.deferredDeinit();
+			} else {
+				c.glDeleteBuffers(1, &self.id);
 			}
 		}
 
