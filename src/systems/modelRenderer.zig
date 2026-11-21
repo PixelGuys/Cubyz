@@ -26,6 +26,8 @@ const ItemStack = items.ItemStack;
 const random = main.random;
 const entity = main.entity;
 
+const @"cubyz:physics_body" = main.entity.components.@"cubyz:physics_body";
+
 const c = @import("c");
 
 // ############################# Client only stuff ################################
@@ -134,14 +136,14 @@ pub const client = struct { // MARK: client
 			if (id == game.player.id) continue; // don't process local player
 
 			const entModel = component.entityModel.get();
-			const ent = main.client.entity_manager.getEntity(id) orelse continue;
+			const entRotation = @"cubyz:physics_body".getRotation(id, .client).?;
 
 			const head = entModel.nodeIndexMap.get("Head");
 			if (head) |headId| {
-				var headRot: f32 = ent.rot[0];
+				var headRot: f32 = entRotation[0];
 				if (entModel.nodeIndexMap.get("Eyestalks")) |eyestalksId| {
-					const stalkRot = ent.rot[0]*0.25;
-					headRot = ent.rot[0]*0.75;
+					const stalkRot = entRotation[0]*0.25;
+					headRot = entRotation[0]*0.75;
 					component.nodes[eyestalksId].rot = vec.Quat.quatFromAxisAngle(Vec3f{1, 0, 0}, stalkRot);
 				}
 				component.nodes[headId].rot = vec.Quat.quatFromAxisAngle(Vec3f{1, 0, 0}, headRot);
@@ -163,7 +165,7 @@ pub const client = struct { // MARK: client
 			if (id == game.player.id) continue; // don't render local player
 
 			const entModel = component.entityModel.get();
-			const ent = main.client.entity_manager.getEntity(id) orelse continue;
+			const physicsBodyComponent = @"cubyz:physics_body".client.get(id).?;
 
 			if (settings.launch_config.vulkanTestingMode) {
 				currentFrame.renderCommands.bindPipeline(currentFrame, pipeline, null);
@@ -179,7 +181,7 @@ pub const client = struct { // MARK: client
 
 				entTexture.?.bindTo(0);
 			}
-			const blockPos: vec.Vec3i = @floor(ent.pos);
+			const blockPos: vec.Vec3i = @floor(physicsBodyComponent.position);
 			const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
 			const light = (@as(u32, lightVals[0] >> 3) << 25 |
 				@as(u32, lightVals[1] >> 3) << 20 |
@@ -188,14 +190,14 @@ pub const client = struct { // MARK: client
 				@as(u32, lightVals[4] >> 3) << 5 |
 				@as(u32, lightVals[5] >> 3) << 0);
 
-			const pos: Vec3d = ent.getRenderPosition() - playerPos;
+			const pos: Vec3d = physicsBodyComponent.position - playerPos;
 			const modelMatrix = (Mat4f.identity()
 				.mul(Mat4f.translation(Vec3f{
 					@floatCast(pos[0]),
 					@floatCast(pos[1]),
 					@floatCast(pos[2] - entModel.height/2),
 				}))
-				.mul(Mat4f.rotationZ(-ent.rot[2])));
+				.mul(Mat4f.rotationZ(-physicsBodyComponent.rotation[2])));
 			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 			if (settings.launch_config.vulkanTestingMode) {
 				currentFrame.renderCommands.pushConstants(pipeline, &Uniforms{

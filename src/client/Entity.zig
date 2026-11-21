@@ -15,6 +15,7 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const @"cubyz:physics_body" = main.entity.components.@"cubyz:physics_body";
 
 const c = @import("c");
 
@@ -24,9 +25,6 @@ _interpolationVel: [6]f64 = undefined,
 
 width: f64,
 height: f64,
-
-pos: Vec3d = undefined,
-rot: Vec3f = undefined,
 
 id: main.entity.Entity,
 name: []const u8,
@@ -38,20 +36,22 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) !
 		.height = zon.get(f64, "height") orelse 1,
 		.name = allocator.dupe(u8, zon.get([]const u8, "name") orelse ""),
 	};
-	self._interpolationPos = [_]f64{
-		self.pos[0],
-		self.pos[1],
-		self.pos[2],
-		@floatCast(self.rot[0]),
-		@floatCast(self.rot[1]),
-		@floatCast(self.rot[2]),
-	};
-	self._interpolationVel = @splat(0);
-	self.interpolatedValues.init(&self._interpolationPos, &self._interpolationVel);
 
 	if (zon.getChildOrNull("components")) |components| {
 		try main.entity.loadComponentsFromBase64(components.as([]const u8) orelse "", self.id, .client);
 	}
+
+	const physicsBodyComponent = @"cubyz:physics_body".client.get(self.id).?;
+	self._interpolationPos = [_]f64{
+		physicsBodyComponent.position[0],
+		physicsBodyComponent.position[1],
+		physicsBodyComponent.position[2],
+		@floatCast(physicsBodyComponent.rotation[0]),
+		@floatCast(physicsBodyComponent.rotation[1]),
+		@floatCast(physicsBodyComponent.rotation[2]),
+	};
+	self._interpolationVel = @splat(0);
+	self.interpolatedValues.init(&self._interpolationPos, &self._interpolationVel);
 }
 
 pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
@@ -60,7 +60,7 @@ pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
 }
 
 pub fn getRenderPosition(self: *const @This()) Vec3d {
-	return Vec3d{self.pos[0], self.pos[1], self.pos[2]};
+	return @"cubyz:physics_body".getPosition(self.id, .client).?;
 }
 
 pub fn updatePosition(self: *@This(), pos: *const [6]f64, vel: *const [6]f64, time: i16) void {
@@ -69,12 +69,13 @@ pub fn updatePosition(self: *@This(), pos: *const [6]f64, vel: *const [6]f64, ti
 
 pub fn update(self: *@This(), time: i16, lastTime: i16) void {
 	self.interpolatedValues.update(time, lastTime);
-	self.pos[0] = self.interpolatedValues.outPos[0];
-	self.pos[1] = self.interpolatedValues.outPos[1];
-	self.pos[2] = self.interpolatedValues.outPos[2];
-	self.rot[0] = @floatCast(self.interpolatedValues.outPos[3]);
-	self.rot[1] = @floatCast(self.interpolatedValues.outPos[4]);
-	self.rot[2] = @floatCast(self.interpolatedValues.outPos[5]);
+	const physicsBodyComponent = @"cubyz:physics_body".client.get(self.id).?;
+	physicsBodyComponent.position[0] = self.interpolatedValues.outPos[0];
+	physicsBodyComponent.position[1] = self.interpolatedValues.outPos[1];
+	physicsBodyComponent.position[2] = self.interpolatedValues.outPos[2];
+	physicsBodyComponent.rotation[0] = @floatCast(self.interpolatedValues.outPos[3]);
+	physicsBodyComponent.rotation[1] = @floatCast(self.interpolatedValues.outPos[4]);
+	physicsBodyComponent.rotation[2] = @floatCast(self.interpolatedValues.outPos[5]);
 }
 
 pub fn format(self: *const @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
