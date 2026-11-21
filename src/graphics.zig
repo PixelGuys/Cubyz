@@ -1576,50 +1576,56 @@ pub const SSBO = struct { // MARK: SSBO
 	buffer: ?vulkan.Buffer = null,
 	pub fn init() SSBO {
 		var self = SSBO{.bufferID = undefined};
-		c.glGenBuffers(1, &self.bufferID);
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			c.glGenBuffers(1, &self.bufferID);
+		}
 		return self;
 	}
 
 	pub fn initStatic(comptime T: type, data: []const T) SSBO {
 		var self = SSBO{.bufferID = undefined};
-		c.glGenBuffers(1, &self.bufferID);
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
-		c.glBufferStorage(c.GL_SHADER_STORAGE_BUFFER, @intCast(data.len*@sizeOf(T)), data.ptr, 0);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.buffer = .init(data.len*@sizeOf(T), .{.usage = c.VK_BUFFER_USAGE_TRANSFER_DST_BIT | c.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT});
 			self.buffer.?.uploadData(0, std.mem.sliceAsBytes(data));
+		} else {
+			c.glGenBuffers(1, &self.bufferID);
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
+			c.glBufferStorage(c.GL_SHADER_STORAGE_BUFFER, @intCast(data.len*@sizeOf(T)), data.ptr, 0);
 		}
 		return self;
 	}
 
 	pub fn initStaticSize(comptime T: type, len: usize) SSBO {
 		var self = SSBO{.bufferID = undefined};
-		c.glGenBuffers(1, &self.bufferID);
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
-		c.glBufferStorage(c.GL_SHADER_STORAGE_BUFFER, @intCast(len*@sizeOf(T)), null, 0);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.buffer = .init(len*@sizeOf(T), .{.usage = c.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT});
+		} else {
+			c.glGenBuffers(1, &self.bufferID);
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
+			c.glBufferStorage(c.GL_SHADER_STORAGE_BUFFER, @intCast(len*@sizeOf(T)), null, 0);
 		}
 		return self;
 	}
 
 	pub fn initDynamicSize(comptime T: type, len: usize) SSBO {
 		var self = SSBO{.bufferID = undefined};
-		c.glGenBuffers(1, &self.bufferID);
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
-		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(len*@sizeOf(T)), null, c.GL_DYNAMIC_DRAW);
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.buffer = .init(len*@sizeOf(T), .{.usage = c.VK_BUFFER_USAGE_TRANSFER_DST_BIT | c.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT});
+		} else {
+			c.glGenBuffers(1, &self.bufferID);
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
+			c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(len*@sizeOf(T)), null, c.GL_DYNAMIC_DRAW);
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 		}
 		return self;
 	}
 
 	pub fn deinit(self: SSBO) void {
-		if (self.buffer) |buffer| {
-			buffer.deferredDeinit();
+		if (main.settings.launch_config.vulkanTestingMode) {
+			if (self.buffer) |buffer| buffer.deferredDeinit();
+		} else {
+			c.glDeleteBuffers(1, &self.bufferID);
 		}
-		c.glDeleteBuffers(1, &self.bufferID);
 	}
 
 	pub fn bind(self: SSBO, binding: c_uint) void {
@@ -1627,20 +1633,22 @@ pub const SSBO = struct { // MARK: SSBO
 	}
 
 	pub fn bufferData(self: SSBO, comptime T: type, data: []const T) void {
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
-		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(data.len*@sizeOf(T)), data.ptr, c.GL_STATIC_DRAW);
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 		if (self.buffer) |buffer| {
 			buffer.uploadData(0, std.mem.sliceAsBytes(data));
+		} else {
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
+			c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(data.len*@sizeOf(T)), data.ptr, c.GL_STATIC_DRAW);
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 		}
 	}
 
 	pub fn bufferSubData(self: SSBO, comptime T: type, data: []const T, length: usize) void {
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
-		c.glBufferSubData(c.GL_SHADER_STORAGE_BUFFER, 0, @intCast(length*@sizeOf(T)), data.ptr);
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 		if (self.buffer) |buffer| {
 			buffer.uploadData(0, std.mem.sliceAsBytes(data));
+		} else {
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
+			c.glBufferSubData(c.GL_SHADER_STORAGE_BUFFER, 0, @intCast(length*@sizeOf(T)), data.ptr);
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 		}
 	}
 };
