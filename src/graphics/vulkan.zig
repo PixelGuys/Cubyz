@@ -793,7 +793,7 @@ pub const SwapChain = struct { // MARK: SwapChain
 			imageAvailable[i] = .init();
 		}
 
-		SwapChain.instance = .init();
+		SwapChain.instance = .init(null);
 	}
 
 	fn globalDeinit() void {
@@ -806,7 +806,7 @@ pub const SwapChain = struct { // MARK: SwapChain
 		}
 	}
 
-	fn init() *SwapChain {
+	fn init(oldInstance: ?*SwapChain) *SwapChain {
 		var self: *SwapChain = main.globalAllocator.create(SwapChain);
 		const support = SupportDetails.init(main.stackAllocator, physicalDevice);
 		defer support.deinit(main.stackAllocator);
@@ -832,7 +832,7 @@ pub const SwapChain = struct { // MARK: SwapChain
 			.compositeAlpha = c.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
 			.presentMode = presentMode,
 			.clipped = c.VK_TRUE,
-			.oldSwapchain = null,
+			.oldSwapchain = if (oldInstance) |swapChain| swapChain.handle else null,
 		};
 		const queueFamilies = findQueueFamilies(physicalDevice);
 		if (queueFamilies.graphicsFamily.? != queueFamilies.presentFamily.?) {
@@ -870,7 +870,7 @@ pub const SwapChain = struct { // MARK: SwapChain
 	fn recreate() void {
 		waitForDeviceToFinish();
 		gpu_garbage_collection.deferredFree(.{.swapChain = SwapChain.instance});
-		SwapChain.instance = .init();
+		SwapChain.instance = .init(SwapChain.instance);
 	}
 
 	fn beginRender() *Frame {

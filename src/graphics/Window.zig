@@ -799,11 +799,11 @@ pub fn init() void { // MARK: init()
 
 pub fn deinit() void {
 	gamepad.deinit();
-	c.glfwDestroyWindow(window);
 	if (settings.launch_config.vulkanTestingMode) {
 		c.glfwDestroyWindow(openGlWindow);
 		vulkan.deinit();
 	}
+	c.glfwDestroyWindow(window);
 	c.glfwTerminate();
 }
 var cursorVisible: bool = true;
