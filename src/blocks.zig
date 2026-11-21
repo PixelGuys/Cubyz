@@ -857,6 +857,16 @@ pub const meshes = struct { // MARK: meshes
 				.{.ssbo = .{.binding = 1, .ssbo = animatedTextureSsbo.?}},
 			});
 			currentFrame.renderCommands.dispatchCompute(@intCast(@divCeil(animationData.len, 64)), 1, 1);
+			currentFrame.renderCommands.pipelineBarrier(.{.bufferMemoryBarriers = &.{.{
+				.sType = c.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+				.srcAccessMask = c.VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT | c.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+				.dstAccessMask = c.VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+				.buffer = animatedTextureSsbo.?.buffer.?.handle,
+				.offset = 0,
+				.size = c.VK_WHOLE_SIZE,
+			}}});
 		} else {
 			animationComputePipeline.bind();
 			c.glUniform1ui(animationUniforms.time, time);
