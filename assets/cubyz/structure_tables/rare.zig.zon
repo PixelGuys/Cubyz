@@ -23,5 +23,10 @@
 			.placeMode = .degradable,
 			.structure = "cubyz:rare/fingerpost/base",
 		},
+		.{
+			.id = "cubyz:sbb",
+			.placeMode = .degradable,
+			.structure = "cubyz:rare/cloth_line/base",
+		},
 	},
 }
