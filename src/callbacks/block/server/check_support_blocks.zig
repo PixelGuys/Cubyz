@@ -43,7 +43,7 @@ pub fn run(_: *@This(), params: main.callbacks.ServerBlockCallback.Params) main.
 
 	if (newBlock == params.block) return .ignored;
 
-	if (main.server.world.?.cmpxchgBlock(wx, wy, wz, params.block, newBlock) == null) {
+	if (main.server.world.?.cmpxchgBlock(wx, wy, wz, params.block, newBlock, .neighbors) == null) {
 		const dropCtx = BlockDrop.Context{
 			.oldBlock = params.block,
 			.newBlock = newBlock,

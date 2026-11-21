@@ -1632,7 +1632,7 @@ pub const Command = struct { // MARK: Command
 			}
 
 			if (ctx.side == .server) {
-				if (main.server.world.?.cmpxchgBlock(pos[0], pos[1], pos[2], self.oldBlock, self.newBlock) != null) {
+				if (main.server.world.?.cmpxchgBlock(pos[0], pos[1], pos[2], self.oldBlock, self.newBlock, .neighbors) != null) {
 					// Inform the client of the actual block:
 					var writer = BinaryWriter.init(main.stackAllocator);
 					defer writer.deinit();

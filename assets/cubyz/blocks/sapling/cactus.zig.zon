@@ -1,0 +1,35 @@
+.{
+	.tags = .{.cuttable, .sliceable, .flower},
+	.blockHealth = 0.2,
+	.drops = .{
+		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
+	},
+	.onTick = .{.type = .sapling, .sbb = .{
+		.structure = "cubyz:cactus/saguaro",
+		.placeMode = .degradable,
+		.chance = 0.01,
+	}},
+	.selectionCapabilities = .{.toolEffective},
+	.replaceable = true,
+	.degradable = true,
+	.collide = false,
+	.alwaysViewThrough = true,
+	.absorbedLight = 0x121012,
+	.model = "cubyz:flower/cactus",
+	.rotation = "cubyz:direction",
+	.texture = "cubyz:cactus_flower",
+	.texture_top = "cubyz:cactus_flower_top",
+	.texture_bottom = "cubyz:cactus_flower_top",
+	.item = .{
+		.texture = "cactus_flower.png",
+	},
+	.lodReplacement = "cubyz:air",
+	.onTouch = .{
+		.type = .hurt,
+		.dps = 0.2,
+		.damageType = .spiky,
+	},
+	.onUpdate = .{
+		.type = .check_support_blocks,
+	},
+}
