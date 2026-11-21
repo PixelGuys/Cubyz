@@ -1148,10 +1148,13 @@ pub const Image = struct { // MARK: Image
 		};
 		checkResult(c.vkCreateSampler(device, &samplerInfo, null, &self.sampler));
 
+		main.utils.leak.registerAllocation(.{.allocator = .vulkanImage, .pointer = self.handle});
+
 		return self;
 	}
 
 	fn privateDeinit(self: Image) void {
+		main.utils.leak.freeAllocation(.{.allocator = .vulkanImage, .pointer = self.handle});
 		c.vkDestroySampler(device, self.sampler, null);
 		c.vkDestroyImageView(device, self.view, null);
 		c.vmaDestroyImage(gpu_allocator.handle, self.handle, self.allocation);

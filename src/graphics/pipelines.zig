@@ -789,10 +789,12 @@ pub const Pipeline = struct { // MARK: Pipeline
 				std.log.err("Vulkan pipeline creation for paths {s} {s} failed with error {s}", .{vertexPath, fragmentPath, @errorName(err)});
 			};
 		}
+		main.utils.leak.registerAllocation(.{.allocator = .pipeline, .pointer = if (main.settings.launch_config.vulkanTestingMode) self.graphicsPipeline else @ptrFromInt(self.shader.id)});
 		return self;
 	}
 
 	pub fn deinit(self: Pipeline) void {
+		main.utils.leak.freeAllocation(.{.allocator = .pipeline, .pointer = if (main.settings.launch_config.vulkanTestingMode) self.graphicsPipeline else @ptrFromInt(self.shader.id)});
 		self.shader.deinit();
 		if (self.vulkanCreationSuccessful) {
 			c.vkDestroyPipeline(vulkan.device, self.graphicsPipeline, null);
@@ -909,6 +911,7 @@ pub const ComputePipeline = struct { // MARK: ComputePipeline
 				std.log.err("Vulkan compute pipeline creation for paths {s} failed with error {s}", .{computePath, @errorName(err)});
 			};
 		}
+		main.utils.leak.registerAllocation(.{.allocator = .pipeline, .pointer = if (main.settings.launch_config.vulkanTestingMode) self.computePipeline else @ptrFromInt(self.shader.id)});
 		return self;
 	}
 
@@ -959,6 +962,7 @@ pub const ComputePipeline = struct { // MARK: ComputePipeline
 	}
 
 	pub fn deinit(self: ComputePipeline) void {
+		main.utils.leak.freeAllocation(.{.allocator = .pipeline, .pointer = if (main.settings.launch_config.vulkanTestingMode) self.computePipeline else @ptrFromInt(self.shader.id)});
 		self.shader.deinit();
 		if (self.vulkanCreationSuccessful) {
 			c.vkDestroyPipeline(vulkan.device, self.computePipeline, null);
