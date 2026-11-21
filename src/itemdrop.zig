@@ -885,7 +885,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 		} else {
 			displayItemUbo.bind();
 		}
-		defer displayItemUbo.unbind();
+		defer if (!main.settings.launch_config.vulkanTestingMode) displayItemUbo.unbind();
 
 		var uniforms: ItemUniforms = .{};
 

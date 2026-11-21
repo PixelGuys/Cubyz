@@ -81,7 +81,6 @@ pub fn mainButtonReleased(self: *BagSlot, mousePosition: Vec2f) void {
 }
 
 pub fn render(self: *BagSlot, currentFrame: *graphics.vulkan.Frame, _: Vec2f) void {
-	texture.bindTo(0);
 	draw.image(currentFrame, texture, self.pos, @splat(sizeWithBorder));
 
 	for (0..5) |_i| {

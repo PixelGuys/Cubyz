@@ -136,7 +136,6 @@ pub fn deinit() void {
 }
 
 fn initReflectionCubeMap() void {
-	c.glViewport(0, 0, reflectionCubeMapSize, reflectionCubeMapSize);
 	var framebuffer: graphics.FrameBuffer = .init(0, 0, c.VK_FORMAT_R8G8B8A8_UNORM, false, .linear, .clampToEdge);
 	defer framebuffer.deinit();
 	if (main.settings.launch_config.vulkanTestingMode) {
@@ -171,18 +170,20 @@ fn initReflectionCubeMap() void {
 			commandBuffer.endRendering();
 		}
 		framebuffer.prepareTexturesForBinding(commandBuffer, .{});
-	}
-	framebuffer.bind();
-	fakeReflectionPipeline.bind(null);
-	c.glUniform1f(fakeReflectionUniforms.frequency, 1);
-	c.glUniform1f(fakeReflectionUniforms.reflectionMapSize, reflectionCubeMapSize);
-	for (0..6) |face| {
-		c.glUniform3fv(fakeReflectionUniforms.normalVector, 1, @ptrCast(&graphics.CubeMapTexture.faceNormal(face)));
-		c.glUniform3fv(fakeReflectionUniforms.upVector, 1, @ptrCast(&graphics.CubeMapTexture.faceUp(face)));
-		c.glUniform3fv(fakeReflectionUniforms.rightVector, 1, @ptrCast(&graphics.CubeMapTexture.faceRight(face)));
-		reflectionCubeMap.bindToFramebuffer(framebuffer, @intCast(face));
-		graphics.draw.rectVao.bind();
-		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+	} else {
+		c.glViewport(0, 0, reflectionCubeMapSize, reflectionCubeMapSize);
+		framebuffer.bind();
+		fakeReflectionPipeline.bind(null);
+		c.glUniform1f(fakeReflectionUniforms.frequency, 1);
+		c.glUniform1f(fakeReflectionUniforms.reflectionMapSize, reflectionCubeMapSize);
+		for (0..6) |face| {
+			c.glUniform3fv(fakeReflectionUniforms.normalVector, 1, @ptrCast(&graphics.CubeMapTexture.faceNormal(face)));
+			c.glUniform3fv(fakeReflectionUniforms.upVector, 1, @ptrCast(&graphics.CubeMapTexture.faceUp(face)));
+			c.glUniform3fv(fakeReflectionUniforms.rightVector, 1, @ptrCast(&graphics.CubeMapTexture.faceRight(face)));
+			reflectionCubeMap.bindToFramebuffer(framebuffer, @intCast(face));
+			graphics.draw.rectVao.bind();
+			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+		}
 	}
 }
 
@@ -658,17 +659,18 @@ const bloom = struct { // MARK: bloom
 			height = currentHeight;
 			buffer1.deinit();
 			buffer1 = .init(width/4, height/4, c.VK_FORMAT_B10G11R11_UFLOAT_PACK32, false, .linear, .clampToEdge);
-			std.debug.assert(buffer1.validate());
+			if (!main.settings.launch_config.vulkanTestingMode) std.debug.assert(buffer1.validate());
 			buffer2.deinit();
 			buffer2 = .init(width/4, height/4, c.VK_FORMAT_B10G11R11_UFLOAT_PACK32, false, .linear, .clampToEdge);
-			std.debug.assert(buffer2.validate());
+			if (!main.settings.launch_config.vulkanTestingMode) std.debug.assert(buffer2.validate());
 		}
 		gpu_performance_measuring.startQuery(.bloom_extract_downsample);
 
 		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.extent = .{.width = width/4, .height = height/4};
+		} else {
+			c.glViewport(0, 0, width/4, height/4);
 		}
-		c.glViewport(0, 0, width/4, height/4);
 		extractImageDataAndDownsample(currentFrame, playerBlock, viewMatrix);
 		gpu_performance_measuring.stopQuery();
 		gpu_performance_measuring.startQuery(.bloom_first_pass);
@@ -677,18 +679,21 @@ const bloom = struct { // MARK: bloom
 		gpu_performance_measuring.startQuery(.bloom_second_pass);
 		secondPass(currentFrame);
 
-		c.glViewport(0, 0, width, height);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			currentFrame.extent = .{.width = width, .height = height};
+		} else {
+			c.glViewport(0, 0, width, height);
+			buffer1.bindTexture(c.GL_TEXTURE5);
 		}
-		buffer1.bindTexture(c.GL_TEXTURE5);
 
 		gpu_performance_measuring.stopQuery();
 		return buffer1.color;
 	}
 
 	fn bindReplacementImage() void {
-		emptyBuffer.bindTo(5);
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			emptyBuffer.bindTo(5);
+		}
 	}
 };
 
@@ -814,7 +819,6 @@ pub const menu_background = struct { // MARK: menu_background
 	}
 
 	pub fn render(currentFrame: *vulkan.Frame, deltaTime: f64) void {
-		c.glViewport(0, 0, main.Window.width, main.Window.height);
 		if (texture.textureID == 0) return;
 
 		// Use a simple rotation around the z axis, with a steadily increasing angle.
@@ -835,6 +839,7 @@ pub const menu_background = struct { // MARK: menu_background
 			currentFrame.guiCommands.bindVertexArray(vao);
 			currentFrame.guiCommands.drawIndexed(24, .{});
 		} else {
+			c.glViewport(0, 0, main.Window.width, main.Window.height);
 			pipeline.bind(null);
 
 			texture.bindTo(0);
@@ -1110,13 +1115,17 @@ pub const skybox = struct { // MARK: skybox
 
 		starSsbo = graphics.SSBO.initStatic(f32, &starData);
 
-		c.glGenVertexArrays(1, &starVao);
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			c.glGenVertexArrays(1, &starVao);
+		}
 	}
 
 	pub fn deinit() void {
 		starPipeline.deinit();
 		starSsbo.deinit();
-		c.glDeleteVertexArrays(1, &starVao);
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			c.glDeleteVertexArrays(1, &starVao);
+		}
 	}
 
 	pub fn render(currentFrame: *vulkan.Frame) void {
