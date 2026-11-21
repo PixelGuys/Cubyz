@@ -355,7 +355,7 @@ pub const particle_system = struct { // MARK: particle_system
 		const billboardMatrix = Mat4f.rotationZ(-game.camera.rotation[2] + std.math.pi*0.5).mul(Mat4f.rotationY(game.camera.rotation[0] - std.math.pi*0.5));
 
 		if (main.settings.launch_config.vulkanTestingMode) {
-			particlesSSBO.bufferSubData(Particle, &particles, particleCount);
+			particlesSSBO.bufferSubData(Particle, particles[0..particleCount]);
 			currentFrame.renderCommands.bindPipeline(currentFrame, pipeline, null);
 
 			currentFrame.renderCommands.bindDescriptors(pipeline, &.{
@@ -381,7 +381,7 @@ pub const particle_system = struct { // MARK: particle_system
 				currentFrame.renderCommands.drawIndexed(particleCurrentCount*6, .{.firstVertex = @intCast(particleOffset)});
 			}
 		} else {
-			particlesSSBO.bufferSubData(Particle, &particles, particleCount);
+			particlesSSBO.bufferSubData(Particle, particles[0..particleCount]);
 
 			pipeline.bind(null);
 

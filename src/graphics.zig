@@ -1642,12 +1642,12 @@ pub const SSBO = struct { // MARK: SSBO
 		}
 	}
 
-	pub fn bufferSubData(self: SSBO, comptime T: type, data: []const T, length: usize) void {
+	pub fn bufferSubData(self: SSBO, comptime T: type, data: []const T) void {
 		if (self.buffer) |buffer| {
 			buffer.uploadData(0, std.mem.sliceAsBytes(data));
 		} else {
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
-			c.glBufferSubData(c.GL_SHADER_STORAGE_BUFFER, 0, @intCast(length*@sizeOf(T)), data.ptr);
+			c.glBufferSubData(c.GL_SHADER_STORAGE_BUFFER, 0, @intCast(data.len*@sizeOf(T)), data.ptr);
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 		}
 	}
