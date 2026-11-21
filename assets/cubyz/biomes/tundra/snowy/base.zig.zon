@@ -6,7 +6,7 @@
 	.minRadius = 256,
 	.maxRadius = 320,
 	.hills = 15,
-	.mountains = 15,
+	.mountains = 12,
 	.stoneBlock = "cubyz:glacite/smooth",
 	.chance = 0.5,
 	.ground_structure = .{
@@ -23,6 +23,15 @@
 			.variation = 4,
 			.depth = 1,
 			.smoothness = 0.5,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:grass/frosted",
+			.chance = 0.04,
+			.width = 10,
+			.variation = 4,
+			.depth = 1,
+			.smoothness = 0.3,
 		},
 		.{
 			.id = "cubyz:ground_patch",
