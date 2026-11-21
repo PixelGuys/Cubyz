@@ -1666,9 +1666,10 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 	return struct {
 		ssbo: SSBO,
 		freeBlocks: main.ListManaged(SubAllocation),
-		fences: [3]c.GLsync, // TODO: Also needs fences for vulkan!
+		fences: [3]c.GLsync,
 		fencedFreeLists: [3]main.ListManaged(SubAllocation),
-		activeFence: u8,
+		activeFreeList: u8,
+		lastFrameFreed: usize,
 		capacity: u31,
 		used: u31,
 		binding: c_uint,
@@ -1701,9 +1702,13 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 			self.binding = binding;
 			self.options = options;
 			self.createBuffer(size);
-			self.activeFence = 0;
-			for (&self.fences) |*fence| {
-				fence.* = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+			self.activeFreeList = 0;
+			if (main.settings.launch_config.vulkanTestingMode) {
+				self.lastFrameFreed = vulkan.gpu_garbage_collection.currentFrame;
+			} else {
+				for (&self.fences) |*fence| {
+					fence.* = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+				}
 			}
 			for (&self.fencedFreeLists) |*list| {
 				list.* = .init(allocator);
@@ -1714,8 +1719,10 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		}
 
 		pub fn deinit(self: *Self) void {
-			for (self.fences) |fence| {
-				c.glDeleteSync(fence);
+			if (!main.settings.launch_config.vulkanTestingMode) {
+				for (self.fences) |fence| {
+					c.glDeleteSync(fence);
+				}
 			}
 			for (self.fencedFreeLists) |list| {
 				list.deinit();
@@ -1725,22 +1732,42 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		}
 
 		pub fn beginRender(self: *Self) void {
-			self.activeFence += 1;
-			if (self.activeFence == self.fences.len) self.activeFence = 0;
-			const endTime = main.timestamp().addDuration(.fromMilliseconds(5));
-			while (self.fencedFreeLists[self.activeFence].popOrNull()) |allocation| {
-				self.finalFree(allocation);
-				if (main.timestamp().durationTo(endTime).nanoseconds < 0) break; // TODO: Remove after #1434
+			if (!main.settings.launch_config.vulkanTestingMode) {
+				self.activeFreeList += 1;
+				if (self.activeFreeList == self.fences.len) self.activeFreeList = 0;
+				const endTime = main.timestamp().addDuration(.fromMilliseconds(5));
+				while (self.fencedFreeLists[self.activeFreeList].popOrNull()) |allocation| {
+					self.finalFree(allocation);
+					if (main.timestamp().durationTo(endTime).nanoseconds < 0) break; // TODO: Remove after #1434
+				}
+				_ = c.glClientWaitSync(self.fences[self.activeFreeList], 0, c.GL_TIMEOUT_IGNORED); // Make sure the render calls that accessed these parts of the buffer have finished.
 			}
-			_ = c.glClientWaitSync(self.fences[self.activeFence], 0, c.GL_TIMEOUT_IGNORED); // Make sure the render calls that accessed these parts of the buffer have finished.
 		}
 
 		pub fn endRender(self: *Self) void {
-			c.glDeleteSync(self.fences[self.activeFence]);
-			self.fences[self.activeFence] = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+			if (main.settings.launch_config.vulkanTestingMode) return;
+
+			c.glDeleteSync(self.fences[self.activeFreeList]);
+			self.fences[self.activeFreeList] = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+		}
+
+		pub fn processFreeLists(self: *Self) void {
+			if (!main.settings.launch_config.vulkanTestingMode) return;
+			if (self.activeFreeList == vulkan.gpu_garbage_collection.currentFrame) return;
+			while (self.lastFrameFreed != vulkan.gpu_garbage_collection.currentFrame) {
+				self.lastFrameFreed += 1;
+				self.activeFreeList += 1;
+				if (self.activeFreeList == self.fences.len) self.activeFreeList = 0;
+				const endTime = main.timestamp().addDuration(.fromMilliseconds(5));
+				while (self.fencedFreeLists[self.activeFreeList].popOrNull()) |toFree| {
+					self.finalFree(toFree);
+					if (main.timestamp().durationTo(endTime).nanoseconds < 0) break; // TODO: Remove after #1434
+				}
+			}
 		}
 
 		pub fn rawAlloc(self: *Self, size: u31) SubAllocation {
+			self.processFreeLists();
 			var smallestBlock: ?*SubAllocation = null;
 			for (self.freeBlocks.items, 0..) |*block, i| {
 				if (size == block.len) {
@@ -1801,7 +1828,8 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 
 		pub fn free(self: *Self, allocation: SubAllocation) void {
 			if (allocation.len == 0) return;
-			self.fencedFreeLists[self.activeFence].append(allocation);
+			self.processFreeLists();
+			self.fencedFreeLists[self.activeFreeList].append(allocation);
 		}
 
 		/// Must unmap after use!

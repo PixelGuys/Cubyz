@@ -1375,6 +1375,8 @@ pub const gpu_garbage_collection = struct { // MARK: gpu_garbage_collection
 		}
 	};
 	var currentList: usize = 0;
+	/// Can be used to track the total frames passed for outside memory management.
+	pub var currentFrame: usize = 0;
 	var lists: [frames.len + 1]main.List(Entry) = @splat(.empty);
 
 	fn deinit() void {
@@ -1388,6 +1390,7 @@ pub const gpu_garbage_collection = struct { // MARK: gpu_garbage_collection
 
 	fn cleanupFrame() void {
 		currentList += 1;
+		currentFrame +%= 1;
 		if (currentList == lists.len) currentList = 0;
 		for (lists[currentList].items) |entry| {
 			entry.deinit();
