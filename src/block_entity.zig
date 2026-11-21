@@ -493,7 +493,9 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 
 		pub fn renderAll(currentFrame: *graphics.vulkan.Frame, ambientLight: Vec3f) void {
 			var oldFramebufferBinding: c_int = undefined;
-			c.glGetIntegerv(c.GL_DRAW_FRAMEBUFFER_BINDING, &oldFramebufferBinding);
+			if (!main.settings.launch_config.vulkanTestingMode) {
+				c.glGetIntegerv(c.GL_DRAW_FRAMEBUFFER_BINDING, &oldFramebufferBinding);
+			}
 
 			StorageClient.mutex.lock();
 			defer StorageClient.mutex.unlock();
@@ -513,12 +515,14 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 				textBuffer.uploadRequiredGlyphTextures();
 
 				var oldViewport: [4]c_int = undefined;
-				c.glGetIntegerv(c.GL_VIEWPORT, &oldViewport);
-				c.glViewport(0, 0, textureWidth, textureHeight);
-				defer c.glViewport(oldViewport[0], oldViewport[1], oldViewport[2], oldViewport[3]);
+				if (!main.settings.launch_config.vulkanTestingMode) {
+					c.glGetIntegerv(c.GL_VIEWPORT, &oldViewport);
+					c.glViewport(0, 0, textureWidth, textureHeight);
+				}
+				defer if (!main.settings.launch_config.vulkanTestingMode) c.glViewport(oldViewport[0], oldViewport[1], oldViewport[2], oldViewport[3]);
 
 				var finalFrameBuffer: graphics.FrameBuffer = .init(textureWidth, textureHeight, c.VK_FORMAT_B8G8R8A8_UNORM, false, .nearest, .repeat);
-				defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
+				defer if (!main.settings.launch_config.vulkanTestingMode) c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
 				if (main.settings.launch_config.vulkanTestingMode) {
 					finalFrameBuffer.bindAndClear(graphics.vulkan.upload.commandBuffer(), .{.clearColor = .{.clearColor = .{.float32 = .{0, 0, 0, 0}}}, .clearDepth = .dontCare});
 				} else {
@@ -540,8 +544,6 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 				}
 			}
 
-			c.glBindFramebuffer(c.GL_FRAMEBUFFER, @bitCast(oldFramebufferBinding));
-
 			if (main.settings.launch_config.vulkanTestingMode) {
 				currentFrame.renderCommands.bindPipeline(currentFrame, pipeline, null);
 				currentFrame.renderCommands.bindDescriptors(pipeline, &.{
@@ -550,6 +552,7 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 				currentFrame.renderCommands.bindVertexArray(main.renderer.chunk_meshing.vao);
 				graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, pipeline);
 			} else {
+				c.glBindFramebuffer(c.GL_FRAMEBUFFER, @bitCast(oldFramebufferBinding));
 				pipeline.bind(null);
 				main.renderer.chunk_meshing.vao.bind();
 			}
@@ -558,7 +561,6 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 				if (main.blocks.meshes.model(signData.block).model().internalQuads.len == 0) continue;
 				const quad = main.blocks.meshes.model(signData.block).model().internalQuads[0];
 
-				signData.renderedTexture.?.bindTo(0);
 				if (main.settings.launch_config.vulkanTestingMode) {
 					currentFrame.renderCommands.bindDescriptors(pipeline, &.{
 						.{.image = .{.binding = 0, .image = signData.renderedTexture.?.vulkanImage}},
@@ -579,6 +581,7 @@ pub const block_entity_types = struct { // MARK: block_entity_types
 					});
 					currentFrame.renderCommands.drawIndexed(6, .{});
 				} else {
+					signData.renderedTexture.?.bindTo(0);
 					c.glUniform3f(uniforms.ambientLight, ambientLight[0], ambientLight[1], ambientLight[2]);
 					c.glUniform1i(uniforms.quadIndex, @backingInt(quad));
 					c.glUniform4ui(uniforms.lightData, light[0], light[1], light[2], light[3]);
