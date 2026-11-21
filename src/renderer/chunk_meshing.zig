@@ -227,22 +227,21 @@ pub fn endRender() void {
 }
 
 fn bindCommonUniforms(vulkanUniforms: *Uniforms, locations: *UniformStruct, ambient: Vec3f, contrast: f32) void {
-	c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
 	vulkanUniforms.reflectionMapSize = renderer.reflectionCubeMapSize;
-
-	c.glUniform1f(locations.contrast, contrast);
 	vulkanUniforms.contrast = contrast;
-
-	c.glUniform1f(locations.lodDistance, main.settings.@"lod0.5Distance");
 	vulkanUniforms.lodDistance = main.settings.@"lod0.5Distance";
-
-	c.glUniform3f(locations.ambientLight, ambient[0], ambient[1], ambient[2]);
 	vulkanUniforms.ambientLight = ambient;
-
-	c.glUniform1f(locations.zNear, renderer.zNear);
-	c.glUniform1f(locations.zFar, renderer.zFar);
 	vulkanUniforms.zNear = renderer.zNear;
 	vulkanUniforms.zFar = renderer.zFar;
+
+	if (!main.settings.launch_config.vulkanTestingMode) {
+		c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
+		c.glUniform1f(locations.contrast, contrast);
+		c.glUniform1f(locations.lodDistance, main.settings.@"lod0.5Distance");
+		c.glUniform3f(locations.ambientLight, ambient[0], ambient[1], ambient[2]);
+		c.glUniform1f(locations.zNear, renderer.zNear);
+		c.glUniform1f(locations.zFar, renderer.zFar);
+	}
 }
 
 fn bindVulkan(selectedPipeline: graphics.Pipeline, commands: graphics.CommandBuffer, currentFrame: *graphics.vulkan.Frame, frameUbo: ?graphics.frame_uniforms.StaticUbo, vulkanUniforms: *Uniforms, lod: usize) void {
@@ -270,31 +269,34 @@ fn bindVulkan(selectedPipeline: graphics.Pipeline, commands: graphics.CommandBuf
 }
 
 pub fn bindShaderAndUniforms(commands: graphics.CommandBuffer, currentFrame: *graphics.vulkan.Frame, frameUbo: ?graphics.frame_uniforms.StaticUbo, ambient: Vec3f, contrast: f32, lod: usize) void {
-	pipeline.bind(null);
+	if (!main.settings.launch_config.vulkanTestingMode) {
+		pipeline.bind(null);
+		vao.bind();
+	}
 
 	var vulkanUniforms: Uniforms = undefined;
 	bindCommonUniforms(&vulkanUniforms, &uniforms, ambient, contrast);
 
-	vao.bind();
 	if (main.settings.launch_config.vulkanTestingMode) {
 		bindVulkan(pipeline, commands, currentFrame, frameUbo, &vulkanUniforms, lod);
 	}
 }
 
 pub fn bindTransparentShaderAndUniforms(commands: graphics.CommandBuffer, currentFrame: *graphics.vulkan.Frame, frameUbo: ?graphics.frame_uniforms.StaticUbo, depthTexture: graphics.vulkan.Image, ambient: Vec3f, contrast: f32, lod: usize) void {
-	transparentPipeline.bind(null);
+	if (!main.settings.launch_config.vulkanTestingMode) {
+		transparentPipeline.bind(null);
+		c.glUniform3fv(transparentUniforms.@"fog.color", 1, @ptrCast(&game.world.?.dayTime.fog.fogColor));
+		c.glUniform1f(transparentUniforms.@"fog.density", game.world.?.dayTime.fog.density);
+		c.glUniform1f(transparentUniforms.@"fog.fogLower", game.world.?.dayTime.fog.fogLower);
+		c.glUniform1f(transparentUniforms.@"fog.fogHigher", game.world.?.dayTime.fog.fogHigher);
+		vao.bind();
+	}
 
 	var vulkanUniforms: Uniforms = undefined;
-
-	c.glUniform3fv(transparentUniforms.@"fog.color", 1, @ptrCast(&game.world.?.dayTime.fog.fogColor));
-	c.glUniform1f(transparentUniforms.@"fog.density", game.world.?.dayTime.fog.density);
-	c.glUniform1f(transparentUniforms.@"fog.fogLower", game.world.?.dayTime.fog.fogLower);
-	c.glUniform1f(transparentUniforms.@"fog.fogHigher", game.world.?.dayTime.fog.fogHigher);
 	vulkanUniforms.fog = game.world.?.dayTime.fog.toGlsl();
 
 	bindCommonUniforms(&vulkanUniforms, &transparentUniforms, ambient, contrast);
 
-	vao.bind();
 	if (main.settings.launch_config.vulkanTestingMode) {
 		bindVulkan(transparentPipeline, commands, currentFrame, frameUbo, &vulkanUniforms, lod);
 		commands.bindDescriptors(transparentPipeline, &.{
@@ -311,7 +313,9 @@ fn bindBuffers(lod: usize) void {
 pub fn drawChunksIndirect(currentFrame: *graphics.vulkan.Frame, currentFrameBuffer: *graphics.FrameBuffer, chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), ambient: Vec3f, transparent: bool) void {
 	for (0..chunkIds.len) |i| {
 		const lod = if (transparent) main.settings.highestSupportedLod - i else i;
-		bindBuffers(lod);
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			bindBuffers(lod);
+		}
 		drawChunksOfLod(currentFrame, currentFrameBuffer, chunkIds[lod].items, ambient, transparent, lod);
 	}
 }
@@ -324,12 +328,6 @@ fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, currentFrameBuffer: *gr
 	defer chunkIDBuffer.free(chunkIDAllocation);
 	const allocation = commandBuffer.rawAlloc(drawCallsEstimate);
 	defer commandBuffer.free(allocation);
-	commandPipeline.bind();
-	c.glUniform1f(commandUniforms.lodDistance, main.settings.@"lod0.5Distance");
-	c.glUniform1ui(commandUniforms.chunkIDIndex, chunkIDAllocation.start);
-	c.glUniform1ui(commandUniforms.commandIndexStart, allocation.start);
-	c.glUniform1ui(commandUniforms.size, @intCast(chunkIDs.len));
-	c.glUniform1i(commandUniforms.isTransparent, @intFromBool(transparent));
 	var vulkanUniforms: CommandUniforms = .{
 		.chunkIDIndex = chunkIDAllocation.start,
 		.commandIndexStart = allocation.start,
@@ -339,7 +337,6 @@ fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, currentFrameBuffer: *gr
 		.onlyDrawPreviouslyInvisible = undefined,
 	};
 	if (!transparent) {
-		c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 0);
 		vulkanUniforms.onlyDrawPreviouslyInvisible = c.VK_FALSE;
 
 		if (main.settings.launch_config.vulkanTestingMode) {
@@ -366,6 +363,13 @@ fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, currentFrameBuffer: *gr
 				.size = c.VK_WHOLE_SIZE,
 			}}});
 		} else {
+			commandPipeline.bind();
+			c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 0);
+			c.glUniform1f(commandUniforms.lodDistance, main.settings.@"lod0.5Distance");
+			c.glUniform1ui(commandUniforms.chunkIDIndex, chunkIDAllocation.start);
+			c.glUniform1ui(commandUniforms.commandIndexStart, allocation.start);
+			c.glUniform1ui(commandUniforms.size, @intCast(chunkIDs.len));
+			c.glUniform1i(commandUniforms.isTransparent, @intFromBool(transparent));
 			c.glDispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
 			c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 		}
@@ -408,8 +412,6 @@ fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, currentFrameBuffer: *gr
 	}
 
 	// Draw again:
-	commandPipeline.bind();
-	c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 1);
 	vulkanUniforms.onlyDrawPreviouslyInvisible = c.VK_TRUE;
 	if (main.settings.launch_config.vulkanTestingMode) {
 		currentFrame.renderCommands.bindComputePipeline(commandPipeline);
@@ -434,6 +436,13 @@ fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, currentFrameBuffer: *gr
 
 		currentFrameBuffer.bindAndClear(currentFrame.renderCommands, .{.clearColor = .load, .clearDepth = .load, .transitionImageLayout = false});
 	} else {
+		commandPipeline.bind();
+		c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 1);
+		c.glUniform1f(commandUniforms.lodDistance, main.settings.@"lod0.5Distance");
+		c.glUniform1ui(commandUniforms.chunkIDIndex, chunkIDAllocation.start);
+		c.glUniform1ui(commandUniforms.commandIndexStart, allocation.start);
+		c.glUniform1ui(commandUniforms.size, @intCast(chunkIDs.len));
+		c.glUniform1i(commandUniforms.isTransparent, @intFromBool(transparent));
 		c.glDispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
 		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 	}
