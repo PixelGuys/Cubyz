@@ -1027,6 +1027,16 @@ pub const Buffer = struct { // MARK: Buffer
 		c.vmaUnmapMemory(gpu_allocator.handle, staging.buffer.allocation);
 		upload.commands.copyBuffer(self, offset, staging.buffer, 0, staging.mapping.len*@sizeOf(@TypeOf(staging.mapping[0])));
 		staging.buffer.deferredDeinit();
+		upload.commands.pipelineBarrier(.{.bufferMemoryBarriers = &.{.{
+			.sType = c.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+			.srcStageMask = c.VK_PIPELINE_STAGE_2_COPY_BIT,
+			.srcAccessMask = c.VK_ACCESS_2_MEMORY_WRITE_BIT,
+			.dstStageMask = c.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT | c.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+			.dstAccessMask = c.VK_ACCESS_2_MEMORY_READ_BIT,
+			.buffer = self.handle,
+			.offset = 0,
+			.size = c.VK_WHOLE_SIZE,
+		}}});
 	}
 };
 

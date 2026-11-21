@@ -1642,12 +1642,12 @@ pub const SSBO = struct { // MARK: SSBO
 		}
 	}
 
-	pub fn bufferSubData(self: SSBO, comptime T: type, data: []const T, length: usize) void {
+	pub fn bufferSubData(self: SSBO, comptime T: type, data: []const T) void {
 		if (self.buffer) |buffer| {
 			buffer.uploadData(0, std.mem.sliceAsBytes(data));
 		} else {
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
-			c.glBufferSubData(c.GL_SHADER_STORAGE_BUFFER, 0, @intCast(length*@sizeOf(T)), data.ptr);
+			c.glBufferSubData(c.GL_SHADER_STORAGE_BUFFER, 0, @intCast(data.len*@sizeOf(T)), data.ptr);
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 		}
 	}
@@ -1793,7 +1793,27 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 				self.finalFree(.{.start = oldCapacity, .len = self.capacity - oldCapacity});
 
 				if (main.settings.launch_config.vulkanTestingMode) {
+					vulkan.upload.commandBuffer().pipelineBarrier(.{.bufferMemoryBarriers = &.{.{
+						.sType = c.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+						.srcStageMask = c.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT | c.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT | c.VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+						.srcAccessMask = c.VK_ACCESS_2_MEMORY_WRITE_BIT,
+						.dstStageMask = c.VK_PIPELINE_STAGE_2_COPY_BIT,
+						.dstAccessMask = c.VK_ACCESS_2_MEMORY_READ_BIT,
+						.buffer = oldBuffer.buffer.?.handle,
+						.offset = 0,
+						.size = c.VK_WHOLE_SIZE,
+					}}});
 					vulkan.upload.commandBuffer().copyBuffer(self.ssbo.buffer.?, 0, oldBuffer.buffer.?, 0, @as(usize, oldCapacity)*@sizeOf(Entry));
+					vulkan.upload.commandBuffer().pipelineBarrier(.{.bufferMemoryBarriers = &.{.{
+						.sType = c.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+						.srcStageMask = c.VK_PIPELINE_STAGE_2_COPY_BIT,
+						.srcAccessMask = c.VK_ACCESS_2_MEMORY_WRITE_BIT,
+						.dstStageMask = c.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT | c.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+						.dstAccessMask = c.VK_ACCESS_2_MEMORY_READ_BIT,
+						.buffer = self.ssbo.buffer.?.handle,
+						.offset = 0,
+						.size = c.VK_WHOLE_SIZE,
+					}}});
 				} else {
 					c.glBindBuffer(c.GL_COPY_READ_BUFFER, oldBuffer.bufferID);
 					c.glBindBuffer(c.GL_COPY_WRITE_BUFFER, self.ssbo.bufferID);
