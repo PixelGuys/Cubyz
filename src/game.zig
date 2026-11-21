@@ -394,6 +394,7 @@ pub const World = struct { // MARK: World
 		player.setGamemode(std.enums.fromInt(Gamemode, zon.get(u8, "gamemode") orelse return error.Invalid) orelse return error.Invalid);
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
+		main.audio.mood.init();
 
 		main.Window.setMouseGrabbed(true);
 		main.blocks.meshes.generateTextureArray();
@@ -856,6 +857,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	}
 
 	world.?.update(deltaTime);
+	main.audio.mood.update(deltaTime);
 	particles.particle_system.update(@floatCast(deltaTime));
 }
 pub fn restart() void {
