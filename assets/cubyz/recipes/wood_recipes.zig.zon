@@ -32,15 +32,15 @@
 		.output = "2 cubyz:branch/candy_cane",
 	},
 	.{
-		.inputs = .{"{mod}:planks/{type}", "cubyz:coal_ore"},
+		.inputs = .{"{mod}:branch/{type}", "cubyz:coal_ore"},
 		.output = "8 cubyz:torch",
 	},
 	.{
-		.inputs = .{"{mod}:planks/{type}", "cubyz:sulfur_ore"},
+		.inputs = .{"{mod}:branch/{type}", "cubyz:sulfur_ore"},
 		.output = "8 cubyz:sulfur_torch",
 	},
 	.{
-		.inputs = .{"{mod}:planks/{type}", "cubyz:lumiflora"},
+		.inputs = .{"{mod}:branch/{type}", "cubyz:lumiflora"},
 		.output = "8 cubyz:torch/lumi",
 	},
 }
