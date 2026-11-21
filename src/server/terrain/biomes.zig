@@ -9,6 +9,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const vec = main.vec;
 const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
+const Vec2i = main.vec.Vec2i;
 
 const Tag = main.Tag;
 const Mood = main.audio.music_tracks.MusicTrack.Mood;
@@ -264,6 +265,8 @@ pub const Biome = struct { // MARK: Biome
 	chance: f32,
 	tags: []const Tag,
 	liquidBlock: main.blocks.Block,
+	surfaceThickness: Vec2i,
+	surfaceLimits: Vec2i,
 
 	pub fn init(self: *Biome, id: []const u8, paletteId: u32, zon: ZonElement) void {
 		const minRadius = zon.get(f32, "radius") orelse zon.get(f32, "minRadius") orelse 256;
@@ -308,6 +311,8 @@ pub const Biome = struct { // MARK: Biome
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount") orelse std.math.floatMax(f32),
 			.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
 			.liquidBlock = blocks.parseBlock(zon.get([]const u8, "liquidBlock") orelse "cubyz:water"),
+			.surfaceThickness = zon.get(@Vector(2, u31), "surfaceThickness") orelse Vec2i{32, 128},
+			.surfaceLimits = zon.get(@Vector(2, i32), "surfaceLimits") orelse Vec2i{std.math.maxInt(i32), std.math.minInt(i32)},
 		};
 		if (self.isCave) {
 			for (self.tags) |tag| {
