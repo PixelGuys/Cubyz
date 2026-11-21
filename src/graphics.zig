@@ -1908,56 +1908,9 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 			.color = undefined,
 			.depth = undefined,
 		};
-		c.glGenFramebuffers(1, &self.frameBuffer);
-		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
-		const glFilter = switch (textureFilter) {
-			.nearest => c.GL_NEAREST,
-			.linear => c.GL_LINEAR,
-		};
-		const glWrap = switch (textureWrap) {
-			.repeat => c.GL_REPEAT,
-			.mirroredRepeat => c.GL_MIRRORED_REPEAT,
-			.clampToEdge => c.GL_CLAMP_TO_EDGE,
-			.clampToBorder => c.GL_CLAMP_TO_BORDER,
-			.mirrorClampToEdge => c.GL_MIRROR_CLAMP_TO_EDGE,
-		};
-		if (hasDepthTexture) {
-			c.glGenTextures(1, &self.depthTexture);
-			c.glBindTexture(c.GL_TEXTURE_2D, self.depthTexture);
-			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, glFilter);
-			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, glFilter);
-			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, glWrap);
-			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, glWrap);
-			c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_DEPTH_ATTACHMENT, c.GL_TEXTURE_2D, self.depthTexture, 0);
-		}
-		c.glGenTextures(1, &self.texture);
-		c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, glFilter);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, glFilter);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, glWrap);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, glWrap);
-		c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_COLOR_ATTACHMENT0, c.GL_TEXTURE_2D, self.texture, 0);
-
-		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
 		const width = @max(_width, 1);
 		const height = @max(_height, 1);
-		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
-		if (self.hasDepthTexture) {
-			c.glBindTexture(c.GL_TEXTURE_2D, self.depthTexture);
-			c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_DEPTH_COMPONENT32F, width, height, 0, c.GL_DEPTH_COMPONENT, c.GL_FLOAT, null);
-		}
-
-		const glFormat: c_int = switch (format) {
-			c.VK_FORMAT_R16G16B16A16_SFLOAT => c.GL_RGBA16F,
-			c.VK_FORMAT_R8G8B8A8_UNORM => c.GL_RGBA8,
-			c.VK_FORMAT_B10G11R11_UFLOAT_PACK32 => c.GL_R11F_G11F_B10F,
-			c.VK_FORMAT_B8G8R8A8_UNORM => c.GL_RGBA,
-			else => @panic("Unrecognized format"),
-		};
-
-		c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
-		c.glTexImage2D(c.GL_TEXTURE_2D, 0, glFormat, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.color = .init(.{width, height, 1}, .{
 				.usage = c.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -1976,21 +1929,68 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 					.aspect = .{.depth = true},
 				});
 			}
+		} else {
+			c.glGenFramebuffers(1, &self.frameBuffer);
+			c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
+			const glFilter = switch (textureFilter) {
+				.nearest => c.GL_NEAREST,
+				.linear => c.GL_LINEAR,
+			};
+			const glWrap = switch (textureWrap) {
+				.repeat => c.GL_REPEAT,
+				.mirroredRepeat => c.GL_MIRRORED_REPEAT,
+				.clampToEdge => c.GL_CLAMP_TO_EDGE,
+				.clampToBorder => c.GL_CLAMP_TO_BORDER,
+				.mirrorClampToEdge => c.GL_MIRROR_CLAMP_TO_EDGE,
+			};
+			if (hasDepthTexture) {
+				c.glGenTextures(1, &self.depthTexture);
+				c.glBindTexture(c.GL_TEXTURE_2D, self.depthTexture);
+				c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, glFilter);
+				c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, glFilter);
+				c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, glWrap);
+				c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, glWrap);
+				c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_DEPTH_ATTACHMENT, c.GL_TEXTURE_2D, self.depthTexture, 0);
+			}
+			c.glGenTextures(1, &self.texture);
+			c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, glFilter);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, glFilter);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, glWrap);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, glWrap);
+			c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_COLOR_ATTACHMENT0, c.GL_TEXTURE_2D, self.texture, 0);
+
+			if (self.hasDepthTexture) {
+				c.glBindTexture(c.GL_TEXTURE_2D, self.depthTexture);
+				c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_DEPTH_COMPONENT32F, width, height, 0, c.GL_DEPTH_COMPONENT, c.GL_FLOAT, null);
+			}
+
+			const glFormat: c_int = switch (format) {
+				c.VK_FORMAT_R16G16B16A16_SFLOAT => c.GL_RGBA16F,
+				c.VK_FORMAT_R8G8B8A8_UNORM => c.GL_RGBA8,
+				c.VK_FORMAT_B10G11R11_UFLOAT_PACK32 => c.GL_R11F_G11F_B10F,
+				c.VK_FORMAT_B8G8R8A8_UNORM => c.GL_RGBA,
+				else => @panic("Unrecognized format"),
+			};
+
+			c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
+			c.glTexImage2D(c.GL_TEXTURE_2D, 0, glFormat, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
 		}
 		return self;
 	}
 
 	pub fn deinit(self: *FrameBuffer) void {
-		c.glDeleteFramebuffers(1, &self.frameBuffer);
-		if (self.hasDepthTexture) {
-			c.glDeleteRenderbuffers(1, &self.depthTexture);
-		}
-		c.glDeleteTextures(1, &self.texture);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.color.deferredDeinit();
 			if (self.hasDepthTexture) {
 				self.depth.deferredDeinit();
 			}
+		} else {
+			c.glDeleteFramebuffers(1, &self.frameBuffer);
+			if (self.hasDepthTexture) {
+				c.glDeleteRenderbuffers(1, &self.depthTexture);
+			}
+			c.glDeleteTextures(1, &self.texture);
 		}
 	}
 
