@@ -1494,51 +1494,53 @@ pub const VertexArray = struct { // MARK: VertexArray
 
 	pub fn init(T: type, data: []const T, indices_: ?[]const u32) VertexArray {
 		var result: VertexArray = undefined;
-		c.glGenVertexArrays(1, &result.vao);
-		c.glBindVertexArray(result.vao);
-		c.glGenBuffers(1, &result.vbo);
-		c.glBindBuffer(c.GL_ARRAY_BUFFER, result.vbo);
-		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(data.len*@sizeOf(T)), data.ptr, c.GL_STATIC_DRAW);
-		if (indices_) |indices| {
-			std.debug.assert(indices.len != 0);
-			result.hasIndices = true;
-			result.ibo = 0;
-			c.glGenBuffers(1, &result.ibo.?);
-			c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, result.ibo.?);
-			c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(u32)), indices.ptr, c.GL_STATIC_DRAW);
-		} else {
-			result.ibo = null;
-			result.hasIndices = false;
-		}
+		result.hasIndices = indices_ != null;
+		result.ibo = null;
 
-		const attributeDescriptions: []const c.VkVertexInputAttributeDescription = T.attributeDescriptions;
-		inline for (attributeDescriptions) |desc| {
-			std.debug.assert(desc.binding == 0);
-			c.glEnableVertexAttribArray(desc.location);
-			const glType = comptime switch (desc.format) {
-				c.VK_FORMAT_R32_SFLOAT => c.GL_FLOAT,
-				c.VK_FORMAT_R32G32_SFLOAT => c.GL_FLOAT,
-				c.VK_FORMAT_R32G32B32_SFLOAT => c.GL_FLOAT,
-				c.VK_FORMAT_R32G32B32A32_SFLOAT => c.GL_FLOAT,
-				c.VK_FORMAT_R32_UINT => c.GL_UNSIGNED_INT,
-				else => @compileError("Unrecognized format"),
-			};
-			const size = comptime switch (desc.format) {
-				c.VK_FORMAT_R32_SFLOAT => 1,
-				c.VK_FORMAT_R32G32_SFLOAT => 2,
-				c.VK_FORMAT_R32G32B32_SFLOAT => 3,
-				c.VK_FORMAT_R32G32B32A32_SFLOAT => 4,
-				c.VK_FORMAT_R32_UINT => 1,
-				else => @compileError("Unrecognized format"),
-			};
-			switch (glType) {
-				c.GL_UNSIGNED_INT => c.glVertexAttribIPointer(desc.location, size, glType, @sizeOf(T), @ptrFromInt(desc.offset)),
-				c.GL_FLOAT => c.glVertexAttribPointer(desc.location, size, glType, c.GL_FALSE, @sizeOf(T), @ptrFromInt(desc.offset)),
-				else => unreachable,
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			c.glGenVertexArrays(1, &result.vao);
+			c.glBindVertexArray(result.vao);
+			c.glGenBuffers(1, &result.vbo);
+			c.glBindBuffer(c.GL_ARRAY_BUFFER, result.vbo);
+			c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(data.len*@sizeOf(T)), data.ptr, c.GL_STATIC_DRAW);
+			if (indices_) |indices| {
+				std.debug.assert(indices.len != 0);
+				result.ibo = 0;
+				c.glGenBuffers(1, &result.ibo.?);
+				c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, result.ibo.?);
+				c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(u32)), indices.ptr, c.GL_STATIC_DRAW);
 			}
+
+			const attributeDescriptions: []const c.VkVertexInputAttributeDescription = T.attributeDescriptions;
+			inline for (attributeDescriptions) |desc| {
+				std.debug.assert(desc.binding == 0);
+				c.glEnableVertexAttribArray(desc.location);
+				const glType = comptime switch (desc.format) {
+					c.VK_FORMAT_R32_SFLOAT => c.GL_FLOAT,
+					c.VK_FORMAT_R32G32_SFLOAT => c.GL_FLOAT,
+					c.VK_FORMAT_R32G32B32_SFLOAT => c.GL_FLOAT,
+					c.VK_FORMAT_R32G32B32A32_SFLOAT => c.GL_FLOAT,
+					c.VK_FORMAT_R32_UINT => c.GL_UNSIGNED_INT,
+					else => @compileError("Unrecognized format"),
+				};
+				const size = comptime switch (desc.format) {
+					c.VK_FORMAT_R32_SFLOAT => 1,
+					c.VK_FORMAT_R32G32_SFLOAT => 2,
+					c.VK_FORMAT_R32G32B32_SFLOAT => 3,
+					c.VK_FORMAT_R32G32B32A32_SFLOAT => 4,
+					c.VK_FORMAT_R32_UINT => 1,
+					else => @compileError("Unrecognized format"),
+				};
+				switch (glType) {
+					c.GL_UNSIGNED_INT => c.glVertexAttribIPointer(desc.location, size, glType, @sizeOf(T), @ptrFromInt(desc.offset)),
+					c.GL_FLOAT => c.glVertexAttribPointer(desc.location, size, glType, c.GL_FALSE, @sizeOf(T), @ptrFromInt(desc.offset)),
+					else => unreachable,
+				}
+			}
+
+			c.glBindVertexArray(0);
 		}
 
-		c.glBindVertexArray(0);
 		if (main.settings.launch_config.vulkanTestingMode) {
 			const indices = indices_ orelse &.{};
 			result.indicesOffset = std.mem.alignForward(usize, data.len*@sizeOf(T), @alignOf(u32));
@@ -1553,13 +1555,14 @@ pub const VertexArray = struct { // MARK: VertexArray
 	}
 
 	pub fn deinit(self: VertexArray) void {
-		c.glDeleteVertexArrays(1, &self.vao);
-		c.glDeleteBuffers(1, &self.vbo);
-		if (self.ibo != null) {
-			c.glDeleteBuffers(1, &self.ibo.?);
-		}
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.buffer.deferredDeinit();
+		} else {
+			c.glDeleteVertexArrays(1, &self.vao);
+			c.glDeleteBuffers(1, &self.vbo);
+			if (self.ibo != null) {
+				c.glDeleteBuffers(1, &self.ibo.?);
+			}
 		}
 	}
 
