@@ -30,8 +30,7 @@ fn commitMemory(start: [*]align(page_size_min) u8, len: usize) void {
 			@panic("Out of Memory");
 		};
 	} else {
-		const mprotect = if (builtin.os.tag == .linux) std.os.linux.mprotect else std.c.mprotect;
-		const err = std.posix.errno(mprotect(start, len, .{.READ = true, .WRITE = true}));
+		const err = std.posix.errno(std.c.mprotect(start, len, .{.READ = true, .WRITE = true}));
 		if (err != .SUCCESS) {
 			std.log.err("Got error while committing virtual memory of size {}: {s}", .{len, @tagName(err)});
 			@panic("Out of Memory");
