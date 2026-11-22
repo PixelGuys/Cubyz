@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const main = @import("main");
 const graphics = main.graphics;
@@ -678,7 +679,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 		const inputAssembly: c.VkPipelineInputAssemblyStateCreateInfo = .{
 			.sType = c.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
 			.topology = @backingInt(options.inputAssemblyState.topology),
-			.primitiveRestartEnable = if (options.inputAssemblyState.primitiveRestartEnable) c.VK_TRUE else c.VK_FALSE,
+			.primitiveRestartEnable = if (builtin.os.tag == .macos or options.inputAssemblyState.primitiveRestartEnable) c.VK_TRUE else c.VK_FALSE,
 		};
 		const viewport: c.VkViewport = .{}; // overwritten dynamically
 		const scissor: c.VkRect2D = .{}; // overwritten dynamically
