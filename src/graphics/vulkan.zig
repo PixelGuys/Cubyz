@@ -485,8 +485,6 @@ fn createLogicalDevice() void {
 		.pQueueCreateInfos = queueCreateInfos.items.ptr,
 		.queueCreateInfoCount = @intCast(queueCreateInfos.items.len),
 		.pEnabledFeatures = &features.v10,
-		.ppEnabledLayerNames = validationLayers.ptr,
-		.enabledLayerCount = if (checkValidationLayerSupport()) validationLayers.len else 0,
 		.ppEnabledExtensionNames = &deviceExtensions,
 		.enabledExtensionCount = @intCast(deviceExtensions.len),
 	};
