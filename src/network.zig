@@ -146,6 +146,7 @@ const Socket = struct { // MARK: Socket
 			const result = c.sendto(self.socketID, data.ptr, @intCast(data.len), 0, @ptrCast(&addr), @intCast(addrLen));
 			if (result == c.SOCKET_ERROR) {
 				const err = if (windowsError(c.WSAGetLastError())) error.Unknown else |err| err;
+				if (err == error.MessageTooLong) return; // we hit the mtu of the network interface. We ignore this error here, as the mutHandler will handle this.
 				std.log.warn("Got error while sending to {f}: {s}", .{destination, @errorName(err)});
 			} else {
 				std.debug.assert(@as(usize, @intCast(result)) == data.len);
@@ -156,6 +157,7 @@ const Socket = struct { // MARK: Socket
 				.SUCCESS => {
 					std.debug.assert(data.len == result);
 				},
+				.MSGSIZE => {}, // we hit the mtu of the network interface. We ignore this error here, as the mutHandler will handle this.
 				else => |err| {
 					std.log.warn("Got error while sending to {f}: {s}", .{destination, @tagName(err)});
 				},
