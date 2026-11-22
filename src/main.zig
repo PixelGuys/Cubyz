@@ -462,9 +462,6 @@ pub fn clientMain() void { // MARK: clientMain()
 			}
 		} else {
 			io.sleep(.fromMilliseconds(16), .awake) catch {};
-			if (settings.launch_config.vulkanTestingMode) {
-				currentFrame = graphics.vulkan.beginRender();
-			}
 		}
 
 		const endRendering = timestamp();
