@@ -9,7 +9,17 @@ layout(location = 0) out vec4 fragColor;
 
 layout(binding = 0) uniform sampler2D textureSampler;
 
+#ifdef OPEN_GL
 layout(location = 5) uniform float contrast;
+#else
+layout(push_constant, std430) uniform _ {
+	mat4 modelViewMatrix;
+	vec3 ambientLight;
+	uint light;
+	uint nodeBufferOffset;
+	float contrast;
+};
+#endif
 
 float lightVariation(vec3 normal) {
 	const vec3 directionalPart = vec3(0, contrast/2, contrast);

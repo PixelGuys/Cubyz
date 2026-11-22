@@ -12,10 +12,20 @@ layout(location = 1) out vec3 mvVertexPos;
 layout(location = 2) out vec3 outLight;
 layout(location = 3) flat out vec3 normal;
 
+#ifdef OPEN_GL
 layout(location = 1) uniform mat4 modelViewMatrix;
 layout(location = 2) uniform vec3 ambientLight;
 layout(location = 3) uniform uint light;
 layout(location = 6) uniform uint nodeBufferOffset;
+#else
+layout(push_constant, std430) uniform _ {
+	mat4 modelViewMatrix;
+	vec3 ambientLight;
+	uint light;
+	uint nodeBufferOffset;
+	float contrast;
+};
+#endif
 
 layout(std430, binding = 15) buffer _nodeMatrices
 {

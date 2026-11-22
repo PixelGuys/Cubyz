@@ -47,11 +47,11 @@
 	},
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:grassland",
+			.id = "cubyz:grassland/base",
 			.chance = 0.5,
 		},
 		.{
-			.id = "cubyz:rocky_grassland",
+			.id = "cubyz:grassland/rocky",
 			.chance = 0.2,
 		},
 		.{

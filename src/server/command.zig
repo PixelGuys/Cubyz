@@ -56,15 +56,15 @@ fn initExecutionFn(comptime name: []const u8) *const fn (args: []const u8, sourc
 
 pub fn init() void {
 	commands = .init(main.globalAllocator.allocator);
-	inline for (@typeInfo(commandList).@"struct".decls) |decl| {
-		commands.put(decl.name, .{
-			.name = decl.name,
-			.description = @field(commandList, decl.name).description,
-			.usage = @field(commandList, decl.name).usage,
-			.exec = initExecutionFn(decl.name),
-			.permissionPath = "/command/" ++ decl.name,
+	inline for (@typeInfo(commandList).@"struct".decl_names) |decl| {
+		commands.put(decl, .{
+			.name = decl,
+			.description = @field(commandList, decl).description,
+			.usage = @field(commandList, decl).usage,
+			.exec = initExecutionFn(decl),
+			.permissionPath = "/command/" ++ decl,
 		}) catch unreachable;
-		std.log.debug("Registered command: '/{s}'", .{decl.name});
+		std.log.debug("Registered command: '/{s}'", .{decl});
 	}
 }
 

@@ -13,10 +13,6 @@ layout(binding = 4) uniform sampler2D depthTexture;
 
 layout(binding = 5) uniform sampler2D bloomColor;
 
-layout(location = 1) uniform vec2 tanXY;
-layout(location = 2) uniform float zNear;
-layout(location = 3) uniform float zFar;
-
 struct Fog {
 	vec3 color;
 	float density;
@@ -24,7 +20,21 @@ struct Fog {
 	float fogHigher;
 };
 
+#ifdef OPEN_GL
+layout(location = 1) uniform vec2 tanXY;
+layout(location = 2) uniform float zNear;
+layout(location = 3) uniform float zFar;
+
 layout(location = 6) uniform Fog fog;
+#else
+layout(push_constant, std430) uniform _ {
+	mat4 invViewMatrix;
+	vec2 tanXY;
+	float zNear;
+	float zFar;
+	Fog fog;
+};
+#endif
 
 float zFromDepth(float depthBufferValue) {
 	return zNear*zFar/(depthBufferValue*(zNear - zFar) + zFar);
@@ -78,8 +88,8 @@ vec3 applyFrontfaceFog(float fogDistance, vec3 fogColor, vec3 inColor) {
 }
 
 void main() {
-	fragColor = texture(color, texCoords);
-	fragColor += texture(bloomColor, texCoords);
+	fragColor = vec4(texture(color, texCoords).rgb, 1);
+	fragColor += vec4(texture(bloomColor, texCoords).rgb, 0);
 	vec2 clampedTexCoords = (floor(texCoords*vec2(textureSize(color, 0))) + 0.5)/vec2(textureSize(color, 0));
 	vec3 direction = clampedTexCoords.x*(
 		clampedTexCoords.y*directions[0] + (1 - clampedTexCoords.y)*directions[1]

@@ -8,7 +8,7 @@ const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Vec3i = vec.Vec3i;
 const settings = @import("settings.zig");
-const Player = main.game.Player;
+const player = main.game.player;
 const camera = main.game.camera;
 
 pub const baseGravity = 30.0;
@@ -267,7 +267,7 @@ pub const collision = struct { // MARK: collision
 	}
 
 	pub fn collideOrStep(comptime side: main.sync.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Box, steppingHeight: f64) Vec3d {
-		const index = @intFromEnum(dir);
+		const index = @backingInt(dir);
 
 		// First argument is amount we end up moving in dir, second argument is how far up we step
 		var resultingMovement: Vec3d = .{0, 0, 0};
@@ -417,7 +417,7 @@ pub fn calculateMotion(comptime side: main.sync.Side, deltaTime: f64, friction: 
 	return move;
 }
 
-pub fn calculateEyeMovement(comptime side: main.sync.Side, deltaTime: f64, pos: Vec3d, vel: Vec3d, eye: *Player.EyeData, stepAmount: f64) void {
+pub fn calculateEyeMovement(comptime side: main.sync.Side, deltaTime: f64, pos: Vec3d, vel: Vec3d, eye: *player.EyeData, stepAmount: f64) void {
 	if (main.game.getBlockWithSide(side, @floor(pos[0]), @floor(pos[1]), @floor(pos[2])) != null) {
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
 		var acc: Vec3d = @splat(0);
@@ -571,7 +571,7 @@ pub fn calculateVerticalCollision(comptime side: main.sync.Side, deltaTime: f64,
 		if (bounciness != 0.0 and vel[2] < -3.0) {
 			vel[2] = -vel[2]*bounciness;
 			if (jumpCoyote) |coyote| {
-				coyote.* = Player.jumpCoyoteTimeConstant + deltaTime;
+				coyote.* = player.jumpCoyoteTimeConstant + deltaTime;
 			}
 		} else {
 			vel[2] = 0;
@@ -584,13 +584,13 @@ pub fn calculateVerticalCollision(comptime side: main.sync.Side, deltaTime: f64,
 		return true;
 	} else {
 		if (wasOnGround and motion[2] < 0 and jumpCoyote != null) {
-			jumpCoyote.?.* = Player.jumpCoyoteTimeConstant + deltaTime;
+			jumpCoyote.?.* = player.jumpCoyoteTimeConstant + deltaTime;
 		}
 		return false;
 	}
 }
 
-pub fn calculateVerticalCollisionEyeMovement(deltaTime: f64, eye: *Player.EyeData, didCollide: bool, onGround: bool, wasOnGround: bool, prevPos: Vec3d, pos: Vec3d, prevVel: Vec3d, vel: Vec3d, motion: Vec3d, steppingHeight: f64) void {
+pub fn calculateVerticalCollisionEyeMovement(deltaTime: f64, eye: *player.EyeData, didCollide: bool, onGround: bool, wasOnGround: bool, prevPos: Vec3d, pos: Vec3d, prevVel: Vec3d, vel: Vec3d, motion: Vec3d, steppingHeight: f64) void {
 	if (didCollide) {
 		if (onGround) {
 			if (!wasOnGround) {
@@ -608,7 +608,7 @@ pub fn calculateVerticalCollisionEyeMovement(deltaTime: f64, eye: *Player.EyeDat
 		// We add deltaTime because we subtract deltaTime at the bottom of update
 		eye.coyote = @sqrt(2*steppingHeight/baseGravity) + deltaTime;
 		eye.pos[2] -= motion[2];
-	} else if (Player.eye.coyote > 0) {
+	} else if (player.eye.coyote > 0) {
 		eye.pos[2] -= motion[2];
 	}
 }

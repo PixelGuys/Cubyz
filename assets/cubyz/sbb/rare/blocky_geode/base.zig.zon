@@ -1,0 +1,11 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:rare/blocky_geode/black"},
+		.{.id = "cubyz:rare/blocky_geode/brown"},
+		.{.id = "cubyz:rare/blocky_geode/white"},
+	},
+	.children = .{
+		.green = "cubyz:rare/blocky_geode/loot",
+		.red = "cubyz:rare/blocky_geode/text",
+	},
+}

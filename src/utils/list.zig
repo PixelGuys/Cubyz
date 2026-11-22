@@ -412,7 +412,7 @@ pub fn List(comptime T: type) type {
 		}
 
 		pub fn print(self: *@This(), allocator: NeverFailingAllocator, comptime fmt: []const u8, args: anytype) void {
-			var buffer: std.ArrayList(u8) = .{.items = self.items, .capacity = self.capacity};
+			var buffer: std.ArrayList(u8) = .{.items = self.items, .capacity = self.capacity, .pointer_stability = .{}};
 			var writer = std.Io.Writer.Allocating.fromArrayList(allocator.allocator, &buffer);
 			// We don't deinit, we will keep the ownership of the array later on!
 
@@ -492,10 +492,10 @@ test "List.print multiple prints" {
 /// Holds multiple arrays sequentially in memory.
 /// Allows addressing and remove each subarray individually, as well as iterating through all of them at once.
 pub fn MultiArray(T: type, Range: type) type {
-	const size = @typeInfo(Range).@"enum".fields.len;
-	std.debug.assert(@typeInfo(Range).@"enum".is_exhaustive);
-	for (@typeInfo(Range).@"enum".fields) |field| {
-		std.debug.assert(field.value < size);
+	const size = @typeInfo(Range).@"enum".field_names.len;
+	std.debug.assert(@typeInfo(Range).@"enum".mode == .exhaustive);
+	for (@typeInfo(Range).@"enum".field_values) |fieldValue| {
+		std.debug.assert(fieldValue < size);
 	}
 	return struct {
 		offsets: [size + 1]usize = @splat(0),
@@ -537,7 +537,7 @@ pub fn MultiArray(T: type, Range: type) type {
 		}
 
 		pub fn replaceRange(self: *@This(), allocator: NeverFailingAllocator, range: Range, elems: []const T) void {
-			const i: usize = @intFromEnum(range);
+			const i: usize = @backingInt(range);
 			const oldLen = self.offsets[i + 1] - self.offsets[i];
 			self.ensureCapacity(allocator, self.offsets[size] - oldLen + elems.len);
 			const startIndex = self.offsets[i + 1];
@@ -556,7 +556,7 @@ pub fn MultiArray(T: type, Range: type) type {
 		}
 
 		pub fn getRange(self: *@This(), range: Range) []T {
-			const i: usize = @intFromEnum(range);
+			const i: usize = @backingInt(range);
 			const startIndex = self.offsets[i];
 			const endIndex = self.offsets[i + 1];
 			return self.items[startIndex..endIndex];

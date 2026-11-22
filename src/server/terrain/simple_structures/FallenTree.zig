@@ -55,7 +55,7 @@ pub fn generateFallen(self: *FallenTree, x: i32, y: i32, z: i32, length: u32, ch
 	var d: ?Neighbor = null;
 
 	for (0..4) |_| {
-		const dir: Neighbor = @enumFromInt(main.random.nextIntBounded(u32, seed, 4) + 2);
+		const dir: Neighbor = @fromBackingInt(@intCast(main.random.nextIntBounded(u32, seed, 4) + 2));
 
 		const dx: i32 = dir.relX();
 		const dy: i32 = dir.relY();

@@ -51,7 +51,7 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	};
 	if (data >= 256) return 0;
 	const runtimeTable = rotationTable;
-	return runtimeTable[@intFromEnum(angle)][data];
+	return runtimeTable[@backingInt(angle)][data];
 }
 
 pub fn init() void {}
@@ -291,7 +291,7 @@ fn closestRay(comptime typ: enum { bit, intersection }, block: Block, relativePl
 	for ([_]u16{1, 2, 4, 8, 16, 32, 64, 128}) |bit| {
 		if (block.data & bit == 0) {
 			const cornerModelIndex: ModelIndex = blocks.meshes.modelIndexStart(block).add(255 ^ bit);
-			if (RotationMode.DefaultFunctions.rayModelIntersection(cornerModelIndex, relativePlayerPos, playerDir)) |intersection| {
+			if (RotationMode.default_functions.rayModelIntersection(cornerModelIndex, relativePlayerPos, playerDir)) |intersection| {
 				if (result == null or intersection.distance < result.?.distance) {
 					result = intersection;
 					resultBit = bit;
@@ -315,7 +315,7 @@ pub fn rayIntersection(block: Block, item: main.items.Item, relativePlayerPos: V
 		},
 		else => {},
 	}
-	return RotationMode.DefaultFunctions.rayIntersection(block, item, relativePlayerPos, playerDir);
+	return RotationMode.default_functions.rayIntersection(block, item, relativePlayerPos, playerDir);
 }
 
 pub fn onBlockBreaking(item: main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
@@ -331,11 +331,11 @@ pub fn onBlockBreaking(item: main.items.Item, relativePlayerPos: Vec3f, playerDi
 		},
 		else => {},
 	}
-	return RotationMode.DefaultFunctions.onBlockBreaking(item, relativePlayerPos, playerDir, currentData);
+	return RotationMode.default_functions.onBlockBreaking(item, relativePlayerPos, playerDir, currentData);
 }
 
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
-	if (oldBlock.typ != newBlock.typ) return RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess);
+	if (oldBlock.typ != newBlock.typ) return RotationMode.default_functions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess);
 	if (oldBlock.data == newBlock.data) return .no;
 	if (item.item == .proceduralItem) {
 		return .{.yes_costsDurability = 1};

@@ -5,6 +5,8 @@ const utils = main.utils;
 
 const c = @import("c");
 
+pub const music_tracks = @import("audio/music_tracks.zig");
+
 const StbVorbisErrorEnum = enum(c_int) {
 	unknown_error = -1,
 	no_error = 0,
@@ -243,7 +245,7 @@ pub fn deinit() void {
 	activeMusicId.len = 0;
 }
 
-const currentMusic = struct {
+const current_music = struct {
 	var buffer: []const f32 = undefined;
 	var animationAmplitude: f32 = undefined;
 	var animationVelocity: f32 = undefined;
@@ -292,43 +294,43 @@ fn mixMusic(buffer: []f32) void {
 	if (!std.mem.eql(u8, preferredMusic, activeMusicId)) {
 		if (activeMusicId.len == 0) {
 			if (findMusic(preferredMusic)) |musicBuffer| {
-				currentMusic.init(musicBuffer);
+				current_music.init(musicBuffer);
 				main.globalAllocator.free(activeMusicId);
 				activeMusicId = main.globalAllocator.dupe(u8, preferredMusic);
 			}
-		} else if (!currentMusic.animationDecaying) {
+		} else if (!current_music.animationDecaying) {
 			_ = findMusic(preferredMusic); // Start loading the next music into the cache ahead of time.
-			currentMusic.animationDecaying = true;
-			currentMusic.animationProgress = 0;
-			currentMusic.interpolationPolynomial = utils.unitIntervalSpline(f32, currentMusic.animationAmplitude, currentMusic.animationVelocity, 0, 0);
+			current_music.animationDecaying = true;
+			current_music.animationProgress = 0;
+			current_music.interpolationPolynomial = utils.unitIntervalSpline(f32, current_music.animationAmplitude, current_music.animationVelocity, 0, 0);
 		}
-	} else if (currentMusic.animationDecaying) { // We returned to the biome before the music faded away.
-		currentMusic.animationDecaying = false;
-		currentMusic.animationProgress = 0;
-		currentMusic.interpolationPolynomial = utils.unitIntervalSpline(f32, currentMusic.animationAmplitude, currentMusic.animationVelocity, 1, 0);
+	} else if (current_music.animationDecaying) { // We returned to the biome before the music faded away.
+		current_music.animationDecaying = false;
+		current_music.animationProgress = 0;
+		current_music.interpolationPolynomial = utils.unitIntervalSpline(f32, current_music.animationAmplitude, current_music.animationVelocity, 1, 0);
 	}
 	if (activeMusicId.len == 0) return;
 
 	// Copy the music to the buffer.
 	var i: usize = 0;
 	while (i < buffer.len) : (i += 2) {
-		currentMusic.animationProgress += 1.0/(animationLengthInSeconds*sampleRate);
+		current_music.animationProgress += 1.0/(animationLengthInSeconds*sampleRate);
 		var amplitude: f32 = main.settings.musicVolume;
-		if (currentMusic.animationProgress > 1) {
-			if (currentMusic.animationDecaying) {
+		if (current_music.animationProgress > 1) {
+			if (current_music.animationDecaying) {
 				main.globalAllocator.free(activeMusicId);
 				activeMusicId = &.{};
 				amplitude = 0;
 			}
 		} else {
-			currentMusic.evaluatePolynomial();
-			amplitude *= currentMusic.animationAmplitude;
+			current_music.evaluatePolynomial();
+			amplitude *= current_music.animationAmplitude;
 		}
-		buffer[i] += amplitude*currentMusic.buffer[currentMusic.pos];
-		buffer[i + 1] += amplitude*currentMusic.buffer[currentMusic.pos + 1];
-		currentMusic.pos += 2;
-		if (currentMusic.pos >= currentMusic.buffer.len) {
-			currentMusic.pos = 0;
+		buffer[i] += amplitude*current_music.buffer[current_music.pos];
+		buffer[i + 1] += amplitude*current_music.buffer[current_music.pos + 1];
+		current_music.pos += 2;
+		if (current_music.pos >= current_music.buffer.len) {
+			current_music.pos = 0;
 		}
 	}
 }

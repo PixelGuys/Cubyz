@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
-const Player = main.game.Player;
+const player = main.game.player;
 const ItemStack = main.items.ItemStack;
 const Vec2f = main.vec.Vec2f;
 const Texture = main.graphics.Texture;
@@ -48,7 +48,7 @@ pub fn onOpen() void {
 	{
 		const row = HorizontalList.init();
 		blk: {
-			row.add(GuiComponent.BagSlot.init(.{0, 0}, main.entity.components.@"cubyz:bag".client.getBag(main.game.Player.id) orelse break :blk));
+			row.add(GuiComponent.BagSlot.init(.{0, 0}, main.entity.components.@"cubyz:bag".client.getBag(main.game.player.id) orelse break :blk));
 		}
 		row.add(Button.initIcon(.{32, 0}, .{32, 32}, craftingIcon, .{.onAction = gui.openWindowCallback("inventory_crafting")}));
 		list.add(row);
@@ -57,7 +57,7 @@ pub fn onOpen() void {
 		const row = HorizontalList.init();
 		for (0..10) |x| {
 			const index: usize = 12 + y*10 + x;
-			const slot = ItemSlot.init(.{0, 0}, Player.inventory, @intCast(index), .default, .normal);
+			const slot = ItemSlot.init(.{0, 0}, player.inventory, @intCast(index), .default, .normal);
 			itemSlots[index - 12] = slot;
 			row.add(slot);
 		}

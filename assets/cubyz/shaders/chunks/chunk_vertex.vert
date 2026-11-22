@@ -13,10 +13,31 @@ layout(location = 6) flat out int isBackFace;
 layout(location = 7) flat out float distanceForLodCheck;
 layout(location = 8) flat out int opaqueInLod;
 
+struct Fog {
+	vec3 color;
+	float density;
+	float fogLower;
+	float fogHigher;
+};
+
+#ifdef OPEN_GL
+
 layout(location = 0) uniform vec3 ambientLight;
 
 #ifdef ENTITY
 layout(location = 14) uniform mat4 modelMatrix;
+#endif
+
+#else
+layout(push_constant, std430) uniform _ {
+	vec3 ambientLight;
+	float contrast;
+	Fog fog;
+	float reflectionMapSize;
+	float lodDistance;
+	float zNear;
+	float zFar;
+};
 #endif
 
 struct FaceData {

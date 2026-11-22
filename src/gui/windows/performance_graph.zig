@@ -71,20 +71,21 @@ pub fn init() void {
 
 pub fn deinit() void {
 	ssbo.deinit();
+	pipeline.deinit();
 }
 
-pub fn render() void {
+pub fn render(currentFrame: *vulkan.Frame) void {
 	lastFrameTime[index] = @floatCast(main.lastFrameTime.load(.monotonic)*1000.0);
 	index = (index + 1)%@as(u31, @intCast(lastFrameTime.len));
-	draw.text("32 ms", 0, 16, 8);
-	draw.text("16 ms", 0, 32, 8);
-	draw.text("00 ms", 0, 48, 8);
+	draw.text(currentFrame, "32 ms", 0, 16, 8);
+	draw.text(currentFrame, "16 ms", 0, 32, 8);
+	draw.text(currentFrame, "00 ms", 0, 48, 8);
 	{
 		const oldColor = draw.setColor(0x80ffffff);
 		defer draw.restoreColor(oldColor);
-		draw.line(.{border, 24}, .{window.contentSize[0] - border, 24});
-		draw.line(.{border, 40}, .{window.contentSize[0] - border, 40});
-		draw.line(.{border, 56}, .{window.contentSize[0] - border, 56});
+		draw.line(currentFrame, .{border, 24}, .{window.contentSize[0] - border, 24});
+		draw.line(currentFrame, .{border, 40}, .{window.contentSize[0] - border, 40});
+		draw.line(currentFrame, .{border, 56}, .{window.contentSize[0] - border, 56});
 	}
 	var pos = Vec2f{border, border};
 	var dim = window.contentSize - @as(Vec2f, @splat(2*border));
@@ -97,12 +98,12 @@ pub fn render() void {
 
 	ssbo.bufferData(f32, &lastFrameTime);
 
-	if (main.settings.launchConfig.vulkanTestingMode) {
-		vulkan.currentFrame.guiCommands.bindPipeline(pipeline, null);
-		vulkan.currentFrame.guiCommands.bindDescriptors(pipeline, .graphics, &.{
+	if (main.settings.launch_config.vulkanTestingMode) {
+		currentFrame.guiCommands.bindPipeline(currentFrame, pipeline, null);
+		currentFrame.guiCommands.bindDescriptors(pipeline, &.{
 			.{.ssbo = .{.binding = 5, .ssbo = ssbo}},
 		});
-		vulkan.currentFrame.guiCommands.pushConstants(pipeline, &Uniforms{
+		currentFrame.guiCommands.pushConstants(pipeline, &Uniforms{
 			.start = pos,
 			.dimension = .{dim[0], draw.setScale(1)},
 			.screen = .{@floatFromInt(main.Window.width), @floatFromInt(main.Window.height)},
@@ -110,7 +111,7 @@ pub fn render() void {
 			.offset = index,
 			.lineColor = .{1, 1, 1},
 		});
-		vulkan.currentFrame.guiCommands.draw(lastFrameTime.len, 0);
+		currentFrame.guiCommands.draw(lastFrameTime.len, 0);
 	} else {
 		pipeline.bind(null);
 		c.glUniform1i(uniforms.points, lastFrameTime.len);
@@ -119,7 +120,9 @@ pub fn render() void {
 		c.glUniform2f(uniforms.screen, @floatFromInt(main.Window.width), @floatFromInt(main.Window.height));
 		c.glUniform2f(uniforms.start, pos[0], pos[1]);
 		c.glUniform2f(uniforms.dimension, dim[0], draw.setScale(1));
-		ssbo.bind(5);
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			ssbo.bind(5);
+		}
 		c.glDrawArrays(c.GL_LINE_STRIP, 0, lastFrameTime.len);
 	}
 }

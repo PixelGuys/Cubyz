@@ -23,7 +23,7 @@ const ProceduralItemTypeIndex = main.items.ProceduralItemTypeIndex;
 pub const InventoryId = enum(u32) { _ };
 
 pub const client = struct { // MARK: client
-	var maxId: InventoryId = @enumFromInt(0);
+	var maxId: InventoryId = @fromBackingInt(0);
 	var freeIdList: main.List(InventoryId) = .empty;
 	var serverToClientMap: std.AutoHashMap(InventoryId, Inventory) = undefined;
 
@@ -32,7 +32,7 @@ pub const client = struct { // MARK: client
 	}
 
 	pub fn deinit() void {
-		std.debug.assert(freeIdList.items.len == @intFromEnum(maxId)); // leak
+		std.debug.assert(freeIdList.items.len == @backingInt(maxId)); // leak
 		freeIdList.clearAndFree(main.globalAllocator);
 		serverToClientMap.deinit();
 	}
@@ -44,7 +44,7 @@ pub const client = struct { // MARK: client
 		if (freeIdList.popOrNull()) |id| {
 			return id;
 		}
-		defer maxId = @enumFromInt(@intFromEnum(maxId) + 1);
+		defer maxId = @fromBackingInt(@backingInt(maxId) + 1);
 		return maxId;
 	}
 
@@ -163,7 +163,7 @@ pub const server = struct { // MARK: server
 	};
 
 	var inventories: main.utils.VirtualList(ServerInventory, 1 << 24) = undefined;
-	var maxId: InventoryId = @enumFromInt(0);
+	var maxId: InventoryId = @fromBackingInt(0);
 	var freeIdList: main.List(InventoryId) = .empty;
 	var inventoryCreationMutex: main.utils.Mutex = .{};
 
@@ -177,10 +177,10 @@ pub const server = struct { // MARK: server
 				std.log.err("Leaked inventory with source {}", .{inv.source});
 			}
 		}
-		std.debug.assert(freeIdList.items.len == @intFromEnum(maxId)); // leak
+		std.debug.assert(freeIdList.items.len == @backingInt(maxId)); // leak
 		freeIdList.clearAndFree(main.globalAllocator);
 		inventories.deinit();
-		maxId = @enumFromInt(0);
+		maxId = @fromBackingInt(0);
 	}
 
 	pub fn disconnectUser(user: *main.server.User) void {
@@ -198,7 +198,7 @@ pub const server = struct { // MARK: server
 		if (freeIdList.popOrNull()) |id| {
 			return id;
 		}
-		defer maxId = @enumFromInt(@intFromEnum(maxId) + 1);
+		defer maxId = @fromBackingInt(@backingInt(maxId) + 1);
 		_ = inventories.addOne();
 		return maxId;
 	}
@@ -212,7 +212,7 @@ pub const server = struct { // MARK: server
 		inventoryCreationMutex.lock();
 		defer inventoryCreationMutex.unlock();
 		const inventory = ServerInventory.init(len, source, .externallyManaged, callbacks);
-		inventories.items()[@intFromEnum(inventory.inv.id)] = inventory;
+		inventories.items()[@backingInt(inventory.inv.id)] = inventory;
 		inventory.inv.fromBytes(data);
 		return inventory.inv.id;
 	}
@@ -220,20 +220,20 @@ pub const server = struct { // MARK: server
 	pub fn destroyExternallyManagedInventory(invId: InventoryId) void {
 		switch (sync.threadContext) {
 			.server => {},
-			.chunkDeiniting => std.debug.assert(inventories.items()[@intFromEnum(invId)].users.items.len == 0), // There should be no users here, since chunks shouldn't be deinited while players are still interacting with them.
+			.chunkDeiniting => std.debug.assert(inventories.items()[@backingInt(invId)].users.items.len == 0), // There should be no users here, since chunks shouldn't be deinited while players are still interacting with them.
 			else => unreachable,
 		}
-		std.debug.assert(inventories.items()[@intFromEnum(invId)].managed == .externallyManaged);
+		std.debug.assert(inventories.items()[@backingInt(invId)].managed == .externallyManaged);
 
 		inventoryCreationMutex.lock();
 		defer inventoryCreationMutex.unlock();
-		inventories.items()[@intFromEnum(invId)].deinit();
+		inventories.items()[@backingInt(invId)].deinit();
 	}
 
 	pub fn destroyAndDropExternallyManagedInventory(invId: InventoryId, pos: Vec3i) void {
 		sync.threadContext.assertCorrectContext(.server);
-		std.debug.assert(inventories.items()[@intFromEnum(invId)].managed == .externallyManaged);
-		const inv = &inventories.items()[@intFromEnum(invId)];
+		std.debug.assert(inventories.items()[@backingInt(invId)].managed == .externallyManaged);
+		const inv = &inventories.items()[@backingInt(invId)];
 		for (inv.inv._items) |*itemStack| {
 			if (itemStack.amount == 0) continue;
 			main.server.world.?.drop(
@@ -301,8 +301,8 @@ pub const server = struct { // MARK: server
 		const inventory = ServerInventory.init(len, source, .internallyManaged, callbacks);
 		inventoryCreationMutex.unlock();
 
-		inventories.items()[@intFromEnum(inventory.inv.id)] = inventory;
-		inventories.items()[@intFromEnum(inventory.inv.id)].addUser(user, clientId);
+		inventories.items()[@backingInt(inventory.inv.id)] = inventory;
+		inventories.items()[@backingInt(inventory.inv.id)].addUser(user, clientId);
 
 		switch (source) {
 			.blockInventory => unreachable, // Should be loaded by the block entity
@@ -316,13 +316,13 @@ pub const server = struct { // MARK: server
 	pub fn closeInventory(user: *main.server.User, clientId: InventoryId) !void {
 		sync.threadContext.assertCorrectContext(.server);
 		const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return error.InventoryNotFound;
-		inventories.items()[@intFromEnum(serverId)].removeUser(user, clientId);
+		inventories.items()[@backingInt(serverId)].removeUser(user, clientId);
 	}
 
 	pub fn getInventory(user: *main.server.User, clientId: InventoryId) ?Inventory {
 		sync.threadContext.assertCorrectContext(.server);
 		const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return null;
-		return inventories.items()[@intFromEnum(serverId)].inv;
+		return inventories.items()[@backingInt(serverId)].inv;
 	}
 
 	pub fn getInventoryFromSource(source: Source) ?Inventory {
@@ -339,20 +339,20 @@ pub const server = struct { // MARK: server
 
 	pub fn getInventoryFromId(serverId: InventoryId) Inventory {
 		sync.threadContext.assertCorrectContext(.server);
-		return inventories.items()[@intFromEnum(serverId)].inv;
+		return inventories.items()[@backingInt(serverId)].inv;
 	}
 
 	pub fn getServerInventory(serverId: InventoryId) ServerInventory {
 		sync.threadContext.assertCorrectContext(.server);
-		return inventories.items()[@intFromEnum(serverId)];
+		return inventories.items()[@backingInt(serverId)];
 	}
 
 	pub fn clearPlayerInventory(user: *main.server.User) void {
 		sync.threadContext.assertCorrectContext(.server);
 		var inventoryIdIterator = user.inventoryClientToServerIdMap.valueIterator();
 		while (inventoryIdIterator.next()) |inventoryId| {
-			if (inventories.items()[@intFromEnum(inventoryId.*)].source == .playerInventory) {
-				sync.server.executeCommand(.{.clear = .{.inv = inventories.items()[@intFromEnum(inventoryId.*)].inv}}, null);
+			if (inventories.items()[@backingInt(inventoryId.*)].source == .playerInventory) {
+				sync.server.executeCommand(.{.clear = .{.inv = inventories.items()[@backingInt(inventoryId.*)].inv}}, null);
 			}
 		}
 	}
@@ -362,8 +362,8 @@ pub const server = struct { // MARK: server
 		sync.threadContext.assertCorrectContext(.server);
 		var inventoryIdIterator = user.inventoryClientToServerIdMap.valueIterator();
 		outer: while (inventoryIdIterator.next()) |inventoryId| {
-			if (inventories.items()[@intFromEnum(inventoryId.*)].source == .playerInventory) {
-				const inv = inventories.items()[@intFromEnum(inventoryId.*)].inv;
+			if (inventories.items()[@backingInt(inventoryId.*)].source == .playerInventory) {
+				const inv = inventories.items()[@backingInt(inventoryId.*)].inv;
 				for (inv._items, 0..) |invStack, slot| {
 					if (std.meta.eql(invStack.item, itemStack.item)) {
 						const amount = @min(itemStack.item.stackSize() - invStack.amount, itemStack.amount);
@@ -556,12 +556,12 @@ pub const ClientInventory = struct { // MARK: ClientInventory
 
 	pub fn placeBlock(self: ClientInventory, slot: u32) void {
 		std.debug.assert(self.type == .serverShared);
-		main.renderer.MeshSelection.placeBlock(self, slot);
+		main.renderer.mesh_selection.placeBlock(self, slot);
 	}
 
 	pub fn breakBlock(self: ClientInventory, slot: u32, deltaTime: f64) void {
 		std.debug.assert(self.type == .serverShared);
-		main.renderer.MeshSelection.breakBlock(self, slot, deltaTime);
+		main.renderer.mesh_selection.breakBlock(self, slot, deltaTime);
 	}
 
 	pub fn size(self: ClientInventory) usize {

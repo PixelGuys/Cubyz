@@ -110,7 +110,7 @@ pub const StackAllocator = struct { // MARK: StackAllocator
 
 	fn alloc(ctx: *anyopaque, len: usize, alignment: std.mem.Alignment, ret_addr: usize) ?[*]u8 {
 		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
-		const start = std.mem.alignForward(usize, self.index, @as(usize, 1) << @intCast(@intFromEnum(alignment)));
+		const start = std.mem.alignForward(usize, self.index, @as(usize, 1) << @intCast(@backingInt(alignment)));
 		const end = getTrueAllocationEnd(start, len);
 		if (end >= self.buffer.len) return self.backingAllocator.rawAlloc(len, alignment, ret_addr);
 		const trailer = self.getTrailerBefore(end);
@@ -450,10 +450,7 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 	///   do the realloc more efficiently than the caller
 	/// * `resize` which returns `false` when the `Allocator` implementation cannot
 	///   change the size without relocating the allocation.
-	pub fn realloc(self: NeverFailingAllocator, old_mem: anytype, new_n: usize) t: {
-		const Slice = @typeInfo(@TypeOf(old_mem)).pointer;
-		break :t []align(Slice.alignment orelse @alignOf(Slice.child)) Slice.child;
-	} {
+	pub fn realloc(self: NeverFailingAllocator, old_mem: anytype, new_n: usize) std.meta.Slice(std.meta.AbsorbSentinel(@TypeOf(old_mem))) {
 		return self.allocator.realloc(old_mem, new_n) catch unreachable;
 	}
 
@@ -462,10 +459,7 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 		old_mem: anytype,
 		new_n: usize,
 		return_address: usize,
-	) t: {
-		const Slice = @typeInfo(@TypeOf(old_mem)).pointer;
-		break :t []align(Slice.alignment) Slice.child;
-	} {
+	) std.meta.Slice(std.meta.AbsorbSentinel(@TypeOf(old_mem))) {
 		return self.allocator.reallocAdvanced(old_mem, new_n, return_address) catch unreachable;
 	}
 
@@ -565,7 +559,7 @@ pub const NeverFailingArenaAllocator = struct { // MARK: NeverFailingArena
 		const node = self.arena.state.buffer_list.first orelse return;
 		const allocBuf = @as([*]u8, @ptrCast(node))[0..node.data];
 		const dataSize = std.mem.alignForward(usize, @sizeOf(std.SinglyLinkedList(usize).Node) + self.arena.state.end_index, @alignOf(std.SinglyLinkedList(usize).Node));
-		if (self.arena.childAllocator.rawResize(allocBuf, @enumFromInt(std.math.log2(@alignOf(std.SinglyLinkedList(usize).Node))), dataSize, @returnAddress())) {
+		if (self.arena.childAllocator.rawResize(allocBuf, @fromBackingInt(std.math.log2(@alignOf(std.SinglyLinkedList(usize).Node))), dataSize, @returnAddress())) {
 			node.data = dataSize;
 		}
 	}
@@ -655,7 +649,7 @@ pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 	};
 }
 
-pub const GarbageCollection = struct { // MARK: GarbageCollection
+pub const garbage_collection = struct { // MARK: garbage_collection
 	var sharedState: std.atomic.Value(u32) = .init(0);
 	threadlocal var threadCycle: u2 = undefined;
 	threadlocal var lastSyncPointTime: std.Io.Timestamp = undefined;
@@ -856,7 +850,7 @@ pub fn PowerOfTwoPoolAllocator(minSize: comptime_int, maxSize: comptime_int, max
 		}
 
 		fn alloc(ctx: *anyopaque, len: usize, _alignment: std.mem.Alignment, _: usize) ?[*]u8 {
-			std.debug.assert(@as(usize, 1) << @intFromEnum(_alignment) <= maxAlignment);
+			std.debug.assert(@as(usize, 1) << @backingInt(_alignment) <= maxAlignment);
 			std.debug.assert(std.math.isPowerOfTwo(len));
 			std.debug.assert(len >= minSize);
 			std.debug.assert(len <= maxSize);
@@ -876,7 +870,7 @@ pub fn PowerOfTwoPoolAllocator(minSize: comptime_int, maxSize: comptime_int, max
 		}
 
 		fn free(ctx: *anyopaque, memory: []u8, _alignment: std.mem.Alignment, _: usize) void {
-			std.debug.assert(@as(usize, 1) << @intFromEnum(_alignment) <= maxAlignment);
+			std.debug.assert(@as(usize, 1) << @backingInt(_alignment) <= maxAlignment);
 			std.debug.assert(std.math.isPowerOfTwo(memory.len));
 			const self: *Self = @ptrCast(@alignCast(ctx));
 			const bucket = @ctz(memory.len) - baseShift;

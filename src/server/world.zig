@@ -300,12 +300,12 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 			const map = terrain.LightMap.getOrGenerateFragment(self.pos.wx, self.pos.wy, self.pos.voxelSize);
 			if (self.source) |source| {
 				const user = server.getUserByIndex(source) orelse return;
-				if (user.connected.load(.monotonic)) main.network.protocols.lightMapTransmission.sendLightMap(user.conn, map);
+				if (user.connected.load(.monotonic)) main.network.protocols.light_map_transmission.sendLightMap(user.conn, map);
 			} else {
 				const userList = server.getUserList(main.stackAllocator);
 				defer main.stackAllocator.free(userList);
 				for (userList) |user| {
-					main.network.protocols.lightMapTransmission.sendLightMap(user.conn, map);
+					main.network.protocols.light_map_transmission.sendLightMap(user.conn, map);
 				}
 			}
 		}
@@ -352,7 +352,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 		switch (source) {
 			.player => |player| {
 				const user = server.getUserByIndex(player) orelse return;
-				main.network.protocols.chunkTransmission.sendChunk(user.conn, ch);
+				main.network.protocols.chunk_transmisison.sendChunk(user.conn, ch);
 				ch.decreaseRefCount();
 			},
 			.simulationChunk => |simulationChunk| {
@@ -385,7 +385,7 @@ pub const ChunkManager = struct { // MARK: ChunkManager
 			@as(usize, @intCast(pos.wz -% region.pos.wz))/pos.voxelSize/chunk.chunkSize,
 		)) |data| blk: { // Load chunk from file:
 			defer main.stackAllocator.free(data);
-			storage.ChunkCompression.loadChunk(&ch.super, .server, data) catch {
+			storage.chunk_compression.loadChunk(&ch.super, .server, data) catch {
 				std.log.err("Storage for chunk {} in region file at {} is corrupted", .{pos, region.pos});
 				break :blk;
 			};
@@ -812,18 +812,18 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				defer self.mutex.lock();
 				updateRequest.ch.save(self);
 				updateRequest.ch.decreaseRefCount();
-				main.heap.GarbageCollection.syncPoint();
+				main.heap.garbage_collection.syncPoint();
 			}
 			while (self.regionUpdateQueue.popFront()) |updateRequest| {
 				self.mutex.unlock();
 				defer self.mutex.lock();
 				updateRequest.region.store();
 				updateRequest.region.decreaseRefCount();
-				main.heap.GarbageCollection.syncPoint();
+				main.heap.garbage_collection.syncPoint();
 			}
 			self.mutex.unlock();
 			main.io.sleep(.fromMilliseconds(1), .awake) catch {};
-			main.heap.GarbageCollection.syncPoint();
+			main.heap.garbage_collection.syncPoint();
 			self.mutex.lock();
 			if (main.threadPool.queueSize() == 0 and self.chunkUpdateQueue.peekFront() == null and self.regionUpdateQueue.peekFront() == null) break;
 		}
@@ -948,7 +948,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		} else {
 			user.gamemode = .init(std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode") orelse @tagName(self.settings.defaultGamemode)) orelse self.settings.defaultGamemode);
 		}
-		user.inventory = loadPlayerInventory(main.game.Player.inventorySize, playerData.get([]const u8, "playerInventory") orelse "", .{.playerInventory = user.id}, path);
+		user.inventory = loadPlayerInventory(main.game.player.inventorySize, playerData.get([]const u8, "playerInventory") orelse "", .{.playerInventory = user.id}, path);
 		user.handInventory = loadPlayerInventory(1, playerData.get([]const u8, "hand") orelse "", .{.hand = user.id}, path);
 
 		user.spawnPos = playerData.get(Vec3d, "playerSpawnPos");
@@ -1117,7 +1117,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			const userList = server.getUserList(main.stackAllocator);
 			defer main.stackAllocator.free(userList);
 			for (userList) |user| {
-				main.network.protocols.genericUpdate.sendTime(user.conn, self);
+				main.network.protocols.generic_update.sendTime(user.conn, self);
 			}
 		}
 		self.tick();
@@ -1257,7 +1257,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				defer main.stackAllocator.free(userList);
 
 				for (userList) |user| {
-					main.network.protocols.blockUpdate.send(user.conn, &.{.{.pos = .{wx +% neighbor.relX(), wy +% neighbor.relY(), wz +% neighbor.relZ()}, .newBlock = neighborBlock, .blockEntityData = &.{}}});
+					main.network.protocols.block_update.send(user.conn, &.{.{.pos = .{wx +% neighbor.relX(), wy +% neighbor.relY(), wz +% neighbor.relZ()}, .newBlock = neighborBlock, .blockEntityData = &.{}}});
 				}
 			}
 			if (newBlock.mode().dependsOnNeighbors) {
@@ -1280,7 +1280,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer main.stackAllocator.free(userList);
 
 		for (userList) |user| {
-			main.network.protocols.blockUpdate.send(user.conn, &.{.{.pos = .{wx, wy, wz}, .newBlock = newBlock, .blockEntityData = &.{}}});
+			main.network.protocols.block_update.send(user.conn, &.{.{.pos = .{wx, wy, wz}, .newBlock = newBlock, .blockEntityData = &.{}}});
 		}
 		// onBreak event
 		if (oldBlock) |block| {

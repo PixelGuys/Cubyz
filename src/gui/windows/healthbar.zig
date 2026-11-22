@@ -42,14 +42,14 @@ pub fn deinit() void {
 	deadHeartTexture.deinit();
 }
 
-pub fn render() void {
-	if (main.game.Player.isCreative()) return;
+pub fn render(currentFrame: *graphics.vulkan.Frame) void {
+	if (main.game.player.isCreative()) return;
 
-	const displayHealth = @max(0, main.game.Player.super.health);
+	const displayHealth = @max(0, main.game.player.super.health);
 	const halfHeartUnits: usize = @ceil(displayHealth*2);
 	const wholeHearts = halfHeartUnits/2;
 	const halfHeart = halfHeartUnits%2;
-	const totalHearts: usize = @ceil(main.game.Player.super.maxHealth);
+	const totalHearts: usize = @ceil(main.game.player.super.maxHealth);
 
 	var x: f32 = 0;
 	var y: f32 = 0;
@@ -69,7 +69,7 @@ pub fn render() void {
 			}
 		};
 
-		draw.image(texture, Vec2f{x, window.contentSize[1] - y - 20}, .{20, 20});
+		draw.image(currentFrame, texture, Vec2f{x, window.contentSize[1] - y - 20}, .{20, 20});
 		x += 20;
 	}
 

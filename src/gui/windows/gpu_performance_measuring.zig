@@ -52,34 +52,42 @@ const names = [_][]const u8{
 
 const buffers = 4;
 var curBuffer: u2 = 0;
-var queryObjects: [buffers][@typeInfo(Samples).@"enum".fields.len]c_uint = undefined;
+var queryObjects: [buffers][@typeInfo(Samples).@"enum".field_names.len]c_uint = undefined;
 
 var activeSample: ?Samples = null;
 
 pub fn init() void {
-	for (&queryObjects) |*buf| {
-		c.glGenQueries(buf.len, buf);
-		for (buf) |queryObject| { // Start them to get an initial value.
-			c.glBeginQuery(c.GL_TIME_ELAPSED, queryObject);
-			c.glEndQuery(c.GL_TIME_ELAPSED);
+	if (!main.settings.launch_config.vulkanTestingMode) {
+		for (&queryObjects) |*buf| {
+			c.glGenQueries(buf.len, buf);
+			for (buf) |queryObject| { // Start them to get an initial value.
+				c.glBeginQuery(c.GL_TIME_ELAPSED, queryObject);
+				c.glEndQuery(c.GL_TIME_ELAPSED);
+			}
 		}
 	}
 }
 
 pub fn deinit() void {
-	c.glDeleteQueries(queryObjects.len*buffers, @ptrCast(&queryObjects));
+	if (!main.settings.launch_config.vulkanTestingMode) {
+		c.glDeleteQueries(queryObjects.len*buffers, @ptrCast(&queryObjects));
+	}
 }
 
 pub fn startQuery(sample: Samples) void {
 	std.debug.assert(activeSample == null); // There can be at most one active measurement at a time.
 	activeSample = sample;
-	c.glBeginQuery(c.GL_TIME_ELAPSED, queryObjects[curBuffer][@intFromEnum(sample)]);
+	if (!main.settings.launch_config.vulkanTestingMode) {
+		c.glBeginQuery(c.GL_TIME_ELAPSED, queryObjects[curBuffer][@backingInt(sample)]);
+	}
 }
 
 pub fn stopQuery() void {
 	std.debug.assert(activeSample != null); // There must be an active measurement to stop.
 	activeSample = null;
-	c.glEndQuery(c.GL_TIME_ELAPSED);
+	if (!main.settings.launch_config.vulkanTestingMode) {
+		c.glEndQuery(c.GL_TIME_ELAPSED);
+	}
 }
 
 pub var window = GuiWindow{
@@ -94,16 +102,18 @@ pub var window = GuiWindow{
 	.hideIfMouseIsGrabbed = false,
 };
 
-pub fn render() void {
+pub fn render(currentFrame: *graphics.vulkan.Frame) void {
 	curBuffer +%= 1;
 	var sum: isize = 0;
 	var y: f32 = 8;
 	inline for (0..queryObjects[curBuffer].len) |i| {
 		var result: u32 = undefined;
-		c.glGetQueryObjectuiv(queryObjects[curBuffer][i], c.GL_QUERY_RESULT, &result);
-		draw.print("{s}: {} µs", .{names[i], @divTrunc(result, 1000)}, 0, y, 8);
-		sum += result;
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			c.glGetQueryObjectuiv(queryObjects[curBuffer][i], c.GL_QUERY_RESULT, &result);
+			draw.print(currentFrame, "{s}: {} µs", .{names[i], @divTrunc(result, 1000)}, 0, y, 8);
+			sum += result;
+		}
 		y += 8;
 	}
-	draw.print("Total: {} µs", .{@divTrunc(sum, 1000)}, 0, 0, 8);
+	draw.print(currentFrame, "Total: {} µs", .{@divTrunc(sum, 1000)}, 0, 0, 8);
 }

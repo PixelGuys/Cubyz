@@ -35,12 +35,14 @@ pub const client = struct {
 	pub fn deinit() void {}
 	pub fn clear() void {}
 
-	pub fn render(ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
+	pub fn render(currentFrame: *graphics.vulkan.Frame, ambientLight: Vec3f, playerPos: Vec3d, deltaTime: f64) void {
+		_ = currentFrame;
 		_ = ambientLight;
 		_ = playerPos;
 		_ = deltaTime;
 	}
-	pub fn renderHud(ambientLight: Vec3f, playerPos: Vec3d) void {
+	pub fn renderHud(currentFrame: *graphics.vulkan.Frame, ambientLight: Vec3f, playerPos: Vec3d) void {
+		_ = currentFrame;
 		_ = ambientLight;
 		_ = playerPos;
 	}

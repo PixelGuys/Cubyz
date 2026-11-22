@@ -49,7 +49,7 @@ fn chooseSeed(seedStr: []const u8) u64 {
 }
 
 fn gamemodeCallback() void {
-	worldSettings.defaultGamemode = std.enums.fromInt(main.game.Gamemode, @intFromEnum(worldSettings.defaultGamemode) + 1) orelse @enumFromInt(0);
+	worldSettings.defaultGamemode = std.enums.fromInt(main.game.Gamemode, @backingInt(worldSettings.defaultGamemode) + 1) orelse @fromBackingInt(@intCast(0));
 	gamemodeInput.child.label.updateText(@tagName(worldSettings.defaultGamemode));
 }
 

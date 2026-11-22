@@ -94,11 +94,11 @@ pub const GuiComponent = union(enum) { // MARK: GuiComponent
 		return .ignored;
 	}
 
-	pub fn render(self: GuiComponent, mousePosition: Vec2f) void {
+	pub fn render(self: GuiComponent, currentFrame: *main.graphics.vulkan.Frame, mousePosition: Vec2f) void {
 		switch (self) {
 			inline else => |impl| {
 				if (@hasDecl(@TypeOf(impl.*), "render")) {
-					impl.render(mousePosition);
+					impl.render(currentFrame, mousePosition);
 				}
 			},
 		}

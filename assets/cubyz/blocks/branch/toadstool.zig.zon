@@ -17,12 +17,12 @@
 			.textureRoughness = 0.5,
 			.modifiers = .{
 				.{
-					.id = "durable",
+					.id = "base_stat",
+					.targetProperty = "maxDurability",
 					.strength = 0.45,
 				},
 			},
 		},
 		.texture = "branch/toadstool.png",
 	},
-	.decayProhibitor = true,
 }

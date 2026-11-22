@@ -129,17 +129,17 @@ pub fn mainButtonReleased(self: *ItemSlot, _: Vec2f) void {
 	}
 }
 
-pub fn render(self: *ItemSlot, _: Vec2f) void {
+pub fn render(self: *ItemSlot, currentFrame: *graphics.vulkan.Frame, _: Vec2f) void {
 	self.refreshText();
 	if (self.renderFrame and self.texture != null) {
-		draw.image(self.texture.?, self.pos, self.size);
+		draw.image(currentFrame, self.texture.?, self.pos, self.size);
 	}
 	const item = self.inventory.getItem(self.itemSlot);
 	if (item != .null) {
-		item.render(self.pos, self.size, border);
+		item.render(currentFrame, self.pos, self.size, border);
 		const shouldRenderStackSizeText = item.stackSize() > 1 and self.inventory.type != .creative;
 		if (shouldRenderStackSizeText) {
-			self.text.render(self.pos[0] + self.size[0] - self.textSize[0] - border, self.pos[1] + self.size[1] - self.textSize[1] - border, 8);
+			self.text.render(currentFrame, self.pos[0] + self.size[0] - self.textSize[0] - border, self.pos[1] + self.size[1] - self.textSize[1] - border, 8);
 		}
 	}
 	if (self.mode != .immutable) {
@@ -147,7 +147,7 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 			self.hovered = false;
 			const oldColor = draw.setColor(0x300000ff);
 			defer draw.restoreColor(oldColor);
-			draw.rect(self.pos, self.size);
+			draw.rect(currentFrame, self.pos, self.size);
 		}
 	}
 }

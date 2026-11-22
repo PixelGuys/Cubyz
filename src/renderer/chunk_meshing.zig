@@ -1,6 +1,5 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
-const builtin = @import("builtin");
 
 const main = @import("main");
 const blocks = main.blocks;
@@ -41,8 +40,18 @@ const UniformStruct = struct {
 	zNear: c_int,
 	zFar: c_int,
 };
-pub var uniforms: UniformStruct = undefined;
-pub var transparentUniforms: UniformStruct = undefined;
+pub const Uniforms = extern struct {
+	ambientLight: [3]f32 align(16),
+	contrast: f32,
+	fog: graphics.Fog.GlslData,
+	reflectionMapSize: f32,
+	lodDistance: f32,
+	zNear: f32,
+	zFar: f32,
+};
+
+var uniforms: UniformStruct = undefined;
+var transparentUniforms: UniformStruct = undefined;
 pub var commandPipeline: graphics.ComputePipeline = undefined;
 pub var commandUniforms: struct {
 	chunkIDIndex: c_int,
@@ -52,6 +61,14 @@ pub var commandUniforms: struct {
 	onlyDrawPreviouslyInvisible: c_int,
 	lodDistance: c_int,
 } = undefined;
+pub const CommandUniforms = extern struct {
+	chunkIDIndex: c_uint,
+	commandIndexStart: c_uint,
+	size: c_uint,
+	isTransparent: c_int,
+	onlyDrawPreviouslyInvisible: c_int,
+	lodDistance: f32,
+};
 pub var occlusionTestPipeline: graphics.Pipeline = undefined;
 pub var vao: graphics.VertexArray = undefined;
 pub var faceBuffers: [settings.highestSupportedLod + 1]graphics.LargeBuffer(FaceData) = undefined;
@@ -71,9 +88,23 @@ pub fn init() void {
 		&uniforms,
 		graphics.VertexArray.EmptyVertex,
 		.{
+			.bindings = &.{
+				.sampler(0, .{.fragment = true}),
+				.sampler(1, .{.fragment = true}),
+				.sampler(2, .{.fragment = true}),
+				.sampler(5, .{.fragment = true}),
+				.sampler(11, .{.fragment = true}),
+				.ssbo(3, .{.vertex = true}),
+				.ssbo(4, .{.vertex = true}),
+				.ssbo(6, .{.vertex = true}),
+				.ssbo(7, .{}),
+				.ssbo(10, .{.vertex = true}),
+				.ssbo(12, .{.fragment = true}),
+			},
 			.rasterState = .{},
 			.depthStencilState = .{.depthTest = true, .depthWrite = true},
 			.blendState = .{.attachments = &.{.noBlending}, .formats = &.{.world}},
+			.pushConstantSize = @sizeOf(Uniforms),
 		},
 	);
 	transparentPipeline = graphics.Pipeline.init(
@@ -83,6 +114,19 @@ pub fn init() void {
 		&transparentUniforms,
 		graphics.VertexArray.EmptyVertex,
 		.{
+			.bindings = &.{
+				.sampler(0, .{.fragment = true}),
+				.sampler(1, .{.fragment = true}),
+				.sampler(2, .{.fragment = true}),
+				.sampler(5, .{.fragment = true}),
+				.sampler(11, .{.fragment = true}),
+				.ssbo(3, .{.vertex = true}),
+				.ssbo(4, .{.vertex = true}),
+				.ssbo(6, .{.vertex = true}),
+				.ssbo(7, .{.fragment = true}),
+				.ssbo(10, .{.vertex = true}),
+				.ssbo(12, .{.fragment = true}),
+			},
 			.rasterState = .{},
 			.depthStencilState = .{.depthTest = true, .depthWrite = false, .depthCompare = .lessOrEqual},
 			.blendState = .{.attachments = &.{.{
@@ -93,9 +137,17 @@ pub fn init() void {
 				.dstAlphaBlendFactor = .src1Alpha,
 				.alphaBlendOp = .add,
 			}}, .formats = &.{.world}},
+			.pushConstantSize = @sizeOf(Uniforms),
 		},
 	);
-	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms);
+	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms, .{
+		.bindings = &.{
+			.ssbo(6, .{.compute = true}),
+			.ssbo(8, .{.compute = true}),
+			.ssbo(9, .{.compute = true}),
+		},
+		.pushConstantSize = @sizeOf(CommandUniforms),
+	});
 	occlusionTestPipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/chunks/occlusionTestVertex.vert",
 		"assets/cubyz/shaders/chunks/occlusionTestFragment.frag",
@@ -103,7 +155,10 @@ pub fn init() void {
 		null,
 		graphics.VertexArray.EmptyVertex,
 		.{
-			.bindings = &.{.ssbo(6, .{.vertex = true, .fragment = true}), .ssbo(9, .{.vertex = true})},
+			.bindings = &.{
+				.ssbo(6, .{.vertex = true, .fragment = true}),
+				.ssbo(9, .{.vertex = true}),
+			},
 			.rasterState = .{},
 			.depthStencilState = .{.depthTest = true, .depthWrite = false},
 			.blendState = .{.attachments = &.{.{
@@ -128,12 +183,12 @@ pub fn init() void {
 	vao = .init(graphics.VertexArray.EmptyVertex, &.{}, &rawData);
 
 	for (0..settings.highestSupportedLod + 1) |i| {
-		faceBuffers[i].init(main.globalAllocator, 1 << 20, 3);
-		lightBuffers[i].init(main.globalAllocator, 1 << 20, 10);
+		faceBuffers[i].init(main.globalAllocator, 1 << 20, 3, .{});
+		lightBuffers[i].init(main.globalAllocator, 1 << 20, 10, .{});
 	}
-	chunkBuffer.init(main.globalAllocator, 1 << 20, 6);
-	commandBuffer.init(main.globalAllocator, 1 << 20, 8);
-	chunkIDBuffer.init(main.globalAllocator, 1 << 20, 9);
+	chunkBuffer.init(main.globalAllocator, 1 << 20, 6, .{});
+	commandBuffer.init(main.globalAllocator, 1 << 10, 8, .{.extraUsageFlags = c.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT});
+	chunkIDBuffer.init(main.globalAllocator, 1 << 20, 9, .{});
 }
 
 pub fn deinit() void {
@@ -171,38 +226,83 @@ pub fn endRender() void {
 	chunkIDBuffer.endRender();
 }
 
-fn bindCommonUniforms(locations: *UniformStruct, ambient: Vec3f) void {
-	c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
+fn bindCommonUniforms(vulkanUniforms: *Uniforms, locations: *UniformStruct, ambient: Vec3f, contrast: f32) void {
+	vulkanUniforms.reflectionMapSize = renderer.reflectionCubeMapSize;
+	vulkanUniforms.contrast = contrast;
+	vulkanUniforms.lodDistance = main.settings.@"lod0.5Distance";
+	vulkanUniforms.ambientLight = ambient;
+	vulkanUniforms.zNear = renderer.zNear;
+	vulkanUniforms.zFar = renderer.zFar;
 
-	c.glUniform1f(locations.contrast, main.settings.blockContrast);
-
-	c.glUniform1f(locations.lodDistance, main.settings.@"lod0.5Distance");
-
-	c.glUniform3f(locations.ambientLight, ambient[0], ambient[1], ambient[2]);
-
-	c.glUniform1f(locations.zNear, renderer.zNear);
-	c.glUniform1f(locations.zFar, renderer.zFar);
+	if (!main.settings.launch_config.vulkanTestingMode) {
+		c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
+		c.glUniform1f(locations.contrast, contrast);
+		c.glUniform1f(locations.lodDistance, main.settings.@"lod0.5Distance");
+		c.glUniform3f(locations.ambientLight, ambient[0], ambient[1], ambient[2]);
+		c.glUniform1f(locations.zNear, renderer.zNear);
+		c.glUniform1f(locations.zFar, renderer.zFar);
+	}
 }
 
-pub fn bindShaderAndUniforms(ambient: Vec3f) void {
-	pipeline.bind(null);
-
-	bindCommonUniforms(&uniforms, ambient);
-
-	vao.bind();
+fn bindVulkan(selectedPipeline: graphics.Pipeline, commands: graphics.CommandBuffer, currentFrame: *graphics.vulkan.Frame, frameUbo: ?graphics.frame_uniforms.StaticUbo, vulkanUniforms: *Uniforms, lod: usize) void {
+	commands.bindPipeline(currentFrame, selectedPipeline, null);
+	commands.pushConstants(selectedPipeline, vulkanUniforms);
+	commands.bindVertexArray(vao);
+	commands.bindDescriptors(selectedPipeline, &.{
+		.{.image = .{.binding = 0, .image = main.blocks.meshes.blockTextureArray.?.vulkanImage}},
+		.{.image = .{.binding = 1, .image = main.blocks.meshes.emissionTextureArray.?.vulkanImage}},
+		.{.image = .{.binding = 2, .image = main.blocks.meshes.reflectivityAndAbsorptionTextureArray.?.vulkanImage}},
+		.{.image = .{.binding = 5, .image = main.blocks.meshes.ditherTexture.vulkanImage}},
+		.{.image = .{.binding = 11, .image = main.renderer.reflectionCubeMap.vulkanImage}},
+		.{.ssbo = .{.binding = 3, .ssbo = faceBuffers[lod].ssbo}},
+		.{.ssbo = .{.binding = 4, .ssbo = main.models.quadSsbo.?}},
+		.{.ssbo = .{.binding = 6, .ssbo = chunkBuffer.ssbo}},
+		.{.ssbo = .{.binding = 7, .ssbo = main.blocks.meshes.fogSsbo.?}},
+		.{.ssbo = .{.binding = 10, .ssbo = lightBuffers[lod].ssbo}},
+		.{.ssbo = .{.binding = 12, .ssbo = main.blocks.meshes.animatedTextureSsbo.?}},
+	});
+	if (frameUbo) |ubo| {
+		ubo.bindToPipeline(commands, selectedPipeline);
+	} else {
+		graphics.frame_uniforms.bindToPipeline(commands, selectedPipeline);
+	}
 }
 
-pub fn bindTransparentShaderAndUniforms(ambient: Vec3f) void {
-	transparentPipeline.bind(null);
+pub fn bindShaderAndUniforms(commands: graphics.CommandBuffer, currentFrame: *graphics.vulkan.Frame, frameUbo: ?graphics.frame_uniforms.StaticUbo, ambient: Vec3f, contrast: f32, lod: usize) void {
+	if (!main.settings.launch_config.vulkanTestingMode) {
+		pipeline.bind(null);
+		vao.bind();
+	}
 
-	c.glUniform3fv(transparentUniforms.@"fog.color", 1, @ptrCast(&game.world.?.dayTime.fog.fogColor));
-	c.glUniform1f(transparentUniforms.@"fog.density", game.world.?.dayTime.fog.density);
-	c.glUniform1f(transparentUniforms.@"fog.fogLower", game.world.?.dayTime.fog.fogLower);
-	c.glUniform1f(transparentUniforms.@"fog.fogHigher", game.world.?.dayTime.fog.fogHigher);
+	var vulkanUniforms: Uniforms = undefined;
+	bindCommonUniforms(&vulkanUniforms, &uniforms, ambient, contrast);
 
-	bindCommonUniforms(&transparentUniforms, ambient);
+	if (main.settings.launch_config.vulkanTestingMode) {
+		bindVulkan(pipeline, commands, currentFrame, frameUbo, &vulkanUniforms, lod);
+	}
+}
 
-	vao.bind();
+pub fn bindTransparentShaderAndUniforms(commands: graphics.CommandBuffer, currentFrame: *graphics.vulkan.Frame, frameUbo: ?graphics.frame_uniforms.StaticUbo, depthTexture: graphics.vulkan.Image, ambient: Vec3f, contrast: f32, lod: usize) void {
+	if (!main.settings.launch_config.vulkanTestingMode) {
+		transparentPipeline.bind(null);
+		c.glUniform3fv(transparentUniforms.@"fog.color", 1, @ptrCast(&game.world.?.dayTime.fog.fogColor));
+		c.glUniform1f(transparentUniforms.@"fog.density", game.world.?.dayTime.fog.density);
+		c.glUniform1f(transparentUniforms.@"fog.fogLower", game.world.?.dayTime.fog.fogLower);
+		c.glUniform1f(transparentUniforms.@"fog.fogHigher", game.world.?.dayTime.fog.fogHigher);
+		vao.bind();
+	}
+
+	var vulkanUniforms: Uniforms = undefined;
+	vulkanUniforms.fog = game.world.?.dayTime.fog.toGlsl();
+
+	bindCommonUniforms(&vulkanUniforms, &transparentUniforms, ambient, contrast);
+
+	if (main.settings.launch_config.vulkanTestingMode) {
+		bindVulkan(transparentPipeline, commands, currentFrame, frameUbo, &vulkanUniforms, lod);
+		commands.bindDescriptors(transparentPipeline, &.{
+			.{.image = .{.binding = 5, .image = depthTexture}},
+		});
+	}
 }
 
 fn bindBuffers(lod: usize) void {
@@ -210,15 +310,17 @@ fn bindBuffers(lod: usize) void {
 	lightBuffers[lod].ssbo.bind(lightBuffers[lod].binding);
 }
 
-pub fn drawChunksIndirect(chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), ambient: Vec3f, transparent: bool) void {
+pub fn drawChunksIndirect(currentFrame: *graphics.vulkan.Frame, currentFrameBuffer: *graphics.FrameBuffer, chunkIds: *const [main.settings.highestSupportedLod + 1]main.ListManaged(u32), ambient: Vec3f, transparent: bool) void {
 	for (0..chunkIds.len) |i| {
 		const lod = if (transparent) main.settings.highestSupportedLod - i else i;
-		bindBuffers(lod);
-		drawChunksOfLod(chunkIds[lod].items, ambient, transparent);
+		if (!main.settings.launch_config.vulkanTestingMode) {
+			bindBuffers(lod);
+		}
+		drawChunksOfLod(currentFrame, currentFrameBuffer, chunkIds[lod].items, ambient, transparent, lod);
 	}
 }
 
-fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, transparent: bool) void {
+fn drawChunksOfLod(currentFrame: *graphics.vulkan.Frame, currentFrameBuffer: *graphics.FrameBuffer, chunkIDs: []const u32, ambient: Vec3f, transparent: bool, lod: usize) void {
 	if (chunkIDs.len == 0) return;
 	const drawCallsEstimate: u31 = @intCast(if (transparent) chunkIDs.len else chunkIDs.len*8);
 	var chunkIDAllocation: main.graphics.SubAllocation = .{.start = 0, .len = 0};
@@ -226,45 +328,136 @@ fn drawChunksOfLod(chunkIDs: []const u32, ambient: Vec3f, transparent: bool) voi
 	defer chunkIDBuffer.free(chunkIDAllocation);
 	const allocation = commandBuffer.rawAlloc(drawCallsEstimate);
 	defer commandBuffer.free(allocation);
-	commandPipeline.bind();
-	c.glUniform1f(commandUniforms.lodDistance, main.settings.@"lod0.5Distance");
-	c.glUniform1ui(commandUniforms.chunkIDIndex, chunkIDAllocation.start);
-	c.glUniform1ui(commandUniforms.commandIndexStart, allocation.start);
-	c.glUniform1ui(commandUniforms.size, @intCast(chunkIDs.len));
-	c.glUniform1i(commandUniforms.isTransparent, @intFromBool(transparent));
+	var vulkanUniforms: CommandUniforms = .{
+		.chunkIDIndex = chunkIDAllocation.start,
+		.commandIndexStart = allocation.start,
+		.size = @intCast(chunkIDs.len),
+		.lodDistance = main.settings.@"lod0.5Distance",
+		.isTransparent = if (transparent) c.VK_TRUE else c.VK_FALSE,
+		.onlyDrawPreviouslyInvisible = undefined,
+	};
 	if (!transparent) {
-		c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 0);
-		c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
-		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
+		vulkanUniforms.onlyDrawPreviouslyInvisible = c.VK_FALSE;
 
-		if (transparent) {
-			bindTransparentShaderAndUniforms(ambient);
+		if (main.settings.launch_config.vulkanTestingMode) {
+			currentFrame.renderCommands.endRendering();
+			defer currentFrameBuffer.bindAndClear(currentFrame.renderCommands, .{.clearColor = .load, .clearDepth = .load, .transitionImageLayout = false});
+
+			currentFrame.renderCommands.bindComputePipeline(commandPipeline);
+			currentFrame.renderCommands.pushConstants(commandPipeline, &vulkanUniforms);
+			currentFrame.renderCommands.bindDescriptors(commandPipeline, &.{
+				.{.ssbo = .{.binding = 6, .ssbo = chunkBuffer.ssbo}},
+				.{.ssbo = .{.binding = 8, .ssbo = commandBuffer.ssbo}},
+				.{.ssbo = .{.binding = 9, .ssbo = chunkIDBuffer.ssbo}},
+			});
+			graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, commandPipeline);
+			currentFrame.renderCommands.dispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
+			currentFrame.renderCommands.pipelineBarrier(.{.bufferMemoryBarriers = &.{.{
+				.sType = c.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+				.srcStageMask = c.VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+				.srcAccessMask = c.VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+				.dstStageMask = c.VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
+				.dstAccessMask = c.VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
+				.buffer = commandBuffer.ssbo.buffer.?.handle,
+				.offset = 0,
+				.size = c.VK_WHOLE_SIZE,
+			}}});
 		} else {
-			bindShaderAndUniforms(ambient);
+			commandPipeline.bind();
+			c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 0);
+			c.glUniform1f(commandUniforms.lodDistance, main.settings.@"lod0.5Distance");
+			c.glUniform1ui(commandUniforms.chunkIDIndex, chunkIDAllocation.start);
+			c.glUniform1ui(commandUniforms.commandIndexStart, allocation.start);
+			c.glUniform1ui(commandUniforms.size, @intCast(chunkIDs.len));
+			c.glUniform1i(commandUniforms.isTransparent, @intFromBool(transparent));
+			c.glDispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
+			c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 		}
-		c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
-		c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
+
+		bindShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, ambient, main.settings.blockContrast, lod);
+		if (main.settings.launch_config.vulkanTestingMode) {
+			currentFrame.renderCommands.drawIndexedIndirect(commandBuffer.ssbo.buffer.?, @as(usize, allocation.start)*@sizeOf(IndirectData), drawCallsEstimate, @sizeOf(IndirectData));
+		} else {
+			c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
+			c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
+		}
 	}
 
 	// Occlusion tests:
-	occlusionTestPipeline.bind(null);
-	vao.bind();
-	c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(6*6*chunkIDs.len), c.GL_UNSIGNED_INT, null, chunkIDAllocation.start*24);
-	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
+	if (main.settings.launch_config.vulkanTestingMode) {
+		currentFrame.renderCommands.bindPipeline(currentFrame, occlusionTestPipeline, null);
+		currentFrame.renderCommands.bindDescriptors(occlusionTestPipeline, &.{
+			.{.ssbo = .{.binding = 6, .ssbo = chunkBuffer.ssbo}},
+			.{.ssbo = .{.binding = 9, .ssbo = chunkIDBuffer.ssbo}},
+		});
+		main.graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, occlusionTestPipeline);
+		currentFrame.renderCommands.bindVertexArray(vao);
+		currentFrame.renderCommands.drawIndexed(@intCast(6*6*chunkIDs.len), .{.firstVertex = chunkIDAllocation.start*24});
+		currentFrame.renderCommands.endRendering();
+		currentFrame.renderCommands.pipelineBarrier(.{.bufferMemoryBarriers = &.{.{
+			.sType = c.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+			.srcStageMask = c.VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+			.srcAccessMask = c.VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+			.dstStageMask = c.VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+			.dstAccessMask = c.VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+			.buffer = chunkBuffer.ssbo.buffer.?.handle,
+			.offset = 0,
+			.size = c.VK_WHOLE_SIZE,
+		}}});
+	} else {
+		occlusionTestPipeline.bind(null);
+		vao.bind();
+		c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(6*6*chunkIDs.len), c.GL_UNSIGNED_INT, null, chunkIDAllocation.start*24);
+		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
+	}
 
 	// Draw again:
-	commandPipeline.bind();
-	c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 1);
-	c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
-	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
+	vulkanUniforms.onlyDrawPreviouslyInvisible = c.VK_TRUE;
+	if (main.settings.launch_config.vulkanTestingMode) {
+		currentFrame.renderCommands.bindComputePipeline(commandPipeline);
+		currentFrame.renderCommands.pushConstants(commandPipeline, &vulkanUniforms);
+		currentFrame.renderCommands.bindDescriptors(commandPipeline, &.{
+			.{.ssbo = .{.binding = 6, .ssbo = chunkBuffer.ssbo}},
+			.{.ssbo = .{.binding = 8, .ssbo = commandBuffer.ssbo}},
+			.{.ssbo = .{.binding = 9, .ssbo = chunkIDBuffer.ssbo}},
+		});
+		graphics.frame_uniforms.bindToPipeline(currentFrame.renderCommands, commandPipeline);
+		currentFrame.renderCommands.dispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
+		currentFrame.renderCommands.pipelineBarrier(.{.bufferMemoryBarriers = &.{.{
+			.sType = c.VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+			.srcStageMask = c.VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+			.srcAccessMask = c.VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+			.dstStageMask = c.VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
+			.dstAccessMask = c.VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
+			.buffer = commandBuffer.ssbo.buffer.?.handle,
+			.offset = 0,
+			.size = c.VK_WHOLE_SIZE,
+		}}});
+
+		currentFrameBuffer.bindAndClear(currentFrame.renderCommands, .{.clearColor = .load, .clearDepth = .load, .transitionImageLayout = false});
+	} else {
+		commandPipeline.bind();
+		c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 1);
+		c.glUniform1f(commandUniforms.lodDistance, main.settings.@"lod0.5Distance");
+		c.glUniform1ui(commandUniforms.chunkIDIndex, chunkIDAllocation.start);
+		c.glUniform1ui(commandUniforms.commandIndexStart, allocation.start);
+		c.glUniform1ui(commandUniforms.size, @intCast(chunkIDs.len));
+		c.glUniform1i(commandUniforms.isTransparent, @intFromBool(transparent));
+		c.glDispatchCompute(@intCast(@divCeil(chunkIDs.len, 64)), 1, 1);
+		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
+	}
 
 	if (transparent) {
-		bindTransparentShaderAndUniforms(ambient);
+		bindTransparentShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, currentFrameBuffer.depth, ambient, main.settings.blockContrast, lod);
 	} else {
-		bindShaderAndUniforms(ambient);
+		bindShaderAndUniforms(if (main.settings.launch_config.vulkanTestingMode) currentFrame.renderCommands else undefined, currentFrame, null, ambient, main.settings.blockContrast, lod);
 	}
-	c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
-	c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
+	if (main.settings.launch_config.vulkanTestingMode) {
+		currentFrame.renderCommands.drawIndexedIndirect(commandBuffer.ssbo.buffer.?, @as(usize, allocation.start)*@sizeOf(IndirectData), drawCallsEstimate, @sizeOf(IndirectData));
+	} else {
+		c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
+		c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
+	}
 }
 
 pub const FaceData = extern struct {
@@ -327,11 +520,11 @@ const FaceGroups = enum(u32) {
 	optional,
 
 	pub fn neighbor(n: main.chunk.Neighbor) FaceGroups {
-		return @enumFromInt(@intFromEnum(FaceGroups.neighbor0) + @intFromEnum(n));
+		return @fromBackingInt(@backingInt(FaceGroups.neighbor0) + @backingInt(n));
 	}
 
 	pub fn neighborLod(n: main.chunk.Neighbor) FaceGroups {
-		return @enumFromInt(@intFromEnum(FaceGroups.neighborLod0) + @intFromEnum(n));
+		return @fromBackingInt(@backingInt(FaceGroups.neighborLod0) + @backingInt(n));
 	}
 };
 
@@ -387,15 +580,15 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		var list: [6][]FaceData = undefined;
 		for (0..6) |i| {
 			if (!isNeighborLod[i]) {
-				list[i] = self.completeList.getRange(.neighbor(@enumFromInt(i)));
+				list[i] = self.completeList.getRange(.neighbor(@fromBackingInt(@intCast(i))));
 			} else {
-				list[i] = self.completeList.getRange(.neighborLod(@enumFromInt(i)));
+				list[i] = self.completeList.getRange(.neighborLod(@fromBackingInt(@intCast(i))));
 			}
 			len += list[i].len;
 		}
 
 		const fullBuffer = faceBuffers[self.lod].allocateAndMapRange(len, &self.bufferAllocation);
-		defer faceBuffers[self.lod].unmapRange(fullBuffer);
+		defer faceBuffers[self.lod].unmapRange(fullBuffer, self.bufferAllocation);
 		// Sort the faces by normal to allow for backface culling on the GPU:
 		var i: u32 = 0;
 		var iStart = i;
@@ -412,7 +605,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				}
 			}
 			if (normal < 6) {
-				const normalDir: chunk.Neighbor = @enumFromInt(normal);
+				const normalDir: chunk.Neighbor = @fromBackingInt(@intCast(normal));
 				@memcpy(fullBuffer[i..][0..list[normalDir.reverse().toInt()].len], list[normalDir.reverse().toInt()]);
 				i += @intCast(list[normalDir.reverse().toInt()].len);
 			}
@@ -508,7 +701,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		errdefer mesh_storage.meshMemoryPool.destroy(self);
 		self.chunk = .init(pos);
 		errdefer self.chunk.deinit();
-		try main.server.storage.ChunkCompression.loadChunk(self.chunk, .client, chunkData);
+		try main.server.storage.chunk_compression.loadChunk(self.chunk, .client, chunkData);
 		self.* = ChunkMesh{
 			.pos = pos,
 			.size = chunk.chunkSize*pos.voxelSize,
@@ -549,7 +742,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	pub fn deferredDeinit(self: *ChunkMesh) void {
-		main.heap.GarbageCollection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
+		main.heap.garbage_collection.deferredFree(.{.ptr = self, .freeFunction = main.meta.castFunctionSelfToAnyopaque(privateDeinit)});
 	}
 
 	pub fn isEmpty(self: *const ChunkMesh) bool {
@@ -1280,7 +1473,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 
 		pub fn getPriority(self: *BlockUpdateTask) f32 {
-			return 1000000 + self.pos.getPriority(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
+			return 1000000 + self.pos.getPriority(game.player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 		}
 
 		pub fn isStillNeeded(_: *BlockUpdateTask) bool {
@@ -1458,9 +1651,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		var list: [6][]FaceData = undefined;
 		for (0..6) |i| {
 			if (!self.isNeighborLod[i]) {
-				list[i] = self.transparentMesh.completeList.getRange(.neighbor(@enumFromInt(i)));
+				list[i] = self.transparentMesh.completeList.getRange(.neighbor(@fromBackingInt(@intCast(i))));
 			} else {
-				list[i] = self.transparentMesh.completeList.getRange(.neighborLod(@enumFromInt(i)));
+				list[i] = self.transparentMesh.completeList.getRange(.neighborLod(@fromBackingInt(@intCast(i))));
 			}
 			len += list[i].len;
 		}

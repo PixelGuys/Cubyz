@@ -8,11 +8,32 @@ layout(location = 2) out vec3 direction;
 
 layout(binding = 3) uniform sampler2D color;
 
+struct Fog {
+	vec3 color;
+	float density;
+	float fogLower;
+	float fogHigher;
+};
+
+#ifdef OPEN_GL
 layout(location = 0) uniform mat4 invViewMatrix;
 layout(location = 1) uniform vec2 tanXY;
+#else
+layout(push_constant, std430) uniform _ {
+	mat4 invViewMatrix;
+	vec2 tanXY;
+	float zNear;
+	float zFar;
+	Fog fog;
+};
+#endif
 
 void main() {
+#ifdef OPEN_GL
+	vec2 position = vec2(inTexCoords.x, 1 - inTexCoords.y)*2 - vec2(1, 1);
+#else
 	vec2 position = inTexCoords*2 - vec2(1, 1);
+#endif
 	direction = (invViewMatrix * vec4(position.x*tanXY.x, 1, position.y*tanXY.y, 0)).xyz;
 	normalizedTexCoords = inTexCoords;
 	texCoords = inTexCoords*textureSize(color, 0) - 0.25;

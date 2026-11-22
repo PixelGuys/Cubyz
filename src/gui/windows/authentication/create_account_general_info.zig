@@ -46,7 +46,7 @@ pub fn onOpen() void {
 pub fn update() void {
 	if (button.disabled) {
 		const remainingTime = enableTime.nanoseconds -% main.timestamp().nanoseconds;
-		const remainTimeSeconds = std.math.divCeil(i96, remainingTime, 1e9) catch unreachable;
+		const remainTimeSeconds = @divCeil(remainingTime, 1_000_000_000);
 		if (remainTimeSeconds <= 0) {
 			button.disabled = false;
 			button.child.label.updateText("Continue");

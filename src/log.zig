@@ -89,7 +89,7 @@ noinline fn runtimeLogFn(level: Level, format: []const u8, args: []const fmt.For
 		logToStdErr(level, "[{s}]: {s}{s}", .{filePrefix, writer.buffered(), fileSuffix});
 	}
 
-	if (level == .err and !openingErrorWindow and !settings.launchConfig.headlessServer) {
+	if (level == .err and !openingErrorWindow and !settings.launch_config.headlessServer) {
 		openingErrorWindow = true;
 		gui.openWindow("error_prompt");
 		openingErrorWindow = false;
