@@ -253,6 +253,8 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 		gpu_performance_measuring.startQuery(.clear);
 		worldFrameBuffer.clear(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
 		gpu_performance_measuring.stopQuery();
+	} else {
+		currentFrame.extent = .{.width = lastWidth, .height = lastHeight};
 	}
 	game.camera.updateViewMatrix();
 
@@ -403,6 +405,7 @@ pub fn renderWorld(currentFrame: *vulkan.Frame, world: *World, ambientLight: Vec
 	}
 	gpu_performance_measuring.startQuery(.final_copy);
 	if (settings.launch_config.vulkanTestingMode) {
+		currentFrame.extent = .{.width = main.Window.width, .height = main.Window.height};
 		currentFrame.guiCommands.bindPipeline(currentFrame, deferredRenderPassPipeline, null);
 		currentFrame.guiCommands.bindDescriptors(deferredRenderPassPipeline, &.{
 			.{.image = .{.binding = 3, .image = worldFrameBuffer.color}},
