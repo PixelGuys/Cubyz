@@ -589,7 +589,7 @@ const bloom = struct { // MARK: bloom
 			}).toGlsl();
 		}
 
-		uniforms.invViewMatrix = viewMatrix.toGl();
+		uniforms.invViewMatrix = viewMatrix.transpose().toGl();
 		uniforms.zNear = zNear;
 		uniforms.zFar = zFar;
 		uniforms.tanXY = .{1.0/game.projectionMatrix.rows[0][0], 1.0/game.projectionMatrix.rows[1][2]};
