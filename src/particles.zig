@@ -154,8 +154,8 @@ pub const particle_manager = struct { // MARK: particle_manager
 	pub fn generateTextureArray() void {
 		if (textureArray) |tex| tex.deinit();
 		if (emissionTextureArray) |tex| tex.deinit();
-		textureArray = .init(textures.items, true, true);
-		emissionTextureArray = .init(emissionTextures.items, true, false);
+		textureArray = .init(textures.items, .{.alphaCorrectMipmapping = true});
+		emissionTextureArray = .init(emissionTextures.items, .{.alphaCorrectMipmapping = false});
 
 		particleTypesSSBO.deinit();
 		particleTypesSSBO = .initStatic(ParticleType, particle_manager.types.items);

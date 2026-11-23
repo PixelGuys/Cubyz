@@ -900,14 +900,14 @@ pub const meshes = struct { // MARK: meshes
 		if (blockTextureArray) |tex| tex.deinit();
 		if (emissionTextureArray) |tex| tex.deinit();
 		if (reflectivityAndAbsorptionTextureArray) |tex| tex.deinit();
-		blockTextureArray = .init(blockTextures.items, true, true);
-		if (!main.settings.launch_config.vulkanTestingMode) {
-			c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
-		}
-		emissionTextureArray = .init(emissionTextures.items, true, false);
-		if (!main.settings.launch_config.vulkanTestingMode) {
-			c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
-		}
+		blockTextureArray = .init(blockTextures.items, .{
+			.alphaCorrectMipmapping = true,
+			.anisotropicFiltering = main.settings.anisotropicFiltering,
+		});
+		emissionTextureArray = .init(emissionTextures.items, .{
+			.alphaCorrectMipmapping = false,
+			.anisotropicFiltering = main.settings.anisotropicFiltering,
+		});
 		const reflectivityAndAbsorptionTextures = main.stackAllocator.alloc(Image, reflectivityTextures.items.len);
 		defer main.stackAllocator.free(reflectivityAndAbsorptionTextures);
 		defer for (reflectivityAndAbsorptionTextures) |texture| {
@@ -925,10 +925,10 @@ pub const meshes = struct { // MARK: meshes
 				}
 			}
 		}
-		reflectivityAndAbsorptionTextureArray = .init(reflectivityAndAbsorptionTextures, true, false);
-		if (!main.settings.launch_config.vulkanTestingMode) {
-			c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
-		}
+		reflectivityAndAbsorptionTextureArray = .init(reflectivityAndAbsorptionTextures, .{
+			.alphaCorrectMipmapping = false,
+			.anisotropicFiltering = main.settings.anisotropicFiltering,
+		});
 
 		// Also generate additional buffers:
 		if (animationSsbo) |ssbo| {
