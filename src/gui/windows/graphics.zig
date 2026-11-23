@@ -13,6 +13,8 @@ const ContinuousSlider = @import("../components/ContinuousSlider.zig");
 const DiscreteSlider = @import("../components/DiscreteSlider.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
+const c = @import("c");
+
 pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
 	.closeIfMouseIsGrabbed = true,
@@ -142,14 +144,16 @@ pub fn onOpen() void {
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 40.0, 120.0, settings.fov, &fovCallback, &fovFormatter));
 	list.add(CheckBox.init(.{0, 0}, 128, "Bloom", settings.bloom, &bloomCallback));
 	list.add(CheckBox.init(.{0, 0}, 128, "Vertical Synchronization", settings.vsync, &vsyncCallback));
-	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffAnisotropic Filtering: ", "{}x", &anisotropy, switch (settings.anisotropicFiltering) {
-		1 => 0,
-		2 => 1,
-		4 => 2,
-		8 => 3,
-		16 => 4,
-		else => 2,
-	}, &anisotropicFilteringCallback));
+	if (main.graphics.vulkan.enabledDeviceFeatures.v10.samplerAnisotropy == c.VK_TRUE) {
+		list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffAnisotropic Filtering: ", "{}x", &anisotropy, switch (settings.anisotropicFiltering) {
+			1 => 0,
+			2 => 1,
+			4 => 2,
+			8 => 3,
+			16 => 4,
+			else => 2,
+		}, &anisotropicFilteringCallback));
+	}
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffResolution Scale: ", "{}%", &resolutions, @as(u16, @trunc(@log2(settings.resolutionScale) + 2.0)), &resolutionScaleCallback));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
