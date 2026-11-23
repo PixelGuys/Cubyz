@@ -2185,7 +2185,7 @@ pub const TextureArray = struct { // MARK: TextureArray
 	vulkanImage: vulkan.Image,
 
 	const Options = struct {
-		mipmapping: bool= true,
+		mipmapping: bool = true,
 		alphaCorrectMipmapping: bool,
 		anisotropicFiltering: u8 = 1,
 	};
