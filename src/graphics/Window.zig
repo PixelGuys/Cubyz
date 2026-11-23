@@ -701,7 +701,9 @@ pub fn getWindowSize() Vec2f {
 }
 
 pub fn reloadSettings() void {
-	if (!settings.launch_config.vulkanTestingMode) {
+	if (settings.launch_config.vulkanTestingMode) {
+		vulkan.SwapChain.setVsync(main.settings.vsync);
+	} else {
 		c.glfwSwapInterval(@intFromBool(main.settings.vsync));
 	}
 }

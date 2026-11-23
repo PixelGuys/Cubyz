@@ -2389,6 +2389,8 @@ pub const Texture = struct { // MARK: Texture
 			self.vulkanImage = .init(.{largestSize, largestSize, 1}, .{
 				.usage = c.VK_IMAGE_USAGE_TRANSFER_DST_BIT | c.VK_IMAGE_USAGE_SAMPLED_BIT,
 				.mipLevels = 1 + std.math.log2_int(u31, largestSize),
+				.mipmapFilter = .linear,
+				.mipLodBias = lodBias,
 			});
 		} else {
 			c.glGenTextures(1, &self.textureID);

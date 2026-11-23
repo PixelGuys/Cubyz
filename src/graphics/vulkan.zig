@@ -485,8 +485,6 @@ fn createLogicalDevice() void {
 		.pQueueCreateInfos = queueCreateInfos.items.ptr,
 		.queueCreateInfoCount = @intCast(queueCreateInfos.items.len),
 		.pEnabledFeatures = &features.v10,
-		.ppEnabledLayerNames = validationLayers.ptr,
-		.enabledLayerCount = if (checkValidationLayerSupport()) validationLayers.len else 0,
 		.ppEnabledExtensionNames = &deviceExtensions,
 		.enabledExtensionCount = @intCast(deviceExtensions.len),
 	};
@@ -713,6 +711,8 @@ pub const SwapChain = struct { // MARK: SwapChain
 	pub var imageFormat: c.VkFormat = undefined;
 	var instance: *SwapChain = undefined;
 	var imageAvailable: [frames.len]Semaphore = undefined;
+	var vsync: bool = undefined;
+	var requiresSwapChainRecreation: bool = false;
 
 	const SupportDetails = struct {
 		capabilities: c.VkSurfaceCapabilitiesKHR,
@@ -742,7 +742,11 @@ pub const SwapChain = struct { // MARK: SwapChain
 		}
 
 		fn chooseSwapPresentMode(self: SupportDetails) c.VkPresentModeKHR {
-			_ = self; // TODO: Use MAILBOX if vsync is disabled
+			if (!vsync) {
+				for (self.presentModes) |presentMode| {
+					if (presentMode == c.VK_PRESENT_MODE_MAILBOX_KHR) return presentMode;
+				}
+			}
 			return c.VK_PRESENT_MODE_FIFO_KHR;
 		}
 
@@ -786,6 +790,7 @@ pub const SwapChain = struct { // MARK: SwapChain
 	}
 
 	fn globalInit() void {
+		vsync = main.settings.vsync;
 		for (&frames) |*frame| {
 			frame.* = .init();
 		}
@@ -868,6 +873,7 @@ pub const SwapChain = struct { // MARK: SwapChain
 	}
 
 	fn recreate() void {
+		requiresSwapChainRecreation = false;
 		waitForDeviceToFinish();
 		gpu_garbage_collection.deferredFree(.{.swapChain = SwapChain.instance});
 		SwapChain.instance = .init(SwapChain.instance);
@@ -875,6 +881,9 @@ pub const SwapChain = struct { // MARK: SwapChain
 
 	fn beginRender() *Frame {
 		frames[frameIndex].fence.waitAndReset();
+		if (requiresSwapChainRecreation) {
+			recreate();
+		}
 		while (true) {
 			const result = c.vkAcquireNextImageKHR(device, SwapChain.instance.handle, c.UINT64_MAX, imageAvailable[frameIndex].handle, null, &SwapChain.instance.currentImageIndex);
 			if (result != c.VK_ERROR_OUT_OF_DATE_KHR and result != c.VK_SUBOPTIMAL_KHR) {
@@ -912,6 +921,13 @@ pub const SwapChain = struct { // MARK: SwapChain
 			checkResult(result);
 		} else {
 			recreate();
+		}
+	}
+
+	pub fn setVsync(value: bool) void {
+		if (vsync != value) {
+			vsync = value;
+			requiresSwapChainRecreation = true;
 		}
 	}
 };
