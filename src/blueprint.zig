@@ -166,7 +166,7 @@ pub const Blueprint = struct { // MARK: Blueprint
 
 	pub const PasteFlags = struct {
 		preserveVoid: bool = false,
-		replaceUndegradable: bool = true,
+		preserveTerrain: bool = false,
 	};
 
 	pub fn paste(self: Blueprint, pos: Vec3i, flags: PasteFlags) void {
@@ -189,9 +189,9 @@ pub const Blueprint = struct { // MARK: Blueprint
 					while (true) {
 						const oldBlock = main.server.world.?.getBlock(@intCast(worldX), @intCast(worldY), @intCast(worldZ));
 						if (oldBlock) |_oldBlock| {
-							if (!_oldBlock.degradable() and !flags.replaceUndegradable) break;
+							if (!_oldBlock.degradable() and flags.preserveTerrain) break;
 						}
-						if (main.server.world.?.cmpxchgBlock(worldX, worldY, worldZ, oldBlock, block, .none) == null) {
+						if (main.server.world.?.cmpxchgBlock(worldX, worldY, worldZ, oldBlock, block, .noUpdate) == null) {
 							break;
 						}
 					}

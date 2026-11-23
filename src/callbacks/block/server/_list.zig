@@ -3,4 +3,4 @@ pub const decay = @import("decay.zig");
 pub const vine_decay = @import("vine_decay.zig");
 pub const replace_block = @import("replace_block.zig");
 pub const replace_block_type = @import("replace_block_type.zig");
-pub const sapling = @import("sapling.zig");
+pub const spawn_structure = @import("spawn_structure.zig");

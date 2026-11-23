@@ -5,10 +5,11 @@
 		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
 	},
 	.onTick = .{
-		.type = .sapling,
+		.type = .spawn_structure,
 		.sbb = .{
 			.structure = "cubyz:tree/oak/white",
 			.placeMode = .degradable,
+			.duringWorldGeneration = false,
 			.chance = 0.03,
 		},
 	},

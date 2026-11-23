@@ -1214,10 +1214,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		return block;
 	}
 
-	const UpdateMode = enum { neighbors, none };
+	const BlockUpdateMode = enum { updateNeighbors, noUpdate };
 
 	/// Returns the actual block on failure
-	pub fn cmpxchgBlock(self: *ServerWorld, wx: i32, wy: i32, wz: i32, oldBlock: ?Block, _newBlock: Block, comptime updateMode: UpdateMode) ?Block {
+	pub fn cmpxchgBlock(self: *ServerWorld, wx: i32, wy: i32, wz: i32, oldBlock: ?Block, _newBlock: Block, comptime blockUpdateMode: BlockUpdateMode) ?Block {
 		main.sync.threadContext.assertCorrectContext(.server);
 		const baseChunk = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{.wx = wx & ~@as(i32, chunk.chunkMask), .wy = wy & ~@as(i32, chunk.chunkMask), .wz = wz & ~@as(i32, chunk.chunkMask), .voxelSize = 1});
 		defer baseChunk.decreaseRefCount();
@@ -1295,7 +1295,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				});
 			}
 		}
-		if (updateMode == .neighbors) {
+		if (blockUpdateMode == .updateNeighbors) {
 			self.triggerNeighborBlockUpdates(wx, wy, wz);
 		}
 
@@ -1320,8 +1320,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 	}
 
-	pub fn updateBlock(self: *ServerWorld, wx: i32, wy: i32, wz: i32, newBlock: Block, comptime updateMode: UpdateMode) void {
-		_ = self.cmpxchgBlock(wx, wy, wz, null, newBlock, updateMode);
+	pub fn updateBlock(self: *ServerWorld, wx: i32, wy: i32, wz: i32, newBlock: Block, comptime blockUpdateMode: BlockUpdateMode) void {
+		_ = self.cmpxchgBlock(wx, wy, wz, null, newBlock, blockUpdateMode);
 	}
 
 	pub fn queueChunkUpdateAndDecreaseRefCount(self: *ServerWorld, ch: *ServerChunk) void {

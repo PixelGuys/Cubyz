@@ -14,12 +14,12 @@ pub fn init(zon: main.ZonElement, _: main.callbacks.Creator) ?*@This() {
 	const sbbZon = zon.getChild("sbb");
 
 	const vtableModel = SbbGen.loadModel(sbbZon) orelse {
-		std.log.err("Error occurred while loading structure for saplings", .{});
+		std.log.err("Error occurred while loading structure for spawn_structure event", .{});
 		return null;
 	};
 	result.sbb = vtableModel;
 	result.chance = sbbZon.get(f32, "chance") orelse {
-		std.log.err("Missing field \"chance\" for sapling event", .{});
+		std.log.err("Missing field \"chance\" for spawn_structure event", .{});
 		return null;
 	};
 	return result;
@@ -30,7 +30,7 @@ pub fn run(self: *@This(), params: main.callbacks.ServerBlockCallback.Params) ma
 	// copied from SimpleStructureGen.generate.
 	const randomValue = main.random.nextFloat(&main.seed);
 	if (randomValue < self.chance) {
-		self.sbb.placeSbb(self.sbb.structureRef, Vec3i{params.blockPos.x, params.blockPos.y, params.blockPos.z}, null, self.sbb.rotation.getInitialRotation(&main.seed), params.chunk, &main.seed, false);
+		self.sbb.placeSbb(self.sbb.structureRef, Vec3i{params.blockPos.x, params.blockPos.y, params.blockPos.z}, null, self.sbb.rotation.getInitialRotation(&main.seed), params.chunk, &main.seed);
 	}
 
 	return .handled;

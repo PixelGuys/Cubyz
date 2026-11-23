@@ -20,6 +20,7 @@ const SbbGen = @This();
 
 structureRef: *const sbb.StructureBuildingBlock,
 placeMode: Blueprint.PasteMode,
+duringWorldGeneration: bool,
 rotation: sbb.Rotation,
 
 pub fn getHash(self: SbbGen) u64 {
@@ -47,16 +48,17 @@ pub fn loadModel(parameters: ZonElement) ?*SbbGen {
 	self.* = .{
 		.structureRef = structureRef,
 		.placeMode = std.meta.stringToEnum(Blueprint.PasteMode, parameters.get([]const u8, "placeMode") orelse "degradable") orelse Blueprint.PasteMode.degradable,
+		.duringWorldGeneration = parameters.get(bool, "duringWorldGeneration") orelse true,
 		.rotation = rotation,
 	};
 	return self;
 }
 
 pub fn generate(self: *SbbGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, _: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool) void {
-	placeSbb(self, self.structureRef, Vec3i{x, y, z}, null, self.rotation.getInitialRotation(seed), chunk, seed, true);
+	placeSbb(self, self.structureRef, Vec3i{x, y, z}, null, self.rotation.getInitialRotation(seed), chunk, seed);
 }
 
-pub fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: ?Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, seed: *u64, comptime duringWorldGeneration: bool) void {
+pub fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: ?Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, seed: *u64) void {
 	const blueprints = &(structure.getBlueprints(seed).* orelse return);
 
 	const origin = blueprints[0].originBlock;
@@ -68,7 +70,7 @@ pub fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, pla
 	const rotatedOrigin = rotated.originBlock.pos();
 	const pastePosition = placementPosition - rotatedOrigin - (placementDirection orelse origin.direction()).relPos();
 
-	if (duringWorldGeneration) {
+	if (self.duringWorldGeneration) {
 		rotated.blueprint.pasteInGeneration(pastePosition, chunk, self.placeMode);
 	} else {
 		var pos = Vec3i{0, 0, 0};
@@ -76,12 +78,12 @@ pub fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, pla
 		pos[1] = chunk.super.pos.wy + pastePosition[1];
 		pos[2] = chunk.super.pos.wz + pastePosition[2];
 
-		rotated.blueprint.paste(pos, .{.replaceUndegradable = false});
+		rotated.blueprint.paste(pos, .{.preserveTerrain = true});
 	}
 	for (rotated.childBlocks) |childBlock| {
 		const child = structure.getChildStructure(childBlock) orelse continue;
 		const childRotation = blueprintRotation.getChildRotation(seed, child.rotation, childBlock.direction());
-		placeSbb(self, child, pastePosition + childBlock.pos(), childBlock.direction(), childRotation, chunk, seed, duringWorldGeneration);
+		placeSbb(self, child, pastePosition + childBlock.pos(), childBlock.direction(), childRotation, chunk, seed);
 	}
 }
 

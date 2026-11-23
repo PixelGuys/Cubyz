@@ -4,9 +4,10 @@
 	.drops = .{
 		.{.items = .{.auto}, .allowedToolTags = .{.cuttable}},
 	},
-	.onTick = .{.type = .sapling, .sbb = .{
+	.onTick = .{.type = .spawn_structure, .sbb = .{
 		.structure = "cubyz:cactus/saguaro",
 		.placeMode = .degradable,
+		.duringWorldGeneration = false,
 		.chance = 0.01,
 	}},
 	.selectionCapabilities = .{.toolEffective},
