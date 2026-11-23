@@ -34,6 +34,8 @@ pub const BlockDrop = @import("BlockDrop.zig");
 
 pub const command = @import("command.zig");
 
+const @"cubyz:physics_body" = main.entity.components.@"cubyz:physics_body";
+
 pub const WorldEditData = struct {
 	const maxWorldEditHistoryCapacity: u32 = 1024;
 
@@ -308,6 +310,9 @@ pub const User = struct { // MARK: User
 		if (main.entity.components.@"cubyz:bag".server.get(self.id) == null) {
 			main.entity.components.@"cubyz:bag".server.loadEmpty(self.id);
 		}
+		if (main.entity.components.@"cubyz:physics_body".server.get(self.id) == null) {
+			main.entity.components.@"cubyz:physics_body".server.loadFromPosition(self.id, getSpawnPos(self));
+		}
 		if (main.entity.components.@"cubyz:permissions".server.get(self.id) == null) {
 			main.entity.components.@"cubyz:permissions".server.loadEmpty(self.id);
 		}
@@ -320,7 +325,7 @@ pub const User = struct { // MARK: User
 			}
 		}
 
-		self.interpolation.init(@ptrCast(&self.player().pos), @ptrCast(&self.player().vel));
+		self.interpolation.init(@ptrCast(@"cubyz:physics_body".getPositionPointer(self.id, .server)), @ptrCast(@"cubyz:physics_body".getVelocityPointer(self.id, .server)));
 		self.loadUnloadChunks();
 
 		main.entity.components.@"cubyz:player".server.load(self.id, @truncate(self.playerIndex));
@@ -378,7 +383,8 @@ pub const User = struct { // MARK: User
 	}
 
 	fn loadUnloadChunks(self: *User) void {
-		const newPos: Vec3i = @as(Vec3i, @trunc(self.player().pos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
+		const playerPos = @"cubyz:physics_body".getPosition(self.player().id, .server).?;
+		const newPos: Vec3i = @as(Vec3i, @trunc(playerPos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
 		const newRenderDistance = main.settings.simulationDistance;
 		if (@reduce(.Or, newPos != self.lastPos) or newRenderDistance != self.lastRenderDistance) {
 			self.unloadOldChunk(newPos, newRenderDistance);
@@ -545,7 +551,7 @@ pub const User = struct { // MARK: User
 		const position: [3]f64 = try reader.readVec(Vec3d);
 		const velocity: [3]f64 = try reader.readVec(Vec3d);
 		const rotation: [3]f32 = try reader.readVec(Vec3f);
-		self.player().rot = rotation;
+		@"cubyz:physics_body".setRotation(self.id, rotation, .server);
 		const time = try reader.readInt(i16);
 		self.timeDifference.addDataPoint(time);
 		self.interpolation.updatePosition(&position, &velocity, time);
@@ -689,28 +695,9 @@ fn update() void { // MARK: update()
 		user.update();
 	}
 
-	// Send the entity data:
-	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
-	defer main.stackAllocator.free(itemData);
-
-	var entityData: main.ListManaged(main.entity.EntityNetworkData) = .init(main.stackAllocator);
-	defer entityData.deinit();
-
 	for (userList) |user| {
-		const id = user.id; // TODO
-		entityData.append(.{
-			.id = id,
-			.pos = user.player().pos,
-			.vel = user.player().vel,
-			.rot = user.player().rot,
-		});
-	}
-	for (userList) |user| {
-		main.network.protocols.entity_position.send(user.conn, user.player().pos, entityData.items, itemData);
-	}
-
-	for (userList) |user| {
-		const pos = @as(Vec3i, @trunc(user.player().pos));
+		const playerPos = @"cubyz:physics_body".getPosition(user.player().id, .server).?;
+		const pos = @as(Vec3i, @trunc(playerPos));
 		const biomeId = world.?.getBiome(pos[0], pos[1], pos[2]).paletteId;
 		if (biomeId != user.lastSentBiomeId) {
 			user.lastSentBiomeId = biomeId;

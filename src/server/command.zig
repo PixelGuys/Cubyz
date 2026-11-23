@@ -9,6 +9,8 @@ const ListManaged = main.ListManaged;
 const User = main.server.User;
 pub const commandList = @import("command/_list.zig");
 
+const @"cubyz:physics_body" = main.entity.components.@"cubyz:physics_body";
+
 pub const Source = union(enum) {
 	user: *User,
 	server: void,
@@ -134,11 +136,12 @@ pub fn resolveCoordinates(x: Coordinate, y: Coordinate, z: Coordinate, source: S
 		source.sendMessage("Command was run without a user; unable to interpret relative coordinates.", .{});
 		return error.InvalidArg;
 	}
+	const pos = @"cubyz:physics_body".getPosition(source.user.player().id, .server).?;
 	return .{
 		// TODO: Remove clamp after #310 is implemented
-		std.math.clamp(if (x == .relative) source.user.player().pos[0] + x.relative else x.absolute, -1e9, 1e9),
-		std.math.clamp(if (y == .relative) source.user.player().pos[1] + y.relative else y.absolute, -1e9, 1e9),
-		std.math.clamp(if (z == .relative) source.user.player().pos[2] + z.relative else z.absolute, -1e9, 1e9),
+		std.math.clamp(if (x == .relative) pos[0] + x.relative else x.absolute, -1e9, 1e9),
+		std.math.clamp(if (y == .relative) pos[1] + y.relative else y.absolute, -1e9, 1e9),
+		std.math.clamp(if (z == .relative) pos[2] + z.relative else z.absolute, -1e9, 1e9),
 	};
 }
 
@@ -148,10 +151,11 @@ pub fn resolveRotation(yaw: Rotation, pitch: Rotation, source: Source) error{Inv
 		return error.InvalidArg;
 	}
 	const bound = std.math.pi/2.0 - 0.001;
+	const playerRot = @"cubyz:physics_body".getRotation(source.user.id, .server).?;
 	return .{
-		std.math.clamp(if (yaw == .relative) source.user.player().rot[0] + yaw.relative else yaw.absolute, -bound, bound),
+		std.math.clamp(if (yaw == .relative) playerRot[0] + yaw.relative else yaw.absolute, -bound, bound),
 		0,
-		if (pitch == .relative) source.user.player().rot[2] + pitch.relative else pitch.absolute,
+		if (pitch == .relative) playerRot[2] + pitch.relative else pitch.absolute,
 	};
 }
 

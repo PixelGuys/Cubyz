@@ -358,6 +358,7 @@ pub const chunk_transmisison = struct { // MARK: chunk_transmisison
 
 		pub fn isStillNeeded(self: *MeshGenerationTask) bool {
 			if (main.game.world == null or main.game.world.?.paused) return false;
+			if (main.sync.threadContext == .server) return false;
 			const distanceSqr = self.pos.getMinDistanceSquared(@trunc(game.player.getPosBlocking())); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 			var maxRenderDistance = settings.renderDistance*chunk.chunkSize*self.pos.voxelSize;
 			maxRenderDistance += 2*self.pos.voxelSize*chunk.chunkSize;
