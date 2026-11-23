@@ -20,6 +20,8 @@ pub var grabbed: bool = false;
 pub var scrollOffset: f32 = 0;
 pub var scrollOffsetInteger: i32 = 0;
 var scrollOffsetFraction: f32 = 0;
+var contentXScale: f32 = 1;
+var contentYScale: f32 = 1;
 
 pub const gamepad = struct { // MARK: gamepad
 	pub var gamepadState: std.AutoHashMap(c_int, *c.GLFWgamepadstate) = undefined;
@@ -547,6 +549,13 @@ pub const glfw_callbacks = struct { // MARK: glfw_callbacks
 		main.gui.updateGuiScale();
 		main.gui.updateWindowPositions();
 	}
+
+	pub fn windowContentScaleCallback(_: ?*c.GLFWwindow, xscale: f32, yscale: f32) callconv(.c) void {
+		std.log.info("WindowScale: {}, {}", .{xscale, yscale});
+		contentXScale = xscale;
+		contentYScale = yscale;
+	}
+
 	// Mouse deltas are averaged over multiple frames using a circular buffer:
 	const deltasLen: u2 = 3;
 	var deltas: [deltasLen]Vec2f = @splat(.{0, 0});
@@ -555,8 +564,8 @@ pub const glfw_callbacks = struct { // MARK: glfw_callbacks
 	var ignoreDataAfterRecentGrab: bool = true;
 	fn cursorPosition(_: ?*c.GLFWwindow, x: f64, y: f64) callconv(.c) void {
 		const newPos = Vec2f{
-			@floatCast(x),
-			@floatCast(y),
+			@floatCast(x*contentXScale),
+			@floatCast(y*contentYScale),
 		};
 		if (grabbed and !ignoreDataAfterRecentGrab) {
 			var newDelta = (newPos - currentPos)*@as(Vec2f, @splat(main.settings.mouseSensitivity));
@@ -758,6 +767,14 @@ pub fn init() void { // MARK: init()
 
 		window = c.glfwCreateWindow(width, height, windowTitle, null, null) orelse @panic("Failed to create GLFW window");
 	}
+
+	var frameBuffereWidth: c_int = undefined;
+	var frameBuffereHeight: c_int = undefined;
+	c.glfwGetFramebufferSize(window, &frameBuffereWidth, &frameBuffereHeight);
+	width = @intCast(frameBuffereWidth);
+	height = @intCast(frameBuffereHeight);
+	c.glfwGetWindowContentScale(window, &contentXScale, &contentYScale);
+
 	iconBlock: {
 		const image = main.graphics.Image.readFromFile(main.stackAllocator, "assets/cubyz/logo.png", .{.orientation = .asIs}) catch |err| {
 			std.log.err("Error loading logo: {s}", .{@errorName(err)});
@@ -775,6 +792,7 @@ pub fn init() void { // MARK: init()
 	_ = c.glfwSetKeyCallback(window, glfw_callbacks.keyCallback);
 	_ = c.glfwSetCharCallback(window, glfw_callbacks.charCallback);
 	_ = c.glfwSetFramebufferSizeCallback(window, glfw_callbacks.framebufferSize);
+	_ = c.glfwSetWindowContentScaleCallback(window, glfw_callbacks.windowContentScaleCallback);
 	_ = c.glfwSetCursorPosCallback(window, glfw_callbacks.cursorPosition);
 	_ = c.glfwSetMouseButtonCallback(window, glfw_callbacks.mouseButton);
 	_ = c.glfwSetScrollCallback(window, glfw_callbacks.scroll);
