@@ -1387,6 +1387,8 @@ const text_rendering = struct { // MARK: text_rendering
 			});
 		} else {
 			c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 1);
+			c.glActiveTexture(c.GL_TEXTURE0);
+			c.glBindTexture(c.GL_TEXTURE_2D, glyphTexture[0].textureID);
 			c.glTexSubImage2D(c.GL_TEXTURE_2D, 0, textureOffset, 0, @intCast(bitmap.width), @intCast(bitmap.rows), c.GL_RED, c.GL_UNSIGNED_BYTE, buffer);
 		}
 		textureOffset += @intCast(bitmap.width);
