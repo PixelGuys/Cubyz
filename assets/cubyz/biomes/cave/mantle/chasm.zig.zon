@@ -42,6 +42,15 @@
 			.depth = 4,
 			.smoothness = 0.1,
 		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:pyrolite/cracked",
+			.chance = 0.075,
+			.width = 3,
+			.variation = 3,
+			.depth = 13,
+			.smoothness = 0.33,
+		},
 	},
 	.caveModels = .{
 		.{
