@@ -1,0 +1,9 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:rare/tree/oak/burnt"},
+		.{.id = "cubyz:rare/tree/oak/fallen"},
+		.{.id = "cubyz:rare/tree/oak/grand"},
+		.{.id = "cubyz:rare/tree/oak/lake"},
+		.{.id = "cubyz:rare/tree/oak/rotten_stump"},
+	},
+}
