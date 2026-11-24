@@ -67,6 +67,8 @@ pub var updateRepeatSpeed: std.Io.Duration = .fromMilliseconds(200);
 
 pub var updateRepeatDelay: std.Io.Duration = .fromMilliseconds(500);
 
+pub var creativeReach: f32 = 6.0;
+
 pub var controllerAxisDeadzone: f32 = 0.2;
 
 pub var bobbing: bool = true;
