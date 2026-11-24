@@ -891,7 +891,7 @@ pub const item_drop_renderer = struct { // MARK: item_drop_renderer
 
 		bindCommonUniforms(currentFrame, ambientLight, &uniforms);
 
-		const item = game.player.inventory.getItem(game.player.selectedSlot);
+		const item = main.entity.components.@"cubyz:held_item".client.getHeldItem(game.player.id) orelse return;
 		if (item != .null) {
 			var pos: Vec3d = Vec3d{0, 0, 0};
 			const rot: Vec3f = item_display_manager.cameraFollow;
