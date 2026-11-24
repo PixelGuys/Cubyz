@@ -43,7 +43,7 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	}
 }
 
-pub fn changeProceduralItemParameters(proceduralItem: *ProceduralItem, data: Data) void {
+pub fn changeProceduralItemParametersMult(proceduralItem: *ProceduralItem, data: Data) void {
 	proceduralItem.setProperty(data.targetProperty, proceduralItem.getProperty(data.targetProperty)*(1 + data.strength));
 }
 

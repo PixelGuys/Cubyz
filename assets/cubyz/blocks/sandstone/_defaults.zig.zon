@@ -28,7 +28,7 @@
 				},
 				.{
 					.id = "good_at",
-					.strength = 0.5,
+					.multStrength = 0.5,
 					.tag = .sandstone,
 					.restriction = .{
 						.id = .encased,

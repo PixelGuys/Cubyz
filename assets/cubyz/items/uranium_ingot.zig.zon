@@ -4,9 +4,15 @@
 	.colorTexture = "uranium_ingot_palette.png",
 	.material = .{
 		.durability = 1500,
-		.massDamage = 10.0,
-		.hardnessDamage = 15.0,
+		.massDamage = 8.0,
+		.hardnessDamage = 12.0,
 		.swingSpeed = 0.5,
 		.textureRoughness = 0.3,
+		.modifiers = .{
+			.{
+				.id = "base_stat_flat",
+				.strength = 2,
+			},
+		},
 	},
 }
