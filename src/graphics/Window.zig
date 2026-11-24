@@ -734,6 +734,8 @@ pub fn init() void { // MARK: init()
 		@panic("Failed to initialize GLFW");
 	}
 
+	c.glfwWindowHint(c.GLFW_DECORATED, if(settings.windowDecorations) c.GLFW_TRUE else c.GLFW_FALSE);
+
 	if (c.glfwVulkanSupported() == c.GLFW_FALSE) {
 		std.log.err("Vulkan is not supported. Please update your drivers if you want to keep playing Cubyz in the future.", .{});
 	} else blk: {
@@ -843,6 +845,11 @@ pub fn toggleFullscreen(_: Key.Modifiers) void {
 		c.glfwSetWindowMonitor(window, monitor, 0, 0, vidMode[0].width, vidMode[0].height, c.GLFW_DONT_CARE);
 	} else {
 		c.glfwSetWindowMonitor(window, null, oldX, oldY, oldWidth, oldHeight, c.GLFW_DONT_CARE);
-		c.glfwSetWindowAttrib(window, c.GLFW_DECORATED, c.GLFW_TRUE);
+		setWindowDecoration(settings.windowDecorations);
 	}
+}
+
+pub fn setWindowDecoration(value: bool) void {
+	if(isFullscreen) return; // can't be enabled when in fullscreen
+	c.glfwSetWindowAttrib(window, c.GLFW_DECORATED, if(value) c.GLFW_TRUE else c.GLFW_FALSE);
 }

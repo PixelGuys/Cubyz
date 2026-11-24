@@ -128,6 +128,12 @@ fn resolutionScaleCallback(newValue: u16) void {
 	main.Window.glfw_callbacks.framebufferSize(null, main.Window.width, main.Window.height);
 }
 
+fn windowDecorationsCallback(newValue: bool) void  {
+	settings.windowDecorations = newValue;
+	settings.save();
+	main.Window.setWindowDecoration(newValue);
+}
+
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffFPS Limit:\n", "{s}", &fpsPresetsText, fpsCapGetIndex(settings.fpsCap), &fpsCapCallback));
@@ -151,6 +157,7 @@ pub fn onOpen() void {
 		else => 2,
 	}, &anisotropicFilteringCallback));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffResolution Scale: ", "{}%", &resolutions, @as(u16, @trunc(@log2(settings.resolutionScale) + 2.0)), &resolutionScaleCallback));
+	list.add(CheckBox.init(.{0, 0}, 128, "Window Decorations", settings.windowDecorations, &windowDecorationsCallback));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
