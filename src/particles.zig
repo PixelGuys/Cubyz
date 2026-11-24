@@ -452,6 +452,8 @@ pub const DirectionMode = union(enum) {
 
 pub const Emitter = struct { // MARK: Emitter
 	typ: u16 = 0,
+	particleTypeLocal: ParticleTypeLocal,
+	particleType: ParticleType,
 	collides: bool,
 	spawnShape: SpawnShape,
 	properties: EmitterProperties,
@@ -554,6 +556,8 @@ pub const Emitter = struct { // MARK: Emitter
 
 		return Emitter{
 			.typ = typ,
+			.particleTypeLocal = particle_manager.typesLocal.items[typ],
+			.particleType = particle_manager.types.items[typ],
 			.collides = collides,
 			.spawnShape = spawnShape,
 			.properties = properties,
@@ -574,6 +578,8 @@ pub const Emitter = struct { // MARK: Emitter
 
 		return Emitter{
 			.typ = typ,
+			.particleTypeLocal = particle_manager.typesLocal.items[typ],
+			.particleType = particle_manager.types.items[typ],
 			.collides = collides,
 			.spawnShape = spawnShape,
 			.properties = EmitterProperties.parse(zon),
