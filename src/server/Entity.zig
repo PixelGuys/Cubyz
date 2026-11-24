@@ -73,3 +73,7 @@ pub fn deinit(self: *@This(), comptime side: main.sync.Side) void {
 		main.entity.client.removeAllComponents(self.id);
 	}
 }
+
+pub fn createEmptyServerEntity(id: main.entity.Entity) @This() {
+	return .{.id = id};
+}

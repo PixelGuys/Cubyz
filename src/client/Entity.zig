@@ -38,6 +38,8 @@ pub fn init(self: *@This(), zon: ZonElement, allocator: NeverFailingAllocator) !
 		.height = zon.get(f64, "height") orelse 1,
 		.name = allocator.dupe(u8, zon.get([]const u8, "name") orelse ""),
 	};
+	self.pos = zon.get(Vec3d, "position") orelse .{0, 0, 0};
+	self.rot = zon.get(Vec3f, "rotation") orelse .{0, 0, 0};
 	self._interpolationPos = [_]f64{
 		self.pos[0],
 		self.pos[1],

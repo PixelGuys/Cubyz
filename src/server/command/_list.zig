@@ -15,6 +15,7 @@ pub const tp = @import("tp.zig");
 pub const whitelist = @import("whitelist.zig");
 
 pub const avatar = @import("entity/avatar.zig");
+pub const summon = @import("entity/summon.zig");
 
 pub const group = @import("permission/group.zig");
 pub const perm = @import("permission/perm.zig");

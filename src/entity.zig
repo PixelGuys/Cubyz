@@ -97,6 +97,13 @@ pub fn unloadComponent(comptime side: main.sync.Side, componentId: EntityCompone
 	}
 }
 
+var freeId: u32 = 0; // TODO: Use id provided by the ECS.
+pub fn assignEntityWithNextFreeId() Entity {
+	const id: Entity = @fromBackingInt(freeId);
+	freeId += 1;
+	return id;
+}
+
 pub const client = struct {
 	pub fn init() void {
 		inline for (@typeInfo(components).@"struct".decl_names) |decl| {
