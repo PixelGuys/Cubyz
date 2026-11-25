@@ -543,6 +543,7 @@ pub const glfw_callbacks = struct { // MARK: glfw_callbacks
 		std.log.info("Framebuffer: {}, {}", .{newWidth, newHeight});
 		width = @intCast(newWidth);
 		height = @intCast(newHeight);
+		vulkan.SwapChain.requireSwapChainRecreation();
 		main.renderer.updateViewport(width, height);
 		main.gui.updateGuiScale();
 		main.gui.updateWindowPositions();
