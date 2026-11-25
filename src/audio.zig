@@ -5,6 +5,7 @@ const utils = main.utils;
 
 const c = @import("c");
 
+pub const mood = @import("audio/mood.zig");
 pub const music_tracks = @import("audio/music_tracks.zig");
 
 const StbVorbisErrorEnum = enum(c_int) {

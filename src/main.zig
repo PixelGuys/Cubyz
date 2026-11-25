@@ -158,6 +158,9 @@ fn toggleAdvancedNetworkDebugOverlay(_: Window.Key.Modifiers) void {
 fn toggleVulkanDebugOverlay(_: Window.Key.Modifiers) void {
 	gui.toggleWindow("debug_vulkan_info");
 }
+fn toggleBiomeDebugOverlay(_: Window.Key.Modifiers) void {
+	gui.toggleWindow("debug_biome");
+}
 fn cycleHotbarSlot(i: comptime_int) *const fn (Window.Key.Modifiers) void {
 	return &struct {
 		fn set(_: Window.Key.Modifiers) void {
@@ -258,6 +261,7 @@ pub const keyboard = struct { // MARK: keyboard
 		.{.name = "networkDebugOverlay", .key = c.GLFW_KEY_F6, .pressAction = &toggleNetworkDebugOverlay},
 		.{.name = "advancedNetworkDebugOverlay", .key = c.GLFW_KEY_F7, .pressAction = &toggleAdvancedNetworkDebugOverlay},
 		.{.name = "vulkanDebugOverlay", .key = c.GLFW_KEY_F8, .pressAction = &toggleVulkanDebugOverlay},
+		.{.name = "biomeDebugOverlay", .key = c.GLFW_KEY_F9, .pressAction = &toggleBiomeDebugOverlay},
 	};
 
 	fn findKey(name: []const u8) ?*Window.Key { // TODO: Maybe I should use a hashmap here?

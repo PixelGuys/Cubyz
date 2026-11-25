@@ -97,21 +97,6 @@ pub fn render(currentFrame: *graphics.vulkan.Frame) void {
 			draw.print(currentFrame, "Light memory LOD{}: {} MiB / {} MiB", .{lod, used >> 20, size >> 20}, 0, y, 8);
 			y += 8;
 		}
-		{
-			const biome = main.game.world.?.playerBiome.load(.monotonic);
-			var tags = main.ListManaged(u8).init(main.stackAllocator);
-			defer tags.deinit();
-			inline for (@typeInfo(main.server.terrain.biomes.Biome.ClimateProperties).@"struct".field_names) |name| {
-				if (@field(biome.climate, name)) {
-					if (tags.items.len != 0) tags.appendSlice(", ");
-					tags.appendSlice(name);
-				}
-			}
-			draw.print(currentFrame, "Biome: {s}", .{biome.id}, 0, y, 8);
-			y += 8;
-			draw.print(currentFrame, "Biome Climate: {s}", .{tags.items}, 0, y, 8);
-			y += 8;
-		}
 		draw.print(currentFrame, "Opaque faces: {}, Transparent faces: {}", .{main.renderer.chunk_meshing.quadsDrawn, main.renderer.chunk_meshing.transparentQuadsDrawn}, 0, y, 8);
 		y += 8;
 		draw.print(currentFrame, "Particle count: {}/{}", .{main.particles.particle_system.getParticleCount(), main.particles.particle_system.maxCapacity}, 0, y, 8);
