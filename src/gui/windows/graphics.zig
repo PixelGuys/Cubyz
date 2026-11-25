@@ -128,7 +128,7 @@ fn resolutionScaleCallback(newValue: u16) void {
 	main.Window.glfw_callbacks.framebufferSize(null, main.Window.width, main.Window.height);
 }
 
-fn windowDecorationsCallback(newValue: bool) void  {
+fn windowDecorationsCallback(newValue: bool) void {
 	settings.windowDecorations = newValue;
 	settings.save();
 	main.Window.setWindowDecoration(newValue);
