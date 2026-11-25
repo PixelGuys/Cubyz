@@ -953,8 +953,12 @@ pub const SwapChain = struct { // MARK: SwapChain
 	pub fn setVsync(value: bool) void {
 		if (vsync != value) {
 			vsync = value;
-			requiresSwapChainRecreation = true;
+			requireSwapChainRecreation();
 		}
+	}
+
+	pub fn requireSwapChainRecreation() void {
+		requiresSwapChainRecreation = true;
 	}
 };
 

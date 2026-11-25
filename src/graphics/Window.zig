@@ -543,6 +543,7 @@ pub const glfw_callbacks = struct { // MARK: glfw_callbacks
 		std.log.info("Framebuffer: {}, {}", .{newWidth, newHeight});
 		width = @intCast(newWidth);
 		height = @intCast(newHeight);
+		vulkan.SwapChain.requireSwapChainRecreation();
 		main.renderer.updateViewport(width, height);
 		main.gui.updateGuiScale();
 		main.gui.updateWindowPositions();
@@ -734,6 +735,8 @@ pub fn init() void { // MARK: init()
 		@panic("Failed to initialize GLFW");
 	}
 
+	c.glfwWindowHint(c.GLFW_DECORATED, if (settings.windowDecorations) c.GLFW_TRUE else c.GLFW_FALSE);
+
 	if (c.glfwVulkanSupported() == c.GLFW_FALSE) {
 		std.log.err("Vulkan is not supported. Please update your drivers if you want to keep playing Cubyz in the future.", .{});
 	} else blk: {
@@ -761,6 +764,7 @@ pub fn init() void { // MARK: init()
 		window = c.glfwCreateWindow(width, height, windowTitle, null, null) orelse @panic("Failed to create GLFW window");
 	}
 	iconBlock: {
+		if (c.glfwGetPlatform() == c.GLFW_PLATFORM_WAYLAND) break :iconBlock; // wayland does not support setting the window icon
 		const image = main.graphics.Image.readFromFile(main.stackAllocator, "assets/cubyz/logo.png", .{.orientation = .asIs}) catch |err| {
 			std.log.err("Error loading logo: {s}", .{@errorName(err)});
 			break :iconBlock;
@@ -842,6 +846,11 @@ pub fn toggleFullscreen(_: Key.Modifiers) void {
 		c.glfwSetWindowMonitor(window, monitor, 0, 0, vidMode[0].width, vidMode[0].height, c.GLFW_DONT_CARE);
 	} else {
 		c.glfwSetWindowMonitor(window, null, oldX, oldY, oldWidth, oldHeight, c.GLFW_DONT_CARE);
-		c.glfwSetWindowAttrib(window, c.GLFW_DECORATED, c.GLFW_TRUE);
+		setWindowDecoration(settings.windowDecorations);
 	}
+}
+
+pub fn setWindowDecoration(value: bool) void {
+	if (isFullscreen) return; // can't be enabled when in fullscreen
+	c.glfwSetWindowAttrib(window, c.GLFW_DECORATED, if (value) c.GLFW_TRUE else c.GLFW_FALSE);
 }

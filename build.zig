@@ -41,6 +41,7 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	exe.root_module.addObjectFile(libsDeps.path("lib").path(b, artifactName));
 	const subPath = libsDeps.path("lib").path(b, depsLib);
 	exe.root_module.addObjectFile(subPath.path(b, libName(b, "glslang", t)));
+	exe.root_module.addObjectFile(subPath.path(b, libName(b, "glfw", t)));
 	exe.root_module.addObjectFile(subPath.path(b, libName(b, "MachineIndependent", t)));
 	exe.root_module.addObjectFile(subPath.path(b, libName(b, "GenericCodeGen", t)));
 	exe.root_module.addObjectFile(subPath.path(b, libName(b, "glslang-default-resource-limits", t)));
