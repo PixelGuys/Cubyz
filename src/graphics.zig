@@ -1387,6 +1387,8 @@ const text_rendering = struct { // MARK: text_rendering
 			});
 		} else {
 			c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 1);
+			c.glActiveTexture(c.GL_TEXTURE0);
+			c.glBindTexture(c.GL_TEXTURE_2D, glyphTexture[0].textureID);
 			c.glTexSubImage2D(c.GL_TEXTURE_2D, 0, textureOffset, 0, @intCast(bitmap.width), @intCast(bitmap.rows), c.GL_RED, c.GL_UNSIGNED_BYTE, buffer);
 		}
 		textureOffset += @intCast(bitmap.width);
@@ -2182,8 +2184,13 @@ pub const TextureArray = struct { // MARK: TextureArray
 	textureID: c_uint,
 	vulkanImage: vulkan.Image,
 
+	const Options = struct {
+		mipmapping: bool = true,
+		alphaCorrectMipmapping: bool,
+		anisotropicFiltering: u8 = 1,
+	};
 	/// (Re-)Generates the GPU buffer.
-	pub fn init(images: []Image, mipmapping: bool, alphaCorrectMipmapping: bool) TextureArray {
+	pub fn init(images: []Image, options: Options) TextureArray {
 		var self: TextureArray = undefined;
 		var maxWidth: u31 = 1;
 		var maxHeight: u31 = 1;
@@ -2201,7 +2208,7 @@ pub const TextureArray = struct { // MARK: TextureArray
 
 		std.log.debug("Creating Texture Array of size {}×{} with {} layers.", .{maxWidth, maxHeight, images.len});
 
-		const maxLOD = if (mipmapping) 1 + std.math.log2_int(u31, @max(maxWidth, maxHeight)) else 1;
+		const maxLOD = if (options.mipmapping) 1 + std.math.log2_int(u31, @max(maxWidth, maxHeight)) else 1;
 
 		if (main.settings.launch_config.vulkanTestingMode) {
 			self.vulkanImage = vulkan.Image.init(.{maxWidth, maxHeight, 1}, .{
@@ -2210,6 +2217,7 @@ pub const TextureArray = struct { // MARK: TextureArray
 				.mipLevels = maxLOD,
 				.arrayLayers = @intCast(images.len),
 				.mipmapFilter = .linear,
+				.maxAnisotropy = if (options.anisotropicFiltering <= 1) null else @floatFromInt(options.anisotropicFiltering),
 			});
 		} else {
 			c.glGenTextures(1, &self.textureID);
@@ -2222,6 +2230,7 @@ pub const TextureArray = struct { // MARK: TextureArray
 			c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
 			c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
 			c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
+			c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(options.anisotropicFiltering));
 		}
 
 		const arena = main.stackAllocator.createArena();
@@ -2257,7 +2266,7 @@ pub const TextureArray = struct { // MARK: TextureArray
 							lodBuffer[lod - 1][@min(2*x + 1, nextWidth - 1) + @min(2*y, nextHeight - 1)*nextWidth],
 							lodBuffer[lod - 1][@min(2*x + 1, nextWidth - 1) + @min(2*y + 1, nextHeight - 1)*nextWidth],
 						};
-						lodBuffer[lod][index] = lodColorInterpolation(colors, alphaCorrectMipmapping);
+						lodBuffer[lod][index] = lodColorInterpolation(colors, options.alphaCorrectMipmapping);
 					}
 				}
 			}

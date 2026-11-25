@@ -342,6 +342,17 @@ const deviceFeatures: DeviceFeatures = .{
 	},
 };
 
+const optionalDeviceFeatures: DeviceFeatures = .{
+	.v10 = .{
+		.samplerAnisotropy = c.VK_TRUE,
+	},
+	.v11 = .{},
+	.v12 = .{},
+	.v13 = .{},
+};
+
+pub var enabledDeviceFeatures: DeviceFeatures = undefined;
+
 const QueueFamilyIndidices = struct {
 	graphicsFamily: ?u32 = null,
 	presentFamily: ?u32 = null,
@@ -477,14 +488,29 @@ fn createLogicalDevice() void {
 		});
 	}
 
-	var features = deviceFeatures;
+	enabledDeviceFeatures = deviceFeatures;
+	const availableFeatures: DeviceFeatures = .getFromDevice(physicalDevice);
+	inline for (@typeInfo(@TypeOf(optionalDeviceFeatures)).@"struct".field_names) |ver| {
+		inline for (@typeInfo(@TypeOf(@field(optionalDeviceFeatures, ver))).@"struct".field_names) |name| {
+			if (comptime std.mem.eql(u8, name, "sType")) continue;
+			if (comptime std.mem.eql(u8, name, "pNext")) continue;
+			if (@field(@field(optionalDeviceFeatures, ver), name) == c.VK_TRUE) {
+				if (@field(@field(availableFeatures, ver), name) == c.VK_TRUE) {
+					std.log.info("Enabling optional feature {s}", .{name});
+					@field(@field(enabledDeviceFeatures, ver), name) = c.VK_TRUE;
+				} else {
+					std.log.info("Optional feature {s} is not supported", .{name});
+				}
+			}
+		}
+	}
 
 	const createInfo: c.VkDeviceCreateInfo = .{
 		.sType = c.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-		.pNext = features.chain(),
+		.pNext = enabledDeviceFeatures.chain(),
 		.pQueueCreateInfos = queueCreateInfos.items.ptr,
 		.queueCreateInfoCount = @intCast(queueCreateInfos.items.len),
-		.pEnabledFeatures = &features.v10,
+		.pEnabledFeatures = &enabledDeviceFeatures.v10,
 		.ppEnabledExtensionNames = &deviceExtensions,
 		.enabledExtensionCount = @intCast(deviceExtensions.len),
 	};
@@ -1164,8 +1190,8 @@ pub const Image = struct { // MARK: Image
 			.addressModeV = @backingInt(options.addressMode),
 			.addressModeW = @backingInt(options.addressMode),
 			.mipLodBias = options.mipLodBias,
-			.anisotropyEnable = if (options.maxAnisotropy != null) c.VK_TRUE else c.VK_FALSE,
-			.maxAnisotropy = options.maxAnisotropy orelse 0,
+			.anisotropyEnable = if (options.maxAnisotropy != null and enabledDeviceFeatures.v10.samplerAnisotropy == c.VK_TRUE) c.VK_TRUE else c.VK_FALSE,
+			.maxAnisotropy = if (enabledDeviceFeatures.v10.samplerAnisotropy == c.VK_TRUE) options.maxAnisotropy orelse 0 else 0,
 			.compareEnable = c.VK_FALSE, // TODO: This may be useful for shadow map sampling
 			.minLod = 0,
 			.maxLod = c.VK_LOD_CLAMP_NONE,
