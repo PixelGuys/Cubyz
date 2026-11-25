@@ -20,6 +20,7 @@ const SbbGen = @This();
 
 structureRef: *const sbb.StructureBuildingBlock,
 placeMode: Blueprint.PasteMode,
+duringWorldGeneration: bool,
 rotation: sbb.Rotation,
 
 pub fn getHash(self: SbbGen) u64 {
@@ -47,6 +48,7 @@ pub fn loadModel(parameters: ZonElement) ?*SbbGen {
 	self.* = .{
 		.structureRef = structureRef,
 		.placeMode = std.meta.stringToEnum(Blueprint.PasteMode, parameters.get([]const u8, "placeMode") orelse "degradable") orelse Blueprint.PasteMode.degradable,
+		.duringWorldGeneration = parameters.get(bool, "duringWorldGeneration") orelse true,
 		.rotation = rotation,
 	};
 	return self;
@@ -56,7 +58,7 @@ pub fn generate(self: *SbbGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk:
 	placeSbb(self, self.structureRef, Vec3i{x, y, z}, null, self.rotation.getInitialRotation(seed), chunk, seed);
 }
 
-fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: ?Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, seed: *u64) void {
+pub fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: ?Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, seed: *u64) void {
 	const blueprints = &(structure.getBlueprints(seed).* orelse return);
 
 	const origin = blueprints[0].originBlock;
@@ -68,8 +70,16 @@ fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placeme
 	const rotatedOrigin = rotated.originBlock.pos();
 	const pastePosition = placementPosition - rotatedOrigin - (placementDirection orelse origin.direction()).relPos();
 
-	rotated.blueprint.pasteInGeneration(pastePosition, chunk, self.placeMode);
+	if (self.duringWorldGeneration) {
+		rotated.blueprint.pasteInGeneration(pastePosition, chunk, self.placeMode);
+	} else {
+		var pos = Vec3i{0, 0, 0};
+		pos[0] = chunk.super.pos.wx + pastePosition[0];
+		pos[1] = chunk.super.pos.wy + pastePosition[1];
+		pos[2] = chunk.super.pos.wz + pastePosition[2];
 
+		rotated.blueprint.paste(pos, .{.preserveTerrain = true});
+	}
 	for (rotated.childBlocks) |childBlock| {
 		const child = structure.getChildStructure(childBlock) orelse continue;
 		const childRotation = blueprintRotation.getChildRotation(seed, child.rotation, childBlock.direction());

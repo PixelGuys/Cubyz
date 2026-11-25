@@ -109,6 +109,7 @@ pub fn init(parameters: ZonElement) void {
 		structureData.* = .{
 			.structureRef = sbb,
 			.placeMode = .all,
+			.duringWorldGeneration = true,
 			.rotation = .{.fixed = .@"0"},
 		};
 		sbbList[i] = .{
