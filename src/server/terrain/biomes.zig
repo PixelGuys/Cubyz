@@ -168,6 +168,10 @@ fn u32ToVec3(color: u32) Vec3f {
 	return .{r, g, b};
 }
 
+fn zonToVec2(zon: ZonElement, replacements: Vec2i) Vec2i {
+	return Vec2i{zon.getAtIndex(i32, 0, replacements[0]), zon.getAtIndex(i32, 1, replacements[1])};
+}
+
 /// A climate region with special ground, plants and structures.
 pub const Biome = struct { // MARK: Biome
 	pub const ClimateProperties = packed struct(u15) {
@@ -311,8 +315,8 @@ pub const Biome = struct { // MARK: Biome
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount") orelse std.math.floatMax(f32),
 			.tags = Tag.loadTagsFromZon(main.worldArena, zon.getChild("tags")),
 			.liquidBlock = blocks.parseBlock(zon.get([]const u8, "liquidBlock") orelse "cubyz:water"),
-			.surfaceThickness = zon.get(@Vector(2, u31), "surfaceThickness") orelse Vec2i{32, 128},
-			.surfaceLimits = zon.get(@Vector(2, i32), "surfaceLimits") orelse Vec2i{std.math.maxInt(i32), std.math.minInt(i32)},
+			.surfaceThickness = zonToVec2(zon.getChild("surfaceThickness"), Vec2i{32, 128}),
+			.surfaceLimits = zonToVec2(zon.getChild("surfaceLimits"), Vec2i{std.math.maxInt(i32), std.math.minInt(i32)}),
 		};
 		if (self.isCave) {
 			for (self.tags) |tag| {
