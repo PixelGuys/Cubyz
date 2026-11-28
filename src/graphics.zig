@@ -1754,14 +1754,14 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		pub fn processFreeLists(self: *Self) void {
 			if (!main.settings.launch_config.vulkanTestingMode) return;
 			if (self.activeFreeList == vulkan.gpu_garbage_collection.currentFrame) return;
-			while (self.lastFrameFreed != vulkan.gpu_garbage_collection.currentFrame) {
+			const endTime = main.timestamp().addDuration(.fromMilliseconds(5));
+			outer: while (self.lastFrameFreed != vulkan.gpu_garbage_collection.currentFrame) {
 				self.lastFrameFreed += 1;
 				self.activeFreeList += 1;
 				if (self.activeFreeList == self.fences.len) self.activeFreeList = 0;
-				const endTime = main.timestamp().addDuration(.fromMilliseconds(5));
 				while (self.fencedFreeLists[self.activeFreeList].popOrNull()) |toFree| {
 					self.finalFree(toFree);
-					if (main.timestamp().durationTo(endTime).nanoseconds < 0) break; // TODO: Remove after #1434
+					if (main.timestamp().durationTo(endTime).nanoseconds < 0) break :outer; // TODO: Remove after #1434
 				}
 			}
 		}
