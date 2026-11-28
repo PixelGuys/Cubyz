@@ -25,6 +25,7 @@ pub const world_zig = @import("world.zig");
 pub const ServerWorld = world_zig.ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
+pub const entity_manager = @import("entity_manager.zig");
 pub const SimulationChunk = @import("SimulationChunk.zig");
 pub const stdin_handler = @import("stdin_handler.zig");
 pub const storage = @import("storage.zig");
@@ -106,7 +107,6 @@ pub const User = struct { // MARK: User
 	const simulationSize = 2*maxSimulationDistance;
 	const simulationMask = simulationSize - 1;
 	conn: *Connection = undefined,
-	innerPlayer: Entity = .{},
 	timeDifference: utils.TimeDifference = .{},
 	interpolation: utils.GenericInterpolation(3) = undefined,
 	lastTime: i16 = undefined,
@@ -151,7 +151,7 @@ pub const User = struct { // MARK: User
 	pub const State = enum { awaitingKeyVerification, connectedVerified, awaitingReloadVerified };
 
 	pub fn player(self: *User) *Entity {
-		return &self.innerPlayer;
+		return entity_manager.getEntity(self.id);
 	}
 
 	pub fn init(manager: *ConnectionManager, ipPort: []const u8) !*User {
@@ -224,6 +224,8 @@ pub const User = struct { // MARK: User
 			self.player().deinit(.server);
 		}
 
+		entity_manager.removeEntity(self.id);
+
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		for (self.inventoryCommands.items) |commandData| {
 			main.globalAllocator.free(commandData);
@@ -291,10 +293,8 @@ pub const User = struct { // MARK: User
 		}
 	}
 
-	var freeId: u32 = 0; // TODO: Use id provided by the ECS.
 	pub fn initPlayer(self: *User) void {
-		self.id = @fromBackingInt(freeId);
-		freeId += 1;
+		self.id = entity_manager.addEntity();
 
 		world.?.loadPlayer(self) catch {
 			std.log.err("Error while loading player data of {s}. Discarding data.", .{self.name});
@@ -594,10 +594,10 @@ fn init(name: []const u8, singlePlayerPort: ?u16, mode: ServerWorld.Mode) void {
 	users = .init(main.globalAllocator);
 	lastTime = main.timestamp();
 
+	main.sync.server.init();
 	main.systems.server.init();
 	main.entity.server.init();
 	main.items.Inventory.server.init();
-	main.sync.server.init();
 
 	world = ServerWorld.init(name, mode) catch |err| {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
@@ -644,9 +644,9 @@ fn deinit() void {
 	}
 	world = null;
 
-	main.sync.server.deinit();
 	main.items.Inventory.server.deinit();
 	main.entity.server.deinit();
+	main.sync.server.deinit();
 	main.systems.server.deinit();
 
 	command.deinit();
@@ -693,7 +693,7 @@ fn update() void { // MARK: update()
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
 	defer main.stackAllocator.free(itemData);
 
-	var entityData: main.ListManaged(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+	var entityData = entity_manager.getEntityNetworkData(main.stackAllocator);
 	defer entityData.deinit();
 
 	for (userList) |user| {
@@ -870,12 +870,8 @@ pub fn connectInternal(user: *User) void {
 		}
 	}
 	{ // Let this client know about the others:
-		const zonArray = main.ZonElement.initArray(main.stackAllocator);
+		const zonArray = entity_manager.getEntitiesNearbyInfo(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
-		for (userList) |other| {
-			const entityZon = other.player().save(main.stackAllocator, .playerNearby);
-			zonArray.array.append(entityZon);
-		}
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
 		if (user.connected.load(.monotonic)) main.network.protocols.entity.send(user.conn, data);
