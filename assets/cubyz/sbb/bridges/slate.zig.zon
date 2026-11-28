@@ -1,0 +1,9 @@
+.{
+	.blueprints = .{
+		.{.id = "cubyz:bridges/part/s0", .chance = 1},
+		.{.id = "cubyz:bridges/part/s1", .chance = 0.15},
+	},
+	.children = .{
+		.black = "cubyz:bridges/slate",
+	},
+}
