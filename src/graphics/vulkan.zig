@@ -216,6 +216,7 @@ const validationLayers: []const [*:0]const u8 = &.{
 };
 
 fn checkValidationLayerSupport() bool {
+	if (!builtin.optimize.runtimeSafety()) return false;
 	const availableLayers = enumerateInstanceLayerProperties(main.stackAllocator);
 	defer main.stackAllocator.free(availableLayers);
 	for (validationLayers) |layerName| continueOuter: {
