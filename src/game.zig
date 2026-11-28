@@ -189,12 +189,12 @@ pub const player = struct { // MARK: player
 	}
 
 	pub fn placeBlock(mods: main.Window.Key.Modifiers) void {
-		if (main.renderer.mesh_selection.selectedBlockPos) |blockPos| blk: {
-			const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(blockPos, 1)) orelse break :blk;
-			const block = mesh.chunk.getBlock(blockPos[0] - mesh.pos.wx, blockPos[1] - mesh.pos.wy, blockPos[2] - mesh.pos.wz);
+		if (main.game.Player.super.getSelected(inventory.getItem(selectedSlot), .client)) |selected| blk: {
+			const mesh = main.renderer.mesh_storage.getMesh(.initFromWorldPos(selected.blockPos, 1)) orelse break :blk;
+			const block = mesh.chunk.getBlock(selected.blockPos[0] - mesh.pos.wx, selected.blockPos[1] - mesh.pos.wy, selected.blockPos[2] - mesh.pos.wz);
 			const onInteract = block.onInteract();
 			if (!mods.shift) {
-				if (onInteract.run(.{.blockPos = blockPos, .block = block, .chunk = mesh.chunk}) == .handled) return;
+				if (onInteract.run(.{.blockPos = selected.blockPos, .block = block, .chunk = mesh.chunk}) == .handled) return;
 			}
 		}
 
@@ -225,8 +225,8 @@ pub const player = struct { // MARK: player
 	}
 
 	pub fn acquireSelectedBlock() void {
-		if (main.renderer.mesh_selection.selectedBlockPos) |selectedPos| {
-			const block = main.renderer.mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
+		if (main.game.Player.super.getSelected(inventory.getItem(selectedSlot), .client)) |selected| {
+			const block = main.renderer.mesh_storage.getBlockFromRenderThread(selected.blockPos[0], selected.blockPos[1], selected.blockPos[2]) orelse return;
 
 			const item: items.Item = for (0..items.itemListSize) |idx| {
 				const baseItem: main.items.BaseItemIndex = @fromBackingInt(@intCast(idx));
